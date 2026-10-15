@@ -10,7 +10,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionMark } from "../../build.slint";
 import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow, RemoveTarget } from "folder.slint";
@@ -33,6 +33,7 @@ export global AutoBattleView {
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: self.on-placed ? @tr("Remove") : @tr("Pick") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -72,6 +73,8 @@ export global AutoBattleView {
     // place a drag let go was refused at, counted: it shakes.
     in property <PlaceLine> lifted;
     in property <int> refused-place: -1;
+    // CLEAR's question (docs/design/app-ui.md §2.70).
+    out property <string> clear-question: @tr("Clear the auto battle data?");
     // How many of the places hold a chip, the note of its library row.
     public pure function in-places(n: int) -> string {
         return @tr("In {n} place" | "In {n} places" % n);
@@ -407,18 +410,29 @@ export component AutoBattleTab inherits Rectangle {
     places-title := Label {
         x: 12px;
         y: root.pane-y;
-        width: root.pane-width - 24px;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
         height: 44px;
         visible: !Theme.phone;
         text: @tr("AUTO BATTLE");
         color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
     }
 
-    // (What is wrong with the data: a phone's line of its own over the places.)
+    // CLEAR (docs/design/app-ui.md §2.70; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // place emptied, asked first; dim where none holds anything. At the header's right end; on a phone at the right
+    // end of the line over the places.
+    clear := WordButton {
+        x: root.pane-width - (Theme.phone ? 0px : 12px) + self.pad - self.width;
+        y: Theme.phone ? 0px : root.pane-y + 14px;
+        nav: "clear";
+        text: @tr("CLEAR");
+        enabled: AutoBattleView.filled > 0;
+    }
+
+    // (What is wrong with the data: a phone's line of its own over the places, before CLEAR.)
     ProblemNote {
         x: 0px;
         y: 0px;
-        width: root.pane-width;
+        width: max(0px, clear.x + clear.pad - 12px);
         visible: Theme.phone;
         text: AutoBattleView.problems;
     }

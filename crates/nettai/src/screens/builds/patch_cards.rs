@@ -12,7 +12,8 @@
 //! cursor stays in the library; Enter (or Del, or a click) on a card of the library that is in takes it out again,
 //! so a card is put in and taken out from where the cursor is. Del takes the build's card under the cursor out;
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
-//! earlier one's work).
+//! earlier one's work). **CLEAR** at the right end of the cards' header (or **X**; docs/design/app-ui.md §2.70) takes
+//! every card out (in a game with slots, empties every slot), as one change, asked first (`editor::ask_clear`).
 //!
 //! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a right click takes it out, as
 //! Del does (a right click on a library card that is in, too). A card dragged to another place in the list moves
@@ -612,6 +613,18 @@ impl PatchCards {
         }
     }
 
+    /// CLEAR, answered: every card taken out (in a game with slots, every slot emptied), as one change. The cursor goes
+    /// to the build's first row.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.notice = None;
+        if draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Clear)) {
+            shell.sound.play(Cue::Back);
+        }
+        self.slot = 0;
+        self.changed(shell, draft);
+        shell.nav.focus("card", 0);
+    }
+
     /// Move the build's card in row `i` up or down the list.
     fn shift(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize, up: bool) {
         let Some(to) = (if up { i.checked_sub(1) } else { Some(i + 1) }) else { return shell.sound.play(Cue::Refused) };
@@ -762,6 +775,10 @@ impl Tab for PatchCards {
             "lib.up" => self.shift(shell, draft, self.slot, true),
             "lib.down" => self.shift(shell, draft, self.slot, false),
             "lib.close" => self.leave_library(shell),
+            "clear" => {
+                let empty = PatchCards::installed(draft).iter().all(Option::is_none);
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -867,8 +884,12 @@ impl Tab for PatchCards {
         }
     }
 
-    /// `[` and `]` on one of the build's cards move it.
+    /// `[` and `]` on one of the build's cards move it; X, CLEAR.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
         if let Some(i) = PatchCards::focused_card(shell) {
             match key.code {
                 KeyCode::BracketLeft if !key.repeat => self.shift(shell, draft, i, true),
@@ -904,6 +925,12 @@ impl Tab for PatchCards {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }
 

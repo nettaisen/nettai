@@ -11,7 +11,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
@@ -73,6 +73,7 @@ export global FolderView {
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: "R", pad: PadButton.north, text: @tr("Regular") },
         { key: "T", pad: PadButton.select, text: @tr("Tag") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -81,6 +82,7 @@ export global FolderView {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: "R", pad: PadButton.north, text: @tr("Regular") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -115,6 +117,8 @@ export global FolderView {
     in property <bool> sheet;
     // The library's chip being dragged into the folder, as an entry would show it.
     in property <ChipCell> ghost;
+    // CLEAR's question (docs/design/app-ui.md §2.70).
+    out property <string> clear-question: @tr("Clear the folder?");
 }
 
 // One of the folder's counts: its word, and what the folder holds of its limit, which ticks as it changes. In the
@@ -564,13 +568,16 @@ export component FolderTab inherits Rectangle {
     // A phone: the counts' box, its last line kept for what is wrong with the folder, and the folder in one column
     // under it.
     property <length> counts-height: (FolderView.counts.tags ? 90px : 68px) + 22px;
-    // The folder's header: its title and its counts on one line where the language's words leave them the room,
-    // else the counts on a line of their own under the title. The header is 44 either way, and which it is
-    // depends on the language alone, never on what the folder holds. (What is wrong with the folder is said in the
-    // strip of each entry it is about, and by its counts in the error red: docs/design/app-ui.md §2.66.)
+    // The folder's header: its title, its counts and CLEAR at its right end on one line where the language's words
+    // leave them the room, else the counts on a line of their own under the title and CLEAR. The header is 44 either
+    // way, and which it is depends on the language alone, never on what the folder holds. (What is wrong with the
+    // folder is said in the strip of each entry it is about, and by its counts in the error red:
+    // docs/design/app-ui.md §2.66.)
     property <length> counts-width: chips.width + mega.width + giga.width + regular.width + 3 * 12px + (FolderView.counts.tags ? tag.width + 12px : 0px);
-    property <bool> two-lines: folder-title.preferred-width + 12px + root.counts-width > root.pane-width - 24px;
+    property <bool> two-lines: folder-title.preferred-width + 12px + root.counts-width + 12px + clear.width - 2 * clear.pad > root.pane-width - 24px;
     property <length> counts-y: root.pane-y + (root.two-lines ? 24px : 14px);
+    // (Where the counts end: before CLEAR on its line, else at the header's right end.)
+    property <length> counts-right: root.two-lines ? root.pane-width - 12px : clear.x + clear.pad - 12px;
     // (The screenshot pass is told if the counts don't fit the pane even so.)
     property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
     // Where entry `i` is in the framed folder's two columns.
@@ -730,7 +737,7 @@ export component FolderTab inherits Rectangle {
     }
 
     regular := CountBox {
-        x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x : root.pane-width) - 12px - self.width;
+        x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x - 12px : root.counts-right) - self.width;
         y: giga.y;
         label: Theme.phone ? @tr("Regular") : @tr("Reg");
         value: FolderView.counts.regular;
@@ -740,7 +747,7 @@ export component FolderTab inherits Rectangle {
     }
 
     tag := CountBox {
-        x: Theme.phone ? 12px : root.pane-width - 12px - self.width;
+        x: Theme.phone ? 12px : root.counts-right - self.width;
         y: Theme.phone ? 56px : chips.y;
         visible: FolderView.counts.tags;
         label: @tr("Tag");
@@ -748,6 +755,17 @@ export component FolderTab inherits Rectangle {
         suffix: "/\{FolderView.counts.tag-limit} MB";
         value-width: 52px;
         over: FolderView.counts.tag > FolderView.counts.tag-limit;
+    }
+
+    // CLEAR (docs/design/app-ui.md §2.70; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // entry emptied, its marks with it, asked first; dim where the folder holds nothing. At the header's right end, its
+    // word where a count's would end; on a phone at the right of the counts' box's first line.
+    clear := WordButton {
+        x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
+        y: Theme.phone ? 12px : root.two-lines ? root.pane-y + 4px : root.counts-y;
+        nav: "clear";
+        text: @tr("CLEAR");
+        enabled: FolderView.counts.chips > 0;
     }
 
     // (What is wrong with the folder: a phone's last line of its counts' box.)

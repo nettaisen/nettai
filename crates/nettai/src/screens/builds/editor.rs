@@ -300,6 +300,38 @@ pub trait Tab {
     fn answered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _tag: &str, _choice: usize) {}
 }
 
+// ---- CLEAR ------------------------------------------------------------------------------------------------------
+
+/// The question a tab's CLEAR asks (docs/design/app-ui.md §2.70; the user: "you should add clear for navicust/folder/
+/// patch cards/abd"): whether its part of the build is emptied. Its answer is the tab's (`Tab::answered`), CLEAR the
+/// second button.
+pub const CLEAR: &str = "builds.clear";
+
+/// CLEAR, at the right end of a pane's header (`clear`), or its key: asked first whether the part of the build is
+/// emptied, `question` its words, Cancel focused (the editor has no undo, as a build's DELETE asks); where the part
+/// holds nothing (`empty`), refused.
+pub fn ask_clear(shell: &mut Shell, question: slint::SharedString, empty: bool) {
+    if empty {
+        return shell.sound.play(crate::sound::Cue::Refused);
+    }
+    let ui = shell.ui();
+    let play = ui.global::<nettai_ui::PlayView>();
+    let button = |text: slint::SharedString, danger: bool| nettai_ui::DialogButton { text, kind: nettai_ui::ButtonKind::Ghost, danger };
+    let clear = ui.global::<BuildsView>().get_clear_word();
+    shell.ask(crate::shell::Dialog { tag: CLEAR, title: question.into(), message: String::new(), buttons: vec![button(play.get_cancel_word(), false), button(clear, true)], focus: 0, cancel: 0 });
+}
+
+/// Whether `key` is CLEAR's (X, as the tabs' hints say; not a letter typed on a text field, nor a key the menus
+/// take: the one bound to L or R, which change the tab).
+pub fn clear_key(shell: &Shell, key: &KeyPress) -> bool {
+    key.code == slint::winit_030::winit::keyboard::KeyCode::KeyX && !key.repeat && !shell.nav.on_field() && crate::input::menu_action(key.code, key.shift, &shell.bindings).is_none()
+}
+
+/// Whether the dialog answered (`tag`, `choice`) said CLEAR.
+pub fn cleared(tag: &str, choice: usize) -> bool {
+    tag == CLEAR && choice == 1
+}
+
 /// The row the strip describes in place of the focused one while the pointer is on it (docs/design/app-ui.md §2.64):
 /// `what`, the pointer come onto it (`on`) or gone off it, becomes `hovered` (none: the focused row again). Whether
 /// it changed: the strip is shown anew. (Going from one row to the next, the next's coming may be told before the

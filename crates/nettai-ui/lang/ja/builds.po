@@ -130,6 +130,25 @@ msgstr "すべて"
 msgid "NONE"
 msgstr "なし"
 
+# A pane's header's word, its dialog's button and the footer's hint: that part of the build emptied at once.
+msgid "CLEAR"
+msgstr "クリア"
+
+msgid "Clear"
+msgstr "クリア"
+
+msgid "Clear the folder?"
+msgstr "フォルダをクリアしますか？"
+
+msgid "Clear the NaviCust?"
+msgstr "ナビカスをクリアしますか？"
+
+msgid "Clear the patch cards?"
+msgstr "改造カードをクリアしますか？"
+
+msgid "Clear the auto battle data?"
+msgstr "オートバトルデータをクリアしますか？"
+
 # ---- The Folder tab.
 
 msgid "Slot {} of {}"

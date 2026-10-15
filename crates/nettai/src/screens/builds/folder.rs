@@ -14,7 +14,9 @@
 //!
 //! **R** makes the entry under the cursor the Regular chip (or no longer), **T** tags it: the first T marks
 //! one entry and the second its pair, and the two are the build's tag chips once the rules take them. **Del**
-//! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why.
+//! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why. **CLEAR** at the right end of
+//! the folder's header (or **X**; docs/design/app-ui.md §2.70) empties every entry, the Regular and tag marks with
+//! them, as one change, asked first (`editor::ask_clear`).
 //!
 //! **The mouse:** a click on an entry marks it (the focus stays on it); a right click takes its chip out, as Del does.
 //! An entry dragged to another place moves there, those between shifting toward where it was, its Regular and tag
@@ -533,6 +535,18 @@ impl Folder {
         }
     }
 
+    /// CLEAR, answered: every entry emptied and its marks with it, as one change (`Folder::EMPTY`). The cursor goes to
+    /// the entry being filled.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.tagging = None;
+        self.notice = None;
+        if draft.edit(|content, side| side.folder(content) != Chips::EMPTY && side.set_folder(content, &Chips::EMPTY).is_ok()) {
+            shell.sound.play(Cue::Back);
+        }
+        self.changed(shell, draft);
+        shell.nav.focus("slot", self.slot as i32);
+    }
+
     /// Where entry `from` dragged to `at` (the window's point) would land: the entry under the pointer; none off the
     /// folder.
     fn drop_at(shell: &Shell, at: i32) -> Option<usize> {
@@ -651,6 +665,10 @@ impl Tab for Folder {
                 self.leave_library(shell, self.slot);
             }
             "lib.close" => self.leave_library(shell, self.slot),
+            "clear" => {
+                let empty = draft.side().folder(draft.content()).chips().next().is_none();
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -742,8 +760,12 @@ impl Tab for Folder {
         }
     }
 
-    /// R and T on an entry.
+    /// R and T on an entry; X, CLEAR.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
         if let Some(slot) = Folder::focused_slot(shell) {
             match key.code {
                 KeyCode::KeyR if !key.repeat => self.regular(shell, draft, slot),
@@ -783,5 +805,11 @@ impl Tab for Folder {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }
