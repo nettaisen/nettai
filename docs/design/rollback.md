@@ -24,8 +24,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   a tick's buttons and event flags (one byte for A, B and the directions),
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
-- **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: native on the `rtc` crate,
-  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
+- **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc, on datachannel-facade:
+  libdatachannel natively, the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
   it for a room, it picks the room's code, and the other player joins by that code) or directly (a host's UDP port,
   joined by its address). The two leave the room once their connection is through, having agreed over it on the
   code of a reconnect room; a dropped connection is made again through that room, a new code agreed each time, and
@@ -735,13 +735,20 @@ reconnecting, so that a drop the link mends doesn't end the lobby. Then, each fr
 
 ### 4.8 WebRTC: rooms, direct connect, reconnection
 
-nettai-rtc carries the frames on a WebRTC data channel, as Tango does: one API on two backends, native (the `rtc`
-crate, webrtc-rs's sans-I/O WebRTC) and the browser's (`RTCPeerConnection` through web-sys, on wasm32). It depends
-on no engine crate. Two layers:
+nettai-rtc carries the frames on a WebRTC data channel, as Tango does, and on Tango's datachannel-facade: one
+synchronous, callback-based API over libdatachannel natively (C++ with Mbed TLS, built with CMake; it does the
+sockets, the timers, ICE, DTLS and SCTP on threads of its own) and the browser's `RTCPeerConnection` on wasm32. The
+user's words: "instead of nettai-rtc you should use https://github.com/tangobattle/datachannel-facade, it's way more
+stable". So the connection is one module for both targets (`peer`), where it was two backends (the `rtc` crate,
+webrtc-rs's sans-I/O WebRTC, natively; web-sys's `RTCPeerConnection` on the web), and nettai-rtc keeps everything
+above it: the link, rooms, the signaling protocol and its WebSockets, reconnection, the test server. It depends on
+no engine crate. Two layers:
 
-- `PeerConnection`: one connection and its data channel. It is told the other side's description and candidates
-  and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down), so
-  the browser's asynchronous offer and answer fit the same API; `send` and `recv` never wait.
+- `PeerConnection`: one connection and its data channels. It is told the other side's description and candidates
+  and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down). The
+  facade's callbacks (natively from libdatachannel's threads) put what they learn in a queue (behind a mutex
+  natively, in a `RefCell` on the web) that its calls take from, so the frontend's frame loop polls it with no async
+  runtime, and `send` and `recv` never wait.
 - `Link`: the channel a match is played on, which keeps a connection up: it meets the other player (in an invite
   room of the signaling server, one it asks the server to make, `Link::create_room`, or one it has the code of,
   `Link::join_room`; or directly at a host's port, natively, `Link::host` and `Link::join`), and when the connection
@@ -750,29 +757,37 @@ on no engine crate. Two layers:
 
 **The channel** is opened unordered and without retransmits, and negotiated out of band (stream 0 on both sides, no
 in-band announcement), so both sides make it alike and a lost datagram is the next one's to make up, never SCTP's to
-resend late. WebRTC's framing adds about 94 bytes to each frame (§4.6). The link has a few messages of its own on the
-same channel (the reconnect code and its acknowledgment, below). They are the channel's text messages, and the
-game's datagrams are its binary ones: a data channel message says which it is (SCTP's payload protocol id), so the
-two are told apart at no cost, and a frame has no byte more than before. `Link::send` and `Link::recv` carry only
-the binary ones.
+resend late. WebRTC's framing adds about 94 bytes to each frame (§4.6). The link has a few messages of its own (the
+reconnect code and its acknowledgment, below), on a channel of their own beside the game's: stream 1, negotiated the
+same way, reliable and ordered. The facade's messages are bytes, with no text or binary type (the `rtc` crate and
+the browser said which a message was, SCTP's payload protocol id, and the link's were text on the one channel), so
+the channel a message came on says whose it is: the two are told apart at no cost, and a frame has no byte more
+than before. A one-byte tag on one channel was the other way, and would have cost every frame a byte. `Link::send`
+and `Link::recv` carry only the game's channel.
 
-**The native backend** runs on the caller's thread and never waits: each call pumps the connection (the datagrams
-that came, `rtc`'s timers when due, what it has to send, its events), and the frontend calls in every frame, often
-enough for ICE, DTLS and SCTP. `rtc` gathers nothing, so a connection binds a UDP socket on each of the machine's
-addresses (IPv4, and IPv6's global ones; the loopback address where there is no other) and offers each as a host
-candidate; on the socket the system routes to the STUN server it asks for its address as the Internet sees it (a
-server-reflexive candidate), and with a TURN server it allocates a relayed address (`rtc`'s TURN client, sans-I/O
-too: what is sent from the relayed address goes through it, with a permission for each remote candidate). A
-browser's candidates under an mDNS name (`.local`) are skipped; the browser still reaches the native side's host
-or server-reflexive candidates, and the native side learns the browser's address from its checks. It relays over
-UDP only: of a server's URLs it takes `stun:` and the first `turn:` without `transport=tcp`, and leaves `turns:`
-(TLS) and TURN over TCP out (the browser takes them all). What may block runs on threads of its own: the
-signaling WebSocket (tungstenite, rustls), and resolving the names of the STUN and TURN servers a welcome gives
-(below). `Config::relay_only` offers relayed candidates alone, as the browser's `iceTransportPolicy: "relay"`
-does (the tests' relayed connection). (`rtc` 0.21 passes a negotiated channel's open on only with the next datagram that comes, up to two
-seconds later at the ICE keepalive; the backend hands it an empty one, which it drops, to drain it at once. ICE
-checks a pair for as long as a dial is given, not `rtc`'s 1.4 seconds, so a dial made during an outage connects as
-soon as the network is back.)
+**The backend** never waits on the caller's thread: libdatachannel runs ICE, DTLS and SCTP on threads of its own,
+and the browser on its event loop; the frontend polls every frame, and nothing needs pumping. Natively
+libdatachannel's ICE agent (libjuice) binds a dual-stack UDP socket and offers a host candidate on each of the
+machine's interfaces, asks one STUN server for its address as the Internet sees it (a server-reflexive candidate),
+allocates a relayed address on up to two TURN servers, and resolves their names on a thread of its own (so a
+welcome's servers are used at once, with no resolving of nettai-rtc's). `Config::loopback` adds, for each host
+candidate, its port on 127.0.0.1 (two peers on one machine whatever its network; the old backend offered the
+loopback address only where asked or where there was no other address). A browser's candidates under an mDNS name
+(`.local`), and TCP ones, are skipped natively; the browser still reaches the native side's host or
+server-reflexive candidates, and the native side learns the browser's address from its checks. Natively it relays
+over UDP only: of a server's URLs it takes `stun:` and `turn:` without `transport=tcp`, and leaves `turns:` (TLS)
+and TURN over TCP out (the browser takes them all). Servers go to the facade as URL strings with the credentials
+inline, libdatachannel's form (`turn:USER:PASSWORD@HOST:PORT?transport=udp`): libdatachannel takes the username up
+to the first `:` and the password up to the first `@` and percent-decodes both, so nettai-rtc percent-encodes them
+(all but RFC 3986's unreserved characters, which any credential survives: a TURN REST username's `:`, a base64
+password's `+`, `/` and `=`); on the web the facade splits them back for the browser without decoding (the
+username up to the first `:`, the password up to the last `@`), so they go in as they are, which any password
+survives and any username without a `:` (Cloudflare's are hex). `Config::relay_only` offers relayed candidates
+alone, as the browser's `iceTransportPolicy: "relay"` does (the tests' relayed connection); natively
+libdatachannel only says no other, and libjuice tries the address a relayed check came from directly too, so a
+TURN server's permissions are what keep two peers that could reach each other to their relayed addresses (the
+tests' TURN server keeps them by address and port). The signaling WebSocket (tungstenite, rustls) runs on a thread
+of its own.
 
 **The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
 WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
@@ -825,10 +840,9 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Internet sees it would go nowhere, and a relay would need a server to hand out credentials.
 - No connection is made on servers it hasn't had. The server sends the welcome before anything of the other
   client's, and a joiner dials only once it is in the room with the other (which the welcome, or a `peer` after
-  it, says). The welcome's names are resolved natively on a thread of their own (the browser resolves its own),
-  and until they are (at most 5 seconds; then the servers from before), the joiner doesn't dial and a host holds
-  the joiner's offer, and the candidates that follow it, before answering. A room's link waits on nothing as it
-  is made.
+  it, says). The backend resolves the servers' names itself without waiting (libdatachannel on a thread of its
+  own, the browser its own way), so the joiner dials and the host answers at once. A room's link waits on nothing
+  as it is made.
 - **The owner's setup.** Make a TURN key (the Cloudflare dashboard's Realtime, TURN Server, Create; or the API's
   `POST /accounts/{account_id}/calls/turn_keys`): it shows the key's ID (the "Turn Token ID") and its API token.
   Give them to the Worker as its two secrets, `npx wrangler secret put TURN_KEY_ID` and `npx wrangler secret put
@@ -878,7 +892,7 @@ it (another match with the same opponent) need no server. There are two kinds of
 
 **The code of the next reconnection** is agreed over each connection, once it is open, so the server first sees a
 code when it is used. The host draws it from the system's cryptographic randomness (`getrandom`; the browser's
-`crypto.getRandomValues`), 16 bytes, a new one for every connection, and says it (`code HEX`, a text message)
+`crypto.getRandomValues`), 16 bytes, a new one for every connection, and says it (`code HEX`, on the link's channel)
 every 100 ms until the joiner acknowledges it (`ack HEX`), the way the lobby says its part again; the joiner
 acknowledges every one that comes. The channel is DTLS's, so nobody between the two reads it.
 
@@ -908,19 +922,27 @@ the network, `Server::set_ice_servers` sets the servers its welcomes give, none 
 is a socket of a test's own, for either server). The link tests check that a room's connections ask the
 welcome's servers and no others (STUN and TURN with credentials, STUN alone without; the links' own only when a
 welcome gives none; a direct link none), and connect relayed alone through a TURN server of the tests' own
-(`tests/turn`: long-term credentials, allocations, permissions, indications and channels on loopback, a few
-hundred lines on `rtc`'s STUN and TURN types), which refuses other credentials. The Worker is run locally
+(`tests/turn`: long-term credentials, allocations, permissions by address and port, indications and channels on
+loopback, a few hundred lines with a STUN codec of their own), which refuses other credentials; its username and
+password have what a URL reserves (`:`, `+`, `/`, `=`, `@`, `%`), so the percent-encoding is tried end to end. The Worker is run locally
 (`npx wrangler dev`), and nettai-rtc's link tests run against it too, with `NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787`
 (those that look inside the server, or take it off the network, run on the in-process one only); deploying it is
 its owner's step (`npx wrangler deploy`).
 
 **Direct connect** (native only) exchanges nothing before ICE: each side makes up the other's description, every
-field of which is fixed but two. The ICE credentials are fixed (the joiner's username fragment is its nonce, drawn
-once a link, and the connection's generation); the joiner is told the host's address, its one remote candidate,
-and the host learns the joiner's from its first connectivity check (a peer-reflexive candidate). Neither side's own
-candidate is said to anyone, so each is a placeholder naming its socket, bound on every interface (`0.0.0.0:PORT`).
-The DTLS fingerprint is the one field a real exchange carries that can't be made up, and it isn't checked: direct
-connect authenticates nobody, as the raw UDP it replaced didn't (a room's connection checks the fingerprints its
+field of which is fixed but two. It is built on what libdatachannel can do and a browser can't (the facade's
+`platform::native`): a fixed local port, local ICE credentials of the caller's choosing
+(`set_local_description_ex`), no DTLS fingerprint check, and no description made but when asked for. The ICE
+credentials are fixed (the joiner's username fragment is its nonce, drawn once a link, and the connection's
+generation); the joiner is told the host's address, its one remote candidate, and the host learns the joiner's
+from its first connectivity check, and is told it as one too. Neither side's own candidates are said to anyone.
+The host listens on its port with a plain UDP socket of its own while it has no connection: the first check of a
+dial names its generation, the host closes the socket and makes the connection answering that dial bound to the
+same port, and the dial's next checks (the joiner sends each again, from half a second on) reach it; once that
+connection is over (dropped, or not open within the dial's 10 seconds) the host listens again. (The old backend
+read the port itself all along and handed each datagram in; libdatachannel binds its own sockets.) The DTLS
+fingerprint is the one field a real exchange carries that can't be made up, and it isn't checked: direct connect
+authenticates nobody, as the raw UDP it replaced didn't (a room's connection checks the fingerprints its
 descriptions carry). It crosses a NAT as that did: on a LAN, or with the host's UDP port forwarded to it.
 
 **Reconnection.** The joiner dials (the offer, ICE's controlling side, the DTLS client) and the host answers, in a
@@ -932,7 +954,9 @@ dials again at once, and again after 0.5, 1, 2, then every 3 seconds while dials
 seconds), and in a room also when the host says it lost the connection, or when the host comes into the room. The
 host waits for the next generation: its offer in the reconnect room (asking for it every 2 seconds while it has no
 new connection under way), or directly the joiner's checks, whose username fragment names a newer generation (the host
-reads its socket itself, and takes only the joiner whose nonce came first). After 30 seconds down the link gives
+reads them on its own socket while it has no connection, and takes only the joiner whose nonce came first; while a
+connection has the port, it refuses a newer dial's checks, and the host hears the dial once that connection is over,
+which the joiner's dialing again means it soon is: closed with the joiner's, or silent). After 30 seconds down the link gives
 up, and every call after errs (`ErrorKind::ConnectionLost`; its detail: "the connection to the other player dropped
 (WHY) and didn't come back within 30 seconds"); while it is down, `Link::down_for` says for how long and
 `Link::gives_up_in` how long is left. What a connection had taken before it dropped is still handed over
@@ -1149,10 +1173,13 @@ test shuttles by hand, each frame arriving three frames after it was sent (the a
 player's own loadout, 900 ticks of mashing; and a set to its end, in both games), and their settled states agree.
 Over WebRTC links in a room of the in-process signaling server, a short set (the host's navi shoots, the joiner's
 has 1 HP) is cut mid-round-one by three seconds of the joiner's network going: both see the channel down, a new
-connection comes back about 0.1 s after the network does, and the set goes on to its end, both replays the same but
+connection comes back once the network does, and the set goes on to its end, both replays the same but
 for who recorded, one playing back with no difference. nettai-rtc's tests open links on loopback (directly in about
-0.1 s, through a room in about 0.15 s), see both leave the room once through (the server keeping nothing, the
-invite's code then naming no room), bring them back after outages of either side (one generation an outage) through
+0.15 s, through a room in about 0.17 s), see both leave the room once through (the server keeping nothing, the
+invite's code then naming no room), bring them back after outages of either side (an outage is the link's
+`Link::outage`: since libdatachannel's sockets are its own, what is sent and what comes is dropped above them, and
+a connection that opens meanwhile is said open only once it is over; so a connection made during it opens on the
+other side and drops by silence, and an outage costs a generation or a few) through
 the reconnect room of the code agreed before it, each drop by the next code, also when the server's sockets drop
 in the middle, and when the newest code or only its acknowledgment was lost before the drop, give up after the
 reconnection timeout (also with the server out of reach meanwhile), and are refused, each by its kind, where they

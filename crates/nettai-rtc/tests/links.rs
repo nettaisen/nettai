@@ -708,13 +708,16 @@ fn without_a_welcomes_servers_a_link_uses_its_own() {
 /// welcome gives, and nowhere else (relayed candidates alone,
 /// `Config::relay_only`): they connect and trade datagrams through it, on
 /// the welcome's credentials. With others, which the server refuses, they
-/// can't connect.
+/// can't connect. (The credentials have what a URL reserves, as a TURN REST
+/// username's `:` and a base64 password's `+`, `/` and `=`: they go to
+/// libdatachannel inline in the server's URL, percent-encoded.)
 #[test]
 fn a_room_link_relays_through_the_welcomes_turn_server() {
-    let relay = turn::TurnServer::start("user", "secret");
+    let (username, password) = ("1700000000:nettai", "p+ss/w=rd@:%");
+    let relay = turn::TurnServer::start(username, password);
     let server = Server::start();
-    let turn = |credential: &str| IceServer { urls: vec![relay.url()], username: "user".into(), credential: credential.into() };
-    server.set_ice_servers(vec![turn("secret")]);
+    let turn = |credential: &str| IceServer { urls: vec![relay.url()], username: username.into(), credential: credential.into() };
+    server.set_ice_servers(vec![turn(password)]);
     let (mut sides, _) = room(&server.url(), Config { relay_only: true, ..config() });
     connected(&mut sides);
     let (before, got) = (relay.relayed(), sides.each_ref().map(|s| s.got.len()));

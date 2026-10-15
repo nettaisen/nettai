@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
-exclude = ["crates/nettai-luau/wasm/libc"]
+exclude = ["crates/nettai-luau/wasm/libc", "crates/nettai-rtc/web-datachannel"]
 
 [workspace.package]
 edition = "2024"
@@ -16,6 +16,10 @@ getgud = { git = "https://github.com/tangobattle/getgud" }
 # Netplay transport (Tango's): reliable, ordered delivery of the players'
 # inputs over unreliable datagrams; Cargo.lock pins the revision.
 rennet = { git = "https://github.com/tangobattle/rennet" }
+# WebRTC data channels (Tango's): one synchronous API over libdatachannel
+# natively (C++, built with CMake, its sources git submodules) and the
+# browser's RTCPeerConnection on wasm; Cargo.lock pins the revision.
+datachannel-facade = { git = "https://github.com/tangobattle/datachannel-facade" }
 
 [profile.dev]
 opt-level = 1
@@ -33,3 +37,8 @@ debug = 1
 [patch.crates-io]
 # Supply the file API stubs that stock mlua needs on bare Wasm.
 libc = { path = "crates/nettai-luau/wasm/libc" }
+
+[patch."https://github.com/tangobattle/datachannel-facade"]
+# The facade's web backend with the one line a `-C panic=unwind` wasm build
+# needs (its Cargo.toml says which), until the facade has it.
+web-datachannel = { path = "crates/nettai-rtc/web-datachannel" }
