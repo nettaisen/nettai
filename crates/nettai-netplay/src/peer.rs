@@ -212,7 +212,11 @@ where
 
     /// Take a datagram from the other peer, received at `now`. An error
     /// ends the match: a malformed datagram (the other isn't a peer of this
-    /// protocol) or a gap past the horizon.
+    /// protocol), a gap past the horizon, or the other's inputs running
+    /// more than the horizon ahead of this peer's (a peer that keeps a
+    /// stall guard the horizon fits never does: one that sends faster than
+    /// it plays would grow the queue, which every advance copies, without
+    /// end).
     pub fn receive(&mut self, datagram: &[u8], now: u64) -> Result<(), LinkError> {
         let mut delivered = std::mem::take(&mut self.delivered);
         let mut result = self.link.receive(datagram, now, &mut delivered);
@@ -237,6 +241,9 @@ where
             }
         }
         self.delivered = delivered;
+        if self.session.remote_queue_length(0) + self.early.len() > self.config.horizon as usize && result.is_ok() {
+            result = Err(LinkError::Malformed(protocol::invalid("the other player's inputs ran more than the rollback horizon ahead")));
+        }
         result
     }
 
@@ -352,5 +359,43 @@ where
     /// This player leaves: the next datagram tells the other peer.
     pub fn leave(&mut self) {
         self.link.push_match_end();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::standin::{StandInBattle, folder, netbattle};
+    use nettai_battle::Battle;
+    use nettai_battle::content::testing;
+
+    fn standin() -> StandInBattle {
+        let c = testing::content();
+        let f = || folder(&c, &[(testing::SUN_GUN_3, 0), (testing::SUN_GUN_1, 0)]);
+        StandInBattle::new(Battle::new(netbattle(&c, testing::LINK_BATTLE, 300, 0x1357, [f(), f()]), c))
+    }
+
+    /// A peer whose other side sends inputs faster than it plays (here
+    /// while this one plays none) ends the match once they run more than
+    /// the horizon ahead, instead of queueing them without end.
+    #[test]
+    fn inputs_running_past_the_horizon_end_the_match() {
+        let mut peer = Peer::new(BattleWorld::new(standin(), 0), PeerConfig::new(0, 8));
+        let mut rogue = InputLink::<u16>::new(protocol::HORIZON);
+        let mut delivered = Vec::new();
+        let mut sent = 0;
+        let result = loop {
+            for _ in 0..100 {
+                rogue.push(&0, 0);
+            }
+            sent += 100;
+            let r = peer.receive(&rogue.datagram(sent), sent);
+            if r.is_err() || sent > 10 * protocol::HORIZON as u64 {
+                break r;
+            }
+            rogue.receive(&peer.datagram(sent), sent, &mut delivered).unwrap();
+        };
+        assert!(matches!(result, Err(LinkError::Malformed(_))), "{result:?}");
+        assert!(sent <= 2 * protocol::HORIZON as u64 + 100, "{sent}");
     }
 }
