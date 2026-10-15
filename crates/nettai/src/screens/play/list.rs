@@ -307,7 +307,7 @@ impl Play {
     /// comes back here with it still chosen. With no build, or one that can't be played, the reserved line says
     /// why, as HOST's does.
     pub(super) fn practice(&mut self, shell: &mut Shell) {
-        match (self.side(shell), self.builds_of.clone(), self.build().map(|b| b.name().to_string())) {
+        match (self.side(shell, false), self.builds_of.clone(), self.build().map(|b| b.name().to_string())) {
             (Ok(_), Some(game), Some(name)) => {
                 self.notice.clear();
                 crate::screens::practice::open(shell, &game, &name);

@@ -767,7 +767,10 @@ Each is settled unless the user changes it.
       setting does. Each player checks their own build against it, and their peer checks the other's. A host's
       lobby starts on the ruleset that player plays by (below).
     - *The ruleset a player plays by* is one choice for each game, remembered: the one the lobby starts on when
-      they host, and the one the build editor marks builds against. The build editor's is a select at the tab
+      they host, the one the build editor marks builds against, and the one Play's list and Practice check builds
+      under (a build it doesn't allow is "2 problems" there, and PRACTICE and HOST say its first; in a lobby the
+      list CHANGE BUILD opens is checked under the host's; JOIN asks only the game's rules, as the lobby it joins
+      checks the build under the host's). The build editor's is a select at the tab
       bar's right end ("Ruleset", then the select, and EDIT), on every tab; a phone has it on the Navi tab, a row
       between the navi's panel and the grid. Picked in either place it is the other's too (a joiner's lobby shows the host's and changes nothing).
       The game's first preset (Standard) until one is picked, or when the one picked is deleted.
