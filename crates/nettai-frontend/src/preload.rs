@@ -19,11 +19,15 @@
 //!   host may load it behind its start-up bar, as soon as the game is
 //!   loaded);
 //! - **the round's first battle and its first picture**: about 15 ms;
-//! - **the text**: in the enhanced mode, a string is laid out and its glyphs
-//!   drawn from the font's outlines the first time it shows (a few
-//!   milliseconds on the frame a custom screen opens, at most 3.5 ms
-//!   measured at three times the frame's size; [`Late::layouts`] and
-//!   [`Late::glyphs`] count them). The first picture's are made here; the
+//! - **the text**: in the enhanced mode, a string is laid out the first time
+//!   it shows in a box, and each glyph's distance field is made from the
+//!   font's outline the first time the glyph shows, once for every size
+//!   (8 to 27 µs a Latin glyph, 35 to 80 µs a kanji: docs/design/
+//!   text-rendering.md §9.10; [`Late::layouts`] and [`Late::glyphs`] count
+//!   them). The first picture's are made here, and so are the glyphs of
+//!   every name and description of both folders and both navis
+//!   (`TextRenderer::prepare`, with each side's steps): a window of any
+//!   size, or resized, draws them without making any. The layouts of the
 //!   strings a fight goes on to show (a chip's name, a number) are made as
 //!   they show, well inside a frame.
 //!
@@ -56,7 +60,7 @@ use nettai_render::Renderer;
 use nettai_render::audit::Lookup;
 use nettai_render::lookups;
 use nettai_render::strings::DisplayText;
-use nettai_render::vfont::TextRenderer;
+use nettai_render::vfont::{Role, TextRenderer};
 use std::sync::Arc;
 
 /// Load `content`'s runtime on this thread, if the thread hasn't it: the
@@ -81,8 +85,9 @@ pub struct Late {
     /// Parts of a pack or of the content this thread read from disk since
     /// (`nettai_content::pack::reads`).
     pub reads: u64,
-    /// Strings its text was laid out for, and glyph images drawn from the
-    /// font, each for the first time, since (the enhanced mode's).
+    /// Strings its text was laid out for, and glyphs' distance fields made
+    /// from the font, each for the first time, since (the enhanced
+    /// mode's).
     pub layouts: u64,
     pub glyphs: u64,
 }
@@ -332,6 +337,12 @@ impl Preload {
         if let Some(name) = text.navi_variant_name(c, navi) {
             lookups::navi_name(hud, navi, true, name, p);
         }
+        // The enhanced mode's glyphs of its names, on their bar.
+        if let Some(t) = self.text.as_mut() {
+            for name in [Some(text.navi_name(c, navi)), text.navi_variant_name(c, navi)].into_iter().flatten() {
+                t.prepare(name, Role::FittedCell);
+            }
+        }
     }
 
     /// A form's in the pack: its face for each of the game's emotions, and
@@ -378,6 +389,16 @@ impl Preload {
         }
         if let Some(said) = text.chip_description(c, chip).filter(|_| lookups::chatbox_graphics(hud, p)) {
             lookups::dialogue(&hud.dialogue_font, Lookup::ChipDescription(chip), said.text, p);
+        }
+        // The enhanced mode's glyphs of its name (in the chip window and
+        // the hand, and as a telop) and of its description.
+        if let Some(t) = self.text.as_mut() {
+            let name = text.chip_name(c, chip);
+            t.prepare(name, Role::FittedCell);
+            t.prepare(name, Role::Cell);
+            if let Some(said) = text.chip_description(c, chip) {
+                t.prepare(said.text, Role::Dialogue);
+            }
         }
     }
 }

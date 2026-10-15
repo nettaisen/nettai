@@ -2833,7 +2833,7 @@ out):
 |---|---|---|
 | The content's runtime on the thread | the first battle made on a thread, or the first build checked there (`check_match`, `pick::live`) | **EXE6 1.2 to 1.4 s, EXE5 0.8 s, EXE4 0.4 s** (EXE6's 0.8 to 2.7 s on the thread that had just loaded the game) |
 | The player and the round's first battle | `Player::new` | 15 ms |
-| A string's layout and glyphs, in the enhanced mode | the first frame each string shows on (a custom screen opening: the chips' names) | a picture 3.5 ms longer at most, against 0.9 ms a picture on average; 13 to 15 strings and 160 to 330 glyphs in a match's first 3,000 ticks |
+| A string's layout and glyphs, in the enhanced mode | the first frame each string shows on (a custom screen opening: the chips' names) | a picture 3.5 ms longer at most, against 0.9 ms a picture on average; 13 to 15 strings and 160 to 330 glyphs in a match's first 3,000 ticks. Since 2026-10-14 (glyphs as distance fields, made once for every size: docs/design/text-rendering.md §9.10) the preload makes the glyphs of both folders' names and descriptions and the navis' names, and a match makes about 1 glyph late |
 | A tick | | 80 µs on average, 0.56 ms at most: nothing is made in a tick |
 
 The runtime is the stutter: the worst wait there was, and the only one a player could see. Every thread that
@@ -2871,7 +2871,8 @@ waits, the window stalled (the wait is the runtime's above; it wasn't timed in t
   for a host to say before the match rather than have a picture missing in it; `stopped()` says why the round
   can't start, if the runtime didn't load or the engine stopped making the first battle.
 - `preload.player(driver)` is the `Player`, made with the renderer and the text the steps used (so the first
-  picture's text is laid out already) and the sound. `Preload::with` takes a player's parts as `Player::with`
+  picture's text is laid out already, and the glyphs of every name and description of the folders and the navis
+  are made: `TextRenderer::prepare`, one field a glyph for every size) and the sound. `Preload::with` takes a player's parts as `Player::with`
   does (a renderer of another language's graphics). The set is the one the driver plays: a match's
   (`Set::of`), a netplay agreement's, a replay's match's (`nettai_match::binary::read_match`).
 
@@ -2891,10 +2892,13 @@ late.
 
 **Held to it.** `Player::late()` says what a player made on the way since it was made (`preload::Late`):
 runtimes loaded on its thread (`Behaviors::loads`), parts read from disk on it (`pack::reads`), and its text's
-strings laid out and glyphs drawn for the first time. A player a preload made has loaded no runtime and read
-nothing however long it plays; one made without has loaded one. The text's counts go up as new strings show (a
-chip's name, a number): they are an open set (damage numbers), so they aren't made ahead, and each is a part of a
-millisecond.
+strings laid out and glyphs' distance fields made for the first time. A player a preload made has loaded no
+runtime and read nothing however long it plays; one made without has loaded one. The text's counts go up as new
+strings show: a string's layout depends on its box, and its strings are an open set (damage numbers), so layouts
+aren't made ahead, each a part of a millisecond; the glyphs of the folders' and navis' names and descriptions are
+made ahead (a few milliseconds of the preload in English, 10 to 15 in Japanese), and what is left (a glyph of a HUD
+line, say) is 8 to 80 µs a glyph (EXE6's match at 5x to 13x: 1 glyph late in 1,500 ticks, against 126 to 180
+before).
 
 - nettai-frontend's tests (`preload::tests`, on EXE6's content): `a_preloaded_match_loads_nothing_late` steps a
   preload on a thread without a runtime (one side alone first, then the rest), and plays 1,500 ticks of the set,
