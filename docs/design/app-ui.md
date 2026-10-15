@@ -1177,7 +1177,8 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
    with its problems typed (`build::Checked`, `Wrong`: a screen words each kind, with its numbers, in its
    language), the folder editor's limits and each library row's reason (`folders::View`, read per row), the
    Regular and tag marks (`build::mark`, `folders::mark_problems`), the overview (`Checked::overview`: each stat
-   with what was added, what gives the abilities, the bugs by name with a level or an amount, `build::Extent`,
+   with what was added, the abilities, `build::Ability`, by what gives each or as the rules' number (EXE5's soul
+   turns), the bugs by name with a level or an amount, `build::Extent`,
    whoever brings them, the patch cards' MB) and a chip's
    row with its sort keys (`build::ChipInfo`, `build::sorted`). Light or Dark is a choice of the game's builds data
    (`Builds::choices_of`, `preset_of`, `take_preset`; `settle` for a build from a file or a save; none for a navi

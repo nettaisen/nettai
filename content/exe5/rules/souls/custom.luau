@@ -330,8 +330,39 @@ function custom_souls.deal(side: number)
     end
 end
 
--- 0x08024FF6: OK with the soul picked: the turn's form is the soul, for 3 turns and the save's bonus (at most 9;
--- under 0, 1), a Chaos Unison for 1; the soul is given this round.
+-- 0x08024FF6's turns: a Soul Unison's 3 and the bonus the NaviCust and the patch cards leave in `side`'s stats
+-- (`soul_turn_bonus`, NaviStats +0x32), at most 9 (and 1 where they come to less than 0); a Chaos Unison's 1. The
+-- rules' `overview` reads them too.
+function custom_souls.turns(side: number, chaos: boolean): number
+    local turns = TURNS + battle.navi(side).soul_turn_bonus
+    if chaos then
+        return CHAOS_TURNS
+    elseif turns > MAX_TURNS then
+        return MAX_TURNS
+    elseif turns < 0 then
+        return 1
+    end
+    return turns
+end
+
+-- The rules' `overview`'s part: a Soul Unison's turns as OK gives them (`custom_souls.turns`), where the NaviCust or
+-- the patch cards change them (the stats' bonus), for a navi with souls whose save has any.
+function custom_souls.overview(side: number, out: SetupOverview)
+    if battle.navi(side).soul_turn_bonus == 0 or #souls_of(side) == 0 then
+        return
+    end
+    local setup = rules.setup_of(side) :: Setup
+    for i = 1, SOUL_PLACES do
+        if setup.souls[i] ~= nil then
+            local line: SetupAbility = { name = "soul_time", amount = custom_souls.turns(side, false) }
+            table.insert(out.abilities, line)
+            return
+        end
+    end
+end
+
+-- 0x08024FF6: OK with the soul picked: the turn's form is the soul, for its turns (`custom_souls.turns`); the soul
+-- is given this round.
 function custom_souls.confirmed(side: number)
     local s = rules.state() :: State
     -- (0x08024EC0: the soul MegaMan is in first: ColonelSoul's arm chip.)
@@ -342,16 +373,8 @@ function custom_souls.confirmed(side: number)
     if not custom.button_picked(side, "soul") then
         return
     end
-    local turns = TURNS + battle.navi(side).soul_turn_bonus
-    if s.offer_chaos then
-        turns = CHAOS_TURNS
-    elseif turns > MAX_TURNS then
-        turns = MAX_TURNS
-    elseif turns < 0 then
-        turns = 1
-    end
     local soul = s.offer :: FormDef
-    custom.set_form(side, "soul", soul, turns, s.offer_chaos)
+    custom.set_form(side, "soul", soul, custom_souls.turns(side, s.offer_chaos), s.offer_chaos)
     s.souls_used = bit32.bor(s.souls_used, used_bit(side, soul, s.offer_chaos))
 end
 
