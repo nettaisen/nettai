@@ -68,6 +68,32 @@ export struct VersusCard {
     progress: float,
 }
 
+// The link panel's figures (`LinkPanel`, battle.slint), which the connection's corner opens in an online match:
+// the jitter in ms (-1: none measured yet); the loss in tenths of a percent; the input delay, the last rollback's
+// depth, the deepest, the skew and the lead in frames; the rollbacks and the frames waited, counted; the
+// datagrams sent and received and their KB; the reconnects; and the round trip's last ten seconds as a graph:
+// its line and the area under it (paths in a box 99 wide and 100 tall, the newest sample at the right, a gap
+// where the link was down), and the round trip at its top in ms.
+export struct LinkFigures {
+    jitter: int,
+    loss: int,
+    input-delay: int,
+    rollbacks: int,
+    last-rollback: int,
+    deepest-rollback: int,
+    skew: int,
+    lead: int,
+    waits: int,
+    sent: int,
+    sent-kb: int,
+    received: int,
+    received-kb: int,
+    reconnects: int,
+    graph: string,
+    graph-area: string,
+    graph-top: int,
+}
+
 // A ground behind the menus (`Backdrop`): a game's look, and the side it sweeps in from over the grounds before it
 // (-1 the left, 1 the right; 0 it is there at once).
 export struct Ground {
@@ -137,6 +163,10 @@ export global Shell {
     in property <int> connection-level;
     in property <int> connection-ping;
     in property <int> connection-down: -1;
+    // The link panel over the corner, which a click on the corner opens and a click on it again or anywhere
+    // else on the battle closes (the app closes it as the battle ends), and its figures.
+    in-out property <bool> connection-open;
+    in property <LinkFigures> link;
 
     // The battle's picture (one texture, written in place), and its size as drawn: a whole multiple of 240 by
     // 160 display pixels. A screen shows it with a `Picture`, which says how much room it has.

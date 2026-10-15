@@ -94,6 +94,14 @@ impl Ping {
     }
 }
 
+/// What went one way over a connection: datagrams, and their bytes (the
+/// protocol's frames, without the transport's headers).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Traffic {
+    pub datagrams: u64,
+    pub bytes: u64,
+}
+
 /// A connection that is down while its transport makes it again.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Reconnecting {
