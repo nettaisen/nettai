@@ -596,14 +596,19 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 **The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
 - **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one; §2.52: in three zones; §2.57:
-  a build and three ways to play it). + NEW BUILD over the player's builds of the selected game as a list
+  a build and the ways to play it). + NEW BUILD over the player's builds of the selected game as a list
   (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
   rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
-  beside it (the wide sheet, §8) with EDIT and ⋯ in its header (`BuildOverview.tools`, the room it leaves them);
-  and under both three tiles of one size (`Button`'s `tile`, 72 tall; `JoinTile`): PRACTICE, HOST (the main
-  action, `invite`: an invite, as CREATE INVITE was) and JOIN (the code's field, `code`, its go button, `join`,
-  and under its word the link "Direct connect…", `direct`, to the direct connection's dialog), the reserved line
-  under them. The chosen build is the one under the list's cursor, remembered by game; the
+  beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
+  leaves them); and under the overview, at its left edge, one row of the app's controls (40 tall): HOST
+  (widgets.slint's `SplitButton`, the main action's look while there is a build) is a split button, HOST itself
+  (`invite`: an invite, as CREATE INVITE was) and its ▾ (`host-menu`, `Shell::pick_menu`: "Host with a code",
+  HOST's own, and "Host directly", this machine listening on `session::DIRECT_PORT`, choices heard as
+  `host-menu`'s); then one field (`code`, 464 wide) for an invite's code or a direct host's address, and JOIN
+  (`join`): `play::joining` reads the field, an address (a host or an IP and its port, an IPv6 one in brackets)
+  joining it directly, text without an address's marks (`:`, `.`, `[`) an invite's code, and text with them
+  that isn't an address `UserError::BadAddress`. The reserved line is under the row, and the list and the
+  overview grow down to it (564 at the reference window). The chosen build is the one under the list's cursor, remembered by game; the
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
@@ -614,19 +619,20 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
   at)`), whose Back comes back here with it still chosen; PRACTICE goes straight into a practice battle on it
   (`screens::practice::open`, by the build's name), whose EXIT comes back here too (§15). With no build of the
-  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, and each tile says
-  "Make a build first." when pressed (`UserError::NoBuild`); a build that can't be played, why. Right from the
-  list goes to EDIT and Tab goes in reading order (`Screen::route`, §11). On a phone the list is one box of the
-  chosen build, which opens the builds as a sheet, EDIT and ⋯ under it, then the three tiles one under the other,
-  and no overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
-  whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
-  code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
-  a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
-  the next. (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) DIRECT
-  CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its scope `direct.`): this machine's address with
-  COPY, and HOST; an address's field, and CONNECT.
-- **Waiting** for the other player: the invite's code (a direct host's address), large, in fixed-width type,
-  with COPY CODE and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
+  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, PRACTICE, EDIT and ⋯
+  aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
+  can't be played, why. Right from the list goes to PRACTICE and Tab goes in reading order (`Screen::route`,
+  §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, PRACTICE, EDIT
+  and ⋯ in a row under it, then HOST the column's width (52 tall), the field and JOIN under it, and no
+  overview. The field keeps what is
+  typed as it was typed, without spaces (`field_typed`); a code is taken in capitals, its six characters,
+  whatever it was typed with (`code_typed`). A pad can't type: its confirm on the field opens the code as six
+  boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through a box's
+  characters (the alphabet codes are written in), and a character typed goes into the box and on to the next.
+  (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) The direct
+  connection's dialog is gone (§2.57): hosting directly is HOST's ▾, joining a host JOIN's field.
+- **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
+  opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
   stands still; Practice owns its battle, starts its sets over and hears its menu), with Play's rows at the
   top of the practice menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
@@ -823,8 +829,8 @@ the window's thread (§1); hiding has none. The same run with the host's timer l
 time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
 seconds); the link and the match both picked up when the window came back.
 
-The signaling server isn't deployed (with none named, HOST and JOIN say the server can't be reached, and
-JOIN's "Direct connect…" works). Run it locally:
+The signaling server isn't deployed (with none named, HOST and a code in JOIN's field say the server can't be
+reached, and "Host directly" on HOST's ▾ and an address in JOIN's field work). Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
@@ -1672,8 +1678,9 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | Component | What it is |
 |---|---|
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
-| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big`, `tile` (Play's PRACTICE and HOST: 72 tall, its words at its left at 20, a panel's cut) |
-| `Field` | A text field (§11) |
+| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
+| `SplitButton` | A `Button` (its kinds, its sheen, hover and press) with a ▾ part at its right behind a line, a control of its own (`menu-nav`) that opens a short list (Play's HOST) |
+| `Field` | A text field (§11); `code`, a code's (fixed-width type, larger, tracked; what goes in it, while it is empty, in the body face) |
 | `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`: at most ten rows at once, fewer where the window has less room by the select; more scroll, and it opens with the chosen one in view); `focusable` off where its row is what is focused |
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
 | `Seg` | One of two |
@@ -2580,26 +2587,36 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
     the game does at its player's START, the fight going on where it was. RESTART and EXIT work from the pause
     as from anywhere.
-  - Where START wouldn't pause the game, the battle steps on under the menu with no buttons: neither the
-    player's (the menu has them) nor the dummy's (`Player::hold_opponent`: its presses are made as ever, and
-    reach nothing), so its music and what the game moves go on there too.
-    - On its custom screen, which waits for the player, nothing changes but time: the cursor and the chips
-      chosen stay as they were on both sides, and it waits there until the menu closes (no pause is entered).
-    - Through a dimming, or a round's start or end, it steps on until START would pause the fight
-      (`Battle::pausable`), and then into the game's pause; a round's end goes on to the next round's custom
-      screen and waits there. How long: in sets of random play on each game's content (four sets of 40,000
-      ticks each), a dimming lasted 11.1 s at most in EXE6, 15.7 in EXE5 and 8.8 in EXE4, and a stretch of the
-      fight that was neither (a round's start banner, a round's end to the next custom screen) 9.1 s. In that
-      time the player could do nothing but answer a dimming with a counter cut-in, where their chips have one:
-      the fight is held for both sides, and a round's end and start take no buttons.
+  - Where START wouldn't pause the game (its custom screen, a dimming, a round's end, a round's start banner),
+    the battle is held where it stands under the menu (`Player::set_held`): no tick steps it, so nothing of it
+    changes, neither side's custom screen (its cursor, the chips chosen, its HP bug's drain), a dimming's chip
+    or a round's end, and the dummy's presses reach nothing (`Player::hold_opponent`). Its sound goes on: the
+    audio driver plays on a tick's worth each tick due, the music and what was sounding going on, with no cue
+    new; the picture stays as it was. The menu closed, it goes on from the tick it was held at. (The user:
+    "pause at start doesn't seem to stop custom hp drain". Until then the battle stepped on there with no
+    buttons, waiting on its custom screen and stepping through a dimming or a round's end into the game's
+    pause; on the custom screen the NaviCust's custom HP bug drained HP all the while, as it does while that
+    screen is up.) Pressing START in those places in the game does nothing; nettai's menu holds the battle all
+    the same.
+    - In a round's opening (its fade in from white, its navis' arrival and its banner), the battle steps on
+      under the menu with no buttons, and is held as its custom screen begins, before the screen comes in
+      (`Phase::Opening`): at a round's first tick the field is black and no music plays yet, and the menu
+      over a practice battle as it starts (Practice's own sessions, and an arena or the Dummy's build changed
+      under it, which starts the set over) is there to set the dummy and the stage up with them in view.
+      Nothing in the opening is the fight's: no gauge fills, no HP changes. In EXE6 the opening is 136 ticks
+      (2.3 s).
+    - Mid-fight, the player's START (or the menu's) is the game's pause, above, and what the game's pause
+      holds is held: in EXE6 and EXE5 the NaviCust's HP bug waits while paused (`HpDrainRule::
+      stops_while_paused`); EXE4's drains through its pause, as the game's does.
   - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
     pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a practice battle's
     renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
   - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
     as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
     digest after 4,000 ticks of each game before and after; nettai-frontend's
-    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause` and
-    `opened_where_the_game_wouldnt_pause_it_steps_on`).
+    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`,
+    `opened_where_the_game_wouldnt_pause_it_is_held`, `a_practice_opened_with_its_menu_is_held_from_its_custom_screen`
+    and `under_the_menu_mid_fight_the_hp_bug_waits`).
   - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
     ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
     EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before
@@ -2646,7 +2663,7 @@ Arena changes the field, which a round sets as it starts, so a change starts the
 the session's match is put on it, its set made again from the session's seed, and the live driver plays that
 set from its next start (the library's `LivePlayer::play_set`) as the battle starts over (`Battle::restart`,
 RESTART's). The menu stays open, and the battle behind it steps through the round's opening with no buttons
-and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+and is held as its custom screen begins, as above (nettai's
 `under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
 
 Background changes the background alone (the user: "changing the background shouldn't change the entire
