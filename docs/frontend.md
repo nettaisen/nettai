@@ -769,8 +769,11 @@ host calls, in order:
   rollback.md §4.11), the loss (the share of the other player's datagrams
   that were lost), the input delay, the last rollback's depth, the deepest
   and how many in all, and the frames held for clock sync or the stall
-  guard; while the connection is down, how long it has been and how long
-  is left. The lobby has the ping and the jitter before the match
+  guard; for a fuller view (the app's link panel), the latest round trip
+  unsmoothed, the datagrams and bytes each way, clock sync's skew, the lead
+  (this player's inputs the other's haven't matched yet) and the times the
+  connection went down in the match; while the connection is down, how
+  long it has been and how long is left. The lobby has the ping and the jitter before the match
   (`Lobby::ping`, and its `quality()`).
 - **The end of a match**: when the set is over the result is the host's to
   show (`Player::result`), and the player goes on running until the host

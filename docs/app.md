@@ -686,6 +686,12 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 - **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
   THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
+- **The link panel** (`LinkPanel` in battle.slint; its figures `battle/link.rs`): a click on the connection's
+  corner opens it over the corner (`Shell.connection-open`, which the corner toggles and a click elsewhere on the
+  battle clears; the app clears it as a battle starts and ends). The figures are the player's `net_status`; the
+  app samples its round trip ten times a second for the whole match and, while the panel is open, sets
+  `Shell.link` at each sample: the figures, and the last ten seconds as two paths (the graph's line and the area
+  under it).
 - **Both builds** (`MatchPeek`, which app.slint shows over an online match): while Tab is held (`Keys::tab`), or
   the pad's button bound to SELECT, the player's build on their side and the other player's on theirs; with
   closed builds the player's own alone. The match takes its keys meanwhile.
