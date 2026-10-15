@@ -118,6 +118,10 @@ pub trait Screen {
     /// which the field then shows (a name cut to its length, a code in capitals).
     fn edit(&mut self, _shell: &mut Shell, _id: &str, _index: i32, _text: &str, _done: bool) {}
 
+    /// Enter in a field, after its text is confirmed (`edit`, done): what the field is for, done at once (Play's
+    /// code joins, the direct connection's address connects).
+    fn submitted(&mut self, _shell: &mut Shell, _id: &str, _index: i32) {}
+
     /// The focus moved to a control (a list's row: the overview beside a list follows it).
     fn focused(&mut self, _shell: &mut Shell, _id: &str, _index: i32) {}
 
