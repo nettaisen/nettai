@@ -92,6 +92,16 @@ impl Page {
         id.starts_with(PREFIX)
     }
 
+    /// The lobby's ruleset as it stands now, where this page views it (a joiner's view of the host's): shown as
+    /// the host changes it, as they change it (the user: "show live edits of host's ruleset"). The category, the
+    /// search and the cursor stay where the player has them.
+    pub fn follow(&mut self, shell: &Shell, ruleset: &nettai_match::ruleset::Ruleset) {
+        if self.viewed && self.shown.ruleset != *ruleset {
+            self.shown.ruleset = ruleset.clone();
+            self.show(shell);
+        }
+    }
+
     /// The ruleset can be changed here: the player's own, not one viewed.
     fn editable(&self) -> bool {
         !self.viewed && self.shown.path.is_some()
@@ -114,6 +124,7 @@ impl Page {
         view.set_preset(matches!(ruleset.name, Name::Preset(_)));
         view.set_editable(self.editable());
         view.set_deletable(self.editable());
+        view.set_duplicable(!self.viewed);
         view.set_versions(if ruleset.one_per_build { 0 } else { 1 });
         let categories: Vec<RulesetCategory> = self
             .rulesets
@@ -265,6 +276,9 @@ impl Page {
     /// DUPLICATE: the player's own copy of the ruleset shown, named after it (numbered past the presets' names and
     /// the player's own), saved and shown in its place.
     fn duplicate(&mut self, shell: &mut Shell) -> Outcome {
+        if self.viewed {
+            return Outcome::Nothing;
+        }
         let graphics = self.kit.ready.graphics(shell.lang);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
@@ -277,7 +291,6 @@ impl Page {
         let mut copy = self.shown.ruleset.clone();
         copy.name = Name::Own(name.clone());
         self.shown = Pickable { ruleset: copy, path: Some(store::new_path(&self.kit.game, &name)) };
-        self.viewed = false;
         self.save(shell);
         self.show(shell);
         shell.sound.play(Cue::Pick);
