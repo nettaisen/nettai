@@ -29,7 +29,8 @@ The app extracts each game's pack itself, as it starts, from the player's Battle
 written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`), and nothing is looked for or extracted: for
 development and the screenshot pass. The game's content (its rules and data in Luau, docs/design/content-model-v2.md
 §4.0) is the `content/` folder beside the program, where a packaged app ships it; a build run from the repository
-finds none there and reads the repository's `content/`; `$NETTAI_CONTENT` names another. A release build on Windows
+finds none there and reads the repository's `content/`; `$NETTAI_CONTENT` names another. (A macOS app bundle
+ships it in its `Resources/`; a packaged build has no fallback to the repository's, §19.) A release build on Windows
 opens no console window (`windows_subsystem`); a development build keeps one, for what it prints. What the player
 makes is kept in the app's
 data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
@@ -3086,7 +3087,8 @@ COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own), everythin
 file its manifest names. The workspace's own crates are not listed. The fonts and their OFL files are named in the
 build script. What it writes (`licenses.rs`, in the build's output) holds each text once, as many packages ship
 the same one: 251 texts for 398 entries, about 0.9 MB in the binary. It is written again when Cargo.lock, the
-app's manifest or a font's license changes.
+app's manifest or a font's license changes. The same list is written as a text file beside it (`licenses.txt`),
+which a package ships as THIRD-PARTY-NOTICES.txt (§19).
 
 41 of the packages ship no license file in what they publish (the rtc-* crates, the objc2 family, the lyon ones,
 libc, taffy, gamepad-facade and some others): their row and panel name their license, and the panel says the
@@ -3109,3 +3111,45 @@ license beside it), `about-license` (Slint's license reached with the keys and p
 `about-back` (Back to the settings, on SHOW LICENSES) and `about-again` (opened again: Slint's row focused and in
 view). Before About moved into Settings they were walked in English and Japanese at both sizes, nothing cut, and
 the pictures looked at; since, the steps are type-checked and not yet walked.
+
+## 19. Packaging
+
+The user: "start working on github actions workflows to make an installer for windows and i dunno dmg for macos
+and appimage for linux".
+
+A package is the program, the content (`content/`, as the repository has it), the license (LICENSE) and the
+third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's `licenses.txt`, §18). No ROM and no extracted asset is in
+any of them, ever: the app extracts each game's pack from the player's own Legacy Collection into its data folder
+(§17). Each platform's script is in `packaging/`, runs on that platform alone, and writes to
+`target/package/<platform>/`:
+
+- **Windows** (`packaging/windows/package.ps1`, `nettai.iss`): an Inno Setup installer,
+  `nettai-<version>-windows-x64-setup.exe`, for the player alone by default (`%LOCALAPPDATA%\Programs\nettai`, no
+  administrator; it offers everyone), with a Start menu shortcut, a desktop one if asked and an uninstaller that
+  leaves the data folder; and the same app as a .zip. Needs Inno Setup 6.
+- **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `io.github.bigfarts.nettai`;
+  the content in `Contents/Resources/`, where the content lookup finds it) in `nettai-<version>-macos-<arch>.dmg`,
+  beside a link to /Applications. `NETTAI_UNIVERSAL=1` builds arm64 and x86_64 and joins them with lipo; else the
+  host's alone. Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a Developer ID; with `APPLE_ID`, `APPLE_TEAM_ID`
+  and `APPLE_APP_PASSWORD` too, the image is notarized.
+- **Linux** (`packaging/linux/package.sh`, `AppRun`, `nettai.desktop`): `nettai-<version>-linux-x86_64.AppImage`,
+  made by appimagetool with the type 2 runtime, both downloaded at pinned versions and checked against their
+  digests. The program needs the glibc it was built against or a later one, so it is built on an old distribution.
+
+The icons are made from `docs/logo/nettai-icon.svg` by `packaging/icons.sh` (rsvg-convert and ImageMagick):
+PNGs, the Windows .ico, and macOS's icon set, the artwork on Apple's grid (824 of 1024, centered) so that it is no
+larger than other apps in the Dock; nothing raster is committed. The Windows program takes its icon from the .ico
+`$NETTAI_WINDOWS_ICON` names (build.rs, through winresource); without it, it has none. The window's icon is the
+SVG itself (`app.slint`).
+
+A package's build sets `NETTAI_PACKAGED`: its content lookup then has no fallback to the repository's `content/`
+(`nettai_content::index::content`), so that the program names no folder of the machine it was built on and reads
+only the content it ships. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
+
+The workflow (`.github/workflows/release.yml`) runs on a tag `v*` and by hand. The icons are made once, on Linux;
+then Windows (`windows-latest`), macOS (`macos-latest`, universal) and Linux (`ubuntu-22.04`) each package and
+upload theirs as the run's artifacts, the version the tag's without its `v`. On a tag, a draft release is made with
+all of them, never published by the workflow. Signing is optional and skipped without its secrets:
+`WINDOWS_CERTIFICATE` (a .pfx, base64) and `WINDOWS_CERTIFICATE_PASSWORD`; `MACOS_CERTIFICATE` (a Developer ID
+Application .p12, base64) and `MACOS_CERTIFICATE_PASSWORD`, and for notarizing `APPLE_ID`, `APPLE_TEAM_ID` and
+`APPLE_APP_PASSWORD`.

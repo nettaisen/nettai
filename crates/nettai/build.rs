@@ -155,4 +155,36 @@ fn main() {
     }
     writeln!(rs, "];").unwrap();
     std::fs::write(out.join("licenses.rs"), rs).expect("licenses.rs written");
+
+    // The same as a text file, which a packaged app ships beside the program (packaging/: it finds the file
+    // through cargo's `build-script-executed` message, which names this script's OUT_DIR).
+    let mut txt = String::from("The software nettai is made of, each with its license (also on its About screen).\n\n");
+    for p in fonts.iter().chain(&list) {
+        let version = if p.version.is_empty() { String::new() } else { format!(" {}", p.version) };
+        writeln!(txt, "{}{version}: {}{}", p.name, p.license, if p.repository.is_empty() { String::new() } else { format!(", {}", p.repository) }).unwrap();
+        for (file, at) in &p.texts {
+            writeln!(txt, "    {file}: text {}", at + 1).unwrap();
+        }
+    }
+    for (at, text) in texts.iter().enumerate() {
+        writeln!(txt, "\n\n==== Text {} ====\n\n{text}", at + 1).unwrap();
+    }
+    std::fs::write(out.join("licenses.txt"), txt).expect("licenses.txt written");
+
+    windows_icon();
+}
+
+/// The Windows program's icon, from the .ico `$NETTAI_WINDOWS_ICON` names (packaging/icons.sh makes it from
+/// docs/logo/nettai-icon.svg). Without it the program has no icon of its own: a build for development.
+fn windows_icon() {
+    println!("cargo:rerun-if-env-changed=NETTAI_WINDOWS_ICON");
+    let Some(icon) = std::env::var_os("NETTAI_WINDOWS_ICON") else { return };
+    println!("cargo:rerun-if-changed={}", Path::new(&icon).display());
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        return;
+    }
+    #[cfg(windows)]
+    winresource::WindowsResource::new().set_icon(&icon.to_string_lossy()).compile().expect("the icon's resource compiles");
+    #[cfg(not(windows))]
+    println!("cargo:warning=NETTAI_WINDOWS_ICON is set, but a Windows program's icon is compiled on Windows only");
 }
