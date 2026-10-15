@@ -257,7 +257,7 @@ export component NaviTab inherits Rectangle {
     phone-edit := Button {
         x: root.width - self.width;
         y: root.panel-height + 12px;
-        width: max(72px, self.natural-width - 48px);
+        width: self.natural-width;
         visible: Theme.phone;
         nav: Theme.phone ? "ruleset-edit" : "";
         text: @tr("EDIT");

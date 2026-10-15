@@ -312,6 +312,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 
     switched(add, shot);
+    rulesets(add, shot);
 
     add(
         SETTLE,
@@ -378,6 +379,33 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-folder-switched-back", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
     add(0, state("builds-folder-switched-back", true, true));
+}
+
+/// A ruleset's page over the editor (docs/design/app-ui.md §2.59), on the build `switched` left: from the Navi tab,
+/// EDIT by the ruleset the player plays by (the game's first preset, Standard: `rulesets-preset`, read alone, the
+/// reserved line saying so); DUPLICATE, the player's own copy (`rulesets-own`); its category of chips
+/// (`rulesets-chips`); the first chip held back and the first version's quick choice (`rulesets-chips-held`); and
+/// Back, the editor marking what the copy holds back (`rulesets-folder-marked`: the Folder tab, the library's rows).
+fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
+    add(SETTLE, press("tab", 0));
+    add(SETTLE, press("ruleset-edit", 0));
+    shot(add, "rulesets-preset", Pair::None);
+    add(SETTLE, press("rules.duplicate", 0));
+    shot(add, "rulesets-own", Pair::None);
+    // (Its category by the choice the select's list makes: a phone has no list of them.)
+    add(SETTLE, screen(|s, shell| s.choose(shell, "rules.category", 0, 1)));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "rulesets-chips", Pair::None);
+    add(SETTLE, press("rules.items", 0));
+    add(SETTLE, press("rules.set", 0));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "rulesets-chips-held", Pair::None);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, press("tab", 1));
+    add(SETTLE, focus("slot", 0));
+    shot(add, "rulesets-folder-marked", Pair::None);
+    // (The player plays by the game's first preset again: the walk in the next language is as this one was.)
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
 }
 
 /// The walk's version switch is as picture `name` says: the focus on the header's tag or not, and the build ready
