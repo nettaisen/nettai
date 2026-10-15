@@ -388,16 +388,18 @@ language = "ja"
 "tomahawkman" = { name = "トマホークマン", run_message = "ヘン! 今は にげてる\nばあいじゃないぜ!!" }
 
 [forms]
-"chargecross" = { description = "炎チップタメうちで攻撃力UP\nターンがすすむごとに\nえらべるチップがふえていく" }
-"dustcross" = { description = "カスタム画面でチップをすてる\nB+左でモノをすいこみ\nBボタンではっしゃできる!" }
-"eleccross" = { description = "電気チップの攻撃力が+50!\n無属性チップをタメうちすると\nマヒこうかがつく!" }
-"erasecross" = { description = "HPに4のすうじがあると\n無属性チップでそくしこうか!\nカーソルチップ攻撃力が+30" }
-"groundcross" = { description = "ブレイクチップが攻撃力+10\nブレイクタメうちでらくせき!\nスーパーアーマーがON!" }
-"heatcross" = { description = "炎チップの攻撃力が+50!\nバスター攻撃力が+1!" }
-"slashcross" = { description = "ソードチップの攻撃力が+50\nソードチップをタメうちすると\nとんでいくようになる!" }
-"spoutcross" = { description = "水チップタメうちで攻撃力✕2\n水チップでHPかいふく" }
-"tengucross" = { description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
-"tomahawkcross" = { description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
+"chargecross" = { name = "チャージクロス", description = "炎チップタメうちで攻撃力UP\nターンがすすむごとに\nえらべるチップがふえていく" }
+"dustcross" = { name = "ダストクロス", description = "カスタム画面でチップをすてる\nB+左でモノをすいこみ\nBボタンではっしゃできる!" }
+"eleccross" = { name = "エレキクロス", description = "電気チップの攻撃力が+50!\n無属性チップをタメうちすると\nマヒこうかがつく!" }
+"erasecross" = { name = "キラークロス", description = "HPに4のすうじがあると\n無属性チップでそくしこうか!\nカーソルチップ攻撃力が+30" }
+"falzar-beast" = { name = "Fビースト" }
+"gregar-beast" = { name = "Gビースト" }
+"groundcross" = { name = "グランドクロス", description = "ブレイクチップが攻撃力+10\nブレイクタメうちでらくせき!\nスーパーアーマーがON!" }
+"heatcross" = { name = "ヒートクロス", description = "炎チップの攻撃力が+50!\nバスター攻撃力が+1!" }
+"slashcross" = { name = "スラッシュクロス", description = "ソードチップの攻撃力が+50\nソードチップをタメうちすると\nとんでいくようになる!" }
+"spoutcross" = { name = "アクアクロス", description = "水チップタメうちで攻撃力✕2\n水チップでHPかいふく" }
+"tengucross" = { name = "テングクロス", description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
+"tomahawkcross" = { name = "トマホーククロス", description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
 
 # The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
 # tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
@@ -772,7 +774,7 @@ language = "ja"
 
 # A build's versions, by name (rules/builds): the Japanese games' own words.
 [builds]
-"versions" = "そのバージョンのクロスと電脳獣から始まります。"
+"versions" = "そのバージョンのクロスと獣化から始まります。"
 "version.gregar" = "グレイガ"
 "version.falzar" = "ファルザー"
 
@@ -782,7 +784,7 @@ language = "ja"
 "category.folder" = "チップ"
 "category.navicust_programs" = "ナビカスプログラム"
 "category.patch_cards" = "改造カード"
-"category.cybeast" = "電脳獣"
+"category.cybeast" = "獣化"
 "category.crosses" = "クロス"
 "preset.standard" = "スタンダード"
 "preset.mixed" = "ミックス"

@@ -351,6 +351,21 @@ language = "ja"
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
 
+# The souls' names (en.toml's `[forms]` says what they are).
+[forms]
+"aquasoul" = { name = "アクアソウル" }
+"firesoul" = { name = "ファイアソウル" }
+"gutssoul" = { name = "ガッツソウル" }
+"junksoul" = { name = "ジャンクソウル" }
+"metalsoul" = { name = "メタルソウル" }
+"numbersoul" = { name = "ナンバーソウル" }
+"protosoul" = { name = "ブルースソウル" }
+"rollsoul" = { name = "ロールソウル" }
+"searchsoul" = { name = "サーチソウル" }
+"thundersoul" = { name = "サンダーソウル" }
+"windsoul" = { name = "ウインドソウル" }
+"woodsoul" = { name = "ウッドソウル" }
+
 # The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
 # tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
 [backgrounds]
