@@ -11,4 +11,4 @@ depends = ["exelib"]
 # `builds`, what a build is made of, by name (rules/builds: its versions and its choices' presets);
 # `auto_battle_lists`, the auto battle data's lists, by name (rules/auto_battle/block's `LISTS`); `battle_themes`, each
 # battle theme's name, by its song's asset name (rules/battle_themes).
-text = ["game", "patch_card_effects", "bugs", "builds", "auto_battle_lists", "battle_themes"]
+text = ["game", "patch_card_effects", "bugs", "builds", "auto_battle_lists", "battle_themes", "rulesets"]

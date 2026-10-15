@@ -109,7 +109,8 @@ pub fn says(content: &Content, form: FormHandle, name: &str) -> bool {
 
 /// A navi's forms in one of EXE6's games (its `forms.gregar` or
 /// `forms.falzar`): its Crosses by their number on the custom screen (the
-/// save's unlock flags' order), Beast Out and Beast Over.
+/// save's unlock flags' order), Beast Out (the set's `cybeast`: the form
+/// Beast Out goes into) and Beast Over.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Set {
     pub crosses: Vec<FormHandle>,
@@ -133,7 +134,7 @@ pub fn set(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<Set
         Data::List(items) => items.iter().filter_map(form).collect(),
         _ => Vec::new(),
     };
-    Some(Set { crosses, beast_out: form(g.field("beast_out")), beast_over: form(g.field("beast_over")) })
+    Some(Set { crosses, beast_out: form(g.field("cybeast")), beast_over: form(g.field("beast_over")) })
 }
 
 /// Navi `navi`'s Cross with number `cross` in `game` (none: no such Cross).
