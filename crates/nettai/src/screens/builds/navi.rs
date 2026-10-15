@@ -22,7 +22,7 @@
 //! "i don't like having an info thing on the navi view, it's redundant"): what the build's problems have against the
 //! form under the cursor or the pointer, the ruleset's among them (its own: one the ruleset holds back, a version's
 //! in a build that mixes versions; then its fact's about no form of it), else against the navi (and the build where
-//! no tab shows what it is about), is said in the note's place under the selector, kept for it, so nothing moves when
+//! no tab shows what it is about), is said on a line under the navi's facts, kept for it, so nothing moves when
 //! one appears (the user: "error messages for beast form/crosses ends up shifting layout"). The lists are the game's
 //! own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
@@ -50,7 +50,7 @@ pub struct Navi {
     /// What each ALL and NONE of the selector is of (their focus keys' index): a fact of forms, and its version's
     /// group's forms (or the whole list's, where it shows no versions).
     sets: Vec<(String, Vec<FormHandle>)>,
-    /// The form the pointer is on (its place in the focus order), whose problems the note's place says in place of the
+    /// The form the pointer is on (its place in the focus order), whose problems the fault's line says in place of the
     /// focused one's (`editor::hover`).
     hovered: Option<usize>,
 }
@@ -85,7 +85,7 @@ impl Navi {
         content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect()
     }
 
-    /// What the note's place says in the note's stead (docs/design/app-ui.md §2.66): what the build's problems have
+    /// What the line under the navi's facts says (docs/design/app-ui.md §2.66, §2.70): what the build's problems have
     /// against the form under the pointer or the cursor, the ruleset's among them, where they have anything; else
     /// against the navi, and the build where no tab shows what it is about. Empty: the note.
     fn show_fault(&self, shell: &Shell, draft: &Draft) {
@@ -283,7 +283,7 @@ impl Tab for Navi {
         self.hovered = None;
     }
 
-    /// The pointer came onto a form's row, or left it: the note's place says the form's problems while the pointer is
+    /// The pointer came onto a form's row, or left it: the fault's line says the form's problems while the pointer is
     /// on it.
     fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
         if id != "form" {
@@ -294,7 +294,7 @@ impl Tab for Navi {
         }
     }
 
-    /// (The note's place follows the focus, the last thing moved, until the pointer goes onto another form.)
+    /// (The fault's line follows the focus, the last thing moved, until the pointer goes onto another form.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, _id: &str, _index: i32) {
         self.hovered = None;
         self.show_fault(shell, draft);
