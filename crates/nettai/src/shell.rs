@@ -812,6 +812,9 @@ pub struct App {
     pending: Vec<(Action, u8)>,
     /// When the window last drew a frame.
     drawn_at: Option<Instant>,
+    /// A battle's slow frames, for the log: when the last frame began and how long the app's part of it took,
+    /// when the one before was drawn, and how many have been logged (a few, then no more).
+    slow: SlowFrames,
     /// The motion probe's watch on a press: when it was made, and when the window's first frame after it began and
     /// when the app's work for it ended, before Slint drew it (docs/app.md §13).
     pub(crate) first_frame_after: Option<(Instant, Option<(Instant, Instant)>)>,
@@ -881,6 +884,7 @@ impl App {
             screens: screens::all().into_iter().map(Some).collect(),
             pending: Vec::new(),
             drawn_at: None,
+            slow: SlowFrames::default(),
             first_frame_after: None,
             clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
         }
@@ -1416,6 +1420,7 @@ impl App {
     /// battle's ticks and its picture, the sound, the focus.
     /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
+        let began = Instant::now();
         self.drawn_at = Some(now);
         let first = self.first_frame_after.as_ref().is_some_and(|(at, first)| first.is_none() && now > *at);
         self.shell.drawing = true;
@@ -1424,6 +1429,7 @@ impl App {
         if first && let Some((_, seen)) = &mut self.first_frame_after {
             *seen = Some((now, Instant::now()));
         }
+        self.slow.began = Some((began, began.elapsed()));
     }
 
     /// How long the window may go without drawing a frame before the timer runs the app's: three of a 60 Hz
@@ -1555,6 +1561,7 @@ impl App {
         if let Some(b) = &mut self.shell.battle {
             b.stage.drawn();
         }
+        self.slow.drawn(self.shell.battle.as_ref());
     }
 
     /// The pad's presses: the battle's (its bound buttons are read as held), a screen's, or the menus'.
@@ -1747,5 +1754,46 @@ mod tests {
                 assert!(rows as f32 * PICKER_ROW + 2.0 <= room, "{options} choices in {under} under, {over} over: {rows} rows");
             }
         }
+    }
+}
+
+/// A battle's frames that took long enough to be seen as a stutter (the user: "why does entering custom for the
+/// first time stutter sometimes?"), each written to the log with where the time went: the app's part of the frame
+/// (the battle's ticks and picture, the screens) or the window's drawing, and whether the custom screen was up.
+/// The battle's own work on a custom screen's first frames was measured at 2 to 6 ms (docs/app.md §5), so a
+/// stutter the log shows is the window's or the app's around it.
+#[derive(Default)]
+struct SlowFrames {
+    began: Option<(Instant, Duration)>,
+    last: Option<Instant>,
+    logged: u32,
+}
+
+impl SlowFrames {
+    /// Longer than this between two frames drawn is a stutter at any refresh rate.
+    const SLOW: Duration = Duration::from_millis(40);
+    /// How many are logged in a run.
+    const MOST: u32 = 40;
+
+    fn drawn(&mut self, battle: Option<&crate::battle::Battle>) {
+        let now = Instant::now();
+        let (last, began) = (self.last.replace(now), self.began.take());
+        let (Some(battle), Some(last), Some((began, work))) = (battle, last, began) else { return };
+        let gap = now - last;
+        // (Over a second is the window not drawing at all, hidden or minimized: not a stutter.)
+        if gap < Self::SLOW || gap > Duration::from_secs(1) || self.logged >= Self::MOST {
+            return;
+        }
+        self.logged += 1;
+        let custom = battle.stage.player.battle().round.mode == nettai_battle::battle::mode::CUSTOM;
+        let drawing = now.saturating_duration_since(began + work);
+        let why = format!(
+            "{:.1} ms since the frame before: the app's part {:.1} ms, the window's drawing {:.1} ms, the rest waiting; the custom screen {}",
+            gap.as_secs_f64() * 1e3,
+            work.as_secs_f64() * 1e3,
+            drawing.as_secs_f64() * 1e3,
+            if custom { "up" } else { "not up" }
+        );
+        crate::errors::log("a slow frame in a battle", &why);
     }
 }
