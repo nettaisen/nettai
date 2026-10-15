@@ -1249,15 +1249,21 @@ component, and its module fills the model from a side:
 
 The component is framed and takes the size it is given. At 620 wide or more it is the wide sheet, 540 tall: the
 face the round starts with, the name over the navi, the version's tag; Stats, each with what the NaviCust and
-the patch cards added beside it in cyan; Abilities (each by what gives it, or a number the rules work out of what
-several entries do together: EXE5's Soul Unison's turns, "Soul Time 4", where the build changes them); Bugs, each
-by its full name and its level or amount, purple;
+the patch cards added beside it in cyan, signed; after the eight, any stat the game's rules give besides
+(`Overview::stats`, from the rules' `overview`'s `stats`: each by its name in the game's `stats` strings, its value
+and what the build added; the row's `StatLine.label`), EXE5's Soul time for a navi with souls, the turns a Soul
+Unison lasts as the battle gives them ("Soul time 6 +3": SoulT+1 and MagicMan's card); Abilities, each by what
+gives it; Bugs, each by its full name and its level or amount, purple;
 and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 650 tall, which a
 player's panel in a match is (430 wide: `label` is YOU or OPPONENT, `name` the player's, `side` 1 or 2 for the
 player's color along its top): the stats in two columns, abilities and bugs a line each, the folder in two.
 Narrower than 400, a phone's, it is one column throughout, 1158 tall, for a page that scrolls: two columns
-leave a chip's name 39 wide there. `sheet-height` is the height of the one it is at its width; which it is
-depends on the width alone, never on the build. Every number is the compiled one (`Checked::overview`).
+leave a chip's name 39 wide there. A stat after the eight is a row of its own: on the wide sheet under Regular
+memory, the lines under it one fewer (eight where nine were: `overview::LINES`); on the narrow sheet under the two
+columns at the left (a second one beside it), the sheet 22 taller (672); on a phone's the ninth row (1180).
+`sheet-height` is the height of the one it is at its width; which it is depends on the width alone, never on the
+build, and its height on the width and the stats after the eight. Every number is the compiled one
+(`Checked::overview`).
 
 **The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version (its tag
 the version's switch, the frame's whichever tab shows) and "✓ Ready to play" (or how many problems), the tab bar,
@@ -1328,8 +1334,9 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   bounds (a placed copy over the ring: no error, and nothing red).
 - *Effects and Bugs*, two panels at the right: what the NaviCust alone comes to, the build's overview without
   its patch cards (`own_overview`: `Side::without_patch_cards`, and `Checked::of` a second time where the build
-  has cards). The effects are each number it changes ("HP +500"), each program at work that gives an
-  ability, and EXE5's Soul Unison's turns where SoulT+1 changes them ("Soul Time 4"); the bugs are those it brings, each by its full name and its level or amount, purple. A patch card's
+  has cards). The effects are each number it changes ("HP +500"; the rules' own stats among them, EXE5's
+  "Soul time +1" where SoulT+1 is at work) and each program at work that gives an ability; the bugs are those it
+  brings, each by its full name and its level or amount, purple. A patch card's
   bugs aren't listed here (the user: "navicust shouldn't display patch card bugs"): they are the Patch cards
   tab's (the card's lines, Together) and the build overview's, which has every bug the build has. A bug that
   wasn't there before the last change pulses purple once.

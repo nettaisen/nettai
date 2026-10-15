@@ -555,8 +555,8 @@ function compile.at_work(
 end
 
 -- The kinds of effect that change a number a tool shows beside the navi's others (its HP, its buster's levels, its
--- custom level, its Mega and Giga limits; EXE5's soul turns, which its rules' `overview` gives as the turns a Soul
--- Unison lasts with whatever else adds to them), and those no netbattle reads: a program with any other kind of effect
+-- custom level, its Mega and Giga limits; EXE5's soul turns, which its rules' `overview` gives as a stat of their
+-- own, the turns a Soul Unison lasts with whatever else adds to them), and those no netbattle reads: a program with any other kind of effect
 -- gives the navi an ability.
 local NUMBERS: { [string]: boolean } = {
     hp = true,
@@ -581,7 +581,7 @@ function compile.overview(side: number, game: NaviCustGame, expansions: number?,
     for _, p in ran do
         for _, e in p.program.effects or {} do
             if not NUMBERS[e.kind] then
-                local source: SetupAbility = { entry = p.program }
+                local source: SetupSource = { entry = p.program }
                 table.insert(out.abilities, source)
                 break
             end

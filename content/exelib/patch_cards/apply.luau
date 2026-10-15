@@ -129,7 +129,7 @@ local DRAIN_MOST = 7
 
 -- Whether an overview lists effect `e` among the navi's abilities and bugs: what the card screen lists under its
 -- abilities (its `group`), and of its parameters the body's element, which no number of the overview shows (the
--- others are the stats', and EXE5's soul turns its rules' own line: rules/souls/custom).
+-- others are the stats', EXE5's soul turns among them: rules/souls/custom).
 local function listed(e: PatchCardEffect): boolean
     return e.group == "ability" or e.kind == "body"
 end
@@ -201,7 +201,7 @@ function apply.overview(
     for i, c in installed do
         for at, e in c.effects :: { PatchCardEffect } do
             if apply.has(e, version) and listed(e) and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
-                local line: SetupAbility = { entry = c, effect = at }
+                local line: SetupSource = { entry = c, effect = at }
                 if not bug_kinds[e.kind] then
                     if e.bug then
                         local drawback: SetupBug = { entry = c, effect = at }

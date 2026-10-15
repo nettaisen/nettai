@@ -792,8 +792,8 @@ language = "en"
 "boss-battle" = "Boss Battle"
 "final-battle" = "vs Nebula Gray"
 
-# What the rules' overview names of what several entries do together, by name (rules/souls/custom's `overview`), each
-# with its amount after it. `soul_time`: the turns a Soul Unison lasts, the NaviCust's SoulT+1 and the patch cards'
-# SoulTm+ and SoulTm- together (the cards' "SoulTm"). Ours.
-[abilities]
-"soul_time" = "Soul Time"
+# The stats the rules' overview gives beyond the eight every game's have, by name (rules/souls/custom's `overview`),
+# each a row after Regular memory. `soul_time`: the turns a Soul Unison lasts, the NaviCust's SoulT+1 and the patch
+# cards' SoulTm+ and SoulTm- together (the cards' "SoulTm"). Ours.
+[stats]
+"soul_time" = "Soul time"

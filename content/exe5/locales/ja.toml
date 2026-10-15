@@ -777,6 +777,6 @@ language = "ja"
 "boss-battle" = "ボスバトル"
 "final-battle" = "VS ネビュラグレイ"
 
-# What the rules' overview names of what several entries do together (en.toml's `[abilities]` says what they are). Ours.
-[abilities]
+# The stats the rules' overview gives beyond the eight every game's have (en.toml's `[stats]` says what they are). Ours.
+[stats]
 "soul_time" = "ソウルタイム"

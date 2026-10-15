@@ -698,6 +698,18 @@ Each is settled unless the user changes it.
     - *What these supersede:* the three tiles, PRACTICE's among them, and their restyle as panels; JOIN's link
       (§2.52's DIRECT CONNECT text button before it); HOST's ▾ and JOIN's field taking an address.
     (§6 Play and Practice, docs/app.md §1, §4 and §15.)
+58. **Soul time is a stat** (2026-10-14). EXE5's overview listed a Soul Unison's turns under Abilities as
+    "Soul Time 5", and the user: "instead of "soul time 5" shouldn't it be "soul time +2"?", then "shouldn't soul
+    time go into stats?". It is a row of Stats after Regular memory, Soul time (ソウルタイム), for an EXE5 build
+    whose navi has souls: its value is the turns a Soul Unison lasts with the build, as the battle gives them
+    (base 3, at most 9, at least 1), and beside it in cyan the build's change, signed ("+2", "−1"), as every stat
+    has what was added; nothing where it is 0. SoulT+1 with MagicMan's card reads "Soul time 6 +3". The Abilities
+    line is gone. The row is the game's: its rules' overview gives the stats a game has beyond the common eight,
+    each by its name in the game's strings, and the app shows whatever rows they give. Chosen here, the user
+    saying no more: the wide sheet has no 22 to spare under Regular memory, so the row takes it from the lines
+    under it (the abilities and bugs a line fewer, nine to eight); the narrow sheet's two columns of four have no
+    room for a ninth, so it is a row of its own under them at the left, the sheet 22 taller (a third column would
+    leave a stat's label 40% longer no room); a phone's sheet has it as its ninth row. (§6 Builds, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -1032,8 +1044,10 @@ DUPLICATE, RENAME and DELETE.
   (§2.28; §2.57: Practice's battle starts again, the menu open).
 - **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
-  patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
-  in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
+  patch cards added beside it in cyan; then any stat the game's rules give besides, by its name in the game's
+  strings: EXE5's Soul time, the turns a Soul Unison lasts, for a navi with souls, §2.58); Abilities; Bugs, each by
+  name and level, purple; then the folder's 30 chips in two columns of 26-tall rows: number, icon, name, REG or
+  TAG1 or TAG2, element, code.
 - **New build** (Play's + NEW BUILD; RENAME is the same dialog with the name alone): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere. Under its CANCEL and CREATE BUILD, below a line, FROM A SAVE FILE… (a ghost
@@ -1215,8 +1229,8 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
    with its problems typed (`build::Checked`, `Wrong`: a screen words each kind, with its numbers, in its
    language), the folder editor's limits and each library row's reason (`folders::View`, read per row), the
    Regular and tag marks (`build::mark`, `folders::mark_problems`), the overview (`Checked::overview`: each stat
-   with what was added, the abilities, `build::Ability`, by what gives each or as the rules' number (EXE5's soul
-   turns), the bugs by name with a level or an amount, `build::Extent`,
+   with what was added, and the rules' own after them by name, `build::NamedStat` (EXE5's soul time), what gives
+   the abilities, the bugs by name with a level or an amount, `build::Extent`,
    whoever brings them, the patch cards' MB) and a chip's
    row with its sort keys (`build::ChipInfo`, `build::sorted`). Light or Dark is a choice of the game's builds data
    (`Builds::choices_of`, `preset_of`, `take_preset`; `settle` for a build from a file or a save; none for a navi
