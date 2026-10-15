@@ -18,7 +18,8 @@
 //! one change). What is wrong with the build is marked where it is (docs/design/app-ui.md
 //! §2.66; the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that shows it"): a
 //! fact's heading in the error red where it has a problem, and a form of the build's a problem is about, its name; a
-//! form the ruleset doesn't allow says so at its row's end, as a library's row does. The tab has no strip (the user:
+//! form the ruleset doesn't allow says so at its row's end, as a library's row does, and isn't put in (nor a navi it
+//! doesn't allow chosen; ALL leaves it out: docs/design/app-ui.md §2.68). The tab has no strip (the user:
 //! "i don't like having an info thing on the navi view, it's redundant"): what the build's problems have against the
 //! form under the cursor or the pointer, the ruleset's among them (its own: one the ruleset holds back, a version's
 //! in a build that mixes versions; then its fact's about no form of it), else against the navi (and the build where
@@ -188,12 +189,13 @@ impl Tab for Navi {
                     let side_by_side = versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
                     // (A list's ALL and NONE: on each version's head where its forms are grouped by version, a group of
                     // none's too, else on the fact's heading; whether each would do anything, ALL where the list has
-                    // room for one of them it lacks, NONE where it has one. A fact of one form has none.)
+                    // room for one of them it lacks that the ruleset allows, NONE where it has one. A fact of one form has
+                    // none.)
                     let mut set_of = |forms: Vec<FormHandle>| -> (i32, bool, bool) {
                         if c.one {
                             return (-1, false, false);
                         }
-                        let all = chosen.len() < c.room && forms.iter().any(|f| !chosen.contains(f));
+                        let all = chosen.len() < c.room && forms.iter().any(|f| !chosen.contains(f) && draft.allows(&c.fact, f.0));
                         let none = forms.iter().any(|f| chosen.contains(f));
                         sets.push((c.fact.clone(), forms));
                         (sets.len() as i32 - 1, all, none)
@@ -302,15 +304,25 @@ impl Tab for Navi {
 
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         match id {
+            // (A navi the ruleset the player plays by doesn't allow is refused: docs/design/app-ui.md §2.68.)
             "navi" => {
                 let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
+                let navi_fact = Navi::navi_fact(draft.content());
+                if navi != draft.side().navi(draft.content()) && navi_fact.first().is_some_and(|f| !draft.allows(f, navi.0)) {
+                    return shell.sound.play(crate::sound::Cue::Refused);
+                }
                 if draft.choose_navi(navi) {
                     self.show(shell, draft);
                 }
             }
-            // (A form of the selector: chosen, or in a list taken out.)
+            // (A form of the selector: chosen, or in a list taken out. One the ruleset doesn't allow is refused where it
+            // would go in; one the build has can be taken out.)
             "form" => {
                 let Some((fact, form)) = self.forms.get(index.max(0) as usize).cloned() else { return };
+                let has = draft.kit.builds.chosen_forms(draft.content(), draft.side(), &fact).contains(&form);
+                if !has && !draft.allows(&fact, form.0) {
+                    return shell.sound.play(crate::sound::Cue::Refused);
+                }
                 if draft.choose_form(&fact, form) {
                     shell.sound.play(crate::sound::Cue::Pick);
                     self.show(shell, draft);
@@ -319,10 +331,19 @@ impl Tab for Navi {
                 }
             }
             // (ALL or NONE of a version's group of forms, or of a whole list: as many put in as the list has room for,
-            // in order, and the rest refused; or all taken out. One change.)
+            // in order, and the rest refused, those the ruleset doesn't allow among them; or all taken out. One
+            // change.)
             "forms-all" | "forms-none" => {
-                let Some((fact, forms)) = self.sets.get(index.max(0) as usize).cloned() else { return };
-                let (changed, left) = draft.choose_forms(&fact, &forms, id == "forms-all");
+                let Some((fact, mut forms)) = self.sets.get(index.max(0) as usize).cloned() else { return };
+                let all = id == "forms-all";
+                let mut banned = 0;
+                if all {
+                    let has = draft.kit.builds.chosen_forms(draft.content(), draft.side(), &fact);
+                    banned = forms.iter().filter(|f| !has.contains(f) && !draft.allows(&fact, f.0)).count();
+                    forms.retain(|f| draft.allows(&fact, f.0));
+                }
+                let (changed, left) = draft.choose_forms(&fact, &forms, all);
+                let left = left + banned;
                 let cue = if changed && left == 0 { crate::sound::Cue::Pick } else { crate::sound::Cue::Refused };
                 shell.sound.play(cue);
                 if changed {

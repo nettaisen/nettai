@@ -17,7 +17,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote } from "../../widgets.slint";
+import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 import { RemoveTarget } from "folder.slint";
 
@@ -54,8 +54,8 @@ export enum ProgramState {
     placed,
     held,
     out,
-    // Not placed, and the ruleset the player plays by doesn't allow it: a quiet note, as it can still be placed
-    // (docs/design/app-ui.md §2.59, §2.68).
+    // Not placed, and the ruleset the player plays by doesn't allow it: it can't be taken, its row dimmed and saying so
+    // in the error red (docs/design/app-ui.md §2.59, §2.68).
     not-allowed,
 }
 
@@ -127,6 +127,7 @@ export global NavicustView {
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
         { key: "←→", pad: PadButton.move, text: @tr("Color") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -135,12 +136,14 @@ export global NavicustView {
         { key: "←→", pad: PadButton.move, text: @tr("Color") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: self.in-list ? @tr("Take") : @tr("Pick up") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -148,6 +151,7 @@ export global NavicustView {
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -155,6 +159,7 @@ export global NavicustView {
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick up") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -179,6 +184,10 @@ export global NavicustView {
     in property <ProgramDetail> detail;
     out property <string> status: @tr("{n} program placed" | "{n} programs placed" % self.placed);
     in property <int> placed;
+    // CLEAR would take something off (a piece placed, or one picked up off the board), and its question
+    // (docs/design/app-ui.md §2.71).
+    in property <bool> clearable;
+    out property <string> clear-question: @tr("Clear the NaviCust?");
     // The game's data draw a board (else the list alone: a game whose board isn't one the tab reads).
     in property <bool> board;
     // The grid as drawn: `columns` cells a side (7, or 5 where the game's boards are its middle), row by row.
@@ -427,9 +436,9 @@ component DropFlash inherits Rectangle {
 }
 
 // A program of the list: its color chosen (a plus part's crossed), its name, where that color's part is (placed, how
-// many copies where more than one), and at the row's right edge the colors to choose from where it has more than one
-// (the one chosen outlined, one the ruleset doesn't allow ringed in the error red): the user, "the error message
-// should go to the left of the color". The state's column ends where the list's most colors start, so the states line
+// many copies where more than one; or, dimmed, that the ruleset doesn't allow it, in the error red), and at the row's
+// right edge the colors to choose from where it has more than one (the one chosen outlined): the user, "the error
+// message should go to the left of the color". The state's column ends where the list's most colors start, so the states line
 // up whatever each row's colors.
 component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
@@ -458,6 +467,7 @@ component ProgramRowView inherits Rectangle {
         width: 14px;
         height: 14px;
         background: root.program.tone;
+        opacity: root.program.state == ProgramState.not-allowed ? 0.5 : 1;
         Cross {
             visible: root.program.plus;
             bar: 1.5px;
@@ -471,7 +481,7 @@ component ProgramRowView inherits Rectangle {
         // (Up to its state's words, where it has any: a name is cut only where they meet.)
         width: max(0px, root.state-right - (state.text == "" ? 0px : min(110px, state.preferred-width) + 8px) - 32px);
         text: root.program.name;
-        color: root.program.flagged ? Theme.bad : Theme.text;
+        color: root.program.flagged ? Theme.bad : root.program.state == ProgramState.not-allowed ? Theme.dim : Theme.text;
         font-family: Theme.body;
         font-size: root.big ? 14px : 12px;
         font-weight: 600;
@@ -500,7 +510,7 @@ component ProgramRowView inherits Rectangle {
         x: root.state-right - self.width;
         width: 110px;
         text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : root.program.state == ProgramState.not-allowed ? @tr("Not allowed") : "";
-        color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
+        color: root.program.state == ProgramState.held ? Theme.cursor : root.program.state == ProgramState.not-allowed ? Theme.bad : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         horizontal-alignment: right;
@@ -1128,7 +1138,7 @@ export component NavicustTab inherits Rectangle {
     programs-title := Label {
         x: root.list-x;
         y: root.list-y;
-        width: root.list-width;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
         height: 20px;
         text: @tr("PROGRAMS");
         color: NavicustView.in-list ? Theme.cursor : Theme.muted;
@@ -1137,9 +1147,20 @@ export component NavicustTab inherits Rectangle {
     ProblemNote {
         x: root.list-x + min(programs-title.width, programs-title.preferred-width) + 16px;
         y: root.list-y + (20px - self.height) / 2;
-        width: max(0px, root.list-x + root.list-width - 8px - self.x);
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
         visible: Theme.phone;
         text: NavicustView.problems;
+    }
+
+    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // placed program taken off the board (the board kept), asked first; dim where none is. At the right end of the
+    // programs' title's line, its word where the list's rows end.
+    clear := WordButton {
+        x: root.list-x + root.list-width + self.pad - self.width;
+        y: root.list-y + 2px;
+        nav: "clear";
+        text: @tr("CLEAR");
+        enabled: NavicustView.clearable;
     }
 
     list := ListView {

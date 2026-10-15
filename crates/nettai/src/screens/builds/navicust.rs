@@ -29,7 +29,9 @@
 //! the program under the cursor: its shape and, where it compresses into another, its compressed shape, its name in
 //! its color, the game's words for it and the colors it comes in; while the pointer is on a row of the list (and no
 //! piece is in hand), that row's (docs/design/app-ui.md §2.64). The piece in hand is outlined white where it could be
-//! put down, red where it can't.
+//! put down, red where it can't. **CLEAR** at the right end of the programs' title's line (or **X**, with no piece in
+//! hand; docs/design/app-ui.md §2.71) takes every placed program off the board, as one change, asked first
+//! (`editor::ask_clear`).
 //!
 //! **The mouse carries a piece by clicks** (the view's pointer areas, told here as `Tab::choose`'s "drag"; the user:
 //! "dragging navicust piece is confusing because usually it's click to drop"). A click on a placed piece picks it up,
@@ -312,6 +314,7 @@ impl Navicust {
         view.set_board_columns(high(|c| c.0) - low(|c| c.0) + 1);
         view.set_board_rows(high(|c| c.1) - low(|c| c.1) + 1);
         view.set_placed(parts.len() as i32);
+        view.set_clearable(!self.empty(draft));
         // The piece in hand, by its cells from the cell it is held by.
         match &self.held {
             Some(h) => {
@@ -391,8 +394,9 @@ impl Navicust {
                         Some(h) if h.piece == piece => ProgramState::Held,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
-                        // (One the ruleset the player plays by doesn't allow says so quietly where it isn't placed: it
-                        // can be, and is then the build's problem, its name in the error red.)
+                        // (One the ruleset the player plays by doesn't allow says so in the error red where it isn't
+                        // placed, the row dimmed: it can't be taken. A build that has it placed all the same says
+                        // where, its name in the error red.)
                         _ if !allowed => ProgramState::NotAllowed,
                         _ => ProgramState::None,
                     };
@@ -477,6 +481,13 @@ impl Navicust {
     /// compresses every copy of a program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some((piece, color)) = self.row(draft, row) else { return };
+        // (One the ruleset the player plays by holds back isn't taken: the strip says so, docs/design/app-ui.md §2.68.)
+        if !draft.allows(grid::PIECES_FIELD, piece) {
+            self.notice = Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string());
+            shell.sound.play(Cue::Refused);
+            self.show_board(shell, draft);
+            return;
+        }
         let Some(Some(d)) = &self.data else { return };
         let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
         // (Compressed, where it compresses (the user: "navicust pieces should default to compressed in the
@@ -555,6 +566,24 @@ impl Navicust {
             }
             _ => shell.sound.play(Cue::Refused),
         }
+    }
+
+    /// Nothing is placed, nor picked up off the board: CLEAR has nothing to take off.
+    fn empty(&self, draft: &Draft) -> bool {
+        grid::placed(draft.content(), draft.side()).is_empty() && self.held.as_ref().is_none_or(|h| h.origin.is_none())
+    }
+
+    /// CLEAR, answered: every placed program taken off the board (the board kept), and the piece in hand dropped, as
+    /// one change. The cursor goes to the list.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        let changed = self.edit(draft, Edit::Clear);
+        self.notice = None;
+        self.over_list = false;
+        if changed {
+            shell.sound.play(Cue::Back);
+        }
+        self.changed(shell, draft);
+        shell.nav.focus("programs", 0);
     }
 
     /// The last copy on the board of row `row`'s program, in its color.
@@ -878,6 +907,10 @@ impl Tab for Navicust {
                 let at = self.cell_at(index);
                 self.press(shell, draft, at);
             }
+            "clear" => {
+                let question = shell.ui().global::<NavicustView>().get_clear_question();
+                editor::ask_clear(shell, question, self.empty(draft));
+            }
             _ => {}
         }
     }
@@ -925,6 +958,10 @@ impl Tab for Navicust {
     /// program under the cursor (the focus is the last thing moved, until the pointer goes onto another row).
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         self.hovered = None;
+        // (Why a program wasn't taken is said until the cursor moves.)
+        if self.held.is_none() && self.notice.take().is_some() {
+            self.show_board(shell, draft);
+        }
         let in_list = id == "programs";
         if in_list != self.in_list {
             self.in_list = in_list;
@@ -940,9 +977,13 @@ impl Tab for Navicust {
         self.show_strip(shell, draft);
     }
 
-    /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it.
+    /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it. With none, X is CLEAR.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
         if self.held.is_none() {
+            if editor::clear_key(shell, key) {
+                self.activate(shell, draft, "clear", 0);
+                return true;
+            }
             return false;
         }
         match (key.code, shell.bindings.of_key(key.code)) {
@@ -996,6 +1037,12 @@ impl Tab for Navicust {
         }
         self.put_away(shell, draft);
         true
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }
 
