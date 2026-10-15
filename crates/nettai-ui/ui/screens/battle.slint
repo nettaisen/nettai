@@ -554,16 +554,6 @@ export component BattleScreen inherits Rectangle {
         ground: transparent;
     }
 
-    // (While the link panel is open a click anywhere else on the battle closes it.)
-    TouchArea {
-        x: 0;
-        y: 0;
-        visible: Shell.connection-shown && Shell.connection-open;
-        clicked => {
-            Shell.connection-open = false;
-        }
-    }
-
     corner := Connection {
         x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
         y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;

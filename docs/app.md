@@ -697,8 +697,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
 - **The link panel** (`LinkPanel` in battle.slint; its figures `battle/link.rs`): a click on the connection's
-  corner opens it over the corner (`Shell.connection-open`, which the corner toggles and a click elsewhere on the
-  battle clears; the app clears it as a battle starts and ends). The figures are the player's `net_status`; the
+  corner opens it over the corner (`Shell.connection-open`, which the corner alone toggles: "telemetry window should not
+  dismiss on click outside, it should only be dismissed if the ping indicator is clicked again"; the app clears it
+  as a battle starts and ends). The figures are the player's `net_status`; the
   app samples its round trip ten times a second for the whole match and, while the panel is open, sets
   `Shell.link` at each sample: the figures, and the last ten seconds as two paths (the graph's line and the area
   under it).
