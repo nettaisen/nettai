@@ -18,7 +18,7 @@
 //! navi's stats, the forms a navi's list may hold) it asks by the role.
 //! One field it names by the field's own name, `patch_cards`
 //! ([`PATCH_CARDS`]): the list a game with patch cards keeps a side's in,
-//! which a match played with patch cards off leaves empty
+//! which a build's NaviCust overview leaves empty
 //! ([`Side::without_patch_cards`]). What a card is, and what it does, are
 //! the game's.
 //!
@@ -616,9 +616,9 @@ impl Side {
     }
 
     /// The side without its patch cards: the list of them its rules' setup
-    /// takes ([`PATCH_CARDS`]) empty, everything else as it is. A match
-    /// played with patch cards off plays each side so. A side of a game
-    /// whose rules take no patch cards is as it is.
+    /// takes ([`PATCH_CARDS`]) empty, everything else as it is (what a
+    /// build's NaviCust does alone). A side of a game whose rules take no
+    /// patch cards is as it is.
     pub fn without_patch_cards(&self, content: &Content) -> Side {
         let mut bare = self.clone();
         if field(content, PATCH_CARDS).is_some_and(|f| matches!(f.ty, FieldType::List(..) | FieldType::Array(..))) {
