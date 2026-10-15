@@ -244,20 +244,15 @@ impl Folder {
         });
         // (Why the last mark wasn't made is the focused entry's.)
         let notice = if hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
-        let (chip, slot) = match hovered.or(self.described) {
-            Some(Described::Slot(i)) => (folder.chips.get(i).copied().flatten(), Some(i)),
-            Some(Described::Row(r)) => (self.rows.get(r).copied(), None),
-            None => (None, None),
+        let chip = match hovered.or(self.described) {
+            Some(Described::Slot(i)) => folder.chips.get(i).copied().flatten(),
+            Some(Described::Row(r)) => self.rows.get(r).copied(),
+            None => None,
         };
         let detail = draft.with_words(shell, |words| {
-            // What the rules have against the entry; of an empty one, against the folder's size.
-            let problem = slot.and_then(|i| {
-                let of_entry = self.held.as_ref().and_then(|v| v.entry_problems(content, &folder, i).first().map(|p| words.problem(p)));
-                let of_entry = of_entry.or_else(|| chip.and_then(|c| draft.mixing(Registry::Chip, &Item::of(c.id.0))).map(|p| words.problem(p)));
-                let of_size = || draft.checked.problems.iter().find(|p| matches!(p.what, Wrong::FolderSize(_))).map(|p| words.problem(p));
-                of_entry.or_else(|| chip.is_none().then(of_size).flatten())
-            });
-            let problem = notice.or(problem).unwrap_or_default();
+            // (Why the last mark asked of the entry wasn't made: the strip's refusal. What the rules have against the
+            // entry is the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            let problem = notice.unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
             let record = content.chip(chip.id);
             let held = folder.chips().filter(|c| *c == chip).count() as i32;

@@ -331,7 +331,10 @@ impl PatchCards {
                     row.refused = !is_in;
                     row.bad = true;
                 } else if is_in {
+                    // (Its note says no reason: the build's card a problem is about is marked in the build's list, its
+                    // name in the error red, docs/design/app-ui.md §2.66.)
                     row.note = shell.ui().global::<BuildWords>().invoke_installed();
+                    row.bad = false;
                 } else if slots.is_some() || other {
                 } else if let Some(refusal) = budget.and_then(|b| b.refusal(content, draft.side(), h)) {
                     row.note = draft.with_words(shell, |w| w.entry_refusal(refusal)).into();
@@ -379,22 +382,10 @@ impl PatchCards {
             None => (None, None),
         };
         let detail = draft.with_words(shell, |words| {
-            // Why it can't go in (the library's), or what the rules have against it (the build's: its place in the
-            // list's records, from 1, as the rules count).
+            // Why a library's card can't go in, the strip's refusal. (What the rules have against a card of the
+            // build's is the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
             let problem = match (&card, at) {
                 (Some((h, _)), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), *h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
-                (Some(c), Some(i)) => {
-                    let place = installed[..i].iter().flatten().count() + 1;
-                    // (Else the build's mix of versions where the card's variant is among what it mixes in: a
-                    // problem of no one entry, as the folder's strip says it of a Giga chip.)
-                    draft
-                        .checked
-                        .problems
-                        .iter()
-                        .find(|p| p.field.as_deref() == Some(FIELD) && p.entry == Some(place))
-                        .or_else(|| draft.mixing(Registry::Entry, &item(c)))
-                        .map(|p| words.problem(p))
-                }
                 _ => None,
             };
             let problem = notice.or(problem).unwrap_or_default();

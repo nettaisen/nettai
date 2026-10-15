@@ -415,6 +415,12 @@ pub fn edit(d: &GridData, c: &Content, side: &mut Side, held: &mut Option<Held>,
             return side.set_fact(c, SIZE_FIELD, &[Fact::Value(nettai_content_api::Value::Int(b as i64))]).is_ok();
         }
     }
+    set_placed(c, side, &parts)
+}
+
+/// Make `parts` the side's list of pieces, as they are (nothing checks where they are: the rules say what is wrong
+/// with them). Whether it took them.
+pub fn set_placed(c: &Content, side: &mut Side, parts: &[Placed]) -> bool {
     let list = Stated::List(parts.iter().map(record_of).collect());
     let values = match fact_of(&list) {
         Fact::List(items) => items,

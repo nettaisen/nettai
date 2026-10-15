@@ -11,13 +11,13 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
 // The chip under the cursor, for the strip: its picture, its name and code, the game's description of it, its
-// element's icon, its facts (its class, its MB, its attack, how many the folder holds), and what the folder's
-// rules have against it where it is in the folder.
+// element's icon, its facts (its class, its MB, its attack, how many the folder holds), and why a mark asked of it
+// wasn't made (`problem`: a refusal; the build's problems are the header's, docs/design/app-ui.md §2.66).
 export struct ChipDetail {
     there: bool,
     art: image,
@@ -617,21 +617,15 @@ export component FolderTab inherits Rectangle {
         }
     }
 
-    // (What the folder's rules have against the entry under the cursor.)
-    Text {
+    // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal.)
+    Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
-        height: 20px;
         visible: !Theme.phone;
         text: FolderView.detail.problem;
-        color: Theme.bad;
-        font-family: Theme.body;
-        font-size: 12px;
-        font-weight: 500;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {

@@ -236,19 +236,20 @@ impl AutoBattle {
         });
         // (Why the last chip wasn't put in is the focused place's.)
         let notice = if hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
-        let (chip, place) = match hovered.or(self.described) {
-            Some(Described::Place(i)) => (match data.places.get(i) {
+        let chip = match hovered.or(self.described) {
+            Some(Described::Place(i)) => match data.places.get(i) {
                 Some(Entry::Chip(c)) => Some(*c),
                 _ => None,
-            }, Some(i)),
-            Some(Described::Row(r)) => (self.rows.get(r).copied(), None),
-            None => (None, None),
+            },
+            Some(Described::Row(r)) => self.rows.get(r).copied(),
+            None => None,
         };
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {
-            let problem = place.and_then(|i| draft.checked.problems.iter().find(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(i)).map(|p| words.problem(p)));
-            let problem = notice.or(problem).unwrap_or_default();
+            // (Why what was asked of the place wasn't done: the strip's refusal. What the rules have against the place is
+            // the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            let problem = notice.unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
             let record = content.chip(chip);
             let dark = record.flags.has(nettai_battle::content::ChipFlags::DARK);
