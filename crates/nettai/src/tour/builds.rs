@@ -293,10 +293,15 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     add(SETTLE, focus("slot", 13));
     add(SETTLE, letter(KeyCode::KeyR, "r"));
     shot(add, "builds-folder-mark-refused", Pair::None);
-    // A chip taken out: the folder's header says what is wrong, and the tab is marked.
+    // A chip taken out: the strip of the empty entry says what is wrong, the chips' count is in the error red, and the
+    // tab is marked. Then the entry of the other version's Giga chip put in before: its strip says the mix the ruleset
+    // has against it (docs/design/app-ui.md §2.66).
     add(SETTLE, focus("slot", 4));
     add(SETTLE, act(Action::Delete));
     shot(add, "builds-folder-short", Pair::None);
+    add(90, on_tab(EditorTab::Folder, "Folder"));
+    add(SETTLE, focus("slot", 13));
+    shot(add, "builds-folder-mixed", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
     // The sort's list.
     add(SETTLE, library());
@@ -328,8 +333,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 /// version made beside the walk's; on the Navi tab the selector's first form focused (`builds-forms-focus`: EXE6's
 /// Cybeast, EXE4's and EXE5's first soul; the build ready); the other version's first form of the selector's first
 /// fact chosen (`builds-forms-mixed`: EXE6's other Cybeast, an EXE4 or EXE5 build's other version's soul too; under
-/// the Standard ruleset, one version per build, the build mixes the versions, which is said by the ruleset's select);
-/// and the first version's again (`builds-forms-back`: ready). A step after each picture checks the focus and the build's state are as it says.
+/// the Standard ruleset, one version per build, the build mixes the versions, which the strip says of the form);
+/// and the first version's again (`builds-forms-back`: ready); then the selector's third form focused
+/// (`builds-forms-third`: EXE6's first Cross, with its description). A step after each picture checks the focus and the
+/// build's state are as it says.
 fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     const NAME: &str = "Switched";
     add(
@@ -361,6 +368,9 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-forms-back", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
     add(0, state("builds-forms-back", true, true));
+    add(SETTLE, focus("form", 2));
+    shot(add, "builds-forms-third", Pair::None);
+    add(90, on_tab(EditorTab::Navi, "Navi"));
 }
 
 /// Choose on the selector the first form of its first fact that is the other version's (`other`), or, of a fact of

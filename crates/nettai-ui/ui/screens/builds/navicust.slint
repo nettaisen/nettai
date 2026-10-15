@@ -225,8 +225,9 @@ export global NavicustView {
     // The cursor is in the list: its title is lit, the board's isn't.
     in property <bool> in-list;
     // What the game's rules have against the NaviCust (a placed program, or the whole), the first and "+n more": said on
-    // the list's title's line (docs/design/app-ui.md §2.66), a program a problem is about its name red; and what they
-    // have against the program the strip describes, at its top right where nothing was refused.
+    // a phone's list's title's line (docs/design/app-ui.md §2.66); and what the build's problems have against the program
+    // the strip describes, the ruleset's among them, at its top right where nothing was refused. A program a problem is
+    // about has its name red.
     in property <string> problems;
     in property <string> fault;
     // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
@@ -1122,7 +1123,7 @@ export component NavicustTab inherits Rectangle {
         text: NavicustView.notice;
     }
 
-    // ---- The programs: an open list, what is wrong with the NaviCust on its title's line.
+    // ---- The programs: an open list, what is wrong with the NaviCust on a phone's title's line.
     programs-title := Label {
         x: root.list-x;
         y: root.list-y;
@@ -1136,6 +1137,7 @@ export component NavicustTab inherits Rectangle {
         x: root.list-x + min(programs-title.width, programs-title.preferred-width) + 16px;
         y: root.list-y + (20px - self.height) / 2;
         width: max(0px, root.list-x + root.list-width - 8px - self.x);
+        visible: Theme.phone;
         text: NavicustView.problems;
     }
 

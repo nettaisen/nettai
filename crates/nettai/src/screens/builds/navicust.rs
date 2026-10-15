@@ -51,9 +51,10 @@ use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
 use nettai_battle::input::keys;
-use nettai_content_api::EntryHandle;
+use nettai_content_api::{EntryHandle, Registry};
 use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
+use nettai_match::ruleset::Item;
 use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
@@ -341,16 +342,30 @@ impl Navicust {
         view.set_notice(self.notice.clone().unwrap_or_default().into());
     }
 
-    /// The game's rules' problems about a placed copy of program `piece`, by its place in the list, from 1 as they count.
+    /// The build's problems about a placed copy of program `piece` (its place in the list, from 0), the ruleset's among
+    /// them (a program it holds back, or of another version's than the build's under one version per build).
     fn problems<'d>(draft: &'d Draft, piece: u16) -> Vec<&'d nettai_match::check::Problem> {
         let parts = grid::placed(draft.content(), draft.side());
-        let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i + 1).collect();
-        draft.checked.problems.iter().filter(|p| !p.what.of_ruleset() && p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e))).collect()
+        let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i).collect();
+        let mixed = draft.mixing(Registry::Entry, &Item::of(piece)).filter(|_| !at.is_empty());
+        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e)));
+        own.chain(mixed).collect()
+    }
+
+    /// The NaviCust's problems about no placed program (its board's size, a NaviCust on a navi that compiles none, a
+    /// fact of it a build made by hand states wrong): every program's strip says them after its own
+    /// (docs/design/app-ui.md §2.66).
+    fn unplaced<'d>(&self, draft: &'d Draft) -> Vec<&'d nettai_match::check::Problem> {
+        let placed = grid::placed(draft.content(), draft.side()).len();
+        let on_a_piece = |p: &nettai_match::check::Problem| {
+            matches!(p.what, nettai_match::Wrong::Mixed { .. }) || (p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| e < placed))
+        };
+        draft.pane_problems(&self.fields(draft.content()), false).into_iter().filter(|p| !on_a_piece(p)).collect()
     }
 
     /// The list: each program in its color chosen, its colors, where that color's part is and how many copies of it
-    /// are placed, its name red where the rules have something against a placed copy; over it, what the game's rules
-    /// have against the NaviCust, a placed program or the whole (docs/design/app-ui.md §2.66).
+    /// are placed, its name red where the build's problems are about a placed copy; over it, on a phone, what the game's
+    /// rules have against the NaviCust, a placed program or the whole (docs/design/app-ui.md §2.66).
     fn show_list(&self, shell: &Shell, draft: &Draft) {
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
@@ -368,9 +383,8 @@ impl Navicust {
                     let allowed = draft.allows(grid::PIECES_FIELD, piece);
                     let colors: Vec<ProgramColor> = d.colors.get(&piece).into_iter().flatten().map(|c| ProgramColor { tone: tone(Some(c)) }).collect();
                     let copies: Vec<&grid::Placed> = parts.iter().filter(|p| p.piece == piece && p.color == name).collect();
-                    // (The game's rules have something against a placed copy of it, or the ruleset holds back a program
-                    // the build has.)
-                    let flagged = (!allowed && parts.iter().any(|p| p.piece == piece)) || !Navicust::problems(draft, piece).is_empty();
+                    // (The build's problems are about a placed copy of it: the game's rules', or the ruleset holds it back.)
+                    let flagged = !Navicust::problems(draft, piece).is_empty();
                     // (A copy over the ring is out of bounds: no error, the rules bug it.)
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
@@ -783,8 +797,9 @@ impl Navicust {
 
     /// The strip across the top: the program under the cursor (while the pointer is on a row of the list and no piece
     /// is in hand, that row's), by its shape and compressed shape, its name in its color, the game's description of it
-    /// and the colors it comes in, and at its top right where nothing was refused what the game's rules have against a
-    /// placed copy of it (as the list's title's line says it too: docs/design/app-ui.md §2.66); and the footer's hints
+    /// and the colors it comes in, and at its top right where nothing was refused what the build's problems have against
+    /// a placed copy of it, the ruleset's among them, then what is against the NaviCust and about no placed program
+    /// (docs/design/app-ui.md §2.66); and the footer's hints
     /// for a placed piece (or a placed program's row) under the cursor.
     fn show_strip(&self, shell: &Shell, draft: &Draft) {
         let (program, on_piece) = self.under_cursor(shell, draft);
@@ -794,8 +809,8 @@ impl Navicust {
         let view = ui.global::<NavicustView>();
         view.set_on_piece(on_piece);
         view.set_on_colors(self.held.is_none() && self.focused_row(shell).and_then(|r| self.rows.get(r)).is_some_and(|&p| self.colors(p) > 1));
-        let fault = program.map(|(piece, _)| draft.line(shell, Navicust::problems(draft, piece))).unwrap_or_default();
-        view.set_fault(Draft::unsaid(fault, &draft.pane_line(shell, &self.fields(draft.content()), false)).into());
+        let fault = program.map(|(piece, _)| draft.line(shell, Navicust::problems(draft, piece).into_iter().chain(self.unplaced(draft)))).unwrap_or_default();
+        view.set_fault(fault.into());
         let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
         let detail = draft.with_words(shell, |words| {
             let colors = d.colors.get(&piece).cloned().unwrap_or_default();

@@ -2,13 +2,15 @@
 //! ([`Draft`]), the tabs ([`Tab`]), and the frame that hosts them ([`Editor`]: the header's name, the tab bar, the
 //! ruleset's select, the tab shown).
 //!
-//! **A build's problems are said inline, in one system** (docs/design/app-ui.md §2.66): each marks the tabs its facts
-//! are (`Editor::tabs_of`: the tab bar's marks). The game's rules' are said in the header of the pane of the part of
-//! the build they are about, on its title's line ([`Draft::pane_line`]), whether about an item of it or the whole; the
-//! ruleset's (`Wrong::of_ruleset`: a banned item, a mix of versions) by the ruleset's select, on every tab
-//! ([`Draft::ruleset_problems`]). Several in one place are the first and "· +n more" (`Words::summary`). An item of the
-//! build a problem is about has its name in the error red on its row, and nothing more there; a tab's strip says why
-//! what was asked of its item wasn't done (a refusal), or else what the game's rules have against it ([`Draft::line`]).
+//! **A build's problems are said where they are, in one system** (docs/design/app-ui.md §2.66): each marks the tabs its
+//! facts are (`Editor::tabs_of`: the tab bar's marks). Each is said at the top right of the strip (a tab's info box) of
+//! every item it is about, the ruleset's (`Wrong::of_ruleset`: a banned item, a mix of versions) with the game's rules'
+//! ([`Draft::line`]): an item's own, and one of a whole part of the build in each item it counts (the folder's size in
+//! an empty entry, a class's limit in each chip of the class), whose count is in the error red too; one of a part that
+//! is about no item and has no count, in every item of its pane ([`Draft::pane_problems`]). An item a problem is about
+//! has its name in the error red on its row, and nothing more there; a strip says first why what was asked of its item
+//! wasn't done (a refusal). A phone has no strip: its panes' headers say the game's rules' problems with their part
+//! ([`Draft::pane_line`]). Several in one place are the first and "· +n more" (`Words::summary`).
 //!
 //! **A tab is one Slint file and one module here** (`ui/screens/builds/<tab>.slint`, `<tab>.rs`), as a screen
 //! is one of each for the shell. Its Slint has its view (a global its module sets: its key hints and its
@@ -161,36 +163,39 @@ impl Draft {
         self.checked.problems.iter().find(|p| matches!(&p.what, Wrong::Mixed { items, .. } if items.iter().any(|(r, i)| *r == registry && i == item)))
     }
 
-    /// The ruleset's problems with the build (`Wrong::of_ruleset`: an item it doesn't allow, a mix of versions under
-    /// one version per build), in the order it found them: said by its select (docs/design/app-ui.md §2.66), the
-    /// items they are about marked where they are, with no words.
-    pub fn ruleset_problems(&self) -> Vec<&Problem> {
-        self.checked.problems.iter().filter(|p| p.what.of_ruleset()).collect()
-    }
-
-    /// What a tab's pane says in its header (docs/design/app-ui.md §2.66), as `Words::summary` says them: the game's
-    /// rules' problems with the build's facts `fields` (the tab's: `Tab::fields`), those about an item of it (its name
-    /// red on its row) with the rest; the first tab's (`first`) also those of no fact a tab has. Empty: none.
-    pub fn pane_line(&self, shell: &Shell, fields: &[String], first: bool) -> String {
+    /// The problems with the build's facts `fields` (a tab's: `Tab::fields`), the ruleset's among them; the first tab's
+    /// (`first`) also those of no fact a tab has.
+    pub fn pane_problems(&self, fields: &[String], first: bool) -> Vec<&Problem> {
         let content = self.content();
-        let said = self.checked.problems.iter().filter(|p| {
-            let facts = self.facts_of(p);
-            facts.iter().any(|f| fields.contains(f)) || (first && facts.iter().all(|f| tab_of(content, f).is_none()))
-        });
-        self.line(shell, said)
+        self.checked
+            .problems
+            .iter()
+            .filter(|p| {
+                let facts = self.facts_of(p);
+                facts.iter().any(|f| fields.contains(f)) || (first && facts.iter().all(|f| tab_of(content, f).is_none()))
+            })
+            .collect()
     }
 
-    /// The game's rules' problems among `problems`, as `Words::summary` says them (the ruleset's are its select's to
-    /// say): a part of the build's in its pane's header, or the item a strip describes in its top right. Empty: none.
-    pub fn line<'p>(&self, shell: &Shell, problems: impl IntoIterator<Item = &'p Problem>) -> String {
-        let said: Vec<&Problem> = problems.into_iter().filter(|p| !p.what.of_ruleset()).collect();
+    /// What a phone's pane says in its header, where it has no strip (docs/design/app-ui.md §2.66), as `Words::summary`
+    /// says them: the game's rules' problems among [`Draft::pane_problems`], those about an item of it (its name red on
+    /// its row) with the rest; the ruleset's are said by its items' red names alone (the user: "panel header doesn't
+    /// need to show ruleset violation"). Empty: none.
+    pub fn pane_line(&self, shell: &Shell, fields: &[String], first: bool) -> String {
+        let said: Vec<&Problem> = self.pane_problems(fields, first).into_iter().filter(|p| !p.what.of_ruleset()).collect();
         self.with_words(shell, |words| words.summary(said)).unwrap_or_default()
     }
 
-    /// `fault` (what a strip says against the item it describes), unless its pane's header `pane` already says it
-    /// first: the same sentence isn't said twice on one screen (docs/design/app-ui.md §2.66).
-    pub fn unsaid(fault: String, pane: &str) -> String {
-        if !fault.is_empty() && pane.starts_with(fault.as_str()) { String::new() } else { fault }
+    /// What a strip says at its top right against the item it describes, where nothing was refused (docs/design/app-ui.md
+    /// §2.66): `problems`, the ruleset's among them, each once, as `Words::summary` says them. Empty: none.
+    pub fn line<'p>(&self, shell: &Shell, problems: impl IntoIterator<Item = &'p Problem>) -> String {
+        let mut said: Vec<&Problem> = Vec::new();
+        for p in problems {
+            if !said.iter().any(|s| std::ptr::eq(*s, p)) {
+                said.push(p);
+            }
+        }
+        self.with_words(shell, |words| words.summary(said)).unwrap_or_default()
     }
 
     /// The catalogs' and the game's words, in the language shown.
@@ -478,7 +483,7 @@ impl Editor {
 
     /// The tabs problem `problem` marks in the bar, in its order: its facts' tabs (a mix of versions', each tab that
     /// shows something of it: the Navi tab for a form, the Folder for a Giga chip); one of facts no tab says are its
-    /// own, or of none, the first, whose pane says it (`Draft::pane_line`; docs/design/app-ui.md §2.66).
+    /// own, or of none, the first, whose strip says it of the navi (`Draft::pane_problems`; docs/design/app-ui.md §2.66).
     fn tabs_of(&self, problem: &Problem) -> Vec<usize> {
         let content = self.draft.content();
         let fields: Vec<Vec<String>> = self.tabs.iter().map(|t| t.fields(content)).collect();
@@ -489,8 +494,7 @@ impl Editor {
         }
     }
 
-    /// The header and the tab bar: the build's name, the tabs, each marked where it has problems, and the ruleset with
-    /// what it has against the build.
+    /// The header and the tab bar: the build's name, the tabs, each marked where it has problems, and the ruleset.
     fn show_frame(&self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<BuildsView>();
@@ -509,8 +513,6 @@ impl Editor {
             .collect();
         let ruleset = self.draft.with_words(shell, |words| self.draft.ruleset.as_ref().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
-        let against = self.draft.with_words(shell, |words| words.summary(self.draft.ruleset_problems()));
-        view.set_ruleset_problems(against.unwrap_or_default().into());
         view.set_name(self.draft.build.name.as_str().into());
         view.set_tabs(ModelRc::new(VecModel::from(tabs)));
         view.set_tab(self.at as i32);

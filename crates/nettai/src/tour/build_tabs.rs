@@ -980,7 +980,7 @@ fn overlap(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 
 /// A build of the game's first version given the other version's variant of a card that has one per version
 /// (Bass-Cross MegaMan's, EXE5's teams'), which a ruleset of one version per build refuses (the Masters class preset's):
-/// on the Patch cards tab the card's name in the error red and the ruleset's select saying the mix
+/// on the Patch cards tab the card's name in the error red and the strip of the card focused saying the mix
 /// (`tabs-cards-mixed`). (A build of its own.)
 fn card_mix(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     const NAME: &str = "Card mix";
@@ -1013,10 +1013,10 @@ fn card_mix(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 }
 
 /// The library's `nth` card of a version's variant (a row with a version's mark) put in, unless the build mixes the
-/// versions already (the ruleset's select says what it has against the build).
+/// versions already (a card of the build's has its name in the error red).
 fn put_variant(nth: usize) -> Step {
     Box::new(move |ui, app, tour| {
-        if tour.passing.get() || (nth > 0 && !ui.global::<BuildsView>().get_ruleset_problems().is_empty()) {
+        if tour.passing.get() || (nth > 0 && ui.global::<nettai_ui::PatchCardsView>().get_installed().iter().any(|r| r.bad)) {
             return;
         }
         let rows = ui.global::<nettai_ui::PatchCardsView>().get_rows();

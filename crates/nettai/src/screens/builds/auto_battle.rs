@@ -100,14 +100,20 @@ impl AutoBattle {
         }
     }
 
-    /// The rules' problems with place `place` (from 0).
+    /// The build's problems with place `place` (from 0), the ruleset's among them.
     fn problems(draft: &Draft, place: usize) -> impl Iterator<Item = &nettai_match::check::Problem> {
         draft.checked.problems.iter().filter(move |p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(place))
     }
 
+    /// The data's problems about no place of it (a fact of it a build made by hand states wrong): every place's strip
+    /// says them after its own (docs/design/app-ui.md §2.66).
+    fn unplaced<'d>(draft: &'d Draft, places: usize) -> Vec<&'d nettai_match::check::Problem> {
+        draft.pane_problems(&[auto::PLACES_FIELD.to_string()], false).into_iter().filter(|p| p.field.as_deref() != Some(auto::PLACES_FIELD) || p.entry.is_none_or(|e| e >= places)).collect()
+    }
+
     /// The places under their lists' titles, two columns of them (on a phone one), each place where it is, marked
-    /// where the rules have something against it; in the header, what the game's rules have against the data, a place
-    /// of it or the whole (docs/design/app-ui.md §2.66).
+    /// where the build's problems are about it; in a phone's header, what the game's rules have against the data, a
+    /// place of it or the whole (docs/design/app-ui.md §2.66).
     fn show_places(&mut self, shell: &Shell, draft: &Draft) {
         let columns = if shell.scale.phone { 1 } else { 2 };
         let kit = draft.kit.clone();
@@ -247,18 +253,16 @@ impl AutoBattle {
             Some(Described::Row(r)) => self.rows.get(r).copied(),
             None => None,
         };
-        // (What the game's rules have against the place described, as its pane's header says it too: said where nothing
-        // was refused, docs/design/app-ui.md §2.66.)
+        // (What the build's problems have against the place described, then what is against the data and about no place:
+        // said where nothing was refused, docs/design/app-ui.md §2.66.)
         let fault = match hovered.or(self.described) {
-            Some(Described::Place(i)) => draft.line(shell, AutoBattle::problems(draft, i)),
+            Some(Described::Place(i)) => draft.line(shell, AutoBattle::problems(draft, i).chain(AutoBattle::unplaced(draft, data.places.len()))),
             _ => String::new(),
         };
-        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &[auto::PLACES_FIELD.to_string()], false));
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {
-            // (Why what was asked of the place wasn't done: the strip's refusal. What the rules have against the place is
-            // its pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // (Why what was asked of the place wasn't done: the strip's refusal, said before what is against it.)
             let problem = notice.unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let record = content.chip(chip);
