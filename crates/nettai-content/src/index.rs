@@ -36,21 +36,38 @@ use nettai_content_api::{PackManifest, packs};
 
 use crate::report::Report;
 
-/// This repository's content directory.
-const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
+/// This repository's content directory, for a build run from the repository.
+/// A packaged build (built with `NETTAI_PACKAGED` set: packaging/) has none:
+/// it reads only the content it ships, and names no folder of the machine it
+/// was built on.
+const REPOSITORY: Option<&str> = match option_env!("NETTAI_PACKAGED") {
+    Some(_) => None,
+    None => Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content")),
+};
 
 /// The engine's declarations' directory in a content directory.
 pub const DECLARATIONS: &str = packs::ENGINE;
 
-/// The content directory: `$NETTAI_CONTENT`, else a content/ beside the
-/// running program (where a packaged app ships it), else this repository's
-/// content/ (a build run from the repository).
+/// The content directory: `$NETTAI_CONTENT`, else the content/ a packaged
+/// app ships (beside the running program; in a macOS app bundle, its
+/// Resources), else this repository's content/ (a build run from the
+/// repository). A packaged build that finds none names the one beside the
+/// program, so that the error says where it looked.
 pub fn content() -> PathBuf {
     if let Some(dir) = std::env::var_os("NETTAI_CONTENT") {
         return PathBuf::from(dir);
     }
-    let beside = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join("content")));
-    beside.filter(|dir| dir.is_dir()).unwrap_or_else(|| PathBuf::from(CONTENT))
+    let program = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.to_path_buf()));
+    let beside = program.as_ref().map(|dir| dir.join("content"));
+    // (nettai.app/Contents/MacOS/nettai ships its content in nettai.app/Contents/Resources/content.)
+    let bundled = program.as_ref().filter(|_| cfg!(target_os = "macos")).and_then(|dir| Some(dir.parent()?.join("Resources/content")));
+    if let Some(dir) = [&beside, &bundled].into_iter().flatten().find(|dir| dir.is_dir()) {
+        return dir.clone();
+    }
+    match REPOSITORY {
+        Some(dir) => PathBuf::from(dir),
+        None => beside.unwrap_or_else(|| PathBuf::from("content")),
+    }
 }
 
 /// The engine's API declarations for content (content/nettai).
