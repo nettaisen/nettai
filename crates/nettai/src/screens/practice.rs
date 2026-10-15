@@ -626,8 +626,8 @@ fn restart(shell: &mut Shell) -> bool {
 
 /// The session's set again from its start on the arena and with the dummy's build it has now (the Arena row
 /// changed, or the Dummy's build: a round's field and its navis are set as it starts), as RESTART starts it
-/// over, the menu staying open: the battle behind it steps through the round's opening and waits in the game's
-/// own pause, or on its custom screen, as ever under the menu. (What a new build or arena draws that the battle
+/// over, the menu staying open: the battle behind it steps through the round's opening and is held as its
+/// custom screen begins, as ever under the menu (`battle/game_pause.rs`). (What a new build or arena draws that the battle
 /// wasn't made ready for is loaded as it is first drawn.)
 fn restart_set(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
@@ -1207,8 +1207,9 @@ impl Screen for Practice {
             // actually just use the game's pause behavior: music continues, stuff still animates. but don't
             // show the PAUSED banner in the middle of the screen"): its HUD's pause display is left out. A session
             // of Practice's own opens with the menu over it (the user: "when practice mode starts you should also
-            // bring up the menu immediately"): the battle steps through its opening under it and waits, as under
-            // the menu ever.
+            // bring up the menu immediately"), before its first tick, as Esc there would: the battle steps through
+            // its opening under it and is held as its custom screen begins, nothing of it changing until RESUME
+            // ("pause at start doesn't seem to stop custom hp drain": `battle/game_pause.rs`).
             BattleEvent::Started => {
                 if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
                     b.pause_in_game();

@@ -2377,7 +2377,13 @@ renderer, the enhanced mode's text renderer and the battle's audio:
   the game's own pause was (§2). The battle didn't pause; the host opens
   its menu and, outside real time, calls `set_paused(true)` until it
   closes. (A paused player runs no ticks and makes no sound; the picture
-  stays the last tick's.)
+  stays the last tick's.) `set_held(true)` holds the battle where it
+  stands but keeps its sound: a tick due steps nothing of the battle (no
+  state, no cue, no new picture, `ticks()` the same) and plays a tick's
+  worth of the audio driver, the music and what was sounding going on
+  (nettai's practice menu, where the game's own pause can't hold the
+  battle: its custom screen, a dimming, a round's end). False in real
+  time.
 - `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
   are live play's: what the other navi does, read and changed while the
   set runs (§2); none and false for a battle whose other navi is

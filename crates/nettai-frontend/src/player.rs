@@ -138,6 +138,8 @@ pub struct Player {
     /// The sound of the ticks run since the host last took it.
     samples: Vec<[f32; 2]>,
     paused: bool,
+    /// Held where it stands, its sound going on ([`Player::set_held`]).
+    held: bool,
     speed: usize,
     clock: Clock,
     /// What had been made before the player was: this thread's runtimes
@@ -186,6 +188,7 @@ impl Player {
             audio,
             samples: Vec::new(),
             paused: false,
+            held: false,
             speed: NORMAL,
             clock: Clock::new(),
             before,
@@ -270,6 +273,17 @@ impl Player {
     /// frame, which may wait.) False, with [`Player::stopped`] saying why,
     /// when the battle can't go on.
     pub fn tick(&mut self, buttons: u16) -> bool {
+        if self.held && self.session.stopped.is_none() {
+            // (Held: the sound of a tick, and nothing of the battle's.)
+            if let Some(audio) = &mut self.audio {
+                audio.tick(&mut self.samples);
+                if self.samples.len() > MOST_SAMPLES {
+                    let over = self.samples.len() - MOST_SAMPLES;
+                    self.samples.drain(..over);
+                }
+            }
+            return true;
+        }
         if !self.session.step(buttons) {
             return false;
         }
@@ -313,6 +327,23 @@ impl Player {
 
     pub fn paused(&self) -> bool {
         self.paused
+    }
+
+    /// Hold the battle where it stands, or let it go on (a host's menu over a battle, where the game's own pause
+    /// can't hold it: its custom screen, a dimming, a round's end). Held, a tick ([`Player::tick`],
+    /// [`Player::advance`]) steps nothing of the battle (no state, no cue, no new picture: its ticks don't
+    /// count), but its sound goes on: the music and what was sounding play on as the ticks due would have them,
+    /// no cue new. Unlike a pause, the clock runs, for the sound's sake. False (and nothing changes) in real time.
+    pub fn set_held(&mut self, held: bool) -> bool {
+        if self.real_time() {
+            return false;
+        }
+        self.held = held;
+        true
+    }
+
+    pub fn held(&self) -> bool {
+        self.held
     }
 
     /// The next slower of [`SPEEDS`]. False in real time.

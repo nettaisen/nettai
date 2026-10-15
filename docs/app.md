@@ -2580,26 +2580,36 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
     the game does at its player's START, the fight going on where it was. RESTART and EXIT work from the pause
     as from anywhere.
-  - Where START wouldn't pause the game, the battle steps on under the menu with no buttons: neither the
-    player's (the menu has them) nor the dummy's (`Player::hold_opponent`: its presses are made as ever, and
-    reach nothing), so its music and what the game moves go on there too.
-    - On its custom screen, which waits for the player, nothing changes but time: the cursor and the chips
-      chosen stay as they were on both sides, and it waits there until the menu closes (no pause is entered).
-    - Through a dimming, or a round's start or end, it steps on until START would pause the fight
-      (`Battle::pausable`), and then into the game's pause; a round's end goes on to the next round's custom
-      screen and waits there. How long: in sets of random play on each game's content (four sets of 40,000
-      ticks each), a dimming lasted 11.1 s at most in EXE6, 15.7 in EXE5 and 8.8 in EXE4, and a stretch of the
-      fight that was neither (a round's start banner, a round's end to the next custom screen) 9.1 s. In that
-      time the player could do nothing but answer a dimming with a counter cut-in, where their chips have one:
-      the fight is held for both sides, and a round's end and start take no buttons.
+  - Where START wouldn't pause the game (its custom screen, a dimming, a round's end, a round's start banner),
+    the battle is held where it stands under the menu (`Player::set_held`): no tick steps it, so nothing of it
+    changes, neither side's custom screen (its cursor, the chips chosen, its HP bug's drain), a dimming's chip
+    or a round's end, and the dummy's presses reach nothing (`Player::hold_opponent`). Its sound goes on: the
+    audio driver plays on a tick's worth each tick due, the music and what was sounding going on, with no cue
+    new; the picture stays as it was. The menu closed, it goes on from the tick it was held at. (The user:
+    "pause at start doesn't seem to stop custom hp drain". Until then the battle stepped on there with no
+    buttons, waiting on its custom screen and stepping through a dimming or a round's end into the game's
+    pause; on the custom screen the NaviCust's custom HP bug drained HP all the while, as it does while that
+    screen is up.) Pressing START in those places in the game does nothing; nettai's menu holds the battle all
+    the same.
+    - In a round's opening (its fade in from white, its navis' arrival and its banner), the battle steps on
+      under the menu with no buttons, and is held as its custom screen begins, before the screen comes in
+      (`Phase::Opening`): at a round's first tick the field is black and no music plays yet, and the menu
+      over a practice battle as it starts (Practice's own sessions, and an arena or the Dummy's build changed
+      under it, which starts the set over) is there to set the dummy and the stage up with them in view.
+      Nothing in the opening is the fight's: no gauge fills, no HP changes. In EXE6 the opening is 136 ticks
+      (2.3 s).
+    - Mid-fight, the player's START (or the menu's) is the game's pause, above, and what the game's pause
+      holds is held: in EXE6 and EXE5 the NaviCust's HP bug waits while paused (`HpDrainRule::
+      stops_while_paused`); EXE4's drains through its pause, as the game's does.
   - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
     pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a practice battle's
     renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
   - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
     as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
     digest after 4,000 ticks of each game before and after; nettai-frontend's
-    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause` and
-    `opened_where_the_game_wouldnt_pause_it_steps_on`).
+    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`,
+    `opened_where_the_game_wouldnt_pause_it_is_held`, `a_practice_opened_with_its_menu_is_held_from_its_custom_screen`
+    and `under_the_menu_mid_fight_the_hp_bug_waits`).
   - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
     ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
     EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before
@@ -2646,7 +2656,7 @@ Arena changes the field, which a round sets as it starts, so a change starts the
 the session's match is put on it, its set made again from the session's seed, and the live driver plays that
 set from its next start (the library's `LivePlayer::play_set`) as the battle starts over (`Battle::restart`,
 RESTART's). The menu stays open, and the battle behind it steps through the round's opening with no buttons
-and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+and is held as its custom screen begins, as above (nettai's
 `under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
 
 Background changes the background alone (the user: "changing the background shouldn't change the entire
