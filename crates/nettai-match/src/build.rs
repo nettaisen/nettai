@@ -488,6 +488,36 @@ impl Builds {
         side.set_fact(content, fact, &values).is_ok()
     }
 
+    /// Put forms `forms` of `side`'s list `fact` of forms all in (`on`), or
+    /// take them all out (the Navi tab's ALL and NONE, of a version's group
+    /// or of the whole list): in, in the order given where the list has
+    /// room, kept in the battle's order. Whether it changed, and how many of
+    /// them were left out for want of room. A fact of one form (the Cybeast)
+    /// is no list: nothing.
+    pub fn choose_forms(&self, content: &Content, side: &mut Side, fact: &str, forms: &[FormHandle], on: bool) -> (bool, usize) {
+        let Some(choice) = self.form_choices(content, side).into_iter().find(|c| c.fact == fact && !c.one) else { return (false, 0) };
+        let before = self.chosen_forms(content, side, fact);
+        let mut chosen = before.clone();
+        let mut left = 0;
+        for &f in forms.iter().filter(|f| choice.forms.contains(f)) {
+            let at = chosen.iter().position(|&c| c == f);
+            match (on, at) {
+                (true, None) if chosen.len() < choice.room => chosen.push(f),
+                (true, None) => left += 1,
+                (false, Some(at)) => {
+                    chosen.remove(at);
+                }
+                _ => {}
+            }
+        }
+        chosen.sort_by_key(|f| choice.forms.iter().position(|x| x == f).unwrap_or(usize::MAX));
+        if chosen == before {
+            return (false, left);
+        }
+        let values: Vec<Fact> = chosen.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        (side.set_fact(content, fact, &values).is_ok(), left)
+    }
+
     /// Make `side`'s forms group `group`'s: each fact of forms it chooses
     /// ([`Builds::form_choices`]) the forms it offers of the group's version
     /// (EXE6's version's Cybeast and five Crosses, EXE4's and EXE5's six

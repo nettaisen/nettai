@@ -405,6 +405,30 @@ mod tests {
         assert_eq!(build, gregar, "back as it was");
     }
 
+    /// The Navi tab's ALL and NONE: a version's Crosses taken out at once, the other's put in up to the Cross
+    /// window's five, the rest refused for want of room; nothing done is no change.
+    #[test]
+    fn all_and_none_of_a_version() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let mut side = builds.new_build(&content, "gregar").unwrap();
+        let version_of = |f: &nettai_content_api::FormHandle| content.defs.forms[f.index()].record.version.clone();
+        let crosses = builds.form_choices(&content, &side).into_iter().find(|c| c.fact == "crosses").unwrap();
+        let of = |v: &str| -> Vec<_> { crosses.forms.iter().copied().filter(|f| version_of(f).as_deref() == Some(v)).collect() };
+        let (gregar, falzar) = (of("gregar"), of("falzar"));
+        assert_eq!(builds.chosen_forms(&content, &side, "crosses"), gregar);
+        assert_eq!(builds.choose_forms(&content, &mut side, "crosses", &falzar, true), (false, 5), "no room");
+        assert_eq!(builds.choose_forms(&content, &mut side, "crosses", &gregar, false), (true, 0));
+        assert!(builds.chosen_forms(&content, &side, "crosses").is_empty());
+        assert_eq!(builds.choose_forms(&content, &mut side, "crosses", &gregar, false), (false, 0));
+        assert!(builds.choose_form(&content, &mut side, "crosses", gregar[4]));
+        assert_eq!(builds.choose_forms(&content, &mut side, "crosses", &falzar, true), (true, 1));
+        // (In the battle's order: Gregar's, then Falzar's first four.)
+        assert_eq!(builds.chosen_forms(&content, &side, "crosses"), [&gregar[4..], &falzar[..4]].concat());
+        let cybeast = builds.chosen_forms(&content, &side, "cybeast");
+        assert_eq!(builds.choose_forms(&content, &mut side, "cybeast", &cybeast, false), (false, 0), "one form is no list");
+    }
+
     #[test]
     fn new_names_and_paths() {
         assert_eq!(new_name("Falzar", &["falzar".into(), "Falzar 2".into()]), "Falzar 3");
