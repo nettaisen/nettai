@@ -34,9 +34,9 @@ const TOP: usize = 40;
 /// The seed an arena's round is made from: its pictures are the same each time.
 const SEED: u32 = 7;
 
-/// The most ticks an arena's round is played for its picture: as its opening ends (the field faded in, the
-/// two navis on it), as the entry's preview is (`super::OPENING`).
-const OPENING: u32 = super::OPENING;
+/// The most ticks an arena's round is played for its picture: it is taken as the round's opening ends (the field
+/// faded in, the two navis on it, nothing yet over them), and no later than this.
+const OPENING: u32 = 300;
 
 /// A background by its game and its name in that game's pack: the pool's are the same in every game's list.
 type BackgroundKey = (String, String);

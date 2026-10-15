@@ -155,7 +155,8 @@ Each is settled unless the user changes it.
     build in Builds' editor; Back there (Esc, the pad's B, the header's ‹ PRACTICE) comes straight back to
     Practice, which shows the build as the edit left it. CREATE A BUILD opens Builds' list the same way, Back
     going back to Practice. (§6, docs/app.md §8 and §15.) (Since §2.50 Practice is entered from PLAY with a
-    build, and CREATE A BUILD is gone.)
+    build, and CREATE A BUILD is gone. Since §2.57 there is no entry: the practice menu's EDIT opens the dummy's
+    build.)
 29. **The battle's music is the player's pick** (2026-10-13): "you should also allow for selectable battle themes
     (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5
     vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)". Any theme plays in
@@ -175,7 +176,8 @@ Each is settled unless the user changes it.
     the pick in place of the title music while it shows (once the row has stayed on it a moment, so a run of steps
     starts one song), the title music again for "Game's own" and elsewhere (since §2.40 "Game's own" plays the
     game's own battle music there); and "also you should be able to change the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
-    battle's music at once.
+    battle's music at once. (Since §2.57 there is no entry: the pick is the practice menu's, and the battle's music
+    starts with the battle.)
 30. **A build is 構築 in Japanese** (2026-10-13): "build should be called "構築" in japanese". Every Japanese string
     that said ビルド says 構築 (構築, 新規構築, 構築を編集, 相手の構築, この構築は使えません, and the rest).
 31. **The backgrounds are one pool** (2026-10-13): "is it possible to use e.g. exe4 backgrounds in exe5? as in if
@@ -203,8 +205,8 @@ Each is settled unless the user changes it.
     and "you should disable the custom gauge in the arena preview". The preview on Practice's entry is the
     session's first round run into its fight with nobody pressing anything: its background animates and scrolls,
     its panels animate and its field does what it does (wind blows, roads and volcanoes run), the navis stand,
-    and it never shows the custom screen, a banner or a round's end. The HUD has no custom gauge. (§6, docs/app.md
-    §15.)
+    and it never shows the custom screen, a banner or a round's end. The HUD has no custom gauge. (Gone with the
+    entry: §2.57.) (§6, docs/app.md §15.)
 36. **A scrolling page is gone through before what is under it** (2026-10-13): "it's impossible to scroll the
     practice menu without selecting the button on the bottom first, it should scroll the entire length before
     moving to buttons underneath". And the practice beside a waiting invite has no Music row: "in the waiting for
@@ -268,7 +270,8 @@ Each is settled unless the user changes it.
     entry, its sessions and back. The entry plays the music its session will start (the game's own battle music,
     not the title music, or the theme picked), and the battle takes that song over where it is: no fade, no
     restart through the cards and the battle's start. The practice menu's buttons are RESUME, RESTART and EXIT
-    (CHANGE BUILDS renamed, doing what it did: the entry again; 終了 in Japanese); QUIT TO MENU is gone. (§6,
+    (CHANGE BUILDS renamed, doing what it did: the entry again; 終了 in Japanese); QUIT TO MENU is gone. (Since
+    §2.57 there is no entry: EXIT goes back to PLAY, and the battle's music starts with the battle.) (§6,
     docs/app.md §1, "The battle's music", and §15.)
 
 41. **A build's version can be switched** (2026-10-14): "you should allow switching a save between game versions
@@ -306,7 +309,8 @@ Each is settled unless the user changes it.
     are in the practice screen": on the entry and in the practice menu, Background and Music are the build rows'
     select (Enter, a click or a tap opens the list, open at the value chosen and scrolling where it is long, a
     sheet on a phone; choosing closes it; Left and Right still step it); Arena stays a pager, as asked before
-    (its places are numbers). (Arena became a dropdown of pictures, and Background with it: §2.56.) (§6, docs/app.md §1, "The battle's music", and §15.)
+    (its places are numbers). (Arena became a dropdown of pictures, and Background with it: §2.56. The music played
+    on at the entry went with it: §2.57.) (§6, docs/app.md §1, "The battle's music", and §15.)
 
 44. **The practice menu's controls are the entry's size; the version tag opens a list** (2026-10-14). Asked why
     the dropdowns differ (the entry's 40 tall in 56-tall framed rows, the practice menu's 32 tall in 44-tall bare
@@ -330,7 +334,7 @@ Each is settled unless the user changes it.
     Battle plays the same song in every game), it goes on where it is, with no restart and no crossfade, and the
     session's battle of the new game takes it over at START as before. Where it differs (Game's own: BN6's own,
     then BN5's), it crossfades as before. The pick stays what the player set across the change (§2.40: it is the
-    visit's). (docs/app.md §1, "The battle's music", and §15.)
+    visit's). (Gone with the entry: §2.57.) (docs/app.md §1, "The battle's music", and §15.)
 47. **Practice's Arena lists each arena once** (2026-10-14): "don't show duplicate arenas in the practice mode
     selector, just show the first of any duplicates". The link battle stages that differ only in the order their
     actor lists place in (which side is updated first) are one arena, shown as the first of them; the grouping is
@@ -415,7 +419,8 @@ Each is settled unless the user changes it.
       Music, START PRACTICE, EDIT); the entry's Back is ‹ PLAY, coming back with the same build chosen. With no
       build it says why in the reserved line, as CREATE INVITE does. The practice menu, EXIT back to the entry and
       the music carried over are as they were. Practice's CREATE A BUILD (§2.28) is gone: the entry is entered with
-      a build, and one that finds no build of the game goes back to PLAY.
+      a build, and one that finds no build of the game goes back to PLAY. (Since §2.57 PRACTICE goes straight
+      into a practice battle, and HOST is CREATE INVITE.)
     - *The main menu* is PLAY, REPLAYS, SETTINGS and EXIT, large, as a fighting game's title screen has them
       (SETTINGS came up from the small row, and EXIT with it), and About alone small under the line (since §2.53
       in Settings, and the line gone with it). The words are
@@ -451,7 +456,7 @@ Each is settled unless the user changes it.
       that no row of buttons sits under it, CREATE INVITE in the normal look while there is no build (+ NEW BUILD
       is the one main action then), and the save's build named for its file whatever the dialog's name field
       says.
-    (§6, docs/app.md §4.)
+    (The band became three tiles, PRACTICE, HOST and JOIN: §2.57.) (§6, docs/app.md §4.)
 53. **About is in Settings** (2026-10-14). The user: "the about screen should be moved as a subscreen of the
     settings dialog and removed from the main menu".
     - *Settings' About group,* the last in the list at its left as before, has under Version and Your files a row
@@ -564,7 +569,47 @@ Each is settled unless the user changes it.
       Music) and OPTIONS (Your HP, Dummy's HP, Custom gauge, Chip draw, Input display); in Japanese ダミー,
       ステージ, オプション. No group is named for one of its rows, and none has one row (the input display's
       DISPLAY group is folded into OPTIONS). The entry has no groups.
-    (§6 Practice, docs/app.md §15.)
+    (Since §2.57 there is no entry: the grids are the practice menu's, and DUMMY starts with Dummy's build and its
+    EDIT.) (§6 Practice, docs/app.md §15.)
+57. **PLAY is a build and three ways to play it; PRACTICE goes straight into battle** (2026-10-14). The user, of
+    §2.52's screen: "i feel like the practice button is in a weird place", then "hmm what about more holistically
+    what do you think it should look like. the whole play/build/practice flow". Of the flow put to them (pick a
+    build, then what to do with it): "sure do that. maybe there's too much explanatory text in your mockup but
+    sure". And then: "when practice mode starts you should also bring up the menu immediately".
+    - *PLAY.* The builds (+ NEW BUILD, the list) and the chosen build's overview with EDIT and ⋯ in its header
+      stay as §2.52 had them; under them are three tiles of one size, the three ways to play the chosen build:
+      PRACTICE, HOST and JOIN. HOST is what CREATE INVITE was (an invite, its code from the server, the wait).
+      JOIN holds the code's field and its go button, and under its word "Direct connect…", a small link to the
+      direct connection's dialog: DIRECT CONNECT is no longer a button of its own, and the ONLINE label is gone.
+      The tiles carry their words alone (the mockup's lines under them, "Fight a dummy" and "Get a code to
+      share", were too much); the reserved line stays under them, for no build or a bad code.
+    - *HOST is the main action* (chosen here, the user saying no more): an online match is what PLAY is for, and
+      HOST is the way that starts one by itself (JOIN needs a code someone sent, PRACTICE is alone); Enter on a
+      build's row already went there. With no build, + NEW BUILD is the one main action, as before.
+    - *PRACTICE goes straight into battle.* Practice's entry is gone: PRACTICE starts a practice battle at once,
+      the build chosen in PLAY the player's, the dummy on the same build, Arena Random, Background Random, Music
+      the game's own and every option of the menu at its default; and the practice menu is open over the battle
+      as it starts, in the game's pause, the focus on RESUME, so the dummy and the stage can be set before
+      fighting. RESUME starts the fight. The practice battle beside a waiting invite starts as before, with no
+      menu, and RESTART doesn't open it.
+    - *Everything is changed from the menu.* Its DUMMY group starts with Dummy's build, a dropdown of the game's
+      builds that can be played, the player's own at first; a change starts the set over with the dummy on it,
+      as an arena's does. Under it, EDIT opens the dummy's build in Builds' editor (‹ PRACTICE), and Back there
+      comes back to the practice battle with the menu open (chosen here: the edit changed a build the battle was
+      made of, so the battle starts again on the visit's choices with the build as the edit left it, as a change
+      of the Dummy's build starts the set over). The menu's EXIT goes back to PLAY, the build still chosen.
+    - *A visit* (§2.40, §2.54) is the time from PRACTICE until PLAY is shown again, the trip to the editor
+      included.
+    - *The music* starts with the battle as any battle's does: nothing plays the battle's music before it, and
+      nothing carries it back to a screen after.
+    - *What it supersedes:* Practice's entry and all of it: its rows, the two builds facing each other, START
+      PRACTICE; §2.28's EDIT beside each build's select and Back to Practice; §2.29's entry playing the pick;
+      §2.35's moving arena preview; §2.40's entry music played through into the battle, and EXIT back to the
+      entry; §2.43's music played on back at the entry; §2.45's same song kept across a change of game on the
+      entry; §2.50's PRACTICE opening the entry; §2.52's band (PRACTICE, the ONLINE group with CREATE INVITE, the
+      code and JOIN, DIRECT CONNECT as text); and the entry's half of §2.56's one widget. The Arena and
+      Background grids and their pictures (§2.56) stay, in the practice menu.
+    (§6 Play and Practice, docs/app.md §1, §4 and §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -761,15 +806,16 @@ Each is in the mockups under the same name.
 - Left: PLAY, REPLAYS, SETTINGS and EXIT (§2.50), each the word alone, 48 (`Theme.menu-word`, tracked 0.075em), in
   a column 416 wide, rows 96 tall 8 apart, centered in the body's height, about as tall as the reel beside
   them; nothing under them (About is in Settings, §2.53). The longest word the languages have (the
-  pseudo-locale's REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is in
-  Play's row and the builds are Play's (§2.50).
+  pseudo-locale's REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is
+  a tile of Play's and the builds are Play's (§2.50, §2.57).
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
 
 ### Play
-The builds and the way into a match or practice, on one screen (§2.50), in three zones read in order (§2.52):
-the builds, the chosen build, what is done with it. In the body's units (1216 by 644 at the reference window):
+The builds and the ways to play one, on one screen (§2.50), built around "pick a build, then what to do with it"
+(§2.57): the builds, the chosen build, and three tiles for what is done with it, read in that order. In the body's
+units (1216 by 644 at the reference window):
 - **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
   the game has no build), and under it from 52 the player's builds of the game, an open list down to 540 (rows
   52: the name, then "MegaMan · ready" or what is wrong, and the version's tag at the row's right: tried after
@@ -786,36 +832,44 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
   build whose file doesn't read has an empty frame, EDIT unavailable and DELETE alone in its menu; with no
   build, neither EDIT nor ⋯ is there.
-- **What is done with it**, the band under both: PRACTICE at 578 under the list (the left column's edge), and
-  ONLINE, a label (11) at 556 over the right column's group at 578: CREATE INVITE (the main action), 12 on the
-  code field (208) and JOIN 8 beside it, and DIRECT CONNECT at the far right, a text button (no fill, no line,
-  its words muted until the pointer or the cursor is on it). Under them at 626 the reserved line (18 tall, the
-  body's width, 12). Pressed with no build, each says there "Make a build first." (§7). With a build that can't
-  be used, CREATE INVITE, JOIN and DIRECT CONNECT say why there, and PRACTICE opens the entry, which says it in
-  its own line. While there is no build CREATE INVITE has the normal look, so that one main action shows.
+- **The three ways to play it** (§2.57), tiles of one size across the body's foot: at 552, 72 tall, each a third
+  of the body's width less the gaps (394.7), 16 apart, their corner cut as a panel's (12), each word at its left
+  in the display face at 20, alone (no line under it: "maybe there's too much explanatory text in your mockup"):
+  - **PRACTICE**, a tile that is a button (the raised look): straight into a practice battle with the chosen
+    build (Practice, below).
+  - **HOST**, a tile that is a button, the main action's amber while there is a build (the main action: an online
+    match is what PLAY is for, and HOST is the way that starts one by itself; with no build it has the normal
+    look and + NEW BUILD is the one main action): an invite, its code from the server, and the wait (what CREATE
+    INVITE was).
+  - **JOIN**, a tile that is a frame of the raised look, not itself a button: the word where the others' are, and
+    under it "Direct connect…", a link (body text at 12, muted until the pointer or the cursor is on it) that
+    opens the direct connection's dialog; at its right the code's field (40 tall, its width what the tile leaves) and its go
+    button (40 by 40, an arrow), 16 in. The word and the link share a column as wide as the wider, at most 150.
+  Under them at 626 the reserved line (18 tall, the body's width, 12). Pressed with no build, each says there
+  "Make a build first." (§7); with a build that can't be played, PRACTICE, HOST and JOIN say why there.
 - **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
   FROM A SAVE FILE…, which closes it and opens the system's file dialog for a save; the build is made of the save
   and named for its file (Builds, below).
 - **EDIT** opens the chosen build in Builds' editor, whose Back (‹ PLAY) comes back with the build still chosen.
-- **PRACTICE** opens Practice's entry with Your build the build chosen here; its Back (‹ PLAY) comes back with it
-  still chosen.
-- The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to CREATE
-  INVITE. The arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to
-  PRACTICE, Right from + NEW BUILD to EDIT, Right from any row of the list to EDIT (past the overview, which
-  takes no focus; to ⋯ where EDIT can't be used), Left from EDIT back to the list, Down from EDIT and ⋯ into
-  the band. Tab goes zone by zone: + NEW BUILD, the list, EDIT, ⋯, PRACTICE, CREATE INVITE, the code, JOIN,
-  DIRECT CONNECT. A control that isn't there is passed by.
+- **PRACTICE** starts a practice battle with the chosen build as the player's; the practice menu's EXIT comes
+  back with it still chosen.
+- The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to HOST. The
+  arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to PRACTICE, Right
+  from + NEW BUILD to EDIT, Right from any row of the list to EDIT (past the overview, which takes no focus; to ⋯
+  where EDIT can't be used), Left from EDIT back to the list, Down from EDIT and ⋯ to the tiles; along the tiles
+  Right goes PRACTICE, HOST, the code, its go button. Tab goes in reading order: + NEW BUILD, the list, EDIT, ⋯,
+  PRACTICE, HOST, the code, the go button, Direct connect…. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
   in a box, 72 tall (Left and Right step it, Enter opens the builds as a sheet); at 136 EDIT and ⋯ (40) beside it;
-  at 200 PRACTICE; at 264 ONLINE, then CREATE INVITE (52 tall), the code and JOIN, DIRECT CONNECT and the reserved
-  line (two lines, 40) one under the other, 12 apart. The overview isn't shown there (the editor shows the build
-  whole).
+  from 200 the three tiles one under another, each the column's width and 72 tall, 12 apart (PRACTICE at 200, HOST
+  at 284, JOIN at 368); at 452 the reserved line (two lines, 40). The overview isn't shown there (the editor shows
+  the build whole).
 - **Direct connection** is a dialog: Host (this machine's address with Copy, and HOST; "Send this address to your
   opponent.") and Join (an address field and CONNECT).
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
   a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
   opponent"; "The lobby opens when they join."; CANCEL. Keys go to the battle; Esc or Start opens the practice menu
-  with Copy invite code and Cancel invite added.
+  with Copy invite code and Cancel invite added. (It starts as it always did, with no menu over it: §2.57.)
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
   10, 2 at first: §2.34), Patch cards
@@ -828,60 +882,55 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Practice
-- **Reached from Play** (§2.50): its PRACTICE opens the entry with Your build the build chosen there; the entry's
-  Back (‹ PLAY) goes back to Play with that build still chosen. An entry that finds no build of the game (another
-  game chosen in its header, say) goes back to Play.
-- **Entry:** five rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
-  also add arena + background select?": the game's arenas and the background pool, every game's battle
-  backgrounds (§2.31), Random first, a Random background drawn from the pool; "the arena names are meaningless
-  so you should just have like a pager widget that goes through them. background should also be a arrow button
-  pager thing": the arena by its place, "12 / 47"; the background by its game and its name, "BN4
-  ACDC Area". Both were pagers, then Background a dropdown (§2.43), and since §2.56 both are the same pictured
-  select as the practice menu's: the chosen one's picture before its name, Enter, a click or a tap opening a grid
-  of every choice's picture, Left and Right still stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), Your build remembered (PLAY's) and the Dummy's build, Arena, Background and Music for one visit (§2.40: each visit
-  starts on your own build, Random, Random and the game's own; the practice menu's rows too, §2.54), and START PRACTICE; beside them the two builds facing each other
-  and the arena. One line: "Set up the dummy from the menu once you're in."
-- **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
-  music or the theme picked (once the row rests on it a moment), in place of the title music; START PRACTICE
-  doesn't fade it, and it plays on through the cards into the battle with no restart; and back at the entry
-  (EXIT) the battle's song plays on there the same way (§2.43), from its beginning only where the battle's had
-  stopped or the result's played.
-- **The arena preview moves** (§2.35): the round the session opens on, run into its fight with nothing pressed
-  while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
-  volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
-  round's end. A change of arena or background shows the new one from its start. The screenshot pass holds it
-  as the round's opening ends.
-- **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
-  from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
-  row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor
-  comes straight back to the entry, the two builds still chosen and shown as the edit left them (one that can't
-  be used now says why in the reserved line). A build gone from the files is missed as any is: the first that can
-  be used is chosen.
-- **The practice menu** (Start or Esc in a practice battle), its focus on RESUME each time it opens ("focus should
-  always default to the resume button"): a panel on the left, the battle behind it in the game's own pause
-  ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
-  in view. Rows are a label and a value between arrows, changed at once by Left and Right; bare rows under group
-  titles, their steppers and dropdowns the entry's size, 40 tall (36 on a phone), in one column so they line up,
-  the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
-  - Dummy: Action (stands still, moves around, fights, a second pad), with its Level (easy, normal, hard: how well
-    it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
-    recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
-    it's confusing to navigate. you should make it clearer and less redundant".
-  - Stage: Arena and Background (as on the entry: the pictured select and its grid, §2.56; an arena changed starts the set over on it, a background
-    changed only redraws: "changing the background shouldn't change the entire arena either in trianing
-    mode"), Music (the entry's pick, §2.29, a dropdown as on the entry: the battle's music switched at once). A group of their own: "you
-    should split the practice menu settings into arena and battle so the arena settings aren't mixed together";
-    named STAGE since §2.56, "having an "arena" field under "arena" is so weird".
+- **No screen of its own** (§2.57): PLAY's PRACTICE goes straight into a practice battle, the two cards and the
+  jack-in first as for any battle. It starts on the defaults: the player's build PLAY's chosen one, the dummy on
+  the same build, Arena Random, Background Random, Music the game's own, and the menu's options at their
+  defaults (Stands still, Normal, every option normal, the input display off). The practice menu is open over
+  the battle as it starts, in the game's pause, the focus on RESUME (the user: "when practice mode starts you
+  should also bring up the menu immediately"), so the dummy and the stage can be set before fighting; RESUME
+  starts the fight. (The practice battle beside a waiting invite starts as before, with no menu over it, and
+  RESTART doesn't open it.)
+- **A visit** (§2.40, §2.54) is the time from PRACTICE until PLAY is shown again, the trip to the editor
+  included: what the menu sets lasts through it, and each visit starts on the defaults. Nothing is remembered
+  between visits.
+- **The battle's music** starts with the battle, as any battle's: the music picked (§2.29), the game's own at
+  first. Nothing plays it before the battle, and PLAY's title music comes back after.
+- **The practice menu** (Start or Esc in a practice battle, and open as one of Practice's own starts), its focus
+  on RESUME each time it opens ("focus should always default to the resume button"): a panel on the left, the
+  battle behind it in the game's own pause ("music continues, stuff still animates"), without the game's PAUSED
+  banner, with the dummy in view. Rows are a label and a value between arrows, changed at once by Left and
+  Right; bare rows under group titles, their steppers, dropdowns and EDIT 40 tall (36 on a phone), in one column
+  so they line up, the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
+  - Dummy: Dummy's build (§2.57: a dropdown of the game's builds that can be played, the player's own at first;
+    a change starts the set over with the dummy on it, the menu staying open, as an arena's does), and under it
+    EDIT, a button in the controls' column that opens the dummy's build in Builds' editor (its Back ‹ PRACTICE);
+    Back there comes back to the practice battle, started again on the visit's choices with the build as the
+    edit left it, the menu open over it. Then Action (stands still, moves around, fights, a second pad), with its
+    Level (easy, normal, hard: how well it fights) under it while it is Fights. Its custom screen goes with its
+    Action. No recording: "get rid of recording support, it's so complicated". The user: "the dummy menu is so
+    confusing and has so many redundant options and it's confusing to navigate. you should make it clearer and
+    less redundant". Beside a waiting invite the dummy is a copy of the player's build, and there is no Dummy's
+    build or EDIT.
+  - Stage: Arena (the game's arenas, by place, "12 / 47") and Background (the background pool, every game's
+    battle backgrounds, §2.31, by game and name, "BN4 ACDC Area"), each Random first, a Random background drawn
+    from the pool; each a pictured select whose grid opens on Enter, a click or a tap (§2.56); an arena changed
+    starts the set over on it, a background changed only redraws ("changing the background shouldn't change the
+    entire arena either in trianing mode"). Music (the battle's music, §2.29, a dropdown: the battle's music
+    switched at once; not beside a waiting invite, whose music is the menus'). A group of its own: "you should
+    split the practice menu settings into arena and battle so the arena settings aren't mixed together"; named
+    STAGE since §2.56, "having an "arena" field under "arena" is so weird".
   - Options: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
     folder order), Input display (a group of its own, Display, until §2.56)
-  - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
+  - RESUME, RESTART, EXIT (§2.40; since §2.57 back to PLAY, the build still chosen; no QUIT TO MENU). Restart is
+    also R or the pad's top button.
 
 ### Builds
 A build's editor, and what any screen shows of a build. The builds themselves are Play's (§2.50, §2.52): + NEW
 BUILD (with FROM A SAVE FILE… in its dialog), the chosen build's overview with EDIT and ⋯, the build's menu of
 DUPLICATE, RENAME and DELETE.
-- **Opened by Play or Practice:** their EDIT opens the build in the editor, whose Back (‹ PLAY or ‹ PRACTICE in the
-  header) goes straight back to the screen that opened it (§2.28).
+- **Opened by Play or Practice:** Play's EDIT, and the practice menu's EDIT under Dummy's build, open the build in
+  the editor, whose Back (‹ PLAY or ‹ PRACTICE in the header) goes straight back to the screen that opened it
+  (§2.28; §2.57: Practice's battle starts again, the menu open).
 - **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips

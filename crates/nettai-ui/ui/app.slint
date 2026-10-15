@@ -14,7 +14,7 @@ import { SettingsScreen, SettingsOverlay } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } from "screens/play.slint";
-import { PracticeScreen, PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
+import { PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
 
@@ -52,9 +52,9 @@ export component AppWindow inherits Window {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // Each screen, and what it opens over itself (Practice opens nothing): one conditional each, as
-    // each conditional is a component of its own in what Slint generates. (A screen's overlay is over it; only
-    // one screen is shown at a time, so it is over every screen.)
+    // Each screen, and what it opens over itself (Practice has no page: its battle fills the window): one
+    // conditional each, as each conditional is a component of its own in what Slint generates. (A screen's
+    // overlay is over it; only one screen is shown at a time, so it is over every screen.)
     if !root.covered && Shell.screen == Screen.menu: MenuScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -65,9 +65,6 @@ export component AppWindow inherits Window {
         PlayOverlay {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
-    }
-    if !root.covered && Shell.screen == Screen.practice: PracticeScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     if !root.covered && Shell.screen == Screen.builds: Rectangle {
         BuildsScreen {
