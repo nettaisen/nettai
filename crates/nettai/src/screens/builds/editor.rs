@@ -14,6 +14,11 @@
 //! straight after (`draft.checked`); and when the tab's call returns the frame saves the build's file and
 //! shows the header and the tabs' marks anew. A tab neither saves nor checks.
 //!
+//! **The ruleset the player plays by** (docs/design/app-ui.md §2.59) is the frame's too: a select at the tab bar's
+//! right end (on a phone, at the top of the Navi tab) with EDIT, which opens its page over the editor
+//! (`crate::rulesets::page`). The build is checked under it (`Checked::under`), so what it doesn't allow is among
+//! the build's problems, and each tab marks it where it shows it ([`Draft::allows`]).
+//!
 //! **A tab says which of the build's facts are its own** ([`Tab::fields`]): a problem with one of them marks
 //! its word in the bar; a tab none of whose facts the game's setup takes isn't in the bar (auto battle data:
 //! some games'); and the facts of a tab that is the game's own navi's alone ([`Tab::own_navi_only`]) are kept
@@ -26,6 +31,8 @@ use crate::builds::Kit;
 use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
+use crate::rulesets::page::{self as rules_page, Outcome, Page as RulesPage};
+use crate::rulesets::{self, Pickable};
 use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_content_api::NaviHandle;
@@ -45,6 +52,9 @@ pub struct Draft {
     /// The build checked: what is wrong with it, and its round set up (the stats it starts with, the
     /// folder's view, the navi's first face). Made again at each change.
     pub checked: Checked,
+    /// The ruleset the player plays by (`rulesets::played_by`), which the build is checked under; none where
+    /// the game says nothing of its rulesets.
+    pub ruleset: Option<Pickable>,
     /// Where the build is kept.
     path: PathBuf,
     /// The facts that are the game's own navi's alone (the tabs say which).
@@ -113,8 +123,19 @@ impl Draft {
     }
 
     fn recheck(&mut self) {
-        self.checked = Checked::of(self.kit.content(), &self.kit.game, &self.build.side);
+        self.check();
         self.changed = true;
+    }
+
+    /// Check the build as it stands, under the ruleset the player plays by.
+    fn check(&mut self) {
+        self.checked = checked(&self.kit, &self.build.side, self.ruleset.as_ref());
+    }
+
+    /// Whether the ruleset the player plays by allows definition `h` of the build's fact `fact` (a navi, a
+    /// program, a card, a soul or a Cross): where it holds nothing of that fact back, or there is none, yes.
+    pub fn allows(&self, fact: &str, h: u16) -> bool {
+        self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows(fact, h))
     }
 
     /// The catalogs' and the game's words, in the language shown.
@@ -123,6 +144,14 @@ impl Draft {
         let graphics = self.kit.ready.graphics(shell.lang);
         let names = Names::of(self.kit.content(), &graphics);
         f(&Words { ui: &ui, kit: &self.kit, names: &names })
+    }
+}
+
+/// `side` checked as a build of `kit`'s game, under `ruleset` where there is one.
+fn checked(kit: &Kit, side: &Side, ruleset: Option<&Pickable>) -> Checked {
+    match (ruleset, kit.rulesets()) {
+        (Some(picked), Some(rulesets)) => Checked::under(kit.content(), &kit.game, side, &rulesets, &picked.ruleset),
+        _ => Checked::of(kit.content(), &kit.game, side),
     }
 }
 
@@ -333,6 +362,8 @@ pub struct Editor {
     pub draft: Draft,
     tabs: Vec<Box<dyn Tab>>,
     at: usize,
+    /// The ruleset's page, open over the editor.
+    rules: Option<RulesPage>,
 }
 
 
@@ -343,10 +374,11 @@ impl Editor {
         let content = kit.content().clone();
         let navi_only = navi_only_fields(&content);
         let settled = build.settle(&content, &kit.builds, &navi_only);
-        let checked = Checked::of(&content, &kit.game, &build.side);
+        let ruleset = rulesets::played_by(shell, &kit);
+        let checked = checked(&kit, &build.side, ruleset.as_ref());
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
-        let draft = Draft { kit, build, checked, path, navi_only, changed: settled };
-        let mut editor = Editor { draft, tabs, at: 0 };
+        let draft = Draft { kit, build, checked, ruleset, path, navi_only, changed: settled };
+        let mut editor = Editor { draft, tabs, at: 0, rules: None };
         editor.save(shell);
         editor
     }
@@ -386,6 +418,8 @@ impl Editor {
             .collect();
         let (state, good) = self.draft.with_words(shell, |words| words.header(&self.draft.checked));
         let version = self.draft.with_words(shell, |words| words.kit.version_tag(words.names, self.draft.side()));
+        let ruleset = self.draft.with_words(shell, |words| self.draft.ruleset.as_ref().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)));
+        view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_name(self.draft.build.name.as_str().into());
         view.set_version(version);
         view.set_state(state.into());
@@ -411,6 +445,9 @@ impl Editor {
 
     /// The editor is left.
     pub fn close(&mut self, shell: &mut Shell) {
+        if let Some(page) = self.rules.take() {
+            page.close(shell);
+        }
         let (tab, draft) = self.tab();
         tab.hide(shell, draft);
         self.save(shell);
@@ -491,7 +528,75 @@ impl Editor {
         }
     }
 
+    /// The ruleset the player plays by made `picked` (remembered for the game): the build is checked under it, and
+    /// the frame and the tab shown show its marks.
+    fn play_by(&mut self, shell: &mut Shell, picked: Pickable) {
+        let game = self.draft.kit.game.clone();
+        rulesets::remember(shell, &game, &picked.ruleset.name);
+        self.draft.ruleset = Some(picked);
+        self.draft.check();
+        self.show_frame(shell);
+        // (Under the ruleset's page the tab is shown again as the page closes: its focus is the page's meanwhile.)
+        if self.rules.is_none() {
+            let (tab, draft) = self.tab();
+            tab.show(shell, draft);
+        }
+    }
+
+    /// The rulesets the player can pick, and which of them they play by.
+    fn ruleset_choices(&self) -> (Vec<Pickable>, usize) {
+        let picks = rulesets::pickable(&self.draft.kit);
+        let at = self.draft.ruleset.as_ref().and_then(|now| picks.iter().position(|p| p.ruleset.name == now.ruleset.name)).unwrap_or(0);
+        (picks, at)
+    }
+
+    /// What the ruleset's page did: the ruleset it shows is changed or another (a copy), and is the one the player
+    /// plays by; or it was deleted, and the game's first preset is.
+    fn ruleset_outcome(&mut self, shell: &mut Shell, outcome: Outcome) {
+        match outcome {
+            Outcome::Nothing => {}
+            Outcome::Changed(picked) => self.play_by(shell, picked),
+            Outcome::Deleted => {
+                self.rules = None;
+                if let Some(first) = rulesets::pickable(&self.draft.kit).into_iter().next() {
+                    self.play_by(shell, first);
+                }
+            }
+        }
+    }
+
+    /// The ruleset's controls: the select (its list, or a step through the rulesets), and EDIT (its page).
+    fn ruleset_control(&mut self, shell: &mut Shell, id: &str, index: i32, by: Option<i32>) {
+        let (picks, at) = self.ruleset_choices();
+        if picks.is_empty() {
+            return;
+        }
+        match (id, by) {
+            ("ruleset", Some(by)) => {
+                let next = picks[(at as i32 + by).rem_euclid(picks.len() as i32) as usize].clone();
+                self.play_by(shell, next);
+            }
+            ("ruleset", None) => {
+                let names = self.draft.with_words(shell, |words| picks.iter().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)).collect());
+                shell.pick(id, index, names, at);
+            }
+            _ => {
+                let Some(shown) = self.draft.ruleset.clone() else { return };
+                let back = shell.ui().global::<nettai_ui::RulesetView>().get_editor_word().to_string();
+                shell.sound.play(crate::sound::Cue::Pick);
+                self.rules = RulesPage::open(shell, self.draft.kit.clone(), shown, false, &back);
+            }
+        }
+    }
+
     pub fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.activate(shell, id, index));
+            return self.ruleset_outcome(shell, outcome);
+        }
+        if id == "ruleset" || id == "ruleset-edit" {
+            return self.ruleset_control(shell, id, index, None);
+        }
         if id == "tab" {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
@@ -521,6 +626,13 @@ impl Editor {
     }
 
     pub fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.step(shell, id, index, by));
+            return self.ruleset_outcome(shell, outcome);
+        }
+        if id == "ruleset" {
+            return self.ruleset_control(shell, id, index, Some(by));
+        }
         if id == "version" {
             return self.step_version(shell, by);
         }
@@ -541,6 +653,18 @@ impl Editor {
             "drag-drop" if from_library(shell) => "drag-in-drop",
             id => id,
         };
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.choose(shell, id, index, choice));
+            return self.ruleset_outcome(shell, outcome);
+        }
+        // (A ruleset chosen from the select's list.)
+        if id == "ruleset" {
+            let (picks, _) = self.ruleset_choices();
+            if let Some(picked) = picks.into_iter().nth(choice.max(0) as usize) {
+                self.play_by(shell, picked);
+            }
+            return;
+        }
         // (A version chosen from the tag's list: the focus back on the tag first, so the tab shown keeps it there.)
         if id == "version" {
             shell.nav.focus(id, index);
@@ -557,18 +681,28 @@ impl Editor {
     }
 
     pub fn edit(&mut self, shell: &mut Shell, id: &str, index: i32, text: &str, done: bool) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.edit(shell, id, text, done));
+            return self.ruleset_outcome(shell, outcome);
+        }
         let (tab, draft) = self.tab();
         tab.edit(shell, draft, id, index, text, done);
         self.after(shell);
     }
 
     pub fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if let Some(page) = self.rules.as_mut().filter(|_| RulesPage::owns(id)) {
+            return page.focused(shell, id, index);
+        }
         let (tab, draft) = self.tab();
         tab.focused(shell, draft, id, index);
         self.after(shell);
     }
 
     pub fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
+        if self.rules.is_some() {
+            return false;
+        }
         let (tab, draft) = self.tab();
         let taken = tab.key(shell, draft, key);
         self.after(shell);
@@ -576,6 +710,9 @@ impl Editor {
     }
 
     pub fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
+        if self.rules.is_some() {
+            return false;
+        }
         let (tab, draft) = self.tab();
         let taken = tab.button(shell, draft, button);
         self.after(shell);
@@ -584,6 +721,10 @@ impl Editor {
 
     /// Previous and next change the tab; the rest is the tab's.
     pub fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
+        // (Over the ruleset's page the shoulders change nothing under it.)
+        if self.rules.is_some() {
+            return true;
+        }
         match action {
             Action::Previous => self.step_tab(shell, -1),
             Action::Next => self.step_tab(shell, 1),
@@ -597,8 +738,14 @@ impl Editor {
         true
     }
 
-    /// Esc or Back: true if the tab went back within itself.
+    /// Esc or Back: true if the ruleset's page closed, or the tab went back within itself.
     pub fn back(&mut self, shell: &mut Shell) -> bool {
+        if let Some(page) = self.rules.take() {
+            page.close(shell);
+            let (tab, draft) = self.tab();
+            tab.show(shell, draft);
+            return true;
+        }
         let (tab, draft) = self.tab();
         let within = tab.back(shell, draft);
         self.after(shell);
@@ -606,6 +753,15 @@ impl Editor {
     }
 
     pub fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if tag == rules_page::DELETE {
+            if let Some(page) = self.rules.take() {
+                match page.answered(shell, choice) {
+                    Ok(outcome) => self.ruleset_outcome(shell, outcome),
+                    Err(page) => self.rules = Some(page),
+                }
+            }
+            return;
+        }
         let (tab, draft) = self.tab();
         tab.answered(shell, draft, tag, choice);
         self.after(shell);

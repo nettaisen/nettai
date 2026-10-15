@@ -52,6 +52,8 @@ export enum ProgramState {
     placed,
     held,
     out,
+    // The ruleset the player plays by doesn't allow it (docs/design/app-ui.md §2.59).
+    not-allowed,
 }
 
 // A program in one of its colors, as the list shows it: `copies`, how many of it are placed in that color.
@@ -417,8 +419,8 @@ component ProgramRowView inherits Rectangle {
     state := Text {
         x: parent.width - 8px - self.width;
         width: 110px;
-        text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : "";
-        color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
+        text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : root.program.state == ProgramState.not-allowed ? @tr("Not allowed") : "";
+        color: root.program.state == ProgramState.held ? Theme.cursor : root.program.state == ProgramState.not-allowed ? Theme.bad : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         horizontal-alignment: right;

@@ -7,13 +7,15 @@
 import { Theme } from "../../theme.slint";
 import { Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Note, Stepper } from "../../widgets.slint";
+import { Cut, PanelBack, Note, Stepper, Select, Button } from "../../widgets.slint";
 
-// One of the game's navis: its name, its face, and whether it is the build's.
+// One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
+// by doesn't allow it (docs/design/app-ui.md §2.59).
 export struct NaviCard {
     name: string,
     face: image,
     chosen: bool,
+    banned: bool,
 }
 
 // One of the build's choices: the preset it is on, by name; `offered` off where the build's navi has none of the
@@ -41,6 +43,11 @@ export global NaviView {
     // The faces of the forms the build's version brings the game's own navi while that is the build's (none for
     // another navi, or a build of no version).
     in property <[image]> forms;
+    // Which of them the ruleset the player plays by doesn't allow (a red ring), by their places.
+    in property <[bool]> forms-banned;
+    // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
+    // is at the tab bar's right end).
+    in property <string> ruleset;
     // The game's choices (none in a game without).
     in property <[NaviChoice]> choices;
     // The game's own navi's name: the one a NaviCust and patch cards are of.
@@ -68,13 +75,30 @@ component NaviCardView inherits Rectangle {
         image-rendering: pixelated;
     }
 
+    // (Not allowed by the ruleset: a line in the error red at its top.)
+    Text {
+        x: root.pad;
+        y: root.pad - 4px;
+        width: parent.width - 2 * root.pad;
+        height: 16px;
+        visible: root.navi.banned;
+        text: @tr("Not allowed");
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 11px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
     Text {
         x: root.pad;
         y: parent.height - root.pad - 16px;
         width: parent.width - 2 * root.pad;
         height: 16px;
         text: root.navi.name;
-        color: Theme.text;
+        color: root.navi.banned ? Theme.dim : Theme.text;
         font-family: Theme.body;
         font-size: 13px;
         font-weight: 600;
@@ -96,7 +120,7 @@ export component NaviTab inherits Rectangle {
     property <length> panel-width: Theme.phone ? self.width : 360px;
     property <length> panel-height: Theme.phone ? 132px + root.forms-height + NaviView.choices.length * 44px : self.height;
     property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
-    property <length> grid-y: Theme.phone ? root.panel-height + 12px : 0px;
+    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px : 0px;
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> card-height: Theme.phone ? 84px : 140px;
@@ -199,13 +223,44 @@ export component NaviTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    for form[i] in NaviView.forms: Image {
+    for form[i] in NaviView.forms: Rectangle {
         x: root.panel-x + 16px + mod(i, root.form-columns) * (64px + root.form-gap);
         y: root.forms-y + floor(i / root.form-columns) * (32px + root.form-gap);
         width: 64px;
         height: 32px;
-        source: form;
-        image-rendering: pixelated;
+        // (Not allowed by the ruleset: a ring in the error red.)
+        border-width: NaviView.forms-banned[i] ? 2px : 0px;
+        border-color: Theme.bad;
+        Image {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            source: form;
+            image-rendering: pixelated;
+            opacity: NaviView.forms-banned[i] ? 0.6 : 1;
+        }
+    }
+
+    // (On a phone, the ruleset the player plays by and EDIT, between the panel and the grid.)
+    Select {
+        x: 0;
+        y: root.panel-height + 12px;
+        width: root.width - 8px - phone-edit.width;
+        height: 40px;
+        visible: Theme.phone;
+        focusable: Theme.phone;
+        nav: "ruleset";
+        value: NaviView.ruleset;
+    }
+
+    phone-edit := Button {
+        x: root.width - self.width;
+        y: root.panel-height + 12px;
+        width: self.natural-width;
+        visible: Theme.phone;
+        nav: Theme.phone ? "ruleset-edit" : "";
+        text: @tr("EDIT");
     }
 
     for choice[i] in NaviView.choices: Stepper {

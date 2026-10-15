@@ -17,6 +17,7 @@ import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } 
 import { PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
+import { RulesetPage, RulesetView } from "ruleset.slint";
 
 export { Theme, Audit, Nav, NavKind }
 export { Drag } from "nav.slint";
@@ -33,6 +34,8 @@ export { PracticeView } from "screens/practice.slint";
 export { BuildsView, NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView } from "screens/builds.slint";
 export { ReplaysView } from "screens/replays.slint";
 export { AboutView } from "screens/settings/about.slint";
+// A ruleset's page, which the lobby and the build editor open over themselves.
+export { RulesetView, RulesetCategory, RulesetItem, RulesetChoice } from "ruleset.slint";
 
 export component AppWindow inherits Window {
     // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
@@ -60,7 +63,9 @@ export component AppWindow inherits Window {
     if !root.covered && Shell.screen == Screen.menu: MenuScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
+    // (While a ruleset's page is open over the lobby or the build editor, the screen goes on under it unseen.)
     if !root.covered && Shell.screen == Screen.play: Rectangle {
+        visible: !RulesetView.open;
         PlayScreen {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -69,6 +74,7 @@ export component AppWindow inherits Window {
         }
     }
     if !root.covered && Shell.screen == Screen.builds: Rectangle {
+        visible: !RulesetView.open;
         BuildsScreen {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -91,6 +97,9 @@ export component AppWindow inherits Window {
         SettingsOverlay {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+    }
+    if !root.covered && RulesetView.open: RulesetPage {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)

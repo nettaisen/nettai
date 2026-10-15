@@ -769,6 +769,20 @@ language = "en"
 "light_dark.light" = "Light"
 "light_dark.dark" = "Dark"
 
+# The rulesets' words (rules/rulesets): each category by its fact and each ready-made ruleset by its id,
+# for the lobby and a ruleset's page. Ours.
+[rulesets]
+"category.navi" = "Navis"
+"category.folder" = "Chips"
+"category.navicust_programs" = "NaviCust programs"
+"category.patch_cards" = "Patch cards"
+"category.souls" = "Souls"
+"preset.standard" = "Standard"
+"preset.mixed" = "Mixed"
+"preset.protoman" = "Team ProtoMan"
+"preset.colonel" = "Team Colonel"
+"preset.no_patch_cards" = "No patch cards"
+
 # The two groups a patch card's screen lists its effects in, by the effects' `group` (@exelib/patch_cards/effects),
 # for a tool that lays a card out as its screen does (the build editor's patch cards).
 [patch_card_groups]

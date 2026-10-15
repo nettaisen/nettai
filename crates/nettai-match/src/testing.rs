@@ -62,6 +62,20 @@ pub fn exe4_content() -> Arc<Content> {
     EXE4.get_or_init(|| Arc::new(defined(&["exe4"]).unwrap_or_else(|e| panic!("content/exe4: {e}")))).clone()
 }
 
+/// The rulesets of `game` (exe4, exe5 or exe6) on its content above, read
+/// once per test process.
+pub fn rulesets(game: &str) -> Arc<crate::ruleset::Rulesets> {
+    static ALL: OnceLock<std::sync::Mutex<std::collections::HashMap<String, Arc<crate::ruleset::Rulesets>>>> = OnceLock::new();
+    let content = match game {
+        "exe4" => exe4_content(),
+        "exe5" => exe5_content(),
+        "exe6" => exe6_content(),
+        other => panic!("no test content of {other}"),
+    };
+    let mut all = ALL.get_or_init(Default::default).lock().unwrap_or_else(|p| p.into_inner());
+    all.entry(game.to_string()).or_insert_with(|| Arc::new(crate::ruleset::Rulesets::of(&content, game).unwrap_or_else(|e| panic!("{game}'s rulesets: {e}")))).clone()
+}
+
 /// A program on a NaviCust, for a test: which, in which of its colors (its
 /// place in the definition's `colors`), its center, its quarter turns,
 /// compressed or not.
