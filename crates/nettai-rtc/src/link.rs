@@ -651,7 +651,14 @@ impl Link {
                 self.given(now, ice_servers);
                 self.peer_here(now, peer);
             }
-            RoomEvent::Peer(present) => self.peer_here(now, present),
+            RoomEvent::Peer { present, ice_servers } => {
+                // (Servers only when the server gives others: the TURN
+                // credentials that wait for both players to be in the room.)
+                if !ice_servers.is_empty() {
+                    self.given(now, ice_servers);
+                }
+                self.peer_here(now, present);
+            }
             RoomEvent::Signal(signal) => self.signal(now, &place, signal),
         }
         Ok(())

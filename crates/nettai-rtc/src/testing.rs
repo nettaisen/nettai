@@ -10,7 +10,9 @@
 //! [`Server::forget`] ends a room at once; [`Server::set_reachable`] takes
 //! the server off the network and puts it back. Its welcome gives no STUN
 //! or TURN servers (two links on one machine need none) unless a test sets
-//! some ([`Server::set_ice_servers`]). [`Client`] is a WebSocket of a test's
+//! some ([`Server::set_ice_servers`]), and those, as the Worker its TURN
+//! credentials, only once both players are in the room (the one that
+//! waited, in the peer message as the other comes). [`Client`] is a WebSocket of a test's
 //! own, to either server.
 
 use std::collections::HashMap;
@@ -302,13 +304,17 @@ fn serve(stream: TcpStream, version: u32, rooms: &Mutex<Rooms>, relayed: &Atomic
             let _ = old.send(Out::Close);
         }
         let there = room.sockets.get(&other(role));
+        // (The servers only once both players are in the room, as the
+        // Worker gives its TURN credentials: the one that waited is given
+        // them as the other comes.)
+        let ice_servers = if room.places.len() == 2 { ice_servers } else { Vec::new() };
         let welcome = match kind {
-            Kind::Invite => FromServer::Welcome { role: Some(role), peer: there.is_some(), code: Some(key.1.clone()), ice_servers },
-            Kind::Reconnect => FromServer::Welcome { role: None, peer: there.is_some(), code: None, ice_servers },
+            Kind::Invite => FromServer::Welcome { role: Some(role), peer: there.is_some(), code: Some(key.1.clone()), ice_servers: ice_servers.clone() },
+            Kind::Reconnect => FromServer::Welcome { role: None, peer: there.is_some(), code: None, ice_servers: ice_servers.clone() },
         };
         let _ = ws.send(Message::text(said(&welcome)));
         if let Some((_, them)) = there {
-            let _ = them.send(Out::Text(said(&FromServer::Peer { present: true })));
+            let _ = them.send(Out::Text(said(&FromServer::Peer { present: true, ice_servers })));
         }
         (key, role, id)
     };
@@ -320,7 +326,7 @@ fn serve(stream: TcpStream, version: u32, rooms: &Mutex<Rooms>, relayed: &Atomic
     if room.sockets.get(&role).is_some_and(|(i, _)| *i == id) {
         room.sockets.remove(&role);
         if let Some((_, them)) = room.sockets.get(&other(role)) {
-            let _ = them.send(Out::Text(said(&FromServer::Peer { present: false })));
+            let _ = them.send(Out::Text(said(&FromServer::Peer { present: false, ice_servers: Vec::new() })));
         }
         if room.sockets.is_empty() {
             room.empty_since = Some(Instant::now());

@@ -43,6 +43,15 @@
 //   answer within TURN_API_WAIT_MS, Cloudflare's public STUN server alone
 //   (STUN), and the failure is logged here, never the secrets; a room never
 //   waits on it longer.
+// - TURN credentials cost the key's owner what is relayed on them, so they
+//   go only to a room with both its places taken (a room one client made
+//   alone is no match, and a socket opened to collect credentials gets
+//   none): a welcome before then gives STUN alone, and the client that
+//   waited is given its TURN credentials when the other comes, in that
+//   peer message ({"type":"peer","present":true,"iceServers":[...]}). And
+//   a client gets at most TURN_PER_MINUTE of them a minute (TURN_LIMIT, a
+//   rate limit binding, by its IP address, an IPv6 one's /64), past which
+//   STUN alone, logged.
 // - {"type":"signal","data":...} from one client goes to the other as it is
 //   (dropped if the other isn't there); {"type":"leave"} gives the
 //   client's place up.
@@ -70,6 +79,9 @@ export interface Env {
 	/** The TURN key's API token, a secret (`npx wrangler secret put
 	 * TURN_KEY_API_TOKEN`). */
 	TURN_KEY_API_TOKEN?: string;
+	/** How often a client may be given TURN credentials (a rate limit
+	 * binding, wrangler.toml's TURN_PER_MINUTE a minute): none, no limit. */
+	TURN_LIMIT?: RateLimit;
 }
 
 /** A STUN or TURN server, as the browser's RTCIceServer (and nettai-rtc's
@@ -121,15 +133,20 @@ const TURN_TTL_SECONDS = 4 * 60 * 60;
  * STUN alone. */
 const TURN_API_WAIT_MS = 3000;
 
-/** The STUN and TURN servers for a client's welcome (the comment at the
- * top): Cloudflare's TURN service's, with credentials made for it, or STUN
- * alone. Never fails, and never says a secret: a failure's log is its kind
- * or its HTTP status. */
-async function iceServers(env: Env): Promise<IceServer[]> {
+/** The STUN and TURN servers for a client of a room both players are in
+ * (the comment at the top): Cloudflare's TURN service's, with credentials
+ * made for it, or STUN alone. `client` is who the limit counts it against
+ * (`clientOf`). Never fails, and never says a secret: a failure's log is its
+ * kind or its HTTP status. */
+async function iceServers(env: Env, client: string): Promise<IceServer[]> {
 	if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) {
 		return STUN;
 	}
 	try {
+		if (env.TURN_LIMIT && !(await env.TURN_LIMIT.limit({ key: client })).success) {
+			console.error("no TURN credentials: a client asked for more than its limit");
+			return STUN;
+		}
 		const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID)}/credentials/generate-ice-servers`;
 		const response = await fetch(url, {
 			method: "POST",
@@ -175,6 +192,21 @@ function serversOf(answer: unknown): IceServer[] {
 		servers.push(server);
 	}
 	return servers;
+}
+
+/** Who a request is, for the TURN limit: its IP address (Cloudflare's
+ * CF-Connecting-IP), an IPv6 one's first 64 bits (a home network has a /64
+ * of its own, and all of it is one client). */
+function clientOf(request: Request): string {
+	const ip = request.headers.get("CF-Connecting-IP") ?? "";
+	if (!ip.includes(":") || ip.includes(".")) {
+		return ip;
+	}
+	const [head, tail] = ip.split("::");
+	const front = head ? head.split(":") : [];
+	const back = tail ? tail.split(":") : [];
+	const groups = tail === undefined ? front : [...front, ...Array(Math.max(0, 8 - front.length - back.length)).fill("0"), ...back];
+	return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
 }
 
 /** The WebSocket close code of each refusal. */
@@ -244,6 +276,7 @@ export default {
 			const to = new URL(`https://room/${what}`);
 			to.searchParams.set("code", code);
 			to.searchParams.set("peer", peer);
+			to.searchParams.set("client", clientOf(request));
 			const name = what === "reconnect" ? `reconnect/${code}` : code;
 			return env.ROOMS.get(env.ROOMS.idFromName(name)).fetch(new Request(to, request));
 		};
@@ -284,12 +317,13 @@ export class Room extends DurableObject<Env> {
 		const url = new URL(request.url);
 		const peer = url.searchParams.get("peer") ?? "";
 		const code = url.searchParams.get("code") ?? "";
+		const client = url.searchParams.get("client") ?? "";
 		const kind: Kind = url.pathname === "/reconnect" ? "reconnect" : "invite";
 		// The client's place: the places read and written with nothing else
 		// between (the two come to a reconnect room at about the same
 		// moment, and must not take one place). A room there is has its
 		// places stored, even when both are free.
-		const taken = await this.ctx.blockConcurrencyWhile(async (): Promise<Role | Response> => {
+		const taken = await this.ctx.blockConcurrencyWhile(async (): Promise<{ role: Role; both: boolean } | Response> => {
 			let places = await this.ctx.storage.get<Places>("places");
 			if (url.pathname === "/make") {
 				if (places !== undefined) {
@@ -310,15 +344,18 @@ export class Room extends DurableObject<Env> {
 			places[role] = peer;
 			await this.ctx.storage.put("places", places);
 			await this.ctx.storage.deleteAlarm();
-			return role;
+			return { role, both: places.host !== undefined && places.join !== undefined };
 		});
 		if (taken instanceof Response) {
 			return taken;
 		}
-		const role = taken;
-		// The servers the welcome gives (never failing, nor waiting long).
-		const ice = await iceServers(this.env);
-		const [client, server] = Object.values(new WebSocketPair());
+		const { role, both } = taken;
+		// The servers the welcome gives (never failing, nor waiting long): TURN
+		// only once both players are in the room, for this client and for the
+		// other's socket (which waited with STUN alone, or comes back to it).
+		const waiting = both && this.ctx.getWebSockets(other(role)).length > 0;
+		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client), waiting ? iceServers(this.env, client) : STUN]) : [STUN, STUN];
+		const [socket, server] = Object.values(new WebSocketPair());
 		// The client's socket from before, if it is still here, goes.
 		for (const old of this.ctx.getWebSockets(role)) {
 			old.serializeAttachment({ role, kind, replaced: true } satisfies Attachment);
@@ -330,10 +367,11 @@ export class Room extends DurableObject<Env> {
 		const welcome =
 			kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code, iceServers: ice } : { type: "welcome", peer: there.length > 0, iceServers: ice };
 		server.send(JSON.stringify(welcome));
+		const present = theirs === STUN ? { type: "peer", present: true } : { type: "peer", present: true, iceServers: theirs };
 		for (const ws of there) {
-			tell(ws, JSON.stringify({ type: "peer", present: true }));
+			tell(ws, JSON.stringify(present));
 		}
-		return new Response(null, { status: 101, webSocket: client });
+		return new Response(null, { status: 101, webSocket: socket });
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {

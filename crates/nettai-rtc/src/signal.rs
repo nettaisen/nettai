@@ -50,7 +50,12 @@
 //!   reconnect room gave. The welcome comes before
 //!   anything the other client sends, and a client makes no connection in a
 //!   room before it, so every connection has them;
+//!   A server may give TURN credentials only once both players are in the
+//!   room (the Worker does: they cost its owner what is relayed on them, so
+//!   a client that is alone has STUN alone); then
 //! - `{"type":"peer","present":BOOL}`: the other came, or its socket went;
+//!   when it came, `"iceServers":[...]` too if the server gives this client
+//!   other servers now, which the next connections are made on;
 //! - `{"type":"signal","data":...}`: what the other sent;
 //! - `{"type":"error","reason":REASON,"message":"..."}`: refused, and the
 //!   socket closes. The reason is one of [`Refusal`]'s; the message is for a
@@ -126,8 +131,13 @@ pub enum FromServer {
         #[serde(rename = "iceServers", default, skip_serializing_if = "Vec::is_empty", deserialize_with = "servers_that_read")]
         ice_servers: Vec<IceServer>,
     },
+    /// (When the other came to a room this client waited in alone: the
+    /// STUN and TURN servers, which the server gives only once both are in
+    /// it.)
     Peer {
         present: bool,
+        #[serde(rename = "iceServers", default, skip_serializing_if = "Vec::is_empty", deserialize_with = "servers_that_read")]
+        ice_servers: Vec<IceServer>,
     },
     Signal {
         data: Signal,
@@ -254,7 +264,7 @@ mod tests {
         );
         assert_eq!(said(&FromServer::Welcome { role: None, peer: false, code: None, ice_servers: Vec::new() }), r#"{"type":"welcome","peer":false}"#);
         assert_eq!(serde_json::from_str::<FromServer>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
-        assert_eq!(said(&FromServer::Peer { present: false }), r#"{"type":"peer","present":false}"#);
+        assert_eq!(said(&FromServer::Peer { present: false, ice_servers: Vec::new() }), r#"{"type":"peer","present":false}"#);
         let candidate = Signal::Candidate { generation: 2, candidate: Candidate { candidate: "candidate:1 1 udp 1 192.0.2.1 9 typ host".into(), mid: Some("0".into()), mline: Some(0) } };
         let text = serde_json::to_string(&ToServer::Signal { data: candidate.clone() }).unwrap();
         assert_eq!(text, r#"{"type":"signal","data":{"kind":"candidate","generation":2,"candidate":"candidate:1 1 udp 1 192.0.2.1 9 typ host","mid":"0","mline":0}}"#);
