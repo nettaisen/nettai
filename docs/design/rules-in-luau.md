@@ -3483,7 +3483,8 @@ the default chips for an empty save for the game". No screen is in this step.
 For nettai's rulesets (docs/design/app-ui.md §2.59), by the user's words: "instead of just closed setup and patch
 cards on/off there should be an entire ruleset configuration thing like: - closed setups - allowed navicust pieces -
 allowed patch cards - allowed chips - allowed navis - allowed sets of souls/crosses (should be able to represent
-game)". A ruleset is what a match is played under beside its rounds; it says nothing of how a round plays, only
+game)". Closed builds stays the lobby's own setting beside it (the user, as rulesets were built: "i think closed
+setup should not be part of the ruleset actually"). A ruleset is what a match is played under beside its rounds; it says nothing of how a round plays, only
 which builds may play it, so the simulation never reads it.
 
 - **A game's ruleset categories are its data** (`content/<game>/rules/rulesets.luau`, which the rules load and none
@@ -3507,16 +3508,14 @@ which builds may play it, so the simulation never reads it.
   version records as they are; the work that turns them into the content's `groups` moves the reader with them.)
 - **Presets** are the game's rulesets ready-made, in order, each by an id: `versions` (`one_per_build` or
   `mixed`), the `groups` whose own things it allows (none said: every one), what each category allows `only` (a
-  list of items' names, `{}` none; a category it doesn't name allows everything), and whether builds are
-  `closed_builds`. Each game's: `standard` (the cartridges' own rules, the user: "you should have a standard
+  list of items' names, `{}` none; a category it doesn't name allows everything). Each game's: `standard` (the cartridges' own rules, the user: "you should have a standard
   ruleset for each game that enforces version-specific stuff": everything, one version per build), `mixed`, one
   per version, `no_patch_cards`. The first is a player's and a new lobby's until they pick another: nothing guesses
   a game.
 - **Names** are the game's strings (its locales' text table `rulesets`): `category.<fact>` ("Chips", "Crosses"),
   `preset.<id>`; a group is named as its version is.
-- **A ruleset** (`ruleset::Ruleset`): its name (a preset's id, or the player's own name), `closed_builds`,
-  `one_per_build`, and for
-  each category the items it doesn't allow (`banned`, by handle; as text, by name). What it doesn't name is
+- **A ruleset** (`ruleset::Ruleset`): what may be played, and nothing else: its name (a preset's id, or the
+  player's own name), `one_per_build`, and for each category the items it doesn't allow (`banned`, by handle; as text, by name). What it doesn't name is
   allowed, so what a game gains later is allowed by every ruleset until one holds it back. Rust names no category:
   it reads a fact by the category's name and the definitions it names by the fact's type.
 - **A build under a ruleset** (`build::Checked::under`): the build's check (`Checked::of`) and, for each
