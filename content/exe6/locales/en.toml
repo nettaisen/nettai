@@ -390,6 +390,8 @@ language = "en"
 "dustcross" = { name = "DustCross", description = "CustScrn:Dscrd\nChip.Ⓑ+Left:\nSuckIn Ⓑ:Fire!" }
 "eleccross" = { name = "ElecCross", description = "Elec Chip Attk\n+50! Chrg Elm-\nntless: Parlyz" }
 "erasecross" = { name = "EraseCross", description = "If 4 digit HP\nElemntless:Dth\nCursChipAtk+30" }
+"falzar-beast" = { name = "FBeast" }
+"gregar-beast" = { name = "GBeast" }
 "groundcross" = { name = "GroundCross", description = "BrkChip Atk+10\nChrg Brk:Fall\nRck!SuprArmrOn" }
 "heatcross" = { name = "HeatCross", description = "Fire Chip Attk\n+50! Buster \nAttk +1!" }
 "slashcross" = { name = "SlashCross", description = "Swrd Chip Attk\n+50! Chrg Swrd\nChip: WaveAttk" }
@@ -780,7 +782,7 @@ language = "en"
 # version a build is one of, `version.<id>`.
 [builds]
 # What a new build of a version starts with, for a tool that asks which version's a new build starts from.
-"versions" = "Starts with the version's Crosses and Cybeast."
+"versions" = "Starts with the version's Crosses and Beast form."
 "version.gregar" = "Gregar"
 "version.falzar" = "Falzar"
 
@@ -791,7 +793,7 @@ language = "en"
 "category.folder" = "Chips"
 "category.navicust_programs" = "NaviCust programs"
 "category.patch_cards" = "Patch cards"
-"category.cybeast" = "Cybeasts"
+"category.cybeast" = "Beast form"
 "category.crosses" = "Crosses"
 "preset.standard" = "Standard"
 "preset.mixed" = "Mixed"

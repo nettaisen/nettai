@@ -351,6 +351,22 @@ language = "en"
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
 
+# The souls' names (navis/megaman/forms/<soul>): their chips' (0x161 on, the chip Double Soul puts first in the
+# hand), as the ROMs name them.
+[forms]
+"aquasoul" = { name = "AquaSoul" }
+"firesoul" = { name = "FireSoul" }
+"gutssoul" = { name = "GutsSoul" }
+"junksoul" = { name = "JunkSoul" }
+"metalsoul" = { name = "MetlSoul" }
+"numbersoul" = { name = "NumSoul" }
+"protosoul" = { name = "ProtSoul" }
+"rollsoul" = { name = "RollSoul" }
+"searchsoul" = { name = "SrchSoul" }
+"thundersoul" = { name = "ThunSoul" }
+"windsoul" = { name = "WindSoul" }
+"woodsoul" = { name = "WoodSoul" }
+
 # The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
 # tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
 [backgrounds]
