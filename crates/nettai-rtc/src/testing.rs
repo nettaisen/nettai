@@ -8,8 +8,10 @@
 //! [`RECONNECT_ROOM_KEPT`] (a reconnect room). [`Server::kick`] closes a
 //! client's WebSocket, as a network or the Worker's restart would;
 //! [`Server::forget`] ends a room at once; [`Server::set_reachable`] takes
-//! the server off the network and puts it back. [`Client`] is a WebSocket
-//! of a test's own, to either server.
+//! the server off the network and puts it back. Its welcome gives no STUN
+//! or TURN servers (two links on one machine need none) unless a test sets
+//! some ([`Server::set_ice_servers`]). [`Client`] is a WebSocket of a test's
+//! own, to either server.
 
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -22,7 +24,8 @@ use tungstenite::handshake::server::{Request, Response};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message, WebSocket};
 
-use crate::Role;
+use crate::{IceServer, Role};
+
 use crate::signal::{ALPHABET, CODE_LENGTH, FromServer, PING, PONG, RECONNECT_ROOM_KEPT, Refusal, ToServer, VERSION, valid_code, valid_reconnect_code};
 
 /// How long an invite room with no socket is kept (the Worker's ten
@@ -51,6 +54,8 @@ struct Rooms {
     connections: u64,
     /// The codes reconnect rooms were made under, in order.
     made: Vec<String>,
+    /// The STUN and TURN servers every welcome gives.
+    ice_servers: Vec<IceServer>,
 }
 
 impl Rooms {
@@ -215,6 +220,12 @@ impl Server {
         }
     }
 
+    /// The STUN and TURN servers every welcome gives from now (none at
+    /// first), as the Worker's give Cloudflare's.
+    pub fn set_ice_servers(&self, servers: Vec<IceServer>) {
+        self.rooms.lock().unwrap().ice_servers = servers;
+    }
+
     /// The signals relayed so far.
     pub fn relayed(&self) -> u64 {
         self.relayed.load(Ordering::Relaxed)
@@ -278,6 +289,7 @@ fn serve(stream: TcpStream, version: u32, rooms: &Mutex<Rooms>, relayed: &Atomic
                 key
             }
         };
+        let ice_servers = all.ice_servers.clone();
         let room = all.rooms.get_mut(&key).expect("the room");
         let had = room.places.iter().find(|(_, p)| **p == peer).map(|(r, _)| *r);
         let Some(role) = had.or_else(|| [Role::Host, Role::Join].into_iter().find(|r| !room.places.contains_key(r))) else {
@@ -291,8 +303,8 @@ fn serve(stream: TcpStream, version: u32, rooms: &Mutex<Rooms>, relayed: &Atomic
         }
         let there = room.sockets.get(&other(role));
         let welcome = match kind {
-            Kind::Invite => FromServer::Welcome { role: Some(role), peer: there.is_some(), code: Some(key.1.clone()) },
-            Kind::Reconnect => FromServer::Welcome { role: None, peer: there.is_some(), code: None },
+            Kind::Invite => FromServer::Welcome { role: Some(role), peer: there.is_some(), code: Some(key.1.clone()), ice_servers },
+            Kind::Reconnect => FromServer::Welcome { role: None, peer: there.is_some(), code: None, ice_servers },
         };
         let _ = ws.send(Message::text(said(&welcome)));
         if let Some((_, them)) = there {
