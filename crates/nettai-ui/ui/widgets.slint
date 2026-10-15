@@ -394,6 +394,42 @@ export component Button inherits Rectangle {
     }
 }
 
+// A small word that is a control, on a line that was there (the build editor's CLEAR at the right end of a pane's
+// header: docs/design/app-ui.md §2.70), as the Navi tab's ALL and NONE are: in the panes' heads' letters, muted, the
+// cursor's color under the pointer; `enabled` off, dim, and the focus and the pointer pass it by. Its word is `pad` in
+// from each side of it; it takes a little more than its line (a phone's more, to be tapped), and nothing moves for it.
+export component WordButton inherits Rectangle {
+    in property <string> text;
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <bool> enabled: true;
+    out property <length> pad: 6px;
+    property <length> reach: Theme.phone ? 6px : 2px;
+    height: 16px;
+    width: word.preferred-width + 2 * root.pad;
+    word := Text {
+        x: root.pad;
+        width: self.preferred-width;
+        text: root.text;
+        color: !root.enabled ? Theme.dim : hit.has-hover ? Theme.cursor : Theme.muted;
+        font-family: Theme.display;
+        font-size: 10px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.8px;
+        vertical-alignment: center;
+    }
+
+    hit := Focusable {
+        x: 0;
+        y: -root.reach;
+        width: root.width;
+        height: root.height + 2 * root.reach;
+        nav: root.nav;
+        nav-index: root.nav-index;
+        enabled: root.enabled;
+    }
+}
+
 // A value between two arrows: Left and Right change it at once. The value's box has one width
 // (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
 // same place (the game's name where the game can't change). A new value slides in within the box, the way the

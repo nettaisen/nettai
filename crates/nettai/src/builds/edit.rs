@@ -39,6 +39,8 @@ pub enum ListEdit {
     Remove(usize),
     /// An entry moved to another place, those between shifting one toward where it was.
     Move(usize, usize),
+    /// Every entry taken out (the Patch cards tab's CLEAR).
+    Clear,
 }
 
 /// Where the entry at `i` is after the one at `from` is moved to `to`, those between shifting one toward where it
@@ -89,6 +91,7 @@ pub fn list(content: &Content, side: &mut Side, name: &str, edit: ListEdit) -> b
             let item = items.remove(from);
             items.insert(to, item);
         }
+        ListEdit::Clear if !items.is_empty() => items.clear(),
         _ => return false,
     }
     write(content, side, name, &Stated::List(items))
@@ -229,5 +232,8 @@ mod tests {
         assert!(list(&six, side, "patch_cards", ListEdit::Insert(0, cards[2])) && list(&six, side, "patch_cards", ListEdit::Insert(9, cards[3])));
         assert!(list(&six, side, "patch_cards", ListEdit::Insert(1, cards[4])) && !list(&six, side, "patch_cards", ListEdit::Insert(0, cards[0])));
         assert_eq!(side.facts.get(&six, "patch_cards").unwrap().defs(), [cards[2], cards[4], cards[0], cards[3]]);
+        // (Cleared, all at once; an empty list, no change.)
+        assert!(list(&six, side, "patch_cards", ListEdit::Clear) && !list(&six, side, "patch_cards", ListEdit::Clear));
+        assert!(side.facts.get(&six, "patch_cards").unwrap().defs().is_empty());
     }
 }
