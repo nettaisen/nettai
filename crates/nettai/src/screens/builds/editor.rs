@@ -210,6 +210,12 @@ pub trait Tab {
     /// is on it, and the focused one's again after (`hover`).
     fn hovered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _id: &str, _index: i32, _on: bool) {}
 
+    /// An arrow, before the focus moves by it: true if the tab took it (the NaviCust's Left and Right on a row choose
+    /// its color).
+    fn route(&mut self, _shell: &mut Shell, _draft: &mut Draft, _action: Action) -> bool {
+        false
+    }
+
     /// A key the tab may want for itself (a letter that acts on the focused row). True if it was the tab's.
     fn key(&mut self, _shell: &mut Shell, _draft: &mut Draft, _key: &KeyPress) -> bool {
         false
@@ -716,6 +722,14 @@ impl Editor {
         let (tab, draft) = self.tab();
         tab.focused(shell, draft, id, index);
         self.after(shell);
+    }
+
+    pub fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
+        if self.rules.is_some() {
+            return false;
+        }
+        let (tab, draft) = self.tab();
+        tab.route(shell, draft, action)
     }
 
     pub fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {

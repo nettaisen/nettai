@@ -973,6 +973,34 @@ fn hover(id: &'static str, index: i32) -> Step {
     })
 }
 
+/// A program of the NaviCust's list with colors to choose from (each program is in the list once: the user, "deduppe
+/// navicust program parts in the list and then have you select by color"): the cursor on its row (the footer's
+/// Color), Right choosing its second color (the row's and the strip's), and Enter taking that color's part in hand,
+/// put away after.
+fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let rows = ui.global::<NavicustView>().get_programs();
+        let Some(at) = rows.iter().position(|r| r.colors.row_count() > 1) else { return tour.key_wrong("no program has two colors".into()) };
+        app.borrow_mut().shell.nav.focus("programs", at as i32);
+    }));
+    shot(add, "tabs-navicust-colors", Pair::None);
+    add(SETTLE, act(Action::Right));
+    shot(add, "tabs-navicust-color-chosen", Pair::None);
+    add(SETTLE, expect(|ui, app| {
+        let at = app.shell.nav.focused().filter(|k| k.id == "programs").map(|k| k.index)?;
+        let row = ui.global::<NavicustView>().get_programs().row_data(at as usize)?;
+        let detail = ui.global::<NavicustView>().get_detail();
+        (row.color != 1 || detail.color != 1).then(|| format!("Right on a program's row of colors: its color is {}, the strip's {}, not the second", row.color, detail.color))
+    }));
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-color-held", Pair::None);
+    add(SETTLE, act(Action::Back));
+}
+
 /// The pointer gone out of the window: nothing is lit under it.
 fn pointer_gone() -> Step {
     Box::new(move |ui, _, tour| {
@@ -1578,6 +1606,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     if size == "desktop" {
         clicks(add, shot);
         hovers(add, shot);
+        program_colors(add, shot);
     }
     drags(add, shot, size == "phone");
     wrong_classes(add, shot);

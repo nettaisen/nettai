@@ -277,6 +277,10 @@ msgstr "圧縮時"
 msgid "Colors"
 msgstr "カラー"
 
+# A program's row: Left and Right choose the color whose part Enter takes.
+msgid "Color"
+msgstr "カラー選択"
+
 # ---- The Patch cards tab.
 
 msgid "Add"
