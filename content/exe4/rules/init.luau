@@ -20,6 +20,8 @@ local soul_turns = require("@self/souls/turns")
 -- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
 -- rules, which read none of it.
 require("@self/builds")
+-- And what a ruleset may hold back of a build, and the game's ready-made rulesets (./rulesets), likewise.
+require("@self/rulesets")
 
 -- What a side keeps through a round: the dark chips' (./dark_chips), the chips sent (./sent_chips), Double Soul's
 -- (./souls), its NaviCust bugs' counts (./navicust) and its auto battle data as sent (./auto_battle).
