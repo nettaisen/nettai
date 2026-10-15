@@ -609,6 +609,18 @@ Each is settled unless the user changes it.
       entry; §2.50's PRACTICE opening the entry; §2.52's band (PRACTICE, the ONLINE group with CREATE INVITE, the
       code and JOIN, DIRECT CONNECT as text); and the entry's half of §2.56's one widget. The Arena and
       Background grids and their pictures (§2.56) stay, in the practice menu.
+    - *The menu at the start holds the battle* (the user: "does the training menu open at the start not
+      correctly pause the game?", and then "pause at start doesn't seem to stop custom hp drain"). Opened as the
+      battle starts, the menu went where START can't pause the game, and there the battle stepped on with no
+      buttons: through the round's opening, then waiting on the custom screen, where the NaviCust's custom HP
+      bug went on draining. Now wherever the game's pause can't hold the battle (its custom screen, a dimming, a
+      round's end) the menu holds it where it stands, nothing of it changing, its music going on; RESUME goes on
+      from that tick. At the start the round's opening (the fade in, the navis' arrival, the banner: 2.3 s in
+      EXE6) still plays under the menu, since at its first tick the field is black and no music plays, and the
+      battle is held as its custom screen begins, before the screen comes in, the dummy and the stage in view
+      (chosen here). The same after EDIT's return, a Dummy's build or an arena changed, and RESTART's start over
+      under the menu. Mid-fight START is the game's pause as before: in EXE6 and EXE5 the NaviCust's HP bug
+      waits through it; EXE4's drains through its pause, as the game's does. (docs/app.md §15.)
     (§6 Play and Practice, docs/app.md §1, §4 and §15.)
 
 ## 3. Chosen where the user gave no answer
@@ -886,9 +898,10 @@ units (1216 by 644 at the reference window):
   jack-in first as for any battle. It starts on the defaults: the player's build PLAY's chosen one, the dummy on
   the same build, Arena Random, Background Random, Music the game's own, and the menu's options at their
   defaults (Stands still, Normal, every option normal, the input display off). The practice menu is open over
-  the battle as it starts, in the game's pause, the focus on RESUME (the user: "when practice mode starts you
-  should also bring up the menu immediately"), so the dummy and the stage can be set before fighting; RESUME
-  starts the fight. (The practice battle beside a waiting invite starts as before, with no menu over it, and
+  the battle as it starts, the focus on RESUME (the user: "when practice mode starts you should also bring up
+  the menu immediately"), so the dummy and the stage can be set before fighting: the round's opening plays
+  under it, and the battle is held as its custom screen begins, nothing of it changing but its music (§2.57);
+  RESUME goes on from there. (The practice battle beside a waiting invite starts as before, with no menu over it, and
   RESTART doesn't open it.)
 - **A visit** (§2.40, §2.54) is the time from PRACTICE until PLAY is shown again, the trip to the editor
   included: what the menu sets lasts through it, and each visit starts on the defaults. Nothing is remembered
@@ -898,7 +911,8 @@ units (1216 by 644 at the reference window):
 - **The practice menu** (Start or Esc in a practice battle, and open as one of Practice's own starts), its focus
   on RESUME each time it opens ("focus should always default to the resume button"): a panel on the left, the
   battle behind it in the game's own pause ("music continues, stuff still animates"), without the game's PAUSED
-  banner, with the dummy in view. Rows are a label and a value between arrows, changed at once by Left and
+  banner, with the dummy in view; where the game's pause can't hold it (its custom screen, a dimming, a round's
+  end) held where it stands, its music going on (§2.57). Rows are a label and a value between arrows, changed at once by Left and
   Right; bare rows under group titles, their steppers, dropdowns and EDIT 40 tall (36 on a phone), in one column
   so they line up, the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
   - Dummy: Dummy's build (§2.57: a dropdown of the game's builds that can be played, the player's own at first;
