@@ -1,22 +1,27 @@
 //! Netplay's transport: WebRTC data channels between two players
-//! (docs/design/rollback.md §4.7, §4.8), one API on two backends: native,
-//! on the `rtc` crate (sans-I/O WebRTC, the sockets and the timers this
-//! crate's), and the browser's `RTCPeerConnection` on wasm32.
+//! (docs/design/rollback.md §4.7, §4.8), one API on both targets through
+//! datachannel-facade (Tango's): libdatachannel natively (C++, which does
+//! the sockets, the timers, ICE, DTLS and SCTP on threads of its own), and
+//! the browser's `RTCPeerConnection` on wasm32. The user's words: "instead
+//! of nettai-rtc you should use https://github.com/tangobattle/datachannel-facade,
+//! it's way more stable" (it replaced the `rtc` crate natively and web-sys's
+//! `RTCPeerConnection` on the web; this crate keeps what is above them).
 //!
 //! What a game sends is a datagram: the netplay protocol's frames (and the
 //! lobby's messages before them), which tolerate loss, reordering and
-//! duplicates. So the one channel is opened unordered and without
-//! retransmits, negotiated out of band (id 0 on both sides, no in-band
+//! duplicates. So its channel is opened unordered and without retransmits,
+//! negotiated out of band (stream 0 on both sides, no in-band
 //! announcement): a lost datagram is the next one's to make up, never
 //! SCTP's to resend late. The lobby says its part again every 100 ms until
 //! it is answered, so it needs no reliable channel of its own.
 //!
 //! Two layers:
 //!
-//! - [`PeerConnection`]: one WebRTC connection and its data channel, told
+//! - [`PeerConnection`]: one WebRTC connection and its data channels, told
 //!   the other peer's description and candidates and handing over its own
-//!   ([`PeerEvent`]); event-driven, so that the browser's asynchronous
-//!   offer and answer fit the same API. Nothing waits.
+//!   ([`PeerEvent`]); event-driven, the facade's callbacks putting what
+//!   they learn in a queue its calls take from, so nothing waits and
+//!   nothing needs a runtime: the caller's frame loop polls.
 //! - [`Link`]: the channel a match is played on, which keeps a connection
 //!   up: it meets the other player (in an invite room of the signaling
 //!   server, `signal`: one it asks the server to make, [`Link::create_room`],
@@ -33,9 +38,11 @@
 //!   ([`Link::down_for`] says so, and for how long; [`Link::gives_up_in`],
 //!   how long it has left).
 //!
-//! The channel carries the link's own messages too (the reconnect code and
-//! its acknowledgment): as text messages, where the game's datagrams are
-//! binary ones, so they cost the game's datagrams no byte.
+//! The link's own messages (the reconnect code and its acknowledgment) go
+//! on a channel of their own, stream 1, reliable and ordered: the facade's
+//! messages are bytes, with no text or binary type to tell the link's from
+//! the game's, and the channel they came on tells them apart at no cost in
+//! bytes, as the message type did (`peer`).
 //!
 //! What goes wrong is an [`Error`]: its [`ErrorKind`] is what a player can
 //! be told, each kind in the host's own words (its catalog's), and its
@@ -59,6 +66,7 @@
 pub mod signal;
 
 mod link;
+mod peer;
 mod room;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -69,11 +77,17 @@ mod web;
 #[cfg(all(feature = "testing", not(target_arch = "wasm32")))]
 pub mod testing;
 
+// libdatachannel's static libraries need these of Windows, which their
+// CMake build names and the facade's build script doesn't pass on: bcrypt
+// (`BCryptGenRandom`, libjuice's and Mbed TLS's randomness; Rust's standard
+// library links bcryptprimitives instead) and iphlpapi (usrsctp's).
+#[cfg(windows)]
+#[link(name = "bcrypt")]
+#[link(name = "iphlpapi")]
+unsafe extern "system" {}
+
 pub use link::Link;
-#[cfg(not(target_arch = "wasm32"))]
-pub use native::PeerConnection;
-#[cfg(target_arch = "wasm32")]
-pub use web::PeerConnection;
+pub use peer::PeerConnection;
 pub use web_time::{Duration, Instant};
 
 use std::fmt;
@@ -111,12 +125,16 @@ pub struct Config {
     /// link ([`ErrorKind::CantConnect`]): no path between the two was
     /// found.
     pub connect_timeout: Duration,
-    /// Offer the loopback interface's address too (two peers on one
-    /// machine; it is offered anyway where there is no other).
+    /// Offer the loopback interface's address too: each host candidate's
+    /// port on 127.0.0.1 (two peers on one machine, whatever its network).
     pub loopback: bool,
     /// Offer only relayed candidates (the browser's `iceTransportPolicy:
     /// "relay"`): every datagram goes through a TURN server, and nothing
     /// connects without one. (Tests: a connection relayed on one machine.)
+    /// Natively libdatachannel only says no other candidate: where the relay
+    /// shows each side the address the other's datagrams came from and that
+    /// address can be reached, libjuice tries it directly too (a TURN
+    /// server's permissions keep the two to their relayed addresses).
     pub relay_only: bool,
 }
 
@@ -139,8 +157,9 @@ impl Default for Config {
 /// signaling server's welcome, [`signal`]): its URLs, `stun:HOST[:PORT]`,
 /// `turn:HOST[:PORT][?transport=udp|tcp]` or
 /// `turns:HOST[:PORT][?transport=tcp]`, and a TURN server's credentials.
-/// The browser takes every URL; the native backend relays over UDP only
-/// (`turn:` without `transport=tcp`) and leaves the others out.
+/// The browser takes every URL; natively libdatachannel relays over UDP only
+/// (`turn:` without `transport=tcp`, on up to two TURN servers) and asks one
+/// STUN server, and the others are left out.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IceServer {
     pub urls: Vec<String>,
@@ -253,13 +272,13 @@ pub enum PeerEvent {
     Down(String),
 }
 
-/// What came on the data channel: a binary message, which is a datagram of
-/// the caller's, or a text one, which is the link's own (the channel's
-/// message type tells them apart, at no cost in bytes).
+/// What came on a data channel: on the game's, a datagram of the caller's;
+/// on the link's, a message of its own (the channel tells them apart, at no
+/// cost in bytes).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Message {
-    Binary(Vec<u8>),
-    Text(String),
+    Datagram(Vec<u8>),
+    Link(String),
 }
 
 /// `N` bytes from the system's cryptographic randomness (the browser's

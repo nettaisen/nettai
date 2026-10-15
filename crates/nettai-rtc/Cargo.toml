@@ -3,46 +3,30 @@ name = "nettai-rtc"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "WebRTC data channels for netplay: one API, native (the rtc crate) and web (the browser's RTCPeerConnection)"
+description = "WebRTC data channels for netplay: one API on both targets, through datachannel-facade (libdatachannel natively, the browser's RTCPeerConnection on the web)"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 web-time = "1"
+# The connections, on both targets (libdatachannel natively: C++ and Mbed
+# TLS, built with CMake).
+datachannel-facade.workspace = true
 
-# Native: WebRTC sans I/O (the sockets and timers this crate's), the
-# signaling server's WebSocket (on a thread of its own), and the machine's
-# addresses (its host candidates), and the system's randomness (reconnect
-# codes).
+# Native: the signaling server's WebSocket (on a thread of its own), and the
+# system's randomness (reconnect codes).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rtc = "0.21"
 tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
-if-addrs = "0.14"
-bytes = "1"
 getrandom = "0.3"
 
-# The web: the browser's RTCPeerConnection and WebSocket.
+# The web: the browser's WebSocket and randomness.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.126"
-wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "CloseEvent",
     "Crypto",
     "MessageEvent",
-    "RtcConfiguration",
-    "RtcDataChannel",
-    "RtcDataChannelInit",
-    "RtcDataChannelType",
-    "RtcIceCandidate",
-    "RtcIceCandidateInit",
-    "RtcIceServer",
-    "RtcIceTransportPolicy",
-    "RtcPeerConnection",
-    "RtcPeerConnectionIceEvent",
-    "RtcPeerConnectionState",
-    "RtcSdpType",
-    "RtcSessionDescriptionInit",
     "WebSocket",
 ] }
 
@@ -53,7 +37,14 @@ testing = []
 [dev-dependencies]
 nettai-rtc = { path = ".", features = ["testing"] }
 
+# The tests' TURN server signs its responses (STUN's long-term credentials).
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+hmac = "0.12"
+md-5 = "0.10"
+sha1 = "0.10"
+
 # The web backend's tests run in a browser (wasm-bindgen-test-runner).
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Window"] }
