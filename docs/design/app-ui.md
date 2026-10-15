@@ -1063,6 +1063,13 @@ Each is settled unless the user changes it.
       (EXE5's), the problems at its top right; a navi's card focused described the build's navi. It went for the note's
       place (above).
     (§5 rule 13; §6 Builds, Play; §7.)
+67. **The ruleset's page moves as a screen does** (2026-10-15). The user: "why is there no animation for opening the
+    ruleset editor?" and "also shouldn't the version names be capitalized in the ruleset editor?"
+    - *Opening and closing:* the page's parts arrive as a screen's (`Arrive`, one after another: the row, the
+      categories, the category's head and items); closing it, the lobby or the build editor under it comes back from
+      above, fading in (`UnderPage` in app.slint), where both had been shown and hidden at once.
+    - *The quick choices in capitals:* a category's version choices read GREGAR, FALZAR, ALL, as ALLOW ALL and ALLOW
+      NONE beside them and as a version's tag everywhere.
 
 ## 3. Chosen where the user gave no answer
 

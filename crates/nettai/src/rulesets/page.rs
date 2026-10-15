@@ -163,7 +163,7 @@ impl Page {
         let chosen = ruleset.groups_chosen(&rulesets, &category);
         let mut choices: Vec<RulesetChoice> = groups
             .iter()
-            .map(|g| RulesetChoice { text: kit.version_name(names, &g.id).into(), version: true, tone: tone(g.color), chosen: chosen.as_deref() == Some(&[g.id.as_str()][..]) })
+            .map(|g| RulesetChoice { text: kit.version_name(names, &g.id).to_uppercase().into(), version: true, tone: tone(g.color), chosen: chosen.as_deref() == Some(&[g.id.as_str()][..]) })
             .collect();
         if !groups.is_empty() {
             let all = chosen.as_ref().is_some_and(|c| c.len() == groups.len());
