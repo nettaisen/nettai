@@ -153,8 +153,7 @@ impl Tab for Navi {
                         forms.push(NaviForm {
                             face: kit.pictures.face(f),
                             name: words.names.form(f).into(),
-                            head: if starts { tag.clone() } else { Default::default() },
-                            version: tag,
+                            head: if starts { tag } else { Default::default() },
                             column: place % columns,
                             row,
                             heads,
