@@ -864,15 +864,20 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("lobby.leave"));
     reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
-    // An invite cancelled from the practice menu: the builds again.
+    // An invite cancelled from the waiting panel while its practice runs (on a phone, its practice stopped
+    // from the menu first, since it covers the panel): the builds again.
     add(SETTLE, press("invite"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {
         add(SETTLE, press("wait.train"));
+        reach(add, |app, _| practicing(app));
+        add(SETTLE, step(|app| app.shell.open_menu()));
+        add(SETTLE, press_at("menu.rows.added", 0));
+        reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
+    } else {
+        reach(add, |app, _| practicing(app));
     }
-    reach(add, |app, _| practicing(app));
-    add(SETTLE, step(|app| app.shell.open_menu()));
-    add(SETTLE, press_at("menu.rows.added", if phone { 2 } else { 1 }));
+    add(SETTLE, press("wait.cancel"));
     reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds);
 
     // The other player comes with a build that breaks a rule: its own lobby won't make it ready, and this
