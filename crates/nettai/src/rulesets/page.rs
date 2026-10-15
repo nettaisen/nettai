@@ -48,6 +48,9 @@ pub struct Page {
     search: String,
     /// The items listed of the category shown, by handle, in its list's order.
     rows: Vec<u16>,
+    /// The quick choices' rows, changed in place where their count stays (their controls made again would drop the
+    /// focus a press on one left there).
+    choices: Rc<VecModel<RulesetChoice>>,
 }
 
 /// A name as it is typed: one line, no room at its start, [`NAME_LENGTH`] letters at most.
@@ -62,9 +65,11 @@ impl Page {
     /// says nothing of its rulesets.
     pub fn open(shell: &mut Shell, kit: Rc<Kit>, shown: Pickable, viewed: bool, back: &str) -> Option<Page> {
         let rulesets = kit.rulesets()?;
-        let mut page = Page { kit, rulesets, shown, viewed, category: 0, search: String::new(), rows: Vec::new() };
+        let choices = Rc::new(VecModel::default());
+        let mut page = Page { kit, rulesets, shown, viewed, category: 0, search: String::new(), rows: Vec::new(), choices: choices.clone() };
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
+        view.set_choices(ModelRc::from(choices));
         view.set_back(back.into());
         view.set_search(Default::default());
         page.show(shell);
@@ -154,7 +159,13 @@ impl Page {
             let all = chosen.as_ref().is_some_and(|c| c.len() == groups.len());
             choices.push(RulesetChoice { text: view.get_all_word(), version: false, tone: Default::default(), chosen: all });
         }
-        view.set_choices(ModelRc::new(VecModel::from(choices)));
+        if self.choices.row_count() == choices.len() {
+            for (i, choice) in choices.into_iter().enumerate() {
+                self.choices.set_row_data(i, choice);
+            }
+        } else {
+            self.choices.set_vec(choices);
+        }
         // The items in their lists' order: the chips the library's, the entries their collection's.
         let content = kit.content();
         let mut items: Vec<u16> = category.items.clone();
@@ -237,12 +248,14 @@ impl Page {
         store::list(&self.kit.game).into_iter().filter(|l| Some(&l.path) != self.shown.path.as_ref()).map(|l| l.name).collect()
     }
 
-    /// DUPLICATE: the player's own copy of the ruleset shown, named after it, saved and shown in its place.
+    /// DUPLICATE: the player's own copy of the ruleset shown, named after it (numbered past the presets' names and
+    /// the player's own), saved and shown in its place.
     fn duplicate(&mut self, shell: &mut Shell) -> Outcome {
         let graphics = self.kit.ready.graphics(shell.lang);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let mut taken = self.taken();
+        taken.extend(self.rulesets.presets.iter().map(|p| shown_name(&names, &p.name)));
         if let Name::Own(own) = &self.shown.ruleset.name {
             taken.push(own.clone());
         }

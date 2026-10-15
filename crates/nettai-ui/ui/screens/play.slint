@@ -553,7 +553,7 @@ component LobbyFacts inherits Rectangle {
     rules := Button {
         x: Theme.phone ? parent.width - self.width : root.x2 + ruleset.width + 8px;
         y: ruleset.y;
-        width: max(72px, self.natural-width - 48px);
+        width: self.natural-width;
         height: 36px;
         nav: "lobby.rules";
         text: PlayView.host ? @tr("EDIT") : @tr("ruleset" => "VIEW");

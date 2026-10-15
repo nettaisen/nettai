@@ -157,7 +157,7 @@ export component BuildsScreen inherits Page {
     rules-edit := Button {
         x: root.body-width - self.width;
         y: root.bar-y;
-        width: max(72px, self.natural-width - 48px);
+        width: self.natural-width;
         height: 36px;
         visible: !Theme.phone;
         nav: Theme.phone ? "" : "ruleset-edit";

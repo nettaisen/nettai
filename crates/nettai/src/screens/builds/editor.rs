@@ -536,8 +536,11 @@ impl Editor {
         self.draft.ruleset = Some(picked);
         self.draft.check();
         self.show_frame(shell);
-        let (tab, draft) = self.tab();
-        tab.show(shell, draft);
+        // (Under the ruleset's page the tab is shown again as the page closes: its focus is the page's meanwhile.)
+        if self.rules.is_none() {
+            let (tab, draft) = self.tab();
+            tab.show(shell, draft);
+        }
     }
 
     /// The rulesets the player can pick, and which of them they play by.
@@ -739,6 +742,8 @@ impl Editor {
     pub fn back(&mut self, shell: &mut Shell) -> bool {
         if let Some(page) = self.rules.take() {
             page.close(shell);
+            let (tab, draft) = self.tab();
+            tab.show(shell, draft);
             return true;
         }
         let (tab, draft) = self.tab();
