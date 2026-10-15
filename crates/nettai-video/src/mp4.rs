@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! ffmpeg -hide_banner -nostdin -loglevel error -f nut -i pipe:0
-//!        -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p
+//!        -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709
 //!        -c:v libx264 -preset medium -tune animation -crf 16
 //!        -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv
 //!        -c:a aac -b:a 192k -ar 48000
@@ -33,7 +33,10 @@
 //!   even sizes, or [`Chroma::Full`], which keeps every edge at any size
 //!   in a file fewer players take. The colors are converted and
 //!   tagged as BT.709, so players agree on them whatever their default for
-//!   the size.
+//!   the size. (The primaries and the transfer are tagged on the frames,
+//!   by `setparams`: ffmpeg 9.0's encoder takes them from the frames, which
+//!   the stream's RGB gives none, and with `-color_primaries` and
+//!   `-color_trc` alone the MP4 said "unknown" for both.)
 //! - **The sound** is AAC at 192 kb/s, resampled to 48 kHz: the GBA's
 //!   32768 Hz is no rate AAC has.
 //! - **The file** is written beside its place as `NAME.part` and takes its
@@ -43,6 +46,10 @@
 //! - **Errors** say which of three things went wrong ([`crate::Error`]):
 //!   ffmpeg couldn't be started, ffmpeg failed (with what it said), or the
 //!   disk (the file couldn't be made, or there is no room).
+//! - **Which ffmpeg** is the host's to say ([`Settings::ffmpeg`]);
+//!   [`find_ffmpeg`] is the one nettai's packages bundle, else one
+//!   installed. The bundled one is a minimal build with what this command
+//!   needs and nothing more (bigfarts/nettai-ffmpeg-build).
 
 use crate::Error;
 use std::ffi::OsString;
@@ -95,7 +102,7 @@ impl Settings {
             Chroma::Half => "yuv420p",
             Chroma::Full => "yuv444p",
         };
-        let filter = format!("scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format={format}");
+        let filter = format!("scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format={format},setparams=color_primaries=bt709:color_trc=bt709");
         let (crf, audio) = (self.crf.to_string(), format!("{}k", self.audio_kbps));
         let mut args: Vec<OsString> = [
             "-hide_banner", "-nostdin", "-loglevel", "error",
@@ -112,6 +119,40 @@ impl Settings {
         args.push(out.into());
         args
     }
+}
+
+/// The `ffmpeg` to run: the first of
+///
+/// 1. `$NETTAI_FFMPEG`, as it is (a path, or a name the system looks up);
+/// 2. `ffmpeg` beside the running program: the one a package bundles (beside
+///    `nettai.exe`, in a macOS bundle's `Contents/MacOS`, in the AppImage's
+///    `usr/lib/nettai`);
+/// 3. `ffmpeg` in a folder of the path, or where a package manager puts it
+///    (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
+///    started from the desktop has a short path).
+///
+/// Only the path's absolute folders are looked in: a relative one (`.`, or
+/// an empty entry, which means the same) would run whatever `ffmpeg` the
+/// working directory has. Found nowhere, it is the bundled one's place,
+/// which then fails to start ([`Error::NoFfmpeg`]).
+pub fn find_ffmpeg() -> PathBuf {
+    let named = std::env::var_os("NETTAI_FFMPEG").filter(|n| !n.is_empty());
+    let beside = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf));
+    let usual: &[&str] = if cfg!(unix) { &["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"] } else { &[] };
+    found_ffmpeg(named, beside.as_deref(), &std::env::var_os("PATH").unwrap_or_default(), usual)
+}
+
+/// [`find_ffmpeg`] with what it reads given: the variable, the running
+/// program's folder, the path, and the package managers' folders.
+fn found_ffmpeg(named: Option<OsString>, beside: Option<&Path>, path: &std::ffi::OsStr, usual: &[&str]) -> PathBuf {
+    if let Some(named) = named {
+        return named.into();
+    }
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let path = std::env::split_paths(path).filter(|dir| dir.is_absolute());
+    let folders = beside.map(Path::to_path_buf).into_iter().chain(path).chain(usual.iter().map(PathBuf::from));
+    let mut places = folders.map(|dir| dir.join(name));
+    places.find(|p| p.is_file()).or_else(|| beside.map(|dir| dir.join(name))).unwrap_or_default()
 }
 
 /// ffmpeg making an MP4 of the NUT stream written to this. [`Encoder::finish`]

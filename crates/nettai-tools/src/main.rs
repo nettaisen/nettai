@@ -110,8 +110,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    ffmpeg -f nut -i - out.mp4` makes an MP4): a frame a tick,
                    as a viewer playing it straight shows and plays it
   --mp4 OUT        with --replay: write it as an MP4 (H.264 and AAC), by
-                   running ffmpeg on that stream; OUT is there only once it
-                   is whole
+                   running ffmpeg on that stream ($NETTAI_FFMPEG, else one
+                   beside this program, else the path's); OUT is there only
+                   once it is whole
   --scale N        with --nut or --mp4: the picture N times the frame's
                    240x160 (default 1; the enhanced mode's text is drawn at that
                    size)
@@ -551,7 +552,7 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
     };
     let scale = args.scale;
     let wrote = if let Some(to) = &args.mp4 {
-        nettai_video::write_mp4(&mut viewer, scale, &part, &nettai_video::mp4::Settings::default(), to, &mut progress).map(|()| to.display().to_string())
+        nettai_video::write_mp4(&mut viewer, scale, &part, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
     } else {
         let to = args.nut.as_deref().expect("a video's stream");
         if to == Path::new("-") {

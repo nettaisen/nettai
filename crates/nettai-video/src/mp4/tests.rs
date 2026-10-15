@@ -8,15 +8,54 @@ fn the_command_line_is_as_stated() {
     assert_eq!(
         said.join(" "),
         "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 \
-         -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p \
+         -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709 \
          -c:v libx264 -preset medium -tune animation -crf 16 \
          -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
          -c:a aac -b:a 192k -ar 48000 -movflags +faststart -f mp4 -y out.mp4.part"
     );
     let full = Settings { crf: 0, chroma: Chroma::Full, audio_kbps: 320, ..Settings::default() }.arguments(Path::new("o"));
     let said: Vec<String> = full.iter().map(|a| a.to_string_lossy().into_owned()).collect();
-    assert!(said.contains(&"scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv444p".to_string()));
+    assert!(said.contains(&"scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv444p,setparams=color_primaries=bt709:color_trc=bt709".to_string()));
     assert!(said.windows(2).any(|w| w == ["-crf", "0"]) && said.windows(2).any(|w| w == ["-b:a", "320k"]));
+}
+
+/// The ffmpeg found: `$NETTAI_FFMPEG` as it is, else the one beside the
+/// program before the path's, else the path's; never one in a relative
+/// folder of the path; found nowhere, the place beside the program.
+#[test]
+fn ffmpeg_is_found_beside_the_program_first() {
+    let dir = scratch("find");
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let (program, installed, here) = (dir.join("program"), dir.join("installed"), dir.join("here"));
+    for folder in [&program, &installed, &here] {
+        std::fs::create_dir_all(folder).unwrap();
+    }
+    std::fs::write(installed.join(name), "").unwrap();
+    std::fs::write(here.join(name), "").unwrap();
+    let path = |dirs: &[&Path]| std::env::join_paths(dirs).unwrap();
+    assert_eq!(found_ffmpeg(Some("mine".into()), Some(&program), &path(&[&installed]), &[]), PathBuf::from("mine"));
+    // Nothing beside the program: the path's.
+    assert_eq!(found_ffmpeg(None, Some(&program), &path(&[&installed]), &[]), installed.join(name));
+    // Bundled beside the program: that one, before the path's.
+    std::fs::write(program.join(name), "").unwrap();
+    assert_eq!(found_ffmpeg(None, Some(&program), &path(&[&installed]), &[]), program.join(name));
+    std::fs::remove_file(program.join(name)).unwrap();
+    // A relative folder of the path is passed by, though it has one (the
+    // scratch folder, from the working directory: up to the root and down).
+    #[cfg(unix)]
+    {
+        let cwd = std::env::current_dir().unwrap();
+        let mut relative: PathBuf = std::iter::repeat_n("..", cwd.components().count() - 1).collect();
+        relative.push(here.strip_prefix("/").unwrap());
+        assert!(relative.is_relative() && relative.join(name).is_file());
+        assert_eq!(found_ffmpeg(None, Some(&program), &path(&[&relative]), &[]), program.join(name));
+    }
+    // A package manager's folder, after the path's.
+    let usual = installed.to_str().unwrap();
+    assert_eq!(found_ffmpeg(None, Some(&program), &path(&[]), &[usual]), installed.join(name));
+    // Found nowhere: the place beside the program.
+    assert_eq!(found_ffmpeg(None, Some(&program), &path(&[]), &[]), program.join(name));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// One of these tests at a time: each starts a child, and a stand-in

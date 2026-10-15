@@ -243,7 +243,7 @@ impl Reel {
 /// AAC. What it said, or why it failed.
 fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<Frame>) -> Result<String, String> {
     let filter = format!("scale={}:{}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p", OUT.0, OUT.1);
-    let mut child = Command::new(std::env::var_os("NETTAI_FFMPEG").unwrap_or_else(|| "ffmpeg".into()))
+    let mut child = Command::new(nettai_video::mp4::find_ffmpeg())
         .args(["-hide_banner", "-nostdin", "-loglevel", "error", "-f", "nut", "-i", "pipe:0", "-vf", &filter])
         .args(["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"])
         .args(["-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", "-f", "mp4", "-y"])
