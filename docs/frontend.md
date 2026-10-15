@@ -2739,9 +2739,11 @@ the stream, and `finish()` gives the file its name. The file is written as
 so no half-written file is ever under either name (and a file of that name
 from before stays until the new one is whole). The command line is in the
 module (`mp4::Settings::arguments`): H.264 by libx264 (`-preset medium -tune
-animation -crf 16`), 4:2:0, the colors converted and tagged as BT.709; AAC at
-192 kb/s resampled to 48 kHz (the GBA's 32768 Hz is no rate AAC has);
-`+faststart`. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
+animation -crf 16`), 4:2:0, the colors converted and tagged as BT.709 (the
+primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's encoder
+takes them from the frames, and with `-color_primaries` and `-color_trc` alone
+the MP4 said "unknown" for both); AAC at 192 kb/s resampled to 48 kHz (the
+GBA's 32768 Hz is no rate AAC has); `+faststart`. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
 the size: at an even multiple of the frame every game pixel covers whole
 color samples and edges stay clean, at an odd one every edge gets a fringe
 of mixed color. Measured on 120 frames of an EXE6 fight (the decoded MP4
@@ -2749,6 +2751,18 @@ against the stream, RGB PSNR): 40 dB at twice the frame and 44 dB at four
 times, about 2 Mb/s each; 25 dB at three times, at 4 Mb/s; 38 dB at three
 times in 4:4:4 (`Chroma::Full`, which fewer players take). So a host offers
 even sizes first.
+
+**Which ffmpeg** is the host's to say (`Settings::ffmpeg`); `mp4::find_ffmpeg()`
+is the one the app, the tour and `nettai-tool --mp4` run: `$NETTAI_FFMPEG`,
+else `ffmpeg` beside the running program (the one every package bundles:
+docs/app.md §19), else one in an absolute folder of the path or where a
+package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`,
+`/opt/local/bin`). A relative folder of the path (`.`, or an empty entry) is
+never looked in, so an `ffmpeg` in the working directory isn't run; found
+nowhere, it is the bundled one's place, which fails to start (`NoFfmpeg`).
+The bundled ffmpeg is a minimal static build of this command and nothing more
+(bigfarts/nettai-ffmpeg-build); its smoke test runs the command on streams
+this crate's `nut` writer makes.
 
 **Progress, canceling, errors.** `progress` is called before the first frame
 and after each with a `Progress` (the frames written and to write, so a
@@ -2762,7 +2776,7 @@ says what went wrong as a type, with the detail as its `Display`:
 
 | | |
 |---|---|
-| `NoFfmpeg(e)` | ffmpeg couldn't be started: not installed, or not where the settings say |
+| `NoFfmpeg(e)` | ffmpeg couldn't be started: none bundled or installed, or not where the settings say |
 | `FfmpegFailed { code, log }` | ffmpeg ran and failed: its exit code and the last of what it wrote to its standard error |
 | `Disk(e)` | the file couldn't be made there, or the disk is full |
 | `Canceled` | the caller stopped it; nothing is left |
