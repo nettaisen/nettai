@@ -122,6 +122,11 @@ impl Screen for Builds {
         }
     }
 
+    /// (The tab's: the NaviCust's Left and Right on a row choose its color.)
+    fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
+        self.editor.as_mut().is_some_and(|editor| editor.route(shell, action))
+    }
+
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
         self.editor.as_mut().is_some_and(|editor| editor.key(shell, key))
     }
