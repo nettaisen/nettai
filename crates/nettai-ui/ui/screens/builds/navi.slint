@@ -3,14 +3,14 @@
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head); then the
-// note of what is the game's own navi's alone, right after whatever is over it. What is wrong with the build is the
-// header's to say (docs/design/app-ui.md §2.66). On a phone the panel is over the grid. Its Rust half is
-// src/screens/builds/navi.rs.
+// note of what is the game's own navi's alone, right after whatever is over it. What is wrong with the build is said
+// where it is (docs/design/app-ui.md §2.66): a fact of forms' (a form of it, or the whole) on its heading's line, the
+// navi's on its name's line; a form a problem is about has its name red. On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Note, Select, Button } from "../../widgets.slint";
+import { Cut, PanelBack, Note, Select, Button, ProblemNote } from "../../widgets.slint";
 import { VersionTag } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
@@ -49,13 +49,14 @@ export struct NaviForm {
 }
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
-// the one form always chosen, EXE6's Beast form), whether it has problems (its heading in the error red), its forms in
-// the battle's order, both versions' (grouped by version), and its first's place among the selector's (the focus
-// order's).
+// the one form always chosen, EXE6's Beast form), whether it has problems (its heading in the error red) and what the
+// game's rules have against it (a form of it, or the whole: `problem`, said on its heading's line), its forms in the battle's order,
+// both versions' (grouped by version), and its first's place among the selector's (the focus order's).
 export struct NaviFormGroup {
     name: string,
     count: string,
     flagged: bool,
+    problem: string,
     // How many columns its rows are in (each version's group a column of its own where each of two has one form, as
     // EXE6's Beast form's), how many rows its forms take, and how many heads of their groups over them.
     columns: int,
@@ -85,6 +86,12 @@ export global NaviView {
     // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
     // is at the tab bar's right end).
     in property <string> ruleset;
+    // What the ruleset has against the build (the first and "+n more"): on a phone, under its select (a desktop's is
+    // beside it, in the tab bar: docs/design/app-ui.md §2.66).
+    in property <string> ruleset-problems;
+    // What the game's rules have against the navi, or against the build where it is about no part a tab shows: on the
+    // navi's name's line.
+    in property <string> problems;
     // The game's choices the build's navi has (none in a game without, or for a navi without).
     in property <[NaviChoice]> choices;
     // The game's own navi's name: the one a NaviCust and patch cards are of.
@@ -291,7 +298,9 @@ export component NaviTab inherits Rectangle {
     property <length> panel-width: Theme.phone ? self.width : 360px;
     property <length> panel-height: Theme.phone ? root.body-y + body.preferred-height + root.pad : self.height;
     property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
-    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px : 0px;
+    // (On a phone the ruleset's select is between the panel and the grid, with a line under it for what the ruleset
+    // has against the build.)
+    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px + 24px : 0px;
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> card-height: Theme.phone ? 84px : 140px;
@@ -339,10 +348,12 @@ export component NaviTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
+    // (The navi's name, and on its line what the game's rules have against the navi: the name keeps half the line.)
+    property <length> name-room: root.panel-x + root.panel-width - root.pad - root.facts-x;
     Text {
         x: root.facts-x;
         y: root.facts-y;
-        width: root.panel-x + root.panel-width - root.pad - self.x;
+        width: NaviView.problems == "" ? root.name-room : min(self.preferred-width, root.name-room / 2);
         height: 20px;
         text: NaviView.name;
         color: Theme.text;
@@ -351,6 +362,13 @@ export component NaviTab inherits Rectangle {
         font-weight: 700;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    ProblemNote {
+        x: root.facts-x + root.name-room / 2 + 8px;
+        y: root.facts-y + 2px;
+        width: root.name-room / 2 - 8px;
+        text: NaviView.problems;
     }
 
     Text {
@@ -434,6 +452,14 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: center;
             }
 
+            // (What the game's rules have against the fact, a form of it or the whole, on its heading's line.)
+            ProblemNote {
+                x: heading.width + 16px;
+                y: 0;
+                width: max(0px, parent.width - self.x);
+                text: group.problem;
+            }
+
             // (Each version's group under its name, in its color.)
             for form in group.forms: Text {
                 x: form.column * (parent.form-width + 8px) + 8px;
@@ -461,8 +487,8 @@ export component NaviTab inherits Rectangle {
             }
         }
 
-        // (The note, as tall as its words: what is wrong with the forms is the header's to say, so nothing here
-        // moves when a problem appears.)
+        // (The note, as tall as its words: what is wrong with the forms is said on their rows' and headings' lines,
+        // so nothing here moves when a problem appears.)
         Note {
             text: root.note;
             vertical-alignment: top;
@@ -479,6 +505,15 @@ export component NaviTab inherits Rectangle {
         focusable: Theme.phone;
         nav: "ruleset";
         value: NaviView.ruleset;
+    }
+
+    ProblemNote {
+        x: 0;
+        y: root.panel-height + 12px + 40px + 6px;
+        width: root.width;
+        visible: Theme.phone;
+        horizontal-alignment: left;
+        text: NaviView.ruleset-problems;
     }
 
     phone-edit := Button {

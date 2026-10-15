@@ -131,7 +131,8 @@ impl Folder {
         });
     }
 
-    /// The folder's pane: its entries, each marked where the rules have something against it, and its counts.
+    /// The folder's pane: its entries, each marked where the rules have something against it, its counts, and in its
+    /// header what the game's rules have against the folder or an entry of it (docs/design/app-ui.md §2.66).
     fn show_folder(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let folder = self.shown(draft);
@@ -159,6 +160,7 @@ impl Folder {
                 .collect()
         });
         view.set_slots(ModelRc::new(VecModel::from(cells)));
+        view.set_problems(draft.pane_line(shell, &self.fields(content), false).into());
         view.set_slot(self.slot as i32);
         if let Some(held) = &self.held {
             let tags = stood.tags.map_or(0, |(a, b)| megabytes(a) + megabytes(b));
@@ -249,11 +251,18 @@ impl Folder {
             Some(Described::Row(r)) => self.rows.get(r).copied(),
             None => None,
         };
+        // (What the game's rules have against the entry described, as its pane's header says it too: those the entry is
+        // part of; an empty one's, the folder's size. Said where nothing was refused: docs/design/app-ui.md §2.66.)
+        let fault = match hovered.or(self.described) {
+            Some(Described::Slot(i)) if chip.is_some() => draft.line(shell, self.held.iter().flat_map(|v| v.entry_problems(content, &folder, i))),
+            Some(Described::Slot(_)) => draft.line(shell, draft.checked.problems.iter().filter(|p| matches!(p.what, Wrong::FolderSize(_)))),
+            _ => String::new(),
+        };
         let detail = draft.with_words(shell, |words| {
             // (Why the last mark asked of the entry wasn't made: the strip's refusal. What the rules have against the
-            // entry is the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // entry is its pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
             let problem = notice.unwrap_or_default();
-            let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
+            let Some(chip) = chip else { return ChipDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let record = content.chip(chip.id);
             let held = folder.chips().filter(|c| *c == chip).count() as i32;
             let dark = record.flags.has(nettai_battle::content::ChipFlags::DARK);
@@ -274,6 +283,7 @@ impl Folder {
                 element: kit.pictures.chip_element(chip.id),
                 facts: ModelRc::new(VecModel::from(facts)),
                 problem: problem.into(),
+                fault: fault.into(),
             }
         });
         view.set_detail(detail);

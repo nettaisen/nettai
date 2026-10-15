@@ -2,9 +2,9 @@
 //! FILE…, the chosen one's overview, its menu of DUPLICATE, RENAME and DELETE) are Play's
 //! (`crate::screens::play`); Play's EDIT and Practice's open a build here.
 //!
-//! **The editor** (`editor`): the header's name, version and "✓ Ready to play", the tab bar, and the tab
-//! shown. Each tab is a module here and a file in the UI's `screens/builds/`: [`navi`], [`folder`],
-//! [`navicust`], [`patch_cards`] and [`auto_battle`].
+//! **The editor** (`editor`): the header's name, the tab bar with the ruleset's select, and the tab shown, which
+//! says the build's problems where they are (docs/design/app-ui.md §2.66). Each tab is a module here and a file in
+//! the UI's `screens/builds/`: [`navi`], [`folder`], [`navicust`], [`patch_cards`] and [`auto_battle`].
 //!
 //! **Opened by another screen** ([`open`]: Play's EDIT and Practice's): Back goes straight back to that screen,
 //! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE).

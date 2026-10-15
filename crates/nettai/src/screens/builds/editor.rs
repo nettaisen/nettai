@@ -1,12 +1,14 @@
 //! A build's editor (docs/design/app-ui.md §6, "The editor"; docs/app.md §8): the build being edited
-//! ([`Draft`]), the tabs ([`Tab`]), and the frame that hosts them ([`Editor`]: the header's name and what is wrong
-//! with the build or "✓ Ready to play", the tab bar, the tab shown).
+//! ([`Draft`]), the tabs ([`Tab`]), and the frame that hosts them ([`Editor`]: the header's name, the tab bar, the
+//! ruleset's select, the tab shown).
 //!
-//! **A build's problems are said in one system** (docs/design/app-ui.md §2.66): each is shown on the tabs its facts
-//! are (`Editor::tabs_of`, the same for the tab bar's marks, the header's line and its list); the header says the
-//! shown tab's, the first and "· +n more" (`Words::summary`), and opens them all; an item of the build a problem is
-//! about has its name in the error red; a tab's strip says only why what was asked of its item wasn't done (a
-//! refusal).
+//! **A build's problems are said inline, in one system** (docs/design/app-ui.md §2.66): each marks the tabs its facts
+//! are (`Editor::tabs_of`: the tab bar's marks). The game's rules' are said in the header of the pane of the part of
+//! the build they are about, on its title's line ([`Draft::pane_line`]), whether about an item of it or the whole; the
+//! ruleset's (`Wrong::of_ruleset`: a banned item, a mix of versions) by the ruleset's select, on every tab
+//! ([`Draft::ruleset_problems`]). Several in one place are the first and "· +n more" (`Words::summary`). An item of the
+//! build a problem is about has its name in the error red on its row, and nothing more there; a tab's strip says why
+//! what was asked of its item wasn't done (a refusal), or else what the game's rules have against it ([`Draft::line`]).
 //!
 //! **A tab is one Slint file and one module here** (`ui/screens/builds/<tab>.slint`, `<tab>.rs`), as a screen
 //! is one of each for the shell. Its Slint has its view (a global its module sets: its key hints and its
@@ -157,6 +159,32 @@ impl Draft {
     /// where a tab shows the item, it is marked, and says so.
     pub fn mixing(&self, registry: nettai_content_api::Registry, item: &nettai_match::ruleset::Item) -> Option<&Problem> {
         self.checked.problems.iter().find(|p| matches!(&p.what, Wrong::Mixed { items, .. } if items.iter().any(|(r, i)| *r == registry && i == item)))
+    }
+
+    /// The ruleset's problems with the build (`Wrong::of_ruleset`: an item it doesn't allow, a mix of versions under
+    /// one version per build), in the order it found them: said by its select (docs/design/app-ui.md §2.66), the
+    /// items they are about marked where they are, with no words.
+    pub fn ruleset_problems(&self) -> Vec<&Problem> {
+        self.checked.problems.iter().filter(|p| p.what.of_ruleset()).collect()
+    }
+
+    /// What a tab's pane says in its header (docs/design/app-ui.md §2.66), as `Words::summary` says them: the game's
+    /// rules' problems with the build's facts `fields` (the tab's: `Tab::fields`), those about an item of it (its name
+    /// red on its row) with the rest; the first tab's (`first`) also those of no fact a tab has. Empty: none.
+    pub fn pane_line(&self, shell: &Shell, fields: &[String], first: bool) -> String {
+        let content = self.content();
+        let said = self.checked.problems.iter().filter(|p| {
+            let facts = self.facts_of(p);
+            facts.iter().any(|f| fields.contains(f)) || (first && facts.iter().all(|f| tab_of(content, f).is_none()))
+        });
+        self.line(shell, said)
+    }
+
+    /// The game's rules' problems among `problems`, as `Words::summary` says them (the ruleset's are its select's to
+    /// say): a part of the build's in its pane's header, or the item a strip describes in its top right. Empty: none.
+    pub fn line<'p>(&self, shell: &Shell, problems: impl IntoIterator<Item = &'p Problem>) -> String {
+        let said: Vec<&Problem> = problems.into_iter().filter(|p| !p.what.of_ruleset()).collect();
+        self.with_words(shell, |words| words.summary(said)).unwrap_or_default()
     }
 
     /// The catalogs' and the game's words, in the language shown.
@@ -414,16 +442,7 @@ pub struct Editor {
     rules: Option<RulesPage>,
     /// The row a drag was let go over, which the pointer rests on (`hovered`).
     rest: Option<crate::nav::Key>,
-    /// The header's list of the build's problems, as it was opened: each one's tab.
-    listed: Vec<usize>,
 }
-
-/// The header's line (the UI's `state-nav`): it opens the build's problems.
-const PROBLEMS: &str = "problems";
-
-/// How wide the list of the build's problems is: the longest sentence, a tab's word before it.
-const PROBLEMS_WIDTH: f32 = 720.0;
-
 
 impl Editor {
     /// Open `build` (kept at `path`) in the editor: settled as every build is, on its first tab, the Navi's,
@@ -436,7 +455,7 @@ impl Editor {
         let checked = checked(&kit, &build.side, ruleset.as_ref());
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, ruleset, path, navi_only, changed: settled };
-        let mut editor = Editor { draft, tabs, at: 0, rules: None, rest: None, listed: Vec::new() };
+        let mut editor = Editor { draft, tabs, at: 0, rules: None, rest: None };
         editor.save(shell);
         editor
     }
@@ -451,10 +470,9 @@ impl Editor {
         (self.tabs[self.at].as_mut(), &mut self.draft)
     }
 
-    /// The tabs problem `problem` is shown on, in the bar's order: its facts' tabs (a mix of versions', each tab that
+    /// The tabs problem `problem` marks in the bar, in its order: its facts' tabs (a mix of versions', each tab that
     /// shows something of it: the Navi tab for a form, the Folder for a Giga chip); one of facts no tab says are its
-    /// own, or of none, the first. The tab bar's marks, the header's line and its list of the build's problems say
-    /// each problem where this does (docs/design/app-ui.md §2.66).
+    /// own, or of none, the first, whose pane says it (`Draft::pane_line`; docs/design/app-ui.md §2.66).
     fn tabs_of(&self, problem: &Problem) -> Vec<usize> {
         let content = self.draft.content();
         let fields: Vec<Vec<String>> = self.tabs.iter().map(|t| t.fields(content)).collect();
@@ -465,8 +483,8 @@ impl Editor {
         }
     }
 
-    /// The header and the tab bar: the build's name, what is wrong with it (the shown tab's problems) or that it is
-    /// ready, the tabs, each marked where it has problems.
+    /// The header and the tab bar: the build's name, the tabs, each marked where it has problems, and the ruleset with
+    /// what it has against the build.
     fn show_frame(&self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<BuildsView>();
@@ -483,14 +501,11 @@ impl Editor {
                 nettai_ui::Tab { text: word, enabled: self.enabled(i), flagged }
             })
             .collect();
-        // (The header's line: the shown tab's problems, the first and "+n more"; a phone's, how many the build has.)
-        let shown: Vec<&Problem> = problems.iter().zip(&shown_on).filter(|(_, on)| on.contains(&self.at)).map(|(p, _)| p).collect();
-        let (state, good) = self.draft.with_words(shell, |words| words.header(&self.draft.checked, &shown, shell.scale.phone));
         let ruleset = self.draft.with_words(shell, |words| self.draft.ruleset.as_ref().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
+        let against = self.draft.with_words(shell, |words| words.summary(self.draft.ruleset_problems()));
+        view.set_ruleset_problems(against.unwrap_or_default().into());
         view.set_name(self.draft.build.name.as_str().into());
-        view.set_state(state.into());
-        view.set_state_good(good);
         view.set_tabs(ModelRc::new(VecModel::from(tabs)));
         view.set_tab(self.at as i32);
         view.set_shown(self.tabs[self.at].id());
@@ -589,24 +604,6 @@ impl Editor {
         (picks, at)
     }
 
-    /// The header's line was chosen: the build's problems open as a list under it, every one, each by the first tab it
-    /// is shown on (its word, then its sentence; a phone's sheet, its sentence alone, which its width needs), in the
-    /// order the rules found them. Choosing one goes to its tab (`choose`).
-    fn list_problems(&mut self, shell: &mut Shell, index: i32) {
-        if self.draft.checked.problems.is_empty() {
-            return;
-        }
-        let names = shell.ui().global::<BuildsView>().get_tab_names();
-        self.listed = self.draft.checked.problems.iter().map(|p| self.tabs_of(p).first().copied().unwrap_or(0)).collect();
-        let phone = shell.scale.phone;
-        let words: Vec<String> = self.listed.iter().map(|&t| slint::Model::row_data(&names, self.tabs[t].id() as usize).unwrap_or_default().to_string()).collect();
-        let draft = &self.draft;
-        let options: Vec<String> = draft.with_words(shell, |say| {
-            draft.checked.problems.iter().zip(&words).map(|(p, word)| if phone { say.problem(p) } else { format!("{word} · {}", say.problem(p)) }).collect()
-        });
-        shell.pick_list(PROBLEMS, index, options, PROBLEMS_WIDTH);
-    }
-
     /// What the ruleset's page did: the ruleset it shows is changed or another (a copy), and is the one the player
     /// plays by; or it was deleted, and the game's first preset is.
     fn ruleset_outcome(&mut self, shell: &mut Shell, outcome: Outcome) {
@@ -653,9 +650,6 @@ impl Editor {
         }
         if id == "ruleset" || id == "ruleset-edit" {
             return self.ruleset_control(shell, id, index, None);
-        }
-        if id == PROBLEMS {
-            return self.list_problems(shell, index);
         }
         if id == "tab" {
             let way = if index as usize >= self.at { 1 } else { -1 };
@@ -713,14 +707,6 @@ impl Editor {
             let (picks, _) = self.ruleset_choices();
             if let Some(picked) = picks.into_iter().nth(choice.max(0) as usize) {
                 self.play_by(shell, picked);
-            }
-            return;
-        }
-        // (A problem chosen from the header's list: its tab.)
-        if id == PROBLEMS {
-            if let Some(&to) = self.listed.get(choice.max(0) as usize) {
-                let way = if to >= self.at { 1 } else { -1 };
-                self.go(shell, to, way);
             }
             return;
         }

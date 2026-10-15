@@ -3,9 +3,10 @@
 //! numbers. A problem's own `text` is English for the log, and is never shown.
 //!
 //! One kind reads two ways. As what is wrong with a build ([`Words::problem`]: "2 Giga chips, limit 1"), in the
-//! editor's header and its list of the build's problems, and after "This build can't be used:"; several in a line as
-//! [`Words::summary`] says them ("… +2 more"). And as why a chip can't go into the folder now ([`Words::refusal`]:
-//! "Giga limit reached"), at the end of its library row and in the strip (docs/design/app-ui.md §2.66).
+//! editor's pane whose part of the build it is about or by the ruleset's select, and after "This build can't be used:";
+//! several in a line as [`Words::summary`] says them ("… +2 more"). And as why a chip can't go into the folder now
+//! ([`Words::refusal`]: "Giga limit reached"), at the end of its library row and in the strip (docs/design/app-ui.md
+//! §2.66).
 //!
 //! A problem's sentence says what it is about where the problem names a fact ([`part_of`]): "No navi
 //! chosen", "No form chosen", "Something in the patch cards is there twice", "This navi isn't EXE6's". A kind
@@ -18,7 +19,7 @@ use nettai_battle::content::{ChipClass, PlayerFact};
 use nettai_content_api::{ChipHandle, Registry};
 use nettai_match::Wrong;
 use nettai_match::ruleset::Item;
-use nettai_match::build::{Checked, EntryRefusal, Extent};
+use nettai_match::build::{EntryRefusal, Extent};
 use nettai_match::check::Problem;
 use nettai_ui::{AppWindow, BuildPart, BuildWords, ChipKind, EditorTab};
 use slint::ComponentHandle;
@@ -198,23 +199,10 @@ impl Words<'_> {
         }
     }
 
-    /// The editor's header's (docs/design/app-ui.md §2.66): "✓ Ready to play"; else the shown tab's problems `shown`
-    /// as [`Words::summary`] says them, or where the tab has none (or the line is `short`, a phone's), how many the build
-    /// has. And whether it is ready.
-    pub fn header(&self, checked: &Checked, shown: &[&Problem], short: bool) -> (String, bool) {
-        match checked.problems.len() {
-            0 => (self.say().invoke_ready_to_play().into(), true),
-            n => match self.summary(shown.iter().copied()).filter(|_| !short) {
-                Some(said) => (said, false),
-                None => (self.say().invoke_problem_count(n as i32).into(), false),
-            },
-        }
-    }
-
     /// Problems said in one line (docs/design/app-ui.md §2.66): the first's sentence, and how many more there are
     /// after it ("Mixes Gregar and Falzar: FBeast · +1 more"). Wherever a build's problems are said in a line they are
-    /// said so: the editor's header (a tab's), and the reason a build can't be played (`UserError::BuildUnusable`:
-    /// Play's, the lobby's, Practice's). None: there are none.
+    /// said so: the editor's (a pane's header, a strip's, the ruleset's select), and the reason a build can't be
+    /// played (`UserError::BuildUnusable`: Play's, the lobby's, Practice's). None: there are none.
     pub fn summary<'p>(&self, problems: impl IntoIterator<Item = &'p Problem>) -> Option<String> {
         let mut problems = problems.into_iter();
         let first = self.problem(problems.next()?);
