@@ -66,7 +66,7 @@ export struct FolderCounts {
 // What the tab shows: src/screens/builds/folder.rs sets these.
 export global FolderView {
     out property <[Hint]> hints: self.counts.tags ? self.with-tags : self.without-tags;
-    out property <string> status: @tr("Slot {} of {}", self.slot + 1, self.slots.length);
+    out property <string> status: @tr("{} of {} chips", self.counts.chips, self.slots.length);
     property <[Hint]> with-tags: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick") },

@@ -221,3 +221,8 @@ msgstr "MP4 動画"
 msgid "Builds"
 msgstr "構築"
 
+# The viewer's footer: how many rounds the replay has.
+msgid "{n} round"
+msgid_plural "{n} rounds"
+msgstr[0] "{n} ラウンド"
+msgstr[1] "{n} ラウンド"

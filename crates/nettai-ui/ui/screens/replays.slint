@@ -1028,7 +1028,7 @@ component ViewerPage inherits Page {
     property <length> top: Theme.phone ? 28px : max(0px, (self.body-height - self.picture-height - 124px) / 2);
     title: Theme.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
     back: Caps.of(@tr("Replays"));
-    status: ReplaysView.when;
+    status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
     // (B and Select show both builds, where they may be.)
     hints: ReplaysView.builds-open ? [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
