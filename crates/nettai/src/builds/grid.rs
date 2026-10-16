@@ -13,7 +13,8 @@
 //!   `plus` (a plus part's mark);
 //! - the game's module `rules/navicust/board`, as it loaded
 //!   (`Battle::module_data`): its `boards` (rows of `o` a cell, `f` its
-//!   frame, `.` none) and `COMMAND_LINE` (a row, from 0).
+//!   frame, `.` none), `COMMAND_LINE` (a row, from 0) and `COLOR_BAR` (the
+//!   color bar's slots: the colors placed without a bug), where it has one.
 //!
 //! A piece fits where its cells are on the board (`o`) or its frame (`f`),
 //! not all on the frame, and over no other. Where a game's data don't fit,
@@ -56,13 +57,14 @@ pub fn rgb(name: Option<&str>) -> u32 {
 }
 
 /// What the grid reads of a game: its boards (and whether a side says
-/// which: `sized`), its command line, and its pieces' collection, shapes
-/// (plain and compressed), colors and plus marks.
+/// which: `sized`), its command line, its color bar's slots, and its pieces'
+/// collection, shapes (plain and compressed), colors and plus marks.
 #[derive(Clone, Debug, Default)]
 pub struct GridData {
     pub boards: Vec<Vec<Vec<u8>>>,
     pub sized: bool,
     pub command_line: Option<usize>,
+    pub color_bar: Option<usize>,
     pub collection: String,
     pub shapes: HashMap<(u16, bool), Shape>,
     pub colors: HashMap<u16, Vec<String>>,
@@ -108,7 +110,14 @@ pub fn read(content: &Arc<Content>, module: Option<&Data>) -> Option<GridData> {
     if boards.is_empty() {
         return None;
     }
-    let mut data = GridData { boards, sized, command_line: module.field("COMMAND_LINE").int().map(|r| r as usize), collection: collection.clone(), ..GridData::default() };
+    let mut data = GridData {
+        boards,
+        sized,
+        command_line: module.field("COMMAND_LINE").int().map(|r| r as usize),
+        color_bar: module.field("COLOR_BAR").int().map(|n| n as usize),
+        collection: collection.clone(),
+        ..GridData::default()
+    };
     for h in content.defs.entries_of(&collection) {
         let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key)?;
         let plain = rows(d.spec.field("shape"), b"#.")?;
@@ -201,6 +210,18 @@ pub fn board_index(c: &Content, side: &Side) -> Option<usize> {
     }
 }
 
+/// The colors placed, each once, in the order the list first has them (the color bar's: the game fills its slots as
+/// the parts were placed).
+pub fn colors_placed(parts: &[Placed]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for c in parts.iter().filter_map(|p| p.color.as_ref()) {
+        if !out.contains(c) {
+            out.push(c.clone());
+        }
+    }
+    out
+}
+
 /// `shape` turned a quarter clockwise `rotation` times about its center.
 pub fn rotate(shape: &Shape, rotation: u8) -> Shape {
     let n = shape.len();
@@ -244,6 +265,11 @@ impl GridData {
     pub fn board_of(&self, c: &Content, side: &Side) -> Option<usize> {
         let last = self.boards.len().checked_sub(1)?;
         Some(if self.sized { board_index(c, side).filter(|&b| b <= last).unwrap_or(last) } else { last })
+    }
+
+    /// How many colors the game's pieces come in, all told (the most the color bar can be shown holding).
+    pub fn colors_in_all(&self) -> usize {
+        self.colors.values().flatten().collect::<HashSet<_>>().len()
     }
 
     /// A piece's shape as placed: compressed or not, turned.
@@ -457,6 +483,7 @@ mod tests {
         ] {
             let data = read_game(&content, game).unwrap_or_else(|| panic!("{game}: the data don't fit the grid"));
             assert_eq!((data.boards.len(), data.command_line, data.sized), (sizes.len(), Some(3), game != "exe4"), "{game}");
+            assert_eq!((data.color_bar, data.colors_in_all()), (Some(4), 6), "{game}: the color bar's four slots, six colors");
             let pieces = content.defs.entries_of(&data.collection).len();
             assert_eq!((data.colors.len(), data.shapes.len()), (pieces, 2 * pieces), "{game}");
             let read: Vec<String> = data.boards.iter().map(|b| size(b)).collect();

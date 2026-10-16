@@ -383,16 +383,16 @@ local function plan(game: NaviCustGame, layout: { string }, parts: { PlacedProgr
             game.extra(p, count)
         end
     end
-    -- The colors (`sub_813BEA8`): five, the status bug; more, the strong one twice.
+    -- The colors (`sub_813BEA8`): one past the color bar's slots, the status bug; more, the strong one twice.
     local colors: { string } = {}
     for _, p in parts do
         if table.find(colors, p.color) == nil then
             table.insert(colors, p.color)
         end
     end
-    if #colors == 5 then
+    if #colors == board.COLOR_BAR + 1 then
         count("status")
-    elseif #colors > 5 then
+    elseif #colors > board.COLOR_BAR + 1 then
         count("status-strong", 2)
     end
     -- On the frame (`sub_813C584`): each program covering a cell of it, once, in the list's order.

@@ -571,11 +571,13 @@ export type NaviCustEffect = {
     what: string?,
 }
 
--- A game's NaviCust board (its rules/navicust/board.luau): the grid's size, its command line, the board by expansions
--- (`o` a cell, `f` its frame, `.` none), and where a neighbor counts (`x` a cell where it doesn't).
+-- A game's NaviCust board (its rules/navicust/board.luau): the grid's size, its command line, its color bar's slots (the
+-- colors placed without a bug), the board by expansions (`o` a cell, `f` its frame, `.` none), and where a neighbor
+-- counts (`x` a cell where it doesn't).
 export type NaviCustBoard = {
     SIZE: number,
     COMMAND_LINE: number,
+    COLOR_BAR: number,
     boards: { { string } },
     NEIGHBORS: { string },
 }
