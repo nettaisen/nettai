@@ -947,19 +947,21 @@ export component Header inherits Rectangle {
         }
     }
 
-    // (The field wipes in as the title does; clipped only meanwhile, so its glow while it is edited shows.)
-    Rectangle {
+    // (The field wipes in as the title does; clipped only meanwhile, so its glow while it is edited shows. It is made
+    // when the title becomes a name to change, not hidden till then: a control is one of the focus's as it is made,
+    // so a field made with no name of its own, a preset's page's, never was one once DUPLICATE made the ruleset the
+    // player's.)
+    if root.field: Rectangle {
         x: root.title-x - 8px;
         y: (parent.height - self.height) / 2;
         width: root.field-width * arrive.t;
         height: 40px;
-        visible: root.field;
         clip: arrive.t < 1;
         Field {
             x: 0;
             y: 0;
             width: root.field-width;
-            nav: root.field ? root.title-nav : "";
+            nav: root.title-nav;
             text: root.title;
             heading: true;
         }
