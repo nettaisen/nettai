@@ -6,8 +6,8 @@
 //! build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
 //! PRACTICE goes straight into a practice battle with it (`crate::screens::practice::open`), whose EXIT comes
 //! back here too; the
-//! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE, RENAME and, apart, DELETE
-//! (which asks once, Cancel focused).
+//! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE and, apart, DELETE (which asks
+//! once, Cancel focused). A build is renamed in the editor, its header's name a field (docs/design/app-ui.md §2.74).
 
 use super::{Play, remembered_build};
 use crate::builds::store::{self, Build};
@@ -32,14 +32,13 @@ pub(super) const DELETE: &str = "play.delete";
 #[derive(Clone, Copy, PartialEq)]
 enum MenuAction {
     Duplicate,
-    Rename,
     Delete,
 }
 
-/// The dialog open: a new build's name and version, or the chosen build's new name.
-pub(super) enum Naming {
-    New { name: String, version: usize },
-    Rename { name: String },
+/// The dialog open: a new build's name and version.
+pub(super) struct Naming {
+    name: String,
+    version: usize,
 }
 
 /// The ruleset a new build of `kit`'s game is made for (NEW BUILD's, an import's): the one the player last chose
@@ -55,11 +54,11 @@ impl Play {
         Some((entry.listed.path.as_path(), entry.build.as_ref()?))
     }
 
-    /// What the build's menu offers: for a build that reads, DUPLICATE, RENAME and DELETE; for one whose file
-    /// doesn't, DELETE alone; with none, nothing.
+    /// What the build's menu offers: for a build that reads, DUPLICATE and DELETE; for one whose file doesn't,
+    /// DELETE alone; with none, nothing.
     fn menu_actions(&self) -> &'static [MenuAction] {
         match (self.build(), self.chosen_build()) {
-            (_, Some(_)) => &[MenuAction::Duplicate, MenuAction::Rename, MenuAction::Delete],
+            (_, Some(_)) => &[MenuAction::Duplicate, MenuAction::Delete],
             (Some(_), None) => &[MenuAction::Delete],
             (None, None) => &[],
         }
@@ -78,7 +77,6 @@ impl Play {
             .iter()
             .map(|a| match a {
                 MenuAction::Duplicate => view.get_duplicate_word(),
-                MenuAction::Rename => view.get_rename_word(),
                 MenuAction::Delete => view.get_delete_word(),
             })
             .map(|w| w.to_string())
@@ -91,7 +89,6 @@ impl Play {
     pub(super) fn menu_chosen(&mut self, shell: &mut Shell, choice: i32) {
         match usize::try_from(choice).ok().and_then(|at| self.menu_actions().get(at)) {
             Some(MenuAction::Duplicate) => self.duplicate(shell),
-            Some(MenuAction::Rename) => self.ask_rename(shell),
             Some(MenuAction::Delete) => self.ask_delete(shell),
             None => {}
         }
@@ -116,14 +113,10 @@ impl Play {
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         match &self.naming {
-            Some(Naming::New { name, version }) => {
+            Some(Naming { name, version }) => {
                 view.set_dialog_name(name.as_str().into());
                 view.set_dialog_version(*version as i32);
                 view.set_dialog(BuildDialog::NewBuild);
-            }
-            Some(Naming::Rename { name }) => {
-                view.set_dialog_name(name.as_str().into());
-                view.set_dialog(BuildDialog::Rename);
             }
             None => view.set_dialog(BuildDialog::None),
         }
@@ -146,20 +139,13 @@ impl Play {
     /// NEW BUILD: a name not taken, and the game's first version.
     pub(super) fn ask_new(&mut self, shell: &mut Shell) {
         let name = store::new_name(&shell.ui().global::<PlayView>().get_new_name(), &self.taken());
-        self.open_dialog(shell, Naming::New { name, version: 0 });
-    }
-
-    /// RENAME: the chosen build's name, to change.
-    pub(super) fn ask_rename(&mut self, shell: &mut Shell) {
-        let Some((_, build)) = self.chosen_build() else { return };
-        let name = build.name.clone();
-        self.open_dialog(shell, Naming::Rename { name });
+        self.open_dialog(shell, Naming { name, version: 0 });
     }
 
     /// The new build's version stepped by `by`, around.
     pub(super) fn step_version(&mut self, shell: &Shell, by: i32) {
         let count = builds::kit(shell).map_or(1, |kit| kit.builds.groups.len().max(1)) as i32;
-        if let Some(Naming::New { version, .. }) = &mut self.naming {
+        if let Some(Naming { version, .. }) = &mut self.naming {
             *version = (*version as i32 + by).rem_euclid(count) as usize;
             self.show_dialog(shell);
         }
@@ -167,7 +153,7 @@ impl Play {
 
     /// The new build's version chosen outright (a click on one).
     pub(super) fn choose_version(&mut self, shell: &Shell, choice: usize) {
-        if let Some(Naming::New { version, .. }) = &mut self.naming {
+        if let Some(Naming { version, .. }) = &mut self.naming {
             *version = choice;
             self.show_dialog(shell);
         }
@@ -175,7 +161,7 @@ impl Play {
 
     /// The name typed: as a build's file can be named, its end trimmed once it is left.
     pub(super) fn edit_name(&mut self, shell: &Shell, text: &str, done: bool) {
-        if let Some(Naming::New { name, .. } | Naming::Rename { name }) = &mut self.naming {
+        if let Some(Naming { name, .. }) = &mut self.naming {
             *name = store::clean_name(text);
             if done {
                 *name = name.trim_end().to_string();
@@ -184,19 +170,14 @@ impl Play {
         }
     }
 
-    /// The name dialog's main button: the build made, or renamed. (With no name the dialog stays.)
+    /// The name dialog's main button: the build made. (With no name the dialog stays.)
     pub(super) fn confirm(&mut self, shell: &mut Shell) {
         let Some(kit) = builds::kit(shell) else { return };
         match self.naming.take() {
-            Some(Naming::New { name, version }) if !name.trim().is_empty() => {
+            Some(Naming { name, version }) if !name.trim().is_empty() => {
                 shell.nav.close("name.");
                 self.show_dialog(shell);
                 self.create(shell, &kit, name.trim_end(), version);
-            }
-            Some(Naming::Rename { name }) if !name.trim().is_empty() => {
-                shell.nav.close("name.");
-                self.show_dialog(shell);
-                self.rename(shell, &kit, name.trim_end());
             }
             unnamed => self.naming = unnamed,
         }
@@ -238,24 +219,6 @@ impl Play {
             Ok(side) => self.add(shell, kit, &Build::new(kit.content(), name, side).made_for(made_for_new(shell, kit))),
             Err(why) => {
                 crate::errors::log("making a new build", &why);
-                shell.fail(UserError::Other);
-            }
-        }
-    }
-
-    /// The chosen build named `name`: its file is named for it, the old one going once the new one is kept.
-    fn rename(&mut self, shell: &mut Shell, kit: &Kit, name: &str) {
-        let Some((path, build)) = self.chosen_build().map(|(p, b)| (p.to_path_buf(), b.clone())) else { return };
-        self.notice.clear();
-        let renamed = build.named(name);
-        let to = store::new_path(&kit.game, &renamed.name);
-        match store::write(&to, kit.content(), &kit.game, &renamed) {
-            Ok(()) => {
-                let _ = std::fs::remove_file(&path);
-                self.reload(shell, Some(renamed.name));
-            }
-            Err(why) => {
-                crate::errors::log("renaming a build", &why);
                 shell.fail(UserError::Other);
             }
         }

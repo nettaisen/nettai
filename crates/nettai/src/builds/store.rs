@@ -288,6 +288,16 @@ fn rename_ruleset_in(dir: &Path, content: &Content, game: &str, from: &Name, to:
 /// A path for a new build of `game` named `name` that no file has: the name's letters and digits
 /// (`falzar-heat.toml`), numbered if it is taken.
 pub fn new_path(game: &str, name: &str) -> PathBuf {
+    path_for(game, name, None)
+}
+
+/// [`new_path`] for build `name` of `game` kept at `own` until now (renamed): its own file counts as free, so a name
+/// whose letters and digits are the same keeps it.
+pub fn renamed_path(game: &str, name: &str, own: &Path) -> PathBuf {
+    path_for(game, name, Some(own))
+}
+
+fn path_for(game: &str, name: &str, own: Option<&Path>) -> PathBuf {
     let mut stem: String = name
         .chars()
         .map(|c| if c.is_alphanumeric() { c.to_lowercase().next().unwrap_or(c) } else { '-' })
@@ -302,7 +312,7 @@ pub fn new_path(game: &str, name: &str) -> PathBuf {
     let dir = folder(game);
     let mut path = dir.join(format!("{stem}.toml"));
     for n in 2.. {
-        if !path.exists() {
+        if !path.exists() || own == Some(path.as_path()) {
             break;
         }
         path = dir.join(format!("{stem}-{n}.toml"));

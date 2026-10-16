@@ -18,9 +18,6 @@ msgstr "編集"
 msgid "DUPLICATE"
 msgstr "複製"
 
-msgid "RENAME"
-msgstr "名前を変更"
-
 msgid "DELETE"
 msgstr "削除"
 

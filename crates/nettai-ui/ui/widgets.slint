@@ -893,11 +893,17 @@ export component Field inherits Rectangle {
     in property <bool> error;
     // A code: fixed-width, larger, tracked.
     in property <bool> code;
+    // A screen's name in the header (`Header`'s `title-nav`): in the title's face, size and tracking.
+    in property <bool> heading;
     in property <bool> enabled: true;
     out property <bool> focused: hit.focused;
     out property <bool> editing: hit.focused && Nav.editing;
     property <int> seq: Nav.edit-seq;
     property <length> scroll;
+    property <string> family: root.heading ? Theme.display : root.code ? Theme.mono : Theme.body;
+    property <length> face: root.heading ? (Theme.phone ? 16px : 20px) : root.code ? 16px : 14px;
+    property <int> weight: root.heading ? Theme.display-bold : root.code ? 700 : 400;
+    property <length> tracking: root.heading ? (Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking) : root.code ? 1.3px : 0px;
     height: 40px;
     Rectangle {
         background: Theme.inset;
@@ -922,10 +928,10 @@ export component Field inherits Rectangle {
         visible: !root.editing;
         text: root.text == "" ? root.placeholder : root.text;
         color: root.text == "" || !root.enabled ? Theme.dim : Theme.text;
-        font-family: self.as-code ? Theme.mono : Theme.body;
-        font-size: self.as-code ? 16px : 14px;
-        font-weight: self.as-code ? 700 : 400;
-        letter-spacing: self.as-code ? 1.3px : 0px;
+        font-family: root.code && !self.as-code ? Theme.body : root.family;
+        font-size: root.code && !self.as-code ? 14px : root.face;
+        font-weight: root.code && !self.as-code ? 400 : root.weight;
+        letter-spacing: root.code && !self.as-code ? 0px : root.tracking;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -941,10 +947,10 @@ export component Field inherits Rectangle {
             visible: root.editing;
             enabled: root.editing;
             color: Theme.text;
-            font-family: root.code ? Theme.mono : Theme.body;
-            font-size: root.code ? 16px : 14px;
-            font-weight: root.code ? 700 : 400;
-            letter-spacing: root.code ? 1.3px : 0px;
+            font-family: root.family;
+            font-size: root.face;
+            font-weight: root.weight;
+            letter-spacing: root.tracking;
             vertical-alignment: center;
             single-line: true;
             text-cursor-width: 2px;

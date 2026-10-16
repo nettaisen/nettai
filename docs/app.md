@@ -13,8 +13,8 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 transport, the export): each is one Slint file and one Rust module (§2).
 
 Builds is filled in (§8): the editor with its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
-it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE,
-RENAME and DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
+it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE
+and DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
 and a version's tag are components any screen uses.
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
@@ -622,15 +622,16 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   (`direct`, a regular button), the direct connection's dialog (§2.57: the user found the field taking a code
   or an address worse). The reserved line is under the row, and the list and the overview grow down to it (564
   at the reference window). The chosen build is the one under the list's cursor, remembered by game; the
-  overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
+  overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD opens the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
   a save chosen in the system's dialog, as a save dropped on the window does (`builds::import`), saying quietly in
   the reserved line what it was put on where that changed it ("Imported as Dark MegaMan"); ⋯ (`more`) and a right
-  click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): DUPLICATE,
-  RENAME and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
+  click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): DUPLICATE
+  and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
-  at)`), whose Back comes back here with it still chosen; PRACTICE goes straight into a practice battle on it
+  at)`), whose Back comes back here with it still chosen (renamed there, by its new name: `play::follow_rename`,
+  which Practice's visit follows too); PRACTICE goes straight into a practice battle on it
   (`screens::practice::open`, by the build's name), whose EXIT comes back here too (§15). With no build of the
   game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, PRACTICE, EDIT and ⋯
   aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
@@ -1182,7 +1183,7 @@ back by `resolve_side`):
   is made for the ruleset the player last chose (`rulesets::chosen_last`), DUPLICATE keeps its source's
   (`Build::made_for`, `named`).
 - **The Builds screen is the editor alone** (docs/design/app-ui.md §2.50): the builds themselves, + NEW BUILD
-  (and its FROM A SAVE FILE…), the overview, the build's menu of DUPLICATE, RENAME and DELETE, are Play's (§4),
+  (and its FROM A SAVE FILE…), the overview, the build's menu of DUPLICATE and DELETE, are Play's (§4),
   and the main menu has no BUILDS.
 - **Opened by another screen** (`screens::builds::open(shell, from, at)`; docs/design/app-ui.md §2.28): Builds is
   shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name,
@@ -1313,15 +1314,17 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   every entry that holds it (`Wrong::NotAllowed`'s `entries`, `Problem::at`: each copy of a chip, each placed
   program, each auto battle place), its name in the error red; taking it out is never refused.
 - **A ruleset's page** (`rulesets/page.rs`, `ui/ruleset.slint`'s `RulesetPage` and `RulesetView`): app.slint
-  shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), which goes on
-  unseen under it; its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it
+  shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), as another screen
+  would be: the screen's component is gone while it is open and made again as it closes, its Rust half going on
+  (the lobby's link), and opening and closing it go as a screen change (`Shell::swap_page`, §10; design §2.74); its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it
   (`Page::activate`, `step`, `choose`, `edit`, `focused`, `answered` for DELETE's question) and hears what it did
   (`Outcome::Changed`: the ruleset shown changed and was saved, or is a copy; `Renamed`, the player's own named
   anew, the builds made for it renamed with it; `Deleted`). The categories (a list;
   a phone's select), the chosen one's items with a check each (Enter, a click or a tap), ALLOW ALL, ALLOW NONE,
   the version's quick choices (`rules.set`: each group with items in the category, then All; their rows changed
-  in place, so a press on one keeps its focus), the search; the name (saved when confirmed, numbered where
-  another of the player's own has it), Version exclusives (ONE VERSION | MIX VERSIONS, design §2.65: the file's
+  in place, so a press on one keeps its focus), the search; the name, the header's title (`rules.name`, a field in the
+  header where the ruleset can be changed: `Page`'s `title-nav`; saved when confirmed, numbered where another of
+  the player's own has it), Version exclusives (ONE VERSION | MIX VERSIONS, design §2.65: the file's
   `versions`, `one_per_build` or `mixed`), DUPLICATE (named after the ruleset, numbered past the presets'
   names and the player's own) and DELETE (asked once). Each change is saved at once. A preset, or the host's
   ruleset a joiner views, changes nothing, and the reserved line says why.
@@ -1397,8 +1400,10 @@ columns at the left (a second one beside it), the sheet 22 taller (672); on a ph
 build, and its height on the width and the stats after the eight. Every number is the compiled one
 (`Checked::overview`).
 
-**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name (nothing of the build's
-problems: each tab says them where they are, design §2.66), the tab bar with the ruleset's select, and the tab
+**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, a field (`name`,
+`Page`'s `title-nav`) that renames the build (`Editor::rename`: as a file can be named, numbered where another build
+has it, its file named for it, `store::renamed_path`; design §2.74), nothing of the build's problems (each tab says
+them where they are, design §2.66), the tab bar with the ruleset's select, and the tab
 chosen. A tab's strip says at its top right, where nothing was refused, what the build's problems have against the
 item it describes, the ruleset's among them (`Draft::line`: `ChipDetail.fault`, `CardDetail.fault`,
 `NavicustView.fault`; `Refusal`'s `problem`; the Navi tab, which has no strip, in its note's place: `NaviView.fault`):
@@ -1910,7 +1915,10 @@ themselves, so a screen built from them moves without its author writing an anim
 - a stepper's value slides in its box the way it was stepped; a switch's mark and a tab bar's underline slide;
 - a list's chosen mark slides to the next row, and a scroll the app asks for is smooth;
 - a panel's accent draws in; a progress bar fills under a moving highlight; a message fades in;
-- a screen's body slides and fades as it leaves, and the next one's title wipes in; a dialog grows in as its
+- a screen's body slides and fades as it leaves (`Shell.leaving`; to the left, to the right going to the main
+  menu, `Theme.back`), the header and the footer staying, and the next one is made: its title wipes in and its
+  parts arrive. A ruleset's page opens and closes so too (`Shell::swap_page`): the screen under it is gone while
+  it is open and made again as it closes (design §2.74); a dialog grows in as its
   shade fades in, and a failure's shakes once; a menu over the battle slides in from the left;
 - the two cards before a battle slide in from their sides, VS stamps, and the ground's pattern rushes; the
   pattern drifts otherwise, and a soft pulse crosses it now and then;
@@ -2184,7 +2192,7 @@ locked screen draws no frames, and the practice battle never starts (`practice.t
 **The builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`):
 Play's builds with none and with three (one named in Japanese, one with a name too long for its row), a new build's
 dialog with the focus a control on, a file that is no save dropped on the list, EDIT and ⋯ a focus move apart,
-the build's menu open (`builds-menu`), a build's rename and the question before it is deleted, each chosen from the
+the build's menu open (`builds-menu`) and the question before a build is deleted, chosen from the
 menu (the same steps on a phone, whose page has the same buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,

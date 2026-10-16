@@ -125,6 +125,17 @@ pub(crate) fn remembered(shell: &Shell, game: &str) -> Option<String> {
     shell.settings.remembered.get(&remembered_build(game)).cloned()
 }
 
+/// `game`'s build `from` was renamed `to` (in the editor's header): Play remembers it, and the visit to Practice
+/// keeps it, by its new name.
+pub(crate) fn follow_rename(shell: &mut Shell, game: &str, from: &str, to: &str) {
+    let key = remembered_build(game);
+    if shell.settings.remembered.get(&key).is_some_and(|name| name == from) {
+        shell.settings.remembered.insert(key, to.to_string());
+        shell.save_settings();
+    }
+    shell.practice.visit.renamed(game, from, to);
+}
+
 /// The selected game's builds (`builds::shelf`: its builds folder's files), each checked under the ruleset it is
 /// made for (`rulesets::made_for`; a lobby checks them again under the host's: `Play::check_builds`), as Play lists
 /// them and Practice's Dummy's build offers them. The screenshot pass lists builds of its own, which
@@ -364,16 +375,17 @@ impl Play {
 
     // ---- The builds --------------------------------------------------------------------------------------
 
-    /// Read the selected game's builds ([`shelved`]): the one chosen before chosen again, else the one remembered.
+    /// Read the selected game's builds ([`shelved`]): the one chosen before chosen again, else the one remembered
+    /// (the one chosen before, renamed in the editor: [`follow_rename`]).
     fn read_builds(&mut self, shell: &Shell, game: &str) {
-        let before = self.build().map(|b| b.name().to_string()).or_else(|| remembered(shell, game));
+        let before = self.build().map(|b| b.name().to_string());
         let Some(kit) = builds::kit(shell) else {
             self.builds = Vec::new();
             return;
         };
         self.builds = shelved(shell, &kit);
         self.builds_of = Some(game.to_string());
-        self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name() == name)).unwrap_or(0);
+        self.chosen = [before, remembered(shell, game)].into_iter().flatten().find_map(|name| self.builds.iter().position(|b| b.name() == name)).unwrap_or(0);
     }
 
     /// The builds checked again under `under` (a lobby's ruleset: the host's), and the rows shown with them. Their

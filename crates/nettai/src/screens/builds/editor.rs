@@ -627,6 +627,42 @@ impl Editor {
         }
     }
 
+    /// The header's name, a field (the user: "you should just be able to edit the build name/ruleset name from the
+    /// edit screen in the header"): as it is typed, as a build's file can be named; confirmed, the build is named it
+    /// (numbered where another build has it) and its file named for it, the old one going once the new one is kept,
+    /// Play and Practice following it; left empty, or as it was (Esc), it stays as it was.
+    fn rename(&mut self, shell: &mut Shell, text: &str, done: bool) {
+        let name = store::clean_name(text);
+        if !done {
+            shell.ui().global::<BuildsView>().set_name(name.as_str().into());
+            return;
+        }
+        let name = name.trim_end();
+        let game = self.draft.kit.game.clone();
+        let from = self.draft.build.name.clone();
+        if !name.is_empty() && name != from {
+            let taken: Vec<String> = store::list(&game).into_iter().filter(|l| l.path != self.draft.path).map(|l| l.name).collect();
+            let renamed = self.draft.build.named(&store::new_name(name, &taken));
+            let to = store::renamed_path(&game, &renamed.name, &self.draft.path);
+            match store::write(&to, self.draft.content(), &game, &renamed) {
+                Ok(()) => {
+                    if to != self.draft.path {
+                        let _ = std::fs::remove_file(&self.draft.path);
+                    }
+                    crate::screens::play::follow_rename(shell, &game, &from, &renamed.name);
+                    self.draft.path = to;
+                    self.draft.build = renamed;
+                    self.draft.changed = false;
+                }
+                Err(why) => {
+                    crate::errors::log("renaming a build", &why);
+                    shell.fail(UserError::Other);
+                }
+            }
+        }
+        self.show_frame(shell);
+    }
+
     /// After a tab's call: the build kept if it changed, and the frame shown anew.
     fn after(&mut self, shell: &mut Shell) {
         if self.draft.changed {
@@ -811,6 +847,9 @@ impl Editor {
         if RulesPage::owns(id) {
             let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.edit(shell, id, text, done));
             return self.ruleset_outcome(shell, outcome);
+        }
+        if id == "name" {
+            return self.rename(shell, text, done);
         }
         let (tab, draft) = self.tab();
         tab.edit(shell, draft, id, index, text, done);

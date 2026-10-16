@@ -2,7 +2,7 @@
 // is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
 //
 // The screen has three parts, one shown at a time (`PlayView.part`): the player's builds (+ NEW BUILD over them,
-// the chosen one's overview beside them with PRACTICE, EDIT and ⋯, its menu of DUPLICATE, RENAME and DELETE) with
+// the chosen one's overview beside them with PRACTICE, EDIT and ⋯, its menu of DUPLICATE and DELETE) with
 // the ways to play it online under them (HOST: an invite; JOIN: an invite's code typed; DIRECT CONNECT: a direct
 // connection's dialog); the wait for the other player, a practice battle beside the invite's code; and the lobby,
 // for as long as the two players stay together. The two cards
@@ -28,11 +28,10 @@ export enum PlayPart {
     lobby,
 }
 
-// A dialog of the builds' part: a new build's name and version, a build's new name.
+// A dialog of the builds' part: a new build's name and version.
 export enum BuildDialog {
     none,
     new-build,
-    rename,
 }
 
 // What the lobby's reserved line says.
@@ -84,8 +83,8 @@ export global PlayView {
     in property <PlayPart> part;
 
     // ---- The builds --------------------------------------------------------------------------------------
-    // The selected game's builds, and the one chosen (the one a link brings and the one EDIT, DUPLICATE, RENAME
-    // and DELETE act on): its row, and its overview. A build whose file doesn't read as one (not `readable`)
+    // The selected game's builds, and the one chosen (the one a link brings and the one EDIT, DUPLICATE and
+    // DELETE act on): its row, and its overview. A build whose file doesn't read as one (not `readable`)
     // can only be deleted.
     in property <[BuildEntry]> builds;
     in property <int> chosen;
@@ -211,7 +210,6 @@ export global PlayView {
     out property <string> delete-word: @tr("DELETE");
     // The build's menu (⋯, or a right click on its row), DELETE apart after them.
     out property <string> duplicate-word: @tr("DUPLICATE");
-    out property <string> rename-word: @tr("RENAME");
     out property <string> save-files: @tr("Save files");
     public pure function delete-title(name: string) -> string {
         return @tr("Delete {}?", name);
@@ -766,7 +764,7 @@ export component PlayScreen inherits Page {
 
         // The chosen build: its overview (the wide sheet) with PRACTICE, EDIT and ⋯ in its header's right; on a
         // phone, no overview, and the three in a row under the box. PRACTICE goes straight into a practice battle
-        // with it; ⋯ opens the build's menu (DUPLICATE, RENAME and, apart, DELETE). A build whose file doesn't read
+        // with it; ⋯ opens the build's menu (DUPLICATE and, apart, DELETE). A build whose file doesn't read
         // has an empty frame, PRACTICE and EDIT unavailable and only DELETE in its menu. With no build none of them
         // is there.
         Arrive {
@@ -1663,17 +1661,16 @@ export component MatchResult inherits Rectangle {
 
 // ---- Over the screen -------------------------------------------------------------------------------------
 
-// A new build's name and version, or a build's new name. Its controls' names begin with `name.`. A new build's
-// has under its buttons, below a line, the other way to start one: FROM A SAVE FILE…, which opens the system's
-// file dialog (the build is made of the save, named for its file).
+// A new build's name and version. Its controls' names begin with `name.`. Under its buttons, below a line, is the
+// other way to start one: FROM A SAVE FILE…, which opens the system's file dialog (the build is made of the save,
+// named for its file). (A build is renamed in the editor, its header's name a field: docs/design/app-ui.md §2.74.)
 component NameDialog inherits DialogFrame {
-    property <bool> versions: PlayView.dialog == BuildDialog.new-build;
-    // (A new build's: its name, its version and the version's note, each under its label, then the buttons.)
+    // (Its name, its version and the version's note, each under its label, then the buttons.)
     property <length> version-y: 100px;
     property <length> note-y: root.version-y + Theme.control + 8px;
-    property <length> buttons-y: root.versions ? root.note-y + 38px + 16px : 78px;
-    title: root.versions ? @tr("NEW BUILD") : @tr("RENAME");
-    content-height: root.buttons-y + (root.versions ? 120px : 40px);
+    property <length> buttons-y: root.note-y + 38px + 16px;
+    title: @tr("NEW BUILD");
+    content-height: root.buttons-y + 120px;
     Label {
         x: 0;
         y: 0;
@@ -1695,11 +1692,10 @@ component NameDialog inherits DialogFrame {
         y: 78px;
         width: root.inner-width;
         height: 14px;
-        visible: root.versions;
         text: @tr("VERSION");
     }
 
-    if root.versions: VersionChoice {
+    VersionChoice {
         x: 0;
         y: root.version-y;
         width: root.inner-width;
@@ -1714,7 +1710,6 @@ component NameDialog inherits DialogFrame {
         y: root.note-y;
         width: root.inner-width;
         height: 38px;
-        visible: root.versions;
         text: @tr("{} They can be changed later in the editor.", PlayView.version-sets);
     }
 
@@ -1722,7 +1717,7 @@ component NameDialog inherits DialogFrame {
         x: root.inner-width - self.width;
         y: root.buttons-y;
         nav: "name.confirm";
-        text: root.versions ? @tr("CREATE BUILD") : @tr("RENAME");
+        text: @tr("CREATE BUILD");
         kind: ButtonKind.main;
         enabled: PlayView.dialog-name != "";
     }
@@ -1739,7 +1734,6 @@ component NameDialog inherits DialogFrame {
         x: 0;
         y: root.buttons-y + 64px;
         width: root.inner-width;
-        visible: root.versions;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -1747,8 +1741,6 @@ component NameDialog inherits DialogFrame {
     Button {
         x: 0;
         y: root.buttons-y + 80px;
-        visible: root.versions;
-        enabled: root.versions;
         nav: "name.save";
         text: @tr("FROM A SAVE FILE…");
         kind: ButtonKind.ghost;
