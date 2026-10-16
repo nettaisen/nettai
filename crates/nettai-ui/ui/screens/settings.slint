@@ -25,6 +25,7 @@ export global SettingsView {
     in property <string> picture-size;
     in property <bool> full-screen;
     in property <bool> reduce-motion;
+    in property <bool> check-updates;
     in property <bool> enhanced;
     in property <int> music;
     in property <int> effects;
@@ -231,6 +232,25 @@ component SettingsPage inherits Page {
                         width: root.control-width;
                         nav: "set.language";
                         value: SettingsView.language;
+                    }
+                }
+
+                Rectangle {
+                    height: row16.height;
+                    row16 := SettingLabel {
+                        label: @tr("Check for updates");
+                        note: @tr("At start, from nettai's releases on GitHub.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.updates";
+                        first: Caps.of(@tr("Off"));
+                        second: Caps.of(@tr("On"));
+                        chosen: SettingsView.check-updates ? 1 : 0;
                     }
                 }
 

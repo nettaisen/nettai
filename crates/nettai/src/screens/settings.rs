@@ -28,7 +28,7 @@ const SIZES: u32 = 8;
 /// The group a control of the page is in.
 fn group_of(id: &str) -> Option<i32> {
     Some(match id {
-        "set.name" | "set.language" => 0,
+        "set.name" | "set.language" | "set.updates" => 0,
         "set.picture" | "set.fullscreen" | "set.motion" | "set.graphics" => 1,
         "set.music" | "set.effects" => 2,
         "set.delay" => 3,
@@ -105,6 +105,16 @@ impl Settings {
         self.show(shell);
     }
 
+    /// The check for updates on or off: turned on, it checks now.
+    fn set_check_updates(&mut self, shell: &mut Shell, on: bool) {
+        shell.settings.check_updates = on;
+        shell.save_settings();
+        if on {
+            shell.updates.check();
+        }
+        self.show(shell);
+    }
+
     fn set_enhanced(&mut self, shell: &mut Shell, enhanced: bool) {
         shell.settings.enhanced = enhanced;
         shell.save_settings();
@@ -133,6 +143,7 @@ impl Screen for Settings {
         view.set_picture_size(if s.picture_size == 0 { Default::default() } else { Settings::size_label(s.picture_size).into() });
         view.set_full_screen(s.full_screen);
         view.set_reduce_motion(shell.reduces_motion());
+        view.set_check_updates(s.check_updates);
         view.set_enhanced(s.enhanced);
         view.set_music(s.music as i32);
         view.set_effects(s.effects as i32);
@@ -171,6 +182,7 @@ impl Screen for Settings {
             }
             "set.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
             "set.motion" => self.set_reduce_motion(shell, !shell.reduces_motion()),
+            "set.updates" => self.set_check_updates(shell, !shell.settings.check_updates),
             "set.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
             "set.key" | "set.button" => {
                 self.asking = Some((index.clamp(0, 9) as usize, id == "set.button"));
@@ -192,6 +204,7 @@ impl Screen for Settings {
             "set.picture" => self.set_picture_size(shell, (shell.settings.picture_size as i32 + by).rem_euclid(SIZES as i32 + 1) as u32),
             "set.fullscreen" => self.set_full_screen(shell, by > 0),
             "set.motion" => self.set_reduce_motion(shell, by > 0),
+            "set.updates" => self.set_check_updates(shell, by > 0),
             // (Enhanced is the first of the two.)
             "set.graphics" => self.set_enhanced(shell, by < 0),
             "set.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
@@ -218,6 +231,7 @@ impl Screen for Settings {
             "set.picture" => self.set_picture_size(shell, choice.max(0) as u32),
             "set.fullscreen" => self.set_full_screen(shell, choice == 1),
             "set.motion" => self.set_reduce_motion(shell, choice == 1),
+            "set.updates" => self.set_check_updates(shell, choice == 1),
             "set.graphics" => self.set_enhanced(shell, choice == 0),
             "set.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),

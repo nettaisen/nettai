@@ -101,6 +101,10 @@ impl Screen for Menu {
         if !shown || shell.battle.is_some() || shell.loading_battle() {
             return;
         }
+        // (An update found is asked about here, and one downloaded put in place: `updates.rs`.)
+        if !shell.still {
+            shell.at_menu();
+        }
         let Some((game, ready)) = shell.ready() else { return };
         if self.hold.is_some_and(|until| now < until) {
             return;
