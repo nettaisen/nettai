@@ -681,7 +681,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
   (`Screen::action`). **The Ruleset** (docs/design/app-ui.md §2.59; it took Patch cards' place) is the host's
   select of the game's presets and then the player's own rulesets by name (`LobbyFacts`' `lobby.ruleset`,
-  `rulesets::pickable`; Left and Right step it, Enter opens it as a list; `Lobby::set_ruleset`), with EDIT
+  `rulesets::pickable`; Enter opens it as a list, the arrows walk past it (design §2.75); `Lobby::set_ruleset`), with EDIT
   (`lobby.rules`), which opens the ruleset's page over the lobby (§8, "Rulesets"; the lobby and its link go on
   under it, and a change made there is the match's at once). The joiner's select can't be changed; it shows the
   host's ruleset by the preset's name where its rules are a preset's, else as "Host's ruleset" (the game's strings'
