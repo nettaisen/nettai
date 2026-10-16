@@ -276,7 +276,7 @@ component BuildBox inherits Rectangle {
 
     Focusable {
         nav: root.nav;
-        kind: NavKind.stepper;
+        kind: NavKind.dial;
         enabled: root.enabled;
     }
 }
@@ -663,8 +663,7 @@ export component PlayScreen inherits Page {
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Fight") },
     ];
     property <[Hint]> hints-lobby: [
-        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
-        { key: "←→", text: @tr("Move or change") },
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Choose") },
         { key: "Tab", pad: PadButton.shoulders, text: @tr("Next") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Leave") },

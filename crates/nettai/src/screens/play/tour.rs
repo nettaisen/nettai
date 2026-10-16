@@ -684,6 +684,8 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-lobby-focus", Pair::Second);
     add(SETTLE, focus("lobby.first-to", 0));
     shot(add, "play-lobby-first-to", Pair::First);
+    // (A setting is taken to change: Enter, then the arrows.)
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
     reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 3);
     shot(add, "play-lobby-first-to-3", Pair::Second);
@@ -693,6 +695,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 1);
     add(SETTLE, focus("lobby.delay", 0));
     shot(add, "play-lobby-delay", Pair::First);
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-delay-5", Pair::Second);
     add(SETTLE, act(Action::Left));
@@ -825,6 +828,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // A second match on the same link, under Mixed and with closed builds; the other player leaves it:
     // both are back in the lobby, which says why.
     add(SETTLE, focus("lobby.closed", 0));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
     reach(add, |_, ui| ui.global::<PlayView>().get_closed());
     add(SETTLE, peer(|p| p.wishes.ready = true));

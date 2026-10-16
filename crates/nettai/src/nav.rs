@@ -7,8 +7,9 @@
 //! remembered by the view's name ([`Nav::enter`]); a dialog or a menu over a screen is a scope, the prefix its
 //! controls' names share, and while one is open the keys reach nothing else ([`Nav::open`]).
 //!
-//! What a key does to the focused control is decided here too ([`Nav::confirm`], [`Nav::step`]): the control's
-//! kind says whether Left and Right change it or move on, and whether Enter activates it or starts an edit.
+//! What a key does to the focused control is decided here too ([`Nav::confirm`], [`Nav::go`]): the control's
+//! kind says whether Left and Right change it or move on, and whether Enter activates it, takes it (a setting, which
+//! Left and Right then change: [`Nav::grabbed`]) or starts an edit.
 //! The app is told what happened ([`Did`]) and passes it to the screen's Rust module.
 
 use nettai_ui::{AppWindow, NavKind};
@@ -65,7 +66,10 @@ impl Key {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Button,
+    /// A setting: Enter takes it, and Left and Right change it while it is taken.
     Stepper,
+    /// Left and Right change it at once (where they lead nowhere else).
+    Dial,
     Field,
     /// A row of a list (`ListView`).
     Row,
@@ -166,6 +170,7 @@ impl Registry {
                 _ => {
                     let kind = match kind {
                         NavKind::Stepper => Kind::Stepper,
+                        NavKind::Dial => Kind::Dial,
                         NavKind::Field => Kind::Field,
                         _ => Kind::Button,
                     };
@@ -381,7 +386,7 @@ pub enum Did {
     Nothing,
     /// Enter, a click, a tap.
     Activate(Key),
-    /// Left or Right on a stepper, a click on its arrow: -1 or 1.
+    /// Left or Right on a setting taken or a dial, a click on its arrow: -1 or 1.
     Step(Key, i32),
     /// A field's text: as it is typed (`done` false), then as it is left (confirmed, or restored).
     Edit { key: Key, text: String, done: bool },
@@ -415,6 +420,8 @@ pub struct Nav {
     rows: HashMap<String, i32>,
     scopes: Vec<Scope>,
     edit: Option<Edit>,
+    /// The setting taken (Enter on a stepper): Left and Right change it until it is let go or the focus leaves it.
+    grab: Option<Key>,
     edit_seq: i32,
     reveal_seq: i32,
     /// A keyboard or a pad was the last thing used (the cursor shows), and which.
@@ -452,6 +459,7 @@ impl Nav {
             rows: HashMap::new(),
             scopes: Vec::new(),
             edit: None,
+            grab: None,
             edit_seq: 0,
             reveal_seq: 0,
             shown: false,
@@ -492,6 +500,7 @@ impl Nav {
             return;
         }
         self.leave_edit();
+        self.grab = None;
         if let Some(key) = self.scopes.first().map_or(self.focus.take(), |s| s.under.clone()) {
             self.memory.insert(std::mem::take(&mut self.view), key);
         }
@@ -509,6 +518,7 @@ impl Nav {
             return;
         }
         self.leave_edit();
+        self.grab = None;
         self.scopes.push(Scope { prefix: prefix.to_string(), main: main.clone(), under: self.focus.take() });
         self.wanted = Some(main);
     }
@@ -525,6 +535,7 @@ impl Nav {
     pub fn close(&mut self, prefix: &str) {
         let Some(at) = self.scopes.iter().position(|s| s.prefix == prefix) else { return };
         self.leave_edit();
+        self.grab = None;
         let under = self.scopes[at].under.clone();
         self.scopes.truncate(at);
         self.focus = None;
@@ -559,8 +570,21 @@ impl Nav {
         if self.registry.borrow().lists.contains_key(&key.id) {
             self.rows.insert(key.id.clone(), key.index);
         }
+        if self.focus.as_ref() != Some(&key) {
+            self.grab = None;
+        }
         self.focus = Some(key);
         self.wanted = None;
+    }
+
+    /// Whether the focused control is a setting taken: Left and Right change it.
+    pub fn grabbed(&self) -> bool {
+        self.grab.is_some() && self.grab == self.focus
+    }
+
+    /// The setting taken is let go: the arrows move on again.
+    pub fn let_go(&mut self) {
+        self.grab = None;
     }
 
     /// While the screen shown leaves (`held`), the focus is on nothing: it goes to the next screen's control once
@@ -665,7 +689,10 @@ impl Nav {
                 self.take(key);
                 self.wanted = wanted;
             }
-            Next::Fallback(None) => self.focus = None,
+            Next::Fallback(None) => {
+                self.focus = None;
+                self.grab = None;
+            }
         }
         let rect = self.focus.as_ref().and_then(|k| self.registry.borrow().rect(k));
         let focused = self.focus.clone().zip(rect);
@@ -706,6 +733,7 @@ impl Nav {
         nav.set_shown(self.shown);
         nav.set_pad(self.pad);
         nav.set_editing(self.edit.is_some());
+        nav.set_grabbed(self.grabbed());
         let after = self.told.as_ref().map(|(k, _)| k.clone());
         if after != before { after } else { None }
     }
@@ -772,8 +800,9 @@ impl Nav {
         nav.set_reveal_seq(self.reveal_seq);
     }
 
-    /// An arrow: the focus goes to the neighbor in that direction, a list's row to the next one. On a stepper
-    /// Left and Right change its value instead ([`Did::Step`]).
+    /// An arrow: the focus goes to the neighbor in that direction, a list's row to the next one. On a setting
+    /// taken or a dial Left and Right change its value instead ([`Did::Step`]); Up and Down let a setting go and
+    /// move on.
     pub fn go(&mut self, ui: &AppWindow, dir: Direction) -> Did {
         let Some(key) = self.focus.clone() else { return Did::Nothing };
         let step = match dir {
@@ -781,9 +810,13 @@ impl Nav {
             Direction::Right => 1,
             _ => 0,
         };
+        let grabbed = self.grabbed();
+        if step == 0 {
+            self.grab = None;
+        }
         let next = {
             let registry = self.registry.borrow();
-            if step != 0 && registry.kind(&key) == Some(Kind::Stepper) {
+            if step != 0 && (grabbed || registry.kind(&key) == Some(Kind::Dial)) {
                 return Did::Step(key, step);
             }
             // A list's rows first.
@@ -855,11 +888,15 @@ impl Nav {
         self.reveal(ui);
     }
 
-    /// Enter: the focused control is activated, a field's edit begins.
+    /// Enter: the focused control is activated, a setting taken or let go, a field's edit begun.
     pub fn confirm(&mut self, ui: &AppWindow) -> Did {
         let Some(key) = self.focus.clone() else { return Did::Nothing };
         match self.registry.borrow().kind(&key) {
             Some(Kind::Field) => {}
+            Some(Kind::Stepper) => {
+                self.grab = if self.grabbed() { None } else { Some(key) };
+                return Did::Nothing;
+            }
             Some(_) => return Did::Activate(key),
             None => return Did::Nothing,
         }

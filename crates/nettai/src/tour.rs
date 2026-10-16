@@ -418,6 +418,8 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "settings-focus", Pair::Second);
     add(SETTLE, focus("set.delay", 0));
     shot(&mut add, "settings-delay", Pair::First);
+    // (A setting is taken to change: Enter, then the arrows.)
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Right))));
     shot(&mut add, "settings-delay-10", Pair::Second);
     add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Left))));
@@ -726,8 +728,10 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     }
 
     add(SETTLE, focus("set.delay", 0));
+    add(SETTLE, act(Action::Confirm));
     burst(&mut add, "stepper-slide", &[0, 30, 60, 100, 180], act(Action::Right));
     add(SETTLE, focus("set.graphics", 0));
+    add(SETTLE, act(Action::Confirm));
     burst(&mut add, "switch-slide", &[0, 40, 80, 180], act(Action::Right));
     add(SETTLE, focus("set.reset", 0));
     burst(&mut add, "button-press", &[0, 30, 70, 120, 220], act(Action::Confirm));
