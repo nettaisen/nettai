@@ -41,9 +41,9 @@ use std::io::{BufWriter, Read, Write as _};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
-use std::sync::OnceLock;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -84,7 +84,8 @@ fn elapsed() -> Duration {
 
 /// The app's now, while the reel runs ([`crate::clock::now`]).
 pub fn now() -> Option<Instant> {
-    ON.load(Ordering::Relaxed).then(|| *ORIGIN.get_or_init(Instant::now) + elapsed())
+    ON.load(Ordering::Relaxed)
+        .then(|| *ORIGIN.get_or_init(Instant::now) + elapsed())
 }
 
 /// Whether the window's rendering runs the app's frame now (`main.rs`): always, but in the reel, where only the
@@ -96,7 +97,10 @@ pub fn frame_due() -> bool {
 /// The sound the app sends the device this frame (`Sound::frame`), at its volume `level`.
 pub fn hear(samples: &[[f32; 2]], level: f32) {
     if ON.load(Ordering::Relaxed) && CAPTURING.with(Cell::get) {
-        HEARD.with(|h| h.borrow_mut().extend(samples.iter().map(|s| [s[0] * level, s[1] * level])));
+        HEARD.with(|h| {
+            h.borrow_mut()
+                .extend(samples.iter().map(|s| [s[0] * level, s[1] * level]))
+        });
     }
 }
 
@@ -105,7 +109,9 @@ pub fn hear(samples: &[[f32; 2]], level: f32) {
 struct Platform(i_slint_backend_winit::Backend);
 
 impl i_slint_core::platform::Platform for Platform {
-    fn create_window_adapter(&self) -> Result<Rc<dyn i_slint_core::window::WindowAdapter>, slint::PlatformError> {
+    fn create_window_adapter(
+        &self,
+    ) -> Result<Rc<dyn i_slint_core::window::WindowAdapter>, slint::PlatformError> {
         self.0.create_window_adapter()
     }
 
@@ -113,11 +119,19 @@ impl i_slint_core::platform::Platform for Platform {
         self.0.run_event_loop()
     }
 
-    fn process_events(&self, timeout: Option<Duration>, token: i_slint_core::InternalToken) -> Result<core::ops::ControlFlow<()>, slint::PlatformError> {
+    fn process_events(
+        &self,
+        timeout: Option<Duration>,
+        token: i_slint_core::InternalToken,
+    ) -> Result<core::ops::ControlFlow<()>, slint::PlatformError> {
         self.0.process_events(timeout, token)
     }
 
-    fn bind_context(&self, context: i_slint_core::SlintContextWeak, token: i_slint_core::InternalToken) {
+    fn bind_context(
+        &self,
+        context: i_slint_core::SlintContextWeak,
+        token: i_slint_core::InternalToken,
+    ) {
         self.0.bind_context(context, token)
     }
 
@@ -156,8 +170,12 @@ impl i_slint_core::platform::Platform for Platform {
 
 /// Set the window's backend, in place of `main.rs`'s selection, and start the reel's clock.
 pub fn platform() -> Result<(), slint::PlatformError> {
-    let backend = i_slint_backend_winit::Backend::builder().with_renderer_name("femtovg").with_window_attributes_hook(|a| a.with_active(false)).build()?;
-    slint::platform::set_platform(Box::new(Platform(backend))).map_err(slint::PlatformError::SetPlatformError)?;
+    let backend = i_slint_backend_winit::Backend::builder()
+        .with_renderer_name("femtovg")
+        .with_window_attributes_hook(|a| a.with_active(false))
+        .build()?;
+    slint::platform::set_platform(Box::new(Platform(backend)))
+        .map_err(slint::PlatformError::SetPlatformError)?;
     ORIGIN.get_or_init(Instant::now);
     ON.store(true, Ordering::Relaxed);
     Ok(())
@@ -197,7 +215,11 @@ struct Reel {
 
 impl Reel {
     /// The frame captured (`shot`, if there was one) and the sound heard in it.
-    fn take(&mut self, shot: Option<slint::SharedPixelBuffer<slint::Rgba8Pixel>>, heard: Vec<[f32; 2]>) {
+    fn take(
+        &mut self,
+        shot: Option<slint::SharedPixelBuffer<slint::Rgba8Pixel>>,
+        heard: Vec<[f32; 2]>,
+    ) {
         if !self.on_air {
             self.off += 1;
             return;
@@ -223,7 +245,12 @@ impl Reel {
         sound.resize(due, [0.0; 2]);
         self.samples += due as u64;
         self.frames += 1;
-        let frame = Frame { width: size.0, height: size.1, rgba: shot.as_bytes().to_vec(), sound };
+        let frame = Frame {
+            width: size.0,
+            height: size.1,
+            rgba: shot.as_bytes().to_vec(),
+            sound,
+        };
         if self.to.as_ref().is_some_and(|to| to.send(frame).is_err()) {
             // (The encoder stopped: it says why at the end.)
             self.to = None;
@@ -241,12 +268,57 @@ impl Reel {
 
 /// ffmpeg writing `out` from the frames that come, as a NUT stream on its standard input: H.264 at `OUT`'s size and
 /// AAC. What it said, or why it failed.
-fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<Frame>) -> Result<String, String> {
-    let filter = format!("scale={}:{}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p", OUT.0, OUT.1);
+fn encode(
+    out: &std::path::Path,
+    (width, height): (u32, u32),
+    frames: Receiver<Frame>,
+) -> Result<String, String> {
+    let filter = format!(
+        "scale={}:{}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p",
+        OUT.0, OUT.1
+    );
     let mut child = Command::new(nettai_video::mp4::find_ffmpeg())
-        .args(["-hide_banner", "-nostdin", "-loglevel", "error", "-f", "nut", "-i", "pipe:0", "-vf", &filter])
-        .args(["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"])
-        .args(["-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", "-f", "mp4", "-y"])
+        .args([
+            "-hide_banner",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-f",
+            "nut",
+            "-i",
+            "pipe:0",
+            "-vf",
+            &filter,
+        ])
+        .args([
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "21",
+            "-colorspace",
+            "bt709",
+            "-color_primaries",
+            "bt709",
+            "-color_trc",
+            "bt709",
+            "-color_range",
+            "tv",
+        ])
+        .args([
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+            "-ar",
+            "48000",
+            "-movflags",
+            "+faststart",
+            "-f",
+            "mp4",
+            "-y",
+        ])
         .arg(out)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -260,9 +332,20 @@ fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<F
         let _ = said.read_to_string(&mut text);
         text
     });
-    let video = nut::Video { width, height, frame_time: (1, RATE as u32) };
+    let video = nut::Video {
+        width,
+        height,
+        frame_time: (1, RATE as u32),
+    };
     let written = (|| -> std::io::Result<()> {
-        let mut nut = nut::Writer::new(BufWriter::with_capacity(1 << 22, stdin), video, Some(nut::Audio { sample_rate: SAMPLE_RATE as u32, tracks: 1 }))?;
+        let mut nut = nut::Writer::new(
+            BufWriter::with_capacity(1 << 22, stdin),
+            video,
+            Some(nut::Audio {
+                sample_rate: SAMPLE_RATE as u32,
+                tracks: 1,
+            }),
+        )?;
         let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
         for frame in frames {
             if (frame.width, frame.height) != (width, height) {
@@ -286,7 +369,14 @@ fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<F
 /// A frame of the reel: its clock a frame on, Slint's timers and animations to it (the walk's steps among them),
 /// the player's side's buttons, the window captured (which runs the app's frame), and the next frame asked for.
 fn frame() {
-    let Some(ui) = REEL.with(|r| r.borrow().as_ref().filter(|r| !r.done).and_then(|r| r.ui.upgrade())) else { return };
+    let Some(ui) = REEL.with(|r| {
+        r.borrow()
+            .as_ref()
+            .filter(|r| !r.done)
+            .and_then(|r| r.ui.upgrade())
+    }) else {
+        return;
+    };
     FRAMES.fetch_add(1, Ordering::Relaxed);
     slint::platform::update_timers_and_animations();
     if REEL.with(|r| r.borrow().as_ref().is_none_or(|r| r.done)) {
@@ -373,12 +463,16 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf, out: PathBuf)
 
 /// The reel is over: the encoder finished, `reel.txt` written, and the app quits.
 fn end() {
-    let Some(mut reel) = REEL.with(|r| r.borrow_mut().take()) else { return };
+    let Some(mut reel) = REEL.with(|r| r.borrow_mut().take()) else {
+        return;
+    };
     reel.done = true;
     PILOT.with(|p| p.set(false));
     drop(reel.to.take());
     let encoded = match reel.encoder.take() {
-        Some(encoder) => encoder.join().unwrap_or_else(|_| Err("the encoder's thread panicked".into())),
+        Some(encoder) => encoder
+            .join()
+            .unwrap_or_else(|_| Err("the encoder's thread panicked".into())),
         None => Err("no frame was written".into()),
     };
     let seconds = reel.frames as f64 / RATE as f64;
@@ -411,7 +505,10 @@ fn end() {
 
 /// On the air, or off it.
 fn air(on: bool) -> Step {
-    Box::new(move |_, _, _| REEL.with(|r| r.borrow_mut().as_mut().map(|r| r.air(on))).unwrap_or_default())
+    Box::new(move |_, _, _| {
+        REEL.with(|r| r.borrow_mut().as_mut().map(|r| r.air(on)))
+            .unwrap_or_default()
+    })
 }
 
 fn act(action: Action) -> Step {
@@ -440,7 +537,10 @@ fn row(option: PracticeOption) -> Step {
         let mut app = app.borrow_mut();
         match crate::screens::practice::row_of(&app.shell, option) {
             Some(at) => app.shell.nav.focus("menu.rows.option", at),
-            None => eprintln!("reel: the practice menu shows no row of {option:?} (the focus on {:?})", app.shell.nav.focused()),
+            None => eprintln!(
+                "reel: the practice menu shows no row of {option:?} (the focus on {:?})",
+                app.shell.nav.focused()
+            ),
         }
     })
 }
@@ -463,28 +563,48 @@ fn step_to(id: &'static str) -> Step {
     Box::new(move |_, app, _| {
         let mut app = app.borrow_mut();
         let games = app.shell.games.playable();
-        let (Some(at), Some(to)) = (app.shell.game().and_then(|g| games.iter().position(|x| x == g)), games.iter().position(|x| x == id)) else { return };
+        let (Some(at), Some(to)) = (
+            app.shell
+                .game()
+                .and_then(|g| games.iter().position(|x| x == g)),
+            games.iter().position(|x| x == id),
+        ) else {
+            return;
+        };
         if at != to {
-            app.act(if (at + 1) % games.len() == to { Action::Next } else { Action::Previous });
+            app.act(if (at + 1) % games.len() == to {
+                Action::Next
+            } else {
+                Action::Previous
+            });
         }
     })
 }
 
 /// The selected game is ready, its runtime too.
 fn game_ready(app: &App) -> bool {
-    app.shell.ready().is_some_and(|(_, ready)| ready.has_language("en"))
+    app.shell
+        .ready()
+        .is_some_and(|(_, ready)| ready.has_language("en"))
 }
 
 /// The builds of each game the reel's Builds and Practice list: a new build of each of its versions, kept as a
 /// player's are (in the pass's own builds folder).
 fn make_builds(app: &App) {
     for game in app.shell.games.playable() {
-        let Some(ready) = app.shell.games.ready(&game) else { continue };
+        let Some(ready) = app.shell.games.ready(&game) else {
+            continue;
+        };
         let content = ready.content();
         let _ = std::fs::remove_dir_all(crate::builds::store::folder(&game));
         for b in crate::screens::practice::new_builds(content, &game).unwrap_or_default() {
             let build = crate::builds::store::Build::new(content, &b.name, b.side);
-            if let Err(why) = crate::builds::store::write(&crate::builds::store::new_path(&game, &b.name), content, &game, &build) {
+            if let Err(why) = crate::builds::store::write(
+                &crate::builds::store::new_path(&game, &b.name),
+                content,
+                &game,
+                &build,
+            ) {
                 crate::errors::log("keeping the reel's build", &why);
             }
         }
@@ -502,10 +622,16 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(
         0,
         Box::new(|ui, app, _| {
-            let os = slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| w.scale_factor()).unwrap_or(1.0);
-            ui.window().set_size(PhysicalSize::new((1280.0 * os).round() as u32, (800.0 * os).round() as u32));
+            let os = slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| {
+                w.scale_factor()
+            })
+            .unwrap_or(1.0);
+            ui.window().set_size(PhysicalSize::new(
+                (1280.0 * os).round() as u32,
+                (800.0 * os).round() as u32,
+            ));
             let mut app = app.borrow_mut();
-            app.shell.set_name("bigfarts");
+            app.shell.set_name("Lan");
             app.shell.set_language("en");
             crate::tour::practice::forget(&mut app);
             app.go_now(ScreenId::Menu);
@@ -514,7 +640,10 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
         }),
     );
     for game in ["exe4", "exe5", "exe6"] {
-        add(SETTLE, Box::new(move |_, app, _| app.borrow_mut().shell.select_game(game)));
+        add(
+            SETTLE,
+            Box::new(move |_, app, _| app.borrow_mut().shell.select_game(game)),
+        );
         reach(add, game_ready);
     }
     add(
@@ -531,7 +660,10 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     reach(add, |app| {
         let ui = app.shell.ui();
         let view = ui.global::<ReplaysView>();
-        view.get_listed() && view.get_still() && slint::Model::iter(&view.get_rows()).all(|row| !row.score.is_empty() || !row.reason.is_empty())
+        view.get_listed()
+            && view.get_still()
+            && slint::Model::iter(&view.get_rows())
+                .all(|row| !row.score.is_empty() || !row.reason.is_empty())
     });
     add(SETTLE * 2, go(ScreenId::Menu));
     add(SETTLE, focus("play", 0));
@@ -552,7 +684,12 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(3000, go(ScreenId::Play));
     add(1500, focus("practice", 0));
     add(500, act(Action::Confirm));
-    reach(add, |app| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.menu_open()));
+    reach(add, |app| {
+        app.shell
+            .battle
+            .as_ref()
+            .is_some_and(|b| b.kind == BattleKind::Practice && b.menu_open())
+    });
     add(1200, row(PracticeOption::Arena));
     // (Arena and Music are chosen from their lists; Action and Level are taken, stepped and let go.)
     add(500, act(Action::Confirm));
@@ -597,48 +734,91 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     // battle tab, three places filled.
     add(1200, focus("builds", 1));
     add(700, focus("builds", 0));
-    add(500, Box::new(|_, app, _| {
-        let mut app = app.borrow_mut();
-        app.shell.nav.focus("builds", 0);
-        app.shell.nav.focus("edit", 0);
-        app.act(Action::Confirm);
-    }));
-    add(900, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::Folder));
+    add(
+        500,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("builds", 0);
+            app.shell.nav.focus("edit", 0);
+            app.act(Action::Confirm);
+        }),
+    );
+    add(
+        900,
+        crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::Folder),
+    );
     add(800, focus("slot", 13));
     add(500, act(Action::Confirm));
-    add(600, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Builds, |s, shell| s.choose(shell, "lib.sort", 0, 3))));
-    add(300, Box::new(|_, app, _| {
-        let mut app = app.borrow_mut();
-        app.shell.nav.focus("lib.direction", 0);
-        app.act(Action::Confirm);
-    }));
+    add(
+        600,
+        Box::new(|_, app, _| {
+            app.borrow_mut().with_screen(ScreenId::Builds, |s, shell| {
+                s.choose(shell, "lib.sort", 0, 3)
+            })
+        }),
+    );
+    add(
+        300,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("lib.direction", 0);
+            app.act(Action::Confirm);
+        }),
+    );
     add(500, focus("lib.rows", 1));
     add(300, focus("lib.rows", 2));
     add(400, act(Action::Confirm));
     add(1200, crate::tour::build_tabs::out_of_library());
-    add(200, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::Navicust));
-    add(1000, crate::tour::build_tabs::take(0, crate::tour::build_tabs::program));
+    add(
+        200,
+        crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::Navicust),
+    );
+    add(
+        1000,
+        crate::tour::build_tabs::take(0, crate::tour::build_tabs::program),
+    );
     add(500, act(Action::Right));
     add(300, act(Action::Down));
-    add(400, crate::tour::build_tabs::put(crate::tour::build_tabs::Spot::Free));
-    add(900, crate::tour::build_tabs::take(0, crate::tour::build_tabs::program));
-    add(600, crate::tour::build_tabs::put(crate::tour::build_tabs::Spot::Free));
-    add(1100, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::PatchCards));
+    add(
+        400,
+        crate::tour::build_tabs::put(crate::tour::build_tabs::Spot::Free),
+    );
+    add(
+        900,
+        crate::tour::build_tabs::take(0, crate::tour::build_tabs::program),
+    );
+    add(
+        600,
+        crate::tour::build_tabs::put(crate::tour::build_tabs::Spot::Free),
+    );
+    add(
+        1100,
+        crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::PatchCards),
+    );
     add(900, crate::tour::build_tabs::library());
     for row in 0..3 {
         add(450, focus("lib.rows", row));
         add(250, act(Action::Confirm));
     }
     add(1000, crate::tour::build_tabs::out_of_library());
-    add(300, Box::new(|_, app, _| crate::tour::builds::leave(&mut app.borrow_mut())));
+    add(
+        300,
+        Box::new(|_, app, _| crate::tour::builds::leave(&mut app.borrow_mut())),
+    );
     add(700, step_to("exe5"));
-    add(1500, Box::new(|_, app, _| {
-        let mut app = app.borrow_mut();
-        app.shell.nav.focus("builds", 0);
-        app.shell.nav.focus("edit", 0);
-        app.act(Action::Confirm);
-    }));
-    add(800, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::AutoBattle));
+    add(
+        1500,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("builds", 0);
+            app.shell.nav.focus("edit", 0);
+            app.act(Action::Confirm);
+        }),
+    );
+    add(
+        800,
+        crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::AutoBattle),
+    );
     add(700, focus("places.place", 0));
     for row in 0..3 {
         add(350, crate::tour::build_tabs::library());
@@ -647,8 +827,14 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     }
     add(1300, crate::tour::build_tabs::out_of_library());
     add(0, air(false));
-    add(SETTLE, Box::new(|_, app, _| crate::tour::builds::leave(&mut app.borrow_mut())));
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.select_game("exe6")));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| crate::tour::builds::leave(&mut app.borrow_mut())),
+    );
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.select_game("exe6")),
+    );
     reach(add, game_ready);
     add(SETTLE, go(ScreenId::Menu));
     add(SETTLE * 2, air(true));
@@ -659,27 +845,55 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
 
     // 5. Replays: the list, a replay's still; one watched (the cards, then the viewer playing it), a seek further
     // on, at twice the speed.
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.focus("play", 0)));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.nav.focus("play", 0)),
+    );
     add(SETTLE * 2, air(true));
     add(600, go(ScreenId::Replays));
     add(0, focus("list", 0));
     add(1300, focus("list", 1));
     add(700, focus("list", 0));
-    add(600, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, "watch", 0))));
-    reach(add, |app| app.shell.ui().global::<ReplaysView>().get_watching());
+    add(
+        600,
+        Box::new(|_, app, _| {
+            app.borrow_mut()
+                .with_screen(ScreenId::Replays, |s, shell| s.activate(shell, "watch", 0))
+        }),
+    );
+    reach(add, |app| {
+        app.shell.ui().global::<ReplaysView>().get_watching()
+    });
     add(200, focus("seek", 0));
-    add(2600, Box::new(|_, app, _| {
-        app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
-            s.choose(shell, "seek", 0, 6200);
-            s.choose(shell, "seek", 1, 6200);
-        })
-    }));
+    add(
+        2600,
+        Box::new(|_, app, _| {
+            app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
+                s.choose(shell, "seek", 0, 6200);
+                s.choose(shell, "seek", 1, 6200);
+            })
+        }),
+    );
     add(2200, focus("speed", 2));
-    add(400, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, "speed", 2))));
+    add(
+        400,
+        Box::new(|_, app, _| {
+            app.borrow_mut()
+                .with_screen(ScreenId::Replays, |s, shell| s.activate(shell, "speed", 2))
+        }),
+    );
     add(3000, act(Action::Back));
 
     // 6. About (Settings' SHOW LICENSES), a moment.
     add(700, go(ScreenId::Settings));
-    add(0, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Settings, |s, shell| s.activate(shell, "set.about", 0))));
+    add(
+        0,
+        Box::new(|_, app, _| {
+            app.borrow_mut()
+                .with_screen(ScreenId::Settings, |s, shell| {
+                    s.activate(shell, "set.about", 0)
+                })
+        }),
+    );
     add(2800, air(false));
 }

@@ -37,8 +37,8 @@ use crate::nav::{Key, Rect};
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_battle::input::keys;
-use slint::winit_030::winit::event::TouchPhase;
 use nettai_ui::{AppWindow, Audit, BattleKind, Theme};
+use slint::winit_030::winit::event::TouchPhase;
 use slint::{ComponentHandle, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, Timer};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -52,8 +52,8 @@ use std::time::{Duration, Instant};
 mod build_tabs;
 mod builds;
 mod confirm_keys;
-mod replays;
 mod practice;
+mod replays;
 // The showreel (`NETTAI_REEL`): the pass's walk made a video, a frame at a time (its own dependencies are the
 // feature's alone: the tests don't compile it).
 #[cfg(feature = "tour")]
@@ -63,7 +63,9 @@ pub mod reel;
 /// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
 /// without the whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
 fn walks(part: &str) -> bool {
-    std::env::var("NETTAI_TOUR_ONLY").ok().is_none_or(|only| only.split(',').any(|p| p == part))
+    std::env::var("NETTAI_TOUR_ONLY")
+        .ok()
+        .is_none_or(|only| only.split(',').any(|p| p == part))
 }
 
 /// How long a step is given to be drawn before the next: a few frames.
@@ -138,7 +140,9 @@ impl Tour {
     /// Something a walk waited for never came (its minute passed): the pass says so, and fails. A walk whose
     /// later shots depend on it says this, so that a picture of the wrong thing isn't taken for the right one.
     pub(crate) fn never_came(&self) {
-        self.never.borrow_mut().push(format!("after {}", self.tag.borrow()));
+        self.never
+            .borrow_mut()
+            .push(format!("after {}", self.tag.borrow()));
     }
 
     /// A key pressed as the window presses it didn't do what it does (`tour/confirm_keys.rs`): the pass says so, and
@@ -169,9 +173,19 @@ thread_local! {
 /// came from outside: `terminated`), its report says so, with what it had found until then, and the pass fails: a
 /// pass ended from outside doesn't end as one that walked through.
 pub fn ended(terminated: bool) {
-    let Some(tour) = WALKING.with(|w| w.borrow_mut().take()) else { return };
-    let why = if terminated { "a terminate request from outside (the system's SIGTERM, or SIGINT)" } else { "its window was closed" };
-    let note = format!("The pass was ended before its walk was done: {why}, after {} shots, the last arranged {:?}.\n\n", tour.shots.get(), tour.tag.borrow());
+    let Some(tour) = WALKING.with(|w| w.borrow_mut().take()) else {
+        return;
+    };
+    let why = if terminated {
+        "a terminate request from outside (the system's SIGTERM, or SIGINT)"
+    } else {
+        "its window was closed"
+    };
+    let note = format!(
+        "The pass was ended before its walk was done: {why}, after {} shots, the last arranged {:?}.\n\n",
+        tour.shots.get(),
+        tour.tag.borrow()
+    );
     report(&tour, &note);
     FAILED.with(|f| f.set(true));
 }
@@ -179,9 +193,20 @@ pub fn ended(terminated: bool) {
 /// Walk the screens, writing each to `dir`, then quit.
 pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     let tour = begin(ui, app, dir);
-    let asked = |var: &str| std::env::var(var).ok().map(|list| list.split(',').map(str::to_string).collect::<Vec<_>>());
-    let languages: Vec<&'static str> = crate::lang::LANGUAGES.iter().map(|(c, _)| *c).filter(|c| asked("NETTAI_TOUR_LANGS").is_none_or(|l| l.iter().any(|a| a == c))).collect();
-    let sizes: Vec<(&str, u32, u32)> = SIZES.into_iter().filter(|(name, ..)| asked("NETTAI_TOUR_SIZES").is_none_or(|l| l.iter().any(|a| a == name))).collect();
+    let asked = |var: &str| {
+        std::env::var(var)
+            .ok()
+            .map(|list| list.split(',').map(str::to_string).collect::<Vec<_>>())
+    };
+    let languages: Vec<&'static str> = crate::lang::LANGUAGES
+        .iter()
+        .map(|(c, _)| *c)
+        .filter(|c| asked("NETTAI_TOUR_LANGS").is_none_or(|l| l.iter().any(|a| a == c)))
+        .collect();
+    let sizes: Vec<(&str, u32, u32)> = SIZES
+        .into_iter()
+        .filter(|(name, ..)| asked("NETTAI_TOUR_SIZES").is_none_or(|l| l.iter().any(|a| a == name)))
+        .collect();
 
     let mut steps: Vec<(u64, Step)> = Vec::new();
     if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
@@ -199,8 +224,15 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
             SETTLE * 3,
             Box::new(move |ui, _, _| {
                 // (In the display's pixels: the window's own scale is the app's to set.)
-                let os = slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| w.scale_factor()).unwrap_or(1.0);
-                ui.window().set_size(PhysicalSize::new((width as f64 * os).round() as u32, (height as f64 * os).round() as u32));
+                let os =
+                    slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| {
+                        w.scale_factor()
+                    })
+                    .unwrap_or(1.0);
+                ui.window().set_size(PhysicalSize::new(
+                    (width as f64 * os).round() as u32,
+                    (height as f64 * os).round() as u32,
+                ));
             }),
         ));
         for &lang in &languages {
@@ -240,7 +272,9 @@ fn begin(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) -> Rc<Tour> {
     WALKING.with(|w| *w.borrow_mut() = Some(tour.clone()));
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
-        t.cut.borrow_mut().insert((t.tag.borrow().clone(), text.to_string()));
+        t.cut
+            .borrow_mut()
+            .insert((t.tag.borrow().clone(), text.to_string()));
     });
     if let Ok(game) = std::env::var("NETTAI_TOUR_GAME") {
         app.borrow_mut().shell.select_game(&game);
@@ -269,7 +303,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                 ui.global::<Theme>().set_audit(false);
             }),
         );
-        add(90, Box::new(|ui, _, tour| ui.global::<Theme>().set_audit(!tour.passing.get())));
+        add(
+            90,
+            Box::new(|ui, _, tour| ui.global::<Theme>().set_audit(!tour.passing.get())),
+        );
         add(
             90,
             Box::new(move |ui, app, tour| {
@@ -279,7 +316,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                 if tour.passing.get() {
                     return;
                 }
-                let Some(picture) = write(ui, tour, &tag) else { return };
+                let Some(picture) = write(ui, tour, &tag) else {
+                    return;
+                };
                 let cursor = app.borrow().shell.nav.cursor();
                 match pair {
                     Pair::None => {}
@@ -287,7 +326,15 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                     Pair::Second => {
                         let also = tour.also.borrow_mut().take();
                         if let Some((first, before, was)) = tour.first.borrow_mut().take() {
-                            compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor, also]);
+                            compare(
+                                ui,
+                                tour,
+                                &first,
+                                &before,
+                                &tag,
+                                &picture,
+                                &[was, cursor, also],
+                            );
                         }
                     }
                 }
@@ -302,13 +349,16 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         })
     };
     let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
-    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
+    let focus = |id: &'static str, index: i32| -> Step {
+        Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
+    };
 
     add(
         SETTLE,
         Box::new(move |_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.set_name(if lang == "ja" { "ネット" } else { "bigfarts" });
+            app.shell
+                .set_name(if lang == "ja" { "ネット" } else { "Lan" });
             app.shell.set_language(lang);
             app.go_now(ScreenId::Menu);
             app.shell.nav.focus("play", 0);
@@ -319,7 +369,11 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(
         SETTLE,
         Box::new(move |_, _, tour| {
-            *tour.until.borrow_mut() = Some(Box::new(move |app| app.shell.ready().is_some_and(|(_, ready)| ready.has_language(lang))));
+            *tour.until.borrow_mut() = Some(Box::new(move |app| {
+                app.shell
+                    .ready()
+                    .is_some_and(|(_, ready)| ready.has_language(lang))
+            }));
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
@@ -336,9 +390,15 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     taking.set(walks("shell"));
 
     // Loading, as the app starts.
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)),
+    );
     shot(&mut add, "loading", Pair::None);
-    add(SETTLE, Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_no_games(true)));
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_no_games(true)),
+    );
     shot(&mut add, "no-games", Pair::None);
     add(
         SETTLE,
@@ -380,7 +440,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.borrow_mut().shell.hold_loading = None;
         }),
     );
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source()));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source()),
+    );
     shot(&mut add, "no-legacy-collection-dialog", Pair::None);
     add(SETTLE, act(Action::Back));
     taking.set(walks("shell"));
@@ -389,9 +452,15 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu", Pair::First);
     add(SETTLE, act(Action::Down));
     shot(&mut add, "menu-focus", Pair::Second);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(true, true)));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(true, true)),
+    );
     shot(&mut add, "menu-pad", Pair::None);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(false, false)));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(false, false)),
+    );
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
@@ -421,9 +490,15 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     // the same in both.)
     add(SETTLE, act(Action::Confirm));
     shot(&mut add, "settings-delay", Pair::First);
-    add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Right))));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Right))),
+    );
     shot(&mut add, "settings-delay-10", Pair::Second);
-    add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Left))));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Left))),
+    );
     add(SETTLE, focus("set.picture", 0));
     shot(&mut add, "settings-size", Pair::First);
     add(SETTLE, act(Action::Right));
@@ -448,7 +523,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     // with the keys (a phone: on its sheet), a page down.
     add(SETTLE, act(Action::Confirm));
     shot(&mut add, "about", Pair::None);
-    add(SETTLE, focus("list", crate::screens::settings::place_of("slint")));
+    add(
+        SETTLE,
+        focus("list", crate::screens::settings::place_of("slint")),
+    );
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::PageDown));
     shot(&mut add, "about-license", Pair::None);
@@ -463,7 +541,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
 
     // A failure that ends what the player was doing.
     add(SETTLE, go(ScreenId::Play));
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)),
+    );
     shot(&mut add, "dialog", Pair::None);
     add(SETTLE, act(Action::Confirm));
 
@@ -478,11 +559,18 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             let mut app = app.borrow_mut();
             app.go_now(ScreenId::Practice);
             app.shell.hold_cards = true;
-            crate::screens::practice::start_development_battle(&mut app.shell, 7, Default::default());
+            crate::screens::practice::start_development_battle(
+                &mut app.shell,
+                7,
+                Default::default(),
+            );
         }),
     );
     shot(&mut add, "versus", Pair::None);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_cards = false));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.hold_cards = false),
+    );
     add(5000, Box::new(|_, _, _| {}));
     shot(&mut add, "battle", Pair::None);
     // On a phone, the pad under the picture: two fingers at once, as the window's touches come (a direction and
@@ -493,15 +581,29 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             Box::new(move |_, app, tour| {
                 let mut app = app.borrow_mut();
                 let unit = (app.shell.scale.os * app.shell.scale.unit) as f64;
-                let middle = |app: &App, bit: u8| app.shell.touch.rect(bit).map(|r| ((r.x + r.w / 2.0) as f64 * unit, (r.y + r.h / 2.0) as f64 * unit));
+                let middle = |app: &App, bit: u8| {
+                    app.shell.touch.rect(bit).map(|r| {
+                        (
+                            (r.x + r.w / 2.0) as f64 * unit,
+                            (r.y + r.h / 2.0) as f64 * unit,
+                        )
+                    })
+                };
                 let (Some(left), Some(a)) = (middle(&app, 5), middle(&app, 0)) else {
-                    tour.pad.borrow_mut().push(format!("{lang}: the pad's buttons aren't laid out"));
+                    tour.pad
+                        .borrow_mut()
+                        .push(format!("{lang}: the pad's buttons aren't laid out"));
                     return;
                 };
-                let taken = [app.touched(1, TouchPhase::Started, left.0, left.1), app.touched(2, TouchPhase::Started, a.0, a.1)];
+                let taken = [
+                    app.touched(1, TouchPhase::Started, left.0, left.1),
+                    app.touched(2, TouchPhase::Started, a.0, a.1),
+                ];
                 let held = app.shell.touch.held();
                 if taken != [true, true] || held != keys::LEFT | keys::A {
-                    tour.pad.borrow_mut().push(format!("{lang}: a finger on Left and one on A: taken {taken:?}, held {held:#05x}"));
+                    tour.pad.borrow_mut().push(format!(
+                        "{lang}: a finger on Left and one on A: taken {taken:?}, held {held:#05x}"
+                    ));
                 }
             }),
         );
@@ -513,13 +615,18 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                 app.touched(1, TouchPhase::Ended, 0.0, 0.0);
                 let held = app.shell.touch.held();
                 if held != keys::A {
-                    tour.pad.borrow_mut().push(format!("{lang}: Left's finger lifted: held {held:#05x}, not A alone"));
+                    tour.pad.borrow_mut().push(format!(
+                        "{lang}: Left's finger lifted: held {held:#05x}, not A alone"
+                    ));
                 }
                 app.touched(2, TouchPhase::Ended, 0.0, 0.0);
             }),
         );
     }
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.open_menu()),
+    );
     shot(&mut add, "battle-practice-menu", Pair::None);
     // (An online match's corner and menu, shown over the practice battle: there is no link here.)
     add(
@@ -547,8 +654,14 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             let net = nettai_frontend::driver::NetStatus {
                 jitter_ms: Some(6.0),
                 loss: 0.004,
-                sent: nettai_frontend::connection::Traffic { datagrams: 5_412, bytes: 381_200 },
-                received: nettai_frontend::connection::Traffic { datagrams: 5_388, bytes: 379_900 },
+                sent: nettai_frontend::connection::Traffic {
+                    datagrams: 5_412,
+                    bytes: 381_200,
+                },
+                received: nettai_frontend::connection::Traffic {
+                    datagrams: 5_388,
+                    bytes: 379_900,
+                },
                 input_delay: 4,
                 last_rollback: 1,
                 max_rollback: 5,
@@ -572,7 +685,8 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         SETTLE,
         Box::new(|ui, app, _| {
             app.borrow_mut().shell.open_menu();
-            ui.global::<nettai_ui::Shell>().set_battle(BattleKind::Online);
+            ui.global::<nettai_ui::Shell>()
+                .set_battle(BattleKind::Online);
         }),
     );
     shot(&mut add, "battle-match-menu", Pair::None);
@@ -608,7 +722,11 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
                 }
                 app.borrow_mut().first_frame_after = Some((Instant::now(), None));
                 trigger(ui, app, tour);
-                *tour.burst.borrow_mut() = Some(Burst { name, began: Instant::now(), shots: Vec::new() });
+                *tour.burst.borrow_mut() = Some(Burst {
+                    name,
+                    began: Instant::now(),
+                    shots: Vec::new(),
+                });
             }),
         );
         let mut last = 0;
@@ -616,10 +734,14 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             add(
                 ms - last,
                 Box::new(|ui, app, tour| {
-                    let Ok(picture) = ui.window().take_snapshot() else { return };
+                    let Ok(picture) = ui.window().take_snapshot() else {
+                        return;
+                    };
                     let sizes = app.borrow().shell.nav.registry().borrow().sizes();
                     if let Some(burst) = tour.burst.borrow_mut().as_mut() {
-                        burst.shots.push((burst.began.elapsed().as_millis(), picture, sizes));
+                        burst
+                            .shots
+                            .push((burst.began.elapsed().as_millis(), picture, sizes));
                     }
                 }),
             );
@@ -629,12 +751,24 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             10,
             Box::new(|_, app, tour| {
                 // How long the press held the window: from it to the first frame after it, and that frame's work.
-                if let (Some(burst), Some((at, first))) = (tour.burst.borrow().as_ref(), app.borrow_mut().first_frame_after.take()) {
+                if let (Some(burst), Some((at, first))) = (
+                    tour.burst.borrow().as_ref(),
+                    app.borrow_mut().first_frame_after.take(),
+                ) {
                     let waited = first.map_or_else(
                         || "none drawn".to_string(),
-                        |(began, done)| format!("{} ms, and its work {:.1} ms", began.saturating_duration_since(at).as_millis(), done.saturating_duration_since(began).as_secs_f64() * 1e3),
+                        |(began, done)| {
+                            format!(
+                                "{} ms, and its work {:.1} ms",
+                                began.saturating_duration_since(at).as_millis(),
+                                done.saturating_duration_since(began).as_secs_f64() * 1e3
+                            )
+                        },
                     );
-                    tour.seen.borrow_mut().push(format!("{}: the press to its first frame, {waited}", burst.name));
+                    tour.seen.borrow_mut().push(format!(
+                        "{}: the press to its first frame, {waited}",
+                        burst.name
+                    ));
                 }
                 flush_burst(tour)
             }),
@@ -642,20 +776,27 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     };
     let go = |to: ScreenId| -> Step { Box::new(move |_, app, _| app.borrow_mut().go_now(to)) };
     let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
-    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
+    let focus = |id: &'static str, index: i32| -> Step {
+        Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
+    };
 
     add(
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.set_name("bigfarts");
+            app.shell.set_name("Lan");
             app.go_now(ScreenId::Menu);
             app.shell.nav.focus("play", 0);
             app.shell.nav.show_cursor(true, false);
         }),
     );
     taking.set(walks("shell"));
-    burst(&mut add, "cursor-glide", &[0, 30, 60, 100, 180], act(Action::Down));
+    burst(
+        &mut add,
+        "cursor-glide",
+        &[0, 30, 60, 100, 180],
+        act(Action::Down),
+    );
 
     // A change of game: the new game's ground sweeps in from the side of the shoulder pressed (R's: from the
     // right; L's: from the left) as the colors cross-fade, and a second press while it sweeps starts the next at
@@ -663,11 +804,19 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     // still: three steps around the three games.)
     for _ in 0..3 {
         add(SETTLE, act(Action::Next));
-        add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.ready().is_some())));
+        add(
+            SETTLE,
+            Box::new(|_, _, tour| tour.wait_until(|app| app.shell.ready().is_some())),
+        );
     }
     let sweep = [0, 30, 60, 90, 120, 160, 200, 260, 400];
     burst(&mut add, "game-from-the-right", &sweep, act(Action::Next));
-    burst(&mut add, "game-from-the-left", &sweep, act(Action::Previous));
+    burst(
+        &mut add,
+        "game-from-the-left",
+        &sweep,
+        act(Action::Previous),
+    );
     burst(
         &mut add,
         "game-twice",
@@ -678,14 +827,27 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             Timer::single_shot(Duration::from_millis(90), move || {
                 let mut app = app.borrow_mut();
                 app.act(Action::Next);
-                tour.seen.borrow_mut().push(format!("a second change of game 90 ms into the first's sweep: {} grounds", app.shell.looks.grounds()));
+                tour.seen.borrow_mut().push(format!(
+                    "a second change of game 90 ms into the first's sweep: {} grounds",
+                    app.shell.looks.grounds()
+                ));
             });
         }),
     );
     add(SETTLE, act(Action::Previous));
     add(SETTLE, act(Action::Previous));
-    burst(&mut add, "screen-to-settings", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Settings));
-    burst(&mut add, "screen-back-to-menu", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Menu));
+    burst(
+        &mut add,
+        "screen-to-settings",
+        &[0, 40, 80, 130, 170, 220, 300, 450],
+        go(ScreenId::Settings),
+    );
+    burst(
+        &mut add,
+        "screen-back-to-menu",
+        &[0, 40, 80, 130, 170, 220, 300, 450],
+        go(ScreenId::Menu),
+    );
 
     // A press in the same instant as a screen change: Settings is asked for, and Down pressed twice before a
     // frame has passed. The focus must end two controls down the new screen (Name, Language, Picture size).
@@ -701,8 +863,16 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     add(
         SETTLE * 2,
         Box::new(|_, app, tour| {
-            let focus = app.borrow().shell.nav.focused().map(|k| k.id.clone()).unwrap_or_default();
-            tour.seen.borrow_mut().push(format!("Settings asked for and Down pressed twice at once: the focus is on {focus:?}"));
+            let focus = app
+                .borrow()
+                .shell
+                .nav
+                .focused()
+                .map(|k| k.id.clone())
+                .unwrap_or_default();
+            tour.seen.borrow_mut().push(format!(
+                "Settings asked for and Down pressed twice at once: the focus is on {focus:?}"
+            ));
             if focus != "set.picture" {
                 tour.late.borrow_mut().push(format!("two presses made with a screen change ended on {focus:?}, not on the second control down the new screen (set.picture)"));
             }
@@ -719,10 +889,21 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
                 let before = app.shell.nav.focused().cloned();
                 app.act(Action::Down);
                 let after = app.shell.nav.focused().cloned();
-                let name = |k: &Option<crate::nav::Key>| k.as_ref().map(|k| format!("{}[{}]", k.id, k.index)).unwrap_or_default();
-                tour.seen.borrow_mut().push(format!("Down held, repeat {repeat}: {} to {}", name(&before), name(&after)));
+                let name = |k: &Option<crate::nav::Key>| {
+                    k.as_ref()
+                        .map(|k| format!("{}[{}]", k.id, k.index))
+                        .unwrap_or_default()
+                };
+                tour.seen.borrow_mut().push(format!(
+                    "Down held, repeat {repeat}: {} to {}",
+                    name(&before),
+                    name(&after)
+                ));
                 if before == after {
-                    tour.late.borrow_mut().push(format!("Down held, repeat {repeat}: the focus stayed on {}", name(&before)));
+                    tour.late.borrow_mut().push(format!(
+                        "Down held, repeat {repeat}: the focus stayed on {}",
+                        name(&before)
+                    ));
                 }
             }),
         );
@@ -730,18 +911,48 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
 
     add(SETTLE, focus("set.delay", 0));
     add(SETTLE, act(Action::Confirm));
-    burst(&mut add, "stepper-slide", &[0, 30, 60, 100, 180], act(Action::Right));
+    burst(
+        &mut add,
+        "stepper-slide",
+        &[0, 30, 60, 100, 180],
+        act(Action::Right),
+    );
     add(SETTLE, focus("set.graphics", 0));
     add(SETTLE, act(Action::Confirm));
-    burst(&mut add, "switch-slide", &[0, 40, 80, 180], act(Action::Right));
+    burst(
+        &mut add,
+        "switch-slide",
+        &[0, 40, 80, 180],
+        act(Action::Right),
+    );
     add(SETTLE, focus("set.reset", 0));
-    burst(&mut add, "button-press", &[0, 30, 70, 120, 220], act(Action::Confirm));
+    burst(
+        &mut add,
+        "button-press",
+        &[0, 30, 70, 120, 220],
+        act(Action::Confirm),
+    );
     add(SETTLE, focus("set.language", 0));
-    burst(&mut add, "list-opens", &[0, 30, 60, 140], act(Action::Confirm));
+    burst(
+        &mut add,
+        "list-opens",
+        &[0, 30, 60, 140],
+        act(Action::Confirm),
+    );
     add(SETTLE, act(Action::Back));
     add(SETTLE, focus("set.name", 0));
-    burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
-    burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
+    burst(
+        &mut add,
+        "page-scrolls",
+        &[0, 30, 60, 100, 200],
+        focus("set.folder", 0),
+    );
+    burst(
+        &mut add,
+        "dialog",
+        &[0, 30, 60, 100, 160, 300],
+        Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)),
+    );
     add(SETTLE, act(Action::Confirm));
     taking.set(walks("builds"));
     builds::motion(&mut add, &burst);
@@ -758,11 +969,20 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.go_now(ScreenId::Practice);
-            crate::screens::practice::start_development_battle(&mut app.shell, 7, Default::default());
+            crate::screens::practice::start_development_battle(
+                &mut app.shell,
+                7,
+                Default::default(),
+            );
         }),
     );
     add(1500, Box::new(|_, _, _| {}));
-    burst(&mut add, "menu-over-battle", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    burst(
+        &mut add,
+        "menu-over-battle",
+        &[0, 40, 90, 160, 260],
+        Box::new(|_, app, _| app.borrow_mut().shell.open_menu()),
+    );
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -778,9 +998,14 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
 /// Write a burst's shots (at half their size: they are many), and hold each to its last: every control the size
 /// it is at rest.
 fn flush_burst(tour: &Tour) {
-    let Some(burst) = tour.burst.borrow_mut().take() else { return };
-    let Some((_, _, rest)) = burst.shots.last() else { return };
-    let rest: std::collections::HashMap<&Key, (f32, f32)> = rest.iter().map(|(k, s)| (k, *s)).collect();
+    let Some(burst) = tour.burst.borrow_mut().take() else {
+        return;
+    };
+    let Some((_, _, rest)) = burst.shots.last() else {
+        return;
+    };
+    let rest: std::collections::HashMap<&Key, (f32, f32)> =
+        rest.iter().map(|(k, s)| (k, *s)).collect();
     for (ms, picture, sizes) in &burst.shots {
         for (key, size) in sizes {
             // (A control not yet laid out has no size; one that is gone by the end has none to hold it to.)
@@ -788,7 +1013,10 @@ fn flush_burst(tour: &Tour) {
                 && size.0 > 0.0
                 && ((size.0 - at_rest.0).abs() > 0.5 || (size.1 - at_rest.1).abs() > 0.5)
             {
-                tour.resized.borrow_mut().push(format!("{} at {ms} ms: {}[{}] is {} by {}, and {} by {} at rest", burst.name, key.id, key.index, size.0, size.1, at_rest.0, at_rest.1));
+                tour.resized.borrow_mut().push(format!(
+                    "{} at {ms} ms: {}[{}] is {} by {}, and {} by {} at rest",
+                    burst.name, key.id, key.index, size.0, size.1, at_rest.0, at_rest.1
+                ));
             }
         }
         let (w, h) = (picture.width() / 2, picture.height() / 2);
@@ -800,35 +1028,74 @@ fn flush_burst(tour: &Tour) {
                 half.extend_from_slice(&[p.r, p.g, p.b, p.a]);
             }
         }
-        let path = tour.dir.join(format!("motion-{}-{ms:04}ms.png", burst.name));
-        let Ok(file) = std::fs::File::create(&path) else { continue };
+        let path = tour
+            .dir
+            .join(format!("motion-{}-{ms:04}ms.png", burst.name));
+        let Ok(file) = std::fs::File::create(&path) else {
+            continue;
+        };
         let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
         enc.set_color(png::ColorType::Rgba);
         enc.set_depth(png::BitDepth::Eight);
-        if enc.write_header().and_then(|mut w| w.write_image_data(&half)).is_ok() {
+        if enc
+            .write_header()
+            .and_then(|mut w| w.write_image_data(&half))
+            .is_ok()
+        {
             tour.shots.set(tour.shots.get() + 1);
         }
     }
 }
 
 /// Walk once the selected game is ready, or after five minutes.
-fn when_ready(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, waited: u32) {
+fn when_ready(
+    ui: slint::Weak<AppWindow>,
+    app: Rc<RefCell<App>>,
+    tour: Rc<Tour>,
+    steps: Rc<Vec<(u64, Step)>>,
+    waited: u32,
+) {
     if app.borrow().shell.ready().is_some() || waited >= 600 {
         return run(ui, app, tour, steps, 0);
     }
-    Timer::single_shot(Duration::from_millis(500), move || when_ready(ui, app, tour, steps, waited + 1));
+    Timer::single_shot(Duration::from_millis(500), move || {
+        when_ready(ui, app, tour, steps, waited + 1)
+    });
 }
 
-fn run(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, at: usize) {
-    let Some((wait, _)) = steps.get(at) else { return };
-    Timer::single_shot(Duration::from_millis(*wait), move || waited(ui, app, tour, steps, at, 0));
+fn run(
+    ui: slint::Weak<AppWindow>,
+    app: Rc<RefCell<App>>,
+    tour: Rc<Tour>,
+    steps: Rc<Vec<(u64, Step)>>,
+    at: usize,
+) {
+    let Some((wait, _)) = steps.get(at) else {
+        return;
+    };
+    Timer::single_shot(Duration::from_millis(*wait), move || {
+        waited(ui, app, tour, steps, at, 0)
+    });
 }
 
 /// A step's time is up: it is run, once what the pass waits for has come (or after a minute).
-fn waited(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, at: usize, tries: u32) {
-    let come = tour.until.borrow().as_ref().is_none_or(|until| app.try_borrow().is_ok_and(|app| until(&app)));
+fn waited(
+    ui: slint::Weak<AppWindow>,
+    app: Rc<RefCell<App>>,
+    tour: Rc<Tour>,
+    steps: Rc<Vec<(u64, Step)>>,
+    at: usize,
+    tries: u32,
+) {
+    let come = tour
+        .until
+        .borrow()
+        .as_ref()
+        .is_none_or(|until| app.try_borrow().is_ok_and(|app| until(&app)));
     if !come && tries < 600 {
-        return Timer::single_shot(Duration::from_millis(100), move || waited(ui, app, tour, steps, at, tries + 1));
+        return Timer::single_shot(Duration::from_millis(100), move || {
+            waited(ui, app, tour, steps, at, tries + 1)
+        });
     }
     *tour.until.borrow_mut() = None;
     let Some(window) = ui.upgrade() else { return };
@@ -853,7 +1120,10 @@ fn write(ui: &AppWindow, tour: &Tour, tag: &str) -> Option<SharedPixelBuffer<Rgb
     let mut enc = png::Encoder::new(file, shot.width(), shot.height());
     enc.set_color(png::ColorType::Rgba);
     enc.set_depth(png::BitDepth::Eight);
-    match enc.write_header().and_then(|mut w| w.write_image_data(shot.as_bytes())) {
+    match enc
+        .write_header()
+        .and_then(|mut w| w.write_image_data(shot.as_bytes()))
+    {
         Ok(()) => tour.shots.set(tour.shots.get() + 1),
         Err(e) => eprintln!("tour: {}: {e}", path.display()),
     }
@@ -862,18 +1132,35 @@ fn write(ui: &AppWindow, tour: &Tour, tag: &str) -> Option<SharedPixelBuffer<Rgb
 
 /// Compare a pair of shots: they may differ only inside `allowed` (the controls the step touched, in the UI's
 /// units), each grown by the cursor's reach (its brackets are 5 outside a control, and glow 4 beyond).
-fn compare(ui: &AppWindow, tour: &Tour, first: &str, before: &SharedPixelBuffer<Rgba8Pixel>, second: &str, after: &SharedPixelBuffer<Rgba8Pixel>, allowed: &[Option<Rect>]) {
+fn compare(
+    ui: &AppWindow,
+    tour: &Tour,
+    first: &str,
+    before: &SharedPixelBuffer<Rgba8Pixel>,
+    second: &str,
+    after: &SharedPixelBuffer<Rgba8Pixel>,
+    allowed: &[Option<Rect>],
+) {
     const REACH: f32 = 12.0;
     tour.pairs.set(tour.pairs.get() + 1);
     if (before.width(), before.height()) != (after.width(), after.height()) {
-        tour.moved.borrow_mut().push(format!("{first} and {second} are of two sizes"));
+        tour.moved
+            .borrow_mut()
+            .push(format!("{first} and {second} are of two sizes"));
         return;
     }
     let factor = ui.window().scale_factor();
     let allowed: Vec<(i64, i64, i64, i64)> = allowed
         .iter()
         .flatten()
-        .map(|r| (((r.x - REACH) * factor).floor() as i64, ((r.y - REACH) * factor).floor() as i64, ((r.right() + REACH) * factor).ceil() as i64, ((r.bottom() + REACH) * factor).ceil() as i64))
+        .map(|r| {
+            (
+                ((r.x - REACH) * factor).floor() as i64,
+                ((r.y - REACH) * factor).floor() as i64,
+                ((r.right() + REACH) * factor).ceil() as i64,
+                ((r.bottom() + REACH) * factor).ceil() as i64,
+            )
+        })
         .collect();
     let width = before.width() as i64;
     // Where the two differ outside what the step touched: how many pixels, and the box around them.
@@ -883,11 +1170,19 @@ fn compare(ui: &AppWindow, tour: &Tour, first: &str, before: &SharedPixelBuffer<
             continue;
         }
         let (x, y) = (i as i64 % width, i as i64 / width);
-        if allowed.iter().any(|&(l, t, r, b)| x >= l && x < r && y >= t && y < b) {
+        if allowed
+            .iter()
+            .any(|&(l, t, r, b)| x >= l && x < r && y >= t && y < b)
+        {
             continue;
         }
         count += 1;
-        bounds = (bounds.0.min(x), bounds.1.min(y), bounds.2.max(x), bounds.3.max(y));
+        bounds = (
+            bounds.0.min(x),
+            bounds.1.min(y),
+            bounds.2.max(x),
+            bounds.3.max(y),
+        );
     }
     if count > 0 {
         let unit = |v: i64| (v as f32 / factor).round();
@@ -912,10 +1207,23 @@ fn finish(tour: &Tour) {
 fn report(tour: &Tour, note: &str) {
     let mut report = String::from(note);
     let (cut, moved) = (tour.cut.borrow(), tour.moved.borrow());
-    let (resized, late, seen) = (tour.resized.borrow(), tour.late.borrow(), tour.seen.borrow());
-    let _ = writeln!(report, "{} shots, {} pairs compared.", tour.shots.get(), tour.pairs.get());
+    let (resized, late, seen) = (
+        tour.resized.borrow(),
+        tour.late.borrow(),
+        tour.seen.borrow(),
+    );
+    let _ = writeln!(
+        report,
+        "{} shots, {} pairs compared.",
+        tour.shots.get(),
+        tour.pairs.get()
+    );
     if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
-        let _ = writeln!(report, "\nControls whose size differed while something moved: {}", resized.len());
+        let _ = writeln!(
+            report,
+            "\nControls whose size differed while something moved: {}",
+            resized.len()
+        );
         for line in resized.iter() {
             let _ = writeln!(report, "  {line}");
         }
@@ -928,7 +1236,11 @@ fn report(tour: &Tour, note: &str) {
             let _ = writeln!(report, "  {line}");
         }
     }
-    let _ = writeln!(report, "\nPairs that differ outside the controls their step touched: {}", moved.len());
+    let _ = writeln!(
+        report,
+        "\nPairs that differ outside the controls their step touched: {}",
+        moved.len()
+    );
     for line in moved.iter() {
         let _ = writeln!(report, "  {line}");
     }
@@ -938,19 +1250,31 @@ fn report(tour: &Tour, note: &str) {
     }
     let never = tour.never.borrow();
     if !never.is_empty() {
-        let _ = writeln!(report, "\nWhat a walk waited a minute for and never saw: {}", never.len());
+        let _ = writeln!(
+            report,
+            "\nWhat a walk waited a minute for and never saw: {}",
+            never.len()
+        );
         for line in never.iter() {
             let _ = writeln!(report, "  {line}");
         }
     }
     let keys = tour.keys.borrow();
-    let _ = writeln!(report, "\nKeys pressed as the window presses them that didn't do what they do: {}", keys.len());
+    let _ = writeln!(
+        report,
+        "\nKeys pressed as the window presses them that didn't do what they do: {}",
+        keys.len()
+    );
     for line in keys.iter() {
         let _ = writeln!(report, "  {line}");
     }
     let pad = tour.pad.borrow();
     if !pad.is_empty() {
-        let _ = writeln!(report, "\nThe on-screen pad, two fingers at once: {} wrong", pad.len());
+        let _ = writeln!(
+            report,
+            "\nThe on-screen pad, two fingers at once: {} wrong",
+            pad.len()
+        );
         for line in pad.iter() {
             let _ = writeln!(report, "  {line}");
         }
@@ -960,5 +1284,15 @@ fn report(tour: &Tour, note: &str) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty() || !keys.is_empty()));
+    FAILED.with(|f| {
+        f.set(
+            !cut.is_empty()
+                || !moved.is_empty()
+                || !resized.is_empty()
+                || !late.is_empty()
+                || !pad.is_empty()
+                || !never.is_empty()
+                || !keys.is_empty(),
+        )
+    });
 }
