@@ -159,8 +159,6 @@ export global PlayView {
     in property <string> note-problem;
     // Why the match before ended, where it didn't end by itself (in the error red, in the note's place).
     in property <string> note-error;
-    // The room's code, for the footer.
-    in property <string> room;
     // Another build is being chosen.
     in property <bool> changing;
 
@@ -701,7 +699,8 @@ export component PlayScreen inherits Page {
     title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : PlayView.part == PlayPart.builds ? Caps.of(@tr("Play")) : Theme.phone ? Caps.of(@tr("Waiting")) : Caps.of(@tr("Waiting for opponent"));
     back: PlayView.part == PlayPart.builds ? Caps.of(@tr("Menu")) : Caps.of(@tr("Play"));
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
-    status: PlayView.part == PlayPart.lobby && PlayView.room != "" ? PlayView.room : Shell.player;
+    // (Not the room's code: it is gone once the two players have met.)
+    status: Shell.player;
 
     // ---- The builds, what is done with them, and the row that makes a link ----
     // (One conditional a part, and what differs on a phone by its place and by `visible`: each conditional is a
