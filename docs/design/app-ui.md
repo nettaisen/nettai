@@ -876,8 +876,8 @@ Each is settled unless the user changes it.
       is a segmented control of its presets in capitals (LIGHT | DARK), as the app's two-way one (Versions' ONE PER
       BUILD | MIXED) is drawn: each segment as wide as its word (44 at least), the build's tinted and underlined in
       the cursor's color, the control as tall as the editor's rows (26; a phone's 44, to be tapped) and as wide as
-      its segments, where the stepper was the panel's width and 36 tall. Left and Right step it (none past its
-      ends), Enter takes the next (of two, the other), a click or a tap on a segment takes its preset. A navi
+      its segments, where the stepper was the panel's width and 36 tall. Taken (Enter, §2.77), Left and Right step it
+      (none past its ends); a click or a tap on a segment takes its preset. A navi
       with none of a choice has nothing in its place.
     - *Room in the selector:* the panel's padding stays 16 all round (the editor's strips' and the NaviCust's
       effects'); the choices, each fact of forms and the note are 20 apart; each version's head has 8 over it (from
@@ -1255,6 +1255,21 @@ Each is settled unless the user changes it.
       the title as it was.
     (§6 Builds; docs/app.md §8.)
 
+77. **A setting is taken to change** (2026-10-16). The user: "changing options with controller gets silly when
+    directional buttons both move the cursor and change the setting", then chose, of three ways put to them, "A
+    grabs, D-pad changes", the keyboard the same as the pad.
+    - *The arrows move:* a stepper, a segmented control or a slider is a button to them, as a select is (§2.75):
+      Left and Right walk past it.
+    - *Enter takes it:* Enter (the pad's A) on a setting takes it; while it is taken Left and Right change it, and
+      Enter or Esc (A or B) lets it go, its value as changed (each step is kept as it is made). Up, Down or anything
+      else lets it go and does what it does. The cursor holds in, still, an arrow beside each side, and the footer
+      says ←→ Change and Enter Done.
+    - *Where the arrows lead nowhere else, they still change at once* (a dial: `NavKind.dial`): a replay's seek
+      bar, where Enter plays and pauses; a phone's build box, where Enter opens the sheet; Practice's menu's options,
+      rows of one control each, where Enter opens a list or steps on.
+    - A click or a tap on a setting's arrow or segment changes it as before.
+    (§5 rule 7; docs/app.md §11.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1426,7 +1441,9 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
 7. **Text fields don't trap.** The arrows walk past a field without changing it. Enter or a typed letter starts
    editing, and so does the pad's A. While editing, Left and Right move the caret, Enter confirms, Esc restores
    the old text, and Up, Down or Tab confirm and move on; the pad's A confirms and its B restores. The footer's
-   hints are the field's own while it is edited. The field's border and caret light while it is edited.
+   hints are the field's own while it is edited. The field's border and caret light while it is edited. Settings
+   don't trap either (§2.77): the arrows walk past a stepper, a segmented control or a slider; Enter takes it,
+   Left and Right then change it, and Enter or Esc lets it go.
 8. **Text never touches a border.** A field clips its text at its inner padding (12) and scrolls to keep the caret
    in view.
 9. **Lists.** Rows have one height; the focused row is scrolled into view; the scrollbar's space is reserved.

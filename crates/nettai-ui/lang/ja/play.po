@@ -193,9 +193,6 @@ msgstr "退出"
 msgid "Leave"
 msgstr "退出"
 
-msgid "Move or change"
-msgstr "移動・変更"
-
 msgid "Waiting for you to ready up."
 msgstr "あなたの準備を待っています。"
 

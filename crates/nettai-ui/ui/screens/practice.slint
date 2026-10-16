@@ -222,7 +222,7 @@ component MenuRow inherits Rectangle {
         hit := Focusable {
             nav: root.option ? "menu.rows.option" : "";
             nav-index: root.index;
-            kind: NavKind.stepper;
+            kind: NavKind.dial;
             enabled: root.option;
         }
 

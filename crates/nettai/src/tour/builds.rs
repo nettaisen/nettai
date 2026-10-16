@@ -147,6 +147,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     shot(add, "builds-new-field", Pair::First);
     add(SETTLE, act(Action::Down));
     shot(add, "builds-new-focus", Pair::Second);
+    // (The version is a setting: taken, then stepped.)
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
     shot(add, "builds-new-version", Pair::None);
     add(SETTLE, act(Action::Back));
@@ -209,6 +211,18 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
             }
         })
     }
+    /// As `press_if`, on a setting: taken (Enter), stepped by the arrow, and let go (Enter).
+    fn step_if(id: &'static str, index: i32, action: Action) -> Step {
+        Box::new(move |_, app, _| {
+            let mut app = app.borrow_mut();
+            if there(&app, id, index) {
+                app.shell.nav.focus(id, index);
+                app.act(Action::Confirm);
+                app.act(action);
+                app.act(Action::Confirm);
+            }
+        })
+    }
     // The game's navis, the focus a card on; another navi chosen (the tabs that are the game's own navi's
     // greyed), and the first again.
     add(SETTLE, press("tab", 0));
@@ -223,10 +237,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     add(SETTLE, press("navi", 0));
     // In a game whose builds have a choice (Light or Dark): its other preset, with the face the round then
     // starts the navi with; and the first again.
-    add(SETTLE, press_if("choice", 0, Action::Right));
+    add(SETTLE, step_if("choice", 0, Action::Right));
     shot(add, "builds-navi-choice", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
-    add(SETTLE, press_if("choice", 0, Action::Left));
+    add(SETTLE, step_if("choice", 0, Action::Left));
 
     // The Folder tab. The library is beside the folder on a desktop and a sheet over it on a phone, so each step
     // says where it is: `library` goes from the entry under the cursor into the library if the cursor isn't
