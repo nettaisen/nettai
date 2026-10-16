@@ -1,6 +1,8 @@
-# The app's packages (packaging/; docs/app.md, "Packaging"): a Windows installer, a macOS disk image and a Linux
-# AppImage. Run by hand (Actions → Release → Run workflow) for the packages alone, as the run's artifacts; on a
-# tag `v*` also, with a draft release of them, which is never published from here. Each package bundles the ffmpeg
+# The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
+# zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's
+# updates.rs). Run by hand (Actions → Release → Run workflow) for the packages alone, as the run's artifacts; on a
+# tag `v*` also, with a draft release of them, which is never published from here: the apps see it once someone
+# publishes it. Each package bundles the ffmpeg
 # packaging/ffmpeg.sha256 pins (nettaisen/ffmpeg-build's release, built by that repository's own workflow),
 # which the packaging scripts download and check.
 name: Release
@@ -19,6 +21,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Velopack's vpk: the version crates/nettai's velopack is.
+  VPK_VERSION: 1.2.161
 
 jobs:
   icons:
@@ -63,12 +67,18 @@ jobs:
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
-      - name: Inno Setup
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # (Into the runner's temp folder, put on the PATH for the steps after: the same on every system.)
+      - name: Velopack's vpk
         shell: pwsh
         run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --yes --no-progress }
+          dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
+          if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
+          Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
       # Optional: a code-signing certificate (base64 of a .pfx) in the secrets WINDOWS_CERTIFICATE and
-      # WINDOWS_CERTIFICATE_PASSWORD. Skipped without it: the program and the installer are unsigned.
+      # WINDOWS_CERTIFICATE_PASSWORD. Skipped without it: no program of the release is signed.
       - name: Signing certificate
         if: env.WINDOWS_CERTIFICATE != ''
         shell: pwsh
@@ -84,9 +94,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: nettai-windows
-          path: |
-            target/package/windows/*.exe
-            target/package/windows/*.zip
+          path: target/package/windows/releases/*
           if-no-files-found: error
 
   macos:
@@ -112,6 +120,16 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Fetch the crates
         run: cargo fetch --locked
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # (Into the runner's temp folder, put on the PATH for the steps after: the same on every system.)
+      - name: Velopack's vpk
+        shell: pwsh
+        run: |
+          dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
+          if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
+          Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
       # Optional: a Developer ID Application certificate (base64 of a .p12) in MACOS_CERTIFICATE, its password in
       # MACOS_CERTIFICATE_PASSWORD; with APPLE_ID, APPLE_TEAM_ID and APPLE_APP_PASSWORD (an app-specific password)
       # the disk image is notarized too. Skipped without it: the app is signed ad hoc, and the player allows it
@@ -120,6 +138,9 @@ jobs:
         if: env.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           keychain="$RUNNER_TEMP/signing.keychain-db"
           password=$(openssl rand -hex 16)
@@ -132,18 +153,22 @@ jobs:
           security list-keychains -d user -s "$keychain" login.keychain
           identity=$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application[^"]*\)".*/\1/p' | head -n 1)
           echo "MACOS_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "MACOS_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+          # (With the Apple ID's app-specific password, a notarytool profile in that keychain, which vpk notarizes the
+          # app with.)
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then
+            xcrun notarytool store-credentials nettai --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --keychain "$keychain"
+            echo "MACOS_NOTARY_PROFILE=nettai" >> "$GITHUB_ENV"
+          fi
       - name: Package
         env:
           NETTAI_UNIVERSAL: "1"
           NETTAI_ICONS: ${{ runner.temp }}/icons
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: packaging/macos/package.sh
       - uses: actions/upload-artifact@v7
         with:
           name: nettai-macos
-          path: target/package/macos/*.dmg
+          path: target/package/macos/releases/*
           if-no-files-found: error
 
   linux:
@@ -171,6 +196,16 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Fetch the crates
         run: cargo fetch --locked
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # (Into the runner's temp folder, put on the PATH for the steps after: the same on every system.)
+      - name: Velopack's vpk
+        shell: pwsh
+        run: |
+          dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
+          if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
+          Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons
@@ -178,7 +213,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: nettai-linux
-          path: target/package/linux/*.AppImage
+          path: target/package/linux/releases/*
           if-no-files-found: error
 
   release:
@@ -192,16 +227,25 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: nettai-*
-          path: packages
+          path: releases
           merge-multiple: true
-      # A draft: someone publishes it by hand. A run again (the same tag) replaces its files.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # (Into the runner's temp folder, put on the PATH for the steps after: the same on every system.)
+      - name: Velopack's vpk
+        shell: pwsh
+        run: |
+          dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
+          if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
+          Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
+      # A draft: someone publishes it by hand, and only then do the installed apps see it. Each platform's channel
+      # (win, osx, linux) goes up into the one release; a run again (the same tag) merges into it.
       - name: Draft release
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          VPK_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" packages/* --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" packages/* --draft --verify-tag --title "nettai ${GITHUB_REF_NAME#v}" --generate-notes
-          fi
+          for channel in win osx linux; do
+            vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
+              --tag "$GITHUB_REF_NAME" --releaseName "nettai ${GITHUB_REF_NAME#v}" --merge
+          done

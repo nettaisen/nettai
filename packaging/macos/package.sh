@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# nettai.app and a .dmg of it, on macOS: target/package/macos/nettai-<version>-macos-<arch>.dmg.
+# nettai.app, and Velopack's release of it, on macOS: target/package/macos/releases/ (nettai-osx-Portable.zip, the
+# app, which the player puts where they like, /Applications or anywhere, and which updates itself there; no installer
+# package: the user, "i don't want to ship a pkg file for mac"; and the update package and its feed the app's updater
+# reads from the GitHub release: nettai-<version>-osx-full.nupkg, releases.osx.json, assets.osx.json, RELEASES-osx).
 #
 #   packaging/macos/package.sh
 #
@@ -12,9 +15,12 @@
 # NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architectures built); else the release packaging/ffmpeg.sha256
 #                        pins, downloaded and checked
 # NETTAI_ICONS           a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
-# MACOS_SIGN_IDENTITY    a Developer ID Application identity in the keychain to sign with; else signed ad hoc
-# APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD
-#                        with an identity, the .dmg is notarized and stapled; else it isn't
+# MACOS_SIGN_IDENTITY    a Developer ID Application identity in the keychain to sign the app with (vpk signs it);
+#                        else it is signed ad hoc here
+# MACOS_NOTARY_PROFILE   with the identity, a notarytool keychain profile (`xcrun notarytool store-credentials`):
+#                        the app is notarized and stapled; else it isn't
+# MACOS_KEYCHAIN         the keychain those are in; else the default
+# VPK                    Velopack's vpk (the version crates/nettai's velopack is: 1.2.161); else vpk on the PATH
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
 source "$(dirname "$0")/../build.sh"
@@ -70,30 +76,19 @@ chmod 755 "$ffmpeg"
 fetch_ffmpeg ffmpeg-NOTICE.txt
 cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
 
-# (ffmpeg first: the bundle's signature seals the code inside it, which is signed already, as notarizing asks.)
+# The release (Velopack's: docs/app.md §19). With an identity vpk signs the bundle itself, everything in it with the
+# hardened runtime, as notarizing asks; without one it is signed ad hoc here (an Apple silicon Mac runs nothing
+# unsigned; Gatekeeper still asks the player to allow it once).
+pack=(pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai --packDir "$app" --mainExe nettai
+    --icon "$app/Contents/Resources/nettai.icns" --noInst --outputDir "$out/releases")
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
-    codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$ffmpeg"
-    codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$app"
+    pack+=(--signAppIdentity "$MACOS_SIGN_IDENTITY")
+    [ -n "${MACOS_NOTARY_PROFILE:-}" ] && pack+=(--notaryProfile "$MACOS_NOTARY_PROFILE")
+    [ -n "${MACOS_KEYCHAIN:-}" ] && pack+=(--keychain "$MACOS_KEYCHAIN")
 else
-    # (Ad hoc: an Apple silicon Mac runs nothing unsigned. Gatekeeper still asks the player to allow it once.)
     codesign --force --sign - "$ffmpeg"
     codesign --force --sign - "$app"
 fi
+"${VPK:-vpk}" "${pack[@]}"
 
-dmg=$out/nettai-$version-macos-$arch.dmg
-stage=$out/dmg
-mkdir -p "$stage"
-cp -R "$app" "$stage/"
-ln -s /Applications "$stage/Applications"
-hdiutil create -volname "nettai $version" -srcfolder "$stage" -fs HFS+ -format UDZO -ov "$dmg"
-rm -rf "$stage"
-
-if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
-    codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$dmg"
-    if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
-        xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
-        xcrun stapler staple "$dmg"
-    fi
-fi
-
-echo "$dmg"
+echo "$out/releases"

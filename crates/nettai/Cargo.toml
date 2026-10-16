@@ -29,6 +29,10 @@ sys-locale = "0.3"
 # Text in capitals by the language's own rules (`lang::upper`: a Turkish i is İ), from Unicode's data built in.
 icu_casemap = "2"
 icu_locale_core = "2"
+# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
+# releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
+# release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
+velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
 # The log's and a replay's times in the local time.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The screenshot pass's pictures (the `tour` feature's).

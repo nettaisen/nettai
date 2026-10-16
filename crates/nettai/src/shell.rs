@@ -248,6 +248,8 @@ pub struct Shell {
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
     /// battle runs (`awake.rs`).
     pub stay_awake: bool,
+    /// The app's update: found, asked about, downloading (`updates.rs`).
+    pub updates: crate::updates::Updates,
     awake: Option<crate::awake::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
     /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
@@ -603,7 +605,7 @@ impl Shell {
         self.open_dialog(dialog, owner, false);
     }
 
-    fn open_dialog(&mut self, dialog: Dialog, owner: Option<ScreenId>, shake: bool) {
+    pub(crate) fn open_dialog(&mut self, dialog: Dialog, owner: Option<ScreenId>, shake: bool) {
         self.finish_swap();
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
@@ -891,6 +893,7 @@ impl App {
             probe_motion: false,
             reel: false,
             stay_awake: false,
+            updates: Default::default(),
             awake: None,
             drawing: true,
             chord: false,
@@ -918,6 +921,10 @@ impl App {
         shell.set_packs_folder(self.shell.games.packs.display().to_string().into());
         shell.set_extracts(self.shell.games.extracts);
         self.shell.games.start();
+        // (An installed app asks for an update, unless Settings turned that off; the screenshot pass never does.)
+        if self.shell.settings.check_updates && !self.shell.still {
+            self.shell.updates.check();
+        }
         if ui.window().is_fullscreen() != self.shell.settings.full_screen {
             ui.window().set_fullscreen(self.shell.settings.full_screen);
         }
@@ -1088,6 +1095,7 @@ impl App {
                 self.call(owner, |s, shell| s.answered(shell, asked.tag, choice));
             }
             None if asked.tag == SOURCE && choice == 0 => self.choose_source(),
+            None if asked.tag == crate::updates::ASK && choice == 1 => self.shell.download_update(),
             None => {}
         }
     }

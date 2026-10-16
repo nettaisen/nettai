@@ -3404,21 +3404,27 @@ A package is the program, the content (`content/`, as the repository has it), th
 third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's `licenses.txt`, §18), and `ffmpeg` beside the program
 with its notice (ffmpeg-NOTICE.txt; below). No ROM and no extracted asset is in
 any of them, ever: the app extracts each game's pack from the player's own Legacy Collection into its data folder
-(§17). Each platform's script is in `packaging/`, runs on that platform alone, and writes to
-`target/package/<platform>/`:
+(§17). Each platform's script is in `packaging/`, runs on that platform alone, stages the app, and makes
+**Velopack's release** of it with `vpk pack` (`$VPK`, else `vpk` on the PATH; version 1.2.161, the one
+crates/nettai's `velopack` is) into `target/package/<platform>/releases/`: the platform's installer, the app alone,
+and the update package and its feed the installed app's updater reads from the GitHub release (below, "Updates").
+The user: "yes do that", of Velopack with GitHub releases, which replaced the Inno Setup installer, the disk image
+and appimagetool.
 
-- **Windows** (`packaging/windows/package.ps1`, `nettai.iss`): an Inno Setup installer,
-  `nettai-<version>-windows-x64-setup.exe`, for the player alone by default (`%LOCALAPPDATA%\Programs\nettai`, no
-  administrator; it offers everyone), with a Start menu shortcut, a desktop one if asked and an uninstaller that
-  leaves the data folder; and the same app as a .zip. Needs Inno Setup 6.
+- **Windows** (`packaging/windows/package.ps1`): `nettai-win-Setup.exe`, for the player alone
+  (`%LOCALAPPDATA%\nettai`, no administrator), with a Start menu and a desktop shortcut and an uninstaller that
+  leaves the data folder; and `nettai-win-Portable.zip`. vpk signs every program in it (the app's, ffmpeg,
+  Velopack's installer and updater) with the certificate `$env:WINDOWS_CERTIFICATE_PATH` names, if one does.
 - **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `io.github.bigfarts.nettai`;
-  the content in `Contents/Resources/`, where the content lookup finds it) in `nettai-<version>-macos-<arch>.dmg`,
-  beside a link to /Applications. `NETTAI_UNIVERSAL=1` builds arm64 and x86_64 and joins them with lipo; else the
-  host's alone. Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a Developer ID; with `APPLE_ID`, `APPLE_TEAM_ID`
-  and `APPLE_APP_PASSWORD` too, the image is notarized.
-- **Linux** (`packaging/linux/package.sh`, `AppRun`, `nettai.desktop`): `nettai-<version>-linux-x86_64.AppImage`,
-  made by appimagetool with the type 2 runtime, both downloaded at pinned versions and checked against their
-  digests. The program needs the glibc it was built against or a later one, so it is built on an old distribution.
+  the content in `Contents/Resources/`, where the content lookup finds it), zipped: `nettai-osx-Portable.zip`,
+  which the player unzips where they like (/Applications, or anywhere) and which updates itself there. No installer
+  package (`--noInst`; the user: "i don't want to ship a pkg file for mac"). `NETTAI_UNIVERSAL=1` builds arm64 and
+  x86_64 and joins them with lipo; else the host's alone. Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a
+  Developer ID Application identity, which vpk signs the bundle with (the hardened runtime, everything in it), and
+  with `MACOS_NOTARY_PROFILE` (a notarytool keychain profile) notarizes; `MACOS_KEYCHAIN`, the keychain those are
+  in.
+- **Linux** (`packaging/linux/package.sh`): `nettai.AppImage`, vpk's, with its entry, desktop file and icon. The
+  program needs the glibc it was built against or a later one, so it is built on an old distribution.
 
 **The bundled ffmpeg.** The user: "i think you also need like the equivalent of
 https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever
@@ -3434,12 +3440,11 @@ package takes by its tag and each file by its SHA-256; the scripts download them
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
 the app (the release's arm64 and x86_64 programs joined by lipo for the universal app, the host's alone otherwise;
-signed before the app, as the app is), `usr/lib/nettai/ffmpeg` in the AppImage (beside the program, which is there
-too). The app looks beside itself first (§16).
+signed before the app, as the app is), beside the program in the AppImage. The app looks beside itself first (§16).
 
 The binary is GPL: FFmpeg built with `--enable-gpl` and linked with x264 (GPL-2.0-or-later) is licensed
 GPL-2.0-or-later as a whole. Each package ships `ffmpeg-NOTICE.txt` from the release (beside THIRD-PARTY-NOTICES.txt:
-beside the program on Windows, in `Contents/Resources` on macOS, in `usr/share/doc/nettai` in the AppImage): what
+beside the program on Windows and in the AppImage, in `Contents/Resources` on macOS): what
 the program is built from, its license, the license texts, and where its complete source is, which is the release
 itself: the FFmpeg and x264 source tarballs it was built from and the build scripts at the commit that built it.
 
@@ -3460,8 +3465,24 @@ installs it).
 
 The workflow (`.github/workflows/release.yml`) runs on a tag `v*` and by hand. The icons are made once, on Linux;
 then Windows (`windows-latest`), macOS (`macos-latest`, universal) and Linux (`ubuntu-22.04`) each package and
-upload theirs as the run's artifacts, the version the tag's without its `v`. On a tag, a draft release is made with
-all of them, never published by the workflow. Signing is optional and skipped without its secrets:
-`WINDOWS_CERTIFICATE` (a .pfx, base64) and `WINDOWS_CERTIFICATE_PASSWORD`; `MACOS_CERTIFICATE` (a Developer ID
-Application .p12, base64) and `MACOS_CERTIFICATE_PASSWORD`, and for notarizing `APPLE_ID`, `APPLE_TEAM_ID` and
-`APPLE_APP_PASSWORD`.
+upload theirs as the run's artifacts, the version the tag's without its `v`. Each installs .NET 8 and vpk
+(`VPK_VERSION`). On a tag, `vpk upload github --merge` puts each platform's channel (win, osx, linux) into one draft
+release, never published by the workflow: the installed apps see a release only once someone publishes it. Signing
+is optional and skipped without its secrets: `WINDOWS_CERTIFICATE` (a .pfx, base64) and
+`WINDOWS_CERTIFICATE_PASSWORD`; `MACOS_CERTIFICATE` (a Developer ID Application .p12, base64) and
+`MACOS_CERTIFICATE_PASSWORD`, and for notarizing
+`APPLE_ID`, `APPLE_TEAM_ID` and `APPLE_APP_PASSWORD` (made a notarytool profile in the job's keychain).
+
+**Updates** (`updates.rs`). The user asked for an updater, then for Velopack with GitHub releases. Velopack's hook
+runs first in `main` (`updates::startup`: run by the installer or the updater, it does its part and the process
+ends). An installed app asks `https://github.com/bigfarts/nettai`'s published releases at start, on a thread,
+whether a newer one is out on its platform's channel (`velopack::sources::GithubSource`; unauthenticated, one
+request a start); a build run from the repository isn't installed and asks nothing, and neither does the
+screenshot pass. Settings → General → Check for updates (`check_updates`, on by default) turns it off; turned on, it
+asks at once. One found, the main menu asks once, with nothing over it and no battle (`UpdateWords`: nettai
+<version> is out, LATER or UPDATE). UPDATE downloads it on a thread, the footer saying how far (`Shell.updating`, in
+place of the screen's status); once it is down, the next time the main menu shows with nothing over it the app
+restarts into it (`apply_updates_and_restart`; the settings are written as each changes, so nothing is lost). A
+failure is logged and said in the footer. `velopack` is taken from its repository at the commit after 1.2.161 that
+moved it to zip 9 (every release on crates.io asks for zip 8, all of whose versions are yanked), until its next
+release.

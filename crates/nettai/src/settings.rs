@@ -27,6 +27,8 @@ pub struct Settings {
     pub full_screen: bool,
     /// Motion turned down: everything is a cut. None: as the system asks.
     pub reduce_motion: Option<bool>,
+    /// An installed app asks nettai's GitHub releases at start whether a newer one is out (`updates.rs`).
+    pub check_updates: bool,
     /// The battle drawn enhanced (its text at the window's resolution, the background's glide, the gauge's smooth
     /// fill, the banners' squash at the window's resolution), else as the game draws it: `GraphicsMode`.
     pub enhanced: bool,
@@ -55,6 +57,7 @@ impl Default for Settings {
             picture_size: 0,
             full_screen: false,
             reduce_motion: None,
+            check_updates: true,
             enhanced: true,
             music: 80,
             effects: 100,
