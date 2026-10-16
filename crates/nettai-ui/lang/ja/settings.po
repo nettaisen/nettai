@@ -4,12 +4,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
-msgid "SETTINGS"
+msgid "Settings"
 msgstr "設定"
 
 msgid "Move"
 msgstr "移動"
-
 
 msgid "A · Pad confirms"
 msgstr "A · パッドの決定"
@@ -25,37 +24,19 @@ msgstr "次へ"
 msgid "General"
 msgstr "一般"
 
-msgid "GENERAL"
-msgstr "一般"
-
 msgid "Video"
-msgstr "映像"
-
-msgid "VIDEO"
 msgstr "映像"
 
 msgid "Audio"
 msgstr "サウンド"
 
-msgid "AUDIO"
-msgstr "サウンド"
-
 msgid "Online"
-msgstr "オンライン"
-
-msgid "ONLINE"
 msgstr "オンライン"
 
 msgid "Controls"
 msgstr "操作"
 
-msgid "CONTROLS"
-msgstr "操作"
-
 msgid "About"
-msgstr "このアプリについて"
-
-msgid "ABOUT"
 msgstr "このアプリについて"
 
 msgid "Name"
@@ -79,19 +60,13 @@ msgstr "フルスクリーン"
 msgid "Reduce motion"
 msgstr "動きを減らす"
 
-msgid "OFF"
-msgstr "オフ"
-
-msgid "ON"
-msgstr "オン"
-
 msgid "Battle graphics"
 msgstr "バトルの描画"
 
-msgid "ENHANCED"
+msgid "Enhanced"
 msgstr "強化"
 
-msgid "ORIGINAL"
+msgid "Original"
 msgstr "オリジナル"
 
 msgid "Enhanced adds sharp text and smooth motion."
@@ -109,10 +84,10 @@ msgstr "入力遅延"
 msgid "In frames. Lower feels faster; higher rolls back less."
 msgstr "フレーム単位。小さいほど反応が速く、大きいほど巻き戻しが減ります。"
 
-msgid "KEY"
+msgid "Key"
 msgstr "キー"
 
-msgid "PAD"
+msgid "Pad"
 msgstr "パッド"
 
 msgid "Up"
@@ -133,7 +108,7 @@ msgstr "キーを押してください"
 msgid "Press a button"
 msgstr "ボタンを押してください"
 
-msgid "RESET CONTROLS"
+msgid "Reset controls"
 msgstr "初期設定にもどす"
 
 msgid "Version"
@@ -142,14 +117,14 @@ msgstr "バージョン"
 msgid "Your files"
 msgstr "データの保存先"
 
-msgid "SHOW FOLDER"
+msgid "Show folder"
 msgstr "フォルダを開く"
 
 # The About group's last row: it opens About.
 msgid "Made with"
 msgstr "使用ソフトウェア"
 
-msgid "SHOW LICENSES"
+msgid "Show licenses"
 msgstr "ライセンスを表示"
 
 # ---- About ----
@@ -159,7 +134,8 @@ msgid "{} · Mozilla Public License 2.0"
 msgstr "{} · Mozilla Public License 2.0"
 
 # Over the list of the fonts and the packages the app is made of.
-msgid "MADE WITH"
+msgctxt "heading"
+msgid "Made with"
 msgstr "使用しているソフトウェア"
 
 # The footer: how many of each the list has. (Both forms are given: the catalogs are merged under one header.)

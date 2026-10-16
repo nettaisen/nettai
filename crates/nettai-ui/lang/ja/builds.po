@@ -28,7 +28,7 @@ msgstr "{}{}として読み込みました"
 
 # ---- The build overview.
 
-msgid "STATS"
+msgid "Stats"
 msgstr "ステータス"
 
 msgid "HP"
@@ -58,14 +58,8 @@ msgstr "レギュラーメモリ"
 msgid "Regular"
 msgstr "レギュラー"
 
-msgid "ABILITIES"
-msgstr "アビリティ"
-
 msgid "Abilities"
 msgstr "アビリティ"
-
-msgid "BUGS"
-msgstr "バグ"
 
 msgid "Bugs"
 msgstr "バグ"
@@ -93,19 +87,19 @@ msgstr "{} MB"
 
 # ---- The editor.
 
-msgid "NAVI"
+msgid "Navi"
 msgstr "ナビ"
 
-msgid "FOLDER"
+msgid "Folder"
 msgstr "フォルダ"
 
-msgid "NAVICUST"
+msgid "NaviCust"
 msgstr "ナビカス"
 
-msgid "PATCH CARDS"
+msgid "Patch cards"
 msgstr "改造カード"
 
-msgid "AUTO BATTLE"
+msgid "Auto battle"
 msgstr "オートバトル"
 
 msgid "Tab"
@@ -128,16 +122,10 @@ msgid "NaviCust and patch cards are {} only."
 msgstr "ナビカスと改造カードは{}専用です。"
 
 # A list of forms' (souls, Crosses) put all in, or take all out: a version's group's, at its head's end.
-msgid "ALL"
+msgid "All"
 msgstr "すべて"
 
-msgid "NONE"
-msgstr "なし"
-
 # A pane's header's word, its dialog's button and the footer's hint: that part of the build emptied at once.
-msgid "CLEAR"
-msgstr "クリア"
-
 msgid "Clear"
 msgstr "クリア"
 
@@ -179,13 +167,13 @@ msgstr "ギガ"
 msgid "Reg"
 msgstr "レギュラー"
 
-msgid "LIBRARY"
+msgid "Library"
 msgstr "ライブラリ"
 
 msgid "Search chips"
 msgstr "チップを検索"
 
-msgid "SORT"
+msgid "Sort"
 msgstr "並び順"
 
 msgid "Library order"
@@ -205,17 +193,8 @@ msgctxt "sort"
 msgid "Attack"
 msgstr "攻撃力"
 
-msgid "REGULAR"
-msgstr "レギュラー"
-
-msgid "TAG"
-msgstr "タッグ"
-
-msgid "REMOVE"
-msgstr "外す"
-
 # Over the library while a row of the build's is dragged there: let go, it is taken out.
-msgid "DROP TO REMOVE"
+msgid "Drop to remove"
 msgstr "ドロップで外す"
 
 # ---- The NaviCust tab.
@@ -250,14 +229,14 @@ msgid "Put away"
 msgstr "しまう"
 
 # Over the list while a piece is in hand: a click there puts it away into the list.
-msgid "CLICK TO PUT AWAY"
+msgid "Click to put away"
 msgstr "クリックでしまう"
 
 msgid "{n} program placed"
 msgid_plural "{n} programs placed"
 msgstr[0] "プログラム {n}個"
 
-msgid "PROGRAMS"
+msgid "Programs"
 msgstr "プログラム"
 
 # Where a program of the list is: on the board, in hand (being moved), on the board and over its ring.
@@ -274,9 +253,6 @@ msgstr "移動中"
 msgid "Out of bounds"
 msgstr "はみ出し"
 
-msgid "EFFECTS"
-msgstr "効果"
-
 msgid "Effects"
 msgstr "効果"
 
@@ -291,10 +267,10 @@ msgid "Plus part"
 msgstr "プラスパーツ"
 
 # The strip: the program's compressed shape, then its whole one, each over its word; then the colors it comes in.
-msgid "COMPRESSED"
+msgid "Compressed"
 msgstr "圧縮"
 
-msgid "UNCOMPRESSED"
+msgid "Uncompressed"
 msgstr "非圧縮"
 
 msgid "Colors"
@@ -319,18 +295,17 @@ msgstr "入れる"
 msgid "Empty"
 msgstr "空き"
 
-msgid "EMPTY"
-msgstr "空にする"
-
 # The key hint: empty a slot.
 msgctxt "verb"
 msgid "Empty"
 msgstr "空にする"
 
-msgid "UP"
+msgctxt "move"
+msgid "Up"
 msgstr "上へ"
 
-msgid "DOWN"
+msgctxt "move"
+msgid "Down"
 msgstr "下へ"
 
 msgid "{} MB free"
@@ -354,7 +329,7 @@ msgstr "No. {}"
 msgid "Slot {}"
 msgstr "スロット{}"
 
-msgid "TOGETHER"
+msgid "Together"
 msgstr "合計"
 
 # What cards add up to, where they add up to nothing.
@@ -471,7 +446,6 @@ msgstr "チップが{}枚 (フォルダは{}枚)"
 
 msgid "{} can't be in a folder"
 msgstr "{}はフォルダに入れられません"
-
 
 msgid "{} has no code {}"
 msgstr "{}にコード{}はありません"
@@ -609,9 +583,6 @@ msgstr "チェックできませんでした。詳細はログファイルにあ
 
 # ---- The ruleset the build is made for (docs/design/app-ui.md §2.59, §2.73): the editor's select (its note where the
 # ruleset is no longer there), and what it doesn't allow.
-
-msgid "RULESET"
-msgstr "ルール"
 
 msgid "(missing)"
 msgstr "（見つかりません）"

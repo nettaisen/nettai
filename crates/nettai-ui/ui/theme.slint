@@ -188,6 +188,17 @@ export global Theme {
     in property <bool> audit;
 }
 
+// Words in capitals (a button's, a heading's, a label's): the catalogs hold them as they are written in a sentence,
+// and `Caps.of(@tr("Export"))` sets them in capitals by the language shown's own rules (a Turkish i is İ). The app
+// does it (`lang::upper`) and sets `lang` with the language, which a change sets them again by.
+export global Caps {
+    in property <string> lang;
+    pure callback upper(string, string) -> string;
+    public pure function of(text: string) -> string {
+        return self.upper(text, self.lang);
+    }
+}
+
 // The screenshot pass's check that no label is cut: a label whose text doesn't fit says so here while
 // `Theme.audit` is on.
 export global Audit {

@@ -3,7 +3,7 @@
 // left out and the note goes under its control. The About group's SHOW LICENSES opens About in the page's place
 // (settings/about.slint), its Back coming back to the page.
 
-import { Theme, Audit } from "../theme.slint";
+import { Theme, Audit, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
 import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
@@ -143,8 +143,8 @@ component SettingsPage inherits Page {
     // Where a row's control is, and how wide its column.
     property <length> control-x: Theme.phone ? 124px : 224px;
     property <length> control-width: Theme.phone ? page.view-width - 124px : 320px;
-    title: @tr("SETTINGS");
-    back: @tr("MENU");
+    title: Caps.of(@tr("Settings"));
+    back: Caps.of(@tr("Menu"));
     game: false;
     status: Shell.version;
     hints: [
@@ -195,7 +195,7 @@ component SettingsPage inherits Page {
                 spacing: 4px;
                 alignment: start;
                 GroupTitle {
-                    text: @tr("GENERAL");
+                    text: Caps.of(@tr("General"));
                     first: true;
                 }
 
@@ -235,7 +235,7 @@ component SettingsPage inherits Page {
                 }
 
                 GroupTitle {
-                    text: @tr("VIDEO");
+                    text: Caps.of(@tr("Video"));
                 }
 
                 Rectangle {
@@ -267,8 +267,8 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.fullscreen";
-                        first: @tr("OFF");
-                        second: @tr("ON");
+                        first: Caps.of(@tr("Off"));
+                        second: Caps.of(@tr("On"));
                         chosen: SettingsView.full-screen ? 1 : 0;
                     }
                 }
@@ -285,8 +285,8 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.motion";
-                        first: @tr("OFF");
-                        second: @tr("ON");
+                        first: Caps.of(@tr("Off"));
+                        second: Caps.of(@tr("On"));
                         chosen: SettingsView.reduce-motion ? 1 : 0;
                     }
                 }
@@ -304,14 +304,14 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.graphics";
-                        first: @tr("ENHANCED");
-                        second: @tr("ORIGINAL");
+                        first: Caps.of(@tr("Enhanced"));
+                        second: Caps.of(@tr("Original"));
                         chosen: SettingsView.enhanced ? 0 : 1;
                     }
                 }
 
                 GroupTitle {
-                    text: @tr("AUDIO");
+                    text: Caps.of(@tr("Audio"));
                 }
 
                 Rectangle {
@@ -349,7 +349,7 @@ component SettingsPage inherits Page {
                 }
 
                 GroupTitle {
-                    text: @tr("ONLINE");
+                    text: Caps.of(@tr("Online"));
                 }
 
                 Rectangle {
@@ -372,7 +372,7 @@ component SettingsPage inherits Page {
                 }
 
                 GroupTitle {
-                    text: @tr("CONTROLS");
+                    text: Caps.of(@tr("Controls"));
                 }
 
                 Rectangle {
@@ -386,13 +386,13 @@ component SettingsPage inherits Page {
                     Label {
                         x: root.control-x;
                         width: (root.control-width - 24px) / 2;
-                        text: @tr("KEY");
+                        text: Caps.of(@tr("Key"));
                     }
 
                     Label {
                         x: root.control-x + (root.control-width + 24px) / 2;
                         width: (root.control-width - 24px) / 2;
-                        text: @tr("PAD");
+                        text: Caps.of(@tr("Pad"));
                     }
                 }
 
@@ -439,12 +439,12 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.reset";
-                        text: @tr("RESET CONTROLS");
+                        text: Caps.of(@tr("Reset controls"));
                     }
                 }
 
                 GroupTitle {
-                    text: @tr("ABOUT");
+                    text: Caps.of(@tr("About"));
                 }
 
                 Rectangle {
@@ -478,7 +478,7 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.folder";
-                        text: @tr("SHOW FOLDER");
+                        text: Caps.of(@tr("Show folder"));
                     }
                 }
 
@@ -494,7 +494,7 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.about";
-                        text: @tr("SHOW LICENSES");
+                        text: Caps.of(@tr("Show licenses"));
                     }
                 }
 

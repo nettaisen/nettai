@@ -10,7 +10,7 @@
 // file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
 // set is over (`MatchResult`).
 
-import { Theme, Audit } from "../theme.slint";
+import { Theme, Audit, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
 import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage, ProblemMark } from "../widgets.slint";
@@ -198,18 +198,18 @@ export global PlayView {
     in-out property <bool> result-done;
 
     // ---- Words the app needs -----------------------------------------------------------------------------
-    out property <string> you: @tr("YOU");
-    out property <string> opponent: @tr("OPPONENT");
-    out property <string> back-to-play: @tr("BACK TO PLAY");
+    out property <string> you: Caps.of(@tr("You"));
+    out property <string> opponent: Caps.of(@tr("Opponent"));
+    out property <string> back-to-play: Caps.of(@tr("Back to play"));
     // Esc in the lobby asks before the other player is left.
     out property <string> leave-question: @tr("Leave the lobby?");
-    out property <string> cancel-word: @tr("CANCEL");
-    out property <string> leave-word: @tr("LEAVE");
+    out property <string> cancel-word: Caps.of(@tr("Cancel"));
+    out property <string> leave-word: Caps.of(@tr("Leave"));
     out property <string> connecting: @tr("Connecting…");
     out property <string> new-name: @tr("New build");
-    out property <string> delete-word: @tr("DELETE");
+    out property <string> delete-word: Caps.of(@tr("Delete"));
     // The build's menu (⋯, or a right click on its row), DELETE apart after them.
-    out property <string> duplicate-word: @tr("DUPLICATE");
+    out property <string> duplicate-word: Caps.of(@tr("Duplicate"));
     out property <string> save-files: @tr("Save files");
     public pure function delete-title(name: string) -> string {
         return @tr("Delete {}?", name);
@@ -217,9 +217,9 @@ export global PlayView {
     // While the other player is waited for, the practice menu's EXIT (src/screens/play.rs's `train`), with an
     // invite out or this machine hosting directly; and a phone's one row at its top.
     public pure function wait-exit(direct: bool) -> string {
-        return direct ? @tr("STOP HOSTING") : @tr("CANCEL INVITE");
+        return direct ? Caps.of(@tr("Stop hosting")) : Caps.of(@tr("Cancel invite"));
     }
-    out property <string> stop-practice: @tr("STOP PRACTICE");
+    out property <string> stop-practice: Caps.of(@tr("Stop practice"));
 }
 
 // ---- The builds ------------------------------------------------------------------------------------------
@@ -469,7 +469,7 @@ component LobbyCard inherits Rectangle {
         Label {
             x: 8px;
             width: parent.width - 16px;
-            text: root.ready ? @tr("READY") : @tr("NOT READY");
+            text: root.ready ? Caps.of(@tr("Ready")) : Caps.of(@tr("Not ready"));
             color: root.ready ? Theme.good : Theme.muted;
             font-size: 12px;
             font-weight: 700;
@@ -559,7 +559,7 @@ component LobbyFacts inherits Rectangle {
         width: self.natural-width;
         height: 36px;
         nav: "lobby.rules";
-        text: PlayView.host ? @tr("EDIT") : @tr("ruleset" => "VIEW");
+        text: PlayView.host ? Caps.of(@tr("Edit")) : Caps.of(@tr("ruleset" => "View"));
     }
 
     Rectangle {
@@ -583,8 +583,8 @@ component LobbyFacts inherits Rectangle {
         x: Theme.phone ? parent.width - self.width : root.x3;
         y: Theme.phone ? 2 * root.line + (root.line - self.height) / 2 : root.control-y;
         nav: "lobby.closed";
-        first: @tr("OFF");
-        second: @tr("ON");
+        first: Caps.of(@tr("Off"));
+        second: Caps.of(@tr("On"));
         chosen: PlayView.closed ? 1 : 0;
     }
 
@@ -698,8 +698,8 @@ export component PlayScreen inherits Page {
     property <length> lobby-left: (self.body-width - 960px) / 2;
     property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
     property <length> buttons-top: Theme.phone ? self.facts-top + 232px : self.lobby-top + 346px;
-    title: PlayView.part == PlayPart.lobby ? @tr("LOBBY") : PlayView.part == PlayPart.builds ? @tr("PLAY") : Theme.phone ? @tr("WAITING") : @tr("WAITING FOR OPPONENT");
-    back: PlayView.part == PlayPart.builds ? @tr("MENU") : @tr("PLAY");
+    title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : PlayView.part == PlayPart.builds ? Caps.of(@tr("Play")) : Theme.phone ? Caps.of(@tr("Waiting")) : Caps.of(@tr("Waiting for opponent"));
+    back: PlayView.part == PlayPart.builds ? Caps.of(@tr("Menu")) : Caps.of(@tr("Play"));
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
     status: PlayView.part == PlayPart.lobby && PlayView.room != "" ? PlayView.room : Shell.player;
 
@@ -721,7 +721,7 @@ export component PlayScreen inherits Page {
                 y: 0;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "new";
-                text: @tr("+ NEW BUILD");
+                text: Caps.of(@tr("+ New build"));
                 kind: root.none ? ButtonKind.main : ButtonKind.normal;
             }
 
@@ -792,7 +792,7 @@ export component PlayScreen inherits Page {
                 y: edit.y;
                 visible: !root.none;
                 nav: "practice";
-                text: @tr("PRACTICE");
+                text: Caps.of(@tr("Practice"));
                 enabled: root.usable;
             }
 
@@ -802,7 +802,7 @@ export component PlayScreen inherits Page {
                 width: Theme.phone ? root.body-width - train.width - 16px - root.more-width : self.natural-width;
                 visible: !root.none;
                 nav: "edit";
-                text: @tr("EDIT");
+                text: Caps.of(@tr("Edit"));
                 enabled: root.usable;
             }
 
@@ -859,7 +859,7 @@ export component PlayScreen inherits Page {
                 y: root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "invite";
-                text: @tr("HOST");
+                text: Caps.of(@tr("Host"));
                 kind: root.none ? ButtonKind.normal : ButtonKind.main;
                 big: Theme.phone;
             }
@@ -880,7 +880,7 @@ export component PlayScreen inherits Page {
                 x: code.x + code.width + 8px;
                 y: code.y;
                 nav: "join";
-                text: @tr("JOIN");
+                text: Caps.of(@tr("Join"));
             }
 
             Button {
@@ -890,7 +890,7 @@ export component PlayScreen inherits Page {
                 nav: "direct";
                 // (Less than HOST and JOIN: the user, "direct connect should be deemphasized".)
                 kind: ButtonKind.text;
-                text: @tr("DIRECT CONNECT");
+                text: Caps.of(@tr("Direct connect"));
             }
 
             ProblemMark {
@@ -941,7 +941,7 @@ export component PlayScreen inherits Page {
                 visible: !Theme.phone;
                 background: Theme.shade;
                 practice := Text {
-                    text: @tr("PRACTICE");
+                    text: Caps.of(@tr("Practice"));
                     color: Theme.text;
                     font-family: Theme.display;
                     font-size: 11px;
@@ -967,7 +967,7 @@ export component PlayScreen inherits Page {
                     y: Theme.phone ? 12px : 16px;
                     width: parent.width - 32px;
                     height: 14px;
-                    text: PlayView.invite-direct ? @tr("YOUR ADDRESS") : @tr("INVITE CODE");
+                    text: PlayView.invite-direct ? Caps.of(@tr("Your address")) : Caps.of(@tr("Invite code"));
                 }
 
                 Mono {
@@ -984,7 +984,7 @@ export component PlayScreen inherits Page {
                     x: 16px;
                     y: Theme.phone ? 88px : 114px;
                     nav: "wait.copy";
-                    text: PlayView.invite-direct ? @tr("COPY ADDRESS") : @tr("COPY CODE");
+                    text: PlayView.invite-direct ? Caps.of(@tr("Copy address")) : Caps.of(@tr("Copy code"));
                 }
 
                 Flash {
@@ -1036,7 +1036,7 @@ export component PlayScreen inherits Page {
                     x: Theme.phone ? copy.x + copy.width + 8px : 16px;
                     y: Theme.phone ? 88px : parent.height - 56px;
                     nav: "wait.cancel";
-                    text: @tr("CANCEL");
+                    text: Caps.of(@tr("Cancel"));
                     kind: ButtonKind.ghost;
                 }
             }
@@ -1048,7 +1048,7 @@ export component PlayScreen inherits Page {
                 visible: Theme.phone;
                 enabled: Theme.phone;
                 nav: "wait.train";
-                text: @tr("PRACTICE");
+                text: Caps.of(@tr("Practice"));
             }
         }
     }
@@ -1130,7 +1130,7 @@ export component PlayScreen inherits Page {
                 y: root.buttons-top;
                 width: Theme.phone ? root.body-width : 184px;
                 nav: "lobby.ready";
-                text: PlayView.ready ? @tr("NOT READY") : @tr("READY");
+                text: PlayView.ready ? Caps.of(@tr("Not ready")) : Caps.of(@tr("Ready"));
                 kind: ButtonKind.main;
                 big: Theme.phone;
             }
@@ -1140,7 +1140,7 @@ export component PlayScreen inherits Page {
                 y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "lobby.change";
-                text: @tr("CHANGE BUILD");
+                text: Caps.of(@tr("Change build"));
             }
 
             leave := Button {
@@ -1148,7 +1148,7 @@ export component PlayScreen inherits Page {
                 y: Theme.phone ? change.y + 48px : change.y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "lobby.leave";
-                text: @tr("LEAVE");
+                text: Caps.of(@tr("Leave"));
                 kind: ButtonKind.ghost;
             }
 
@@ -1176,7 +1176,7 @@ export component MatchMenu inherits MenuOverlay {
     property <bool> their-item: !PlayView.closed-match;
     property <length> shift: root.their-item ? 48px : 0px;
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT"];
-    title: PlayView.page == MatchPage.yours ? @tr("YOUR BUILD") : PlayView.page == MatchPage.theirs ? @tr("THEIR BUILD") : PlayView.page == MatchPage.controls ? @tr("CONTROLS") : PlayView.page == MatchPage.settings ? @tr("SETTINGS") : @tr("MENU");
+    title: PlayView.page == MatchPage.yours ? Caps.of(@tr("Your build")) : PlayView.page == MatchPage.theirs ? Caps.of(@tr("Their build")) : PlayView.page == MatchPage.controls ? Caps.of(@tr("Controls")) : PlayView.page == MatchPage.settings ? Caps.of(@tr("Settings")) : Caps.of(@tr("Menu"));
     note: PlayView.page == MatchPage.menu ? @tr("The match keeps running") : "";
     side: PlayView.page != MatchPage.menu;
     content-height: 240px + root.shift;
@@ -1190,7 +1190,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 0;
             width: root.inner-width;
             nav: "menu.resume";
-            text: @tr("BACK TO MATCH");
+            text: Caps.of(@tr("Back to match"));
         }
 
         MenuItem {
@@ -1198,7 +1198,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 48px;
             width: root.inner-width;
             nav: "menu.yours";
-            text: @tr("YOUR BUILD");
+            text: Caps.of(@tr("Your build"));
         }
 
         if root.their-item: MenuItem {
@@ -1206,7 +1206,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 96px;
             width: root.inner-width;
             nav: "menu.theirs";
-            text: @tr("THEIR BUILD");
+            text: Caps.of(@tr("Their build"));
         }
 
         MenuItem {
@@ -1214,7 +1214,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 96px + root.shift;
             width: root.inner-width;
             nav: "menu.controls";
-            text: @tr("CONTROLS");
+            text: Caps.of(@tr("Controls"));
         }
 
         MenuItem {
@@ -1222,7 +1222,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 144px + root.shift;
             width: root.inner-width;
             nav: "menu.settings";
-            text: @tr("SETTINGS");
+            text: Caps.of(@tr("Settings"));
         }
 
         MenuItem {
@@ -1230,7 +1230,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 192px + root.shift;
             width: root.inner-width;
             nav: "menu.leave";
-            text: @tr("LEAVE MATCH");
+            text: Caps.of(@tr("Leave match"));
             danger: true;
         }
     }
@@ -1284,7 +1284,7 @@ export component MatchMenu inherits MenuOverlay {
             x: 0;
             y: root.inner-height - 40px;
             nav: "menu.back";
-            text: @tr("BACK");
+            text: Caps.of(@tr("Back"));
         }
     }
 
@@ -1299,7 +1299,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 0;
             width: 110px;
             height: 20px;
-            text: @tr("KEY");
+            text: Caps.of(@tr("Key"));
         }
 
         Label {
@@ -1307,7 +1307,7 @@ export component MatchMenu inherits MenuOverlay {
             y: 0;
             width: 110px;
             height: 20px;
-            text: @tr("PAD");
+            text: Caps.of(@tr("Pad"));
         }
 
         for control[i] in PlayView.controls: Rectangle {
@@ -1344,7 +1344,7 @@ export component MatchMenu inherits MenuOverlay {
             x: 0;
             y: root.inner-height - 40px;
             nav: "menu.back";
-            text: @tr("BACK");
+            text: Caps.of(@tr("Back"));
         }
     }
 
@@ -1407,7 +1407,7 @@ export component MatchMenu inherits MenuOverlay {
             x: 0;
             y: root.inner-height - 40px;
             nav: "menu.back";
-            text: @tr("BACK");
+            text: Caps.of(@tr("Back"));
         }
     }
 }
@@ -1526,7 +1526,7 @@ export component MatchResult inherits Rectangle {
         y: root.mid-y - (Theme.phone ? 100px : 140px);
         width: root.half-width - 2 * Theme.margin;
         height: Theme.phone ? 92px : 150px;
-        text: root.won ? @tr("WIN") : root.lost ? @tr("LOSE") : @tr("DRAW");
+        text: root.won ? Caps.of(@tr("Win")) : root.lost ? Caps.of(@tr("Lose")) : Caps.of(@tr("Draw"));
         color: root.lost ? Theme.muted : Theme.text;
         font-family: Theme.display;
         font-size: Theme.phone ? 60px : 104px;
@@ -1555,7 +1555,7 @@ export component MatchResult inherits Rectangle {
             y: 0;
             width: parent.width / 2 - 8px;
             height: 14px;
-            text: @tr("ROUNDS");
+            text: Caps.of(@tr("Rounds"));
             horizontal-alignment: center;
         }
 
@@ -1613,7 +1613,7 @@ export component MatchResult inherits Rectangle {
             y: 0;
             width: parent.width / 2 - 8px;
             height: 14px;
-            text: @tr("TIME");
+            text: Caps.of(@tr("Time"));
             horizontal-alignment: center;
         }
 
@@ -1646,7 +1646,7 @@ export component MatchResult inherits Rectangle {
         y: root.height - (Theme.phone ? Theme.margin : 48px) - self.height;
         width: Theme.phone ? root.width - 2 * Theme.margin : max(200px, self.natural-width);
         nav: "result.go";
-        text: @tr("CONTINUE");
+        text: Caps.of(@tr("Continue"));
         kind: ButtonKind.main;
     }
 
@@ -1668,14 +1668,14 @@ component NameDialog inherits DialogFrame {
     property <length> version-y: 100px;
     property <length> note-y: root.version-y + Theme.control + 8px;
     property <length> buttons-y: root.note-y + 38px + 16px;
-    title: @tr("NEW BUILD");
+    title: Caps.of(@tr("title" => "New build"));
     content-height: root.buttons-y + 120px;
     Label {
         x: 0;
         y: 0;
         width: root.inner-width;
         height: 14px;
-        text: @tr("NAME");
+        text: Caps.of(@tr("Name"));
     }
 
     Field {
@@ -1691,7 +1691,7 @@ component NameDialog inherits DialogFrame {
         y: 78px;
         width: root.inner-width;
         height: 14px;
-        text: @tr("VERSION");
+        text: Caps.of(@tr("Version"));
     }
 
     VersionChoice {
@@ -1716,7 +1716,7 @@ component NameDialog inherits DialogFrame {
         x: root.inner-width - self.width;
         y: root.buttons-y;
         nav: "name.confirm";
-        text: @tr("CREATE BUILD");
+        text: Caps.of(@tr("Create build"));
         kind: ButtonKind.main;
         enabled: PlayView.dialog-name != "";
     }
@@ -1725,7 +1725,7 @@ component NameDialog inherits DialogFrame {
         x: confirm.x - 12px - self.width;
         y: root.buttons-y;
         nav: "name.cancel";
-        text: @tr("CANCEL");
+        text: Caps.of(@tr("Cancel"));
         kind: ButtonKind.ghost;
     }
 
@@ -1741,7 +1741,7 @@ component NameDialog inherits DialogFrame {
         x: 0;
         y: root.buttons-y + 80px;
         nav: "name.save";
-        text: @tr("FROM A SAVE FILE…");
+        text: Caps.of(@tr("From a save file…"));
         kind: ButtonKind.ghost;
     }
 }
@@ -1766,7 +1766,7 @@ export component PlayOverlay inherits Rectangle {
             y: 0;
             width: direct.inner-width;
             height: 14px;
-            text: @tr("HOST");
+            text: Caps.of(@tr("Host"));
         }
 
         // This machine's address: Enter copies it.
@@ -1790,7 +1790,7 @@ export component PlayOverlay inherits Rectangle {
             word := Label {
                 x: parent.width - 12px - self.width;
                 width: self.preferred-width;
-                text: @tr("COPY");
+                text: Caps.of(@tr("Copy"));
             }
 
             Flash {
@@ -1809,7 +1809,7 @@ export component PlayOverlay inherits Rectangle {
             y: 22px + direct.under;
             width: Theme.phone ? direct.inner-width : self.natural-width;
             nav: "direct.host";
-            text: @tr("HOST");
+            text: Caps.of(@tr("Host"));
             kind: ButtonKind.main;
         }
 
@@ -1838,7 +1838,7 @@ export component PlayOverlay inherits Rectangle {
             y: 114px + direct.under;
             width: direct.inner-width;
             height: 14px;
-            text: @tr("JOIN");
+            text: Caps.of(@tr("Join"));
         }
 
         Field {
@@ -1856,7 +1856,7 @@ export component PlayOverlay inherits Rectangle {
             y: 136px + 2 * direct.under + (Theme.phone ? 18px : 0px);
             width: Theme.phone ? direct.inner-width : self.natural-width;
             nav: "direct.connect";
-            text: @tr("CONNECT");
+            text: Caps.of(@tr("Connect"));
         }
 
         Message {
@@ -1871,7 +1871,7 @@ export component PlayOverlay inherits Rectangle {
             x: direct.inner-width - self.width;
             y: 212px + 2 * direct.under;
             nav: "direct.cancel";
-            text: @tr("CANCEL");
+            text: Caps.of(@tr("Cancel"));
             kind: ButtonKind.ghost;
         }
     }
@@ -1900,7 +1900,7 @@ export component PlayOverlay inherits Rectangle {
             x: cancel.x - self.width - 12px;
             y: 88px;
             nav: "boxes.join";
-            text: @tr("JOIN");
+            text: Caps.of(@tr("Join"));
             kind: ButtonKind.main;
         }
 
@@ -1908,7 +1908,7 @@ export component PlayOverlay inherits Rectangle {
             x: boxes.inner-width - self.width;
             y: 88px;
             nav: "boxes.cancel";
-            text: @tr("CANCEL");
+            text: Caps.of(@tr("Cancel"));
             kind: ButtonKind.ghost;
         }
     }
@@ -1943,7 +1943,7 @@ export component PlayOverlay inherits Rectangle {
             x: change.inner-width - self.width;
             y: 282px;
             nav: "change.cancel";
-            text: @tr("CANCEL");
+            text: Caps.of(@tr("Cancel"));
             kind: ButtonKind.ghost;
         }
     }

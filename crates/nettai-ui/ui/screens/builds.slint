@@ -8,7 +8,7 @@
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
 // how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
-import { Theme } from "../theme.slint";
+import { Theme, Caps } from "../theme.slint";
 import { Nav } from "../nav.slint";
 import { Shell, Page, PadButton, Hint } from "../shell.slint";
 import { TabBar, Tab, Rule, Label, Select, Button } from "../widgets.slint";
@@ -51,9 +51,9 @@ export global BuildsView {
     in property <EditorTab> shown;
     in property <int> tab-way: 1;
     // ---- Words the app asks for.
-    out property <[string]> tab-names: [@tr("NAVI"), @tr("FOLDER"), @tr("NAVICUST"), @tr("PATCH CARDS"), @tr("AUTO BATTLE")];
+    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle"))];
     // A tab's CLEAR's dialog's button (docs/design/app-ui.md §2.71).
-    out property <string> clear-word: @tr("CLEAR");
+    out property <string> clear-word: Caps.of(@tr("Clear"));
 }
 
 // The editor's body: the tab chosen, arriving from the way it was reached each time it changes. A tab is here by
@@ -97,7 +97,7 @@ export component BuildsScreen inherits Page {
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.name;
     title-nav: "name";
-    back: BuildsView.to-practice ? @tr("PRACTICE") : @tr("PLAY");
+    back: BuildsView.to-practice ? Caps.of(@tr("Practice")) : Caps.of(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
     hints: BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : AutoBattleView.hints;
@@ -132,7 +132,7 @@ export component BuildsScreen inherits Page {
         width: self.preferred-width;
         height: 36px;
         visible: !Theme.phone;
-        text: @tr("RULESET");
+        text: Caps.of(@tr("Ruleset"));
     }
 
     Select {
@@ -154,7 +154,7 @@ export component BuildsScreen inherits Page {
         height: 36px;
         visible: !Theme.phone;
         nav: Theme.phone ? "" : "ruleset-edit";
-        text: @tr("EDIT");
+        text: Caps.of(@tr("Edit"));
     }
 
     EditorBody {

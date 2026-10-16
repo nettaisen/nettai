@@ -7,7 +7,7 @@
 // On a phone the places are one column, and the library opens as a sheet from the bottom (`AutoBattleOverlay`). Its
 // Rust half is src/screens/builds/auto_battle.rs.
 
-import { Theme, Audit } from "../../theme.slint";
+import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -125,7 +125,7 @@ component PlaceView inherits Rectangle {
         width: parent.width;
         height: 14px;
         visible: root.line.title;
-        text: root.line.text;
+        text: Caps.of(root.line.text);
     }
 
     ChipRow {
@@ -413,7 +413,7 @@ export component AutoBattleTab inherits Rectangle {
         width: max(0px, clear.x + clear.pad - 12px - self.x);
         height: 44px;
         visible: !Theme.phone;
-        text: @tr("AUTO BATTLE");
+        text: Caps.of(@tr("Auto battle"));
         color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
     }
 
@@ -424,7 +424,7 @@ export component AutoBattleTab inherits Rectangle {
         x: root.pane-width - (Theme.phone ? 0px : 12px) + self.pad - self.width;
         y: Theme.phone ? 0px : root.pane-y + 14px;
         nav: "clear";
-        text: @tr("CLEAR");
+        text: Caps.of(@tr("Clear"));
         enabled: AutoBattleView.filled > 0;
     }
 
@@ -491,7 +491,7 @@ export component AutoBattleTab inherits Rectangle {
             width: library.width + 8px;
             height: library.height + 16px;
             shown: PlaceDrag.on && Drag.removing;
-            text: @tr("DROP TO REMOVE");
+            text: Caps.of(@tr("Drop to remove"));
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -553,7 +553,7 @@ export component AutoBattleOverlay inherits Rectangle {
             y: 12px;
             width: parent.width - 32px;
             nav: "lib.remove";
-            text: @tr("REMOVE");
+            text: Caps.of(@tr("Remove"));
             kind: ButtonKind.ghost;
             danger: true;
         }

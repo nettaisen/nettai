@@ -9,12 +9,6 @@ msgstr ""
 msgid "Search by opponent"
 msgstr "対戦相手で検索"
 
-msgid "ALL"
-msgstr "すべて"
-
-msgid "ONLINE"
-msgstr "オンライン"
-
 # A row's opponent.
 msgid "vs {}"
 msgstr "vs {}"
@@ -51,23 +45,15 @@ msgstr "結果"
 msgid "Length"
 msgstr "長さ"
 
-msgid "WATCH"
-msgstr "再生"
-
-msgid "EXPORT VIDEO"
+msgctxt "verb"
+msgid "Export video"
 msgstr "動画を書き出す"
 
-msgid "SHOW FILE"
+msgid "Show file"
 msgstr "ファイルを表示"
-
-msgid "DELETE"
-msgstr "削除"
 
 msgid "Delete replay?"
 msgstr "リプレイを削除しますか?"
-
-msgid "CANCEL"
-msgstr "キャンセル"
 
 # The players of a replay, the one whose console is shown first.
 msgid "{} vs {}"
@@ -154,17 +140,11 @@ msgstr "未決着 · {}–{}"
 
 # ---- The viewer ----
 
-msgid "REPLAY"
+msgid "Replay"
 msgstr "リプレイ"
 
 msgid "Round {} of {}"
 msgstr "ラウンド {}/{}"
-
-msgid "SPEED"
-msgstr "速度"
-
-msgid "VIEW"
-msgstr "視点"
 
 msgid "Speed"
 msgstr "速度"
@@ -229,10 +209,11 @@ msgstr "保存しました。"
 msgid "Export canceled."
 msgstr "書き出しを中止しました。"
 
-msgid "EXPORT"
+msgctxt "verb"
+msgid "Export"
 msgstr "書き出す"
 
-msgid "CLOSE"
+msgid "Close"
 msgstr "閉じる"
 
 # What the system's save dialog calls the file.
@@ -243,5 +224,3 @@ msgstr "MP4 動画"
 msgid "Builds"
 msgstr "構築"
 
-msgid "OPPONENT"
-msgstr "対戦相手"

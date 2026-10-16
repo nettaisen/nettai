@@ -13,22 +13,16 @@ msgstr "日本語"
 
 # ---- The main menu ----
 
-msgid "PLAY"
+msgid "Play"
 msgstr "対戦"
 
-msgid "PRACTICE"
+msgid "Practice"
 msgstr "練習"
 
-msgid "REPLAYS"
+msgid "Replays"
 msgstr "リプレイ"
 
-msgid "SETTINGS"
-msgstr "設定"
-
-msgid "EXIT"
-msgstr "終了"
-
-msgid "DEMO"
+msgid "Demo"
 msgstr "デモ"
 
 msgid "vs"
@@ -36,7 +30,7 @@ msgstr "vs"
 
 # ---- The header and the key hints ----
 
-msgid "MENU"
+msgid "Menu"
 msgstr "メニュー"
 
 msgid "Select"
@@ -64,13 +58,13 @@ msgstr "ゲーム切り替え"
 
 # ---- Loading ----
 
-msgid "LOADING {}"
+msgid "Loading {}"
 msgstr "{} を読み込み中"
 # A game's pack being extracted from the Legacy Collection: {} is the game, as the header shows it.
-msgid "EXTRACTING {}"
+msgid "Extracting {}"
 msgstr "{} を抽出中"
 
-msgid "LOADING"
+msgid "Loading"
 msgstr "読み込み中"
 
 msgid "No game data was found. Put a game's pack in {}."
@@ -89,53 +83,50 @@ msgstr "{} ms"
 
 # The link panel the connection's corner opens. The figures in frames (the input delay, a rollback's depth,
 # the skew, the lead) are bare numbers.
-msgid "CONNECTION"
+msgid "Connection"
 msgstr "接続状況"
 
-msgid "ROUND TRIP"
+msgid "Round trip"
 msgstr "往復時間"
 
-msgid "JITTER"
+msgid "Jitter"
 msgstr "ゆらぎ"
 
 # The share of the other player's packets lost: {} is the number, to a tenth.
-msgid "LOSS"
+msgid "Loss"
 msgstr "ロス率"
 
 msgid "{}%"
 msgstr "{}%"
 
-msgid "RECONNECTS"
+msgid "Reconnects"
 msgstr "再接続"
 
 # Clock sync's skew: how far this player runs ahead of the other (+) or behind (-), in frames.
-msgid "SKEW"
+msgid "Skew"
 msgstr "ずれ"
 
 # This player's inputs the other's haven't matched yet, in frames.
-msgid "LEAD"
+msgid "Lead"
 msgstr "先行"
 
-msgid "INPUT DELAY"
-msgstr "入力遅延"
-
-msgid "ROLLBACKS"
+msgid "Rollbacks"
 msgstr "巻き戻し回数"
 
-msgid "LAST ROLLBACK"
+msgid "Last rollback"
 msgstr "直近の巻き戻し"
 
 # The deepest rollback of the match, in frames.
-msgid "DEEPEST"
+msgid "Deepest"
 msgstr "最大の巻き戻し"
 
-msgid "FRAMES WAITED"
+msgid "Frames waited"
 msgstr "待機フレーム"
 
-msgid "SENT"
+msgid "Sent"
 msgstr "送信"
 
-msgid "RECEIVED"
+msgid "Received"
 msgstr "受信"
 
 msgid "{} packets · {} KB"
@@ -335,7 +326,7 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2"
 msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です"
 msgid "Install it from Steam, or choose its folder."
 msgstr "Steam でインストールするか、そのフォルダを選んでください。"
-msgid "CHOOSE FOLDER"
+msgid "Choose folder"
 msgstr "フォルダを選ぶ"
 # A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
 msgid "{}'s data couldn't be extracted. Details are in the log file."

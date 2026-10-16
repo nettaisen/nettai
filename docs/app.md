@@ -563,8 +563,17 @@ screen may start one beside something of its own (Play, while an invite waits fo
 
 **Every string of the app's own goes through Slint's `@tr`**, written in English, with a context where one word
 means two things. A string Rust needs (a dialog's button, a card's role) is a property or a function of the
-screen's view in the same catalog (`out property <string> you: @tr("YOU");`). No string from a library's error is
+screen's view in the same catalog (`out property <string> you: Caps.of(@tr("You"));`). No string from a library's error is
 ever shown (§12).
+
+**Words in capitals are written in a sentence's case**, and set in capitals where they are shown: `Caps.of(@tr("Show
+file"))` (theme.slint's `Caps`, which the app answers with `lang::upper`, ICU's case mapping by the language shown's
+own rules: a Turkish i is İ, a German ß SS). The catalog holds a word once ("Back", whether a button's BACK or a
+sentence's Back), and a translator writes it once; where the capitals' word is another in a language (a button's
+verb, a heading), a context tells the two apart (`@tr("verb" => "Export")`). Acronyms and units (HP, MB, OK, P1,
+VS) are written as they are. Capitals are the UI's alone: Rust hands over a content's name as it is (a version's
+tag, a choice's presets, a group's title), and the component that shows it in capitals sets it so. The user: "instead of having both all caps and lowercase strings, why not
+just call locale-aware to upper case in locations where they need to be uppercased?"
 
 **A language is a folder**, `crates/nettai-ui/lang/<code>/`, of gettext catalogs: one file for each part of the
 app (`shell.po` for what every screen shares, then one a screen), so two screens' translators don't meet in one

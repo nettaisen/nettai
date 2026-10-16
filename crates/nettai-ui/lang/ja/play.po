@@ -6,20 +6,18 @@ msgstr ""
 
 # ---- The builds, the chosen build, and what is done with it ----
 
-msgid "+ NEW BUILD"
+msgid "+ New build"
 msgstr "+ 新規構築"
 
-msgid "NEW BUILD"
+msgctxt "title"
+msgid "New build"
 msgstr "新規構築"
 
-msgid "EDIT"
+msgid "Edit"
 msgstr "編集"
 
-msgid "DUPLICATE"
+msgid "Duplicate"
 msgstr "複製"
-
-msgid "DELETE"
-msgstr "削除"
 
 msgid "Delete"
 msgstr "削除"
@@ -35,39 +33,27 @@ msgstr "セーブファイル"
 msgid "New build"
 msgstr "新しい構築"
 
-msgid "NAME"
-msgstr "名前"
-
-msgid "VERSION"
-msgstr "バージョン"
-
 # After what a new build of a version starts with, in the game's own words ("Starts with the version's Crosses and
 # Beast Out.").
 msgid "{} They can be changed later in the editor."
 msgstr "{} あとから編集画面で変えられます。"
 
-msgid "CREATE BUILD"
+msgid "Create build"
 msgstr "構築を作成"
 
 # The NEW BUILD dialog's other way to start one: a save file chosen in the system's dialog.
-msgid "FROM A SAVE FILE…"
+msgid "From a save file…"
 msgstr "セーブファイルから…"
 
 # The band under the builds: HOST, JOIN's field (an invite's code) and JOIN, and DIRECT CONNECT.
 
-msgid "ONLINE"
-msgstr "オンライン"
-
-msgid "INVITE CODE"
-msgstr "招待コード"
-
-msgid "HOST"
+msgid "Host"
 msgstr "ホスト"
 
-msgid "JOIN"
+msgid "Join"
 msgstr "参加"
 
-msgid "DIRECT CONNECT"
+msgid "Direct connect"
 msgstr "直接接続"
 
 # JOIN's field's placeholder, and the dialog of the code's six boxes (a pad can't type one).
@@ -85,7 +71,7 @@ msgstr "選ぶ"
 msgid "Direct connection"
 msgstr "直接接続"
 
-msgid "COPY"
+msgid "Copy"
 msgstr "コピー"
 
 # Under this machine's address in the dialog, and under it while a direct host waits.
@@ -95,37 +81,31 @@ msgstr "このアドレスを対戦相手に伝えてください。"
 msgid "address:port"
 msgstr "アドレス:ポート"
 
-msgid "CONNECT"
+msgid "Connect"
 msgstr "接続"
-
-msgid "CANCEL"
-msgstr "キャンセル"
 
 # ---- Waiting for the other player ----
 
-msgid "WAITING FOR OPPONENT"
-msgstr "対戦相手を待っています"
-
 # The same title where there is little room (a phone).
-msgid "WAITING"
+msgid "Waiting"
 msgstr "待機中"
 
-msgid "YOUR ADDRESS"
+msgid "Your address"
 msgstr "あなたのアドレス"
 
-msgid "COPY CODE"
+msgid "Copy code"
 msgstr "コードをコピー"
 
-msgid "COPY ADDRESS"
+msgid "Copy address"
 msgstr "アドレスをコピー"
 
-msgid "STOP PRACTICE"
+msgid "Stop practice"
 msgstr "練習をやめる"
 
-msgid "CANCEL INVITE"
+msgid "Cancel invite"
 msgstr "招待を取り消す"
 
-msgid "STOP HOSTING"
+msgid "Stop hosting"
 msgstr "ホストをやめる"
 
 msgid "Waiting for opponent"
@@ -142,19 +122,19 @@ msgstr "バトル"
 
 # ---- The lobby ----
 
-msgid "LOBBY"
+msgid "Lobby"
 msgstr "ロビー"
 
-msgid "YOU"
+msgid "You"
 msgstr "あなた"
 
-msgid "OPPONENT"
+msgid "Opponent"
 msgstr "対戦相手"
 
-msgid "READY"
+msgid "Ready"
 msgstr "準備完了"
 
-msgid "NOT READY"
+msgid "Not ready"
 msgstr "準備中"
 
 msgid "First to"
@@ -169,7 +149,7 @@ msgid "Ruleset"
 msgstr "ルール"
 
 msgctxt "ruleset"
-msgid "VIEW"
+msgid "View"
 msgstr "見る"
 
 msgid "Leave the lobby?"
@@ -181,14 +161,8 @@ msgstr "構築非公開"
 msgid "Ping"
 msgstr "Ping"
 
-msgid "CHANGE BUILD"
-msgstr "構築変更"
-
 msgid "Change build"
 msgstr "構築変更"
-
-msgid "LEAVE"
-msgstr "退出"
 
 msgid "Leave"
 msgstr "退出"
@@ -200,45 +174,42 @@ msgid "Waiting for your opponent to ready up."
 msgstr "対戦相手の準備を待っています。"
 
 # A failure's button, back to Play's first part.
-msgid "BACK TO PLAY"
+msgid "Back to play"
 msgstr "対戦メニューにもどる"
 
 # ---- In a match ----
 
-msgid "BACK TO MATCH"
+msgid "Back to match"
 msgstr "対戦にもどる"
 
-msgid "YOUR BUILD"
+msgid "Your build"
 msgstr "使う構築"
 
-msgid "THEIR BUILD"
+msgid "Their build"
 msgstr "相手の構築"
 
-msgid "LEAVE MATCH"
+msgid "Leave match"
 msgstr "対戦をやめる"
 
 msgid "The match keeps running"
 msgstr "対戦は止まりません"
 
-msgid "BACK"
-msgstr "もどる"
-
 # ---- After a match ----
 
-msgid "WIN"
+msgid "Win"
 msgstr "勝利"
 
-msgid "LOSE"
+msgid "Lose"
 msgstr "敗北"
 
-msgid "DRAW"
+msgid "Draw"
 msgstr "引き分け"
 
-msgid "ROUNDS"
+msgid "Rounds"
 msgstr "ラウンド"
 
-msgid "TIME"
+msgid "Time"
 msgstr "タイム"
 
-msgid "CONTINUE"
+msgid "Continue"
 msgstr "つづける"

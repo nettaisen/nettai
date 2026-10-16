@@ -5,10 +5,10 @@ msgstr ""
 "Language: ja\n"
 
 # Where its Back goes, and the tag a preset's name has.
-msgid "EDITOR"
+msgid "Editor"
 msgstr "エディター"
 
-msgid "PRESET"
+msgid "Preset"
 msgstr "プリセット"
 
 # Why the ruleset shown can't be changed here.
@@ -29,24 +29,21 @@ msgid "{} of {} allowed"
 msgstr "{}/{} 使用可"
 
 # The row of the name: Version exclusives, a build of one version's alone or of the versions' mixed.
-msgid "VERSION EXCLUSIVES"
+msgid "Version exclusives"
 msgstr "バージョン限定"
 
-msgid "ONE VERSION"
+msgid "One version"
 msgstr "1バージョンのみ"
 
-msgid "MIX VERSIONS"
+msgid "Mix versions"
 msgstr "混在可"
 
 # A category's head: its items all allowed or none, a version's quick choice and All, the search.
-msgid "ALLOW ALL"
+msgid "Allow all"
 msgstr "すべて許可"
 
-msgid "ALLOW NONE"
+msgid "Allow none"
 msgstr "すべて禁止"
-
-msgid "ALL"
-msgstr "すべて"
 
 msgid "Search"
 msgstr "検索"

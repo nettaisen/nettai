@@ -165,7 +165,7 @@ impl Page {
         let chosen = ruleset.groups_chosen(&rulesets, &category);
         let mut choices: Vec<RulesetChoice> = groups
             .iter()
-            .map(|g| RulesetChoice { text: kit.version_name(names, &g.id).to_uppercase().into(), version: true, tone: tone(g.color), chosen: chosen.as_deref() == Some(&[g.id.as_str()][..]) })
+            .map(|g| RulesetChoice { text: kit.version_name(names, &g.id).into(), version: true, tone: tone(g.color), chosen: chosen.as_deref() == Some(&[g.id.as_str()][..]) })
             .collect();
         if !groups.is_empty() {
             let all = chosen.as_ref().is_some_and(|c| c.len() == groups.len());
@@ -228,7 +228,7 @@ impl Page {
                 RulesetItem {
                     picture,
                     name: name.as_str().into(),
-                    note: group.map(|g| kit.version_name(names, &g.id).to_uppercase()).unwrap_or_default().into(),
+                    note: group.map(|g| kit.version_name(names, &g.id)).unwrap_or_default().into(),
                     tone: group.map(|g| tone(g.color)).unwrap_or_default(),
                     allowed: ruleset.allows_item(&category.fact, item),
                 }
