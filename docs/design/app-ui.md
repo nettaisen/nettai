@@ -1236,6 +1236,25 @@ Each is settled unless the user changes it.
     neighbors; Enter (a click) opens its list. Steppers, segmented controls, sliders and a row that is one control
     (Practice's menu's options) still change with Left and Right. (§5; docs/app.md §10.)
 
+76. **The color bar** (2026-10-15). The user: "navicust board should show colors like in the actual gba game, so
+    you also know when you are at too many colors and it causes color bug", then "in the original game the over
+    limit slots just look like they're overflowing the navicust color bar, you should replicate that".
+    - *Where:* in the board's pane's header (§2.72), after NAVICUST on its line, as the game's NaviCust screen has
+      it over its board: a frame round the bar's slots, each a box (18 by 12) holding a color placed, in the order
+      the colors were first placed (the parts' list's, as the game fills its bar), in the program rows' colors, or
+      an empty slot drawn faintly. A phone's the same, in its header's 36.
+    - *The limit is the game's:* the slots are the colors placed without a bug, which each game's
+      rules/navicust/board states as `COLOR_BAR` (4 in EXE4, EXE5 and EXE6) and its compile counts the color bug
+      from (one color past it brings EXE5's and EXE6's status bug, EXE4's movement and custom bugs; more, the
+      strong one or both twice), so the editor and the battle read the one fact.
+    - *Past it, the colors overflow the bar:* each color past the slots goes on at the same pitch past the frame's
+      end, spilling out of it, looking as a slot's color does (no red, no mark): the overflow is the sign. The bug
+      it brings is the NaviCust's, listed in BUGS (pulsing as it appears), not a problem of the build (§2.66): the
+      game plays a bugged NaviCust, as it does a program out of bounds.
+    - *Nothing moves:* the bar's room is kept for every color the game's programs come in (six), placed or not,
+      the title as it was.
+    (§6 Builds; docs/app.md §8.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1671,7 +1690,9 @@ DUPLICATE and DELETE.
   build has placed all the same is red, §2.68); then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing it alone (§2.72); its name in the error red where a placed copy has a problem, which the strip's top right
   says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of the board's pane's
-  header, NAVICUST (§2.72), which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
+  header, NAVICUST (§2.72), which takes every placed program off the board, asked first (X; §2.71); after NAVICUST
+  the color bar, as the game's: its slots (the colors the game's rules place without a bug) each a color placed, in
+  the order placed, or empty, the colors past them spilling out of its frame (the color bug; §2.76); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white

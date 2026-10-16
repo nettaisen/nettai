@@ -65,6 +65,13 @@ export struct ProgramColor {
     tone: color,
 }
 
+// A box of the color bar over the board, as the game's NaviCust screen has it (docs/design/app-ui.md §2.76): a color
+// placed (`filled`, in the order the colors were placed), or an empty slot.
+export struct ColorSlot {
+    tone: color,
+    filled: bool,
+}
+
 // A program, as the list shows it: its name, in the color chosen (`color`, its place among `colors`, the colors it
 // comes in: a choice on the row where there is more than one); where that color's part is, and `copies`, how many of
 // it are placed; `flagged`, the build's problems are about a placed copy of it (its name in the error red, as every
@@ -190,6 +197,14 @@ export global NavicustView {
     out property <string> clear-question: @tr("Clear the NaviCust?");
     // The game's data draw a board (else the list alone: a game whose board isn't one the tab reads).
     in property <bool> board;
+    // The color bar, in the board's pane's header after its title (docs/design/app-ui.md §2.76): its slots (the colors
+    // placed without a bug, as the game's rules state it), each a color placed or empty, then each color past them,
+    // spilling out of its frame; `bar-slots` how many slots, `bar-room` the most boxes it can show (every color the
+    // game's programs come in: the room kept for it, so nothing moves as colors are placed). Empty: the game states no
+    // bar.
+    in property <[ColorSlot]> color-bar;
+    in property <int> bar-slots;
+    in property <int> bar-room;
     // The grid as drawn: `columns` cells a side (7, or 5 where the game's boards are its middle), row by row.
     in property <int> columns: 7;
     in property <[GridCell]> cells;
@@ -924,7 +939,7 @@ export component NavicustTab inherits Rectangle {
         visible: NavicustView.board;
     }
 
-    Label {
+    board-title := Label {
         x: 12px;
         y: root.body-y;
         width: max(0px, clear.x + clear.pad - 12px - self.x);
@@ -932,6 +947,50 @@ export component NavicustTab inherits Rectangle {
         visible: NavicustView.board;
         text: @tr("NAVICUST");
         color: NavicustView.in-list ? Theme.muted : Theme.cursor;
+    }
+
+    // The color bar (docs/design/app-ui.md §2.76; the user: "navicust board should show colors like in the actual gba
+    // game, so you also know when you are at too many colors and it causes color bug", then "in the original game the
+    // over limit slots just look like they're overflowing the navicust color bar, you should replicate that"): after
+    // the title on its line, as the game's is over its board, a frame round its slots, each a color placed (in the
+    // order placed) or empty; a color past them goes on at the same pitch past the frame's end, spilling out of it.
+    // The room for the most it can show is kept whether or not they are there.
+    property <length> slot-width: 18px;
+    property <length> slot-height: 12px;
+    property <length> slot-pitch: root.slot-width + 3px;
+    property <length> bar-pad: 3px;
+    property <length> bar-x: board-title.x + board-title.preferred-width + 16px;
+    property <length> bar-y: root.body-y + (root.head-height - root.slot-height) / 2;
+    property <length> bar-width: 2 * root.bar-pad + max(NavicustView.bar-slots, NavicustView.bar-room) * root.slot-pitch - 3px;
+    // (The screenshot pass is told if the bar runs into CLEAR.)
+    property <bool> bar-over: Theme.audit && NavicustView.board && NavicustView.color-bar.length > 0 && root.bar-x + root.bar-width > clear.x + clear.pad - 12px;
+    changed bar-over => {
+        if root.bar-over {
+            Audit.clipped("the NaviCust's color bar");
+        }
+    }
+
+    Rectangle {
+        x: root.bar-x;
+        y: root.bar-y - root.bar-pad;
+        width: 2 * root.bar-pad + NavicustView.bar-slots * root.slot-pitch - 3px;
+        height: root.slot-height + 2 * root.bar-pad;
+        visible: NavicustView.board && NavicustView.color-bar.length > 0;
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    for slot[i] in NavicustView.color-bar: Rectangle {
+        x: root.bar-x + root.bar-pad + i * root.slot-pitch;
+        y: root.bar-y;
+        width: root.slot-width;
+        height: root.slot-height;
+        visible: NavicustView.board;
+        background: slot.filled ? slot.tone : transparent;
+        // (An empty slot: its place, faintly.)
+        border-width: slot.filled ? 0px : 1px;
+        border-color: Theme.line;
     }
 
     if NavicustView.board: Rectangle {

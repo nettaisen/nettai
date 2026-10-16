@@ -1,8 +1,9 @@
 --!strict
 -- EXE6's NaviCust board (docs/design/navicust.md): its 7x7 grid, the board on
--- it by how far it has been expanded, its command line, and where a
--- neighbor counts. rules/navicust (./init.luau) reads them all from here, and
--- a tool reads the boards and the command line as data (the editor's grid).
+-- it by how far it has been expanded, its command line, its color bar, and
+-- where a neighbor counts. rules/navicust (./init.luau) reads them all from
+-- here, and a tool reads the boards, the command line and the color bar as
+-- data (the editor's grid).
 
 local board = {}
 
@@ -12,6 +13,10 @@ board.SIZE = 7
 
 -- The command line: the grid's row 3 (`sub_813BC1C` reads it).
 board.COMMAND_LINE = 3
+
+-- The color bar over the board (the NaviCust screen's): its slots, this many colors placed without a bug; a fifth
+-- brings the status bug, a sixth the strong one (`sub_813BEA8`).
+board.COLOR_BAR = 4
 
 -- The board by expansions (key item 0x71's count; `byte_813B1EC`,
 -- `byte_813B2CD`, `byte_813B3AE`, the grid's cells at (x + 5, y + 5) of their

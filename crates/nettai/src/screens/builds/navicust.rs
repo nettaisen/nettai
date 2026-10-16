@@ -29,8 +29,12 @@
 //! the program under the cursor: its shape and, where it compresses into another, its compressed shape, its name in
 //! its color, the game's words for it and the colors it comes in; while the pointer is on a row of the list (and no
 //! piece is in hand), that row's (docs/design/app-ui.md §2.64). The piece in hand is outlined white where it could be
-//! put down, red where it can't. **CLEAR** at the right end of the programs' title's line (or **X**, with no piece in
-//! hand; docs/design/app-ui.md §2.71) takes every placed program off the board, as one change, asked first
+//! put down, red where it can't. The board's pane's header has the color bar after its title, as the game's NaviCust
+//! screen has it over its board (docs/design/app-ui.md §2.76): its slots (the game's rules/navicust/board's
+//! `COLOR_BAR`, the colors placed without a bug) each a color placed, in the order placed, or empty, then each color
+//! past them spilling out of its frame (the color bug, which the bugs list names). **CLEAR** at the header's right
+//! end (where the game draws no board, the programs' title's line's; or **X**, with no piece in hand;
+//! docs/design/app-ui.md §2.71, §2.72) takes every placed program off the board, as one change, asked first
 //! (`editor::ask_clear`).
 //!
 //! **The mouse carries a piece by clicks** (the view's pointer areas, told here as `Tab::choose`'s "drag"; the user:
@@ -57,7 +61,7 @@ use nettai_content_api::{EntryHandle, Registry};
 use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
 use nettai_match::ruleset::Item;
-use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
+use nettai_ui::{BuildWords, CellKind, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::collections::HashMap;
@@ -179,6 +183,12 @@ fn piece(cells: &[(i32, i32)], (dx, dy): (i32, i32)) -> Vec<PieceCell> {
         .iter()
         .map(|&(x, y)| PieceCell { x: x - dx, y: y - dy, top: !has(x, y - 1), right: !has(x + 1, y), bottom: !has(x, y + 1), left: !has(x - 1, y) })
         .collect()
+}
+
+/// The color bar's boxes: `slots` of them, each one of `colors` (the colors placed, in the order placed) or empty, then
+/// one for each color past them, which spills out of the bar (the color bug's).
+fn color_bar(colors: &[String], slots: usize) -> Vec<ColorSlot> {
+    (0..slots.max(colors.len())).map(|i| ColorSlot { tone: colors.get(i).map_or_else(Default::default, |c| tone(Some(c))), filled: i < colors.len() }).collect()
 }
 
 /// `items` under their title, in the panel's room: all of them, or as many as fit less one with how many more there
@@ -315,6 +325,15 @@ impl Navicust {
         view.set_board_rows(high(|c| c.1) - low(|c| c.1) + 1);
         view.set_placed(parts.len() as i32);
         view.set_clearable(!self.empty(draft));
+        // The color bar, as the game's NaviCust screen has it (docs/design/app-ui.md §2.76): its slots each a color
+        // placed, in the order placed, or empty; then each color past them, spilling out of it (the color bug).
+        let (bar, slots) = match d.color_bar {
+            Some(slots) => (color_bar(&grid::colors_placed(&parts), slots), slots),
+            None => (Vec::new(), 0),
+        };
+        view.set_color_bar(ModelRc::new(VecModel::from(bar)));
+        view.set_bar_slots(slots as i32);
+        view.set_bar_room(slots.max(d.colors_in_all()) as i32);
         // The piece in hand, by its cells from the cell it is held by.
         match &self.held {
             Some(h) => {
@@ -1061,6 +1080,23 @@ mod tests {
             let last = data.boards.last().unwrap();
             assert_eq!(last.iter().any(|r| r.contains(&b'f')), game == "exe6", "{game}: a ring");
         }
+    }
+
+    /// The color bar: its four slots filled in the order the colors were first placed, the rest empty; a fifth and
+    /// a sixth color spill past them.
+    #[test]
+    fn the_color_bar_fills_its_slots_and_spills_past_them() {
+        let content = nettai_match::testing::exe6_content();
+        let data = grid::read(&content, crate::builds::module_data(&content, "exe6", grid::MODULE).as_ref()).unwrap();
+        let part = |color: &str| grid::Placed { piece: 0, x: 0, y: 0, rotation: 0, color: Some(color.into()), compressed: false, record: nettai_match::facts::Stated::Record(Vec::new()) };
+        let parts: Vec<grid::Placed> = ["pink", "white", "pink", "blue"].into_iter().map(part).collect();
+        let slots = data.color_bar.unwrap();
+        let placed = grid::colors_placed(&parts);
+        assert_eq!(placed, ["pink", "white", "blue"]);
+        let filled = |bar: &[ColorSlot]| bar.iter().map(|s| s.filled).collect::<Vec<_>>();
+        assert_eq!(filled(&color_bar(&placed, slots)), [true, true, true, false]);
+        let more: Vec<String> = ["pink", "white", "blue", "red", "green", "yellow"].map(String::from).into();
+        assert_eq!(filled(&color_bar(&more, slots)), [true; 6], "two past the four slots");
     }
 
     /// The bugs the tab lists are the NaviCust's own: UnderSht off the command line brings the Movement Bug, and

@@ -34,6 +34,7 @@ local HUBBATC = "hubbatc"
 
 local SIZE: number = board.SIZE
 local COMMAND_LINE: number = board.COMMAND_LINE
+local COLOR_BAR: number = board.COLOR_BAR
 local BOARD: { string } = board.boards[1]
 
 -- What a program's handler and a bug's routine work on besides the stats: the HP programs' sum, BugStop.
@@ -272,18 +273,18 @@ local function compile(side: number)
             count(p.program.bug)
         end
     end
-    -- The colors (0x08047644: the game state's +0x14, the color bar's count): five bring `move` and `custom` once,
-    -- more twice.
+    -- The colors (0x08047644: the game state's +0x14, the color bar's count): one past the bar's slots brings `move`
+    -- and `custom` once, more twice.
     local colors: { string } = {}
     for _, p in parts do
         if table.find(colors, p.color) == nil then
             table.insert(colors, p.color)
         end
     end
-    if #colors == 5 then
+    if #colors == COLOR_BAR + 1 then
         count("move")
         count("custom")
-    elseif #colors > 5 then
+    elseif #colors > COLOR_BAR + 1 then
         count("move", 2)
         count("custom", 2)
     end
