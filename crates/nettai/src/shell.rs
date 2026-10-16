@@ -1163,6 +1163,20 @@ impl App {
                 return;
             }
         }
+        // A setting taken (Enter on it): Left and Right change it, Enter and Back let it go; anything else lets it go
+        // and does what it does.
+        if self.shell.nav.grabbed() {
+            match action {
+                Action::Left | Action::Right => {}
+                Action::Confirm | Action::Back => {
+                    self.shell.nav.let_go();
+                    self.shell.sound.play(if action == Action::Back { Cue::Back } else { Cue::Pick });
+                    self.settle();
+                    return;
+                }
+                _ => self.shell.nav.let_go(),
+            }
+        }
         let ui = self.shell.ui();
         let over = self.shell.dialog.is_some() || self.shell.picking.is_some();
         // (A page that scrolls with nothing in it to move to is the screen's to scroll: `Screen::scroll`.)
@@ -1174,7 +1188,7 @@ impl App {
             }
         }
         // (A move the screen makes itself, where the controls' places don't say where it goes: `Screen::route`.)
-        if !over && matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus) {
+        if !over && !self.shell.nav.grabbed() && matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus) {
             let hearer = self.hearer();
             if self.call(hearer, |s, shell| s.route(shell, action)).unwrap_or(false) {
                 self.shell.sound.play(Cue::Cursor);
@@ -1208,6 +1222,10 @@ impl App {
             Action::Confirm => {
                 self.shell.nav.pressed(&ui);
                 let did = self.shell.nav.confirm(&ui);
+                // (A setting taken: its own sound, as a choice's.)
+                if self.shell.nav.grabbed() {
+                    self.shell.sound.play(Cue::Pick);
+                }
                 self.did(did);
             }
             // (The pad's START: it shuts the battle's menu it opened. Elsewhere it does nothing: A confirms.)

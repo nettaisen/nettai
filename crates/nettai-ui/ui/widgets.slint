@@ -430,7 +430,7 @@ export component WordButton inherits Rectangle {
     }
 }
 
-// A value between two arrows: Left and Right change it at once. The value's box has one width
+// A value between two arrows: taken (Enter), Left and Right change it. The value's box has one width
 // (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
 // same place (the game's name where the game can't change). A new value slides in within the box, the way the
 // arrow pressed points, as the old one slides out. Where the row it is in is what is focused (a `Focusable` of
@@ -612,7 +612,7 @@ export component Stepper inherits Rectangle {
     }
 }
 
-// One of two: off and on, enhanced and original. Left and Right choose, Enter takes the other. The chosen half's
+// One of two: off and on, enhanced and original. Taken (Enter), Left and Right choose. The chosen half's
 // tint and underline slide across to the other.
 export component Seg inherits Rectangle {
     in property <string> nav;
@@ -717,7 +717,7 @@ export component Seg inherits Rectangle {
     }
 }
 
-// A level from 0 to `maximum`: Left and Right step it, a click or a drag sets it. Its number has a box of its
+// A level from 0 to `maximum`: taken (Enter), Left and Right step it; a click or a drag sets it. Its number has a box of its
 // own, so the bar keeps its length.
 export component Slider inherits Rectangle {
     in property <string> nav;

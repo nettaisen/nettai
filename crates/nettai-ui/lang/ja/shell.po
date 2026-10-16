@@ -52,6 +52,10 @@ msgstr "もどる"
 msgid "Done"
 msgstr "確定"
 
+# A setting taken (Enter on it): Left and Right change it.
+msgid "Change"
+msgstr "変更"
+
 msgid "Cancel"
 msgstr "キャンセル"
 

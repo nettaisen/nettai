@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -779,12 +779,25 @@ component Corner inherits Rectangle {
 // The cursor: four corner brackets, 5 outside the focused control. One object that slides from control to
 // control, drawn over the layout: it takes no space, and nothing under it changes size. It shows only while a
 // keyboard or a pad is the last thing used. While idle its brackets breathe 2 out and in, and they snap inward
-// as Enter is pressed.
+// as Enter is pressed. On a setting taken (`Nav.grabbed`) they hold in, still, an arrow beside each side: Left and
+// Right change it.
 export component Cursor inherits Rectangle {
-    property <length> breath: Theme.motion ? 1px - 1px * cos(mod(animation-tick(), 1.8s) / 1.8s * 360deg) : 0px;
-    property <length> inset: snap.v * 5px - root.breath;
+    property <length> breath: Theme.motion && !Nav.grabbed ? 1px - 1px * cos(mod(animation-tick(), 1.8s) / 1.8s * 360deg) : 0px;
+    property <length> inset: max(snap.v * 5px, Nav.grabbed ? 3px : 0px) - root.breath;
     snap := Pulse {
         seq: Nav.press-seq;
+    }
+
+    ArrowLeft {
+        x: -6px;
+        y: (parent.height - self.height) / 2;
+        visible: Nav.grabbed;
+    }
+
+    ArrowRight {
+        x: parent.width + 1px;
+        y: (parent.height - self.height) / 2;
+        visible: Nav.grabbed;
     }
 
     Corner {
@@ -1231,9 +1244,14 @@ export component Page inherits Rectangle {
         { key: "Enter", pad: Shell.pad-a, text: @tr("Done") },
         { key: "Esc", pad: Shell.pad-b, text: @tr("Cancel") },
     ];
+    // (While a setting is taken, the hints are its own: Left and Right change it, A or B lets it go.)
+    property <[Hint]> grab-hints: [
+        { key: "←→", pad: PadButton.move, text: @tr("Change") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Done") },
+    ];
     Footer {
         y: parent.height - self.height;
-        hints: Nav.editing ? root.field-hints : root.hints;
+        hints: Nav.editing ? root.field-hints : Nav.grabbed ? root.grab-hints : root.hints;
         status: root.status;
     }
 }

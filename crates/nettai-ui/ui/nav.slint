@@ -10,8 +10,12 @@
 export enum NavKind {
     // Enter activates; the arrows move on.
     button,
-    // Left and Right change its value; Enter activates (a select opens its list).
+    // A setting (a stepper, a segmented control, a slider): the arrows move past it; Enter takes it, and while it is
+    // taken (`Nav.grabbed`) Left and Right change its value, and Enter or Back lets it go.
     stepper,
+    // Left and Right change it at once, where they lead nowhere else; Enter activates (a replay's seek bar, a phone's
+    // build box, Practice's menu's options).
+    dial,
     // Enter or a typed letter starts editing its text.
     field,
     // Not a control: a scrolling page (`ScrollPage`) and a list of rows (`ListView`), which say where their view
@@ -37,6 +41,8 @@ export global Nav {
     // in), and the way the last step went (-1 or 1: a value slides that way).
     in property <int> press-seq;
     in property <int> step-dir: 1;
+    // The focused setting is taken: Left and Right change it (the cursor holds in, its arrows beside it).
+    in property <bool> grabbed;
     // The focused field is being edited. `edit-seq` counts the edits begun; `edit-seed` is the letter typed to
     // begin one (empty: the field's own text, all selected).
     in property <bool> editing;

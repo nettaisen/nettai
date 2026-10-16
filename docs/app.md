@@ -462,7 +462,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `show` | The screen is shown, or something it shows changed under it (the selected game, the language, the window turned upright): set the view from the state. The one method a screen must write. |
 | `hide` | Another screen is shown in its place. |
 | `activate(id, index)` | Enter (the pad's A), a click or a tap on a control. |
-| `step(id, index, by)` | Left or Right on a stepper, a select or a switch, or a click on its arrow. |
+| `step(id, index, by)` | Left or Right on a setting taken or a dial, or a click on its arrow. |
 | `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
 | `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
 | `focused(id, index)` | The focus moved to a control (a list's row: the overview beside it follows). |
@@ -2015,8 +2015,10 @@ tells the app where it is in the window and takes its clicks. From those rectang
 
 - **The arrows** go to the neighbor in their direction: a control straight ahead (one that overlaps the focused
   one across the direction) before a nearer one off to the side, and of two equally near the one that starts
-  where the focused one does. On a stepper, a select, a switch or a slider,
-  Left and Right change the value instead.
+  where the focused one does. A setting (a stepper, a segmented control, a slider: `NavKind.stepper`) is
+  walked past too until Enter takes it (`Nav::grabbed`); then Left and Right change it, Enter or Esc lets it go,
+  and anything else lets it go and does what it does (docs/design/app-ui.md §2.77). A dial (`NavKind.dial`: a
+  replay's seek bar, a phone's build box, Practice's menu's options) changes with Left and Right at once.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
 - **A screen may route a move itself** where the places don't say it (`Screen::route`, asked before the nav for
   an arrow or Tab while nothing is open over the screen): Play's Right from its list goes past the overview,
