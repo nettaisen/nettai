@@ -11,7 +11,7 @@ use velopack::sources::GithubSource;
 use velopack::{UpdateCheck, UpdateInfo, UpdateManager};
 
 /// Where the releases are.
-const REPO: &str = "https://github.com/bigfarts/nettai";
+const REPO: &str = "https://github.com/nettaisen/nettai";
 
 /// The tag of the question asked when an update is found (`shell::App::answer`: 1 is UPDATE).
 pub const ASK: &str = "update";

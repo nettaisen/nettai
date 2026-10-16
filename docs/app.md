@@ -3475,7 +3475,7 @@ is optional and skipped without its secrets: `WINDOWS_CERTIFICATE` (a .pfx, base
 
 **Updates** (`updates.rs`). The user asked for an updater, then for Velopack with GitHub releases. Velopack's hook
 runs first in `main` (`updates::startup`: run by the installer or the updater, it does its part and the process
-ends). An installed app asks `https://github.com/bigfarts/nettai`'s published releases at start, on a thread,
+ends). An installed app asks `https://github.com/nettaisen/nettai`'s published releases at start, on a thread,
 whether a newer one is out on its platform's channel (`velopack::sources::GithubSource`; unauthenticated, one
 request a start); a build run from the repository isn't installed and asks nothing, and neither does the
 screenshot pass. Settings → General → Check for updates (`check_updates`, on by default) turns it off; turned on, it
