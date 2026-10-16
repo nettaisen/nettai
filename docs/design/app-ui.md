@@ -1272,6 +1272,15 @@ Each is settled unless the user changes it.
     - A click or a tap on a setting's arrow or segment changes it as before.
     (§5 rule 7; docs/app.md §11.)
 
+78. **The ruleset's page in panels** (2026-10-16). The user: "why are the buttons on the ruleset editor transparent? i
+    also feel like the layout is so weird"; of two ways put to them, "Panels like the builds editor". A control's
+    raised fill is drawn for a panel, and the page had none: its buttons stood on the backdrop. Now Version exclusives
+    and DUPLICATE, DELETE keep their row; under it two panels: the categories, and the chosen one's, its toolbar (the
+    search, then ALLOW ALL and ALLOW NONE; a version's quick choices on the row under them, drawn raised as the
+    buttons are) over its items, a page of cells as many to a row as fit (260 at least, 12 apart; each cell focused
+    itself: Up and Down a row, Left and Right a cell). A phone: no panels, one column, the search alone on its row.
+    (§2.59; docs/app.md §10.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
