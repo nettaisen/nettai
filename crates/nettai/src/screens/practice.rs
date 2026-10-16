@@ -1673,7 +1673,7 @@ mod tests {
         let exit = &menu[..menu.find("nav: \"menu.exit\"").unwrap()];
         let exit = &exit[exit.rfind("Button {").unwrap()..];
         assert!(exit.contains("visible: PracticeView.leave;") && exit.contains("enabled: PracticeView.leave;"), "EXIT in Practice's own sessions alone");
-        assert!(menu.contains("@tr(\"EXIT\")"));
+        assert!(menu.contains("Caps.of(@tr(\"Exit\"))"));
         for gone in ["PracticeScreen", "START PRACTICE", "nav: \"start\"", "nav: \"dummys\""] {
             assert!(!slint.contains(gone), "{gone}");
         }

@@ -135,7 +135,7 @@ impl AutoBattle {
                 // (A list with no name in a game of one list has no title.)
                 if !list.name.is_empty() {
                     let title = words.names.text(auto::LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
-                    lines.push(PlaceLine { title: true, text: title.to_uppercase().into(), row, ..Default::default() });
+                    lines.push(PlaceLine { title: true, text: title.into(), row, ..Default::default() });
                     row += 1;
                 }
                 for (k, place) in list.places().enumerate() {

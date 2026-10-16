@@ -7,7 +7,7 @@
 // there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
 // buttons, lit as they are held, in a corner of the picture.
 
-import { Theme, Audit } from "../theme.slint";
+import { Theme, Audit, Caps } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
 import { Shell } from "../shell.slint";
 import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
@@ -74,8 +74,8 @@ export global PracticeView {
 
     // ---- What the Rust half says in words.
     // Who the two cards before a battle are.
-    out property <string> you: @tr("YOU");
-    out property <string> dummy: @tr("DUMMY");
+    out property <string> you: Caps.of(@tr("You"));
+    out property <string> dummy: Caps.of(@tr("Dummy"));
     // The first of the Arena and Background rows' values: each round's place picked from the seed, as a match's
     // is.
     out property <string> random: @tr("Random");
@@ -87,13 +87,13 @@ export global PracticeView {
     // ---- The menu's words: a row's label (a group's title, in capitals), and what its value says.
     pure public function label(option: PracticeOption) -> string {
         if option == PracticeOption.dummy {
-            return @tr("DUMMY");
+            return Caps.of(@tr("Dummy"));
         }
         if option == PracticeOption.stage {
-            return @tr("STAGE");
+            return Caps.of(@tr("Stage"));
         }
         if option == PracticeOption.options {
-            return @tr("OPTIONS");
+            return Caps.of(@tr("Options"));
         }
         if option == PracticeOption.dummys-build {
             return @tr("Dummy's build");
@@ -212,7 +212,7 @@ component MenuRow inherits Rectangle {
         enabled: root.edit;
         nav: root.edit ? "menu.rows.option" : "";
         nav-index: root.index;
-        text: @tr("EDIT");
+        text: Caps.of(@tr("Edit"));
         kind: ButtonKind.ghost;
     }
 
@@ -283,7 +283,7 @@ export component PracticeMenu inherits MenuOverlay {
     property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
     property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 136px : 88px) : (PracticeView.leave ? 88px : 40px);
     property <length> buttons-y: root.inner-height - root.buttons-height;
-    title: @tr("PRACTICE");
+    title: Caps.of(@tr("Practice"));
     note: @tr("{} vs {}", PracticeView.session-yours, PracticeView.session-dummys);
     side: true;
     // (The rows scroll where they don't all fit, as on a phone: the page's bar is in the panel's margin, so the
@@ -313,7 +313,7 @@ export component PracticeMenu inherits MenuOverlay {
         y: root.buttons-y;
         width: root.button-width;
         nav: "menu.resume";
-        text: @tr("RESUME");
+        text: Caps.of(@tr("Resume"));
         kind: ButtonKind.main;
     }
 
@@ -322,7 +322,7 @@ export component PracticeMenu inherits MenuOverlay {
         y: root.buttons-y + (Theme.phone ? 48px : 0px);
         width: root.button-width;
         nav: "menu.restart";
-        text: @tr("RESTART");
+        text: Caps.of(@tr("Restart"));
     }
 
     // (Back to Play: docs/design/app-ui.md §2.57.)
@@ -333,7 +333,7 @@ export component PracticeMenu inherits MenuOverlay {
         visible: PracticeView.leave;
         enabled: PracticeView.leave;
         nav: "menu.exit";
-        text: PracticeView.exit-word != "" ? PracticeView.exit-word : @tr("EXIT");
+        text: PracticeView.exit-word != "" ? PracticeView.exit-word : Caps.of(@tr("Exit"));
         kind: ButtonKind.ghost;
     }
 }

@@ -97,7 +97,7 @@ export component Chevron inherits Path {
 
 // ---- Text -----------------------------------------------------------------------------------------------
 
-// A label: 11, capitals (the catalog's text is written so), tracked.
+// A label: 11, capitals (its text is set so: `Caps.of`), tracked.
 export component Label inherits Text {
     property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
     color: Theme.muted;

@@ -2,7 +2,7 @@
 // screen is laid out on, the ground behind it, the cursor over it, and the dialog and the list of choices that
 // open over a screen.
 
-import { Theme, Audit, Look, PatternKind } from "theme.slint";
+import { Theme, Audit, Look, PatternKind, Caps } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
@@ -532,7 +532,7 @@ export global Errors {
     }
     // What opens the system's folder dialog, to choose the Legacy Collection's folder.
     public pure function choose-folder() -> string {
-        return @tr("CHOOSE FOLDER");
+        return Caps.of(@tr("Choose folder"));
     }
 }
 

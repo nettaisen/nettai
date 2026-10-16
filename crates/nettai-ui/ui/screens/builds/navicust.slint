@@ -14,7 +14,7 @@
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board is over the list, and
 // the effects and the bugs are a line each under it. Its Rust half is src/screens/builds/navicust.rs.
 
-import { Theme, Audit } from "../../theme.slint";
+import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -622,7 +622,7 @@ component EffectRow inherits Rectangle {
         y: 4px;
         width: parent.width;
         height: 14px;
-        text: !root.title ? "" : (root.line.kind == EffectKind.effects ? @tr("EFFECTS") : @tr("BUGS"));
+        text: !root.title ? "" : (root.line.kind == EffectKind.effects ? Caps.of(@tr("Effects")) : Caps.of(@tr("Bugs")));
     }
 
     Text {
@@ -826,7 +826,7 @@ export component NavicustTab inherits Rectangle {
             width: root.shape-width;
             height: 14px;
             visible: root.two-shapes;
-            text: @tr("COMPRESSED");
+            text: Caps.of(@tr("Compressed"));
             horizontal-alignment: center;
         }
 
@@ -848,7 +848,7 @@ export component NavicustTab inherits Rectangle {
             width: root.shape-width;
             height: 14px;
             visible: root.two-shapes;
-            text: @tr("UNCOMPRESSED");
+            text: Caps.of(@tr("Uncompressed"));
             horizontal-alignment: center;
         }
     }
@@ -945,7 +945,7 @@ export component NavicustTab inherits Rectangle {
         width: max(0px, clear.x + clear.pad - 12px - self.x);
         height: root.head-height;
         visible: NavicustView.board;
-        text: @tr("NAVICUST");
+        text: Caps.of(@tr("NaviCust"));
         color: NavicustView.in-list ? Theme.muted : Theme.cursor;
     }
 
@@ -1212,7 +1212,7 @@ export component NavicustTab inherits Rectangle {
         y: root.list-y;
         width: NavicustView.board ? root.list-width : max(0px, clear.x + clear.pad - 12px - self.x);
         height: 20px;
-        text: @tr("PROGRAMS");
+        text: Caps.of(@tr("Programs"));
         color: NavicustView.in-list ? Theme.cursor : Theme.muted;
     }
 
@@ -1234,7 +1234,7 @@ export component NavicustTab inherits Rectangle {
         x: NavicustView.board ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
         y: NavicustView.board ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
         nav: "clear";
-        text: @tr("CLEAR");
+        text: Caps.of(@tr("Clear"));
         enabled: NavicustView.clearable;
     }
 
@@ -1270,7 +1270,7 @@ export component NavicustTab inherits Rectangle {
         width: root.list-width + 16px;
         height: root.height - self.y;
         shown: NavicustView.over-list;
-        text: @tr("CLICK TO PUT AWAY");
+        text: Caps.of(@tr("Click to put away"));
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }

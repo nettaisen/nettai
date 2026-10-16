@@ -2,7 +2,7 @@
 // fighting game's title screen has them; beside them the demo reel, a battle of the selected game playing itself
 // in a box that keeps its size. On a phone the reel is above the items.
 
-import { Theme } from "../theme.slint";
+import { Theme, Caps } from "../theme.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
 import { MenuItem } from "../widgets.slint";
 import { Arrive, Tween } from "../motion.slint";
@@ -41,7 +41,7 @@ export component MenuScreen inherits Page {
             y: root.items-top;
             width: root.column;
             nav: "play";
-            text: @tr("PLAY");
+            text: Caps.of(@tr("Play"));
             big: true;
         }
     }
@@ -53,7 +53,7 @@ export component MenuScreen inherits Page {
             y: root.items-top + root.step;
             width: root.column;
             nav: "replays";
-            text: @tr("REPLAYS");
+            text: Caps.of(@tr("Replays"));
             big: true;
         }
     }
@@ -65,7 +65,7 @@ export component MenuScreen inherits Page {
             y: root.items-top + 2 * root.step;
             width: root.column;
             nav: "settings";
-            text: @tr("SETTINGS");
+            text: Caps.of(@tr("Settings"));
             big: true;
         }
     }
@@ -77,7 +77,7 @@ export component MenuScreen inherits Page {
             y: root.items-top + 3 * root.step;
             width: root.column;
             nav: "exit";
-            text: @tr("EXIT");
+            text: Caps.of(@tr("Exit"));
             big: true;
         }
     }
@@ -111,7 +111,7 @@ export component MenuScreen inherits Page {
             visible: MenuView.playing;
             background: Theme.shade;
             demo := Text {
-                text: @tr("DEMO");
+                text: Caps.of(@tr("Demo"));
                 color: Theme.text;
                 font-family: Theme.display;
                 font-size: 11px;

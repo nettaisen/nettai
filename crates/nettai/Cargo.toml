@@ -26,6 +26,9 @@ gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade" }
 log = "0.4"
 # The system's language, for the first one shown.
 sys-locale = "0.3"
+# Text in capitals by the language's own rules (`lang::upper`: a Turkish i is İ), from Unicode's data built in.
+icu_casemap = "2"
+icu_locale_core = "2"
 # The log's and a replay's times in the local time.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The screenshot pass's pictures (the `tour` feature's).

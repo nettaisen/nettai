@@ -2,7 +2,7 @@
 // its own bar. Everything the match can use is loaded before its first frame; online the match starts when both
 // bars are full. An opponent's card online carries their name alone.
 
-import { Theme } from "../theme.slint";
+import { Theme, Caps } from "../theme.slint";
 import { Shell, VersusCard } from "../shell.slint";
 import { Label, Value, Mono, Pill, Bar, PanelBack } from "../widgets.slint";
 import { Tween } from "../motion.slint";
@@ -127,7 +127,7 @@ export component VersusScreen inherits Rectangle {
     Label {
         y: (Theme.phone ? root.top + 2 * root.card-height + root.middle : root.top + root.card-height) + 16px;
         height: 16px;
-        text: @tr("LOADING");
+        text: Caps.of(@tr("Loading"));
         horizontal-alignment: center;
     }
 }

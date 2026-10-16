@@ -9,7 +9,7 @@
 // its items; the reserved line at the foot. On a phone one column: Version exclusives (its word over its control),
 // the buttons, the category as a select, the head, the items.
 
-import { Theme } from "theme.slint";
+import { Theme, Caps } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
@@ -62,10 +62,10 @@ export global RulesetView {
     in property <string> message;
     in property <bool> message-quiet;
     // ---- Words the app asks for.
-    out property <string> all-word: @tr("ALL");
-    out property <string> lobby-word: @tr("LOBBY");
-    out property <string> editor-word: @tr("EDITOR");
-    out property <string> preset-word: @tr("PRESET");
+    out property <string> all-word: Caps.of(@tr("All"));
+    out property <string> lobby-word: Caps.of(@tr("Lobby"));
+    out property <string> editor-word: Caps.of(@tr("Editor"));
+    out property <string> preset-word: Caps.of(@tr("Preset"));
     out property <string> fixed-preset: @tr("A preset can't be changed. Duplicate it to make your own.");
     out property <string> fixed-viewed: @tr("This is your opponent's choice. Duplicate it to make your own.");
     public pure function allowed(n: int, of: int) -> string {
@@ -177,7 +177,7 @@ component ItemRow inherits Rectangle {
     note := Pill {
         x: parent.width - self.width - 10px;
         y: (parent.height - self.height) / 2;
-        text: root.line.note;
+        text: Caps.of(root.line.note);
         tone: root.line.tone;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -228,15 +228,15 @@ export component RulesetPage inherits Page {
             y: 0px;
             width: self.preferred-width;
             height: Theme.phone ? 16px : 40px;
-            text: @tr("VERSION EXCLUSIVES");
+            text: Caps.of(@tr("Version exclusives"));
         }
 
         Seg {
             x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
             y: Theme.phone ? 20px : versions-label.y + 2px;
             nav: "rules.versions";
-            first: @tr("ONE VERSION");
-            second: @tr("MIX VERSIONS");
+            first: Caps.of(@tr("One version"));
+            second: Caps.of(@tr("Mix versions"));
             chosen: RulesetView.versions;
             enabled: RulesetView.editable;
         }
@@ -247,7 +247,7 @@ export component RulesetPage inherits Page {
             width: self.natural-width;
             visible: RulesetView.deletable;
             nav: "rules.delete";
-            text: @tr("DELETE");
+            text: Caps.of(@tr("Delete"));
             kind: ButtonKind.ghost;
             danger: true;
             enabled: RulesetView.deletable;
@@ -258,7 +258,7 @@ export component RulesetPage inherits Page {
             y: delete.y;
             width: self.natural-width;
             nav: "rules.duplicate";
-            text: @tr("DUPLICATE");
+            text: Caps.of(@tr("Duplicate"));
         }
     }
 
@@ -306,7 +306,7 @@ export component RulesetPage inherits Page {
             y: root.head-y;
             width: self.natural-width;
             nav: "rules.all";
-            text: @tr("ALLOW ALL");
+            text: Caps.of(@tr("Allow all"));
             enabled: RulesetView.editable;
         }
 
@@ -315,7 +315,7 @@ export component RulesetPage inherits Page {
             y: root.head-y;
             width: self.natural-width;
             nav: "rules.none";
-            text: @tr("ALLOW NONE");
+            text: Caps.of(@tr("Allow none"));
             enabled: RulesetView.editable;
         }
 
@@ -337,7 +337,7 @@ export component RulesetPage inherits Page {
                 Text {
                     x: 8px;
                     width: parent.width - 16px;
-                    text: choice.text;
+                    text: Caps.of(choice.text);
                     color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : (RulesetView.editable ? Theme.text : Theme.dim);
                     font-family: Theme.display;
                     font-size: 12px;

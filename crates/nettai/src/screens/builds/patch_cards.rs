@@ -439,8 +439,7 @@ impl PatchCards {
                 g
             });
             let (first, second, titles): (Vec<&Line>, Vec<&Line>, (String, String)) = if groups.iter().any(Option::is_some) {
-                // (A title is in capitals, as a label is.)
-                let title = |g: Option<&Option<String>>| g.and_then(|g| g.as_deref()).map(|g| words.names.text(cards::GROUPS, g).unwrap_or_else(|| g.to_string()).to_uppercase()).unwrap_or_default();
+                let title = |g: Option<&Option<String>>| g.and_then(|g| g.as_deref()).map(|g| words.names.text(cards::GROUPS, g).unwrap_or_else(|| g.to_string())).unwrap_or_default();
                 let a = groups.first().cloned().flatten();
                 (lines.iter().filter(|l| l.group == a).collect(), lines.iter().filter(|l| l.group != a).collect(), (title(groups.first()), title(groups.get(1))))
             } else {
