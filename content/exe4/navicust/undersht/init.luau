@@ -15,12 +15,13 @@ local program: NaviCustProgram = {
         ".......",
         ".......",
     },
+    -- (Compressed, it is as it is uncompressed: the shape generated for it, seven cells, was another's.)
     compressed = {
         ".......",
-        "..#....",
-        "..#....",
-        "..####.",
-        "..#....",
+        ".......",
+        "...#...",
+        "...#...",
+        ".......",
         ".......",
         ".......",
     },
