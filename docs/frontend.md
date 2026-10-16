@@ -358,7 +358,7 @@ made alone and changed at any tick of the set (`Player::set_opponent`,
 
 - **in the fight** (`InFight`): it stands still (the default), moves around
   at random and never attacks, or attacks at random: it moves, shoots and
-  charges, uses its chips and presses L and R (never START);
+  charges and uses its chips (never START);
 - **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
   OK, or picks the first chip it can and presses OK (the default).
 
@@ -373,6 +373,11 @@ asked for the opponent's buttons a tick at a time (`fight`, with what the
 local player holds; `custom_screen`) and told when the set starts over
 (`reset`). The library has no AI of its own: nettai-training's `Fighter`
 is one. With none given it stands still and picks the first chip it can.
+
+Only the player opens the custom screen: whatever plays the opponent but a second pad (a person), its L and R are
+dropped in the fight, and it makes its choices once the player has opened the screen (the user: "in training mode,
+don't have the dummy go into custom automatically. only the player should trigger custom and then the dummy will
+make its custom selections").
 
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,
