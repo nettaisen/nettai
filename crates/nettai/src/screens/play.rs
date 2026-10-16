@@ -1307,10 +1307,10 @@ impl Screen for Play {
             "practice" => self.practice(shell),
             "name.confirm" => self.confirm(shell),
             "name.cancel" => self.close_dialog(shell),
-            // (A new build of a save: the system's file dialog, as the dialog closes.)
+            // (New builds of saves: the system's file dialog, as the dialog closes.)
             "name.save" => {
                 self.close_dialog(shell);
-                self.import_chosen_file(shell);
+                self.import_chosen_files(shell);
             }
             // (Enter on the versions takes the other one.)
             "name.version" => self.step(shell, id, index, 1),
@@ -1679,7 +1679,7 @@ impl Screen for Play {
     /// A save dropped on the builds is made a build.
     fn dropped(&mut self, shell: &mut Shell, path: &std::path::Path) {
         if self.part() == PlayPart::Builds && self.naming.is_none() && self.direct.is_none() && self.boxes.is_none() {
-            self.import(shell, path);
+            self.import(shell, &[path.to_path_buf()]);
         }
     }
 

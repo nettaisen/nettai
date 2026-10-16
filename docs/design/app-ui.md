@@ -1518,8 +1518,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   has, "No match with that code.". The list and the overview grow down to 16 over the row: both end at 564 (the
   overview's wide sheet is 540 at least).
 - **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
-  FROM A SAVE FILE…, which closes it and opens the system's file dialog for a save; the build is made of the save
-  and named for its file (Builds, below).
+  FROM A SAVE FILE…, which closes it and opens the system's file dialog for saves, one or more; a build is made of
+  each and named for its file, the last made chosen (Builds, below).
 - **PRACTICE** starts a practice battle with the chosen build as the player's; the practice menu's EXIT comes
   back with it still chosen.
 - **EDIT** opens the chosen build in Builds' editor, whose Back (‹ PLAY) comes back with the build still chosen.
