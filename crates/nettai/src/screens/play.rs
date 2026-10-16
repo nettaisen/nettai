@@ -510,6 +510,9 @@ impl Play {
 
     /// The link and everything over it are given up, unsaid (the other player is told by [`Play::leave`]).
     fn drop_session(&mut self, shell: &mut Shell) {
+        // (A link that ends over a match's result takes the result with it, before its battle: else it stays the
+        // UI's, and the next match opens under it.)
+        self.hide_result(shell);
         if self.session.take().is_some() || !matches!(self.stage, Stage::Idle) {
             if matches!(self.stage, Stage::Waiting) {
                 practice::end(shell);
