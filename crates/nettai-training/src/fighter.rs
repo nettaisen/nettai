@@ -163,8 +163,10 @@ struct Plan {
 /// The ticks a step's direction is held for at most, where the navi
 /// doesn't move (a panel it can't step on, a hit taking it).
 const STEP_MOST: u8 = 20;
-/// The ticks a shot waits for the charge to be full at most.
+/// The ticks a shot waits for the charge to be full at most, and A is held
+/// for a chip at most.
 const CHARGE_MOST: u16 = 150;
+const CHIP_HELD_MOST: u16 = 120;
 /// The live ticks a plan is tried for past its horizon at most, the
 /// dimmings in it counted (a cut-in's).
 const DIMMED_MOST: u32 = 200;
@@ -184,15 +186,17 @@ struct Exec {
     from: Option<PanelPos>,
     /// What it does there is done.
     acted: bool,
-    /// The ticks it has waited for the charge.
+    /// The ticks it has waited for the charge, or held A; and the chips in
+    /// hand as it pressed A.
     waited: u16,
+    hand: u8,
     /// What it pressed the tick before (a press is a button not held then).
     last: u16,
 }
 
 impl Exec {
     fn new(plan: Plan) -> Exec {
-        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, last: 0 }
+        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, hand: 0, last: 0 }
     }
 
     /// Standing where it is.
@@ -236,10 +240,23 @@ impl Exec {
         match self.plan.then {
             Then::Hold => HELD,
             // (A press: let go first if it's held.)
-            Then::Chip if self.last & keys::A != 0 => HELD,
+            // (A chip: B let go, as B held keeps some forms shooting (EXE6's Beast Out), and A pressed; then A held
+            // while it charges the chip (EXE6's Crosses that charge chips: it goes as A is let go), else pressed again
+            // every other tick, till the chip goes from the hand.)
+            Then::Chip if self.waited == 0 && self.last & keys::A != 0 => 0,
+            Then::Chip if self.waited == 0 => {
+                self.waited = 1;
+                self.hand = b.hands[side as usize].remaining();
+                keys::A
+            }
             Then::Chip => {
-                self.acted = true;
-                keys::A | HELD
+                let a_charge = b.player_actor(side).map(|a| b.actors.get(a)).filter(|a| a.charge_source == 1).map_or(0, |a| a.charge_level);
+                if b.hands[side as usize].remaining() < self.hand || a_charge >= 2 || self.waited >= CHIP_HELD_MOST {
+                    self.acted = true;
+                    return HELD;
+                }
+                self.waited += 1;
+                if a_charge == 1 || self.last == 0 { keys::A } else { 0 }
             }
             Then::Shot => {
                 let full = charge(b, side) >= 2;
@@ -488,7 +505,7 @@ impl Guessed {
 
 /// The threads a fighter tries its plans on at most ([`Fighter::new`]):
 /// its own and helpers.
-pub const THREADS: usize = 3;
+pub const THREADS: usize = 4;
 
 /// What deciding has cost so far.
 #[derive(Clone, Copy, Debug, Default)]
@@ -534,8 +551,8 @@ struct Question {
     now: Exec,
     theirs: u16,
     past: Past,
-    /// The chip in hand has gone unused a while ([`STALE`]).
-    stale: bool,
+    /// The live ticks past [`STALE`] the chip in hand has gone unused.
+    stale: u32,
     side: u8,
     level: Level,
     asked: Asked,
@@ -793,13 +810,14 @@ impl Search {
         let job = Job { aheads, plans: attacks, side, horizon: level.horizon, worth, warm: false };
         let (mut attack_worths, t) = self.run(&job);
         ticks += t;
-        // (A chip held a long while is used where it does best, though it takes nothing away: it does what no HP
-        // shows, or it would bar the chips behind it.)
-        if q.stale {
+        // (A chip held a long while is used where it does best, though it takes nothing away or costs some: it does
+        // what no HP shows, or it would bar the chips behind it. The longer, the more it costs to hold.)
+        if q.stale > 0 {
             let count: i64 = job.aheads.iter().map(|(_, _, alike)| alike).sum();
+            let eager = STALE_EAGER * (60 + q.stale as i64) / 60;
             for (e, w) in job.plans.iter().zip(attack_worths.iter_mut()) {
                 if e.plan.then == Then::Chip {
-                    *w += STALE_EAGER * count;
+                    *w += eager * count;
                 }
             }
         }
@@ -875,11 +893,25 @@ impl Search {
         let worth_of = |slot: u8| chips.iter().position(|(s, _)| *s == slot).map_or(0, |at| worths[at]);
         // (Each first pick, the rest by worth: the picks, and what they are worth in all.)
         let mut best: Option<(Vec<u8>, i64)> = None;
+        // (A chip worth nothing isn't picked: alone in the hand it would do nothing, and it stays in the folder for
+        // another screen. A chip the hand folds into the one before it is picked after that one, below.)
         for (n, (first, chip)) in chips.iter().enumerate() {
-            if chips[..n].iter().any(|(_, c)| c == chip) {
+            if chips[..n].iter().any(|(_, c)| c == chip) || worth_of(*first) <= 0 {
                 continue;
             }
-            let (picks, advance, _) = picks_on_a_copy(q, |s| Some(if s == *first { i64::MAX } else { worth_of(s) }), &mut ticks);
+            let (picks, advance, _) = picks_on_a_copy(
+                q,
+                |s| {
+                    Some(if s == *first {
+                        i64::MAX
+                    } else if worth_of(s) > 0 {
+                        worth_of(s)
+                    } else {
+                        -1
+                    })
+                },
+                &mut ticks,
+            );
             let mut total: i64 = picks.iter().map(|&s| worth_of(s)).sum();
             if let Some(advance) = advance {
                 // (The Program Advance's chips picked first, in the order that formed it, then the rest: its worth
@@ -1344,8 +1376,9 @@ impl Thinker {
 
 /// The live ticks of the fight a chip stays in hand before it is used where
 /// it does best, though no plan shows it taking anything away
-/// ([`Question::stale`]); and what using it is worth then, in tenths of HP.
-const STALE: u32 = 240;
+/// ([`Question::stale`]); and what using it is worth then, in tenths of HP,
+/// and as much again each second on.
+const STALE: u32 = 180;
 const STALE_EAGER: i64 = 50;
 
 /// Where it stands before it has seen its navi: no panel.
@@ -1451,7 +1484,7 @@ impl Fighter {
     }
 
     fn question(&self, b: &Battle, side: u8, theirs: u16, asked: Asked) -> Question {
-        Question { id: self.asked, battle: Box::new(b.clone()), now: self.now, theirs, past: self.past, stale: self.held >= STALE, side, level: self.level, asked }
+        Question { id: self.asked, battle: Box::new(b.clone()), now: self.now, theirs, past: self.past, stale: self.held.saturating_sub(STALE - 1), side, level: self.level, asked }
     }
 
     /// Its buttons in the fight on side `side` of `b` this tick; `theirs`:
@@ -1610,7 +1643,9 @@ impl Fighter {
         }
         // (Else the first worth most: the nearest, standing before shooting before a chip.)
         let picked = tried[..tried.len() - 1].iter().find(|(_, w)| *w == best).or(tried.last()).map(|(e, _)| *e).expect("tried");
-        if picked.plan != self.now.plan {
+        // (The plan it follows, picked again, goes on from where it is; done, it starts over: an A the navi didn't
+        // take is pressed again.)
+        if picked.plan != self.now.plan || self.now.acted {
             self.now = picked;
         }
     }
