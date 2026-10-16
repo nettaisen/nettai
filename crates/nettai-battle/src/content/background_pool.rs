@@ -126,6 +126,13 @@ impl Content {
     pub fn pool_backgrounds(&self) -> Vec<BackgroundId> {
         self.background_pool.iter().filter_map(|(game, name)| self.background_handle(game, name)).collect()
     }
+
+    /// The pool's backgrounds of the content's own game alone, in the pool's order: what a round that picks its
+    /// background from its game's part of the pool picks from.
+    pub fn game_pool_backgrounds(&self) -> Vec<BackgroundId> {
+        let own = self.game();
+        self.background_pool.iter().filter(|(game, _)| *game == own).filter_map(|(game, name)| self.background_handle(game, name)).collect()
+    }
 }
 
 #[cfg(test)]

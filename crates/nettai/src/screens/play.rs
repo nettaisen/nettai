@@ -156,10 +156,11 @@ pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
 }
 
 /// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
-/// seed, its background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared
-/// by both players as the round's settings are, under `ruleset` (the one the player's build is made for).
+/// seed, its background from the background pool's backgrounds of the game alone (the user: "in actual pvp mode,
+/// don't choose from the entire background pool, only choose from the background pool for that game"; docs/app.md
+/// §1, "The battle's background"), shared by both players as the round's settings are, under `ruleset` (the one the player's build is made for).
 pub(crate) fn settings(game: &str, wins: u8, ruleset: nettai_match::ruleset::Ruleset) -> Settings {
-    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins, ruleset) }
+    Settings { backgrounds: nettai_match::BackgroundPick::GamePool, ..Settings::new(game, wins, ruleset) }
 }
 
 /// A direct connection's dialog.
