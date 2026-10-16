@@ -745,17 +745,17 @@ impl Shell {
         }
     }
 
-    /// Ask the player for a file to open, in the system's dialog: `kind` names what is asked for (in the
-    /// language shown), `extensions` are those it may have. None: they chose none. The app's frames wait
+    /// Ask the player for files to open, one or more, in the system's dialog: `kind` names what is asked for (in
+    /// the language shown), `extensions` are those they may have. None: they chose none. The app's frames wait
     /// while the dialog is up.
-    pub fn choose_file(&self, kind: &str, extensions: &[&str]) -> Option<std::path::PathBuf> {
+    pub fn choose_files(&self, kind: &str, extensions: &[&str]) -> Vec<std::path::PathBuf> {
         #[cfg(not(target_arch = "wasm32"))]
-        return rfd::FileDialog::new().add_filter(kind, extensions).pick_file();
+        return rfd::FileDialog::new().add_filter(kind, extensions).pick_files().unwrap_or_default();
         #[cfg(target_arch = "wasm32")]
-        None
+        Vec::new()
     }
 
-    /// Ask the player where to save a file named `name`, as [`Shell::choose_file`].
+    /// Ask the player where to save a file named `name`, as [`Shell::choose_files`].
     pub fn choose_save(&self, kind: &str, extensions: &[&str], name: &str) -> Option<std::path::PathBuf> {
         #[cfg(not(target_arch = "wasm32"))]
         return rfd::FileDialog::new().add_filter(kind, extensions).set_file_name(name).save_file();

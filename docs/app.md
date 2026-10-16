@@ -509,7 +509,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   and Sound effects levels (`viewer.set_sound_levels` with `sound.battle_levels()`: §1, "The sound").
 - *The rest:* `settings` (and `settings.remembered`, a map for what a screen remembers by its own keys, so it
   adds no field) with `save_settings()`; `set_name`; `lang`; `sound.play(Cue)`; `copy(text)`;
-  `choose_file`, `choose_save`; `recorder` for an offline set's replay; `fly` (§10); `stay_awake`, set while
+  `choose_files`, `choose_save`; `recorder` for an offline set's replay; `fly` (§10); `stay_awake`, set while
   the screen has a link open: the app isn't napped, and its frames run by a timer when the window isn't drawn
   (§1).
 
@@ -628,8 +628,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD opens the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
-  a save chosen in the system's dialog, as a save dropped on the window does (`builds::import`), saying quietly in
-  the reserved line what it was put on where that changed it ("Imported as Dark MegaMan"); ⋯ (`more`) and a right
+  each save chosen in the system's dialog, one or more (the last made chosen; a save that makes none said once the
+  others are made), as a save dropped on the window does (`builds::import`), saying quietly in the reserved line
+  what the chosen one's save was put on where that changed it ("Imported as Dark MegaMan"); ⋯ (`more`) and a right
   click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): DUPLICATE
   and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
