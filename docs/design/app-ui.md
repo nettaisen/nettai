@@ -1231,6 +1231,11 @@ Each is settled unless the user changes it.
       alone.
     (§6 Play and Builds; docs/app.md §4, §8, §10.)
 
+75. **A dropdown doesn't step** (2026-10-15). The user: "don't allow pressing left/right on dropdowns to change them,
+    it affects navigation too much". A `Select` is a button to the arrows: Left and Right walk past it to its
+    neighbors; Enter (a click) opens its list. Steppers, segmented controls, sliders and a row that is one control
+    (Practice's menu's options) still change with Left and Right. (§5; docs/app.md §10.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
