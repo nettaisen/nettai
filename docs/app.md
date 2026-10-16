@@ -2973,15 +2973,22 @@ reaches the battle on the custom screen alone, the menu being the player's), and
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
-**The dummy that fights** (Action Fights). Its AI is nettai-training's `Fighter` (the crate's docs: how well
-each level plays, measured), in the fight and on its custom screen, where Normal and Hard pick the chips worth
-most first (each tried in a copy of the fight; Easy, every chip it can in the cursor's order); it is
-plugged into the session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and
-taken out otherwise (`practice::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
-ticks it tries short plans in copies of the battle, on threads of its own (three at most, fewer on a machine
-with fewer cores to spare), and acts on its decision a reaction time later (Easy's half a second, Normal's about a
-quarter, Hard's a tenth); a decision not ready by then is waited for (measured at 60 ticks a second: none was
-late). On the web it thinks on the battle's own thread.
+**The dummy that fights** (Action Fights). Its AI is nettai-training's `Fighter` (the crate's docs: how it
+plays and how well each level does, measured), in the fight and on its custom screen; it is plugged into the
+session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and taken out otherwise
+(`practice::plug`); another Level plugs in a new one. It presses buttons as a player does, and learns everything
+it knows of the game from copies of the battle: each few ticks it tries, for each panel of its area it can walk to,
+standing there (how dangerous the panel is over the next second, against a few guesses at the player: going on,
+using their chip, walking to its row and attacking, stepping) and, from the safest few, shooting the charged
+shot or using its chip there and retreating to the safest panel (where its attacks land); it keeps to what it
+does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
+(the player does). On its custom screen Normal and Hard pick the chips worth most in a copy of the fight (an
+attack-up after the chip it boosts, a Program Advance where it does more), and take a form the rules offer (a
+Cross, Beast Out, a soul) where a copy of the fight goes better with it; Easy picks every chip it can in the
+cursor's order. It thinks on threads of its own (three at most, fewer on a machine with fewer cores to spare)
+and acts on its decision a reaction time later (Easy's 0.4 s, Normal's about a quarter second, Hard's 0.13 s);
+a decision not ready by then is waited for (rarely: the crate's docs). On the web it thinks on the battle's own
+thread.
 
 *Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
