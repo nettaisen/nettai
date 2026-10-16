@@ -687,13 +687,18 @@ impl LivePlayer {
                 (choice, _) => custom_buttons(b, side, self.ticks, choice != OnCustomScreen::PicksNothing),
             };
         }
-        match self.opponent.in_fight {
+        // (Only the player opens the custom screen: a dummy the computer plays never presses L or R in the fight, and
+        // makes its choices once the player has opened it. The user: "in training mode, don't have the dummy go into
+        // custom automatically. only the player should trigger custom and then the dummy will make its custom
+        // selections". A second pad is a person, and opens it as the player does.)
+        let pressed = match self.opponent.in_fight {
             InFight::StandsStill => 0,
             InFight::MovesAround => mashed & MOVES,
             InFight::AttacksAtRandom => mashed,
             InFight::SecondPad => 0,
             InFight::Ai => self.ai.as_mut().map_or(0, |ai| ai.fight(b, side as u8, keys)),
-        }
+        };
+        pressed & !(keys::L | keys::R)
     }
 }
 
@@ -992,6 +997,7 @@ mod tests {
                     presses.push(step.input[1]);
                     attacked |= !custom && step.input[1].held & (keys::A | keys::B | keys::L | keys::R) != 0;
                     assert!(custom || step.input[1].held & keys::START == 0, "{opponent:?}: START outside the custom screen at tick {tick}");
+                    assert!(custom || opponent.in_fight == InFight::SecondPad || step.input[1].held & (keys::L | keys::R) == 0, "{opponent:?}: L or R in the fight at tick {tick}: only the player opens the custom screen");
                     b.tick(&step.input, step.events);
                     assert!(!b.is_stopped(), "{opponent:?}: tick {tick}");
                     if b.round.mode == mode::FIGHTING && hand.is_none() {
@@ -1066,7 +1072,8 @@ mod tests {
                         moved += (pressed != 0) as u32;
                     }
                     InFight::AttacksAtRandom => {
-                        assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
+                        // (Not L or R: only the player opens the custom screen.)
+                        assert_eq!(pressed, mashed & 0x3FF & !(keys::L | keys::R), "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
                     InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
@@ -1106,7 +1113,8 @@ mod tests {
             match self.opponent.in_fight {
                 InFight::StandsStill => 0,
                 InFight::MovesAround => mashed & MOVES,
-                InFight::AttacksAtRandom => mashed,
+                // (Not L or R: only the player opens the custom screen.)
+                InFight::AttacksAtRandom => mashed & !(keys::L | keys::R),
                 // (No second pad: it stands still.)
                 InFight::SecondPad => 0,
                 // (No AI given: it stands still.)

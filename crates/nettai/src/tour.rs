@@ -358,7 +358,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         Box::new(move |_, app, _| {
             let mut app = app.borrow_mut();
             app.shell
-                .set_name(if lang == "ja" { "ネット" } else { "Lan" });
+                .set_name(if lang == "ja" { "熱斗" } else { "Lan" });
             app.shell.set_language(lang);
             app.go_now(ScreenId::Menu);
             app.shell.nav.focus("play", 0);
