@@ -1246,7 +1246,6 @@ impl Screen for Play {
         // Waiting, and the lobby.
         view.set_invite(self.invite().into());
         view.set_invite_direct(self.session.as_ref().is_some_and(|s| s.way == Way::Host));
-        view.set_room(self.session.as_ref().and_then(|s| s.code()).map(code_shown).unwrap_or_default().into());
         view.set_input_delay(shell.settings.input_delay as i32);
         view.set_note_error(self.ended.as_ref().map(|e| e.line(&ui)).unwrap_or_default().into());
         view.set_changing(self.changing);
