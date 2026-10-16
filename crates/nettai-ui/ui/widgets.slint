@@ -787,9 +787,10 @@ export component Slider inherits Rectangle {
     }
 }
 
-// A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list. Where
-// the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off. One whose choices are
-// pictures (`pictured`: Practice's Arena and Background, which open as a grid of them) shows the chosen one's
+// A box with its value and an arrow: Enter (a click) opens its choices as a list; the arrows walk past it, as a
+// button's do (the user: "don't allow pressing left/right on dropdowns to change them, it affects navigation too
+// much"). Where the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off. One whose
+// choices are pictures (`pictured`: Practice's Arena and Background, which open as a grid of them) shows the chosen one's
 // picture small before its value, the box's height less 6 at each side and fifteen sevenths as wide (the field's
 // band of the battle's picture, 240 by 112); `random`, the first choice, which has none, a question mark in its place.
 export component Select inherits Rectangle {
@@ -873,7 +874,7 @@ export component Select inherits Rectangle {
     hit := Focusable {
         nav: root.focusable ? root.nav : "";
         nav-index: root.nav-index;
-        kind: NavKind.stepper;
+        kind: NavKind.button;
         enabled: root.enabled && root.focusable;
     }
 }
