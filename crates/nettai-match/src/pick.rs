@@ -55,12 +55,13 @@ impl Picks {
 /// The backgrounds a round of the game picks from at random as `pick`
 /// says: a link battle's, its rules' (`link_pick.backgrounds`: EXE6's
 /// table, some there twice and so twice as likely; none, a link battle
-/// shows its stage's own), or the background pool's, every game's, each
-/// once.
+/// shows its stage's own), or the background pool's, every game's or the
+/// match's game's alone, each once.
 fn random_backgrounds(content: &Content, pick: BackgroundPick) -> Vec<BackgroundId> {
     match pick {
         BackgroundPick::Game => content.rules().link_pick.backgrounds.clone(),
         BackgroundPick::Pool => content.pool_backgrounds(),
+        BackgroundPick::GamePool => content.game_pool_backgrounds(),
     }
 }
 
@@ -343,6 +344,29 @@ mod tests {
                 }
             }
             assert_eq!(seen.into_iter().collect::<Vec<_>>(), ["exe4", "exe5", "exe6"], "{game}: every game's");
+        }
+    }
+
+    /// The game's pool pick draws each round's background from the match's game's part of the pool alone, every
+    /// one of it in time, and the stages as the game's pick draws them.
+    #[test]
+    fn the_game_pool_pick_draws_from_the_game_alone() {
+        for (content, game) in [(crate::testing::exe6_content(), "exe6"), (crate::testing::exe5_content(), "exe5"), (crate::testing::exe4_content(), "exe4")] {
+            let own = content.game_pool_backgrounds();
+            assert!(!own.is_empty(), "{game}: the pool has the game's own");
+            assert!(own.iter().all(|&b| content.background_of(b).unwrap().0 == game), "{game}");
+            let mut seen = std::collections::BTreeSet::new();
+            for seed in 0..400 {
+                let rounds = vec![RoundSettings::default(); 3];
+                let by_game = places_from(&content, game, &rounds, BackgroundPick::Game, &mut Picks::new(seed)).unwrap();
+                let by_own = places_from(&content, game, &rounds, BackgroundPick::GamePool, &mut Picks::new(seed)).unwrap();
+                for (a, b) in by_game.iter().zip(&by_own) {
+                    assert_eq!(a.stage, b.stage, "{game} {seed}: the same stages");
+                    assert!(own.contains(&b.background), "{game} {seed}");
+                    seen.insert(b.background.0);
+                }
+            }
+            assert_eq!(seen.len(), own.len(), "{game}: every one of the game's drawn");
         }
     }
     use nettai_battle::setup::effects;

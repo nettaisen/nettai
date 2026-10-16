@@ -344,7 +344,10 @@ and of whether it stays the match's or becomes each player's own, "Shared, as no
   always had, then the pool's others (`BackgroundId`); a match names another game's with its game,
   `exe4:acdc-area` (nettai-match's `ids::background`), and its own by its name, as before. Practice's Background
   row offers the whole pool (§15), and a background left to the seed is drawn from the pool, each as likely
-  (`BackgroundPick::Pool`): Practice's Random and every round of Play's matches (`screens::play::settings`).
+  (`BackgroundPick::Pool`): Practice's Random. Play's matches draw each round's from the pool's backgrounds of the
+  match's game alone (`BackgroundPick::GamePool`, `Content::game_pool_backgrounds`; `screens::play::settings`; the
+  user: "in actual pvp mode, don't choose from the entire background pool, only choose from the background pool
+  for that game"); the lobby's settings carry which pick (one byte: game, pool, game's pool).
   Where the original's own pick is asked for, it stays the game's rule (`BackgroundPick::Game`: its rules'
   `link_pick.backgrounds`, EXE6's `byte_8120A20`): the library's lobby and match files unless they say
   otherwise, `pick::live`'s random matches, the lab's replays and traces (their backgrounds stated) and the
@@ -670,8 +673,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   them, and a change clears both ready marks; either player changes First to and Closed builds, the host alone
   the Ruleset; Input delay is the player's own, and is the
   Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
-  background either: every round's is drawn from the background pool by the match's seed, alike for both
-  players, §1, "The battle's background") with the
+  background either: every round's is drawn from the background pool's of the match's game by the match's seed,
+  alike for both players, §1, "The battle's background") with the
   connection's bars and round trip at its end, READY, CHANGE
   BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
   a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is

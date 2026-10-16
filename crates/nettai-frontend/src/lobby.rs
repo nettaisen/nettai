@@ -414,7 +414,8 @@ pub struct Settings {
     pub rounds: Vec<RoundSettings>,
     /// What a round's background left to the seed is drawn from: as the
     /// game picks a link battle's (`BackgroundPick::Game`, a match's own
-    /// way), or the background pool, every game's (`Pool`: nettai's Play).
+    /// way), or the background pool, every game's (`Pool`: Practice's) or
+    /// the match's game's alone (`GamePool`: nettai's Play).
     pub backgrounds: BackgroundPick,
     /// The ruleset (`nettai_match::ruleset`): what each build may hold, so
     /// each is checked under it ([`Settings::checked`]) and one that holds
@@ -490,7 +491,7 @@ impl Settings {
                 w.put(n);
             }
         }
-        w.put(&(self.backgrounds == BackgroundPick::Pool));
+        w.put(&(self.backgrounds as u8));
         w.put(&self.first_to());
         for r in &self.rounds {
             put_name(&mut w, r.stage.map(|s| nettai_match::ids::local(&content.defs.stage(s).key)));
@@ -519,7 +520,12 @@ impl Settings {
             let names = (0..n.min(4096)).map(|_| r.get::<String>().map_err(bad)).collect::<Result<Vec<_>, _>>()?;
             banned.push((fact, names));
         }
-        let backgrounds = if r.get::<bool>().map_err(bad)? { BackgroundPick::Pool } else { BackgroundPick::Game };
+        let backgrounds = match r.get::<u8>().map_err(bad)? {
+            0 => BackgroundPick::Game,
+            1 => BackgroundPick::Pool,
+            2 => BackgroundPick::GamePool,
+            n => return Err(format!("the settings' backgrounds are drawn by an unknown pick ({n})")),
+        };
         let first_to: u8 = r.get().map_err(bad)?;
         if first_to == 0 || first_to > nettai_match::MAX_FIRST_TO {
             return Err(format!("first to {first_to}: a set is first to 1 to {}", nettai_match::MAX_FIRST_TO));
@@ -1965,6 +1971,9 @@ mod tests {
         let pool = Settings { backgrounds: BackgroundPick::Pool, ..blank.clone() };
         assert_eq!(read(&pool).unwrap(), pool);
         assert_ne!(pool.hash(&content), blank.hash(&content));
+        let own = Settings { backgrounds: BackgroundPick::GamePool, ..blank.clone() };
+        assert_eq!(read(&own).unwrap(), own);
+        assert_ne!(own.hash(&content), pool.hash(&content));
         let mut foreign = pool.clone();
         foreign.rounds[1].background = Some("exe4:acdc-area".into());
         assert_eq!(read(&foreign).unwrap(), foreign);

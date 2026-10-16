@@ -113,8 +113,14 @@ pub enum BackgroundPick {
     Game,
     /// One of the background pool's, every game's, each as likely
     /// (`Content::pool_backgrounds`; docs/app.md §1, "The battle's
-    /// background"): nettai's own matches, Practice's and Play's.
+    /// background"): Practice's.
     Pool,
+    /// One of the background pool's of the match's game alone, each as
+    /// likely (`Content::game_pool_backgrounds`): Play's, a match between
+    /// players (the user: "in actual pvp mode, don't choose from the entire
+    /// background pool, only choose from the background pool for that
+    /// game").
+    GamePool,
 }
 
 impl BackgroundPick {
@@ -123,12 +129,13 @@ impl BackgroundPick {
         match self {
             BackgroundPick::Game => "game",
             BackgroundPick::Pool => "pool",
+            BackgroundPick::GamePool => "game_pool",
         }
     }
 
     /// The pick a match file names.
     pub fn named(name: &str) -> Option<BackgroundPick> {
-        [BackgroundPick::Game, BackgroundPick::Pool].into_iter().find(|p| p.name() == name)
+        [BackgroundPick::Game, BackgroundPick::Pool, BackgroundPick::GamePool].into_iter().find(|p| p.name() == name)
     }
 }
 
