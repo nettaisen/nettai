@@ -90,7 +90,7 @@ export global PatchCardsView {
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
-    out property <string> status: self.counts.slotted ? @tr("{n} slot free" | "{n} slots free" % (self.counts.slots - self.counts.filled)) : (self.counts.budget ? @tr("{} MB free", max(0, self.counts.limit - self.counts.megabytes)) : "");
+    out property <string> status: self.counts.slotted ? @tr("{} of {} cards", self.counts.filled, self.counts.slots) : @tr("{n} card" | "{n} cards" % self.counts.cards);
     // The strip.
     in property <CardDetail> detail;
     // The build's cards (in a game with slots, its slots), the one the cursor was last on (the one a card from the

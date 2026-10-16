@@ -189,7 +189,7 @@ export global NavicustView {
     in property <bool> on-colors;
     // The strip: the program under the cursor.
     in property <ProgramDetail> detail;
-    out property <string> status: @tr("{n} program placed" | "{n} programs placed" % self.placed);
+    out property <string> status: @tr("{n} program" | "{n} programs" % self.placed);
     in property <int> placed;
     // CLEAR would take something off (a piece placed, or one picked up off the board), and its question
     // (docs/design/app-ui.md §2.71).

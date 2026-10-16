@@ -301,6 +301,7 @@ export component RulesetPage inherits Page {
     game: !Theme.phone;
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
     hints: root.page-hints;
+    status: @tr("{n} item" | "{n} items" % RulesetView.items.length);
 
     // (The page's parts arrive as a screen's do, one after another: the row, the categories, the category's head,
     // its items.)

@@ -1229,7 +1229,10 @@ export component Page inherits Rectangle {
     in property <VersionTag> tag;
     in property <string> title-nav;
     in property <[Hint]> hints;
-    in property <string> status: Shell.player;
+    // The footer's right end (docs/design/app-ui.md §2.80): how many of what the screen lists there are, "N things",
+    // or "N of M things" where the build has a limit; nothing on a screen that lists nothing. (An update's line takes
+    // its place while it downloads: `Shell.updating`.)
+    in property <string> status;
     out property <length> body-width: body.width;
     out property <length> body-height: body.height;
     Header {

@@ -1297,6 +1297,16 @@ Each is settled unless the user changes it.
       phone.
     (§2.69, §2.78; docs/app.md §10.)
 
+80. **The footer's right end counts what the screen lists** (2026-10-16). The user: "the footer text on the build editor
+    is so incoherent and random, what's the point of it?", "i feel like there's no coherent story for what the footer
+    text should be"; of three stories put to them (app status alone, the player's name, a fact about the screen),
+    "A fact about the screen", a count of what it lists. It says how many of what the screen lists there are, "N
+    things", or "N of M things" where the build has a limit; a screen that lists nothing says nothing. Play's builds
+    (N builds; the lobby and a match nothing), the editor's tabs (N navis; N of M chips; N programs; N of M cards, or
+    N cards where a game has no slots; N of M places), Replays (N replays; the viewer, N rounds), a ruleset's page (N
+    items, of the category shown), About (N packages · N fonts). The menu and Settings list nothing (the version is
+    in Settings' own rows). An update's line takes the place while it downloads (docs/app.md §19).
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They

@@ -143,8 +143,9 @@ msgstr "オートバトルデータをクリアしますか？"
 
 # ---- The Folder tab.
 
-msgid "Slot {} of {}"
-msgstr "スロット {}/{}"
+# The footer: the folder's chips of its size.
+msgid "{} of {} chips"
+msgstr "チップ {}/{}"
 
 msgid "Pick"
 msgstr "選ぶ"
@@ -232,9 +233,10 @@ msgstr "しまう"
 msgid "Click to put away"
 msgstr "クリックでしまう"
 
-msgid "{n} program placed"
-msgid_plural "{n} programs placed"
+msgid "{n} program"
+msgid_plural "{n} programs"
 msgstr[0] "プログラム {n}個"
+msgstr[1] "プログラム {n}個"
 
 msgid "Programs"
 msgstr "プログラム"
@@ -308,12 +310,13 @@ msgctxt "move"
 msgid "Down"
 msgstr "下へ"
 
-msgid "{} MB free"
-msgstr "残り {} MB"
+msgid "{n} card"
+msgid_plural "{n} cards"
+msgstr[0] "カード {n}枚"
+msgstr[1] "カード {n}枚"
 
-msgid "{n} slot free"
-msgid_plural "{n} slots free"
-msgstr[0] "空きスロット {n}"
+msgid "{} of {} cards"
+msgstr "カード {}/{}"
 
 msgid "Cards"
 msgstr "カード"
@@ -354,7 +357,7 @@ msgstr "{} MB必要"
 
 # ---- The Auto battle tab.
 
-msgid "{} of {} places filled"
+msgid "{} of {} places"
 msgstr "{}/{}か所"
 
 # How many of the auto battle data's places hold the chip (a library row's note).
