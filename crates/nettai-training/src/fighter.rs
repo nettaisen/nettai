@@ -10,16 +10,19 @@
 //! **In the fight** a decision tries plans by the places it can reach.
 //! First, for each panel of its area it can walk to, the plan "go there by
 //! the shortest way and stand": what that loses in the next second or so
-//! against a few guesses at the other player (they go on as they are, use
-//! their chip or shoot at once, walk to its row and attack there, step up
-//! or down) is how dangerous the panel is, attacks already on their way
-//! included. Then, from each of those panels, "go there and shoot (the
-//! charged shot, once the charge is full)" and "go there and use the chip
-//! in hand", each followed by a retreat to the safest panel: what they take
-//! away is where its attacks connect. A plan is worth what it takes away on
-//! average over the guesses, less what it loses (the most in any and the
-//! average, by its caution); a chip whose use takes nothing away is worth
-//! nothing, and isn't used for nothing. Of plans worth the same the nearest
+//! against a few guesses at the other player (they go on as they are, do
+//! again what they did the last second, use their chip or shoot at once,
+//! step up or down, walk to its row and attack there) is how dangerous the
+//! panel is, attacks already on their way included. Then, from the safest
+//! few, "go there and shoot (the charged shot, once the charge is full)"
+//! and "go there and use the chip in hand" (B let go, A pressed till the
+//! navi takes it), each followed by a retreat to the safest panel where
+//! that is clearly safer: what they take away is where its attacks connect.
+//! A plan is worth what it takes away on average over the guesses, less
+//! what it loses (the most in any and the average, by its caution); a chip
+//! whose use takes nothing away is worth nothing, and isn't used for
+//! nothing, but for one held a long while (it does what no HP shows, or it
+//! would bar the chips behind it). Of plans worth the same the nearest
 //! wins, and standing before shooting or a chip, so it keeps its charge and
 //! its chips; and it keeps to what it does unless another plan is better by
 //! a margin ([`Level::steady`]): no change of mind for nothing, no pacing.
@@ -100,8 +103,10 @@ pub struct Level {
     pub horizon: u32,
     /// Ticks of the fight between decisions.
     pub every: u32,
-    /// How many of the guesses at the other player it weighs, in
-    /// [`GUESSES`]' order (1: it supposes they go on as they are).
+    /// How many of the guesses at the other player it weighs, in this order:
+    /// they go on as they are, do again what they did the last second, use
+    /// their chip at once, step up, step down, walk to its row and use their
+    /// chip, walk there and shoot, shoot at once (1: it supposes they go on).
     pub guesses: u32,
     /// In a hundred decisions, how many it misses: it goes on with what it
     /// was doing.
