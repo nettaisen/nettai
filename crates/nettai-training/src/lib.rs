@@ -5,48 +5,78 @@
 //!
 //! # How well the fighter plays
 //!
-//! Measured 2026-10-13 (`fighter::tests::against_random_presses`): the
-//! first round of 24 matches of each game picked from seeds 0 to 23, both
-//! sides the same build at 400 HP, the left navi pressing at random (live
-//! play's "attacks at random", picking every chip it can), the right one
-//! the fighter at each level; rounds won and lost (the rest undecided in
-//! three minutes), and the HP it took away and lost a minute.
+//! Measured 2026-10-16 (release build, the repository's content on the
+//! tests' made-up asset index, every sprite timed alike; `FIGHTER_PACKS`
+//! plays the packs' own timings), the fighter that plans by panels
+//! ([`fighter`]'s docs) against the one before it (2026-10-13, which tried
+//! random two-step plans; kept in the tests as `old-hard`). Only the player
+//! opens the custom screen (live play clears the dummy's L and R), so the
+//! tests' players open it.
 //!
-//! | Game | Random presses | Easy | Normal | Hard |
-//! |---|---|---|---|---|
-//! | EXE6 | 11–13, 298 / 334 | 16–7, 334 / 245 | 20–4, 363 / 231 | 20–4, 362 / 164 |
-//! | EXE5 | 9–14, 144 / 202 | 11–9, 164 / 169 | 12–7, 157 / 132 | 15–4, 173 / 97 |
-//! | EXE4 | 13–6, 155 / 129 | 12–7, 153 / 131 | 15–4, 176 / 121 | 19–2, 181 / 93 |
+//! Against a player pressing at random (live play's "attacks at random",
+//! picking every chip it can), the first round of 24 matches of each game,
+//! both sides the same build at 400 HP: rounds won and lost (the rest
+//! undecided in three minutes), and the HP it took away and lost a minute
+//! (`fighter::tests::against_random_presses`).
 //!
-//! Against each other (`FIGHTER_PLAYER`), EXE6, 16 rounds: Hard beat Normal
-//! 12–4 (311 / 202), Normal beat Easy 10–6 (314 / 276). The user found Hard
-//! "not really that hard": against the Hard before it, which counted the
-//! most it could lose in any guess, used no chip it didn't have to and
-//! decided on its beat alone, today's beat it 12–3 in EXE6 (381 / 208), 9–3
-//! in EXE5 and 6–5 in EXE4, and holds a chip some 9 seconds at most where
-//! that one held them 25 to 56.
+//! | Game | Random presses | Old Hard | Easy | Normal | Hard |
+//! |---|---|---|---|---|---|
+//! | EXE6 | 9–14, 245 / 307 | 18–6, 339 / 201 | 18–5, 332 / 219 | 23–0, 403 / 126 | 21–3, 459 / 149 |
+//! | EXE5 | 11–10, 135 / 155 | 14–6, 195 / 101 | 13–5, 157 / 103 | 20–2, 288 / 81 | 21–2, 299 / 72 |
+//! | EXE4 | 10–12, 179 / 190 | 19–2, 194 / 102 | 15–6, 199 / 161 | 23–1, 302 / 102 | 23–1, 353 / 89 |
 //!
-//! Choosing chips (Normal and Hard: `Level::chooses`), against Hard picking
-//! every chip it can in the cursor's order, 16 rounds: 13–3 in EXE6 (289 /
-//! 194), 5–7 in EXE5 (131 / 121, 4 undecided), 4–5 in EXE4 (120 / 108, 7
-//! undecided). Before it, an EXE4 hand held one chip at most: the cursor
-//! found its way by EXE6's neighbors alone, which EXE4's screen hasn't.
+//! Head to head (`FIGHTER_PLAYER`), 16 rounds: Hard beat the old Hard 16–0
+//! in EXE6 (464 / 181), 15–1 in EXE5 and 14–1 in EXE4; Hard beat Normal
+//! 7–5 in EXE6 (4 undecided), Normal beat Easy 14–0 (2 undecided). On the
+//! packs' own timings (`FIGHTER_PACKS` at the three games' packs), 12
+//! rounds: Hard beat the old Hard 12–0 in each game (EXE6 482 / 217, EXE5
+//! 311 / 109, EXE4 331 / 85).
+//!
+//! Game sense against scripted players (`fighter::tests::game_sense`), 12
+//! rounds a game, a minute of the fight: a *shooter* that walks to the
+//! dummy's row and shoots there every 12 ticks and uses its chip there at
+//! once; a *dodger* that steps up or down every 40 ticks and never attacks.
+//! Hits taken from the shooter; its attack chips a minute and the share
+//! that landed (the player lost HP within two seconds); its steps back to
+//! the panel it just left within a third of a second a minute (pacing), and
+//! against the dodger; Crosses, Beast Outs and souls taken (12 rounds):
+//!
+//! | Game | Dummy | Hits taken | Chips, landed (shooter) | Chips, landed (dodger) | Steps back (shooter / dodger) | Forms |
+//! |---|---|---|---|---|---|---|
+//! | EXE6 | Old Hard | 115 | 10.9, 40% | 10.5, 44% | 17.0 / 17.4 | 0 |
+//! | EXE6 | Easy | 80 | 10.1, 46% | 10.4, 39% | 1.3 / 9.1 | 0 |
+//! | EXE6 | Normal | 54 | 10.0, 42% | 10.3, 42% | 0.6 / 9.0 | 24 |
+//! | EXE6 | Hard | 48 | 10.7, 45% | 10.4, 43% | 2.0 / 1.8 | 24 |
+//! | EXE5 | Old Hard | 82 | 8.7, 43% | 8.7, 37% | 22.0 / 19.9 | 0 |
+//! | EXE5 | Easy | 91 | 7.6, 51% | 7.9, 44% | 7.7 / 7.7 | 0 |
+//! | EXE5 | Normal | 46 | 6.8, 64% | 7.5, 65% | 1.0 / 1.8 | 33 |
+//! | EXE5 | Hard | 48 | 7.0, 65% | 8.0, 59% | 3.6 / 6.8 | 31 |
+//! | EXE4 | Old Hard | 71 | 13.6, 28% | 12.8, 31% | 15.5 / 13.4 | 0 |
+//! | EXE4 | Easy | 70 | 10.1, 30% | 11.3, 33% | 1.0 / 13.6 | 0 |
+//! | EXE4 | Normal | 64 | 15.0, 48% | 13.5, 49% | 1.8 / 14.3 | 25 |
+//! | EXE4 | Hard | 56 | 17.2, 42% | 13.7, 52% | 3.4 / 9.2 | 31 |
+//!
+//! Against the shooter Hard won 12–0, 10–0 and 10–0 (the old Hard 6–6, 7–1
+//! and 8–1), taking 385, 113 and 181 HP a minute where the old Hard took
+//! 805, 224 and 272. Against the shooter its chips that don't attack
+//! (Barrier, Recover and the like, 0.6 to 2 a minute) were all used within a
+//! second of a hit taken or the player pressing A or B; against the dodger,
+//! which never threatens, it used them after holding them three seconds (a
+//! chip held long is used, so it bars none behind it). The old Hard paced
+//! 8 to 11% of the fight; the new levels 0 to 4%.
 //!
 //! Run at the battle's own speed (`fighter::tests::real_time`, 60 ticks a
-//! second, 20 seconds of each game at each level, three threads), every
-//! decision was ready on its tick: 5 to 35 ms on average, 91 ms at most
-//! (Hard's reaction is 100 ms). A custom screen's chips were ready after
-//! the half second it looks at them but for one or two screens in 20
-//! seconds, which waited up to 261 ms (the test's player presses OK at
-//! once; a player who takes longer to pick waits for nothing).
+//! second, 20 seconds of each game at each level, four threads), every
+//! decision was ready on its tick: 14 to 61 ms on average, 126 ms at most
+//! (Hard's reaction is 150 ms, Normal's 233). A custom screen's chips and
+//! form were worked out in 0.3 to 0.55 s, within the time it looks at them
+//! (0.75 s at Hard, 1 s at Normal). On the packs' timings, Hard: one
+//! decision late in EXE5's 20 seconds (7 ms waited), 150 ms at most.
 //!
-//! In EXE4 a round could stop in the engine where a chip request outlived a
-//! dimming that took the chip; fixed in the engine (docs/engine/chips.md
-//! §2.9): none of these rounds stopped.
-//!
-//! The measurements: `cargo test -p nettai-training --lib -- --ignored
-//! --nocapture` with the test's name (`against_random_presses`,
-//! `real_time`, `tick_cost`); their variables are in their docs.
+//! The measurements: `cargo test -p nettai-training --release --lib --
+//! --ignored --nocapture` with the test's name (`against_random_presses`,
+//! `game_sense`, `real_time`, `tick_cost`); their variables are in their
+//! docs.
 
 pub mod fighter;
 
