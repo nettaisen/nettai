@@ -213,3 +213,9 @@ msgstr "タイム"
 
 msgid "Continue"
 msgstr "つづける"
+
+# The footer: how many builds the game has.
+msgid "{n} build"
+msgid_plural "{n} builds"
+msgstr[0] "構築 {n}件"
+msgstr[1] "構築 {n}件"

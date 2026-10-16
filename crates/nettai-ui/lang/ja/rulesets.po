@@ -52,3 +52,9 @@ msgstr "カテゴリー"
 # The quick choice of every version's own items, beside the category's ALL and NONE.
 msgid "Both"
 msgstr "両方"
+
+# The footer: how many items the category shown lists.
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} 件"
+msgstr[1] "{n} 件"

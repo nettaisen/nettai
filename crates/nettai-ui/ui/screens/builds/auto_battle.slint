@@ -37,7 +37,7 @@ export global AutoBattleView {
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
-    out property <string> status: @tr("{} of {} places filled", self.filled, self.places);
+    out property <string> status: @tr("{} of {} places", self.filled, self.places);
     in property <int> filled;
     in property <int> places;
     // The strip.

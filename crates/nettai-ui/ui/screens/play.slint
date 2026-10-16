@@ -699,8 +699,8 @@ export component PlayScreen inherits Page {
     title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : PlayView.part == PlayPart.builds ? Caps.of(@tr("Play")) : Theme.phone ? Caps.of(@tr("Waiting")) : Caps.of(@tr("Waiting for opponent"));
     back: PlayView.part == PlayPart.builds ? Caps.of(@tr("Menu")) : Caps.of(@tr("Play"));
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
-    // (Not the room's code: it is gone once the two players have met.)
-    status: Shell.player;
+    // (The builds of the game while they show; the lobby and a match list nothing.)
+    status: PlayView.part == PlayPart.builds ? @tr("{n} build" | "{n} builds" % PlayView.builds.length) : "";
 
     // ---- The builds, what is done with them, and the row that makes a link ----
     // (One conditional a part, and what differs on a phone by its place and by `visible`: each conditional is a
