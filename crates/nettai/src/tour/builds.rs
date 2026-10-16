@@ -176,17 +176,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     shot(add, "builds-buttons", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "builds-buttons-focus", Pair::Second);
-    // The build's menu (⋯): DUPLICATE, RENAME and, apart, DELETE; RENAME and DELETE chosen from it.
+    // The build's menu (⋯): DUPLICATE and, apart, DELETE; DELETE chosen from it.
     add(SETTLE, press("more", 0));
     shot(add, "builds-menu", Pair::None);
-    add(SETTLE, act(Action::Down));
-    add(SETTLE, act(Action::Confirm));
-    shot(add, "builds-rename", Pair::None);
-    // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, press("more", 0));
-    add(SETTLE, act(Action::Down));
     add(SETTLE, act(Action::Down));
     add(SETTLE, act(Action::Confirm));
     shot(add, "builds-delete", Pair::None);

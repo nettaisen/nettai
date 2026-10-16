@@ -567,23 +567,24 @@ impl Shell {
         let Some(swap) = self.swap.take() else { return };
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        // (What is made next is made at rest: not leaving.)
+        shell.set_leaving(false);
         match swap.to {
             Swapped::Screen(to) => shell.set_screen(to.view()),
             Swapped::Page(open) => ui.global::<nettai_ui::RulesetView>().set_open(open),
         }
-        shell.set_leaving(false);
         self.nav.hold(false);
     }
 
-    /// The ruleset's page opens over the screen shown (`open`), or closes off it, as a screen is gone to: what is
-    /// shown leaves first, its body sliding and fading for the theme's `leave` (closing it, Back's way), and then the
-    /// page is shown, its parts arriving, or the screen under it, arriving (the user: "should ruleset slide in like
-    /// how everything else does instead of this different slide it does?").
+    /// The ruleset's page opens over the screen shown (`open`), or closes off it, exactly as a screen is gone to (the
+    /// user: "the transition is so weird, it doesn't seem to be the same as the other transitions"): what is shown
+    /// leaves first, its body sliding and fading for the theme's `leave`, the header and the footer staying; then the
+    /// page, or the screen under it, is made anew (app.slint), its title wiping in and its parts arriving. Both ways
+    /// go as the lobby and the build editor go to each other: Back's way is the main menu's alone.
     pub fn swap_page(&mut self, open: bool) {
         // (A screen that was still leaving is gone at once.)
         self.finish_swap();
         let ui = self.ui();
-        ui.global::<Theme>().set_back(!open);
         let leave = ui.global::<Theme>().get_leave();
         if leave > 0 {
             ui.global::<nettai_ui::Shell>().set_leaving(true);

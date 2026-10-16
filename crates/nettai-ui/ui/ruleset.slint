@@ -1,13 +1,13 @@
 // A ruleset's page (docs/design/app-ui.md §2.59): what may be played, one category at a time. The lobby and the
-// build editor open it over themselves (app.slint shows it in their place while `RulesetView.open`, the screen
-// going on under it); its Rust half is src/rulesets/page.rs, which the screen that opened it hands its controls
-// to (their names begin `rules.`, a scope of the focus's).
+// build editor open it over themselves (app.slint shows it in their place while `RulesetView.open`, as another
+// screen would be, the screen's Rust half going on); its Rust half is src/rulesets/page.rs, which the screen that
+// opened it hands its controls to (their names begin `rules.`, a scope of the focus's). The ruleset's name is the
+// header's title, a field that renames it where the ruleset can be changed (docs/design/app-ui.md §2.74).
 //
-// In the body's units: a row of the name, Version exclusives and, at the right, DUPLICATE and DELETE; under it the
-// categories (a list, 300 wide) and the chosen one's head (ALLOW ALL, ALLOW NONE, a version's quick choices, the
-// search) over its items; the reserved line at the foot. On a phone one column: the name, Version exclusives (its
-// word over its control), the buttons,
-// the category as a select, the head, the items.
+// In the body's units: a row of Version exclusives and, at the right, DUPLICATE and DELETE; under it the categories
+// (a list, 300 wide) and the chosen one's head (ALLOW ALL, ALLOW NONE, a version's quick choices, the search) over
+// its items; the reserved line at the foot. On a phone one column: Version exclusives (its word over its control),
+// the buttons, the category as a select, the head, the items.
 
 import { Theme } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
@@ -43,14 +43,14 @@ export struct RulesetChoice {
 // What the page shows: src/rulesets/page.rs sets these.
 export global RulesetView {
     in property <bool> open;
-    // Where Back goes (LOBBY, EDITOR), and the ruleset's name in the header with PRESET as its tag for a preset.
+    // Where Back goes (LOBBY, EDITOR), and the ruleset's name in the header (a field that renames it where it can be
+    // changed) with PRESET as its tag for a preset.
     in property <string> back;
-    in property <string> title;
+    in property <string> name;
     in property <bool> preset;
     // It can be changed (the player's own; not a preset, not the host's ruleset viewed), and deleted.
     in property <bool> editable;
     in property <bool> deletable;
-    in property <string> name;
     // Version exclusives: 0 one version's alone in a build, 1 the versions' mixed.
     in property <int> versions;
     in property <[RulesetCategory]> categories;
@@ -195,16 +195,19 @@ export component RulesetPage inherits Page {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Allow or not") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
-    // The row of the name and the buttons; the categories' column; the head of the items over them.
+    // The row of Version exclusives and the buttons; the categories' column; the head of the items over them.
     property <length> list-width: 300px;
     property <length> right-x: Theme.phone ? 0px : root.list-width + 24px;
     property <length> right-width: self.body-width - root.right-x;
-    property <length> head-y: Theme.phone ? 232px : 64px;
+    property <length> head-y: Theme.phone ? 180px : 64px;
     property <length> items-y: Theme.phone ? root.head-y + 104px : root.head-y + 52px;
     property <length> foot: 26px;
-    title: RulesetView.title;
+    // (The ruleset's name, a field where it can be renamed: the user, "you should just be able to edit the build
+    // name/ruleset name from the edit screen in the header". The game, locked, as the build editor shows it.)
+    title: RulesetView.name;
+    title-nav: RulesetView.editable ? "rules.name" : "";
     back: RulesetView.back;
-    game: false;
+    game: !Theme.phone;
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
     hints: root.page-hints;
 
@@ -212,25 +215,17 @@ export component RulesetPage inherits Page {
     property <length> choices-width: RulesetView.choices.length > 0 ? RulesetView.choices.length * 112px + 14px : 0px;
     property <length> search-x: Theme.phone ? root.right-x + root.choices-width : max(choices.x + root.choices-width, root.body-width - 240px);
 
-    // (The page's parts arrive as a screen's do, one after another: the row, the categories, the items.)
+    // (The page's parts arrive as a screen's do, one after another: the row, the categories, the category's head,
+    // its items.)
     Arrive {
         order: 0;
-        // ---- The row: the name, Version exclusives, DUPLICATE and DELETE.
-        Field {
-            x: 0;
-            y: 0;
-            width: Theme.phone ? root.body-width : 360px;
-            nav: "rules.name";
-            text: RulesetView.name;
-            enabled: RulesetView.editable;
-        }
-
+        // ---- The row: Version exclusives, DUPLICATE and DELETE.
         // (Whether a build keeps to one version's own things, as a cartridge does, or may mix the versions': the user,
         // "versions: one per build is weird wording, you should make it more understandable". On a phone the word is
         // over the control, which the width wouldn't hold beside it.)
         versions-label := Label {
-            x: Theme.phone ? 0px : 384px;
-            y: Theme.phone ? 52px : 0px;
+            x: 0px;
+            y: 0px;
             width: self.preferred-width;
             height: Theme.phone ? 16px : 40px;
             text: @tr("VERSION EXCLUSIVES");
@@ -238,7 +233,7 @@ export component RulesetPage inherits Page {
 
         Seg {
             x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
-            y: Theme.phone ? 72px : versions-label.y + 2px;
+            y: Theme.phone ? 20px : versions-label.y + 2px;
             nav: "rules.versions";
             first: @tr("ONE VERSION");
             second: @tr("MIX VERSIONS");
@@ -248,7 +243,7 @@ export component RulesetPage inherits Page {
 
         delete := Button {
             x: root.body-width - self.width;
-            y: Theme.phone ? 128px : 0px;
+            y: Theme.phone ? 76px : 0px;
             width: self.natural-width;
             visible: RulesetView.deletable;
             nav: "rules.delete";
@@ -368,7 +363,10 @@ export component RulesetPage inherits Page {
             text: RulesetView.search;
             placeholder: @tr("Search");
         }
+    }
 
+    Arrive {
+        order: 3;
         // ---- The items.
         items := ListView {
             x: root.right-x;

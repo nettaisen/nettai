@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -823,7 +823,8 @@ export component Cursor inherits Rectangle {
 // ---- The header and the footer -------------------------------------------------------------------------
 
 // The header, the same on every menu screen: Back, naming where it goes; the screen's title with a cyan bar
-// before it; at the right the game, between its arrows where it can change. The main menu has the logo in
+// before it (a field, where it is a name changed in place); at the right the game, between its arrows where it can
+// change. The main menu has the logo in
 // Back's and the title's place (`logo`); a screen with no game to choose (the settings) leaves it out.
 export component Header inherits Rectangle {
     in property <string> title;
@@ -833,6 +834,10 @@ export component Header inherits Rectangle {
     // A tag after the title (a ruleset's page's PRESET). On a phone it is at the header's right. (The header says
     // nothing of a build's problems: they are said where they are, docs/design/app-ui.md §2.66.)
     in property <VersionTag> tag;
+    // The title is a name changed in place (the build editor's build's, the player's own ruleset's): a text field of
+    // this name in the title's place, always drawn as one (docs/design/app-ui.md §2.74).
+    in property <string> title-nav;
+    property <bool> field: root.title-nav != "" && !root.logo;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
@@ -841,7 +846,10 @@ export component Header inherits Rectangle {
     // The title's room: what the tag and the game leave of the header.
     property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.tag-width;
     property <length> title-width: min(title-text.preferred-width, root.title-room);
-    property <bool> over: Theme.audit && (title-text.preferred-width > root.title-room + 0.5px);
+    // (The field takes the room up to 400 from just before the title's place, its text where the title's is; it
+    // scrolls what it doesn't show.)
+    property <length> field-width: min(root.title-room + 8px, Theme.phone ? root.title-room + 8px : 400px);
+    property <bool> over: Theme.audit && !root.field && (title-text.preferred-width > root.title-room + 0.5px);
     height: Theme.header;
     // As the screen arrives its title wipes in behind the cyan bar.
     arrive := Tween { }
@@ -923,7 +931,7 @@ export component Header inherits Rectangle {
     Rectangle {
         x: root.title-x;
         width: root.title-width * arrive.t;
-        visible: !root.logo;
+        visible: !root.logo && !root.field;
         clip: true;
         title-text := Text {
             x: 0;
@@ -936,6 +944,24 @@ export component Header inherits Rectangle {
             letter-spacing: Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking;
             vertical-alignment: center;
             overflow: elide;
+        }
+    }
+
+    // (The field wipes in as the title does; clipped only meanwhile, so its glow while it is edited shows.)
+    Rectangle {
+        x: root.title-x - 8px;
+        y: (parent.height - self.height) / 2;
+        width: root.field-width * arrive.t;
+        height: 40px;
+        visible: root.field;
+        clip: arrive.t < 1;
+        Field {
+            x: 0;
+            y: 0;
+            width: root.field-width;
+            nav: root.field ? root.title-nav : "";
+            text: root.title;
+            heading: true;
         }
     }
 
@@ -1165,8 +1191,9 @@ export component Page inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
-    // The header's tag after the title.
+    // The header's tag after the title, and its title a field of this name (a name changed in place).
     in property <VersionTag> tag;
+    in property <string> title-nav;
     in property <[Hint]> hints;
     in property <string> status: Shell.player;
     out property <length> body-width: body.width;
@@ -1178,6 +1205,7 @@ export component Page inherits Rectangle {
         logo: root.logo;
         game: root.game;
         tag: root.tag;
+        title-nav: root.title-nav;
     }
 
     // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What

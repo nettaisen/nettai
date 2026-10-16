@@ -1,10 +1,10 @@
 // Builds (docs/design/app-ui.md §6): a build's editor, opened from Play (its EDIT) or Practice (its EDIT). The
 // builds themselves, + NEW BUILD (and its FROM A SAVE FILE…), and the chosen build's overview with EDIT and its
-// menu of DUPLICATE, RENAME and DELETE are Play's (play.slint).
+// menu of DUPLICATE and DELETE are Play's (play.slint).
 //
-// The editor: the build's name in the header; a tab bar, and at its right end the ruleset the build is made for; and under
-// it the tab chosen, which says what the build's problems are where they are, the ruleset's among them
-// (docs/design/app-ui.md §2.66). Each tab is one file in builds/ (its view, the global its Rust module sets,
+// The editor: the build's name in the header, a field that renames it (docs/design/app-ui.md §2.74); a tab bar, and
+// at its right end the ruleset the build is made for; and under it the tab chosen, which says what the build's
+// problems are where they are, the ruleset's among them (docs/design/app-ui.md §2.66). Each tab is one file in builds/ (its view, the global its Rust module sets,
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
 // how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
@@ -96,6 +96,7 @@ export component BuildsScreen inherits Page {
     property <length> tab-y: Theme.phone ? 44px : 40px;
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.name;
+    title-nav: "name";
     back: BuildsView.to-practice ? @tr("PRACTICE") : @tr("PLAY");
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
