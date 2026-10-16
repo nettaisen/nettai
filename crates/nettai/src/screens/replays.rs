@@ -694,6 +694,15 @@ impl Screen for Replays {
         }
     }
 
+    /// Right from the list goes to the chosen replay's pane, its first button that can be pressed (the pane's other
+    /// controls are far below the row, and the All/Online switch over the list nearer by place).
+    fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
+        if action != Action::Right || self.watching.is_some() || shell.scale.phone || !shell.nav.focused().is_some_and(|k| k.id == "list") {
+            return false;
+        }
+        shell.nav.focus_first(&shell.ui(), &["watch", "export", "file", "delete"])
+    }
+
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
         if self.export.is_some() || self.sheet {
             return false;
