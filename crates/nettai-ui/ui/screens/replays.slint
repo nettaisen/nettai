@@ -693,13 +693,13 @@ component Choice inherits Rectangle {
 }
 
 // The bar: where the replay is, with a mark where each later round begins. A click or a drag goes there (the
-// picture follows a drag in steps, and lands where it is let go); Left and Right go five seconds.
+// picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right go five seconds.
 component SeekBar inherits Rectangle {
     property <length> at: self.width * clamp(ReplaysView.position, 0, 1);
     height: 24px;
     Focusable {
         nav: "seek";
-        kind: NavKind.dial;
+        kind: NavKind.stepper;
     }
 
     Rectangle {
@@ -1032,14 +1032,12 @@ component ViewerPage inherits Page {
     // (B and Select show both builds, where they may be.)
     hints: ReplaysView.builds-open ? [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
-        { key: "←→", pad: PadButton.move, text: @tr("Seek 5 s") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
         { key: "B", pad: PadButton.select, text: @tr("Builds") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ] : [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
-        { key: "←→", pad: PadButton.move, text: @tr("Seek 5 s") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },

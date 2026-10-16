@@ -224,7 +224,7 @@ export global PlayView {
 
 // ---- The builds ------------------------------------------------------------------------------------------
 
-// The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
+// The chosen build in one box, on a phone: Enter opens the builds as a sheet, a select's list (the arrows walk past it).
 component BuildBox inherits Rectangle {
     in property <BuildEntry> build;
     in property <string> nav;
@@ -276,7 +276,7 @@ component BuildBox inherits Rectangle {
 
     Focusable {
         nav: root.nav;
-        kind: NavKind.dial;
+        kind: NavKind.button;
         enabled: root.enabled;
     }
 }

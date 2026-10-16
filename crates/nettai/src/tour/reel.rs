@@ -554,15 +554,24 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(500, act(Action::Confirm));
     reach(add, |app| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.menu_open()));
     add(1200, row(PracticeOption::Arena));
-    add(500, act(Action::Right));
+    // (Arena and Music are chosen from their lists; Action and Level are taken, stepped and let go.)
+    add(500, act(Action::Confirm));
+    add(400, act(Action::Right));
+    add(400, act(Action::Confirm));
     add(1800, row(PracticeOption::Music));
-    add(500, act(Action::Right));
+    add(500, act(Action::Confirm));
+    add(400, act(Action::Down));
+    add(400, act(Action::Confirm));
     add(2500, row(PracticeOption::Action));
     // (Stands still, Moves around, Fights.)
+    add(300, act(Action::Confirm));
     add(400, act(Action::Right));
     add(350, act(Action::Right));
+    add(300, act(Action::Confirm));
     add(700, row(PracticeOption::Level));
+    add(300, act(Action::Confirm));
     add(400, act(Action::Right));
+    add(300, act(Action::Confirm));
     add(
         900,
         Box::new(|_, app, _| {
