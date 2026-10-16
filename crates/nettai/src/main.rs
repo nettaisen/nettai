@@ -338,6 +338,7 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     let r = registry.clone();
     nav.on_list(move |id, rows, pitch, row_height, scroll, row_width| r.borrow_mut().list(&id, rows, pitch, row_height, scroll, row_width));
     nav.on_scrolled(|| {});
+    ui.global::<nettai_ui::Caps>().on_upper(|text, lang| crate::lang::upper(&lang, &text).into());
 
     // What happened, to the app now, or at the next frame if it is in the middle of something.
     fn tell(app: &Rc<RefCell<App>>, input: NavInput) {

@@ -155,7 +155,7 @@ impl Tab for Navi {
                 .filter_map(|(i, c)| {
                     let now = kit.builds.preset_of(&content, draft.side(), &c.id)?;
                     let presets: Vec<slint::SharedString> =
-                        c.presets.iter().map(|p| names.text(TEXT_TABLE, &c.text_key(p)).unwrap_or_else(|| p.id.clone()).to_uppercase().into()).collect();
+                        c.presets.iter().map(|p| names.text(TEXT_TABLE, &c.text_key(p)).unwrap_or_else(|| p.id.clone()).into()).collect();
                     let chosen = c.presets.iter().position(|p| p.id == now.id).unwrap_or(0) as i32;
                     Some(NaviChoice { presets: ModelRc::new(VecModel::from(presets)), chosen, index: i as i32 })
                 })
@@ -248,7 +248,7 @@ impl Tab for Navi {
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
                     let columns = if side_by_side { 2 } else { columns };
                     let group = NaviFormGroup {
-                        name: name.to_uppercase().into(),
+                        name: name.into(),
                         count: count.into(),
                         flagged: !problems.is_empty(),
                         columns,

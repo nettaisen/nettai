@@ -3,7 +3,7 @@
 // the selected replay opens as a sheet from the bottom, and the viewer's controls are stacked under the
 // picture. Its Rust half is src/screens/replays.rs.
 
-import { Theme } from "../theme.slint";
+import { Theme, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture, DialogFrame } from "../shell.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage } from "../widgets.slint";
@@ -120,11 +120,11 @@ export global ReplaysView {
     out property <string> p1: @tr("P1");
     out property <string> p2: @tr("P2");
     // Over a build's player's name: the recorder's, the other's.
-    out property <string> you: @tr("YOU");
-    out property <string> opponent: @tr("OPPONENT");
+    out property <string> you: Caps.of(@tr("You"));
+    out property <string> opponent: Caps.of(@tr("Opponent"));
     out property <string> delete-title: @tr("Delete replay?");
-    out property <string> delete: @tr("DELETE");
-    out property <string> cancel: @tr("CANCEL");
+    out property <string> delete: Caps.of(@tr("Delete"));
+    out property <string> cancel: Caps.of(@tr("Cancel"));
     // What the system's save dialog calls the file.
     out property <string> video-kind: @tr("MP4 video");
     // A day of a month (`month` from 0), and with its year.
@@ -373,20 +373,20 @@ component DetailPanel inherits Rectangle {
         alignment: start;
         Button {
             nav: "watch";
-            text: @tr("WATCH");
+            text: Caps.of(@tr("Watch"));
             kind: ButtonKind.main;
             enabled: ReplaysView.playable;
         }
 
         Button {
             nav: "export";
-            text: @tr("EXPORT VIDEO");
+            text: Caps.of(@tr("verb" => "Export video"));
             enabled: ReplaysView.playable;
         }
 
         Button {
             nav: "file";
-            text: @tr("SHOW FILE");
+            text: Caps.of(@tr("Show file"));
             enabled: ReplaysView.selected;
         }
     }
@@ -395,7 +395,7 @@ component DetailPanel inherits Rectangle {
         x: parent.width - 16px - self.width;
         y: parent.height - 56px;
         nav: "delete";
-        text: @tr("DELETE");
+        text: Caps.of(@tr("Delete"));
         kind: ButtonKind.ghost;
         danger: true;
         enabled: ReplaysView.selected;
@@ -460,7 +460,7 @@ component DetailSheet inherits Rectangle {
             y: root.still-height + 148px;
             width: root.inner;
             nav: "sheet.watch";
-            text: @tr("WATCH");
+            text: Caps.of(@tr("Watch"));
             kind: ButtonKind.main;
             enabled: ReplaysView.playable;
         }
@@ -470,7 +470,7 @@ component DetailSheet inherits Rectangle {
             y: root.still-height + 196px;
             width: root.inner;
             nav: "sheet.export";
-            text: @tr("EXPORT VIDEO");
+            text: Caps.of(@tr("verb" => "Export video"));
             enabled: ReplaysView.playable;
         }
 
@@ -479,7 +479,7 @@ component DetailSheet inherits Rectangle {
             y: root.still-height + 244px;
             width: root.inner;
             nav: "sheet.file";
-            text: @tr("SHOW FILE");
+            text: Caps.of(@tr("Show file"));
         }
 
         Button {
@@ -487,7 +487,7 @@ component DetailSheet inherits Rectangle {
             y: root.still-height + 292px;
             width: root.inner;
             nav: "sheet.delete";
-            text: @tr("DELETE");
+            text: Caps.of(@tr("Delete"));
             kind: ButtonKind.ghost;
             danger: true;
         }
@@ -499,8 +499,8 @@ component ListPage inherits Page {
     // (The filter is at the search's right; on a phone under it.)
     property <length> filter-room: ReplaysView.kinds && !Theme.phone ? 232px : 0px;
     property <length> list-top: ReplaysView.kinds && Theme.phone ? 96px : 52px;
-    title: @tr("REPLAYS");
-    back: @tr("MENU");
+    title: Caps.of(@tr("Replays"));
+    back: Caps.of(@tr("Menu"));
     status: !ReplaysView.listed ? "" : @tr("{n} replay" | "{n} replays" % ReplaysView.count);
     hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
@@ -528,8 +528,8 @@ component ListPage inherits Page {
             visible: ReplaysView.kinds;
             enabled: ReplaysView.kinds;
             nav: "kind";
-            first: @tr("ALL");
-            second: @tr("ONLINE");
+            first: Caps.of(@tr("All"));
+            second: Caps.of(@tr("Online"));
             chosen: ReplaysView.kind;
         }
 
@@ -894,7 +894,7 @@ component Transport inherits Rectangle {
         y: root.phone ? 204px : 52px;
         width: root.phone ? root.inner : self.natural-width;
         nav: "export";
-        text: @tr("EXPORT VIDEO");
+        text: Caps.of(@tr("verb" => "Export video"));
     }
 
     side2 := Choice {
@@ -925,7 +925,7 @@ component Transport inherits Rectangle {
         width: self.preferred-width;
         height: 40px;
         visible: !root.phone;
-        text: @tr("VIEW");
+        text: Caps.of(@tr("View"));
     }
 
     speed4 := Choice {
@@ -978,7 +978,7 @@ component Transport inherits Rectangle {
         width: self.preferred-width;
         height: 40px;
         visible: !root.phone;
-        text: @tr("SPEED");
+        text: Caps.of(@tr("Speed"));
     }
 
     Value {
@@ -1026,8 +1026,8 @@ component ViewerPage inherits Page {
     property <length> picture-width: Theme.phone ? self.body-width + 2 * Theme.margin : 720px;
     property <length> picture-height: self.picture-width * 2 / 3;
     property <length> top: Theme.phone ? 28px : max(0px, (self.body-height - self.picture-height - 124px) / 2);
-    title: Theme.phone ? @tr("REPLAY") : ReplaysView.title;
-    back: @tr("REPLAYS");
+    title: Theme.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
+    back: Caps.of(@tr("Replays"));
     status: ReplaysView.when;
     // (B and Select show both builds, where they may be.)
     hints: ReplaysView.builds-open ? [
@@ -1281,12 +1281,12 @@ component ExportDialog inherits DialogFrame {
         alignment: end;
         Button {
             nav: "export.cancel";
-            text: ReplaysView.export-state == ExportState.done ? @tr("CLOSE") : @tr("CANCEL");
+            text: ReplaysView.export-state == ExportState.done ? Caps.of(@tr("Close")) : Caps.of(@tr("Cancel"));
         }
 
         Button {
             nav: "export.go";
-            text: @tr("EXPORT");
+            text: Caps.of(@tr("verb" => "Export"));
             kind: ButtonKind.main;
             enabled: !root.busy;
         }

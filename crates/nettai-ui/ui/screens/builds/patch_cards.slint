@@ -11,7 +11,7 @@
 // On a phone the cards are one column under their counts, and the library opens as a sheet from the bottom
 // (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
 
-import { Theme, Audit } from "../../theme.slint";
+import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -129,8 +129,8 @@ export global PatchCardsView {
     in property <bool> sheet;
     // ---- Words the app asks for: the strip's two groups where a game's cards have none of the card screen's,
     // and a card's own slot.
-    out property <string> effects-title: @tr("EFFECTS");
-    out property <string> bugs-title: @tr("BUGS");
+    out property <string> effects-title: Caps.of(@tr("Effects"));
+    out property <string> bugs-title: Caps.of(@tr("Bugs"));
     // CLEAR's question (docs/design/app-ui.md §2.71).
     out property <string> clear-question: @tr("Clear the patch cards?");
     public pure function slot-word(name: string) -> string {
@@ -447,7 +447,7 @@ component GroupColumn inherits Rectangle {
         y: 0;
         width: parent.width;
         height: 14px;
-        text: root.title;
+        text: Caps.of(root.title);
     }
 
     Text {
@@ -492,7 +492,7 @@ component Together inherits Rectangle {
         y: 10px;
         width: parent.width - 24px;
         height: 14px;
-        text: @tr("TOGETHER");
+        text: Caps.of(@tr("Together"));
     }
 
     for part[i] in root.parts: Text {
@@ -624,7 +624,7 @@ export component PatchCardsTab inherits Rectangle {
         width: max(0px, counts.x - 12px - self.x);
         height: 44px;
         visible: !Theme.phone;
-        text: @tr("PATCH CARDS");
+        text: Caps.of(@tr("Patch cards"));
         color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
     }
 
@@ -635,7 +635,7 @@ export component PatchCardsTab inherits Rectangle {
         x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
         y: counts.y;
         nav: "clear";
-        text: @tr("CLEAR");
+        text: Caps.of(@tr("Clear"));
         enabled: PatchCardsView.counts.slotted ? PatchCardsView.counts.filled > 0 : PatchCardsView.counts.cards > 0;
     }
 
@@ -753,7 +753,7 @@ export component PatchCardsTab inherits Rectangle {
             width: library.width + 8px;
             height: library.height + 16px;
             shown: CardDrag.on && Drag.removing;
-            text: @tr("DROP TO REMOVE");
+            text: Caps.of(@tr("Drop to remove"));
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -834,7 +834,7 @@ export component PatchCardsOverlay inherits Rectangle {
             visible: !root.slotted;
             enabled: !root.slotted && root.there;
             nav: root.slotted ? "" : "lib.up";
-            text: @tr("UP");
+            text: Caps.of(@tr("move" => "Up"));
         }
 
         Button {
@@ -844,7 +844,7 @@ export component PatchCardsOverlay inherits Rectangle {
             visible: !root.slotted;
             enabled: !root.slotted && root.there;
             nav: root.slotted ? "" : "lib.down";
-            text: @tr("DOWN");
+            text: Caps.of(@tr("move" => "Down"));
         }
 
         Button {
@@ -853,7 +853,7 @@ export component PatchCardsOverlay inherits Rectangle {
             width: parent.width - 32px;
             enabled: root.there;
             nav: "lib.remove";
-            text: root.slotted ? @tr("EMPTY") : @tr("REMOVE");
+            text: root.slotted ? Caps.of(@tr("verb" => "Empty")) : Caps.of(@tr("Remove"));
             kind: ButtonKind.ghost;
             danger: true;
         }

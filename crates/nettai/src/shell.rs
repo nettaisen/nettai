@@ -446,7 +446,7 @@ impl Shell {
     /// again then).
     pub fn set_language(&mut self, code: &'static str) {
         self.lang = code;
-        crate::lang::select(code);
+        crate::lang::select(&self.ui(), code);
         self.name_games();
         self.ui().global::<Theme>().set_cjk(crate::lang::cjk(code));
         self.games.load_language(code, |id, lang, graphics| {
@@ -844,7 +844,7 @@ impl App {
     pub fn new(ui: &AppWindow, still: bool) -> App {
         let settings = if still { Settings::default() } else { Settings::load() };
         let lang = crate::lang::initial(settings.language.as_deref());
-        crate::lang::select(lang);
+        crate::lang::select(ui, lang);
         ui.global::<Theme>().set_cjk(crate::lang::cjk(lang));
         let mut sound = if still { Sound::silent() } else { Sound::open() };
         sound.set_levels(settings.music, settings.effects);

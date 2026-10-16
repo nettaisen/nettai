@@ -6,7 +6,7 @@
 //
 // Build cost (docs/app.md §14): the rows are leaves, each under one `for`.
 
-import { Theme, Audit } from "theme.slint";
+import { Theme, Audit, Caps } from "theme.slint";
 import { Label, Pill, PanelBack, Mono, RowTouch, ProblemMark } from "widgets.slint";
 
 // A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
@@ -37,7 +37,7 @@ export component VersionMark inherits Rectangle {
         x: 5px;
         width: max(0px, parent.width - 10px);
         visible: !root.short;
-        text: root.tag.text;
+        text: Caps.of(root.tag.text);
         color: root.tag.tone;
         font-family: Theme.display;
         font-size: 9px;
@@ -668,7 +668,7 @@ component SheetLineRow inherits Rectangle {
         y: 4px;
         width: parent.width;
         height: 14px;
-        text: !root.title ? "" : (root.line.kind == SheetLineKind.abilities ? @tr("ABILITIES") : @tr("BUGS"));
+        text: !root.title ? "" : (root.line.kind == SheetLineKind.abilities ? Caps.of(@tr("Abilities")) : Caps.of(@tr("Bugs")));
     }
 
     Text {
@@ -826,7 +826,7 @@ export component BuildOverview inherits Rectangle {
         y: root.pad + 56px + root.forms-height + 12px;
         width: 200px;
         height: 14px;
-        text: root.narrow ? "" : @tr("STATS");
+        text: root.narrow ? "" : Caps.of(@tr("Stats"));
     }
 
     for stat[i] in root.build.stats: StatRow {

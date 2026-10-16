@@ -683,9 +683,10 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-focus", Pair::Second);
     add(SETTLE, focus("lobby.first-to", 0));
-    shot(add, "play-lobby-first-to", Pair::First);
-    // (A setting is taken to change: Enter, then the arrows.)
+    // (A setting is taken to change: Enter, then the arrows. Taken before the pair's first, so the footer's hints are
+    // the same in both.)
     add(SETTLE, act(Action::Confirm));
+    shot(add, "play-lobby-first-to", Pair::First);
     add(SETTLE, act(Action::Right));
     reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 3);
     shot(add, "play-lobby-first-to-3", Pair::Second);
@@ -694,8 +695,8 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, act(Action::Left));
     reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 1);
     add(SETTLE, focus("lobby.delay", 0));
-    shot(add, "play-lobby-delay", Pair::First);
     add(SETTLE, act(Action::Confirm));
+    shot(add, "play-lobby-delay", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-delay-5", Pair::Second);
     add(SETTLE, act(Action::Left));

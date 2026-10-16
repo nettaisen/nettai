@@ -417,9 +417,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, act(Action::Down));
     shot(&mut add, "settings-focus", Pair::Second);
     add(SETTLE, focus("set.delay", 0));
-    shot(&mut add, "settings-delay", Pair::First);
-    // (A setting is taken to change: Enter, then the arrows.)
+    // (A setting is taken to change: Enter, then the arrows. Taken before the pair's first, so the footer's hints are
+    // the same in both.)
     add(SETTLE, act(Action::Confirm));
+    shot(&mut add, "settings-delay", Pair::First);
     add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Right))));
     shot(&mut add, "settings-delay-10", Pair::Second);
     add(SETTLE, Box::new(|_, app, _| (0..6).for_each(|_| app.borrow_mut().act(Action::Left))));

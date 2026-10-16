@@ -41,9 +41,19 @@ fn first(asked: Option<&str>, kept: Option<&str>) -> &'static str {
 }
 
 /// Show the app's strings in `code` (from the next frame; Slint updates every `@tr` string).
-pub fn select(code: &str) {
+pub fn select(ui: &nettai_ui::AppWindow, code: &str) {
     // (English is the source: it has no catalog.)
     let _ = slint::select_bundled_translation(if code == "en" { "" } else { code });
+    use slint::ComponentHandle;
+    ui.global::<nettai_ui::Caps>().set_lang(code.into());
+}
+
+/// `text` in capitals by the rules of the language `code` (Unicode's: a Turkish or an Azeri i is İ, a Lithuanian i
+/// keeps its dot above where it has one), for the words the UI sets in capitals (`Caps` in theme.slint). A code that names no language (the pseudo-locale's) takes the rules every language
+/// shares.
+pub fn upper(code: &str, text: &str) -> String {
+    let lang = code.parse::<icu_locale_core::LanguageIdentifier>().unwrap_or(icu_locale_core::LanguageIdentifier::UNKNOWN);
+    icu_casemap::CaseMapper::new().uppercase_to_string(text, &lang).into_owned()
 }
 
 /// Whether `code`'s script is one the display face (Chakra Petch) has no letters for, and that is set solid:
@@ -67,6 +77,18 @@ pub fn step(code: &str, by: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Capitals by the language's own rules: a Turkish i is İ where an English one is I; kana have no capitals; the
+    /// pseudo-locale's code names no language and takes the rules every language shares.
+    #[test]
+    fn capitals_by_the_language() {
+        assert_eq!(upper("en", "Show file"), "SHOW FILE");
+        assert_eq!(upper("tr", "Dosya iste"), "DOSYA İSTE");
+        assert_eq!(upper("en", "Dosya iste"), "DOSYA ISTE");
+        assert_eq!(upper("ja", "ファイルを表示"), "ファイルを表示");
+        assert_eq!(upper(PSEUDO, "Ŝĥöŵ ƒîļé"), "ŜĤÖŴ ƑÎĻÉ");
+        assert_eq!(upper("de", "Straße"), "STRASSE");
+    }
 
     /// The pseudo-locale is bundled, and no player meets it: the list leaves it out unless it is the one shown,
     /// stepping through the list passes it by, and a settings file that names it doesn't bring it back.

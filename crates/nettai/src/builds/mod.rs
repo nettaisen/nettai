@@ -108,7 +108,7 @@ impl Kit {
 
     fn tag_of(&self, names: &Names, group: &Group) -> nettai_ui::VersionTag {
         let [_, r, g, b] = group.color.to_be_bytes();
-        nettai_ui::VersionTag { text: self.version_name(names, &group.id).to_uppercase().into(), tone: slint::Color::from_rgb_u8(r, g, b) }
+        nettai_ui::VersionTag { text: self.version_name(names, &group.id).into(), tone: slint::Color::from_rgb_u8(r, g, b) }
     }
 }
 
