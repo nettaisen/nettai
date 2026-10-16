@@ -16,8 +16,8 @@ import { Theme, Caps } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
-import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill } from "widgets.slint";
-import { VersionTag } from "build.slint";
+import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill, AllNone } from "widgets.slint";
+import { VersionTag, VersionMark } from "build.slint";
 
 // A category in the list: its name, and how much it allows.
 export struct RulesetCategory {
@@ -26,13 +26,28 @@ export struct RulesetCategory {
 }
 
 // An item of the category shown: its picture (a chip's icon, a navi's or a form's face; none of a program or a
-// card), its name, the version it is one's own (its name and color; none), and whether the ruleset allows it.
+// card), its name, the version it is one's own (its name and color; none), and whether the ruleset allows it. In a
+// category in sections (`RulesetView.sections`), its section and its place in it.
 export struct RulesetItem {
     picture: image,
     name: string,
     note: string,
     tone: color,
     allowed: bool,
+    section: int,
+    slot: int,
+}
+
+// A version's section of a category of forms (Crosses, Souls, Beast Out), as the Navi tab has them: its version's
+// name and color, how many items come before it (stacked, on a phone) and how many it has, and whether its ALL and
+// NONE would change anything.
+export struct RulesetSection {
+    name: string,
+    tone: color,
+    start: int,
+    count: int,
+    all: bool,
+    none: bool,
 }
 
 // A quick choice of the category's version-own items: a version's (its name and color: `version`), or All.
@@ -61,11 +76,18 @@ export global RulesetView {
     in property <[RulesetChoice]> choices;
     in property <string> search;
     in property <[RulesetItem]> items;
+    // The category's items in a section a version, in place of its quick choices (none: one grid); the most any has.
+    in property <[RulesetSection]> sections;
+    in property <int> section-rows;
+    // Whether the category's ALL and NONE would change anything.
+    in property <bool> category-all;
+    in property <bool> category-none;
     // The reserved line: why something can't be changed here, in the error red; or quietly, a note.
     in property <string> message;
     in property <bool> message-quiet;
     // ---- Words the app asks for.
-    out property <string> all-word: Caps.of(@tr("All"));
+    // (The quick choice of every version's own items: Both, beside the category's ALL.)
+    out property <string> both-word: @tr("Both");
     out property <string> lobby-word: Caps.of(@tr("Lobby"));
     out property <string> editor-word: Caps.of(@tr("Editor"));
     out property <string> preset-word: Caps.of(@tr("Preset"));
@@ -178,18 +200,60 @@ component ItemRow inherits Rectangle {
         overflow: elide;
     }
 
-    note := Pill {
+    // (The version's tag, as the build editor's rows have it; none in a version's section, which says it.)
+    note := VersionMark {
         x: parent.width - self.width - 10px;
         y: (parent.height - self.height) / 2;
-        text: Caps.of(root.line.note);
-        tone: root.line.tone;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+        tag: { text: root.line.note, tone: root.line.tone };
     }
 
     touch := Focusable {
         nav: "rules.items";
         nav-index: root.nav-index;
+    }
+}
+
+// A category's quick choices of its versions' own items (each version's alone, or all of them), as small words in its
+// panel's header line, as ALL and NONE are: a version's in its color where it is what is allowed, else muted; All
+// in the cursor's color where it is; hairlines between. Each takes a little more than its line, and nothing moves.
+component VersionPicks inherits Rectangle {
+    property <length> pad: 6px;
+    property <length> reach: Theme.phone ? 6px : 2px;
+    height: 16px;
+    width: words.preferred-width;
+    words := HorizontalLayout {
+        alignment: end;
+        for choice[i] in RulesetView.choices: Rectangle {
+            width: word.preferred-width + 2 * root.pad + (i > 0 ? 1px : 0px);
+            Rectangle {
+                x: 0;
+                y: 3px;
+                width: 1px;
+                height: 10px;
+                visible: i > 0;
+                background: Theme.line;
+            }
+
+            word := Text {
+                x: (i > 0 ? 1px : 0px) + root.pad;
+                width: self.preferred-width;
+                text: Caps.of(choice.text);
+                color: hit.has-hover && RulesetView.editable ? Theme.cursor : choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : RulesetView.editable ? Theme.muted : Theme.dim;
+                font-family: Theme.display;
+                font-size: 10px;
+                font-weight: Theme.display-bold;
+                letter-spacing: 0.8px;
+                vertical-alignment: center;
+            }
+
+            hit := Focusable {
+                y: -root.reach;
+                height: 16px + 2 * root.reach;
+                nav: "rules.set";
+                nav-index: i;
+                enabled: RulesetView.editable;
+            }
+        }
     }
 }
 
@@ -211,12 +275,13 @@ export component RulesetPage inherits Page {
     // In the right panel (a phone's body): the toolbar's rows, then the items.
     property <length> inner-x: Theme.phone ? 0px : root.right-x + root.pad;
     property <length> inner-width: Theme.phone ? root.right-width : root.right-width - 2 * root.pad;
-    property <length> head-y: Theme.phone ? root.panel-y : root.panel-y + root.pad;
-    property <bool> has-choices: RulesetView.choices.length > 0;
-    // (A phone's toolbar: the search alone on its row, ALLOW ALL and ALLOW NONE on the next.)
-    property <length> buttons-y: Theme.phone ? root.head-y + 52px : root.head-y;
-    property <length> choices-y: root.buttons-y + 52px;
-    property <length> items-y: root.has-choices ? root.choices-y + 52px : root.choices-y;
+    // Each panel's header line, as the build editor's panes have theirs: its title, what it holds, its small words
+    // at its right end. Under the category's, the search; under that, the items.
+    property <length> line-y: Theme.phone ? root.panel-y : root.panel-y + 14px;
+    property <length> search-y: root.line-y + 30px;
+    property <length> items-y: root.search-y + 52px;
+    // (Where the header line's words begin: what the line says ends before them.)
+    property <length> words-x: RulesetView.choices.length > 0 ? version-picks.x : category-picks.x;
     property <length> items-bottom: Theme.phone ? root.panel-y + root.panel-height : root.panel-y + root.panel-height - root.pad;
     // The items' cells: as many columns as `cell-min` wide fit (one on a phone), `gap` apart.
     property <length> cell-min: 260px;
@@ -224,6 +289,10 @@ export component RulesetPage inherits Page {
     property <int> columns: Theme.phone ? 1 : max(1, floor((items.view-width + root.gap) / (root.cell-min + root.gap)));
     property <length> cell-width: (items.view-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> pitch: Theme.list-row + Theme.list-gap;
+    // In sections: each a column on a desktop (its head over its items), stacked on a phone.
+    property <bool> sectioned: RulesetView.sections.length > 0;
+    property <length> section-head: 28px;
+    property <length> section-width: (items.view-width - (RulesetView.sections.length - 1) * root.gap) / max(1, RulesetView.sections.length);
     // (The ruleset's name, a field where it can be renamed: the user, "you should just be able to edit the build
     // name/ruleset name from the edit screen in the header". The game, locked, as the build editor shows it.)
     title: RulesetView.name;
@@ -290,11 +359,19 @@ export component RulesetPage inherits Page {
             height: root.panel-height;
         }
 
+        if !Theme.phone: Label {
+            x: root.pad;
+            y: root.line-y;
+            width: self.preferred-width;
+            height: 16px;
+            text: Caps.of(@tr("Categories"));
+        }
+
         if !Theme.phone: categories := ListView {
             x: 8px;
-            y: root.panel-y + 8px;
+            y: root.search-y;
             width: root.list-width - 16px;
-            height: root.panel-height - 16px;
+            height: root.panel-y + root.panel-height - 8px - self.y;
             nav: "rules.categories";
             count: RulesetView.categories.length;
             row-height: 40px;
@@ -334,68 +411,55 @@ export component RulesetPage inherits Page {
             height: root.panel-height;
         }
 
-        none := Button {
-            x: root.inner-x + root.inner-width - self.width;
-            y: root.buttons-y;
-            width: self.natural-width;
-            nav: "rules.none";
-            text: Caps.of(@tr("Allow none"));
-            enabled: RulesetView.editable;
+        // (The category's name, how much of it is allowed; at the line's right end its versions' quick choices, then ALL
+        // and NONE: small words, as the build editor's are.)
+        // (A phone's select over the line names the category: the line has what it allows alone.)
+        category-title := Label {
+            x: root.inner-x;
+            y: root.line-y;
+            width: min(self.preferred-width, root.words-x - 16px - self.x);
+            height: 16px;
+            visible: !Theme.phone;
+            text: Caps.of(RulesetView.categories[RulesetView.category].name);
+            color: Theme.cursor;
         }
 
-        all := Button {
-            x: none.x - 8px - self.width;
-            y: root.buttons-y;
-            width: self.natural-width;
-            nav: "rules.all";
-            text: Caps.of(@tr("Allow all"));
-            enabled: RulesetView.editable;
+        Text {
+            x: Theme.phone ? root.inner-x : category-title.x + category-title.width + 12px;
+            y: root.line-y;
+            width: max(0px, root.words-x - 12px - self.x);
+            height: 16px;
+            text: RulesetView.categories[RulesetView.category].note;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        category-picks := AllNone {
+            x: root.inner-x + root.inner-width - self.width + 6px;
+            y: root.line-y;
+            all-nav: "rules.all";
+            none-nav: "rules.none";
+            set: RulesetView.editable ? 0 : -1;
+            all: RulesetView.category-all;
+            none: RulesetView.category-none;
+        }
+
+        version-picks := VersionPicks {
+            x: category-picks.x - 12px - self.width;
+            y: root.line-y;
+            visible: RulesetView.choices.length > 0;
         }
 
         Field {
             x: root.inner-x;
-            y: root.head-y;
-            width: Theme.phone ? root.inner-width : max(120px, all.x - 16px - self.x);
+            y: root.search-y;
+            width: root.inner-width;
             nav: "rules.search";
             text: RulesetView.search;
             placeholder: @tr("Search");
-        }
-
-        // (A version's own items, as one choice each, and All: each a segment, lit where the items allowed of the
-        // versions' are exactly its.)
-        choices := Rectangle {
-            x: root.inner-x;
-            y: root.choices-y;
-            width: RulesetView.choices.length * 112px;
-            height: 36px;
-            visible: root.has-choices;
-            for choice[i] in RulesetView.choices: Rectangle {
-                x: i * 112px;
-                y: 0;
-                width: 110px;
-                height: 36px;
-                background: choice.chosen ? Theme.tint : (hit.has-hover ? Theme.raised-hover : Theme.raised);
-                border-width: 1px;
-                border-color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : Theme.line;
-                Text {
-                    x: 8px;
-                    width: parent.width - 16px;
-                    text: Caps.of(choice.text);
-                    color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : (RulesetView.editable ? Theme.text : Theme.dim);
-                    font-family: Theme.display;
-                    font-size: 12px;
-                    font-weight: Theme.display-bold;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                    overflow: elide;
-                }
-
-                hit := Focusable {
-                    nav: "rules.set";
-                    nav-index: i;
-                    enabled: RulesetView.editable;
-                }
-            }
         }
     }
 
@@ -408,11 +472,45 @@ export component RulesetPage inherits Page {
             width: root.inner-width;
             height: root.items-bottom - root.items-y;
             nav: "rules.items";
-            content-height: max(0px, ceil(RulesetView.items.length / root.columns) * root.pitch - Theme.list-gap);
+            content-height: !root.sectioned ? max(0px, ceil(RulesetView.items.length / root.columns) * root.pitch - Theme.list-gap)
+                : Theme.phone ? RulesetView.sections.length * root.section-head + RulesetView.items.length * root.pitch
+                : root.section-head + RulesetView.section-rows * root.pitch;
+            // (A section's head: its version's name in its color, its ALL and NONE at the right end.)
+            for section[k] in RulesetView.sections: Rectangle {
+                x: Theme.phone ? 0px : k * (root.section-width + root.gap);
+                y: Theme.phone ? k * root.section-head + section.start * root.pitch : 0px;
+                width: Theme.phone ? items.view-width : root.section-width;
+                height: root.section-head;
+                Text {
+                    x: 8px;
+                    width: max(0px, picks.x - 8px - self.x);
+                    text: section.name;
+                    color: section.tone;
+                    font-family: Theme.display;
+                    font-size: 10px;
+                    font-weight: Theme.display-bold;
+                    letter-spacing: 0.8px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                picks := AllNone {
+                    x: parent.width - self.width - 2px;
+                    y: (parent.height - self.height) / 2;
+                    all-nav: "rules.items.all";
+                    none-nav: "rules.items.none";
+                    set: RulesetView.editable ? k : -1;
+                    all: section.all;
+                    none: section.none;
+                }
+            }
+
             for line[i] in RulesetView.items: ItemRow {
-                x: Math.mod(i, root.columns) * (root.cell-width + root.gap);
-                y: floor(i / root.columns) * root.pitch;
-                width: root.cell-width;
+                x: !root.sectioned ? Math.mod(i, root.columns) * (root.cell-width + root.gap) : Theme.phone ? 0px : line.section * (root.section-width + root.gap);
+                y: !root.sectioned ? floor(i / root.columns) * root.pitch
+                    : Theme.phone ? (line.section + 1) * root.section-head + (RulesetView.sections[line.section].start + line.slot) * root.pitch
+                    : root.section-head + line.slot * root.pitch;
+                width: !root.sectioned ? root.cell-width : Theme.phone ? items.view-width : root.section-width;
                 height: Theme.list-row;
                 line: line;
                 nav-index: i;

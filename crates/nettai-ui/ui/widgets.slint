@@ -15,7 +15,7 @@
 // Motion (docs/app.md §10): each control moves by itself (a press flashes, a value slides in its box, a chosen
 // row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
 
-import { Theme, Audit } from "theme.slint";
+import { Theme, Audit, Caps } from "theme.slint";
 import { Nav, NavKind, Focusable, Drag } from "nav.slint";
 import { Tween, Pulse } from "motion.slint";
 
@@ -391,6 +391,73 @@ export component Button inherits Rectangle {
         if root.down {
             root.presses += 1;
         }
+    }
+}
+
+// A list's ALL and NONE (docs/design/app-ui.md §2.69; the user: "the souls/crosses should be able to select
+// all/none"): two words in the version heads' letters at the right end of the line they are on, a hairline between,
+// each its own control (`all-nav` and `none-nav`, of `set`: the Navi tab's forms, the ruleset's sections); muted, dim
+// where it would do nothing, the cursor's color under the pointer. Each takes a little more than its line, a phone's
+// more to be tapped, and nothing moves for it.
+export component AllNone inherits Rectangle {
+    in property <string> all-nav;
+    in property <string> none-nav;
+    in property <int> set: -1;
+    in property <bool> all;
+    in property <bool> none;
+    property <length> reach: Theme.phone ? 6px : 2px;
+    property <length> pad: 6px;
+    height: 16px;
+    width: all-word.preferred-width + none-word.preferred-width + 4 * root.pad + 1px;
+    visible: root.set >= 0;
+    all-word := Text {
+        x: root.pad;
+        width: self.preferred-width;
+        text: Caps.of(@tr("All"));
+        color: all-hit.has-hover ? Theme.cursor : root.all ? Theme.muted : Theme.dim;
+        font-family: Theme.display;
+        font-size: 10px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.8px;
+        vertical-alignment: center;
+    }
+
+    Rectangle {
+        x: all-word.preferred-width + 2 * root.pad;
+        y: 3px;
+        width: 1px;
+        height: 10px;
+        background: Theme.line;
+    }
+
+    none-word := Text {
+        x: all-word.preferred-width + 3 * root.pad + 1px;
+        width: self.preferred-width;
+        text: Caps.of(@tr("None"));
+        color: none-hit.has-hover ? Theme.cursor : root.none ? Theme.muted : Theme.dim;
+        font-family: Theme.display;
+        font-size: 10px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.8px;
+        vertical-alignment: center;
+    }
+
+    all-hit := Focusable {
+        x: 0;
+        y: -root.reach;
+        width: all-word.preferred-width + 2 * root.pad;
+        height: 16px + 2 * root.reach;
+        nav: root.set >= 0 ? root.all-nav : "";
+        nav-index: root.set;
+    }
+
+    none-hit := Focusable {
+        x: all-hit.width + 1px;
+        y: -root.reach;
+        width: none-word.preferred-width + 2 * root.pad;
+        height: 16px + 2 * root.reach;
+        nav: root.set >= 0 ? root.none-nav : "";
+        nav-index: root.set;
     }
 }
 

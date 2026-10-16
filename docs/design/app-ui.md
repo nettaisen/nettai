@@ -1281,6 +1281,22 @@ Each is settled unless the user changes it.
     itself: Up and Down a row, Left and Right a cell). A phone: no panels, one column, the search alone on its row.
     (§2.59; docs/app.md §10.)
 
+79. **The ruleset's page as the build editor's panes** (2026-10-16). The user: "for crosses and souls can you separate
+    them into sections instead like on the navi screen?", then "i feel like the ruleset editor ui is still super
+    inconsistent".
+    - *A header line a panel,* as the editor's panes have: CATEGORIES over the categories; the category's name (in
+      the cursor's color) and what it allows over its items, its small words at the line's right end: the versions'
+      quick choices (each version's own alone, in its color where chosen, then BOTH), then ALL | NONE, the Navi
+      tab's `AllNone` (now widgets.slint's). The big ALLOW ALL and ALLOW NONE buttons and the boxed quick choices are
+      gone. Under the line the search, the panel's width, as a library's is. A phone: the select over the line names
+      the category, the line has what it allows and the words.
+    - *Version marks* on items are the editor's `VersionMark`, not pills.
+    - *Sections:* a category of forms whose every one is a version's own (Crosses, Souls, Beast Out) shows a section
+      a version in place of the quick choices: its version's name in its color, its ALL | NONE (that section's items
+      shown), its items under it with no mark of their own; the sections side by side on a desktop, stacked on a
+      phone.
+    (§2.69, §2.78; docs/app.md §10.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
