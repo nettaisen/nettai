@@ -68,8 +68,6 @@ pub enum Kind {
     Button,
     /// A setting: Enter takes it, and Left and Right change it while it is taken.
     Stepper,
-    /// Left and Right change it at once (where they lead nowhere else).
-    Dial,
     Field,
     /// A row of a list (`ListView`).
     Row,
@@ -170,7 +168,6 @@ impl Registry {
                 _ => {
                     let kind = match kind {
                         NavKind::Stepper => Kind::Stepper,
-                        NavKind::Dial => Kind::Dial,
                         NavKind::Field => Kind::Field,
                         _ => Kind::Button,
                     };
@@ -386,7 +383,7 @@ pub enum Did {
     Nothing,
     /// Enter, a click, a tap.
     Activate(Key),
-    /// Left or Right on a setting taken or a dial, a click on its arrow: -1 or 1.
+    /// Left or Right on a setting taken, a click on its arrow: -1 or 1.
     Step(Key, i32),
     /// A field's text: as it is typed (`done` false), then as it is left (confirmed, or restored).
     Edit { key: Key, text: String, done: bool },
@@ -801,8 +798,7 @@ impl Nav {
     }
 
     /// An arrow: the focus goes to the neighbor in that direction, a list's row to the next one. On a setting
-    /// taken or a dial Left and Right change its value instead ([`Did::Step`]); Up and Down let a setting go and
-    /// move on.
+    /// taken Left and Right change its value instead ([`Did::Step`]); Up and Down let it go and move on.
     pub fn go(&mut self, ui: &AppWindow, dir: Direction) -> Did {
         let Some(key) = self.focus.clone() else { return Did::Nothing };
         let step = match dir {
@@ -816,7 +812,7 @@ impl Nav {
         }
         let next = {
             let registry = self.registry.borrow();
-            if step != 0 && (grabbed || registry.kind(&key) == Some(Kind::Dial)) {
+            if step != 0 && grabbed {
                 return Did::Step(key, step);
             }
             // A list's rows first.

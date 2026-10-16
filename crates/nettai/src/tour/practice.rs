@@ -221,14 +221,17 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // the focus moves a row without the list moving, and its last row is scrolled to in a list of the same height.
     add(SETTLE, focus_row(PracticeOption::DummysBuild));
     shot(add, "practice-menu-dummys-build", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
+    // (A select: Enter opens its list, the next chosen from it.)
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
     add(2500, Box::new(|_, _, _| {}));
     shot(add, "practice-menu-dummys-build-value", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the Dummy's build's list"));
     shot(add, "practice-menu-dummys-build-list", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Up));
+    add(SETTLE, act(Action::Confirm));
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -255,6 +258,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     // (It opens on RESUME: the focus is put on a row.)
     add(SETTLE, focus_row(PracticeOption::Action));
+    // (A setting is taken to change: Enter, then the arrows; taken before the pair's first.)
+    add(SETTLE, act(Action::Confirm));
     shot(add, "practice-menu", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-value", lang, size, Differs::Picture, true);
@@ -264,13 +269,16 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // rows below it a row down: not compared); its Level Hard, the row a value apart. Then its Action back as it
     // was, and the Level row gone with it.
     add(SETTLE, focus_row(PracticeOption::Action));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-fights", lang, size, Differs::Unheld, false);
     add(SETTLE, focus_row(PracticeOption::Level));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "practice-menu-level", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-level-hard", lang, size, Differs::Picture, false);
     add(SETTLE, focus_row(PracticeOption::Action));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Left));
     shot(add, "practice-menu-moves-again", lang, size, Differs::Unheld, false);
     // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
@@ -284,15 +292,16 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-menu-arena-grid", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-arena-grid-focus", lang, size, Differs::Picture, false);
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Confirm));
     add(2500, Box::new(|_, _, _| {}));
     shot(add, "practice-menu-arena-value", lang, size, Differs::Unheld, false);
     // The Background row, and its value changed: the battle goes on where it is, drawn on the next background
     // (the field, the HP and the round as they were).
     add(SETTLE, focus_row(PracticeOption::Background));
     shot(add, "practice-menu-background", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "practice-menu-background-value", lang, size, Differs::Unheld, false);
     // Its grid, open at the background chosen; the one beside it chosen from it, the battle drawn on that one.
     add(SETTLE, act(Action::Confirm));
@@ -317,9 +326,13 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some()))));
     add(SETTLE, focus_row(PracticeOption::Music));
     shot(add, "practice-menu-music", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "practice-menu-music-value", lang, size, Differs::Picture, false);
-    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::Up));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's music list"));
     shot(add, "practice-menu-music-list", lang, size, Differs::Unheld, false);
@@ -333,6 +346,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         ("practice-menu-draw", "practice-menu-draw-value", PracticeOption::ChipDraw),
     ] {
         add(SETTLE, focus_row(option));
+        add(SETTLE, act(Action::Confirm));
         shot(add, name, lang, size, Differs::Unheld, true);
         add(SETTLE, act(Action::Right));
         shot(add, changed, lang, size, Differs::Picture, false);
@@ -344,6 +358,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             let mut app = app.borrow_mut();
             let at = practice::row_of(&app.shell, PracticeOption::InputDisplay).expect("the input display's row");
             app.shell.nav.focus("menu.rows.option", at);
+            app.act(Action::Confirm);
             app.act(Action::Right);
         }),
     );
@@ -372,6 +387,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         }),
     );
     add(SETTLE, focus_row(PracticeOption::Action));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Left));
     add(SETTLE, focus("menu.restart", 0));
     add(
@@ -461,7 +477,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
     add(4000, Box::new(|_, _, _| {}));
     add(SETTLE, focus_row(PracticeOption::DummysBuild));
-    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
     add(2500, Box::new(|_, _, _| {}));
     add(SETTLE, focus_row(PracticeOption::EditDummy));
     shot(add, "practice-menu-edit", lang, size, Differs::Unheld, false);
@@ -573,6 +591,7 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
     burst(add, "practice-menu-closes", &[0, 40, 90, 160], act(Action::Back));
     burst(add, "practice-menu-opens", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     add(SETTLE, focus_row(PracticeOption::Action));
+    add(SETTLE, act(Action::Confirm));
     burst(add, "practice-menu-value", &[0, 30, 60, 100, 180], act(Action::Right));
     add(
         SETTLE,
