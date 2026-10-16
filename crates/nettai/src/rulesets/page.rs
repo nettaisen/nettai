@@ -14,7 +14,7 @@ use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle, Registry};
 use nettai_match::ruleset::{Category, Item, Name, Rulesets};
-use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetView};
+use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetSection, RulesetView};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -51,6 +51,8 @@ pub struct Page {
     search: String,
     /// The items listed of the category shown, by handle, in its list's order.
     rows: Vec<Item>,
+    /// In a category in sections, each shown row's section (by its place in `RulesetView.sections`).
+    row_sections: Vec<usize>,
     /// The quick choices' rows, changed in place where their count stays (their controls made again would drop the
     /// focus a press on one left there).
     choices: Rc<VecModel<RulesetChoice>>,
@@ -69,7 +71,7 @@ impl Page {
     pub fn open(shell: &mut Shell, kit: Rc<Kit>, shown: Pickable, viewed: bool, back: &str) -> Option<Page> {
         let rulesets = kit.rulesets()?;
         let choices = Rc::new(VecModel::default());
-        let mut page = Page { kit, rulesets, shown, viewed, category: 0, search: String::new(), rows: Vec::new(), choices: choices.clone() };
+        let mut page = Page { kit, rulesets, shown, viewed, category: 0, search: String::new(), rows: Vec::new(), row_sections: Vec::new(), choices: choices.clone() };
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
         view.set_choices(ModelRc::from(choices));
@@ -160,16 +162,21 @@ impl Page {
             let [_, r, g, b] = color.to_be_bytes();
             slint::Color::from_rgb_u8(r, g, b)
         };
-        // A version's own items as one choice each, then All: lit where they are exactly what is allowed of them.
+        // A category of forms whose every one is a version's own (Crosses, Souls, Beast Out) is shown in a section a
+        // version, as the Navi tab has them (the user: "for crosses and souls can you separate them into sections
+        // instead like on the navi screen?"), in place of the quick choices.
         let groups = rulesets.groups_in(&category);
+        let sectioned = category.registry == Registry::Form && !groups.is_empty() && category.items.iter().all(|i| rulesets.group_of(category.registry, i).is_some());
+        // A version's own items as one choice each, then All: lit where they are exactly what is allowed of them.
         let chosen = ruleset.groups_chosen(&rulesets, &category);
         let mut choices: Vec<RulesetChoice> = groups
             .iter()
+            .filter(|_| !sectioned)
             .map(|g| RulesetChoice { text: kit.version_name(names, &g.id).into(), version: true, tone: tone(g.color), chosen: chosen.as_deref() == Some(&[g.id.as_str()][..]) })
             .collect();
-        if !groups.is_empty() {
+        if !groups.is_empty() && !sectioned {
             let all = chosen.as_ref().is_some_and(|c| c.len() == groups.len());
-            choices.push(RulesetChoice { text: view.get_all_word(), version: false, tone: Default::default(), chosen: all });
+            choices.push(RulesetChoice { text: view.get_both_word(), version: false, tone: Default::default(), chosen: all });
         }
         if self.choices.row_count() == choices.len() {
             for (i, choice) in choices.into_iter().enumerate() {
@@ -210,13 +217,52 @@ impl Page {
                 None => name,
             }
         };
-        let rows: Vec<(Item, String)> = items.into_iter().map(|i| {
+        let mut rows: Vec<(Item, String)> = items.into_iter().map(|i| {
             let name = shown(&i);
             (i, name)
         }).filter(|(_, name)| search.is_empty() || name.to_lowercase().contains(&search)).collect();
+        // (In sections: the rows by their versions' order, each version's in its own order; a version none of whose
+        // items the search leaves has no section.)
+        let section_of = |item: &Item| rulesets.group_of(category.registry, item).and_then(|g| groups.iter().position(|o| o.id == g.id)).unwrap_or(0);
+        if sectioned {
+            rows.sort_by_key(|(item, _)| section_of(item));
+        }
+        let shown_groups: Vec<usize> = if sectioned {
+            let mut seen: Vec<usize> = rows.iter().map(|(item, _)| section_of(item)).collect();
+            seen.dedup();
+            seen
+        } else {
+            Vec::new()
+        };
+        self.row_sections = rows.iter().map(|(item, _)| shown_groups.iter().position(|&g| g == section_of(item)).unwrap_or(0)).collect();
+        let sections: Vec<RulesetSection> = shown_groups
+            .iter()
+            .enumerate()
+            .map(|(k, &g)| {
+                let group = groups[g];
+                let of: Vec<&Item> = rows.iter().zip(&self.row_sections).filter(|(_, s)| **s == k).map(|((item, _), _)| item).collect();
+                let start = self.row_sections.iter().filter(|s| **s < k).count();
+                let allowed = of.iter().filter(|item| ruleset.allows_item(&category.fact, item)).count();
+                RulesetSection {
+                    name: kit.version_name(names, &group.id).into(),
+                    tone: tone(group.color),
+                    start: start as i32,
+                    count: of.len() as i32,
+                    all: allowed < of.len(),
+                    none: allowed > 0,
+                }
+            })
+            .collect();
+        let section_rows = sections.iter().map(|s| s.count).max().unwrap_or(0);
+        let mut slots = vec![0; sections.len()];
         let lines: Vec<RulesetItem> = rows
             .iter()
-            .map(|(item, name)| {
+            .zip(&self.row_sections)
+            .map(|((item, name), &section)| {
+                let slot = slots.get_mut(section).map_or(0, |n| {
+                    *n += 1;
+                    *n - 1
+                });
                 let h = item.def;
                 let picture = match category.registry {
                     Registry::Chip => kit.pictures.icon(ChipHandle(h)),
@@ -228,14 +274,22 @@ impl Page {
                 RulesetItem {
                     picture,
                     name: name.as_str().into(),
-                    note: group.map(|g| kit.version_name(names, &g.id)).unwrap_or_default().into(),
+                    // (None in a version's section, whose head says it.)
+                    note: group.filter(|_| !sectioned).map(|g| kit.version_name(names, &g.id)).unwrap_or_default().into(),
                     tone: group.map(|g| tone(g.color)).unwrap_or_default(),
                     allowed: ruleset.allows_item(&category.fact, item),
+                    section: if sectioned { section as i32 } else { -1 },
+                    slot,
                 }
             })
             .collect();
         self.rows = rows.into_iter().map(|(h, _)| h).collect();
         view.set_items(ModelRc::new(VecModel::from(lines)));
+        view.set_sections(ModelRc::new(VecModel::from(sections)));
+        let allowed = ruleset.allowed_count(&category);
+        view.set_category_all(allowed < category.items.len());
+        view.set_category_none(allowed > 0);
+        view.set_section_rows(section_rows);
     }
 
     /// Refused: the ruleset can't be changed here, which the reserved line says, in the error red.
@@ -318,6 +372,17 @@ impl Page {
                 self.change(shell, |r, _| {
                     let allowed = r.allows_item(&fact, &item);
                     r.set_allowed(&fact, &item, !allowed);
+                })
+            }
+            // A section's ALL or NONE: its rows shown, all allowed or none.
+            "rules.items.all" | "rules.items.none" => {
+                let fact = self.category().fact.clone();
+                let allow = id == "rules.items.all";
+                let of: Vec<Item> = self.rows.iter().zip(&self.row_sections).filter(|(_, s)| **s == index.max(0) as usize).map(|(item, _)| item.clone()).collect();
+                self.change(shell, |r, _| {
+                    for item in &of {
+                        r.set_allowed(&fact, item, allow);
+                    }
                 })
             }
             "rules.all" | "rules.none" => {

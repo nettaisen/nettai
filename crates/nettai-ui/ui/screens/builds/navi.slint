@@ -12,7 +12,7 @@
 import { Theme, Caps } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Note, Select, Button, ProblemNote } from "../../widgets.slint";
+import { Cut, PanelBack, Note, Select, Button, ProblemNote, AllNone } from "../../widgets.slint";
 import { VersionTag } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
@@ -244,70 +244,6 @@ component FormRow inherits Rectangle {
     }
 }
 
-// A list of forms' ALL and NONE (docs/design/app-ui.md §2.69; the user: "the souls/crosses should be able to select
-// all/none"): two words in the version heads' letters at the right end of the line they are on, a hairline between,
-// each its own control (`forms-all`, `forms-none`, of `set`); muted, dim where it would do nothing, the cursor's color
-// under the pointer. Each takes a little more than its line, a phone's more to be tapped, and nothing moves for it.
-component FormPicks inherits Rectangle {
-    in property <int> set: -1;
-    in property <bool> all;
-    in property <bool> none;
-    property <length> reach: Theme.phone ? 6px : 2px;
-    property <length> pad: 6px;
-    height: 16px;
-    width: all-word.preferred-width + none-word.preferred-width + 4 * root.pad + 1px;
-    visible: root.set >= 0;
-    all-word := Text {
-        x: root.pad;
-        width: self.preferred-width;
-        text: Caps.of(@tr("All"));
-        color: all-hit.has-hover ? Theme.cursor : root.all ? Theme.muted : Theme.dim;
-        font-family: Theme.display;
-        font-size: 10px;
-        font-weight: Theme.display-bold;
-        letter-spacing: 0.8px;
-        vertical-alignment: center;
-    }
-
-    Rectangle {
-        x: all-word.preferred-width + 2 * root.pad;
-        y: 3px;
-        width: 1px;
-        height: 10px;
-        background: Theme.line;
-    }
-
-    none-word := Text {
-        x: all-word.preferred-width + 3 * root.pad + 1px;
-        width: self.preferred-width;
-        text: Caps.of(@tr("None"));
-        color: none-hit.has-hover ? Theme.cursor : root.none ? Theme.muted : Theme.dim;
-        font-family: Theme.display;
-        font-size: 10px;
-        font-weight: Theme.display-bold;
-        letter-spacing: 0.8px;
-        vertical-alignment: center;
-    }
-
-    all-hit := Focusable {
-        x: 0;
-        y: -root.reach;
-        width: all-word.preferred-width + 2 * root.pad;
-        height: 16px + 2 * root.reach;
-        nav: root.set >= 0 ? "forms-all" : "";
-        nav-index: root.set;
-    }
-
-    none-hit := Focusable {
-        x: all-hit.width + 1px;
-        y: -root.reach;
-        width: none-word.preferred-width + 2 * root.pad;
-        height: 16px + 2 * root.reach;
-        nav: root.set >= 0 ? "forms-none" : "";
-        nav-index: root.set;
-    }
-}
-
 // A choice's segmented control, as the app's two-way one (`Seg`) but of as many presets as the choice has, and as
 // tall as the editor's lists' rows (a phone's a tap's, `Theme.row`): each preset a segment as wide as its name, the
 // build's tinted and underlined in the cursor's color. Left and Right step it, Enter takes the next, a click or a tap
@@ -534,7 +470,9 @@ export component NaviTab inherits Rectangle {
             }
 
             // (A list whose forms aren't grouped by version: its ALL and NONE at its heading's right end.)
-            whole := FormPicks {
+            whole := AllNone {
+                all-nav: "forms-all";
+                none-nav: "forms-none";
                 x: parent.width - self.width - 2px;
                 y: 0;
                 set: group.set;
@@ -563,7 +501,9 @@ export component NaviTab inherits Rectangle {
                     overflow: elide;
                 }
 
-                picks := FormPicks {
+                picks := AllNone {
+                    all-nav: "forms-all";
+                    none-nav: "forms-none";
                     x: parent.width - self.width - 2px;
                     set: form.set;
                     all: form.all;

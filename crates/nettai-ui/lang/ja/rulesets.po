@@ -38,16 +38,17 @@ msgstr "1バージョンのみ"
 msgid "Mix versions"
 msgstr "混在可"
 
-# A category's head: its items all allowed or none, a version's quick choice and All, the search.
-msgid "Allow all"
-msgstr "すべて許可"
-
-msgid "Allow none"
-msgstr "すべて禁止"
-
 msgid "Search"
 msgstr "検索"
 
 # The key hint of an item's row.
 msgid "Allow or not"
 msgstr "許可／禁止"
+
+# The categories' panel's title.
+msgid "Categories"
+msgstr "カテゴリー"
+
+# The quick choice of every version's own items, beside the category's ALL and NONE.
+msgid "Both"
+msgstr "両方"
