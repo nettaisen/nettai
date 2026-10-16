@@ -1,9 +1,9 @@
 //! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds over the tiles
 //! that practice with one or make a link. + NEW BUILD makes one of the game's own
 //! (`nettai_match::build::Builds::new_build`: its own navi, the forms of the version chosen, the folder a new save starts
-//! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of a save file chosen in the
-//! system's dialog (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens the chosen
-//! build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
+//! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of each save file chosen in the
+//! system's dialog, one or more (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens
+//! the chosen build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
 //! PRACTICE goes straight into a practice battle with it (`crate::screens::practice::open`), whose EXIT comes
 //! back here too; the
 //! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE and, apart, DELETE (which asks
@@ -20,13 +20,22 @@ use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_ui::{BuildDialog, ButtonKind, DialogButton, PlayView};
 use slint::{ComponentHandle, ModelRc, VecModel};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The save files a build is made of: what the emulators and Tango name them.
 const SAVES: [&str; 4] = ["sav", "sa1", "srm", "raw"];
 
 /// The tag of the question DELETE asks (`Screen::answered`: 1 is DELETE).
 pub(super) const DELETE: &str = "play.delete";
+
+/// Keep `build` as a new file.
+fn keep(kit: &Kit, build: &Build) -> Result<(), UserError> {
+    let path = store::new_path(&kit.game, &build.name);
+    store::write(&path, kit.content(), &kit.game, build).map_err(|why| {
+        crate::errors::log("keeping a new build", &why);
+        UserError::Other
+    })
+}
 
 /// What the build's menu does, in its order: DELETE last, set apart.
 #[derive(Clone, Copy, PartialEq)]
@@ -202,12 +211,10 @@ impl Play {
 
     /// Keep `build` as a new file, and choose it.
     fn add(&mut self, shell: &mut Shell, kit: &Kit, build: &Build) {
-        let path = store::new_path(&kit.game, &build.name);
-        if let Err(why) = store::write(&path, kit.content(), &kit.game, build) {
-            crate::errors::log("keeping a new build", &why);
-            return shell.fail(UserError::Other);
+        match keep(kit, build) {
+            Ok(()) => self.reload(shell, Some(build.name.clone())),
+            Err(error) => shell.fail(error),
         }
-        self.reload(shell, Some(build.name.clone()));
     }
 
     /// A new build from the game's `version`th group (its version's forms), named `name`, made for the ruleset the
@@ -224,43 +231,68 @@ impl Play {
         }
     }
 
-    /// The NEW BUILD dialog's FROM A SAVE FILE…: a save file chosen in the system's dialog.
-    pub(super) fn import_chosen_file(&mut self, shell: &mut Shell) {
+    /// The NEW BUILD dialog's FROM A SAVE FILE…: save files chosen in the system's dialog, one or more, a build
+    /// of each.
+    pub(super) fn import_chosen_files(&mut self, shell: &mut Shell) {
         let kind = shell.ui().global::<PlayView>().get_save_files().to_string();
-        if let Some(path) = shell.choose_file(&kind, &SAVES) {
-            self.import(shell, &path);
+        let paths = shell.choose_files(&kind, &SAVES);
+        if !paths.is_empty() {
+            self.import(shell, &paths);
         }
     }
 
-    /// A build of the save at `path`, named for the file.
-    pub(super) fn import(&mut self, shell: &mut Shell, path: &Path) {
+    /// A build of each save at `paths`, named for its file; the last one made is chosen. A save that makes none
+    /// (another game's, or one that doesn't read) doesn't stop the others: the first such is said once they are made.
+    pub(super) fn import(&mut self, shell: &mut Shell, paths: &[PathBuf]) {
         let Some(kit) = builds::kit(shell) else { return };
-        let file = match std::fs::read(path) {
-            Ok(file) => file,
-            Err(why) => {
-                crate::errors::log(&format!("reading the save {}", path.display()), &why);
-                return shell.fail(UserError::Other);
+        let mut taken = self.taken();
+        let (mut made, mut refused) = (None, None);
+        for path in paths {
+            match self.build_of_save(shell, &kit, path, &taken).and_then(|(build, notice)| keep(&kit, &build).map(|()| (build, notice))) {
+                Ok((build, notice)) => {
+                    taken.push(build.name.clone());
+                    // (What the chosen build's save was put on: the last made's.)
+                    self.notice = notice;
+                    made = Some(build.name);
+                }
+                Err(error) => {
+                    refused.get_or_insert(error);
+                }
             }
-        };
+        }
+        if made.is_some() {
+            self.reload(shell, made);
+        }
+        if let Some(error) = refused {
+            shell.fail(error);
+        }
+    }
+
+    /// A build of the save at `path`, named for the file (none of `taken`), and what the save was put on where that
+    /// changed what it held ("Imported as Dark MegaMan"; empty where nothing did).
+    fn build_of_save(&self, shell: &Shell, kit: &Kit, path: &Path, taken: &[String]) -> Result<(Build, String), UserError> {
+        let file = std::fs::read(path).map_err(|why| {
+            crate::errors::log(&format!("reading the save {}", path.display()), &why);
+            UserError::Other
+        })?;
         let imported = match import::side_of_save(kit.content(), &kit.builds, &file) {
             Ok(imported) => imported,
-            Err(import::Refused::NotThisGames) => return shell.fail(UserError::WrongGameSave { game: Shell::game_name(&kit.game) }),
-            Err(import::Refused::Failed) => return shell.fail(UserError::Other),
+            Err(import::Refused::NotThisGames) => return Err(UserError::WrongGameSave { game: Shell::game_name(&kit.game) }),
+            Err(import::Refused::Failed) => return Err(UserError::Other),
         };
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-        let name = store::new_name(store::clean_name(&stem).trim_end(), &self.taken());
-        let mut build = Build::new(kit.content(), &name, imported.side).made_for(made_for_new(shell, &kit));
+        let name = store::new_name(store::clean_name(&stem).trim_end(), taken);
+        let mut build = Build::new(kit.content(), &name, imported.side).made_for(made_for_new(shell, kit));
         build.settle(kit.content(), &kit.builds, &crate::screens::builds::editor::navi_only_fields(kit.content()));
-        // What the save was put on, where that changed what it held: "Imported as Dark MegaMan".
         let ui = shell.ui();
         let graphics = kit.ready.graphics(shell.lang);
         let names = Names::of(kit.content(), &graphics);
-        self.notice = imported.taken.first().map_or_else(String::new, |taken| {
+        let notice = imported.taken.first().map_or_else(String::new, |taken| {
             let preset = kit.builds.choice(&taken.choice).and_then(|c| c.preset(&taken.preset).map(|p| c.text_key(p)));
             let preset = preset.and_then(|key| names.text(nettai_match::build::TEXT_TABLE, &key)).unwrap_or_else(|| taken.preset.clone());
             ui.global::<nettai_ui::BuildWords>().invoke_imported_as(preset.into(), names.navi(build.side.navi(kit.content())).into()).into()
         });
-        self.add(shell, &kit, &build);
+        Ok((build, notice))
     }
 
     /// EDIT: the chosen build in Builds' editor (by its place in the list, `store::list`'s order), whose Back
