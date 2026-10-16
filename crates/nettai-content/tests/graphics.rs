@@ -528,12 +528,9 @@ fn edits_in_an_image_editor_come_through() {
     write_pack(&dir, &b);
     // Paint one pixel of the first part (tile 0) with color 9 of the
     // part's palette row, as an editor would.
-    let folder = dir.join("graphics/sprites/sprite-00-01");
-    let doc: nettai_content::sprite::SpriteDoc = serde_json::from_slice(&std::fs::read(folder.join("sprite.json")).unwrap()).unwrap();
-    let [x, y] = doc.tilesets[0].regions.iter().find(|r| r.tile == 0).unwrap().at;
-    let atlas = folder.join("atlas.png");
+    let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
-    img.set(x + 3, y + 2, 9);
+    img.set(3, 2, 9);
     img.save(&atlas).unwrap();
     let (back, report) = import(&dir);
     assert!(!report.has_errors(), "{report}");

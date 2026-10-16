@@ -141,22 +141,9 @@ as a layered view (§3.5) in which each part is a layer.
 
 ### 3.3 Files
 
-**`atlas.png`**: every part image, as an 8-bit indexed PNG, laid out as the
-poses they make. Each tile set is a cell drawn as the first layout that uses
-it draws it: every part at its offset and mirrored as drawn (a part drawn
-twice, as a mirrored half, shows twice). Cells sit in a grid with the
-object's place at the same point in each, so poses line up; where one pose
-is far bigger than the rest, cells take only their own room, in rows.
-
-Parts share atlas pixels only where both are clear or alike. Where two parts
-need a pixel in different colors (an arm over the body, a clear corner over a
-leg), the part that doesn't fit keeps the tiles that do; its other tiles move
-together the least distance that frees them, and a second drawing of a part
-shows only where it fits. Of three orders (largest part first, front first,
-back first) the extractor keeps the one nearest the frame as the game draws
-it. The shadow and parts that only later layouts swap in (a blink, a
-different hand) move whole, beside the pose. Tiles no part draws sit in rows
-under the pose.
+**`atlas.png`**: every part image once, as an 8-bit indexed PNG. A part image
+is the part's tiles as stored (unflipped), `width x height` pixels. Each tile
+set starts a new row of the atlas, so a row reads as one pose's pieces.
 
 - The PNG palette (PLTE) is palette set 0: 16 rows of 16 colors, 256
   entries. A pixel's value is `row * 16 + index`: `index` is the GBA color
@@ -193,12 +180,10 @@ under the pose.
 ```
 
 - `tilesets[t].regions`: which atlas rectangle fills tiles `tile..` of tile
-  set `t`, row by row as a sprite of that size reads them; `flip` (`h`, `v`,
-  `hv`) says the atlas shows the rectangle mirrored. A region is a whole
-  part or a piece of one (rows of it, or a run along a row), so its size
-  needn't be a hardware sprite size. Every tile of a tile set is in some
-  region (tiles no part draws get an 8x8 region of their own, so nothing is
-  lost; EXE6 has none). If two regions cover the same tile they must agree.
+  set `t`, row by row as a sprite of that size reads them. Every tile of a
+  tile set is in some region (tiles no part draws get an 8x8 region of their
+  own, so nothing is lost; EXE6 has none). If two regions cover the same tile
+  they must agree.
 - `layouts[l]`: the parts of layout `l`, first part the shadow. `flip` is
   `h`, `v` or `hv`; `palette` is the part's palette offset (omitted when 0).
 - `palette_fingerprint`: hashes of the atlas palette as exported, in order and
