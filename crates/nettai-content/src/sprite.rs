@@ -3,13 +3,11 @@
 //! A sprite is a folder (`graphics/sprites/CC-II/`, category and index in
 //! hex) of three files:
 //!
-//! - `atlas.png`: every part image the sprite draws, as an 8-bit indexed
-//!   PNG. Its palette is the sprite's palette set (16 rows of 16 colors;
-//!   `sprite_setPalette` picks the row); a part's pixels display in the row
-//!   of its palette offset. Each tile set is drawn as the pose it makes,
-//!   its parts where and as (mirrored) a frame draws them, the tiles of
-//!   parts that would cover each other moved apart, poses lined up in a
-//!   grid (see `figure`).
+//! - `atlas.png`: every part image the sprite draws, once each, as an
+//!   8-bit indexed PNG. Its palette is the sprite's palette set (16 rows of
+//!   16 colors; `sprite_setPalette` picks the row). A part image is the
+//!   part's tiles as stored (unflipped); its pixels display in the row of
+//!   the palette offset it is first drawn with.
 //! - `sprite.json`: the tile sets (which atlas rectangle fills which tiles)
 //!   and the frame layouts (the hardware sprites a frame is built from:
 //!   first tile, size, offset from the object, flips, palette offset). The
@@ -37,12 +35,10 @@ pub const FORMAT: &str = "nettai-content/sprite";
 pub const ANIMATIONS_FORMAT: &str = "nettai-content/animations";
 pub const VERSION: u32 = 1;
 
-/// Space between poses in the atlas, and above a pose's undrawn tiles.
+/// Atlas width in pixels (wider parts widen it).
+const ATLAS_WIDTH: u32 = 256;
+/// Space between parts in the atlas.
 const GAP: u32 = 8;
-/// The farthest a part moves along one way to clear the others.
-const MAX_SHIFT: i32 = 256;
-/// How much larger than the poses' own room a grid of equal cells may be.
-const GRID_SLACK: i64 = 4;
 /// The palette rows an indexed image holds (256 colors).
 pub const ATLAS_PALETTE_ROWS: usize = 16;
 
@@ -87,17 +83,12 @@ pub struct TilesetDoc {
     pub regions: Vec<RegionDoc>,
 }
 
-/// An atlas rectangle that fills tiles `tile..` of its tile set, row by
-/// row (after undoing `flip`). Regions may hold the same tiles where they
-/// agree.
+/// An atlas rectangle that fills tiles `tile..` of its tile set, row by row.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RegionDoc {
     pub tile: u16,
     pub size: [u8; 2],
     pub at: [u32; 2],
-    /// The atlas shows the region mirrored, as a frame draws it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flip: Option<Flip>,
 }
 
 /// One hardware sprite of a frame.
@@ -211,36 +202,14 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
         }
     }
     // Regions per tile set, in order of first use, each with the palette
-    // offset it is drawn with and where and how that part draws: every
-    // part of the first layout that draws the tile set (a part drawn again
-    // is a copy), then the parts only later layouts draw.
-    let mut regions: Vec<Vec<Region>> = vec![Vec::new(); sheet.tilesets.len()];
+    // offset it is first drawn with.
+    let mut regions: Vec<Vec<(u16, u8, u8, u8)>> = vec![Vec::new(); sheet.tilesets.len()];
     let mut known: HashMap<(u16, u16, u8, u8), ()> = HashMap::new();
-    // The layouts each tile set is drawn with, in order of first use.
-    let mut layouts: Vec<Vec<u16>> = vec![Vec::new(); sheet.tilesets.len()];
     for anim in &sheet.animations {
         for f in anim {
-            let seen = &mut layouts[f.tileset as usize];
-            let rank = seen.iter().position(|&l| l == f.parts).unwrap_or_else(|| {
-                seen.push(f.parts);
-                seen.len() - 1
-            });
-            for (k, p) in sheet.part_lists[f.parts as usize].iter().enumerate() {
-                let new = known.insert((f.tileset, p.tile, p.width, p.height), ()).is_none();
-                let region = Region {
-                    tile: p.tile,
-                    w: p.width,
-                    h: p.height,
-                    row: p.palette,
-                    offset: Some([p.x, p.y]),
-                    flip: (p.hflip, p.vflip),
-                    later: rank > 0,
-                    copy: !new,
-                    part: k,
-                };
-                let set = &mut regions[f.tileset as usize];
-                if (new || rank == 0) && !set.iter().any(|r| r.same_draw(&region)) {
-                    set.push(region);
+            for p in &sheet.part_lists[f.parts as usize] {
+                if known.insert((f.tileset, p.tile, p.width, p.height), ()).is_none() {
+                    regions[f.tileset as usize].push((p.tile, p.width, p.height, p.palette));
                 }
             }
         }
@@ -248,8 +217,8 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
     // Tiles no part draws get a grid region of their own so nothing is lost.
     for (t, set) in sheet.tilesets.iter().enumerate() {
         let mut covered = vec![false; set.len()];
-        for r in &regions[t] {
-            for i in r.tile as usize..r.tile as usize + (r.w as usize / 8) * (r.h as usize / 8) {
+        for &(tile, w, h, _) in &regions[t] {
+            for i in tile as usize..tile as usize + (w as usize / 8) * (h as usize / 8) {
                 if let Some(c) = covered.get_mut(i) {
                     *c = true;
                 }
@@ -257,39 +226,38 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
         }
         for (i, c) in covered.iter().enumerate() {
             if !c {
-                regions[t].push(Region {
-                    tile: i as u16,
-                    w: 8,
-                    h: 8,
-                    row: 0,
-                    offset: None,
-                    flip: (false, false),
-                    later: false,
-                    copy: false,
-                    part: 0,
-                });
+                regions[t].push((i as u16, 8, 8, 0));
             }
         }
     }
-    let figures: Vec<Vec<Piece>> = regions.iter().zip(&sheet.tilesets).map(|(set, tiles)| figure(set, tiles)).collect();
-    let (origins, width, height) = sheet_cells(&figures);
-    let mut atlas = Indexed::new(width, height, palette.clone());
+    // Shelf packing: each tile set starts a new shelf.
+    let width = regions.iter().flatten().map(|r| r.1 as u32).max().unwrap_or(8).max(ATLAS_WIDTH);
     let mut placed: Vec<Vec<RegionDoc>> = Vec::new();
-    for (t, pieces) in figures.iter().enumerate() {
-        let [ox, oy] = origins[t];
+    let mut y = 0;
+    for set in &regions {
+        let (mut x, mut shelf) = (0, 0);
         let mut docs = Vec::new();
-        for piece in pieces {
-            let at = [(ox + piece.at.x) as u32, (oy + piece.at.y) as u32];
-            // Clear pixels never cover a color another piece holds there.
-            for (k, &v) in piece_pixels(&sheet.tilesets[t], piece).iter().enumerate() {
-                let (x, y) = (at[0] + k as u32 % piece.at.w as u32, at[1] + k as u32 / piece.at.w as u32);
-                if v & 15 != 0 || atlas.get(x, y) & 15 == 0 {
-                    atlas.set(x, y, v);
-                }
+        for &(tile, w, h, _) in set {
+            if x + w as u32 > width {
+                y += shelf + GAP;
+                x = 0;
+                shelf = 0;
             }
-            docs.push(RegionDoc { tile: piece.tile, size: [piece.at.w as u8, piece.at.h as u8], at, flip: flip_doc(piece.flip) });
+            docs.push(RegionDoc { tile, size: [w, h], at: [x, y] });
+            x += w as u32 + GAP;
+            shelf = shelf.max(h as u32);
         }
+        y += shelf + GAP;
         placed.push(docs);
+    }
+    let height = y.saturating_sub(GAP).max(8);
+    let mut atlas = Indexed::new(width, height, palette.clone());
+    for (t, set) in placed.iter().enumerate() {
+        let tiles = &sheet.tilesets[t];
+        for (r, doc) in set.iter().enumerate() {
+            let row = regions[t][r].3;
+            draw_region(&mut atlas, tiles, doc, row);
+        }
     }
     let doc = SpriteDoc {
         format: FORMAT.into(),
@@ -339,315 +307,34 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
     ]
 }
 
-/// A region to place: a part's tiles, the palette row it shows in, and
-/// where the part draws from the object (none for tiles no part draws).
-#[derive(Clone)]
-struct Region {
-    tile: u16,
-    w: u8,
-    h: u8,
-    row: u8,
-    offset: Option<[i8; 2]>,
-    /// Drawn mirrored (h, v).
-    flip: (bool, bool),
-    /// Only layouts after the tile set's first draw it.
-    later: bool,
-    /// Another region holds the same tiles (the part is drawn again): it
-    /// shows where it fits and is left out elsewhere.
-    copy: bool,
-    /// Its place in the layout that first draws it: 0 is the shadow, at
-    /// the back; of the others the first is in front.
-    part: usize,
-}
-
-impl Region {
-    fn same_draw(&self, o: &Region) -> bool {
-        (self.tile, self.w, self.h, self.offset, self.flip) == (o.tile, o.w, o.h, o.offset, o.flip)
-    }
-}
-
-/// Tiles of a region that stay side by side in the atlas: `at`'s size
-/// holds them row by row from `tile`, mirrored by `flip`.
-#[derive(Clone, Copy, Debug)]
-struct Piece {
-    tile: u16,
-    row: u8,
-    at: Rect,
-    flip: (bool, bool),
-}
-
-fn flip_doc((h, v): (bool, bool)) -> Option<Flip> {
-    match (h, v) {
-        (false, false) => None,
-        (true, false) => Some(Flip::H),
-        (false, true) => Some(Flip::V),
-        (true, true) => Some(Flip::HV),
-    }
-}
-
-/// A rectangle in pixels.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Rect {
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
-}
-
-impl Rect {
-    fn union(self, o: Rect) -> Rect {
-        let (x, y) = (self.x.min(o.x), self.y.min(o.y));
-        Rect { x, y, w: (self.x + self.w).max(o.x + o.w) - x, h: (self.y + self.h).max(o.y + o.h) - y }
-    }
-}
-
-/// A tile set's regions as the pose they draw, from the object's place,
-/// in pieces: each part where and as the first layout that draws the tile
-/// set draws it, the largest first, then the parts it draws again, then
-/// the shadow, then the parts later layouts swap in. Parts share atlas
-/// pixels where both are clear or alike; a pixel two parts hold in
-/// different colors (an arm over the body, clear corners over a leg)
-/// can't be shared, so of a part that doesn't fit, the tiles that fit
-/// stay and the others go together the least distance that frees them,
-/// out from the pose's middle or along an axis (the shadow and swapped-in
-/// parts go whole); a part drawn again shows only where it fits. A part's
-/// tiles that stay side by side are one piece again. Tiles no part draws
-/// follow in rows under the pose.
-fn figure(regions: &[Region], tiles: &Tiles) -> Vec<Piece> {
-    struct Unit {
-        region: usize,
-        tx: usize,
-        ty: usize,
-        x: i32,
-        y: i32,
-        pixels: Vec<u8>,
-    }
-    let mut units: Vec<Unit> = Vec::new();
-    for (i, r) in regions.iter().enumerate() {
-        let Some([ox, oy]) = r.offset else { continue };
-        let (columns, rows) = (r.w as usize / 8, r.h as usize / 8);
-        for ty in 0..rows {
-            for tx in 0..columns {
-                let piece = Piece { tile: r.tile + (ty * columns + tx) as u16, row: r.row, at: Rect { x: 0, y: 0, w: 8, h: 8 }, flip: r.flip };
-                let (sx, sy) = (if r.flip.0 { columns - 1 - tx } else { tx }, if r.flip.1 { rows - 1 - ty } else { ty });
-                let (x, y) = (ox as i32 + 8 * sx as i32, oy as i32 + 8 * sy as i32);
-                units.push(Unit { region: i, tx, ty, x, y, pixels: piece_pixels(tiles, &piece) });
-            }
-        }
-    }
-    let at = |u: &Unit, p: usize, (dx, dy): (i32, i32)| (u.x + dx + p as i32 % 8, u.y + dy + p as i32 / 8);
-    let fits = |held: &HashMap<(i32, i32), u8>, u: &Unit, d: (i32, i32)| {
-        u.pixels.iter().enumerate().all(|(p, &v)| held.get(&at(u, p, d)).is_none_or(|&h| h == v || (h & 15 == 0 && v & 15 == 0)))
-    };
-    let hold = |held: &mut HashMap<(i32, i32), u8>, u: &Unit, d: (i32, i32)| {
-        for (p, &v) in u.pixels.iter().enumerate() {
-            let px = held.entry(at(u, p, d)).or_insert(v);
-            if v & 15 != 0 {
-                *px = v;
-            }
-        }
-    };
-    // The pose's middle, doubled to stay whole.
-    let bounds = units.iter().map(|u| Rect { x: u.x, y: u.y, w: 8, h: 8 }).reduce(Rect::union);
-    let (mx, my) = bounds.map_or((0, 0), |b| (2 * b.x + b.w, 2 * b.y + b.h));
-    // The first layout's picture as the game draws it: the shadow at the
-    // back, the other parts front first.
-    let mut back_to_front: Vec<usize> = (0..regions.len()).filter(|&i| regions[i].offset.is_some() && !regions[i].later).collect();
-    back_to_front.sort_by_key(|&i| if regions[i].part == 0 { 0 } else { usize::MAX - regions[i].part });
-    let mut picture: HashMap<(i32, i32), u8> = HashMap::new();
-    for &i in &back_to_front {
-        for u in units.iter().filter(|u| u.region == i) {
-            for (p, &v) in u.pixels.iter().enumerate() {
-                if v & 15 != 0 {
-                    picture.insert(at(u, p, (0, 0)), v);
-                }
-            }
-        }
-    }
-    let place = |order: &[usize]| {
-        let mut held: HashMap<(i32, i32), u8> = HashMap::new();
-        let mut shift: Vec<Option<(i32, i32)>> = vec![None; units.len()];
-            for &i in order {
-                let r = &regions[i];
-                let own: Vec<usize> = (0..units.len()).filter(|&n| units[n].region == i).collect();
-                if r.copy || (!r.later && r.part != 0) || own.iter().all(|&n| fits(&held, &units[n], (0, 0))) {
-                    for &n in &own {
-                        if fits(&held, &units[n], (0, 0)) {
-                            hold(&mut held, &units[n], (0, 0));
-                            shift[n] = Some((0, 0));
-                        }
-                    }
-                }
-                let moved: Vec<usize> = own.into_iter().filter(|&n| shift[n].is_none()).collect();
-                if r.copy || moved.is_empty() {
-                    continue;
-                }
-                let b = moved.iter().map(|&n| Rect { x: units[n].x, y: units[n].y, w: 8, h: 8 }).reduce(Rect::union).unwrap();
-                let (dx, dy) = ((2 * b.x + b.w - mx) as f64, (2 * b.y + b.h - my) as f64);
-                let l = dx.abs().max(dy.abs());
-                let out = if l == 0.0 { (0.0, 1.0) } else { (dx / l, dy / l) };
-                let step = |(dx, dy): (f64, f64), t: i32| ((dx * t as f64).round() as i32, (dy * t as f64).round() as i32);
-                let free = |d| moved.iter().all(|&n| fits(&held, &units[n], d));
-                // The nearest place along each way; out from the middle wins ties.
-                let d = [out, (1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)]
-                    .into_iter()
-                    .filter_map(|w| (1..=MAX_SHIFT).find(|&t| free(step(w, t))).map(|t| (t, step(w, t))))
-                    .min_by_key(|&(t, _)| t)
-                    .map_or_else(|| step(out, (MAX_SHIFT + 1..).find(|&t| free(step(out, t))).unwrap()), |(_, d)| d);
-                for &n in &moved {
-                    hold(&mut held, &units[n], d);
-                    shift[n] = Some(d);
-                }
-            }
-        (shift, held)
-    };
-    // How far a placing is from the picture: pixels the picture shows
-    // that it doesn't hold there, and colors it holds where the picture
-    // shows none.
-    let misses = |held: &HashMap<(i32, i32), u8>| {
-        picture.iter().filter(|(p, v)| held.get(p) != Some(v)).count()
-            + held.iter().filter(|(p, v)| **v & 15 != 0 && !picture.contains_key(p)).count()
-    };
-    // The parts that fit first keep their place: of the orders the largest
-    // first, the front first and the back first, the one nearest the
-    // picture. The shadow, the parts drawn again and the swapped-in parts
-    // come after in each, as they are first drawn.
-    let drawn: Vec<usize> = (0..regions.len()).filter(|&i| regions[i].offset.is_some()).collect();
-    let rest = |i: usize| (regions[i].later, regions[i].part == 0, regions[i].copy);
-    let mut largest = drawn.clone();
-    largest.sort_by_key(|&i| (rest(i), std::cmp::Reverse(regions[i].w as u32 * regions[i].h as u32)));
-    let mut front = drawn.clone();
-    front.sort_by_key(|&i| (rest(i), regions[i].part));
-    let mut back = drawn;
-    back.sort_by_key(|&i| (rest(i), std::cmp::Reverse(regions[i].part)));
-    let (shift, _) = [largest, front, back].iter().map(|o| place(o)).min_by_key(|(_, held)| misses(held)).unwrap();
-    // Each part's tiles as pieces: the whole part where its tiles moved
-    // alike, else bands of whole rows, else runs along a row.
-    let mut pieces = Vec::new();
-    for (i, r) in regions.iter().enumerate() {
-        let Some([ox, oy]) = r.offset else { continue };
-        let (columns, rows) = (r.w as usize / 8, r.h as usize / 8);
-        let mut d: Vec<Option<(i32, i32)>> = vec![None; columns * rows];
-        for (u, s) in units.iter().zip(&shift) {
-            if u.region == i {
-                d[u.ty * columns + u.tx] = *s;
-            }
-        }
-        // Tiles [tx, tx + n) of rows [ty, ty + m), moved by `s`, as drawn.
-        let mut piece = |tx: usize, ty: usize, n: usize, m: usize, (sx, sy): (i32, i32)| {
-            let x = if r.flip.0 { r.w as usize - 8 * (tx + n) } else { 8 * tx };
-            let y = if r.flip.1 { r.h as usize - 8 * (ty + m) } else { 8 * ty };
-            let at = Rect { x: ox as i32 + x as i32 + sx, y: oy as i32 + y as i32 + sy, w: 8 * n as i32, h: 8 * m as i32 };
-            pieces.push(Piece { tile: r.tile + (ty * columns + tx) as u16, row: r.row, at, flip: r.flip });
-        };
-        let mut ty = 0;
-        while ty < rows {
-            let row = &d[ty * columns..(ty + 1) * columns];
-            if let Some(s) = row[0].filter(|_| row.iter().all(|&s| s == row[0])) {
-                // As many whole rows as move alike.
-                let mut m = 1;
-                while ty + m < rows && d[(ty + m) * columns..(ty + m + 1) * columns].iter().all(|&e| e == Some(s)) {
-                    m += 1;
-                }
-                piece(0, ty, columns, m, s);
-                ty += m;
-                continue;
-            }
-            let mut tx = 0;
-            while tx < columns {
-                let mut n = 1;
-                while tx + n < columns && row[tx + n] == row[tx] {
-                    n += 1;
-                }
-                if let Some(s) = row[tx] {
-                    piece(tx, ty, n, 1, s);
-                }
-                tx += n;
-            }
-            ty += 1;
-        }
-    }
-    // The undrawn tiles, side by side in tile order under the pose.
-    let below = pieces.iter().map(|p| p.at).reduce(Rect::union);
-    let (left, top) = below.map_or((0, 0), |b| (b.x, b.y + b.h + GAP as i32));
-    let columns = below.map_or(0, |b| b.w / 8).max(8);
-    for (k, r) in regions.iter().filter(|r| r.offset.is_none()).enumerate() {
-        let k = k as i32;
-        let at = Rect { x: left + 8 * (k % columns), y: top + 8 * (k / columns), w: 8, h: 8 };
-        pieces.push(Piece { tile: r.tile, row: r.row, at, flip: (false, false) });
-    }
-    pieces
-}
-
-/// A piece's pixels as the atlas holds them, row by row: each color in
-/// the piece's palette row (a tile past the tile set's end is clear),
-/// mirrored as the piece is.
-fn piece_pixels(tiles: &Tiles, piece: &Piece) -> Vec<u8> {
-    let (w, h) = (piece.at.w as usize, piece.at.h as usize);
-    let mut out = vec![piece.row << 4; w * h];
-    for ty in 0..h / 8 {
-        for tx in 0..w / 8 {
-            let Some(t) = tiles.get(piece.tile as usize + ty * (w / 8) + tx) else { continue };
-            for (k, &v) in t.iter().enumerate() {
-                let (x, y) = (tx * 8 + k % 8, ty * 8 + k / 8);
-                let (x, y) = (if piece.flip.0 { w - 1 - x } else { x }, if piece.flip.1 { h - 1 - y } else { y });
-                out[y * w + x] = (piece.row << 4) | v;
-            }
-        }
-    }
-    out
-}
-
-/// Where each tile set's pose goes in the atlas (the pixel its object's
-/// place falls on) and the atlas's size. Poses sit in a grid of equal
-/// cells, each object at the same place in its cell, so poses line up;
-/// where one pose is so much bigger than the rest that the grid would be
-/// mostly empty, each pose takes only its own room instead, in rows.
-fn sheet_cells(figures: &[Vec<Piece>]) -> (Vec<[i32; 2]>, u32, u32) {
-    let gap = GAP as i32;
-    let bounds: Vec<Option<Rect>> = figures.iter().map(|f| f.iter().map(|p| p.at).reduce(Rect::union)).collect();
-    let cells: Vec<(usize, Rect)> = bounds.iter().enumerate().filter_map(|(t, b)| b.map(|b| (t, b))).collect();
-    let mut origins = vec![[0, 0]; figures.len()];
-    let Some(all) = cells.iter().map(|c| c.1).reduce(Rect::union) else {
-        return (origins, 8, 8);
-    };
-    let n = cells.len() as i64;
-    let own: i64 = cells.iter().map(|(_, b)| ((b.w + gap) * (b.h + gap)) as i64).sum();
-    let (width, height) = if n * ((all.w + gap) * (all.h + gap)) as i64 <= GRID_SLACK * own {
-        // About square: the fewest columns that make it at least as wide
-        // as tall.
-        let (cw, ch) = ((all.w + gap) as i64, (all.h + gap) as i64);
-        let rows = |c: i64| (n + c - 1) / c;
-        let columns = (1..=n).find(|&c| c * cw >= rows(c) * ch).unwrap_or(n);
-        for (k, &(t, _)) in cells.iter().enumerate() {
-            let (col, row) = (k as i64 % columns, k as i64 / columns);
-            origins[t] = [col as i32 * (all.w + gap) - all.x, row as i32 * (all.h + gap) - all.y];
-        }
-        (columns as i32 * (all.w + gap) - gap, rows(columns) as i32 * (all.h + gap) - gap)
-    } else {
-        let row_width = (own.isqrt() as i32).max(cells.iter().map(|c| c.1.w + gap).max().unwrap_or(0));
-        let (mut x, mut y, mut shelf, mut width) = (0, 0, 0, 0);
-        for &(t, b) in &cells {
-            if x > 0 && x + b.w > row_width {
-                (x, y, shelf) = (0, y + shelf + gap, 0);
-            }
-            origins[t] = [x - b.x, y - b.y];
-            width = width.max(x + b.w);
-            x += b.w + gap;
-            shelf = shelf.max(b.h);
-        }
-        (width, y + shelf)
-    };
-    (origins, width.max(8) as u32, height.max(8) as u32)
-}
-
 fn part_doc(p: &SpritePart) -> PartDoc {
     PartDoc {
         tile: p.tile,
         size: [p.width, p.height],
         offset: [p.x, p.y],
-        flip: flip_doc((p.hflip, p.vflip)),
+        flip: match (p.hflip, p.vflip) {
+            (false, false) => None,
+            (true, false) => Some(Flip::H),
+            (false, true) => Some(Flip::V),
+            (true, true) => Some(Flip::HV),
+        },
         palette: p.palette,
+    }
+}
+
+/// Draw a region's tiles (a `w` x `h` sprite's tiles, row by row) in
+/// palette row `row`.
+fn draw_region(atlas: &mut Indexed, tiles: &Tiles, r: &RegionDoc, row: u8) {
+    let (w, h) = (r.size[0] as u32, r.size[1] as u32);
+    let per_row = w / 8;
+    for ty in 0..h / 8 {
+        for tx in 0..per_row {
+            let Some(t) = tiles.get(r.tile as usize + (ty * per_row + tx) as usize) else { continue };
+            for (k, &v) in t.iter().enumerate() {
+                let px = if v == 0 { row << 4 } else { (row << 4) | v };
+                atlas.set(r.at[0] + tx * 8 + (k % 8) as u32, r.at[1] + ty * 8 + (k / 8) as u32, px);
+            }
+        }
     }
 }
 
@@ -799,17 +486,10 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
                 report.error(file("sprite.json"), format!("tileset {t} region {r}: {w}x{h} at {:?} is outside the atlas", reg.at));
                 continue;
             }
-            let (hflip, vflip) = match reg.flip {
-                None => (false, false),
-                Some(Flip::H) => (true, false),
-                Some(Flip::V) => (false, true),
-                Some(Flip::HV) => (true, true),
-            };
             let mut region_img = Indexed::new(w, h, Vec::new());
             for y in 0..h {
                 for x in 0..w {
-                    let (sx, sy) = (if hflip { w - 1 - x } else { x }, if vflip { h - 1 - y } else { y });
-                    region_img.set(x, y, atlas.get(reg.at[0] + sx, reg.at[1] + sy));
+                    region_img.set(x, y, atlas.get(reg.at[0] + x, reg.at[1] + y));
                 }
             }
             let n = (w / 8 * h / 8) as usize;
