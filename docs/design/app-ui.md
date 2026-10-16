@@ -785,10 +785,11 @@ Each is settled unless the user changes it.
       red, and it can't be added) and a folder's entry of one (the entry's red, as any entry's problem); a NaviCust
       program's row in PROGRAMS (Not allowed, in the error red where Placed is); a patch card's library row and an
       installed card (in the error red); a soul's or Cross's face on the Navi tab (a red ring). The header's count has them.
-    - *The ruleset's page* covers the screen it was opened from (the lobby, or the build editor), which goes on
-      under it (the lobby's link with it); its Back (‹ LOBBY, ‹ EDITOR) or Esc comes back to the control it was
-      opened from. Header: the ruleset's name, and PRESET as its tag for a preset. Body, in its units: a row of
-      the Name field (360; disabled for a preset, and for a ruleset viewed), Versions (ONE PER BUILD, MIXED) and, at the right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
+    - *The ruleset's page* takes the place of the screen it was opened from (the lobby, or the build editor), which
+      goes on meanwhile (the lobby's link with it; §2.74); its Back (‹ LOBBY, ‹ EDITOR) or Esc comes back to the
+      control it was opened from. Header: the ruleset's name (a field that renames it, for the player's own: §2.74),
+      PRESET as its tag for a preset, and the game, locked. Body, in its units: a row of (until §2.74, the Name
+      field, 360, disabled for a preset and for a ruleset viewed, then) Versions (ONE PER BUILD, MIXED) and, at the right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
       left (an open list 300 wide, rows 52: the category's name, and how much it allows, "All allowed", "None
       allowed" or "12 of 380 allowed"), and the chosen one's items at the right: a head of ALLOW ALL, ALLOW
       NONE, for a category with a version's own items the quick choices (a segmented choice of each version
@@ -1073,7 +1074,8 @@ Each is settled unless the user changes it.
       "should ruleset slide in like how everything else does instead of this different slide it does?") opening and
       closing it go as going to a screen does (`Shell::swap_page`): what is shown leaves first, its body sliding 16
       and fading for the theme's `leave` (closing, Back's way), and only then is the page, or the screen under it,
-      shown.
+      shown. That still differed from a screen change (the screen under came back whole from above; §2.74), which
+      it is now exactly: the screen under is made again as the page closes, both ways going forward.
     - *The quick choices in capitals:* a category's version choices read GREGAR, FALZAR, ALL, as ALLOW ALL and ALLOW
       NONE beside them and as a version's tag everywhere.
 68. **What a ruleset holds back can't be added; a build that holds it is in violation** (2026-10-15). The user, of
@@ -1195,6 +1197,39 @@ Each is settled unless the user changes it.
       too, whose rows still name the builds' own); a build made for another is played if that one allows it. A
       host's lobby starts on the ruleset of the build they host with.
     (§6 Play and Builds; docs/app.md §8.)
+
+74. **The ruleset's page goes as a screen; names changed in the header** (2026-10-15). The user: "the transition is
+    so weird, it doesn't seem to be the same as the other transitions. also the game name is missing from the
+    header? also you should just be able to edit the build name/ruleset name from the edit screen in the header",
+    then "you should just show it as a text field always to indicate it's editable" and "you can also remove the
+    rename from the menu i guess, since it's redundant".
+    - *The transition, as between two screens:* going from one screen to another (Play to the build editor and
+      back), the header and the footer stay where they are; the screen's body slides 16 to the left and fades for
+      the theme's `leave`; then the next screen is made: its header's title wipes in behind the cyan bar, and its
+      parts arrive one after another, each rising 12 as it fades in (`Arrive`). Back's way (sliding right, the parts
+      coming down) is the main menu's alone. The page had gone otherwise (§2.67): closing it slid its body right
+      (Back's way), and then the screen under it (kept, hidden) came down from above whole, its header and footer
+      too, its parts not arriving one by one (they had arrived once, when the screen was made), and its body
+      sliding back from where it had left. Now the screen's component is gone while the page is open, its Rust half
+      going on (the lobby's link, its checks), and is made again as the page closes (app.slint): both ways go as
+      the lobby and the editor go to each other, forward, the page's parts arriving in four (the row, the
+      categories, the category's head, its items).
+    - *The game in the page's header:* at the right, locked (no arrows), as the build editor has it; a phone's
+      header leaves it out, as the editor's does.
+    - *The name a field in the header:* the build editor's title, the build's name, is a text field in the title's
+      place (just before it, as wide as the room up to 400; in the title's face, size and tracking), always drawn
+      as one so it is seen to be changed there. The arrows and the pad reach it as any field (Up from the tab bar);
+      Enter or a typed letter starts the edit, a click or a tap too; Enter (or leaving it) keeps it, Esc puts back
+      what it was, the footer saying Done and Cancel. Kept, the build is named it (as a file can be named, 32
+      letters at most; numbered where another of the game's builds has it), its file named for it, the old one gone;
+      Play's remembered build and Practice's visit follow it. Left empty, or as it was, nothing changes. The
+      ruleset's page's title is the same field where the ruleset can be changed (the player's own): its name, as
+      its NAME field had it (numbered where another of the player's own has it, the builds made for it following).
+      A preset or the host's ruleset viewed has the plain title (and PRESET's tag). The page's row had the name's
+      field first; Version exclusives starts the row now (a phone's one column 52 shorter).
+    - *No RENAME in Play's menu:* the build's menu (⋯) is DUPLICATE and DELETE; the name's dialog is NEW BUILD's
+      alone.
+    (§6 Play and Builds; docs/app.md §4, §8, §10.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -1437,8 +1472,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   down, 8 apart (PRACTICE and EDIT regular buttons, as wide as their words); the version's tag follows the
   build's name, 12 after it (the user: "the version indiactor should be next to the build name in the play
   screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
-  under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE,
-  RENAME and DELETE, in the buttons' type, DELETE under a line in the error color. The cursor starts on the
+  under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE and
+  DELETE (a build is renamed in the editor's header: §2.74), in the buttons' type, DELETE under a line in the error color. The cursor starts on the
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
   build whose file doesn't read has an empty frame, PRACTICE and EDIT unavailable and DELETE alone in its menu;
   with no build, none of the three is there.
@@ -1549,7 +1584,7 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 ### Builds
 A build's editor, and what any screen shows of a build. The builds themselves are Play's (§2.50, §2.52): + NEW
 BUILD (with FROM A SAVE FILE… in its dialog), the chosen build's overview with EDIT and ⋯, the build's menu of
-DUPLICATE, RENAME and DELETE.
+DUPLICATE and DELETE.
 - **Opened by Play or Practice:** Play's EDIT, and the practice menu's EDIT under Dummy's build, open the build in
   the editor, whose Back (‹ PLAY or ‹ PRACTICE in the header) goes straight back to the screen that opened it
   (§2.28; §2.57: Practice's battle starts again, the menu open).
@@ -1559,12 +1594,15 @@ DUPLICATE, RENAME and DELETE.
   strings: EXE5's Soul time, the turns a Soul Unison lasts, for a navi with souls, §2.58); Abilities; Bugs, each by
   name and level, purple; then the folder's 30 chips in two columns of 26-tall rows: number, icon, name, REG or
   TAG1 or TAG2, element, code.
-- **New build** (Play's + NEW BUILD; RENAME is the same dialog with the name alone): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
+- **New build** (Play's + NEW BUILD): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere. Under its CANCEL and CREATE BUILD, below a line, FROM A SAVE FILE… (a ghost
   button) closes it and opens the system's file dialog: the save's build is named for its file, its version and
   everything else the save's (§2.52).
-- **The editor's** header has the build's name and nothing of its problems (§2.66): they are said where they are.
+- **The editor's** header has the build's name, a text field in the title's place that renames it (§2.74: always
+  drawn as one; Enter or a typed letter edits it, Enter keeps it, Esc puts it back; the build's file is named for
+  it), the game locked at the right (a phone's leaves it out), and nothing of its problems (§2.66): they are said
+  where they are.
   A tab with problems has the problem's mark by its word. What the build's problems have against an item (a folder's
   entry, a form, a placed program, a patch card, an auto battle place, the navi), the ruleset's (an item it doesn't
   allow, a mix of versions: every thing of each version the build holds) with the game's rules', is said at the top

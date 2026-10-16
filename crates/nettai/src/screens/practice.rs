@@ -233,6 +233,16 @@ impl Visit {
         *self = Visit::default();
     }
 
+    /// `game`'s build `from` was renamed `to` (in the editor's header, which the menu's EDIT opened): the visit keeps
+    /// it by its new name.
+    pub fn renamed(&mut self, game: &str, from: &str, to: &str) {
+        for (of, name) in [&mut self.yours, &mut self.dummys_build].into_iter().flatten() {
+            if of == game && name == from {
+                *name = to.to_string();
+            }
+        }
+    }
+
     /// The name of `game`'s build the visit has for side `side` (0 the player's, 1 the dummy's), if it has one.
     fn build(&self, game: &str, side: usize) -> Option<&str> {
         let kept = if side == 0 { &self.yours } else { &self.dummys_build };

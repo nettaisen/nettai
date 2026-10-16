@@ -122,7 +122,6 @@ impl Page {
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let ruleset = &self.shown.ruleset;
-        view.set_title(shown_name(&names, &ruleset.name).into());
         view.set_name(shown_name(&names, &ruleset.name).into());
         view.set_preset(matches!(ruleset.name, Name::Preset(_)));
         view.set_editable(self.editable());
@@ -386,8 +385,8 @@ impl Page {
         }
     }
 
-    /// A field's text: the name (saved when it is confirmed, a name another of the player's own has taken
-    /// numbered), the search (each change).
+    /// A field's text: the name, the header's title (saved when it is confirmed, a name another of the player's own
+    /// has taken numbered), the search (each change).
     pub fn edit(&mut self, shell: &mut Shell, id: &str, text: &str, done: bool) -> Outcome {
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
@@ -419,7 +418,11 @@ impl Page {
                         crate::rulesets::rename(shell, &self.kit, &from, &to.ruleset.name);
                         Outcome::Renamed { from, to }
                     }
-                    outcome => outcome,
+                    // (The same name, or Esc: the header's field shows it as it is kept.)
+                    outcome => {
+                        self.show(shell);
+                        outcome
+                    }
                 }
             }
             _ => Outcome::Nothing,
