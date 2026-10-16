@@ -402,8 +402,9 @@ fn choose_other(other: bool) -> Step {
 /// A ruleset's page over the editor (docs/design/app-ui.md §2.59), on the build `switched` left: from the Navi tab,
 /// EDIT by the build's ruleset (the game's first preset, Masters class: `rulesets-preset`, read alone, the
 /// reserved line saying so); DUPLICATE, the player's own copy (`rulesets-own`); its category of chips
-/// (`rulesets-chips`); the first chip held back and the first version's quick choice (`rulesets-chips-held`); and
-/// Back, the editor marking what the copy holds back (`rulesets-folder-marked`: the Folder tab, the library's rows).
+/// (`rulesets-chips`); the first chip held back and the first version's quick choice (`rulesets-chips-held`); its last
+/// category, a game's forms in a section a version (`rulesets-forms`: EXE6's Crosses, EXE5's souls); and Back, the
+/// editor marking what the copy holds back (`rulesets-folder-marked`: the Folder tab, the library's rows).
 fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     add(SETTLE, press("tab", 0));
     add(SETTLE, press("ruleset-edit", 0));
@@ -418,6 +419,12 @@ fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     add(SETTLE, press("rules.set", 0));
     add(SETTLE, focus("rules.items", 0));
     shot(add, "rulesets-chips-held", Pair::None);
+    add(SETTLE, screen(|s, shell| {
+        let last = shell.ui().global::<nettai_ui::RulesetView>().get_categories().row_count() as i32 - 1;
+        s.choose(shell, "rules.category", 0, last);
+    }));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "rulesets-forms", Pair::None);
     add(SETTLE, act(Action::Back));
     add(SETTLE, press("tab", 1));
     add(SETTLE, focus("slot", 0));
