@@ -1,8 +1,8 @@
 --!strict
 -- EXE5's NaviCust board (docs/design/exe5-map.md §15.13): its 5x5 grid, in the middle of the engine's 7x7 (a program's
 -- 5x5 shape likewise, centered on its middle cell), the board on it by how far it has been expanded, its command
--- line and where a neighbor counts. rules/navicust (./init.luau) reads them all from here, and a tool reads the boards
--- and the command line as data (the editor's grid).
+-- line, its color bar and where a neighbor counts. rules/navicust (./init.luau) reads them all from here, and a tool
+-- reads the boards, the command line and the color bar as data (the editor's grid).
 
 local board = {}
 
@@ -11,6 +11,10 @@ board.SIZE = 7
 
 -- The command line: EXE5's row 2 (0x0813F350 reads it), the engine's row 3.
 board.COMMAND_LINE = 3
+
+-- The color bar over the board (the NaviCust screen's): its slots, this many colors placed without a bug; a fifth
+-- brings the status bug, a sixth the strong one (the compile's count, EXE6's `sub_813BEA8`).
+board.COLOR_BAR = 4
 
 -- The board by expansions (key item 0x61's count, ExpMemry, which the NaviCust screen reads as it opens: 0x08132928;
 -- its three masks, 0x0813EA34, 0x0813EB15 and 0x0813EBF6 through 0x0813F138's table, the grid's cells at (x + 5,

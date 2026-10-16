@@ -1493,6 +1493,13 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   its empty cells are tinted. Under the board, its key (Board, Command line, Plus part, and Out of bounds where
   there is a ring), on one line or two by the language's words alone, and a reserved line for why a piece can't
   go down.
+- *The color bar* (design §2.76), in the board's pane's header after NAVICUST: a frame round its slots, how many the
+  game's rules/navicust/board's `COLOR_BAR` says (`GridData::color_bar`; the compiles count the color bug from it
+  too), each the color of a placed program, in the order the parts' list first has them (`grid::colors_placed`), or
+  an empty slot; each color past them goes on at the same pitch past the frame's end, spilling out of it, as the
+  game's does (`NavicustView.color-bar`, `bar-slots`). Its room is kept for every color the game's programs come in
+  (`GridData::colors_in_all`, `bar-room`), so nothing moves. The bug it brings is listed in Bugs; it is no problem
+  of the build.
 - *Programs*, the open list in the middle: each program once (design §2.64: its colors are its definition's,
   `GridData::colors`), in the library's order, in the color chosen for it, its cross if a plus part; where it has
   more than one color, its colors as small boxes at the row's right edge (`ProgramRow.colors`, the chosen one,
