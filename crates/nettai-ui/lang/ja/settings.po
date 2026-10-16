@@ -164,3 +164,9 @@ msgstr "ライセンスの記載なし"
 
 msgid "Its package comes with no license file. Its license is the one named above."
 msgstr "このパッケージにはライセンスファイルが含まれていません。ライセンスは上に記載のとおりです。"
+
+msgid "Check for updates"
+msgstr "更新を確認"
+
+msgid "At start, from nettai's releases on GitHub."
+msgstr "起動時に、GitHub の nettai のリリースから。"

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=nettai
-Comment=Battle Network battles, with netplay
-Exec=nettai
-Icon=nettai
-Terminal=false
-Categories=Game;ActionGame;
