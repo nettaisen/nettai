@@ -2026,8 +2026,9 @@ tells the app where it is in the window and takes its clicks. From those rectang
   one across the direction) before a nearer one off to the side, and of two equally near the one that starts
   where the focused one does. A setting (a stepper, a segmented control, a slider: `NavKind.stepper`) is
   walked past too until Enter takes it (`Nav::grabbed`); then Left and Right change it, Enter or Esc lets it go,
-  and anything else lets it go and does what it does (docs/design/app-ui.md §2.77). A dial (`NavKind.dial`: a
-  replay's seek bar, a phone's build box, Practice's menu's options) changes with Left and Right at once.
+  and anything else lets it go and does what it does (docs/design/app-ui.md §2.77). Nothing changes with the arrows
+  alone: a replay's seek bar is a setting too, and a phone's build box and Practice's rows that open a list are
+  selects (Enter opens the list).
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
 - **A screen may route a move itself** where the places don't say it (`Screen::route`, asked before the nav for
   an arrow or Tab while nothing is open over the screen): Play's Right from its list goes past the overview,
@@ -2912,7 +2913,7 @@ game's own (nettai's `on_another_background_the_battle_goes_on`); practice is ne
 compared with another's.
 
 Music changes the battle's music the player picked, the visit's one pick (§1, "The
-battle's music"): Left and Right step it, Enter opens its list, and the battle's music switches at once, nothing
+battle's music"): Enter opens its list (a select's), and the battle's music switches at once, nothing
 else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
 
 The Dummy's build, Arena, Background and Music are dropdowns (docs/design/app-ui.md §2.43, §2.56, §2.57): the
@@ -3062,8 +3063,8 @@ screen runs the ticks due, presents the picture into the window's texture if one
 
 - *The transport:* the time, the bar (a click or a drag; a mark where each later round begins), the length;
   to the round's start, a frame back, play or pause, a frame on, the next round; the speed (½, 1, 2, 4), the
-  side whose console is shown, EXPORT VIDEO. The focus starts on the bar, where Left and Right go five seconds
-  (it is a control whose arrows change it, as a slider is); the speeds and the sides are each a control, so the
+  side whose console is shown, EXPORT VIDEO. The focus starts on the bar, which Enter takes, Left and Right
+  then going five seconds (a setting, as a slider is: §11); the speeds and the sides are each a control, so the
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
   the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
   At its end a replay stops with the transport there; play starts it again.

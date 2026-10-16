@@ -1264,9 +1264,11 @@ Each is settled unless the user changes it.
       Enter or Esc (A or B) lets it go, its value as changed (each step is kept as it is made). Up, Down or anything
       else lets it go and does what it does. The cursor holds in, still, an arrow beside each side, and the footer
       says ←→ Change and Enter Done.
-    - *Where the arrows lead nowhere else, they still change at once* (a dial: `NavKind.dial`): a replay's seek
-      bar, where Enter plays and pauses; a phone's build box, where Enter opens the sheet; Practice's menu's options,
-      rows of one control each, where Enter opens a list or steps on.
+    - *Everywhere* (the user, of the three first left changing at once: "you should have confirm to change everywhere
+      instead of having some controls that don't do that"): a replay's seek bar is a setting (taken, Left and Right
+      seek 5 seconds; Space and the pad's north still play and pause); a phone's build box and Practice's menu's rows
+      that open a list (the Dummy's build, Arena, Background, Music) are selects, Enter opening the list; its other
+      rows are settings.
     - A click or a tap on a setting's arrow or segment changes it as before.
     (§5 rule 7; docs/app.md §11.)
 
@@ -1547,8 +1549,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   DIRECT CONNECT. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, the field, JOIN,
   DIRECT CONNECT. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
-  in a box, 72 tall, its ruleset at its status line's right end as a row's (Left and Right step it, Enter opens
-  the builds as a sheet); at 136 PRACTICE (as wide as its
+  in a box, 72 tall, its ruleset at its status line's right end as a row's (Enter opens the builds as a sheet,
+  a select's list: §2.77); at 136 PRACTICE (as wide as its
   word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
   as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 DIRECT CONNECT
   the column's width; at 356 the reserved line (two lines, 40). The overview isn't shown there (the editor shows
@@ -1776,7 +1778,7 @@ DUPLICATE and DELETE.
   shouldn't automatically start it"); WATCH, Enter or the pad's A does.
 - **The viewer:** the picture at three times over a transport: the time, a bar to click or drag with a mark where
   each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
-  round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and
+  round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
   period step a frame, the brackets go a round. After BUILDS, two toggles, each off at first (the user: "add
   support for input view and picture in picture in replay viewer"): the input display (I), Practice's, both
   players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom

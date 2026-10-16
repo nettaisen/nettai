@@ -222,7 +222,8 @@ component MenuRow inherits Rectangle {
         hit := Focusable {
             nav: root.option ? "menu.rows.option" : "";
             nav-index: root.index;
-            kind: NavKind.dial;
+            // (A row that opens its list is a select's: Enter opens it. Another is a setting: Enter takes it.)
+            kind: root.select ? NavKind.button : NavKind.stepper;
             enabled: root.option;
         }
 

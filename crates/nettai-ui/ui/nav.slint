@@ -10,12 +10,9 @@
 export enum NavKind {
     // Enter activates; the arrows move on.
     button,
-    // A setting (a stepper, a segmented control, a slider): the arrows move past it; Enter takes it, and while it is
+    // A setting (a stepper, a segmented control, a slider, a replay's seek bar): the arrows move past it; Enter takes it, and while it is
     // taken (`Nav.grabbed`) Left and Right change its value, and Enter or Back lets it go.
     stepper,
-    // Left and Right change it at once, where they lead nowhere else; Enter activates (a replay's seek bar, a phone's
-    // build box, Practice's menu's options).
-    dial,
     // Enter or a typed letter starts editing its text.
     field,
     // Not a control: a scrolling page (`ScrollPage`) and a list of rows (`ListView`), which say where their view

@@ -362,7 +362,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "viewer-at", Pair::First, Also::Nothing);
     add(SETTLE, key(KeyCode::Period, 60));
     shot(add, "viewer-second-on", Pair::Second, Also::Playback);
+    // (The bar is a setting: taken, stepped, let go.)
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| if shell.scale.phone { s.step(shell, "view-step", 0, 1) } else { s.activate(shell, "view", 1) })));
     shot(add, "viewer-other-side", Pair::None, Also::Nothing);

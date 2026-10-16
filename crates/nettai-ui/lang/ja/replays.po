@@ -155,9 +155,6 @@ msgstr "視点"
 msgid "Play or pause"
 msgstr "再生/一時停止"
 
-msgid "Seek 5 s"
-msgstr "5秒移動"
-
 msgid "Step a frame"
 msgstr "コマ送り"
 
