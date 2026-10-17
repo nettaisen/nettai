@@ -34,7 +34,15 @@
 //! reacting later is too late). A chip held a long while is used where it
 //! does best though no plan shows it taking anything away, where it bars a
 //! chip not its like behind it (the hand is used in order) and holding it
-//! to react shows no worth ([`STALE`]). Of plans worth the same those that
+//! to react shows no worth ([`STALE`]); and then not at once where using it
+//! a while on makes more, but at the moment within a few seconds where
+//! using it costs least, tried in longer copies against a player who fights
+//! on ([`Search::stale_wait`]): a second Invisibl waits till the first's
+//! invisibility ends rather than refresh it. A decision asked with other
+//! chips in hand than it has as it is taken is dropped and asked again: its
+//! chip plans were for the chip that was next (a push decided for the first
+//! Invisibl, taken after the first was used, pushed out the second). Of
+//! plans worth the same those that
 //! keep the chip win, then the nearest, standing before shooting before
 //! reacting, so it keeps its charge and its chips; and it keeps to what it
 //! does unless another plan is better by a margin ([`Level::steady`]): no
@@ -84,7 +92,8 @@
 //! row's other panels: once the other navi is in reach, once the chip
 //! before it is done and its hit has passed, once a panel opens, once an
 //! attack is on its way), and cut in on the other player's dimming chip
-//! where that pays, less what the same turn makes with no new
+//! where that pays clearly ([`dimmed::CUT_IN_MARGIN`], as live), less
+//! what the same turn makes with no new
 //! hand (picking nothing keeps the old hand; picking any replaces it, its
 //! chips lost unused). So a Barrier is worth the hits it stops, a Recover
 //! the HP it gives back, and a hand's second and third chips what they do
@@ -113,7 +122,12 @@
 //! found: the battle goes on meanwhile, never waiting for it (as it goes on
 //! while a link's other player sits on their screen), so on a slower
 //! machine it only looks longer. The hand is used in the order picked
-//! (`Level::chooses`; else every chip it can in the cursor's order). The
+//! (`Level::chooses`; else every chip it can in the cursor's order). Either
+//! way the picker never picks a chip OK would leave standing alone (a chip
+//! that folds, picked first or after a chip it doesn't attach to: the
+//! engine's own test, `custom::builder::stays_unfolded`), so no level's
+//! hand holds one; one left alone in hand otherwise (nothing to push it out
+//! for) is never used, as using it makes nothing. The
 //! cursor finds its way by the screen's own moves, each game's
 //! (`Screen::target_from`).
 //!
@@ -285,11 +299,19 @@ struct Exec {
     /// a threat has shown, the ticks left till it reacts.
     reaction: u16,
     alarm: Option<u16>,
+    /// The ticks of the fight it stands where it is before it sets out, B
+    /// let go (a chip used a while on: [`Search::stale_wait`]).
+    wait: u16,
 }
 
 impl Exec {
     fn new(plan: Plan) -> Exec {
-        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, hand: 0, refused: false, last: 0, reaction: 0, alarm: None }
+        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, hand: 0, refused: false, last: 0, reaction: 0, alarm: None, wait: 0 }
+    }
+
+    /// A plan set out on `wait` ticks of the fight on, standing till then.
+    fn later(plan: Plan, wait: u32) -> Exec {
+        Exec { wait: wait.min(u16::MAX as u32) as u16, ..Exec::new(plan) }
     }
 
     /// A plan that reacts, `reaction` ticks after a threat shows.
@@ -357,6 +379,12 @@ impl Exec {
         // other player's dimming held up is pressed for again after it, not given up as one the navi didn't take.)
         if b.is_dimmed() {
             return HELD;
+        }
+        // (Waiting, B let go: what it held fires now, as it would as A is pressed at once, and no charge is
+        // held for the wait.)
+        if self.wait > 0 {
+            self.wait -= 1;
+            return 0;
         }
         let Some(r) = b.player(side) else { return HELD };
         let at = b.objects.get(r).panel;
@@ -593,6 +621,11 @@ enum Guess {
     TrackShot,
     Up,
     Down,
+    /// They fight on with their buster as a plain fight goes ([`Rollout`],
+    /// their chips kept): walk to the navi's row, charge and shoot there,
+    /// again and again. Not a level's guess at the next moment, but what
+    /// comes over a longer while ([`Search::stale_wait`]).
+    Fights,
 }
 
 const GUESSES: [Guess; 8] = [Guess::Holds, Guess::Repeats, Guess::Chip, Guess::Up, Guess::Down, Guess::TrackChip, Guess::TrackShot, Guess::Shot];
@@ -639,6 +672,8 @@ struct Guessed {
     /// ([`threat`]).
     before: u16,
     struck: Option<u32>,
+    /// A guess that fights on ([`Guess::Fights`]): how it plays.
+    roll: Rollout,
 }
 
 /// Whether a player whose buttons go from `before` to `now` starts an
@@ -651,7 +686,7 @@ fn threat(before: u16, now: u16) -> bool {
 impl Guessed {
     fn new(guess: Guess, theirs: u16, past: Past) -> Guessed {
         let theirs = theirs & Past::KEPT;
-        Guessed { guess, theirs, past, t: 0, dir: 0, held: 0, fired: false, last: 0, before: theirs, struck: None }
+        Guessed { guess, theirs, past, t: 0, dir: 0, held: 0, fired: false, last: 0, before: theirs, struck: None, roll: Rollout { keeps_chips: true, ..Rollout::default() } }
     }
 
     /// Their buttons this tick, on side `them` of `b`.
@@ -667,6 +702,7 @@ impl Guessed {
             Guess::Chip if t == 1 => keys::A,
             Guess::Shot if t == 1 => keys::B,
             Guess::TrackChip | Guess::TrackShot if !self.fired => self.track(b, them),
+            Guess::Fights => self.roll.buttons(b, them),
             _ => 0,
         };
         self.last = pressed;
@@ -709,6 +745,7 @@ impl Guessed {
             Guess::Repeats => self.past.0.iter().all(|p| *p == 0),
             Guess::Up | Guess::Down | Guess::Chip | Guess::Shot => self.t >= 2,
             Guess::TrackChip | Guess::TrackShot => self.fired && self.last == 0,
+            Guess::Fights => false,
         }
     }
 }
@@ -731,9 +768,11 @@ pub struct Spent {
     /// the battle waited for them.
     pub late: u32,
     pub waited: Duration,
-    /// The custom screens whose chips it tried, and the time that took.
+    /// The custom screens whose chips it tried, the time that took, and
+    /// their work as their budget counts it ([`Level::budget`]).
     pub chips: u32,
     pub chip_time: Duration,
+    pub chip_work: u64,
     /// The custom screens whose hand it found after its look time
     /// ([`Level::looks`]), and the ticks it looked on for them.
     pub screens_late: u32,
@@ -773,8 +812,11 @@ struct Question {
     now: Exec,
     theirs: u16,
     past: Past,
-    /// The live ticks past [`STALE`] the chip in hand has gone unused.
+    /// The live ticks past [`STALE`] the chip in hand has gone unused, and
+    /// whether when to push it out has been chosen already
+    /// ([`Search::stale_wait`]: it is pushed out now).
     stale: u32,
+    stale_timed: bool,
     side: u8,
     level: Level,
     asked: Asked,
@@ -792,6 +834,13 @@ struct Answer {
     form: Option<FormChoice>,
     /// A dimming's press, of a question of one.
     dimmed: Option<DimAnswer>,
+    /// Of a decision in the fight: where a chip held long would first be
+    /// pushed out ([`STALE`]), the ticks of the fight to wait till it is
+    /// (0: now), where using it then costs least ([`Search::stale_wait`]).
+    stale_wait: Option<u32>,
+    /// Of a custom screen's chips: the work its search counted
+    /// ([`Level::budget`]'s, [`Hands::value`]), the same on any machine.
+    work: u64,
     ticks: u64,
     took: Duration,
 }
@@ -1043,7 +1092,7 @@ impl Search {
                 let of = self.threads();
                 let job = Job { aheads: vec![(Guessed::new(Guess::Holds, 0, q.past), b.clone(), 1)], plans: vec![q.now; of], side: q.side, horizon: 1, worth: Worth::Net, warm: true };
                 self.run(&job);
-                Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks: 0, took: start.elapsed() }
+                Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks: 0, took: start.elapsed(), stale_wait: None, work: 0 }
             }
             Asked::Chips(chips) => self.worths(q, chips, start),
             Asked::Decide => self.decide(q, start),
@@ -1106,7 +1155,7 @@ impl Search {
         let ahead = &aheads[0].1;
         let panels = reachable(ahead, side);
         if panels.is_empty() || !fight_goes_on(ahead) {
-            return Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() };
+            return Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed(), stale_wait: None, work: 0 };
         }
         let chip = ahead.hands[side as usize].remaining() > 0;
         // (Whether the chip in hand bars another behind it: one not its like.)
@@ -1158,12 +1207,23 @@ impl Search {
         let most_of = |then: Then, worths: &[i64], plans: &[Exec]| plans.iter().zip(worths).filter(|(e, _)| e.plan.then == then).map(|(_, w)| *w).max();
         let reacts = most_of(Then::React, &attack_worths, &job.plans).is_some_and(|r| stand_worths.iter().all(|w| r > *w));
         let count = stand_count(&job);
-        let eager = if q.stale > 0 && bars && !reacts { STALE_EAGER * (60 + q.stale as i64) / 60 * count } else { 0 };
+        // (But not where using it a while on costs less, the first time it would be: a chip whose use now is
+        // wasted, its like's effect still up, waits till it isn't, and is pushed out then.)
+        let mut stale_wait = None;
+        let eager = if q.stale > 0 && bars && !reacts {
+            let wait = if q.stale_timed { 0 } else { self.stale_wait(&job.aheads[0].1, side, q.past, &mut ticks) };
+            stale_wait = (!q.stale_timed).then_some(wait);
+            if wait == 0 { STALE_EAGER * (60 + q.stale as i64) / 60 * count } else { 0 }
+        } else {
+            0
+        };
         // (A chip not yet pressed for costs what it is to keep it ([`SPENT`]): it is spent only where that makes
-        // clearly more than keeping it.)
+        // clearly more than keeping it. The push counts for the plan it follows too where that has pressed for the
+        // chip a reaction time on and the chip isn't yet taken: else a push decided again finds the plan under way
+        // worth no more than standing, and starts another, walking from panel to panel, never pressing.)
         for (e, w) in job.plans.iter().zip(attack_worths.iter_mut()).chain(std::iter::once((&followed.0, &mut followed.1))) {
-            if e.plan.then == Then::Chip && e.waited == 0 && !e.acted {
-                *w += eager - SPENT * count;
+            if e.plan.then == Then::Chip && !e.acted {
+                *w += eager - if e.waited == 0 { SPENT * count } else { 0 };
             }
         }
         // (Those that keep the chip first: a chip is spent only where that makes more than keeping it. Then the
@@ -1172,7 +1232,36 @@ impl Search {
         tried.sort_by_key(|(e, _)| (e.plan.then == Then::Chip, steps_to(e.plan.to), e.plan.then));
         tried.push(followed);
         let guesses = stand_count(&job);
-        Answer { id: q.id, tried, guesses, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() }
+        Answer { id: q.id, tried, guesses, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed(), stale_wait, work: 0 }
+    }
+
+    /// When a chip held long ([`STALE`]) that bars a chip behind it is best
+    /// pushed out, in ticks of the fight from `from` (0: now): it is used
+    /// now and after each [`STALE_STEP`] more of [`STALE_WAITS`], standing
+    /// where it stands, each copy played as long ([`STALE_LOOK`] past the
+    /// last), the other player fighting on ([`Guess::Fights`]: what comes
+    /// over a longer while, not the next moment); each is worth what it
+    /// makes less what waiting costs (the chips behind it barred,
+    /// [`STALE_BARS`] a second), and the earliest of the most is taken.
+    /// It is chosen once for a chip held long: it is pushed out at the
+    /// moment chosen, not looked for again (another copy could always find a
+    /// better moment a while on, and the chips behind it would wait for
+    /// ever). So a chip used where its use now
+    /// is wasted (its like's effect still up: Invisibl while invisible, a
+    /// Barrier while its barrier stands, AntiDmg while its trap is set,
+    /// where a use refreshes or replaces what stands) waits till using it
+    /// makes more, as its like's effect ends; one whose use makes as much
+    /// whenever (an attack that can't land) goes at once.
+    fn stale_wait(&mut self, from: &Battle, side: u8, past: Past, ticks: &mut u64) -> u32 {
+        let Some(at) = navi_at(from, side) else {
+            return 0;
+        };
+        let plans = (0..=STALE_WAITS).map(|k| Exec::later(Plan { to: at, then: Then::Chip, after: None }, k * STALE_STEP)).collect();
+        let job = Job { aheads: vec![(Guessed::new(Guess::Fights, 0, past), from.clone(), 1)], plans, side, horizon: STALE_WAITS * STALE_STEP + STALE_LOOK, worth: Worth::Net, warm: false };
+        let (worths, t) = self.run(&job);
+        *ticks += t;
+        let waited = |k: u32| worths[k as usize] - STALE_BARS * (k * STALE_STEP) as i64 / 60;
+        (0..=STALE_WAITS).max_by_key(|&k| (waited(k), std::cmp::Reverse(k))).map_or(0, |k| k * STALE_STEP)
     }
 
     /// A decision while the battle is dimmed: from the battle as it stands,
@@ -1224,7 +1313,7 @@ impl Search {
             Some(t) => scan.sigs[..=(t as usize).min(scan.sigs.len() - 1)].to_vec(),
             None => scan.sigs,
         };
-        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: Some(DimAnswer { press, sigs }), ticks, took: start.elapsed() }
+        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: Some(DimAnswer { press, sigs }), ticks, took: start.elapsed(), stale_wait: None, work: 0 }
     }
 
     /// Each of `job`'s plans tried, on this thread and its helpers' (each a
@@ -1424,7 +1513,7 @@ impl Search {
         // (The order as worths by slot: the first pick the highest; a chip not picked, below 0.)
         let ranks: Vec<i64> = chips.iter().map(|(s, _)| order.iter().position(|o| o == s).map_or(-1, |at| (order.len() - at) as i64)).collect();
         let form = if q.level.forms { self.form(q, chips, &ranks, &mut ticks) } else { None };
-        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: ranks, form, dimmed: None, ticks, took: start.elapsed() }
+        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: ranks, form, dimmed: None, ticks, took: start.elapsed(), stale_wait: None, work: valued.work }
     }
 
     /// What each of `hands` (the slots of the screen `q` shows, in the order
@@ -1565,10 +1654,14 @@ impl Hands {
     }
 
     /// What the hand `slots` makes over a turn, and the work that took: the
-    /// ticks of the screen and of the fight played out, not of the aims a
-    /// dimming's copies search ([`dimmed::aim`]), which a thread may have
-    /// found before (its memo): the work is the same on any thread, so the
-    /// budget is spent alike on any machine.
+    /// ticks of the screen and of the fight played out, and each aim a
+    /// dimming's copies look for ([`dimmed::aim`]) at a cost of its own
+    /// ([`dimmed::AIM_WORK`]) whether the thread has found it before (its
+    /// memo) or not: the work is the same on any thread, so the budget is
+    /// spent alike on any machine, and it bounds the work done (a hand of
+    /// chips that dim aims a few times a turn, each aim some hundreds of
+    /// ticks: left out, a screen of CircGuns ran some 50,000 to 70,000 ticks
+    /// of aims its budget never counted).
     fn value(&self, slots: &[u8], trial: &mut Battle, memo: &mut Memo, ticks: &mut u64) -> (i64, u64) {
         let mut work = 0;
         let rank = |s: u8| Some(slots.iter().position(|o| *o == s).map_or(-1, |at| (slots.len() - at) as i64));
@@ -1625,7 +1718,7 @@ fn turn(b: &mut Battle, from: &Battle, side: u8, guess: Guessed, reaction: u32, 
         let cut = me.cut_in(b, side, guess, memo, ticks, work);
         play.tick(b, memo, ticks, cut, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
     }
-    *work += (play.live + play.dimmed) as u64;
+    *work += (play.live + play.dimmed) as u64 + play.dims.aims as u64 * dimmed::AIM_WORK;
     let (dealt, lost) = outcome(from, b, side);
     dealt - lost
 }
@@ -1743,9 +1836,11 @@ impl TurnPlay {
 
     /// What it presses besides while dimmed (A: a cut-in): on the other
     /// player's dimming chip's name, where it may cut in, a reaction time
-    /// into it, if a copy cut in makes more than one not
-    /// ([`TurnPlay::probe`]); a copy holding its chip to react cuts in so
-    /// whatever it makes.
+    /// into it, if a copy cut in makes clearly more than one not
+    /// ([`TurnPlay::probe`], by [`dimmed::CUT_IN_MARGIN`], as live: a
+    /// defense their chip goes through, a copy a few HP luckier, isn't spent
+    /// on it); a copy holding its chip to react cuts in so whatever it
+    /// makes.
     #[allow(clippy::too_many_arguments)]
     fn cut_in(&mut self, b: &Battle, side: u8, guess: Guessed, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> u16 {
         if !(b.is_dimmed() && fight_goes_on(b) && dimmed::cut_window(b, side)) {
@@ -1757,7 +1852,7 @@ impl TurnPlay {
             return 0;
         }
         if self.window == self.reaction + 1 {
-            self.cutting = self.reacts || self.probe(b, side, guess, None, false, keys::A, memo, ticks, work) > self.probe(b, side, guess, None, false, 0, memo, ticks, work);
+            self.cutting = self.reacts || self.probe(b, side, guess, None, false, keys::A, memo, ticks, work) > self.probe(b, side, guess, None, false, 0, memo, ticks, work) + dimmed::CUT_IN_MARGIN;
         }
         if self.cutting { keys::A } else { 0 }
     }
@@ -1781,7 +1876,7 @@ impl TurnPlay {
             let extra = std::mem::take(&mut cut) | if me.reacts { me.cut_in(&c, side, guess, memo, ticks, work) } else { 0 };
             play.tick(&mut c, memo, ticks, extra, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
         }
-        *work += (play.live + play.dimmed) as u64;
+        *work += (play.live + play.dimmed) as u64 + play.dims.aims as u64 * dimmed::AIM_WORK;
         let (dealt, lost) = outcome(b, &c, side);
         dealt - lost
     }
@@ -1842,10 +1937,12 @@ fn rollout(b: &Battle, side: u8, memo: &mut Memo, ticks: &mut u64) -> i64 {
 /// A plain way to play a fight out: walk to the other navi's row, charge,
 /// shoot once the charge is full, and use a chip there every so often
 /// (unless it `holds` both: a turn's copy uses its chips by its own
-/// reckoning and keeps its charge, [`TurnPlay`]).
-#[derive(Clone, Copy, Debug, Default)]
+/// reckoning and keeps its charge, [`TurnPlay`]; or `keeps_chips`: a
+/// guess that fights on with its buster, [`Guess::Fights`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 struct Rollout {
     holds: bool,
+    keeps_chips: bool,
     dir: u16,
     held: u8,
     from: Option<PanelPos>,
@@ -1884,7 +1981,7 @@ impl Rollout {
         if charge(b, side) >= 2 && !self.holds {
             return 0;
         }
-        if !self.holds && b.hands[side as usize].remaining() > 0 && self.ticks.is_multiple_of(30) && self.last & keys::A == 0 {
+        if !self.holds && !self.keeps_chips && b.hands[side as usize].remaining() > 0 && self.ticks.is_multiple_of(30) && self.last & keys::A == 0 {
             return keys::A | keys::B;
         }
         keys::B
@@ -2025,6 +2122,8 @@ struct Thinker {
     /// gone before its answer came).
     forgotten: u64,
     abandoned: Vec<u64>,
+    /// Its thread is gone (its channel disconnected): no answer will come.
+    gone: bool,
 }
 
 enum How {
@@ -2053,7 +2152,7 @@ impl Thinker {
                 }
             });
             if spawned.is_ok() {
-                return Thinker { how: How::Thread { ask, answers }, kept: Vec::new(), forgotten: 0, abandoned: Vec::new() };
+                return Thinker { how: How::Thread { ask, answers }, kept: Vec::new(), forgotten: 0, abandoned: Vec::new(), gone: false };
             }
         }
         let _ = threads;
@@ -2062,7 +2161,7 @@ impl Thinker {
 
     /// On the caller's thread.
     fn inline() -> Thinker {
-        Thinker { how: How::Inline(Box::default()), kept: Vec::new(), forgotten: 0, abandoned: Vec::new() }
+        Thinker { how: How::Inline(Box::default()), kept: Vec::new(), forgotten: 0, abandoned: Vec::new(), gone: false }
     }
 
     /// Warm its threads (none inline: there's nothing to warm).
@@ -2102,12 +2201,19 @@ impl Thinker {
     }
 
     /// The answer to question `id` if it has come.
+    /// (Where its thread is gone, none ever: [`Thinker::gone`].)
     fn poll(&mut self, id: u64) -> Option<Answer> {
         #[cfg(not(target_arch = "wasm32"))]
         if let How::Thread { answers, .. } = &self.how {
-            while let Ok(a) = answers.try_recv() {
-                if self.wanted(a.id) {
-                    self.kept.push(a);
+            loop {
+                match answers.try_recv() {
+                    Ok(a) if self.wanted(a.id) => self.kept.push(a),
+                    Ok(_) => {}
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        self.gone = true;
+                        break;
+                    }
                 }
             }
         }
@@ -2144,6 +2250,19 @@ impl Thinker {
 /// tenths of HP, and as much again each second on.
 const STALE: u32 = 180;
 const STALE_EAGER: i64 = 50;
+/// When such a chip is pushed out ([`Search::stale_wait`]): now, or after
+/// each of a few steps of the fight's ticks, each copy played as long, and
+/// so far past the last (long enough for an effect used now to have ended
+/// where the last is still up: EXE6's Invisibl lasts 360 ticks).
+const STALE_STEP: u32 = 60;
+const STALE_WAITS: u32 = 4;
+const STALE_LOOK: u32 = 360;
+/// What waiting to push such a chip out costs, in tenths of HP a second:
+/// the chips behind it barred a while longer (what they would make is
+/// unknown till they are next: a little, less than a hit a few seconds
+/// waiting avoids, as a chip whose use is wasted now makes no hit's worth
+/// till its like's effect ends).
+const STALE_BARS: i64 = 20;
 /// What a chip in hand is worth kept, in tenths of HP, against what using
 /// it now makes ([`Search::decide`]): a little more than what two copies of
 /// the same moment differ by (a dimming's ticks more in one, the fight-time
@@ -2161,9 +2280,9 @@ pub struct Fighter {
     rng: SplitMix64,
     /// What it does now.
     now: Exec,
-    /// The decision asked and not yet taken: its question, and the tick it
-    /// takes effect on.
-    pending: Option<(u64, u32)>,
+    /// The decision asked and not yet taken: its question, the tick it
+    /// takes effect on, and the chips in hand as it was asked.
+    pending: Option<(u64, u32, u8)>,
     asked: u64,
     /// Its ticks, and the ticks of the fight since it last decided.
     ticks: u32,
@@ -2182,6 +2301,11 @@ pub struct Fighter {
     hand: u8,
     held: u32,
     refused: bool,
+    /// The live ticks the chip in hand is held before it counts as held
+    /// long ([`STALE`], or later where pushing it out waits:
+    /// [`Answer::stale_wait`]), and whether that moment has been chosen.
+    stale_after: u32,
+    stale_timed: bool,
     /// Its custom screen's: its presses, and the chips dealt with what each is
     /// worth ([`Level::chooses`]).
     picker: Picker,
@@ -2241,6 +2365,8 @@ impl Fighter {
             hand: 0,
             held: 0,
             refused: false,
+            stale_after: STALE,
+            stale_timed: false,
             last_hp: None,
             alerted: false,
             picker: Picker::default(),
@@ -2260,7 +2386,7 @@ impl Fighter {
         self.pending = None;
         (self.ticks, self.since) = (0, 0);
         (self.last_theirs, self.last_hp, self.alerted) = (0, None, false);
-        (self.past, self.hand, self.held, self.refused) = (Past([0; PAST]), 0, 0, false);
+        (self.past, self.hand, self.held, self.refused, self.stale_after, self.stale_timed) = (Past([0; PAST]), 0, 0, false, STALE, false);
         self.picker = Picker::default();
         self.chosen = None;
         self.dim = None;
@@ -2282,7 +2408,8 @@ impl Fighter {
             now: self.now,
             theirs,
             past: self.past,
-            stale: if self.refused { 0 } else { self.held.saturating_sub(STALE - 1) },
+            stale: if self.refused || self.held < self.stale_after { 0 } else { self.held.saturating_sub(STALE - 1) },
+            stale_timed: self.stale_timed,
             side,
             level: self.level,
             asked,
@@ -2305,7 +2432,7 @@ impl Fighter {
         {
             self.now = Exec::stand(at);
         }
-        self.take_decision();
+        self.take_decision(b.hands[side as usize].remaining());
         if fight_goes_on(b) && b.is_dimmed() {
             // (The plan goes on as it would, its presses aside: what it waits for, it waits for still.)
             let _ = self.now.buttons(b, side);
@@ -2319,6 +2446,9 @@ impl Fighter {
         self.past.push(theirs);
         let hand = b.hands[side as usize].remaining();
         self.held = if hand != self.hand { 0 } else { self.held + 1 };
+        if self.held == 0 {
+            (self.stale_after, self.stale_timed) = (STALE, false);
+        }
         self.refused &= hand == self.hand;
         self.hand = hand;
         // (An attack seen coming, or a hit taken: a decision as soon as none is pending.)
@@ -2330,10 +2460,10 @@ impl Fighter {
             self.since = 0;
             self.alerted = false;
             self.asked += 1;
-            self.pending = Some((self.asked, self.ticks + self.level.reaction));
+            self.pending = Some((self.asked, self.ticks + self.level.reaction, hand));
             let q = self.question(b, side, theirs, Asked::Decide);
             self.thinker.ask(q);
-            self.take_decision();
+            self.take_decision(hand);
         }
         let pressed = self.now.buttons(b, side);
         self.refused |= self.now.refused;
@@ -2388,18 +2518,26 @@ impl Fighter {
             } else {
                 self.thinker.poll(asked)
             };
-            let Some(answer) = answer else {
-                chosen.looked += 1;
-                self.spent.looked_longer += 1;
-                return 0;
-            };
-            self.spent.chips += 1;
-            self.spent.screens_late += (chosen.looked > self.level.looks) as u32;
-            self.spent.ticks += answer.ticks;
-            self.spent.chip_time += answer.took;
-            self.spent.forms += answer.form.is_some() as u32;
-            chosen.worths = Some(answer.worths);
-            chosen.form = answer.form;
+            match answer {
+                Some(answer) => {
+                    self.spent.chips += 1;
+                    self.spent.screens_late += (chosen.looked > self.level.looks) as u32;
+                    self.spent.ticks += answer.ticks;
+                    self.spent.chip_time += answer.took;
+                    self.spent.chip_work += answer.work;
+                    self.spent.forms += answer.form.is_some() as u32;
+                    chosen.worths = Some(answer.worths);
+                    chosen.form = answer.form;
+                }
+                // (Its thread is gone: no answer will come. It picks every chip it can, all worth the same, and no
+                // form, rather than look on for ever.)
+                None if self.thinker.gone => chosen.worths = Some(vec![0; chosen.slots.len()]),
+                None => {
+                    chosen.looked += 1;
+                    self.spent.looked_longer += 1;
+                    return 0;
+                }
+            }
         }
         let chooses = self.level.chooses;
         let worths = chosen.worths.clone().filter(|_| chooses);
@@ -2473,9 +2611,14 @@ impl Fighter {
     }
 
     /// The decision asked, once its tick has come: its answer (waited for,
-    /// if it isn't ready), and the plan picked from it.
-    fn take_decision(&mut self) {
-        let Some((id, _)) = self.pending.filter(|(_, at)| *at <= self.ticks) else {
+    /// if it isn't ready), and the plan picked from it. Where the chips in
+    /// hand (`hand`, now) aren't those it was asked with, it is dropped and
+    /// another asked at once: its plans with a chip were for the chip that
+    /// was next (a chip pushed out a reaction time ago, used meanwhile by
+    /// the plan it followed, would push out the chip behind it: a second
+    /// Invisibl while the first's invisibility is up).
+    fn take_decision(&mut self, hand: u8) {
+        let Some((id, _, asked_with)) = self.pending.filter(|(_, at, _)| *at <= self.ticks) else {
             return;
         };
         self.pending = None;
@@ -2489,6 +2632,13 @@ impl Fighter {
         self.spent.ticks += answer.ticks;
         self.spent.time += answer.took;
         self.spent.longest = self.spent.longest.max(answer.took);
+        if hand != asked_with {
+            self.since = self.level.every;
+            return;
+        }
+        if let Some(wait) = answer.stale_wait {
+            (self.stale_after, self.stale_timed) = (self.held + wait, true);
+        }
         let tried = answer.tried;
         let Some(&(followed, following)) = tried.last() else {
             return;
@@ -2571,14 +2721,30 @@ struct Chosen {
 
 /// A custom screen's buttons that pick every chip they can, then OK: the
 /// worthiest first, by a worth given for each slot (none worth less than
-/// nothing), else in the order the cursor reaches them. Only the folder's
-/// chips dealt (no button, no chip offered from outside it, no form).
+/// nothing), else in the order the cursor reaches them; but never a chip OK
+/// folds into the chip before it (an attack-up) where it wouldn't fold
+/// (picked first, or after a chip it doesn't attach to: it would stand alone
+/// in the hand, and poof as it is used); and a slot the screen won't take
+/// though it shows it selectable (A pressed on it [`REFUSED_TRIES`] times,
+/// the picks as they were: EXE4's Mega chip past the navi's limit, which
+/// only A finds out) is passed over for the rest of the screen, so it never
+/// presses A on one for ever. Only the folder's chips dealt (no button, no
+/// chip offered from outside it, no form).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Picker {
     /// What it holds, and for how many ticks more.
     held: u16,
     more: u8,
+    /// The slot it last pressed A on to pick and the picks made then, the
+    /// times it has so, and the slots passed over (by bit).
+    pressed_on: Option<(u8, u8)>,
+    tries: u8,
+    passed: u16,
 }
+
+/// The presses of A on a chip's slot, the picks as they were, after which
+/// the screen is taken not to take it ([`Picker`]).
+const REFUSED_TRIES: u8 = 3;
 
 impl Picker {
     /// `worth`: what the chip in a slot is worth, if it is known.
@@ -2591,7 +2757,9 @@ impl Picker {
     fn step(&mut self, b: &Battle, side: usize, worth: Option<&dyn Fn(u8) -> Option<i64>>, finish: bool) -> Option<u16> {
         let s = &b.custom.sides[side];
         let Some(screen) = s.screen.as_ref().filter(|s| b.round.mode == mode::CUSTOM && s.phase == Phase::Choosing) else {
-            *self = Picker::default();
+            // (The slots passed over stay while the screen does, in a window of its own too.)
+            let passed = if b.round.mode == mode::CUSTOM && s.screen.is_some() { self.passed } else { 0 };
+            *self = Picker { passed, ..Picker::default() };
             return Some(0);
         };
         if !s.in_custom {
@@ -2605,7 +2773,27 @@ impl Picker {
         if std::mem::take(&mut self.held) != 0 {
             return Some(0);
         }
-        let key = match pick(screen, &b.game_rules().custom_screen, worth) {
+        // (A chip OK folds into the chip before it (an attack-up) is picked only right after one it folds into:
+        // else it stands in the hand alone, and poofs as it is used. The engine's own test, `stays_unfolded`, from
+        // the hand the picks so far build.)
+        let library: &dyn nettai_battle::custom::library::Library = &*b.content;
+        let chip_in = |slot: u8| screen.chip_in(slot, &s.folder).map(|c| c.id);
+        let mut last = None;
+        for &slot in screen.selection() {
+            if let Some(c) = chip_in(slot)
+                && (library.chip(c).modifier.is_none() || nettai_battle::custom::builder::stays_unfolded(library, last, c))
+            {
+                last = Some(c);
+            }
+        }
+        // (A slot A was pressed on so often, the picks as they were, isn't one the screen takes.)
+        let on = (screen.cursor, screen.selected);
+        if self.pressed_on == Some(on) && self.tries >= REFUSED_TRIES {
+            self.passed |= 1 << screen.cursor;
+        }
+        let passed = self.passed;
+        let folds = |slot: u8| passed & (1 << slot) == 0 && chip_in(slot).is_none_or(|c| !nettai_battle::custom::builder::stays_unfolded(library, last, c));
+        let key = match pick(screen, &b.game_rules().custom_screen, worth, &folds) {
             Some(key) => key,
             None if finish => {
                 if screen.cursor != OK_SLOT {
@@ -2616,6 +2804,10 @@ impl Picker {
             }
             None => return None,
         };
+        if key == keys::A && matches!(screen.slots[screen.cursor as usize].kind, SlotKind::Chip { .. }) {
+            self.tries = if self.pressed_on == Some(on) { self.tries + 1 } else { 1 };
+            self.pressed_on = Some(on);
+        }
         // (A direction moves the cursor on its second tick held: the screen's auto-repeat.)
         self.more = (key & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0) as u8;
         self.held = key;
@@ -2625,10 +2817,12 @@ impl Picker {
 
 /// The press that picks the next chip (the worthiest, by `worth`, of
 /// those it can pick; else the nearest); none if there is none to pick.
-fn pick(screen: &Screen, layout: &CustomScreenLayout, worth: Option<&dyn Fn(u8) -> Option<i64>>) -> Option<u16> {
+/// Only a slot `folds` says may be picked now is (a chip that would stand
+/// alone in the hand isn't).
+fn pick(screen: &Screen, layout: &CustomScreenLayout, worth: Option<&dyn Fn(u8) -> Option<i64>>, folds: &dyn Fn(u8) -> bool) -> Option<u16> {
     let wanted = |i: u8| {
         let slot = &screen.slots[i as usize];
-        matches!(slot.kind, SlotKind::Chip { .. }) && slot.state == SlotState::Selectable
+        matches!(slot.kind, SlotKind::Chip { .. }) && slot.state == SlotState::Selectable && folds(i)
     };
     if (screen.selected as usize) >= MAX_SELECTIONS {
         return None;
