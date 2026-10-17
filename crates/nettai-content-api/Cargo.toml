@@ -1,6 +1,6 @@
 [package]
 name = "nettai-content-api"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The battle engine's content API: what chips, attacks and effects see of the core"

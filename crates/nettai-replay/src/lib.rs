@@ -128,7 +128,7 @@ impl fmt::Display for Mismatch {
         match self {
             Mismatch::Game { replay, here } => write!(f, "the replay is of {replay}, not {here}"),
             Mismatch::Content { replay, here } => write!(f, "the replay was made on other content (its hash {replay:016x}, this one's {here:016x})"),
-            Mismatch::Engine { replay, here } => write!(f, "the replay was made on engine {replay}, this is {here}"),
+            Mismatch::Engine { replay, here } => write!(f, "the replay was made on nettai {replay}, this is {here}"),
         }
     }
 }

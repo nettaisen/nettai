@@ -1,6 +1,6 @@
 [package]
 name = "nettai"
-version = "0.2.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"

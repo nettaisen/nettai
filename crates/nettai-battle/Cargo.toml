@@ -1,6 +1,6 @@
 [package]
 name = "nettai-battle"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "nettai: a Battle Network battle engine in Rust, reimplemented from Mega Man Battle Network 6 with the game's content as a separate pack"

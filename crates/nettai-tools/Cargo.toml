@@ -1,6 +1,6 @@
 [package]
 name = "nettai-tools"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The developer's and verification's command line over nettai-frontend, with no window: headless frames, the audits, the replay of the original's recordings, match setups and replays checked"

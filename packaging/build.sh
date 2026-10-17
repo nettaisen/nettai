@@ -3,8 +3,8 @@
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-# The version: $NETTAI_VERSION (the workflow's, from the tag), else the app crate's.
-version=${NETTAI_VERSION:-$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/crates/nettai/Cargo.toml" | head -n 1)}
+# The version: $NETTAI_VERSION (the workflow's, from the tag), else the workspace's (Cargo.toml).
+version=${NETTAI_VERSION:-$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -n 1)}
 
 # A release build of the app for a packaged app (`NETTAI_PACKAGED`: it reads no content but the content it
 # ships). With a target triple, for that target. Sets `notices` to the build's third-party notices
