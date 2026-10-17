@@ -132,7 +132,7 @@ local function rush(me: Object)
     local x = me.panel_x
     if x >= 1 and x <= 6 then
         -- 0x080CBFD0: the panel under him must be solid with no blocker on it.
-        local px, py = link_chips.panel_at(me.pos.x, me.pos.y)
+        local px, py = link_chips.panel_at(me.pos.x, me.pos.y, me.alliance)
         if not field.check(px, py, SOLID, BLOCKERS) then
             return stop(me)
         end

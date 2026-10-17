@@ -3,7 +3,7 @@
 
 use super::{
     ai, ai_mut, cancel_submerged, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
-    clear_paralysis, coll, coll_mut, coordinates_to_panel, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
+    clear_paralysis, coll, coll_mut, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
     reset_charge, set_flag1, snap_to_future_panel, NaviAction, set_action,
 };
 use crate::actor::{request, status as ai_status};
@@ -467,15 +467,15 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     let old_x = o.pos.x;
     o.pos.x = o.pos.x.wrapping_add(o.vel.x);
-    let mut arrived = passed(o.pos.x, old_x, tx);
+    let mut arrived = nettai_content_api::passed_x(o.pos.x, old_x, tx, o.alliance);
     if !arrived {
         let old_y = o.pos.y;
         o.pos.y = o.pos.y.wrapping_add(o.vel.y);
-        arrived = passed(o.pos.y, old_y, ty);
+        arrived = nettai_content_api::passed(o.pos.y, old_y, ty);
     }
     if !arrived {
         let o = b.objects.get_mut(r);
-        o.panel = coordinates_to_panel(o.pos.x, o.pos.y);
+        o.panel = PanelPos::under(o.pos.x, o.pos.y, o.alliance);
         b.update_collision_panels(r);
         return;
     }
@@ -510,12 +510,6 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.timer = 0x14;
     o.drag_step = DragStep::Recover;
-}
-
-/// `sub_800E6E8`: whether a step from `old` to `new` reached `target`
-/// (moving left, exactly reaching it does not count).
-pub(crate) fn passed(new: i32, old: i32, target: i32) -> bool {
-    if new > old { target > old && target <= new } else { target > new && target <= old }
 }
 
 /// `sub_8017A38`: wait, then back to idle (or to paralysis), by the game's
@@ -862,22 +856,24 @@ mod tests {
             if aqua {
                 coll_mut(&mut b, r).element = 2;
             }
-            let (from, to) = (panel_coordinates(4, 2), panel_coordinates(5, 2));
+            // (Side 1's navi dragged a panel forward, to the left: reaching
+            // the panel counts, `passed_x`.)
+            let (from, to) = (panel_coordinates(6, 2), panel_coordinates(5, 2));
             let o = b.objects.get_mut(r);
-            o.panel = PanelPos { x: 4, y: 2 };
+            o.panel = PanelPos { x: 6, y: 2 };
             o.future_panel = PanelPos { x: 5, y: 2 };
             (o.pos.x, o.pos.y) = from;
             (o.vel.x, o.vel.y) = (to.0 - from.0, 0);
-            (o.slide_dx, o.slide_dy) = (1, 0);
+            (o.slide_dx, o.slide_dy) = (0xFF, 0);
             o.timer2 = 3;
             o.drag_step = DragStep::Slide;
             step_drag(&mut b, r);
             let o = b.objects.get(r);
             (o.drag_step, o.timer2, o.future_panel.x)
         };
-        assert_eq!(run("ice", false), (DragStep::Slide, 3, 6), "a panel further on ice");
-        assert_eq!(run("ice", true), (DragStep::Slide, 2, 6), "an aqua navi");
-        assert_eq!(run("sea", false), (DragStep::Slide, 2, 6), "the sea stops only a slide");
+        assert_eq!(run("ice", false), (DragStep::Slide, 3, 4), "a panel further on ice");
+        assert_eq!(run("ice", true), (DragStep::Slide, 2, 4), "an aqua navi");
+        assert_eq!(run("sea", false), (DragStep::Slide, 2, 4), "the sea stops only a slide");
     }
 
     /// docs/design/exe5-map.md §15.3 item 17: a drag goes at the arena's

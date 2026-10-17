@@ -70,6 +70,38 @@ pub struct PanelPos {
     pub y: u8,
 }
 
+impl PanelPos {
+    /// The panel under the field position (x, y) of an object of side
+    /// `side` (`sub_800E258`, the BIOS's divisions toward zero: x 1..=6 and
+    /// y 1..=3 on the field, border or wrapped values off it). The original
+    /// divides every X as it is, so a position on the line between two
+    /// columns is in the column to its right: ahead of side 0, behind side
+    /// 1. nettai divides side 1's X mirrored, so the line is in the column
+    /// toward the other side for both (docs/engine/side-symmetry.md).
+    pub fn under(x: i32, y: i32, side: u8) -> PanelPos {
+        let column = |x: i32| (((x >> 16) + 0xA0) / 0x28) as u8;
+        let x = if side & 1 == 0 { column(x) } else { 7u8.wrapping_sub(column(x.wrapping_neg())) };
+        PanelPos { x, y: (((y >> 16) + 0x20) / 0x18) as u8 }
+    }
+}
+
+/// `sub_800E6E8`: a move from `old` to `new` passed `target`: it lies in
+/// (old, new] moving up the axis, in (new, old] moving down it. Moving up,
+/// reaching the target counts and starting on it doesn't; moving down, the
+/// other way round. Along Y, as the original has it; along X, [`passed_x`].
+pub fn passed(new: i32, old: i32, target: i32) -> bool {
+    if new > old { target > old && target <= new } else { target > new && target <= old }
+}
+
+/// [`passed`] along X for an object of side `side`. The original's rule
+/// counts a move to the right as reaching (ahead for side 0, back for side
+/// 1) and a move to the left as leaving (back for side 0, ahead for side
+/// 1); nettai takes side 1's X mirrored, so a move ahead counts on reaching
+/// and a move back on leaving for both sides (docs/engine/side-symmetry.md).
+pub fn passed_x(new: i32, old: i32, target: i32, side: u8) -> bool {
+    if side & 1 == 0 { passed(new, old, target) } else { passed(new.wrapping_neg(), old.wrapping_neg(), target.wrapping_neg()) }
+}
+
 /// A sprite, as the engine names it: a handle, its place among the loaded
 /// packs' sprite names (`AssetNames::sprites`, qualified by pack, in byte
 /// order; docs/design/rules-in-luau.md §7.4). What a pack calls it (its

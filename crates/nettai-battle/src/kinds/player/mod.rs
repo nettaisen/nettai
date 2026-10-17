@@ -87,7 +87,6 @@ mod reactions;
 mod status;
 pub(crate) use status::end_anger;
 
-pub(crate) use reactions::passed;
 pub(crate) use intake::strip_body_programs;
 pub use intake::take_navi_bug;
 pub(crate) use intake::take_status;
@@ -114,12 +113,6 @@ use crate::setup::{NaviStats, effects};
 /// takes the panel numbers as signed bytes).
 pub fn panel_coordinates(x: u8, y: u8) -> (i32, i32) {
     ((x as i8 as i32 * 40 - 140) << 16, (y as i8 as i32 * 24 - 20) << 16)
-}
-
-/// The panel under a position (`sub_800E258`; the game divides toward
-/// zero).
-pub fn coordinates_to_panel(x: i32, y: i32) -> PanelPos {
-    PanelPos { x: (((x >> 16) + 0xA0) / 0x28) as u8, y: (((y >> 16) + 0x20) / 0x18) as u8 }
 }
 
 /// Spawn a player navi where its stage places it (`sub_800753C`).

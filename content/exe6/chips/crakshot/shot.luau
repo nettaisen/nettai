@@ -34,12 +34,10 @@ local function crack(x: number, y: number)
     end
 end
 
--- `sub_800E6E8`: `center` lies past `from`, up to and including `to`.
-local function crossed(to: number, from: number, center: number): boolean
-    if to > from then
-        return center > from and center <= to
-    end
-    return center > to and center <= from
+-- `sub_800E6E8`: `center` lies past `from`, up to and including `to`, as
+-- `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function crossed(to: number, from: number, center: number, side: number): boolean
+    return field.passed(to, from, center, side)
 end
 
 -- Out of the fight: hidden, its region cleared, then gone.
@@ -65,7 +63,7 @@ local function tick(me: Object)
             local x = int.i32(p.x + me.vel.x)
             me.pos = Vec3.new(x, p.y, p.z)
             local out = false
-            if crossed(x, p.x, cx) then
+            if crossed(x, p.x, cx, me.alliance) then
                 local s = me.state :: State
                 local left = s.centers - 1
                 s.centers = left

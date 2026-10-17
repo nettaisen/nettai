@@ -137,7 +137,7 @@ local function run(me: Object, s: State)
     if center ~= old and link.between(me.pos.x, old, center) then
         add_car(me, s)
     end
-    local x, y = link.panel_at(me.pos.x, me.pos.y)
+    local x, y = link.panel_at(me.pos.x, me.pos.y, me.alliance)
     if field.valid(x, y) and not field.solid(x, y) then
         link.go(me, STOP)
         return
