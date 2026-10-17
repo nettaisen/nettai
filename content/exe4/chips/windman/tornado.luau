@@ -93,12 +93,10 @@ local function sand(me: Object)
     drop_sand(me)
 end
 
--- `sub_800E6E8` (0x0800AE10): a move from `old` to `new` reached `target` (past it, or onto it).
-local function reached(new: number, old: number, target: number): boolean
-    if new > old then
-        return target > old and target <= new
-    end
-    return target > new and target <= old
+-- `sub_800E6E8` (0x0800AE10): a move from `old` to `new` reached `target` (past it, or onto it); along X, as
+-- `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function reached(new: number, old: number, target: number, side: number?): boolean
+    return field.passed(new, old, target, side)
 end
 
 -- Its panel from its coordinates, its collision's with it, a tick more on it.
@@ -169,7 +167,7 @@ local function across(me: Object)
         local p = me.pos
         local x = int.i32(p.x + v.x)
         me.pos = Vec3.new(x, p.y, p.z)
-        if not reached(x, p.x, tx) then
+        if not reached(x, p.x, tx, me.alliance) then
             return moved(me)
         end
         count = true

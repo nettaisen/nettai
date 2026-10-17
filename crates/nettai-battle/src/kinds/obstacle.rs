@@ -1104,11 +1104,11 @@ fn step_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     let o = b.objects.get_mut(r);
     let old_x = o.pos.x;
     o.pos.x = o.pos.x.wrapping_add(o.vel.x);
-    let mut arrived = crate::kinds::player::passed(o.pos.x, old_x, tx);
+    let mut arrived = nettai_content_api::passed_x(o.pos.x, old_x, tx, o.alliance);
     if !arrived {
         let old_y = o.pos.y;
         o.pos.y = o.pos.y.wrapping_add(o.vel.y);
-        arrived = crate::kinds::player::passed(o.pos.y, old_y, ty);
+        arrived = nettai_content_api::passed(o.pos.y, old_y, ty);
     }
     if !arrived {
         common::set_panels_from_coordinates(b, r);

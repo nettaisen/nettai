@@ -6,7 +6,7 @@
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
     EmotionRole, coll_mut, switch_protected, emotion_role, entry, exit_attack_state, flag1, flag2, idle, is_link, own_gauges, navi_record,
-    coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
+    panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
     set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
@@ -682,7 +682,7 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
         let (dx, dy) = (o.slide_dx as i8 as i32, o.slide_dy as i8 as i32);
         o.pos.x = o.pos.x.wrapping_add(dx * speed.x);
         o.pos.y = o.pos.y.wrapping_add(dy * speed.y);
-        o.panel = coordinates_to_panel(o.pos.x, o.pos.y);
+        o.panel = PanelPos::under(o.pos.x, o.pos.y, o.alliance);
         anchor_collision(b, r);
         return;
     }

@@ -28,12 +28,10 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- The actions: down (or up) its column, forward, up, back, home.
 local DOWN, FORWARD, UP, BACK, HOME = 0x0, 0x4, 0x8, 0xC, 0x10
 
--- `sub_800E6E8`: `center` lies past `from`, up to and including `to`.
-local function crossed(to: number, from: number, center: number): boolean
-    if to > from then
-        return center > from and center <= to
-    end
-    return center > to and center <= from
+-- `sub_800E6E8`: `center` lies past `from`, up to and including `to`; along X,
+-- as `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function crossed(to: number, from: number, center: number, side: number?): boolean
+    return field.passed(to, from, center, side)
 end
 
 local function sign(v: number): number
@@ -63,7 +61,7 @@ local function move(me: Object, vertical: boolean): boolean
     end
     local x = int.i32(p.x + v.x)
     me.pos = Vec3.new(x, p.y, p.z)
-    return crossed(x, p.x, cx)
+    return crossed(x, p.x, cx, me.alliance)
 end
 
 local function moved(me: Object)

@@ -56,7 +56,7 @@ local APPEAR, DASH, CUT_BACK, RUSH = 0x0, 0x4, 0x8, 0xC
 
 -- 0x080C1DC8: the panel under him is solid with no blocker on it.
 local function on_ground(me: Object): boolean
-    local x, y = link_chips.panel_at(me.pos.x, me.pos.y)
+    local x, y = link_chips.panel_at(me.pos.x, me.pos.y, me.alliance)
     return field.valid(x, y) and field.check(x, y, SOLID, BLOCKERS)
 end
 

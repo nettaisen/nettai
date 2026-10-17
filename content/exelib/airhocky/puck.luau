@@ -166,9 +166,10 @@ local function burst(me: Object, look: Look)
     me:set_lifecycle("destroy")
 end
 
--- The panel under a position (`sub_800E258`).
-local function panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- The panel under a position (`sub_800E258`), as `side` has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
 -- `sub_80C9964`: step along, re-planning at each panel.
@@ -187,7 +188,7 @@ local function slide(me: Object, look: Look)
     me.timer = t
     if t == bit32.rshift(ticks, 1) then
         local c = me.collision
-        c.panel_x, c.panel_y = panel_at(s.to_x, s.to_y)
+        c.panel_x, c.panel_y = panel_at(s.to_x, s.to_y, me.alliance)
     end
     if t == ticks then
         if v.steps ~= 0 then

@@ -46,17 +46,16 @@ local function state(me: Object): State
     return me.state :: State
 end
 
--- The panel the field position (x, y) is over (`sub_800E258`: the BIOS divisions).
-local function panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- The panel the field position (x, y) is over (`sub_800E258`: the BIOS divisions), as `side` has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
--- `sub_800E6E8`: whether a move from `old` to `new` passed `target`.
-local function passed(new: number, old: number, target: number): boolean
-    if new > old then
-        return target > old and target <= new
-    end
-    return target > new and target <= old
+-- `sub_800E6E8`: whether a move from `old` to `new` along X passed `target`, as `side` sees it
+-- (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function passed(new: number, old: number, target: number, side: number): boolean
+    return field.passed(new, old, target, side)
 end
 
 -- 0x080DBEB2 and the end of 0x080DBF24: hidden, off the field, out of the registry (mode 1), and gone.
@@ -104,10 +103,10 @@ local function rolling(me: Object)
     else
         local cx = field.center(me.panel_x, me.panel_y)
         local p, v = me.pos, me.vel
-        if passed(p.x + v.x, p.x, cx) then
+        if passed(p.x + v.x, p.x, cx, me.alliance) then
             x, y = me.panel_x + (if v.x >= 0 then 1 else -1), me.panel_y
         else
-            x, y = panel_at(p.x + v.x, p.y)
+            x, y = panel_at(p.x + v.x, p.y, me.alliance)
         end
     end
     local side = if bit32.btest(field.flags(x, y), SIDE_1) then 1 else 0

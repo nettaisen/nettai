@@ -109,9 +109,11 @@ local function hit(me: Object)
     end
 end
 
--- The panel under a position (`sub_800E258`: two BIOS divisions).
-local function panel_under(p: Vec3): (number, number)
-    return int.tdiv(int.asr(p.x, 16) + 0xA0, 0x28), int.tdiv(int.asr(p.y, 16) + 0x20, 0x18)
+-- The panel under its position (`sub_800E258`: two BIOS divisions), as its
+-- side has it (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_under(me: Object): (number, number)
+    local p = me.pos
+    return field.panel_at(p.x, p.y, me.alliance)
 end
 
 -- `sub_80DAF98`: roll to the far edge (`sub_80DB04C`: |edge - x| panels of
@@ -129,7 +131,7 @@ local function roll(me: Object)
     local old_x = me.panel_x
     local p = me.pos
     me.pos = Vec3.new(p.x + me.vel.x, p.y, p.z)
-    local x, y = panel_under(me.pos)
+    local x, y = panel_under(me)
     if field.valid(x, y) then
         if not field.check(x, y, FLOOR[1], FLOOR[2]) then
             explode(me)

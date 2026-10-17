@@ -53,12 +53,10 @@ local function finish(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- `sub_800E6E8`: `c` lies past `a` and up to `b`, either way.
-local function crossed(a: number, b: number, c: number): boolean
-    if a <= b then
-        return c > a and c <= b
-    end
-    return c > b and c <= a
+-- `sub_800E6E8`: `c` lies past `a` and up to `b`, either way,
+-- as `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function crossed(a: number, b: number, c: number, side: number): boolean
+    return field.passed(a, b, c, side)
 end
 
 -- `sub_801A100`: the hit spark over the center of the panel it is over
@@ -85,7 +83,7 @@ local function fly(me: Object, s: State)
     local cx = field.center(me.panel_x, me.panel_y)
     local x = int.i32(p.x + vel.x)
     me.pos = Vec3.new(x, p.y, p.z + vel.z)
-    if crossed(x, p.x, cx) then
+    if crossed(x, p.x, cx, me.alliance) then
         local left = s.range - 1
         s.range = left
         if left <= 0 then
