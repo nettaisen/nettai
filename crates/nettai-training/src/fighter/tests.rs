@@ -1184,3 +1184,71 @@ fn a_hand_is_worth_its_turn() {
     println!("{} Cannons of {} picked; {:.0} ms, {} trial ticks", picked, chips.len(), answer.took.as_secs_f64() * 1000.0, answer.ticks);
     assert_eq!(picked, chips.len(), "{:?}", answer.worths);
 }
+
+/// A folder of `chips` by turns (each a chip by name and its code), 30 in
+/// all.
+fn folder_of(content: &Arc<Content>, game: &str, chips: &[(&str, char)]) -> nettai_match::Folder {
+    let chips: Vec<FolderChip> = chips
+        .iter()
+        .map(|(name, code)| {
+            let chip = nettai_match::ids::chip(content, game, name).unwrap_or_else(|| panic!("no chip {name}"));
+            FolderChip::new(chip, nettai_battle::content::ChipCode::from_letter(*code).unwrap())
+        })
+        .collect();
+    nettai_match::Folder { chips: std::array::from_fn(|i| Some(chips[i % chips.len()])), regular: None, tags: None }
+}
+
+/// The battle of `m` (seed `seed`) at side 1's first custom screen.
+fn at_the_custom_screen(content: &Arc<Content>, m: &nettai_match::Match, seed: u32) -> Battle {
+    let mut b = Set::of(content, m, seed).start();
+    let mut t = 0;
+    while !b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing && b.round.mode == mode::CUSTOM) && t < 900 {
+        step(&mut b, 1, 0, 0);
+        t += 1;
+    }
+    b
+}
+
+/// The chips dealt on side 1's custom screen in `b`, and the slots it
+/// picks, in order, as its search answers at `level`.
+fn picked_on(b: &Battle, level: Level) -> (Vec<(u8, FolderChip)>, Vec<u8>) {
+    let chips = dealt(b, 1);
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Chips(chips.clone()) };
+    let answer = Search::with(THREADS).answer(&q);
+    let mut order: Vec<(u8, i64)> = chips.iter().zip(&answer.worths).filter(|(_, w)| **w >= 0).map(|((s, _), w)| (*s, *w)).collect();
+    order.sort_by_key(|(_, w)| std::cmp::Reverse(*w));
+    (chips, order.into_iter().map(|(s, _)| s).collect())
+}
+
+/// A chip that OK folds into the chip before it (an attack-up) is picked
+/// only right after one it folds into: the dummy's folder all Atk+10
+/// (EXE6), its custom screen picks none (each would stand alone in the
+/// hand, and poof as it is used: the copy's hand after OK shows it); its
+/// folder Cannon and Atk+10 by turns, it picks an Atk+10, each right after
+/// a Cannon, and the hand OK builds from its picks holds none alone.
+#[test]
+fn a_chip_that_folds_is_picked_only_after_one_it_folds_into() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let atk = nettai_match::ids::chip(&content, "exe6", "atk-10").expect("Atk+10");
+    let mut m = even_match(&content, "exe6", 1, 400);
+    m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("atk-10", '*')])).unwrap();
+    let b = at_the_custom_screen(&content, &m, 1);
+    let (chips, order) = picked_on(&b, Level::HARD);
+    assert!(!chips.is_empty());
+    assert_eq!(order, Vec::<u8>::new(), "Atk+10 alone picked: {chips:?}");
+    m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("cannon", 'A'), ("atk-10", '*')])).unwrap();
+    let b = at_the_custom_screen(&content, &m, 1);
+    let (chips, order) = picked_on(&b, Level::HARD);
+    let chip_at = |slot: u8| chips.iter().find(|(s, _)| *s == slot).map(|(_, c)| c.id);
+    assert!(chips.iter().any(|(_, c)| c.id == atk) && chips.iter().any(|(_, c)| c.id != atk), "{chips:?}");
+    let ats: Vec<usize> = (0..order.len()).filter(|&i| chip_at(order[i]) == Some(atk)).collect();
+    assert!(!ats.is_empty(), "no Atk+10 picked: {order:?} of {chips:?}");
+    for &i in &ats {
+        assert!(i > 0 && chip_at(order[i - 1]) != Some(atk), "an Atk+10 picked alone: {order:?} of {chips:?}");
+    }
+    let rank = |s: u8| Some(order.iter().position(|o| *o == s).map_or(-1, |at| (order.len() - at) as i64));
+    let (_, copy) = picks_on_a_copy(&b, 1, rank, &mut 0);
+    let fight = to_the_fight(&copy, 1, &rank, &mut 0).expect("the fight starts");
+    assert!(!stands_alone(&fight, 1), "{:?}", fight.hands[1].ids);
+}

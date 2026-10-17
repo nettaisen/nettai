@@ -73,8 +73,11 @@
 //! Advance on the copy, the copy plays it in their place, as OK forms it.
 //! A chip with no worth of its own may be one the hand folds into the chip
 //! picked right before it as OK builds the hand (an attack-up: Atk+10,
-//! Navi+20; the engine's `ChipHand::fold_next`), never used alone: it is
-//! also tried right after the hand's first and second picks. The work is
+//! Navi+20, EXE6's Uninstll; the engine's hand builder), never used alone:
+//! it is also tried right after the hand's first and second picks, and a
+//! hand the copy's OK leaves it standing alone in (picked first, or after a
+//! chip it doesn't attach to: used so, it poofs) isn't picked; nor is it
+//! picked among the chips after the hand. The work is
 //! the level's ([`Level::budget`], in ticks of the copies), not a time: the
 //! same screen gives the same hand on any machine. It presses nothing for
 //! its look time ([`Level::looks`]), and then nothing till its hand is
@@ -1114,15 +1117,23 @@ impl Search {
     /// the hand worth most wins. A chip worth nothing alone is also tried
     /// right after the hand's first and second picks: it may be one the hand
     /// folds into the chip before it as OK builds the hand (an attack-up:
-    /// Atk+10, Navi+20; the engine's `ChipHand::fold_next`). A Program
-    /// Advance the picks form on the copy is played in their place, as OK
-    /// forms it.
+    /// Atk+10, Navi+20, EXE6's Uninstll; the engine's hand builder,
+    /// `custom::builder`). Where the copy's hand after OK still holds such a
+    /// chip as an entry of its own ([`stands_alone`]: picked first, or after
+    /// a chip it doesn't attach to, it would poof as it is used), the hand
+    /// isn't one to pick ([`UNPICKABLE`]): so such a chip is picked only
+    /// right after a chip it folds into, and only where that raises the
+    /// hand's worth. A Program Advance the picks form on the copy is played
+    /// in their place, as OK forms it.
     ///
     /// Then every other chip is picked after the hand (the worthiest alone
     /// first), as a player picks all the codes allow: a chip left is dealt
     /// again first next turn, in the place of a new one, and one picked and
     /// not used costs nothing once the old hand is spent. Only a chip that
-    /// alone clearly costs the turn ([`LEAVE`]) is left.
+    /// alone clearly costs the turn ([`LEAVE`]) is left, and one that can't
+    /// be picked alone (a chip that folds, which would stand alone after the
+    /// hand: it stays on the screen, dealt again first next turn, where a
+    /// chip it folds into may be dealt with it).
     ///
     /// A chip that adds nothing in a round isn't tried again from that
     /// first (what a chip adds rarely grows as the hand does). The work is
@@ -1215,19 +1226,21 @@ impl Search {
                 best = (hand, worth);
             }
         }
-        // (Then every other chip, the worthiest alone first, but one that clearly costs the turn: a player picks all
-        // the codes allow. A chip left is dealt again first next turn, in the place of a new one; one picked and
+        // (Then every other chip, the worthiest alone first, but one that clearly costs the turn, or that alone
+        // can't be picked (a chip OK folds into the chip before it, standing alone: [`stands_alone`]): a player picks
+        // all the codes allow. A chip left is dealt again first next turn, in the place of a new one; one picked and
         // not used costs nothing once the old hand is spent. The codes the hand's picks leave decide which can be
         // picked: the picker skips one that isn't selectable by then.)
         let mut order = best.0;
         let mut rest: Vec<(u8, i64)> = firsts.iter().filter(|s| !order.iter().any(|o| chip_at(*o) == chip_at(**s))).map(|s| (*s, alone_of(*s))).filter(|(_, w)| *w >= -LEAVE).collect();
         rest.sort_by_key(|&(s, w)| (std::cmp::Reverse(w), s));
-        // (Two slots dealt the same chip: each is picked, after the first.)
+        // (Two slots dealt the same chip: each is picked, after the first; but a chip OK folds into the chip before
+        // it, which would stand alone there.)
         for (slot, _) in rest {
             order.push(slot);
         }
         for &(slot, chip) in chips {
-            if !order.contains(&slot) && order.iter().any(|o| chip_at(*o) == Some(chip)) {
+            if !order.contains(&slot) && order.iter().any(|o| chip_at(*o) == Some(chip)) && alone_of(slot) != UNPICKABLE {
                 order.push(slot);
             }
         }
@@ -1348,7 +1361,8 @@ impl Valued {
 /// both screens through OK (the other player picking every chip it can),
 /// and the turn played out against each guess at the other player
 /// ([`turn`]). A hand is worth what its turns make in all
-/// ([`UNPICKABLE`] where its picks can't be made in its order).
+/// ([`UNPICKABLE`] where its picks can't be made in its order, or where
+/// OK leaves a chip that folds standing alone: [`stands_alone`]).
 struct Hands {
     from: Battle,
     side: u8,
@@ -1389,6 +1403,12 @@ impl Hands {
         let Some(b) = b else {
             return (0, work);
         };
+        // (A chip that OK folds into the chip before it, standing in the hand as an entry of its own, didn't fold:
+        // the chip before it isn't one it attaches to, or there is none. Used, it does nothing, and it is gone (it
+        // poofs): a hand with one isn't a hand to pick. A hand that picks nothing keeps the old one as it is.)
+        if !slots.is_empty() && stands_alone(&b, self.side) {
+            return (UNPICKABLE, work);
+        }
         let mut made = 0;
         for &g in &self.guesses {
             trial.clone_from(&b);
@@ -1396,6 +1416,16 @@ impl Hands {
         }
         (made, work)
     }
+}
+
+/// Whether side `side`'s hand in `b`, from its cursor, holds a chip that
+/// OK folds into the chip before it as it builds the hand (an attack-up,
+/// EXE6's Uninstll: the content's `modifier`), as an entry of its own: the
+/// builder (`custom::builder`) left it there, as nothing before it is a
+/// chip it attaches to.
+fn stands_alone(b: &Battle, side: u8) -> bool {
+    let hand = &b.hands[side as usize];
+    hand.ids.iter().skip(hand.cursor as usize).map_while(|id| *id).any(|id| b.content.chip(id).modifier.is_some())
 }
 
 /// What side `side` makes over a turn ([`TURN`]) from `b` (`from`, the
