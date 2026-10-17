@@ -121,8 +121,6 @@ use nettai_netplay::rng::SplitMix64;
 use nettai_netplay::standin::tick_input;
 
 mod dimmed;
-#[cfg(test)]
-mod old;
 
 use dimmed::{Branches, DimAnswer, Dimmed, Memo};
 
