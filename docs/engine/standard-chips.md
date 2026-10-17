@@ -171,7 +171,8 @@ No reactive-defense check (`sub_801056A`) runs. 22 ticks from the action's first
   0x97), sound 0xDA, sprite 0C-33 with a ground shadow, x velocity 8 px a tick toward the front, z velocity 8 px a
   tick, timer 2, collision (self type 4, target 5, hit modifier 1, hit spark 5) present, and its first update runs.
 - **Update** (`sub_80CA61A`): resolve hits and show the spark; after a hit it ends. Below 20 px high it rises;
-  then it flies forward, and every time it passes a panel's center (`sub_800E6E8`) Param1 counts down: at 0 it
+  then it flies forward, and every time it passes a panel's center (`sub_800E6E8`; along X in the canonical
+  side's frame, side-symmetry.md §1.2) Param1 counts down: at 0 it
   ends. It also ends off the field. Ending: invisible, region cleared, destroy state; the collision is presented
   every tick, ending or not.
 

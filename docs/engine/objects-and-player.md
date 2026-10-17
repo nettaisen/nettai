@@ -1254,7 +1254,8 @@ Frames F..F+12 all show `CurPhase = 0` in the object header. Move phases live in
   | dx < 0 | 3 if dy == 0 (4 if alliance 1), else 5 |
   | dx == 0 | 2 if dy > 0, 1 if dy < 0, 0 if dy == 0 |
 
-  The trace shows 4 for P1 moving right. Ice slides use this Direction.
+  The trace shows 4 for P1 moving right. Ice slides use this Direction. (nettai tests the X in the canonical
+  side's frame, so a two-panel move ahead and one back read alike for either side: side-symmetry.md §1.3.)
 
 ##### M6.8 After the move: ice and road slides (`sub_801A36A` `sub_80166B6`)
 
