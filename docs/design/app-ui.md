@@ -1650,7 +1650,9 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     window: "align it with the emotion window", "maybe no box and use the regular font and don't change the
     color", "it should have the same offset as the enemy name"). They are
     shared: both see them, and a change clears both ready marks; the host alone changes them (§2.81: the
-    joiner's controls are unavailable), already while waiting, and the lobby starts on what the host set there.
+    joiner's controls are unavailable), already while waiting, and the lobby starts on what the host set there. First to, Open setups and the
+    Custom timer start as this player last set them hosting ("the host should remember their last match
+    settings"); the Ruleset on the one their build is made for (§2.73).
     Yours: Input delay (a stepper, yours alone, default 4, remembered; the opponent never sees it) and the
     connection's bars and ping (empty while nobody has come). No music: "don't allow bgm select in lobby"; the
     battle's music is picked in Practice, §2.29.
