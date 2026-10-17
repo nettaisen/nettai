@@ -229,6 +229,8 @@ struct Live {
     /// What is wrong with this player's build under the settings (the line says the first and how many more).
     problems: Vec<nettai_match::check::Problem>,
     closed: bool,
+    /// The custom screen's time limit in seconds, none for none.
+    custom_time: Option<u16>,
     bars: i32,
     ping: i32,
     note: Option<LobbyNote>,
@@ -810,6 +812,17 @@ impl Play {
         self.ended = None;
     }
 
+    /// The Custom timer stepped `by`: through the match's time limits, then Unlimited, and around.
+    fn step_custom_time(&mut self, by: i32) {
+        let choices: Vec<Option<u16>> = nettai_match::CUSTOM_SCREEN_TIMES.into_iter().map(Some).chain([None]).collect();
+        let now = choices.iter().position(|&c| c == self.live.custom_time).unwrap_or(0) as i32;
+        let time = choices[(now + by).rem_euclid(choices.len() as i32) as usize];
+        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+            lobby.set_custom_screen_time(time);
+        }
+        self.ended = None;
+    }
+
     /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player last chose,
     /// remembered (the one a new build is made for).
     fn set_ruleset(&mut self, shell: &mut Shell, picked: &Pickable) {
@@ -933,6 +946,7 @@ impl Play {
             ruleset: Some(lobby.settings().ruleset.clone()),
             host: lobby.role() == nettai_frontend::lobby::Role::Host,
             closed: lobby.settings().closed_builds,
+            custom_time: lobby.settings().custom_screen_time,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
             // (A build the settings can't play: the lobby's own check, typed.)
@@ -991,6 +1005,7 @@ impl Play {
             self.show_card(shell);
         }
         view.set_closed(live.closed);
+        view.set_custom_time(live.custom_time.map_or(0, i32::from));
         view.set_bars(live.bars);
         view.set_ping(live.ping);
         view.set_note(live.note.unwrap_or(LobbyNote::None));
@@ -1380,7 +1395,7 @@ impl Screen for Play {
                 self.ended = None;
                 shell.ui().global::<PlayView>().set_note_error(Default::default());
             }
-            "lobby.first-to" => self.step(shell, id, index, 1),
+            "lobby.first-to" | "lobby.custom-time" => self.step(shell, id, index, 1),
             "lobby.closed" => {
                 let closed = !self.live.closed;
                 self.set_closed(closed);
@@ -1455,6 +1470,7 @@ impl Screen for Play {
                 self.set_first_to((first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
             }
             "lobby.closed" => self.set_closed(by > 0),
+            "lobby.custom-time" => self.step_custom_time(by),
             "lobby.ruleset" => self.pick_ruleset(shell, 0, by),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),

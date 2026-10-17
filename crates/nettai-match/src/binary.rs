@@ -18,7 +18,8 @@
 //!           each fact in the setup's order, a list as its count and its entries)
 //! match  := seed (u32), the round wins its set is first to (u8: `n`, 1 to `MAX_FIRST_TO`),
 //!           every one of its `2n − 1` rounds' places (as the seed picks those the match
-//!           leaves: `Match::places`), side 0, side 1
+//!           leaves: `Match::places`), the custom screen's time limit (u16: seconds, 0 for none:
+//!           `Match::custom_screen_time`), side 0, side 1
 //! string := length (LEB128), UTF-8
 //! ```
 //!
@@ -166,7 +167,7 @@ fn take_background(content: &Content, bytes: &[u8], at: &str) -> Result<(String,
 
 /// A match in binary: its seed (refused: a match that states none), what
 /// its set is first to, every round's place (each part the match leaves
-/// picked from the seed), its sides.
+/// picked from the seed), its custom screen's time limit, its sides.
 pub fn match_bytes(content: &Content, m: &Match) -> Result<Vec<u8>, String> {
     let seed = m.seed.ok_or("a match kept in binary states its seed")?;
     let mut out = seed.to_le_bytes().to_vec();
@@ -176,6 +177,7 @@ pub fn match_bytes(content: &Content, m: &Match) -> Result<Vec<u8>, String> {
         out.extend_from_slice(&p.stage.0.to_le_bytes());
         put_string(&background_key(content, p.background).map_err(|e| format!("round {}: {e}", i + 1))?, &mut out);
     }
+    out.extend_from_slice(&m.custom_screen_time.unwrap_or(0).to_le_bytes());
     for side in &m.sides {
         put_side(content, side, &mut out);
     }
@@ -197,6 +199,12 @@ pub fn read_match(content: &Content, bytes: &[u8]) -> Result<Match, String> {
         at += 2 + used;
         rounds.push(RoundSettings { stage: Some(stage), background: Some(background) });
     }
+    let time = bytes.get(at..at + 2).ok_or("custom screen time: the bytes end inside it")?;
+    let custom_screen_time = Some(u16::from_le_bytes([time[0], time[1]])).filter(|&s| s != 0);
+    if let Some(problem) = crate::check_custom_screen_time(custom_screen_time) {
+        return Err(problem);
+    }
+    at += 2;
     let mut side = |name: &str| -> Result<Side, String> {
         let (s, used) = take_side(content, &bytes[at..]).map_err(|e| format!("{name}: {e}"))?;
         at += used;
@@ -204,7 +212,7 @@ pub fn read_match(content: &Content, bytes: &[u8]) -> Result<Match, String> {
     };
     let sides = [side("left")?, side("right")?];
     finished(bytes, at)?;
-    Ok(Match { game: content.game().to_string(), seed: Some(seed), rounds, sides, backgrounds: crate::BackgroundPick::Game })
+    Ok(Match { game: content.game().to_string(), seed: Some(seed), rounds, sides, backgrounds: crate::BackgroundPick::Game, custom_screen_time })
 }
 
 
@@ -318,6 +326,27 @@ mod tests {
         assert_eq!(bytes[4], 3, "first to 3");
     }
 
+    /// A match keeps its custom screen's time limit, or that it has none,
+    /// and its rounds count the same; one a match can't have is refused.
+    #[test]
+    fn a_match_keeps_its_custom_screen_time() {
+        let content = exe6_content();
+        let live = crate::pick::live(&content, "exe6", 21, None).unwrap();
+        for time in [Some(60), Some(120), None] {
+            let m = Match { custom_screen_time: time, ..live.clone() };
+            let bytes = match_bytes(&content, &m).unwrap();
+            let back = read_match(&content, &bytes).unwrap();
+            assert_eq!(back.custom_screen_time, time);
+            assert_eq!(back.round(&content, 21).custom_screen_limit, time.map(|t| t * 60));
+            assert_eq!(match_bytes(&content, &back).unwrap(), bytes);
+        }
+        let none = match_bytes(&content, &live).unwrap();
+        let mut odd = match_bytes(&content, &Match { custom_screen_time: Some(60), ..live.clone() }).unwrap();
+        let at = (0..none.len()).find(|&i| none[i] != odd[i]).expect("the limit's bytes");
+        odd[at] = 7;
+        assert_eq!(read_match(&content, &odd).unwrap_err(), "custom screen time 7: a match's is 30, 45, 60, 90, 120 seconds, or none");
+    }
+
     /// A match whose rounds are drawn on other games' backgrounds (the pool's: one stated, the rest picked from
     /// the pool) keeps each by its game and its name, and reads back as the match with them stated, which starts
     /// the same round: on another load of the content too.
@@ -373,8 +402,9 @@ mod tests {
         background[place_at(2) + 3..place_at(2) + 7].copy_from_slice(b"exe9");
         let named = std::str::from_utf8(&background[place_at(2) + 3..place_at(3)]).unwrap().to_string();
         assert_eq!(read(&background), format!("round 3: no background {named:?} in the background pool"));
-        // The left side's navi, a handle past the content's navis.
-        let at = place_at(3) + before(&content, &m.sides[0], "navi");
+        // The left side's navi, a handle past the content's navis (after the
+        // custom screen's time limit's two bytes).
+        let at = place_at(3) + 2 + before(&content, &m.sides[0], "navi");
         let mut navi = bytes.clone();
         navi[at..at + 2].copy_from_slice(&0x7FFFu16.to_le_bytes());
         assert_eq!(read(&navi), "left: navi: no navi 32766 in the content");

@@ -241,7 +241,7 @@ pub fn side_problems(content: &Arc<Content>, game: &str, rounds: &[RoundSettings
     if !alone.is_empty() {
         return alone;
     }
-    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()], backgrounds: crate::BackgroundPick::Game };
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()], backgrounds: crate::BackgroundPick::Game, custom_screen_time: None };
     match set_up(content, &m) {
         Ok(mut b) => validated(&mut b, 0),
         Err(e) => vec![Problem::of(Some(0), Wrong::Internal, e)],
@@ -257,6 +257,7 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
 /// entry the rules tie it to (a tool shows it there: the build creator's rows).
 pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
     let mut out: Vec<Problem> = check_rounds(content, &m.game, &m.rounds).into_iter().map(|p| Problem::of(None, Wrong::Match, p)).collect();
+    out.extend(crate::check_custom_screen_time(m.custom_screen_time).map(|p| Problem::of(None, Wrong::Match, p)));
     if !out.is_empty() {
         return out;
     }

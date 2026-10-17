@@ -403,6 +403,7 @@ impl Round {
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             // (A console's battle: it pauses itself, and L is its run key.)
             host_keys: nettai_battle::setup::HostKeys::NONE,
+            custom_screen_limit: None,
             players,
         }
     }
@@ -1271,6 +1272,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 random_battle: false,
                 late_turns: false,
                 run_key: true,
+                time_limit: None,
                 now: f.frame,
             }
         };

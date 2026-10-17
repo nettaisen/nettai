@@ -941,6 +941,7 @@ impl Round {
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             // (A console's battle: it pauses itself, and L is its run key.)
             host_keys: nettai_battle::setup::HostKeys::NONE,
+            custom_screen_limit: None,
             players: [p0?, p1?],
         })
     }

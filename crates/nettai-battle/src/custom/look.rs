@@ -345,6 +345,20 @@ impl ScreenLook {
         self.window_fade = CLEAR_WINDOW_FADE;
     }
 
+    /// The hover over a dark chip ends at once, its music and the
+    /// screen's player at the volumes its clearing ramp ends on (the
+    /// round's time limit, nettai's own, closing the screen where the hover
+    /// would not run again: `Screen::tick_time_up`).
+    pub(crate) fn clear_hover(&mut self, rules: &HoverRules) {
+        if self.shade == ChipShade::Clear {
+            return;
+        }
+        if let Some(&[music, screen]) = rules.to_clear.iter().rev().find_map(|v| v.as_ref()) {
+            self.call(ScreenCall::Volume { music, screen });
+        }
+        self.shade = ChipShade::Clear;
+    }
+
     /// A tick of the hover over a dark chip, as the rules' `hover` has it
     /// (EXE6's `sub_802A2B0`, EXE4's 0x0801E478). Resting on one
     /// (`on_shading`, `sub_802A394`; none: the tick's state left the chips,

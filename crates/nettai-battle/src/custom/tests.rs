@@ -124,13 +124,15 @@ struct Player {
     chip_shuffle: bool,
     /// L is the screen's run key (a console's battle).
     run_key: bool,
+    /// The round's custom screen time limit, in ticks (none: a console's).
+    time_limit: Option<u16>,
     tick: u32,
 }
 
 impl Player {
     fn new(chips: &[(ChipId, u8)]) -> Player {
         let setup = PlayerSetup { folder: folder(chips), ..PlayerSetup::default() };
-        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, run_key: true, tick: 0 }
+        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, run_key: true, time_limit: None, tick: 0 }
     }
 
     fn context(&self) -> Context<'_> {
@@ -143,6 +145,7 @@ impl Player {
             random_battle: false,
             late_turns: false,
             run_key: self.run_key,
+            time_limit: self.time_limit,
             now: self.tick,
         }
     }
@@ -1046,4 +1049,123 @@ fn a_hover_that_sounds_while_dark() {
         assert!(!tick(&mut look, Some(true)).contains(&ScreenCall::Sound(ScreenSound::Shade)));
     }
     assert_eq!(tick(&mut look, Some(true)), [ScreenCall::Sound(ScreenSound::Shade)]);
+}
+
+// The round's custom screen time limit (nettai's own, not the original's:
+// `RoundSetup::custom_screen_limit`).
+
+/// A screen of SHOT A and SHOT B whose round has a time limit of `limit`
+/// ticks, open and choosing.
+fn timed(limit: Option<u16>) -> Player {
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)]);
+    p.time_limit = limit;
+    p.open();
+    p.wait(10);
+    assert_eq!(p.phase(), Phase::Choosing);
+    p
+}
+
+/// Ticks with nothing held until the tick before the screen's time is up,
+/// each asking nothing; then that tick, with `held` held, which closes the
+/// screen as OK does whatever the keys.
+fn run_out(p: &mut Player, held: u16) {
+    let left = p.side.time_left(p.time_limit).expect("the screen counts");
+    for k in 1..left {
+        assert_eq!(p.step(0), None, "{k} of {left}");
+    }
+    assert_eq!(p.step(held), Some(Request::Confirm));
+    assert_eq!(p.phase(), Phase::Closing { tick: 0 });
+    assert_eq!((p.side.clock, p.side.time_left(p.time_limit)), (p.time_limit.unwrap(), None));
+}
+
+/// What the side sends once its screen has closed.
+fn sent(p: &mut Player) -> Option<crate::hand::ChipHand> {
+    p.wait(20);
+    p.side.sent.as_ref().expect("a result sent").result.hand.clone()
+}
+
+/// Time up while choosing: the screen closes as if OK were pressed, the
+/// chips picked so far the hand; the keys of its last tick are ignored (B
+/// would have taken the pick back). The clock counts from the tick the
+/// window is in, the limit's ticks.
+#[test]
+fn time_up_confirms_the_chips_picked_so_far() {
+    let mut p = timed(Some(120));
+    assert_eq!(p.side.time_left(Some(120)), Some(120), "the window is in: nothing counted yet");
+    p.press(keys::RIGHT);
+    p.press(keys::A);
+    assert_eq!(p.screen().selection(), [1]);
+    assert_eq!(p.side.clock, 6);
+    run_out(&mut p, keys::B);
+    assert_eq!(p.screen().selection(), [1]);
+    let hand = sent(&mut p).expect("a hand");
+    assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(1))));
+    assert_eq!(p.side.folder.chips[1], None, "the pick left the folder");
+    // Nothing picked: as OK with nothing, no hand.
+    let mut p = timed(Some(30));
+    run_out(&mut p, 0);
+    assert_eq!(sent(&mut p), None);
+}
+
+/// Time up over the chips: SELECT's hiding, R's description and L's
+/// message close silently, then OK is pressed with the picks.
+#[test]
+fn time_up_closes_what_is_over_the_chips_then_confirms() {
+    for key in [keys::SELECT, keys::R, keys::L] {
+        let mut p = timed(Some(60));
+        p.lib.chips[0].1.description_lines = 2;
+        p.press(keys::A);
+        p.press(key);
+        assert!(matches!(p.phase(), Phase::Hidden { .. } | Phase::Description { .. } | Phase::RunMessage { .. }), "{key:#x}");
+        run_out(&mut p, 0);
+        assert_eq!(sent(&mut p).expect("a hand").selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(0))), "{key:#x}");
+    }
+}
+
+/// No limit: the screen counts nothing and waits for OK, as the original's.
+#[test]
+fn without_a_limit_the_screen_waits() {
+    let mut p = timed(None);
+    for _ in 0..20_000 {
+        assert_eq!(p.step(0), None);
+    }
+    assert_eq!((p.phase(), p.side.clock, p.side.time_left(None)), (Phase::Choosing, 0, None));
+}
+
+/// In a battle both screens count in the simulation: with nobody pressing
+/// anything both close on their last tick and the fight resumes, and a
+/// battle restored from a snapshot taken while they count goes on to the
+/// same state as the battle it was taken of.
+#[test]
+fn the_clock_is_part_of_the_battles_state() {
+    use crate::battle::mode;
+    use crate::{Battle, PlayerTick, TickEvents};
+    let limit = 300;
+    let mut b = Battle::new(crate::RoundSetup { custom_screen_limit: Some(limit), ..crate::scenario::setup() }, crate::scenario::content());
+    let idle = [PlayerTick { held: 0 }; 2];
+    let choosing = |b: &Battle| b.custom.sides.iter().all(|s| s.screen.is_some_and(|s| s.phase == Phase::Choosing));
+    for _ in 0..2000 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&idle, TickEvents::default());
+    }
+    assert!(choosing(&b), "the screens never opened");
+    for _ in 0..100 {
+        b.tick(&idle, TickEvents::default());
+    }
+    let left = b.custom_time_left(0).expect("counting");
+    assert_eq!(b.custom.sides[1].clock, b.custom.sides[0].clock);
+    let snapshot = b.clone();
+    let mut restored = snapshot.clone();
+    for _ in 0..left + 200 {
+        b.tick(&idle, TickEvents::default());
+        restored.tick(&idle, TickEvents::default());
+    }
+    assert_eq!(restored.digest(), b.digest());
+    assert_eq!(b.custom.sides.each_ref().map(|s| s.clock), [limit; 2]);
+    assert_eq!(b.round.mode, mode::FIGHTING, "both results are in");
+    let mut later = snapshot.clone();
+    later.custom.sides[0].clock += 1;
+    assert_ne!(snapshot.digest(), later.digest(), "the digest covers the clock");
 }

@@ -810,6 +810,12 @@ pub fn draw<'a>(
         };
         draw_text(layer, text, hud, text_palette, line, (11, 0, 8), problems);
     }
+    // The custom screen's time limit (nettai's own, not the original's:
+    // `RoundSetup::custom_screen_limit`): the seconds left on the local
+    // player's screen, the whole time it counts (`time_box`).
+    if let (Some(left), Some(limit)) = (b.custom_time_left(local), b.setup.custom_screen_limit) {
+        time_box(layer, hud, left, limit);
+    }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
     // the pack's place).
     if let Some((line, first)) = message {
@@ -1153,6 +1159,43 @@ pub const TEXT_COUNTER_HIT: usize = 14;
 
 /// Draw the pack's text line `line` on the HUD layer: up to `width` glyphs
 /// from tile column `col`, on tile rows `row` and `row + 1`.
+/// The row of the emotion window under the HP box (`mugshot_parts`): the
+/// custom screen's time box's (`time_box`).
+const EMOTION_WINDOW_Y: i32 = 18;
+
+/// The custom screen's time limit's box (nettai's own; the user: "just put
+/// it in a plain box under the name on the right side right aligned",
+/// "align it with the emotion window"): the HP box's (its ends, and its
+/// inside as many cells as it takes), holding the seconds `left` (in ticks)
+/// in the HP box's digits, right-aligned in as many places as the limit
+/// `limit`'s seconds take, so the box keeps its width as it counts; the
+/// digits in the HP box's hurt and low-HP colors for the last ten seconds.
+/// Against the screen's right edge, on the emotion window's row: under the
+/// opponent's name, level with the local player's emotion window.
+fn time_box(layer: &mut Layer, hud: &Hud, left: u16, limit: u16) {
+    let seconds = left.div_ceil(60);
+    let places = limit.div_ceil(60).to_string().len().max(2);
+    let (Some(top), Some(bottom)) = (hud.hp_box.get(..6), hud.hp_box.get(6..12)) else { return };
+    let width = 8 * (places as i32 + 2);
+    let x = crate::compose::WIDTH as i32 - width;
+    let plain = &hud.hp_palettes[0];
+    for (row, cells) in [top, bottom].into_iter().enumerate() {
+        let y = EMOTION_WINDOW_Y + 8 * row as i32;
+        put_px(layer, hud, plain, cells[0], x, y);
+        for k in 0..places as i32 {
+            put_px(layer, hud, plain, cells[1], x + 8 + 8 * k, y);
+        }
+        put_px(layer, hud, plain, cells[5], x + width - 8, y);
+    }
+    let digits = &hud.hp_palettes[if seconds <= 10 { 2 } else { 0 }];
+    for (k, d) in digits4(seconds)[4 - places..].iter().enumerate() {
+        let top = MapEntry { tile: hud.first_tile + 2 * *d as u16, hflip: false, vflip: false, palette: 13 };
+        let at = x + 8 + 8 * k as i32;
+        put_px(layer, hud, digits, top, at, EMOTION_WINDOW_Y);
+        put_px(layer, hud, digits, MapEntry { tile: top.tile + 1, ..top }, at, EMOTION_WINDOW_Y + 8);
+    }
+}
+
 fn draw_text(
     layer: &mut Layer,
     text: &mut TextSink,
@@ -1244,8 +1287,8 @@ fn mugshot_parts<'a>(
         let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
         let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
-        out.push(block(tiles, 32, 16, pal, x, 18));
-        out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
+        out.push(block(tiles, 32, 16, pal, x, EMOTION_WINDOW_Y));
+        out.push(block(&hud.navi_box, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
         note_true_face(b, packs, side, navi.version.as_deref(), x, problems);
         return;
     }
@@ -1266,7 +1309,7 @@ fn mugshot_parts<'a>(
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     let pal = window_faded(b, pal);
-    out.push(block(gfx, 32, 16, pal, x, 18));
+    out.push(block(gfx, 32, 16, pal, x, EMOTION_WINDOW_Y));
     // The box beside it: the face's own (EXE5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
     // without a count: a face that brings none (EXE5's souls') shows its
@@ -1279,7 +1322,7 @@ fn mugshot_parts<'a>(
         None => Some(&hud.count_box),
     };
     if let Some(tiles) = tiles {
-        out.push(block(tiles, 16, 16, pal, x + 32, 18));
+        out.push(block(tiles, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
     }
     note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), x, problems);
 }
