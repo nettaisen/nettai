@@ -362,6 +362,14 @@ pub struct RoundSetup {
     /// The keys the round's host answers in the battle's place (none, in a
     /// recording of the original).
     pub host_keys: HostKeys,
+    /// The custom screen's time limit, in ticks (60 a second), none for
+    /// none. nettai's own, not the original's: a side's screen counts the
+    /// ticks it chooses from the tick its window is in, and when they reach
+    /// the limit it closes as if OK were pressed, with the chips picked so
+    /// far (docs/engine/custom-screen.md §6.1). A match's host sets it for
+    /// its rounds (the lobby's custom screen time); every other round,
+    /// and a recording of the original's, has none.
+    pub custom_screen_limit: Option<u16>,
     /// Per side: the battle folder and what the save unlocks on the
     /// custom screen.
     pub players: [crate::custom::PlayerSetup; 2],

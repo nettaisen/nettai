@@ -516,6 +516,19 @@ every match's setup: `RoundSetup::host_keys`):
   (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
   custom screen as they did.
 
+A match's custom screen may have a time limit (`Match::custom_screen_time`,
+the lobby's Custom timer; nettai's own: docs/engine/custom-screen.md §6.1),
+which its rounds' setups carry in ticks (`RoundSetup::custom_screen_limit`).
+While the local player's screen counts, the HUD shows the seconds left
+(`Battle::custom_time_left`) in a plain box of the HP box's own frame and
+digits, as wide as the limit's seconds take (it keeps its width as it
+counts), against the screen's right edge on the emotion window's row, under
+the opponent's name; the last ten seconds in the HP box's low-HP colors
+(the user: "just put it in a plain box under the name on the right side
+right aligned", "align it with the emotion window"). It goes the tick the
+screen closes, and a round without a limit (Practice's, a recording's) shows
+none.
+
 A recording of the original has neither: its battle pauses itself, and its L
 opens the message. As in the original's netbattles, the fight gets your
 buttons 4 ticks late (the link). Restarting starts the same setup over.
@@ -635,8 +648,12 @@ host calls, in order:
     (`ruleset`: `nettai_match::ruleset::Ruleset`, which builds may play)
     and whether builds are closed (`closed_builds`, beside the ruleset and
     not of it: the user, "i think closed setup should not be part of the
-    ruleset actually"). Either player changes First to and closed builds
-    (`Lobby::set_first_to`, `set_closed_builds`, or `propose` for the
+    ruleset actually"), and the custom screen's time limit
+    (`custom_screen_time`: 30, 45, 60, 90 or 120 seconds, or none; a new
+    lobby's 60, `nettai_match::DEFAULT_CUSTOM_SCREEN_TIME`; nettai's own, not
+    the original's: docs/engine/custom-screen.md §6.1). Either player changes
+    First to, closed builds and the time limit (`Lobby::set_first_to`,
+    `set_closed_builds`, `set_custom_screen_time`, or `propose` for the
     whole), the host alone the ruleset (`Lobby::set_ruleset`, false for a
     joiner; a joiner's `propose` keeps the ruleset it holds, and a
     joiner's change that crosses the host's new ruleset is taken with the
@@ -1707,6 +1724,8 @@ compares the digest every tick).
 ```toml
 game = "exe6"                               # the match's game and its rules: everything below is its
 seed = 42                                  # optional: the setup's and battle's seed
+custom_screen_time = 60                    # optional: the custom screen's time limit in seconds, 30, 45, 60, 90
+                                           # or 120 (nettai's own); left out, none, as in the original
 
 [[round]]                                  # the set's rounds, a table each, in order: 2n - 1 for a set first to n
 stage = "netbattle-43"                     # (n 1 to 10; one: a single battle; three: the triple battle). A round's stage (a
@@ -2680,7 +2699,8 @@ side  := the side's setup of the game's rules in its compact form (each fact in 
          setup's order at its width; a record's fields in order; a list as its
          count and only the entries it holds)
 match := seed (u32), the round wins its set is first to (u8: n, 1 to 10), every one of
-         its 2n - 1 rounds' places (as the seed picks those the match leaves), side 0, side 1
+         its 2n - 1 rounds' places (as the seed picks those the match leaves), the custom
+         screen's time limit (u16: seconds, 0 for none), side 0, side 1
 offer := the rounds' count (u8), each round as the player states it (round), then the side
 ```
 

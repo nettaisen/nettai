@@ -764,7 +764,8 @@ Each is settled unless the user changes it.
       built: now the Navi tab's selector chooses them one by one (§2.60), and a ruleset that holds back one soul or
       Cross refuses only a build that holds it.
     - *The lobby's row* is First to, Ruleset, Closed builds, Input delay and Ping: Ruleset takes Patch cards'
-      place. The host's is a select of the game's presets and then the player's own by name (Left and Right step
+      place. (Since the custom screen's time limit, Custom timer comes after Closed builds: §6, "Play".)
+      The host's is a select of the game's presets and then the player's own by name (Left and Right step
       it, Enter opens it as a list), with EDIT after it, which opens the ruleset's page. The joiner's shows the
       host's ruleset by its name, can't be stepped or opened, and has VIEW after it, which opens the page
       read-only. A ruleset chosen, or the one chosen changed on its page, clears both ready marks as any shared
@@ -1606,11 +1607,17 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
   10, 2 at first: §2.34), Ruleset (§2.59: the host's a select with EDIT, the joiner's the host's ruleset by
-  name with VIEW), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
+  name with VIEW), Closed builds (off, on), Custom timer (a stepper of the custom screen's time limit: 30, 45,
+  60, 90 and 120 seconds and Unlimited, 60 at first; nettai's own, not the original's: the user, "design a custom
+  screen timer and default it to 60 seconds but also allow an unlimited time option"; when it runs out the screen
+  closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in a
+  plain box of the HP box's at the battle's top right, under the opponent's name: "just put it in a plain box
+  under the name on the right side right aligned", "align it with the emotion window"), Input delay (a stepper,
+  yours alone, default 4, remembered), the
   connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
-  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset and
-  Closed builds are shared: both see them, and a change clears both ready marks; either player changes First to
-  and Closed builds, the host alone the Ruleset; the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
+  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset,
+  Closed builds and Custom timer are shared: both see them, and a change clears both ready marks; either player
+  changes First to, Closed builds and Custom timer, the host alone the Ruleset; the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
   ready up and the line says the first thing ("Bass isn't allowed"); nothing is taken out of a build to play it
   (Patch cards off, which played each build without its cards, is gone: §2.59).
 
