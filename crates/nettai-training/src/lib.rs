@@ -68,10 +68,17 @@
 //! Run at the battle's own speed (`fighter::tests::real_time`, 60 ticks a
 //! second, 20 seconds of each game at each level, four threads), every
 //! decision was ready on its tick: 14 to 61 ms on average, 126 ms at most
-//! (Hard's reaction is 150 ms, Normal's 233). A custom screen's chips and
-//! form were worked out in 0.3 to 0.55 s, within the time it looks at them
-//! (0.75 s at Hard, 1 s at Normal). On the packs' timings, Hard: one
-//! decision late in EXE5's 20 seconds (7 ms waited), 150 ms at most.
+//! (Hard's reaction is 150 ms, Normal's 233). On the packs' timings, Hard:
+//! one decision late in EXE5's 20 seconds (7 ms waited), 150 ms at most.
+//!
+//! Since then a custom screen's hand is valued over a turn (the tables
+//! above are from before), its work the level's budget
+//! ([`fighter::Level::budget`]) rather than a time, so the hand doesn't
+//! depend on the machine. Fifteen screens (five a game, Hard's budget,
+//! release build, four threads, the tests' content) took 0.2 to 0.8 s in
+//! EXE6 and 0.4 to 2 s in EXE5 and EXE4 (a tick of theirs costs more), its
+//! look time 0.75 s at Hard and 1 s at Normal: past it the battle goes on
+//! and the dummy looks longer.
 //!
 //! The measurements: `cargo test -p nettai-training --release --lib --
 //! --ignored --nocapture` with the test's name (`against_random_presses`,

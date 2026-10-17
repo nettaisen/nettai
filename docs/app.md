@@ -2983,13 +2983,17 @@ doing again what they just did, using their chip, walking to its row and attacki
 few, shooting the charged
 shot or using its chip there and retreating to a clearly safer panel (where its attacks land); it keeps to what it
 does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
-(the player does). On its custom screen Normal and Hard pick the chips worth most in a copy of the fight (an
-attack-up after the chip it boosts, a Program Advance where it does more), and take a form the rules offer (a
-Cross, Beast Out, a soul) where a copy of the fight goes better with it; Easy picks every chip it can in the
-cursor's order. It thinks on threads of its own (four at most, fewer on a machine with fewer cores to spare)
+(the player does). On its custom screen Normal and Hard pick the hand worth most over a turn in copies of the
+fight (its chips used in the order picked, each when using it pays; built a chip at a time while one adds
+anything, a chip that adds nothing left for the next turn; an attack-up after the chip it boosts, a Program
+Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
+fight goes better with it; Easy picks every chip it can in the cursor's order. The search's work is the level's
+(`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has
+it, the battle going on meanwhile (it looks at its screen longer on a slower machine, never stalling the
+battle). It thinks on threads of its own (four at most, fewer on a machine with fewer cores to spare)
 and acts on its decision a reaction time later (Easy's 0.4 s, Normal's about a quarter second, Hard's 0.15 s);
-a decision not ready by then is waited for (rarely: the crate's docs). On the web it thinks on the battle's own
-thread.
+a decision in the fight not ready by then is waited for (rarely: the crate's docs). On the web it thinks on the
+battle's own thread.
 
 *Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
