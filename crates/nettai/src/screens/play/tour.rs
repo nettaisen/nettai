@@ -550,6 +550,11 @@ fn result_shown(app: &App) -> bool {
     })
 }
 
+/// The lobby, the host waiting for the other player.
+fn waiting(ui: &AppWindow) -> bool {
+    part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_waiting()
+}
+
 /// The app's player and the other are together in the lobby.
 fn together(ui: &AppWindow) -> bool {
     part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()
@@ -652,11 +657,11 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-direct-bad-address", Pair::None);
     add(SETTLE, press("direct.cancel"));
 
-    // An invite: its code from the server, and a practice session beside it (on a phone, asked for under
-    // it, and filling the window); the practice menu over that, the usual one with CANCEL INVITE in EXIT's
-    // place (on a phone with Stop practice at its top, the way back to the invite).
+    // An invite: the lobby with its code in the other player's place, and a practice session in this player's (on
+    // a phone, asked for under it, and filling the window); the practice menu over that, the usual one with
+    // CANCEL INVITE in EXIT's place (on a phone with Stop practice at its top, the way back to the invite).
     add(SETTLE, press("invite"));
-    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
+    reach(add, |_, ui| waiting(ui));
     if phone {
         shot(add, "play-waiting", Pair::None);
         add(SETTLE, press("wait.train"));
@@ -668,16 +673,22 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-waiting-menu", Pair::None);
     if phone {
         add(SETTLE, press_at("menu.rows.added", 0));
-        reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
+        reach(add, |app, ui| app.shell.battle.is_none() && waiting(ui));
     } else {
         add(SETTLE, step(|app| app.shell.close_menu()));
         reach(add, |app, _| practicing(app));
     }
+    // The host sets the match's settings before anyone has come: Open setups on (the match the walk plays has
+    // them: both builds show in it). (The pointer's way: on a desktop the keys are the practice battle's.)
+    add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| s.step(shell, "lobby.open", 0, 1))));
+    reach(add, |_, ui| waiting(ui) && ui.global::<PlayView>().get_open());
+    shot(add, "play-waiting-open-setups", Pair::None);
 
-    // The second player joins by the code: the lobby. The focus a step along; a setting changed under it
-    // (the match's, then the player's own).
+    // The second player joins by the code: the lobby, on the settings the host set while it waited. The focus a
+    // step along; a setting changed under it (the match's, then the player's own).
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Weak))));
     reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
+    reach(add, |_, ui| ui.global::<PlayView>().get_open() && with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| l.settings().open_setups)) == Some(true));
     add(SETTLE, focus("lobby.ready", 0));
     shot(add, "play-lobby", Pair::First);
     add(SETTLE, act(Action::Right));
@@ -826,17 +837,17 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press_at("change.builds", 0));
     reach(add, |_, ui| !ui.global::<PlayView>().get_changing() && ui.global::<PlayView>().get_note() != LobbyNote::Unusable);
 
-    // A second match on the same link, under Mixed and with closed builds; the other player leaves it:
+    // A second match on the same link, under Mixed and with the setups not open; the other player leaves it:
     // both are back in the lobby, which says why.
-    add(SETTLE, focus("lobby.closed", 0));
+    add(SETTLE, focus("lobby.open", 0));
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, act(Action::Right));
-    reach(add, |_, ui| ui.global::<PlayView>().get_closed());
+    add(SETTLE, act(Action::Left));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_open());
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
     reach(add, |app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online));
     add(3000, step(|app| app.shell.keys.tab = true));
-    shot(add, "play-match-closed-builds", Pair::None);
+    shot(add, "play-match-setups-hidden", Pair::None);
     add(
         SETTLE,
         step(|app| {
@@ -844,7 +855,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             app.shell.open_menu();
         }),
     );
-    shot(add, "play-match-closed-menu", Pair::None);
+    shot(add, "play-match-setups-hidden-menu", Pair::None);
     add(
         SETTLE,
         step(|app| {
@@ -865,23 +876,23 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // other joins its address; then the lobby's own Leave.
     add(SETTLE, press("direct"));
     add(SETTLE, press("direct.host"));
-    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
+    reach(add, |_, ui| waiting(ui));
     shot(add, "play-waiting-direct", Pair::None);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
     reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
     add(SETTLE, press("lobby.leave"));
     reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
-    // An invite cancelled from the waiting panel while its practice runs (on a phone, its practice stopped
-    // from the menu first, since it covers the panel): the builds again.
+    // An invite canceled from the lobby while its practice runs (on a phone, its practice stopped from the menu
+    // first, since it covers the lobby): the builds again.
     add(SETTLE, press("invite"));
-    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
+    reach(add, |_, ui| waiting(ui));
     if phone {
         add(SETTLE, press("wait.train"));
         reach(add, |app, _| practicing(app));
         add(SETTLE, step(|app| app.shell.open_menu()));
         add(SETTLE, press_at("menu.rows.added", 0));
-        reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
+        reach(add, |app, ui| app.shell.battle.is_none() && waiting(ui));
     } else {
         reach(add, |app, _| practicing(app));
     }
@@ -891,7 +902,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // The other player comes with a build that breaks a rule: its own lobby won't make it ready, and this
     // player, ready, waits for it. Then the lobby's Leave.
     add(SETTLE, press("invite"));
-    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
+    reach(add, |_, ui| waiting(ui));
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Broken))));
     reach(add, |_, ui| together(ui));
     add(SETTLE, peer(|p| p.wishes.ready = true));
@@ -974,7 +985,7 @@ pub fn apart(add: &mut dyn FnMut(u64, Step), hosts: bool) {
     add(SETTLE, press("direct"));
     if hosts {
         add(SETTLE, press("direct.host"));
-        add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+        add(SETTLE, until(|_, ui| waiting(ui)));
         add(SETTLE, step(|_| crate::errors::log("play apart", &"hosting")));
     } else {
         add(SETTLE, focus("direct.address", 0));
@@ -1044,7 +1055,7 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
     );
     // (The screen arrives first: a press is for a control that is there.)
     add(800, press("invite"));
-    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
+    reach(add, |_, ui| waiting(ui));
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
     reach(add, |_, ui| together(ui));
     // (The other player has come by now: their card is taken away, and comes as it came.)
@@ -1081,7 +1092,7 @@ pub fn reel(add: &mut dyn FnMut(u64, Step), air: &dyn Fn(bool) -> Step) {
         }),
     );
     add(1800, press("invite"));
-    reach(add, |app, ui| part(ui) == PlayPart::Waiting && practicing(app));
+    reach(add, |app, ui| waiting(ui) && practicing(app));
     add(2200, step(|app| come(app, Comes::Joining(Brings::New))));
     reach(add, |_, ui| together(ui));
     add(1100, focus("lobby.ready", 0));

@@ -6,8 +6,9 @@
 //! where it is going meanwhile. A drag of the bar moves the picture in steps of the states the viewer keeps
 //! (which cost no playing) and lands where it is let go.
 //!
-//! Both builds may be shown over it, where the match's weren't closed: the narrow sheets a match shows its
-//! players' builds in, the console shown's player's at the left; a closed-builds match's sides aren't kept.
+//! Both builds may be shown over it, where the match's setups were open: the narrow sheets a match shows its
+//! players' builds in, the console shown's player's at the left; the sides of a match whose setups weren't open
+//! aren't kept.
 //!
 //! Two things more may be on over the picture, each off at first and toggled by its transport button or a key
 //! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
@@ -409,7 +410,7 @@ impl Watching {
         view.set_inset_on(self.overlays.inset);
     }
 
-    /// Show both builds, or put them away (a closed-builds match: refused).
+    /// Show both builds, or put them away (a match whose setups weren't open: refused).
     pub fn toggle_builds(&mut self, shell: &mut Shell) {
         if self.sides.is_none() {
             return shell.sound.play(Cue::Refused);
