@@ -863,11 +863,15 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     assert_eq!(act(&b, p0), IDLE);
 
     // 10 pixels a tick from x -20: over the enemy's panel at tick 7, and
-    // the hit (200 damage) lands on the next.
-    run_to(&mut b, p, &mut t, 7, 0);
+    // the hit (200 damage) lands on the next. (At tick 7 it is on the line
+    // between columns 4 and 5, which the original puts in column 5: a tick
+    // later where side 0 isn't the canonical side, as side 1's would be in
+    // the original. docs/engine/side-symmetry.md.)
+    let late = if nettai_content_api::CANONICAL_SIDE == 0 { 0 } else { 1 };
+    run_to(&mut b, p, &mut t, 7 + late, 0);
     assert_eq!(b.objects.get(thrown).panel, PanelPos { x: 5, y: 2 });
     assert_eq!(b.objects.get(p1).hp, 1000);
-    run_to(&mut b, p, &mut t, 8, 0);
+    run_to(&mut b, p, &mut t, 8 + late, 0);
     assert_eq!(b.objects.get(p1).hp, 800);
     assert_eq!(b.objects.get(thrown).state, state::DESTROY);
 }
@@ -1285,6 +1289,50 @@ fn tengu_cross_back_special_blows_a_gust_down_each_row() {
     // The gusts end at the field's edge at the latest.
     run_to(&mut b, p, &mut t, 30, 0);
     assert!(kind_objects(&b, "gust").is_empty());
+}
+
+/// WindRack's swing (TenguCross's charged shot swings its action) by side
+/// `user`'s navi, the two navis face to face on their front columns: the
+/// ticks its gusts are on the other navi's column, by the panel under
+/// their position.
+fn wind_racks_gusts_on_the_column_ahead(user: usize) -> usize {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // Both step up to their front columns.
+    for held in [keys::RIGHT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] {
+        ai_mut(&mut b, p0).pad.update(held | keys::PRESENT);
+        ai_mut(&mut b, p1).pad.update(held | keys::PRESENT);
+        b.run_objects();
+    }
+    assert_eq!((b.objects.get(p0).panel.x, b.objects.get(p1).panel.x), (3, 4), "face to face");
+    let ahead = b.objects.get(p[1 - user]).panel.x;
+    assert_eq!(start_weapon(&mut b, p[user], "tengucross/charge"), "tengucross/charge/gust");
+    let mut ticks = 0;
+    for _ in 0..40 {
+        tick(&mut b, p0, p1, 0);
+        let gusts = kind_objects(&b, "gust");
+        if gusts.iter().any(|&g| b.objects.get(g).panel.x == ahead) {
+            assert!(gusts.iter().all(|&g| b.objects.get(g).panel.x == ahead), "the three rows' gusts go together");
+            ticks += 1;
+        }
+    }
+    ticks
+}
+
+#[test]
+fn wind_racks_gusts_meet_the_navi_ahead_as_long_from_either_side() {
+    // A gust starts on the center of the column ahead of WindRack's user
+    // and blows 10 pixels a tick: on its first tick 10 pixels on, on its
+    // second on the line between that column and the next. The original
+    // puts a position on a column's line in the right-hand column: a side-0
+    // user's gusts are on the column ahead (and on a navi with a barrier
+    // there) for one tick, a side-1 user's for two, the barrier taking the
+    // first (wind pops it) and the second pushing the navi. nettai's line
+    // is the canonical side's for either side, mirrored for the other:
+    // both sides' gusts as the canonical side's (docs/engine/side-symmetry.md).
+    let canonical = if nettai_content_api::CANONICAL_SIDE == 0 { 1 } else { 2 };
+    let by_side = [wind_racks_gusts_on_the_column_ahead(0), wind_racks_gusts_on_the_column_ahead(1)];
+    assert_eq!(by_side, [canonical; 2], "ticks on the column ahead, by the user's side");
 }
 
 #[test]

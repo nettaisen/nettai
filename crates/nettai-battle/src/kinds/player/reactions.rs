@@ -856,24 +856,28 @@ mod tests {
             if aqua {
                 coll_mut(&mut b, r).element = 2;
             }
-            // (Side 1's navi dragged a panel forward, to the left: reaching
-            // the panel counts, `passed_x`.)
-            let (from, to) = (panel_coordinates(6, 2), panel_coordinates(5, 2));
+            // (Side 1's navi dragged a panel onto (5,2) the way where
+            // reaching it counts, `passed_x`: to the left, forward, where
+            // side 0 is the canonical side; to the right, as the original
+            // counts it, where side 1 is.)
+            let (x, dx) = if nettai_content_api::CANONICAL_SIDE == 0 { (6, 0xFF) } else { (4, 1) };
+            let (from, to) = (panel_coordinates(x, 2), panel_coordinates(5, 2));
             let o = b.objects.get_mut(r);
-            o.panel = PanelPos { x: 6, y: 2 };
+            o.panel = PanelPos { x, y: 2 };
             o.future_panel = PanelPos { x: 5, y: 2 };
             (o.pos.x, o.pos.y) = from;
             (o.vel.x, o.vel.y) = (to.0 - from.0, 0);
-            (o.slide_dx, o.slide_dy) = (0xFF, 0);
+            (o.slide_dx, o.slide_dy) = (dx, 0);
             o.timer2 = 3;
             o.drag_step = DragStep::Slide;
             step_drag(&mut b, r);
             let o = b.objects.get(r);
             (o.drag_step, o.timer2, o.future_panel.x)
         };
-        assert_eq!(run("ice", false), (DragStep::Slide, 3, 4), "a panel further on ice");
-        assert_eq!(run("ice", true), (DragStep::Slide, 2, 4), "an aqua navi");
-        assert_eq!(run("sea", false), (DragStep::Slide, 2, 4), "the sea stops only a slide");
+        let further = if nettai_content_api::CANONICAL_SIDE == 0 { 4 } else { 6 };
+        assert_eq!(run("ice", false), (DragStep::Slide, 3, further), "a panel further on ice");
+        assert_eq!(run("ice", true), (DragStep::Slide, 2, further), "an aqua navi");
+        assert_eq!(run("sea", false), (DragStep::Slide, 2, further), "the sea stops only a slide");
     }
 
     /// docs/design/exe5-map.md §15.3 item 17: a drag goes at the arena's
