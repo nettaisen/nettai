@@ -198,11 +198,9 @@ msgstr "対戦メニューにもどる"
 msgid "Back to match"
 msgstr "対戦にもどる"
 
-msgid "Your build"
-msgstr "使う構築"
-
-msgid "Their build"
-msgstr "相手の構築"
+# The match menu's footer: Tab (Select on a pad) held shows both builds.
+msgid "Show builds"
+msgstr "構築を見る"
 
 msgid "Leave match"
 msgstr "対戦をやめる"

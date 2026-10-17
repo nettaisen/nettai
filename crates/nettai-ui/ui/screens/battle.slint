@@ -1,12 +1,13 @@
 // The battle (docs/design/app-ui.md §6, "In an online match"; docs/app.md §1): the picture fills the window,
 // with no header or footer. Over it: the connection's corner while online, and the link panel it opens; nettai's
 // menu, which Start or Esc opens in place of the game's own pause (the practice menu or the match menu: each is
-// its screen's own component, in practice.slint and play.slint, built on `MenuOverlay` here); on a phone, the pad
-// under the picture.
+// its screen's own component, in practice.slint and play.slint, built on `MenuOverlay` here), with the footer under
+// it where the menu gives it hints (the match menu's: the match's own controls); on a phone, the pad under the
+// picture.
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
-import { Shell, BattleKind, Picture, LinkFigures } from "../shell.slint";
+import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint } from "../shell.slint";
 import { Cut, Heading, Label, Note, Mono, Bars, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
@@ -15,12 +16,15 @@ import { Tween } from "../motion.slint";
 // (rows of `OptionRow`, `MenuItem`, `Button`), in an area `inner-width` by `inner-height` that they measure
 // from (`parent` in the menu's own file is the whole window). `side` puts the panel at the left, the battle in
 // view beside it (the practice menu); else it is in the middle, as tall as `content-height` asks (the match
-// menu). Its controls' names begin with `menu.`: while it is open the keys reach nothing else.
+// menu). Its controls' names begin with `menu.`: while it is open the keys reach nothing else. Given `hints`, the
+// footer is along the window's bottom under it, as on the menu screens (a phone has none), the panel above it.
 export component MenuOverlay inherits Rectangle {
     in property <string> title;
     in property <string> note;
     in property <bool> side;
     in property <length> content-height;
+    in property <[Hint]> hints;
+    property <length> foot: root.hints.length > 0 ? Theme.footer : 0px;
     out property <length> inner-width: panel.width - 48px;
     out property <length> inner-height: panel.height - 48px - root.head;
     property <length> head: root.note == "" ? 56px : 76px;
@@ -35,9 +39,9 @@ export component MenuOverlay inherits Rectangle {
 
     panel := Rectangle {
         x: (root.side ? Theme.margin : (parent.width - self.width) / 2) - (1 - arrive.t) * 40px;
-        y: root.side ? 24px : (parent.height - self.height) / 2;
+        y: root.side ? 24px : (parent.height - root.foot - self.height) / 2;
         width: min(parent.width - 2 * Theme.margin, root.side ? 500px : 340px);
-        height: root.side ? parent.height - 48px : min(parent.height - 48px, root.head + root.content-height + 48px);
+        height: root.side ? parent.height - root.foot - 48px : min(parent.height - root.foot - 48px, root.head + root.content-height + 48px);
         opacity: arrive.t;
         Cut {
             cut: 18px;
@@ -77,6 +81,14 @@ export component MenuOverlay inherits Rectangle {
             height: parent.height - 48px - root.head;
             @children
         }
+    }
+
+    // (Shown or not: an `if` would be a component of its own.)
+    Footer {
+        y: root.height - self.height;
+        visible: root.hints.length > 0;
+        opacity: arrive.t;
+        hints: root.hints;
     }
 }
 

@@ -200,6 +200,41 @@ pub fn builds(still: bool, content: &Arc<Content>, game: &str) -> Option<Vec<(St
     Some(made.map_err(|why| crate::errors::log("making the screenshot pass's builds", &why)).unwrap_or_default())
 }
 
+/// The builds shown over the match (Tab held) made long: each a new build of the game's first version whose
+/// NaviCust holds many of the game's programs, a dozen on the command line, more off it and plus parts on it, in
+/// every color (nothing checks where they are: the rules say what is wrong, and the build's abilities and bugs are
+/// what they come to), under the two players' names. A match shows them again as it starts.
+fn crowd(app: &mut App) {
+    use crate::builds::grid::{self, Placed};
+    let shell = &app.shell;
+    let Some(kit) = crate::builds::kit(shell) else { return };
+    let content = kit.content();
+    let Some(data) = grid::read(content, crate::builds::module_data(content, &kit.game, grid::MODULE).as_ref()) else { return };
+    let Some(group) = kit.builds.groups.first() else { return };
+    let Ok(mut side) = kit.builds.new_build(content, &group.id) else { return };
+    let (plus, rest): (Vec<u16>, Vec<u16>) = content.defs.entries_of(&data.collection).iter().map(|h| h.0).partition(|p| data.plus.contains(p));
+    let at = |(i, piece): (usize, u16), y: i32| Placed {
+        piece,
+        x: 1 + (i % 3) as i32,
+        y,
+        rotation: 0,
+        color: data.colors.get(&piece).and_then(|c| c.get(i % c.len().max(1)).cloned()),
+        compressed: false,
+        record: nettai_match::facts::Stated::Record(Vec::new()),
+    };
+    let placed: Vec<Placed> = (rest.iter().copied().enumerate().take(12).map(|p| at(p, 3)))
+        .chain(rest.iter().copied().enumerate().skip(12).take(6).map(|p| at(p, 1)))
+        .chain(plus.iter().copied().enumerate().take(6).map(|p| at(p, 3)))
+        .collect();
+    if !grid::set_placed(content, &mut side, &placed) {
+        return;
+    }
+    let ui = shell.ui();
+    let view = ui.global::<PlayView>();
+    view.set_mine(crate::builds::overview::sheet(shell, &kit, &view.get_you(), BUILDS[0], &side));
+    view.set_theirs(crate::builds::overview::sheet(shell, &kit, &view.get_opponent(), PEER, &side));
+}
+
 /// The connection's figures as the pass shows them in the lobby: what two players of one process measure
 /// changes from shot to shot.
 pub fn steady_ping(still: bool) -> Option<(i32, i32)> {
@@ -761,6 +796,9 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     reach(add, |_, ui| ui.global::<nettai_ui::Shell>().get_connection_down() < 0);
     add(SETTLE, step(|app| app.shell.keys.tab = true));
     shot(add, "play-match-builds", Pair::None);
+    // Builds whose abilities and bugs run long: each sheet as tall as they make it.
+    add(SETTLE, step(crowd));
+    shot(add, "play-match-builds-crowded", Pair::None);
     add(
         SETTLE,
         step(|app| {
@@ -769,25 +807,29 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         }),
     );
     shot(add, "play-match-menu", Pair::None);
-    for (item, name) in [("menu.yours", "play-match-your-build"), ("menu.theirs", "play-match-their-build"), ("menu.controls", "play-match-controls"), ("menu.settings", "play-match-settings")] {
+    for (item, name) in [("menu.controls", "play-match-controls"), ("menu.settings", "play-match-settings")] {
         add(SETTLE, press(item));
         shot(add, name, Pair::None);
         add(SETTLE, press("menu.back"));
     }
-    // A build's page scrolls by the keys and the pad: Down and Page Down, then to its end and back.
-    fn sheet_y(ui: &AppWindow) -> f32 {
-        ui.global::<PlayView>().get_sheet_y()
+    // Tab over the menu shows the builds over it, and they scroll by the keys and the pad: Down and Page Down,
+    // then to their end and back.
+    fn peek_y(ui: &AppWindow) -> f32 {
+        ui.global::<PlayView>().get_peek_y()
     }
-    add(SETTLE, press("menu.yours"));
+    add(SETTLE, step(|app| app.shell.keys.tab = true));
+    reach(add, |_, ui| ui.global::<PlayView>().get_peek());
+    shot(add, "play-match-menu-builds", Pair::None);
     add(SETTLE, act(Action::Down));
     add(SETTLE, act(Action::PageDown));
-    reach(add, |_, ui| sheet_y(ui) < -0.5);
-    shot(add, "play-match-your-build-scrolled", Pair::None);
+    reach(add, |_, ui| peek_y(ui) < -0.5);
+    shot(add, "play-match-menu-builds-scrolled", Pair::None);
     add(SETTLE, act(Action::End));
-    reach(add, |_, ui| (sheet_y(ui) + ui.global::<PlayView>().get_sheet_span()).abs() < 0.5);
+    reach(add, |_, ui| (peek_y(ui) + ui.global::<PlayView>().get_peek_span()).abs() < 0.5);
+    shot(add, "play-match-menu-builds-end", Pair::None);
     add(SETTLE, act(Action::Home));
-    reach(add, |_, ui| sheet_y(ui) == 0.0);
-    add(SETTLE, press("menu.back"));
+    reach(add, |_, ui| peek_y(ui) == 0.0);
+    add(SETTLE, step(|app| app.shell.keys.tab = false));
     // The set played to its end (the app's player shoots; the other has 1 HP): the result stays on the
     // picture, then both are back in the lobby, neither ready.
     add(

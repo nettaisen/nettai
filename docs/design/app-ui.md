@@ -1339,6 +1339,31 @@ Each is settled unless the user changes it.
     - The practice battle there is drawn at twice the battle's size (it was three times beside the old panel), so
       that both places fit side by side over the settings.
 
+83. **A match's builds whole, Tab alone for them, the game's controls in the menu's footer, and the menu's settings
+    and controls** (2026-10-17). The user: "it's not possible to view all the abilities/bugs in the show builds in
+    gameplay. also when the esc menu is brought up in pvp you should show all the available controls in the footer,
+    like tab to show builds. remove "your build" and "their build" from the menu", then of the footer: "no the menu
+    footer should show in-game controls actually". Of the menu's pages, asked: "changing language is fine right?",
+    "input delay can be changed mid match as well right?", "what's wrong with being able to change controls mid
+    match?", "don't include connection display".
+    - *Every ability and bug can be seen.* The narrow sheet (a player's panel in a match, the replay's viewer) had its
+      abilities and its bugs on a line each, cut where the line ended. Each is now all of them, wrapped to as many
+      lines as it takes, and the sheet is as tall as they make it. Where a sheet is taller than its box (the window
+      less its margins; on a phone half of it, as before) the two scroll together: by the wheel and a drag over
+      them, and, while the match menu is open, by Up and Down, Page Up and Down, Home and End (the pad's too); over
+      the match itself the keys stay the match's.
+    - *YOUR BUILD and THEIR BUILD are gone from the match menu.* Tab (Select on a pad) shows both builds, over the
+      match as before and now over the menu too.
+    - *The menu's footer is the match's own controls,* as the player's bindings have them, by the menus' footer
+      (desktop; a phone has none): Move (the four directions' keys, the D-pad), A, B, L and R (one hint, the
+      shoulders, where the pad's are them), Show builds (Tab, Select), Menu (Esc and the key bound to START, Start).
+      Not the menu's own keys.
+    - *Settings* has the Settings screen's Language, Picture size, Full screen and Battle graphics beside Input
+      delay, Music and Sound effects, each changing at once; Battle graphics switches the match being played from
+      its next frame. *Controls* changes the bindings as the Settings screen's do (Enter on a box, then the key or
+      the button; RESET CONTROLS), the match going on under it by them as they change. No connection panel: the
+      connection's corner says it.
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1899,10 +1924,13 @@ DUPLICATE and DELETE.
   and Tab and Esc keep their jobs), and the match keeps running under it. On a phone it sits as near the top as it
   has to.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
-  theirs, each the build overview without a name; letting go hides them. With Open setups off, only the player's
-  own.
-- **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, YOUR BUILD, THEIR BUILD
-  (only with Open setups), CONTROLS, SETTINGS, LEAVE MATCH. "The match keeps running", and it does.
+  theirs, each the build overview without a name, over the match or over its menu; letting go hides them. With
+  Open setups off, only the player's own. Each has every ability and bug, and where one is taller than the window
+  they scroll: by the wheel and a drag, and over the menu by the keys and the pad (§2.83).
+- **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, CONTROLS, SETTINGS, LEAVE
+  MATCH. "The match keeps running", and it does. Its footer is the match's own controls as the player's bindings
+  have them: Move, A, B, L and R, Show builds (Tab), Menu (Esc). SETTINGS has Language, Picture size, Full screen,
+  Battle graphics, Music, Sound effects and Input delay; CONTROLS changes the bindings as Settings does (§2.83).
 
 ### After a match
 The mockups show no screen for this; it is decided here.
