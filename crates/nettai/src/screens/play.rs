@@ -228,7 +228,7 @@ struct Live {
     host: bool,
     /// What is wrong with this player's build under the settings (the line says the first and how many more).
     problems: Vec<nettai_match::check::Problem>,
-    closed: bool,
+    open: bool,
     /// The custom screen's time limit in seconds, none for none.
     custom_time: Option<u16>,
     bars: i32,
@@ -797,7 +797,8 @@ impl Play {
         }
     }
 
-    /// The lobby's settings as the player's controls change them.
+    /// The lobby's settings as the player's controls change them: the host's (a joiner's lobby changes nothing,
+    /// and its controls are unavailable).
     fn set_first_to(&mut self, wins: u8) {
         if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
             lobby.set_first_to(wins);
@@ -805,9 +806,9 @@ impl Play {
         self.ended = None;
     }
 
-    fn set_closed(&mut self, closed: bool) {
+    fn set_open(&mut self, open: bool) {
         if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_closed_builds(closed);
+            lobby.set_open_setups(open);
         }
         self.ended = None;
     }
@@ -945,7 +946,7 @@ impl Play {
             first_to: lobby.settings().first_to() as i32,
             ruleset: Some(lobby.settings().ruleset.clone()),
             host: lobby.role() == nettai_frontend::lobby::Role::Host,
-            closed: lobby.settings().closed_builds,
+            open: lobby.settings().open_setups,
             custom_time: lobby.settings().custom_screen_time,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
@@ -1004,7 +1005,7 @@ impl Play {
             view.set_note_problem(line.unwrap_or_default().into());
             self.show_card(shell);
         }
-        view.set_closed(live.closed);
+        view.set_open(live.open);
         view.set_custom_time(live.custom_time.map_or(0, i32::from));
         view.set_bars(live.bars);
         view.set_ping(live.ping);
@@ -1014,20 +1015,20 @@ impl Play {
     }
 
     /// What the match's menu and panels show: both builds (the other player's has no name here: none was
-    /// ever sent), whether they are closed, the controls, the levels.
+    /// ever sent), whether the setups are open, the controls, the levels.
     fn show_match(&self, shell: &Shell) {
         let (Some(agreed), Some(kit)) = (&self.agreed, builds::kit(shell)) else { return };
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         // (The agreement's sides are as the match plays them: without their patch cards where those are off.
-        // With closed builds the other player's isn't shown, and isn't made.)
+        // Where the setups aren't open the other player's isn't shown, and isn't made.)
         let (me, other) = (agreed.side, 1 - agreed.side);
         view.set_mine(overview::sheet(shell, &kit, &view.get_you(), &shell.settings.name, &agreed.sides[me]));
-        view.set_theirs(match agreed.closed_builds() {
-            true => BuildSheet::default(),
-            false => overview::sheet(shell, &kit, &view.get_opponent(), &agreed.names[other], &agreed.sides[other]),
+        view.set_theirs(match agreed.open_setups() {
+            true => overview::sheet(shell, &kit, &view.get_opponent(), &agreed.names[other], &agreed.sides[other]),
+            false => BuildSheet::default(),
         });
-        view.set_closed_match(agreed.closed_builds());
+        view.set_open_match(agreed.open_setups());
         let controls: Vec<PlayControl> = shell
             .bindings
             .keys
@@ -1158,7 +1159,7 @@ impl Play {
 }
 
 /// A recorder of the match the lobby agreed, to a new file in the replays folder: its info is the agreement's
-/// (an online match, from this player's side, by the names the lobby had, closed builds where they were
+/// (an online match, from this player's side, by the names the lobby had, open setups where they were
 /// agreed). None if the file can't be made (why is in the log).
 fn recorder(content: &std::sync::Arc<nettai_battle::Content>, agreed: &Agreement, game: &str) -> Option<Recorder> {
     let dir = crate::paths::replays();
@@ -1396,9 +1397,9 @@ impl Screen for Play {
                 shell.ui().global::<PlayView>().set_note_error(Default::default());
             }
             "lobby.first-to" | "lobby.custom-time" => self.step(shell, id, index, 1),
-            "lobby.closed" => {
-                let closed = !self.live.closed;
-                self.set_closed(closed);
+            "lobby.open" => {
+                let open = !self.live.open;
+                self.set_open(open);
             }
             // The host's Ruleset opens its rulesets as a list; the joiner's VIEW is beside it.
             "lobby.ruleset" => {
@@ -1469,7 +1470,7 @@ impl Screen for Play {
                 let (first, count) = (*FIRST_TO.start() as i32, FIRST_TO.len() as i32);
                 self.set_first_to((first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
             }
-            "lobby.closed" => self.set_closed(by > 0),
+            "lobby.open" => self.set_open(by > 0),
             "lobby.custom-time" => self.step_custom_time(by),
             "lobby.ruleset" => self.pick_ruleset(shell, 0, by),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
@@ -1491,7 +1492,7 @@ impl Screen for Play {
             "more" if self.part() == PlayPart::Builds => self.menu_chosen(shell, choice),
             "row-menu" if self.part() == PlayPart::Builds && self.naming.is_none() => self.open_menu(shell, &Key::new("builds", index)),
             "name.version" => self.choose_version(shell, choice.max(0) as usize),
-            "lobby.closed" => self.set_closed(choice == 1),
+            "lobby.open" => self.set_open(choice == 1),
             "lobby.ruleset" => self.pick_ruleset(shell, choice, 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),

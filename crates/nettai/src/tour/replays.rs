@@ -118,33 +118,33 @@ pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         let file = std::fs::File::options().write(true).open(&path).map_err(|e| e.to_string())?;
         file.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(when)).map_err(|e| e.to_string())
     };
-    // (Which set, the side that recorded, the other player, when, online, closed builds, cut after this part.)
+    // (Which set, the side that recorded, the other player, when, online, open setups, cut after this part.)
     let me = shell.settings.name.clone();
     let listed: [(usize, u8, &str, (u32, u32, u32), bool, bool, Option<f32>); 15] = [
-        (0, 0, "weenie", (11, 21, 42), true, false, None),
-        (1, 1, "weenie", (11, 21, 30), true, false, None),
-        (2, 0, "", (11, 20, 58), false, false, None),
-        (0, 1, "moosh", (10, 23, 15), true, true, None),
-        (1, 0, "moosh", (10, 22, 51), true, false, Some(0.45)),
-        (2, 1, "", (9, 19, 4), false, false, None),
-        (0, 0, "playerwithalongname", (8, 21, 20), true, false, None),
-        (1, 1, "playerwithalongname", (8, 21, 2), true, false, None),
-        (2, 0, "weenie", (7, 22, 10), true, false, None),
-        (0, 1, "weenie", (7, 21, 48), true, false, None),
-        (1, 0, "ネットバトラー", (6, 20, 15), true, false, None),
-        (2, 1, "moosh", (5, 19, 30), true, false, None),
-        (0, 0, "weenie", (4, 23, 1), true, false, None),
-        (1, 1, "zed", (3, 18, 44), true, false, None),
-        (2, 0, "zed", (2, 12, 5), true, false, None),
+        (0, 0, "weenie", (11, 21, 42), true, true, None),
+        (1, 1, "weenie", (11, 21, 30), true, true, None),
+        (2, 0, "", (11, 20, 58), false, true, None),
+        (0, 1, "moosh", (10, 23, 15), true, false, None),
+        (1, 0, "moosh", (10, 22, 51), true, true, Some(0.45)),
+        (2, 1, "", (9, 19, 4), false, true, None),
+        (0, 0, "playerwithalongname", (8, 21, 20), true, true, None),
+        (1, 1, "playerwithalongname", (8, 21, 2), true, true, None),
+        (2, 0, "weenie", (7, 22, 10), true, true, None),
+        (0, 1, "weenie", (7, 21, 48), true, true, None),
+        (1, 0, "ネットバトラー", (6, 20, 15), true, true, None),
+        (2, 1, "moosh", (5, 19, 30), true, true, None),
+        (0, 0, "weenie", (4, 23, 1), true, true, None),
+        (1, 1, "zed", (3, 18, 44), true, true, None),
+        (2, 0, "zed", (2, 12, 5), true, true, None),
     ];
-    for (i, (set, side, other, (day, hour, minute), online, closed_builds, cut)) in listed.into_iter().enumerate() {
+    for (i, (set, side, other, (day, hour, minute), online, open_setups, cut)) in listed.into_iter().enumerate() {
         let replay = &sets[set];
         let when = october(day, hour, minute);
         let mut names = [me.clone(), other.to_string()];
         if side == 1 {
             names.swap(0, 1);
         }
-        let info = Info { when, side, kind: if online { MatchKind::Online } else { MatchKind::Offline }, closed_builds, names };
+        let info = Info { when, side, kind: if online { MatchKind::Online } else { MatchKind::Offline }, open_setups, names };
         let ticks = cut.map(|part| (replay.ticks.len() as f32 * part) as usize);
         save(&format!("{i:02}.ntrp"), &written(replay, &info, ticks), when)?;
     }
@@ -369,7 +369,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| if shell.scale.phone { s.step(shell, "view-step", 0, 1) } else { s.activate(shell, "view", 1) })));
     shot(add, "viewer-other-side", Pair::None, Also::Nothing);
-    // Both builds (the match's weren't closed), the other console's player's at the left.
+    // Both builds (the match's setups were open), the other console's player's at the left.
     add(SETTLE, activate("builds", 0));
     shot(add, "viewer-builds", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
@@ -386,13 +386,13 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "viewer-export-both", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Back));
-    // A closed-builds match's viewer: BUILDS unavailable.
+    // The viewer of a match whose setups weren't open: BUILDS unavailable.
     add(SETTLE, focus("list", 3));
     add(SETTLE, until(|view| view.get_still()));
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, if shell.scale.phone { "sheet.watch" } else { "watch" }, 0))));
     add(SETTLE, until(|view| view.get_watching()));
     add(SETTLE * 2, focus("seek", 0));
-    shot(add, "viewer-closed", Pair::None, Also::Nothing);
+    shot(add, "viewer-setups-hidden", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
     watch_failed(add, until, phone);
     shot(add, "replays-watch-failed", Pair::None, Also::Nothing);

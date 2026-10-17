@@ -278,8 +278,8 @@ impl Viewer {
 
     /// What the replay says of itself: when it was played, by whom (the
     /// players' names by side), which side recorded it, what kind of match
-    /// it was, and whether its builds were closed. Where they were
-    /// (`Info::closed_builds`), the host shows neither side's build: the
+    /// it was, and whether its setups were open. Where they weren't
+    /// (`Info::open_setups`), the host shows neither side's build: the
     /// viewer plays the battle, which is made of both, and tells nobody
     /// what either brought.
     pub fn info(&self) -> &Info {

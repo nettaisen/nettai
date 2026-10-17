@@ -141,13 +141,14 @@ export global PlayView {
     // They count the times each turned ready: the mark stamps.
     in property <int> ready-seq;
     in property <int> their-ready-seq;
-    // The match's settings, both players': the round wins its set is first to (1: a single battle; 2: the
-    // original's triple battle, best of 3), the ruleset by its name (the host's to choose: `host`), closed
-    // builds, and the custom screen's time limit in seconds (0: none; nettai's own).
+    // The match's settings, both players' and the host's alone to change (`host`; the joiner's controls are
+    // unavailable): the round wins its set is first to (1: a single battle; 2: the original's triple battle,
+    // best of 3), the ruleset by its name, open setups (each player may see the other's build in the match),
+    // and the custom screen's time limit in seconds (0: none; nettai's own).
     in property <int> first-to: 2;
     in property <string> ruleset;
     in property <bool> host;
-    in property <bool> closed;
+    in property <bool> open;
     in property <int> custom-time: 60;
     // The player's own.
     in property <int> input-delay;
@@ -172,8 +173,8 @@ export global PlayView {
     in-out property <length> sheet-view;
     // The builds are shown (Tab, or Select on a pad, is held).
     in property <bool> peek;
-    // The match's builds are closed: the other player's isn't shown.
-    in property <bool> closed-match;
+    // The match's setups are open: the other player's build may be shown.
+    in property <bool> open-match;
     // The two builds as the match plays them, each a player's panel.
     in property <BuildSheet> mine;
     in property <BuildSheet> theirs;
@@ -477,9 +478,10 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset, Closed
-// builds and the Custom timer are the match's (both see them; the Ruleset the host alone chooses, with EDIT after
-// it, and the joiner VIEWs it); the input delay is the player's own.
+// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset, Open
+// setups and the Custom timer are the match's (both see them, and the host alone changes them: the user, "only the
+// host should be able to change rules"; the Ruleset has EDIT after it, and the joiner VIEWs it); the input delay
+// is the player's own.
 component LobbyFacts inherits Rectangle {
     // The one row: each setting's name over its control, a cell as wide as the wider of the two, so six fit
     // whatever the language. Where each cell starts, and the row's width.
@@ -487,7 +489,7 @@ component LobbyFacts inherits Rectangle {
     property <length> x1: 24px;
     property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
     property <length> x3: self.x2 + max(ruleset-label.width, ruleset.width + 8px + rules.width) + self.gap;
-    property <length> x4: self.x3 + max(closed-label.width, closed.width) + self.gap;
+    property <length> x4: self.x3 + max(open-label.width, open.width) + self.gap;
     property <length> x5: self.x4 + max(custom-time-label.width, custom-time.width) + self.gap;
     property <length> x6: self.x5 + max(delay-label.width, delay.width) + self.gap;
     out property <length> natural-width: self.x6 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
@@ -521,6 +523,7 @@ component LobbyFacts inherits Rectangle {
         value: @tr("first to" => "{}", PlayView.first-to);
         value-width: 84px;
         numeric: true;
+        enabled: PlayView.host;
     }
 
     Rectangle {
@@ -571,21 +574,24 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    closed-label := Value {
+    // Open setups: each player may see the other's build in the match; off in a new lobby (the user: "closed
+    // setups should be open setups instead and it should be off by default").
+    open-label := Value {
         x: Theme.phone ? 0px : root.x3;
         y: Theme.phone ? 2 * root.line : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
-        text: @tr("Closed builds");
+        text: @tr("Open setups");
         color: root.name-color;
     }
 
-    closed := Seg {
+    open := Seg {
         x: Theme.phone ? parent.width - self.width : root.x3;
         y: Theme.phone ? 2 * root.line + (root.line - self.height) / 2 : root.control-y;
-        nav: "lobby.closed";
+        nav: "lobby.open";
         first: Caps.of(@tr("Off"));
         second: Caps.of(@tr("On"));
-        chosen: PlayView.closed ? 1 : 0;
+        chosen: PlayView.open ? 1 : 0;
+        enabled: PlayView.host;
     }
 
     Rectangle {
@@ -612,6 +618,7 @@ component LobbyFacts inherits Rectangle {
         nav: "lobby.custom-time";
         value: PlayView.custom-time == 0 ? @tr("custom timer" => "Unlimited") : @tr("custom timer" => "{}s", PlayView.custom-time);
         value-width: 84px;
+        enabled: PlayView.host;
     }
 
     Rectangle {
@@ -1200,7 +1207,7 @@ export component PlayScreen inherits Page {
 // behind it. Its pages are the menu itself, and what four of its items open: each player's build, the
 // controls, the settings a player may want in a match.
 export component MatchMenu inherits MenuOverlay {
-    property <bool> their-item: !PlayView.closed-match;
+    property <bool> their-item: PlayView.open-match;
     property <length> shift: root.their-item ? 48px : 0px;
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT"];
     title: PlayView.page == MatchPage.yours ? Caps.of(@tr("Your build")) : PlayView.page == MatchPage.theirs ? Caps.of(@tr("Their build")) : PlayView.page == MatchPage.controls ? Caps.of(@tr("Controls")) : PlayView.page == MatchPage.settings ? Caps.of(@tr("Settings")) : Caps.of(@tr("Menu"));
@@ -1440,7 +1447,7 @@ export component MatchMenu inherits MenuOverlay {
 }
 
 // Both builds, over the match while Tab (Select on a pad) is held: the player's on their side, the other
-// player's on theirs; with closed builds, the player's own alone. It takes no clicks and no keys: the match
+// player's on theirs; where the setups aren't open, the player's own alone. It takes no clicks and no keys: the match
 // goes on under it.
 export component MatchPeek inherits Rectangle {
     // (On a phone a sheet is a column taller than the window: each is half of it, from the top, which has
@@ -1470,7 +1477,7 @@ export component MatchPeek inherits Rectangle {
             width: root.sheet-width;
             height: Theme.phone ? root.half : theirs.sheet-height;
             clip: Theme.phone;
-            visible: !PlayView.closed-match;
+            visible: PlayView.open-match;
             theirs := BuildOverview {
                 x: 0;
                 y: 0;

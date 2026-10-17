@@ -700,6 +700,11 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-delay-5", Pair::Second);
     add(SETTLE, act(Action::Left));
+    // (The match the walk plays has open setups: both builds show in it.)
+    add(SETTLE, focus("lobby.open", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::Right));
+    reach(add, |_, ui| ui.global::<PlayView>().get_open());
     // Another build.
     add(SETTLE, press("lobby.change"));
     shot(add, "play-lobby-change", Pair::None);
@@ -826,17 +831,17 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press_at("change.builds", 0));
     reach(add, |_, ui| !ui.global::<PlayView>().get_changing() && ui.global::<PlayView>().get_note() != LobbyNote::Unusable);
 
-    // A second match on the same link, under Mixed and with closed builds; the other player leaves it:
+    // A second match on the same link, under Mixed and with the setups not open; the other player leaves it:
     // both are back in the lobby, which says why.
-    add(SETTLE, focus("lobby.closed", 0));
+    add(SETTLE, focus("lobby.open", 0));
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, act(Action::Right));
-    reach(add, |_, ui| ui.global::<PlayView>().get_closed());
+    add(SETTLE, act(Action::Left));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_open());
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
     reach(add, |app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online));
     add(3000, step(|app| app.shell.keys.tab = true));
-    shot(add, "play-match-closed-builds", Pair::None);
+    shot(add, "play-match-setups-hidden", Pair::None);
     add(
         SETTLE,
         step(|app| {
@@ -844,7 +849,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             app.shell.open_menu();
         }),
     );
-    shot(add, "play-match-closed-menu", Pair::None);
+    shot(add, "play-match-setups-hidden-menu", Pair::None);
     add(
         SETTLE,
         step(|app| {
