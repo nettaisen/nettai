@@ -443,32 +443,23 @@ fn level_named(name: &str) -> Option<Level> {
 }
 
 /// What plays a side by name: `random` (presses at random), `shooter`
-/// and `dodger` (scripted: [`Shooter`], [`Dodger`]), `old-<level>` (the
-/// fighter before it planned by tiles, [`old`]), or a level of this one
-/// ([`level_named`]); and what its decisions cost, read when it's done.
+/// and `dodger` (scripted: [`Shooter`], [`Dodger`]), or a level of the
+/// fighter ([`level_named`]); and what its decisions cost, read when it's
+/// done.
 enum Named {
     Random(RandomPresses),
     Shooter(Shooter),
     Dodger(Dodger),
-    Old(old::Fighter),
-    New(Box<Fighter>),
+    Fighter(Box<Fighter>),
 }
 
 impl Named {
     fn of(name: &str, seed: u64) -> Named {
-        if let Some(old) = name.strip_prefix("old-") {
-            let level = match old {
-                "easy" => old::Level::EASY,
-                "normal" => old::Level::NORMAL,
-                _ => old::Level::HARD,
-            };
-            return Named::Old(old::Fighter::new(level, seed));
-        }
         match name {
             "random" => Named::Random(RandomPresses::new(seed)),
             "shooter" => Named::Shooter(Shooter::new(12)),
             "dodger" => Named::Dodger(Dodger { every: 40, t: 0, rng: SplitMix64::new(seed), held: 0 }),
-            _ => Named::New(Box::new(Fighter::new(level_named(name).expect("a level"), seed))),
+            _ => Named::Fighter(Box::new(Fighter::new(level_named(name).expect("a level"), seed))),
         }
     }
 
@@ -477,18 +468,13 @@ impl Named {
             Named::Random(a) => a,
             Named::Shooter(a) => a,
             Named::Dodger(a) => a,
-            Named::Old(a) => a,
-            Named::New(a) => a.as_mut(),
+            Named::Fighter(a) => a.as_mut(),
         }
     }
 
     fn spent(&self) -> Spent {
         match self {
-            Named::New(f) => f.spent,
-            Named::Old(f) => {
-                let s = f.spent;
-                Spent { decisions: s.decisions, ticks: s.ticks, time: s.time, longest: s.longest, late: s.late, waited: s.waited, chips: s.chips, chip_time: s.chip_time, forms: 0, ..Spent::default() }
-            }
+            Named::Fighter(f) => f.spent,
             _ => Spent::default(),
         }
     }
@@ -541,7 +527,7 @@ fn rounds(player: &str, games: &str, dummies: &str, seeds: u32, hp: i64, most: u
 /// minute, and what deciding cost. A measurement: `cargo test -p
 /// nettai-training --release --lib against_random_presses -- --ignored
 /// --nocapture`, with `FIGHTER_GAMES` (exe6,exe5,exe4), `FIGHTER_LEVELS`
-/// (the dummies: random,old-hard,easy,normal,hard; or parts,
+/// (the dummies: random,easy,normal,hard; or parts,
 /// [`level_named`]), `FIGHTER_PLAYER` (what plays the player: random, or a
 /// dummy's name, [`Named`]), `FIGHTER_SEEDS` (24), `FIGHTER_THREADS` (4)
 /// and `FIGHTER_PACKS` ([`content`]).
@@ -553,7 +539,7 @@ fn against_random_presses() {
     const MOST: u32 = 60 * 60 * 3;
     let var = |name: &str, or: &str| std::env::var(name).unwrap_or_else(|_| or.into());
     let seeds: u32 = var("FIGHTER_SEEDS", "24").parse().unwrap();
-    let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "random,old-hard,easy,normal,hard"));
+    let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "random,easy,normal,hard"));
     let player = var("FIGHTER_PLAYER", "random");
     println!("player: {player}");
     println!(
@@ -599,8 +585,8 @@ fn against_random_presses() {
 }
 
 /// Game sense, against scripted players: the first rounds of each game's
-/// matches at 400 HP, the dummy at each level (and the fighter before it,
-/// `old-hard`), the player `FIGHTER_PLAYER` (shooter: keeps to its row and
+/// matches at 400 HP, the dummy at each level, the player
+/// `FIGHTER_PLAYER` (shooter: keeps to its row and
 /// attacks there; dodger: steps up and down and never attacks; or any
 /// [`Named`]). Prints, a minute of the fight (not dimmed, not on the custom
 /// screen): the hits it takes and the HP each loses; its chips that attack
@@ -619,7 +605,7 @@ fn game_sense() {
     const MOST: u32 = 60 * 60 * 2;
     let var = |name: &str, or: &str| std::env::var(name).unwrap_or_else(|_| or.into());
     let seeds: u32 = var("FIGHTER_SEEDS", "12").parse().unwrap();
-    let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "old-hard,easy,normal,hard"));
+    let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "easy,normal,hard"));
     for player in var("FIGHTER_PLAYER", "shooter,dodger").split(',') {
         println!("player: {player}");
         println!(
