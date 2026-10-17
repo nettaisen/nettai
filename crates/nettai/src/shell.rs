@@ -1419,6 +1419,17 @@ impl App {
             self.shell.nav.used_keys(false);
             if code == KeyCode::Escape {
                 self.shell.open_menu();
+            } else if self.shell.keys_kept() {
+                // (Kept from the battle by its owner: the moves scroll what it shows, the arrows or the keys bound
+                // to Up and Down.)
+                let action = match self.shell.bindings.of_key(code) {
+                    Some(keys::UP) => Some(Action::Up),
+                    Some(keys::DOWN) => Some(Action::Down),
+                    _ => menu_action(code, self.shell.shift, &self.shell.bindings),
+                };
+                if let Some(action) = action {
+                    self.scroll_kept(action);
+                }
             } else if self.shell.bindings.of_key(code).is_none() && !repeat {
                 let hearer = self.hearer();
                 self.call(hearer, |s, shell| s.key(shell, &press));
@@ -1645,6 +1656,12 @@ impl App {
             if let Some(at) = events.at {
                 self.shell.keys.pressed.push(at);
             }
+            // (Kept from the battle by its owner: the moves scroll what it shows.)
+            if self.shell.keys_kept() {
+                for action in events.actions {
+                    self.scroll_kept(action);
+                }
+            }
             // (The guide button is nettai's menu, as Esc is; a button bound to nothing may be the owner's.)
             for button in events.buttons {
                 if button == gamepad_facade::Button::Guide {
@@ -1671,6 +1688,15 @@ impl App {
         }
         for action in events.actions {
             self.act(action);
+        }
+    }
+
+    /// A move while the battle's owner keeps the keys from it: the owner's to scroll with.
+    fn scroll_kept(&mut self, action: Action) {
+        if matches!(action, Action::Up | Action::Down | Action::PageUp | Action::PageDown | Action::Home | Action::End) {
+            let hearer = self.hearer();
+            self.call(hearer, |s, shell| s.scroll(shell, action));
+            self.settle();
         }
     }
 

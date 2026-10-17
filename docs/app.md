@@ -694,10 +694,10 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   unavailable (the user: "only the host should be able to change rules"); Open setups, off in a new lobby (the
   user: "closed setups should be open setups instead and it should be off by default"), lets each player see
   the other's build in the match; Custom timer, after Open setups, is the custom screen's time limit, a
-  stepper of 30, 45, 60, 90 and 120 seconds and Unlimited, 60 in a new lobby: nettai's own, not the original's,
-  the screen closing as if OK were pressed when the time is up, with the seconds left shown in a box at the top
-  right while it counts, docs/engine/custom-screen.md §6.1; a lobby made from a match file starts on the file's,
-  Unlimited where it states none; no music: the battle's music is picked in Practice, §1; no
+  stepper of 30, 45, 60, 90 and 120 seconds and ∞ (none), 60 in a new lobby: nettai's own, not the original's,
+  the screen closing as if OK were pressed when the time is up, with the seconds left shown under the opponent's
+  name, at its inset, while it counts, docs/engine/custom-screen.md §6.1; a lobby made from a match file starts on the file's,
+  ∞ (none) where it states none; no music: the battle's music is picked in Practice, §1; no
   background either: every round's is drawn from the background pool's of the match's game by the match's seed,
   alike for both players, §1, "The battle's background"), and beside it, apart, what is the player's own, YOUR
   CONNECTION (`ConnectionFacts`; the user: "the input delay and ping settings should probably be displayed
@@ -766,9 +766,11 @@ the agreement's side, which is the build as the match plays it (without its patc
 under the player's name. Each is in a box as tall as it, or as the window less its margins (and, over the menu,
 its footer) where it is taller; on a phone each is half the window. Where one is taller than its box the two
 scroll together, by one offset (`PlayView.peek-y`, each no further than its own end): by the wheel and a drag
-over them (`Scrub`), and over the match's menu by Up and Down (a step of two chips' rows), Page Up and Down,
-Home and End, the pad's too, which the screen takes before the menu's focus would move (`Play::scroll`, with
-`peek-span` and `peek-view` from the UI); over the match the keys are the match's. A thumb along each one's right
+over them (`Scrub`), and by Up and Down (a step of two chips' rows; over the match the keys bound to Up and Down
+too), Page Up and Down, Home and End, the pad's too, which the screen takes before the menu's focus would move
+(`Play::scroll`, with `peek-span` and `peek-view` from the UI). Over the match, while they show, the shell keeps
+the keys from the battle (`Shell::keep_keys`): no button reaches it, and the moves are the builds' (the user:
+"holding tab should allow you to scroll the build instead of passing input to the game"). A thumb along each one's right
 edge says where it is. They show from their tops each time. This player's card in the lobby says the build's
 name, navi and version (`Lobby::side`).
 
