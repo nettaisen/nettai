@@ -124,6 +124,9 @@ pub struct Battle {
     covered: bool,
     /// The owner has heard how it ended.
     over: bool,
+    /// Its owner keeps the keys from it while it shows something over it that they move (a match's builds while
+    /// Tab is held: [`Shell::keep_keys`]): no button reaches the battle, and the moves are the owner's to scroll.
+    kept: bool,
     /// Under the menu it is held where it stands, its sound and its scenery going on, if it can stop (not an
     /// online match): `battle/hold.rs`.
     hold: hold::Hold,
@@ -301,7 +304,7 @@ impl Shell {
         shell.set_connection_shown(false);
         shell.set_connection_open(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() });
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() });
         Some((start.owner, BattleEvent::Started))
     }
 
@@ -337,6 +340,18 @@ impl Shell {
         if self.loading.take().is_some() {
             self.ui().global::<nettai_ui::Shell>().set_versus(false);
         }
+    }
+
+    /// The battle's owner keeps the keys from it, or gives them back ([`Battle::kept`]).
+    pub fn keep_keys(&mut self, kept: bool) {
+        if let Some(b) = &mut self.battle {
+            b.kept = kept;
+        }
+    }
+
+    /// Whether the battle's owner keeps the keys from it now (its moves are the owner's to scroll).
+    pub fn keys_kept(&self) -> bool {
+        self.battle.as_ref().is_some_and(|b| b.kept)
     }
 
     /// Whether the battle has the keys now.
@@ -411,7 +426,7 @@ impl Shell {
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
         b.hold.before(b.menu, &mut b.stage.player);
-        let buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
+        let buttons = if b.playing() && !b.kept && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
         let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
         let ticks = Some(ran);
         // START in the fight: the game's pause is nettai's menu (asked of the host: the game's own never runs).
@@ -589,7 +604,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -833,7 +848,7 @@ mod tests {
         nettai_frontend::testing::scrolling_background(&mut graphics);
         let audio = nettai_frontend::testing::audio(content);
         let player = Player::with(graphics.renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() }
+        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() }
     }
 
     /// A practice session of Practice's own, as PLAY's PRACTICE starts one: the menu open before the battle's

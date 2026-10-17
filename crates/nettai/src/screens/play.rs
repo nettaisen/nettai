@@ -895,7 +895,7 @@ impl Play {
         self.change_settings(shell, |s| s.open_setups = open);
     }
 
-    /// The Custom timer stepped `by`: through the match's time limits, then Unlimited, and around.
+    /// The Custom timer stepped `by`: through the match's time limits, then none (∞), and around.
     fn step_custom_time(&mut self, shell: &mut Shell, by: i32) {
         let choices: Vec<Option<u16>> = nettai_match::CUSTOM_SCREEN_TIMES.into_iter().map(Some).chain([None]).collect();
         let now = choices.iter().position(|&c| c == self.live.custom_time).unwrap_or(0) as i32;
@@ -1187,10 +1187,13 @@ impl Play {
         shell.nav.focus(if page == MatchPage::Menu { "menu.resume" } else { "menu.back" }, 0);
     }
 
-    /// Show the builds or put them away; they show from their tops.
-    fn set_peek(&mut self, shell: &Shell, peek: bool) {
+    /// Show the builds or put them away; they show from their tops. While they show over the match, the match's keys
+    /// are theirs to scroll with, and none reaches the battle (the user: "holding tab should allow you to scroll
+    /// the build instead of passing input to the game").
+    fn set_peek(&mut self, shell: &mut Shell, peek: bool) {
         if peek != self.peek {
             self.peek = peek;
+            shell.keep_keys(peek);
             let ui = shell.ui();
             let view = ui.global::<PlayView>();
             view.set_peek_y(0.0);
@@ -1869,12 +1872,12 @@ impl Screen for Play {
         }
     }
 
-    /// The builds shown over the match's menu (Tab or Select held): Up and Down scroll them a step, Page Up and
-    /// Down a page less a step, Home and End to their ends. They take them all while they show, at an end too:
-    /// the menu's focus stays where it was under them. (Over the match itself the keys are the match's: the
-    /// wheel and a drag scroll them there.)
+    /// The builds shown (Tab or Select held), over the match or its menu: Up and Down scroll them a step, Page Up
+    /// and Down a page less a step, Home and End to their ends. They take them all while they show, at an end too:
+    /// the menu's focus stays where it was under them, and over the match the battle hears none of them (the
+    /// shell keeps its keys: [`Play::set_peek`]).
     fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if !self.peek || !self.menu_open(shell) {
+        if !self.peek || !matches!(self.stage, Stage::Match { .. }) {
             return false;
         }
         let ui = shell.ui();

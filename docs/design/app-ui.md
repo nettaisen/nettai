@@ -1667,7 +1667,7 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     with its name over it (MATCH SETTINGS, YOUR CONNECTION), the two centered together. The match's: First to (a
     stepper of the round wins that take the set, 1 to 10, 2 at first: §2.34), Ruleset (§2.59: the host's a select
     with EDIT, the joiner's the host's ruleset by name with VIEW), Open setups (off, on; off at first: §2.81),
-    Custom timer (a stepper of the custom screen's time limit: 30, 45, 60, 90 and 120 seconds and Unlimited, 60
+    Custom timer (a stepper of the custom screen's time limit: 30, 45, 60, 90 and 120 seconds and ∞ (none: "instead of Unlimited use the infinity sign for custom timer"), 60
     at first; nettai's own, not the original's: the user, "design a custom screen timer and default it to 60
     seconds but also allow an unlimited time option"; when it runs out the screen closes as if OK were pressed,
     docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the HUD's 8x16 font, one
@@ -1926,7 +1926,9 @@ DUPLICATE and DELETE.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
   theirs, each the build overview without a name, over the match or over its menu; letting go hides them. With
   Open setups off, only the player's own. Each has every ability and bug, and where one is taller than the window
-  they scroll: by the wheel and a drag, and over the menu by the keys and the pad (§2.83).
+  they scroll: by the wheel and a drag, and by the keys and the pad, over the menu or the match; over the match the
+  battle hears no key while they show ("holding tab should allow you to scroll the build instead of passing input
+  to the game").
 - **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, CONTROLS, SETTINGS, LEAVE
   MATCH. "The match keeps running", and it does. Its footer is the match's own controls as the player's bindings
   have them: Move, A, B, L and R, Show builds (Tab), Menu (Esc). SETTINGS has Language, Picture size, Full screen,
