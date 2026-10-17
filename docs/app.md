@@ -2981,7 +2981,9 @@ it knows of the game from copies of the battle: each few ticks it tries, for eac
 standing there (how dangerous the panel is over the next second, against a few guesses at the player: going on,
 doing again what they just did, using their chip, walking to its row and attacking, stepping) and, from the safest
 few, shooting the charged
-shot or using its chip there and retreating to a clearly safer panel (where its attacks land); it keeps to what it
+shot or using its chip there and retreating to a clearly safer panel (where its attacks land); what a copy makes is
+the HP each side takes away and the ground, the panels each side owns (a column taken worth about a modest hit, so
+it takes area where that pays and minds losing it) and the panels its navi has to move on; it keeps to what it
 does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
 (the player does). On its custom screen Normal and Hard pick the hand worth most over a turn in copies of the
 fight (its chips used in the order picked, each when using it pays; built a chip at a time while one adds
