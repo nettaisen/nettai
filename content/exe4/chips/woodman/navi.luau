@@ -91,7 +91,8 @@ end
 local function towers(me: Object)
     local count = bit32.band(battle.rng_positive(), 1) + 4
     local p = TOWER_PANELS[me.alliance]
-    local list = panels.filtered_except(me, p[1], p[2])
+    -- (Shuffled from its order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    local list = panels.filtered_except(me, p[1], p[2], me.alliance)
     local n = #list
     if n == 0 then
         return
