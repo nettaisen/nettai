@@ -33,7 +33,7 @@ end
 -- start of `buf` (the routine's stack buffer, which keeps what an earlier
 -- list left past the new one's end): how many.
 local function list_into(me: Object, buf: { number }, filter: { number }): number
-    -- (Shuffled, then its first taken: by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    -- (Shuffled from its side's order, its first taken: docs/engine/side-symmetry.md.)
     local list = panels.filtered_except(me, filter[1], filter[2], bit32.band(me.alliance, 1))
     for i, p in list do
         buf[i] = p

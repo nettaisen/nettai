@@ -86,7 +86,7 @@ local CRACKED = { [0] = { require = 0x30, forbid = 0x20000 }, [1] = { require = 
 
 function hammer.crack_two(me: Object)
     local cond = CRACKED[me.alliance]
-    -- (Shuffled from its order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    -- (Shuffled from its side's order: docs/engine/side-symmetry.md.)
     local list = panels.filtered_except(me, cond.require, cond.forbid, me.alliance)
     local n = #list
     if n == 0 then

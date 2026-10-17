@@ -43,7 +43,7 @@ local FIRST_Z = 4
 -- else the element.
 local function erupt(me: Object)
     local side = me.alliance
-    -- (In order, and shuffled, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    -- (In its side's order, and shuffled: docs/engine/side-symmetry.md.)
     local targets = panels.filtered_except(me, ENEMIES[side][1], ENEMIES[side][2], side)
     local empty = panels.filtered_except(me, EMPTY[side][1], EMPTY[side][2], side)
     if #empty > 0 then

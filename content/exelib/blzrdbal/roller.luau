@@ -40,8 +40,8 @@ local SOLID = 0x10
 -- fraction its own).
 --
 -- (The original takes the whole pixels and keeps the fraction as they are, which isn't the mirror image of the same
--- on the other side: a roller of side 1 crossed a column's line on another tick than side 0's. nettai works side 1's in the mirror
--- image, as side 0's: docs/engine/side-symmetry.md.)
+-- on the other side: a roller of side 1 crossed a column's line on another tick than side 0's. nettai works side 1's
+-- in the mirror image, as side 0's: docs/engine/side-symmetry.md.)
 local function follow(me: Object, ball: Object, px: number)
     local sign = if me.alliance == 0 then 1 else -1
     local bx, mx = int.i32(sign * ball.pos.x), int.i32(sign * me.pos.x)
