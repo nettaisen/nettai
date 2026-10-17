@@ -1436,3 +1436,39 @@ fn a_defense_chip_isnt_used_while_its_like_is_up() {
         assert!(uses.iter().all(|(_, was_up)| !was_up), "{chip} used while its like's effect was up: {uses:?}");
     }
 }
+
+/// A chip that OK folds into the chip before it (an attack-up) never
+/// stands alone in a hand the fighter picks, at a level that doesn't
+/// choose either (Easy: every chip it can in the cursor's order): its
+/// folder all Atk+10 (EXE6), it picks none; Cannon and Atk+10 by turns,
+/// the hand OK builds from its picks holds none alone. And one left alone
+/// in hand (a hand of it alone) isn't used: it would poof, making nothing.
+#[test]
+fn a_chip_that_folds_never_stands_alone() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let atk = nettai_match::ids::chip(&content, "exe6", "atk-10").expect("Atk+10");
+    for (folder, picks) in [(&[("atk-10", '*')][..], false), (&[("cannon", 'A'), ("atk-10", '*')][..], true)] {
+        let mut m = even_match(&content, "exe6", 1, 400);
+        m.sides[1].set_folder(&content, &folder_of(&content, "exe6", folder)).unwrap();
+        let mut b = at_the_custom_screen(&content, &m, 1);
+        assert!(dealt(&b, 1).iter().any(|(_, c)| c.id == atk), "Atk+10 dealt");
+        let (mut fighter, mut other) = (Fighter::inline(Level::EASY, 1), Picker::default());
+        let mut t = 0;
+        while b.round.mode == mode::CUSTOM && t < TO_THE_FIGHT {
+            let (mine, theirs) = (fighter.custom_screen(&b, 1), other.buttons(&b, 0, None));
+            step(&mut b, 1, mine, theirs);
+            t += 1;
+        }
+        assert_eq!(b.round.mode, mode::FIGHTING, "the fight goes on");
+        assert_eq!(b.hands[1].remaining() > 0, picks, "{:?}", b.hands[1].ids);
+        assert!(!stands_alone(&b, 1), "an Atk+10 alone: {:?}", b.hands[1].ids);
+    }
+    let mut m = even_match(&content, "exe6", 1, 400);
+    m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+    let mut b = fight_with(&content, &m, 1, true);
+    hand_of(&mut b, &content, &["atk-10"]);
+    let mut fighter = Fighter::inline(Level::HARD, 1);
+    let hands = fight_for(&mut b, &mut fighter, 400, |_| 0);
+    assert_eq!(hands.iter().position(|h| *h == 0), None, "Atk+10 used alone");
+}

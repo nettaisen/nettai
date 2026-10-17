@@ -2998,7 +2998,8 @@ after the chips that attack unless a cut-in ready at the front is worth more; bu
 anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up, or any chip OK folds into
 the one before it, only right after a chip it folds into, never where it would stand alone and poof; a Program
 Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
-fight goes better with it; Easy picks every chip it can in the cursor's order. The search's work is the level's
+fight goes better with it; Easy picks every chip it can in the cursor's order, an attack-up too only right after a chip it
+folds into. The search's work is the level's
 (`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has
 it, the battle going on meanwhile (it looks at its screen longer on a slower machine, never stalling the
 battle). It thinks on threads of its own (four at most, fewer on a machine with fewer cores to spare)
