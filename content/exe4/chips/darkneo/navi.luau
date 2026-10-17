@@ -65,9 +65,10 @@ local IN_HIS_WAY = { [0] = 0x0780_0000, [1] = 0x0B80_0000 }
 local RISE_ACTION, CAST, BLAST_ACTION = 0x0, 0x4, 0x8
 local ARM_UP, HOLE, IMAGE, FLY = 0x0, 0x4, 0x8, 0xC
 
--- `sub_800E258`: the panel under a position (the BIOS divisions).
-local function panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- `sub_800E258`: the panel under a position (the BIOS divisions), as `side` has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
 -- Count the timer down: true once it fell below 0.
@@ -168,7 +169,7 @@ local function fly(me: Object)
     if aura then
         aura:set_lifecycle("destroy")
     end
-    local px, py = panel_at(me.pos.x, me.pos.y)
+    local px, py = panel_at(me.pos.x, me.pos.y, me.alliance)
     if not field.check(px, py, 0, IN_HIS_WAY[me.alliance]) then
         me:set_lifecycle("destroy")
         return

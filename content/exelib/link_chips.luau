@@ -54,9 +54,10 @@ function link_chips.flip(me: Object): number
     return bit32.bxor(me.alliance, me.flip)
 end
 
--- `sub_800E258`: the panel under a position (the BIOS divisions).
-function link_chips.panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- `sub_800E258`: the panel under a position (the BIOS divisions), as `side`
+-- has it (field.panel_at: a line between columns is in the one toward the other side, for either side).
+function link_chips.panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
 -- `sub_800E708(a, b, c)`: c lies between a and b, ends included (and a

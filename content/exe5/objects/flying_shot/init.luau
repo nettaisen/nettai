@@ -51,12 +51,10 @@ function flying_shot.variant(r: {
     })
 end
 
--- `sub_800E6E8` (EXE5's 0x0800CB08): `c` lies past `a` and up to `b`, either way.
-local function crossed(a: number, b: number, c: number): boolean
-    if a <= b then
-        return c > a and c <= b
-    end
-    return c > b and c <= a
+-- `sub_800E6E8` (EXE5's 0x0800CB08): `c` lies past `a` and up to `b`, either way,
+-- as `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function crossed(a: number, b: number, c: number, side: number): boolean
+    return field.passed(a, b, c, side)
 end
 
 -- Gone: hidden, its region cleared, destroyed next tick.
@@ -81,7 +79,7 @@ local function tick(me: Object)
         local x = int.i32(p.x + me.vel.x)
         me.pos = Vec3.new(x, p.y, p.z)
         local spent = false
-        if crossed(x, p.x, cx) then
+        if crossed(x, p.x, cx, me.alliance) then
             local left = s.range - 1
             s.range = left
             spent = left <= 0

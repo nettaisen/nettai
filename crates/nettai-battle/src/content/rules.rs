@@ -783,11 +783,12 @@ pub struct SlideSpeed {
 pub enum MoveDirection {
     /// EXE6's `sub_800E994` (EXE5's 0x0800CC92, the same code): 0 none, 1
     /// up, 2 down, 3 back and 4 forward by the side, 5 other. Only a move
-    /// of two panels or more right or down is other (the routine tests
-    /// `>= 2` and nothing below -1), and a diagonal one: any move left or up
+    /// of two panels or more ahead or down is other (the routine tests
+    /// `>= 2` and nothing below -1), and a diagonal one: any move back or up
     /// along one axis counts by its sign, so a navi warped two panels back
-    /// (side 0) or forward (side 1) has moved back or forward, and slides on
-    /// ice.
+    /// has moved back, and slides on ice. (The original tests the X as it
+    /// is, two panels right: ahead for side 0, back for side 1; nettai
+    /// tests it by the side, docs/engine/side-symmetry.md.)
     BySide,
     /// EXE4's 0x0800AF90: 0 none, 1 up, 2 down, 3 left and 4 right whatever
     /// the side, across before up and down (a diagonal move by its x), and no
@@ -803,16 +804,22 @@ impl MoveDirection {
         let dy = new.y as i8 - old.y as i8;
         match self {
             MoveDirection::BySide => {
+                // The original tests the move's X as it is: a move of two
+                // panels or more to the right is other, ahead for side 0
+                // and back for side 1, and one to the left counts as back
+                // or forward. nettai tests side 1's mirrored, so either
+                // side's move of two panels or more ahead is other and one
+                // back is back (docs/engine/side-symmetry.md).
+                let dx = if alliance == 0 { dx } else { -dx };
                 if dx >= 2 || dy >= 2 {
                     return 5;
                 }
-                let (back, forward) = if alliance == 0 { (3, 4) } else { (4, 3) };
                 match (dx.signum(), dy.signum()) {
                     (0, 0) => 0,
                     (0, -1) => 1,
                     (0, 1) => 2,
-                    (-1, 0) => back,
-                    (1, 0) => forward,
+                    (-1, 0) => 3,
+                    (1, 0) => 4,
                     _ => 5,
                 }
             }

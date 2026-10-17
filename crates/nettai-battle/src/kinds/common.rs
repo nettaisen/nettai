@@ -54,17 +54,11 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef, player: bool) {
     b.call_panel(kind, nettai_content_api::PanelCall::Burn { body: r, player });
 }
 
-/// `sub_800E258`: the panel a field position is over (x 1..=6 and y
-/// 1..=3 on the field; positions off the field give border or wrapped
-/// values, as in the game).
-pub fn panel_at(x: i32, y: i32) -> PanelPos {
-    PanelPos { x: (((x >> 16) + 0xA0) / 0x28) as u8, y: (((y >> 16) + 0x20) / 0x18) as u8 }
-}
-
-/// `object_setPanelsFromCoordinates`.
+/// `object_setPanelsFromCoordinates`: the panel under the object's
+/// position, as its side has it (`PanelPos::under`).
 pub fn set_panels_from_coordinates(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
-    o.panel = panel_at(o.pos.x, o.pos.y);
+    o.panel = PanelPos::under(o.pos.x, o.pos.y, o.alliance);
 }
 
 /// `object_setCoordinatesFromPanels`: x and y from the panel (z is left

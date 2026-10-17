@@ -94,9 +94,10 @@ function whirl.make(look: SeekingWhirlLook): { kind: Kind, sender: AirSpinSender
         me:update_collision_panels()
     end
 
-    -- `sub_800E258`: the panel under coordinates (x, y).
-    local function panel_at(x: number, y: number): (number, number)
-        return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+    -- `sub_800E258`: the panel under coordinates (x, y), as `side` has it
+    -- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+    local function panel_at(x: number, y: number, side: number): (number, number)
+        return field.panel_at(x, y, side)
     end
 
     -- `object_clearCollisionRegion`, then the last action.
@@ -142,7 +143,7 @@ function whirl.make(look: SeekingWhirlLook): { kind: Kind, sender: AirSpinSender
         local t = me.timer + 1
         me.timer = t
         if t == STEP_TICKS // 2 then
-            c.panel_x, c.panel_y = panel_at(s.target_x, s.target_y)
+            c.panel_x, c.panel_y = panel_at(s.target_x, s.target_y, me.alliance)
         end
         if t == STEP_TICKS then
             s.from_x, s.from_y = me.panel_x, me.panel_y

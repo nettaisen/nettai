@@ -833,7 +833,7 @@ mod tests {
 
     /// docs/design/exe4-map.md §18 item 1: a move's direction as the game
     /// puts it. EXE6's and EXE5's by the side (back and forward swap for
-    /// side 1; two panels right is other), EXE4's whatever the side (across
+    /// side 1; two panels ahead is other), EXE4's whatever the side (across
     /// before up and down, never other).
     #[test]
     fn a_moves_direction_is_the_games() {
@@ -843,7 +843,9 @@ mod tests {
         let moves = [p(2, 2), p(4, 2), p(3, 1), p(3, 3), p(5, 2), p(1, 2), p(4, 3), p(3, 2)];
         let by = |rule: crate::content::MoveDirection, side| moves.map(|to| rule.of(from, to, side));
         assert_eq!(by(BySide, 0), [3, 4, 1, 2, 5, 3, 5, 0]);
-        assert_eq!(by(BySide, 1), [4, 3, 1, 2, 5, 4, 5, 0]);
+        // (Side 1's mirrored: two panels left is ahead, other; two right
+        // back.)
+        assert_eq!(by(BySide, 1), [4, 3, 1, 2, 3, 5, 5, 0]);
         assert_eq!(by(Absolute, 0), [3, 4, 1, 2, 4, 3, 4, 0]);
         assert_eq!(by(Absolute, 1), [3, 4, 1, 2, 4, 3, 4, 0]);
     }

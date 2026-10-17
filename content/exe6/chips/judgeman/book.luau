@@ -167,9 +167,10 @@ local function between(a: number, b: number, c: number): boolean
     return c >= b and c <= a
 end
 
--- `sub_800E258`: the panel under a position.
-local function panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- `sub_800E258`: the panel under a position, as `side` has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
 -- Region off, and gone (a byte store of the lifecycle: the action stays).
@@ -214,7 +215,7 @@ local function fly(me: Object)
         old, new = p.x, nx
     end
     if center ~= old and between(new, old, center) then
-        local px, py = panel_at(nx, ny)
+        local px, py = panel_at(nx, ny, me.alliance)
         if px == s.target_x and py == s.target_y then
             return finish(me)
         end

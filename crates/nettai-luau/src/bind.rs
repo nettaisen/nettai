@@ -2486,6 +2486,18 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.panel_center(p)))
     });
+    lib_fn!(lua, t, "panel_at", |_, (x, y, side): (LuaValue, LuaValue, LuaValue)| {
+        let (x, y, side) = (int(&x, "x")? as i32, int(&y, "y")? as i32, int(&side, "side")? as u8);
+        let p = nettai_content_api::PanelPos::under(x, y, side);
+        Ok((p.x as i64, p.y as i64))
+    });
+    lib_fn!(lua, t, "passed", |_, (new, old, target, side): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let (new, old, target) = (int(&new, "new")? as i32, int(&old, "old")? as i32, int(&target, "target")? as i32);
+        Ok(match side {
+            LuaValue::Nil => nettai_content_api::passed(new, old, target),
+            side => nettai_content_api::passed_x(new, old, target, int(&side, "side")? as u8),
+        })
+    });
     lib_fn!(lua, t, "flags", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.panel_flags(p)))

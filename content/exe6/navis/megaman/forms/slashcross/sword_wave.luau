@@ -29,13 +29,10 @@ local sword_wave = {}
 -- The actions: moving, blinking out after a hit.
 local MOVING, BLINKING = 0, 1
 
--- `sub_800E6E8`: moving from `old` to `new` passed `center` (reaching it
--- counts, starting on it doesn't).
-local function passed(new: number, old: number, center: number): boolean
-    if new > old then
-        return center > old and center <= new
-    end
-    return center > new and center <= old
+-- `sub_800E6E8`: moving from `old` to `new` passed `center`, as `side` sees
+-- it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function passed(new: number, old: number, center: number, side: number): boolean
+    return field.passed(new, old, center, side)
 end
 
 -- The end: hidden, no region, destroyed next update.
@@ -74,7 +71,7 @@ local function tick(me: Object)
         local over = false
         if not s.started then
             s.started = true
-        elseif passed(new, old, center) then
+        elseif passed(new, old, center, me.alliance) then
             local left = s.reach - 1
             s.reach = left
             over = left <= 0

@@ -120,7 +120,7 @@ local function dig(me: Object, s: State)
     local p = me.pos
     local x = int.i32(p.x + me.vel.x)
     me.pos = Vec3.new(x, p.y, p.z)
-    local px, py = link.panel_at(x, p.y)
+    local px, py = link.panel_at(x, p.y, me.alliance)
     if px ~= column then
         dig_hit(me, px, py)
     end

@@ -74,18 +74,17 @@ local function aim(me: Object)
     s.target_x = cx
 end
 
--- `sub_800E6E8`: `center` lies past `from`, up to and including `to`.
-local function crossed(to: number, from: number, center: number): boolean
-    if to > from then
-        return center > from and center <= to
-    end
-    return center > to and center <= from
+-- `sub_800E6E8`: `center` lies past `from`, up to and including `to`, as
+-- `side` sees it (field.passed: along X as its side sees it, a move ahead counting on reaching for either side).
+local function crossed(to: number, from: number, center: number, side: number): boolean
+    return field.passed(to, from, center, side)
 end
 
--- `sub_800E24C`: the panel under the object's coordinates.
+-- `sub_800E24C`: the panel under the object's coordinates, as its side has
+-- it (field.panel_at: a line between columns is in the one toward the other side, for either side).
 local function panel_under(me: Object): (number, number)
     local p = me.pos
-    return int.tdiv(int.asr(p.x, 16) + 0xA0, 0x28), int.tdiv(int.asr(p.y, 16) + 0x20, 0x18)
+    return field.panel_at(p.x, p.y, me.alliance)
 end
 
 -- A whirlwind top of `look`'s game: its kind, `spawn` and AirSpin's `sender`.
@@ -134,7 +133,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         end
         local s = me.state :: State
         local x = int.i32(me.pos.x + me.vel.x)
-        if crossed(x, me.pos.x, s.target_x) then
+        if crossed(x, me.pos.x, s.target_x, me.alliance) then
             aim(me)
             if not open(me.future_panel_x, me.future_panel_y) then
                 return stop(me)

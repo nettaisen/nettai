@@ -52,9 +52,10 @@ local ENEMY_BODIES = { [0] = 0x04000000, [1] = 0x08000000 }
 -- The lock-on: no damage, element 5, paralysis for 120 ticks (status 0x11), on the panel alone.
 local LOCK_ELEMENT = 5
 
--- `sub_800E258`: the panel under a position.
-local function panel_at(x: number, y: number): (number, number)
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28), int.tdiv(int.asr(y, 16) + 0x20, 0x18)
+-- `sub_800E258`: the panel under a position, as `side` has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function panel_at(x: number, y: number, side: number): (number, number)
+    return field.panel_at(x, y, side)
 end
 
 -- The owner's result: `result`, and the panel found.
@@ -75,7 +76,7 @@ end
 
 -- `sub_80E58F4`: the arc's far point (the center 120 pixels ahead) is on the field.
 local function in_reach(me: Object, s: SightState): boolean
-    local x, y = panel_at(int.i32(me.facing * RADIUS * 0x10000 + s.center_x), s.center_y)
+    local x, y = panel_at(int.i32(me.facing * RADIUS * 0x10000 + s.center_x), s.center_y, me.alliance)
     return field.valid(x, y)
 end
 

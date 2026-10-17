@@ -173,7 +173,7 @@ local function roll(me: Object, s: State)
     local old, v = me.pos, me.vel
     local x, y = int.i32(old.x + v.x), int.i32(old.y + v.y)
     me.pos = Vec3.new(x, y, old.z)
-    local px, py = link.panel_at(x, y)
+    local px, py = link.panel_at(x, y, me.alliance)
     if not field.check(px, py, ROLL_REQUIRE, ROLL_FORBID) then
         link.go(me, LAND)
         return

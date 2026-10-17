@@ -79,9 +79,10 @@ local function tell_all(me: Object)
     end
 end
 
--- `sub_800E258`'s column: the panel under X.
-local function column(x: number): number
-    return int.tdiv(int.asr(x, 16) + 0xA0, 0x28)
+-- `sub_800E258`'s column: the panel under X, as the yoyo's side has it
+-- (field.panel_at: a line between columns is in the one toward the other side, for either side).
+local function column(me: Object, x: number): number
+    return (field.panel_at(x, 0, me.alliance))
 end
 
 -- Roll a tick; on a new panel its region is back.
@@ -89,7 +90,7 @@ local function roll(me: Object, s: State)
     local p = me.pos
     local x = int.i32(p.x + me.vel.x)
     me.pos = Vec3.new(x, p.y, p.z)
-    local col = column(x)
+    local col = column(me, x)
     if col ~= me.panel_x then
         me.panel_x = col
         me.collision.panel_x = col
