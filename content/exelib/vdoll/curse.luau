@@ -72,7 +72,17 @@ end
 -- The combatant (one of either side's still in) whose collision stands on (x, y), when the panel's flags have the
 -- side's word.
 local function occupant(x: number, y: number, side: number): Object?
-    local flags = OCCUPANT[side]
+    -- (Side 1's misread word asks a flag no combatant sets, so the original's side-1 curse sparkles over nobody.
+    -- nettai reads the canonical side's word for either side, the other side's mirrored: the two sides' combatant
+    -- flags, 0x00200000 and 0x00400000, traded. docs/engine/side-symmetry.md.)
+    local canonical = OCCUPANT[field.canonical_side()]
+    local flags = if field.side_sign(side) > 0
+        then OCCUPANT[side]
+        else bit32.bor(
+            bit32.band(canonical, bit32.bnot(0x0060_0000)),
+            if bit32.btest(canonical, 0x0020_0000) then 0x0040_0000 else 0,
+            if bit32.btest(canonical, 0x0040_0000) then 0x0020_0000 else 0
+        )
     if not flags then
         error(string.format("the curse's side %d reads past its occupant table", side))
     end

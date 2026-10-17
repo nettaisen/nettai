@@ -127,10 +127,14 @@ local function spread(from: number, to: number)
 end
 
 -- 0x080E6624: on its first tick a mark over each side's navi (0x0800C456, 0x080E680A); 61 ticks on, the bugs spread.
+-- (The original's over side 0's navi first whatever the user's side; nettai's in the canonical side's order for the
+-- user's side: docs/engine/side-symmetry.md.)
 local function effect(me: Object)
     if me.phase_init == 0 then
         me.timer = WAIT
-        for side = 0, 1 do
+        local first = if field.side_sign(me.alliance) > 0 then 0 else 1
+        for i = 0, 1 do
+            local side = bit32.bxor(first, i)
             local o = battle.spawn(MARK, Vec3.zero)
             if o then
                 o.related1 = battle.player(side)

@@ -1492,8 +1492,11 @@ declare field: {
     -- A side's registry slot `i` (1 to 3), filled or not.
     object_slot: (side: number, i: number) -> Object?,
     -- Every registered field object (the registry's eight slots: each
-    -- side's three, then the stage's two), in slot order.
-    all_objects: () -> { Object },
+    -- side's three, then the stage's two), in slot order. With `side`, as
+    -- that side goes through them: the slot order for the canonical side,
+    -- the two sides' slots traded for the other (side 0's first in the
+    -- original whatever the side; docs/engine/side-symmetry.md).
+    all_objects: (side: number?) -> { Object },
     column: (x: number) -> Column,
     set_column_timer: (x: number, ticks: number) -> (),
     set_alliance: (x: number, y: number, side: number) -> (),

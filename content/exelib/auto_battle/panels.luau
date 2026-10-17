@@ -62,11 +62,16 @@ function panels.step_condition(navi: Object): (number, number)
 end
 
 -- `object_getPanelsFiltered` (rows 3 to 1, columns 6 to 1), and without the navi's own panel
--- (`object_getPanelsExceptCurrentFiltered`).
-local function filtered(require: number, forbid: number, except: Object?): { number }
+-- (`object_getPanelsExceptCurrentFiltered`). With `side`, in that side's order: the original's for the canonical
+-- side, its columns the other way for the other (where the order counts: docs/engine/side-symmetry.md).
+local function filtered(require: number, forbid: number, except: Object?, side: number?): { number }
     local out = {}
+    local first, last, step = 6, 1, -1
+    if side ~= nil and field.side_sign(side) < 0 then
+        first, last, step = 1, 6, 1
+    end
     for y = 3, 1, -1 do
-        for x = 6, 1, -1 do
+        for x = first, last, step do
             if field.check(x, y, require, forbid) and not (except and x == except.panel_x and y == except.panel_y) then
                 table.insert(out, pack(x, y))
             end
@@ -104,9 +109,10 @@ local ENEMY_BODIES: { number } = { 0x04000000, 0x08000000 }
 -- `sub_8015EC6` (EXE4's 0x0800FA0C): a panel of the navi's own area in an enemy's row, at random; nil if no enemy
 -- stands anywhere, or none of the row's panels is the navi's to step on. The routine means the row of the enemy
 -- nearest the navi's own row, but its loop reads the first of the panels an enemy stands on (rows 3 to 1, columns 6
--- to 1, the navi's own left out) every time: that panel's row.
+-- to 1, the navi's own left out) every time: that panel's row. (In the navi's side's order: the original's first is
+-- the one furthest right whatever the side, docs/engine/side-symmetry.md.)
 function panels.row_of_nearest_enemy(navi: Object): (number?, number?)
-    local enemies = filtered(ENEMY_BODIES[bit32.band(navi.alliance, 1) + 1], 0, navi)
+    local enemies = filtered(ENEMY_BODIES[bit32.band(navi.alliance, 1) + 1], 0, navi, navi.alliance)
     if #enemies == 0 then
         return nil, nil
     end

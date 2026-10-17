@@ -2505,8 +2505,19 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("home", info.home)?;
         Ok(LuaValue::Table(t))
     });
-    lib_fn!(lua, t, "all_objects", |lua, ()| {
-        let list = with(|api, _| Ok(api.all_field_objects()))?;
+    lib_fn!(lua, t, "all_objects", |lua, side: Option<LuaValue>| {
+        let mut list = with(|api, _| Ok(api.all_field_objects()))?;
+        // (For a side other than the canonical, the two sides' slots trade
+        // places: the canonical side's order, mirrored.
+        // docs/engine/side-symmetry.md.)
+        if let Some(side) = side.filter(|v| !v.is_nil()) {
+            let side = u8_arg(side, "side")? & 1;
+            if nettai_content_api::side_sign(side) < 0 {
+                let sides: Vec<_> = (0..2u8).map(|s| with(|api, _| Ok(api.side_field_objects(s)))).collect::<mlua::Result<_>>()?;
+                let stage: Vec<_> = list.iter().copied().filter(|o| !sides.iter().any(|l: &Vec<_>| l.contains(o))).collect();
+                list = sides[1].iter().chain(sides[0].iter()).chain(stage.iter()).copied().collect();
+            }
+        }
         lua.create_sequence_from(list.into_iter().map(Object))
     });
     lib_fn!(lua, t, "objects", |lua, side: LuaValue| {
