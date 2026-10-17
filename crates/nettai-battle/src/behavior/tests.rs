@@ -889,8 +889,9 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     assert_eq!(boulders.iter().map(|&r| b.objects.get(r).alliance).collect::<Vec<_>>(), [0, 1]);
     assert_eq!(b.field.objects.slots, [None, None, None, None, None, None, Some(boulders[0]), Some(boulders[1])]);
     // The spawner reads the flags through the column (open bus): pause and
-    // dimming bits over garbage, and "not in use".
-    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [0xB4, 0x34]);
+    // dimming bits over garbage, and "not in use"; side 1's by its mirrored
+    // column (docs/engine/side-symmetry.md), the same as side 0's.
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [0xB4, 0xB4]);
     // Before the fight they wait, a pixel back and a pixel down, 500 HP.
     b.paused = true;
     run_only(&mut b, &BOULDER_KINDS);
