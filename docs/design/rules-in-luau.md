@@ -3484,7 +3484,8 @@ For nettai's rulesets (docs/design/app-ui.md §2.59), by the user's words: "inst
 cards on/off there should be an entire ruleset configuration thing like: - closed setups - allowed navicust pieces -
 allowed patch cards - allowed chips - allowed navis - allowed sets of souls/crosses (should be able to represent
 game)". Closed builds stays the lobby's own setting beside it (the user, as rulesets were built: "i think closed
-setup should not be part of the ruleset actually"). A ruleset is what a match is played under beside its rounds; it says nothing of how a round plays, only
+setup should not be part of the ruleset actually"), since 2026-10-17 as Open setups, off by default (the user:
+"closed setups should be open setups instead and it should be off by default"). A ruleset is what a match is played under beside its rounds; it says nothing of how a round plays, only
 which builds may play it, so the simulation never reads it.
 
 - **A game's ruleset categories are its data** (`content/<game>/rules/rulesets.luau`, which the rules load and none

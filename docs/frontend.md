@@ -646,21 +646,29 @@ host calls, in order:
     background left to the seed is the game's link pick's or the
     background pool's, nettai's Play the pool), the ruleset
     (`ruleset`: `nettai_match::ruleset::Ruleset`, which builds may play)
-    and whether builds are closed (`closed_builds`, beside the ruleset and
-    not of it: the user, "i think closed setup should not be part of the
-    ruleset actually"), and the custom screen's time limit
-    (`custom_screen_time`: 30, 45, 60, 90 or 120 seconds, or none; a new
-    lobby's 60, `nettai_match::DEFAULT_CUSTOM_SCREEN_TIME`; nettai's own, not
-    the original's: docs/engine/custom-screen.md §6.1). Either player changes
-    First to, closed builds and the time limit (`Lobby::set_first_to`,
-    `set_closed_builds`, `set_custom_screen_time`, or `propose` for the
-    whole), the host alone the ruleset (`Lobby::set_ruleset`, false for a
-    joiner; a joiner's `propose` keeps the ruleset it holds, and a
-    joiner's change that crosses the host's new ruleset is taken with the
-    host's), the other's lobby takes the change, both show the same
-    (`Lobby::settings`), and both ready marks clear; a joiner coming into
-    the lobby takes the host's. They are agreed when both players are
-    ready on the same. A lobby is made with the game's rulesets
+    and whether the setups are open (`open_setups`: each player may be
+    shown the other's build in the match; beside the ruleset and not of
+    it: the user, "i think closed setup should not be part of the ruleset
+    actually"; off in a new lobby: "closed setups should be open setups
+    instead and it should be off by default"), and the custom screen's
+    time limit (`custom_screen_time`: 30, 45, 60, 90 or 120 seconds, or
+    none; a new lobby's 60, `nettai_match::DEFAULT_CUSTOM_SCREEN_TIME`;
+    nettai's own, not the original's: docs/engine/custom-screen.md §6.1).
+    **The host alone changes them** (the user: "only the host should be
+    able to change rules"): `Lobby::set_first_to`, `set_open_setups`,
+    `set_custom_screen_time`, `set_ruleset`, or `propose` for the whole,
+    each false for a joiner, whose lobby changes nothing. The joiner's
+    lobby takes the host's settings as they come (of a higher stamp, or
+    any that differ from its own: as it comes into the lobby too), both
+    show the same (`Lobby::settings`), and both ready marks clear. The
+    host takes no settings from the joiner: what a joiner's lobby says of
+    them only says whether it holds the host's yet, so a joiner's peer
+    that says it changed them anyway (one that breaks the protocol) is
+    never agreed with and comes back to the host's. They are agreed when
+    both players are ready on the same, of the same stamp. A host's lobby
+    starts on the settings it is made with (`Lobby::new`), so what the
+    host set while waiting for the other player is what the joiner
+    takes. A lobby is made with the game's rulesets
     (`Lobby::new(role, &content, rulesets, settings, ...)`,
     `nettai_match::ruleset::Rulesets::of`), which the settings' ruleset is
     read by (on the wire by names: the preset's id or the player's own
@@ -704,14 +712,15 @@ host calls, in order:
     `Reason::YourBuild { problems }` there). The battle's RNG comes from both
     halves, and each part the rounds leave is picked from it alike on both.
     A recording keeps every round's place.
-  - **Closed builds** reach the host with the agreement
-    (`Agreement::closed_builds`): the host then shows its player their own
-    build only (`agreement.sides[agreement.side]`), where with open builds
-    it may show both. Both programs hold both sides either way, as the
-    shared simulation needs them. A recording keeps the setting: a host
-    makes a netplay match's recorder of the agreement
-    (`Recorder::of_agreement`, §8), so the replay's info says the builds
-    were closed and whoever shows it again hides both. (The recorder
+  - **Open setups** reach the host with the agreement
+    (`Agreement::open_setups`): with them the host may show its player
+    both builds, without them their own only
+    (`agreement.sides[agreement.side]`). Both programs hold both sides
+    either way, as the shared simulation needs them. A recording keeps the
+    setting: a host makes a netplay match's recorder of the agreement
+    (`Recorder::of_agreement`, §8), so the replay's info says whether the
+    setups were open, and whoever shows it again hides both where they
+    weren't. (The recorder
     records the agreement's match; a ruleset changes no side, so a replay
     needs no word of it to play back.)
   - **Loaded before the first tick.** Agreed, the lobby says
@@ -2492,12 +2501,13 @@ replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
 --record set.ntrp` a set played headless; in the library,
 `Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
 tick. The `info` says when, which side recorded, the players' names, the
-kind of match (`MatchKind::Offline` or `Online`) and whether its builds were
-closed (`Info::of(kind, side)` is one with the rest left out). **A netplay
+kind of match (`MatchKind::Offline` or `Online`) and whether its setups were
+open (`Info::of(kind, side)` is one with the rest left out, its setups
+open: an offline set's, both builds the player's to see). **A netplay
 match's recorder is made of its agreement**, `Recorder::of_agreement(sink,
 &content, &agreement, when)`: the lobby's `Agreement` has the match and its
-seed, this peer's side, both names and the closed builds the players agreed
-(`Agreement::closed_builds`, §2), so the info is all the agreement's and a
+seed, this peer's side, both names and whether the players agreed open
+setups (`Agreement::open_setups`, §2), so the info is all the agreement's and a
 host passes the setting on by recording at all. Live play
 writes each tick as it runs; netplay each as it settles
 (confirmed, never a prediction), so both players' replays of a match hold the
@@ -2516,9 +2526,9 @@ for one (nettai-replay's test
 `a_replay_holds_no_more_of_a_side_than_its_name_and_setup` pins the head and
 the info to their listed fields), and a match in binary holds no text at all
 (nettai-match's `no_fact_holds_text`: no fact's type holds a string). Where
-the players agreed that neither sees the other's build, the info says so
-(`Info::closed_builds`, which a host reads from the replay or from
-`Viewer::info()`), and whoever shows the replay hides both setups too
+the players didn't agree open setups, so neither saw the other's build, the
+info says so (`Info::open_setups` false, which a host reads from the replay or
+from `Viewer::info()`), and whoever shows the replay hides both setups too
 (docs/design/app-ui.md §3): the file still holds them, as it must.
 
 **Playing back.** `nettai-tool --replay set.ntrp` plays one out and says
@@ -2571,7 +2581,7 @@ out)`, `set_language`), and has a transport:
 | | |
 |---|---|
 | `length()`, `duration()` | the replay's ticks and its time, known as it opens (the file's) |
-| `info()` | what the replay says of itself: the names, the kind of match, closed builds |
+| `info()` | what the replay says of itself: the names, the kind of match, open setups |
 | `rounds()` | each round's first tick, in order (the file's marks): the bar's marks |
 | `position()`, `time()`, `round()`, `at_end()` | where it is |
 | `seek(tick)`, `seek_time(time)` | go there (past the end: the end) |
@@ -2663,7 +2673,7 @@ head   := "HEAD", length (u32), engine version (string), game (string),
           content hash (u64), the first battle's digest before any tick (u64)
 info   := "INFO", length (u32), when (u64: unix seconds), the side that
           recorded (a byte), the kind of match (a byte: 0 offline, 1 online),
-          closed builds (a byte: 0 no, 1 yes), the players' names by side
+          open setups (a byte: 0 no, 1 yes), the players' names by side
           (two strings)
 match  := "MTCH", length (u32), the match in nettai-match's binary
 input  := "TICK", then a record per tick to the end of the file

@@ -148,7 +148,7 @@ pub struct Replays {
     /// one watched has them too, while the app runs. Off at first.
     overlays: Overlays,
     /// The replay being made ready to watch (the two cards show), and its two sides where its builds may be
-    /// shown (the match's weren't closed).
+    /// shown (the match's setups were open).
     opening: Option<PathBuf>,
     sides: Option<Box<[nettai_match::Side; 2]>>,
     export: Option<Export>,
@@ -412,8 +412,8 @@ impl Replays {
             }
         };
         let side = side.unwrap_or(replay.info.side).min(1);
-        // (A closed-builds match's sides aren't kept at all.)
-        self.sides = (!replay.info.closed_builds).then(|| nettai_match::binary::read_match(ready.content(), &replay.match_bytes).ok()).flatten().map(|m| Box::new(m.sides));
+        // (The sides of a match whose setups weren't open aren't kept at all.)
+        self.sides = replay.info.open_setups.then(|| nettai_match::binary::read_match(ready.content(), &replay.match_bytes).ok()).flatten().map(|m| Box::new(m.sides));
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
         // (The console shown has its side at the left. A card says who played, and nothing of what they

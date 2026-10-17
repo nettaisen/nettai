@@ -679,9 +679,11 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (First to, Ruleset, Closed builds and Custom timer are the match's:
-  both see them, and a change clears both ready marks; either player changes First to, Closed builds and Custom
-  timer, the host alone the Ruleset; Custom timer, after Closed builds, is the custom screen's time limit, a
+  nothing of a build), one row of settings (First to, Ruleset, Open setups and Custom timer are the match's:
+  both see them, and a change clears both ready marks; the host alone changes them, the joiner's controls
+  unavailable (the user: "only the host should be able to change rules"); Open setups, off in a new lobby (the
+  user: "closed setups should be open setups instead and it should be off by default"), lets each player see
+  the other's build in the match; Custom timer, after Open setups, is the custom screen's time limit, a
   stepper of 30, 45, 60, 90 and 120 seconds and Unlimited, 60 in a new lobby: nettai's own, not the original's,
   the screen closing as if OK were pressed when the time is up, with the seconds left shown in a box at the top
   right while it counts, docs/engine/custom-screen.md §6.1; a lobby made from a match file starts on the file's,
@@ -722,7 +724,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   ("BATTLE 10 START!": the games' own banner, digits and all, in every game). The lobby carries the number
   (`Settings`, its byte in the lobby's message and in the Hello).
 - **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
-  THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
+  THEIR BUILD (only with open setups), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
 - **The link panel** (`LinkPanel` in battle.slint; its figures `battle/link.rs`): a click on the connection's
   corner opens it over the corner (`Shell.connection-open`, which the corner alone toggles: "telemetry window should not
@@ -733,7 +735,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   under it).
 - **Both builds** (`MatchPeek`, which app.slint shows over an online match): while Tab is held (`Keys::tab`), or
   the pad's button bound to SELECT, the player's build on their side and the other player's on theirs; with
-  closed builds the player's own alone. The match takes its keys meanwhile.
+  the setups not open the player's own alone. The match takes its keys meanwhile.
 
 Where a build is shown whole, it is the build overview (`BuildOverview`, filled by
 `builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
@@ -781,7 +783,7 @@ yet: the lobby gives the match's channel only once both sides have loaded. So th
 `Lobby::channel`, makes the `NetPlayer` on it with the player's input delay, and lets the gate through. If the
 other player takes their ready back in the moment the match was agreed, the lobby says so and the cards go.
 The match is recorded from its first tick by its agreement (`Recorder::of_agreement`: an online match, from
-this player's side, by the names the lobby had, closed builds where they were agreed), to a new file in the
+this player's side, by the names the lobby had, open setups where they were agreed), to a new file in the
 replays folder.
 
 **After a match** both players are back in the lobby on the same link (`Play::reopen`: the battle ended, which
@@ -844,19 +846,19 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
   menu's STOP PRACTICE (a phone) chosen, and the session ended by the
   other player coming;
 - the lobby's First to (stepped from 2 to 3, `play-lobby-first-to` and `-3`, a pair, then back to 1 for the
-  match played), the host's Ruleset stepped from Masters class to Senior class (`play-lobby-ruleset`, `-senior`) and closed
-  builds changed, each taken by the other player; the input
+  match played), the host's Ruleset stepped from Masters class to Senior class (`play-lobby-ruleset`, `-senior`) and open
+  setups changed, each taken by the other player; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
   saying why), and the first again;
 - the link dropped for six seconds in the lobby and in a match, and made again;
 - a match agreed, loaded with the other side held at 74%, and played to its end (the game's own "WIN" banner,
-  then the lobby again, nobody ready); a second match on the same link under Mixed and with closed builds,
+  then the lobby again, nobody ready); a second match on the same link under Mixed and with the setups not open,
   left by the other player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
 - the other player bringing a build that breaks a rule (its lobby won't make it ready, and this player waits,
   ready); the other player leaving the lobby; this player leaving it.
 
-The three matches of a pass, recorded by their agreements (a set played to its end, a match with closed builds
-the other player left, a match this one left as the joiner), were played back by nettai-tool
+The three matches of a pass, recorded by their agreements (a set played to its end, a match with the setups not
+open the other player left, a match this one left as the joiner), were played back by nettai-tool
 (`--replay`): each reproduces. A
 recording holds the two players' names as the lobby had them, and no build's. Only written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
 by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
@@ -1297,7 +1299,7 @@ of its own, `rulesets/<game>/<name>.toml` in the data folder (`rulesets/store.rs
 A category is named by the fact of a build it holds back (the folder's chips, the navi, `navicust_programs`,
 `patch_cards`, `crosses` or `souls`, EXE4's and EXE5's `auto_battle_places`: the auto battle data's chips, held
 back apart from the folder's), and its items by their names in the game; what a file doesn't name is
-allowed. Closed builds is no ruleset's: it is the lobby's own setting.
+allowed. Open setups is no ruleset's: it is the lobby's own setting.
 - **The ruleset a build is made for** (§8, Builds; docs/design/app-ui.md §2.73, taking back §2.59's ruleset a
   player plays by) is what Play's list and Practice check each build under (`builds::shelf`: `Own`, `Shelved::made_for`;
   docs/design/versions.md §4), and the list's row names it (`BuildEntry.ruleset`, `ruleset-missing`: build.slint's
@@ -2314,7 +2316,7 @@ empty, nothing of the menu's reel in it: §1); the delete question, and then a d
 file made for it; the export's dialog as it opens (a pair), as an export under way looks and as a failed one
 does (both set on the view: no export runs); the two cards; the viewer held a little way into the second round
 (a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; both
-builds over it; the export from the viewer; a closed-builds match's viewer (BUILDS unavailable); a replay that
+builds over it; the export from the viewer; the viewer of a match whose setups weren't open (BUILDS unavailable); a replay that
 fails as it is watched (`replays-watch-failed`: a copy of the first, damaged after the list read it, its size
 and time kept so that the list still offers it, watched as the screen arrives from the menu: the error's dialog
 over the list, the replay's box empty; the copy is removed after); and on a phone the selected replay's sheet (a
@@ -2332,7 +2334,7 @@ tests seat two players. The app's side is the Play screen itself, driven through
 what the steps tell it (ready, load to 74% and hold, drop its network for six seconds, leave the match, leave).
 So the pass runs the whole way between two players over real links, each time it is run: an invite, a wrong
 code, a direct connection, the lobby's shared settings, the two bars, a match to its result (the app's player
-shoots; the other's build has 1 HP), a second match with closed builds, both ways of leaving. Four things are
+shoots; the other's build has 1 HP), a second match with the setups not open, both ways of leaving. Four things are
 the pass's own, so that its pictures are the same from run to run: the builds listed are new builds of the
 game's versions (never the player's files), the lobby shows a round trip of 42 ms (what two players of one
 process measure moves about), the two lobbies draw their nonces from numbers of the pass's (a match's seed
@@ -3099,15 +3101,15 @@ screen runs the ticks due, presents the picture into the window's texture if one
   `NETTAI_WINDOW_PROBE=hide:20:12`: the timer ran one frame, then nothing for the 12 seconds, and the replay went
   on from the tick it was at, its stretches as loud as without the hiding. The app is kept awake
   (`Shell::stay_awake`) while a replay plays in a window that is drawn, and while a video is being made.
-- *The builds.* Where the match's builds weren't closed, BUILDS (the transport's sixth button, after the five;
+- *The builds.* Where the match's setups were open, BUILDS (the transport's sixth button, after the five;
   B, or Select on a pad) shows both over the picture's sides, as a match shows them: each the narrow sheet of
   `BuildOverview` (§8), the console shown's player's at the left in red, the other's at the right in blue (the
   colors of their sides of the picture), YOU over the name of the side that recorded it and OPPONENT over the
   other's, each name the player's (a replay holds no build's). They are a scope of their own: each sheet is a
   control, and a press or a click on them, BUILDS, B, Select or Esc puts them away; the replay goes on under
   them, and its keys still work. On a phone they are one under the other in a page that scrolls (each sheet is
-  then one column, 1158 tall). A closed-builds match's sides aren't kept at all (`Info::closed_builds`): its
-  BUILDS can't be pressed.
+  then one column, 1158 tall). The sides of a match whose setups weren't open aren't kept at all
+  (`Info::open_setups`): its BUILDS can't be pressed.
 - *What else may be over the picture* (the user: "add support for input view and picture in picture in replay
   viewer"), each off at first, toggled by its transport button after BUILDS (lit while it is on) or a key, and
   kept from one replay to the next while the app runs (not saved: the viewer saves no setting of its own):
@@ -3181,9 +3183,9 @@ naming no program the line said "Video export needs ffmpeg. Install it, then try
 The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at ½, 1, 2 and 4 times, and driven
 by `NETTAI_VIEWER_PROBE`: a seek past the index, a drag of the bar by the window's pointer events, and Settings'
 levels across a seek (§5). What Play's code records was listed and watched too: Play's steps alone with
-`$NETTAI_REPLAYS` set recorded three matches (one to its result, W 1–0 in 18 seconds; one with closed builds; one
+`$NETTAI_REPLAYS` set recorded three matches (one to its result, W 1–0 in 18 seconds; one with the setups not open, then called closed builds; one
 left), and Replays' steps with them in the folder listed them first, watched the newest, showed both builds of it
-(its recorder played as P2, whose console is shown, so YOU was at the left) and none of the closed-builds one's.
+(its recorder played as P2, whose console is shown, so YOU was at the left) and none of the one whose setups weren't open.
 Never run: a real pointer or a pad (the probe's are the window's events, not the system's), SHOW FILE, Save as's
 system dialog, the main menu's reel playing a replay (its order is a unit test), the builds with a real key, and
 anything on a real phone.
