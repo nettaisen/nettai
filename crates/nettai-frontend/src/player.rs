@@ -34,13 +34,14 @@
 //! ```
 
 use crate::driver::{Driver, LivePlayer, NetStatus, Opponent, StopReason, Training};
-use crate::game::{Graphics, Loaded};
+use crate::game::{Graphics, GraphicsMode, Loaded, VectorFont};
 use crate::preload::Late;
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::{Battle, BattleResult};
 use nettai_render::vfont::TextRenderer;
 use nettai_render::{Frame, Renderer};
+use std::sync::Arc;
 use std::time::Duration;
 
 /// The original's frame rate: a tick is one frame of it.
@@ -538,6 +539,18 @@ impl Player {
     pub fn set_language(&mut self, graphics: &Graphics) {
         self.renderer.set_graphics(graphics.packs());
         self.renderer.set_strings(graphics.strings.clone());
+    }
+
+    /// Draw the battle in `mode` from the next frame (`font`: the enhanced
+    /// mode's, [`crate::game::font`]; none in the original's), its text
+    /// renderer made again for it. As with [`Player::set_language`], only the
+    /// drawing changes.
+    pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
+        if self.renderer.mode() == mode {
+            return;
+        }
+        self.renderer.set_mode(mode, font.clone());
+        self.text = font.map(TextRenderer::new);
     }
 
     // ---- What a host may show ------------------------------------------------

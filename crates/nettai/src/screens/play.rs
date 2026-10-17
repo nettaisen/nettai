@@ -65,9 +65,10 @@ use crate::rulesets::{self, Pickable};
 use list::Naming;
 use crate::errors::UserError;
 use crate::games::Names;
-use crate::input::{Action, KeyPress, key_cap, pad_cap};
+use slint::winit_030::winit::keyboard::KeyCode;
+use crate::input::{Action, KeyPress, button_index, key_cap, pad_cap, pad_face};
 use crate::nav::Key;
-use crate::screens::{Screen, ScreenId, practice};
+use crate::screens::{Screen, ScreenId, practice, settings};
 use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
@@ -83,7 +84,7 @@ use nettai_match::Side;
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Rulesets;
 use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
-use nettai_ui::{BattleKind, BuildSheet, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
+use nettai_ui::{BattleKind, BuildSheet, Hint, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::{Cell, RefCell};
@@ -114,7 +115,7 @@ const WAIT_ROWS: &str = "play.wait";
 /// The tag of the question Esc in the lobby asks (`Screen::answered`: 1 is LEAVE).
 const LEAVE_LOBBY: &str = "play.leave";
 
-/// How far Up and Down scroll a build's page in the match's menu: two of its chips' rows.
+/// How far Up and Down scroll the builds shown over the match's menu: two of their chips' rows.
 const SHEET_STEP: f32 = 56.0;
 
 /// What the settings remember for Play: the match's settings as this player last set them hosting (the user: "the
@@ -282,6 +283,8 @@ pub struct Play {
     ended: Option<UserError>,
     live: Live,
     page: MatchPage,
+    /// The match menu's Controls page changing a binding.
+    binding: settings::Binding,
     peek: bool,
     /// Counted for the UI: each player's turns to ready, the copies.
     ready_seq: i32,
@@ -317,6 +320,7 @@ impl Default for Play {
             ended: None,
             live: Live::default(),
             page: MatchPage::Menu,
+            binding: Default::default(),
             peek: false,
             ready_seq: 0,
             their_ready_seq: 0,
@@ -1005,6 +1009,16 @@ impl Play {
         shell.ui().global::<PlayView>().set_input_delay(shell.settings.input_delay as i32);
     }
 
+    fn set_full_screen(&mut self, shell: &mut Shell, on: bool) {
+        settings::set_full_screen(shell, on);
+        self.show_match(shell);
+    }
+
+    fn set_enhanced(&mut self, shell: &mut Shell, enhanced: bool) {
+        shell.set_enhanced(enhanced);
+        self.show_match(shell);
+    }
+
     fn set_levels(&mut self, shell: &mut Shell, music: u32, effects: u32) {
         (shell.settings.music, shell.settings.effects) = (music.min(100), effects.min(100));
         shell.set_sound_levels(shell.settings.music, shell.settings.effects);
@@ -1124,7 +1138,7 @@ impl Play {
     }
 
     /// What the match's menu and panels show: both builds (the other player's has no name here: none was
-    /// ever sent), whether the setups are open, the controls, the levels.
+    /// ever sent), whether the setups are open, the controls (and the footer's of them), the levels.
     fn show_match(&self, shell: &Shell) {
         let (Some(agreed), Some(kit)) = (&self.agreed, builds::kit(shell)) else { return };
         let ui = shell.ui();
@@ -1155,26 +1169,32 @@ impl Play {
             })
             .collect();
         view.set_controls(ModelRc::new(VecModel::from(controls)));
+        view.set_match_keys(ModelRc::new(VecModel::from(match_keys(shell, &view))));
         view.set_music(shell.settings.music as i32);
         view.set_effects(shell.settings.effects as i32);
         view.set_input_delay(shell.settings.input_delay as i32);
+        settings::show_values(shell, &self.binding);
         view.set_page(self.page);
     }
 
     fn set_page(&mut self, shell: &mut Shell, page: MatchPage) {
         self.page = page;
+        self.binding.stop(shell);
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         view.set_page(page);
-        view.set_sheet_y(0.0);
         // (The page's main control: the menu's first item, a page's Back.)
         shell.nav.focus(if page == MatchPage::Menu { "menu.resume" } else { "menu.back" }, 0);
     }
 
+    /// Show the builds or put them away; they show from their tops.
     fn set_peek(&mut self, shell: &Shell, peek: bool) {
         if peek != self.peek {
             self.peek = peek;
-            shell.ui().global::<PlayView>().set_peek(peek);
+            let ui = shell.ui();
+            let view = ui.global::<PlayView>();
+            view.set_peek_y(0.0);
+            view.set_peek(peek);
         }
     }
 
@@ -1552,12 +1572,20 @@ impl Screen for Play {
             "lobby.leave" => self.leave(shell),
             // ---- The match's menu. (The practice session's beside an invite is Practice's to hear.)
             "menu.resume" => shell.close_menu(),
-            "menu.yours" => self.set_page(shell, MatchPage::Yours),
-            "menu.theirs" => self.set_page(shell, MatchPage::Theirs),
             "menu.controls" => self.set_page(shell, MatchPage::Controls),
             "menu.settings" => self.set_page(shell, MatchPage::Settings),
             "menu.back" => self.set_page(shell, MatchPage::Menu),
             "menu.delay" => {}
+            // (The settings and the controls as the Settings screen changes them.)
+            "menu.language" => settings::pick_language(shell, id),
+            "menu.picture" => settings::pick_picture_size(shell, id),
+            "menu.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
+            "menu.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
+            "menu.key" | "menu.button" => self.binding.ask(shell, index, id == "menu.button"),
+            "menu.reset" => {
+                self.binding.reset(shell);
+                self.show_match(shell);
+            }
             "menu.leave" if matches!(self.stage, Stage::Match { .. }) => self.reopen(shell, None),
             // ---- The match's result.
             "result.go" => self.go_on(shell),
@@ -1588,6 +1616,14 @@ impl Screen for Play {
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
+            "menu.language" => settings::set_language(shell, crate::lang::step(shell.lang, by)),
+            "menu.picture" => {
+                settings::step_picture_size(shell, by);
+                self.show_match(shell);
+            }
+            "menu.fullscreen" => self.set_full_screen(shell, by > 0),
+            // (Enhanced is the first of the two.)
+            "menu.graphics" => self.set_enhanced(shell, by < 0),
             "name.version" => self.step_version(shell, by),
             _ => {}
         }
@@ -1608,6 +1644,13 @@ impl Screen for Play {
             "lobby.ruleset" => self.pick_ruleset(shell, choice, 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
+            "menu.language" => settings::choose_language(shell, choice),
+            "menu.picture" => {
+                settings::set_picture_size(shell, choice.max(0) as u32);
+                self.show_match(shell);
+            }
+            "menu.fullscreen" => self.set_full_screen(shell, choice == 1),
+            "menu.graphics" => self.set_enhanced(shell, choice == 0),
             _ => {}
         }
     }
@@ -1657,6 +1700,8 @@ impl Screen for Play {
         if let Some(page) = self.rules.as_mut().filter(|_| RulesPage::owns(id)) {
             return page.focused(shell, id, index);
         }
+        // (A binding asked for is asked no more once the focus moves, as on the Settings screen.)
+        self.binding.stop(shell);
         // The list's row under the cursor is the build chosen: the overview beside it follows.
         if id == "builds" {
             self.choose_build(shell, index.max(0) as usize);
@@ -1706,8 +1751,16 @@ impl Screen for Play {
         }
     }
 
-    /// In the code's boxes, a character typed goes into the box the focus is on, and the focus to the next.
+    /// In the code's boxes, a character typed goes into the box the focus is on, and the focus to the next. Over
+    /// the match's menu Tab shows the builds while it is held, as in the match (`Keys::tab`), and moves no focus.
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
+        if self.binding.key(shell, key) {
+            self.show_match(shell);
+            return true;
+        }
+        if key.code == KeyCode::Tab && self.menu_open(shell) {
+            return true;
+        }
         let (Some(rows), Some(at)) = (self.boxes, Play::box_focused(shell)) else { return false };
         let typed = key.text.as_deref().and_then(|t| t.chars().next()).map(|c| c.to_ascii_uppercase());
         let Some(row) = typed.and_then(|c| ALPHABET.find(c)) else { return false };
@@ -1720,8 +1773,13 @@ impl Screen for Play {
         true
     }
 
-    /// A pad can't type a code: its confirm on the code's field opens the six boxes.
+    /// A pad can't type a code: its confirm on the code's field opens the six boxes. (A pad's button for a binding
+    /// asked for is the binding's.)
     fn button(&mut self, shell: &mut Shell, button: Button) -> bool {
+        if self.binding.button(shell, button) {
+            self.show_match(shell);
+            return true;
+        }
         let on_field = shell.nav.focused().is_some_and(|k| k.id == "code") && !shell.nav.editing();
         if button != shell.bindings.confirm_button() || !on_field || !matches!(self.stage, Stage::Idle | Stage::Meeting) || self.boxes.is_some() {
             return false;
@@ -1811,17 +1869,17 @@ impl Screen for Play {
         }
     }
 
-    /// A build's page in the match's menu: Up and Down scroll it a step, Page Up and Down a page less a
-    /// step, Home and End to its ends. It takes them all while the page shows, at an end too: its one control
-    /// is Back, which the focus is on.
+    /// The builds shown over the match's menu (Tab or Select held): Up and Down scroll them a step, Page Up and
+    /// Down a page less a step, Home and End to their ends. They take them all while they show, at an end too:
+    /// the menu's focus stays where it was under them. (Over the match itself the keys are the match's: the
+    /// wheel and a drag scroll them there.)
     fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
-        let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play && b.menu_open());
-        if !open || !matches!(self.page, MatchPage::Yours | MatchPage::Theirs) {
+        if !self.peek || !self.menu_open(shell) {
             return false;
         }
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
-        let (at, span, page) = (-view.get_sheet_y(), view.get_sheet_span(), (view.get_sheet_view() - SHEET_STEP).max(SHEET_STEP));
+        let (at, span, page) = (-view.get_peek_y(), view.get_peek_span(), (view.get_peek_view() - SHEET_STEP).max(SHEET_STEP));
         let to = match action {
             Action::Up => at - SHEET_STEP,
             Action::Down => at + SHEET_STEP,
@@ -1833,7 +1891,7 @@ impl Screen for Play {
         }
         .clamp(0.0, span.max(0.0));
         if to != at {
-            view.set_sheet_y(-to);
+            view.set_peek_y(-to);
             shell.sound.play(Cue::Cursor);
         }
         true
@@ -1961,11 +2019,14 @@ impl Screen for Play {
         if matches!(self.stage, Stage::Lobby | Stage::Waiting) {
             self.show_live(shell);
         }
-        // In a match: both builds while Tab (Select on a pad) is held; the menu opens on its first page.
+        // In a match: both builds while Tab (Select on a pad) is held, over the match and over its menu; the menu
+        // opens on its first page.
         if matches!(self.stage, Stage::Match { .. }) {
             let held = shell.keys.tab || (shell.pad.held(&shell.bindings) | shell.touch.held()) & keys::SELECT != 0;
-            self.set_peek(shell, held && shell.battle_has_keys());
+            let shown = shell.battle_has_keys() || (self.menu_open(shell) && shell.dialog.is_none());
+            self.set_peek(shell, held && shown);
             if self.page != MatchPage::Menu && !shell.battle.as_ref().is_some_and(|b| b.menu_open()) {
+                self.binding.stop(shell);
                 self.page = MatchPage::Menu;
                 shell.ui().global::<PlayView>().set_page(MatchPage::Menu);
             }
@@ -1974,6 +2035,11 @@ impl Screen for Play {
 }
 
 impl Play {
+    /// The match's menu is open over this screen's battle.
+    fn menu_open(&self, shell: &Shell) -> bool {
+        matches!(self.stage, Stage::Match { .. }) && shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play && b.menu_open())
+    }
+
     /// A control's problem is said (with the refusal's sound), or what it started shows.
     fn refuse_or_show(&mut self, shell: &mut Shell) {
         if self.problem.is_some() {
@@ -2007,6 +2073,37 @@ impl Play {
             _ => self.ended(shell, Some(said)),
         }
     }
+}
+
+/// The match's own controls as `shell`'s bindings have them, for the match menu's footer (the user: "the menu footer
+/// should show in-game controls"): moving, by the four directions' keys and the D-pad where the pad's are it; A and
+/// B; L and R, one hint where the pad's are the shoulders (the footer draws them as a pair); the builds, Tab and the
+/// pad's button bound to SELECT; the menu, Esc and the key bound to START, and the pad's.
+fn match_keys(shell: &Shell, view: &PlayView) -> Vec<Hint> {
+    let (keys, pad) = (&shell.bindings.keys, &shell.bindings.pad);
+    let at = button_index;
+    let one = |button: u16, text: &str| Hint { key: key_cap(keys[at(button)]).into(), pad: pad_face(pad[at(button)]), text: text.into(), ..Default::default() };
+    let ways = [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT];
+    let caps: Vec<&str> = ways.iter().map(|&b| key_cap(keys[at(b)])).collect();
+    let moving = Hint {
+        // (Single glyphs together, "↑↓←→"; longer names apart.)
+        key: caps.join(if caps.iter().all(|c| c.chars().count() == 1) { "" } else { " " }).into(),
+        pad: match ways.iter().all(|&b| pad_face(pad[at(b)]) == PadButton::Move) {
+            true => PadButton::Move,
+            false => PadButton::None,
+        },
+        text: view.get_move_word(),
+        ..Default::default()
+    };
+    let mut out = vec![moving, one(keys::A, "A"), one(keys::B, "B")];
+    let shoulders = [keys::L, keys::R].iter().all(|&b| pad_face(pad[at(b)]) == PadButton::Shoulders);
+    match shoulders {
+        true => out.push(Hint { key2: key_cap(keys[at(keys::R)]).into(), text: "L R".into(), ..one(keys::L, "") }),
+        false => out.extend([one(keys::L, "L"), one(keys::R, "R")]),
+    }
+    out.push(Hint { key: "Tab".into(), pad: pad_face(pad[at(keys::SELECT)]), text: view.get_show_builds_word(), ..Default::default() });
+    out.push(Hint { key: "Esc".into(), key2: key_cap(keys[at(keys::START)]).into(), pad: pad_face(pad[at(keys::START)]), text: view.get_menu_word() });
+    out
 }
 
 #[cfg(test)]
@@ -2060,3 +2157,4 @@ mod tests {
         assert_eq!(address_typed(&"a".repeat(100)).len(), 80);
     }
 }
+
