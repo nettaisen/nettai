@@ -2,8 +2,9 @@
 -- EXE4's throw (the chips' action 0x09, 0x080EB3FE) and thrown bomb (attack object #8, 0x080CE0A4): EXE6's code
 -- (@exelib/bombs/throw and bomb) with EXE4's look: the throw's sound (0x90), the navi holding what it throws in its
 -- related slot as EXE4's own attachment (nothing in hand for a navi of number 5 or 10, NaviStats +0x23), the thrown
--- thing leaving 4 pixels right of the navi whichever way it faces (0x080EB47A works out the facing's 4 and then loads
--- the X over it); the bomb, each variant a row of 0x080CE088 (what it is and hits, its hit modifier and palette), its
+-- thing leaving 4 pixels toward the other side's area whichever way the navi faces (0x080EB47A works out the facing's
+-- 4 and then loads the X over it: right of it, a side-1 navi's too; nettai's to the left of side 1's, as
+-- docs/engine/side-symmetry.md says); the bomb, each variant a row of 0x080CE088 (what it is and hits, its hit modifier and palette), its
 -- blast the region of 0x080CE270 and its explosion the effect row of 0x080CE277. Each chip composes its throw from
 -- its variant's rows: what it holds (0x080EB4EC: an attachment row and its animation) and what throws it
 -- (0x080EB4C4: the bomb's thrower, of the bomb variant its parameter +0x10 names).
@@ -50,7 +51,7 @@ local LOOK: ThrowLook = {
             attachment.attach(me, held, "related", anim)
         end
     end,
-    releases_right = true,
+    releases_by_side = true,
 }
 
 -- A chip's throw.

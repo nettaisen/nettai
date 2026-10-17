@@ -48,14 +48,19 @@ function throw.damage_word(me: Object): number
     return int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
 end
 
--- Where a game's thrown thing leaves from: ahead of the navi, or right of it
--- (`look.releases_right`, EXE4's).
+-- Where a game's thrown thing leaves from: ahead of the navi, or toward the
+-- other side's area whichever way it faces (`look.releases_by_side`,
+-- EXE4's). (EXE4's original leaves right of the navi whatever its side: a
+-- side-1 navi's thing left 4 pixels behind it and flew 8 pixels further,
+-- landing later. nettai's side-1 navi's leaves to its left, as side 0's to
+-- its right: docs/engine/side-symmetry.md.)
 local function release_point(me: Object, look: ThrowLook): Vec3
-    if not look.releases_right then
+    if not look.releases_by_side then
         return throw.release_point(me)
     end
     local p = me.pos
-    return Vec3.new(p.x + RELEASE_AHEAD, p.y, p.z + RELEASE_UP)
+    local toward = if me.alliance == 0 then 1 else -1
+    return Vec3.new(p.x + toward * RELEASE_AHEAD, p.y, p.z + RELEASE_UP)
 end
 
 -- A chip's throw, of a game's `look`.
