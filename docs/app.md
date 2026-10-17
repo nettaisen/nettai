@@ -468,7 +468,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `focused(id, index)` | The focus moved to a control (a list's row: the overview beside it follows). |
 | `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in a practice battle). |
 | `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
-| `scroll` | Up, Down, Page Up, Page Down, Home, End (keys, D-pad, stick), before the focus moves: for a page of the screen's own that scrolls with no control in it to move to (Play's build sheets in the match's menu). |
+| `scroll` | Up, Down, Page Up, Page Down, Home, End (keys, D-pad, stick), before the focus moves: for a page of the screen's own that scrolls with no control in it to move to (the builds Tab shows over the match's menu). |
 | `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
 | `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the practice menu was chosen). |
 | `dropped(path)` | A file was dropped on the window. |
@@ -734,9 +734,19 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   FGC's "first to ten", "10先"), 19 rounds at most, each numbered by the round's banner in its two digits
   ("BATTLE 10 START!": the games' own banner, digits and all, in every game). The lobby carries the number
   (`Settings`, its byte in the lobby's message and in the Hello).
-- **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
-  THEIR BUILD (only with open setups), CONTROLS (what is bound to each button, to read), SETTINGS (the input
-  delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
+- **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, CONTROLS,
+  SETTINGS, LEAVE MATCH (design §2.83). CONTROLS is what is bound to each button, each box changed as the Settings
+  screen's are (`screens::settings::Binding`, which both hold one of: Enter, then the key or the pad's button; the
+  focus moving or the page left asks no more), and RESET CONTROLS; the match plays by them as they change.
+  SETTINGS: Language, Picture size, Full screen and Battle graphics, by the Settings screen's own functions
+  (`settings::set_language` and the rest; Battle graphics is `Shell::set_enhanced`, which switches the battle being
+  played from its next frame, `Player::set_mode`, its picture fitted again), the two levels of the sound, and the
+  input delay, which changes at once (`Player::set_input_delay`). Both pages show the values by `SettingsView`
+  (`settings::show_values`). Its footer (`MenuOverlay`'s `hints`, the menu screens' `Footer` along the window's
+  bottom, the panel above it; a phone has none) is the match's own controls as the bindings have them
+  (`PlayView.match-keys`, `play::match_keys`): Move (the four directions' key caps; the D-pad), A, B, L and R (one
+  hint where the pad's are the shoulders), Show builds (Tab; the pad's button bound to SELECT), Menu (Esc and the
+  key bound to START; the pad's).
 - **The link panel** (`LinkPanel` in battle.slint; its figures `battle/link.rs`): a click on the connection's
   corner opens it over the corner (`Shell.connection-open`, which the corner alone toggles: "telemetry window should not
   dismiss on click outside, it should only be dismissed if the ping indicator is clicked again"; the app clears it
@@ -744,20 +754,23 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   app samples its round trip ten times a second for the whole match and, while the panel is open, sets
   `Shell.link` at each sample: the figures, and the last ten seconds as two paths (the graph's line and the area
   under it).
-- **Both builds** (`MatchPeek`, which app.slint shows over an online match): while Tab is held (`Keys::tab`), or
-  the pad's button bound to SELECT, the player's build on their side and the other player's on theirs; with
-  the setups not open the player's own alone. The match takes its keys meanwhile.
+- **Both builds** (`MatchPeek`, which app.slint shows over an online match, its menu open or not): while Tab is
+  held (`Keys::tab`; over the menu `Play::key` takes Tab, which moves no focus there), or the pad's button bound to
+  SELECT, the player's build on their side and the other player's on theirs; with the setups not open the
+  player's own alone. Over the match the match takes its keys meanwhile.
 
 Where a build is shown whole, it is the build overview (`BuildOverview`, filled by
 `builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
-the build chosen or the language changes); a player's panel in a match, on its YOUR BUILD and THEIR BUILD
-pages and while Tab is held, the narrow sheet of the agreement's side, which is the build as the match plays
-it (without its patch cards where those were off), under the player's name. The menu's page is shorter than
-the sheet at the reference size, so it scrolls: by the wheel and a drag, and by Up and Down (a step of two
-chips' rows), Page Up and Down, Home and End, the pad's too, which the screen takes before the focus would
-move (`Screen::scroll`: the page has no control in it to move to, Back is under it). On a phone a sheet is a column taller than the window: the menu's page scrolls it, and with Tab held each
-of the two is half the window, its top (the navi, its stats, abilities and bugs). This player's card in the
-lobby says the build's name, navi and version (`Lobby::side`).
+the build chosen or the language changes); a player's panel in a match, while Tab is held, the narrow sheet of
+the agreement's side, which is the build as the match plays it (without its patch cards where those were off),
+under the player's name. Each is in a box as tall as it, or as the window less its margins (and, over the menu,
+its footer) where it is taller; on a phone each is half the window. Where one is taller than its box the two
+scroll together, by one offset (`PlayView.peek-y`, each no further than its own end): by the wheel and a drag
+over them (`Scrub`), and over the match's menu by Up and Down (a step of two chips' rows), Page Up and Down,
+Home and End, the pad's too, which the screen takes before the menu's focus would move (`Play::scroll`, with
+`peek-span` and `peek-view` from the UI); over the match the keys are the match's. A thumb along each one's right
+edge says where it is. They show from their tops each time. This player's card in the lobby says the build's
+name, navi and version (`Lobby::side`).
 
 **The link and the lobby** are one `Session` (`session.rs`), and the screen runs the library's one loop over it
 (docs/design/rollback.md §4.7, "What a host does") in its two frame halves, whatever is on screen:
@@ -1425,13 +1438,15 @@ Unison lasts as the battle gives them ("Soul time 6 +3": SoulT+1 and MagicMan's 
 gives it; Bugs, each by its full name and its level or amount, purple;
 and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 650 tall, which a
 player's panel in a match is (430 wide: `label` is YOU or OPPONENT, `name` the player's, `side` 1 or 2 for the
-player's color along its top): the stats in two columns, abilities and bugs a line each, the folder in two.
+player's color along its top): the stats in two columns, the abilities and the bugs each all of them, wrapped to as
+many lines as they take (design §2.83: they were a line each, cut), the folder in two.
 Narrower than 400, a phone's, it is one column throughout, 1158 tall, for a page that scrolls: two columns
 leave a chip's name 39 wide there. A stat after the eight is a row of its own: on the wide sheet under Regular
 memory, the lines under it one fewer (eight where nine were: `overview::LINES`); on the narrow sheet under the two
 columns at the left (a second one beside it), the sheet 22 taller (672); on a phone's the ninth row (1180).
 `sheet-height` is the height of the one it is at its width; which it is depends on the width alone, never on the
-build, and its height on the width and the stats after the eight. Every number is the compiled one
+build, and its height on the width, the stats after the eight, and on the narrow sheets how many lines the
+abilities and the bugs wrap to (650 where each is one). Every number is the compiled one
 (`Checked::overview`).
 
 **The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, a field (`name`,
@@ -3393,7 +3408,7 @@ with none.
 
 **The keys.** Up and Down go through the list, and the license beside it follows the focus; Enter (A) goes to the
 license, where Up and Down scroll it a step, Page Up and Page Down a page, Home and End to its ends
-(`About::scroll`, as a build's page in the match's menu scrolls), and Back (or Left) returns to the list; Back
+(`About::scroll`, as the builds over the match's menu scroll), and Back (or Left) returns to the list; Back
 from the list goes back to the settings, the focus on SHOW LICENSES. A click on a row chooses it and leaves the
 focus there; the wheel or a drag scrolls the license wherever the focus is. L and R do nothing here: the header
 offers no game. Opened again, About has the focus on the row it was on, the list scrolled to it (a list made anew
