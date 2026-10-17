@@ -10,6 +10,8 @@
 //! seed = 42                          # optional: the setup's and battle's seed
 //! backgrounds = "pool"               # optional: a background a round leaves is any game's (the pool's),
 //!                                    # else "game" (as the game picks a link battle's)
+//! custom_screen_time = 60            # optional: the custom screen's time limit, in seconds (30, 45, 60, 90
+//!                                    # or 120; nettai's own); else none, as in the original
 //!
 //! [[round]]                          # the set's rounds, one table each, in order: 2n - 1 for a set first to n
 //! stage = "netbattle-43"             # round wins (n 1 to 10; one: a single battle; three: the original's triple battle).
@@ -81,6 +83,10 @@ pub struct MatchFile {
     /// (`BackgroundPick::name`: "game", the default, or "pool").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backgrounds: Option<String>,
+    /// The custom screen's time limit in seconds (`Match::custom_screen_time`;
+    /// left out: none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_screen_time: Option<u16>,
     /// The rounds, a `[[round]]` table each (a file that lists none is
     /// refused when it is resolved).
     #[serde(default, rename = "round")]
@@ -174,13 +180,14 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
             None
         }),
     };
+    problems.extend(crate::check_custom_screen_time(f.custom_screen_time));
     let rounds = resolve_rounds(content, &f.game, &f.rounds, &mut problems);
     let Some(rounds) = rounds else { return Err(problems) };
     let left = resolve_side(content, &f.game, &f.left, "left", &mut problems);
     let right = resolve_side(content, &f.game, &f.right, "right", &mut problems);
     match (left, right, backgrounds) {
         (Some(left), Some(right), Some(backgrounds)) if problems.is_empty() => {
-            Ok(Match { game: f.game.clone(), seed: f.seed, rounds, sides: [left, right], backgrounds })
+            Ok(Match { game: f.game.clone(), seed: f.seed, rounds, sides: [left, right], backgrounds, custom_screen_time: f.custom_screen_time })
         }
         _ => Err(problems),
     }
@@ -400,6 +407,7 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         game: m.game.clone(),
         seed: m.seed,
         backgrounds: (m.backgrounds != crate::BackgroundPick::Game).then(|| m.backgrounds.name().to_string()),
+        custom_screen_time: m.custom_screen_time,
         rounds: rounds_file(content, &m.rounds),
         left: side_file(content, &m.sides[0]),
         right: side_file(content, &m.sides[1]),
@@ -583,6 +591,26 @@ mod tests {
     /// A round may be drawn on another game's background, the pool's, named with its game; `backgrounds =
     /// "pool"` picks those a round leaves from every game's. Both write and read back; a pool background that
     /// isn't, and a pick that isn't, are said.
+    /// The custom screen's time limit: a file that states none has none
+    /// (as in the original), one that states it reads it back and its
+    /// rounds count it in ticks; one a match can't have is said.
+    #[test]
+    fn a_match_file_states_the_custom_screen_time() {
+        let content = exe6_content();
+        let live = crate::pick::live(&content, "exe6", 4, None).unwrap();
+        let text = write(&content, &live);
+        assert!(!text.contains("custom_screen_time"));
+        let none = parse(&content, &text).unwrap();
+        assert_eq!((none.custom_screen_time, none.round(&content, 4).custom_screen_limit), (None, None));
+        let timed = format!("custom_screen_time = 60\n{text}");
+        let m = parse(&content, &timed).unwrap_or_else(|e| panic!("{e:?}\n{timed}"));
+        assert_eq!((m.custom_screen_time, m.round(&content, 4).custom_screen_limit), (Some(60), Some(3600)));
+        assert!(write(&content, &m).contains("custom_screen_time = 60"));
+        assert_eq!(parse(&content, &write(&content, &m)).unwrap(), m);
+        let odd = format!("custom_screen_time = 61\n{text}");
+        assert_eq!(parse(&content, &odd).unwrap_err(), ["custom screen time 61: a match's is 30, 45, 60, 90, 120 seconds, or none"]);
+    }
+
     #[test]
     fn a_match_file_names_another_games_background() {
         let content = exe6_content();

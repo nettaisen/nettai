@@ -83,6 +83,7 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         later_stages: Default::default(),
         low_hp_music_latched: false,
         host_keys: crate::setup::HostKeys::NONE,
+        custom_screen_limit: None,
         players: [player.clone(), player],
     }
 }

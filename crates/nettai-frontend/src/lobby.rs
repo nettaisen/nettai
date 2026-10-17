@@ -401,7 +401,8 @@ impl Compat {
 /// of one), the round wins its set is first to and each of its rounds'
 /// stage and background stated or left to the seed, what a background left
 /// to the seed is drawn from, the ruleset it is played under (which builds
-/// may play it), and whether the builds are closed.
+/// may play it), whether the builds are closed, and the custom screen's
+/// time limit.
 /// They are the match's, not a player's: both see the same, and a change
 /// clears both ready marks ([`Lobby::propose`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -431,6 +432,13 @@ pub struct Settings {
     /// ruleset, not of it (the user: "i think closed setup should not be
     /// part of the ruleset actually").
     pub closed_builds: bool,
+    /// The custom screen's time limit in seconds, one of
+    /// `nettai_match::CUSTOM_SCREEN_TIMES`, or none: no limit, as in the
+    /// original (`Match::custom_screen_time`). nettai's own: a player's screen
+    /// closes as if OK were pressed when their time is up, the chips picked so
+    /// far their hand (docs/engine/custom-screen.md §6.1). A new lobby's is
+    /// 60 seconds (`nettai_match::DEFAULT_CUSTOM_SCREEN_TIME`).
+    pub custom_screen_time: Option<u16>,
 }
 
 /// A part of a round as the lobby names it: its name, or none (from the
@@ -444,9 +452,16 @@ impl Settings {
     /// [`nettai_match::MAX_FIRST_TO`]), every place left to the seed as the
     /// game picks a link battle's, under `ruleset` (a new lobby's: the
     /// game's first preset, `Rulesets::first`, or the one the player plays
-    /// by), with open builds.
+    /// by), with open builds and the custom screen's time limit 60 seconds.
     pub fn new(game: &str, wins: u8, ruleset: Ruleset) -> Settings {
-        Settings { game: game.to_string(), rounds: rounds_of(wins), backgrounds: BackgroundPick::Game, ruleset, closed_builds: false }
+        Settings {
+            game: game.to_string(),
+            rounds: rounds_of(wins),
+            backgrounds: BackgroundPick::Game,
+            ruleset,
+            closed_builds: false,
+            custom_screen_time: Some(nettai_match::DEFAULT_CUSTOM_SCREEN_TIME),
+        }
     }
 
     /// The round wins the set is first to.
@@ -454,10 +469,18 @@ impl Settings {
         nettai_match::first_to(self.rounds.len()).expect("the settings' rounds are a set's")
     }
 
-    /// A match file's: its game, its rounds and what their backgrounds are
-    /// drawn from, under `ruleset`, with open builds.
+    /// A match file's: its game, its rounds, what their backgrounds are
+    /// drawn from and its custom screen's time limit (none where it states
+    /// none), under `ruleset`, with open builds.
     pub fn of_match(m: &Match, ruleset: Ruleset) -> Settings {
-        Settings { game: m.game.clone(), rounds: m.rounds.clone(), backgrounds: m.backgrounds, ruleset, closed_builds: false }
+        Settings {
+            game: m.game.clone(),
+            rounds: m.rounds.clone(),
+            backgrounds: m.backgrounds,
+            ruleset,
+            closed_builds: false,
+            custom_screen_time: m.custom_screen_time,
+        }
     }
 
     /// `side` checked as a build under these settings' ruleset: a build's
@@ -470,7 +493,7 @@ impl Settings {
     }
 
     /// The settings as the lobby carries them: the game; whether builds are
-    /// closed; the ruleset (not its name, which stays with the player: one
+    /// closed; the custom screen's time limit (seconds, 0 for none); the ruleset (not its name, which stays with the player: one
     /// version per build; then each category it holds anything back of, by its fact's name, with the names of what it
     /// doesn't allow); whether a background left to the seed is the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
@@ -481,6 +504,7 @@ impl Settings {
         let mut w = Writer(&mut out);
         w.put(&self.game);
         w.put(&self.closed_builds);
+        w.put(&self.custom_screen_time.unwrap_or(0));
         w.put(&self.ruleset.one_per_build);
         let banned = self.ruleset.banned_names(content);
         w.uvarint(banned.len() as u64);
@@ -504,13 +528,17 @@ impl Settings {
     /// `rulesets`: refused, with why, where their set is first to none or
     /// more than [`nettai_match::MAX_FIRST_TO`], they name a stage or a
     /// background the content hasn't, a round a match of the game can't be
-    /// fought on, a ruleset's category or item the game hasn't, or a game
-    /// other than the content's.
+    /// fought on, a custom screen time limit a match can't have, a ruleset's
+    /// category or item the game hasn't, or a game other than the content's.
     pub fn from_bytes(content: &Content, rulesets: &Rulesets, bytes: &[u8]) -> Result<Settings, String> {
         let bad = |e: std::io::Error| format!("the settings don't decode ({e})");
         let mut r = Reader::new(bytes);
         let game: String = r.get().map_err(bad)?;
         let closed_builds: bool = r.get().map_err(bad)?;
+        let custom_screen_time = Some(r.get::<u16>().map_err(bad)?).filter(|&s| s != 0);
+        if let Some(problem) = nettai_match::check_custom_screen_time(custom_screen_time) {
+            return Err(problem);
+        }
         let one_per_build: bool = r.get().map_err(bad)?;
         let count = r.uvarint().map_err(bad)?;
         let mut banned = Vec::new();
@@ -560,7 +588,7 @@ impl Settings {
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
             return Err(problem);
         }
-        Ok(Settings { game, rounds, backgrounds, ruleset, closed_builds })
+        Ok(Settings { game, rounds, backgrounds, ruleset, closed_builds, custom_screen_time })
     }
 
     /// The settings' hash, of their bytes.
@@ -1000,6 +1028,13 @@ impl Lobby {
     /// the settings with that.
     pub fn set_closed_builds(&mut self, closed_builds: bool) {
         self.propose(Settings { closed_builds, ..self.mine.clone() });
+    }
+
+    /// Change the custom screen's time limit (seconds, one of
+    /// `nettai_match::CUSTOM_SCREEN_TIMES`, or none): [`Lobby::propose`] of
+    /// the settings with that.
+    pub fn set_custom_screen_time(&mut self, custom_screen_time: Option<u16>) {
+        self.propose(Settings { custom_screen_time, ..self.mine.clone() });
     }
 
     /// Change the match's ruleset, the host alone (false, and nothing
@@ -1928,9 +1963,11 @@ mod tests {
         let mut other = s.clone();
         other.game = "exe5".into();
         assert!(read(&other).unwrap_err().contains("no stage"));
-        // (Open builds, and the ruleset as written: one per build, nothing held back.)
+        // (Open builds, no custom screen time limit, and the ruleset as
+        // written: one per build, nothing held back.)
         let ruleset = |w: &mut Writer| {
             w.put(&false);
+            w.put(&0u16);
             w.put(&true);
             w.uvarint(0);
         };
@@ -1948,6 +1985,7 @@ mod tests {
         let mut w = Writer(&mut bytes);
         w.put(&"exe6".to_string());
         w.put(&false);
+        w.put(&0u16);
         w.put(&false);
         w.uvarint(1);
         w.put(&"folder".to_string());
@@ -1959,14 +1997,28 @@ mod tests {
         w.put(&String::new());
         assert!(Settings::from_bytes(&content, &r, &bytes).unwrap_err().contains("no-such-chip"));
         // (What the set is first to is the byte after the game, closed
-        // builds, the ruleset and the pool's switch.)
-        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1;
+        // builds, the custom screen time limit, the ruleset and the pool's
+        // switch.)
+        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
         for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
             let mut none = blank.to_bytes(&content);
             none[first_to] = wins;
             assert_eq!(Settings::from_bytes(&content, &r, &none).unwrap_err(), format!("first to {wins}: a set is first to 1 to 10"));
         }
+        // The custom screen's time limit: a new lobby's 60 seconds, each of
+        // the others and none read back, and both commit to it; one a match
+        // can't have is refused.
+        assert_eq!(blank.custom_screen_time, Some(nettai_match::DEFAULT_CUSTOM_SCREEN_TIME));
+        assert_eq!(s.custom_screen_time, None, "a match that states none");
+        for time in nettai_match::CUSTOM_SCREEN_TIMES.map(Some).into_iter().chain([None]) {
+            let timed = Settings { custom_screen_time: time, ..blank.clone() };
+            assert_eq!(read(&timed).unwrap(), timed);
+            assert_eq!(timed.hash(&content) == blank.hash(&content), time == blank.custom_screen_time, "{time:?}");
+        }
+        let mut odd = blank.to_bytes(&content);
+        odd[1 + "exe6".len() + 1] = 50;
+        assert_eq!(Settings::from_bytes(&content, &r, &odd).unwrap_err(), "custom screen time 50: a match's is 30, 45, 60, 90, 120 seconds, or none");
         // Backgrounds from the pool, one round on another game's: both read back, and both commit to the pick.
         let pool = Settings { backgrounds: BackgroundPick::Pool, ..blank.clone() };
         assert_eq!(read(&pool).unwrap(), pool);
@@ -2041,6 +2093,26 @@ mod tests {
     /// at once the host's change stands; and what both then ready on is
     /// what is agreed, the ruleset and closed builds reaching both hosts with
     /// the agreement.
+    /// The custom screen's time limit is the match's: either player's
+    /// change is both lobbies', and the match both agree, its replay's
+    /// match and its rounds have it (in ticks, the round's setup's).
+    #[test]
+    fn the_custom_screen_time_is_the_matchs() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        let mut lobbies = pair(&content, [settings(1), settings(1)], [built(&content, "gregar"), built(&content, "falzar")]);
+        lobbies[1].set_custom_screen_time(Some(90));
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        assert_eq!([0, 1].map(|i| lobbies[i].settings().custom_screen_time), [Some(90); 2]);
+        for time in [Some(90), None] {
+            let s = Settings { custom_screen_time: time, ..settings(1) };
+            for a in agree(&content, &s, [built(&content, "gregar"), built(&content, "falzar")]) {
+                assert_eq!(a.m.custom_screen_time, time);
+                assert_eq!(a.set.first().custom_screen_limit, time.map(|t| t * 60));
+            }
+        }
+    }
+
     #[test]
     fn the_settings_are_shared() {
         let content = nettai_match::testing::exe6_content();
