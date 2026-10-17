@@ -28,7 +28,7 @@ use nettai_replay::{Head, Writer};
 use crate::driver::{Driver, Place, Step};
 
 /// nettai's version as a replay's head states it (the workspace's,
-/// every crate's: the app's).
+/// which the app takes too).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
 /// The set's ticks between two digests a recording keeps (besides each
