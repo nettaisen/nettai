@@ -2307,6 +2307,9 @@ impl CoreApi for Battle {
 
     fn key(&self, o: ObjectRef, pad: Pad, key: Key) -> ApiResult<bool> {
         let a = self.actor_of(o)?;
+        if matches!(pad, Pad::DimmedHeld | Pad::DimmedPressed | Pad::DimmedReleased) {
+            self.dimmed_key_reads.note(self.objects.get(o).alliance, key_bit(key));
+        }
         let word = match pad {
             Pad::Held => a.pad.held,
             Pad::Pressed => a.pad.pressed,

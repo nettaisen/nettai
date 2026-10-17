@@ -517,6 +517,9 @@ pub struct Battle {
     /// `folder_view`, `overview`), until the tool takes it: no part of the
     /// simulation.
     pub(crate) tool_answer: Option<nettai_content_api::Data>,
+    /// Content's reads of each side's keys while dimmed: no part of the
+    /// simulation ([`crate::dimming::KeyReads`]).
+    pub(crate) dimmed_key_reads: crate::dimming::KeyReads,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -803,6 +806,7 @@ impl Battle {
             outcome: None,
             folder_check: None,
             tool_answer: None,
+            dimmed_key_reads: Default::default(),
             setup,
         };
         // The navi's stats of its game's own are of the rules' `stats`: a
@@ -916,6 +920,14 @@ impl Battle {
 
     pub fn is_dimmed(&self) -> bool {
         self.round.flags & battle_flags::DIMMED != 0
+    }
+
+    /// How many times content has read `side`'s keys `keys` (a mask of
+    /// `input::keys`) while dimmed so far (wrapping): more after a tick
+    /// than before it, a press of them on that tick was read. No part of
+    /// the simulation ([`crate::dimming::KeyReads`]).
+    pub fn dimmed_key_reads(&self, side: u8, keys: u16) -> u32 {
+        self.dimmed_key_reads.get(side, keys)
     }
 
     pub fn set_flags(&mut self, f: u16) {
