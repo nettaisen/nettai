@@ -208,8 +208,8 @@ pub fn match_frame(seed: u32, datagram: &[u8]) -> Option<&[u8]> {
     (kind == Kind::Frame as u8 && u32::from_le_bytes(*of) == seed).then_some(frame)
 }
 
-/// nettai's version as peers compare it (the workspace's, every crate's:
-/// the app's).
+/// nettai's version as peers compare it (the workspace's, which the app
+/// takes too).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
 /// Why a lobby ended without a match, as a host can tell its player: each
