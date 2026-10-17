@@ -217,6 +217,26 @@ fn codes_run(chips: &[FolderChip]) -> bool {
     stars <= 1 && expected >= 0
 }
 
+/// Whether modifier `m` applies to a chip of `flags` right before it
+/// (`sub_8029224`'s test).
+fn applies(m: ChipModifier, flags: ChipFlags) -> bool {
+    match m {
+        ChipModifier::AttackPlus => flags.has(ChipFlags::HAS_DAMAGE),
+        ChipModifier::NaviPlus => flags.has(ChipFlags::NAVI),
+        ChipModifier::Paralyze => flags.has(ChipFlags::HAS_DAMAGE),
+        ChipModifier::Uninstall => flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING),
+    }
+}
+
+/// Whether chip `chip`, picked right after `prev` (none: picked first),
+/// stays in the hand as an entry of its own as OK builds it: it is a
+/// modifier ([`crate::content::ChipData::modifier`]) and doesn't apply to
+/// `prev` ([`fold_modifiers`]'s test; a Program Advance the picks form
+/// aside). A chip that isn't a modifier never does.
+pub fn stays_unfolded(library: &dyn Library, prev: Option<ChipHandle>, chip: ChipHandle) -> bool {
+    library.chip(chip).modifier.is_some_and(|m| !applies(m, prev.map_or(ChipFlags(0), |p| library.chip(p).flags)))
+}
+
 /// `sub_8029224`: a modifier right after a chip it applies to folds into
 /// it and leaves the hand. Chained modifiers stack; the first chip never
 /// folds.
@@ -230,13 +250,7 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
             continue;
         };
         let prev = entries[i - 1].id.map_or(ChipFlags(0), |p| library.chip(p).flags);
-        let applies = match m {
-            ChipModifier::AttackPlus => prev.has(ChipFlags::HAS_DAMAGE),
-            ChipModifier::NaviPlus => prev.has(ChipFlags::NAVI),
-            ChipModifier::Paralyze => prev.has(ChipFlags::HAS_DAMAGE),
-            ChipModifier::Uninstall => prev.has(ChipFlags::HAS_DAMAGE) && !prev.has(ChipFlags::DIMMING),
-        };
-        if !applies {
+        if !applies(m, prev) {
             i += 1;
             continue;
         }
