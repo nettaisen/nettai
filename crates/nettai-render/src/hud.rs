@@ -1165,18 +1165,20 @@ const EMOTION_WINDOW_Y: i32 = 18;
 
 /// The custom screen's time limit's seconds left (nettai's own; the user:
 /// "just put it in a plain box under the name on the right side right
-/// aligned", "align it with the emotion window", then "put the box right up
-/// against the edge? and actually maybe no box and use the regular font and
-/// don't change the color"): the seconds of `left` (in ticks) in the 8x16
-/// font, in the HP box's plain colors, right-aligned against the screen's
-/// right edge on the emotion window's row: under the opponent's name, level
-/// with the local player's emotion window.
+/// aligned", "align it with the emotion window", "maybe no box and use the
+/// regular font and don't change the color", "it should have the same
+/// offset as the enemy name"): the seconds of `left` (in ticks) in the 8x16
+/// font, in the HP box's plain colors, set as the custom screen's enemy name
+/// is (`custom::draw_names`: its cells ending at the screen's right edge, the
+/// text layer's words from their left), on the emotion window's row: under
+/// the opponent's name, level with the local player's emotion window.
 fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16) {
     let seconds = left.div_ceil(60).to_string();
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
-    let x = crate::compose::WIDTH as i32 - 8 * glyphs.len() as i32;
+    let cells = if text.takes(&seconds) { fonts::box_cells(hud, &seconds, glyphs.len(), 4) } else { glyphs.len() };
+    let x = crate::compose::WIDTH as i32 - 8 * cells as i32;
     let pal = &hud.hp_palettes[0];
-    fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, glyphs.len(), pal, (x, EMOTION_WINDOW_Y), (Role::Cell, Align::Right));
+    fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, cells, pal, (x, EMOTION_WINDOW_Y), (Role::FittedCell, Align::Left));
 }
 
 fn draw_text(
