@@ -121,7 +121,12 @@
 //! found: the battle goes on meanwhile, never waiting for it (as it goes on
 //! while a link's other player sits on their screen), so on a slower
 //! machine it only looks longer. The hand is used in the order picked
-//! (`Level::chooses`; else every chip it can in the cursor's order). The
+//! (`Level::chooses`; else every chip it can in the cursor's order). Either
+//! way the picker never picks a chip OK would leave standing alone (a chip
+//! that folds, picked first or after a chip it doesn't attach to: the
+//! engine's own test, `custom::builder::stays_unfolded`), so no level's
+//! hand holds one; one left alone in hand otherwise (nothing to push it out
+//! for) is never used, as using it makes nothing. The
 //! cursor finds its way by the screen's own moves, each game's
 //! (`Screen::target_from`).
 //!
@@ -2687,8 +2692,11 @@ struct Chosen {
 
 /// A custom screen's buttons that pick every chip they can, then OK: the
 /// worthiest first, by a worth given for each slot (none worth less than
-/// nothing), else in the order the cursor reaches them. Only the folder's
-/// chips dealt (no button, no chip offered from outside it, no form).
+/// nothing), else in the order the cursor reaches them; but never a chip OK
+/// folds into the chip before it (an attack-up) where it wouldn't fold
+/// (picked first, or after a chip it doesn't attach to: it would stand alone
+/// in the hand, and poof as it is used). Only the folder's chips dealt (no
+/// button, no chip offered from outside it, no form).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Picker {
     /// What it holds, and for how many ticks more.
@@ -2721,7 +2729,21 @@ impl Picker {
         if std::mem::take(&mut self.held) != 0 {
             return Some(0);
         }
-        let key = match pick(screen, &b.game_rules().custom_screen, worth) {
+        // (A chip OK folds into the chip before it (an attack-up) is picked only right after one it folds into:
+        // else it stands in the hand alone, and poofs as it is used. The engine's own test, `stays_unfolded`, from
+        // the hand the picks so far build.)
+        let library: &dyn nettai_battle::custom::library::Library = &*b.content;
+        let chip_in = |slot: u8| screen.chip_in(slot, &s.folder).map(|c| c.id);
+        let mut last = None;
+        for &slot in screen.selection() {
+            if let Some(c) = chip_in(slot)
+                && (library.chip(c).modifier.is_none() || nettai_battle::custom::builder::stays_unfolded(library, last, c))
+            {
+                last = Some(c);
+            }
+        }
+        let folds = |slot: u8| chip_in(slot).is_none_or(|c| !nettai_battle::custom::builder::stays_unfolded(library, last, c));
+        let key = match pick(screen, &b.game_rules().custom_screen, worth, &folds) {
             Some(key) => key,
             None if finish => {
                 if screen.cursor != OK_SLOT {
@@ -2741,10 +2763,12 @@ impl Picker {
 
 /// The press that picks the next chip (the worthiest, by `worth`, of
 /// those it can pick; else the nearest); none if there is none to pick.
-fn pick(screen: &Screen, layout: &CustomScreenLayout, worth: Option<&dyn Fn(u8) -> Option<i64>>) -> Option<u16> {
+/// Only a slot `folds` says may be picked now is (a chip that would stand
+/// alone in the hand isn't).
+fn pick(screen: &Screen, layout: &CustomScreenLayout, worth: Option<&dyn Fn(u8) -> Option<i64>>, folds: &dyn Fn(u8) -> bool) -> Option<u16> {
     let wanted = |i: u8| {
         let slot = &screen.slots[i as usize];
-        matches!(slot.kind, SlotKind::Chip { .. }) && slot.state == SlotState::Selectable
+        matches!(slot.kind, SlotKind::Chip { .. }) && slot.state == SlotState::Selectable && folds(i)
     };
     if (screen.selected as usize) >= MAX_SELECTIONS {
         return None;
