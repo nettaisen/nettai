@@ -433,7 +433,10 @@ pub(super) struct DimAnswer {
 }
 
 /// In tenths of HP, how much more a cut-in must make than none for it to
-/// be made.
+/// be made, live and in a turn's copies (`TurnPlay::cut_in`): a chip spent
+/// for clearly more than its use's own noise (a defense the other player's
+/// chip goes through, as JudgeMan's books strike an invisible navi, makes
+/// nothing, and a copy a few HP luckier isn't reason enough).
 pub(super) const CUT_IN_MARGIN: i64 = 100;
 
 /// The aims searched (not found in a memo), the fighter's side's and the
