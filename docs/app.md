@@ -661,25 +661,35 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   listening on `session::DIRECT_PORT`); an address's field, and CONNECT, which takes a host or an IP and its
   port, an IPv6 one in brackets (`play::direct_address`; anything else `UserError::BadAddress`, said under
   the field).
-- **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
-  opponent." under it), large, in fixed-width type, copied to the clipboard as the wait starts (COPY CODE
-  flashing as though pressed; not in the screenshot pass), with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
-  is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
+- **Waiting** for the other player is the lobby already (`PlayPart::Lobby` with `PlayView.waiting`; the user:
+  "you should unify the interface somehow between the waiting and the lobby"): the same layout, the other
+  player's place holding the invite (`WaitCard`: the invite's code, or a direct host's address with "Send this
+  address to your opponent." under it, large, in fixed-width type, copied to the clipboard as the wait starts,
+  COPY CODE (COPY ADDRESS) flashing as though pressed, not in the screenshot pass; and that the other player is
+  waited for), this player's place a practice session in a `Picture` of the screen's own, the match's settings
+  and the player's own as the lobby has them, and the one button CANCEL INVITE (STOP HOSTING). The match's
+  settings are the host's to set meanwhile (the user: "the host should be able to change settings before the
+  joiner joins"): Play holds them (`Play::waiting`, made as HOST is pressed, a new lobby's as `Play::enter_lobby`
+  made them before; the build checked under them as the lobby checks it, so the line says already what keeps it
+  from being played), and the lobby is made on them when the other player comes, so the joiner takes them. The
+  session is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
   stands still; Practice owns its battle, starts its sets over and hears its menu; the usual practice menu but
   for Music and EDIT, its choices lasting for the wait), with CANCEL INVITE (STOP HOSTING for a direct host) in
   EXIT's place (`Start::exit`, heard as `Screen::answered(tag, practice::EXIT)`) and, on a phone, STOP PRACTICE
   as the one row at the menu's top (`Start::rows`, heard by its place). The keys are
-  the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
-  opens the practice menu. The session ends when the other player comes (`practice::end`) or the wait is
-  given up.
+  the battle's, so the cursor is on none of the lobby's controls (the pointer clicks them, the settings too),
+  and Esc or Start opens the practice menu. The Ruleset's EDIT stops the session while its page is open (the page
+  takes the keys: `practice::stop`) and starts it again as the page closes, on what its menu was left at. The
+  session ends when the other player comes (`practice::end`) or the wait is given up.
   *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no practice:
-  so there the session isn't started with the wait. The invite shows with a PRACTICE button under it; the
-  session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
-  row of Play's, STOP PRACTICE, which goes back to the invite (`practice::stop`: PRACTICE again starts on what
-  its menu was left at). The other player coming ends it for the lobby as on the desktop.
+  so there the session isn't started with the wait. The player's place has their card, and a PRACTICE button is
+  over CANCEL INVITE; the session then fills the window, pad and MENU under the picture as in any battle, and its
+  menu has a third row of Play's, STOP PRACTICE, which goes back to the lobby (`practice::stop`: PRACTICE again
+  starts on what its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
-  the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (First to, Ruleset, Open setups and Custom timer are the match's:
+  the other's, sliding into the place the invite had, says their name and whether they are ready, and nothing
+  else: the lobby's protocol carries nothing of a build), a row of the match's settings, MATCH SETTINGS
+  (`MatchFacts`: First to, Ruleset, Open setups and Custom timer are the match's:
   both see them, and a change clears both ready marks; the host alone changes them, the joiner's controls
   unavailable (the user: "only the host should be able to change rules"); Open setups, off in a new lobby (the
   user: "closed setups should be open setups instead and it should be off by default"), lets each player see
@@ -687,19 +697,20 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   stepper of 30, 45, 60, 90 and 120 seconds and Unlimited, 60 in a new lobby: nettai's own, not the original's,
   the screen closing as if OK were pressed when the time is up, with the seconds left shown in a box at the top
   right while it counts, docs/engine/custom-screen.md §6.1; a lobby made from a match file starts on the file's,
-  Unlimited where it states none; Input delay is the player's own, and is the
-  Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
+  Unlimited where it states none; no music: the battle's music is picked in Practice, §1; no
   background either: every round's is drawn from the background pool's of the match's game by the match's seed,
-  alike for both players, §1, "The battle's background") with the
-  connection's bars and round trip at its end, READY, CHANGE
+  alike for both players, §1, "The battle's background"), and beside it, apart, what is the player's own, YOUR
+  CONNECTION (`ConnectionFacts`; the user: "the input delay and ping settings should probably be displayed
+  separately from the lobby settings, since those are client-local things"): Input delay, the Settings' value,
+  kept as it is changed, and the connection's bars and round trip; then READY, CHANGE
   BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
   a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
-  down, or why the match before ended. In the row each setting's name is over its control (`LobbyFacts`): with
-  the names beside them, as the mockup has three, six cells don't fit the window in a language a third longer
-  than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
+  down, or why the match before ended. In each row a setting's name is over its control: with the names beside
+  them, as the mockup has three, the cells don't fit the window in a language a third longer than English. On a
+  phone each is a line, its name at the left, YOUR CONNECTION's under a name of their own. Left and Right change a setting, so the row
   can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
   (`Screen::action`). **The Ruleset** (docs/design/app-ui.md §2.59; it took Patch cards' place) is the host's
-  select of the game's presets and then the player's own rulesets by name (`LobbyFacts`' `lobby.ruleset`,
+  select of the game's presets and then the player's own rulesets by name (`MatchFacts`' `lobby.ruleset`,
   `rulesets::pickable`; Enter opens it as a list, the arrows walk past it (design §2.75); `Lobby::set_ruleset`), with EDIT
   (`lobby.rules`), which opens the ruleset's page over the lobby (§8, "Rulesets"; the lobby and its link go on
   under it, and a change made there is the match's at once). The joiner's select can't be changed; it shows the
@@ -856,6 +867,10 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
   left by the other player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
 - the other player bringing a build that breaks a rule (its lobby won't make it ready, and this player waits,
   ready); the other player leaving the lobby; this player leaving it.
+
+(2026-10-17: the wait shown as the lobby, the host's Open setups turned on while it waits
+(`play-waiting-open-setups`) and taken by the joiner as it comes, and the first match played with them are in the
+pass's walk, written and type-checked, not yet run.)
 
 The three matches of a pass, recorded by their agreements (a set played to its end, a match with the setups not
 open the other player left, a match this one left as the joiner), were played back by nettai-tool

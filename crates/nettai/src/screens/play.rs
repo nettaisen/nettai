@@ -6,11 +6,14 @@
 //! menu of DUPLICATE, RENAME and DELETE). The player picks one and practices with it (PRACTICE, beside EDIT), or
 //! makes a link with it: HOST makes an invite (a room of the signaling server, whose code the server picks), JOIN
 //! joins one by the code typed, and DIRECT CONNECT's dialog hosts directly (this machine listening on a UDP port)
-//! or joins a direct host by its address. While they wait for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
-//! this screen's rows in its menu). Once the link is open the two are in
-//! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
-//! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
-//! shell's two cards, each side saying how far it is; both loaded, it starts. When its set is over, nettai's
+//! or joins a direct host by its address. From the moment an invite is out (or this machine hosts) Play shows the
+//! lobby: while the host waits for the other player, the other player's place has the invite's code, a practice
+//! session runs in the player's own (`crate::screens::practice`'s, with this screen's rows in its menu), and the
+//! match's settings are already the host's to set (`Play::waiting`, which the lobby starts on). Once the link is
+//! open the two are in the lobby proper (`session`: one `Lobby` a link, for as long as they stay together): the
+//! match's shared settings, the host's to change, each one's ready mark, the connection's quality. Both ready,
+//! the match is agreed and made ready behind the shell's two cards, each side saying how far it is; both loaded,
+//! it starts. When its set is over, nettai's
 //! result shows over the picture (`MatchResult`) until the player goes on; when it is, or one of them leaves the
 //! match, both are back in the lobby on the same link, neither waiting on the other's result.
 //!
@@ -77,12 +80,15 @@ use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::player::FRAME_RATE;
 use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
+use nettai_match::check::Problem;
+use nettai_match::ruleset::Rulesets;
 use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
 use nettai_ui::{BattleKind, BuildSheet, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// How long a match stays on screen once its set is over, before the player is back in the lobby, where nettai
@@ -258,6 +264,12 @@ pub struct Play {
     /// The ruleset's page is open over the lobby.
     rules: Option<RulesPage>,
     session: Option<Session>,
+    /// The match's settings the host holds while it waits for the other player (the user: "the host should be
+    /// able to change settings before the joiner joins"): the lobby starts on them, and the joiner takes them.
+    waiting: Option<Settings>,
+    /// This player's build checked under the settings it holds while it waits (made again when they change): the
+    /// settings, the game's rulesets, the problems.
+    wait_checked: Option<(Settings, Arc<Rulesets>, Vec<Problem>)>,
     stage: Stage,
     /// The match agreed last: what the match's panels show.
     agreed: Option<Agreement>,
@@ -293,6 +305,8 @@ impl Default for Play {
             changing: false,
             rules: None,
             session: None,
+            waiting: None,
+            wait_checked: None,
             stage: Stage::Idle,
             agreed: None,
             ended: None,
@@ -349,20 +363,20 @@ fn code_shown(code: &str) -> String {
 }
 
 impl Play {
+    /// The part shown: the builds, or the lobby (the wait for the other player its start).
     fn part(&self) -> PlayPart {
         match self.stage {
             Stage::Idle | Stage::Meeting => PlayPart::Builds,
-            Stage::Waiting => PlayPart::Waiting,
-            Stage::Lobby | Stage::Loading { .. } | Stage::Match { .. } => PlayPart::Lobby,
+            Stage::Waiting | Stage::Lobby | Stage::Loading { .. } | Stage::Match { .. } => PlayPart::Lobby,
         }
     }
 
     /// The part's name for the focus's memory, and its main control.
     fn view(&self) -> (&'static str, &'static str) {
-        match self.part() {
-            PlayPart::Builds => ("play", "builds"),
-            PlayPart::Waiting => ("play.waiting", "wait.copy"),
-            PlayPart::Lobby => ("play.lobby", "lobby.ready"),
+        match (self.part(), &self.stage) {
+            (PlayPart::Builds, _) => ("play", "builds"),
+            (_, Stage::Waiting) => ("play.waiting", "wait.copy"),
+            _ => ("play.lobby", "lobby.ready"),
         }
     }
 
@@ -425,9 +439,10 @@ impl Play {
         view.set_sheet(sheet);
     }
 
-    /// This player's card in the lobby: the build they bring, as the match plays it.
+    /// This player's card in the lobby: the build they bring, as the match plays it (while the host waits for the
+    /// other player, the chosen build).
     fn show_card(&mut self, shell: &Shell) {
-        let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side().clone());
+        let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side().clone()).or_else(|| self.side(shell, false).ok());
         let (Some(side), Some((_, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
         let graphics = ready.graphics(shell.lang);
         let names = Names::of(ready.content(), &graphics);
@@ -498,7 +513,10 @@ impl Play {
             Way::Host => "hosting directly",
             Way::Address(_) => "joining directly",
         };
+        // (A host sets the match's settings from the start: the lobby starts on them.)
+        let hosting = matches!(way, Way::Invite | Way::Host);
         let session = Session::open(way, &Play::net()).map_err(|e| UserError::of_link(doing, &e))?;
+        self.waiting = if hosting { self.opening_settings(shell) } else { None };
         // (A direct host waits at once: there is no server to hear from.)
         self.stage = if session.way == Way::Host { Stage::Waiting } else { Stage::Meeting };
         self.session = Some(session);
@@ -526,6 +544,9 @@ impl Play {
         }
         self.stage = Stage::Idle;
         self.agreed = None;
+        self.waiting = None;
+        self.wait_checked = None;
+        self.live = Live::default();
         self.changing = false;
         shell.nav.close("change.");
         self.close_rules(shell);
@@ -575,10 +596,10 @@ impl Play {
 
     // ---- Waiting -----------------------------------------------------------------------------------------
 
-    /// The other player is waited for: the invite's code (or this machine's address) shows, copied already
-    /// (the user: "you should automatically copy the invite code when hosting starts"; COPY CODE flashes as
-    /// though pressed), and a practice session starts beside it. (On a phone it starts when the player asks:
-    /// there it fills the window.)
+    /// The other player is waited for, in the lobby: the invite's code (or this machine's address) shows in their
+    /// place, copied already (the user: "you should automatically copy the invite code when hosting starts"; COPY
+    /// CODE flashes as though pressed), and a practice session starts in the player's own. (On a phone it starts
+    /// when the player asks: there it fills the window.) The match's settings are the host's to set meanwhile.
     fn wait(&mut self, shell: &mut Shell) {
         self.stage = Stage::Waiting;
         self.direct = None;
@@ -588,6 +609,7 @@ impl Play {
         if !invite.is_empty() && !shell.still {
             self.copy(shell, &invite);
         }
+        self.show_card(shell);
         self.show(shell);
         if !shell.scale.phone {
             self.train(shell);
@@ -595,16 +617,16 @@ impl Play {
     }
 
     /// A practice session for the wait (Practice's own: `practice::start`): this player's build against a copy
-    /// of it that stands still, with this screen's rows at the top of the practice menu. It is beside the
-    /// invite, in the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
+    /// of it that stands still, with this screen's rows at the top of the practice menu. It is in the player's
+    /// place in the lobby, the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
     /// there it does, and a row of the menu stops it for the invite again.
     fn train(&mut self, shell: &mut Shell) {
         let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell, false)) else { return };
         let name = self.builds.get(self.chosen).map(|b| b.name().to_string()).unwrap_or_default();
         // The menu's way out of the wait is in EXIT's place, CANCEL INVITE (STOP HOSTING), and the code (the
-        // address) is the waiting panel's to copy (the user: "the stop hosting button should be in the place of the
-        // exit button on the regular practice menu. get rid of copy code"). Where the session fills the window and
-        // covers the panel, a phone, one row at the top stops it, back to the panel.
+        // address) is the invite's place in the lobby to copy (the user: "the stop hosting button should be in the
+        // place of the exit button on the regular practice menu. get rid of copy code"). Where the session fills the
+        // window and covers the lobby, a phone, one row at the top stops it, back to the lobby.
         let full = shell.scale.phone;
         let direct = self.session.as_ref().is_some_and(|s| s.way == Way::Host);
         let view = shell.ui();
@@ -622,21 +644,29 @@ impl Play {
 
     // ---- The lobby ---------------------------------------------------------------------------------------
 
-    /// The link is open: the lobby over it, the practice battle ended.
-    fn enter_lobby(&mut self, shell: &mut Shell) {
-        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell, self.joining())) else {
-            return self.ended(shell, Some(UserError::Other));
-        };
-        // (A lobby starts on the ruleset this player's build is made for, which it was checked under (else the one
-        // they last chose): what the other player adopts if this one hosts.)
+    /// The settings a lobby opens with: a set first to the round wins of the last match played, under the ruleset
+    /// this player's build is made for, which it was checked under (else the one they last chose); the rest as a
+    /// new lobby's ([`settings`]: the setups not open). What the other player adopts if this one hosts.
+    fn opening_settings(&self, shell: &Shell) -> Option<Settings> {
+        let game = shell.game()?;
         let made_for = self.build().and_then(|b| b.made_for()).map(|made| made.pick.clone());
-        let Some((rulesets, played)) = builds::kit(shell).and_then(|kit| Some((kit.rulesets()?, made_for.or_else(|| rulesets::chosen_last(shell, &kit))?))) else {
+        let played = made_for.or_else(|| builds::kit(shell).and_then(|kit| rulesets::chosen_last(shell, &kit)))?;
+        let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
+        Some(settings(game, first_to, played.ruleset))
+    }
+
+    /// The link is open: the lobby over it, the practice battle ended. A host's starts on the settings it set
+    /// while it waited, which the joiner takes.
+    fn enter_lobby(&mut self, shell: &mut Shell) {
+        let (Some((_, ready)), Ok(side)) = (shell.ready(), self.side(shell, self.joining())) else {
             return self.ended(shell, Some(UserError::Other));
         };
-        let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
+        let (Some(rulesets), Some(settings)) = (builds::kit(shell).and_then(|kit| kit.rulesets()), self.waiting.take().or_else(|| self.opening_settings(shell))) else {
+            return self.ended(shell, Some(UserError::Other));
+        };
         // (The screenshot pass's matches are the same from run to run.)
         let entropy = tour::entropy().unwrap_or_else(nettai_rtc::random_u64);
-        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), rulesets, settings(&game, first_to, played.ruleset), side, &shell.settings.name, entropy));
+        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), rulesets, settings, side, &shell.settings.name, entropy));
         if !made {
             return;
         }
@@ -797,20 +827,34 @@ impl Play {
         }
     }
 
-    /// The lobby's settings as the player's controls change them: the host's (a joiner's lobby changes nothing,
-    /// and its controls are unavailable).
-    fn set_first_to(&mut self, wins: u8) {
+    /// The match's settings as they stand: the lobby's, or while the host waits for the other player its own.
+    fn match_settings(&mut self) -> Option<Settings> {
+        match self.session.as_mut().and_then(Session::lobby) {
+            Some(lobby) => Some(lobby.settings().clone()),
+            None => self.waiting.clone(),
+        }
+    }
+
+    /// The match's settings as the player's controls change them: the host's alone (the user: "only the host
+    /// should be able to change rules"; a joiner's lobby changes nothing, and its controls are unavailable), in
+    /// the lobby or while it waits for the other player (what the lobby will start on).
+    fn change_settings(&mut self, change: impl FnOnce(&mut Settings)) {
         if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_first_to(wins);
+            let mut settings = lobby.settings().clone();
+            change(&mut settings);
+            lobby.propose(settings);
+        } else if let Some(waiting) = &mut self.waiting {
+            change(waiting);
         }
         self.ended = None;
     }
 
+    fn set_first_to(&mut self, wins: u8) {
+        self.change_settings(|s| s.set_first_to(wins));
+    }
+
     fn set_open(&mut self, open: bool) {
-        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_open_setups(open);
-        }
-        self.ended = None;
+        self.change_settings(|s| s.open_setups = open);
     }
 
     /// The Custom timer stepped `by`: through the match's time limits, then Unlimited, and around.
@@ -818,10 +862,7 @@ impl Play {
         let choices: Vec<Option<u16>> = nettai_match::CUSTOM_SCREEN_TIMES.into_iter().map(Some).chain([None]).collect();
         let now = choices.iter().position(|&c| c == self.live.custom_time).unwrap_or(0) as i32;
         let time = choices[(now + by).rem_euclid(choices.len() as i32) as usize];
-        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_custom_screen_time(time);
-        }
-        self.ended = None;
+        self.change_settings(|s| s.custom_screen_time = time);
     }
 
     /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player last chose,
@@ -830,18 +871,15 @@ impl Play {
         if let Some(game) = shell.game().map(str::to_string) {
             rulesets::remember(shell, &game, &picked.ruleset.name);
         }
-        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_ruleset(picked.ruleset.clone());
-        }
-        self.ended = None;
+        self.change_settings(|s| s.ruleset = picked.ruleset.clone());
     }
 
-    /// The rulesets the host can pick, and which of them the lobby's is.
+    /// The rulesets the host can pick, and which of them the match's is.
     fn ruleset_choices(&mut self, shell: &Shell) -> Option<(Vec<Pickable>, usize)> {
         let kit = builds::kit(shell)?;
-        let lobby = self.session.as_mut().and_then(Session::lobby)?;
+        let settings = self.match_settings()?;
         let picks = rulesets::pickable(&kit);
-        let at = picks.iter().position(|p| p.ruleset.name == lobby.settings().ruleset.name).unwrap_or(0);
+        let at = picks.iter().position(|p| p.ruleset.name == settings.ruleset.name).unwrap_or(0);
         Some((picks, at))
     }
 
@@ -856,17 +894,26 @@ impl Play {
         self.set_ruleset(shell, &picked);
     }
 
-    /// Whether this player hosts the lobby (and so chooses its ruleset).
+    /// Whether this player hosts the lobby (and so chooses the match's settings): its lobby's role, or while it
+    /// waits for the other player, an invite out or this machine hosting.
     fn is_host(&mut self) -> bool {
-        self.session.as_mut().and_then(Session::lobby).is_some_and(|l| l.role() == nettai_frontend::lobby::Role::Host)
+        match self.session.as_mut() {
+            Some(session) if matches!(self.stage, Stage::Waiting) => matches!(session.way, Way::Invite | Way::Host),
+            Some(session) => session.lobby().is_some_and(|l| l.role() == nettai_frontend::lobby::Role::Host),
+            None => false,
+        }
     }
 
     /// EDIT (the host's) or VIEW (the joiner's): the lobby's ruleset's page, over the lobby. The host's own
     /// ruleset can be changed there, and a change is the match's at once; a preset, or the host's ruleset seen by
-    /// the joiner, is read alone.
+    /// the joiner, is read alone. (While the host waits for the other player, the practice battle stops under it,
+    /// as the page takes the keys, and starts again on what its menu was left at as it closes.)
     fn open_rules(&mut self, shell: &mut Shell) {
         let host = self.is_host();
-        let (Some(kit), Some(ruleset)) = (builds::kit(shell), self.session.as_mut().and_then(Session::lobby).map(|l| l.settings().ruleset.clone())) else { return };
+        let (Some(kit), Some(ruleset)) = (builds::kit(shell), self.match_settings().map(|s| s.ruleset)) else { return };
+        if matches!(self.stage, Stage::Waiting) && practice::running(shell) {
+            practice::stop(shell);
+        }
         let shown = match host {
             true => rulesets::pickable(&kit).into_iter().find(|p| p.ruleset == ruleset),
             false => None,
@@ -875,12 +922,20 @@ impl Play {
         let back = shell.ui().global::<nettai_ui::RulesetView>().get_lobby_word().to_string();
         shell.sound.play(Cue::Pick);
         self.rules = RulesPage::open(shell, kit, shown, !host, &back);
+        // (A page that didn't open gives the wait its practice battle back.)
+        if self.rules.is_none() && matches!(self.stage, Stage::Waiting) && !shell.scale.phone {
+            self.train(shell);
+        }
     }
 
-    /// The ruleset's page closed (Back), or gone with the lobby.
+    /// The ruleset's page closed (Back), or gone with the lobby. (Waiting for the other player on a desktop, the
+    /// practice battle starts again.)
     fn close_rules(&mut self, shell: &mut Shell) {
         if let Some(page) = self.rules.take() {
             page.close(shell);
+            if matches!(self.stage, Stage::Waiting) && !shell.scale.phone {
+                self.train(shell);
+            }
         }
     }
 
@@ -928,37 +983,57 @@ impl Play {
 
     // ---- What is shown -----------------------------------------------------------------------------------
 
-    /// The lobby's own state, told to the UI where it changed.
+    /// The lobby's own state, told to the UI where it changed: the lobby's, or while the host waits for the other
+    /// player the settings it holds, and this player's build checked under them.
     fn show_live(&mut self, shell: &mut Shell) {
+        let waiting = self.waiting.clone().filter(|_| matches!(self.stage, Stage::Waiting));
+        if let Some(settings) = &waiting
+            && self.wait_checked.as_ref().is_none_or(|(checked, ..)| checked != settings)
+            && let (Some((_, ready)), Some(rulesets), Ok(side)) = (shell.ready(), builds::kit(shell).and_then(|kit| kit.rulesets()), self.side(shell, false))
+        {
+            let problems = settings.checked(ready.content(), &rulesets, &side).problems;
+            self.wait_checked = Some((settings.clone(), rulesets, problems));
+        }
+        let waited = waiting.and(self.wait_checked.clone());
         let Some(session) = &mut self.session else { return };
         let reconnecting = session.reconnecting();
         let ping = session.ping();
         // (The screenshot pass shows one round trip: what two players of one process measure moves about.)
         let steady = tour::steady_ping(shell.still).filter(|_| ping.is_some());
-        let Some(lobby) = session.lobby() else { return };
-        let rulesets = lobby.rulesets().clone();
-        let (ready, their_ready) = (lobby.ready(), lobby.their_ready());
+        let (settings, rulesets, problems, host, (ready, their_ready), their) = match (session.lobby(), waited) {
+            (Some(lobby), _) => (
+                lobby.settings().clone(),
+                lobby.rulesets().clone(),
+                lobby.problems().to_vec(),
+                lobby.role() == nettai_frontend::lobby::Role::Host,
+                (lobby.ready(), lobby.their_ready()),
+                lobby.their_present().then(|| lobby.their_name().unwrap_or_default().to_string()),
+            ),
+            (None, Some((settings, rulesets, problems))) => (settings, rulesets, problems, true, (false, false), None),
+            (None, None) => return,
+        };
         let live = Live {
-            their_present: lobby.their_present(),
-            their_name: lobby.their_name().unwrap_or_default().to_string(),
+            their_present: their.is_some(),
+            their_name: their.unwrap_or_default(),
             ready,
             their_ready,
-            first_to: lobby.settings().first_to() as i32,
-            ruleset: Some(lobby.settings().ruleset.clone()),
-            host: lobby.role() == nettai_frontend::lobby::Role::Host,
-            open: lobby.settings().open_setups,
-            custom_time: lobby.settings().custom_screen_time,
+            first_to: settings.first_to() as i32,
+            ruleset: Some(settings.ruleset.clone()),
+            host,
+            open: settings.open_setups,
+            custom_time: settings.custom_screen_time,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
-            // (A build the settings can't play: the lobby's own check, typed.)
-            problems: lobby.problems().to_vec(),
+            // (A build the settings can't play: the lobby's own check, typed; while the host waits, the same check
+            // of the build it brings.)
             note: Some(match (reconnecting, ready, their_ready) {
                 (Some(_), ..) => LobbyNote::Reconnecting,
-                (None, ..) if !lobby.problems().is_empty() => LobbyNote::Unusable,
+                (None, ..) if !problems.is_empty() => LobbyNote::Unusable,
                 (None, false, true) => LobbyNote::You,
                 (None, true, false) => LobbyNote::Them,
                 (None, false, false) | (None, true, true) => LobbyNote::None,
             }),
+            problems,
             seconds: reconnecting.unwrap_or(0) as i32,
         };
         if live == self.live {
@@ -1260,6 +1335,7 @@ impl Screen for Play {
             view.set_join_quiet(direct.join_problem.is_none());
         }
         // Waiting, and the lobby.
+        view.set_waiting(matches!(self.stage, Stage::Waiting));
         view.set_invite(self.invite().into());
         view.set_invite_direct(self.session.as_ref().is_some_and(|s| s.way == Way::Host));
         view.set_input_delay(shell.settings.input_delay as i32);
@@ -1295,7 +1371,9 @@ impl Screen for Play {
         let part = self.part();
         let of_its_part = match id {
             "builds" | "build" | "new" | "edit" | "more" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
-            "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
+            "wait.copy" | "wait.cancel" | "wait.train" => matches!(self.stage, Stage::Waiting),
+            // (The match's settings and the player's own are the host's to set while it waits too.)
+            "lobby.first-to" | "lobby.open" | "lobby.custom-time" | "lobby.ruleset" | "lobby.rules" | "lobby.delay" => matches!(self.stage, Stage::Lobby | Stage::Waiting),
             _ if id.starts_with("name.") => self.naming.is_some(),
             _ if id.starts_with("direct.") => self.direct.is_some(),
             _ if id.starts_with("boxes.") => self.boxes.is_some(),
@@ -1846,7 +1924,7 @@ impl Screen for Play {
         if let Err(error) = sent {
             return self.link_failed(shell, &error);
         }
-        if matches!(self.stage, Stage::Lobby) {
+        if matches!(self.stage, Stage::Lobby | Stage::Waiting) {
             self.show_live(shell);
         }
         // In a match: both builds while Tab (Select on a pad) is held; the menu opens on its first page.

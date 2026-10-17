@@ -1,11 +1,14 @@
 // Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): online play. Its Rust half
 // is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
 //
-// The screen has three parts, one shown at a time (`PlayView.part`): the player's builds (+ NEW BUILD over them,
+// The screen has two parts, one shown at a time (`PlayView.part`): the player's builds (+ NEW BUILD over them,
 // the chosen one's overview beside them with PRACTICE, EDIT and ⋯, its menu of DUPLICATE and DELETE) with
 // the ways to play it online under them (HOST: an invite; JOIN: an invite's code typed; DIRECT CONNECT: a direct
-// connection's dialog); the wait for the other player, a practice battle beside the invite's code; and the lobby,
-// for as long as the two players stay together. The two cards
+// connection's dialog); and the lobby, from the moment an invite is out (or this machine hosts) for as long as the
+// two players stay together: while the host waits for the other player (`PlayView.waiting`) the other player's
+// place has the invite's code and a practice battle is in the player's own, and the match's settings are already
+// the host's to set (the user: "the host should be able to change settings before the joiner joins. you should
+// unify the interface somehow between the waiting and the lobby"). The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
 // file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
 // set is over (`MatchResult`).
@@ -22,9 +25,7 @@ import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview, RulesetNot
 export enum PlayPart {
     // The builds, what is done with them, and the row that makes a link.
     builds,
-    // An invite is out: its code, and a practice battle beside it.
-    waiting,
-    // The two players are together.
+    // The lobby: an invite is out, or this machine hosts (`PlayView.waiting`), or the two players are together.
     lobby,
 }
 
@@ -126,7 +127,9 @@ export global PlayView {
     in property <int> copied-seq;
 
     // ---- Waiting -----------------------------------------------------------------------------------------
-    // What the other player needs: the invite's code in threes, or a direct host's address.
+    // The lobby has nobody else yet: an invite is out, or this machine hosts. What the other player needs: the
+    // invite's code in threes, or a direct host's address.
+    in property <bool> waiting;
     in property <string> invite;
     in property <bool> invite-direct;
 
@@ -150,7 +153,8 @@ export global PlayView {
     in property <bool> host;
     in property <bool> open;
     in property <int> custom-time: 60;
-    // The player's own.
+    // The player's own, apart from the match's (the user: "the input delay and ping settings should probably be
+    // displayed separately from the lobby settings, since those are client-local things").
     in property <int> input-delay;
     // The connection: its bars (0 to 4) and the round trip in ms (-1: not measured).
     in property <int> bars;
@@ -387,7 +391,8 @@ component VersionChoice inherits Rectangle {
 // ---- The lobby -------------------------------------------------------------------------------------------
 
 // A player's card in the lobby: who they are, what they bring (this player's own card alone says it), and
-// whether they are ready, in a box that is there either way. The mark stamps as its player turns ready.
+// whether they are ready, in a box that is there either way. The mark stamps as its player turns ready. (While
+// the host waits for the other player there is nothing to be ready for: no mark, `marked` off.)
 component LobbyCard inherits Rectangle {
     in property <string> role;
     in property <string> name;
@@ -395,6 +400,7 @@ component LobbyCard inherits Rectangle {
     in property <int> side;
     in property <bool> ready;
     in property <int> ready-seq;
+    in property <bool> marked: true;
     property <length> pad: Theme.phone ? 16px : 24px;
     stamp := Pulse {
         seq: root.ready-seq;
@@ -453,6 +459,7 @@ component LobbyCard inherits Rectangle {
         y: parent.height - root.pad - self.height;
         width: 144px;
         height: 32px;
+        visible: root.marked;
         transform-scale: 1 + stamp.v * 0.16;
         Rectangle {
             border-width: 1px;
@@ -478,21 +485,105 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset, Open
-// setups and the Custom timer are the match's (both see them, and the host alone changes them: the user, "only the
-// host should be able to change rules"; the Ruleset has EDIT after it, and the joiner VIEWs it); the input delay
-// is the player's own.
-component LobbyFacts inherits Rectangle {
-    // The one row: each setting's name over its control, a cell as wide as the wider of the two, so six fit
+// The other player's place while the host waits for them: what they need to come (the invite's code, large, in
+// fixed-width type and grouped in threes, or this machine's address), COPY CODE (COPY ADDRESS), which flashes as
+// it copies, and that they are waited for. (On a phone, in a card's 126: the words beside COPY, the line under
+// them left out.)
+component WaitCard inherits Rectangle {
+    property <length> pad: Theme.phone ? 16px : 24px;
+    PanelBack {
+        side: 2;
+        accent: false;
+    }
+
+    Label {
+        x: root.pad;
+        y: Theme.phone ? 12px : root.pad;
+        width: parent.width - 2 * root.pad;
+        height: 14px;
+        text: PlayView.invite-direct ? Caps.of(@tr("Your address")) : Caps.of(@tr("Invite code"));
+    }
+
+    Mono {
+        x: root.pad;
+        y: Theme.phone ? 28px : root.pad + 22px;
+        width: parent.width - 2 * root.pad;
+        height: Theme.phone ? 48px : 64px;
+        text: PlayView.invite;
+        font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
+        letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
+    }
+
+    copy := Button {
+        x: root.pad;
+        y: Theme.phone ? 80px : root.pad + 98px;
+        nav: "wait.copy";
+        text: PlayView.invite-direct ? Caps.of(@tr("Copy address")) : Caps.of(@tr("Copy code"));
+    }
+
+    Flash {
+        x: copy.x;
+        y: copy.y;
+        width: copy.width;
+        height: copy.height;
+        seq: PlayView.copied-seq;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Rule {
+        x: root.pad;
+        y: root.pad + 162px;
+        width: parent.width - 2 * root.pad;
+        visible: !Theme.phone;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    // That the other player is waited for: a slow pulse and its words (on a phone beside COPY).
+    property <length> waited-x: Theme.phone ? copy.x + copy.width + 16px : root.pad;
+    property <length> waited-y: Theme.phone ? copy.y + (copy.height - 20px) / 2 : root.pad + 182px;
+    Rectangle {
+        x: root.waited-x;
+        y: root.waited-y + 5px;
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background: Theme.cursor;
+        opacity: Theme.motion ? 0.35 + 0.65 * abs(sin(mod(animation-tick(), 2.2s) / 2.2s * 360deg)) : 1;
+    }
+
+    Value {
+        x: root.waited-x + 18px;
+        y: root.waited-y;
+        width: parent.width - self.x - root.pad;
+        height: 20px;
+        text: @tr("Waiting for opponent");
+    }
+
+    Note {
+        x: root.pad;
+        y: root.pad + 208px;
+        width: parent.width - 2 * root.pad;
+        height: 20px;
+        visible: !Theme.phone;
+        text: PlayView.invite-direct ? @tr("Send this address to your opponent.") : @tr("The lobby opens when they join.");
+    }
+}
+
+// The match's settings, the host's (the user: "only the host should be able to change rules"; both see them, the
+// joiner's controls unavailable): one row, or on a phone a line each. First to, the Ruleset (with EDIT after it,
+// the joiner's VIEW), Open setups and the Custom timer. What is each player's own, the input delay and the
+// connection, is apart from them (`ConnectionFacts`).
+component MatchFacts inherits Rectangle {
+    // The one row: each setting's name over its control, a cell as wide as the wider of the two, so the cells fit
     // whatever the language. Where each cell starts, and the row's width.
     property <length> gap: 41px;
     property <length> x1: 24px;
     property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
     property <length> x3: self.x2 + max(ruleset-label.width, ruleset.width + 8px + rules.width) + self.gap;
     property <length> x4: self.x3 + max(open-label.width, open.width) + self.gap;
-    property <length> x5: self.x4 + max(custom-time-label.width, custom-time.width) + self.gap;
-    property <length> x6: self.x5 + max(delay-label.width, delay.width) + self.gap;
-    out property <length> natural-width: self.x6 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
+    out property <length> natural-width: self.x4 + max(custom-time-label.width, custom-time.width) + 24px;
     // On a phone, a line each: the name, and the control at the right.
     property <length> line: 44px;
     // A name's place and a control's, in the row.
@@ -501,7 +592,7 @@ component LobbyFacts inherits Rectangle {
     property <length> control-y: 32px;
     property <length> control-height: 36px;
     property <brush> name-color: Theme.phone ? Theme.text : Theme.muted;
-    height: Theme.phone ? 6 * self.line : 78px;
+    height: Theme.phone ? 4 * self.line : 78px;
     PanelBack {
         visible: !Theme.phone;
         accent: false;
@@ -620,27 +711,40 @@ component LobbyFacts inherits Rectangle {
         value-width: 84px;
         enabled: PlayView.host;
     }
+}
 
-    Rectangle {
-        x: root.x5 - 21px;
-        y: 14px;
-        width: 1px;
-        height: 50px;
+// What is this player's own and not the match's, apart from the match's settings (the user: "the input delay and
+// ping settings should probably be displayed separately from the lobby settings, since those are client-local
+// things"): the input delay (the Settings' value, kept as it is changed; the other player never sees it) and the
+// connection's bars and round trip (nothing while nobody has come). As `MatchFacts`: a row, or a line each.
+component ConnectionFacts inherits Rectangle {
+    property <length> gap: 41px;
+    property <length> x1: 24px;
+    property <length> x2: self.x1 + max(delay-label.width, delay.width) + self.gap;
+    out property <length> natural-width: self.x2 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
+    property <length> line: 44px;
+    property <length> name-y: 10px;
+    property <length> name-height: 18px;
+    property <length> control-y: 32px;
+    property <length> control-height: 36px;
+    property <brush> name-color: Theme.phone ? Theme.text : Theme.muted;
+    height: Theme.phone ? 2 * self.line : 78px;
+    PanelBack {
         visible: !Theme.phone;
-        background: Theme.line;
+        accent: false;
     }
 
     delay-label := Value {
-        x: Theme.phone ? 0px : root.x5;
-        y: Theme.phone ? 4 * root.line : root.name-y;
+        x: Theme.phone ? 0px : root.x1;
+        y: Theme.phone ? 0px : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
         text: @tr("Input delay");
         color: root.name-color;
     }
 
     delay := Stepper {
-        x: Theme.phone ? parent.width - self.width : root.x5;
-        y: Theme.phone ? 4 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
+        x: Theme.phone ? parent.width - self.width : root.x1;
+        y: Theme.phone ? (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
         nav: "lobby.delay";
         value: PlayView.input-delay;
         value-width: 48px;
@@ -648,7 +752,7 @@ component LobbyFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x6 - 21px;
+        x: root.x2 - 21px;
         y: 14px;
         width: 1px;
         height: 50px;
@@ -658,22 +762,22 @@ component LobbyFacts inherits Rectangle {
 
     // The connection: its bars and the round trip, where a setting has its control.
     ping-label := Value {
-        x: Theme.phone ? 0px : root.x6;
-        y: Theme.phone ? 5 * root.line : root.name-y;
+        x: Theme.phone ? 0px : root.x2;
+        y: Theme.phone ? root.line : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
         text: @tr("Ping");
         color: root.name-color;
     }
 
     bars := Bars {
-        x: Theme.phone ? parent.width - ping.width - 10px - self.width : root.x6;
-        y: (Theme.phone ? 5 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2);
+        x: Theme.phone ? parent.width - ping.width - 10px - self.width : root.x2;
+        y: (Theme.phone ? root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2);
         level: PlayView.bars;
     }
 
     ping := Mono {
-        x: Theme.phone ? parent.width - self.width : root.x6 + bars.width + 10px;
-        y: Theme.phone ? 5 * root.line : root.control-y;
+        x: Theme.phone ? parent.width - self.width : root.x2 + bars.width + 10px;
+        y: Theme.phone ? root.line : root.control-y;
         width: 60px;
         height: Theme.phone ? root.line : root.control-height;
         horizontal-alignment: Theme.phone ? right : left;
@@ -717,23 +821,20 @@ export component PlayScreen inherits Page {
     property <length> more-width: 40px;
     property <bool> none: PlayView.builds.length == 0;
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
-    // The waiting part: the picture, three times the battle's.
-    property <length> picture-width: Theme.phone ? self.body-width : 720px;
-    property <length> picture-height: self.picture-width * 2 / 3;
-    property <length> wait-height: Theme.phone ? 198px : 480px;
-    property <length> wait-top: Theme.phone ? 0px : (self.body-height - 480px) / 2;
-    property <length> wait-x: Theme.phone ? 0px : 744px;
-    property <length> wait-width: Theme.phone ? self.body-width : self.body-width - 744px;
-    // The lobby: the two cards, the row of settings, the buttons, the line.
-    property <length> card-width: Theme.phone ? self.body-width : 440px;
-    property <length> card-height: Theme.phone ? 126px : 220px;
-    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 426px) / 2;
-    property <length> lobby-left: (self.body-width - 960px) / 2;
-    property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
-    property <length> buttons-top: Theme.phone ? self.facts-top + 276px : self.lobby-top + 346px;
-    title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : PlayView.part == PlayPart.builds ? Caps.of(@tr("Play")) : Theme.phone ? Caps.of(@tr("Waiting")) : Caps.of(@tr("Waiting for opponent"));
+    // The lobby (from the moment an invite is out): the two places, the settings, the buttons, the line. A
+    // desktop's places are as tall as the wait's practice battle at twice the battle's size (480 by 320), 80
+    // apart (VS between them); a phone's are cards, one over the other.
+    property <length> place-width: Theme.phone ? self.body-width : 480px;
+    property <length> place-height: Theme.phone ? 126px : 320px;
+    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 548px) / 2;
+    property <length> lobby-left: (self.body-width - 2 * self.place-width - 80px) / 2;
+    property <length> their-x: Theme.phone ? 0px : self.lobby-left + self.place-width + 80px;
+    property <length> their-y: Theme.phone ? self.place-height + 8px : self.lobby-top;
+    property <length> facts-top: Theme.phone ? 2 * self.place-height + 20px : self.lobby-top + self.place-height + 24px;
+    property <length> buttons-top: Theme.phone ? self.facts-top + 308px : self.facts-top + 124px;
+    title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : Caps.of(@tr("Play"));
     back: PlayView.part == PlayPart.builds ? Caps.of(@tr("Menu")) : Caps.of(@tr("Play"));
-    hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
+    hints: PlayView.part == PlayPart.lobby ? (PlayView.waiting ? root.hints-waiting : root.hints-lobby) : root.hints-builds;
     // (The builds of the game while they show; the lobby and a match list nothing.)
     status: PlayView.part == PlayPart.builds ? @tr("{n} build" | "{n} builds" % PlayView.builds.length) : "";
 
@@ -948,146 +1049,14 @@ export component PlayScreen inherits Page {
         }
     }
 
-    // ---- Waiting for the other player: the invite's code, and a practice session beside it ----
-    // (On a phone a battle has its pad only where it fills the window: there the session is asked for, under
-    // the invite, and fills it.)
-    if PlayView.part == PlayPart.waiting: Rectangle {
-        x: 0;
-        y: 0;
-        width: root.body-width;
-        height: root.body-height;
-        Arrive {
-            order: 0;
-            Picture {
-                x: 0;
-                y: root.wait-top;
-                width: root.picture-width;
-                height: root.picture-height;
-                visible: !Theme.phone;
-                ground: Theme.inset;
-            }
-
-            Rectangle {
-                x: 12px;
-                y: root.wait-top + root.picture-height - 34px;
-                width: practice.preferred-width + 16px;
-                height: 22px;
-                visible: !Theme.phone;
-                background: Theme.shade;
-                practice := Text {
-                    text: Caps.of(@tr("Practice"));
-                    color: Theme.text;
-                    font-family: Theme.display;
-                    font-size: 11px;
-                    font-weight: Theme.display-bold;
-                    letter-spacing: Theme.label-tracking;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-            }
-        }
-
-        Arrive {
-            order: 1;
-            Rectangle {
-                x: root.wait-x;
-                y: root.wait-top;
-                width: root.wait-width;
-                height: root.wait-height;
-                PanelBack { }
-
-                Label {
-                    x: 16px;
-                    y: Theme.phone ? 12px : 16px;
-                    width: parent.width - 32px;
-                    height: 14px;
-                    text: PlayView.invite-direct ? Caps.of(@tr("Your address")) : Caps.of(@tr("Invite code"));
-                }
-
-                Mono {
-                    x: 16px;
-                    y: Theme.phone ? 30px : 38px;
-                    width: parent.width - 32px;
-                    height: Theme.phone ? 48px : 64px;
-                    text: PlayView.invite;
-                    font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
-                    letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
-                }
-
-                copy := Button {
-                    x: 16px;
-                    y: Theme.phone ? 88px : 114px;
-                    nav: "wait.copy";
-                    text: PlayView.invite-direct ? Caps.of(@tr("Copy address")) : Caps.of(@tr("Copy code"));
-                }
-
-                Flash {
-                    x: copy.x;
-                    y: copy.y;
-                    width: copy.width;
-                    height: copy.height;
-                    seq: PlayView.copied-seq;
-
-                    Rectangle { }  // (Copied in: docs/app.md §14.)
-                }
-
-                Rule {
-                    x: 16px;
-                    y: 170px;
-                    width: parent.width - 32px;
-                    visible: !Theme.phone;
-
-                    Rectangle { }  // (Copied in: docs/app.md §14.)
-                }
-
-                Rectangle {
-                    x: 16px;
-                    y: Theme.phone ? 145px : 191px;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 5px;
-                    background: Theme.cursor;
-                    opacity: Theme.motion ? 0.35 + 0.65 * abs(sin(mod(animation-tick(), 2.2s) / 2.2s * 360deg)) : 1;
-                }
-
-                Value {
-                    x: 34px;
-                    y: Theme.phone ? 140px : 186px;
-                    width: parent.width - 50px;
-                    height: 20px;
-                    text: @tr("Waiting for opponent");
-                }
-
-                Note {
-                    x: 16px;
-                    y: Theme.phone ? 164px : 212px;
-                    width: parent.width - 32px;
-                    height: 20px;
-                    text: PlayView.invite-direct ? @tr("Send this address to your opponent.") : @tr("The lobby opens when they join.");
-                }
-
-                Button {
-                    x: Theme.phone ? copy.x + copy.width + 8px : 16px;
-                    y: Theme.phone ? 88px : parent.height - 56px;
-                    nav: "wait.cancel";
-                    text: Caps.of(@tr("Cancel"));
-                    kind: ButtonKind.ghost;
-                }
-            }
-
-            Button {
-                x: 0;
-                y: root.wait-height + 12px;
-                width: root.body-width;
-                visible: Theme.phone;
-                enabled: Theme.phone;
-                nav: "wait.train";
-                text: Caps.of(@tr("Practice"));
-            }
-        }
-    }
-
-    // ---- The lobby ----
+    // ---- The lobby: while the host waits for the other player, and with them ----
+    // One layout from the moment an invite is out (or this machine hosts) for as long as the two players stay
+    // together (the user: "you should unify the interface somehow between the waiting and the lobby"): the two
+    // players' places side by side (on a phone one over the other), the match's settings and this player's own
+    // apart beside them, the buttons, the reserved line. While the host waits, the other player's place has the
+    // invite's code (`WaitCard`), the player's own the practice battle (on a phone their card, the battle asked for
+    // with PRACTICE, filling the window), and the buttons are the way out alone; the match's settings are the
+    // host's to set already (the user: "the host should be able to change settings before the joiner joins").
     if PlayView.part == PlayPart.lobby: Rectangle {
         x: 0;
         y: 0;
@@ -1100,24 +1069,58 @@ export component PlayScreen inherits Page {
 
         Arrive {
             order: 0;
-            LobbyCard {
+            if !PlayView.waiting || Theme.phone: LobbyCard {
                 x: Theme.phone ? 0px : root.lobby-left;
                 y: root.lobby-top;
-                width: root.card-width;
-                height: root.card-height;
+                width: root.place-width;
+                height: root.place-height;
                 role: PlayView.you;
                 name: Shell.player;
                 build: PlayView.card;
                 side: 1;
                 ready: PlayView.ready;
                 ready-seq: PlayView.ready-seq;
+                marked: !PlayView.waiting;
+            }
+
+            // The wait's practice battle, at twice the battle's size, in this player's place.
+            if PlayView.waiting && !Theme.phone: Rectangle {
+                x: root.lobby-left;
+                y: root.lobby-top;
+                width: root.place-width;
+                height: root.place-height;
+                Picture {
+                    x: 0;
+                    y: 0;
+                    width: root.place-width;
+                    height: root.place-height;
+                    ground: Theme.inset;
+                }
+
+                Rectangle {
+                    x: 12px;
+                    y: parent.height - 34px;
+                    width: practice.preferred-width + 16px;
+                    height: 22px;
+                    background: Theme.shade;
+                    practice := Text {
+                        text: Caps.of(@tr("Practice"));
+                        color: Theme.text;
+                        font-family: Theme.display;
+                        font-size: 11px;
+                        font-weight: Theme.display-bold;
+                        letter-spacing: Theme.label-tracking;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
             }
 
             Text {
-                x: root.lobby-left + 440px;
+                x: root.lobby-left + root.place-width;
                 y: root.lobby-top;
                 width: 80px;
-                height: root.card-height;
+                height: root.place-height;
                 visible: !Theme.phone;
                 text: @tr("VS");
                 color: Theme.dim;
@@ -1127,6 +1130,13 @@ export component PlayScreen inherits Page {
                 horizontal-alignment: center;
                 vertical-alignment: center;
             }
+
+            if PlayView.waiting: WaitCard {
+                x: root.their-x;
+                y: root.their-y;
+                width: root.place-width;
+                height: root.place-height;
+            }
         }
 
         Rectangle {
@@ -1134,10 +1144,10 @@ export component PlayScreen inherits Page {
             opacity: joined.t;
             visible: PlayView.their-present;
             LobbyCard {
-                x: Theme.phone ? 0px : root.lobby-left + 520px;
-                y: Theme.phone ? root.card-height + 8px : root.lobby-top;
-                width: root.card-width;
-                height: root.card-height;
+                x: root.their-x;
+                y: root.their-y;
+                width: root.place-width;
+                height: root.place-height;
                 role: PlayView.opponent;
                 name: PlayView.their-name;
                 side: 2;
@@ -1146,11 +1156,38 @@ export component PlayScreen inherits Page {
             }
         }
 
+        // The match's settings, and apart from them this player's own: each group named over it on a desktop;
+        // on a phone a line each, the player's own under a name of their own.
         Arrive {
             order: 1;
-            LobbyFacts {
-                x: Theme.phone ? 0px : (root.body-width - self.natural-width) / 2;
+            Label {
+                x: match-facts.x;
                 y: root.facts-top;
+                width: match-facts.width;
+                height: 14px;
+                visible: !Theme.phone;
+                text: Caps.of(@tr("Match settings"));
+            }
+
+            match-facts := MatchFacts {
+                x: Theme.phone ? 0px : (root.body-width - self.natural-width - 24px - connection.natural-width) / 2;
+                y: Theme.phone ? root.facts-top : root.facts-top + 22px;
+                width: Theme.phone ? root.body-width : self.natural-width;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
+            Label {
+                x: connection.x;
+                y: Theme.phone ? match-facts.y + match-facts.height + 12px : root.facts-top;
+                width: Theme.phone ? root.body-width : connection.width;
+                height: 14px;
+                text: Caps.of(@tr("Your connection"));
+            }
+
+            connection := ConnectionFacts {
+                x: Theme.phone ? 0px : match-facts.x + match-facts.width + 24px;
+                y: Theme.phone ? match-facts.y + match-facts.height + 32px : match-facts.y;
                 width: Theme.phone ? root.body-width : self.natural-width;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -1159,10 +1196,14 @@ export component PlayScreen inherits Page {
 
         Arrive {
             order: 2;
+            // With the other player: READY, CHANGE BUILD and LEAVE. (On a phone READY the column's width, the
+            // other two half of it each under it.)
             ready := Button {
                 x: Theme.phone ? 0px : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
                 y: root.buttons-top;
                 width: Theme.phone ? root.body-width : 184px;
+                visible: !PlayView.waiting;
+                enabled: !PlayView.waiting;
                 nav: "lobby.ready";
                 text: PlayView.ready ? Caps.of(@tr("Not ready")) : Caps.of(@tr("Ready"));
                 kind: ButtonKind.main;
@@ -1172,25 +1213,54 @@ export component PlayScreen inherits Page {
             change := Button {
                 x: Theme.phone ? 0px : ready.x + ready.width + 12px;
                 y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
-                width: Theme.phone ? root.body-width : self.natural-width;
+                width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
+                visible: !PlayView.waiting;
+                enabled: !PlayView.waiting;
                 nav: "lobby.change";
                 text: Caps.of(@tr("Change build"));
             }
 
             leave := Button {
-                x: Theme.phone ? 0px : change.x + change.width + 12px;
-                y: Theme.phone ? change.y + 48px : change.y;
-                width: Theme.phone ? root.body-width : self.natural-width;
+                x: Theme.phone ? change.width + 8px : change.x + change.width + 12px;
+                y: change.y;
+                width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
+                visible: !PlayView.waiting;
+                enabled: !PlayView.waiting;
                 nav: "lobby.leave";
                 text: Caps.of(@tr("Leave"));
                 kind: ButtonKind.ghost;
             }
 
-            // The reserved line: who is waited for, that the link is being made again, or why the match before
-            // ended.
+            // While the host waits: the way out, CANCEL INVITE (STOP HOSTING), as the practice menu has it in
+            // EXIT's place; on a phone PRACTICE before it, which starts the practice battle filling the window.
+            Button {
+                x: 0;
+                y: root.buttons-top;
+                width: root.body-width;
+                visible: PlayView.waiting && Theme.phone;
+                enabled: PlayView.waiting && Theme.phone;
+                nav: "wait.train";
+                text: Caps.of(@tr("Practice"));
+                kind: ButtonKind.main;
+                big: true;
+            }
+
+            Button {
+                x: Theme.phone ? 0px : (root.body-width - self.width) / 2;
+                y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                visible: PlayView.waiting;
+                enabled: PlayView.waiting;
+                nav: "wait.cancel";
+                text: PlayView.wait-exit(PlayView.invite-direct);
+                kind: ButtonKind.ghost;
+            }
+
+            // The reserved line: who is waited for, that the link is being made again, why the match before
+            // ended, or what keeps this player's build from being played.
             Message {
                 x: 0;
-                y: leave.y + (Theme.phone ? 52px : 64px);
+                y: root.buttons-top + (Theme.phone ? 112px : 64px);
                 width: root.body-width;
                 text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? PlayView.note-problem : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
                 tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting || PlayView.note == LobbyNote.unusable ? Theme.bad : Theme.muted;
