@@ -55,10 +55,14 @@ local function set_step(me: Object, step: number)
 end
 
 -- The way a shuriken flies from the navi to (x, y): the navi's side,
--- turned when the target isn't ahead.
+-- turned when the target isn't ahead. (The original turns it when the
+-- target is left of the navi or in its column: a side-0 navi's shuriken at
+-- a target in its column flies back, a side-1 navi's ahead. nettai's goes
+-- as the canonical side's, in its frame: docs/engine/side-symmetry.md.)
 local function flip_toward(me: Object, x: number): number
-    local behind = if me.panel_x - x >= 0 then 1 else 0
-    return bit32.bxor(me.alliance, behind)
+    local d = field.side_sign(me.alliance) * (me.panel_x - x)
+    local at_or_left = if d >= 0 then 1 else 0
+    return bit32.bxor(field.canonical_side(), at_or_left)
 end
 
 -- `sub_8016004`: one of the other side's combatants (in slot order),

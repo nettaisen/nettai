@@ -5,7 +5,8 @@
 -- opponent's navi on its panel exactly (0x080CA60C adds no pixel to Y and Z), and the panel his navi must stand on for
 -- him to appear there (0x080CA6F0) reads its forbidden flags two bytes into the table's row (`ldr` at +2, which the ARM
 -- rotates: the row's word turned by 16 bits): side 0's 0x00000001, side 1's 0x00200001, where EXE6's are 0x20 and 0. See
--- docs/engine/chips.md §2.10.
+-- docs/engine/chips.md §2.10. (So side 1's navi must stand on a side-1 panel and side 0's on any; nettai reads the
+-- canonical side's row for both, mirrored: docs/engine/side-symmetry.md.)
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/supports/rush")

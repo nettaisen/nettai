@@ -791,12 +791,16 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
 fn aim_throw(b: &mut Battle, r: ObjectRef) -> u8 {
     let o = b.objects.get(r);
     let (px, py) = crate::kinds::player::panel_coordinates(o.future_panel.x, o.future_panel.y);
-    let dx = px.wrapping_sub(((o.pos.x as u32 >> 16) << 16) as i32);
+    // (The angle's arctangent and the X speed's shift round by the sign
+    // of the X: nettai aims the canonical side's throw as the original
+    // does and the other side's in the mirror image, docs/engine/side-symmetry.md.)
+    let s = nettai_content_api::side_sign(o.alliance);
+    let dx = px.wrapping_mul(s).wrapping_sub(((o.pos.x.wrapping_mul(s) as u32 >> 16) << 16) as i32);
     let dy = py.wrapping_sub(((o.pos.y as u32 >> 16) << 16) as i32);
     let angle = bios_arctan2(dx >> 16, dy >> 16) >> 8;
     let sine = &b.game_rules().sine;
     let (cos, sin) = (sine[angle as usize + 64] as i32, -(sine[angle as usize + 128] as i32));
-    let (vx, vy) = (cos.wrapping_mul(THROW_SPEED) >> 8, sin.wrapping_mul(THROW_SPEED) >> 8);
+    let (vx, vy) = ((cos.wrapping_mul(THROW_SPEED) >> 8).wrapping_mul(s), sin.wrapping_mul(THROW_SPEED) >> 8);
     let (ax, ay) = (dx as u32 >> 8, dy as u32 >> 8);
     let distance = (bios_sqrt(ay.wrapping_mul(ay).wrapping_add(ax.wrapping_mul(ax))) << 8) as i32;
     let ticks = bios_div(distance, THROW_SPEED);

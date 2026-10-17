@@ -28,11 +28,25 @@ local STAND: RushStand = {
     [1] = { require = 0x0001_0020, forbid = 0 },
 }
 
+-- A side's row of `stand` as the other side's mirror image: the side-1
+-- panel bit (0x20) required where it was forbidden, and the other way.
+local function mirrored(c: { require: number, forbid: number }): { require: number, forbid: number }
+    return {
+        require = bit32.bor(bit32.band(c.require, bit32.bnot(0x20)), bit32.band(c.forbid, 0x20)),
+        forbid = bit32.bor(bit32.band(c.forbid, bit32.bnot(0x20)), bit32.band(c.require, 0x20)),
+    }
+end
+
 -- `sub_80C3460` (EXE5's 0x080C244C): on his navi's panel if it will do
--- (`stand`), else at (1 or 6, 2); on the ground.
+-- (`stand`), else at (1 or 6, 2); on the ground. (The other side's than
+-- the canonical reads the canonical side's row mirrored: EXE5's and
+-- EXE6's rows are mirror images, EXE4's misread ones aren't, side 1's
+-- asking a side-1 panel and side 0's any: docs/engine/side-symmetry.md.)
 local function place(me: Object, stand: RushStand)
     local navi = battle.player(me.alliance)
-    local cond = stand[me.alliance]
+    local cond = if field.side_sign(me.alliance) > 0
+        then stand[me.alliance]
+        else mirrored(stand[field.canonical_side()])
     local x, y = me.alliance * 5 + 1, 2
     if navi and field.check(navi.panel_x, navi.panel_y, cond.require, cond.forbid) then
         x, y = navi.panel_x, navi.panel_y

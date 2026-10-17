@@ -230,9 +230,11 @@ local function spawn(user: Object, x: number, y: number, element: number, damage
 end
 
 -- `sub_80C9ECE`, instant chip effect 22: the registry's obstacles
--- (`sub_80C9EE6`).
+-- (`sub_80C9EE6`), in the user's side's order: the soldiers update, and
+-- draw their shots' heights, in it. (The original's goes through side 0's
+-- slots first whatever the user's side: docs/engine/side-symmetry.md.)
 function army.instant(user: Object, spec: InstantChipSpec)
-    for _, o in field.all_objects() do
+    for _, o in field.all_objects(user.alliance) do
         -- (Not what nothing absorbs: a mine.)
         local identity = o.identity
         if not (identity and identity.absorbable == false) and obstacle.present(o) then

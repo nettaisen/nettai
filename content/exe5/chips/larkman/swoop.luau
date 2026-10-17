@@ -139,7 +139,7 @@ local function start_turn(me: Object, s: State)
     s.center_y = 0x1C_0000
     local dx = if s.left then 0x14_0000 else -0x14_0000
     local dy = if me.panel_y == 3 then 0x18_0000 else -0x18_0000
-    local angle = trajectory.angle(dx, dy)
+    local angle = trajectory.angle(dx, dy, me.alliance)
     me.timer2 = angle
     s.angle = int.shl(angle, 16)
     local v = variant(s)
@@ -226,7 +226,14 @@ local function turn(me: Object)
     lead(me, s)
     local x, y = me.panel_x, me.panel_y
     s.angle = int.u32(s.angle + s.angle_step)
-    me.timer2 = bit32.rshift(s.angle, 16)
+    -- (The angle's whole steps, its fraction dropped: toward minus infinity, so a swoop turning the other way lags a
+    -- step behind the mirror of one turning this way. The other side's than the canonical drops it as the
+    -- canonical side's does, in the mirror image: docs/engine/side-symmetry.md.)
+    if field.side_sign(me.alliance) > 0 then
+        me.timer2 = bit32.rshift(s.angle, 16)
+    else
+        me.timer2 = bit32.band(0x80 - bit32.rshift(int.u32(0x80_0000 - s.angle), 16), 0xFFFF)
+    end
     -- 0x080DDBA4.
     local a = bit32.band(me.timer2, 0xFF)
     local p = me.pos

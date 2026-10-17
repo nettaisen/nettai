@@ -72,10 +72,11 @@ local function appear(me: Object)
 end
 
 -- 0x080BDB9C: the field objects around his panel (one panel or less each way) that can be taken, in the
--- registry's slot order: their looks kept, and the chip's removal asked of each. How many.
+-- registry's slot order (his side's: side 0's slots first in the original whatever his side,
+-- docs/engine/side-symmetry.md): their looks kept, and the chip's removal asked of each. How many.
 local function take(me: Object, s: State): number
     local n = 0
-    for _, o in field.all_objects() do
+    for _, o in field.all_objects(me.alliance) do
         if math.abs(me.panel_x - o.panel_x) <= 1 and math.abs(me.panel_y - o.panel_y) <= 1 then
             local look = obstacle.absorbed_look(o)
             if look then

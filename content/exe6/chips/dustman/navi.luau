@@ -59,11 +59,13 @@ local function appear(me: Object)
 end
 
 -- `sub_80BC100`: every field object he can take, in the registry's slot
--- order: its junk look kept, and the chip's removal asked of it. How many.
+-- order (his side's: side 0's slots first in the original whatever his
+-- side, docs/engine/side-symmetry.md): its junk look kept, and the chip's
+-- removal asked of it. How many.
 local function take(me: Object): number
     local s = me.state :: State
     local n = 0
-    for _, o in field.all_objects() do
+    for _, o in field.all_objects(me.alliance) do
         local look = obstacle.absorbed_look(o)
         if look then
             n += 1

@@ -16,6 +16,7 @@ local sent_chips = {}
 type State = {
     sent: { FolderChip },
     sending: { FolderChip },
+    turn: number,
 }
 
 sent_chips.state = {
@@ -23,6 +24,8 @@ sent_chips.state = {
     sent = schema.list({ chip = "chip", code = "code" }, 60),
     -- The side's hand's (its block's +0x32), from OK to the install.
     sending = schema.list({ chip = "chip", code = "code" }, 5),
+    -- Where this turn's blocks start in the console's list, plus one (none: 0).
+    turn = "u8",
 } :: StateSchema
 
 -- 0x0801F10A, as OK builds the side's hand: the picks its hand lists.
@@ -37,15 +40,38 @@ function sent_chips.confirmed(side: number)
     (rules.state() :: State).sending = sending
 end
 
--- 0x08008916, as the side's hand is installed: its chips go in each console's list.
+-- 0x08008916, as the side's hand is installed: its chips go in each console's list. (The original lists side 0's
+-- block before side 1's on both consoles; nettai lists them in the canonical side's console's order on the canonical
+-- side's console and mirrored on the other's, the console's own side's block first where the canonical's is: the
+-- shuffle and the first of a class find the same chips for either side, docs/engine/side-symmetry.md.)
 function sent_chips.installed(side: number)
     local s = rules.state() :: State
     local sending = s.sending
     for console = 0, 1 do
-        local sent = (rules.state_of(console) :: State).sent
+        local cs = rules.state_of(console) :: State
+        local sent = cs.sent
+        local n = #sent
+        if side == 0 then
+            cs.turn = n + 1
+        end
+        -- The block goes before this turn's side-0 block where the console lists side 1's first.
+        local at = n + 1
+        if side == 1 and field.side_sign(console) < 0 and cs.turn ~= 0 then
+            at = cs.turn
+        end
+        local out: { FolderChip } = {}
+        for i = 1, at - 1 do
+            out[#out + 1] = { chip = sent[i].chip, code = sent[i].code }
+        end
         for i = 1, #sending do
-            local c = sending[i]
-            sent[#sent + 1] = { chip = c.chip, code = c.code }
+            out[#out + 1] = { chip = sending[i].chip, code = sending[i].code }
+        end
+        for i = at, n do
+            out[#out + 1] = { chip = sent[i].chip, code = sent[i].code }
+        end
+        cs.sent = out
+        if side == 1 then
+            cs.turn = 0
         end
     end
     s.sending = {}
