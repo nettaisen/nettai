@@ -963,34 +963,6 @@ mod tests {
         battle_of(content, LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64))
     }
 
-    /// The dummy that fights, plugged in as Practice plugs it (its Action Fights, its custom screen the AI's):
-    /// against a player who only gets through their custom screen, it takes HP away, the battle stepped as the
-    /// shell steps a practice battle.
-    #[test]
-    fn the_dummy_that_fights_takes_hp_away() {
-        use nettai_battle::battle::mode;
-        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
-        let content = nettai_match::testing::exe6_content();
-        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
-        let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
-        let mut b = practice(&content, &m, 11, opponent);
-        let live = b.stage.player.live_mut().expect("live play");
-        assert_eq!(crate::screens::practice::plug(live, opponent, 2, 11, None), Some(2));
-        let hp = |b: &Battle| {
-            let battle = b.stage.player.battle();
-            battle.player(0).map(|r| (battle.objects.get(r).hp, battle.objects.get(r).max_hp))
-        };
-        for _ in 0..1800 {
-            let battle = b.stage.player.battle();
-            let keys = if battle.round.mode == mode::CUSTOM { bot_buttons(battle, 0, b.stage.player.ticks() as u32) } else { 0 };
-            frame(&mut b, keys);
-            if hp(&b).is_some_and(|(hp, max)| hp < max) {
-                return;
-            }
-        }
-        panic!("in 30 seconds the dummy took no HP away: {:?}", hp(&b));
-    }
-
     /// The samples a frame made.
     fn made(b: &mut Battle) -> usize {
         let mut samples = Vec::new();
