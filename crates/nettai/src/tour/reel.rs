@@ -19,7 +19,7 @@
 //! The walk is the pass's, held still as it is (no settings read or written, its own builds and replays, the
 //! demo battles' seeds fixed), but with motion on and the battles playing: the main menu and its demo battle
 //! through a change of game to each and back; Practice (PLAY's PRACTICE, the practice menu open as the battle
-//! starts, the arena and the music stepped there, the dummy set to fight at Hard, a fight in which the player's
+//! starts, the arena and the music stepped there, the dummy set to move around, a fight in which the player's
 //! side presses by itself);
 //! the builds (Play's; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
 //! Play (an invite, a second player joining, the lobby, a few seconds of their match); Replays (the list, a
@@ -680,7 +680,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
 
     // 2. Practice: PLAY's PRACTICE, the cards, the battle with the practice menu open over it; the arena stepped
     // (the set starting over on it behind the menu), the music stepped to a battle theme, which plays; the dummy
-    // set to fight at Hard; the fight, the player's side pressing by itself.
+    // set to move around; the fight, the player's side pressing by itself.
     add(3000, go(ScreenId::Play));
     add(1500, focus("practice", 0));
     add(500, act(Action::Confirm));
@@ -691,7 +691,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
             .is_some_and(|b| b.kind == BattleKind::Practice && b.menu_open())
     });
     add(1200, row(PracticeOption::Arena));
-    // (Arena and Music are chosen from their lists; Action and Level are taken, stepped and let go.)
+    // (Arena and Music are chosen from their lists; Action is taken, stepped and let go.)
     add(500, act(Action::Confirm));
     add(400, act(Action::Right));
     add(400, act(Action::Confirm));
@@ -700,12 +700,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(400, act(Action::Down));
     add(400, act(Action::Confirm));
     add(2500, row(PracticeOption::Action));
-    // (Stands still, Moves around, Fights.)
-    add(300, act(Action::Confirm));
-    add(400, act(Action::Right));
-    add(350, act(Action::Right));
-    add(300, act(Action::Confirm));
-    add(700, row(PracticeOption::Level));
+    // (Stands still, Moves around.)
     add(300, act(Action::Confirm));
     add(400, act(Action::Right));
     add(300, act(Action::Confirm));

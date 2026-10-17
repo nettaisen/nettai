@@ -265,22 +265,6 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-menu-value", lang, size, Differs::Picture, true);
     add(SETTLE, act(Action::Down));
     shot(add, "practice-menu-focus", lang, size, Differs::Picture, false);
-    // The dummy that fights: its Action Fights (one on from Moves around), and the Level row come under it (the
-    // rows below it a row down: not compared); its Level Hard, the row a value apart. Then its Action back as it
-    // was, and the Level row gone with it.
-    add(SETTLE, focus_row(PracticeOption::Action));
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-menu-fights", lang, size, Differs::Unheld, false);
-    add(SETTLE, focus_row(PracticeOption::Level));
-    add(SETTLE, act(Action::Confirm));
-    shot(add, "practice-menu-level", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-menu-level-hard", lang, size, Differs::Picture, false);
-    add(SETTLE, focus_row(PracticeOption::Action));
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, act(Action::Left));
-    shot(add, "practice-menu-moves-again", lang, size, Differs::Unheld, false);
     // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
     // open (the battle through the round's opening to its custom screen, where it waits).
     add(SETTLE, focus_row(PracticeOption::Arena));

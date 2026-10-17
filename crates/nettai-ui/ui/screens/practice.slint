@@ -30,8 +30,6 @@ export enum PracticeOption {
     edit-dummy,
     // A label and a value between arrows.
     action,
-    // How well the dummy fights: under the Action while it is Fights.
-    level,
     // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen (an
     // arena's place, "12 / 47"; a background's name; none: Random).
     arena,
@@ -101,9 +99,6 @@ export global PracticeView {
         if option == PracticeOption.action {
             return @tr("Action");
         }
-        if option == PracticeOption.level {
-            return @tr("Level");
-        }
         if option == PracticeOption.arena {
             return @tr("Arena");
         }
@@ -132,10 +127,7 @@ export global PracticeView {
     }
     pure public function value(option: PracticeOption, value: int) -> string {
         if option == PracticeOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : @tr("A second pad")));
-        }
-        if option == PracticeOption.level {
-            return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : @tr("A second pad"));
         }
         if option == PracticeOption.your-hp || option == PracticeOption.dummys-hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
