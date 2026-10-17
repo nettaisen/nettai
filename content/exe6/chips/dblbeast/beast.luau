@@ -39,7 +39,8 @@ local MAX_TRIED = 6
 -- but its own (rows 3 to 1, columns 6 to 1); the first target first.
 function beast.list_targets(me: Object)
     local s = me.state :: DblBeastState
-    local list = panels.filtered_except(me, ENEMY_BODY[me.alliance], 0)
+    -- (In order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    local list = panels.filtered_except(me, ENEMY_BODY[me.alliance], 0, me.alliance)
     for i, p in list do
         s.targets[i] = p
     end

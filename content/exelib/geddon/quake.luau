@@ -101,7 +101,8 @@ function quake.make(look: Look): Quake
     -- panels: two draws each); the timer; the first update at once.
     local function init(me: Object)
         local s = me.state :: State
-        local list = panels.filtered(SOLID, 0)
+        -- (Shuffled from its order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+        local list = panels.filtered(SOLID, 0, bit32.band(me.alliance, 1))
         if #list > 0 then
             panels.shuffle(list, #list, #list)
         end
