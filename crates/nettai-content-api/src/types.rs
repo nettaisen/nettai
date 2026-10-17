@@ -177,3 +177,51 @@ pub struct InPack<T> {
     pub pack: PackId,
     pub id: T,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Side 1's panel under a position is the mirror of side 0's under the
+    /// mirrored position (X to 7 - X), on the field and off it, and side
+    /// 0's is the original's division.
+    #[test]
+    fn the_panel_under_a_position_is_side_fair() {
+        for px in -220..=220 {
+            for frac in [0, 1, 0x8000, 0xFFFF] {
+                let x = (px << 16) | frac;
+                for y in [-0x20_0000, 0, 0x1C_0000, 0x48_0000] {
+                    let side0 = PanelPos::under(x, y, 0);
+                    let original = PanelPos { x: (((x >> 16) + 0xA0) / 0x28) as u8, y: (((y >> 16) + 0x20) / 0x18) as u8 };
+                    assert_eq!(side0, original);
+                    let side1 = PanelPos::under(x.wrapping_neg(), y, 1);
+                    assert_eq!(side1, PanelPos { x: 7u8.wrapping_sub(side0.x), y: side0.y }, "x {x:#x}");
+                }
+            }
+        }
+        // The line between columns 3 and 4 is in the column toward the other
+        // side: 4 for side 0, 3 for side 1.
+        assert_eq!(PanelPos::under(0, 0x1C_0000, 0).x, 4);
+        assert_eq!(PanelPos::under(0, 0x1C_0000, 1).x, 3);
+    }
+
+    /// Side 1's move along X passes a point as the mirror of side 0's: a
+    /// move ahead counts on reaching it, a move back on leaving it.
+    #[test]
+    fn a_move_passing_a_point_is_side_fair() {
+        for target in [-0x28_0000, -1, 0, 1, 0x14_0000] {
+            for old in (-0x30_0000..=0x30_0000).step_by(0x4_0000) {
+                for step in [-0x14_0000, -0x8000, 0, 0x8000, 0x14_0000] {
+                    let new = old + step;
+                    let side0 = passed_x(new, old, target, 0);
+                    assert_eq!(side0, passed(new, old, target));
+                    assert_eq!(passed_x(-new, -old, -target, 1), side0, "{old:#x} -> {new:#x} past {target:#x}");
+                }
+            }
+        }
+        // Reaching a point ahead counts for either side; leaving it, ahead,
+        // doesn't.
+        assert!(passed_x(0x28_0000, 0, 0x28_0000, 0) && passed_x(-0x28_0000, 0, -0x28_0000, 1));
+        assert!(!passed_x(0x28_0000, 0, 0, 0) && !passed_x(-0x28_0000, 0, 0, 1));
+    }
+}
