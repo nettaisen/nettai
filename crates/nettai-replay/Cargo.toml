@@ -1,6 +1,6 @@
 [package]
 name = "nettai-replay"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The replay file format: a set's match and every tick's buttons, written as they are played (no engine)"

@@ -1,6 +1,6 @@
 [package]
 name = "nettai-assets"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The battle graphics in typed form: what a content pack's graphics load into and nettai-render draws with"

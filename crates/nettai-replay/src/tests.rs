@@ -202,7 +202,7 @@ fn the_head_says_what_it_plays_on() {
     assert_eq!(content.to_string(), "the replay was made on other content (its hash 0123456789abcdef, this one's 0000000000000001)");
     let engine = h.require("0.2.0", "exe6", h.content).unwrap_err();
     assert_eq!(engine, Mismatch::Engine { replay: "0.1.0".into(), here: "0.2.0".into() });
-    assert_eq!(engine.to_string(), "the replay was made on engine 0.1.0, this is 0.2.0");
+    assert_eq!(engine.to_string(), "the replay was made on nettai 0.1.0, this is 0.2.0");
 }
 
 /// A file's head reads by itself, whatever is wrong after it: a file cut

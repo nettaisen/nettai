@@ -27,7 +27,7 @@ Set-StrictMode -Version Latest
 
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
 if (-not $Version) {
-    $Version = (Select-String -Path "$root\crates\nettai\Cargo.toml" -Pattern '^version = "(.*)"$' | Select-Object -First 1).Matches[0].Groups[1].Value
+    $Version = (Select-String -Path "$root\Cargo.toml" -Pattern '^version = "(.*)"$' | Select-Object -First 1).Matches[0].Groups[1].Value
 }
 $out = "$root\target\package\windows"
 $app = "$out\nettai"
