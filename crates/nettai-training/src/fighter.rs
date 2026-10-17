@@ -92,7 +92,8 @@
 //! row's other panels: once the other navi is in reach, once the chip
 //! before it is done and its hit has passed, once a panel opens, once an
 //! attack is on its way), and cut in on the other player's dimming chip
-//! where that pays, less what the same turn makes with no new
+//! where that pays clearly ([`dimmed::CUT_IN_MARGIN`], as live), less
+//! what the same turn makes with no new
 //! hand (picking nothing keeps the old hand; picking any replaces it, its
 //! chips lost unused). So a Barrier is worth the hits it stops, a Recover
 //! the HP it gives back, and a hand's second and third chips what they do
@@ -1826,9 +1827,11 @@ impl TurnPlay {
 
     /// What it presses besides while dimmed (A: a cut-in): on the other
     /// player's dimming chip's name, where it may cut in, a reaction time
-    /// into it, if a copy cut in makes more than one not
-    /// ([`TurnPlay::probe`]); a copy holding its chip to react cuts in so
-    /// whatever it makes.
+    /// into it, if a copy cut in makes clearly more than one not
+    /// ([`TurnPlay::probe`], by [`dimmed::CUT_IN_MARGIN`], as live: a
+    /// defense their chip goes through, a copy a few HP luckier, isn't spent
+    /// on it); a copy holding its chip to react cuts in so whatever it
+    /// makes.
     #[allow(clippy::too_many_arguments)]
     fn cut_in(&mut self, b: &Battle, side: u8, guess: Guessed, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> u16 {
         if !(b.is_dimmed() && fight_goes_on(b) && dimmed::cut_window(b, side)) {
@@ -1840,7 +1843,7 @@ impl TurnPlay {
             return 0;
         }
         if self.window == self.reaction + 1 {
-            self.cutting = self.reacts || self.probe(b, side, guess, None, false, keys::A, memo, ticks, work) > self.probe(b, side, guess, None, false, 0, memo, ticks, work);
+            self.cutting = self.reacts || self.probe(b, side, guess, None, false, keys::A, memo, ticks, work) > self.probe(b, side, guess, None, false, 0, memo, ticks, work) + dimmed::CUT_IN_MARGIN;
         }
         if self.cutting { keys::A } else { 0 }
     }

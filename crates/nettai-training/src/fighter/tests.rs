@@ -1472,3 +1472,47 @@ fn a_chip_that_folds_never_stands_alone() {
     let hands = fight_for(&mut b, &mut fighter, 400, |_| 0);
     assert_eq!(hands.iter().position(|h| *h == 0), None, "Atk+10 used alone");
 }
+
+/// It doesn't cut in with a defense the other player's chip goes through:
+/// the player's JudgeMan (EXE6: its books strike an invisible navi too)
+/// used against the dummy holding Invisibl next in hand, on whichever row
+/// and column it stands, neither its decision while dimmed nor a turn's
+/// copy on its custom screen ([`TurnPlay::cut_in`]) cuts in: cut in or not,
+/// it loses the same HP.
+#[test]
+fn it_doesnt_cut_in_with_a_defense_the_chip_goes_through() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let level = Level::HARD;
+    let mut hit = false;
+    for moved in [0, keys::UP, keys::LEFT] {
+        let mut m = even_match(&content, "exe6", 1, 400);
+        m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+        m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("judgeman", 'J')])).unwrap();
+        let mut b = fight_with(&content, &m, 1, true);
+        for t in 0..20 {
+            step(&mut b, 1, if t < 2 { moved } else { 0 }, 0);
+        }
+        step(&mut b, 1, 0, keys::A);
+        let mut t = 0;
+        while !b.is_dimmed() && t < 60 {
+            step(&mut b, 1, 0, 0);
+            t += 1;
+        }
+        assert!(b.is_dimmed() && b.dimming[0].initiator == 0, "JudgeMan's dimming");
+        let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Dimmed };
+        let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
+        assert_eq!(answer.press, None, "a cut-in, the dummy moved {moved:#x}");
+        let (mut c, mut turn, mut memo) = (b.clone(), TurnPlay::new(level.reaction), Memo::default());
+        let guess = Guessed::new(Guess::Holds, 0, Past([0; PAST]));
+        let mut cut_in = false;
+        for _ in 0..400 {
+            let cut = turn.cut_in(&c, 1, guess, &mut memo, &mut 0, &mut 0);
+            cut_in |= cut != 0;
+            step(&mut c, 1, keys::B | cut, 0);
+        }
+        assert!(!cut_in, "a turn's copy cut in, the dummy moved {moved:#x}");
+        hit |= hp(&c, 1) < hp(&b, 1);
+    }
+    assert!(hit, "JudgeMan never struck the dummy");
+}
