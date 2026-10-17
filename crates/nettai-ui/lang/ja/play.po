@@ -170,10 +170,6 @@ msgctxt "custom timer"
 msgid "{}s"
 msgstr "{}秒"
 
-msgctxt "custom timer"
-msgid "Unlimited"
-msgstr "無制限"
-
 msgid "Ping"
 msgstr "Ping"
 
