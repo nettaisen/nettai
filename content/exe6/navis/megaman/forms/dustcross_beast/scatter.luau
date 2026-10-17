@@ -33,8 +33,9 @@ local BREAK, HIT_PARAM = 0x10, 0x9E
 local RISE_SPEED, RISE_ACCELERATION = 0x6000, 0x3000
 
 -- The panels it picks from: the 3x3 block around the panel two ahead,
--- facing right whatever the navi's side (`sub_80EF3F4` passes side 0),
--- with this panel bit set; bodies on them come first.
+-- facing right whatever the navi's side (`sub_80EF3F4` passes side 0;
+-- nettai's by the side, `pick_targets`), with this panel bit set; bodies
+-- on them come first.
 local BLOCK = regions.square
 local PICKABLE, BODY = 0x1_0000, 0x0C00_0000
 
@@ -64,11 +65,14 @@ end
 -- `sub_80EF3F4`: the target panels.
 local function pick_targets(me: Object, s: State)
     local cx, cy = me.panel_x + me.facing * 2, me.panel_y
-    -- object_getPanelRegion: the block's panels with the bit, in order.
+    -- object_getPanelRegion: the block's panels with the bit, in order. (The original's order faces right
+    -- whatever the side, so the shuffles start a side-1 navi's list other than the mirror of a side-0 navi's;
+    -- nettai's is the canonical side's, mirrored for the other: docs/engine/side-symmetry.md.)
+    local sign = field.side_sign(me.alliance)
     local found = { 0, 0, 0, 0, 0, 0, 0, 0 }
     local count = 0
     for _, offset in BLOCK.panels :: { { number } } do
-        local x, y = cx + offset[1], cy + offset[2]
+        local x, y = cx + offset[1] * sign, cy + offset[2]
         if field.check(x, y, PICKABLE, 0) then
             count += 1
             found[count] = int.u8(x + y * 0x10)

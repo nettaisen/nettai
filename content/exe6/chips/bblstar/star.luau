@@ -47,9 +47,14 @@ local function puff(me: Object)
     battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.puff)
 end
 
--- The object's panel as the game's halfword (x | y << 8).
+-- The object's panel as the game's halfword (x | y << 8). (Its X in the
+-- canonical side's frame: the word it starts with, 0, is column 0 of row 0,
+-- where a side-1 star leaving the field to the left lands in the original
+-- and so takes no region back, a side-0 star leaving to the right does;
+-- docs/engine/side-symmetry.md.)
 local function panel_word(me: Object): number
-    return me.panel_x + me.panel_y * 0x100
+    local x = if field.side_sign(me.alliance) > 0 then me.panel_x else 7 - me.panel_x
+    return x + me.panel_y * 0x100
 end
 
 -- `sub_80CC6E8`: forward along the wave; gone past the field's sides.

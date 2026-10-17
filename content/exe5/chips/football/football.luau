@@ -51,8 +51,10 @@ local function navi_target(me: Object, s: BallState): (number?, number?)
     local side = bit32.bxor(me.alliance, me.flip)
     local t = TARGETS[side][s.kick]
     local owner = me.related1 :: Object
-    local behind = owner.panel_x - t[1]
-    if (side == 0 and behind > 0) or (side == 1 and behind <= 0) then
+    -- (The original's facing right takes a block in its owner's column, facing left not: nettai's as the
+    -- canonical side's facing ahead, for either way: docs/engine/side-symmetry.md.)
+    local ahead = (t[1] - owner.panel_x) * (1 - 2 * side)
+    if ahead < 0 or (ahead == 0 and field.canonical_side() ~= 0) then
         return nil, nil
     end
     return t[1], t[2]
