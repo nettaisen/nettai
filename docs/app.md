@@ -2985,7 +2985,7 @@ shot or using its chip there and retreating to a clearly safer panel (where its 
 does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
 (the player does). On its custom screen Normal and Hard pick the hand worth most over a turn in copies of the
 fight (its chips used in the order picked, each when using it pays; built a chip at a time while one adds
-anything, a chip that adds nothing left for the next turn; an attack-up after the chip it boosts, a Program
+anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up after the chip it boosts, a Program
 Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
 fight goes better with it; Easy picks every chip it can in the cursor's order. The search's work is the level's
 (`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has

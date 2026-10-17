@@ -64,8 +64,10 @@
 //! the HP it gives back, and a hand's second and third chips what they do
 //! later in the turn. The hand is built a chip at a time: the chip whose
 //! addition raises its worth most goes after the others, while one raises
-//! it at all; a chip that adds nothing is left for the next turn (dealt
-//! again first). A pick can make others unpickable by their codes, so each
+//! it at all. Then every other chip goes after them, as a player picks all
+//! the codes allow (a chip left is dealt again first next turn, in the
+//! place of a new one): only one that alone clearly costs the turn is
+//! left. A pick can make others unpickable by their codes, so each
 //! chip worth something alone is tried as the first pick (the worthiest
 //! first), and the hand worth most wins; where its picks form a Program
 //! Advance on the copy, the copy plays it in their place, as OK forms it.
@@ -1104,9 +1106,8 @@ impl Search {
     /// game keeps it: picking nothing keeps the hand, picking anything
     /// replaces it). The hand is built a chip at a time: from a first pick,
     /// the chip whose addition raises the hand's worth most goes after the
-    /// others (it is used after them), while one raises it at all; a chip
-    /// that adds nothing is left for the next turn (dealt again first, where
-    /// picked it would be lost unused). Picking one can make others
+    /// others (it is used after them), while one raises it at all (the rest
+    /// go after them: below). Picking one can make others
     /// unpickable (a code that goes with none of theirs), so each chip worth
     /// something alone is tried as the first pick, the worthiest first (but
     /// one a hand already built holds: it would build that hand again), and
@@ -1116,6 +1117,12 @@ impl Search {
     /// Atk+10, Navi+20; the engine's `ChipHand::fold_next`). A Program
     /// Advance the picks form on the copy is played in their place, as OK
     /// forms it.
+    ///
+    /// Then every other chip is picked after the hand (the worthiest alone
+    /// first), as a player picks all the codes allow: a chip left is dealt
+    /// again first next turn, in the place of a new one, and one picked and
+    /// not used costs nothing once the old hand is spent. Only a chip that
+    /// alone clearly costs the turn ([`LEAVE`]) is left.
     ///
     /// A chip that adds nothing in a round isn't tried again from that
     /// first (what a chip adds rarely grows as the hand does). The work is
@@ -1208,7 +1215,22 @@ impl Search {
                 best = (hand, worth);
             }
         }
-        let order = best.0;
+        // (Then every other chip, the worthiest alone first, but one that clearly costs the turn: a player picks all
+        // the codes allow. A chip left is dealt again first next turn, in the place of a new one; one picked and
+        // not used costs nothing once the old hand is spent. The codes the hand's picks leave decide which can be
+        // picked: the picker skips one that isn't selectable by then.)
+        let mut order = best.0;
+        let mut rest: Vec<(u8, i64)> = firsts.iter().filter(|s| !order.iter().any(|o| chip_at(*o) == chip_at(**s))).map(|s| (*s, alone_of(*s))).filter(|(_, w)| *w >= -LEAVE).collect();
+        rest.sort_by_key(|&(s, w)| (std::cmp::Reverse(w), s));
+        // (Two slots dealt the same chip: each is picked, after the first.)
+        for (slot, _) in rest {
+            order.push(slot);
+        }
+        for &(slot, chip) in chips {
+            if !order.contains(&slot) && order.iter().any(|o| chip_at(*o) == Some(chip)) {
+                order.push(slot);
+            }
+        }
         // (The order as worths by slot: the first pick the highest; a chip not picked, below 0.)
         let ranks: Vec<i64> = chips.iter().map(|(s, _)| order.iter().position(|o| o == s).map_or(-1, |at| (order.len() - at) as i64)).collect();
         let form = if q.level.forms { self.form(q, chips, &ranks, &mut ticks) } else { None };
@@ -1288,6 +1310,10 @@ const BEAT: u32 = 20;
 /// A hand whose picks can't be made in its order (a code that goes with
 /// none of the others').
 const UNPICKABLE: i64 = i64::MIN;
+/// How much a chip alone may cost the turn, in tenths of HP, and still be
+/// picked after the hand ([`Search::worths`]): about nothing, as a copy's
+/// turns differ by a few HP whatever is picked.
+const LEAVE: i64 = 100;
 
 /// The hands a custom screen's search has valued ([`Search::worths`]), by
 /// their chips in order (two slots dealt the same chip make the same

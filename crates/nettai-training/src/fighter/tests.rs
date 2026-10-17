@@ -1154,7 +1154,7 @@ fn it_cuts_in_where_that_pays() {
 /// another: the dummy's folder all Cannon A (EXE6), each Cannon of a hand
 /// adds to what the turn makes (the second used once the first one's hit
 /// has passed: right after it, while the player flashes from it, it would
-/// take nothing), and its custom screen picks several. Prints the time the
+/// take nothing), and its custom screen picks them all. Prints the time the
 /// screen's answer took.
 #[test]
 fn a_hand_is_worth_its_turn() {
@@ -1182,5 +1182,5 @@ fn a_hand_is_worth_its_turn() {
     let answer = search.answer(&q);
     let picked = answer.worths.iter().filter(|w| **w > 0).count();
     println!("{} Cannons of {} picked; {:.0} ms, {} trial ticks", picked, chips.len(), answer.took.as_secs_f64() * 1000.0, answer.ticks);
-    assert!(picked >= 3, "{:?}", answer.worths);
+    assert_eq!(picked, chips.len(), "{:?}", answer.worths);
 }
