@@ -20,11 +20,21 @@ function panels.y(p: number): number
 end
 
 -- `object_getPanelsFiltered`: every panel whose flags meet (require,
--- forbid), from (6, 3) back to (1, 1): rows 3 to 1, columns 6 to 1.
-function panels.filtered(require: number, forbid: number): { number }
+-- forbid), from (6, 3) back to (1, 1): rows 3 to 1, columns 6 to 1. With
+-- `side`, the columns from that side's far edge back toward its own: the
+-- original's order is side 0's (from the far column, 6), and a list whose
+-- order counts (a list gone through in order, its first entry taken, a
+-- shuffle's start) is side 1's mirror image with columns 1 to 6
+-- (docs/engine/side-symmetry.md). A single pick from it (one draw modulo its
+-- length) gives either side each panel alike and keeps the original's order.
+function panels.filtered(require: number, forbid: number, side: number?): { number }
     local list = {}
+    local first, last, step = 6, 1, -1
+    if side == 1 then
+        first, last, step = 1, 6, 1
+    end
     for y = 3, 1, -1 do
-        for x = 6, 1, -1 do
+        for x = first, last, step do
             if field.check(x, y, require, forbid) then
                 table.insert(list, panels.pack(x, y))
             end
@@ -33,11 +43,16 @@ function panels.filtered(require: number, forbid: number): { number }
     return list
 end
 
--- `object_getPanelsExceptCurrentFiltered`: the same, without `me`'s panel.
-function panels.filtered_except(me: Object, require: number, forbid: number): { number }
+-- `object_getPanelsExceptCurrentFiltered`: the same, without `me`'s panel;
+-- with `side`, in that side's order.
+function panels.filtered_except(me: Object, require: number, forbid: number, side: number?): { number }
     local list = {}
+    local first, last, step = 6, 1, -1
+    if side == 1 then
+        first, last, step = 1, 6, 1
+    end
     for y = 3, 1, -1 do
-        for x = 6, 1, -1 do
+        for x = first, last, step do
             if field.check(x, y, require, forbid) and not (x == me.panel_x and y == me.panel_y) then
                 table.insert(list, panels.pack(x, y))
             end

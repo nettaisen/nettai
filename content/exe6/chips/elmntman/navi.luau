@@ -217,7 +217,8 @@ local function fire(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.phase_init = 4
-        local found = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0)
+        -- (In order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+        local found = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0, me.alliance)
         if #found == 0 then
             me:set_action(0x14)
             return
