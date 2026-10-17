@@ -521,11 +521,12 @@ the lobby's Custom timer; nettai's own: docs/engine/custom-screen.md §6.1),
 which its rounds' setups carry in ticks (`RoundSetup::custom_screen_limit`).
 While the local player's screen counts, the HUD shows the seconds left
 (`Battle::custom_time_left`) in the 8x16 font, in the HP box's plain colors
-throughout, right-aligned against the screen's right edge on the emotion
-window's row, under the opponent's name (the user: "just put it in a plain
-box under the name on the right side right aligned", "align it with the
-emotion window", then "maybe no box and use the regular font and don't
-change the color"). It goes the tick the
+throughout, set as the custom screen's enemy name is (its cells ending at the
+screen's right edge, so the same inset), on the emotion window's row, under
+the opponent's name (the user: "just put it in a plain box under the name on
+the right side right aligned", "align it with the emotion window", "maybe no
+box and use the regular font and don't change the color", "it should have the
+same offset as the enemy name"). It goes the tick the
 screen closes, and a round without a limit (Practice's, a recording's) shows
 none.
 

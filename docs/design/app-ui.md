@@ -1611,7 +1611,7 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   60, 90 and 120 seconds and Unlimited, 60 at first; nettai's own, not the original's: the user, "design a custom
   screen timer and default it to 60 seconds but also allow an unlimited time option"; when it runs out the screen
   closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the
-  HUD's 8x16 font, one color, flush with the battle's right edge under the opponent's name, level with the
+  HUD's 8x16 font, one color, at the opponent's name's inset from the battle's right edge, under the name, level with the
   emotion window: "align it with the emotion window", "maybe no box and use the regular font and don't change
   the color"), Input delay (a stepper,
   yours alone, default 4, remembered), the
