@@ -991,7 +991,7 @@ fn dimming_worths() {
             }
             let at = navi_at(&b, 1).unwrap();
             let ask = |search: &mut Search, level: Level| {
-                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Decide };
+                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Decide };
                 search.answer(&q)
             };
             let a = ask(&mut search, Level::HARD);
@@ -1051,7 +1051,7 @@ fn dimming_costs() {
             let chips = dealt(&b, 1);
             let ask = |search: &mut Search, b: &Battle, asked: Asked| {
                 let at = navi_at(b, 1).unwrap_or(NOWHERE);
-                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level: Level::HARD, asked };
+                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level: Level::HARD, asked };
                 let aimed = || (dimmed::AIMED[0].load(std::sync::atomic::Ordering::Relaxed), dimmed::AIMED[1].load(std::sync::atomic::Ordering::Relaxed), dimmed::AIM_TICKS.load(std::sync::atomic::Ordering::Relaxed));
                 let before = aimed();
                 let a = search.answer(&q);
@@ -1095,7 +1095,7 @@ fn a_chip_that_waits_for_a_is_aimed() {
             t += 1;
         }
         assert!(b.is_dimmed(), "EraseMan's dimming");
-        let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Dimmed };
+        let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Dimmed };
         let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
         let press = answer.press.expect("a press");
         assert!(press >= level.reaction, "{press}");
@@ -1139,7 +1139,7 @@ fn it_cuts_in_where_that_pays() {
     }
     assert!(b.is_dimmed() && b.dimming[0].initiator == 0, "CircGun's dimming");
     let level = Level::HARD;
-    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Dimmed };
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Dimmed };
     let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
     let press = answer.press.expect("a cut-in");
     let hand = b.hands[1].remaining();
@@ -1173,7 +1173,7 @@ fn a_hand_is_worth_its_turn() {
     let chips = dealt(&b, 1);
     assert!(chips.len() >= 3, "{chips:?}");
     let level = Level::HARD;
-    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Chips(chips.clone()) };
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Chips(chips.clone()) };
     let mut search = Search::with(THREADS);
     let s: Vec<u8> = chips.iter().map(|(s, _)| *s).collect();
     let hands = [vec![], vec![s[0]], vec![s[0], s[1]], vec![s[0], s[1], s[2]]];
@@ -1213,7 +1213,7 @@ fn at_the_custom_screen(content: &Arc<Content>, m: &nettai_match::Match, seed: u
 /// picks, in order, as its search answers at `level`.
 fn picked_on(b: &Battle, level: Level) -> (Vec<(u8, FolderChip)>, Vec<u8>) {
     let chips = dealt(b, 1);
-    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Chips(chips.clone()) };
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Chips(chips.clone()) };
     let answer = Search::with(THREADS).answer(&q);
     let mut order: Vec<(u8, i64)> = chips.iter().zip(&answer.worths).filter(|(_, w)| **w >= 0).map(|((s, _), w)| (*s, *w)).collect();
     order.sort_by_key(|(_, w)| std::cmp::Reverse(*w));
@@ -1377,7 +1377,7 @@ fn it_cuts_in_with_a_defense_chip() {
         t += 1;
     }
     assert!(b.is_dimmed() && b.dimming[0].initiator == 0, "CircGun's dimming");
-    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level: Level::HARD, asked: Asked::Dimmed };
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level: Level::HARD, asked: Asked::Dimmed };
     let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
     let press = answer.press.expect("a cut-in");
     let mut c = b.clone();
@@ -1385,4 +1385,54 @@ fn it_cuts_in_with_a_defense_chip() {
         step(&mut c, 1, if k == press { keys::A | keys::B } else { keys::B }, 0);
     }
     assert_eq!(c.hands[1].remaining(), 0, "pressed on {press}: no cut-in");
+}
+
+/// Side 1's hand in `b` set to `chips` (EXE6's, by name), from its cursor.
+fn hand_of(b: &mut Battle, content: &Arc<Content>, chips: &[&str]) {
+    let hand = &mut b.hands[1];
+    hand.cursor = 0;
+    for i in 0..6 {
+        let id = chips.get(i).map(|n| nettai_match::ids::chip(content, "exe6", n).unwrap_or_else(|| panic!("no chip {n}")));
+        hand.ids[i] = id;
+        hand.damage[i] = id.map_or(0, |c| content.chip(c).damage);
+        hand.attack_bonus[i] = 0;
+        hand.modifiers[i] = 0;
+    }
+}
+
+/// A chip whose use now is wasted isn't used now: the dummy (EXE6) with
+/// two Invisibl and a Cannon behind them in hand, the player standing
+/// still (no threat: each Invisibl is held till it is pushed out to free
+/// the Cannon, [`STALE`]), uses the first, and never the second while it
+/// is invisible, though the second bars the Cannon: it isn't pushed out
+/// then ([`Search::stale_wait`]), nor is a decision to push the first,
+/// asked as the first was used, taken for the second. (A Barrier or
+/// AntiDmg the player never attacks stands for ever: the second is pushed
+/// out where that costs least within a few seconds, to free the Cannon.)
+#[test]
+fn a_defense_chip_isnt_used_while_its_like_is_up() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    for chip in ["invisibl"] {
+        let mut m = even_match(&content, "exe6", 1, 400);
+        m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[(chip, '*')])).unwrap();
+        m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+        let mut b = fight_with(&content, &m, 1, true);
+        hand_of(&mut b, &content, &[chip, chip, "cannon"]);
+        let mut fighter = Fighter::inline(Level::HARD, 1);
+        let up = |b: &Battle| {
+            let c = b.player(1).and_then(|o| b.objects.get(o).collision).map(|c| b.collision.get(c));
+            c.is_some_and(|c| c.f1 & nettai_battle::collision::f1::INVISIBLE != 0)
+        };
+        let mut uses = Vec::new();
+        for t in 0..1000 {
+            let (hand, was_up, next) = (b.hands[1].remaining(), up(&b), b.hands[1].next_chip());
+            fight_for(&mut b, &mut fighter, 1, |_| 0);
+            if b.hands[1].remaining() < hand && next == nettai_match::ids::chip(&content, "exe6", chip) {
+                uses.push((t, was_up));
+            }
+        }
+        assert!(uses.len() >= 2, "{chip}s not both pushed out: {uses:?}");
+        assert!(uses.iter().all(|(_, was_up)| !was_up), "{chip} used while its like's effect was up: {uses:?}");
+    }
 }
