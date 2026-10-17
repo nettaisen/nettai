@@ -84,7 +84,7 @@ Each is settled unless the user changes it.
 17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
     The lobby's match settings also have **a toggle for patch cards, on or off** ("for netbattle settings you should
     also have a toggle for patch cards on/off"). (Patch cards are a ruleset's since §2.59, allowed or not one by
-    one; Closed builds stays the lobby's own setting.)
+    one; Closed builds stays the lobby's own setting, since §2.81 as Open setups, off at first.)
 18. **Connection quality is shown during play.** Clicking the corner opens the link panel (2026-10-14: "you should
     allow clicking the ping indicator in pvp to bring up a tango-style link quality panel thing").
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
@@ -731,7 +731,7 @@ Each is settled unless the user changes it.
     - *A ruleset* is what may be played: a name, Versions (below) and, for each of the game's ruleset
       categories, the items it doesn't allow. Closed builds isn't a ruleset's (the user, as rulesets were built:
       "i think closed setup should not be part of the ruleset actually"): it stays the lobby's own setting, as it
-      was, and no ruleset file or page has it. A category is one of what
+      was (since §2.81 Open setups, off at first), and no ruleset file or page has it. A category is one of what
       a build is made of that the game lets a ruleset hold back: Navis (EXE5, EXE6), Chips, NaviCust programs,
       Patch cards, and Crosses (EXE6) or Souls (EXE4, EXE5). The game's content says which categories it has
       and what it offers ready-made; nothing in the app names one (docs/design/rules-in-luau.md, "Rulesets").
@@ -764,7 +764,8 @@ Each is settled unless the user changes it.
       built: now the Navi tab's selector chooses them one by one (§2.60), and a ruleset that holds back one soul or
       Cross refuses only a build that holds it.
     - *The lobby's row* is First to, Ruleset, Closed builds, Input delay and Ping: Ruleset takes Patch cards'
-      place. (Since the custom screen's time limit, Custom timer comes after Closed builds: §6, "Play".)
+      place. (Since the custom screen's time limit, Custom timer comes after Closed builds: §6, "Play"; since
+      §2.81 Closed builds is Open setups.)
       The host's is a select of the game's presets and then the player's own by name (Left and Right step
       it, Enter opens it as a list), with EDIT after it, which opens the ruleset's page. The joiner's shows the
       host's ruleset by its name, can't be stepped or opened, and has VIEW after it, which opens the page
@@ -1308,6 +1309,18 @@ Each is settled unless the user changes it.
     items, of the category shown), About (N packages · N fonts). The menu and Settings list nothing (the version is
     in Settings' own rows). An update's line takes the place while it downloads (docs/app.md §19).
 
+81. **The match's settings are the host's; Open setups, off at first** (2026-10-17). The user: "only the host should
+    be able to change rules. closed setups should be open setups instead and it should be off by default".
+    - *The host alone changes the match's settings*, all of them as the Ruleset already was: First to, the Ruleset,
+      Open setups and Custom timer. The joiner sees them as they stand and their controls are unavailable (the
+      focus passes them by); the joiner's EDIT is VIEW, as before. A player's own things stay theirs: the build
+      they bring (CHANGE BUILD), Input delay, READY. The lobby's protocol takes the settings from the host alone: a
+      joiner's lobby changes nothing, and the host takes no settings from the joiner's (docs/frontend.md §2).
+    - *Closed builds is Open setups,* the other way about: on, each player may see the other's build in the match
+      (THEIR BUILD in the match menu, both builds while Tab is held, and in the replay's viewer); off, each sees
+      their own alone, as Closed builds on did. A new lobby has it off, so builds are kept to each player unless the
+      host opens them (the opposite of Closed builds' default). Japanese: 構築公開.
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1326,7 +1339,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | Practice's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
 | Practice and replays | Practice is not recorded |
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
-| Closed builds and replays | A replay of a closed-builds match hides the builds in the viewer too |
+| Open setups and replays | A replay of a match whose setups weren't open hides the builds in the viewer too |
 | Smaller NaviCust boards | Not offered: every build has the full board |
 | Light or dark MegaMan (EXE4, EXE5) | Kept from the old creator, which the mockups left out: a Light or Dark choice on the Navi tab, the two save presets (the light/dark value and the base HP together) |
 
@@ -1607,7 +1620,7 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
   10, 2 at first: §2.34), Ruleset (§2.59: the host's a select with EDIT, the joiner's the host's ruleset by
-  name with VIEW), Closed builds (off, on), Custom timer (a stepper of the custom screen's time limit: 30, 45,
+  name with VIEW), Open setups (off, on; off at first: §2.81), Custom timer (a stepper of the custom screen's time limit: 30, 45,
   60, 90 and 120 seconds and Unlimited, 60 at first; nettai's own, not the original's: the user, "design a custom
   screen timer and default it to 60 seconds but also allow an unlimited time option"; when it runs out the screen
   closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the
@@ -1617,8 +1630,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   yours alone, default 4, remembered), the
   connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
   Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset,
-  Closed builds and Custom timer are shared: both see them, and a change clears both ready marks; either player
-  changes First to, Closed builds and Custom timer, the host alone the Ruleset; the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
+  Open setups and Custom timer are shared: both see them, and a change clears both ready marks; the host alone
+  changes them (§2.81: the joiner's controls are unavailable); the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
   ready up and the line says the first thing ("Bass isn't allowed"); nothing is taken out of a build to play it
   (Patch cards off, which played each build without its cards, is gone: §2.59).
 
@@ -1850,10 +1863,10 @@ DUPLICATE and DELETE.
   and Tab and Esc keep their jobs), and the match keeps running under it. On a phone it sits as near the top as it
   has to.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
-  theirs, each the build overview without a name; letting go hides them. With Closed builds on, only the player's
+  theirs, each the build overview without a name; letting go hides them. With Open setups off, only the player's
   own.
 - **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, YOUR BUILD, THEIR BUILD
-  (not with Closed builds), CONTROLS, SETTINGS, LEAVE MATCH. "The match keeps running", and it does.
+  (only with Open setups), CONTROLS, SETTINGS, LEAVE MATCH. "The match keeps running", and it does.
 
 ### After a match
 The mockups show no screen for this; it is decided here.
@@ -1945,7 +1958,7 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
    answer.
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
 9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds, the Ruleset (by
-   names: §2.59) and Closed builds as shared settings; and holds the start until both sides have loaded.
+   names: §2.59) and Closed builds (since §2.81 Open setups) as shared settings; and holds the start until both sides have loaded.
 10. **Random builds** are removed from Play, Practice and the lobby.
 11. **Practice's** new options (§3) need new support in the battle engine.
 12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared

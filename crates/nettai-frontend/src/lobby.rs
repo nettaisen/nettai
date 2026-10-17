@@ -25,21 +25,22 @@
 //!    so at once; the match's settings ([`Settings`]: the game, the round
 //!    wins its set is first to, each of its rounds' stage and background by
 //!    name, stated or left to the seed, what a background left to the seed
-//!    is drawn from, the ruleset, [`Settings::ruleset`], and whether builds
-//!    are closed) with their stamp; whether the peer is ready to play them; its
-//!    player's name ([`player_name`]: shown, never taken for who they are);
-//!    and a clock to time the round trip by ([`Lobby::ping`]).
+//!    is drawn from, the ruleset, [`Settings::ruleset`], and whether the
+//!    setups are open) with their stamp; whether the peer is ready to play
+//!    them; its player's name ([`player_name`]: shown, never taken for who
+//!    they are); and a clock to time the round trip by ([`Lobby::ping`]).
 //!
-//!    **The settings are the match's, not a player's.** Either player
-//!    changes them ([`Lobby::propose`]), the ruleset the host alone
-//!    ([`Lobby::set_ruleset`]); the other peer adopts the change,
-//!    so both show the same, and both players' ready marks clear. A change
-//!    carries a stamp one above every stamp its peer has seen, and a peer
-//!    adopts settings of a higher stamp than its own; where both changed at
-//!    once (the same stamp, other settings), the host's stand and the
-//!    joiner adopts them, as it adopts the host's when it comes into the
-//!    lobby. The settings are agreed when both players are ready on the
-//!    same, of the same stamp.
+//!    **The settings are the match's, and the host's alone** (the user:
+//!    "only the host should be able to change rules"). The host changes
+//!    them ([`Lobby::propose`]; a joiner's proposal changes nothing); the
+//!    joiner adopts them, so both show the same, and both players' ready
+//!    marks clear. A change carries a stamp one above the last, and the
+//!    joiner adopts the host's settings wherever they are of a higher stamp
+//!    than its own or differ from its own, as when it comes into the lobby.
+//!    The host takes no settings from the joiner: what a joiner's lobby
+//!    says of them is only whether it holds the host's yet. The settings
+//!    are agreed when both players are ready on the same, of the same
+//!    stamp.
 //!
 //!    **A build is checked under the settings' ruleset.** A build that
 //!    holds what the ruleset doesn't allow (a chip, a navi, a patch card, a
@@ -401,9 +402,9 @@ impl Compat {
 /// of one), the round wins its set is first to and each of its rounds'
 /// stage and background stated or left to the seed, what a background left
 /// to the seed is drawn from, the ruleset it is played under (which builds
-/// may play it), whether the builds are closed, and the custom screen's
+/// may play it), whether the setups are open, and the custom screen's
 /// time limit.
-/// They are the match's, not a player's: both see the same, and a change
+/// They are the match's, the host's alone: both see the same, and a change
 /// clears both ready marks ([`Lobby::propose`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
@@ -422,16 +423,17 @@ pub struct Settings {
     /// each is checked under it ([`Settings::checked`]) and one that holds
     /// what it doesn't allow can't be played (nothing is taken out of a
     /// build: a ruleset that allows no patch cards refuses a build with
-    /// any), and whether each build must be one version's. The host's alone
-    /// to choose ([`Lobby::set_ruleset`]).
+    /// any), and whether each build must be one version's
+    /// ([`Lobby::set_ruleset`]).
     pub ruleset: Ruleset,
-    /// The players keep their builds to themselves during the match: a host
-    /// shows each player their own build only, where with open builds it
-    /// may show both. (It is the host's to honor: each peer has the other's
-    /// side from the Reveal on, as the simulation needs it.) Beside the
-    /// ruleset, not of it (the user: "i think closed setup should not be
-    /// part of the ruleset actually").
-    pub closed_builds: bool,
+    /// The players see each other's setups during the match: a host may
+    /// show each player both builds, where without it each sees their own
+    /// only. (It is the host's to honor: each peer has the other's side
+    /// from the Reveal on, as the simulation needs it.) Beside the ruleset,
+    /// not of it (the user: "i think closed setup should not be part of the
+    /// ruleset actually"), and off in a new lobby (the user: "closed setups
+    /// should be open setups instead and it should be off by default").
+    pub open_setups: bool,
     /// The custom screen's time limit in seconds, one of
     /// `nettai_match::CUSTOM_SCREEN_TIMES`, or none: no limit, as in the
     /// original (`Match::custom_screen_time`). nettai's own: a player's screen
@@ -452,14 +454,15 @@ impl Settings {
     /// [`nettai_match::MAX_FIRST_TO`]), every place left to the seed as the
     /// game picks a link battle's, under `ruleset` (a new lobby's: the
     /// game's first preset, `Rulesets::first`, or the one the player plays
-    /// by), with open builds and the custom screen's time limit 60 seconds.
+    /// by), with setups not open and the custom screen's time limit 60
+    /// seconds.
     pub fn new(game: &str, wins: u8, ruleset: Ruleset) -> Settings {
         Settings {
             game: game.to_string(),
             rounds: rounds_of(wins),
             backgrounds: BackgroundPick::Game,
             ruleset,
-            closed_builds: false,
+            open_setups: false,
             custom_screen_time: Some(nettai_match::DEFAULT_CUSTOM_SCREEN_TIME),
         }
     }
@@ -471,14 +474,14 @@ impl Settings {
 
     /// A match file's: its game, its rounds, what their backgrounds are
     /// drawn from and its custom screen's time limit (none where it states
-    /// none), under `ruleset`, with open builds.
+    /// none), under `ruleset`, with setups not open.
     pub fn of_match(m: &Match, ruleset: Ruleset) -> Settings {
         Settings {
             game: m.game.clone(),
             rounds: m.rounds.clone(),
             backgrounds: m.backgrounds,
             ruleset,
-            closed_builds: false,
+            open_setups: false,
             custom_screen_time: m.custom_screen_time,
         }
     }
@@ -492,8 +495,8 @@ impl Settings {
         Checked::under(content, &self.game, side, rulesets, &self.ruleset)
     }
 
-    /// The settings as the lobby carries them: the game; whether builds are
-    /// closed; the custom screen's time limit (seconds, 0 for none); the ruleset (not its name, which stays with the player: one
+    /// The settings as the lobby carries them: the game; whether setups are
+    /// open; the custom screen's time limit (seconds, 0 for none); the ruleset (not its name, which stays with the player: one
     /// version per build; then each category it holds anything back of, by its fact's name, with the names of what it
     /// doesn't allow); whether a background left to the seed is the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
@@ -503,7 +506,7 @@ impl Settings {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         w.put(&self.game);
-        w.put(&self.closed_builds);
+        w.put(&self.open_setups);
         w.put(&self.custom_screen_time.unwrap_or(0));
         w.put(&self.ruleset.one_per_build);
         let banned = self.ruleset.banned_names(content);
@@ -534,7 +537,7 @@ impl Settings {
         let bad = |e: std::io::Error| format!("the settings don't decode ({e})");
         let mut r = Reader::new(bytes);
         let game: String = r.get().map_err(bad)?;
-        let closed_builds: bool = r.get().map_err(bad)?;
+        let open_setups: bool = r.get().map_err(bad)?;
         let custom_screen_time = Some(r.get::<u16>().map_err(bad)?).filter(|&s| s != 0);
         if let Some(problem) = nettai_match::check_custom_screen_time(custom_screen_time) {
             return Err(problem);
@@ -588,7 +591,7 @@ impl Settings {
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
             return Err(problem);
         }
-        Ok(Settings { game, rounds, backgrounds, ruleset, closed_builds, custom_screen_time })
+        Ok(Settings { game, rounds, backgrounds, ruleset, open_setups, custom_screen_time })
     }
 
     /// The settings' hash, of their bytes.
@@ -624,12 +627,12 @@ pub struct Agreement {
 }
 
 impl Agreement {
-    /// Whether the players agreed to keep their builds to themselves: the
-    /// host then shows this player their own build only (`sides[side]`),
-    /// during the match and wherever the match is shown again (a recording
-    /// that is to honor it must keep it).
-    pub fn closed_builds(&self) -> bool {
-        self.settings.closed_builds
+    /// Whether the players agreed to see each other's setups: without it the
+    /// host shows this player their own build only (`sides[side]`), during
+    /// the match and wherever the match is shown again (a recording that is
+    /// to honor it must keep it).
+    pub fn open_setups(&self) -> bool {
+        self.settings.open_setups
     }
 }
 
@@ -989,21 +992,21 @@ impl Lobby {
         }
     }
 
-    /// Change the match's settings: the other peer adopts them, both
-    /// players' ready marks clear, and an agreement not yet revealed is
-    /// taken back. (Where the other player changed them at the same time,
-    /// the host's change stands.) The ruleset is the host's alone: a
-    /// joiner's proposal keeps the one it holds ([`Lobby::set_ruleset`]).
-    pub fn propose(&mut self, mut settings: Settings) {
+    /// Change the match's settings, the host alone (false, and nothing
+    /// changes, for a joiner: it plays the host's): the joiner adopts them,
+    /// both players' ready marks clear, and an agreement not yet revealed
+    /// is taken back.
+    pub fn propose(&mut self, settings: Settings) -> bool {
         if self.compat.role == Role::Join {
-            settings.ruleset = self.mine.ruleset.clone();
+            return false;
         }
         if settings != self.mine && !self.settled() {
             self.put(settings);
         }
+        true
     }
 
-    /// Hold `settings` as this peer's change, of a stamp above every one
+    /// Hold `settings` as the host's change, of a stamp above every one
     /// seen: [`Lobby::propose`]'s, once it is a change.
     fn put(&mut self, settings: Settings) {
         self.mine = settings;
@@ -1018,35 +1021,30 @@ impl Lobby {
     }
 
     /// Change the round wins the match's set is first to (1 to
-    /// [`nettai_match::MAX_FIRST_TO`]; each place left to the seed):
-    /// [`Lobby::propose`] of the settings with that.
-    pub fn set_first_to(&mut self, wins: u8) {
-        self.propose(Settings { rounds: rounds_of(wins), ..self.mine.clone() });
+    /// [`nettai_match::MAX_FIRST_TO`]; each place left to the seed), the
+    /// host alone: [`Lobby::propose`] of the settings with that.
+    pub fn set_first_to(&mut self, wins: u8) -> bool {
+        self.propose(Settings { rounds: rounds_of(wins), ..self.mine.clone() })
     }
 
-    /// Change whether the match's builds are closed: [`Lobby::propose`] of
-    /// the settings with that.
-    pub fn set_closed_builds(&mut self, closed_builds: bool) {
-        self.propose(Settings { closed_builds, ..self.mine.clone() });
+    /// Change whether the players see each other's setups, the host alone:
+    /// [`Lobby::propose`] of the settings with that.
+    pub fn set_open_setups(&mut self, open_setups: bool) -> bool {
+        self.propose(Settings { open_setups, ..self.mine.clone() })
     }
 
     /// Change the custom screen's time limit (seconds, one of
-    /// `nettai_match::CUSTOM_SCREEN_TIMES`, or none): [`Lobby::propose`] of
-    /// the settings with that.
-    pub fn set_custom_screen_time(&mut self, custom_screen_time: Option<u16>) {
-        self.propose(Settings { custom_screen_time, ..self.mine.clone() });
+    /// `nettai_match::CUSTOM_SCREEN_TIMES`, or none), the host alone:
+    /// [`Lobby::propose`] of the settings with that.
+    pub fn set_custom_screen_time(&mut self, custom_screen_time: Option<u16>) -> bool {
+        self.propose(Settings { custom_screen_time, ..self.mine.clone() })
     }
 
-    /// Change the match's ruleset, the host alone (false, and nothing
-    /// changes, for a joiner: it plays the host's): [`Lobby::propose`] of
-    /// the settings with it. This player's build is checked again under it
+    /// Change the match's ruleset, the host alone: [`Lobby::propose`] of the
+    /// settings with it. This player's build is checked again under it
     /// ([`Lobby::problems`]), and so is the other's by its own peer.
     pub fn set_ruleset(&mut self, ruleset: Ruleset) -> bool {
-        if self.compat.role == Role::Join {
-            return false;
-        }
-        self.propose(Settings { ruleset, ..self.mine.clone() });
-        true
+        self.propose(Settings { ruleset, ..self.mine.clone() })
     }
 
     /// Ready (or not) to play the settings as they stand. A player whose
@@ -1359,14 +1357,11 @@ impl Lobby {
         if settings.ruleset.same_rules(&self.mine.ruleset) {
             settings.ruleset.name = self.mine.ruleset.name.clone();
         }
-        // The settings are the match's: theirs of a higher stamp are
-        // adopted, and of the same stamp where they differ, by the joiner.
-        // (The ruleset is the host's: a joiner's change made before it
-        // heard the host's ruleset is taken with the host's ruleset, as the
-        // host's own change, which the joiner adopts in turn.)
-        let adopts = stamp > self.stamp || (stamp == self.stamp && settings != self.mine && self.compat.role == Role::Join);
-        let keeps_ruleset = adopts && self.compat.role == Role::Host && settings.ruleset != self.mine.ruleset;
-        if adopts && !keeps_ruleset {
+        // The settings are the host's: the joiner adopts the host's of a
+        // higher stamp, or any that differ from its own (its own first ones,
+        // before it heard the host's); the host takes none of the joiner's,
+        // which only say whether the joiner holds the host's yet.
+        if self.compat.role == Role::Join && (stamp > self.stamp || settings != self.mine) {
             let differ = settings != self.mine;
             self.stamp = stamp;
             self.mine = settings.clone();
@@ -1374,15 +1369,11 @@ impl Lobby {
             if differ {
                 self.check();
             }
-            // (Said back at once, so the other peer sees them adopted; a
-            // player who was ready was ready for the settings before.)
+            // (Said back at once, so the host sees them adopted; a player who
+            // was ready was ready for the settings before.)
             self.change(self.ready && !differ);
         }
-        self.theirs = Some(Theirs { revision, stamp, settings: settings.clone(), ready, name: player_name(&name) });
-        if keeps_ruleset && !self.settled() {
-            let ruleset = self.mine.ruleset.clone();
-            self.put(Settings { ruleset, ..settings });
-        }
+        self.theirs = Some(Theirs { revision, stamp, settings, ready, name: player_name(&name) });
         // (A commitment stands while the other's state is the one agreed.)
         if let Phase::Hello(c) | Phase::Reveal(c, _) = &self.phase
             && !(ready && c.revisions.1 == revision)
@@ -1797,15 +1788,14 @@ mod tests {
         nettai_match::testing::rulesets("exe6")
     }
 
-    /// EXE6's Standard ruleset: everything allowed, one version per build,
-    /// open builds.
+    /// EXE6's Standard ruleset: everything allowed, one version per build.
     fn standard() -> Ruleset {
         rulesets().first().clone()
     }
 
-    /// `s` with its builds closed.
-    fn closed(s: Settings) -> Settings {
-        Settings { closed_builds: true, ..s }
+    /// `s` with its setups open.
+    fn open(s: Settings) -> Settings {
+        Settings { open_setups: true, ..s }
     }
 
     /// Why a lobby failed.
@@ -1907,7 +1897,7 @@ mod tests {
         }
     }
 
-    /// Settings go by name and read back, closed builds and the ruleset with
+    /// Settings go by name and read back, open setups and the ruleset with
     /// them (a preset, a player's own with what it holds back by name, one
     /// version per build or mixed), and what the set is first to (one
     /// round's wins, a triple battle's, four's); ones this content can't
@@ -1920,9 +1910,9 @@ mod tests {
         let m = nettai_match::pick::live(&content, "exe6", 9, None).unwrap();
         let s = Settings::of_match(&m, standard());
         assert_eq!(read(&s).unwrap(), s);
-        let shut = closed(s.clone());
-        assert_eq!(read(&shut).unwrap(), shut);
-        assert_ne!(shut.hash(&content), s.hash(&content), "what both commit to says whether builds are closed");
+        let shown = open(s.clone());
+        assert_eq!(read(&shown).unwrap(), shown);
+        assert_ne!(shown.hash(&content), s.hash(&content), "what both commit to says whether setups are open");
         // Every preset reads back, and both commit to which.
         let mut hashes = std::collections::BTreeSet::new();
         for preset in &r.presets {
@@ -1996,8 +1986,8 @@ mod tests {
         w.put(&String::new());
         w.put(&String::new());
         assert!(Settings::from_bytes(&content, &r, &bytes).unwrap_err().contains("no-such-chip"));
-        // (What the set is first to is the byte after the game, closed
-        // builds, the custom screen time limit, the ruleset and the pool's
+        // (What the set is first to is the byte after the game, open
+        // setups, the custom screen time limit, the ruleset and the pool's
         // switch.)
         let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
@@ -2084,24 +2074,15 @@ mod tests {
         }
     }
 
-    /// The settings are the match's: a joiner coming into the lobby takes
-    /// the host's; either player changes First to and closed builds and the
-    /// other's lobby shows the same, both ready marks cleared; the ruleset is
-    /// the host's
-    /// alone (a joiner's can't change it, and a joiner's change made before
-    /// it heard the host's ruleset keeps the host's); where both change them
-    /// at once the host's change stands; and what both then ready on is
-    /// what is agreed, the ruleset and closed builds reaching both hosts with
-    /// the agreement.
-    /// The custom screen's time limit is the match's: either player's
-    /// change is both lobbies', and the match both agree, its replay's
-    /// match and its rounds have it (in ticks, the round's setup's).
+    /// The custom screen's time limit is the match's: the host's change is
+    /// both lobbies', and the match both agree, its replay's match and its
+    /// rounds have it (in ticks, the round's setup's).
     #[test]
     fn the_custom_screen_time_is_the_matchs() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
         let mut lobbies = pair(&content, [settings(1), settings(1)], [built(&content, "gregar"), built(&content, "falzar")]);
-        lobbies[1].set_custom_screen_time(Some(90));
+        assert!(lobbies[0].set_custom_screen_time(Some(90)));
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!([0, 1].map(|i| lobbies[i].settings().custom_screen_time), [Some(90); 2]);
         for time in [Some(90), None] {
@@ -2113,8 +2094,17 @@ mod tests {
         }
     }
 
+    /// The settings are the match's and the host's alone: a joiner coming
+    /// into the lobby takes the host's; the host changes First to, open
+    /// setups, the custom screen's time limit and the ruleset, and the
+    /// joiner's lobby shows the same, both ready marks cleared; the joiner
+    /// changes none of them, and settings a joiner's peer says it changed
+    /// anyway (a peer that breaks the protocol) are the host's to ignore,
+    /// the joiner taking the host's back; and what both then ready on is
+    /// what is agreed, the ruleset and open setups reaching both hosts
+    /// with the agreement.
     #[test]
-    fn the_settings_are_shared() {
+    fn the_settings_are_the_hosts() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
         let both = |lobbies: &[Lobby; 2]| -> [Settings; 2] { [lobbies[0].settings().clone(), lobbies[1].settings().clone()] };
@@ -2130,21 +2120,36 @@ mod tests {
         // The joiner readies; before the host has heard it, the host makes
         // it a single battle: both show that, and both marks are clear.
         lobbies[1].set_ready(true);
-        lobbies[0].set_first_to(1);
-        assert_eq!(marks(&lobbies)[0], false, "the player who changes them isn't ready for them yet");
+        assert!(lobbies[0].set_first_to(1));
+        assert!(!marks(&lobbies)[0], "the player who changes them isn't ready for them yet");
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!(both(&lobbies), [settings(1), settings(1)]);
         assert_eq!(marks(&lobbies), [false; 4]);
-        // The joiner can't choose the ruleset, nor change it by proposing
-        // settings with another.
-        assert!(!lobbies[1].set_ruleset(standard()));
-        lobbies[1].propose(Settings { ruleset: standard(), ..settings(1) });
+        // The joiner changes nothing: not First to, open setups, the time
+        // limit or the ruleset, nor all of them at once.
+        lobbies[1].set_ready(true);
+        assert!(!lobbies[1].set_first_to(TRIPLE_BATTLE));
+        assert!(!lobbies[1].set_open_setups(true));
+        assert!(!lobbies[1].set_custom_screen_time(None));
+        assert!(!lobbies[1].set_ruleset(rulesets().preset("unrestricted").unwrap().clone()));
+        assert!(!lobbies[1].propose(open(settings(TRIPLE_BATTLE))));
+        assert_eq!(both(&lobbies), [settings(1), settings(1)]);
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!(both(&lobbies), [settings(1), settings(1)]);
-        // Both ready; the joiner closes the builds as the agreement is under
-        // way: it is taken back, both show closed builds, both marks are
-        // clear again.
+        assert_eq!(marks(&lobbies), [false, true, true, false], "the joiner's mark stands");
+        // A joiner's peer that says it changed them anyway, of a stamp
+        // above the host's: the host keeps its own and isn't taken for
+        // ready on them, and the joiner takes the host's back.
+        lobbies[1].put(open(settings(TRIPLE_BATTLE)));
+        lobbies[1].set_ready(true);
         lobbies[0].set_ready(true);
+        run(&mut lobbies, now, 6, &mut |_, _| {});
+        assert_eq!(both(&lobbies), [settings(1), settings(1)]);
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
+        assert_eq!(marks(&lobbies), [true, false, false, true], "the joiner isn't ready for the host's");
+        // Both ready; the host opens the setups as the agreement is under
+        // way: it is taken back, both show open setups, both marks are
+        // clear again.
         lobbies[1].set_ready(true);
         for from in [0, 1, 0] {
             let _ = lobbies[from].poll(now);
@@ -2152,34 +2157,22 @@ mod tests {
                 lobbies[1 - from].receive(now, &d);
             }
         }
-        lobbies[1].set_closed_builds(true);
+        assert!(lobbies[0].set_open_setups(true));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        let shut = closed(settings(1));
-        assert_eq!(both(&lobbies), [shut.clone(), shut.clone()]);
+        let shown = open(settings(1));
+        assert_eq!(both(&lobbies), [shown.clone(), shown.clone()]);
         assert_eq!(marks(&lobbies), [false; 4]);
         assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
-        // Both change them at once (neither has heard the other's change):
-        // the host's stands, on both.
-        lobbies[0].set_first_to(TRIPLE_BATTLE);
-        lobbies[1].set_first_to(3);
+        // The host picks the game's first preset, then each in turn: both
+        // show it, and both marks are clear.
+        assert!(lobbies[0].set_ruleset(standard()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert_eq!(both(&lobbies), [closed(settings(TRIPLE_BATTLE)), closed(settings(TRIPLE_BATTLE))]);
-        // The host changes the ruleset as the joiner changes First to, neither
-        // having heard the other: the joiner's change is taken with the
-        // host's ruleset, on both. Then the host picks each preset in turn:
-        // both show it, and both marks are clear.
-        lobbies[0].set_ruleset(standard());
-        lobbies[1].set_first_to(4);
-        lobbies[1].set_first_to(TRIPLE_BATTLE);
-        run(&mut lobbies, now, 8, &mut |_, _| {});
-        let both_now = both(&lobbies);
-        assert_eq!(both_now[0], both_now[1]);
-        assert_eq!(both_now[0].ruleset.name, RulesetName::Preset("masters".into()), "the host's ruleset stands");
+        assert_eq!(both(&lobbies)[1].ruleset.name, RulesetName::Preset("masters".into()), "the host's ruleset");
         for preset in rulesets().presets.iter().rev() {
             // (Under one version's preset the other's build can't be ready.)
             lobbies[0].set_ready(true);
             lobbies[1].set_ready(true);
-            lobbies[0].set_ruleset(preset.clone());
+            assert!(lobbies[0].set_ruleset(preset.clone()));
             run(&mut lobbies, now, 6, &mut |_, _| {});
             let with = Settings { ruleset: preset.clone(), ..both(&lobbies)[0].clone() };
             assert_eq!(both(&lobbies), [with.clone(), with], "{:?}", preset.name);
@@ -2189,7 +2182,7 @@ mod tests {
         lobbies[0].set_ruleset(settings(1).ruleset);
         lobbies[0].set_first_to(TRIPLE_BATTLE);
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        let agreed = closed(settings(TRIPLE_BATTLE));
+        let agreed = open(settings(TRIPLE_BATTLE));
         assert_eq!(both(&lobbies), [agreed.clone(), agreed.clone()]);
         // One ready isn't an agreement; both are, on what both show.
         lobbies[0].set_ready(true);
@@ -2202,7 +2195,7 @@ mod tests {
         for l in &mut lobbies {
             let a = started(l, now);
             assert_eq!(a.settings, agreed);
-            assert!(a.closed_builds() && a.m.first_to() == TRIPLE_BATTLE);
+            assert!(a.open_setups() && a.m.first_to() == TRIPLE_BATTLE);
         }
     }
 
@@ -2344,7 +2337,7 @@ mod tests {
         // The host picks Standard again and the joiner brings its first
         // build: both ready, and the ruleset is agreed with the match.
         assert!(lobbies[0].set_ruleset(standard()));
-        lobbies[0].set_closed_builds(true);
+        assert!(lobbies[0].set_open_setups(true));
         lobbies[1].set_side(joiner.clone());
         run(&mut lobbies, now, 6, &mut |_, _| {});
         assert!(lobbies[0].set_ready(true) && lobbies[1].set_ready(true));
@@ -2352,8 +2345,8 @@ mod tests {
         load(&mut lobbies, now);
         for l in &mut lobbies {
             let a = started(l, now);
-            assert_eq!(a.settings, closed(standard_one.clone()));
-            assert!(a.closed_builds() && a.sides[1] == joiner);
+            assert_eq!(a.settings, open(standard_one.clone()));
+            assert!(a.open_setups() && a.sides[1] == joiner);
         }
 
         // A program that doesn't hold its own player to the check: under the
@@ -2591,7 +2584,7 @@ mod tests {
     fn a_lobby_goes_on_after_a_match() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = closed(settings(1));
+        let s = open(settings(1));
         let sides = [side(&content, 3), side(&content, 4)];
         let mut lobbies = pair(&content, [s.clone(), s.clone()], sides.clone());
         // (There is no lobby to go back to before a match, and no channel.)
@@ -2654,7 +2647,7 @@ mod tests {
         assert_ne!(second[0].seed, first[0].seed, "another match, another seed");
         assert_eq!((second[0].seed, &second[0].m), (second[1].seed, &second[1].m));
         assert_eq!(second[0].sides, [sides[0].clone(), another]);
-        assert!(second[0].closed_builds() && second[0].settings == s);
+        assert!(second[0].open_setups() && second[0].settings == s);
         // Its channel is its own: the first match's hears none of it.
         let mut next = lobbies.each_mut().map(|l| l.channel().expect("the second match's channel"));
         next[1].send(b"a frame of the second").unwrap();

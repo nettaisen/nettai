@@ -81,7 +81,7 @@ export global ReplaysView {
     in property <int> speed: 1;
     // The side whose console is shown.
     in property <int> view;
-    // Both builds may be shown (the match's weren't closed), and are: the console shown's player's at the
+    // Both builds may be shown (the match's setups were open), and are: the console shown's player's at the
     // left, the other's at the right.
     in property <bool> builds-open;
     in property <bool> builds-shown;
@@ -762,7 +762,7 @@ component SeekBar inherits Rectangle {
 }
 
 // The buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next round;
-// and, `apart` further on, both builds (where the match's weren't closed), the input display and the other
+// and, `apart` further on, both builds (where the match's setups were open), the input display and the other
 // console's picture in the corner, each lit while it is shown. `pitch` is how far apart they are.
 component TransportButtons inherits Rectangle {
     in property <length> pitch: 52px;

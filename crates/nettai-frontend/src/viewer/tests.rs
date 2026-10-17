@@ -277,7 +277,7 @@ fn the_transport_goes_where_it_says() {
     let mut v = viewer(&content, &replay, 0);
     let second = replay.round_starts()[1];
     assert_eq!((v.length(), v.rounds(), v.end()), (length, &[0, second][..], End::Set));
-    assert_eq!((v.info(), v.info().closed_builds), (&replay.info, false));
+    assert_eq!((v.info(), v.info().open_setups), (&replay.info, true));
     assert_eq!(v.duration(), time_of(ticks));
     assert!((v.duration().as_secs_f64() - ticks as f64 / FRAME_RATE).abs() < 1e-3);
     assert_eq!((v.position(), v.time(), v.round(), v.at_end(), v.paused(), v.speed()), (0, Duration::ZERO, 1, false, false, Speed::Normal));
