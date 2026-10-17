@@ -12,7 +12,7 @@
 //! peers agree it in the lobby and the handshake (`crate::lobby`, over the
 //! host's datagrams: the app's are nettai's `netplay`): both run the
 //! same engine and play the same content, agree the match's settings (its
-//! game, its rounds, whether builds are closed) and swap their sides (their
+//! game, its rounds, whether setups are open) and swap their sides (their
 //! facts as the game's rules take them, in nettai-match's binary; the
 //! language is each player's own) and their halves of the seed, committed
 //! before either reveals; then each loads the match, and it starts once
@@ -693,13 +693,11 @@ mod tests {
         let (mut shuttle, hands) = Shuttle::new();
         let sinks = [Shared::default(), Shared::default()];
         let mut playing: Vec<Session> = Vec::new();
-        // (The players closed their builds: each one's recording, made of
+        // (The players opened their setups: each one's recording, made of
         // its agreement, says so.)
-        let closed = {
-            Settings { closed_builds: true, ..triple("exe6") }
-        };
+        let shown = Settings { open_setups: true, ..triple("exe6") };
         let mut names = Vec::new();
-        for (side, (hand, agreement)) in hands.into_iter().zip(agreed(&content, &closed, mine)).enumerate() {
+        for (side, (hand, agreement)) in hands.into_iter().zip(agreed(&content, &shown, mine)).enumerate() {
             let recorder = Recorder::of_agreement(Box::new(sinks[side].clone()), &content, &agreement, 1_790_000_000).unwrap();
             names.push(agreement.names.clone());
             let mut s = Session::new(Box::new(NetPlayer::new(hand, side, agreement.set, no_delay())));
@@ -723,10 +721,10 @@ mod tests {
         let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
         assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
         assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));
-        // Each one's info is its agreement's: an online match with closed
-        // builds, recorded from its own side, by the names the lobby had.
+        // Each one's info is its agreement's: an online match with open
+        // setups, recorded from its own side, by the names the lobby had.
         for (side, replay) in [&a, &b].into_iter().enumerate() {
-            let info = nettai_replay::Info { when: 1_790_000_000, side: side as u8, kind: nettai_replay::MatchKind::Online, closed_builds: true, names: names[side].clone() };
+            let info = nettai_replay::Info { when: 1_790_000_000, side: side as u8, kind: nettai_replay::MatchKind::Online, open_setups: true, names: names[side].clone() };
             assert_eq!(replay.info, info, "side {side}");
         }
         assert_eq!(names[0], names[1]);
@@ -887,11 +885,11 @@ mod tests {
     /// other joins by the code as typed. Their lobbies meet: the joiner's
     /// takes the host's settings, each sees the other's name and the round
     /// trip; the links leave the room, which the server forgets. The host
-    /// makes it a single battle with closed builds, which both show, nobody
+    /// makes it a single battle with open setups, which both show, nobody
     /// ready any more. Both ready: the match is agreed,
     /// and each host preloads it (`crate::preload`), saying how far it is as
     /// it goes, which the other sees; nothing starts while one is still
-    /// loading. Both loaded: both start the same match, closed builds with
+    /// loading. Both loaded: both start the same match, open setups with
     /// it, and play it on the lobby's channel with the players their
     /// preloads made (nothing is loaded late), each at its own input delay,
     /// with the connection's quality to show. One leaves the match, and the
@@ -917,12 +915,12 @@ mod tests {
             let ping = seat.lobby.ping().unwrap();
             assert!(ping.ms < 500.0 && ping.jitter_ms < 500.0, "two links on one machine: {ping:?}");
         }
-        // The joiner readies; the host makes it a single battle with closed
-        // builds: both show that, and nobody is ready.
+        // The joiner readies; the host makes it a single battle with open
+        // setups: both show that, and nobody is ready.
         seats[1].lobby.set_ready(true);
         seats[0].lobby.set_first_to(1);
-        seats[0].lobby.set_closed_builds(true);
-        let single = Settings { closed_builds: true, ..Settings::new("exe6", 1, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone()) };
+        seats[0].lobby.set_open_setups(true);
+        let single = Settings { open_setups: true, ..Settings::new("exe6", 1, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone()) };
         until(&mut seats, "the settings are both players'", idle, |s, _| s.iter().all(|seat| *seat.lobby.settings() == single && !seat.lobby.ready() && !seat.lobby.their_ready()));
         // Both ready: agreed, and loading.
         seats[0].lobby.set_ready(true);
@@ -968,13 +966,13 @@ mod tests {
         until(&mut seats, "the host sees the joiner's bar full", idle, |s, stands| s[0].lobby.their_loading() > 0.99 && !s[0].lobby.their_loaded() && *stands == loading);
         seats[1].lobby.set_loaded();
         until(&mut seats, "the match starts", idle, |_, stands| *stands == [Stands::Start, Stands::Start]);
-        // The same match on both, closed builds with it; played on the
+        // The same match on both, open setups with it; played on the
         // lobby's channel by the players the preloads made, each player at
         // their own input delay.
         let mut seeds = Vec::new();
         for (i, (seat, preload)) in seats.iter_mut().zip(preloads).enumerate() {
             let Status::Start(a) = seat.lobby.poll(Instant::now()) else { panic!("started") };
-            assert!(a.closed_builds() && a.m.rounds.len() == 1 && a.side == i);
+            assert!(a.open_setups() && a.m.rounds.len() == 1 && a.side == i);
             assert_eq!(a.names, ["Lan".to_string(), "Chaud".to_string()]);
             seeds.push(a.seed);
             let (side, set) = (a.side, a.set.clone());

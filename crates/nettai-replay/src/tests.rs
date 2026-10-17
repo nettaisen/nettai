@@ -5,7 +5,7 @@ fn head() -> Head {
 }
 
 fn info() -> Info {
-    Info { when: 1_790_000_000, side: 1, kind: MatchKind::Online, closed_builds: true, names: ["Lan".into(), String::new()] }
+    Info { when: 1_790_000_000, side: 1, kind: MatchKind::Online, open_setups: false, names: ["Lan".into(), String::new()] }
 }
 
 /// A set of two rounds: buttons that change now and then, a digest
@@ -78,27 +78,27 @@ fn a_round_starts_after_each_rounds_end() {
     assert_eq!(r.round_starts(), [0]);
 }
 
-/// The kind of match and closed builds are the info's, each read back as
+/// The kind of match and open setups are the info's, each read back as
 /// written; a byte neither holds is refused.
 #[test]
-fn the_info_says_the_kind_of_match_and_closed_builds() {
-    for (kind, closed_builds) in [(MatchKind::Offline, false), (MatchKind::Online, false), (MatchKind::Online, true)] {
-        let info = Info { kind, closed_builds, ..info() };
+fn the_info_says_the_kind_of_match_and_open_setups() {
+    for (kind, open_setups) in [(MatchKind::Offline, true), (MatchKind::Online, true), (MatchKind::Online, false)] {
+        let info = Info { kind, open_setups, ..info() };
         let r = Replay::read(&written_with(&info, &ticks())).unwrap();
         assert_eq!(r.info, info);
     }
-    let blank = Info { when: 0, side: 1, kind: MatchKind::Offline, closed_builds: false, names: Default::default() };
+    let blank = Info { when: 0, side: 1, kind: MatchKind::Offline, open_setups: true, names: Default::default() };
     assert_eq!(Info::of(MatchKind::Offline, 1), blank);
-    // The info's body: when (8 bytes), the side, the kind, closed builds.
+    // The info's body: when (8 bytes), the side, the kind, open setups.
     let bytes = written(&[]);
     let body = bytes.windows(4).position(|w| w == b"INFO").unwrap() + 8;
-    assert_eq!(bytes[body + 8..body + 11], [1, 1, 1]);
+    assert_eq!(bytes[body + 8..body + 11], [1, 1, 0]);
     let mut kind = bytes.clone();
     kind[body + 9] = 2;
     assert_eq!(refused(&kind), "the info's kind of match is 2, not 0 (offline) or 1 (online)");
-    let mut closed = bytes.clone();
-    closed[body + 10] = 2;
-    assert_eq!(refused(&closed), "the info's closed builds is 2, not 0 or 1");
+    let mut open = bytes.clone();
+    open[body + 10] = 2;
+    assert_eq!(refused(&open), "the info's open setups is 2, not 0 or 1");
 }
 
 /// All a replay says of a side is its player's name and the match's bytes:

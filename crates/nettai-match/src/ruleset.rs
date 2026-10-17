@@ -2,7 +2,7 @@
 //! docs/design/rules-in-luau.md, "Rulesets"; docs/design/versions.md §2.2,
 //! §2.3). Its name, whether each build must be one version's (Versions: one
 //! per build, or mixed), and for each of its game's categories the items
-//! it doesn't allow: what may be played, and nothing else (closed builds is
+//! it doesn't allow: what may be played, and nothing else (open setups is
 //! the lobby's setting beside it: the user, "i think closed setup should
 //! not be part of the ruleset actually"). It says nothing of how a round
 //! plays, so the simulation never reads it.

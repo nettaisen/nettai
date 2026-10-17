@@ -21,7 +21,7 @@
 //!           content hash (u64), the first battle's digest before any tick (u64)
 //! info   := "INFO", length (u32), when (u64: unix seconds), the side that
 //!           recorded (a byte: 0, 1), the kind of match (a byte: 0 offline,
-//!           1 online), closed builds (a byte: 0 no, 1 yes), the players'
+//!           1 online), open setups (a byte: 0 no, 1 yes), the players'
 //!           names by side (two strings)
 //! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
@@ -46,7 +46,8 @@
 //! the simulation is made from, so it stays. A build's name is the
 //! player's own business and is in neither: the info has no place for one,
 //! and a match in binary holds no text at all. A viewer that should not
-//! show the setups either is told so by the info ([`Info::closed_builds`]).
+//! show the setups either is told so by the info ([`Info::open_setups`]:
+//! where they weren't open).
 //!
 //! **The layout.** This is layout 1. A file of another layout is refused
 //! as one from another version of nettai ([`ReadError::OtherLayout`]): a
@@ -162,7 +163,7 @@ impl MatchKind {
 }
 
 /// What a replay says about itself besides: when, who recorded it, what
-/// kind of match it was and whether its builds were closed, the players'
+/// kind of match it was and whether its setups were open, the players'
 /// names. (Nothing of a player's build but what the match holds of it: no
 /// build's name.)
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -174,21 +175,22 @@ pub struct Info {
     pub side: u8,
     /// The kind of match it was.
     pub kind: MatchKind,
-    /// The match was played with closed builds: neither player was shown
-    /// the other's, and a viewer of the replay isn't shown them either.
-    /// (The match still holds both setups: the simulation is made from
-    /// them.)
-    pub closed_builds: bool,
+    /// The match was played with open setups: each player could be shown
+    /// the other's, and so may a viewer of the replay. Where they weren't,
+    /// neither player was shown the other's, and a viewer isn't shown
+    /// them either. (The match still holds both setups: the simulation is
+    /// made from them.)
+    pub open_setups: bool,
     /// The players' names by side; empty where none is known.
     pub names: [String; 2],
 }
 
 impl Info {
     /// The info of a match of `kind` recorded from `side`, with open
-    /// builds, at no stated time, by players without names: for the rest
+    /// setups, at no stated time, by players without names: for the rest
     /// to be filled in.
     pub fn of(kind: MatchKind, side: u8) -> Info {
-        Info { when: 0, side, kind, closed_builds: false, names: Default::default() }
+        Info { when: 0, side, kind, open_setups: true, names: Default::default() }
     }
 }
 
@@ -266,7 +268,7 @@ impl<W: Write> Writer<W> {
         let mut i = info.when.to_le_bytes().to_vec();
         i.push(info.side);
         i.push(info.kind.byte());
-        i.push(info.closed_builds as u8);
+        i.push(info.open_setups as u8);
         for name in &info.names {
             string(&mut i, name);
         }
@@ -478,12 +480,12 @@ impl Replay {
         }
         let kind = i.u8()?;
         let kind = MatchKind::of_byte(kind).ok_or_else(|| format!("the info's kind of match is {kind}, not 0 (offline) or 1 (online)"))?;
-        let closed_builds = match i.u8()? {
+        let open_setups = match i.u8()? {
             0 => false,
             1 => true,
-            n => return Err(format!("the info's closed builds is {n}, not 0 or 1")),
+            n => return Err(format!("the info's open setups is {n}, not 0 or 1")),
         };
-        let info = Info { when, side, kind, closed_builds, names: [i.string()?, i.string()?] };
+        let info = Info { when, side, kind, open_setups, names: [i.string()?, i.string()?] };
         i.done()?;
         let match_bytes = b.section(b"MTCH", "match")?.rest.to_vec();
         b.what = "input";
