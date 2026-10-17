@@ -73,9 +73,9 @@ local function fly(me: Object)
     me.pos = Vec3.new(p.x + me.vel.x, p.y, p.z)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
-    -- (The original's field runs from -REACH to REACH - 1 whatever the side; nettai reads side 1's X mirrored:
+    -- (The original's field runs from -REACH to REACH - 1 whatever the side; nettai reads the X in the canonical side's frame:
     -- docs/engine/side-symmetry.md.)
-    local x = if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)
+    local x = int.i32(field.side_sign(me.alliance) * me.pos.x)
     if int.u32(int.asr(x, 16) + REACH) >= 2 * REACH then
         me.collision:set_region(nil)
         let_go(me)

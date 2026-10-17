@@ -52,14 +52,14 @@ end
 -- other side's area whichever way it faces (`look.releases_by_side`,
 -- EXE4's). (EXE4's original leaves right of the navi whatever its side: a
 -- side-1 navi's thing left 4 pixels behind it and flew 8 pixels further,
--- landing later. nettai's side-1 navi's leaves to its left, as side 0's to
--- its right: docs/engine/side-symmetry.md.)
+-- landing later. nettai's leaves right of the canonical side's navi and
+-- left of the other side's: docs/engine/side-symmetry.md.)
 local function release_point(me: Object, look: ThrowLook): Vec3
     if not look.releases_by_side then
         return throw.release_point(me)
     end
     local p = me.pos
-    local toward = if me.alliance == 0 then 1 else -1
+    local toward = field.side_sign(me.alliance)
     return Vec3.new(p.x + toward * RELEASE_AHEAD, p.y, p.z + RELEASE_UP)
 end
 

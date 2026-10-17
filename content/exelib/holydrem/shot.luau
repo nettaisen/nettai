@@ -60,8 +60,8 @@ local function fly(me: Object)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
     -- (The original's field runs from -EDGE to EDGE - 1 whatever the side, so a side-1 shot went a tick further;
-    -- nettai reads side 1's X mirrored: docs/engine/side-symmetry.md.)
-    local x = bit32.rshift(int.u32(if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)), 16)
+    -- nettai reads the X in the canonical side's frame: docs/engine/side-symmetry.md.)
+    local x = bit32.rshift(int.u32(field.side_sign(me.alliance) * me.pos.x), 16)
     if int.u16(x + EDGE) >= 2 * EDGE then
         finish(me)
     end

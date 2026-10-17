@@ -21,16 +21,15 @@ end
 
 -- `object_getPanelsFiltered`: every panel whose flags meet (require,
 -- forbid), from (6, 3) back to (1, 1): rows 3 to 1, columns 6 to 1. With
--- `side`, the columns from that side's far edge back toward its own: the
--- original's order is side 0's (from the far column, 6), and a list whose
--- order counts (a list gone through in order, its first entry taken, a
--- shuffle's start) is side 1's mirror image with columns 1 to 6
--- (docs/engine/side-symmetry.md). A single pick from it (one draw modulo its
+-- `side`, in that side's order: the original's for the canonical side, its
+-- mirror image (columns 1 to 6) for the other, where the order counts (a
+-- list gone through in order, its first entry taken, a shuffle's start;
+-- docs/engine/side-symmetry.md). A single pick from it (one draw modulo its
 -- length) gives either side each panel alike and keeps the original's order.
 function panels.filtered(require: number, forbid: number, side: number?): { number }
     local list = {}
     local first, last, step = 6, 1, -1
-    if side == 1 then
+    if side ~= nil and field.side_sign(side) < 0 then
         first, last, step = 1, 6, 1
     end
     for y = 3, 1, -1 do
@@ -48,7 +47,7 @@ end
 function panels.filtered_except(me: Object, require: number, forbid: number, side: number?): { number }
     local list = {}
     local first, last, step = 6, 1, -1
-    if side == 1 then
+    if side ~= nil and field.side_sign(side) < 0 then
         first, last, step = 1, 6, 1
     end
     for y = 3, 1, -1 do

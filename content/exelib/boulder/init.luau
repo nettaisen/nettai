@@ -65,7 +65,8 @@ local SIDE_1 = 0x20
 -- 0xE3A02004), by the address's low two bits; the object's own flags (in use, sprite not animating) are lost. On
 -- columns 2 and 5, where EXE6's stages' boulders are, that leaves it "not in use" (its sprite never steps) with stray
 -- bits (holds a reservation; on column 2 also 0x80, which nothing reads); on column 3 in use and shown (0xE3), on
--- column 4 not in use (0x04). nettai reads side 1's by its mirrored column (`place`).
+-- column 4 not in use (0x04). nettai reads the canonical side's by its column and the other side's by its
+-- mirrored column (`place`).
 local BIOS_WORD, RUNS_PAUSED_AND_DIMMED = 0xE3A02004, 0x14
 
 -- Its actions (EXE6's `jt_80D2348`; EXE5's table has no frozen or bubbled rows and stands in its 6, the same
@@ -220,9 +221,9 @@ function boulder.make(look: Look): Kind
             o.element = 0
             o.alliance = if bit32.btest(field.flags(x, y), SIDE_1) then 1 else 0
             -- (The original reads by the column as it is: a boulder on column 3 is in use and shown, one on column
-            -- 4, side 1's front, isn't. nettai reads side 1's by the mirrored column, so a boulder on either side's
-            -- front column is as side 0's: docs/engine/side-symmetry.md.)
-            local column = if o.alliance == 0 then x else 7 - x
+            -- 4, side 1's front, isn't. nettai reads the other side's than the canonical by the mirrored column, so
+            -- a boulder on either side's front column is as the canonical side's: docs/engine/side-symmetry.md.)
+            local column = if field.side_sign(o.alliance) > 0 then x else 7 - x
             local read = bit32.band(bit32.rshift(BIOS_WORD, 8 * (column % 4)), 0xFF)
             o:set_header_flags(bit32.bor(read, RUNS_PAUSED_AND_DIMMED))
             obstacle.enter_stage(o)
