@@ -104,7 +104,7 @@ Transient hitboxes (T3/3) are inserted after their spawner **[verified]**.
 - Coordinates are absolute. x=1 is the left edge; alliance 0 normally owns the left columns.
 - `object_getAllianceDirection(a) = 1 - 2a` (+1 means "toward larger x").
 - `object_getFlipDirection(a, flip) = 1 - 2*(a ^ flip)` (0x0800E2CE).
-- Pixel↔panel conversion (movement): X = (x·40 − 140)<<16, Y = (y·24 − 20)<<16. Back-conversion `sub_800E258`: `((X>>16)+160)/40`, `((Y>>16)+32)/24`, signed division.
+- Pixel↔panel conversion (movement): X = (x·40 − 140)<<16, Y = (y·24 − 20)<<16. Back-conversion `sub_800E258`: `((X>>16)+160)/40`, `((Y>>16)+32)/24`, signed division (a line between two columns in the right-hand one; nettai divides the X in the canonical side's frame, side-symmetry.md §1.1).
 
 ### 2.2 PanelData (0x20 bytes)
 

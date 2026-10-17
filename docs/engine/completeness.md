@@ -583,7 +583,8 @@ two panels, and on an ice panel the original then slides it back where the engin
 panels or more to the right or down as "other": the routine tests `>= 2` and nothing below -1, so a move left or
 up along one axis counts by its sign. The port had made every multi-panel move "other". It no longer does, and
 the full lab matches (5,177 of 5,178 recordings; the other, `custom/no-beast-out`, is a new custom-screen
-recording whose own engine change is still on another branch).
+recording whose own engine change is still on another branch). (Since then the X is tested in the canonical
+side's frame, for either side: side-symmetry.md §1.3, with the other routines that were side-dependent.)
 
 **Batch 2, the bombs, TankCan's shell, TimeBom and the projectile (59 branches):** 22 taken by 20 new
 recordings, 36 unreachable, 1 hard:
