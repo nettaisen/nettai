@@ -1252,3 +1252,44 @@ fn a_chip_that_folds_is_picked_only_after_one_it_folds_into() {
     let fight = to_the_fight(&copy, 1, &rank, &mut 0).expect("the fight starts");
     assert!(!stands_alone(&fight, 1), "{:?}", fight.hands[1].ids);
 }
+
+/// The fight of `m` (seed `seed`), side 1 having picked only its first
+/// chip dealt (`one`) or every chip it can, the other side every chip it
+/// can.
+fn fight_with(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, one: bool) -> Battle {
+    let b = Set::of(content, m, seed).start();
+    let worth = move |s: u8| Some(if !one || s == 0 { 1 } else { -1 });
+    to_the_fight(&b, 1, &worth, &mut 0).expect("the fight starts")
+}
+
+/// Area counts: the dummy (EXE6) with only AreaGrab in hand, the player
+/// standing still, uses it, and the panels it owns grow by the column it
+/// takes; what a trial makes counts that column taken (by [`AREA`] a panel,
+/// and the room its navi has by [`ROOM`]).
+#[test]
+fn it_takes_area_where_that_pays() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let mut m = even_match(&content, "exe6", 1, 400);
+    m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("areagrab", 'B')])).unwrap();
+    m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+    let start = fight_with(&content, &m, 1, true);
+    assert_eq!(start.hands[1].remaining(), 1, "AreaGrab alone in hand");
+    let (area0, room0) = (area(&start, 1), room(&start, 1));
+    let mut b = start.clone();
+    let mut fighter = Fighter::inline(Level::HARD, 1);
+    let mut most: Option<Battle> = None;
+    for _ in 0..300 {
+        let mine = fighter.buttons(&b, 1, 0) & !(keys::L | keys::R);
+        step(&mut b, 1, mine, 0);
+        if most.as_ref().is_none_or(|x| area(&b, 1) > area(x, 1)) {
+            most = Some(b.clone());
+        }
+    }
+    assert_eq!(b.hands[1].remaining(), 0, "AreaGrab unused");
+    let most = most.unwrap();
+    assert_eq!(area(&most, 1), area0 + 3, "a column taken");
+    assert!(room(&most, 1) > room0);
+    let (dealt, lost) = outcome(&start, &most, 1);
+    assert!(dealt - lost >= 3 * AREA, "{dealt} - {lost}");
+}

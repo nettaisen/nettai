@@ -28,7 +28,16 @@
 //! a margin ([`Level::steady`]): no change of mind for nothing, no pacing.
 //! A chip's dimming isn't counted against the horizon: a copy that enters
 //! one plays on till it ends, and a moment of the fight after, so the
-//! attack's hits land in it.
+//! attack's hits land in it; and a plan stands still in it, as the fight
+//! does (what it waits for, it waits for after).
+//!
+//! What a copy makes is HP and ground alike, wherever copies are scored (a
+//! plan, a turn on the custom screen, a press while dimmed): the HP it takes
+//! away and loses, the panels its side takes or loses ([`AREA`]: a column
+//! about a modest hit), and the panels its navi has to move on ([`ROOM`]: a
+//! navi boxed in has no room to dodge), as the copy ends. So a chip that
+//! takes area (AreaGrab) is used where taking it pays, and losing a column
+//! is a loss, though no HP shows it.
 //!
 //! **While the battle is dimmed** ([`dimmed`]) nothing moves but what the
 //! chip brings, so what a press of A does then is the battle's alone to
@@ -267,6 +276,11 @@ impl Exec {
 
     fn next(&mut self, b: &Battle, side: u8) -> u16 {
         const HELD: u16 = keys::B;
+        // (A dimming stands the plan still, as it stands the fight: its waits aren't counted then. A chip the
+        // other player's dimming held up is pressed for again after it, not given up as one the navi didn't take.)
+        if b.is_dimmed() {
+            return HELD;
+        }
         let Some(r) = b.player(side) else { return HELD };
         let at = b.objects.get(r).panel;
         let target = if self.acted { self.plan.after.unwrap_or(at) } else { self.plan.to };
@@ -418,9 +432,53 @@ const TAKEN: i64 = 12;
 /// A navi deleted, worth more than any HP.
 const DELETED: i64 = 1_000_000;
 
+/// What a panel of the field is worth to the side that owns it, in tenths
+/// of HP: a column taken (three panels) is worth 18 HP, about a modest hit
+/// (less than most chips that attack take away), and a column lost costs as
+/// much. Area is reach (a side's attacks that strike a panel or so ahead
+/// reach further from a column further on) and room the other side loses to
+/// dodge in; stolen panels go back to their owner after a while, which a
+/// copy plays out where its ticks reach that far, so only what it ends with
+/// counts.
+const AREA: i64 = 60;
+/// What a panel its navi can step on is worth to a side besides, in tenths
+/// of HP: a navi boxed into a column or two (its area taken, its panels
+/// broken or taken up by obstacles) has no room to dodge in, a danger its HP
+/// doesn't show yet.
+const ROOM: i64 = 20;
+
+/// The panels side `side` owns in `b` (each panel's owner as the engine
+/// keeps it).
+fn area(b: &Battle, side: u8) -> i64 {
+    b.field.panels.iter().flatten().filter(|p| p.alliance == side).count() as i64
+}
+
+/// The panels side `side`'s navi in `b` can step on (none where it has no
+/// navi): its own and not broken or taken up, as the engine's step test
+/// says, and the one it stands on and the one it is stepping to (its body
+/// and its reservation, which that test counts as taken: a navi on its way
+/// has no less room than one standing).
+fn room(b: &Battle, side: u8) -> i64 {
+    let Some(r) = b.player(side) else {
+        return 0;
+    };
+    let at = b.objects.get(r).panel;
+    let mut n = 0;
+    for (y, row) in b.field.panels.iter().enumerate() {
+        for (x, p) in row.iter().enumerate() {
+            let (x, y) = (x as u8, y as u8);
+            n += (b.can_step(r, x, y) || p.reserver == Some(r) || PanelPos { x, y } == at) as i64;
+        }
+    }
+    n
+}
+
 /// What a trial did, for side `side`, from the battle `before` to `after`:
 /// the HP it took away and the HP it lost (less what it got back), in
-/// tenths of HP (a navi deleted counts as [`DELETED`]).
+/// tenths of HP (a navi deleted counts as [`DELETED`]); and the ground: the
+/// panels it took ([`AREA`]) and the room its navi has to move in
+/// ([`ROOM`]), what it gained counted with what it took away, what it lost
+/// with what it lost.
 fn outcome(before: &Battle, after: &Battle, side: u8) -> (i64, i64) {
     // (A battle the engine stopped is the worst: the session ends there.)
     if after.is_stopped() {
@@ -430,7 +488,11 @@ fn outcome(before: &Battle, after: &Battle, side: u8) -> (i64, i64) {
     let deleted = |s: u8| {
         if after.is_battle_over() && hp(after, s) == 0 { DELETED } else { 0 }
     };
-    ((hp(before, them) - hp(after, them)) * DEALT + deleted(them), (hp(before, side) - hp(after, side)) * TAKEN + deleted(side))
+    let ground = (area(after, side) - area(before, side)) * AREA + (room(after, side) - room(before, side)) * ROOM;
+    (
+        (hp(before, them) - hp(after, them)) * DEALT + deleted(them) + ground.max(0),
+        (hp(before, side) - hp(after, side)) * TAKEN + deleted(side) + (-ground).max(0),
+    )
 }
 
 /// What the other player may do, as a plan is tried, in the order a level
