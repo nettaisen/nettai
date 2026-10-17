@@ -40,7 +40,7 @@ end
 -- its spawner's register: 0 for the first, then the bolt before's side
 -- and flip halfword, or the element if the pool was full.)
 local function bolts(me: Object)
-    -- (In order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    -- (In its side's order: docs/engine/side-symmetry.md.)
     local found = panels.filtered_except(me, ENEMIES[me.alliance], 0, me.alliance)
     local damage = link.damage_word(me)
     local r3 = 0

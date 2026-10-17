@@ -114,8 +114,9 @@ local function pick(me: Object): (number, number, number)
         end
     end
     if not found then
-        -- (Shuffled from its order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
-        local area = panels.filtered_except(me, ENEMY_AREA[me.alliance].require, ENEMY_AREA[me.alliance].forbid, me.alliance)
+        -- (Shuffled from its side's order: docs/engine/side-symmetry.md.)
+        local cond = ENEMY_AREA[me.alliance]
+        local area = panels.filtered_except(me, cond.require, cond.forbid, me.alliance)
         if #area == 0 then
             error("Meddy's pick (0x080BBCAA) finds no panel of the enemy's area and stores stale stack")
         end

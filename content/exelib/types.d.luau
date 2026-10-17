@@ -122,7 +122,16 @@ export type Trajectory = {
     angle: (dx: number, dy: number, side: number?) -> number,
     toward: (angle: number, speed: number, side: number?) -> (number, number),
     in_ticks: (pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number, side: number?) -> Vec3,
-    at_speed: (pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number, side: number?) -> (number, number),
+    at_speed: (
+        pos: Vec3,
+        vel_y: number,
+        x: number,
+        y: number,
+        z: number,
+        speed: number,
+        gravity: number,
+        side: number?
+    ) -> (number, number),
 }
 
 -- A game's wide wave (@exelib/widesht/wave): its kind's key, its sprite and sound, its afterimages' sprite (a
