@@ -62,7 +62,7 @@ local function hop(me: Object)
             x = me.panel_x
         end
         local px, py = field.center(x, y)
-        me.vel = trajectory.in_ticks(me.pos, px, py, 0, HOP_TICKS, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, px, py, 0, HOP_TICKS, GRAVITY, me.alliance)
         me.timer = HOP_TICKS
         me.phase_init = 4
     end

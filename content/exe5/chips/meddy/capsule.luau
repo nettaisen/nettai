@@ -94,7 +94,7 @@ local function fly(me: Object)
     if me.phase == 0 then
         me.phase = 4
         local x, y = field.center(fx, fy)
-        me.vel = trajectory.in_ticks(me.pos, x, y, -0x8_0000, FLIGHT, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, x, y, -0x8_0000, FLIGHT, GRAVITY, me.alliance)
         me.timer = FLIGHT
         me.timer2 = 0
         return

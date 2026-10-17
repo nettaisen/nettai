@@ -49,7 +49,7 @@ local function hop_to(me: Object, panels: number, ticks: number)
     local x, y = me.panel_x + panels * me.facing, me.panel_y
     me.future_panel_x, me.future_panel_y = x, y
     local cx, cy = field.center(x, y)
-    me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, ticks, GRAVITY)
+    me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, ticks, GRAVITY, me.alliance)
     me.timer = ticks
 end
 

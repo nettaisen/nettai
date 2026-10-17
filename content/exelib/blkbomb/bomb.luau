@@ -223,10 +223,10 @@ local function init(me: Object, s: State, k: Kinded)
         local tx, ty = field.center(x, y)
         local p = me.pos
         local trajectory = k.trajectory
-        s.angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
-        local vx, vy = trajectory.toward(s.angle, SPEED)
+        s.angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y), me.alliance)
+        local vx, vy = trajectory.toward(s.angle, SPEED, me.alliance)
         me.vel = Vec3.new(vx, vy, me.vel.z)
-        local vz, ticks = trajectory.at_speed(me.pos, vy, tx, ty, 0, SPEED, GRAVITY)
+        local vz, ticks = trajectory.at_speed(me.pos, vy, tx, ty, 0, SPEED, GRAVITY, me.alliance)
         me.vel = Vec3.new(vx, vy, vz)
         me.timer = ticks
         if ticks == 0 then
