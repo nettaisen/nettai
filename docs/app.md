@@ -2981,11 +2981,19 @@ it knows of the game from copies of the battle: each few ticks it tries, for eac
 standing there (how dangerous the panel is over the next second, against a few guesses at the player: going on,
 doing again what they just did, using their chip, walking to its row and attacking, stepping) and, from the safest
 few, shooting the charged
-shot or using its chip there and retreating to a clearly safer panel (where its attacks land); it keeps to what it
+shot or using its chip there and retreating to a clearly safer panel (where its attacks land), or holding its chip
+there to react with it a reaction time after an attack starts (or to cut in on the player's dimming chip): a chip is
+spent only where using it now makes clearly more than keeping it, so Invisibl, AntiDmg or a Barrier waits for a
+threat it alone stops (a shot in flight, an attack under way, the player's dimming chip) and isn't pushed out by a
+long hold unless it bars a different chip behind it; what a copy makes is
+the HP each side takes away and the ground, the panels each side owns (a column taken worth about a modest hit, so
+it takes area where that pays and minds losing it) and the panels its navi has to move on; it keeps to what it
 does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
 (the player does). On its custom screen Normal and Hard pick the hand worth most over a turn in copies of the
-fight (its chips used in the order picked, each when using it pays; built a chip at a time while one adds
-anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up after the chip it boosts, a Program
+fight (its chips used in the order picked, each when using it pays more than holding it to react, a chip that defends
+after the chips that attack unless a cut-in ready at the front is worth more; built a chip at a time while one adds
+anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up, or any chip OK folds into
+the one before it, only right after a chip it folds into, never where it would stand alone and poof; a Program
 Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
 fight goes better with it; Easy picks every chip it can in the cursor's order. The search's work is the level's
 (`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has

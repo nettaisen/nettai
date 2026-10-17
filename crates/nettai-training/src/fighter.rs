@@ -18,17 +18,39 @@
 //! and "go there and use the chip in hand" (B let go, A pressed till the
 //! navi takes it), each followed by a retreat to the safest panel where
 //! that is clearly safer: what they take away is where its attacks connect.
-//! A plan is worth what it takes away on average over the guesses, less
-//! what it loses (the most in any and the average, by its caution); a chip
-//! whose use takes nothing away is worth nothing, and isn't used for
-//! nothing, but for one held a long while (it does what no HP shows, or it
-//! would bar the chips behind it). Of plans worth the same the nearest
-//! wins, and standing before shooting or a chip, so it keeps its charge and
-//! its chips; and it keeps to what it does unless another plan is better by
-//! a margin ([`Level::steady`]): no change of mind for nothing, no pacing.
+//! And, where it stands and on the safest panel, "stand there holding the
+//! chip, and use it a reaction time after a threat shows" (the other player
+//! pressing A or B or letting go of B, or the name of their dimming chip,
+//! which it cuts in on: [`Then::React`]), played so in the copies against
+//! the same guesses: using a chip now is weighed against holding it to
+//! react with it, not against never using it. A plan is worth what it
+//! takes away on average over the guesses, less what it loses (the most in
+//! any and the average, by its caution); a chip is spent only where using
+//! it now makes clearly more than keeping it ([`SPENT`]), so a chip whose
+//! worth is in reacting (Invisibl, AntiDmg, a Barrier) is kept while no
+//! threat shows, though a guess has the other player attack any moment
+//! (holding it to react does as well there), and used once an attack is on
+//! its way that it alone stops (a shot in flight, an attack starting: then
+//! reacting later is too late). A chip held a long while is used where it
+//! does best though no plan shows it taking anything away, where it bars a
+//! chip not its like behind it (the hand is used in order) and holding it
+//! to react shows no worth ([`STALE`]). Of plans worth the same those that
+//! keep the chip win, then the nearest, standing before shooting before
+//! reacting, so it keeps its charge and its chips; and it keeps to what it
+//! does unless another plan is better by a margin ([`Level::steady`]): no
+//! change of mind for nothing, no pacing.
 //! A chip's dimming isn't counted against the horizon: a copy that enters
 //! one plays on till it ends, and a moment of the fight after, so the
-//! attack's hits land in it.
+//! attack's hits land in it; and a plan stands still in it, as the fight
+//! does (what it waits for, it waits for after).
+//!
+//! What a copy makes is HP and ground alike, wherever copies are scored (a
+//! plan, a turn on the custom screen, a press while dimmed): the HP it takes
+//! away and loses, the panels its side takes or loses ([`AREA`]: a column
+//! about a modest hit), and the panels its navi has to move on ([`ROOM`]: a
+//! navi boxed in has no room to dodge), as the copy ends. So a chip that
+//! takes area (AreaGrab) is used where taking it pays, and losing a column
+//! is a loss, though no HP shows it.
 //!
 //! **While the battle is dimmed** ([`dimmed`]) nothing moves but what the
 //! chip brings, so what a press of A does then is the battle's alone to
@@ -36,7 +58,9 @@
 //! sight circling the other side's area, a navi turning his aim) is
 //! pressed on the tick that does most, and a dimming chip next in hand
 //! cuts in on the other player's where that does more than letting theirs
-//! run. Live, that is a decision of its own, asked as the dimming begins
+//! run (an attack that answers theirs, or a chip that stops it: in every
+//! game a chip that dims can cut in, EXE6's Invisibl, Barrier and AntiDmg
+//! among them). Live, that is a decision of its own, asked as the dimming begins
 //! (and again where it goes otherwise, or after a press) and taken a
 //! reaction time on: each tick a press may be made on, played through the
 //! dimming, the other player aiming theirs as well as it can. In the
@@ -55,14 +79,19 @@
 //! and the turn played out against the guesses (as long as the custom gauge
 //! takes to fill, the shortest a turn can be: the player opens the screen,
 //! not it), its navi lined up with the other's row and its chips used in
-//! the order picked, each once using it pays (tried in copies a moment
-//! ahead, from where it stands and its row's other panels: once the other
-//! navi is in reach, once the chip before it is done and its hit has
-//! passed, once a panel opens), less what the same turn makes with no new
+//! the order picked, each once using it pays more than holding it to react
+//! with it (tried in copies a moment ahead, from where it stands and its
+//! row's other panels: once the other navi is in reach, once the chip
+//! before it is done and its hit has passed, once a panel opens, once an
+//! attack is on its way), and cut in on the other player's dimming chip
+//! where that pays, less what the same turn makes with no new
 //! hand (picking nothing keeps the old hand; picking any replaces it, its
 //! chips lost unused). So a Barrier is worth the hits it stops, a Recover
 //! the HP it gives back, and a hand's second and third chips what they do
-//! later in the turn. The hand is built a chip at a time: the chip whose
+//! later in the turn; and a chip whose worth is in reacting goes after the
+//! chips that attack, where it bars none of them, unless what it does at
+//! the front (a cut-in ready) is worth more than what it bars: the turn's
+//! copies weigh the two. The hand is built a chip at a time: the chip whose
 //! addition raises its worth most goes after the others, while one raises
 //! it at all. Then every other chip goes after them, as a player picks all
 //! the codes allow (a chip left is dealt again first next turn, in the
@@ -73,8 +102,11 @@
 //! Advance on the copy, the copy plays it in their place, as OK forms it.
 //! A chip with no worth of its own may be one the hand folds into the chip
 //! picked right before it as OK builds the hand (an attack-up: Atk+10,
-//! Navi+20; the engine's `ChipHand::fold_next`), never used alone: it is
-//! also tried right after the hand's first and second picks. The work is
+//! Navi+20, EXE6's Uninstll; the engine's hand builder), never used alone:
+//! it is also tried right after the hand's first and second picks, and a
+//! hand the copy's OK leaves it standing alone in (picked first, or after a
+//! chip it doesn't attach to: used so, it poofs) isn't picked; nor is it
+//! picked among the chips after the hand. The work is
 //! the level's ([`Level::budget`], in ticks of the copies), not a time: the
 //! same screen gives the same hand on any machine. It presses nothing for
 //! its look time ([`Level::looks`]), and then nothing till its hand is
@@ -192,6 +224,13 @@ enum Then {
     Hold,
     /// Let go of B, the charged shot once the charge is full.
     Shot,
+    /// Stand there holding the chip in hand, and use it a reaction time
+    /// after a threat shows: the other player pressing A or B or letting go
+    /// of B (an attack starting), or their dimming chip's name (a cut-in).
+    /// Live, it stands: the reaction is its next decision's (asked at once
+    /// as the other player presses, [`Level::alert`]), or the dimming's
+    /// ([`dimmed`]); in a copy it is played so, a reaction time on.
+    React,
     /// A: the chip in hand.
     Chip,
 }
@@ -242,11 +281,58 @@ struct Exec {
     refused: bool,
     /// What it pressed the tick before (a press is a button not held then).
     last: u16,
+    /// Of a plan that reacts ([`Then::React`]): its reaction time, and once
+    /// a threat has shown, the ticks left till it reacts.
+    reaction: u16,
+    alarm: Option<u16>,
 }
 
 impl Exec {
     fn new(plan: Plan) -> Exec {
-        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, hand: 0, refused: false, last: 0 }
+        Exec { plan, dir: 0, held: 0, from: None, acted: false, waited: 0, hand: 0, refused: false, last: 0, reaction: 0, alarm: None }
+    }
+
+    /// A plan that reacts, `reaction` ticks after a threat shows.
+    fn reacting(plan: Plan, reaction: u32) -> Exec {
+        Exec { reaction: reaction.min(u16::MAX as u32) as u16, ..Exec::new(plan) }
+    }
+
+    /// What it does at its panel now: a plan that reacts holds its chip
+    /// till its alarm has gone off, then uses it.
+    fn then(&self) -> Then {
+        match self.plan.then {
+            Then::React if self.alarm == Some(0) => Then::Chip,
+            Then::React => Then::Hold,
+            then => then,
+        }
+    }
+
+    /// A plan that reacts, in a copy, the other player played as `guess`:
+    /// its alarm set where a threat has shown (the guess's attack, from
+    /// the tick it started; the other player's dimming chip's name, from
+    /// now), and a chip its cut-in took counted done.
+    fn heed(&mut self, b: &Battle, side: u8, guess: &Guessed) {
+        if self.plan.then != Then::React || self.acted {
+            return;
+        }
+        if self.alarm.is_none() {
+            let since = guess.struck.map(|at| guess.t.saturating_sub(at));
+            let set = match since {
+                Some(since) => Some(self.reaction.saturating_sub(since.min(u16::MAX as u32) as u16)),
+                None => (b.is_dimmed() && dimmed::cut_window(b, side)).then_some(self.reaction),
+            };
+            if set.is_some() {
+                (self.alarm, self.hand) = (set, b.hands[side as usize].remaining());
+            }
+        } else if b.is_dimmed() && b.hands[side as usize].remaining() < self.hand {
+            self.acted = true;
+        }
+    }
+
+    /// Whether it cuts in now, in a copy: a plan that reacts, its alarm
+    /// gone off, where its side may cut in.
+    fn cuts_in(&self, b: &Battle, side: u8) -> bool {
+        self.plan.then == Then::React && !self.acted && self.alarm == Some(0) && b.is_dimmed() && dimmed::cut_window(b, side)
     }
 
     /// Standing where it is.
@@ -259,11 +345,19 @@ impl Exec {
     fn buttons(&mut self, b: &Battle, side: u8) -> u16 {
         let pressed = self.next(b, side);
         self.last = pressed;
+        if let Some(a) = self.alarm.as_mut() {
+            *a = a.saturating_sub(1);
+        }
         pressed
     }
 
     fn next(&mut self, b: &Battle, side: u8) -> u16 {
         const HELD: u16 = keys::B;
+        // (A dimming stands the plan still, as it stands the fight: its waits aren't counted then. A chip the
+        // other player's dimming held up is pressed for again after it, not given up as one the navi didn't take.)
+        if b.is_dimmed() {
+            return HELD;
+        }
         let Some(r) = b.player(side) else { return HELD };
         let at = b.objects.get(r).panel;
         let target = if self.acted { self.plan.after.unwrap_or(at) } else { self.plan.to };
@@ -287,8 +381,8 @@ impl Exec {
         if self.acted {
             return HELD;
         }
-        match self.plan.then {
-            Then::Hold => HELD,
+        match self.then() {
+            Then::Hold | Then::React => HELD,
             // (A press: let go first if it's held.)
             // (A chip: B let go, as B held keeps some forms shooting (EXE6's Beast Out), and A pressed; then A held
             // while it charges the chip (EXE6's Crosses that charge chips: it goes as A is let go), else pressed again
@@ -415,9 +509,53 @@ const TAKEN: i64 = 12;
 /// A navi deleted, worth more than any HP.
 const DELETED: i64 = 1_000_000;
 
+/// What a panel of the field is worth to the side that owns it, in tenths
+/// of HP: a column taken (three panels) is worth 18 HP, about a modest hit
+/// (less than most chips that attack take away), and a column lost costs as
+/// much. Area is reach (a side's attacks that strike a panel or so ahead
+/// reach further from a column further on) and room the other side loses to
+/// dodge in; stolen panels go back to their owner after a while, which a
+/// copy plays out where its ticks reach that far, so only what it ends with
+/// counts.
+const AREA: i64 = 60;
+/// What a panel its navi can step on is worth to a side besides, in tenths
+/// of HP: a navi boxed into a column or two (its area taken, its panels
+/// broken or taken up by obstacles) has no room to dodge in, a danger its HP
+/// doesn't show yet.
+const ROOM: i64 = 20;
+
+/// The panels side `side` owns in `b` (each panel's owner as the engine
+/// keeps it).
+fn area(b: &Battle, side: u8) -> i64 {
+    b.field.panels.iter().flatten().filter(|p| p.alliance == side).count() as i64
+}
+
+/// The panels side `side`'s navi in `b` can step on (none where it has no
+/// navi): its own and not broken or taken up, as the engine's step test
+/// says, and the one it stands on and the one it is stepping to (its body
+/// and its reservation, which that test counts as taken: a navi on its way
+/// has no less room than one standing).
+fn room(b: &Battle, side: u8) -> i64 {
+    let Some(r) = b.player(side) else {
+        return 0;
+    };
+    let at = b.objects.get(r).panel;
+    let mut n = 0;
+    for (y, row) in b.field.panels.iter().enumerate() {
+        for (x, p) in row.iter().enumerate() {
+            let (x, y) = (x as u8, y as u8);
+            n += (b.can_step(r, x, y) || p.reserver == Some(r) || PanelPos { x, y } == at) as i64;
+        }
+    }
+    n
+}
+
 /// What a trial did, for side `side`, from the battle `before` to `after`:
 /// the HP it took away and the HP it lost (less what it got back), in
-/// tenths of HP (a navi deleted counts as [`DELETED`]).
+/// tenths of HP (a navi deleted counts as [`DELETED`]); and the ground: the
+/// panels it took ([`AREA`]) and the room its navi has to move in
+/// ([`ROOM`]), what it gained counted with what it took away, what it lost
+/// with what it lost.
 fn outcome(before: &Battle, after: &Battle, side: u8) -> (i64, i64) {
     // (A battle the engine stopped is the worst: the session ends there.)
     if after.is_stopped() {
@@ -427,7 +565,11 @@ fn outcome(before: &Battle, after: &Battle, side: u8) -> (i64, i64) {
     let deleted = |s: u8| {
         if after.is_battle_over() && hp(after, s) == 0 { DELETED } else { 0 }
     };
-    ((hp(before, them) - hp(after, them)) * DEALT + deleted(them), (hp(before, side) - hp(after, side)) * TAKEN + deleted(side))
+    let ground = (area(after, side) - area(before, side)) * AREA + (room(after, side) - room(before, side)) * ROOM;
+    (
+        (hp(before, them) - hp(after, them)) * DEALT + deleted(them) + ground.max(0),
+        (hp(before, side) - hp(after, side)) * TAKEN + deleted(side) + (-ground).max(0),
+    )
 }
 
 /// What the other player may do, as a plan is tried, in the order a level
@@ -492,11 +634,24 @@ struct Guessed {
     held: u8,
     fired: bool,
     last: u16,
+    /// What they held the tick before (as the decision was asked, what
+    /// they held then), and the tick their last attack started on
+    /// ([`threat`]).
+    before: u16,
+    struck: Option<u32>,
+}
+
+/// Whether a player whose buttons go from `before` to `now` starts an
+/// attack: A or B pressed (a chip, the buster), or B let go (the charged
+/// shot). What a plan that reacts reacts to ([`Then::React`]).
+fn threat(before: u16, now: u16) -> bool {
+    now & !before & (keys::A | keys::B) != 0 || before & !now & keys::B != 0
 }
 
 impl Guessed {
     fn new(guess: Guess, theirs: u16, past: Past) -> Guessed {
-        Guessed { guess, theirs: theirs & Past::KEPT, past, t: 0, dir: 0, held: 0, fired: false, last: 0 }
+        let theirs = theirs & Past::KEPT;
+        Guessed { guess, theirs, past, t: 0, dir: 0, held: 0, fired: false, last: 0, before: theirs, struck: None }
     }
 
     /// Their buttons this tick, on side `them` of `b`.
@@ -515,6 +670,9 @@ impl Guessed {
             _ => 0,
         };
         self.last = pressed;
+        if threat(std::mem::replace(&mut self.before, pressed), pressed) {
+            self.struck = Some(t);
+        }
         pressed
     }
 
@@ -682,15 +840,16 @@ impl Play {
         self.live < self.until && self.dimmed < self.most && (warm || fight_goes_on(b))
     }
 
-    /// A tick of `b`: out of a dimming, `mine` and `theirs`.
-    fn tick(&mut self, b: &mut Battle, memo: &mut Memo, ticks: &mut u64, mine: impl FnOnce(&Battle) -> u16, theirs: impl FnOnce(&Battle) -> u16) {
+    /// A tick of `b`: out of a dimming, `mine` and `theirs`; in one, its
+    /// side presses `cut` besides (A: a cut-in, where it may cut in).
+    fn tick(&mut self, b: &mut Battle, memo: &mut Memo, ticks: &mut u64, cut: u16, mine: impl FnOnce(&Battle) -> u16, theirs: impl FnOnce(&Battle) -> u16) {
         let was = b.is_dimmed();
         if was && fight_goes_on(b) {
             let mut held = [0; 2];
             held[self.side as usize] = keys::B;
             // (Each side's play goes on as it would, its presses aside, as live.)
             let _ = (mine(b), theirs(b));
-            self.dims.tick(b, self.side, held, 0, memo, ticks);
+            self.dims.tick(b, self.side, held, cut, memo, ticks);
         } else {
             let (m, t) = (mine(b), theirs(b));
             step(b, self.side, m, t);
@@ -735,8 +894,12 @@ impl Job {
             let mut exec = self.plans[i];
             let mut guess = *guess;
             let mut play = Play::new(self.side, self.horizon);
+            // (A plan that reacts heeds the threats the guess shows, those of the ticks the decision takes too.)
+            exec.heed(trial, self.side, &guess);
             while play.goes_on(trial, self.warm) {
-                play.tick(trial, memo, &mut ticks, |b| exec.buttons(b, self.side), |b| guess.buttons(b, self.side ^ 1));
+                let cut = if exec.cuts_in(trial, self.side) { keys::A } else { 0 };
+                play.tick(trial, memo, &mut ticks, cut, |b| exec.buttons(b, self.side), |b| guess.buttons(b, self.side ^ 1));
+                exec.heed(trial, self.side, &guess);
             }
             let (d, l) = outcome(ahead, trial, self.side);
             dealt += d * alike;
@@ -911,16 +1074,17 @@ impl Search {
             let mut t = 0;
             let mut play = Play::new(side, 0);
             while t < ticks && fight_goes_on(&ahead) {
-                play.tick(&mut ahead, &mut self.memo, &mut spent, |b| now.buttons(b, side), |b| guess.buttons(b, side ^ 1));
+                play.tick(&mut ahead, &mut self.memo, &mut spent, 0, |b| now.buttons(b, side), |b| guess.buttons(b, side ^ 1));
                 t += 1;
             }
             if aheads.is_empty() {
                 followed = now;
             }
-            // (By the battle each leaves, the guesses that press nothing more play out alike: tried once.)
+            // (By the battle each leaves, the guesses that press nothing more play out alike: tried once. A threat
+            // shown or not is what a plan that reacts heeds: alike too.)
             let digest = ahead.digest();
             match guess.idle().then(|| kinds.iter().position(|d| *d == digest)).flatten() {
-                Some(at) if aheads[at].0.idle() => aheads[at].2 += 1,
+                Some(at) if aheads[at].0.idle() && aheads[at].0.struck.is_some() == guess.struck.is_some() => aheads[at].2 += 1,
                 _ => {
                     kinds.push(digest);
                     aheads.push((guess, ahead, 1));
@@ -933,7 +1097,8 @@ impl Search {
     /// A decision in the fight: from the battle as the plan it follows and
     /// each guess would leave it a reaction time on, each panel it can
     /// reach to stand on (and the plan it follows going on); then from each,
-    /// a shot and the chip in hand, each followed by the safest panel.
+    /// a shot and the chip in hand, each followed by the safest panel; and
+    /// where it stands and on the safest, the chip held to react with.
     fn decide(&mut self, q: &Question, start: Instant) -> Answer {
         let (b, side, level) = (&*q.battle, q.side, q.level);
         let guesses = &GUESSES[..(level.guesses as usize).clamp(1, GUESSES.len())];
@@ -944,6 +1109,10 @@ impl Search {
             return Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() };
         }
         let chip = ahead.hands[side as usize].remaining() > 0;
+        // (Whether the chip in hand bars another behind it: one not its like.)
+        let hand = &ahead.hands[side as usize];
+        let next = hand.cursor as usize;
+        let bars = hand.ids[next..].iter().map_while(|id| *id).skip(1).any(|id| Some(id) != hand.ids[next]);
         let steps_to = |p: PanelPos| panels.iter().find(|(q, _)| *q == p).map_or(u8::MAX, |(_, s)| *s);
         let worth = Worth::Fight { caution: level.caution };
         // Standing on each panel: how dangerous it is.
@@ -963,33 +1132,44 @@ impl Search {
         if !by_worth.contains(&0) {
             by_worth.push(0);
         }
-        let mut attacks = Vec::with_capacity(by_worth.len() * 2);
+        let mut attacks = Vec::with_capacity(by_worth.len() * 2 + 2);
         for &i in &by_worth {
             let (to, after) = (panels[i].0, after(i));
             attacks.push(Exec::new(Plan { to, then: Then::Shot, after }));
             if chip {
                 attacks.push(Exec::new(Plan { to, then: Then::Chip, after }));
+                // (Holding it to react, where it stands and on the safest panel: what using it now is weighed
+                // against.)
+                if i == 0 || Some(i) == safest {
+                    attacks.push(Exec::reacting(Plan { to, then: Then::React, after }, level.reaction));
+                }
             }
         }
         let Job { aheads, plans: stands, .. } = job;
         let job = Job { aheads, plans: attacks, side, horizon: level.horizon, worth, warm: false };
         let (mut attack_worths, t) = self.run(&job);
         ticks += t;
-        // (A chip held a long while is used where it does best, though it takes nothing away or costs some: it does
-        // what no HP shows, or it would bar the chips behind it. The longer, the more it costs to hold.)
+        // (A chip held a long while is used where it does best, though it takes nothing away or costs some: it would
+        // bar the chips behind it (the hand is used in order), or it does what no HP shows. The longer, the more it
+        // costs to hold. But not a chip with none behind it but its like (it bars nothing), nor one that holding to
+        // react with pays (a plan that reacts worth more than standing: its worth is in reacting, and it is kept for
+        // that).)
         let mut followed = (stands[stands.len() - 1], stand_worths[stands.len() - 1]);
-        if q.stale > 0 {
-            let count: i64 = job.aheads.iter().map(|(_, _, alike)| alike).sum();
-            let eager = STALE_EAGER * (60 + q.stale as i64) / 60 * count;
-            for (e, w) in job.plans.iter().zip(attack_worths.iter_mut()).chain(std::iter::once((&followed.0, &mut followed.1))) {
-                if e.plan.then == Then::Chip {
-                    *w += eager;
-                }
+        let most_of = |then: Then, worths: &[i64], plans: &[Exec]| plans.iter().zip(worths).filter(|(e, _)| e.plan.then == then).map(|(_, w)| *w).max();
+        let reacts = most_of(Then::React, &attack_worths, &job.plans).is_some_and(|r| stand_worths.iter().all(|w| r > *w));
+        let count = stand_count(&job);
+        let eager = if q.stale > 0 && bars && !reacts { STALE_EAGER * (60 + q.stale as i64) / 60 * count } else { 0 };
+        // (A chip not yet pressed for costs what it is to keep it ([`SPENT`]): it is spent only where that makes
+        // clearly more than keeping it.)
+        for (e, w) in job.plans.iter().zip(attack_worths.iter_mut()).chain(std::iter::once((&followed.0, &mut followed.1))) {
+            if e.plan.then == Then::Chip && e.waited == 0 && !e.acted {
+                *w += eager - SPENT * count;
             }
         }
-        // (Nearest first, standing before a shot before a chip; the plan it follows last.)
+        // (Those that keep the chip first: a chip is spent only where that makes more than keeping it. Then the
+        // nearest, standing before a shot before reacting before a chip; the plan it follows last.)
         let mut tried: Vec<(Exec, i64)> = stands[..stands.len() - 1].iter().copied().zip(stand_worths).chain(job.plans.iter().copied().zip(attack_worths)).collect();
-        tried.sort_by_key(|(e, _)| (steps_to(e.plan.to), e.plan.then));
+        tried.sort_by_key(|(e, _)| (e.plan.then == Then::Chip, steps_to(e.plan.to), e.plan.then));
         tried.push(followed);
         let guesses = stand_count(&job);
         Answer { id: q.id, tried, guesses, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() }
@@ -1114,15 +1294,23 @@ impl Search {
     /// the hand worth most wins. A chip worth nothing alone is also tried
     /// right after the hand's first and second picks: it may be one the hand
     /// folds into the chip before it as OK builds the hand (an attack-up:
-    /// Atk+10, Navi+20; the engine's `ChipHand::fold_next`). A Program
-    /// Advance the picks form on the copy is played in their place, as OK
-    /// forms it.
+    /// Atk+10, Navi+20, EXE6's Uninstll; the engine's hand builder,
+    /// `custom::builder`). Where the copy's hand after OK still holds such a
+    /// chip as an entry of its own ([`stands_alone`]: picked first, or after
+    /// a chip it doesn't attach to, it would poof as it is used), the hand
+    /// isn't one to pick ([`UNPICKABLE`]): so such a chip is picked only
+    /// right after a chip it folds into, and only where that raises the
+    /// hand's worth. A Program Advance the picks form on the copy is played
+    /// in their place, as OK forms it.
     ///
     /// Then every other chip is picked after the hand (the worthiest alone
     /// first), as a player picks all the codes allow: a chip left is dealt
     /// again first next turn, in the place of a new one, and one picked and
     /// not used costs nothing once the old hand is spent. Only a chip that
-    /// alone clearly costs the turn ([`LEAVE`]) is left.
+    /// alone clearly costs the turn ([`LEAVE`]) is left, and one that can't
+    /// be picked alone (a chip that folds, which would stand alone after the
+    /// hand: it stays on the screen, dealt again first next turn, where a
+    /// chip it folds into may be dealt with it).
     ///
     /// A chip that adds nothing in a round isn't tried again from that
     /// first (what a chip adds rarely grows as the hand does). The work is
@@ -1215,19 +1403,21 @@ impl Search {
                 best = (hand, worth);
             }
         }
-        // (Then every other chip, the worthiest alone first, but one that clearly costs the turn: a player picks all
-        // the codes allow. A chip left is dealt again first next turn, in the place of a new one; one picked and
+        // (Then every other chip, the worthiest alone first, but one that clearly costs the turn, or that alone
+        // can't be picked (a chip OK folds into the chip before it, standing alone: [`stands_alone`]): a player picks
+        // all the codes allow. A chip left is dealt again first next turn, in the place of a new one; one picked and
         // not used costs nothing once the old hand is spent. The codes the hand's picks leave decide which can be
         // picked: the picker skips one that isn't selectable by then.)
         let mut order = best.0;
         let mut rest: Vec<(u8, i64)> = firsts.iter().filter(|s| !order.iter().any(|o| chip_at(*o) == chip_at(**s))).map(|s| (*s, alone_of(*s))).filter(|(_, w)| *w >= -LEAVE).collect();
         rest.sort_by_key(|&(s, w)| (std::cmp::Reverse(w), s));
-        // (Two slots dealt the same chip: each is picked, after the first.)
+        // (Two slots dealt the same chip: each is picked, after the first; but a chip OK folds into the chip before
+        // it, which would stand alone there.)
         for (slot, _) in rest {
             order.push(slot);
         }
         for &(slot, chip) in chips {
-            if !order.contains(&slot) && order.iter().any(|o| chip_at(*o) == Some(chip)) {
+            if !order.contains(&slot) && order.iter().any(|o| chip_at(*o) == Some(chip)) && alone_of(slot) != UNPICKABLE {
                 order.push(slot);
             }
         }
@@ -1251,7 +1441,7 @@ impl Search {
         if !new.is_empty() {
             let guesses = [Guess::Holds, Guess::Chip, Guess::Up, Guess::Down][..(q.level.guesses as usize).clamp(1, 4)].to_vec();
             let keys: Vec<Vec<FolderChip>> = new.iter().map(|h| Valued::key(chips, h)).collect();
-            let work = Hands { from: (*q.battle).clone(), side: q.side, guesses, hands: new };
+            let work = Hands { from: (*q.battle).clone(), side: q.side, guesses, hands: new, reaction: q.level.reaction };
             let (done, t) = self.run_items(Work::Hands(Box::new(work)));
             *ticks += t;
             for (key, (w, n)) in keys.into_iter().zip(done) {
@@ -1348,12 +1538,15 @@ impl Valued {
 /// both screens through OK (the other player picking every chip it can),
 /// and the turn played out against each guess at the other player
 /// ([`turn`]). A hand is worth what its turns make in all
-/// ([`UNPICKABLE`] where its picks can't be made in its order).
+/// ([`UNPICKABLE`] where its picks can't be made in its order, or where
+/// OK leaves a chip that folds standing alone: [`stands_alone`]).
 struct Hands {
     from: Battle,
     side: u8,
     guesses: Vec<Guess>,
     hands: Vec<Vec<u8>>,
+    /// The level's reaction time ([`TurnPlay`] reacts so).
+    reaction: u32,
 }
 
 impl Hands {
@@ -1389,28 +1582,48 @@ impl Hands {
         let Some(b) = b else {
             return (0, work);
         };
+        // (A chip that OK folds into the chip before it, standing in the hand as an entry of its own, didn't fold:
+        // the chip before it isn't one it attaches to, or there is none. Used, it does nothing, and it is gone (it
+        // poofs): a hand with one isn't a hand to pick. A hand that picks nothing keeps the old one as it is.)
+        if !slots.is_empty() && stands_alone(&b, self.side) {
+            return (UNPICKABLE, work);
+        }
         let mut made = 0;
         for &g in &self.guesses {
             trial.clone_from(&b);
-            made += turn(trial, &b, self.side, Guessed::new(g, 0, Past([0; PAST])), memo, ticks, &mut work);
+            made += turn(trial, &b, self.side, Guessed::new(g, 0, Past([0; PAST])), self.reaction, memo, ticks, &mut work);
         }
         (made, work)
     }
 }
 
+/// Whether side `side`'s hand in `b`, from its cursor, holds a chip that
+/// OK folds into the chip before it as it builds the hand (an attack-up,
+/// EXE6's Uninstll: the content's `modifier`), as an entry of its own: the
+/// builder (`custom::builder`) left it there, as nothing before it is a
+/// chip it attaches to.
+fn stands_alone(b: &Battle, side: u8) -> bool {
+    let hand = &b.hands[side as usize];
+    hand.ids.iter().skip(hand.cursor as usize).map_while(|id| *id).any(|id| b.content.chip(id).modifier.is_some())
+}
+
 /// What side `side` makes over a turn ([`TURN`]) from `b` (`from`, the
 /// fight a custom screen opened on), the other player playing `guess`:
 /// what it takes away less what it loses, in tenths of HP; its side played
-/// as [`TurnPlay`] plays it. `ticks`: every tick it took, the aims' too;
-/// `work`: the ticks played of the turn and of the copies tried in it.
-fn turn(b: &mut Battle, from: &Battle, side: u8, guess: Guessed, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> i64 {
-    let (mut me, mut guess) = (TurnPlay::default(), guess);
+/// as [`TurnPlay`] plays it, reacting `reaction` ticks after a threat.
+/// `ticks`: every tick it took, the aims' too; `work`: the ticks played of
+/// the turn and of the copies tried in it.
+#[allow(clippy::too_many_arguments)]
+fn turn(b: &mut Battle, from: &Battle, side: u8, guess: Guessed, reaction: u32, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> i64 {
+    let (mut me, mut guess) = (TurnPlay::new(reaction), guess);
     let mut play = Play::new(side, TURN);
     while play.goes_on(b, false) {
+        me.heed(&guess, play.live);
         if me.due(b, side, play.live) {
             me.choose(b, side, guess, play.live, memo, ticks, work);
         }
-        play.tick(b, memo, ticks, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
+        let cut = me.cut_in(b, side, guess, memo, ticks, work);
+        play.tick(b, memo, ticks, cut, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
     }
     *work += (play.live + play.dimmed) as u64;
     let (dealt, lost) = outcome(from, b, side);
@@ -1421,14 +1634,22 @@ fn turn(b: &mut Battle, from: &Battle, side: u8, guess: Guessed, memo: &mut Memo
 /// (lined up with the other navi's row, B held), but its charged shot never
 /// let go (the buster is the fight's whatever the hand: what a hand is
 /// worth is what its chips do) and its chips held, the next in hand used
-/// once that pays: where, tried
-/// in copies over the next [`PROBE`] ticks, using it now (from where it
-/// stands, or from another panel of its row it can reach) makes more than
-/// not using it. Where it doesn't, it is tried again a beat ([`BEAT`]) on,
-/// the beat twice as long each time; a chip that never pays is never used
-/// (the hand is worth no more with it). So each chip of a hand is used in
-/// turn when it pays: once the other navi is in reach, once the chip
-/// before it is done, once a panel opens.
+/// once that pays: where, tried in copies over the next [`PROBE`] ticks,
+/// using it now (from where it stands, or from another panel of its row it
+/// can reach) makes more than holding it to react with it (used a reaction
+/// time after the other player's next attack starts, or cut in on their
+/// dimming chip where it can: what a chip that defends is worth). Where it
+/// doesn't, it is tried again a beat ([`BEAT`]) on, the beat twice as long
+/// each time, and a reaction time after the other player's attack starts;
+/// a chip that never pays is never used (the hand is worth no more with
+/// it). So each chip of a hand is used in turn when it pays: once the other
+/// navi is in reach, once the chip before it is done, once a panel opens,
+/// once an attack is on its way. And on the other player's dimming chip, a
+/// reaction time into its name, it cuts in with its next chip where it may
+/// and that pays (tried in copies: played through the dimming and [`PROBE`]
+/// ticks after, cut in and not), so a hand with a chip that cuts in at its
+/// front is worth what that does, less what it does to the chips it bars
+/// behind it while it waits.
 #[derive(Clone, Copy, Debug)]
 struct TurnPlay {
     roll: Rollout,
@@ -1438,15 +1659,26 @@ struct TurnPlay {
     /// beat after that.
     next: u32,
     beat: u32,
-}
-
-impl Default for TurnPlay {
-    fn default() -> TurnPlay {
-        TurnPlay { roll: Rollout { holds: true, ..Rollout::default() }, using: None, next: 0, beat: BEAT }
-    }
+    /// Its reaction time; the live tick it reacts on to the attack it last
+    /// saw start, and that attack's tick (the guess's).
+    reaction: u32,
+    alarm: Option<u32>,
+    seen: Option<u32>,
+    /// It uses the next chip as its alarm goes off, and cuts in where it
+    /// may, a reaction time on (a copy holding its chip to react: no copies
+    /// of its own).
+    reacts: bool,
+    /// The ticks the other player's dimming has shown a name it may cut in
+    /// on, and whether it cuts in on it.
+    window: u32,
+    cutting: bool,
 }
 
 impl TurnPlay {
+    fn new(reaction: u32) -> TurnPlay {
+        TurnPlay { roll: Rollout { holds: true, ..Rollout::default() }, using: None, next: 0, beat: BEAT, reaction, alarm: None, seen: None, reacts: false, window: 0, cutting: false }
+    }
+
     fn buttons(&mut self, b: &Battle, side: u8) -> u16 {
         if let Some(e) = self.using.as_mut() {
             let pressed = e.buttons(b, side);
@@ -1458,29 +1690,47 @@ impl TurnPlay {
         self.roll.buttons(b, side)
     }
 
+    /// The attack the guess shows starting, if it is new: its alarm set a
+    /// reaction time on (from live tick `live`).
+    fn heed(&mut self, guess: &Guessed, live: u32) {
+        if guess.struck.is_some() && guess.struck != self.seen {
+            self.seen = guess.struck;
+            self.alarm = Some(live + self.reaction);
+        }
+    }
+
+    /// Whether its alarm has gone off by live tick `live`.
+    fn alarmed(&self, live: u32) -> bool {
+        self.alarm.is_some_and(|a| live >= a)
+    }
+
     /// Whether it tries the next chip in hand now: none being used, its
-    /// beat come, and not between two steps of a walk.
+    /// beat come or its alarm gone off, and not between two steps of a
+    /// walk.
     fn due(&self, b: &Battle, side: u8, live: u32) -> bool {
-        self.using.is_none() && live >= self.next && self.roll.dir == 0 && !b.is_dimmed() && b.hands[side as usize].remaining() > 0
+        self.using.is_none() && (live >= self.next || self.alarmed(live)) && self.roll.dir == 0 && !b.is_dimmed() && b.hands[side as usize].remaining() > 0
     }
 
     /// The next chip in hand tried: used where that makes most over the
-    /// next [`PROBE`] ticks, if more than not using it; else tried again a
-    /// beat on. (Its row's other panels only the first time it is tried:
-    /// where it stands then is where it lined up.)
+    /// next [`PROBE`] ticks, if more than holding it to react; else tried
+    /// again a beat on. (Its row's other panels only the first time it is
+    /// tried: where it stands then is where it lined up.)
     #[allow(clippy::too_many_arguments)]
     fn choose(&mut self, b: &Battle, side: u8, guess: Guessed, live: u32, memo: &mut Memo, ticks: &mut u64, work: &mut u64) {
         let Some(at) = navi_at(b, side) else {
             return;
         };
+        if self.alarmed(live) {
+            self.alarm = None;
+        }
         let mut panels = vec![at];
         if self.beat == BEAT {
             panels.extend(reachable(b, side).into_iter().filter(|(p, _)| p.y == at.y && *p != at).map(|(p, _)| p));
         }
-        let mut best = (self.probe(b, side, guess, None, memo, ticks, work), None);
+        let mut best = (self.probe(b, side, guess, None, true, 0, memo, ticks, work), None);
         for to in panels {
             let e = Exec::new(Plan { to, then: Then::Chip, after: None });
-            let made = self.probe(b, side, guess, Some(e), memo, ticks, work);
+            let made = self.probe(b, side, guess, Some(e), false, 0, memo, ticks, work);
             if made > best.0 {
                 best = (made, Some(e));
             }
@@ -1491,15 +1741,45 @@ impl TurnPlay {
         }
     }
 
-    /// What [`PROBE`] ticks from `b` make, `using` the chip so (else none),
-    /// as in [`turn`].
+    /// What it presses besides while dimmed (A: a cut-in): on the other
+    /// player's dimming chip's name, where it may cut in, a reaction time
+    /// into it, if a copy cut in makes more than one not
+    /// ([`TurnPlay::probe`]); a copy holding its chip to react cuts in so
+    /// whatever it makes.
     #[allow(clippy::too_many_arguments)]
-    fn probe(&self, b: &Battle, side: u8, guess: Guessed, using: Option<Exec>, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> i64 {
+    fn cut_in(&mut self, b: &Battle, side: u8, guess: Guessed, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> u16 {
+        if !(b.is_dimmed() && fight_goes_on(b) && dimmed::cut_window(b, side)) {
+            self.window = 0;
+            return 0;
+        }
+        self.window += 1;
+        if self.window <= self.reaction {
+            return 0;
+        }
+        if self.window == self.reaction + 1 {
+            self.cutting = self.reacts || self.probe(b, side, guess, None, false, keys::A, memo, ticks, work) > self.probe(b, side, guess, None, false, 0, memo, ticks, work);
+        }
+        if self.cutting { keys::A } else { 0 }
+    }
+
+    /// What [`PROBE`] ticks from `b` make, `using` the chip so (else none,
+    /// or held to react where it `reacts`), `cut` pressed on the first if it
+    /// is dimmed, as in [`turn`].
+    #[allow(clippy::too_many_arguments)]
+    fn probe(&self, b: &Battle, side: u8, guess: Guessed, using: Option<Exec>, reacts: bool, cut: u16, memo: &mut Memo, ticks: &mut u64, work: &mut u64) -> i64 {
         let mut c = b.clone();
-        let (mut me, mut guess) = (TurnPlay { using, ..*self }, guess);
+        let (mut me, mut guess) = (TurnPlay { using, reacts, ..*self }, guess);
         let mut play = Play::new(side, PROBE);
+        let mut cut = cut;
         while play.goes_on(&c, false) {
-            play.tick(&mut c, memo, ticks, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
+            me.heed(&guess, play.live);
+            // (Holding its chip to react: it uses it as its alarm goes off.)
+            if me.reacts && me.using.is_none() && me.alarmed(play.live) && me.roll.dir == 0 && !c.is_dimmed() && c.hands[side as usize].remaining() > 0 {
+                me.alarm = None;
+                me.using = navi_at(&c, side).map(|to| Exec::new(Plan { to, then: Then::Chip, after: None }));
+            }
+            let extra = std::mem::take(&mut cut) | if me.reacts { me.cut_in(&c, side, guess, memo, ticks, work) } else { 0 };
+            play.tick(&mut c, memo, ticks, extra, |x| me.buttons(x, side), |x| guess.buttons(x, side ^ 1));
         }
         *work += (play.live + play.dimmed) as u64;
         let (dealt, lost) = outcome(b, &c, side);
@@ -1553,7 +1833,7 @@ fn rollout(b: &Battle, side: u8, memo: &mut Memo, ticks: &mut u64) -> i64 {
     let mut play = Play::new(side, ROLLOUT);
     play.most = 4 * DIMMED_MOST;
     while play.goes_on(&trial, false) {
-        play.tick(&mut trial, memo, ticks, |b| mine.buttons(b, side), |b| theirs.buttons(b, side ^ 1));
+        play.tick(&mut trial, memo, ticks, 0, |b| mine.buttons(b, side), |b| theirs.buttons(b, side ^ 1));
     }
     let (dealt, lost) = outcome(b, &trial, side);
     dealt - lost
@@ -1859,10 +2139,17 @@ impl Thinker {
 
 /// The live ticks of the fight a chip stays in hand before it is used where
 /// it does best, though no plan shows it taking anything away
-/// ([`Question::stale`]); and what using it is worth then, in tenths of HP,
-/// and as much again each second on.
+/// ([`Question::stale`]), where it bars a chip not its like behind it and
+/// holding it to react shows no worth; and what using it is worth then, in
+/// tenths of HP, and as much again each second on.
 const STALE: u32 = 180;
 const STALE_EAGER: i64 = 50;
+/// What a chip in hand is worth kept, in tenths of HP, against what using
+/// it now makes ([`Search::decide`]): a little more than what two copies of
+/// the same moment differ by (a dimming's ticks more in one, the fight-time
+/// HP drain), so a chip isn't spent for about nothing, and a chip whose
+/// worth is in reacting is kept for a threat to react to.
+const SPENT: i64 = 30;
 
 /// Where it stands before it has seen its navi: no panel.
 const NOWHERE: PanelPos = PanelPos { x: 0, y: 0 };
