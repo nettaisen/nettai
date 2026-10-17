@@ -124,8 +124,8 @@ export component AppWindow inherits Window {
     if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
-    // (Both builds, while Tab is held in a match.)
-    if root.in-battle && Shell.battle == BattleKind.online && !Shell.battle-menu: MatchPeek {
+    // (Both builds, while Tab is held in a match, the match menu open or not.)
+    if root.in-battle && Shell.battle == BattleKind.online: MatchPeek {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     // (How the match went, once its set is over.)

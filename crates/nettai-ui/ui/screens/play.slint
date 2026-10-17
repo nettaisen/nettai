@@ -18,6 +18,7 @@ import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
 import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage, ProblemMark } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
+import { SettingsView, BindBox } from "settings.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview, RulesetNote } from "../build.slint";
 
@@ -58,8 +59,6 @@ export enum MatchOutcome {
 // A page of the match menu.
 export enum MatchPage {
     menu,
-    yours,
-    theirs,
     controls,
     settings,
 }
@@ -170,13 +169,18 @@ export global PlayView {
 
     // ---- In a match --------------------------------------------------------------------------------------
     in property <MatchPage> page;
-    // How far a build's page in the match's menu is scrolled (as its `Flickable`'s `content-y`: 0 or less), and
-    // how far it can be: the keys and the pad scroll it from the app (`Play::scroll`), the wheel and a drag here.
-    in-out property <length> sheet-y;
-    in-out property <length> sheet-span;
-    in-out property <length> sheet-view;
     // The builds are shown (Tab, or Select on a pad, is held).
     in property <bool> peek;
+    // How far the builds shown are scrolled (0 or less: both by the same, each no further than its own end), how far
+    // they can be (the longer's), and how tall the shorter's box is: the keys and the pad scroll them from the app
+    // while the menu is open (`Play::scroll`), the wheel and a drag over them here.
+    in-out property <length> peek-y;
+    in-out property <length> peek-span;
+    in-out property <length> peek-view;
+    // The match's own controls as this player's bindings have them, for the match menu's footer: moving (the four
+    // directions' keys), A, B, L and R (one hint where the pad's are the shoulders), showing the builds (Tab, the
+    // pad's button bound to SELECT) and the menu (Esc, and the key and the pad's button bound to START).
+    in property <[Hint]> match-keys;
     // The match's setups are open: the other player's build may be shown.
     in property <bool> open-match;
     // The two builds as the match plays them, each a player's panel.
@@ -210,6 +214,10 @@ export global PlayView {
     out property <string> cancel-word: Caps.of(@tr("Cancel"));
     out property <string> leave-word: Caps.of(@tr("Leave"));
     out property <string> connecting: @tr("Connecting…");
+    // The match menu's footer's words (`match-keys`).
+    out property <string> move-word: @tr("Move");
+    out property <string> show-builds-word: @tr("Show builds");
+    out property <string> menu-word: @tr("Menu");
     out property <string> new-name: @tr("New build");
     out property <string> delete-word: Caps.of(@tr("Delete"));
     // The build's menu (⋯, or a right click on its row), DELETE apart after them.
@@ -1274,16 +1282,17 @@ export component PlayScreen inherits Page {
 // ---- Over the match --------------------------------------------------------------------------------------
 
 // The match menu: Start or Esc in an online match, in place of the game's own pause. The match keeps running
-// behind it. Its pages are the menu itself, and what four of its items open: each player's build, the
-// controls, the settings a player may want in a match.
+// behind it. Its pages are the menu itself, and what two of its items open: the controls, the settings a player
+// may want in a match. Its footer lists the match's own controls as this player's bindings have them (the user:
+// "the menu footer should show in-game controls"), and Tab (Select on a pad) shows both builds over it as in the
+// match.
 export component MatchMenu inherits MenuOverlay {
-    property <bool> their-item: PlayView.open-match;
-    property <length> shift: root.their-item ? 48px : 0px;
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT"];
-    title: PlayView.page == MatchPage.yours ? Caps.of(@tr("Your build")) : PlayView.page == MatchPage.theirs ? Caps.of(@tr("Their build")) : PlayView.page == MatchPage.controls ? Caps.of(@tr("Controls")) : PlayView.page == MatchPage.settings ? Caps.of(@tr("Settings")) : Caps.of(@tr("Menu"));
+    title: PlayView.page == MatchPage.controls ? Caps.of(@tr("Controls")) : PlayView.page == MatchPage.settings ? Caps.of(@tr("Settings")) : Caps.of(@tr("Menu"));
     note: PlayView.page == MatchPage.menu ? @tr("The match keeps running") : "";
     side: PlayView.page != MatchPage.menu;
-    content-height: 240px + root.shift;
+    content-height: 192px;
+    hints: PlayView.match-keys;
     if PlayView.page == MatchPage.menu: Rectangle {
         x: 0;
         y: 0;
@@ -1301,29 +1310,13 @@ export component MatchMenu inherits MenuOverlay {
             x: 0;
             y: 48px;
             width: root.inner-width;
-            nav: "menu.yours";
-            text: Caps.of(@tr("Your build"));
-        }
-
-        if root.their-item: MenuItem {
-            x: 0;
-            y: 96px;
-            width: root.inner-width;
-            nav: "menu.theirs";
-            text: Caps.of(@tr("Their build"));
-        }
-
-        MenuItem {
-            x: 0;
-            y: 96px + root.shift;
-            width: root.inner-width;
             nav: "menu.controls";
             text: Caps.of(@tr("Controls"));
         }
 
         MenuItem {
             x: 0;
-            y: 144px + root.shift;
+            y: 96px;
             width: root.inner-width;
             nav: "menu.settings";
             text: Caps.of(@tr("Settings"));
@@ -1331,7 +1324,7 @@ export component MatchMenu inherits MenuOverlay {
 
         MenuItem {
             x: 0;
-            y: 192px + root.shift;
+            y: 144px;
             width: root.inner-width;
             nav: "menu.leave";
             text: Caps.of(@tr("Leave match"));
@@ -1339,60 +1332,9 @@ export component MatchMenu inherits MenuOverlay {
         }
     }
 
-    // A player's build, to stay until Back.
-    if PlayView.page == MatchPage.yours || PlayView.page == MatchPage.theirs: Rectangle {
-        x: 0;
-        y: 0;
-        width: root.inner-width;
-        height: root.inner-height;
-        // (The sheet is taller than the page: Up and Down, Page Up and Down, Home and End scroll it, as the
-        // wheel and a drag do.)
-        page := Flickable {
-            x: 0;
-            y: 0;
-            width: root.inner-width;
-            height: root.inner-height - 52px;
-            content-width: self.width;
-            content-height: max(self.height, sheet.sheet-height);
-            content-y <=> PlayView.sheet-y;
-            sheet := BuildOverview {
-                x: 0;
-                y: 0;
-                width: page.width - 12px;
-                height: self.sheet-height;
-                build: PlayView.page == MatchPage.yours ? PlayView.mine : PlayView.theirs;
-                side: PlayView.page == MatchPage.yours ? 1 : 2;
-            }
-
-            init => {
-                PlayView.sheet-view = self.height;
-                PlayView.sheet-span = max(0px, sheet.sheet-height - self.height);
-            }
-            changed height => {
-                PlayView.sheet-view = self.height;
-                PlayView.sheet-span = max(0px, sheet.sheet-height - self.height);
-            }
-        }
-
-        // Where the page is, as a thumb along its right edge.
-        Rectangle {
-            x: root.inner-width - 4px;
-            y: page.height * (-PlayView.sheet-y) / max(1px, sheet.sheet-height);
-            width: 4px;
-            height: page.height * page.height / max(1px, sheet.sheet-height);
-            visible: sheet.sheet-height > page.height + 0.5px;
-            background: Theme.line;
-        }
-
-        Button {
-            x: 0;
-            y: root.inner-height - 40px;
-            nav: "menu.back";
-            text: Caps.of(@tr("Back"));
-        }
-    }
-
-    // What is bound to each of the battle's buttons.
+    // What is bound to each of the battle's buttons, each to change as the Settings screen's controls change
+    // (Enter on a box, then the key or the pad's button), and RESET CONTROLS beside Back. The match goes on under it
+    // and plays by the bindings as they change.
     if PlayView.page == MatchPage.controls: Rectangle {
         x: 0;
         y: 0;
@@ -1414,33 +1356,36 @@ export component MatchMenu inherits MenuOverlay {
             text: Caps.of(@tr("Pad"));
         }
 
-        for control[i] in PlayView.controls: Rectangle {
+        for action[i] in root.actions: Rectangle {
             x: 0;
-            y: 24px + i * 34px;
+            y: 24px + i * 44px;
             width: root.inner-width;
-            height: 30px;
+            height: 40px;
             Value {
                 x: 0;
                 width: parent.width - 244px;
-                text: root.actions[i];
+                text: action;
             }
 
-            Mono {
+            BindBox {
                 x: parent.width - 232px;
                 width: 110px;
-                text: control.key;
+                nav: "menu.key";
+                nav-index: i;
+                value: SettingsView.keys[i];
+                asking: SettingsView.asking-key == i;
+                ask: @tr("Press a key");
             }
 
-            Mono {
+            BindBox {
                 x: parent.width - 110px;
                 width: 110px;
-                text: control.face == PadButton.none ? control.pad : "";
-            }
-
-            FaceButton {
-                x: parent.width - 110px;
-                visible: control.face != PadButton.none;
-                button: control.face;
+                nav: "menu.button";
+                nav-index: i;
+                value: SettingsView.buttons[i].text;
+                face: SettingsView.buttons[i].face;
+                asking: SettingsView.asking-button == i;
+                ask: @tr("Press a button");
             }
         }
 
@@ -1450,61 +1395,95 @@ export component MatchMenu inherits MenuOverlay {
             nav: "menu.back";
             text: Caps.of(@tr("Back"));
         }
+
+        Button {
+            x: root.inner-width - self.width;
+            y: root.inner-height - 40px;
+            nav: "menu.reset";
+            text: Caps.of(@tr("Reset controls"));
+        }
     }
 
-    // The settings a player may want in a match: their input delay, and the sound's two levels.
+    // The settings a player may want in a match, as the Settings screen has them: the language, the picture's size,
+    // full screen, the battle graphics, the sound's two levels and their input delay. Each changes at once, the
+    // match's picture and sound with it. On a phone each label is over its control.
     if PlayView.page == MatchPage.settings: Rectangle {
         x: 0;
         y: 0;
         width: root.inner-width;
         height: root.inner-height;
-        Value {
+        property <length> pitch: Theme.phone ? 66px : 48px;
+        // Where a row's control is, under its label on a phone.
+        property <length> below: Theme.phone ? 20px : 0px;
+        property <length> control-x: Theme.phone ? 0px : root.inner-width - 232px;
+        property <length> control-width: Theme.phone ? root.inner-width : 232px;
+        property <length> label-width: Theme.phone ? root.inner-width : root.inner-width - 244px;
+        property <length> label-height: Theme.phone ? 20px : 44px;
+        for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Battle graphics"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
             x: 0;
-            y: 0;
-            width: root.inner-width - 244px;
-            height: 44px;
-            text: @tr("Input delay");
+            y: i * parent.pitch;
+            width: parent.label-width;
+            height: parent.label-height;
+            text: label;
         }
 
-        Stepper {
-            x: root.inner-width - self.width;
-            y: 4px;
-            nav: "menu.delay";
-            value: PlayView.input-delay;
-            value-width: 48px;
-            numeric: true;
+        Select {
+            x: parent.control-x;
+            y: parent.below + 2px;
+            width: parent.control-width;
+            nav: "menu.language";
+            value: SettingsView.language;
         }
 
-        Value {
-            x: 0;
-            y: 48px;
-            width: root.inner-width - 244px;
-            height: 44px;
-            text: @tr("Music");
+        Select {
+            x: parent.control-x;
+            y: parent.pitch + parent.below + 2px;
+            width: parent.control-width;
+            nav: "menu.picture";
+            value: SettingsView.picture-size == "" ? SettingsView.largest : SettingsView.picture-size;
+        }
+
+        Seg {
+            x: parent.control-x;
+            y: 2 * parent.pitch + parent.below + 4px;
+            nav: "menu.fullscreen";
+            first: Caps.of(@tr("Off"));
+            second: Caps.of(@tr("On"));
+            chosen: SettingsView.full-screen ? 1 : 0;
+        }
+
+        Seg {
+            x: parent.control-x;
+            y: 3 * parent.pitch + parent.below + 4px;
+            nav: "menu.graphics";
+            first: Caps.of(@tr("Enhanced"));
+            second: Caps.of(@tr("Original"));
+            chosen: SettingsView.enhanced ? 0 : 1;
         }
 
         Slider {
-            x: root.inner-width - 232px;
-            y: 50px;
-            width: 232px;
+            x: parent.control-x;
+            y: 4 * parent.pitch + parent.below + 2px;
+            width: parent.control-width;
             nav: "menu.music";
             value: PlayView.music;
         }
 
-        Value {
-            x: 0;
-            y: 96px;
-            width: root.inner-width - 244px;
-            height: 44px;
-            text: @tr("Sound effects");
-        }
-
         Slider {
-            x: root.inner-width - 232px;
-            y: 98px;
-            width: 232px;
+            x: parent.control-x;
+            y: 5 * parent.pitch + parent.below + 2px;
+            width: parent.control-width;
             nav: "menu.effects";
             value: PlayView.effects;
+        }
+
+        Stepper {
+            x: Theme.phone ? 0px : root.inner-width - self.width;
+            y: 6 * parent.pitch + parent.below + 4px;
+            nav: "menu.delay";
+            value: PlayView.input-delay;
+            value-width: 48px;
+            numeric: true;
         }
 
         Button {
@@ -1516,46 +1495,107 @@ export component MatchMenu inherits MenuOverlay {
     }
 }
 
-// Both builds, over the match while Tab (Select on a pad) is held: the player's on their side, the other
-// player's on theirs; where the setups aren't open, the player's own alone. It takes no clicks and no keys: the match
-// goes on under it.
+// The wheel and a drag over one of the builds over the match (`MatchPeek`): both scroll, by `PlayView.peek-y`.
+component Scrub inherits TouchArea {
+    property <length> held-at;
+    scroll-event(e) => {
+        PlayView.peek-y = clamp(PlayView.peek-y + e.delta-y, -PlayView.peek-span, 0px);
+        return accept;
+    }
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down {
+            self.held-at = PlayView.peek-y;
+        }
+    }
+    moved => {
+        PlayView.peek-y = clamp(self.held-at + self.mouse-y - self.pressed-y, -PlayView.peek-span, 0px);
+    }
+}
+
+// Both builds, over the match while Tab (Select on a pad) is held, and so over the match menu: the player's on their
+// side, the other player's on theirs; where the setups aren't open, the player's own alone. Each is as tall as its
+// abilities and bugs make it; where one is taller than its box (the window less the margins; on a phone half of it)
+// they scroll together, by the wheel and a drag over them, and while the menu is open by the keys and the pad
+// (`Play::scroll`). It takes no keys: the match goes on under it.
 export component MatchPeek inherits Rectangle {
-    // (On a phone a sheet is a column taller than the window: each is half of it, from the top, which has
-    // the navi, its stats, abilities and bugs.)
     property <length> sheet-width: min(430px, self.width - 2 * Theme.margin);
-    property <length> half: (self.height - 3 * Theme.margin) / 2;
+    // (Over the menu they leave its footer in view.)
+    property <length> room: self.height - 2 * Theme.margin - (Shell.battle-menu ? Theme.footer : 0px);
+    property <length> half: (root.room - Theme.margin) / 2;
+    property <length> theirs-x: Theme.phone ? Theme.margin : self.width - Theme.margin - root.sheet-width;
+    property <length> theirs-y: Theme.phone ? 2 * Theme.margin + root.half : Theme.margin;
     if PlayView.peek: Rectangle {
+        property <length> mine-box: Theme.phone ? root.half : min(mine.sheet-height, root.room);
+        property <length> theirs-box: Theme.phone ? root.half : min(theirs.sheet-height, root.room);
+        property <length> mine-span: max(0px, mine.sheet-height - self.mine-box);
+        property <length> theirs-span: PlayView.open-match ? max(0px, theirs.sheet-height - self.theirs-box) : 0px;
+        property <length> span: max(self.mine-span, self.theirs-span);
+        property <length> view: PlayView.open-match ? min(self.mine-box, self.theirs-box) : self.mine-box;
+        init => {
+            PlayView.peek-span = self.span;
+            PlayView.peek-view = self.view;
+        }
+        changed span => {
+            PlayView.peek-span = self.span;
+            PlayView.peek-y = clamp(PlayView.peek-y, -self.span, 0px);
+        }
+        changed view => {
+            PlayView.peek-view = self.view;
+        }
         Rectangle {
             x: Theme.margin;
             y: Theme.margin;
             width: root.sheet-width;
-            height: Theme.phone ? root.half : mine.sheet-height;
-            clip: Theme.phone;
+            height: parent.mine-box;
+            clip: true;
             mine := BuildOverview {
                 x: 0;
-                y: 0;
+                y: max(PlayView.peek-y, min(0px, parent.height - self.sheet-height));
                 width: root.sheet-width;
                 height: self.sheet-height;
                 build: PlayView.mine;
                 side: 1;
             }
+
+            Scrub { }
         }
 
         Rectangle {
-            x: Theme.phone ? Theme.margin : root.width - Theme.margin - root.sheet-width;
-            y: Theme.phone ? 2 * Theme.margin + root.half : Theme.margin;
+            x: root.theirs-x;
+            y: root.theirs-y;
             width: root.sheet-width;
-            height: Theme.phone ? root.half : theirs.sheet-height;
-            clip: Theme.phone;
+            height: parent.theirs-box;
+            clip: true;
             visible: PlayView.open-match;
             theirs := BuildOverview {
                 x: 0;
-                y: 0;
+                y: max(PlayView.peek-y, min(0px, parent.height - self.sheet-height));
                 width: root.sheet-width;
                 height: self.sheet-height;
                 build: PlayView.theirs;
                 side: 2;
             }
+
+            Scrub { }
+        }
+
+        // Where each is, as a thumb along its right edge.
+        Rectangle {
+            x: Theme.margin + root.sheet-width - 4px;
+            y: Theme.margin + parent.mine-box * (-mine.y) / max(1px, mine.sheet-height);
+            width: 4px;
+            height: parent.mine-box * parent.mine-box / max(1px, mine.sheet-height);
+            visible: parent.mine-span > 0.5px;
+            background: Theme.line;
+        }
+
+        Rectangle {
+            x: root.theirs-x + root.sheet-width - 4px;
+            y: root.theirs-y + parent.theirs-box * (-theirs.y) / max(1px, theirs.sheet-height);
+            width: 4px;
+            height: parent.theirs-box * parent.theirs-box / max(1px, theirs.sheet-height);
+            visible: parent.theirs-span > 0.5px && PlayView.open-match;
+            background: Theme.line;
         }
     }
 }
