@@ -11,7 +11,7 @@
 	<key>CFBundleIconFile</key>
 	<string>nettai</string>
 	<key>CFBundleIdentifier</key>
-	<string>io.github.bigfarts.nettai</string>
+	<string>net.n1gp.nettai</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
