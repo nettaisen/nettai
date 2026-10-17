@@ -108,29 +108,66 @@ function trajectory.over(SINE: { number }): Trajectory
     -- i + 64).
     t.sine = sine
 
+    -- The original's helpers round toward minus infinity (arithmetic shifts),
+    -- so an aim to the left comes out a little other than the mirror of the
+    -- same aim to the right. With a `side` of 1, each helper works on the
+    -- mirror image (X negated going in, and the result's X or angle mirrored
+    -- coming out): an object aims as side 0's would in its place, for either
+    -- side (docs/engine/side-symmetry.md). With none, the original's.
+
+    -- An angle (256 steps a turn) mirrored across the vertical.
+    local function mirrored(angle: number): number
+        return bit32.band(128 - angle, 0xFF)
+    end
+
     -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
-    function t.angle(dx: number, dy: number): number
+    local function angle_of(dx: number, dy: number): number
         return bit32.rshift(trajectory.arctan2(int.asr(dx, 16), int.asr(dy, 16)), 8)
     end
 
     -- `sub_80011A0`: a velocity of `speed` toward `angle` (x and y).
-    function t.toward(angle: number, speed: number): (number, number)
+    local function toward(angle: number, speed: number): (number, number)
         local cos, sin = sine(angle + 64), -sine(angle + 128)
         return int.asr(int.mul32(cos, speed), 8), int.asr(int.mul32(sin, speed), 8)
     end
 
+    -- `calcAngle_800117C`, by `side`.
+    function t.angle(dx: number, dy: number, side: number?): number
+        if side == 1 then
+            return mirrored(angle_of(int.i32(-dx), dy))
+        end
+        return angle_of(dx, dy)
+    end
+
+    -- `sub_80011A0`, by `side`.
+    function t.toward(angle: number, speed: number, side: number?): (number, number)
+        if side == 1 then
+            local vx, vy = toward(mirrored(angle), speed)
+            return int.i32(-vx), vy
+        end
+        return toward(angle, speed)
+    end
+
     -- `sub_8001330`: the velocity that takes `pos` to (x, y, z) in `ticks`
-    -- ticks, falling by `gravity` a tick.
-    function t.in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number): Vec3
+    -- ticks, falling by `gravity` a tick; by `side`.
+    local function in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number): Vec3
         local dx, dy = int.i32(x - pos.x), int.i32(y - pos.y)
-        local angle = t.angle(dx, dy)
+        local angle = angle_of(dx, dy)
         local ax, ay = int.asr(dy, 8), int.asr(dx, 8)
         local distance = trajectory.sqrt(int.i32(int.mul32(ax, ax) + int.mul32(ay, ay)))
         local speed = trajectory.div(int.shl(distance, 8), ticks)
-        local vx, vy = t.toward(angle, speed)
+        local vx, vy = toward(angle, speed)
         local drop = int.asr(int.mul32(int.mul32(ticks, ticks), gravity), 1)
         local vz = trajectory.div(int.i32(z - pos.z - drop), ticks)
         return Vec3.new(vx, vy, vz)
+    end
+
+    function t.in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number, side: number?): Vec3
+        if side == 1 then
+            local v = in_ticks(Vec3.new(int.i32(-pos.x), pos.y, pos.z), int.i32(-x), y, z, ticks, gravity)
+            return Vec3.new(int.i32(-v.x), v.y, v.z)
+        end
+        return in_ticks(pos, x, y, z, ticks, gravity)
     end
 
     -- `sub_800120E`: at `speed` along the ground from `pos` to (x, y), how
@@ -138,10 +175,15 @@ function trajectory.over(SINE: { number }): Trajectory
     -- `gravity` a tick: (rise, ticks). `vel_y` is what the game reads as the
     -- height when the distance rounds to no ticks (the word after the
     -- position's Z: the object's Y velocity).
-    function t.at_speed(pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number): (number, number)
+    function t.at_speed(pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number, side: number?): (number, number)
         local height = pos.z
         if speed ~= 0 then
-            local ax, ay = int.asr(int.i32(x - pos.x), 8), int.asr(int.i32(y - pos.y), 8)
+            -- (By `side`: the distance across as side 0's in its place.)
+            local dx = int.i32(x - pos.x)
+            if side == 1 then
+                dx = int.i32(-dx)
+            end
+            local ax, ay = int.asr(dx, 8), int.asr(int.i32(y - pos.y), 8)
             local distance = int.shl(trajectory.sqrt(int.i32(int.mul32(ax, ax) + int.mul32(ay, ay))), 8)
             local ticks, rem = trajectory.div(distance, speed)
             speed = bit32.rshift(speed, 1)

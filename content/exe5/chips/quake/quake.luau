@@ -38,11 +38,11 @@ local function fly(me: Object)
         me.pos = Vec3.new(p.x + me.facing * 4 * 0x10000, p.y, p.z + 0x30 * 0x10000)
         local tx, ty = field.center(me.panel_x, me.panel_y)
         p = me.pos
-        local angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
-        local vx, vy = trajectory.toward(angle, SPEED)
+        local angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y), me.alliance)
+        local vx, vy = trajectory.toward(angle, SPEED, me.alliance)
         me.vel = Vec3.new(vx, vy, me.vel.z)
         me.pos = Vec3.new(p.x, p.y, HANG_Z)
-        local rise, ticks = trajectory.at_speed(me.pos, vy, tx, ty, HANG_Z, SPEED, GRAVITY)
+        local rise, ticks = trajectory.at_speed(me.pos, vy, tx, ty, HANG_Z, SPEED, GRAVITY, me.alliance)
         me.vel = Vec3.new(vx, vy, rise)
         me.timer = ticks
         me.phase_init = 4

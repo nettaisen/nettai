@@ -57,7 +57,7 @@ local function fly(me: Object)
     if me.phase_init == 0 then
         local s = me.state :: State
         local x, y = field.center(s.target_x, s.target_y)
-        me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT_TICKS, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT_TICKS, GRAVITY, me.alliance)
         me.timer = FLIGHT_TICKS
         me.phase_init = 4
     end

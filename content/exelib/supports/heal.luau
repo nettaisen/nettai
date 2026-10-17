@@ -31,7 +31,7 @@ function heal.make(look: TangoHealLook): TangoHeal
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         local s = me.state :: State
         local x, y = field.center(s.target_x, s.target_y)
-        me.vel = look.trajectory.in_ticks(me.pos, x, y, 0, FLIGHT_TICKS, GRAVITY)
+        me.vel = look.trajectory.in_ticks(me.pos, x, y, 0, FLIGHT_TICKS, GRAVITY, me.alliance)
         me.timer = FLIGHT_TICKS
         me.lifecycle = "update"
     end

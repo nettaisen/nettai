@@ -107,7 +107,7 @@ local function bounce(me: Object)
         local x, y = next_panel(me)
         me.future_panel_x, me.future_panel_y = x, y
         local cx, cy = field.center(x, y)
-        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, BOUNCE_TICKS, BOUNCE_GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, BOUNCE_TICKS, BOUNCE_GRAVITY, me.alliance)
         me.timer = BOUNCE_TICKS
         battle.play_sound(BOUNCE_SOUND)
         me.phase_init = 4
