@@ -71,8 +71,11 @@ local function slide(me: Object)
     me.pos = Vec3.new(int.i32(p.x + me.vel.x), p.y, p.z)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
-    -- (Its X in pixels, +0x36, signed: off the screen's 320 around the middle.)
-    local px = int.i16(int.lsr(me.pos.x, 16))
+    -- (Its X in pixels, +0x36, signed: off the screen's 320 around the middle. The original's screen runs from -160
+    -- to 159 whatever the side, so a side-1 fang went a tick further; nettai reads side 1's X mirrored:
+    -- docs/engine/side-symmetry.md.)
+    local x = if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)
+    local px = int.i16(int.lsr(x, 16))
     if int.u32(px + 0xA0) >= 0x140 then
         finish(me)
     end
