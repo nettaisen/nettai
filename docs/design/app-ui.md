@@ -1610,9 +1610,10 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   name with VIEW), Closed builds (off, on), Custom timer (a stepper of the custom screen's time limit: 30, 45,
   60, 90 and 120 seconds and Unlimited, 60 at first; nettai's own, not the original's: the user, "design a custom
   screen timer and default it to 60 seconds but also allow an unlimited time option"; when it runs out the screen
-  closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in a
-  plain box of the HP box's at the battle's top right, under the opponent's name: "just put it in a plain box
-  under the name on the right side right aligned", "align it with the emotion window"), Input delay (a stepper,
+  closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the
+  HUD's 8x16 font, one color, flush with the battle's right edge under the opponent's name, level with the
+  emotion window: "align it with the emotion window", "maybe no box and use the regular font and don't change
+  the color"), Input delay (a stepper,
   yours alone, default 4, remembered), the
   connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
   Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset,
