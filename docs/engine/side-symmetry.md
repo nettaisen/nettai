@@ -52,8 +52,12 @@ What it leaves out is presentation: what is drawn (the `VISIBLE` flag, sprites, 
 shake offsets), where a drawn thing or an object without a collision stands (a hit spark's random jitter is in
 screen pixels; what such an object does in play shows in what it spawns), a body's pixel of jitter while it
 shakes in a dimming, a body parked off the field at the same X whatever its side, the judge's rolling digits, and
-values the code never reads (a bug code's garbage argument, header bits 0x40 and 0x80). Its list of allowed
-differences (`ALLOWED`) is §4 and §5.
+values the code never reads (a bug code's garbage argument, header bits 0x40 and 0x80). Two values are compared
+loosely: EXE4's direction after a move is absolute and after a slide by the side, and which wrote it isn't kept, so
+its 3 and 4 compare as one; and the attack's marker word, each action's own packing, is left out (what it decides
+shows in what the action places and hits). A body shaking in place by whole screen pixels (a heavy hit's shake,
+Count's rain) may stand up to 4 pixels off the mirror's place. Its list of allowed differences (`ALLOWED`, `SCOPED`)
+is §4 and §5.
 
 The scenarios only find what they exercise; the code was audited besides for the shapes in §3.
 
@@ -180,13 +184,91 @@ EXE4's thrown bombs (0x080EB47A) leave right of the navi whatever its side: a si
 it and flew 8 pixels further, landing later. nettai's leave toward the other side's area as the canonical side's
 do (`releases_by_side`, content/exelib/bombs/throw.luau).
 
+### 1.12 The field objects' order (EXE5, EXE6)
+
+`field.all_objects()` lists the field-object registry's slots in order: side 0's three, side 1's three, the stage's
+two. Where the order counts, the original goes through side 0's objects first whatever the user's side: ColArmy's
+soldiers update, and draw their shots' heights, in it (`sub_80C9EE6`); DustMan and CosmoMan keep what they take in
+it and throw it back in it. `field.all_objects(side)` lists them as that side goes through them: the slot order for
+the canonical side, the two sides' slots traded for the other (nettai-luau's binding).
+
+### 1.13 Ties at the user's column (EXE5, EXE6)
+
+AntiDmg's shuriken (@exelib/antidmg/counter, `flip_toward`) flies back when its target is left of the navi or in its
+column: a side-0 navi's shuriken at a target in its column flies back, a side-1 navi's ahead. EXE5's Football
+(0x080D957C) takes a block in its owner's column facing right and not facing left. Both go as the canonical side's.
+
+### 1.14 Misread tables by side (EXE4, EXE5)
+
+Two routines index a table of words by the side unscaled, so side 1 reads a word rotated out of the row: EXE4's
+Rush (0x080CA6F0: side 1's navi must stand on a side-1 panel for him to come up under it, side 0's on any;
+@exelib/supports/rush) and EXE4's and EXE5's VDoll curse (0x080E89BA, 0x080E7356: side 1's asks a flag no combatant
+sets, so a side-1 curse sparkles over nobody; @exelib/vdoll/curse). The other side reads the canonical side's word,
+mirrored (the side bits traded).
+
+### 1.15 Lists built side 0 first (EXE4)
+
+BugChain's marks (0x080E6624) spawn over side 0's navi first, and JunkSoul's list of the chips sent
+(rules/sent_chips, 0x08008916) takes side 0's hand before side 1's on both consoles, which the screen's shuffle and
+"the first of a class" read (navis/megaman/forms/junksoul/recycle). Both are in the canonical side's order for the
+user's (or the console's) side.
+
+### 1.16 Region orders facing right (EXE6)
+
+DustCross Beast's scatter (`sub_80EF3F4`) lists the 3x3 block's panels facing right whatever the navi's side, then
+shuffles from that order. The other side's list is the canonical side's mirrored
+(navis/megaman/forms/dustcross_beast/scatter).
+
+### 1.17 Rounding by the sign of X (EXE5, EXE6)
+
+A thrown obstacle's aim (`sub_8018002`, EXE5's Poltergeist and EXE4's: kinds/obstacle.rs `aim_throw`) takes the
+arctangent and shifts the X speed by the sign of the X; LarkMan's swoop (EXE5's 0x080DDB78) keeps its turn's angle as
+16.16 and draws by its whole steps, dropping the fraction toward minus infinity, so a swoop turning the other way lags
+a step behind the mirror. Both work the other side's in the mirror image.
+
+### 1.18 Off the field (EXE6)
+
+BblStar's star (`sub_80CC668`) takes its region back when its panel's word (x | y << 8) isn't the one it was last
+hit on, which starts at 0: column 0 of row 0, where a side-1 star leaving the field to the left lands, so it takes
+none back, and a side-0 star leaving to the right does (column 7). Its word is in the canonical side's frame.
+
+### 1.19 The auto battle's nearest enemy (EXE4, EXE5)
+
+`sub_8015EC6` (@exelib/auto_battle/panels, `row_of_nearest_enemy`) means the row of the enemy nearest the navi but
+reads the first panel an enemy stands on in the field's order, the one furthest right whatever the side. It reads the
+first in the navi's side's order.
+
 ## 2. The recordings it changes
 
 Each change departs from the original, so a recording in which a changed branch ran on the other side than the
 canonical (side 1, by default) stops matching where it shows. bn6battle-verify's trace-tests lists each as a known
 deviation (`src/deviations.rs`, the reason naming the entry above), by the default build.
 
-COUNTS
+Measured 2026-10-17 by replaying every recording with each fix turned off in turn (the fix whose turning off moves
+a recording's first difference is its cause). Of EXE6's chip lab's 6,625 recordings 912 now differ, of the 2022
+rounds 118 of 189, of EXE5's lab 198 of 2,586 and of EXE4's 258 of 2,366; sixteen rounds of the golden traces
+(which list no deviations: their floors went down instead, trace-tests' tests/traces.rs).
+
+| fix | EXE6 lab | 2022 rounds | EXE5 lab | EXE4 lab |
+|---|---|---|---|---|
+| §1.1 the panel under a position | 876 | 114 | 170 | 172 |
+| §1.7 a stage's boulder's flags | | | 12 | 49 |
+| §1.5 panel lists taken in order | 18 | 2 | 5 | 12 |
+| §1.11 EXE4's throw | | | | 18 |
+| §1.9 the hook's flames | 10 | | 2 | |
+| §1.6 aims | 2 | 1 | 3 | 2 |
+| §1.8 BlzrdBal's roller | 3 | | | |
+| §1.17 LarkMan's turn | | | 3 | |
+| §1.10 the screen's edges | | | | 3 |
+| §1.2 a move passing a point | 1 | | | |
+| §1.4 the thunder ball's re-aim | | 1 | | |
+| §1.15 BugChain's marks, JunkSoul's list | | | | 2 |
+| two at once (ChargeMan's volcano rocks, BlizMan's roller) | 2 | | 3 | |
+
+The others (§1.3, §1.12 to §1.14, §1.16, §1.18, §1.19) change no recording's first difference: no recording runs
+them for side 1, or one of the above shows first. The WindRack and barrier scenarios on side 1
+(`chips/0x050-windrack/barrier-side1`, `barrier-far-side1`) are in the chip lab's library but not yet in the lab;
+recorded, `barrier-side1` differs from the original by §1.1 (side 0's navi isn't pushed).
 
 ## 3. Audited and side-fair as they are
 
@@ -219,6 +301,13 @@ for the same draw, each panel as likely for either side. These keep the original
 - EXE5's RedFruit's hops.
 - EXE4's BlakWing's wings: each falls down a perch's column picked at random, and EXE4 lists its perches left to
   right (0x080DD1BA).
+- EXE4's Duo's fists (MetrKnuk's searches).
+- EXE5's Phoenix's targets: 18 draws from fixed tables of the middle columns and the two beside them.
+- EXE5's CacDanc's cactuses (a navi's panel, or one beside it on a coin flip).
+- CornFsta's bursts (one of the panels around an enemy).
+- The auto battle's steps (EXE4's dark soul, EXE5's DarkInvs, dark survival, Chaos Unison and the AI navis) and the
+  Beast Out berserk's (EXE6): a step to a panel one draw picks from a list in the field's order. (The mirror check
+  allows these in the recordings of such navis alone, `SCOPED`: a navi's place is no kind of its own.)
 
 (The modulo's bias, a list's length over 2^31, is the same for either side's list.)
 
@@ -233,7 +322,10 @@ for the same draw, each panel as likely for either side. These keep the original
 - **Drawn things.** A hit spark's jitter, a body's shake in a dimming, GyroMan's strikes' dust (up to 15 pixels
   to the right of the panel's center by a draw, whatever the side; the strike hits by its panel), the attachments
   held at an identity's fixed offset (Gregar Beast Out's (11, −7), not mirrored), a navi parked off the field at X
-  180 (ChargeCross's tackle, GroundCross's drill), the judge's rolling digits, the soul image's spiral: drawn only.
+  180 (ChargeCross's tackle, GroundCross's drill), the judge's rolling digits, the soul image's spiral, the
+  sprites that look each way by an animation of their own (LarkMan's swoop, SpoutMan's drip shower), SlashMan's
+  charged waves' Z fraction (their spawner's side halfword), Count's charged shot jittering its navi in place:
+  drawn only.
 - **Values nothing reads.** A bug code's argument that is the target type's table offset (`row * 8 + side * 4`,
   EXE6's codes 0xF7 and 0xF8, whose routines read no argument).
 - **The NaviCust bug byte past a side's block (EXE5).** A code between the block's end and twice it writes side 1's
