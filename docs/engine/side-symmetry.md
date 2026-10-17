@@ -245,13 +245,13 @@ canonical (side 1, by default) stops matching where it shows. bn6battle-verify's
 deviation (`src/deviations.rs`, the reason naming the entry above), by the default build.
 
 Measured 2026-10-17 by replaying every recording with each fix turned off in turn (the fix whose turning off moves
-a recording's first difference is its cause). Of EXE6's chip lab's 6,625 recordings 912 now differ, of the 2022
+a recording's first difference is its cause). Of EXE6's chip lab's 6,628 recordings 915 now differ, of the 2022
 rounds 118 of 189, of EXE5's lab 198 of 2,586 and of EXE4's 258 of 2,366; sixteen rounds of the golden traces
 (which list no deviations: their floors went down instead, trace-tests' tests/traces.rs).
 
 | fix | EXE6 lab | 2022 rounds | EXE5 lab | EXE4 lab |
 |---|---|---|---|---|
-| §1.1 the panel under a position | 876 | 114 | 170 | 172 |
+| §1.1 the panel under a position | 879 | 114 | 170 | 172 |
 | §1.7 a stage's boulder's flags | | | 12 | 49 |
 | §1.5 panel lists taken in order | 18 | 2 | 5 | 12 |
 | §1.11 EXE4's throw | | | | 18 |
@@ -266,9 +266,9 @@ rounds 118 of 189, of EXE5's lab 198 of 2,586 and of EXE4's 258 of 2,366; sixtee
 | two at once (ChargeMan's volcano rocks, BlizMan's roller) | 2 | | 3 | |
 
 The others (§1.3, §1.12 to §1.14, §1.16, §1.18, §1.19) change no recording's first difference: no recording runs
-them for side 1, or one of the above shows first. The WindRack and barrier scenarios on side 1
-(`chips/0x050-windrack/barrier-side1`, `barrier-far-side1`) are in the chip lab's library but not yet in the lab;
-recorded, `barrier-side1` differs from the original by §1.1 (side 0's navi isn't pushed).
+them for side 1, or one of the above shows first. Of the WindRack and barrier scenarios, `barrier-side1` differs
+from the original by §1.1 (side 0's navi isn't pushed), and so do `barrier-far-side1` (side 1's gusts) and
+`barrier-far` (side 1's navi pushed along), though both still push.
 
 ## 3. Audited and side-fair as they are
 
