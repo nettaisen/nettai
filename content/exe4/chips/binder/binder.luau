@@ -87,7 +87,9 @@ local function hop(me: Object)
         me:set_panel_from_coordinates()
         me:update_collision_panels()
     end
-    local x = int.i16(bit32.rshift(me.pos.x, 16))
+    -- (The original's reach runs from -REACH to REACH - 1 whatever the side; nettai reads side 1's X mirrored:
+    -- docs/engine/side-symmetry.md.)
+    local x = int.i16(bit32.rshift(if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x), 16))
     if x + REACH < 0 or x + REACH >= 2 * REACH then
         puff(me)
     end

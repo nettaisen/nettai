@@ -67,8 +67,10 @@ local function fly(me: Object)
     me.pos = Vec3.new(int.i32(p.x + me.vel.x), p.y, p.z)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
-    -- (Its X in pixels, +0x36, signed.)
-    local px = int.i16(int.lsr(me.pos.x, 16))
+    -- (Its X in pixels, +0x36, signed. The original's screen runs from -EDGE to EDGE - 1 whatever the side, so a side-1
+    -- bomb went a tick further; nettai reads side 1's X mirrored: docs/engine/side-symmetry.md.)
+    local x = if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)
+    local px = int.i16(int.lsr(x, 16))
     if int.u32(px + EDGE) >= 2 * EDGE then
         me.collision:set_region(nil)
         me.action = BURST
