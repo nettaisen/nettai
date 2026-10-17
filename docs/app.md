@@ -2985,7 +2985,10 @@ shot or using its chip there and retreating to a clearly safer panel (where its 
 there to react with it a reaction time after an attack starts (or to cut in on the player's dimming chip): a chip is
 spent only where using it now makes clearly more than keeping it, so Invisibl, AntiDmg or a Barrier waits for a
 threat it alone stops (a shot in flight, an attack under way, the player's dimming chip) and isn't pushed out by a
-long hold unless it bars a different chip behind it; what a copy makes is
+long hold unless it bars a different chip behind it, and then at the moment within a few seconds where using it
+costs least (tried in copies against a player who fights on: a second Invisibl waits till the first's invisibility
+ends, not refreshing it); a decision asked before a chip was used isn't taken for the chip behind it; what a copy
+makes is
 the HP each side takes away and the ground, the panels each side owns (a column taken worth about a modest hit, so
 it takes area where that pays and minds losing it) and the panels its navi has to move on; it keeps to what it
 does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
@@ -2995,7 +2998,8 @@ after the chips that attack unless a cut-in ready at the front is worth more; bu
 anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up, or any chip OK folds into
 the one before it, only right after a chip it folds into, never where it would stand alone and poof; a Program
 Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
-fight goes better with it; Easy picks every chip it can in the cursor's order. The search's work is the level's
+fight goes better with it; Easy picks every chip it can in the cursor's order, an attack-up too only right after a chip it
+folds into. The search's work is the level's
 (`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has
 it, the battle going on meanwhile (it looks at its screen longer on a slower machine, never stalling the
 battle). It thinks on threads of its own (four at most, fewer on a machine with fewer cores to spare)
