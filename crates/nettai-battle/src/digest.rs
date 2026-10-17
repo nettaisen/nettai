@@ -31,7 +31,10 @@
 //! - the looks a side's rules set (`Battle::looks`: EXE5's Hub Style's
 //!   faces and enemy name);
 //! - the message of an engine error that stopped the battle
-//!   (`RoundEnd::Error`; that it stopped is hashed).
+//!   (`RoundEnd::Error`; that it stopped is hashed);
+//! - how many times content read each side's keys while dimmed
+//!   (`Battle::dimmed_key_reads`, for an AI: the simulation never reads
+//!   it).
 //!
 //! Also left out: the content (`Battle::content`), which never changes and
 //! whose hash the round's setup carries (`RoundSetup::content`). (The
@@ -208,6 +211,7 @@ impl Hash for Battle {
             outcome,
             folder_check: _,
             tool_answer: _,
+            dimmed_key_reads: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

@@ -26,8 +26,23 @@
 //! wins, and standing before shooting or a chip, so it keeps its charge and
 //! its chips; and it keeps to what it does unless another plan is better by
 //! a margin ([`Level::steady`]): no change of mind for nothing, no pacing.
-//! A chip's dimming isn't counted against the horizon: a cut-in's attack
-//! lands within it.
+//! A chip's dimming isn't counted against the horizon: a copy that enters
+//! one plays on till it ends, and a moment of the fight after, so the
+//! attack's hits land in it.
+//!
+//! **While the battle is dimmed** ([`dimmed`]) nothing moves but what the
+//! chip brings, so what a press of A does then is the battle's alone to
+//! say, and it is found in copies: a chip that waits for its user's A (a
+//! sight circling the other side's area, a navi turning his aim) is
+//! pressed on the tick that does most, and a dimming chip next in hand
+//! cuts in on the other player's where that does more than letting theirs
+//! run. Live, that is a decision of its own, asked as the dimming begins
+//! (and again where it goes otherwise, or after a press) and taken a
+//! reaction time on: each tick a press may be made on, played through the
+//! dimming, the other player aiming theirs as well as it can. In the
+//! copies a plan is tried in, both sides aim so too, more coarsely
+//! ([`dimmed::aim`]), so a chip is worth what it makes aimed, not pressed
+//! at random.
 //!
 //! It never opens the custom screen: the player does (live play clears L
 //! and R from a computer-played dummy's presses in the fight), so it plans
@@ -90,8 +105,11 @@ use nettai_frontend::driver::Ai;
 use nettai_netplay::rng::SplitMix64;
 use nettai_netplay::standin::tick_input;
 
+mod dimmed;
 #[cfg(test)]
 mod old;
+
+use dimmed::{Branches, DimAnswer, Dimmed, Memo};
 
 /// How well an opponent that fights plays.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -173,9 +191,12 @@ const STEP_MOST: u8 = 20;
 /// for a chip at most.
 const CHARGE_MOST: u16 = 150;
 const CHIP_HELD_MOST: u16 = 60;
-/// The live ticks a plan is tried for past its horizon at most, the
-/// dimmings in it counted (a cut-in's).
-const DIMMED_MOST: u32 = 200;
+/// The dimmed ticks a copy is played for at most: a chip's dimming, its
+/// aims made, and what it brings about (EXE4's GutsSoul's some 310).
+const DIMMED_MOST: u32 = 400;
+/// The ticks of the fight a copy is played for at least after a dimming
+/// ends, its horizon or not: the attack's hits land.
+const AFTER_DIMMING: u32 = 30;
 /// The steps it walks in a plan at most.
 const STEPS_MOST: u8 = 4;
 /// The panels it tries attacking from: the safest few, and where it stands.
@@ -534,6 +555,11 @@ pub struct Spent {
     /// The custom screens whose chips it tried, and the time that took.
     pub chips: u32,
     pub chip_time: Duration,
+    /// The decisions while dimmed (where to press A), the time they took,
+    /// and the longest.
+    pub dimmings: u32,
+    pub dim_time: Duration,
+    pub dim_longest: Duration,
     /// The forms it took on its custom screens.
     pub forms: u32,
 }
@@ -547,6 +573,9 @@ enum Asked {
     Warm,
     /// A decision in the fight.
     Decide,
+    /// A decision while the battle is dimmed: the tick to press A on, if
+    /// any ([`dimmed`]).
+    Dimmed,
     /// What each of these chips, dealt on the custom screen shown (by
     /// slot), is worth in the fight it opens on ([`Search::worths`]), and
     /// the form to take.
@@ -578,6 +607,8 @@ struct Answer {
     /// The chips' worths, of a question of them, and the form to take.
     worths: Vec<i64>,
     form: Option<FormChoice>,
+    /// A dimming's press, of a question of one.
+    dimmed: Option<DimAnswer>,
     ticks: u64,
     took: Duration,
 }
@@ -601,6 +632,56 @@ enum Worth {
     Net,
 }
 
+/// A copy being played for a plan: its horizon in ticks of the fight, a
+/// dimming's not counted; [`AFTER_DIMMING`] ticks of the fight at least
+/// after a dimming ends; [`DIMMED_MOST`] dimmed ticks at most. Out of a
+/// dimming each side presses as it plays; in one, as its dimmer (both
+/// aim: [`dimmed`]), the fighter's side holding B, each side's play going
+/// on as it would, its presses aside.
+struct Play {
+    side: u8,
+    until: u32,
+    live: u32,
+    dimmed: u32,
+    most: u32,
+    dims: Dimmed,
+}
+
+impl Play {
+    fn new(side: u8, horizon: u32) -> Play {
+        Play { side, until: horizon, live: 0, dimmed: 0, most: DIMMED_MOST, dims: Dimmed::aiming() }
+    }
+
+    /// Whether it plays on in `b` (`warm`: whatever the battle's state).
+    fn goes_on(&self, b: &Battle, warm: bool) -> bool {
+        self.live < self.until && self.dimmed < self.most && (warm || fight_goes_on(b))
+    }
+
+    /// A tick of `b`: out of a dimming, `mine` and `theirs`.
+    fn tick(&mut self, b: &mut Battle, memo: &mut Memo, ticks: &mut u64, mine: impl FnOnce(&Battle) -> u16, theirs: impl FnOnce(&Battle) -> u16) {
+        let was = b.is_dimmed();
+        if was && fight_goes_on(b) {
+            let mut held = [0; 2];
+            held[self.side as usize] = keys::B;
+            // (Each side's play goes on as it would, its presses aside, as live.)
+            let _ = (mine(b), theirs(b));
+            self.dims.tick(b, self.side, held, 0, memo, ticks);
+        } else {
+            let (m, t) = (mine(b), theirs(b));
+            step(b, self.side, m, t);
+            *ticks += 1;
+        }
+        if b.is_dimmed() {
+            self.dimmed += 1;
+        } else {
+            self.live += 1;
+            if was {
+                self.until = self.until.max(self.live + AFTER_DIMMING);
+            }
+        }
+    }
+}
+
 /// The plans of a decision to try, and what they're tried from: the
 /// battle as each guess at the other player leaves it as the decision
 /// takes effect.
@@ -622,21 +703,16 @@ struct Job {
 impl Job {
     /// What plan `i` is worth (times the guesses), tried in `trial`; and the
     /// ticks that took.
-    fn score(&self, i: usize, trial: &mut Battle) -> (i64, u64) {
+    fn score(&self, i: usize, trial: &mut Battle, memo: &mut Memo) -> (i64, u64) {
         let (mut dealt, mut taken, mut lost, mut ticks, mut count) = (0, 0, 0, 0u64, 0);
         for (guess, ahead, alike) in &self.aheads {
             trial.clone_from(ahead);
             let mut exec = self.plans[i];
             let mut guess = *guess;
-            let (mut live, mut t) = (0, 0);
-            while live < self.horizon && t < self.horizon + DIMMED_MOST && (self.warm || fight_goes_on(trial)) {
-                let mine = exec.buttons(trial, self.side);
-                let theirs = guess.buttons(trial, self.side ^ 1);
-                step(trial, self.side, mine, theirs);
-                t += 1;
-                live += !trial.is_dimmed() as u32;
+            let mut play = Play::new(self.side, self.horizon);
+            while play.goes_on(trial, self.warm) {
+                play.tick(trial, memo, &mut ticks, |b| exec.buttons(b, self.side), |b| guess.buttons(b, self.side ^ 1));
             }
-            ticks += t as u64;
             let (d, l) = outcome(ahead, trial, self.side);
             dealt += d * alike;
             taken = taken.max(l);
@@ -655,12 +731,12 @@ impl Job {
 
     /// Plans `share`, `share + of`, `share + 2 of` and so on: by index, what
     /// each is worth, and the ticks they took.
-    fn share(&self, share: usize, of: usize, trial: &mut Battle) -> (Vec<(usize, i64)>, u64) {
+    fn share(&self, share: usize, of: usize, trial: &mut Battle, memo: &mut Memo) -> (Vec<(usize, i64)>, u64) {
         let mut ticks = 0;
         let worths = (share..self.plans.len())
             .step_by(of)
             .map(|i| {
-                let (w, t) = self.score(i, trial);
+                let (w, t) = self.score(i, trial, memo);
                 ticks += t;
                 (i, w)
             })
@@ -673,23 +749,55 @@ impl Job {
 /// ([`Search::helpers`]): the job and its share go, the worths come back.
 #[cfg(not(target_arch = "wasm32"))]
 struct Helper {
-    jobs: std::sync::mpsc::Sender<(std::sync::Arc<Job>, usize, usize)>,
+    jobs: std::sync::mpsc::Sender<(std::sync::Arc<Work>, usize, usize)>,
     worths: std::sync::mpsc::Receiver<(Vec<(usize, i64)>, u64)>,
+}
+
+/// What a search's threads share out: a decision's plans, or a dimming's
+/// presses.
+enum Work {
+    Plans(Job),
+    Presses(Box<Branches>),
+}
+
+impl Work {
+    fn len(&self) -> usize {
+        match self {
+            Work::Plans(job) => job.plans.len(),
+            Work::Presses(b) => b.pick.len(),
+        }
+    }
+
+    /// A battle to make a thread's copy from.
+    fn first(&self) -> &Battle {
+        match self {
+            Work::Plans(job) => &job.aheads[0].1,
+            Work::Presses(b) => &b.from,
+        }
+    }
+
+    fn share(&self, share: usize, of: usize, trial: &mut Battle, memo: &mut Memo) -> (Vec<(usize, i64)>, u64) {
+        match self {
+            Work::Plans(job) => job.share(share, of, trial, memo),
+            Work::Presses(b) => b.share(share, of, trial, memo),
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Helper {
     fn spawn() -> Option<Helper> {
-        let (jobs, asked) = std::sync::mpsc::channel::<(std::sync::Arc<Job>, usize, usize)>();
+        let (jobs, asked) = std::sync::mpsc::channel::<(std::sync::Arc<Work>, usize, usize)>();
         let (tell, worths) = std::sync::mpsc::channel();
         std::thread::Builder::new()
             .name("nettai-training helper".into())
             .spawn(move || {
                 let mut trial: Option<Battle> = None;
+                let mut memo = Memo::default();
                 // (Until the search is gone.)
-                while let Ok((job, share, of)) = asked.recv() {
-                    let trial = trial.get_or_insert_with(|| job.aheads[0].1.clone());
-                    if tell.send(job.share(share, of, trial)).is_err() {
+                while let Ok((work, share, of)) = asked.recv() {
+                    let trial = trial.get_or_insert_with(|| work.first().clone());
+                    if tell.send(work.share(share, of, trial, &mut memo)).is_err() {
                         break;
                     }
                 }
@@ -709,6 +817,8 @@ fn stand_count(job: &Job) -> i64 {
 #[derive(Default)]
 struct Search {
     trial: Option<Battle>,
+    /// Its thread's aims found ([`dimmed::aim`]).
+    memo: Memo,
     #[cfg(not(target_arch = "wasm32"))]
     helpers: Vec<Helper>,
 }
@@ -719,7 +829,7 @@ impl Search {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let helpers = (1..threads.max(1)).map_while(|_| Helper::spawn()).collect();
-            Search { trial: None, helpers }
+            Search { trial: None, memo: Memo::default(), helpers }
         }
         #[cfg(target_arch = "wasm32")]
         {
@@ -736,10 +846,11 @@ impl Search {
                 let of = self.threads();
                 let job = Job { aheads: vec![(Guessed::new(Guess::Holds, 0, q.past), b.clone(), 1)], plans: vec![q.now; of], side: q.side, horizon: 1, worth: Worth::Net, warm: true };
                 self.run(&job);
-                Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, ticks: 0, took: start.elapsed() }
+                Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks: 0, took: start.elapsed() }
             }
             Asked::Chips(chips) => self.worths(q, chips, start),
             Asked::Decide => self.decide(q, start),
+            Asked::Dimmed => self.dimmed(q, start),
         }
     }
 
@@ -753,7 +864,8 @@ impl Search {
     /// The battle as each of the level's guesses would leave it `ticks` on
     /// (the plan it follows, `now`, going on), those that play out alike
     /// together; and the ticks that took.
-    fn aheads(b: &Battle, side: u8, now: Exec, theirs: u16, past: Past, guesses: &[Guess], ticks: u32) -> (Vec<(Guessed, Battle, i64)>, Exec, u64) {
+    #[allow(clippy::too_many_arguments)]
+    fn aheads(&mut self, b: &Battle, side: u8, now: Exec, theirs: u16, past: Past, guesses: &[Guess], ticks: u32) -> (Vec<(Guessed, Battle, i64)>, Exec, u64) {
         let mut spent = 0;
         let mut followed = now;
         let mut aheads: Vec<(Guessed, Battle, i64)> = Vec::with_capacity(guesses.len());
@@ -763,13 +875,11 @@ impl Search {
             let mut now = now;
             let mut guess = Guessed::new(g, theirs, past);
             let mut t = 0;
+            let mut play = Play::new(side, 0);
             while t < ticks && fight_goes_on(&ahead) {
-                let mine = now.buttons(&ahead, side);
-                let theirs = guess.buttons(&ahead, side ^ 1);
-                step(&mut ahead, side, mine, theirs);
+                play.tick(&mut ahead, &mut self.memo, &mut spent, |b| now.buttons(b, side), |b| guess.buttons(b, side ^ 1));
                 t += 1;
             }
-            spent += t as u64;
             if aheads.is_empty() {
                 followed = now;
             }
@@ -793,11 +903,11 @@ impl Search {
     fn decide(&mut self, q: &Question, start: Instant) -> Answer {
         let (b, side, level) = (&*q.battle, q.side, q.level);
         let guesses = &GUESSES[..(level.guesses as usize).clamp(1, GUESSES.len())];
-        let (aheads, followed, mut ticks) = Search::aheads(b, side, q.now, q.theirs, q.past, guesses, level.reaction);
+        let (aheads, followed, mut ticks) = self.aheads(b, side, q.now, q.theirs, q.past, guesses, level.reaction);
         let ahead = &aheads[0].1;
         let panels = reachable(ahead, side);
         if panels.is_empty() || !fight_goes_on(ahead) {
-            return Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, ticks, took: start.elapsed() };
+            return Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() };
         }
         let chip = ahead.hands[side as usize].remaining() > 0;
         let steps_to = |p: PanelPos| panels.iter().find(|(q, _)| *q == p).map_or(u8::MAX, |(_, s)| *s);
@@ -848,24 +958,81 @@ impl Search {
         tried.sort_by_key(|(e, _)| (steps_to(e.plan.to), e.plan.then));
         tried.push(followed);
         let guesses = stand_count(&job);
-        Answer { id: q.id, tried, guesses, worths: Vec::new(), form: None, ticks, took: start.elapsed() }
+        Answer { id: q.id, tried, guesses, worths: Vec::new(), form: None, dimmed: None, ticks, took: start.elapsed() }
+    }
+
+    /// A decision while the battle is dimmed: from the battle as it stands,
+    /// each press of A its side may make (a reaction time on, at the
+    /// earliest) that changes anything, played through the dimming and a
+    /// moment after ([`dimmed::scan`], [`dimmed::Look::live`]), the other
+    /// side aiming its own effects as they start, and its own too where a
+    /// cut-in starts one. The press that makes most (the earliest of
+    /// those), where it makes more than none (a cut-in by
+    /// [`dimmed::CUT_IN_MARGIN`]).
+    fn dimmed(&mut self, q: &Question, start: Instant) -> Answer {
+        let (b, side) = (&*q.battle, q.side);
+        let mut held = [0; 2];
+        held[side as usize] = keys::B;
+        held[(side ^ 1) as usize] = q.theirs;
+        let look = dimmed::Look::live(q.level.reaction);
+        let mut ticks = 0;
+        let scan = dimmed::scan(b, side, held, dimmed::live_dimmers(b, side), &look, &mut self.memo, &mut ticks);
+        let cuts: Vec<bool> = scan.starts.iter().map(|s| s.cut).collect();
+        let at: Vec<u32> = scan.starts.iter().map(|s| s.t).collect();
+        let starts = std::sync::Arc::new(scan.starts);
+        // (What each makes more than none: an aim as much will do (sooner than the effect's own time running out), a
+        // cut-in by a margin.)
+        let gain = |i: usize, worth: i64| worth - scan.never - if cuts[i] { dimmed::CUT_IN_MARGIN } else { 0 };
+        let mut gains: Vec<Option<i64>> = vec![None; at.len()];
+        let tried = |search: &mut Search, pick: Vec<usize>, gains: &mut [Option<i64>], ticks: &mut u64| {
+            if pick.is_empty() {
+                return;
+            }
+            let work = Branches { from: b.clone(), starts: starts.clone(), pick: pick.clone(), side, held, look };
+            let (worths, t) = search.run_work(Work::Presses(Box::new(work)));
+            *ticks += t;
+            for (i, w) in pick.into_iter().zip(worths) {
+                gains[i] = Some(gain(i, w));
+            }
+        };
+        // (The cut-in and every few aims first, then the aims around the best of those.)
+        let first = at.iter().zip(&cuts).find(|(_, c)| !**c).map_or(0, |(t, _)| *t);
+        let coarse = (0..at.len()).filter(|&i| cuts[i] || (at[i] - first).is_multiple_of(dimmed::COARSE)).collect();
+        tried(self, coarse, &mut gains, &mut ticks);
+        let best_of = |gains: &[Option<i64>]| (0..at.len()).filter_map(|i| gains[i].map(|g| (i, g))).max_by_key(|&(i, g)| (g, std::cmp::Reverse(at[i])));
+        if let Some((i, _)) = best_of(&gains).filter(|&(i, _)| !cuts[i]) {
+            let around = (0..at.len()).filter(|&j| !cuts[j] && gains[j].is_none() && at[j].abs_diff(at[i]) < dimmed::COARSE).collect();
+            tried(self, around, &mut gains, &mut ticks);
+        }
+        // (The earliest of the most.)
+        let press = best_of(&gains).filter(|&(i, g)| if cuts[i] { g > 0 } else { g >= 0 }).map(|(i, _)| at[i]);
+        let sigs = match press {
+            Some(t) => scan.sigs[..=(t as usize).min(scan.sigs.len() - 1)].to_vec(),
+            None => scan.sigs,
+        };
+        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: Vec::new(), form: None, dimmed: Some(DimAnswer { press, sigs }), ticks, took: start.elapsed() }
     }
 
     /// Each of `job`'s plans tried, on this thread and its helpers' (each a
     /// share): what each is worth, by plan, and the ticks that took.
     fn run(&mut self, job: &Job) -> (Vec<i64>, u64) {
-        let trial = self.trial.get_or_insert_with(|| job.aheads[0].1.clone());
-        let mut worths = vec![0; job.plans.len()];
+        self.run_work(Work::Plans(job.clone()))
+    }
+
+    /// The same for any work: each item's worth, by item.
+    fn run_work(&mut self, work: Work) -> (Vec<i64>, u64) {
+        let trial = self.trial.get_or_insert_with(|| work.first().clone());
+        let mut worths = vec![0; work.len()];
         let mut ticks = 0;
         #[cfg(not(target_arch = "wasm32"))]
         {
-            // (Each helper tries its share as this one tries its own: the worths go by plan, whoever tried it.)
+            // (Each helper tries its share as this one tries its own: the worths go by item, whoever tried it.)
             let of = self.helpers.len() + 1;
-            let shared = std::sync::Arc::new(job.clone());
+            let shared = std::sync::Arc::new(work);
             for (n, helper) in self.helpers.iter().enumerate() {
                 helper.jobs.send((shared.clone(), n + 1, of)).expect("the helper is there");
             }
-            let (mine, t) = job.share(0, of, trial);
+            let (mine, t) = shared.share(0, of, trial, &mut self.memo);
             ticks += t;
             for (i, w) in mine {
                 worths[i] = w;
@@ -880,7 +1047,7 @@ impl Search {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            let (mine, t) = job.share(0, 1, trial);
+            let (mine, t) = work.share(0, 1, trial, &mut self.memo);
             ticks += t;
             for (i, w) in mine {
                 worths[i] = w;
@@ -991,7 +1158,7 @@ impl Search {
         // (The order as worths by slot: the first pick the highest; a chip not picked, below 0.)
         let ranks: Vec<i64> = chips.iter().map(|(s, _)| order.iter().position(|o| o == s).map_or(-1, |at| (order.len() - at) as i64)).collect();
         let form = if q.level.forms { self.form(q, chips, &ranks, &mut ticks) } else { None };
-        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: ranks, form, ticks, took: start.elapsed() }
+        Answer { id: q.id, tried: Vec::new(), guesses: 1, worths: ranks, form, dimmed: None, ticks, took: start.elapsed() }
     }
 
     /// What its side makes in the fight the custom screen `q` shows opens
@@ -1016,7 +1183,7 @@ impl Search {
         let mut plans = vec![Exec::stand(at)];
         plans.extend(panels.iter().map(|(p, _)| Exec::new(Plan { to: *p, then: Then::Chip, after: None })));
         let guesses = &[Guess::Holds, Guess::Chip, Guess::Up, Guess::Down][..(q.level.guesses as usize).clamp(1, 4)];
-        let (aheads, _, t) = Search::aheads(&b, side, Exec::stand(at), 0, Past([0; PAST]), guesses, 0);
+        let (aheads, _, t) = self.aheads(&b, side, Exec::stand(at), 0, Past([0; PAST]), guesses, 0);
         *ticks += t;
         let job = Job { aheads, plans, side, horizon: WORTH_HORIZON, worth: Worth::Net, warm: false };
         let (worths, t) = self.run(&job);
@@ -1033,7 +1200,7 @@ impl Search {
         let side = q.side;
         let worth = |slot: u8| chips.iter().position(|(s, _)| *s == slot).map(|at| ranks[at]);
         let (_, _, picked) = picks_on_a_copy(q, worth, ticks);
-        let base = to_the_fight(&picked, side, &worth, ticks).map(|b| rollout(&b, side, ticks))?;
+        let base = to_the_fight(&picked, side, &worth, ticks).map(|b| rollout(&b, side, &mut self.memo, ticks))?;
         let mut best: Option<(FormChoice, i64)> = None;
         let mut seen = Vec::new();
         for (from, before) in [(&*q.battle, true), (&picked, false)] {
@@ -1045,7 +1212,7 @@ impl Search {
                 let Some(b) = to_the_fight(&goal.battle, side, &worth, ticks) else {
                     continue;
                 };
-                let made = rollout(&b, side, ticks);
+                let made = rollout(&b, side, &mut self.memo, ticks);
                 if made > base + FORM_MARGIN && best.as_ref().is_none_or(|(_, w)| made > *w) {
                     best = Some((FormChoice { script: goal.script, before }, made));
                 }
@@ -1098,18 +1265,14 @@ fn to_the_fight(from: &Battle, side: u8, worth: &dyn Fn(u8) -> Option<i64>, tick
 /// both navis lining up with each other's row, charging and shooting, and
 /// using their chips there ([`Rollout`]): what it takes away less what it
 /// loses, in tenths of HP.
-fn rollout(b: &Battle, side: u8, ticks: &mut u64) -> i64 {
+fn rollout(b: &Battle, side: u8, memo: &mut Memo, ticks: &mut u64) -> i64 {
     let mut trial = b.clone();
-    let mut players = [Rollout::default(), Rollout::default()];
-    let (mut live, mut t) = (0, 0);
-    while live < ROLLOUT && t < ROLLOUT + 4 * DIMMED_MOST && fight_goes_on(&trial) {
-        let mine = players[0].buttons(&trial, side);
-        let theirs = players[1].buttons(&trial, side ^ 1);
-        step(&mut trial, side, mine, theirs);
-        t += 1;
-        live += !trial.is_dimmed() as u32;
+    let [mut mine, mut theirs] = [Rollout::default(), Rollout::default()];
+    let mut play = Play::new(side, ROLLOUT);
+    play.most = 4 * DIMMED_MOST;
+    while play.goes_on(&trial, false) {
+        play.tick(&mut trial, memo, ticks, |b| mine.buttons(b, side), |b| theirs.buttons(b, side ^ 1));
     }
-    *ticks += t as u64;
     let (dealt, lost) = outcome(b, &trial, side);
     dealt - lost
 }
@@ -1438,8 +1601,20 @@ pub struct Fighter {
     /// worth ([`Level::chooses`]).
     picker: Picker,
     chosen: Option<Chosen>,
+    /// The dimming decision asked or taken ([`Dim`]).
+    dim: Option<Dim>,
     thinker: Thinker,
     pub spent: Spent,
+}
+
+/// A decision while the battle is dimmed: its question, the tick it was
+/// asked on and the tick it takes effect on, and once taken, what it
+/// decided.
+struct Dim {
+    asked: u64,
+    at: u32,
+    take: u32,
+    answer: Option<DimAnswer>,
 }
 
 impl Fighter {
@@ -1481,6 +1656,7 @@ impl Fighter {
             alerted: false,
             picker: Picker::default(),
             chosen: None,
+            dim: None,
             thinker,
             spent: Spent::default(),
         }
@@ -1497,6 +1673,7 @@ impl Fighter {
         (self.past, self.hand, self.held, self.refused) = (Past([0; PAST]), 0, 0, false);
         self.picker = Picker::default();
         self.chosen = None;
+        self.dim = None;
         self.thinker.forget(self.asked);
     }
 
@@ -1539,7 +1716,13 @@ impl Fighter {
             }
         }
         self.take_decision();
-        if !fight_goes_on(b) || b.is_dimmed() {
+        if fight_goes_on(b) && b.is_dimmed() {
+            // (The plan goes on as it would, its presses aside: what it waits for, it waits for still.)
+            let _ = self.now.buttons(b, side);
+            return self.dimmed(b, side, theirs);
+        }
+        self.dim = None;
+        if !fight_goes_on(b) {
             return self.now.buttons(b, side);
         }
         self.since += 1;
@@ -1646,6 +1829,49 @@ impl Fighter {
             return p;
         }
         self.picker.buttons(b, side as usize, worth)
+    }
+
+    /// Its buttons while the battle is dimmed: B held (as ever), and A on
+    /// the tick a decision asked as the dimming began finds best (taken a
+    /// reaction time on, the battle waiting for it if it isn't ready). Where
+    /// the dimming goes otherwise than it supposed (the other player cut
+    /// in), and after its press, it asks again.
+    fn dimmed(&mut self, b: &Battle, side: u8, theirs: u16) -> u16 {
+        if self.dim.is_none() {
+            self.asked += 1;
+            self.dim = Some(Dim { asked: self.asked, at: self.ticks, take: self.ticks + self.level.reaction, answer: None });
+            let q = self.question(b, side, theirs, Asked::Dimmed);
+            self.thinker.ask(q);
+        }
+        let dim = self.dim.as_mut().expect("asked");
+        if dim.answer.is_none() && self.ticks >= dim.take {
+            let waiting = Instant::now();
+            let (answer, waited) = self.thinker.answer(dim.asked);
+            if waited {
+                self.spent.late += 1;
+                self.spent.waited += waiting.elapsed();
+            }
+            self.spent.dimmings += 1;
+            self.spent.ticks += answer.ticks;
+            self.spent.dim_time += answer.took;
+            self.spent.dim_longest = self.spent.dim_longest.max(answer.took);
+            dim.answer = Some(answer.dimmed.unwrap_or_default());
+        }
+        let Some(answer) = &dim.answer else {
+            return keys::B;
+        };
+        let k = (self.ticks - dim.at) as usize;
+        if answer.sigs.get(k).is_some_and(|s| *s != dimmed::situation(b)) {
+            // (Not as it supposed: asked again.)
+            self.dim = None;
+            return self.dimmed(b, side, theirs);
+        }
+        if answer.press == Some(k as u32) {
+            // (Pressed: asked again from the next tick, for a press more.)
+            self.dim = None;
+            return keys::A | keys::B;
+        }
+        keys::B
     }
 
     /// The decision asked, once its tick has come: its answer (waited for,
@@ -1831,3 +2057,4 @@ fn toward_slot(screen: &Screen, layout: &CustomScreenLayout, wanted: impl Fn(u8)
 
 #[cfg(test)]
 mod tests;
+
