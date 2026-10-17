@@ -193,6 +193,13 @@ pub enum Phase {
 }
 
 impl Phase {
+    /// The screen counts toward the round's time limit (nettai's own,
+    /// `RoundSetup::custom_screen_limit`): from the tick its window is in
+    /// until OK, hidden or not.
+    pub fn counts_time(&self) -> bool {
+        self.chooses() || matches!(self, Phase::Hidden { .. })
+    }
+
     /// The screen chooses: the window is in and its own (EXE4's running
     /// state 4, 0x0801E3D8, whatever its selection's state), not sliding,
     /// hidden, playing the Program Advance or sending.
@@ -665,9 +672,32 @@ impl Screen {
     /// (its RNG, for ChpShufl's re-deal, and its camera), then the
     /// console's HUD banner.
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
+        self.run(Some(joy), view, folder, console, extras)
+    }
+
+    /// A tick of the screen whose time is up (the round's time limit,
+    /// nettai's own: `RoundSetup::custom_screen_limit`), as [`Screen::tick`]
+    /// but with no keys read: it ends as if OK were pressed, with the chips
+    /// picked so far. What is up over the chips goes first, silently: SELECT's
+    /// hiding, a description, the run message, a window of the rules (as if
+    /// it were cancelled: what its rules noted stays, what they hadn't yet
+    /// doesn't count, and its fades and the dark chip's hover are cleared). A
+    /// scrap or a re-deal runs to its end first (it reads no keys), and the
+    /// tick after it OK is pressed.
+    pub fn tick_time_up(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
+        self.run(None, view, folder, console, extras)
+    }
+
+    /// A tick: `joy` the keys the screen reads, none when its time is up.
+    fn run(&mut self, joy: Option<&Joypad>, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
         self.look.drawn = Default::default();
+        if joy.is_none() {
+            self.leave_for_ok(view);
+        }
         let choosing = self.phase.chooses();
-        let request = self.step(joy, view, folder, console, extras);
+        let released = Joypad::new(0);
+        let time_up = joy.is_none();
+        let request = self.step(joy.unwrap_or(&released), time_up, view, folder, console, extras);
         let hover = &view.library.layout().hover;
         match hover.runs {
             HoverRuns::EveryTick => self.look.hover(Some(self.on_shading_chip(view, folder)), hover),
@@ -746,7 +776,17 @@ impl Screen {
             }
     }
 
-    fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
+    /// `time_up`: choosing, OK is pressed whatever the keys (the round's
+    /// time limit).
+    fn step(
+        &mut self,
+        joy: &Joypad,
+        time_up: bool,
+        view: &PlayerView,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        extras: &mut dyn super::Extras,
+    ) -> Option<Request> {
         match self.phase {
             Phase::Opening { tick } => {
                 // sub_8026B04: the window moves in 12 pixels a tick.
@@ -794,7 +834,7 @@ impl Screen {
                 if counts_first {
                     self.count_choosing_frame();
                 }
-                let request = self.choose(joy, view, folder, console, extras);
+                let request = if time_up { self.press_ok(view) } else { self.choose(joy, view, folder, console, extras) };
                 // (OK takes the Regular chip out of the folder before the
                 // frame is drawn: `sub_80293F8`.)
                 let regular_taken = request == Some(Request::Confirm)
@@ -1235,16 +1275,7 @@ impl Screen {
                     extras.chip_picked(self, folder, c.id);
                 }
             }
-            SlotKind::Ok => {
-                // sub_8028D3A: the battle builds the hand and the
-                // transform request, then the window slides out.
-                self.phase = Phase::Closing { tick: 0 };
-                self.look.play(ScreenSound::Ok);
-                if view.library.layout().fades_clear_at_ok {
-                    self.look.clear_fades();
-                }
-                return Some(Request::Confirm);
-            }
+            SlotKind::Ok => return self.press_ok(view),
             // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
             // re-deal, `sub_8028DD6`): its `pressed`, which may start the
             // shared machinery (`custom.sacrifice`, `custom.redeal`), on
@@ -1254,6 +1285,36 @@ impl Screen {
             SlotKind::Empty | SlotKind::Hidden => {}
         }
         None
+    }
+
+    /// Time is up: what is up over the chips goes, silently, for OK to be
+    /// pressed on them this tick (a scrap or a re-deal stays to its end). A
+    /// window of the rules goes as if cancelled, its fades and the dark
+    /// chip's hover cleared; a hover that runs only while choosing ends
+    /// too, as it would not run again.
+    fn leave_for_ok(&mut self, view: &PlayerView) {
+        let hover = &view.library.layout().hover;
+        if matches!(self.phase, Phase::Window { .. }) {
+            self.look.clear_fades();
+            self.look.clear_hover(hover);
+        }
+        if matches!(self.phase, Phase::Settling | Phase::Hidden { .. } | Phase::Description { .. } | Phase::RunMessage { .. } | Phase::Window { .. }) {
+            self.phase = Phase::Choosing;
+        }
+        if self.phase == Phase::Choosing && hover.runs == HoverRuns::WhileChoosing {
+            self.look.clear_hover(hover);
+        }
+    }
+
+    /// OK (`sub_8028D3A`): the battle builds the hand and the transform
+    /// request, then the window slides out.
+    fn press_ok(&mut self, view: &PlayerView) -> Option<Request> {
+        self.phase = Phase::Closing { tick: 0 };
+        self.look.play(ScreenSound::Ok);
+        if view.library.layout().fades_clear_at_ok {
+            self.look.clear_fades();
+        }
+        Some(Request::Confirm)
     }
 
     /// The rules' buttons that say (EXE6's Beast Out, `sub_8028F48`; its

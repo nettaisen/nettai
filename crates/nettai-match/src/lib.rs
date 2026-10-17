@@ -216,7 +216,8 @@ pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 /// [`rounds_for`]; the original's single battle one, its triple battle
 /// three), both sides (the left, side 0, then the right), the seed its
 /// setup and battle are picked from, if it names one, and what a round that
-/// leaves its background is drawn on (`backgrounds`).
+/// leaves its background is drawn on (`backgrounds`), and the custom
+/// screen's time limit (`custom_screen_time`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Match {
     pub game: String,
@@ -224,6 +225,39 @@ pub struct Match {
     pub rounds: Vec<RoundSettings>,
     pub sides: [Side; 2],
     pub backgrounds: BackgroundPick,
+    /// The custom screen's time limit in seconds, one of
+    /// [`CUSTOM_SCREEN_TIMES`], or none: no limit, as in the original (a
+    /// match that states none). nettai's own: each side's screen closes as
+    /// if OK were pressed when its time is up
+    /// (`RoundSetup::custom_screen_limit`, docs/engine/custom-screen.md
+    /// §6.1). A lobby's match has the lobby's (60 seconds unless its host
+    /// sets another).
+    pub custom_screen_time: Option<u16>,
+}
+
+/// The custom screen's time limits a match may set, in seconds, besides
+/// none (`Match::custom_screen_time`): the lobby's choices.
+pub const CUSTOM_SCREEN_TIMES: [u16; 5] = [30, 45, 60, 90, 120];
+
+/// A new lobby's custom screen time limit, in seconds (the user: "design a
+/// custom screen timer and default it to 60 seconds but also allow an
+/// unlimited time option").
+pub const DEFAULT_CUSTOM_SCREEN_TIME: u16 = 60;
+
+/// The ticks of a custom screen time limit of `seconds` (60 a second), as
+/// the round's setup takes it.
+pub fn custom_screen_limit(seconds: Option<u16>) -> Option<u16> {
+    seconds.map(|s| s * 60)
+}
+
+/// What is wrong with a custom screen time limit, if it isn't one a match
+/// may set ([`CUSTOM_SCREEN_TIMES`], or none).
+pub fn check_custom_screen_time(seconds: Option<u16>) -> Option<String> {
+    let s = seconds?;
+    (!CUSTOM_SCREEN_TIMES.contains(&s)).then(|| {
+        let times: Vec<String> = CUSTOM_SCREEN_TIMES.iter().map(u16::to_string).collect();
+        format!("custom screen time {s}: a match's is {} seconds, or none", times.join(", "))
+    })
 }
 
 /// The effects a link battle's match type adds to its stage's
@@ -278,6 +312,7 @@ impl Match {
             rounds: vec![RoundSettings::default(); rounds_for(TRIPLE_BATTLE)],
             sides: [side.clone(), side],
             backgrounds: BackgroundPick::Game,
+            custom_screen_time: None,
         })
     }
 
@@ -385,6 +420,7 @@ impl Match {
             later_stages: places.collect(),
             low_hp_music_latched: false,
             host_keys: HOST_KEYS,
+            custom_screen_limit: custom_screen_limit(self.custom_screen_time),
             players: [player(0), player(1)],
         }
     }

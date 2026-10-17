@@ -142,12 +142,13 @@ export global PlayView {
     in property <int> ready-seq;
     in property <int> their-ready-seq;
     // The match's settings, both players': the round wins its set is first to (1: a single battle; 2: the
-    // original's triple battle, best of 3), the ruleset by its name (the host's to choose: `host`), and closed
-    // builds.
+    // original's triple battle, best of 3), the ruleset by its name (the host's to choose: `host`), closed
+    // builds, and the custom screen's time limit in seconds (0: none; nettai's own).
     in property <int> first-to: 2;
     in property <string> ruleset;
     in property <bool> host;
     in property <bool> closed;
+    in property <int> custom-time: 60;
     // The player's own.
     in property <int> input-delay;
     // The connection: its bars (0 to 4) and the round trip in ms (-1: not measured).
@@ -476,19 +477,20 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset and Closed
-// builds are the match's (both see them; the Ruleset the host alone chooses, with EDIT after it, and the joiner
-// VIEWs it); the input delay is the player's own.
+// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset, Closed
+// builds and the Custom timer are the match's (both see them; the Ruleset the host alone chooses, with EDIT after
+// it, and the joiner VIEWs it); the input delay is the player's own.
 component LobbyFacts inherits Rectangle {
-    // The one row: each setting's name over its control, a cell as wide as the wider of the two, so five fit
+    // The one row: each setting's name over its control, a cell as wide as the wider of the two, so six fit
     // whatever the language. Where each cell starts, and the row's width.
     property <length> gap: 41px;
     property <length> x1: 24px;
     property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
     property <length> x3: self.x2 + max(ruleset-label.width, ruleset.width + 8px + rules.width) + self.gap;
     property <length> x4: self.x3 + max(closed-label.width, closed.width) + self.gap;
-    property <length> x5: self.x4 + max(delay-label.width, delay.width) + self.gap;
-    out property <length> natural-width: self.x5 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
+    property <length> x5: self.x4 + max(custom-time-label.width, custom-time.width) + self.gap;
+    property <length> x6: self.x5 + max(delay-label.width, delay.width) + self.gap;
+    out property <length> natural-width: self.x6 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
     // On a phone, a line each: the name, and the control at the right.
     property <length> line: 44px;
     // A name's place and a control's, in the row.
@@ -497,7 +499,7 @@ component LobbyFacts inherits Rectangle {
     property <length> control-y: 32px;
     property <length> control-height: 36px;
     property <brush> name-color: Theme.phone ? Theme.text : Theme.muted;
-    height: Theme.phone ? 5 * self.line : 78px;
+    height: Theme.phone ? 6 * self.line : 78px;
     PanelBack {
         visible: !Theme.phone;
         accent: false;
@@ -595,21 +597,21 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    delay-label := Value {
+    // The custom screen's time limit (nettai's own): its seconds, or Unlimited, as the original's screen has none.
+    custom-time-label := Value {
         x: Theme.phone ? 0px : root.x4;
         y: Theme.phone ? 3 * root.line : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
-        text: @tr("Input delay");
+        text: @tr("Custom timer");
         color: root.name-color;
     }
 
-    delay := Stepper {
+    custom-time := Stepper {
         x: Theme.phone ? parent.width - self.width : root.x4;
         y: Theme.phone ? 3 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
-        nav: "lobby.delay";
-        value: PlayView.input-delay;
-        value-width: 48px;
-        numeric: true;
+        nav: "lobby.custom-time";
+        value: PlayView.custom-time == 0 ? @tr("custom timer" => "Unlimited") : @tr("custom timer" => "{}s", PlayView.custom-time);
+        value-width: 84px;
     }
 
     Rectangle {
@@ -621,24 +623,50 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    // The connection: its bars and the round trip, where a setting has its control.
-    ping-label := Value {
+    delay-label := Value {
         x: Theme.phone ? 0px : root.x5;
         y: Theme.phone ? 4 * root.line : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
+        text: @tr("Input delay");
+        color: root.name-color;
+    }
+
+    delay := Stepper {
+        x: Theme.phone ? parent.width - self.width : root.x5;
+        y: Theme.phone ? 4 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
+        nav: "lobby.delay";
+        value: PlayView.input-delay;
+        value-width: 48px;
+        numeric: true;
+    }
+
+    Rectangle {
+        x: root.x6 - 21px;
+        y: 14px;
+        width: 1px;
+        height: 50px;
+        visible: !Theme.phone;
+        background: Theme.line;
+    }
+
+    // The connection: its bars and the round trip, where a setting has its control.
+    ping-label := Value {
+        x: Theme.phone ? 0px : root.x6;
+        y: Theme.phone ? 5 * root.line : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
         text: @tr("Ping");
         color: root.name-color;
     }
 
     bars := Bars {
-        x: Theme.phone ? parent.width - ping.width - 10px - self.width : root.x5;
-        y: (Theme.phone ? 4 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2);
+        x: Theme.phone ? parent.width - ping.width - 10px - self.width : root.x6;
+        y: (Theme.phone ? 5 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2);
         level: PlayView.bars;
     }
 
     ping := Mono {
-        x: Theme.phone ? parent.width - self.width : root.x5 + bars.width + 10px;
-        y: Theme.phone ? 4 * root.line : root.control-y;
+        x: Theme.phone ? parent.width - self.width : root.x6 + bars.width + 10px;
+        y: Theme.phone ? 5 * root.line : root.control-y;
         width: 60px;
         height: Theme.phone ? root.line : root.control-height;
         horizontal-alignment: Theme.phone ? right : left;
@@ -695,7 +723,7 @@ export component PlayScreen inherits Page {
     property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 426px) / 2;
     property <length> lobby-left: (self.body-width - 960px) / 2;
     property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
-    property <length> buttons-top: Theme.phone ? self.facts-top + 232px : self.lobby-top + 346px;
+    property <length> buttons-top: Theme.phone ? self.facts-top + 276px : self.lobby-top + 346px;
     title: PlayView.part == PlayPart.lobby ? Caps.of(@tr("Lobby")) : PlayView.part == PlayPart.builds ? Caps.of(@tr("Play")) : Theme.phone ? Caps.of(@tr("Waiting")) : Caps.of(@tr("Waiting for opponent"));
     back: PlayView.part == PlayPart.builds ? Caps.of(@tr("Menu")) : Caps.of(@tr("Play"));
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;

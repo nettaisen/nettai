@@ -102,6 +102,10 @@ pub struct Side {
     /// The emotion the screen reads of its navi (its context's), which its
     /// systems' hooks read too (`custom.player`), set while one runs.
     pub emotion: Emotion,
+    /// The ticks the screen has counted toward the round's time limit
+    /// (nettai's own, `RoundSetup::custom_screen_limit`): each it chooses
+    /// or is hidden, from its opening; none counted in a round without one.
+    pub clock: u16,
 }
 
 impl Side {
@@ -118,7 +122,16 @@ impl Side {
             built: None,
             sent: None,
             emotion: Emotion::default(),
+            clock: 0,
         }
+    }
+
+    /// The ticks left of the round's time limit `limit` while the screen
+    /// counts toward it (from its window's tick in until OK); none in a
+    /// round without one, or while the screen doesn't count.
+    pub fn time_left(&self, limit: Option<u16>) -> Option<u16> {
+        let limit = limit?;
+        self.screen.filter(|s| s.phase.counts_time()).map(|_| limit.saturating_sub(self.clock))
     }
 }
 
@@ -160,6 +173,9 @@ pub struct Context<'a> {
     /// L is the screen's run key, as the original's is; not in a round whose
     /// host took it (`HostKeys::run`).
     pub run_key: bool,
+    /// The round's time limit, in ticks (nettai's own,
+    /// `RoundSetup::custom_screen_limit`).
+    pub time_limit: Option<u16>,
     /// The tick: a result sent now arrives 50 ticks later (50 words, one
     /// a tick).
     pub now: u32,
@@ -292,6 +308,7 @@ impl Side {
     pub fn open_with(&mut self, ctx: &Context, console: &mut Console, extras: &mut dyn Extras) {
         self.emotion = ctx.emotion;
         self.in_custom = true;
+        self.clock = 0;
         self.built = None;
         self.sent = None;
         if ctx.turn == 1 {
@@ -334,7 +351,20 @@ impl Side {
         let Some(mut screen) = self.screen else { return None };
         let mut folder = self.folder;
         let settling = screen.phase == Phase::Settling;
-        let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
+        // The round's time limit (nettai's own): the tick the screen has
+        // counted its last, it reads no keys and closes as if OK were
+        // pressed.
+        let counts = ctx.time_limit.is_some() && screen.phase.counts_time();
+        if counts {
+            self.clock = self.clock.saturating_add(1);
+        }
+        let time_up = counts && ctx.time_limit.is_some_and(|limit| self.clock >= limit);
+        let view = self.view(ctx, folder.regular_pending);
+        let request = if time_up {
+            screen.tick_time_up(&view, &mut folder, console, extras)
+        } else {
+            screen.tick(&self.joypad, &view, &mut folder, console, extras)
+        };
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
             Some(Request::Send) => {
@@ -485,6 +515,7 @@ impl Battle {
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
             late_turns: self.late_turns(),
             run_key: !self.setup.host_keys.run,
+            time_limit: self.setup.custom_screen_limit,
             now: self.round.ticks,
         }
     }
@@ -591,6 +622,13 @@ impl Battle {
                 *hud = crate::hud::ChipHud { icons: true, window: true, from_close: true, ..*hud };
             }
         }
+    }
+
+    /// The ticks left of side `side`'s custom screen's time limit while it
+    /// counts toward it (nettai's own, `RoundSetup::custom_screen_limit`);
+    /// none in a round without one. Presentation: the countdown.
+    pub fn custom_time_left(&self, side: u8) -> Option<u16> {
+        self.custom.sides[side as usize & 1].time_left(self.setup.custom_screen_limit)
     }
 
     /// The custom gauge as `side`'s console holds it: the battle's, but in a
