@@ -104,7 +104,7 @@ impl Shooter {
         }
         self.held = 0;
         // (With nothing in hand, the custom screen, where the gauge lets it.)
-        if b.hands[side as usize].remaining() == 0 && self.t % 30 == 0 {
+        if b.hands[side as usize].remaining() == 0 && self.t.is_multiple_of(30) {
             return keys::L;
         }
         if at.y != them.y {
@@ -150,7 +150,7 @@ struct Dodger {
 impl Ai for Dodger {
     fn fight(&mut self, _b: &Battle, _side: u8, _theirs: u16) -> u16 {
         self.t += 1;
-        if self.t % self.every == 0 {
+        if self.t.is_multiple_of(self.every) {
             self.held = [0, keys::UP, keys::DOWN][self.rng.below(3) as usize];
         } else if self.t % self.every >= 3 {
             self.held = 0;
@@ -165,7 +165,7 @@ impl Ai for Dodger {
         // (OK at once: nothing picked.)
         let s = &b.custom.sides[side as usize];
         match s.screen.as_ref().filter(|x| x.phase == Phase::Choosing) {
-            Some(x) if self.t % 2 == 0 => {
+            Some(x) if self.t.is_multiple_of(2) => {
                 self.t += 1;
                 if x.cursor != OK_SLOT { keys::START } else { keys::A }
             }
@@ -310,16 +310,17 @@ fn first_round_against(content: &Arc<Content>, m: &nettai_match::Match, seed: u3
         if !custom && pressed & (keys::A | keys::B) != 0 {
             threat = Some(r.ticks);
         }
-        if let (Some(from), Some(to)) = (at, navi_at(&b, 1)) {
-            if from != to && fight_goes_on(&b) {
-                r.steps += 1;
-                if let Some((was, _, t)) = last_step.filter(|(was, left_to, t)| *was == to && *left_to == from && r.ticks - t <= BACK) {
-                    let _ = was;
-                    r.backs += 1;
-                    r.pacing += r.ticks - t;
-                }
-                last_step = Some((from, to, r.ticks));
+        if let (Some(from), Some(to)) = (at, navi_at(&b, 1))
+            && from != to
+            && fight_goes_on(&b)
+        {
+            r.steps += 1;
+            if let Some((was, _, t)) = last_step.filter(|(was, left_to, t)| *was == to && *left_to == from && r.ticks - t <= BACK) {
+                let _ = was;
+                r.backs += 1;
+                r.pacing += r.ticks - t;
             }
+            last_step = Some((from, to, r.ticks));
         }
         r.screens += (!custom && b.round.mode == mode::CUSTOM) as u32;
         let form = b.custom.sides[1].screen.is_some_and(|s| (s.form.is_some() || s.trade.is_some() || s.hold.is_some()) && b.round.mode == mode::CUSTOM);
@@ -350,7 +351,11 @@ fn plugged_into_live_play_it_plays_as_by_hand() {
     let m = even_match(&content, "exe6", 3, 400);
     let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
     let mut live = LivePlayer::against(Set::of(&content, &m, 3), opponent, 3);
-    live.set_ai(Some(Box::new(Fighter::new(Level::HARD, 3))));
+    // (Its custom screen's hand waited for, as inline: else it presses once the hand has come, a tick that depends
+    // on how fast its threads are, though the hand doesn't.)
+    let mut threaded = Fighter::new(Level::HARD, 3);
+    threaded.waits_for_chips = true;
+    live.set_ai(Some(Box::new(threaded)));
     let by_live = |live: &mut LivePlayer| {
         let mut b = live.start();
         let mut player = RandomPresses::new(3 ^ 0x5EED);
@@ -429,6 +434,7 @@ fn level_named(name: &str) -> Option<Level> {
             'p' => level.chooses = n != 0,
             'f' => level.forms = n != 0,
             'l' => level.looks = n,
+            'w' => level.budget = n,
             _ => panic!("no level part {c:?} in {name:?}"),
         }
         rest = &rest[1 + digits.len()..];
@@ -445,7 +451,7 @@ enum Named {
     Shooter(Shooter),
     Dodger(Dodger),
     Old(old::Fighter),
-    New(Fighter),
+    New(Box<Fighter>),
 }
 
 impl Named {
@@ -462,7 +468,7 @@ impl Named {
             "random" => Named::Random(RandomPresses::new(seed)),
             "shooter" => Named::Shooter(Shooter::new(12)),
             "dodger" => Named::Dodger(Dodger { every: 40, t: 0, rng: SplitMix64::new(seed), held: 0 }),
-            _ => Named::New(Fighter::new(level_named(name).expect("a level"), seed)),
+            _ => Named::New(Box::new(Fighter::new(level_named(name).expect("a level"), seed))),
         }
     }
 
@@ -472,7 +478,7 @@ impl Named {
             Named::Shooter(a) => a,
             Named::Dodger(a) => a,
             Named::Old(a) => a,
-            Named::New(a) => a,
+            Named::New(a) => a.as_mut(),
         }
     }
 
@@ -488,10 +494,14 @@ impl Named {
     }
 }
 
+/// A game's rounds against a dummy ([`rounds`]): the game, the dummy, and
+/// each round with what the dummy's decisions cost.
+type Rounds = (String, String, Vec<(Round, Spent)>);
+
 /// The rounds of each game's matches between a player and dummies, each
 /// round on a thread of `FIGHTER_THREADS`: by game and dummy, the rounds
 /// and what each dummy's decisions cost.
-fn rounds(player: &str, games: &str, dummies: &str, seeds: u32, hp: i64, most: u32) -> Vec<(String, String, Vec<(Round, Spent)>)> {
+fn rounds(player: &str, games: &str, dummies: &str, seeds: u32, hp: i64, most: u32) -> Vec<Rounds> {
     let var = |name: &str, or: &str| std::env::var(name).unwrap_or_else(|_| or.into());
     let threads: usize = var("FIGHTER_THREADS", "4").parse().unwrap();
     let mut out = Vec::new();
@@ -703,9 +713,9 @@ fn real_time() {
     let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "easy,normal,hard"));
     let player = var("FIGHTER_PLAYER", "random");
     println!(
-        "| game | dummy | decisions | late | waited (ms, all / longest) | ms a decision (mean / longest) | custom screens | ms a screen (mean) | dimmed decisions | ms a dimmed decision (mean / longest) |"
+        "| game | dummy | decisions | late | waited (ms, all / longest) | ms a decision (mean / longest) | custom screens | ms a screen (mean) | screens looked at longer (ticks) | dimmed decisions | ms a dimmed decision (mean / longest) |"
     );
-    println!("|---|---|---|---|---|---|---|---|---|---|");
+    println!("|---|---|---|---|---|---|---|---|---|---|---|");
     for game in games.split(',') {
         let content = content(game);
         for name in levels.split(',') {
@@ -735,7 +745,7 @@ fn real_time() {
             }
             let s = d.spent();
             println!(
-                "| {game} | {name} | {} | {} | {:.0} / {:.0} | {:.1} / {:.0} | {} | {:.0} | {} | {:.1} / {:.0} |",
+                "| {game} | {name} | {} | {} | {:.0} / {:.0} | {:.1} / {:.0} | {} | {:.0} | {} ({}) | {} | {:.1} / {:.0} |",
                 s.decisions,
                 s.late,
                 s.waited.as_secs_f64() * 1000.0,
@@ -744,6 +754,8 @@ fn real_time() {
                 s.longest.as_secs_f64() * 1000.0,
                 s.chips,
                 s.chip_time.as_secs_f64() * 1000.0 / s.chips.max(1) as f64,
+                s.screens_late,
+                s.looked_longer,
                 s.dimmings,
                 s.dim_time.as_secs_f64() * 1000.0 / s.dimmings.max(1) as f64,
                 s.dim_longest.as_secs_f64() * 1000.0,
@@ -1050,19 +1062,7 @@ fn dimming_costs() {
                 step(&mut b, 1, 0, 0);
                 t += 1;
             }
-            let chips: Vec<(u8, FolderChip)> = {
-                let s = &b.custom.sides[1];
-                let screen = s.screen.unwrap();
-                screen
-                    .slots
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(at, slot)| match slot.kind {
-                        SlotKind::Chip { index, .. } => s.folder.chips.get(index as usize).copied().flatten().map(|chip| (at as u8, chip)),
-                        _ => None,
-                    })
-                    .collect()
-            };
+            let chips = dealt(&b, 1);
             let ask = |search: &mut Search, b: &Battle, asked: Asked| {
                 let at = navi_at(b, 1).unwrap_or(NOWHERE);
                 let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level: Level::HARD, asked };
@@ -1162,4 +1162,39 @@ fn it_cuts_in_where_that_pays() {
         step(&mut c, 1, if k == press { keys::A | keys::B } else { keys::B }, 0);
     }
     assert_eq!(c.hands[1].remaining(), hand - 1, "pressed on {press}: no cut-in");
+}
+
+/// A hand is worth what it does over a turn, its chips used one after
+/// another: the dummy's folder all Cannon A (EXE6), each Cannon of a hand
+/// adds to what the turn makes (the second used once the first one's hit
+/// has passed: right after it, while the player flashes from it, it would
+/// take nothing), and its custom screen picks several. Prints the time the
+/// screen's answer took.
+#[test]
+fn a_hand_is_worth_its_turn() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let mut m = even_match(&content, "exe6", 1, 400);
+    let cannon = nettai_match::ids::chip(&content, "exe6", "cannon").expect("Cannon");
+    let cannon = FolderChip::new(cannon, nettai_battle::content::ChipCode::from_letter('A').unwrap());
+    m.sides[1].set_folder(&content, &nettai_match::Folder { chips: [Some(cannon); 30], regular: None, tags: None }).unwrap();
+    let mut b = Set::of(&content, &m, 1).start();
+    let mut t = 0;
+    while !b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing && b.round.mode == mode::CUSTOM) && t < 900 {
+        step(&mut b, 1, 0, 0);
+        t += 1;
+    }
+    let chips = dealt(&b, 1);
+    assert!(chips.len() >= 3, "{chips:?}");
+    let level = Level::HARD;
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Chips(chips.clone()) };
+    let mut search = Search::with(THREADS);
+    let s: Vec<u8> = chips.iter().map(|(s, _)| *s).collect();
+    let hands = [vec![], vec![s[0]], vec![s[0], s[1]], vec![s[0], s[1], s[2]]];
+    let w = search.value(&q, &chips, &hands, &mut Valued::default(), &mut 0);
+    assert!(w.windows(2).all(|w| w[1] > w[0]), "none, one, two and three Cannons: {w:?}");
+    let answer = search.answer(&q);
+    let picked = answer.worths.iter().filter(|w| **w > 0).count();
+    println!("{} Cannons of {} picked; {:.0} ms, {} trial ticks", picked, chips.len(), answer.took.as_secs_f64() * 1000.0, answer.ticks);
+    assert!(picked >= 3, "{:?}", answer.worths);
 }
