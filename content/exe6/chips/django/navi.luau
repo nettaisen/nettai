@@ -203,7 +203,7 @@ local function drop_in(me: Object)
     if me.phase == 0 then
         me.phase = 4
         local cx, cy = field.center(me.panel_x + panels.side_direction(me.alliance), me.panel_y)
-        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, DROP_TICKS, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, DROP_TICKS, GRAVITY, me.alliance)
         me.timer, me.timer2 = DROP_TICKS, 0
     end
     local p, v = me.pos, me.vel

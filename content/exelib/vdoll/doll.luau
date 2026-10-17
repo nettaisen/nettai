@@ -92,7 +92,7 @@ function doll.make(look: DollLook): Doll
         end
         if me.phase_init == 0 then
             local cx, cy = field.center(s.target_x, s.target_y)
-            me.vel = look.trajectory.in_ticks(me.pos, cx, cy, 0, FLIGHT_TICKS, GRAVITY)
+            me.vel = look.trajectory.in_ticks(me.pos, cx, cy, 0, FLIGHT_TICKS, GRAVITY, me.alliance)
             me.timer2 = FLIGHT_TICKS
             s.flying = true
             me.phase_init = 4

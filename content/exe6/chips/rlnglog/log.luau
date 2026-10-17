@@ -80,7 +80,7 @@ local function launch(me: Object, s: State)
         me.panel_x = x
         local cx, cy = field.center(x, me.panel_y)
         me.timer2 = ARC_TICKS
-        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, ARC_TICKS, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, cx, cy, 0, ARC_TICKS, GRAVITY, me.alliance)
         return
     end
     local vx = me.facing * DROP_ROLL_SPEED

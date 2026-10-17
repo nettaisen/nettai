@@ -132,8 +132,8 @@ local function aim(me: Object, look: Look)
     end
     local tx, ty = field.center(s.target_x, s.target_y)
     local trajectory = look.trajectory
-    local angle = trajectory.angle(int.i32(tx - x), int.i32(ty - y))
-    local vx, vy = trajectory.toward(angle, SPEED)
+    local angle = trajectory.angle(int.i32(tx - x), int.i32(ty - y), me.alliance)
+    local vx, vy = trajectory.toward(angle, SPEED, me.alliance)
     me.vel = Vec3.new(vx, vy, me.vel.z)
 end
 

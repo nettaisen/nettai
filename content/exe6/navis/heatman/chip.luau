@@ -49,7 +49,7 @@ local function jump(me: Object, s: State)
         me:reserve_panel(me.panel_x, me.panel_y)
         me.anim = ANIM_JUMP
         local x, y = field.center(me.panel_x + me.facing * JUMP_PANELS, me.panel_y)
-        me.vel = trajectory.in_ticks(me.pos, x, y, 0, JUMP_TICKS, GRAVITY)
+        me.vel = trajectory.in_ticks(me.pos, x, y, 0, JUMP_TICKS, GRAVITY, me.alliance)
         s.timer = JUMP_TICKS
         return
     end

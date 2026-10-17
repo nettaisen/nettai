@@ -108,8 +108,8 @@ function point.make(look: Look): Point
         local s = me.state :: State
         local tx, ty = field.center(s.target_x, s.target_y)
         local p = me.pos
-        local angle = look.trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
-        local vx, vy = look.trajectory.toward(angle, me.vel.x)
+        local angle = look.trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y), me.alliance)
+        local vx, vy = look.trajectory.toward(angle, me.vel.x, me.alliance)
         me.pos = Vec3.new(int.i32(p.x + vx), int.i32(p.y + vy), p.z)
         me:set_panel_from_coordinates()
         if me.panel_x ~= s.target_x or me.panel_y ~= s.target_y then
