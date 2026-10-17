@@ -1321,6 +1321,24 @@ Each is settled unless the user changes it.
       their own alone, as Closed builds on did. A new lobby has it off, so builds are kept to each player unless the
       host opens them (the opposite of Closed builds' default). Japanese: 構築公開.
 
+82. **The wait is the lobby; the player's own apart** (2026-10-17). The user: "the host should be able to change
+    settings before the joiner joins. you should unify the interface somehow between the waiting and the lobby.
+    also the input delay and ping settings should probably be displayed separately from the lobby settings, since
+    those are client-local things". Chosen here, where they said "somehow":
+    - *One layout from HOST on* (§6, "Play"): the waiting panel beside the practice battle is gone. The lobby shows
+      from the moment the invite is out (or this machine hosts): the other player's place has the invite (its
+      code, COPY CODE, that they are waited for) until they come, then their card slides in there; the player's
+      own place has the practice battle while they wait (on a phone, their card, the battle a button away), then
+      their card. READY, CHANGE BUILD and LEAVE come with the other player; until then the way out, CANCEL INVITE
+      (STOP HOSTING), is the one button.
+    - *The host sets the match's settings while it waits*, with the same controls, and the lobby starts on them:
+      the joiner takes them as it comes in (docs/frontend.md §2).
+    - *What is each player's own is apart from the match's:* Input delay and the connection's bars and ping are a
+      panel of their own, YOUR CONNECTION, beside the MATCH SETTINGS panel (on a phone under it, under its own
+      name), no longer cells of one row.
+    - The practice battle there is drawn at twice the battle's size (it was three times beside the old panel), so
+      that both places fit side by side over the settings.
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1608,32 +1626,47 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   listens on its port, 47474, and waits as for an invite; "Send this address to your opponent.", or why it
   can't host) and Join (an address field, a host or an IP with its port, an IPv6 one in brackets, and CONNECT;
   an address that isn't one says so under it); CANCEL. It opens with the address field edited (§2.32).
-- **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
-  a panel beside it: the invite code, large, in fixed-width type, grouped in threes, copied to the clipboard as it
-  comes ("you should automatically copy the invite code when hosting starts"; a direct host's address too); COPY CODE; "Waiting for
-  opponent"; "The lobby opens when they join."; CANCEL. Hosting directly, the panel has YOUR ADDRESS, this
-  machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place.
-  Keys go to the battle; Esc or Start opens the practice menu, the usual one (§2.57, "The waiting practice's menu
-  is the usual one"), its rows the same but Music and EDIT, with Copy invite code and Cancel invite (Copy
-  address and Stop hosting) at its top in place of EXIT; what it sets lasts for the wait. (It starts as it
-  always did, with no menu over it: §2.57.)
-- **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
-  ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
-  10, 2 at first: §2.34), Ruleset (§2.59: the host's a select with EDIT, the joiner's the host's ruleset by
-  name with VIEW), Open setups (off, on; off at first: §2.81), Custom timer (a stepper of the custom screen's time limit: 30, 45,
-  60, 90 and 120 seconds and Unlimited, 60 at first; nettai's own, not the original's: the user, "design a custom
-  screen timer and default it to 60 seconds but also allow an unlimited time option"; when it runs out the screen
-  closes as if OK were pressed, docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the
-  HUD's 8x16 font, one color, flush with the battle's right edge under the opponent's name, level with the
-  emotion window: "align it with the emotion window", "maybe no box and use the regular font and don't change
-  the color"), Input delay (a stepper,
-  yours alone, default 4, remembered), the
-  connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
-  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset,
-  Open setups and Custom timer are shared: both see them, and a change clears both ready marks; the host alone
-  changes them (§2.81: the joiner's controls are unavailable); the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
-  ready up and the line says the first thing ("Bass isn't allowed"); nothing is taken out of a build to play it
-  (Patch cards off, which played each build without its cards, is gone: §2.59).
+- **The lobby, from the moment HOST is pressed** (§2.82): one layout while the host waits for an opponent and
+  once they are together, read top to bottom; in the body's units (1216 by 644), a block 1040 wide and 548 tall
+  in the middle:
+  - *The two players' places,* 480 by 320 each, 80 apart with VS between: yours at the left, theirs at the right.
+    Waiting, yours has the practice battle (the picture at twice the battle's size, tagged PRACTICE), started at
+    once, and theirs has the invite: INVITE CODE over the code, large, in fixed-width type, grouped in threes,
+    copied to the clipboard as it comes ("you should automatically copy the invite code when hosting starts"; a
+    direct host's address too), COPY CODE, a line, a slow pulse with "Waiting for opponent", and "The lobby opens
+    when they join." (hosting directly: YOUR ADDRESS, this machine's address and port, COPY ADDRESS, "Send this
+    address to your opponent."). With the opponent, the players' cards: yours shows your build; theirs, sliding
+    in where the invite was, shows their name and whether they are ready, nothing else (nothing of a build
+    crosses before the match: their build can't be shown here, open setups or not).
+  - 24 under them, *the match's settings* and, 24 to their right, *your connection*, each a panel of its own
+    with its name over it (MATCH SETTINGS, YOUR CONNECTION), the two centered together. The match's: First to (a
+    stepper of the round wins that take the set, 1 to 10, 2 at first: §2.34), Ruleset (§2.59: the host's a select
+    with EDIT, the joiner's the host's ruleset by name with VIEW), Open setups (off, on; off at first: §2.81),
+    Custom timer (a stepper of the custom screen's time limit: 30, 45, 60, 90 and 120 seconds and Unlimited, 60
+    at first; nettai's own, not the original's: the user, "design a custom screen timer and default it to 60
+    seconds but also allow an unlimited time option"; when it runs out the screen closes as if OK were pressed,
+    docs/engine/custom-screen.md §6.1, and while it counts the seconds left show in the HUD's 8x16 font, one
+    color, flush with the battle's right edge under the opponent's name, level with the emotion window: "align it
+    with the emotion window", "maybe no box and use the regular font and don't change the color"). They are
+    shared: both see them, and a change clears both ready marks; the host alone changes them (§2.81: the
+    joiner's controls are unavailable), already while waiting, and the lobby starts on what the host set there.
+    Yours: Input delay (a stepper, yours alone, default 4, remembered; the opponent never sees it) and the
+    connection's bars and ping (empty while nobody has come). No music: "don't allow bgm select in lobby"; the
+    battle's music is picked in Practice, §2.29.
+  - 24 under them *the buttons*: with the opponent READY, CHANGE BUILD, LEAVE; waiting, CANCEL INVITE (STOP
+    HOSTING) alone. Then the reserved status line. A build that holds something the ruleset doesn't allow can't
+    ready up and the line says the first thing ("Bass isn't allowed"), already while waiting; nothing is taken
+    out of a build to play it (Patch cards off, which played each build without its cards, is gone: §2.59).
+  Waiting, the keys go to the battle and the pointer to the rest (the settings, COPY CODE, CANCEL INVITE); Esc or
+  Start opens the practice menu, the usual one (§2.57, "The waiting practice's menu is the usual one"), its rows
+  the same but Music and EDIT, with CANCEL INVITE (STOP HOSTING) in place of EXIT; what it sets lasts for the
+  wait. (It starts as it always did, with no menu over it: §2.57.) The Ruleset's EDIT stops the practice battle
+  while its page is open (the page has the keys) and starts it again, on what its menu was left at, as it
+  closes. The title is LOBBY throughout.
+  On a phone one column: your card (126 tall), theirs 8 under it (the invite while waiting: its code, COPY CODE
+  and the pulse beside it), the match's settings a line each, YOUR CONNECTION and its two lines, then READY (52,
+  the column's width) and CHANGE BUILD and LEAVE side by side under it; waiting, PRACTICE (52, which starts the
+  practice battle filling the window, STOP PRACTICE at its menu's top going back) and CANCEL INVITE under it.
 
 ### Practice
 - **No screen of its own** (§2.57): PLAY's PRACTICE goes straight into a practice battle, the two cards and the

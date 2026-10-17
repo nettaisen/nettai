@@ -472,6 +472,12 @@ impl Settings {
         nettai_match::first_to(self.rounds.len()).expect("the settings' rounds are a set's")
     }
 
+    /// A set first to `wins` round wins (1 to [`nettai_match::MAX_FIRST_TO`];
+    /// each place left to the seed).
+    pub fn set_first_to(&mut self, wins: u8) {
+        self.rounds = rounds_of(wins);
+    }
+
     /// A match file's: its game, its rounds, what their backgrounds are
     /// drawn from and its custom screen's time limit (none where it states
     /// none), under `ruleset`, with setups not open.
@@ -1024,7 +1030,9 @@ impl Lobby {
     /// [`nettai_match::MAX_FIRST_TO`]; each place left to the seed), the
     /// host alone: [`Lobby::propose`] of the settings with that.
     pub fn set_first_to(&mut self, wins: u8) -> bool {
-        self.propose(Settings { rounds: rounds_of(wins), ..self.mine.clone() })
+        let mut settings = self.mine.clone();
+        settings.set_first_to(wins);
+        self.propose(settings)
     }
 
     /// Change whether the players see each other's setups, the host alone:
@@ -2092,6 +2100,20 @@ mod tests {
                 assert_eq!(a.set.first().custom_screen_limit, time.map(|t| t * 60));
             }
         }
+    }
+
+    /// A host's lobby starts on the settings it is made with (what its
+    /// player set while waiting for the other: the user, "the host should be
+    /// able to change settings before the joiner joins"), and the joiner
+    /// takes them whole as it comes in.
+    #[test]
+    fn the_joiner_takes_what_the_host_set_before_it_came() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        let set = Settings { open_setups: true, custom_screen_time: None, ruleset: standard(), ..settings(4) };
+        let mut lobbies = pair(&content, [set.clone(), settings(1)], [built(&content, "gregar"), built(&content, "falzar")]);
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        assert_eq!([lobbies[0].settings().clone(), lobbies[1].settings().clone()], [set.clone(), set]);
     }
 
     /// The settings are the match's and the host's alone: a joiner coming
