@@ -96,8 +96,13 @@ local function aim(me: Object, look: ThunderBallLook)
         if ty ~= me.panel_y and tx == me.panel_x then
             vertical = true
             dir = if ty >= me.panel_y then 1 else -1
+        elseif tx == me.panel_x then
+            -- A target on its own panel. The original goes right (`tx >= x`): ahead for a side-0 ball, back for a
+            -- side-1 ball. nettai has every ball do as side 1's does, by the user's side: back
+            -- (docs/engine/side-symmetry.md).
+            dir = -me.facing
         else
-            dir = if tx >= me.panel_x then 1 else -1
+            dir = if tx > me.panel_x then 1 else -1
         end
     end
     if vertical then
