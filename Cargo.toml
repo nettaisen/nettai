@@ -5,7 +5,7 @@ exclude = ["crates/nettai-luau/wasm/libc", "crates/nettai-rtc/web-datachannel"]
 
 [workspace.package]
 # The app's version, which nettai and nettai-frontend take: the lobby and replays compare nettai-frontend's (two builds of one version play together).
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MPL-2.0"
 
