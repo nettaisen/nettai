@@ -481,7 +481,7 @@ impl Named {
             Named::New(f) => f.spent,
             Named::Old(f) => {
                 let s = f.spent;
-                Spent { decisions: s.decisions, ticks: s.ticks, time: s.time, longest: s.longest, late: s.late, waited: s.waited, chips: s.chips, chip_time: s.chip_time, forms: 0 }
+                Spent { decisions: s.decisions, ticks: s.ticks, time: s.time, longest: s.longest, late: s.late, waited: s.waited, chips: s.chips, chip_time: s.chip_time, forms: 0, ..Spent::default() }
             }
             _ => Spent::default(),
         }
@@ -691,7 +691,9 @@ fn tick_cost() {
 /// thread, against `FIGHTER_PLAYER` (random). Prints the decisions that
 /// weren't ready when they were to take effect and the time the battle
 /// waited for them. A measurement: `cargo test -p nettai-training --lib
-/// real_time -- --ignored --nocapture` (`FIGHTER_GAMES`, `FIGHTER_LEVELS`).
+/// real_time -- --ignored --nocapture` (`FIGHTER_GAMES`, `FIGHTER_LEVELS`;
+/// `FIGHTER_CASE`, a match of [`dimming_match`]'s in place of the picked
+/// one).
 #[test]
 #[ignore]
 fn real_time() {
@@ -700,12 +702,17 @@ fn real_time() {
     let seconds: u32 = var("FIGHTER_SECONDS", "20").parse().unwrap();
     let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "easy,normal,hard"));
     let player = var("FIGHTER_PLAYER", "random");
-    println!("| game | dummy | decisions | late | waited (ms, all / longest) | ms a decision (mean / longest) | custom screens | ms a screen (mean) |");
-    println!("|---|---|---|---|---|---|---|---|");
+    println!(
+        "| game | dummy | decisions | late | waited (ms, all / longest) | ms a decision (mean / longest) | custom screens | ms a screen (mean) | dimmed decisions | ms a dimmed decision (mean / longest) |"
+    );
+    println!("|---|---|---|---|---|---|---|---|---|---|");
     for game in games.split(',') {
         let content = content(game);
         for name in levels.split(',') {
-            let m = even_match(&content, game, 1, 400);
+            let m = match std::env::var("FIGHTER_CASE") {
+                Ok(case) => dimming_match(&content, game, &case, 1),
+                Err(_) => even_match(&content, game, 1, 400),
+            };
             let mut b = Set::of(&content, &m, 1).start();
             let mut p = Named::of(&player, 1 ^ 0x5EED);
             let mut d = Named::of(name, 1);
@@ -728,7 +735,7 @@ fn real_time() {
             }
             let s = d.spent();
             println!(
-                "| {game} | {name} | {} | {} | {:.0} / {:.0} | {:.1} / {:.0} | {} | {:.0} |",
+                "| {game} | {name} | {} | {} | {:.0} / {:.0} | {:.1} / {:.0} | {} | {:.0} | {} | {:.1} / {:.0} |",
                 s.decisions,
                 s.late,
                 s.waited.as_secs_f64() * 1000.0,
@@ -737,7 +744,422 @@ fn real_time() {
                 s.longest.as_secs_f64() * 1000.0,
                 s.chips,
                 s.chip_time.as_secs_f64() * 1000.0 / s.chips.max(1) as f64,
+                s.dimmings,
+                s.dim_time.as_secs_f64() * 1000.0 / s.dimmings.max(1) as f64,
+                s.dim_longest.as_secs_f64() * 1000.0,
             );
         }
     }
+}
+
+/// A match for the dimming scenarios ([`dimming_chips`]), side 1 the
+/// dummy's: `searchmn` (its MegaMan with EXE6's patch card SearchMn: its
+/// charged shot CircGun), `eraseman` (its folder all EraseMan), `cut-in`
+/// (the same, the player's folder all CircGun: what it may cut in on).
+fn dimming_match(content: &Arc<Content>, game: &str, case: &str, seed: u32) -> nettai_match::Match {
+    let mut m = even_match(content, game, seed, 400);
+    let all = |name: &str, code: char| {
+        let chip = nettai_match::ids::chip(content, game, name).unwrap_or_else(|| panic!("no chip {name}"));
+        let code = nettai_battle::content::ChipCode::from_letter(code).unwrap();
+        nettai_match::Folder { chips: [Some(FolderChip::new(chip, code)); 30], regular: None, tags: None }
+    };
+    match case {
+        "searchmn" => {
+            let cards = nettai_match::testing::patch_cards(content, game, "searchmn");
+            m.sides[1] = m.sides[1].without_patch_cards(content);
+            m.sides[1].set_fact(content, nettai_match::facts::PATCH_CARDS, &cards).unwrap();
+        }
+        "eraseman" => m.sides[1].set_folder(content, &all("eraseman", 'K')).unwrap(),
+        "cut-in" => {
+            m.sides[1].set_folder(content, &all("eraseman", 'K')).unwrap();
+            m.sides[0].set_folder(content, &all("circgun", 'P')).unwrap();
+        }
+        _ => panic!("no dimming case {case:?}"),
+    }
+    m
+}
+
+/// How the dummy's dimmings went over a round ([`dimming_round`]).
+#[derive(Debug, Default)]
+struct Dimmings {
+    won: Option<u8>,
+    /// Each side's HP lost.
+    lost: [i64; 2],
+    fight: u32,
+    /// Its dimming chips used (a dimming it started, or a cut-in), the
+    /// dimmings in which the player lost HP, and the HP the player lost in
+    /// them (from their start to [`DIM_SETTLE`] ticks after they end).
+    uses: u32,
+    hits: u32,
+    damage: i64,
+    /// The player's dimmings begun while the dummy's next chip was a
+    /// dimming chip, those it cut in on, and the HP each side lost in them.
+    counters: u32,
+    cut: u32,
+    exchange: [i64; 2],
+}
+
+/// The fight ticks after a dimming within which its HP lost counts.
+const DIM_SETTLE: u32 = 10;
+
+/// The first round of `m`, the left navi `player`, the right `dummy`,
+/// up to `most` ticks: what the dummy's dimmings did.
+fn dimming_round(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, player: &mut dyn Ai, dummy: &mut dyn Ai, most: u32) -> Dimmings {
+    struct Episode {
+        initiator: u8,
+        hp: [i64; 2],
+        counter: bool,
+        uses: u32,
+        cut: bool,
+        settle: Option<u32>,
+    }
+    let mut b = Set::of(content, m, seed).start();
+    let mut decided = Decided { started: false };
+    let mut d = Dimmings::default();
+    let mut open: Option<Episode> = None;
+    let mut ticks = 0;
+    let mut first: Option<[i64; 2]> = None;
+    let close = |e: Episode, b: &Battle, d: &mut Dimmings| {
+        let lost = [e.hp[0] - hp(b, 0), e.hp[1] - hp(b, 1)];
+        if e.uses > 0 {
+            d.uses += e.uses;
+            d.hits += (lost[0] > 0) as u32;
+            d.damage += lost[0];
+        }
+        if e.counter {
+            d.counters += 1;
+            d.cut += e.cut as u32;
+            d.exchange[0] += lost[0];
+            d.exchange[1] += lost[1];
+        }
+    };
+    while ticks < most && !decided.now(&b) && !b.is_stopped() {
+        ticks += 1;
+        let [left, right] = both(&b, [&mut *player, &mut *dummy]);
+        let (was_dimmed, hand, hps) = (b.is_dimmed(), b.hands[1].remaining(), [hp(&b, 0), hp(&b, 1)]);
+        let counter = b.hands[1].next_chip().is_some_and(|c| b.content.chip(c).flags.has(nettai_battle::content::ChipFlags::DIMMING));
+        step(&mut b, 0, left, right);
+        if decided.started && first.is_none() {
+            first = Some([hp(&b, 0), hp(&b, 1)]);
+        }
+        d.fight += (fight_goes_on(&b) && !b.is_dimmed()) as u32;
+        if b.is_dimmed() && !was_dimmed {
+            if let Some(e) = open.take() {
+                close(e, &b, &mut d);
+            }
+            let initiator = b.dimming[0].initiator;
+            open = Some(Episode { initiator, hp: hps, counter: counter && initiator == 0, uses: (initiator == 1) as u32, cut: false, settle: None });
+        }
+        if let Some(e) = open.as_mut() {
+            if b.is_dimmed() && b.hands[1].remaining() < hand {
+                e.uses += 1;
+                e.cut |= e.initiator == 0;
+            }
+            if !b.is_dimmed() {
+                let left = e.settle.get_or_insert(DIM_SETTLE);
+                *left = left.saturating_sub(1);
+                if *left == 0 {
+                    close(open.take().unwrap(), &b, &mut d);
+                }
+            }
+        }
+    }
+    if let Some(e) = open.take() {
+        close(e, &b, &mut d);
+    }
+    let hps = [hp(&b, 0), hp(&b, 1)];
+    let first = first.unwrap_or(hps);
+    d.lost = [first[0] - hps[0], first[1] - hps[1]];
+    d.won = match hps {
+        [0, 0] => None,
+        [0, _] => Some(1),
+        [_, 0] => Some(0),
+        _ => None,
+    };
+    d
+}
+
+/// The dummy's dimming chips: a chip that waits for its user's A while
+/// the battle is dimmed (CircGun's sight, EraseMan's aim) used where it
+/// pays, aimed; and the player's dimmings cut in on. EXE6's cases
+/// ([`dimming_match`]: `searchmn`, `eraseman`, `cut-in`), against a
+/// player that stands still (`still`, opening the custom screen), one that
+/// steps around (`dodger`) and one that attacks (`shooter`). Prints, a
+/// minute of the fight: its dimming chips used, the share that hit, the
+/// damage a use; the player's dimmings it could cut in on and the share it
+/// did, and the HP each lost in them. A measurement: `cargo test -p
+/// nettai-training --release --lib dimming_chips -- --ignored --nocapture`
+/// (`FIGHTER_CASES` (searchmn/still,searchmn/dodger,eraseman/still,
+/// eraseman/dodger,cut-in/shooter), `FIGHTER_LEVELS` (hard),
+/// `FIGHTER_SEEDS` (12), `FIGHTER_THREADS`, `FIGHTER_PACKS`).
+#[test]
+#[ignore]
+fn dimming_chips() {
+    nettai_frontend::session::quiet_engine_panics();
+    const MOST: u32 = 60 * 60 * 2;
+    let var = |name: &str, or: &str| std::env::var(name).unwrap_or_else(|_| or.into());
+    let seeds: u32 = var("FIGHTER_SEEDS", "12").parse().unwrap();
+    let threads: usize = var("FIGHTER_THREADS", "4").parse().unwrap();
+    let cases = var("FIGHTER_CASES", "searchmn/still,searchmn/dodger,eraseman/still,eraseman/dodger,cut-in/shooter");
+    let content = content("exe6");
+    println!(
+        "| case | player | dummy | won–lost | HP a min (dealt / taken) | dimming chips a min | hit | damage a use | cut-ins (could / did) | HP in them (player / dummy) | ms a decision (mean / longest) | dimmed decisions, ms (mean / longest) | late |"
+    );
+    println!("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    for case in cases.split(',') {
+        let (case, player) = case.split_once('/').expect("case/player");
+        for level in var("FIGHTER_LEVELS", "hard").split(',') {
+            let results = std::sync::Mutex::new(Vec::new());
+            let next = std::sync::atomic::AtomicU32::new(0);
+            std::thread::scope(|s| {
+                for _ in 0..threads {
+                    s.spawn(|| {
+                        loop {
+                            let seed = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            if seed >= seeds {
+                                break;
+                            }
+                            let m = dimming_match(&content, "exe6", case, seed);
+                            let mut d = Named::of(level, seed as u64);
+                            let mut p = match player {
+                                "still" => Named::Dodger(Dodger { every: u32::MAX, t: 0, rng: SplitMix64::new(seed as u64), held: 0 }),
+                                _ => Named::of(player, seed as u64 ^ 0x5EED),
+                            };
+                            let r = dimming_round(&content, &m, seed, p.ai(), d.ai(), MOST);
+                            results.lock().unwrap().push((r, d.spent()));
+                        }
+                    });
+                }
+            });
+            let results = results.into_inner().unwrap();
+            let spent: Vec<Spent> = results.iter().map(|(_, s)| *s).collect();
+            let results: Vec<Dimmings> = results.into_iter().map(|(r, _)| r).collect();
+            let sum = |f: &dyn Fn(&Dimmings) -> i64| results.iter().map(f).sum::<i64>();
+            let decisions = spent.iter().map(|s| s.decisions).sum::<u32>().max(1) as f64;
+            let dimmings = spent.iter().map(|s| s.dimmings).sum::<u32>();
+            let minutes = sum(&|r| r.fight as i64).max(1) as f64 / 3600.0;
+            let uses = sum(&|r| r.uses as i64);
+            println!(
+                "| {case} | {player} | {level} | {}–{} | {:.0} / {:.0} | {:.1} | {} | {:.0} | {} / {} | {} / {} | {:.1} / {:.0} | {}, {:.1} / {:.0} | {} |",
+                results.iter().filter(|r| r.won == Some(1)).count(),
+                results.iter().filter(|r| r.won == Some(0)).count(),
+                sum(&|r| r.lost[0]) as f64 / minutes,
+                sum(&|r| r.lost[1]) as f64 / minutes,
+                uses as f64 / minutes,
+                if uses == 0 { "–".to_string() } else { format!("{:.0}%", 100.0 * sum(&|r| r.hits as i64) as f64 / uses as f64) },
+                if uses == 0 { 0.0 } else { sum(&|r| r.damage) as f64 / uses as f64 },
+                sum(&|r| r.counters as i64),
+                sum(&|r| r.cut as i64),
+                sum(&|r| r.exchange[0]),
+                sum(&|r| r.exchange[1]),
+                spent.iter().map(|s| s.time).sum::<Duration>().as_secs_f64() * 1000.0 / decisions,
+                spent.iter().map(|s| s.longest).max().unwrap_or_default().as_secs_f64() * 1000.0,
+                dimmings,
+                spent.iter().map(|s| s.dim_time).sum::<Duration>().as_secs_f64() * 1000.0 / dimmings.max(1) as f64,
+                spent.iter().map(|s| s.dim_longest).max().unwrap_or_default().as_secs_f64() * 1000.0,
+                spent.iter().map(|s| s.late).sum::<u32>(),
+            );
+        }
+    }
+}
+
+/// What its plans think a dimming chip is worth: EXE6's `searchmn` and
+/// `eraseman` cases ([`dimming_match`]), the fight's first decision (the
+/// dummy's charge full, the player standing where it stands), each kind of
+/// plan's best worth, in HP over the guesses' average (Hard's), and
+/// supposing the player stands (one guess); and what the fighter makes in
+/// five seconds from there, the player standing still. The player stands
+/// on its area's middle panel, or a step up from it: CircGun's sight
+/// circles the area's edge, so a player in the middle can't be hit. A
+/// measurement: `cargo test -p nettai-training --release --lib
+/// dimming_worths -- --ignored --nocapture` (`FIGHTER_SEEDS` (3)).
+#[test]
+#[ignore]
+fn dimming_worths() {
+    nettai_frontend::session::quiet_engine_panics();
+    let seeds: u32 = std::env::var("FIGHTER_SEEDS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    let content = content("exe6");
+    let mut search = Search::with(4);
+    println!("| case | seed | player at | stand | shot | chip | stand, shot, chip (it stands) | played out (dealt / lost) |");
+    println!("|---|---|---|---|---|---|---|---|");
+    for case in ["searchmn", "eraseman"] {
+        for (seed, moved) in (0..seeds).flat_map(|s| [(s, 0), (s, keys::UP)]) {
+            let m = dimming_match(&content, "exe6", case, seed);
+            let b = Set::of(&content, &m, seed).start();
+            let mut b = to_the_fight(&b, 1, &|_| Some(0), &mut 0).expect("the fight starts");
+            // (The charge full; the player a step up, or not.)
+            for t in 0..200 {
+                step(&mut b, 1, keys::B, if t < 2 { moved } else { 0 });
+            }
+            let at = navi_at(&b, 1).unwrap();
+            let ask = |search: &mut Search, level: Level| {
+                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Decide };
+                search.answer(&q)
+            };
+            let a = ask(&mut search, Level::HARD);
+            let per = |a: &Answer, then: Then| a.tried[..a.tried.len() - 1].iter().filter(|(e, _)| e.plan.then == then).map(|(_, w)| *w).max().map_or("–".into(), |w| format!("{:.0}", w as f64 / a.guesses as f64 / DEALT as f64));
+            let one = ask(&mut search, Level { guesses: 1, ..Level::HARD });
+            let played = {
+                let mut trial = b.clone();
+                let mut fighter = Fighter::inline(Level::HARD, seed as u64);
+                for _ in 0..300 {
+                    let mine = fighter.buttons(&trial, 1, 0) & !(keys::L | keys::R);
+                    step(&mut trial, 1, mine, 0);
+                    if !fight_goes_on(&trial) {
+                        break;
+                    }
+                }
+                let (d, l) = outcome(&b, &trial, 1);
+                format!("{:.0} / {:.0}", d as f64 / DEALT as f64, l as f64 / TAKEN as f64)
+            };
+            let them = navi_at(&b, 0).map_or("–".into(), |p| format!("{},{}", p.x, p.y));
+            println!(
+                "| {case} | {seed} | {them} | {} | {} | {} | {}, {}, {} | {played} |",
+                per(&a, Then::Hold),
+                per(&a, Then::Shot),
+                per(&a, Then::Chip),
+                per(&one, Then::Hold),
+                per(&one, Then::Shot),
+                per(&one, Then::Chip)
+            );
+        }
+    }
+}
+
+/// What its questions cost with dimming chips in play: EXE6's dimming
+/// cases ([`dimming_match`]), a custom screen's chips and a decision in
+/// the fight that follows. A measurement: `cargo test -p nettai-training
+/// --release --lib dimming_costs -- --ignored --nocapture`
+/// (`FIGHTER_SEEDS` (3), `FIGHTER_AIM`: the aims' stride and window in
+/// plans' copies).
+#[test]
+#[ignore]
+fn dimming_costs() {
+    nettai_frontend::session::quiet_engine_panics();
+    let seeds: u32 = std::env::var("FIGHTER_SEEDS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    let content = content("exe6");
+    let mut search = Search::with(4);
+    println!("| case | seed | chips: ms, trial ticks, aims | decision: ms, trial ticks, aims |");
+    println!("|---|---|---|---|");
+    for case in ["eraseman", "searchmn", "cut-in"] {
+        for seed in 0..seeds {
+            let m = dimming_match(&content, "exe6", case, seed);
+            let mut b = Set::of(&content, &m, seed).start();
+            let mut t = 0;
+            while !b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing && b.round.mode == mode::CUSTOM) && t < 900 {
+                step(&mut b, 1, 0, 0);
+                t += 1;
+            }
+            let chips: Vec<(u8, FolderChip)> = {
+                let s = &b.custom.sides[1];
+                let screen = s.screen.unwrap();
+                screen
+                    .slots
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(at, slot)| match slot.kind {
+                        SlotKind::Chip { index, .. } => s.folder.chips.get(index as usize).copied().flatten().map(|chip| (at as u8, chip)),
+                        _ => None,
+                    })
+                    .collect()
+            };
+            let ask = |search: &mut Search, b: &Battle, asked: Asked| {
+                let at = navi_at(b, 1).unwrap_or(NOWHERE);
+                let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(at), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level: Level::HARD, asked };
+                let aimed = || (dimmed::AIMED[0].load(std::sync::atomic::Ordering::Relaxed), dimmed::AIMED[1].load(std::sync::atomic::Ordering::Relaxed), dimmed::AIM_TICKS.load(std::sync::atomic::Ordering::Relaxed));
+                let before = aimed();
+                let a = search.answer(&q);
+                let after = aimed();
+                format!("{:.0}, {}, {} + {} ({} ticks)", a.took.as_secs_f64() * 1000.0, a.ticks, after.0 - before.0, after.1 - before.1, after.2 - before.2)
+            };
+            let on_screen = ask(&mut search, &b, Asked::Chips(chips));
+            let mut f = to_the_fight(&b, 1, &|_| Some(0), &mut 0).expect("the fight starts");
+            for _ in 0..200 {
+                step(&mut f, 1, keys::B, 0);
+            }
+            let fight = ask(&mut search, &f, Asked::Decide);
+            println!("| {case} | {seed} | {on_screen} | {fight} |");
+        }
+    }
+}
+
+/// A chip that waits for its user's A while dimmed is aimed: the dummy's
+/// EraseMan (EXE6), its dimming begun with the player standing on one row
+/// or another, is decided a press (a reaction time on at the earliest)
+/// that takes away as much as any press could (each tried), more than
+/// some (his aim turns: where the press is matters).
+#[test]
+fn a_chip_that_waits_for_a_is_aimed() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let level = Level::HARD;
+    let mut mattered = false;
+    for (seed, step_to) in [(1, 0), (1, keys::UP), (1, keys::DOWN)] {
+        let m = dimming_match(&content, "exe6", "eraseman", seed);
+        let b = Set::of(&content, &m, seed).start();
+        let mut b = to_the_fight(&b, 1, &|_| Some(0), &mut 0).expect("the fight starts");
+        assert!(b.hands[1].remaining() > 0, "EraseMan in hand");
+        for t in 0..20 {
+            step(&mut b, 1, 0, if t < 2 { step_to } else { 0 });
+        }
+        step(&mut b, 1, keys::A, 0);
+        let mut t = 0;
+        while !b.is_dimmed() && t < 60 {
+            step(&mut b, 1, 0, 0);
+            t += 1;
+        }
+        assert!(b.is_dimmed(), "EraseMan's dimming");
+        let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Dimmed };
+        let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
+        let press = answer.press.expect("a press");
+        assert!(press >= level.reaction, "{press}");
+        let play = |press: u32| {
+            let mut c = b.clone();
+            let (mut k, mut after) = (0, 0);
+            while after < 20 && k < 900 {
+                step(&mut c, 1, if press == k { keys::A | keys::B } else { keys::B }, 0);
+                k += 1;
+                after = if c.is_dimmed() { 0 } else { after + 1 };
+            }
+            hp(&b, 0) - hp(&c, 0)
+        };
+        let dealt = play(press);
+        let each: Vec<i64> = (level.reaction..level.reaction + 240).step_by(2).map(play).collect();
+        let (most, least) = (*each.iter().max().unwrap(), *each.iter().min().unwrap());
+        assert_eq!(dealt, most, "pressed on {press}, the player at {:?}", navi_at(&b, 0));
+        mattered |= least < most;
+    }
+    assert!(mattered, "where the press is never mattered");
+}
+
+/// It cuts in where that pays: the player's CircGun (EXE6) used against
+/// the dummy holding EraseMan, a dimming chip, next in hand (cut-ins are a
+/// link battle's: a match's stages are), the dummy decides to press A
+/// while CircGun's name shows, and its EraseMan cuts in.
+#[test]
+fn it_cuts_in_where_that_pays() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let m = dimming_match(&content, "exe6", "cut-in", 1);
+    let b = Set::of(&content, &m, 1).start();
+    assert_ne!(b.setup.settings.effects & nettai_battle::setup::effects::LINK, 0, "a link battle");
+    let mut b = to_the_fight(&b, 1, &|_| Some(0), &mut 0).expect("the fight starts");
+    assert!(b.hands[0].remaining() > 0 && b.hands[1].remaining() > 0, "chips in hand");
+    step(&mut b, 1, 0, keys::A);
+    let mut t = 0;
+    while !b.is_dimmed() && t < 60 {
+        step(&mut b, 1, 0, 0);
+        t += 1;
+    }
+    assert!(b.is_dimmed() && b.dimming[0].initiator == 0, "CircGun's dimming");
+    let level = Level::HARD;
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level, asked: Asked::Dimmed };
+    let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
+    let press = answer.press.expect("a cut-in");
+    let hand = b.hands[1].remaining();
+    let mut c = b.clone();
+    for k in 0..=press + 2 {
+        step(&mut c, 1, if k == press { keys::A | keys::B } else { keys::B }, 0);
+    }
+    assert_eq!(c.hands[1].remaining(), hand - 1, "pressed on {press}: no cut-in");
 }
