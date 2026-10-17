@@ -97,8 +97,8 @@ export type CannonLook = ShooterLook & {
 -- A game's throw (@exelib/bombs/throw): the wind-up's sound; its attachment kind (what the navi holds) or how the
 -- navi holds it, in its related slot in animation `anim` (EXE4's own attachment, and nothing in hand for a navi of
 -- number 5 or 10); and whether the thrown thing leaves 4 pixels toward the other side's area whichever way the navi
--- faces (EXE4's 0x080EB47A, right of it whatever its side; side 1's in nettai to the left: docs/engine/side-symmetry.md;
--- none: ahead of it, EXE6's and EXE5's).
+-- faces (EXE4's 0x080EB47A, right of it whatever its side; nettai's mirrored for the other side than the canonical:
+-- docs/engine/side-symmetry.md; none: ahead of it, EXE6's and EXE5's).
 export type ThrowLook = {
     sound: Sound,
     attachment: Kind,
@@ -119,7 +119,7 @@ export type Trajectory = {
     sqrt: (x: number) -> number,
     arctan2: (x: number, y: number) -> number,
     sine: (i: number) -> number,
-    -- (By `side`: as side 0's would in the mirror image, for side 1; none, the original's.)
+    -- (By `side`: as the canonical side's would in the mirror image, for the other side; none, the original's.)
     angle: (dx: number, dy: number, side: number?) -> number,
     toward: (angle: number, speed: number, side: number?) -> (number, number),
     in_ticks: (pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number, side: number?) -> Vec3,

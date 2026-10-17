@@ -110,10 +110,11 @@ function trajectory.over(SINE: { number }): Trajectory
 
     -- The original's helpers round toward minus infinity (arithmetic shifts),
     -- so an aim to the left comes out a little other than the mirror of the
-    -- same aim to the right. With a `side` of 1, each helper works on the
+    -- same aim to the right. With a `side`, an object of the canonical side
+    -- aims as the original does, and one of the other side works on the
     -- mirror image (X negated going in, and the result's X or angle mirrored
-    -- coming out): an object aims as side 0's would in its place, for either
-    -- side (docs/engine/side-symmetry.md). With none, the original's.
+    -- coming out): each aims as the canonical side's would in its place
+    -- (docs/engine/side-symmetry.md). With none, the original's.
 
     -- An angle (256 steps a turn) mirrored across the vertical.
     local function mirrored(angle: number): number
@@ -133,7 +134,7 @@ function trajectory.over(SINE: { number }): Trajectory
 
     -- `calcAngle_800117C`, by `side`.
     function t.angle(dx: number, dy: number, side: number?): number
-        if side == 1 then
+        if side ~= nil and field.side_sign(side) < 0 then
             return mirrored(angle_of(int.i32(-dx), dy))
         end
         return angle_of(dx, dy)
@@ -141,7 +142,7 @@ function trajectory.over(SINE: { number }): Trajectory
 
     -- `sub_80011A0`, by `side`.
     function t.toward(angle: number, speed: number, side: number?): (number, number)
-        if side == 1 then
+        if side ~= nil and field.side_sign(side) < 0 then
             local vx, vy = toward(mirrored(angle), speed)
             return int.i32(-vx), vy
         end
@@ -163,7 +164,7 @@ function trajectory.over(SINE: { number }): Trajectory
     end
 
     function t.in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number, side: number?): Vec3
-        if side == 1 then
+        if side ~= nil and field.side_sign(side) < 0 then
             local v = in_ticks(Vec3.new(int.i32(-pos.x), pos.y, pos.z), int.i32(-x), y, z, ticks, gravity)
             return Vec3.new(int.i32(-v.x), v.y, v.z)
         end
@@ -187,9 +188,9 @@ function trajectory.over(SINE: { number }): Trajectory
     ): (number, number)
         local height = pos.z
         if speed ~= 0 then
-            -- (By `side`: the distance across as side 0's in its place.)
+            -- (By `side`: the distance across as the canonical side's in its place.)
             local dx = int.i32(x - pos.x)
-            if side == 1 then
+            if side ~= nil and field.side_sign(side) < 0 then
                 dx = int.i32(-dx)
             end
             local ax, ay = int.asr(dx, 8), int.asr(int.i32(y - pos.y), 8)
