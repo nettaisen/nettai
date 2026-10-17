@@ -154,7 +154,7 @@ pub(super) fn situation(b: &Battle) -> u64 {
 /// chip's name shows, its chip can be cut in on, its own dimming is idle
 /// or waits, and its next chip is a dimming chip): the engine's own test,
 /// which a copy then plays.
-fn cut_window(b: &Battle, side: u8) -> bool {
+pub(super) fn cut_window(b: &Battle, side: u8) -> bool {
     let (own, other) = (b.dimming[side as usize], b.dimming[(side ^ 1) as usize]);
     other.state == DimmingState::ShowingName
         && !other.no_cut_in
