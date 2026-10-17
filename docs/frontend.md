@@ -520,12 +520,12 @@ A match's custom screen may have a time limit (`Match::custom_screen_time`,
 the lobby's Custom timer; nettai's own: docs/engine/custom-screen.md §6.1),
 which its rounds' setups carry in ticks (`RoundSetup::custom_screen_limit`).
 While the local player's screen counts, the HUD shows the seconds left
-(`Battle::custom_time_left`) in a plain box of the HP box's own frame and
-digits, as wide as the limit's seconds take (it keeps its width as it
-counts), against the screen's right edge on the emotion window's row, under
-the opponent's name; the last ten seconds in the HP box's low-HP colors
-(the user: "just put it in a plain box under the name on the right side
-right aligned", "align it with the emotion window"). It goes the tick the
+(`Battle::custom_time_left`) in the 8x16 font, in the HP box's plain colors
+throughout, right-aligned against the screen's right edge on the emotion
+window's row, under the opponent's name (the user: "just put it in a plain
+box under the name on the right side right aligned", "align it with the
+emotion window", then "maybe no box and use the regular font and don't
+change the color"). It goes the tick the
 screen closes, and a round without a limit (Practice's, a recording's) shows
 none.
 
