@@ -85,13 +85,18 @@ local function gone(me: Object)
 end
 
 -- 0x080D1F26: it moves; over a panel that isn't solid (but on column 7) it goes in a puff, past the right edge it goes.
+-- (The original's column and edge are the right-hand ones whatever the side: a side-1 top leaving the field to the
+-- left went in a puff as it came onto column 0, where a side-0 top goes on to the edge unseen. nettai's side-1 top
+-- takes column 0 and the left edge: docs/engine/side-symmetry.md.)
 local function spin(me: Object)
     move(me)
-    if me.panel_x ~= 7 and not field.check(me.panel_x, me.panel_y, SOLID, 0) then
+    local sign = if me.alliance == 0 then 1 else -1
+    local past = if me.alliance == 0 then 7 else 0
+    if me.panel_x ~= past and not field.check(me.panel_x, me.panel_y, SOLID, 0) then
         local p = me.pos
         battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), PUFF)
         gone(me)
-    elseif me.pos.x >= RIGHT_EDGE then
+    elseif int.i32(sign * me.pos.x) >= RIGHT_EDGE then
         gone(me)
     end
     me:update_collision_panels()
