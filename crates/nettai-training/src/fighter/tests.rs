@@ -1516,3 +1516,70 @@ fn it_doesnt_cut_in_with_a_defense_the_chip_goes_through() {
     }
     assert!(hit, "JudgeMan never struck the dummy");
 }
+
+/// Its custom screen's picker moves on from a slot the screen won't take
+/// though it shows it selectable: EXE4 refuses a chip that counts as the
+/// invalid chip (a Mega chip past the navi's limit, a code the chip
+/// hasn't), which only A finds out; the first chip dealt to the dummy given
+/// a code its chip hasn't, Easy (every chip it can in the cursor's order,
+/// the cursor starting on it) and Hard pick the others and OK, and the
+/// fight goes on, the refused chip left on the screen. (It pressed A on it
+/// for ever: in EXE4 till the screen's own time ran out, in a game without
+/// one for good.)
+#[test]
+fn the_picker_moves_on_from_a_slot_that_refuses_a() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe4");
+    for level in [Level::EASY, Level::HARD] {
+        let m = even_match(&content, "exe4", 1, 400);
+        let mut b = at_the_custom_screen(&content, &m, 1);
+        let chips = dealt(&b, 1);
+        let (slot, chip) = chips[0];
+        let code = ('A'..='Z').filter_map(nettai_battle::content::ChipCode::from_letter).find(|c| !content.chip(chip.id).codes.contains(c)).expect("a code the chip hasn't");
+        let side = &mut b.custom.sides[1];
+        let screen = side.screen.as_ref().expect("the screen");
+        let SlotKind::Chip { index, .. } = screen.slots[slot as usize].kind else { panic!("a chip's slot") };
+        side.folder.chips[index as usize] = Some(FolderChip::new(chip.id, code));
+        let (mut fighter, mut other) = (Fighter::inline(level, 1), Picker::default());
+        fighter.waits_for_chips = true;
+        let mut t = 0;
+        while b.round.mode == mode::CUSTOM && t < 2 * TO_THE_FIGHT {
+            let (mine, theirs) = (fighter.custom_screen(&b, 1), other.buttons(&b, 0, None));
+            step(&mut b, 1, mine, theirs);
+            t += 1;
+        }
+        assert_eq!(b.round.mode, mode::FIGHTING, "{level:?}: still on the custom screen after {t} ticks");
+        // (Well before EXE4's own time on the screen runs out, some 630 ticks, OK pressed for it.)
+        assert!(t < 400, "{level:?}: {t} ticks on the custom screen");
+        assert!(b.hands[1].remaining() > 0 || chips.len() == 1, "{level:?}: nothing picked");
+    }
+}
+
+/// A custom screen dealing chips that dim answers within its budget's work:
+/// the dummy's folder EraseMan, CircGun and Cannon by turns (EXE6), each
+/// dimming of a turn's copy aiming its chip ([`dimmed::aim`]), the search
+/// counts each aim at a cost of its own ([`dimmed::AIM_WORK`]), in a memo
+/// or not: one thread and four count the same work and pick the same hand,
+/// and the ticks it runs in copies, aims and forms with them, stay within
+/// twice the level's budget (its first round, each chip alone, and the
+/// forms aren't cut short by it).
+#[test]
+fn a_screen_of_dimming_chips_answers_within_its_budget() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let level = Level::HARD;
+    let mut m = even_match(&content, "exe6", 1, 400);
+    let folder = folder_of(&content, "exe6", &[("eraseman", 'K'), ("circgun", 'P'), ("cannon", 'A')]);
+    m.sides[1].set_folder(&content, &folder).unwrap();
+    m.sides[0].set_folder(&content, &folder).unwrap();
+    let b = at_the_custom_screen(&content, &m, 1);
+    let chips = dealt(&b, 1);
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(NOWHERE), theirs: 0, past: Past([0; PAST]), stale: 0, stale_timed: false, side: 1, level, asked: Asked::Chips(chips) };
+    let calls = dimmed::AIM_CALLS.load(std::sync::atomic::Ordering::Relaxed);
+    let one = Search::with(1).answer(&q);
+    assert!(dimmed::AIM_CALLS.load(std::sync::atomic::Ordering::Relaxed) > calls, "no aim looked for");
+    let four = Search::with(THREADS).answer(&q);
+    assert_eq!((&one.worths, one.work), (&four.worths, four.work), "one thread and four");
+    assert!(one.work >= level.budget as u64 / 2, "{} work counted", one.work);
+    assert!(one.ticks <= 2 * level.budget as u64, "{} ticks in copies, the budget {}", one.ticks, level.budget);
+}

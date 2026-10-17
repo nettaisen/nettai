@@ -78,17 +78,26 @@ impl Dimmer {
     }
 }
 
-/// Both sides' dimmers in a copy, and the battle as it was before the tick
-/// (an aim is looked for from there).
+/// Both sides' dimmers in a copy, the battle as it was before the tick
+/// (an aim is looked for from there), and the aims looked for (in a memo
+/// or not: the same count on any thread, [`AIM_WORK`]).
 #[derive(Clone)]
 pub(super) struct Dimmed {
     dims: [Dimmer; 2],
     saved: Option<Battle>,
+    pub(super) aims: u32,
 }
+
+/// What an aim counts for in a custom screen's work (`Level::budget`), in
+/// ticks of the copies: about what one costs looked for ([`aim`]'s copies,
+/// [`Look::TRIAL`]: EXE6's EraseMan and CircGun some 250 to 290), whether
+/// this thread's memo holds it or not, so the work is counted alike on any
+/// machine and bounds the work done.
+pub(super) const AIM_WORK: u64 = 300;
 
 impl Dimmed {
     pub(super) fn new(dims: [Dimmer; 2]) -> Dimmed {
-        Dimmed { dims, saved: None }
+        Dimmed { dims, saved: None, aims: 0 }
     }
 
     /// Both aim.
@@ -130,6 +139,9 @@ impl Dimmed {
                     // (Its keys are read: where to press is looked for from before this tick, played again.)
                     d.settled = true;
                     d.press = aim(saved, s, held, memo, ticks).map(|p| before[s as usize].t + p);
+                    self.aims += 1;
+                    #[cfg(test)]
+                    AIM_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     again = true;
                 }
             }
@@ -446,3 +458,6 @@ pub(super) static AIMED: [std::sync::atomic::AtomicU64; 2] = [std::sync::atomic:
 /// The ticks those aims took.
 #[cfg(test)]
 pub(super) static AIM_TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// The aims looked for, in a memo or not.
+#[cfg(test)]
+pub(super) static AIM_CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
