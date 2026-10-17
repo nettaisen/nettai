@@ -14,7 +14,7 @@ use nettai_frontend::lobby::{Failure, Reason};
 use nettai_ui::{AppWindow, ErrorKind, Errors};
 use slint::ComponentHandle;
 use std::io::Write;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 /// A failure the player can see.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -214,10 +214,18 @@ impl UserError {
 /// The log file, opened at the first line written.
 static LOG: Mutex<Option<std::fs::File>> = Mutex::new(None);
 
+/// The local time's offset from UTC, read as the libraries' logs are caught ([`catch_library_logs`], at the
+/// start), which the log's times are told in. Not read again at each line: chrono reads the local zone through a
+/// thread-local, and a line can come as the process exits, after the main thread's thread-locals are gone (a
+/// connection libdatachannel still holds when the player quits says it closes from a static destructor), where
+/// reading it panics, and a panic in libdatachannel's log callback aborts.
+static OFFSET: OnceLock<chrono::FixedOffset> = OnceLock::new();
+
 /// Write a line to the log: what was being done (`doing`) and what the code said of it. This is where an
 /// error's own words go; the player reads a [`UserError`].
 pub fn log(doing: &str, said: &dyn std::fmt::Display) {
-    let line = format!("{} {doing}: {said}\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
+    let offset = OFFSET.get().copied().unwrap_or(chrono::FixedOffset::east_opt(0).expect("UTC"));
+    let line = format!("{} {doing}: {said}\n", chrono::Utc::now().with_timezone(&offset).format("%Y-%m-%d %H:%M:%S"));
     let Ok(mut file) = LOG.lock() else { return };
     if file.is_none() {
         let path = crate::paths::log();
@@ -240,8 +248,9 @@ impl ::log::Log for Sink {
     }
 
     fn log(&self, record: &::log::Record) {
+        // (A library may log from a C callback, where a panic aborts the app: none comes past here.)
         if self.enabled(record.metadata()) {
-            log(record.target(), record.args());
+            let _ = std::panic::catch_unwind(|| log(record.target(), record.args()));
         }
     }
 
@@ -250,6 +259,7 @@ impl ::log::Log for Sink {
 
 /// Send the libraries' warnings to the log file.
 pub fn catch_library_logs() {
+    let _ = OFFSET.set(*chrono::Local::now().offset());
     if ::log::set_logger(&Sink).is_ok() {
         ::log::set_max_level(::log::LevelFilter::Warn);
     }
