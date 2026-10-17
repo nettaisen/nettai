@@ -371,8 +371,8 @@ Or the host's AI plays it (`InFight::Ai` in the fight, `OnCustomScreen::Ai`
 on its custom screen): an `Ai` the host gives with `LivePlayer::set_ai`,
 asked for the opponent's buttons a tick at a time (`fight`, with what the
 local player holds; `custom_screen`) and told when the set starts over
-(`reset`). The library has no AI of its own: nettai-training's `Fighter`
-is one. With none given it stands still and picks the first chip it can.
+(`reset`). The library has no AI of its own, and the app plugs none in
+for now. With none given it stands still and picks the first chip it can.
 
 Only the player opens the custom screen: whatever plays the opponent but a second pad (a person), its L and R are
 dropped in the fight, and it makes its choices once the player has opened the screen (the user: "in training mode,

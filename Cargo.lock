@@ -3203,7 +3203,6 @@ dependencies = [
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
- "nettai-training",
  "nettai-ui",
  "nettai-video",
  "objc2 0.6.4",
@@ -3405,17 +3404,6 @@ dependencies = [
  "png 0.17.16",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "nettai-training"
-version = "0.1.0"
-dependencies = [
- "nettai-battle",
- "nettai-content-api",
- "nettai-frontend",
- "nettai-match",
- "nettai-netplay",
 ]
 
 [[package]]

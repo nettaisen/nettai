@@ -2202,7 +2202,7 @@ Battle row with its value changed, a pair apart; the Arena's and Background's gr
 background chosen from its grid, a step checking the list closed and the place moved on one), and drive the
 options in the battle as a player would, the buttons held as the shell holds them: the dummy shot with Your HP
 and Dummy's HP on Refills, a shot after the hits and one after a rest; the custom gauge full, L, and the custom
-screen dealing in folder order; the dummy's Action Fights with its Level under it. Then EXIT, a step checking
+screen dealing in folder order. Then EXIT, a step checking
 Play is shown; and the way to Builds' editor and back: with the pass's new builds kept as files in its own
 folder (Practice lists them as a player's: `Shared::tour_files`), PRACTICE on the first, the Dummy's build
 stepped to the second, its EDIT focused, the editor it opens on that build (‹ PRACTICE), and Back, the practice
@@ -2360,7 +2360,7 @@ NETTAI_PACKS=data NETTAI_TOUR=/tmp/reel NETTAI_REEL=/tmp/reel/nettai-showreel.mp
 It shows, in about 90 seconds: the main menu with its demo battle and the title music, a change of game to EXE5,
 EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); Play's PRACTICE, the cards,
 the practice menu open as the battle starts, the arena stepped there and its Music stepped to a battle theme,
-which plays, the dummy set to Fights at Hard, and a fight in which the player's side
+which plays, the dummy set to Moves around, and a fight in which the player's side
 presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
 custom screen opened once the gauge is full); Play's builds, the editor's Folder tab (a chip put in from the
 library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
@@ -2876,8 +2876,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Dummy's build (a dropdown; Practice's own sessions) | the game's builds that can be played, the player's own first chosen | the set starts over with the dummy on it, the menu staying open: above |
 | Dummy: EDIT (a button; Practice's own sessions) | | the dummy's build in Builds' editor, and back: above |
-| Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
-| Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
+| Dummy: Action | Stands still, Moves around, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
 | Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
@@ -2956,10 +2955,8 @@ dummy build either"), and the player's build is Play's chosen one; a session ano
 that screen says, the dummy on the player's own build, every battle option at its normal value and the place
 Random, and keeps what its menu sets for that screen's wait alone (§4, "Waiting"), not for a visit.
 
-**The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
-Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,
-the Action's own and the focus with it, staying where they are). Its custom screen goes with its Action
-(`dummy`): the AI's for one that fights, a second pad's own, else the first chip it can. The user (2026-10-13):
+**The dummy's rows.** One row says what the dummy does, its Action. Its custom screen goes with its Action
+(`dummy`): a second pad's own, else the first chip it can. The user (2026-10-13):
 "the dummy menu is so confusing and has so many redundant options and it's confusing to navigate. you should
 make it clearer and less redundant": before, Level, Custom screen and Recording were rows of their own whatever
 the Action, and Attacks at random was a weaker Fights; they went. Then, of the dummy's recording (the player
@@ -2973,39 +2970,11 @@ reaches the battle on the custom screen alone, the menu being the player's), and
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
-**The dummy that fights** (Action Fights). Its AI is nettai-training's `Fighter` (the crate's docs: how it
-plays and how well each level does, measured), in the fight and on its custom screen; it is plugged into the
-session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and taken out otherwise
-(`practice::plug`); another Level plugs in a new one. It presses buttons as a player does, and learns everything
-it knows of the game from copies of the battle: each few ticks it tries, for each panel of its area it can walk to,
-standing there (how dangerous the panel is over the next second, against a few guesses at the player: going on,
-doing again what they just did, using their chip, walking to its row and attacking, stepping) and, from the safest
-few, shooting the charged
-shot or using its chip there and retreating to a clearly safer panel (where its attacks land), or holding its chip
-there to react with it a reaction time after an attack starts (or to cut in on the player's dimming chip): a chip is
-spent only where using it now makes clearly more than keeping it, so Invisibl, AntiDmg or a Barrier waits for a
-threat it alone stops (a shot in flight, an attack under way, the player's dimming chip) and isn't pushed out by a
-long hold unless it bars a different chip behind it, and then at the moment within a few seconds where using it
-costs least (tried in copies against a player who fights on: a second Invisibl waits till the first's invisibility
-ends, not refreshing it); a decision asked before a chip was used isn't taken for the chip behind it; what a copy
-makes is
-the HP each side takes away and the ground, the panels each side owns (a column taken worth about a modest hit, so
-it takes area where that pays and minds losing it) and the panels its navi has to move on; it keeps to what it
-does unless another plan is clearly better, so it neither paces nor jitters. It never opens the custom screen
-(the player does). On its custom screen Normal and Hard pick the hand worth most over a turn in copies of the
-fight (its chips used in the order picked, each when using it pays more than holding it to react, a chip that defends
-after the chips that attack unless a cut-in ready at the front is worth more; built a chip at a time while one adds
-anything, then every other chip the codes allow but one that clearly costs the turn; an attack-up, or any chip OK folds into
-the one before it, only right after a chip it folds into, never where it would stand alone and poof; a Program
-Advance where it does more), and take a form the rules offer (a Cross, Beast Out, a soul) where a copy of the
-fight goes better with it; Easy picks every chip it can in the cursor's order, an attack-up too only right after a chip it
-folds into. The search's work is the level's
-(`Level::budget`), not a time, so the hand is the same on any machine; the dummy presses nothing till it has
-it, the battle going on meanwhile (it looks at its screen longer on a slower machine, never stalling the
-battle). It thinks on threads of its own (four at most, fewer on a machine with fewer cores to spare)
-and acts on its decision a reaction time later (Easy's 0.4 s, Normal's about a quarter second, Hard's 0.15 s);
-a decision in the fight not ready by then is waited for (rarely: the crate's docs). On the web it thinks on the
-battle's own thread.
+**No dummy that fights.** The app plugs no AI into the dummy (the library's plug, `LivePlayer::set_ai`, stays,
+with nothing in it): the user (2026-10-17), of the training AI that was nettai-training's `Fighter`, "remove the
+fighting ai entirely for now, it's really bad", "there should still be an ai plug point, just don't have anything
+that plugs in for now". The Action Fights and its Level went with it; the crate is in history (main at
+a4e0ee26c).
 
 *Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in

@@ -1640,9 +1640,9 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     a change starts the set over with the dummy on it, the menu staying open, as an arena's does), and under it
     EDIT, a button in the controls' column that opens the dummy's build in Builds' editor (its Back ‹ PRACTICE);
     Back there comes back to the practice battle, started again on the visit's choices with the build as the
-    edit left it, the menu open over it. Then Action (stands still, moves around, fights, a second pad), with its
-    Level (easy, normal, hard: how well it fights) under it while it is Fights. Its custom screen goes with its
-    Action. No recording: "get rid of recording support, it's so complicated". The user: "the dummy menu is so
+    edit left it, the menu open over it. Then Action (stands still, moves around, a second pad; Fights and its
+    Level went with the training AI, 2026-10-17: "remove the fighting ai entirely for now"). Its custom screen goes
+    with its Action. No recording: "get rid of recording support, it's so complicated". The user: "the dummy menu is so
     confusing and has so many redundant options and it's confusing to navigate. you should make it clearer and
     less redundant". Beside a waiting invite the dummy is on the player's own build at first and the Dummy's
     build offers the same builds; there is no EDIT (§2.57: the editor would leave the wait).
