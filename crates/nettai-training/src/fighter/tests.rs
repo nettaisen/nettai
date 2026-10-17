@@ -1293,3 +1293,96 @@ fn it_takes_area_where_that_pays() {
     let (dealt, lost) = outcome(&start, &most, 1);
     assert!(dealt - lost >= 3 * AREA, "{dealt} - {lost}");
 }
+
+/// `ticks` ticks of `b`, side 1 the fighter, side 0 pressing `player` (by
+/// the tick); what the fighter's hand held each tick.
+fn fight_for(b: &mut Battle, fighter: &mut Fighter, ticks: u32, player: impl Fn(u32) -> u16) -> Vec<u8> {
+    let mut hands = Vec::new();
+    for t in 0..ticks {
+        let theirs = player(t);
+        let mine = fighter.buttons(b, 1, theirs) & !(keys::L | keys::R);
+        step(b, 1, mine, theirs);
+        hands.push(b.hands[1].remaining());
+    }
+    hands
+}
+
+/// A chip whose worth is in reacting is kept till a threat comes: the
+/// dummy (EXE6) with only Invisibl, AntiDmg or Barrier in hand, the player
+/// holding only chips that attack no one (Invisibl), never pressing
+/// anything: it keeps its chip ten seconds, long past the time a held chip
+/// is pushed out ([`STALE`]: it bars no chip behind it).
+#[test]
+fn a_defense_chip_is_kept_with_no_threat_coming() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    for (chip, code) in [("invisibl", '*'), ("antidmg", '*'), ("barrier", '*')] {
+        let mut m = even_match(&content, "exe6", 1, 400);
+        m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[(chip, code)])).unwrap();
+        m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+        let mut b = fight_with(&content, &m, 1, true);
+        assert_eq!(b.hands[1].remaining(), 1, "{chip} alone in hand");
+        let mut fighter = Fighter::inline(Level::HARD, 1);
+        let hands = fight_for(&mut b, &mut fighter, 600, |_| 0);
+        assert_eq!(hands.iter().position(|h| *h == 0), None, "{chip} used with no threat");
+    }
+}
+
+/// A chip whose worth is in reacting is used when the threat is real: the
+/// dummy (EXE6) with only Invisibl in hand, the player holding WideSht (a
+/// shot three panels high, which no step dodges): the dummy keeps its chip
+/// while the player stands still (four seconds, past [`STALE`]), though the
+/// player may shoot any moment; once the player uses WideSht, it uses
+/// Invisibl before the shot lands, and loses no HP to it.
+#[test]
+fn a_defense_chip_is_used_against_a_shot_on_its_way() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let mut m = even_match(&content, "exe6", 1, 400);
+    m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+    m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("widesht", 'P')])).unwrap();
+    let mut b = fight_with(&content, &m, 1, true);
+    assert!(b.hands[0].remaining() > 0 && b.hands[1].remaining() == 1, "chips in hand");
+    let mut fighter = Fighter::inline(Level::HARD, 1);
+    let hands = fight_for(&mut b, &mut fighter, 240, |_| 0);
+    assert_eq!(hands.iter().position(|h| *h == 0), None, "Invisibl used before any threat");
+    let (theirs, hp_before) = (b.hands[0].remaining(), hp(&b, 1));
+    let hands = fight_for(&mut b, &mut fighter, 120, |t| if t < 2 { keys::A } else { 0 });
+    assert_eq!(b.hands[0].remaining(), theirs - 1, "WideSht used");
+    assert!(hands.contains(&0), "Invisibl unused against WideSht");
+    assert_eq!(hp(&b, 1), hp_before, "hit by WideSht");
+}
+
+/// It cuts in with a chip that defends where that pays: the player's
+/// CircGun (EXE6) used against the dummy holding Invisibl next in hand,
+/// the dummy decides to press A while CircGun's name shows, and its
+/// Invisibl cuts in.
+#[test]
+fn it_cuts_in_with_a_defense_chip() {
+    nettai_frontend::session::quiet_engine_panics();
+    let content = content("exe6");
+    let mut m = even_match(&content, "exe6", 1, 400);
+    m.sides[1].set_folder(&content, &folder_of(&content, "exe6", &[("invisibl", '*')])).unwrap();
+    m.sides[0].set_folder(&content, &folder_of(&content, "exe6", &[("circgun", 'P')])).unwrap();
+    let mut b = fight_with(&content, &m, 1, true);
+    // (The dummy a step up, off its area's middle panel, which CircGun's sight never circles over.)
+    for t in 0..20 {
+        step(&mut b, 1, if t < 2 { keys::UP } else { 0 }, 0);
+    }
+    assert_ne!(navi_at(&b, 1).map(|p| p.y), Some(2), "the dummy stepped up");
+    step(&mut b, 1, 0, keys::A);
+    let mut t = 0;
+    while !b.is_dimmed() && t < 60 {
+        step(&mut b, 1, 0, 0);
+        t += 1;
+    }
+    assert!(b.is_dimmed() && b.dimming[0].initiator == 0, "CircGun's dimming");
+    let q = Question { id: 1, battle: Box::new(b.clone()), now: Exec::stand(navi_at(&b, 1).unwrap()), theirs: 0, past: Past([0; PAST]), stale: 0, side: 1, level: Level::HARD, asked: Asked::Dimmed };
+    let answer = Search::default().answer(&q).dimmed.expect("a dimming's answer");
+    let press = answer.press.expect("a cut-in");
+    let mut c = b.clone();
+    for k in 0..=press + 2 {
+        step(&mut c, 1, if k == press { keys::A | keys::B } else { keys::B }, 0);
+    }
+    assert_eq!(c.hands[1].remaining(), 0, "pressed on {press}: no cut-in");
+}
