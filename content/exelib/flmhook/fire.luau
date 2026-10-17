@@ -155,17 +155,20 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
     local function init(me: Object)
         local s = me.state :: State
         local turn = bit32.bxor(me.alliance, me.flip)
+        -- (The canonical side's facing, unturned: its row is the one read as it is.)
+        local canonical = field.canonical_side()
         local arc = s.variant.arcs
-        local at = s.swing + 1
+        local at = canonical * 4 + s.swing + 1
         if arc[at + 2] == nil then
             error(string.format("The hook's flame swing %d reads past its arc table", s.swing))
         end
         -- The angle (the timer's high byte) and the ticks, from the table's row by the facing. The original's row for
         -- a flame facing left isn't the mirror image of the other everywhere (BigHook's second swing starts at 0x8A
         -- where the mirror of 0xD2 is 0xAE), and its angle, turning the other way, rounds the other way. nettai
-        -- swings a flame facing left as the mirror image of one facing right: the first row's angle mirrored, its
-        -- low byte full so that it rounds as the first's does (docs/engine/side-symmetry.md).
-        if turn == 0 then
+        -- swings a flame facing the other way than the canonical side's as the mirror image of one facing its way:
+        -- that row's angle mirrored, its low byte full so that it rounds as that row's does
+        -- (docs/engine/side-symmetry.md).
+        if turn == canonical then
             me.timer = bit32.lshift(arc[at], 8)
         else
             me.timer = bit32.bor(bit32.lshift(bit32.band(128 - arc[at], 0xFF), 8), 0xFF)

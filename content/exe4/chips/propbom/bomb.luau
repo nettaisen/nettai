@@ -68,8 +68,8 @@ local function fly(me: Object)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
     -- (Its X in pixels, +0x36, signed. The original's screen runs from -EDGE to EDGE - 1 whatever the side, so a side-1
-    -- bomb went a tick further; nettai reads side 1's X mirrored: docs/engine/side-symmetry.md.)
-    local x = if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)
+    -- bomb went a tick further; nettai reads the X in the canonical side's frame: docs/engine/side-symmetry.md.)
+    local x = int.i32(field.side_sign(me.alliance) * me.pos.x)
     local px = int.i16(int.lsr(x, 16))
     if int.u32(px + EDGE) >= 2 * EDGE then
         me.collision:set_region(nil)

@@ -2476,6 +2476,8 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = nettai_content_api::PanelPos::under(x, y, side);
         Ok((p.x as i64, p.y as i64))
     });
+    lib_fn!(lua, t, "canonical_side", |_, (): ()| Ok(nettai_content_api::CANONICAL_SIDE as i64));
+    lib_fn!(lua, t, "side_sign", |_, side: LuaValue| Ok(nettai_content_api::side_sign(int(&side, "side")? as u8) as i64));
     lib_fn!(lua, t, "passed", |_, (new, old, target, side): (LuaValue, LuaValue, LuaValue, LuaValue)| {
         let (new, old, target) = (int(&new, "new")? as i32, int(&old, "old")? as i32, int(&target, "target")? as i32);
         Ok(match side {

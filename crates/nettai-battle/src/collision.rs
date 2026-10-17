@@ -842,10 +842,16 @@ mod tests {
         let from = p(3, 2);
         let moves = [p(2, 2), p(4, 2), p(3, 1), p(3, 3), p(5, 2), p(1, 2), p(4, 3), p(3, 2)];
         let by = |rule: crate::content::MoveDirection, side| moves.map(|to| rule.of(from, to, side));
-        assert_eq!(by(BySide, 0), [3, 4, 1, 2, 5, 3, 5, 0]);
-        // (Side 1's mirrored: two panels left is ahead, other; two right
+        // (The other side's mirrored: as side 0's (the canonical side's,
+        // `CANONICAL_SIDE`), two panels left is ahead, other; two right
         // back.)
-        assert_eq!(by(BySide, 1), [4, 3, 1, 2, 3, 5, 5, 0]);
+        if nettai_content_api::CANONICAL_SIDE == 0 {
+            assert_eq!(by(BySide, 0), [3, 4, 1, 2, 5, 3, 5, 0]);
+            assert_eq!(by(BySide, 1), [4, 3, 1, 2, 3, 5, 5, 0]);
+        } else {
+            assert_eq!(by(BySide, 1), [4, 3, 1, 2, 5, 4, 5, 0]);
+            assert_eq!(by(BySide, 0), [3, 4, 1, 2, 4, 5, 5, 0]);
+        }
         assert_eq!(by(Absolute, 0), [3, 4, 1, 2, 4, 3, 4, 0]);
         assert_eq!(by(Absolute, 1), [3, 4, 1, 2, 4, 3, 4, 0]);
     }

@@ -788,7 +788,8 @@ pub enum MoveDirection {
     /// along one axis counts by its sign, so a navi warped two panels back
     /// has moved back, and slides on ice. (The original tests the X as it
     /// is, two panels right: ahead for side 0, back for side 1; nettai
-    /// tests it by the side, docs/engine/side-symmetry.md.)
+    /// tests the other side's mirrored, as the canonical side's:
+    /// docs/engine/side-symmetry.md.)
     BySide,
     /// EXE4's 0x0800AF90: 0 none, 1 up, 2 down, 3 left and 4 right whatever
     /// the side, across before up and down (a diagonal move by its x), and no
@@ -807,19 +808,21 @@ impl MoveDirection {
                 // The original tests the move's X as it is: a move of two
                 // panels or more to the right is other, ahead for side 0
                 // and back for side 1, and one to the left counts as back
-                // or forward. nettai tests side 1's mirrored, so either
-                // side's move of two panels or more ahead is other and one
-                // back is back (docs/engine/side-symmetry.md).
-                let dx = if alliance == 0 { dx } else { -dx };
+                // or forward. nettai tests the canonical side's move as it
+                // is and the other side's mirrored, with the canonical
+                // side's back and forward (docs/engine/side-symmetry.md).
+                let c = nettai_content_api::CANONICAL_SIDE;
+                let dx = dx * nettai_content_api::side_sign(alliance) as i8;
                 if dx >= 2 || dy >= 2 {
                     return 5;
                 }
+                let (back, forward) = if c == 0 { (3, 4) } else { (4, 3) };
                 match (dx.signum(), dy.signum()) {
                     (0, 0) => 0,
                     (0, -1) => 1,
                     (0, 1) => 2,
-                    (-1, 0) => 3,
-                    (1, 0) => 4,
+                    (-1, 0) => back,
+                    (1, 0) => forward,
                     _ => 5,
                 }
             }

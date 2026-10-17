@@ -70,17 +70,37 @@ pub struct PanelPos {
     pub y: u8,
 }
 
+/// The side whose behavior is every side's where the original's code reads
+/// an X as it is and so gives the two sides other than mirror images (a line
+/// between two columns, a tie broken to the right, a rounding toward minus
+/// infinity, a list in the field's order: docs/engine/side-symmetry.md).
+/// An object of this side does as the original does; an object of the other
+/// side does the same in the mirror image. 0 or 1: change it here and
+/// rebuild to have every side-fair rule follow side 1's behavior instead.
+/// The engine's own, read by the core's helpers below and by content through
+/// `field.canonical_side` and `field.side_sign`; no setup, rule or wire
+/// holds it.
+pub const CANONICAL_SIDE: u8 = 0;
+
+/// +1 for an object of [`CANONICAL_SIDE`], -1 for one of the other side:
+/// the sign that takes an X to the canonical side's frame (an object of
+/// the other side works on `side_sign(side) * x`).
+pub const fn side_sign(side: u8) -> i32 {
+    if side & 1 == CANONICAL_SIDE { 1 } else { -1 }
+}
+
 impl PanelPos {
     /// The panel under the field position (x, y) of an object of side
     /// `side` (`sub_800E258`, the BIOS's divisions toward zero: x 1..=6 and
     /// y 1..=3 on the field, border or wrapped values off it). The original
     /// divides every X as it is, so a position on the line between two
     /// columns is in the column to its right: ahead of side 0, behind side
-    /// 1. nettai divides side 1's X mirrored, so the line is in the column
-    /// toward the other side for both (docs/engine/side-symmetry.md).
+    /// 1. nettai divides the X as it is for [`CANONICAL_SIDE`] and mirrored
+    /// for the other side: the line is in the column toward the other side
+    /// for both (side 0's rule; behind both, side 1's).
     pub fn under(x: i32, y: i32, side: u8) -> PanelPos {
         let column = |x: i32| (((x >> 16) + 0xA0) / 0x28) as u8;
-        let x = if side & 1 == 0 { column(x) } else { 7u8.wrapping_sub(column(x.wrapping_neg())) };
+        let x = if side_sign(side) > 0 { column(x) } else { 7u8.wrapping_sub(column(x.wrapping_neg())) };
         PanelPos { x, y: (((y >> 16) + 0x20) / 0x18) as u8 }
     }
 }
@@ -96,10 +116,12 @@ pub fn passed(new: i32, old: i32, target: i32) -> bool {
 /// [`passed`] along X for an object of side `side`. The original's rule
 /// counts a move to the right as reaching (ahead for side 0, back for side
 /// 1) and a move to the left as leaving (back for side 0, ahead for side
-/// 1); nettai takes side 1's X mirrored, so a move ahead counts on reaching
-/// and a move back on leaving for both sides (docs/engine/side-symmetry.md).
+/// 1); nettai takes the X as it is for [`CANONICAL_SIDE`] and mirrored for
+/// the other side, so a move ahead counts as the canonical side's does for
+/// both (docs/engine/side-symmetry.md).
 pub fn passed_x(new: i32, old: i32, target: i32, side: u8) -> bool {
-    if side & 1 == 0 { passed(new, old, target) } else { passed(new.wrapping_neg(), old.wrapping_neg(), target.wrapping_neg()) }
+    let s = side_sign(side);
+    passed(new.wrapping_mul(s), old.wrapping_mul(s), target.wrapping_mul(s))
 }
 
 /// A sprite, as the engine names it: a handle, its place among the loaded
@@ -182,46 +204,49 @@ pub struct InPack<T> {
 mod tests {
     use super::*;
 
-    /// Side 1's panel under a position is the mirror of side 0's under the
-    /// mirrored position (X to 7 - X), on the field and off it, and side
-    /// 0's is the original's division.
+    /// The other side's panel under a position is the mirror of the
+    /// canonical side's under the mirrored position (X to 7 - X), on the
+    /// field and off it, and the canonical side's is the original's
+    /// division.
     #[test]
     fn the_panel_under_a_position_is_side_fair() {
+        let (c, other) = (CANONICAL_SIDE, CANONICAL_SIDE ^ 1);
         for px in -220..=220 {
             for frac in [0, 1, 0x8000, 0xFFFF] {
                 let x = (px << 16) | frac;
                 for y in [-0x20_0000, 0, 0x1C_0000, 0x48_0000] {
-                    let side0 = PanelPos::under(x, y, 0);
+                    let canonical = PanelPos::under(x, y, c);
                     let original = PanelPos { x: (((x >> 16) + 0xA0) / 0x28) as u8, y: (((y >> 16) + 0x20) / 0x18) as u8 };
-                    assert_eq!(side0, original);
-                    let side1 = PanelPos::under(x.wrapping_neg(), y, 1);
-                    assert_eq!(side1, PanelPos { x: 7u8.wrapping_sub(side0.x), y: side0.y }, "x {x:#x}");
+                    assert_eq!(canonical, original);
+                    let mirrored = PanelPos::under(x.wrapping_neg(), y, other);
+                    assert_eq!(mirrored, PanelPos { x: 7u8.wrapping_sub(canonical.x), y: canonical.y }, "x {x:#x}");
                 }
             }
         }
-        // The line between columns 3 and 4 is in the column toward the other
-        // side: 4 for side 0, 3 for side 1.
-        assert_eq!(PanelPos::under(0, 0x1C_0000, 0).x, 4);
-        assert_eq!(PanelPos::under(0, 0x1C_0000, 1).x, 3);
+        // The line between columns 3 and 4 is in the column to the right
+        // for the canonical side, to the left for the other.
+        assert_eq!(PanelPos::under(0, 0x1C_0000, c).x, 4);
+        assert_eq!(PanelPos::under(0, 0x1C_0000, other).x, 3);
     }
 
-    /// Side 1's move along X passes a point as the mirror of side 0's: a
-    /// move ahead counts on reaching it, a move back on leaving it.
+    /// The other side's move along X passes a point as the mirror of the
+    /// canonical side's, whose is the original's.
     #[test]
     fn a_move_passing_a_point_is_side_fair() {
+        let (c, other) = (CANONICAL_SIDE, CANONICAL_SIDE ^ 1);
         for target in [-0x28_0000, -1, 0, 1, 0x14_0000] {
             for old in (-0x30_0000..=0x30_0000).step_by(0x4_0000) {
                 for step in [-0x14_0000, -0x8000, 0, 0x8000, 0x14_0000] {
                     let new = old + step;
-                    let side0 = passed_x(new, old, target, 0);
-                    assert_eq!(side0, passed(new, old, target));
-                    assert_eq!(passed_x(-new, -old, -target, 1), side0, "{old:#x} -> {new:#x} past {target:#x}");
+                    let canonical = passed_x(new, old, target, c);
+                    assert_eq!(canonical, passed(new, old, target));
+                    assert_eq!(passed_x(-new, -old, -target, other), canonical, "{old:#x} -> {new:#x} past {target:#x}");
                 }
             }
         }
-        // Reaching a point ahead counts for either side; leaving it, ahead,
-        // doesn't.
-        assert!(passed_x(0x28_0000, 0, 0x28_0000, 0) && passed_x(-0x28_0000, 0, -0x28_0000, 1));
-        assert!(!passed_x(0x28_0000, 0, 0, 0) && !passed_x(-0x28_0000, 0, 0, 1));
+        // Reaching a point to the right counts for the canonical side, as
+        // reaching its mirror to the left for the other.
+        assert!(passed_x(0x28_0000, 0, 0x28_0000, c) && passed_x(-0x28_0000, 0, -0x28_0000, other));
+        assert!(!passed_x(0x28_0000, 0, 0, c) && !passed_x(-0x28_0000, 0, 0, other));
     }
 }

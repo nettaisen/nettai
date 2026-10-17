@@ -1462,16 +1462,24 @@ declare field: {
     valid: (x: number, y: number) -> boolean,
     -- A panel's center, 16.16.
     center: (x: number, y: number) -> (number, number),
+    -- The side whose behavior is every side's where the original reads an X
+    -- as it is (the engine's `CANONICAL_SIDE`, docs/engine/side-symmetry.md):
+    -- an object of this side does as the original does, one of the other
+    -- side the same in the mirror image.
+    canonical_side: () -> number,
+    -- +1 for an object of the canonical side, -1 for one of the other: the
+    -- sign that takes an X into the canonical side's frame.
+    side_sign: (side: number) -> number,
     -- The panel under a field position (16.16) for an object of `side`
     -- (`sub_800E258`): a position on the line between two columns is in the
-    -- one toward the other side (docs/engine/side-symmetry.md). Off the
-    -- field, border or wrapped values.
+    -- column the canonical side's rule puts it in, mirrored for the other
+    -- side (docs/engine/side-symmetry.md). Off the field, border or wrapped
+    -- values.
     panel_at: (x: number, y: number, side: number) -> (number, number),
     -- `sub_800E6E8`: a move from `old` to `new` passed `target` (moving up
     -- the axis, reaching it counts and starting on it doesn't; moving down,
-    -- the other way round). With `side`, along X as that side sees it: a
-    -- move ahead counts on reaching for either side
-    -- (docs/engine/side-symmetry.md); without, as it is (along Y).
+    -- the other way round). With `side`, along X in the canonical side's
+    -- frame (docs/engine/side-symmetry.md); without, as it is (along Y).
     passed: (new: number, old: number, target: number, side: number?) -> boolean,
     -- A panel's cached flags word (0 off the field).
     flags: (x: number, y: number) -> number,

@@ -40,10 +40,10 @@ local SOLID = 0x10
 -- fraction its own).
 --
 -- (The original takes the whole pixels and keeps the fraction as they are, which isn't the mirror image of the same
--- on the other side: a roller of side 1 crossed a column's line on another tick than side 0's. nettai works side 1's
--- in the mirror image, as side 0's: docs/engine/side-symmetry.md.)
+-- on the other side: a roller of side 1 crossed a column's line on another tick than side 0's. nettai works the other
+-- side's than the canonical in the mirror image, as the canonical side's: docs/engine/side-symmetry.md.)
 local function follow(me: Object, ball: Object, px: number)
-    local sign = if me.alliance == 0 then 1 else -1
+    local sign = field.side_sign(me.alliance)
     local bx, mx = int.i32(sign * ball.pos.x), int.i32(sign * me.pos.x)
     local x16 = int.u16(bit32.rshift(bx, 16) + px * me.facing * sign)
     local x = int.i32(bit32.bor(bit32.lshift(x16, 16), bit32.band(mx, 0xFFFF)))
@@ -169,11 +169,12 @@ end
 -- running while dimmed; the ball keeps it. Its position is the spawner's
 -- registers, whose fractions it keeps: what the ball's sprite flip left
 -- (the sprite's +0x16 byte, 8, with the flip's bits, and those bits; and
--- the sprite's RAM address, which the comparison skips). A side-1 roller's are side 0's in the mirror image: its
--- sprite's flip by the facing within its side, and the X's fraction mirrored (`follow`).
+-- the sprite's RAM address, which the comparison skips). The other side's roller's than the canonical are the
+-- canonical side's in the mirror image: its sprite's flip as the canonical side's with its flip, and the X's fraction
+-- mirrored (`follow`).
 function roller.spawn(kind: Kind, ball: Object): Object?
-    local flip_bits = bit32.band(bit32.lshift(ball.flip, 4), 0x30)
-    local sign = if ball.alliance == 0 then 1 else -1
+    local flip_bits = bit32.band(bit32.lshift(bit32.bxor(field.canonical_side(), ball.flip), 4), 0x30)
+    local sign = field.side_sign(ball.alliance)
     local o = battle.spawn(kind, Vec3.new(sign * bit32.bor(8, flip_bits), flip_bits, 0))
     if not o then
         return nil

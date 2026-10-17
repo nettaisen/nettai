@@ -72,9 +72,9 @@ local function slide(me: Object)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
     -- (Its X in pixels, +0x36, signed: off the screen's 320 around the middle. The original's screen runs from -160
-    -- to 159 whatever the side, so a side-1 fang went a tick further; nettai reads side 1's X mirrored:
+    -- to 159 whatever the side, so a side-1 fang went a tick further; nettai reads the X in the canonical side's frame:
     -- docs/engine/side-symmetry.md.)
-    local x = if me.alliance == 0 then me.pos.x else int.i32(-me.pos.x)
+    local x = int.i32(field.side_sign(me.alliance) * me.pos.x)
     local px = int.i16(int.lsr(x, 16))
     if int.u32(px + 0xA0) >= 0x140 then
         finish(me)
