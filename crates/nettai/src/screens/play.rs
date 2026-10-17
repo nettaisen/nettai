@@ -117,9 +117,14 @@ const LEAVE_LOBBY: &str = "play.leave";
 /// How far Up and Down scroll a build's page in the match's menu: two of its chips' rows.
 const SHEET_STEP: f32 = 56.0;
 
-/// What the settings remember for Play: the round wins the last match's set was first to, and the build last
-/// chosen, by game.
+/// What the settings remember for Play: the match's settings as this player last set them hosting (the user: "the
+/// host should remember their last match settings"; the ruleset is the one their build is made for, §2.73), and
+/// the build last chosen, by game.
 const REMEMBERED_FIRST_TO: &str = "play.first-to";
+const REMEMBERED_OPEN_SETUPS: &str = "play.open-setups";
+/// The Custom timer's seconds, or "unlimited".
+const REMEMBERED_CUSTOM_TIME: &str = "play.custom-time";
+const UNLIMITED: &str = "unlimited";
 
 fn remembered_build(game: &str) -> String {
     format!("play.build.{game}")
@@ -644,15 +649,39 @@ impl Play {
 
     // ---- The lobby ---------------------------------------------------------------------------------------
 
-    /// The settings a lobby opens with: a set first to the round wins of the last match played, under the ruleset
-    /// this player's build is made for, which it was checked under (else the one they last chose); the rest as a
-    /// new lobby's ([`settings`]: the setups not open). What the other player adopts if this one hosts.
+    /// The settings a lobby opens with: First to, Open setups and the Custom timer as this player last set them
+    /// hosting (else a new lobby's: [`settings`]), under the ruleset this player's build is made for, which it was
+    /// checked under (else the one they last chose). What the other player adopts if this one hosts.
     fn opening_settings(&self, shell: &Shell) -> Option<Settings> {
         let game = shell.game()?;
         let made_for = self.build().and_then(|b| b.made_for()).map(|made| made.pick.clone());
         let played = made_for.or_else(|| builds::kit(shell).and_then(|kit| rulesets::chosen_last(shell, &kit)))?;
-        let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
-        Some(settings(game, first_to, played.ruleset))
+        let remembered = |key: &str| shell.settings.remembered.get(key).map(String::as_str);
+        let first_to = remembered(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
+        let mut settings = settings(game, first_to, played.ruleset);
+        if let Some(open) = remembered(REMEMBERED_OPEN_SETUPS).and_then(|r| r.parse().ok()) {
+            settings.open_setups = open;
+        }
+        match remembered(REMEMBERED_CUSTOM_TIME) {
+            Some(UNLIMITED) => settings.custom_screen_time = None,
+            Some(r) => {
+                if let Some(time) = r.parse().ok().filter(|t| nettai_match::CUSTOM_SCREEN_TIMES.contains(t)) {
+                    settings.custom_screen_time = Some(time);
+                }
+            }
+            None => {}
+        }
+        Some(settings)
+    }
+
+    /// The match's settings the host set, remembered for the next lobby it opens ([`Play::opening_settings`]).
+    fn remember_settings(shell: &mut Shell, settings: &Settings) {
+        let time = settings.custom_screen_time.map_or(UNLIMITED.to_string(), |t| t.to_string());
+        let remembered = &mut shell.settings.remembered;
+        remembered.insert(REMEMBERED_FIRST_TO.into(), settings.first_to().to_string());
+        remembered.insert(REMEMBERED_OPEN_SETUPS.into(), settings.open_setups.to_string());
+        remembered.insert(REMEMBERED_CUSTOM_TIME.into(), time);
+        shell.save_settings();
     }
 
     /// The link is open: the lobby over it, the practice battle ended. A host's starts on the settings it set
@@ -701,8 +730,6 @@ impl Play {
         ];
         let gate = Rc::new(Gate::default());
         let (said, made) = (gate.clone(), gate.clone());
-        shell.settings.remembered.insert(REMEMBERED_FIRST_TO.into(), agreed.settings.first_to().to_string());
-        shell.save_settings();
         shell.start_battle(BattleStart {
             owner: ScreenId::Play,
             kind: BattleKind::Online,
@@ -837,32 +864,39 @@ impl Play {
 
     /// The match's settings as the player's controls change them: the host's alone (the user: "only the host
     /// should be able to change rules"; a joiner's lobby changes nothing, and its controls are unavailable), in
-    /// the lobby or while it waits for the other player (what the lobby will start on).
-    fn change_settings(&mut self, change: impl FnOnce(&mut Settings)) {
-        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+    /// the lobby or while it waits for the other player (what the lobby will start on). What the host sets is
+    /// remembered for its next lobby.
+    fn change_settings(&mut self, shell: &mut Shell, change: impl FnOnce(&mut Settings)) {
+        let changed = if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
             let mut settings = lobby.settings().clone();
             change(&mut settings);
-            lobby.propose(settings);
+            lobby.propose(settings.clone()).then_some(settings)
         } else if let Some(waiting) = &mut self.waiting {
             change(waiting);
+            Some(waiting.clone())
+        } else {
+            None
+        };
+        if let Some(settings) = changed {
+            Self::remember_settings(shell, &settings);
         }
         self.ended = None;
     }
 
-    fn set_first_to(&mut self, wins: u8) {
-        self.change_settings(|s| s.set_first_to(wins));
+    fn set_first_to(&mut self, shell: &mut Shell, wins: u8) {
+        self.change_settings(shell, |s| s.set_first_to(wins));
     }
 
-    fn set_open(&mut self, open: bool) {
-        self.change_settings(|s| s.open_setups = open);
+    fn set_open(&mut self, shell: &mut Shell, open: bool) {
+        self.change_settings(shell, |s| s.open_setups = open);
     }
 
     /// The Custom timer stepped `by`: through the match's time limits, then Unlimited, and around.
-    fn step_custom_time(&mut self, by: i32) {
+    fn step_custom_time(&mut self, shell: &mut Shell, by: i32) {
         let choices: Vec<Option<u16>> = nettai_match::CUSTOM_SCREEN_TIMES.into_iter().map(Some).chain([None]).collect();
         let now = choices.iter().position(|&c| c == self.live.custom_time).unwrap_or(0) as i32;
         let time = choices[(now + by).rem_euclid(choices.len() as i32) as usize];
-        self.change_settings(|s| s.custom_screen_time = time);
+        self.change_settings(shell, |s| s.custom_screen_time = time);
     }
 
     /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player last chose,
@@ -871,7 +905,7 @@ impl Play {
         if let Some(game) = shell.game().map(str::to_string) {
             rulesets::remember(shell, &game, &picked.ruleset.name);
         }
-        self.change_settings(|s| s.ruleset = picked.ruleset.clone());
+        self.change_settings(shell, |s| s.ruleset = picked.ruleset.clone());
     }
 
     /// The rulesets the host can pick, and which of them the match's is.
@@ -1477,7 +1511,7 @@ impl Screen for Play {
             "lobby.first-to" | "lobby.custom-time" => self.step(shell, id, index, 1),
             "lobby.open" => {
                 let open = !self.live.open;
-                self.set_open(open);
+                self.set_open(shell, open);
             }
             // The host's Ruleset opens its rulesets as a list; the joiner's VIEW is beside it.
             "lobby.ruleset" => {
@@ -1546,10 +1580,10 @@ impl Screen for Play {
             // (Around from the last to the first, as the stepper went from best of three to a single battle.)
             "lobby.first-to" => {
                 let (first, count) = (*FIRST_TO.start() as i32, FIRST_TO.len() as i32);
-                self.set_first_to((first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
+                self.set_first_to(shell, (first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
             }
-            "lobby.open" => self.set_open(by > 0),
-            "lobby.custom-time" => self.step_custom_time(by),
+            "lobby.open" => self.set_open(shell, by > 0),
+            "lobby.custom-time" => self.step_custom_time(shell, by),
             "lobby.ruleset" => self.pick_ruleset(shell, 0, by),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
@@ -1570,7 +1604,7 @@ impl Screen for Play {
             "more" if self.part() == PlayPart::Builds => self.menu_chosen(shell, choice),
             "row-menu" if self.part() == PlayPart::Builds && self.naming.is_none() => self.open_menu(shell, &Key::new("builds", index)),
             "name.version" => self.choose_version(shell, choice.max(0) as usize),
-            "lobby.open" => self.set_open(choice == 1),
+            "lobby.open" => self.set_open(shell, choice == 1),
             "lobby.ruleset" => self.pick_ruleset(shell, choice, 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
