@@ -158,6 +158,18 @@ msgstr "ロビーから退出しますか？"
 msgid "Closed builds"
 msgstr "構築非公開"
 
+# The custom screen's time limit (nettai's own): its seconds, or none.
+msgid "Custom timer"
+msgstr "カスタム時間"
+
+msgctxt "custom timer"
+msgid "{}s"
+msgstr "{}秒"
+
+msgctxt "custom timer"
+msgid "Unlimited"
+msgstr "無制限"
+
 msgid "Ping"
 msgstr "Ping"
 

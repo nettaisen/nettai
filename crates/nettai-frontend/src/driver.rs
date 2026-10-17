@@ -347,6 +347,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         later_stages: Default::default(),
         low_hp_music_latched: false,
         host_keys: nettai_match::HOST_KEYS,
+        custom_screen_limit: None,
         players: [player(0), player(1)],
     }
 }
@@ -1699,6 +1700,17 @@ mod tests {
         list: Option<&[&str]>,
         tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
     ) -> (Arc<Content>, LivePlayer, Battle) {
+        cross_battle_timed(version, list, tweak, None)
+    }
+
+    /// [`cross_battle`] with the custom screen's time limit `limit`, in
+    /// ticks.
+    fn cross_battle_timed(
+        version: &str,
+        list: Option<&[&str]>,
+        tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
+        limit: Option<u16>,
+    ) -> (Arc<Content>, LivePlayer, Battle) {
         let content = nettai_match::testing::exe6_content();
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
@@ -1712,6 +1724,7 @@ mod tests {
         };
         setup.players[0].set_fact(&content, "crosses", &list).unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
+        setup.custom_screen_limit = limit;
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
@@ -1871,6 +1884,38 @@ mod tests {
         assert_eq!(b.form_list(0).unwrap().chosen, None);
         assert_eq!(confirm(&mut live, &mut b).transform.form, None);
         assert_eq!(crosses_used(&b), [false; 5]);
+    }
+
+    /// The custom screen's time limit (nettai's own) runs out with the Cross
+    /// window up: the window goes as if cancelled, the Cross under its
+    /// cursor not chosen, and the screen closes as if OK were pressed, the
+    /// chips picked so far the hand; a Cross chosen before stays chosen.
+    #[test]
+    fn time_up_in_the_cross_window_cancels_it_and_confirms() {
+        const LIMIT: u16 = 240;
+        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
+        keys_in_turn(&mut live, &mut b, &[keys::A, 0]);
+        open_cross_window(&mut live, &mut b);
+        let up = |b: &Battle| matches!(b.custom.sides[0].screen.unwrap().phase, Phase::Window { .. });
+        while b.custom.sides[0].sent.is_none() {
+            assert!(up(&b) || b.custom.sides[0].clock == LIMIT, "the window stays up until the time is up");
+            // (A held: the window's keys are ignored once the time is up.)
+            let step = live.next(&b, if b.custom.sides[0].clock + 1 >= LIMIT { keys::A } else { 0 }).unwrap();
+            b.tick(&step.input, step.events);
+        }
+        assert_eq!(b.custom.sides[0].clock, LIMIT);
+        let sent = b.custom.sides[0].sent.as_ref().unwrap().result.clone();
+        assert_eq!(sent.transform.form, None);
+        assert_eq!(sent.hand.expect("the chip picked").ids[0], Some(content.defs.chip_by_key("cannon").unwrap()));
+        assert_eq!(crosses_used(&b), [false; 5]);
+        // A Cross chosen, then the time runs out: the Cross goes out.
+        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
+        open_cross_window(&mut live, &mut b);
+        choose_cross(&mut live, &mut b, 0);
+        play_until(&mut live, &mut b, LIMIT as u32 + 100, |_, _| 0, |b| b.custom.sides[0].sent.is_some());
+        let sent = b.custom.sides[0].sent.as_ref().unwrap().result.clone();
+        assert_eq!((sent.transform.form, sent.hand), (Some(form_of(&content, "heatcross")), None));
+        assert_eq!(crosses_used(&b), [true, false, false, false, false]);
     }
 
     /// MegaMan received from a navi code (event flag 0x163, the setup's
