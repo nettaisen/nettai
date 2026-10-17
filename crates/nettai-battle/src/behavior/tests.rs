@@ -889,15 +889,17 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     assert_eq!(boulders.iter().map(|&r| b.objects.get(r).alliance).collect::<Vec<_>>(), [0, 1]);
     assert_eq!(b.field.objects.slots, [None, None, None, None, None, None, Some(boulders[0]), Some(boulders[1])]);
     // The spawner reads the flags through the column (open bus): pause and
-    // dimming bits over garbage, and "not in use"; side 1's by its mirrored
-    // column (docs/engine/side-symmetry.md), the same as side 0's.
-    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [0xB4, 0xB4]);
+    // dimming bits over garbage, and "not in use"; the other side's than the
+    // canonical by its mirrored column (docs/engine/side-symmetry.md), the
+    // same as the canonical side's: column 2's byte, or column 5's.
+    let read = if nettai_content_api::CANONICAL_SIDE == 0 { 0xB4 } else { 0x34 };
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [read, read]);
     // Before the fight they wait, a pixel back and a pixel down, 500 HP.
     b.paused = true;
     run_only(&mut b, &BOULDER_KINDS);
     run_only(&mut b, &BOULDER_KINDS);
     let o = b.objects.get(boulders[0]);
-    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, 0xB4 | flags::VISIBLE));
+    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, read | flags::VISIBLE));
     let (_, y) = crate::kinds::player::panel_coordinates(2, 2);
     assert_eq!(o.pos.y, y - 0x1_0000);
     // The fight is on: they stand, and stop running while paused.
@@ -905,7 +907,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
     run_only(&mut b, &BOULDER_KINDS);
     let o = b.objects.get(boulders[0]);
-    assert_eq!((o.action, o.flags), (8, 0xB0 | flags::VISIBLE));
+    assert_eq!((o.action, o.flags), (8, (read & !flags::RUN_WHILE_PAUSED) | flags::VISIBLE));
     // Broken: two chunks (a jitter draw each, two draws in each one's
     // init) and dust; it leaves its slot.
     let before = b.rng.state;
