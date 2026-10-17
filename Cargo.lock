@@ -1296,7 +1296,7 @@ dependencies = [
 
 [[package]]
 name = "exe4-compat"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
@@ -1308,7 +1308,7 @@ dependencies = [
 
 [[package]]
 name = "exe5-compat"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "exe6-compat"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
@@ -2941,7 +2941,7 @@ dependencies = [
 
 [[package]]
 name = "m4a"
-version = "0.2.0"
+version = "0.1.0"
 
 [[package]]
 name = "mach2"
@@ -3223,11 +3223,11 @@ dependencies = [
 
 [[package]]
 name = "nettai-assets"
-version = "0.2.0"
+version = "0.1.0"
 
 [[package]]
 name = "nettai-audio"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "cpal",
  "m4a",
@@ -3237,7 +3237,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-battle"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-content-api",
  "nettai-luau",
@@ -3249,7 +3249,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-content"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "m4a",
  "miniz_oxide 0.8.9",
@@ -3265,7 +3265,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-content-api"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "toml 0.8.23",
@@ -3273,7 +3273,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-content-check"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "luau-analyze",
  "nettai-content-api",
@@ -3281,7 +3281,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-extract"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "exe4-compat",
  "exe5-compat",
@@ -3315,7 +3315,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-luau"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "luau0-src",
  "mlua",
@@ -3326,7 +3326,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-match"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content",
@@ -3338,7 +3338,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-netplay"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "getgud",
  "nettai-battle",
@@ -3348,7 +3348,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-render"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-assets",
  "nettai-battle",
@@ -3360,11 +3360,11 @@ dependencies = [
 
 [[package]]
 name = "nettai-replay"
-version = "0.2.0"
+version = "0.1.0"
 
 [[package]]
 name = "nettai-rtc"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "datachannel-facade",
  "getrandom 0.3.4",
@@ -3386,7 +3386,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-tools"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "exe4-compat",
  "exe5-compat",
@@ -3408,7 +3408,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-ui"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "slint",
  "slint-build",
@@ -3416,7 +3416,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-video"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "nettai-audio",
  "nettai-battle",
