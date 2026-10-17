@@ -86,10 +86,6 @@ msgstr "接続"
 
 # ---- Waiting for the other player ----
 
-# The same title where there is little room (a phone).
-msgid "Waiting"
-msgstr "待機中"
-
 msgid "Your address"
 msgstr "あなたのアドレス"
 
@@ -155,8 +151,16 @@ msgstr "見る"
 msgid "Leave the lobby?"
 msgstr "ロビーから退出しますか？"
 
-msgid "Closed builds"
-msgstr "構築非公開"
+msgid "Open setups"
+msgstr "構築公開"
+
+# The lobby's two groups: the match's settings (the host's), and what is this player's own (the input delay, the
+# connection).
+msgid "Match settings"
+msgstr "対戦設定"
+
+msgid "Your connection"
+msgstr "あなたの接続"
 
 # The custom screen's time limit (nettai's own): its seconds, or none.
 msgid "Custom timer"

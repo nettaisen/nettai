@@ -32,8 +32,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   the match goes on where it was. What goes wrong is
   a kind a host can say to its player in its own words, with the detail apart, for a log (§4.8, §4.9).
 - **Before the match**: a lobby checks the protocol, the engine, the game and the content; holds the match's
-  settings, which are both players' (the rounds, whether patch cards apply, and whether builds are closed: either
-  changes them, both see the same, and both ready marks clear); checks each build as the settings will play it
+  settings, which are both players' (the rounds, whether patch cards apply, and whether the setups are open: the
+  host alone changes them, both see the same, and both ready marks clear); checks each build as the settings will play it
   (without its patch cards where they are off); says nothing of either player's build; then the handshake swaps
   what each player brings and agrees the seed, each host loads the match, and the first tick runs once both have
   (§4.7).
@@ -562,10 +562,14 @@ first field of its lobby messages and refusals, and nothing after that field is 
      1 a single battle, 2 the original's triple battle) and its `2n − 1` rounds (each round's stage and background
      by name or left to the seed),
      `patch_cards` (whether the players' patch cards apply: on unless a player turns them off) and
-     `closed_builds`. They are **the match's, not a player's**. Either player changes them (`Lobby::propose`, or
-     `set_first_to`, `set_patch_cards` and `set_closed_builds`), the other peer adopts the change, so both lobbies
-     show the same
-     (`Lobby::settings`), and both players' ready marks clear. It sits on the proposal model the lobby had: each
+     `open_setups` (off in a new lobby). They are **the match's, and the host's alone** (since 2026-10-17, the
+     user: "only the host should be able to change rules"; before, either player changed them). The host changes
+     them (`Lobby::propose`, or `set_first_to`, `set_patch_cards` and `set_open_setups`; each false for a joiner,
+     whose lobby changes nothing), the joiner adopts the change, so both lobbies show the same
+     (`Lobby::settings`), and both players' ready marks clear. The host takes no settings from the joiner: a
+     joiner's say of them only tells whether it holds the host's yet. (What follows of two changes at once is how
+     it stood while either player could change them: now the joiner adopts the host's of a higher stamp or any
+     that differ from its own.) It sits on the proposal model the lobby had: each
      peer still says the settings it holds, and they are agreed when both are ready on the same. What is new is
      how two peers' settings become the same without the players doing it. Every change carries a **stamp**, one
      above every stamp its peer has seen; a peer that hears settings of a higher stamp than its own takes them (and
@@ -620,7 +624,7 @@ first field of its lobby messages and refusals, and nothing after that field is 
 2. **Hello.** A peer that sees the settings agreed (both ready, on the same settings of the same stamp) commits:
    its Hello carries the compatibility fields, the lobby revisions it agrees to and the round wins the set is
    first to, in the clear, and SHA-256 of the agreed settings' hash and the bytes of the Reveal it will send. The settings' hash
-   covers `patch_cards` and `closed_builds`, so both commit to them. A peer reveals nothing before it has the other's Hello; a change
+   covers `patch_cards` and `open_setups`, so both commit to them. A peer reveals nothing before it has the other's Hello; a change
    in the lobby takes the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
 3. **Reveal.** The lobby revisions it is of (as its Hello said them), a peer's half of the seed (a 64-bit nonce
    from the clock and the process) and its side as the match will play it (the player's setup, in nettai-match's
@@ -632,8 +636,8 @@ first field of its lobby messages and refusals, and nothing after that field is 
    one that sent it (its own check's answer of its own build; the refusal carries words for a log, not the
    problems). The seed comes from both nonces (SplitMix64), and the match is the agreed rounds, each part they
    leave picked from the seed alike on both, with both sides as played (`netplay::netplay_setup`). From here each peer has both sides, as the shared simulation needs them:
-   `closed_builds` is not secrecy between the two programs, it is what each host shows its player
-   (`Agreement::closed_builds`: the player's own build only, where with open builds a host may show both). (The
+   `open_setups` is not secrecy between the two programs, it is what each host shows its player
+   (`Agreement::open_setups`: with them a host may show both builds, without them the player's own only). (The
    commitment keeps a peer from choosing its side or its nonce after seeing the other's. It doesn't keep a peer
    that has committed from taking the other's Reveal and then leaving: such a peer has seen a build it didn't
    play, having first fixed its own.)
