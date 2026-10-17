@@ -699,8 +699,9 @@ component SheetLineRow inherits Rectangle {
 // added beside each in cyan; its abilities; its bugs, each by its name and its level or amount, purple; and its
 // folder's 30 chips in two columns. It is framed (what a build holds is: rule 11), and takes the size it is given:
 // 792 by 540 on the Builds and Play screens. Narrower than 620 it is the narrow sheet, which a player's panel in a
-// match is (430 wide, 650 tall): the stats in two columns of four, the abilities and the bugs a line each, then
-// the chips, unnumbered. Narrower than 400, a phone's, everything is one column (the stats eight rows, the folder
+// match is (430 wide, 650 tall): the stats in two columns of four, the abilities and the bugs each all of them, a
+// line at the least and as many as they wrap to (the sheet taller by each line past the one), then the chips,
+// unnumbered. Narrower than 400, a phone's, everything is one column (the stats eight rows, the folder
 // thirty) and it is 1158 tall. The build's forms are a row of their faces under the header, each with its version's
 // mark under it (a bar in its color): on the wide sheet over the stats' column, six to a row, the abilities and bugs
 // a line fewer for each row; on the narrow sheet six to a row over the stats, the sheet taller by them; on a phone's
@@ -722,8 +723,8 @@ export component BuildOverview inherits Rectangle {
     // (The stats after the eight, the game's rules' own: on the narrow sheet two to a row under the columns.)
     property <int> more-stats: max(0, root.build.stats.length - 8);
     property <int> stat-rows: root.single ? 8 + root.more-stats : 4 + ceil(root.more-stats / 2);
-    // (The narrow sheet's stats, and under them the abilities' line and the bugs'.)
-    property <length> narrow-stats: root.stat-rows * 22px + 44px;
+    // (The narrow sheet's stats, and under them the abilities and the bugs, each as many lines as it wraps to.)
+    property <length> narrow-stats: root.stat-rows * 22px + abilities.height + 6px + bugs.height + 6px;
     // The forms' row: faces at their size (32 by 16), 6 apart, the version's mark 2 under each; six to a row (the
     // stats' column's width on the wide sheet), a phone's as many as fit; rows 22 apart, and 4 after the last.
     property <int> form-fit: root.single ? max(1, floor((root.inner + 6px) / 38px)) : 6;
@@ -858,41 +859,42 @@ export component BuildOverview inherits Rectangle {
         label: root.narrow ? @tr("Abilities") : "";
     }
 
-    Text {
+    // (Every one of them, wrapped: the sheet is as tall as they make it.)
+    abilities := Text {
         x: root.pad + 112px;
         y: root.lines-y;
         width: root.inner - 112px;
-        height: 16px;
+        height: max(16px, self.preferred-height);
         visible: root.narrow;
         text: root.build.abilities == "" ? @tr("None") : root.build.abilities;
         color: root.build.abilities == "" ? Theme.dim : Theme.text;
         font-size: 13px;
         font-weight: 600;
         vertical-alignment: center;
-        overflow: elide;
+        wrap: word-wrap;
     }
 
     StatRow {
         x: root.pad;
-        y: root.lines-y + 22px;
+        y: root.lines-y + abilities.height + 6px;
         width: 108px;
         visible: root.narrow;
         narrow: true;
         label: root.narrow ? @tr("Bugs") : "";
     }
 
-    Text {
+    bugs := Text {
         x: root.pad + 112px;
-        y: root.lines-y + 22px;
+        y: root.lines-y + abilities.height + 6px;
         width: root.inner - 112px;
-        height: 16px;
+        height: max(16px, self.preferred-height);
         visible: root.narrow;
         text: root.build.bugs == "" ? @tr("None") : root.build.bugs;
         color: root.build.bugs == "" ? Theme.dim : Theme.bug;
         font-size: 13px;
         font-weight: 600;
         vertical-alignment: center;
-        overflow: elide;
+        wrap: word-wrap;
     }
 
     // The folder: two columns of fifteen.

@@ -1,6 +1,10 @@
 //! Settings (docs/design/app-ui.md §6): General, Video, Audio, Online, Controls, About, on one scrolling page.
 //! Every change is applied and kept at once (`crate::settings`). The About group's SHOW LICENSES opens About in
 //! the page's place (`about`), and Back there comes back to the page.
+//!
+//! The match menu's Settings and Controls pages (`crate::screens::play`) change some of the same in a match: they
+//! show them by `SettingsView` too ([`show_values`]), change them by the same functions ([`set_language`] and the
+//! rest) and bind the controls by a [`Binding`] of their own.
 
 mod about;
 
@@ -38,21 +42,113 @@ fn group_of(id: &str) -> Option<i32> {
     })
 }
 
-#[derive(Default)]
-pub struct Settings {
-    /// The button whose key (false) or pad button (true) is being asked for.
-    asking: Option<(usize, bool)>,
-    /// About, shown in the page's place while it is open.
-    about: about::About,
+/// A picture size as the list of sizes says it (1 to [`SIZES`]).
+fn size_label(size: u32) -> String {
+    format!("{size}× ({} × {})", 240 * size, 160 * size)
 }
 
-impl Settings {
-    fn size_label(size: u32) -> String {
-        format!("{size}× ({} × {})", 240 * size, 160 * size)
+/// What the settings' controls show of the settings (`SettingsView`), and the bindings as `binding` asks.
+pub fn show_values(shell: &Shell, binding: &Binding) {
+    let ui = shell.ui();
+    let view = ui.global::<SettingsView>();
+    let s = &shell.settings;
+    view.set_name(s.name.as_str().into());
+    view.set_language(crate::lang::name(shell.lang).into());
+    view.set_picture_size(if s.picture_size == 0 { Default::default() } else { size_label(s.picture_size).into() });
+    view.set_full_screen(s.full_screen);
+    view.set_reduce_motion(shell.reduces_motion());
+    view.set_check_updates(s.check_updates);
+    view.set_enhanced(s.enhanced);
+    view.set_music(s.music as i32);
+    view.set_effects(s.effects as i32);
+    view.set_input_delay(s.input_delay as i32);
+    view.set_data_folder(crate::paths::data().display().to_string().into());
+    binding.show(shell);
+}
+
+/// The language's choices for its select (control `id`), the one shown marked.
+pub fn pick_language(shell: &mut Shell, id: &str) {
+    let offered = crate::lang::offered(shell.lang);
+    let options: Vec<String> = offered.iter().map(|(_, name)| name.to_string()).collect();
+    let chosen = offered.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
+    shell.pick(id, 0, options, chosen);
+}
+
+/// The language chosen from [`pick_language`]'s choices.
+pub fn choose_language(shell: &mut Shell, choice: i32) {
+    if let Some((code, _)) = crate::lang::offered(shell.lang).get(choice.max(0) as usize) {
+        set_language(shell, code);
+    }
+}
+
+pub fn set_language(shell: &mut Shell, code: &'static str) {
+    shell.settings.language = Some(code.to_string());
+    shell.save_settings();
+    shell.set_language(code);
+}
+
+/// The picture sizes for their select (control `id`): the largest that fits, then 1 to [`SIZES`] times.
+pub fn pick_picture_size(shell: &mut Shell, id: &str) {
+    let largest = shell.ui().global::<SettingsView>().get_largest().to_string();
+    let options = std::iter::once(largest).chain((1..=SIZES).map(size_label)).collect();
+    shell.pick(id, 0, options, shell.settings.picture_size as usize);
+}
+
+/// The picture size a step on from the one set, around from the largest to the last.
+pub fn step_picture_size(shell: &mut Shell, by: i32) {
+    set_picture_size(shell, (shell.settings.picture_size as i32 + by).rem_euclid(SIZES as i32 + 1) as u32);
+}
+
+pub fn set_picture_size(shell: &mut Shell, size: u32) {
+    shell.settings.picture_size = size.min(SIZES);
+    shell.save_settings();
+    // (The picture on screen is fitted again at the next frame.)
+    if let Some(b) = &mut shell.battle {
+        b.stage.surface.stale = true;
+    }
+}
+
+pub fn set_full_screen(shell: &mut Shell, on: bool) {
+    shell.settings.full_screen = on;
+    shell.save_settings();
+    shell.ui().window().set_fullscreen(on);
+}
+
+/// The controls' bindings being changed: the button whose key or pad button is asked for, its box saying so. Enter
+/// on a box asks; the next key (or pad button) pressed is bound to it, taking it from the button that had it, which
+/// takes the one this had (`Bindings::bind_key`); Esc, a pad's button for a key or a key for a pad's button, or the
+/// focus moving, asks no more.
+#[derive(Default)]
+pub struct Binding {
+    /// The button whose key (false) or pad button (true) is being asked for.
+    asking: Option<(usize, bool)>,
+}
+
+impl Binding {
+    /// Ask for the key (`pad`: the pad's button) of the button at `index`.
+    pub fn ask(&mut self, shell: &Shell, index: i32, pad: bool) {
+        self.asking = Some((index.clamp(0, 9) as usize, pad));
+        self.show(shell);
+    }
+
+    /// Ask no more. Whether it was asking.
+    pub fn stop(&mut self, shell: &Shell) -> bool {
+        let was = self.asking.take().is_some();
+        if was {
+            self.show(shell);
+        }
+        was
+    }
+
+    /// The bindings back to their defaults.
+    pub fn reset(&mut self, shell: &mut Shell) {
+        self.asking = None;
+        shell.set_bindings(Bindings::default());
+        self.show(shell);
     }
 
     /// The bindings, as the controls' boxes show them.
-    fn show_bindings(&self, shell: &Shell) {
+    pub fn show(&self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<SettingsView>();
         let keys: Vec<slint::SharedString> = shell.bindings.keys.iter().map(|k| key_cap(*k).into()).collect();
@@ -77,28 +173,52 @@ impl Settings {
         view.set_asking_button(self.asking.filter(|a| a.1).map_or(-1, |a| a.0 as i32));
     }
 
-    fn set_language(&mut self, shell: &mut Shell, code: &'static str) {
-        shell.settings.language = Some(code.to_string());
-        shell.save_settings();
-        shell.set_language(code);
-    }
-
-    fn set_picture_size(&mut self, shell: &mut Shell, size: u32) {
-        shell.settings.picture_size = size.min(SIZES);
-        shell.save_settings();
-        // (The picture on screen is fitted again at the next frame.)
-        if let Some(b) = &mut shell.battle {
-            b.stage.surface.stale = true;
+    /// A key pressed while asking: bound, or the asking given up. False: it isn't asking.
+    pub fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
+        let Some((button, pad)) = self.asking else { return false };
+        if key.repeat {
+            return true;
+        }
+        if key.code == KeyCode::Escape || pad {
+            self.asking = None;
+        } else if key_name(key.code).is_some() {
+            let mut bindings = shell.bindings.clone();
+            bindings.bind_key(button, key.code);
+            shell.set_bindings(bindings);
+            self.asking = None;
+            shell.sound.play(Cue::Pick);
+        } else {
+            // (A key that can't be bound: the question stands.)
+            shell.sound.play(Cue::Refused);
         }
         self.show(shell);
+        true
     }
 
-    fn set_full_screen(&mut self, shell: &mut Shell, on: bool) {
-        shell.settings.full_screen = on;
-        shell.save_settings();
-        shell.ui().window().set_fullscreen(on);
+    /// A pad's button pressed while asking: bound, or the asking given up. False: it isn't asking.
+    pub fn button(&mut self, shell: &mut Shell, button: Button) -> bool {
+        let Some((at, pad)) = self.asking else { return false };
+        if pad && pad_name(button).is_some() {
+            let mut bindings = shell.bindings.clone();
+            bindings.bind_pad(at, button);
+            shell.set_bindings(bindings);
+            shell.sound.play(Cue::Pick);
+        }
+        self.asking = None;
         self.show(shell);
+        true
     }
+}
+
+#[derive(Default)]
+pub struct Settings {
+    /// The controls' bindings being changed.
+    binding: Binding,
+    /// About, shown in the page's place while it is open.
+    about: about::About,
+}
+
+impl Settings {
 
     fn set_reduce_motion(&mut self, shell: &mut Shell, reduce: bool) {
         shell.set_reduce_motion(reduce);
@@ -116,8 +236,7 @@ impl Settings {
     }
 
     fn set_enhanced(&mut self, shell: &mut Shell, enhanced: bool) {
-        shell.settings.enhanced = enhanced;
-        shell.save_settings();
+        shell.set_enhanced(enhanced);
         self.show(shell);
     }
 
@@ -135,28 +254,14 @@ impl Screen for Settings {
     }
 
     fn show(&mut self, shell: &mut Shell) {
-        let ui = shell.ui();
-        let view = ui.global::<SettingsView>();
-        let s = &shell.settings;
-        view.set_name(s.name.as_str().into());
-        view.set_language(crate::lang::name(shell.lang).into());
-        view.set_picture_size(if s.picture_size == 0 { Default::default() } else { Settings::size_label(s.picture_size).into() });
-        view.set_full_screen(s.full_screen);
-        view.set_reduce_motion(shell.reduces_motion());
-        view.set_check_updates(s.check_updates);
-        view.set_enhanced(s.enhanced);
-        view.set_music(s.music as i32);
-        view.set_effects(s.effects as i32);
-        view.set_input_delay(s.input_delay as i32);
-        view.set_data_folder(crate::paths::data().display().to_string().into());
-        self.show_bindings(shell);
+        show_values(shell, &self.binding);
         if self.about.is_open() {
             self.about.show(shell);
         }
     }
 
     fn hide(&mut self, shell: &mut Shell) {
-        self.asking = None;
+        self.binding.stop(shell);
         // (Shown again, Settings show their page, the focus on SHOW LICENSES.)
         if self.about.is_open() {
             self.about.close(shell);
@@ -169,29 +274,17 @@ impl Screen for Settings {
         }
         match id {
             "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize].0, 0),
-            "set.language" => {
-                let offered = crate::lang::offered(shell.lang);
-                let options: Vec<String> = offered.iter().map(|(_, name)| name.to_string()).collect();
-                let chosen = offered.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
-                shell.pick(id, 0, options, chosen);
+            "set.language" => pick_language(shell, id),
+            "set.picture" => pick_picture_size(shell, id),
+            "set.fullscreen" => {
+                set_full_screen(shell, !shell.settings.full_screen);
+                self.show(shell);
             }
-            "set.picture" => {
-                let largest = shell.ui().global::<SettingsView>().get_largest().to_string();
-                let options = std::iter::once(largest).chain((1..=SIZES).map(Settings::size_label)).collect();
-                shell.pick(id, 0, options, shell.settings.picture_size as usize);
-            }
-            "set.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
             "set.motion" => self.set_reduce_motion(shell, !shell.reduces_motion()),
             "set.updates" => self.set_check_updates(shell, !shell.settings.check_updates),
             "set.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
-            "set.key" | "set.button" => {
-                self.asking = Some((index.clamp(0, 9) as usize, id == "set.button"));
-                self.show_bindings(shell);
-            }
-            "set.reset" => {
-                shell.set_bindings(Bindings::default());
-                self.show_bindings(shell);
-            }
+            "set.key" | "set.button" => self.binding.ask(shell, index, id == "set.button"),
+            "set.reset" => self.binding.reset(shell),
             "set.folder" => show_folder(&crate::paths::data()),
             "set.about" => self.about.open(shell),
             _ => {}
@@ -200,9 +293,15 @@ impl Screen for Settings {
 
     fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) {
         match id {
-            "set.language" => self.set_language(shell, crate::lang::step(shell.lang, by)),
-            "set.picture" => self.set_picture_size(shell, (shell.settings.picture_size as i32 + by).rem_euclid(SIZES as i32 + 1) as u32),
-            "set.fullscreen" => self.set_full_screen(shell, by > 0),
+            "set.language" => set_language(shell, crate::lang::step(shell.lang, by)),
+            "set.picture" => {
+                step_picture_size(shell, by);
+                self.show(shell);
+            }
+            "set.fullscreen" => {
+                set_full_screen(shell, by > 0);
+                self.show(shell);
+            }
             "set.motion" => self.set_reduce_motion(shell, by > 0),
             "set.updates" => self.set_check_updates(shell, by > 0),
             // (Enhanced is the first of the two.)
@@ -223,13 +322,15 @@ impl Screen for Settings {
 
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
         match id {
-            "set.language" => {
-                if let Some((code, _)) = crate::lang::offered(shell.lang).get(choice.max(0) as usize) {
-                    self.set_language(shell, *code);
-                }
+            "set.language" => choose_language(shell, choice),
+            "set.picture" => {
+                set_picture_size(shell, choice.max(0) as u32);
+                self.show(shell);
             }
-            "set.picture" => self.set_picture_size(shell, choice.max(0) as u32),
-            "set.fullscreen" => self.set_full_screen(shell, choice == 1),
+            "set.fullscreen" => {
+                set_full_screen(shell, choice == 1);
+                self.show(shell);
+            }
             "set.motion" => self.set_reduce_motion(shell, choice == 1),
             "set.updates" => self.set_check_updates(shell, choice == 1),
             "set.graphics" => self.set_enhanced(shell, choice == 0),
@@ -265,30 +366,11 @@ impl Screen for Settings {
         } else if let Some(group) = group_of(id) {
             view.set_group(group);
         }
-        if self.asking.take().is_some() {
-            self.show_bindings(shell);
-        }
+        self.binding.stop(shell);
     }
 
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        let Some((button, pad)) = self.asking else { return false };
-        if key.repeat {
-            return true;
-        }
-        if key.code == KeyCode::Escape || pad {
-            self.asking = None;
-        } else if key_name(key.code).is_some() {
-            let mut bindings = shell.bindings.clone();
-            bindings.bind_key(button, key.code);
-            shell.set_bindings(bindings);
-            self.asking = None;
-            shell.sound.play(Cue::Pick);
-        } else {
-            // (A key that can't be bound: the question stands.)
-            shell.sound.play(Cue::Refused);
-        }
-        self.show_bindings(shell);
-        true
+        self.binding.key(shell, key)
     }
 
     fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
@@ -308,16 +390,7 @@ impl Screen for Settings {
     }
 
     fn button(&mut self, shell: &mut Shell, button: Button) -> bool {
-        let Some((at, pad)) = self.asking else { return false };
-        if pad && pad_name(button).is_some() {
-            let mut bindings = shell.bindings.clone();
-            bindings.bind_pad(at, button);
-            shell.set_bindings(bindings);
-            shell.sound.play(Cue::Pick);
-        }
-        self.asking = None;
-        self.show_bindings(shell);
-        true
+        self.binding.button(shell, button)
     }
 }
 
