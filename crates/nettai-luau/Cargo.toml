@@ -1,6 +1,6 @@
 [package]
 name = "nettai-luau"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Luau runtime for exe6 battle content: stateless scripts over the content API"

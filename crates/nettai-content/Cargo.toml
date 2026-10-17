@@ -1,6 +1,6 @@
 [package]
 name = "nettai-content"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Content packs: the battle data, graphics and sound in open, editable formats (TOML, indexed PNG + JSON, MIDI + TOML + WAV), loaded exactly into the engine's data"

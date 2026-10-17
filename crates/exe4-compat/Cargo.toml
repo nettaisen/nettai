@@ -1,6 +1,6 @@
 [package]
 name = "exe4-compat"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The original games' numbers for EXE4's content (content/exe4/compat), and what reads them: the codecs of EXE4's records and its recorded battles (traces), decoded into the engine's terms, and its saves and their import (a save into a side, by the game's facts). The engine never depends on it."

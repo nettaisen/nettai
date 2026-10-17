@@ -208,8 +208,8 @@ pub fn match_frame(seed: u32, datagram: &[u8]) -> Option<&[u8]> {
     (kind == Kind::Frame as u8 && u32::from_le_bytes(*of) == seed).then_some(frame)
 }
 
-/// The engine's version as peers compare it (the engine's crates are
-/// versioned together).
+/// nettai's version as peers compare it (the workspace's, every crate's:
+/// the app's).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
 /// Why a lobby ended without a match, as a host can tell its player: each
@@ -370,7 +370,7 @@ impl Compat {
             return failure(Reason::DifferentVersion, format!("the other side speaks netplay protocol {}, this one {}", other.protocol, self.protocol));
         }
         if other.engine != self.engine {
-            return failure(Reason::DifferentVersion, format!("the other side runs engine {}, this one {}", other.engine, self.engine));
+            return failure(Reason::DifferentVersion, format!("the other side runs nettai {}, this one {}: both must run the same version", other.engine, self.engine));
         }
         if other.game != self.game {
             return failure(Reason::DifferentGame { theirs: other.game.clone() }, format!("the other side plays {}, this one {}: a match is of one game", other.game, self.game));
@@ -2516,8 +2516,8 @@ mod tests {
         assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side speaks netplay protocol {v}, this one {}", v + 1)));
         assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused, speaking netplay protocol {} (this one speaks {v})", v + 1)));
         let [h, j] = cant(&|l| l[1].compat.engine = "0.0.0".into());
-        assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side runs engine {ENGINE}, this one 0.0.0")));
-        assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused: can't play: the other side runs engine {ENGINE}, this one 0.0.0")));
+        assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run the same version")));
+        assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused: can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run the same version")));
         // Another game: each is told the other's.
         let [h, j] = cant(&|l| l[1].compat.game = "exe5".into());
         assert_eq!((j.reason, j.detail.as_str()), (Reason::DifferentGame { theirs: "exe6".into() }, "can't play: the other side plays exe6, this one exe5: a match is of one game"));

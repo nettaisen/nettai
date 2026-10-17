@@ -1,6 +1,6 @@
 [package]
 name = "nettai-audio"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Plays the battle engine's sound cues through the M4A sound driver"
