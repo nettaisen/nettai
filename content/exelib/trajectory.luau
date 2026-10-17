@@ -175,7 +175,16 @@ function trajectory.over(SINE: { number }): Trajectory
     -- `gravity` a tick: (rise, ticks). `vel_y` is what the game reads as the
     -- height when the distance rounds to no ticks (the word after the
     -- position's Z: the object's Y velocity).
-    function t.at_speed(pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number, side: number?): (number, number)
+    function t.at_speed(
+        pos: Vec3,
+        vel_y: number,
+        x: number,
+        y: number,
+        z: number,
+        speed: number,
+        gravity: number,
+        side: number?
+    ): (number, number)
         local height = pos.z
         if speed ~= 0 then
             -- (By `side`: the distance across as side 0's in its place.)

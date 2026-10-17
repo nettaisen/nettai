@@ -161,7 +161,7 @@ end
 -- none).
 local function first_panel(me: Object): (number?, number?)
     local cond = TARGETS[me.alliance]
-    -- (Shuffled from its order, by its side's order (`panels.filtered`'s `side`: the original lists from column 6, docs/engine/side-symmetry.md).)
+    -- (Shuffled from its side's order: docs/engine/side-symmetry.md.)
     local list = panels.filtered_except(me, cond.require, cond.forbid, bit32.band(me.alliance, 1))
     local n = #list
     if n == 0 then
