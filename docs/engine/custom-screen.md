@@ -540,9 +540,42 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 
 (OK ticks are the players' own presses: the recorded input records show them 4 frames later.)
 
+### 6.1 The time limit (nettai's own)
+
+The original's screen waits for OK as long as it takes. nettai adds a time limit, which a match's host sets
+(the lobby's Custom timer: 30, 45, 60, 90 or 120 seconds, or none; a new lobby's is 60) and which is not the
+original's. The user: "design a custom screen timer and default it to 60 seconds but also allow an unlimited time
+option. after the timer the screen should forcefully close and force the player out of battle and confirm
+selection", taken as: when the time is up the screen closes as if OK were pressed, with the chips picked so far,
+and the fight resumes as usual (no loss, no leaving the match).
+
+- **The setup**: `RoundSetup::custom_screen_limit`, in ticks (60 a second), none for none. A match's rounds have
+  the match's (`nettai_match::Match::custom_screen_time`, in seconds); every other round has none, as in the
+  original: Practice, the compat crates' rounds of the recordings, the lab and the tests. Without one nothing below
+  happens, and the screen is the original's to the byte.
+- **Counting**: each side's screen counts its own ticks (`Side::clock`, reset as the screen opens) from the tick
+  after its window is in (the first tick of `Settling` or `Choosing`) for as long as it chooses or is hidden
+  (`Phase::counts_time`: choosing, SELECT's hiding, R's description, L's message, a window of the rules, a scrap,
+  a re-deal), up to OK. Both screens run in the shared simulation, so the count is part of the battle's state
+  (snapshotted and digested with the side) and both peers and a replay close a screen on the same tick, with no
+  message between them.
+- **Time up**: on the tick the clock reaches the limit the screen reads no keys and ends as if OK were pressed
+  (`Screen::tick_time_up`): from choosing at once, the chips picked so far the hand (none picked: no hand, as OK
+  with nothing); SELECT's hiding, a description and the run message close silently first; a window of the rules
+  (EXE6's Cross window and Beast Out, EXE4's and EXE5's soul choices) goes as if cancelled: what its rules noted
+  before stays (a Cross chosen, a soul given at the white), what they hadn't yet doesn't count, and its fades and
+  the dark chip's hover end at once (the hover's volumes where its clearing ramp ends). The rules hear nothing of
+  it: the screen closes as OK closes it, and their `confirmed` reads what they hold. A scrap or a re-deal reads no
+  keys and runs to its end, and OK is pressed on the tick after. From there the screen goes on as from OK (its
+  sound, the slide-out, a Program Advance's animation, the send), and the fight resumes once both results are in.
+- **Shown**: the frontend draws the seconds left on the local player's own screen while it counts
+  (`Battle::custom_time_left`), in a box of the HP box's at the screen's top right (docs/frontend.md §2).
+
 ## 7. Verification
 
-- **Unit tests** (in this repository, with made-up chips): the shuffle on four recorded folders, the joypad's
+- **Unit tests** (in this repository, with made-up chips): the time limit (§6.1: OK at time up from choosing,
+  from SELECT's hiding, a description and L's message, nothing without a limit, the count in a battle's
+  snapshot), the shuffle on four recorded folders, the joypad's
   repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
   DustCross's scrap, hand sizes, SELECT), and Crosses of both games in a setup's list (§4.1: either game's Crosses offered and

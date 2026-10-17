@@ -234,6 +234,7 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
         later_stages: Default::default(),
         low_hp_music_latched: false,
         host_keys: crate::setup::HostKeys::NONE,
+        custom_screen_limit: None,
         players: [player(content), player(content)],
     }
 }

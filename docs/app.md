@@ -679,9 +679,13 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (First to, Ruleset and Closed builds are the match's: both see
-  them, and a change clears both ready marks; either player changes First to and Closed builds, the host alone
-  the Ruleset; Input delay is the player's own, and is the
+  nothing of a build), one row of settings (First to, Ruleset, Closed builds and Custom timer are the match's:
+  both see them, and a change clears both ready marks; either player changes First to, Closed builds and Custom
+  timer, the host alone the Ruleset; Custom timer, after Closed builds, is the custom screen's time limit, a
+  stepper of 30, 45, 60, 90 and 120 seconds and Unlimited, 60 in a new lobby: nettai's own, not the original's,
+  the screen closing as if OK were pressed when the time is up, with the seconds left shown in a box at the top
+  right while it counts, docs/engine/custom-screen.md §6.1; a lobby made from a match file starts on the file's,
+  Unlimited where it states none; Input delay is the player's own, and is the
   Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
   background either: every round's is drawn from the background pool's of the match's game by the match's seed,
   alike for both players, §1, "The battle's background") with the
