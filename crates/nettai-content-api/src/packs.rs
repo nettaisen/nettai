@@ -226,8 +226,12 @@ impl Dirs {
 }
 
 impl Modules for Dirs {
+    /// A module's source with CRLF line endings read as LF: the content's
+    /// hash covers its sources byte for byte, and a file saved on Windows
+    /// is the same content as one saved elsewhere.
     fn read(&self, name: &str) -> Option<String> {
-        std::fs::read_to_string(self.file(name)?).ok()
+        let text = std::fs::read_to_string(self.file(name)?).ok()?;
+        Some(if text.contains("\r\n") { text.replace("\r\n", "\n") } else { text })
     }
 
     fn has(&self, name: &str) -> bool {
@@ -498,6 +502,18 @@ mod tests {
         assert!(e.starts_with("x/manifest.toml: ") && e.contains("unknown field `definitions`"), "{e}");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\nweapons = []\n", "x").is_err(), "no other field");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
+    }
+
+    /// A module saved with CRLF line endings reads as the same source as
+    /// one saved with LF: a Windows checkout plays the same content.
+    #[test]
+    fn a_crlf_module_reads_as_lf() {
+        let dir = std::env::temp_dir().join(format!("nettai-crlf-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("g")).unwrap();
+        std::fs::write(dir.join("g/init.luau"), "--!strict\r\nreturn {}\r\n").unwrap();
+        let read = Dirs(BTreeMap::from([("g".to_string(), dir.join("g"))])).read("g:init");
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(read.as_deref(), Some("--!strict\nreturn {}\n"));
     }
 
     /// A require is found in one place: among modules in memory, in packs'
