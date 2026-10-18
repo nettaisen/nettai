@@ -433,7 +433,9 @@ refuses, and `set_training` is refused while a replay is written).
 Live play is a set, as a link battle is: first to `n` round wins, `n` from 1
 to 10 (`nettai_match::MAX_FIRST_TO`; the original's single battle is first to
 1, its triple battle first to 2), its rounds the `2n − 1` the match lists
-(`nettai_match::rounds_for`; a match lists no other count): when a round ends
+(`nettai_match::rounds_for`; a match lists no other count; a match of one
+round has the single battle's match type, `nettai_match::match_effects`: no
+set, so no round number and no BATTLE 1 START! banner): when a round ends
 the next one starts, on the next round's place, with the score carried and
 each folder shuffled again by its console's RNG, and when the set is decided
 play stops with the result (`the match is over: you won`). A set of `2n − 1`
