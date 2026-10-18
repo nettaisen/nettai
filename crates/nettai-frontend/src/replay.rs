@@ -391,7 +391,7 @@ mod tests {
     fn a_set_first_to_n_ends_when_it_should() {
         use BattleResult::{Lost, Won};
         let (six, five, four) = (nettai_match::testing::exe6_content(), nettai_match::testing::exe5_content(), nettai_match::testing::exe4_content());
-        let cases: [(&Arc<Content>, &str, u8, &[usize], BattleResult); 9] = [
+        let cases: [(&Arc<Content>, &str, u8, &[usize], BattleResult); 11] = [
             (&six, "exe6", 3, &[0, 0, 0], Won),
             (&six, "exe6", 3, &[1, 1, 1], Lost),
             (&six, "exe6", 3, &[0, 1, 0, 1, 0], Won),
@@ -401,6 +401,9 @@ mod tests {
             (&six, "exe6", 4, &[0, 1, 0, 1, 0, 1, 1], Lost),
             (&four, "exe4", 4, &[0, 0, 1, 0, 0], Won),
             (&six, "exe6", 1, &[1], Lost),
+            // (A single battle's, each game's: one round, no set.)
+            (&five, "exe5", 1, &[0], Won),
+            (&four, "exe4", 1, &[1], Lost),
         ];
         for (content, game, first_to, winners, result) in cases {
             let case = format!("{game} first to {first_to}, won by {winners:?}");
