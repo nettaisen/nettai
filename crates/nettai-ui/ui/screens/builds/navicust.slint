@@ -17,7 +17,7 @@
 import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
+import { PanelBack, Label, ListView, Field, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 import { RemoveTarget } from "folder.slint";
 
@@ -266,6 +266,8 @@ export global NavicustView {
     // The list: each program once, in its color chosen; the most colors a program of it comes in.
     in property <[ProgramRow]> programs;
     in property <int> most-colors;
+    // The search over the list: the programs whose names hold it.
+    in property <string> search;
     // The cursor is in the list: its title is lit, the board's isn't.
     in property <bool> in-list;
     // What the game's rules have against the NaviCust (a placed program, or the whole), the first and "+n more": said on
@@ -1384,9 +1386,19 @@ export component NavicustTab inherits Rectangle {
         enabled: NavicustView.clearable;
     }
 
-    list := ListView {
+    // The search: the list holds the programs whose names hold it.
+    Field {
         x: root.list-x;
         y: root.list-y + 28px;
+        width: root.list-width;
+        nav: "programs.search";
+        text: NavicustView.search;
+        placeholder: @tr("Search programs");
+    }
+
+    list := ListView {
+        x: root.list-x;
+        y: root.list-y + 80px;
         width: root.list-width;
         height: root.height - self.y;
         nav: "programs";
