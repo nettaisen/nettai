@@ -131,7 +131,7 @@ Each is settled unless the user changes it.
 26. **The NaviCust's bugs are its own, and a program is placed as often as wanted** (2026-10-13): "navicust
     shouldn't display patch card bugs. also you should allow a navicust part to be placed multiple times". The
     NaviCust tab's Bugs (on a phone, its Bugs line) list the bugs the NaviCust brings, the build's without its
-    patch cards, as its Effects already were; a card's bugs stay on the Patch cards tab (its lines, Together) and
+    patch cards, as its Effects already were; a card's bugs stay on the Patch cards tab (its lines, its Bugs) and
     in the build overview, which lists every bug. Taking a program from the list, by Enter or a click on its row
     (since §2.38 no drag), always takes a new copy in hand, however many copies are placed (before, it took a placed
     program's last copy off); Del (or a right click) on its row takes the last copy off, and a placed piece is
@@ -1851,8 +1851,10 @@ DUPLICATE and DELETE.
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
   framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
   with what the game's rules have against the cards after them) and CLEAR at its right end, which takes every card
-  out (EXE4: empties every slot), asked first (X; §2.71), and
-  "Together", what they add up to, at its foot; the library's rows the same, with their note ("Not allowed" in the
+  out (EXE4: empties every slot), asked first (X; §2.71); in three columns as the NaviCust's (the user, 2026-10-18:
+  "should patch cards have effects and bugs on the right side just like navicust?"): the cards, the library (its
+  title over its search, sort and direction) and at the right what the cards add up to, Effects over Bugs, the
+  NaviCust tab's panels (on a phone a line each under the cards); the library's rows the same, with their note ("Not allowed" in the
   error red, greyed, where the ruleset holds the card or its variant back: it isn't put in nor chosen, §2.68); the
   strip across the
   top lays the card under the cursor (or the pointer) out: its lines in its two groups, Parameter then Ability, bug

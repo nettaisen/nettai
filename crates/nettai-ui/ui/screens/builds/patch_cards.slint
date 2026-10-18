@@ -4,11 +4,13 @@
 // groups (a game whose cards have none: what it does, and the bugs it adds to or clears), a bug's purple. Under it,
 // framed, what the build holds: its cards in their order (a game with slots: each slot by its name, with its card or
 // Empty), each a row as the folder's entries are, its number, its name and its MB (its lines are the strip's: the
-// user, "the name isn't very visible"); their count and MB in the header, and what they add up to at the foot. Beside
-// it the library, an open list, with a search and a sort. No pictures (cards have none), and no on and off (nettai
+// user, "the name isn't very visible"); their count and MB in the header. Beside it the library, an open list, with
+// a search and a sort; and at the right what the cards add up to, EFFECTS over BUGS, as the NaviCust's (the user:
+// "should patch cards have effects and bugs on the right side just like navicust?"). No pictures (cards have none), and no on and off (nettai
 // can't turn a card off). A card that can't go in stays, greyed, with why.
 //
-// On a phone the cards are one column under their counts, and the library opens as a sheet from the bottom
+// On a phone the cards are one column under their counts, what they add up to a line each under them (Effects,
+// Bugs), and the library opens as a sheet from the bottom
 // (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
 
 import { Theme, Audit, Caps } from "../../theme.slint";
@@ -18,6 +20,7 @@ import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, Row
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
+import { EffectLine, EffectRow } from "navicust.slint";
 
 // One line a card writes, a bug's purple.
 export struct CardLine {
@@ -105,10 +108,12 @@ export global PatchCardsView {
     // more": said in a phone's header, after the counts (docs/design/app-ui.md §2.66; a desktop's strip says them of the
     // card it describes). A card a problem is about has its name red.
     in property <string> problems;
-    // What the cards add up to: the numbers they change, what they give, their bugs.
-    in property <string> together-numbers;
-    in property <string> together-abilities;
-    in property <string> together-bugs;
+    // What the cards add up to, as the NaviCust's panels say it (`EffectRow`): the numbers they change and what they
+    // give, and their bugs, each under its title; on a phone a line each.
+    in property <[EffectLine]> effects;
+    in property <[EffectLine]> bugs;
+    in property <string> effects-line;
+    in property <string> bugs-line;
     // The installed row a card just went into, counted: it flashes.
     in property <int> landed;
     in property <int> landed-seq;
@@ -370,14 +375,28 @@ component CardLibraryRowView inherits Rectangle {
 // The library: its title, the search field, the sort and its direction, and under them its rows. (A phone's sheet
 // has no room for the two titles.)
 component CardsLibraryPane inherits Rectangle {
+    // In a column of three (a desktop's): its title over it, lit while the focus is in it, and its head bare.
+    in property <bool> titled;
+    property <length> head-y: root.titled ? 28px : 0px;
     shake := Shake {
         seq: PatchCardsView.refused-seq;
     }
 
-    LibraryHead {
+    Label {
         x: 0;
         y: 0;
         width: parent.width;
+        height: 20px;
+        visible: root.titled;
+        text: Caps.of(@tr("Library"));
+        color: PatchCardsView.in-library ? Theme.cursor : Theme.muted;
+    }
+
+    LibraryHead {
+        x: 0;
+        y: root.head-y;
+        width: parent.width;
+        compact: root.titled;
         in-library: PatchCardsView.in-library;
         search: PatchCardsView.search;
         placeholder: @tr("Search cards");
@@ -387,9 +406,9 @@ component CardsLibraryPane inherits Rectangle {
 
     list := ListView {
         x: Theme.phone ? 0px : 4px;
-        y: 52px;
+        y: root.head-y + 52px;
         width: parent.width - self.x;
-        height: parent.height - 52px;
+        height: parent.height - self.y;
         nav: "lib.rows";
         count: PatchCardsView.rows.length;
         row-height: Theme.list-row;
@@ -478,47 +497,22 @@ component GroupColumn inherits Rectangle {
     }
 }
 
-// What the cards add up to: the numbers, what they give, their bugs (purple), a line each.
-component Together inherits Rectangle {
-    property <[string]> parts: [PatchCardsView.together-numbers, PatchCardsView.together-abilities, PatchCardsView.together-bugs];
-    Rectangle {
-        y: 0;
-        height: 1px;
-        background: Theme.line;
-    }
-
-    Label {
-        x: 12px;
-        y: 10px;
-        width: parent.width - 24px;
-        height: 14px;
-        text: Caps.of(@tr("Together"));
-    }
-
-    for part[i] in root.parts: Text {
-        x: 12px;
-        y: 30px + i * 18px;
-        width: parent.width - 24px;
-        height: 18px;
-        text: i == 0 && part == "" && root.parts[1] == "" && root.parts[2] == "" ? @tr("Nothing") : part;
-        color: i == 2 ? Theme.bug : (part == "" ? Theme.dim : Theme.text);
-        font-family: Theme.body;
-        font-size: 12px;
-        font-weight: part == "" ? 400 : 600;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-}
-
 export component PatchCardsTab inherits Rectangle {
     // (As the folder's: the strip, the two panes and their gaps are the page's whole height.)
     property <length> top: -4px;
     property <length> pane-y: root.top + 104px + 12px;
-    property <length> pane-width: 528px;
+    // Three columns, as the NaviCust's: the build's cards, the library, and what the cards add up to (EFFECTS over
+    // BUGS).
+    property <length> pane-width: 500px;
     property <length> pane-height: 482px;
-    property <length> together-height: 30px + 3 * 18px + 8px;
-    // A phone: the counts' box over the cards, and what they add up to under them.
+    property <length> library-x: root.pane-width + 24px;
+    property <length> library-width: 384px;
+    property <length> side-x: root.library-x + root.library-width + 24px;
+    property <length> side-width: self.width - root.side-x;
+    property <length> effects-height: (root.pane-height - 12px) / 2;
+    // A phone: the counts' box over the cards, and what they add up to under them, a line each.
     property <length> counts-height: 44px;
+    property <length> lines-height: Theme.phone ? 2 * 22px + 8px : 0px;
     // ---- The strip: the card under the cursor.
     PanelBack {
         x: 0;
@@ -683,7 +677,7 @@ export component PatchCardsTab inherits Rectangle {
         x: Theme.phone ? 0px : 4px;
         y: Theme.phone ? root.counts-height + 12px : root.pane-y + 44px;
         width: (Theme.phone ? parent.width : root.pane-width - 4px) - (Theme.phone ? 0px : 4px);
-        height: Theme.phone ? parent.height - self.y - root.together-height : root.pane-height - 44px - root.together-height;
+        height: Theme.phone ? parent.height - self.y - root.lines-height : root.pane-height - 44px;
         nav: "card";
         count: PatchCardsView.installed.length;
         row-height: Theme.list-row;
@@ -729,22 +723,78 @@ export component PatchCardsTab inherits Rectangle {
         }
     }
 
-    Together {
-        x: 0;
-        y: Theme.phone ? parent.height - root.together-height : root.pane-y + root.pane-height - root.together-height;
-        width: Theme.phone ? parent.width : root.pane-width;
-        height: root.together-height;
+    // ---- What the cards add up to: two panels at the right, or on a phone a line each under the cards.
+    if !Theme.phone: Rectangle {
+        PanelBack {
+            x: root.side-x;
+            y: root.pane-y;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
 
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+        for line[i] in PatchCardsView.effects: EffectRow {
+            x: root.side-x + 16px;
+            y: root.pane-y + 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+
+        PanelBack {
+            x: root.side-x;
+            y: root.pane-y + root.effects-height + 12px;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
+
+        for line[i] in PatchCardsView.bugs: EffectRow {
+            x: root.side-x + 16px;
+            y: root.pane-y + root.effects-height + 12px + 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+    }
+
+    if Theme.phone: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: PatchCardsView.effects-line, bug: false }, { title: @tr("Bugs"), text: PatchCardsView.bugs-line, bug: true }]: Rectangle {
+            x: 0;
+            y: root.height - root.lines-height + 8px + i * 22px;
+            width: root.width;
+            height: 16px;
+            Text {
+                x: 0;
+                width: 96px;
+                text: line.title;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            Text {
+                x: 104px;
+                width: parent.width - self.x;
+                text: line.text == "" ? @tr("None") : line.text;
+                color: line.text == "" ? Theme.dim : line.bug ? Theme.bug : Theme.text;
+                font-family: Theme.body;
+                font-size: 13px;
+                font-weight: line.text == "" ? 400 : 600;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
     }
 
     // ---- The library, open; a card dragged over it is taken out, let go there.
     if !Theme.phone: Rectangle {
         library := CardsLibraryPane {
-            x: root.pane-width + 24px;
+            x: root.library-x;
             y: root.pane-y;
-            width: parent.width - self.x;
-            height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+            width: root.library-width;
+            height: root.pane-height;
+            titled: true;
         }
 
         RemoveTarget {
