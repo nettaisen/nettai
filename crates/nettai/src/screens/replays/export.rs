@@ -17,7 +17,7 @@ use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_video::{Options, Part, Progress, Sides, Titles, mp4};
 use slint::ComponentHandle;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Range};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -67,8 +67,10 @@ pub struct Export {
     /// Both consoles side by side (`side`'s at the left, its sound the first track, the other's the second), or
     /// `side`'s alone.
     both: bool,
-    /// The part: 0 the whole match, else that round.
+    /// The part: 0 the whole match, else that round; or, one past the rounds, the clip.
     part: u32,
+    /// The clip marked in the viewer, if any: its ticks.
+    clip: Option<Range<u32>>,
     to: PathBuf,
     /// The player chose the place: it isn't named again as the part changes.
     placed: bool,
@@ -114,8 +116,9 @@ fn shown(path: &Path, phone: bool) -> String {
 }
 
 impl Export {
-    /// Open the dialog for the replay at `replay`, shown from `side`.
-    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8) -> Export {
+    /// Open the dialog for the replay at `replay`, shown from `side`: with `clip`, the clip marked in the viewer,
+    /// a part to choose and the one chosen at first.
+    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, clip: Option<Range<u32>>) -> Export {
         let mut export = Export {
             replay: replay.to_path_buf(),
             summary: summary.clone(),
@@ -123,12 +126,16 @@ impl Export {
             side: side.min(1),
             both: false,
             part: 0,
+            clip,
             to: PathBuf::new(),
             placed: false,
             running: None,
             state: ExportState::Idle,
             error: None,
         };
+        if export.clip.is_some() {
+            export.part = export.last_part();
+        }
         export.name(shell);
         export.show(shell);
         shell.ui().global::<ReplaysView>().set_exporting(true);
@@ -147,7 +154,7 @@ impl Export {
         self.running.is_some()
     }
 
-    /// The parts there are: the whole match, and each round where there is more than one.
+    /// The rounds there are to choose: each where there is more than one.
     fn parts(&self) -> u32 {
         match self.summary.rounds.len() as u32 {
             1 => 0,
@@ -155,9 +162,22 @@ impl Export {
         }
     }
 
+    /// The last part: the clip, where one is marked, else the last round.
+    fn last_part(&self) -> u32 {
+        self.parts() + self.clip.is_some() as u32
+    }
+
+    /// Part `part`'s clip, where it is the clip.
+    fn clip_of(&self, part: u32) -> Option<&Range<u32>> {
+        self.clip.as_ref().filter(|_| part == self.parts() + 1)
+    }
+
     /// A part's length, in ticks.
     fn ticks(&self, part: u32) -> u32 {
         let rounds = &self.summary.rounds;
+        if let Some(clip) = self.clip_of(part) {
+            return clip.len() as u32;
+        }
         match part {
             0 => self.summary.ticks,
             n => rounds.get(n as usize).copied().unwrap_or(self.summary.ticks) - rounds[n as usize - 1],
@@ -166,9 +186,21 @@ impl Export {
 
     fn part_label(&self, view: &ReplaysView, part: u32) -> String {
         let length = clock(time_of(self.ticks(part) as u64), true);
+        if let Some(clip) = self.clip_of(part) {
+            let at = |tick: u32| -> slint::SharedString { clock(time_of(tick as u64), true).into() };
+            return view.invoke_clip_part(at(clip.start), at(clip.end), length.into()).into();
+        }
         match part {
             0 => view.invoke_whole(length.into()).into(),
             n => view.invoke_round_part(n as i32, length.into()).into(),
+        }
+    }
+
+    /// The round a part starts in, from 1.
+    fn first_round(&self, part: u32) -> u32 {
+        match self.clip_of(part) {
+            Some(clip) => self.summary.rounds.iter().filter(|&&r| r <= clip.start).count().max(1) as u32,
+            None => part.max(1),
         }
     }
 
@@ -189,7 +221,11 @@ impl Export {
         let folder = shell.settings.remembered.get(FOLDER).map(PathBuf::from).unwrap_or_else(|| videos().join("nettai"));
         let info = &self.summary.info;
         let mut stem = file_safe(&format!("{} {}", played(&view, info.when).file, name(&view, info, info.side ^ 1)));
-        if self.part > 0 {
+        if let Some(clip) = self.clip_of(self.part) {
+            // (The clip's start and end, as the bar's clock says them, with dots: a colon is no file's.)
+            let at = |tick: u32| clock(time_of(tick as u64), true).replace(':', ".");
+            stem.push_str(&format!(" clip {}–{}", at(clip.start), at(clip.end)));
+        } else if self.part > 0 {
             stem.push_str(&format!(" round {}", self.part));
         }
         if self.both {
@@ -226,7 +262,7 @@ impl Export {
     }
 
     fn set_part(&mut self, shell: &mut Shell, part: u32) {
-        self.part = part.min(self.parts());
+        self.part = part.min(self.last_part());
         self.name(shell);
         self.show(shell);
     }
@@ -247,7 +283,7 @@ impl Export {
             "part" if self.open_to_change() => {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
-                let options = (0..=self.parts()).map(|part| self.part_label(&view, part)).collect();
+                let options = (0..=self.last_part()).map(|part| self.part_label(&view, part)).collect();
                 shell.pick("export.part", 0, options, self.part as usize);
             }
             "view" if self.open_to_change() => {
@@ -279,7 +315,7 @@ impl Export {
             "size" => self.size = (self.size as i32 + by).clamp(0, SIZES.len() as i32 - 1) as usize,
             "view" => self.side = (by > 0) as u8,
             "sides" => return self.set_both(shell, by > 0),
-            "part" => return self.set_part(shell, (self.part as i32 + by).clamp(0, self.parts() as i32) as u32),
+            "part" => return self.set_part(shell, (self.part as i32 + by).clamp(0, self.last_part() as i32) as u32),
             _ => {}
         }
         self.show(shell);
@@ -351,7 +387,11 @@ impl Export {
             let rounds = (1..=self.summary.rounds.len() as i32).map(|n| view.invoke_chapter(n).into()).collect();
             Titles { rounds, sides: [0, 1].map(|side| name(&view, &self.summary.info, side)) }
         };
-        let part = if self.part == 0 { Part::Whole } else { Part::Round(self.part) };
+        let part = match self.clip_of(self.part) {
+            Some(clip) => Part::Ticks(clip.clone()),
+            None if self.part == 0 => Part::Whole,
+            None => Part::Round(self.part),
+        };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
         let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
         let (stop, shared, to) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())), self.to.clone());
@@ -370,7 +410,7 @@ impl Export {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
                 view.set_export_progress(0.0);
-                view.set_export_round(self.part.max(1) as i32);
+                view.set_export_round(self.first_round(self.part) as i32);
                 view.set_export_rounds(self.summary.rounds.len() as i32);
                 self.show(shell);
                 shell.nav.focus("export.cancel", 0);

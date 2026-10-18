@@ -449,15 +449,16 @@ impl Replays {
         self.fill(shell);
     }
 
-    /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's).
-    fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>) {
+    /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's), with the clip
+    /// marked in the viewer, if any.
+    fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, clip: Option<std::ops::Range<u32>>) {
         let Some(entry) = self.library.entries.iter().find(|e| e.path == *path) else { return };
         let Ok(summary) = &entry.read else { return };
         if let Some(w) = &mut self.watching {
             w.pause();
             w.hide_builds(shell);
         }
-        self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side)));
+        self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side), clip));
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -492,7 +493,7 @@ impl Replays {
         let Some(path) = self.selected.clone() else { return };
         match what {
             "watch" => self.watch(shell, &path, None),
-            "export" => self.open_export(shell, &path, None),
+            "export" => self.open_export(shell, &path, None, None),
             "file" => show_file(&path),
             "delete" => self.ask_delete(shell),
             _ => {}
@@ -593,11 +594,12 @@ impl Screen for Replays {
                 "builds" | "builds.sheet" => w.toggle_builds(shell),
                 "inputs" => w.toggle_inputs(shell),
                 "inset" => w.toggle_inset(shell),
+                "clip" => w.mark_clip(shell),
                 "speed" => w.set_speed(index),
                 "view" => w.set_view(shell, index),
                 "export" => {
-                    let (path, side) = (w.path().to_path_buf(), w.side());
-                    self.open_export(shell, &path, Some(side));
+                    let (path, side, clip) = (w.path().to_path_buf(), w.side(), w.clip());
+                    self.open_export(shell, &path, Some(side), clip);
                 }
                 _ => {}
             }
@@ -721,7 +723,9 @@ impl Screen for Replays {
                 // picture.)
                 KeyCode::KeyI if !key.repeat => w.toggle_inputs(shell),
                 KeyCode::KeyP if !key.repeat => w.toggle_inset(shell),
-                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP => {}
+                // (C marks a clip to export: its start, its end, then clears it.)
+                KeyCode::KeyC if !key.repeat => w.mark_clip(shell),
+                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP | KeyCode::KeyC => {}
                 _ => return false,
             }
             return true;
