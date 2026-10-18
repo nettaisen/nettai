@@ -261,9 +261,24 @@ pub fn check_custom_screen_time(seconds: Option<u16>) -> Option<String> {
 }
 
 /// The effects a link battle's match type adds to its stage's
-/// (`sub_812B768`, from `off_812B7AC`: the match type the recorded matches
-/// were, 0x600).
+/// (`sub_812B768`, from `off_812B7AC`): a triple battle's, 0x600 (the set,
+/// 0x400, and 0x200), the match type the recorded matches were. A match of
+/// more than one round is one ([`match_effects`]).
 pub const MATCH_EFFECTS: u32 = 0x600;
+
+/// A single battle's effects (`off_812B7AC`'s first word, 0x200): no set,
+/// so its round is its stage's battle number, 0, and no round banner
+/// ("BATTLE 1") comes before its first custom screen (`mode_banner`). A
+/// match of one round is one (the user: a best of 1 should be the
+/// original's single battle). EXE6's value; EXE5's and EXE4's single
+/// battles are taken to be the same, their triple battle less the set.
+pub const SINGLE_EFFECTS: u32 = 0x200;
+
+/// The effects a match of `rounds` rounds adds to each stage's: a single
+/// battle's for one round, else a triple battle's.
+pub fn match_effects(rounds: usize) -> u32 {
+    if rounds == 1 { SINGLE_EFFECTS } else { MATCH_EFFECTS }
+}
 
 /// The keys a match's host answers in the battle's place: both. A match is
 /// played in nettai, whose own menu START opens where the game's pause
@@ -385,7 +400,7 @@ impl Match {
     fn round_dealt(&self, content: &Content, seed: u32, deal: bool) -> RoundSetup {
         let mut places = self.places(content, seed).expect("a checked match's places").into_iter();
         let first = places.next().expect("a checked match has a round");
-        let settings = BattleSettings { stage: first.stage, background: first.background, effects: content.stage(first.stage).effects | MATCH_EFFECTS };
+        let settings = BattleSettings { stage: first.stage, background: first.background, effects: content.stage(first.stage).effects | match_effects(self.rounds.len()) };
         let player = |side: usize| {
             let s = &self.sides[side];
             // Each console shuffles its folder with its own RNG (RNG1),

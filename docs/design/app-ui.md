@@ -198,7 +198,9 @@ Each is settled unless the user changes it.
 34. **First to, not rounds** (2026-10-13): "instead of "rounds" you should have "first to" then you should be able
     to select 1, 2, 3, 4 etc". The lobby's setting is First to (先取), a stepper of the round wins that take the
     set, 1 to 10, the number alone (in Japanese "2本先取"). First to 1 is the original's single battle and first to
-    2 its triple battle, played exactly as before; a set first to `n` is `2n − 1` rounds at most, decided as the
+    2 its triple battle, played exactly as before (first to 1 with the single battle's match type, so with no
+    BATTLE 1 START! banner before its first custom screen: the user, 2026-10-18, "doesn't best of 1 battle in the
+    original games display a different battle start banner?"); a set first to `n` is `2n − 1` rounds at most, decided as the
     original decides its triple battle (a drawn round is one of them). Ten is the top: the longest set fighting
     games' players commonly play ("10先"), and its 19 rounds are each numbered by the games' own BATTLE n START!
     banner in its two digits. (§6, docs/app.md §4.)
