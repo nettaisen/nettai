@@ -38,6 +38,9 @@ use std::time::{Duration, Instant};
 /// seek waits for the index).
 const INDEX_BUDGET: Duration = Duration::from_micros(1500);
 const IDLE_BUDGET: Duration = Duration::from_millis(5);
+/// How long the window goes without drawing before the time isn't the replay's (`Watching::frame`): the most
+/// time one frame catches up (the player's own cap).
+const STILL_AFTER: Duration = Duration::from_millis(250);
 
 /// Both builds' scope: each sheet is a control of it (`builds.sheet`).
 const BUILDS: &str = "builds.";
@@ -514,7 +517,11 @@ impl Watching {
 
     /// A frame at `now`: the seek that waited, a slice of the index, the ticks due, the sound, the picture.
     pub fn frame(&mut self, shell: &mut Shell, now: Instant) {
+        // (A gap of [`STILL_AFTER`] or more since the last drawn frame isn't the replay's time: the window wasn't
+        // drawn. A shorter one, frames the system was late with, is made up, so the replay and its bar don't
+        // lose it.)
         let elapsed = self.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
+        let elapsed = if elapsed >= STILL_AFTER { Duration::ZERO } else { elapsed };
         self.last = Some(now);
         self.probe(shell, now);
         if let Some(target) = self.pending
@@ -609,9 +616,8 @@ impl Watching {
     }
 
     /// A frame the window doesn't draw (the shell's timer runs it: the window is minimized, hidden or covered):
-    /// the replay stands where it is, and the time that passes isn't its own.
+    /// the replay stands where it is. (The next drawn frame makes up a gap shorter than [`STILL_AFTER`]: `frame`.)
     pub fn rest(&mut self, shell: &mut Shell) {
-        self.last = None;
         // (Nothing sounds; and nothing of the menus' music starts under a replay.)
         shell.play_samples(&mut Vec::new(), 0);
     }
