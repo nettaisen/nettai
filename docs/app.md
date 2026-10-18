@@ -315,7 +315,7 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   carried across, nettai-frontend's `Player::carry_sound` and `take_sound`, nettai-audio's
   `BattleAudio::go_on_with` and `keep_music_alone`.)
 - *After that, the battle's as ever:* a round's end stops the music (`StopMusic`) and the next round starts it
-  from its beginning; RESTART, and a set that ends and starts over, start the set again, whose round start finds
+  from its beginning; RESTART, and a practice battle that ends and is followed by the next, start the set again, whose round start finds
   the music still playing (on through) or stopped after a round's end (from its beginning).
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Stage rows (Battle rows until docs/design/app-ui.md §2.56) have Music, the same pick. A change switches the battle's music at once
@@ -2898,9 +2898,13 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
     `a_battle_held_under_the_menu_on_the_custom_screen_and_mid_fight`, `held_in_a_dimming_and_at_a_rounds_end`,
     `a_practice_opened_with_its_menu_is_held_from_its_custom_screen` and `under_the_menu_mid_fight_the_hp_bug_waits`
     (EXE6 and EXE4).
-- It has no end: when the set is decided the shell says `Finished` and Practice starts the battle over
-  (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
-  the menu (unless the player bound them to a button).
+- Its battles are single battles, one after another (the user, 2026-10-18: "training mode should just be
+  repeated single battles as well"): its match has one round, so the single battle's type, with no BATTLE 1
+  START! banner (`nettai_match::match_effects`). It has no end: when a battle is decided the shell says
+  `Finished` and Practice plays the next, its set on a seed of its own (`practice::restart_set`: the folders
+  shuffled anew, a Random arena or background picked anew; the screenshot pass's the seed after, the same each
+  time). RESTART, and R or F5 on the keyboard and the pad's north button without opening the menu (unless the
+  player bound them to a button), start the battle over on its seed (`Battle::restart`).
 - The session is the shell's (`Shell::practice`), and gone with its battle however that went: ended by
   `practice::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
   by that screen being left.
