@@ -379,6 +379,12 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "viewer-overlays", Pair::None, Also::Nothing);
     add(SETTLE, activate("inputs", 0));
     add(SETTLE, key(KeyCode::KeyP, 1));
+    // A clip marked (C): its start, two seconds on, then its end; the export then offers it, chosen.
+    add(SETTLE, key(KeyCode::KeyC, 1));
+    add(SETTLE, key(KeyCode::Period, 120));
+    shot(add, "viewer-clip-start", Pair::None, Also::Nothing);
+    add(SETTLE, activate("clip", 0));
+    shot(add, "viewer-clip", Pair::None, Also::Nothing);
     add(SETTLE, activate("export", 0));
     shot(add, "viewer-export", Pair::None, Also::Nothing);
     // Both consoles side by side.

@@ -70,6 +70,7 @@ struct Told {
     second: u64,
     round: u32,
     playing: bool,
+    clip: (f32, f32),
 }
 
 /// What the viewer costs (`NETTAI_PLAY_STATS`): said every two seconds.
@@ -173,6 +174,8 @@ pub struct Watching {
     overlays: Overlays,
     inset: Surface,
     held: Option<[u16; 2]>,
+    /// The clip marked for export: its start, and its end once that is marked (`mark_clip`).
+    clip: Option<(u32, Option<u32>)>,
 }
 
 impl Watching {
@@ -182,7 +185,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, clip: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -276,7 +279,13 @@ impl Watching {
     /// Tell the view where the replay is, where that changed.
     fn tell(&mut self, view: &ReplaysView) {
         let tick = self.shown();
-        let now = Told { position: tick as f32 / self.viewer.length().max(1) as f32, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing() };
+        let length = self.viewer.length().max(1) as f32;
+        // (The clip's ends, 0 to 1, or -1 where unmarked: a start alone runs to where the replay is.)
+        let clip = match self.clip {
+            None => (-1.0, -1.0),
+            Some((start, end)) => (start as f32 / length, end.map_or(-1.0, |e| e as f32 / length)),
+        };
+        let now = Told { position: tick as f32 / length, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing(), clip };
         let was = self.told.as_ref();
         if was.is_none_or(|t| t.position != now.position) {
             view.set_position(now.position);
@@ -289,6 +298,10 @@ impl Watching {
         }
         if was.is_none_or(|t| t.playing != now.playing) {
             view.set_playing(now.playing);
+        }
+        if was.is_none_or(|t| t.clip != now.clip) {
+            view.set_clip_start(now.clip.0);
+            view.set_clip_end(now.clip.1);
         }
         self.told = Some(now);
     }
@@ -406,6 +419,29 @@ impl Watching {
         self.overlays.inset = !self.overlays.inset;
         self.inset.refresh();
         self.show_overlays(&shell.ui().global::<ReplaysView>());
+    }
+
+    /// C, or the clip button: mark the clip's start where the replay is; then its end (the two the other way
+    /// round where it is before the start; refused on the start itself); then, marked, clear it.
+    pub fn mark_clip(&mut self, shell: &mut Shell) {
+        let at = self.shown();
+        self.clip = match self.clip {
+            None => Some((at, None)),
+            Some((start, None)) if at == start => {
+                shell.sound.play(Cue::Refused);
+                return;
+            }
+            Some((start, None)) => Some((start.min(at), Some(start.max(at)))),
+            Some((_, Some(_))) => None,
+        };
+    }
+
+    /// The clip marked, start and end: the part of the replay the export offers.
+    pub fn clip(&self) -> Option<std::ops::Range<u32>> {
+        match self.clip {
+            Some((start, Some(end))) => Some(start..end),
+            _ => None,
+        }
     }
 
     fn show_overlays(&self, view: &ReplaysView) {
