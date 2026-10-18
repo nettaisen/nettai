@@ -55,7 +55,8 @@ export struct GridCell {
 
 
 // A cell of the piece in hand (from the cell the cursor holds it by), or of one just put down (its place in the
-// drawn grid), and which of its sides are the piece's edge (the piece in hand is outlined along them).
+// drawn grid), which of its sides are the piece's edge (the piece in hand is outlined along them), and whether the
+// gaps' crossing at its lower right corner is within the piece (its four cells all of it).
 export struct PieceCell {
     x: int,
     y: int,
@@ -63,6 +64,7 @@ export struct PieceCell {
     right: bool,
     bottom: bool,
     left: bool,
+    corner: bool,
 }
 
 // Where a program of the list is: nowhere, on the board, in hand, or on the board and over its ring.
@@ -509,6 +511,29 @@ component HeldCellView inherits Rectangle {
         height: parent.height + 6px;
         visible: root.at.right;
         background: root.edge;
+    }
+}
+
+// The gaps within the piece in hand at a cell of it: to its right and under it where the piece goes on, and their
+// crossing; as a placed piece's, the piece's color under the plus part's mark (washed red where it can't be put
+// down). Drawn over all of its cells, so that no cell's shadow falls on them.
+component HeldGapView inherits Rectangle {
+    in property <PieceCell> at;
+    in property <color> tone;
+    in property <bool> fits: true;
+    in property <length> gap;
+    for side[i] in [!root.at.right, !root.at.bottom, root.at.corner]: Gap {
+        x: i == 1 ? 0 : parent.width;
+        y: i == 0 ? 0 : parent.height;
+        width: i == 1 ? parent.width : root.gap;
+        height: i == 0 ? parent.height : root.gap;
+        visible: side;
+        tone: root.tone;
+        mark: true;
+        Rectangle {
+            visible: !root.fits;
+            background: Theme.bad.with-alpha(0.4);
+        }
     }
 }
 
@@ -1223,6 +1248,17 @@ export component NavicustTab inherits Rectangle {
                     fits: NavicustView.held-fits;
 
                     Rectangle { }  // (Copied in: docs/app.md §14.)
+                }
+
+                for c in NavicustView.held: HeldGapView {
+                    x: c.x * root.pitch;
+                    y: c.y * root.pitch;
+                    width: root.cell;
+                    height: root.cell;
+                    at: c;
+                    tone: NavicustView.held-tone;
+                    fits: NavicustView.held-fits;
+                    gap: root.gap;
                 }
             }
         }

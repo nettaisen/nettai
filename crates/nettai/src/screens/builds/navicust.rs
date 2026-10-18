@@ -176,12 +176,21 @@ fn tone(name: Option<&str>) -> slint::Color {
     slint::Color::from_rgb_u8(r, g, b)
 }
 
-/// A piece's cells, each from (dx, dy), with the sides of it that are the piece's edge.
+/// A piece's cells, each from (dx, dy), with the sides of it that are the piece's edge and whether the crossing at
+/// its lower right corner is within it.
 fn piece(cells: &[(i32, i32)], (dx, dy): (i32, i32)) -> Vec<PieceCell> {
     let has = |x: i32, y: i32| cells.contains(&(x, y));
     cells
         .iter()
-        .map(|&(x, y)| PieceCell { x: x - dx, y: y - dy, top: !has(x, y - 1), right: !has(x + 1, y), bottom: !has(x, y + 1), left: !has(x - 1, y) })
+        .map(|&(x, y)| PieceCell {
+            x: x - dx,
+            y: y - dy,
+            top: !has(x, y - 1),
+            right: !has(x + 1, y),
+            bottom: !has(x, y + 1),
+            left: !has(x - 1, y),
+            corner: has(x + 1, y) && has(x, y + 1) && has(x + 1, y + 1),
+        })
         .collect()
 }
 
