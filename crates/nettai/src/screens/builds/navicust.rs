@@ -61,7 +61,7 @@ use nettai_content_api::{EntryHandle, Registry};
 use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
 use nettai_match::ruleset::Item;
-use nettai_ui::{BuildWords, CellKind, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
+use nettai_ui::{BuildWords, CellKind, Crossing, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::collections::HashMap;
@@ -302,8 +302,14 @@ impl Navicust {
                 };
                 let here = taken.get(&(x, y));
                 let on = here.and_then(|&i| parts.get(i));
-                // A side is the piece's edge where the cell past it isn't of the same piece.
+                // A side is the piece's edge where the cell past it isn't of the same piece; a corner's crossing is
+                // within the piece where its four cells are all of it, else on its edge.
                 let edge = |dx: i32, dy: i32| taken.get(&(x + dx, y + dy)) != here;
+                let crossing = |dx: i32, dy: i32| match here {
+                    None => Crossing::None,
+                    Some(_) if !edge(dx, 0) && !edge(0, dy) && !edge(dx, dy) => Crossing::Within,
+                    Some(_) => Crossing::Edge,
+                };
                 cells.push(GridCell {
                     kind,
                     filled: on.is_some(),
@@ -313,6 +319,10 @@ impl Navicust {
                     right: edge(1, 0),
                     bottom: edge(0, 1),
                     left: edge(-1, 0),
+                    top_left: crossing(-1, -1),
+                    top_right: crossing(1, -1),
+                    bottom_left: crossing(-1, 1),
+                    bottom_right: crossing(1, 1),
                 });
             }
         }
