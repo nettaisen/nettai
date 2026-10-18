@@ -1768,8 +1768,6 @@ restating theirs the same.
     `sub_800AAD6` are absent (EXE4 has no turn-start transformation sequencer and no Cross);
   - `result_wait` 102, 65 when the battle's flags (0x08007EEC's table by battle mode) have 2 (0x08007252, as
     EXE5's);
-  - `intro_from_black` false: the intro's fade (0x080E1EBC) reads the BattleState (EXE5's reads a register the open
-    bus fills);
   - `low_hp_music` false: EXE6's switch, `sub_8009158`, is absent, and EXE4 queues no tempo request (§3.4);
   - the battle start's song is by the battle's type (0x080074A4): types 0x46 and on take the table 0x08007510's
     (0x46 and 0x47 song 0x14, 0x48 and 0x49 song 0x15, 0x4A to 0x4C song 0x17), the others the settings record's
