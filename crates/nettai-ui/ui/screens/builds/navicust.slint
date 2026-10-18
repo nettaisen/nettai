@@ -3,7 +3,7 @@
 // EXE6's 7x7 with its board outlined in white, the ring of out-of-bounds cells around it hatched and no cells at the
 // corners. The command line is marked three ways: a line over and under its row that runs over what is placed
 // there, an arrow at each end outside the board, and a tint in its empty cells. A plus part's cell is its color
-// crossed edge to edge, with no border. In the middle PROGRAMS, the open list to pick from (a program is taken from
+// crossed edge to edge; a placed piece's cells are bordered along the piece's edge. In the middle PROGRAMS, the open list to pick from (a program is taken from
 // it as many times as it is placed): each program once, in the color chosen for it, with its colors to choose from
 // where it has more than one (the user: "deduppe navicust program parts in the list and then have you select by
 // color"), and whether that color's part is placed (how many copies, where more than one), in hand or out of bounds
@@ -29,12 +29,16 @@ export enum CellKind {
 }
 
 // A cell of the grid as drawn: what the board has there, and the piece placed over it (its color, whether it is a
-// plus part).
+// plus part, and which of its sides are the piece's edge).
 export struct GridCell {
     kind: CellKind,
     filled: bool,
     tone: color,
     plus: bool,
+    top: bool,
+    right: bool,
+    bottom: bool,
+    left: bool,
 }
 
 // A cell of the piece in hand (from the cell the cursor holds it by), or of one just put down (its place in the
@@ -329,13 +333,15 @@ component Cross inherits Rectangle {
 }
 
 // A cell of the grid: an empty cell of the board (on the command line, tinted), an empty one of the ring
-// (hatched), or a placed piece's color (a plus part's crossed; on the ring, hatched over), with no border. A cell
-// is a control: the cursor goes over the board cell by cell.
+// (hatched), or a placed piece's color (a plus part's crossed; on the ring, hatched over), with a line in the gap
+// along its sides that are the piece's edge, so a piece tells from the one next to it, even one of its color. A cell is a control:
+// the cursor goes over the board cell by cell.
 component CellView inherits Rectangle {
     in property <GridCell> cell;
     in property <bool> command;
     in property <int> nav-index;
     property <bool> empty: !root.cell.filled;
+    property <length> edge: 2px;
     Rectangle {
         visible: root.cell.kind == CellKind.board && root.empty;
         background: root.command ? Theme.command-line : Theme.inset;
@@ -364,6 +370,42 @@ component CellView inherits Rectangle {
         visible: root.cell.filled && root.cell.kind == CellKind.out;
         tone: Theme.piece-mark;
         edge: transparent;
+    }
+
+    Rectangle {
+        x: -root.edge;
+        y: -root.edge;
+        width: parent.width + 2 * root.edge;
+        height: root.edge;
+        visible: root.cell.filled && root.cell.top;
+        background: Theme.piece-edge;
+    }
+
+    Rectangle {
+        x: -root.edge;
+        y: parent.height;
+        width: parent.width + 2 * root.edge;
+        height: root.edge;
+        visible: root.cell.filled && root.cell.bottom;
+        background: Theme.piece-edge;
+    }
+
+    Rectangle {
+        x: -root.edge;
+        y: -root.edge;
+        width: root.edge;
+        height: parent.height + 2 * root.edge;
+        visible: root.cell.filled && root.cell.left;
+        background: Theme.piece-edge;
+    }
+
+    Rectangle {
+        x: parent.width;
+        y: -root.edge;
+        width: root.edge;
+        height: parent.height + 2 * root.edge;
+        visible: root.cell.filled && root.cell.right;
+        background: Theme.piece-edge;
     }
 
     Focusable {
