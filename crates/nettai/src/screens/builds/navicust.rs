@@ -300,12 +300,19 @@ impl Navicust {
                     b'f' => CellKind::Out,
                     _ => CellKind::None,
                 };
-                let on = taken.get(&(x, y)).and_then(|&i| parts.get(i));
+                let here = taken.get(&(x, y));
+                let on = here.and_then(|&i| parts.get(i));
+                // A side is the piece's edge where the cell past it isn't of the same piece.
+                let edge = |dx: i32, dy: i32| taken.get(&(x + dx, y + dy)) != here;
                 cells.push(GridCell {
                     kind,
                     filled: on.is_some(),
                     tone: on.map_or_else(Default::default, |p| tone(p.color.as_deref())),
                     plus: on.is_some_and(|p| d.plus.contains(&p.piece)),
+                    top: edge(0, -1),
+                    right: edge(1, 0),
+                    bottom: edge(0, 1),
+                    left: edge(-1, 0),
                 });
             }
         }
