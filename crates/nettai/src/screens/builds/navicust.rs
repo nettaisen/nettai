@@ -86,6 +86,9 @@ const PRESS_OFF: i32 = 9;
 /// How far the wheel goes for a quarter turn (a mouse's notch is more).
 const NOTCH: i32 = 40;
 
+/// The most letters the programs' search has.
+const SEARCH_LENGTH: usize = 24;
+
 #[derive(Default)]
 pub struct Navicust {
     /// The game's grid, read once (`Some(None)`: its data draw no board).
@@ -93,8 +96,10 @@ pub struct Navicust {
     /// The drawn grid: its first row and column on the engine's grid, and how many cells a side.
     first: i32,
     columns: i32,
-    /// The list: each program once; and the color chosen for each, by its place among the program's (one not chosen
-    /// yet: `color`).
+    /// The game's programs, each once, in its library's order; the list, those of them whose names hold the search;
+    /// and the color chosen for each, by its place among the program's (one not chosen yet: `color`).
+    programs: Vec<u16>,
+    search: String,
     rows: Vec<u16>,
     chosen: HashMap<u16, u8>,
     /// The piece in hand, and the cell of the grid the cursor holds it by.
@@ -243,13 +248,22 @@ impl Navicust {
         (y - self.first) * self.columns + (x - self.first)
     }
 
-    /// The list's rows: the game's programs in its library's order, each once.
+    /// The game's programs in its library's order, each once.
     fn list(&mut self, draft: &Draft) {
-        let Some(d) = self.grid(draft).cloned() else { return self.rows.clear() };
+        let Some(d) = self.grid(draft).cloned() else { return self.programs.clear() };
         let content = draft.content();
         let mut programs: Vec<((), EntryHandle)> = content.defs.entries_of(&d.collection).into_iter().map(|h| ((), h)).collect();
         draft.kit.order.entries(content, &d.collection, &mut programs);
-        self.rows = programs.iter().map(|&(_, h)| h.0).collect();
+        self.programs = programs.iter().map(|&(_, h)| h.0).collect();
+    }
+
+    /// The list's rows: the programs whose names, as the window says them, hold the search (any case), all of them
+    /// with none.
+    fn search_list(&mut self, shell: &Shell, draft: &Draft) {
+        let wanted = self.search.to_lowercase();
+        self.rows = draft.with_words(shell, |words| {
+            self.programs.iter().copied().filter(|&piece| wanted.is_empty() || words.names.entry(EntryHandle(piece)).to_lowercase().contains(&wanted)).collect()
+        });
     }
 
     /// The color chosen for `piece` (its place among its colors): the one chosen on its row, else that of the copy
@@ -929,9 +943,11 @@ impl Tab for Navicust {
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.grid(draft);
-        if self.rows.is_empty() {
+        if self.programs.is_empty() {
             self.list(draft);
         }
+        self.search_list(shell, draft);
+        shell.ui().global::<NavicustView>().set_search(self.search.as_str().into());
         self.changed(shell, draft);
     }
 
@@ -1003,7 +1019,7 @@ impl Tab for Navicust {
         if self.held.is_none() && self.notice.take().is_some() {
             self.show_board(shell, draft);
         }
-        let in_list = id == "programs";
+        let in_list = id == "programs" || id == "programs.search";
         if in_list != self.in_list {
             self.in_list = in_list;
             shell.ui().global::<NavicustView>().set_in_list(in_list);
@@ -1019,6 +1035,21 @@ impl Tab for Navicust {
     }
 
     /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it. With none, X is CLEAR.
+    /// The programs' search typed in: the list is those it finds, from its top.
+    fn edit(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, text: &str, _done: bool) {
+        if id != "programs.search" {
+            return;
+        }
+        self.search = text.chars().filter(|c| !c.is_control()).take(SEARCH_LENGTH).collect();
+        self.search_list(shell, draft);
+        self.hovered = None;
+        self.show_list(shell, draft);
+        self.show_strip(shell, draft);
+        let ui = shell.ui();
+        ui.global::<NavicustView>().set_search(self.search.as_str().into());
+        shell.nav.list_to_top(&ui, "programs");
+    }
+
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
         if self.held.is_none() {
             if editor::clear_key(shell, key) {

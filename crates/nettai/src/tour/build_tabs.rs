@@ -210,6 +210,11 @@ pub(super) fn program(r: &nettai_ui::ProgramRow) -> bool {
 /// The NaviCust tab's steps.
 fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::Navicust));
+    // The programs' search: a name typed, the list those it finds; cleared.
+    add(SETTLE, focus("programs.search", 0));
+    add(SETTLE, screen(|s, shell| s.edit(shell, "programs.search", 0, "custom", false)));
+    shot(add, "tabs-navicust-search", Pair::None);
+    add(SETTLE, screen(|s, shell| s.edit(shell, "programs.search", 0, "", true)));
     add(SETTLE, focus("programs", 0));
     shot(add, "tabs-navicust", Pair::First);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
