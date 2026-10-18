@@ -335,13 +335,6 @@ msgstr "No. {}"
 msgid "Slot {}"
 msgstr "スロット{}"
 
-msgid "Together"
-msgstr "合計"
-
-# What cards add up to, where they add up to nothing.
-msgid "Nothing"
-msgstr "なし"
-
 msgid "Search cards"
 msgstr "カードを検索"
 

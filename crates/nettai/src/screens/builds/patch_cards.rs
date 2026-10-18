@@ -39,7 +39,6 @@
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
 use crate::builds::grid;
-use crate::builds::overview;
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
@@ -49,7 +48,7 @@ use nettai_content_api::{EntryHandle, FieldType, Registry};
 use nettai_match::Wrong;
 use nettai_match::build::{Budget, Checked, EntryRefusal};
 use nettai_match::facts::Stated;
-use nettai_ui::{BuildWords, CardCounts, CardDetail, CardLine, CardRow, EditorTab, NavicustView, PatchCardsView};
+use nettai_ui::{BuildWords, CardCounts, CardDetail, CardLine, CardRow, EditorTab, PatchCardsView};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
@@ -115,6 +114,8 @@ pub struct PatchCards {
     refused: i32,
     /// Why the last card wasn't put in, until the cursor moves.
     notice: Option<String>,
+    /// The bugs the panel said last: one that wasn't there pulses.
+    bugs: Option<Vec<String>>,
 }
 
 /// The collection of the definitions field `name`'s list holds (directly, or a field of its records).
@@ -283,7 +284,7 @@ impl PatchCards {
     /// The build's cards (or slots), each marked where the build's problems are about it, their counts (the MB past the
     /// list's in the error red) and in a phone's header what the game's rules have against them (one, or all), and what
     /// they add up to (docs/design/app-ui.md §2.66).
-    fn show_installed(&self, shell: &Shell, draft: &mut Draft, budget: Option<&Budget>) {
+    fn show_installed(&mut self, shell: &Shell, draft: &mut Draft, budget: Option<&Budget>) {
         let installed = PatchCards::installed(draft);
         let slotted = PatchCards::slotted(draft);
         let rows: Vec<CardRow> = installed
@@ -310,34 +311,17 @@ impl PatchCards {
             slots: if slotted { installed.len() as i32 } else { 0 },
         });
         view.set_problems(draft.pane_line(shell, &[FIELD.to_string()], false).into());
-        // What the cards add up to: the build without its NaviCust, overviewed.
+        // What the cards add up to: the build without its NaviCust, overviewed, in the EFFECTS and BUGS panels as
+        // the NaviCust's are.
         let content = draft.content().clone();
         let mut bare = draft.side().clone();
         let _ = bare.set_fact(&content, grid::PIECES_FIELD, &[]);
         let alone = Checked::of(&content, &draft.kit.game, &bare).overview(&content, &bare);
-        let numbers_view = ui.global::<NavicustView>();
-        let say = ui.global::<BuildWords>();
-        let (numbers, abilities, bugs) = draft.with_words(shell, |words| {
-            let Some(o) = &alone else { return (Vec::new(), Vec::new(), Vec::new()) };
-            let stats = [o.hp, o.attack, o.rapid, o.charge, o.custom, o.mega, o.giga, o.regular_memory];
-            let numbers: Vec<String> = stats
-                .iter()
-                .enumerate()
-                .filter(|(_, s)| s.added() != 0)
-                .map(|(i, s)| {
-                    let n = s.added();
-                    let by = if i == 7 { format!("{}{}", if n > 0 { "+" } else { "" }, say.invoke_megabytes(n)) } else { format!("{n:+}") };
-                    numbers_view.invoke_stat(i as i32, by.into()).to_string()
-                })
-                .chain(o.stats.iter().filter(|s| s.stat.added() != 0).map(|s| format!("{} {:+}", overview::stat_name(words, s), s.stat.added())))
-                .collect();
-            let abilities: Vec<String> = o.abilities.iter().map(|&s| overview::source(words, s)).collect();
-            let bugs: Vec<String> = o.bugs.iter().map(|b| overview::bug(words, b)).map(|(n, e)| if e.is_empty() { n } else { format!("{n} {e}") }).collect();
-            (numbers, abilities, bugs)
-        });
-        view.set_together_numbers(numbers.join(" · ").into());
-        view.set_together_abilities(abilities.join(" · ").into());
-        view.set_together_bugs(bugs.join(" · ").into());
+        let panels = super::navicust::effect_panels(shell, draft, alone.as_ref(), &mut self.bugs);
+        view.set_effects(ModelRc::new(VecModel::from(panels.effects)));
+        view.set_bugs(ModelRc::new(VecModel::from(panels.bugs)));
+        view.set_effects_line(panels.effects_line.into());
+        view.set_bugs_line(panels.bugs_line.into());
     }
 
     /// The library's pane: each card with whether it is in, or why it can't go in.

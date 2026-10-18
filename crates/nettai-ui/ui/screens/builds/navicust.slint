@@ -752,8 +752,8 @@ global Pointer {
     }
 }
 
-// A line of the effects or the bugs.
-component EffectRow inherits Rectangle {
+// A line of the effects or the bugs (NaviCust's, and the Patch cards').
+export component EffectRow inherits Rectangle {
     in property <EffectLine> line;
     property <bool> title: root.line.kind == EffectKind.effects || root.line.kind == EffectKind.bugs;
     property <bool> bug: root.line.kind == EffectKind.bug;
