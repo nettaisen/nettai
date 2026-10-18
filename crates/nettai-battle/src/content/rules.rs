@@ -28,13 +28,6 @@ pub struct FlowRules {
     /// (`sub_80081A4`, `sub_800825A`: EXE6 102; 94 in a special battle,
     /// effect 2, EXE5 65).
     pub result_wait: ResultWait,
-    /// Presentation, read of a console's own game (the frontend's; the
-    /// simulation doesn't read it): the intro fades in from black on a set's
-    /// first battle too (EXE5's `sub_80E0684` counterpart, 0x080E0698, reads
-    /// the byte it tests through a flags value rather than the battle
-    /// state: one the open bus gives, never 1 or less; EXE6's first battle
-    /// fades in from white).
-    pub intro_from_black: bool,
     /// Sound, read of the arena's game: the low-HP music switch (EXE6's
     /// `sub_8009158`: while a console's navi is at a quarter of its HP or
     /// less, the music plays a semitone higher and 282/256 as fast). EXE5

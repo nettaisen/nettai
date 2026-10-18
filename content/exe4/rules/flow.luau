@@ -14,7 +14,6 @@ return {
     sequencer_before_custom = false,
     escape_check = false,
     result_wait = { normal = 102, special = 65 },
-    intro_from_black = false,
     -- No low-HP music: EXE6's switch (`sub_8009158`) is absent and EXE4 queues no tempo request (exe4-map.md §3.4).
     low_hp_music = false,
     -- A win shows the winner navi's banner (0x08008534) only under event flag 0x1187 (0x08007252, 0x080406A4), which

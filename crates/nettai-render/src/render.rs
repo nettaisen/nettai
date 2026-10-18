@@ -619,17 +619,14 @@ pub fn screen_fade(b: &Battle) -> Fade {
     let total = nettai_battle::battle::Fade::TICKS as u32;
     let left = (shown_remaining(b) as u32 + 1).min(total);
     if b.round.intro_bits & 0x01 == 0 {
-        // The first battle of a set fades in from white, later ones from
-        // black (`sub_80E0684`); a console whose game's flow says
-        // `intro_from_black` (EXE5's), every battle from black.
-        let s = &b.setup.settings;
-        let later = if s.effects & nettai_battle::setup::effects::SET != 0 {
-            b.round.round > 1
-        } else {
-            b.content.stage(s.stage).battle_number >= 2
-        };
-        let own_game = b.content.rules();
-        let fade = if later || own_game.flow.intro_from_black { Fade::Black } else { Fade::White };
+        // Every battle fades in from black, as an EXE5 console shows it (its
+        // `sub_80E0684` counterpart, 0x080E0698, tests an open-bus value,
+        // never a first battle): EXE6's and EXE4's first battle of a set
+        // faded in from white, a flash nettai leaves out (the user: "remove
+        // the white flash at the start of battles"). The simulation's fade
+        // (`kinds::intro`) is the original's, white or black, and only
+        // its timing is drawn.
+        let fade = Fade::Black;
         // Before the intro fade starts the screen is fully faded.
         if b.round.intro_bits & 0x10 == 0 {
             return fade(16);
