@@ -12,8 +12,9 @@ The original is not quite so. Where its code reads an X as it is (a tie broken t
 two columns put in the right-hand one, a rounding toward minus infinity, a list in the field's order taken from
 its first entry, a screen edge at a fixed X), side 1 gets something other than the mirror of side 0's. nettai makes
 those side-fair: **one side's behavior, the canonical side's, is every side's**: an object of the canonical side
-does as the original does, and one of the other side does the mirror image of that. By the user's choice
-(2026-10-17, "side 0 everywhere") the canonical side is side 0.
+does as the original does, and one of the other side does the mirror image of that. By the user's choice the
+canonical side is side 1 (2026-10-17: first "side 0 everywhere", side 0 being the single-player battles' player's,
+then "change CANONICAL_SIDE to 1").
 
 Left alone on purpose (the user's choice, 2026-10-17): the update order. Objects update in one list, and the
 navi the stage's actor list spawns first acts and resolves its hits first each tick; spawns go right after their
@@ -23,18 +24,18 @@ is picked.
 ## The canonical side
 
 `nettai_content_api::CANONICAL_SIDE` (crates/nettai-content-api/src/types.rs) is the canonical side, 0 or 1; it is
-0. It is an internal constant of the engine, for switching the rule on a rebuild: no setup, rule, match key, replay,
+1. It is an internal constant of the engine, for switching the rule on a rebuild: no setup, rule, match key, replay,
 wire format, digest or screen has it. Everything side-fair reads it through one function, `side_sign(side)`: +1
 for the canonical side, −1 for the other, the sign that turns an X into the canonical side's frame. The Rust
 rules call it directly (`PanelPos::under`, `passed_x`, `MoveDirection::BySide`); content reads it through the core
 API only, `field.side_sign(side)` and `field.canonical_side()` (content/nettai/core.d.luau), never by a number of
 its own.
 
-To build nettai with side 1's behavior for every side, set `CANONICAL_SIDE` to 1 and rebuild. The engine's tests
-are written relative to the constant and pass either way (checked by hand on 2026-10-17 with it set to 1: all of
-nettai-battle's, nettai-content-api's and nettai-luau's, and the WindRack and barrier recordings, which then push
-on both sides). bn6battle-verify's known deviations (`src/deviations.rs`) are the default build's: with side 1
-canonical, the recordings whose side 0 ran a changed branch would differ instead.
+To build nettai with side 0's behavior for every side, set `CANONICAL_SIDE` to 0 and rebuild. The engine's tests
+are written relative to the constant and pass either way (all of nettai-battle's, nettai-content-api's and
+nettai-luau's, checked with each). bn6battle-verify's known deviations (`src/deviations.rs`) are listed for one
+build: those of side 0 canonical, the recordings in which side 1 ran a changed branch; with side 1 canonical it is
+the recordings in which side 0 ran one that differ.
 
 ## The mirror check
 
@@ -76,8 +77,8 @@ sides' columns ran on differently too (side 0 stays on 0 for 80 pixels, side 1 g
 `PanelPos::under(x, y, side)` (nettai-content-api) divides the canonical side's X as it is and the other side's
 mirrored; `set_panel_from_coordinates` and the navis' slides and drags use it, and the content's own copies of the
 routine call `field.panel_at(x, y, side)` (the link chips, ChargeMan and his car, the yoyos, AirSpin's top and
-whirl, AirHocky's puck, JudgeMan's books, MrkCan, EXE4's DarkNeo and gear). With side 0 canonical, a line between
-two columns is in the column toward the other side, for both sides.
+whirl, AirHocky's puck, JudgeMan's books, MrkCan, EXE4's DarkNeo and gear). With side 1 canonical, a line between
+two columns is in the column toward its own side, for both sides.
 
 **WindRack against a barrier up close (EXE5, EXE6).** The case the user raised. WindRack hits the column ahead
 and blows a gust down each row from its center, 10 pixels a tick. Recorded in the original (bn6battle-verify's
@@ -86,9 +87,9 @@ Barr100 right in front of a side-0 user is not pushed; in front of a side-1 user
 The cause is the line: a side-0 gust reaches the line 20 pixels on, its second tick, which the original puts in
 the next column, so it is on the barrier's column for one tick; a side-1 gust at the mirrored X stays in the
 column, two ticks. The first tick's hit pops the barrier (wind), which absorbs what reaches it that tick and the
-next; the second gust tick of a side-1 user's lands after it and pushes. With side 0 canonical, up close neither
-side's navi is pushed; from further away both are (the gusts meet the navi on their first tick there, the
-barrier long gone). The engine's test `wind_racks_gusts_meet_the_navi_ahead_as_long_from_either_side` holds the
+next; the second gust tick of a side-1 user's lands after it and pushes. With side 1 canonical, up close both
+sides' navis are pushed (with side 0 canonical, neither); from further away both are (the gusts meet the navi on
+their first tick there, the barrier long gone). The engine's test `wind_racks_gusts_meet_the_navi_ahead_as_long_from_either_side` holds the
 cause, the gusts' ticks on the column ahead by the user's side.
 
 ### 1.2 A move passing a point (all games)
@@ -100,15 +101,15 @@ SlashCross wave its reach, and a side-1 navi dragged back arrived a tick sooner.
 target, side)` takes the X in the canonical side's frame; along Y the original's `passed`. The content's copies
 call `field.passed(new, old, target, side)` (the flying shots of the three games, CrakShot, AirSpin's top, EXE5's
 AquaWhirl, SlashCross's wave, EXE4's WindMan's tornado and gear); the engine's drags and obstacle slides use it.
-With side 0 canonical, a move ahead counts on reaching and one back on leaving, for both sides.
+With side 1 canonical, a move ahead counts on leaving and one back on reaching, for both sides.
 
 ### 1.3 A move's direction (EXE5, EXE6)
 
 `sub_800E994` (the rules' `move_direction = "by_side"`), what a collision record keeps as its last move and ice
 reads: up, down, back or forward by the side, other for a move of two panels or more right or down. A move of two
 panels to the right was other for side 0 (ahead) and back for side 1; one to the left back for side 0 and forward
-for side 1. nettai tests the X in the canonical side's frame (`MoveDirection::of`): with side 0 canonical, two
-panels ahead is other and two back is back, for both. (EXE4's `absolute` direction, 3 left and 4 right whatever
+for side 1. nettai tests the X in the canonical side's frame (`MoveDirection::of`): with side 1 canonical, two
+panels ahead is forward and two back is other, for both. (EXE4's `absolute` direction, 3 left and 4 right whatever
 the side, is a mirror image as it is: the mirror's left is the round's right.)
 
 ### 1.4 The thunder ball's re-aim (EXE4, EXE5, EXE6)
@@ -116,9 +117,9 @@ the side, is a mirror image as it is: the mirror's left is the round's right.)
 `sub_80C956C` (content/exelib/thunder/ball.luau, `aim`): every panel the ball aims anew at the nearest column with
 an enemy body; along its row toward it, or along the column when the target is in it. With the target on the
 ball's own panel, it goes right (`tx >= x`): ahead for a side-0 ball, back for a side-1 ball. Every ball goes as
-the canonical side's: with side 0 canonical, toward the other side. BgDthThd's charged shot, Thunder, DarkThnd,
+the canonical side's: with side 1 canonical, back toward its own side. BgDthThd's charged shot, Thunder, DarkThnd,
 ElecMan's and the other balls of the shared kind. (The user first chose side 1's for BgDthThd, then "side 0
-everywhere".)
+everywhere", then side 1 as the canonical side.)
 
 ### 1.5 Panel lists taken in order (EXE4, EXE5, EXE6)
 
@@ -165,8 +166,8 @@ column's line on another tick. The other side's spawn and follow are the canonic
 mirror image of the other everywhere (BigHook's second swing starts at 0x8A, where the mirror of 0xD2 is 0xAE), and
 its angle (the timer's high byte), turning the other way, rounds the other way. nettai swings a flame facing the
 other way than the canonical side's as the mirror image of one facing its way: that row's angle mirrored, its low
-byte full so that it rounds as that row's does (content/exelib/flmhook/fire.luau). With side 0 canonical, the
-table's second row is read by nothing.
+byte full so that it rounds as that row's does (content/exelib/flmhook/fire.luau). With side 1 canonical, the
+table's first row is read by nothing.
 
 ### 1.10 The screen's edges (EXE4, EXE6)
 
@@ -241,7 +242,7 @@ first in the navi's side's order.
 ## 2. The recordings it changes
 
 Each change departs from the original, so a recording in which a changed branch ran on the other side than the
-canonical (side 1, by default) stops matching where it shows. bn6battle-verify's trace-tests lists each as a known
+canonical stops matching where it shows. bn6battle-verify's trace-tests lists each as a known
 deviation (`src/deviations.rs`, the reason naming the entry above), by the default build.
 
 Measured 2026-10-17 by replaying every recording with each fix turned off in turn (the fix whose turning off moves
