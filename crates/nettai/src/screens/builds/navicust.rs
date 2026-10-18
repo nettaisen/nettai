@@ -167,6 +167,55 @@ fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut C
     if bare == *side { checked.overview(content, side) } else { Checked::of(content, game, &bare).overview(content, &bare) }
 }
 
+/// The EFFECTS and BUGS panels' lines (NaviCust's, and Patch cards' of the cards: `effect_panels`), each under its
+/// title, and on a phone a line each.
+pub(super) struct Panels {
+    pub effects: Vec<EffectLine>,
+    pub bugs: Vec<EffectLine>,
+    pub effects_line: String,
+    pub bugs_line: String,
+}
+
+/// What overview `alone` comes to, as the EFFECTS and BUGS panels say it: each number it changes, the rules' own
+/// stats among them ("Soul time +1"), what gives an ability, each bug by its full name and its level or amount. A bug
+/// not among `was` (the bugs said last, which this sets) pulses.
+pub(super) fn effect_panels(shell: &Shell, draft: &Draft, alone: Option<&Overview>, was: &mut Option<Vec<String>>) -> Panels {
+    let ui = shell.ui();
+    let view = ui.global::<NavicustView>();
+    let say = ui.global::<BuildWords>();
+    let (effects, bugs) = draft.with_words(shell, |words| {
+        let mut effects: Vec<String> = alone
+            .iter()
+            .flat_map(|o| stats(o).into_iter().enumerate())
+            .filter(|(_, s)| s.added() != 0)
+            .map(|(i, s)| {
+                // (The Regular memory's is in MB.)
+                let n = s.added();
+                let by = if i == 7 { format!("{}{}", if n > 0 { "+" } else { "" }, say.invoke_megabytes(n)) } else { format!("{n:+}") };
+                view.invoke_stat(i as i32, by.into()).to_string()
+            })
+            .collect();
+        effects.extend(alone.iter().flat_map(|o| o.stats.iter()).filter(|s| s.stat.added() != 0).map(|s| format!("{} {:+}", overview::stat_name(words, s), s.stat.added())));
+        effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words, s)));
+        let bugs: Vec<(String, String)> = alone.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
+        (effects, bugs)
+    });
+    let said = |(n, e): &(String, String)| if e.is_empty() { n.clone() } else { format!("{n} {e}") };
+    let before = was.replace(bugs.iter().map(said).collect());
+    let effect_lines: Vec<EffectLine> = effects.iter().map(|e| EffectLine { kind: EffectKind::Effect, text: e.into(), ..Default::default() }).collect();
+    let bug_lines: Vec<EffectLine> = bugs
+        .iter()
+        .map(|b| EffectLine { kind: EffectKind::Bug, text: b.0.as_str().into(), extent: b.1.as_str().into(), fresh: before.as_ref().is_some_and(|was| !was.contains(&said(b))) })
+        .collect();
+    let more = |n: i32| say.invoke_more(n);
+    Panels {
+        effects: fitted(EffectKind::Effects, effect_lines, more),
+        bugs: fitted(EffectKind::Bugs, bug_lines, more),
+        effects_line: effects.join(", "),
+        bugs_line: bugs.iter().map(said).collect::<Vec<_>>().join(", "),
+    }
+}
+
 /// A color by its name, as the app draws a program in it.
 /// A shape's cells' box, row by row, and how many cells a row (none: a shape with no cells).
 fn boxed(shape: &grid::Shape) -> (Vec<bool>, i32) {
@@ -486,38 +535,13 @@ impl Navicust {
         let side = draft.side().clone();
         let game = draft.kit.game.clone();
         let alone = own_overview(&content, &game, &side, &mut draft.checked);
+        let panels = effect_panels(shell, draft, alone.as_ref(), &mut self.bugs);
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
-        let say = ui.global::<BuildWords>();
-        let (effects, bugs) = draft.with_words(shell, |words| {
-            let mut effects: Vec<String> = alone
-                .iter()
-                .flat_map(|o| stats(o).into_iter().enumerate())
-                .filter(|(_, s)| s.added() != 0)
-                .map(|(i, s)| {
-                    // (The Regular memory's is in MB.)
-                    let n = s.added();
-                    let by = if i == 7 { format!("{}{}", if n > 0 { "+" } else { "" }, say.invoke_megabytes(n)) } else { format!("{n:+}") };
-                    view.invoke_stat(i as i32, by.into()).to_string()
-                })
-                .collect();
-            effects.extend(alone.iter().flat_map(|o| o.stats.iter()).filter(|s| s.stat.added() != 0).map(|s| format!("{} {:+}", overview::stat_name(words, s), s.stat.added())));
-            effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words, s)));
-            let bugs: Vec<(String, String)> = alone.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
-            (effects, bugs)
-        });
-        let said = |(n, e): &(String, String)| if e.is_empty() { n.clone() } else { format!("{n} {e}") };
-        let before = self.bugs.replace(bugs.iter().map(said).collect());
-        let effect_lines: Vec<EffectLine> = effects.iter().map(|e| EffectLine { kind: EffectKind::Effect, text: e.into(), ..Default::default() }).collect();
-        let bug_lines: Vec<EffectLine> = bugs
-            .iter()
-            .map(|b| EffectLine { kind: EffectKind::Bug, text: b.0.as_str().into(), extent: b.1.as_str().into(), fresh: before.as_ref().is_some_and(|was| !was.contains(&said(b))) })
-            .collect();
-        let more = |n: i32| say.invoke_more(n);
-        view.set_effects(ModelRc::new(VecModel::from(fitted(EffectKind::Effects, effect_lines, more))));
-        view.set_bugs(ModelRc::new(VecModel::from(fitted(EffectKind::Bugs, bug_lines, more))));
-        view.set_effects_line(effects.join(", ").into());
-        view.set_bugs_line(bugs.iter().map(said).collect::<Vec<_>>().join(", ").into());
+        view.set_effects(ModelRc::new(VecModel::from(panels.effects)));
+        view.set_bugs(ModelRc::new(VecModel::from(panels.bugs)));
+        view.set_effects_line(panels.effects_line.into());
+        view.set_bugs_line(panels.bugs_line.into());
     }
 
     /// Everything shown anew: the build changed.
