@@ -76,11 +76,11 @@ pub struct PanelPos {
 /// infinity, a list in the field's order: docs/engine/side-symmetry.md).
 /// An object of this side does as the original does; an object of the other
 /// side does the same in the mirror image. 0 or 1: change it here and
-/// rebuild to have every side-fair rule follow side 1's behavior instead.
+/// rebuild to have every side-fair rule follow the other side's behavior.
 /// The engine's own, read by the core's helpers below and by content through
 /// `field.canonical_side` and `field.side_sign`; no setup, rule or wire
 /// holds it.
-pub const CANONICAL_SIDE: u8 = 0;
+pub const CANONICAL_SIDE: u8 = 1;
 
 /// +1 for an object of [`CANONICAL_SIDE`], -1 for one of the other side:
 /// the sign that takes an X to the canonical side's frame (an object of
