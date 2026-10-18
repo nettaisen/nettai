@@ -158,6 +158,9 @@ msgstr "再生/一時停止"
 msgid "Step a frame"
 msgstr "コマ送り"
 
+msgid "Clip"
+msgstr "切り抜き"
+
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
@@ -192,6 +195,9 @@ msgstr "試合全体 · {}"
 
 msgid "Round {} · {}"
 msgstr "ラウンド {} · {}"
+
+msgid "Clip {}–{} · {}"
+msgstr "切り抜き {}–{} · {}"
 
 # A round's chapter in an exported video.
 msgid "Round {}"

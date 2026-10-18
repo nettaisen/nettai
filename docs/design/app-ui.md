@@ -1899,11 +1899,17 @@ DUPLICATE and DELETE.
   period step a frame, the brackets go a round. After BUILDS, two toggles, each off at first (the user: "add
   support for input view and picture in picture in replay viewer"): the input display (I), Practice's, both
   players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom
-  right corner of the one shown.
+  right corner of the one shown. Then the clip to export (C, or its button, two brackets; the user: "add the
+  ability to export a clip in the replay viewer"): the first press marks its start where the replay is, the
+  second its end (the two the other way round where it is before the start), the third clears it; the bar shows
+  it as a band in the code color with a mark at each end taller than the handle, a start alone running to where
+  the replay is.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
   first), View, Sides (One, or Both side by side, the View's at the left: the user, "add support for two
   sided side by side export"; with Both a sound track a side, the left's first: "for 2 sided replays, audio track 1
-  should be left player audio, audio track 2 should be right player audio"), Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  should be left player audio, audio track 2 should be right player audio"), Part (the whole match, each round
+  where there is more than one, and the clip marked in the viewer, which it opens on: "Clip 01:02–01:15 · 00:13",
+  the file named "… clip 01.02–01.15"), Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
   (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.) Every

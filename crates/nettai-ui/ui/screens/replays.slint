@@ -72,6 +72,10 @@ export global ReplaysView {
     // Where it is (and where a seek under way is going), 0 to 1; each later round's start, 0 to 1.
     in property <float> position;
     in property <[float]> marks;
+    // The clip marked for export, 0 to 1: its start and its end, each -1 where unmarked (a start alone runs to
+    // where the replay is).
+    in property <float> clip-start: -1;
+    in property <float> clip-end: -1;
     in property <string> time;
     in property <string> total;
     in property <int> round: 1;
@@ -166,6 +170,9 @@ export global ReplaysView {
     }
     pure public function round-part(round: int, length: string) -> string {
         return @tr("Round {} · {}", round, length);
+    }
+    pure public function clip-part(start: string, end: string, length: string) -> string {
+        return @tr("Clip {}–{} · {}", start, end, length);
     }
     // A round's chapter in an exported video.
     pure public function chapter(round: int) -> string {
@@ -696,6 +703,7 @@ component Choice inherits Rectangle {
 // picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right go five seconds.
 component SeekBar inherits Rectangle {
     property <length> at: self.width * clamp(ReplaysView.position, 0, 1);
+    property <float> clip-to: ReplaysView.clip-end >= 0 ? ReplaysView.clip-end : ReplaysView.position;
     height: 24px;
     Focusable {
         nav: "seek";
@@ -722,6 +730,31 @@ component SeekBar inherits Rectangle {
             background: Theme.cursor;
             drop-shadow-blur: 8px;
             drop-shadow-color: Theme.glow;
+        }
+    }
+
+    // The clip marked for export: a band the bar's height, in the code color (it stands apart from the lit bar),
+    // from its start to its end (or, its end unmarked, to where the replay is), with a mark at each end taller
+    // than the handle, so that a short one shows beside it.
+    Rectangle {
+        property <length> from: root.width * clamp(min(ReplaysView.clip-start, root.clip-to), 0, 1);
+        property <length> to: root.width * clamp(max(ReplaysView.clip-start, root.clip-to), 0, 1);
+        x: self.from - 1px;
+        y: 0;
+        width: self.to - self.from + 2px;
+        height: root.height;
+        visible: ReplaysView.clip-start >= 0;
+        background: Theme.code.with-alpha(0.3);
+        Rectangle {
+            x: 0;
+            width: 2px;
+            background: Theme.code;
+        }
+
+        Rectangle {
+            x: parent.width - 2px;
+            width: 2px;
+            background: Theme.code;
         }
     }
 
@@ -763,7 +796,7 @@ component SeekBar inherits Rectangle {
 
 // The buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next round;
 // and, `apart` further on, both builds (where the match's setups were open), the input display and the other
-// console's picture in the corner, each lit while it is shown. `pitch` is how far apart they are.
+// console's picture in the corner, each lit while it is shown, and the clip to export, lit while one is marked. `pitch` is how far apart they are.
 component TransportButtons inherits Rectangle {
     in property <length> pitch: 52px;
     in property <length> apart: 12px;
@@ -822,6 +855,14 @@ component TransportButtons inherits Rectangle {
         icon: "M 1 3 h 14 v 10 h -14 Z M 2.5 4.5 v 7 h 11 v -7 Z M 8 7.5 h 4.5 v 3 h -4.5 Z";
         lit: ReplaysView.inset-on;
     }
+
+    // (Two brackets: a part of the replay.) The clip to export: its start, its end, then cleared (C).
+    IconButton {
+        x: 8 * root.pitch + root.apart;
+        nav: "clip";
+        icon: "M 2 3 h 4 v 1.5 h -2.5 v 7 h 2.5 v 1.5 h -4 Z M 14 3 h -4 v 1.5 h 2.5 v 7 h -2.5 v 1.5 h 4 Z";
+        lit: ReplaysView.clip-start >= 0;
+    }
 }
 
 // The transport under the picture: the time, the bar, the length; then the buttons, the round, and at the
@@ -866,16 +907,16 @@ component Transport inherits Rectangle {
     TransportButtons {
         x: root.edge;
         y: root.phone ? 48px : 52px;
-        width: root.phone ? root.inner : 416px;
+        width: root.phone ? root.inner : 468px;
         height: root.phone ? 44px : 40px;
-        pitch: root.phone ? (root.inner - 40px) / 7 : 52px;
+        pitch: root.phone ? (root.inner - 40px) / 8 : 52px;
         apart: root.phone ? 0px : 12px;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {
-        x: 448px;
+        x: 500px;
         y: 52px;
         width: max(0px, speed-label.x - 12px - self.x);
         height: 40px;
@@ -1034,12 +1075,14 @@ component ViewerPage inherits Page {
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+        { key: "C", text: @tr("Clip") },
         { key: "B", pad: PadButton.select, text: @tr("Builds") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ] : [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+        { key: "C", text: @tr("Clip") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     Arrive {
