@@ -452,9 +452,9 @@ component CellView inherits Rectangle {
     }
 }
 
-// A cell of the piece in hand: its color (a plus part's crossed) with a shadow under it, and the piece's white
-// outline along its sides that are the piece's edge, in the gaps round the cells it would land on; red, and the cell
-// washed red, where it can't be put down (`fits`).
+// A cell of the piece in hand: its color (a plus part's crossed), and the piece's white outline along its sides that
+// are the piece's edge, in the gaps round the cells it would land on; red, and the cell washed red, where it can't be
+// put down (`fits`). (The piece's shadow is the whole piece's, under all of its cells: `HeldShadow`.)
 component HeldCellView inherits Rectangle {
     in property <PieceCell> at;
     in property <color> tone;
@@ -463,9 +463,6 @@ component HeldCellView inherits Rectangle {
     property <color> edge: root.fits ? Theme.piece-held : Theme.bad;
     Rectangle {
         background: root.tone;
-        drop-shadow-blur: 10px;
-        drop-shadow-offset-y: 4px;
-        drop-shadow-color: #00000090;
     }
 
     Cross {
@@ -513,6 +510,27 @@ component HeldCellView inherits Rectangle {
         height: parent.height + 6px;
         visible: root.at.right;
         background: root.edge;
+    }
+}
+
+// The shadow of the piece in hand: each of its cells (and the gaps between them) black, casting its shadow, all of
+// it drawn as one and then made see-through, so that where two cells' shadows meet the shadow is no darker and no
+// cell's shadow falls on another cell. Under the piece's cells, which hide the black.
+component HeldShadow inherits Rectangle {
+    in property <[PieceCell]> cells;
+    in property <length> cell;
+    in property <length> pitch;
+    opacity: 0.56;
+    for c in root.cells: Rectangle {
+        x: c.x * root.pitch;
+        y: c.y * root.pitch;
+        // (Over the gaps to its right and under it where the piece goes on, so that no light shows between.)
+        width: root.cell + (c.right ? 0px : root.pitch - root.cell);
+        height: root.cell + (c.bottom ? 0px : root.pitch - root.cell);
+        background: #000000;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: #000000;
     }
 }
 
@@ -1239,6 +1257,12 @@ export component NavicustTab inherits Rectangle {
                 transform-origin: { x: root.cell / 2, y: root.cell / 2 };
                 transform-scale: 1 + 0.06 * lift.t;
                 transform-rotation: (1 - turn.t) * -90deg * NavicustView.turn-way;
+                HeldShadow {
+                    cells: NavicustView.held;
+                    cell: root.cell;
+                    pitch: root.pitch;
+                }
+
                 for c in NavicustView.held: HeldCellView {
                     x: c.x * root.pitch;
                     y: c.y * root.pitch;
