@@ -1,0 +1,8 @@
+# Check every text file out with LF line endings, on Windows too. The content's
+# hash covers its Luau sources byte for byte, so a CRLF checkout (Git for
+# Windows' default, and the Windows release runner's) makes a build whose
+# content no LF build can play against.
+* text=auto eol=lf
+
+# A vendored file kept as it came.
+crates/nettai-ui/fonts/corporate-logo/README.txt -text
