@@ -100,9 +100,10 @@ local function aim(me: Object, look: ThunderBallLook)
             dir = if tx > me.panel_x then 1 else -1
         else
             -- A target on its own panel. The original goes right (`tx >= x`): toward the other side for a side-0
-            -- ball, back for a side-1 ball. nettai's ball goes right in the canonical side's frame
-            -- (docs/engine/side-symmetry.md).
-            dir = field.side_sign(me.alliance)
+            -- ball, back for a side-1 ball. nettai's ball goes left in the canonical side's frame: with side 1
+            -- canonical, toward the other side, so a ball in a navi it can't hit, in the back column, leaves the
+            -- field (docs/engine/side-symmetry.md, §1.4).
+            dir = -field.side_sign(me.alliance)
         end
     end
     if vertical then

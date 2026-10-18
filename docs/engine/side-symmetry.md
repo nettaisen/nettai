@@ -116,10 +116,13 @@ the side, is a mirror image as it is: the mirror's left is the round's right.)
 
 `sub_80C956C` (content/exelib/thunder/ball.luau, `aim`): every panel the ball aims anew at the nearest column with
 an enemy body; along its row toward it, or along the column when the target is in it. With the target on the
-ball's own panel, it goes right (`tx >= x`): ahead for a side-0 ball, back for a side-1 ball. Every ball goes as
-the canonical side's: with side 1 canonical, back toward its own side. BgDthThd's charged shot, Thunder, DarkThnd,
-ElecMan's and the other balls of the shared kind. (The user first chose side 1's for BgDthThd, then "side 0
-everywhere", then side 1 as the canonical side.)
+ball's own panel, it goes right (`tx >= x`): ahead for a side-0 ball, back for a side-1 ball. Every ball goes
+left in the canonical side's frame: with side 1 canonical, toward the other side, as a side-0 ball did. So a ball
+in a navi it can't hit (flashing, invisible) who stands in the back column drifts off the field; a side-1 ball of
+the original turned back and never left. BgDthThd's charged shot, Thunder,
+DarkThnd, ElecMan's and the other balls of the shared kind. (The user first chose side 1's for BgDthThd, then
+"side 0 everywhere", then side 1 as the canonical side; then, on a player's report that the balls should be able to
+go off the field, the ball's tie flipped to the other way in the canonical side's frame, 2026-10-18.)
 
 ### 1.5 Panel lists taken in order (EXE4, EXE5, EXE6)
 
