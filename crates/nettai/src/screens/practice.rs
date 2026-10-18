@@ -3,7 +3,7 @@
 //!
 //! **A practice session** is a battle against a dummy with the practice menu over it, and any screen may start
 //! one ([`start`]): Practice does when PLAY's PRACTICE opens it, and Play does beside a waiting invite, with rows
-//! of its own at the top of the menu in place of EXIT, the menu otherwise the same (but for Music and EDIT). It has no end and is not recorded: a set that ends starts over. The session
+//! of its own at the top of the menu in place of EXIT, the menu otherwise the same (but for Music and EDIT). It has no end and is not recorded: its battles are single battles, and one that ends is followed by another on a seed of its own. The session
 //! is held by the shell (`Shell::practice`) and its battle is always this screen's (`ScreenId::Practice` owns
 //! it), so this module hears its menu and its events whatever screen is shown.
 //!
@@ -493,6 +493,9 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         UserError::Other
     })?;
     m.sides = [start.you.side.clone(), start.dummy.side.clone()];
+    // (Single battles, one after another: the user, "training mode should just be repeated single battles". A
+    // match of one round is the single battle's type, with no BATTLE 1 START! banner: `nettai_match::match_effects`.)
+    m.rounds.truncate(1);
     let places = Places::of(content, &start.game);
     let place = match &kept {
         Some(k) => [ARENA, BACKGROUND].map(|part| if k.place[part] < places.len(part) { k.place[part] } else { 0 }),
@@ -1242,12 +1245,21 @@ impl Screen for Practice {
                 }
             }
             BattleEvent::Watching(_) => {}
-            // Practice has no end: a set that ends starts over.
-            BattleEvent::Finished(_) => {
-                if let Some(b) = shell.battle.as_mut() {
-                    b.restart();
+            // Practice has no end: a battle that ends is followed by another, a single battle of its own on a seed
+            // of its own (its folders shuffled anew, a Random arena or background picked anew; the screenshot
+            // pass's the next seed on, so it is the same each time).
+            BattleEvent::Finished(_) => match shell.practice.session.take() {
+                Some(mut session) => {
+                    session.seed = if shell.still { session.seed.wrapping_add(1) } else { clock_seed() };
+                    restart_set(shell, &mut session);
+                    shell.practice.session = Some(session);
                 }
-            }
+                None => {
+                    if let Some(b) = shell.battle.as_mut() {
+                        b.restart();
+                    }
+                }
+            },
             BattleEvent::Stopped(reason) => {
                 end(shell);
                 // (Practice has nothing to show without its battle: Play again.)
