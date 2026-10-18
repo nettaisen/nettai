@@ -3,7 +3,7 @@
 // EXE6's 7x7 with its board outlined in white, the ring of out-of-bounds cells around it hatched and no cells at the
 // corners. The command line is marked three ways: a line over and under its row that runs over what is placed
 // there, an arrow at each end outside the board, and a tint in its empty cells. A plus part's cell is its color
-// crossed edge to edge; a placed piece's cells are bordered along the piece's edge. In the middle PROGRAMS, the open list to pick from (a program is taken from
+// crossed edge to edge; the gaps between a placed piece's cells are in that cross's color, and those round it dark. In the middle PROGRAMS, the open list to pick from (a program is taken from
 // it as many times as it is placed): each program once, in the color chosen for it, with its colors to choose from
 // where it has more than one (the user: "deduppe navicust program parts in the list and then have you select by
 // color"), and whether that color's part is placed (how many copies, where more than one), in hand or out of bounds
@@ -28,8 +28,16 @@ export enum CellKind {
     out,
 }
 
+// A crossing of the gaps between cells: under no piece, within one, or on a piece's edge.
+export enum Crossing {
+    none,
+    within,
+    edge,
+}
+
 // A cell of the grid as drawn: what the board has there, and the piece placed over it (its color, whether it is a
-// plus part, and which of its sides are the piece's edge).
+// plus part, and which of its sides are the piece's edge); and the gaps' crossing at each of its corners: none, one
+// within the piece (its four cells all of it) or one on a piece's edge (`Crossing`).
 export struct GridCell {
     kind: CellKind,
     filled: bool,
@@ -39,7 +47,12 @@ export struct GridCell {
     right: bool,
     bottom: bool,
     left: bool,
+    top-left: Crossing,
+    top-right: Crossing,
+    bottom-left: Crossing,
+    bottom-right: Crossing,
 }
+
 
 // A cell of the piece in hand (from the cell the cursor holds it by), or of one just put down (its place in the
 // drawn grid), and which of its sides are the piece's edge (the piece in hand is outlined along them).
@@ -332,16 +345,29 @@ component Cross inherits Rectangle {
     }
 }
 
+// A gap between a piece's cells, or round it: `tone`, with the plus part's cross's mark over it where `mark` (the
+// gaps within a piece).
+component Gap inherits Rectangle {
+    in property <color> tone;
+    in property <bool> mark;
+    background: root.tone;
+    Rectangle {
+        visible: root.mark;
+        background: Theme.piece-mark;
+    }
+}
+
 // A cell of the grid: an empty cell of the board (on the command line, tinted), an empty one of the ring
-// (hatched), or a placed piece's color (a plus part's crossed; on the ring, hatched over), with a line in the gap
-// along its sides that are the piece's edge, so a piece tells from the one next to it, even one of its color. A cell is a control:
+// (hatched), or a placed piece's color (a plus part's crossed; on the ring, hatched over), the gaps round it in the
+// plus part's cross's color within its piece and dark along the piece's edge, so a piece tells from the one next to it, even one of its color. A cell is a control:
 // the cursor goes over the board cell by cell.
 component CellView inherits Rectangle {
     in property <GridCell> cell;
     in property <bool> command;
     in property <int> nav-index;
     property <bool> empty: !root.cell.filled;
-    property <length> edge: 2px;
+    in property <length> gap;
+    property <color> edge: Theme.piece-edge;
     Rectangle {
         visible: root.cell.kind == CellKind.board && root.empty;
         background: root.command ? Theme.command-line : Theme.inset;
@@ -372,40 +398,48 @@ component CellView inherits Rectangle {
         edge: transparent;
     }
 
-    Rectangle {
-        x: -root.edge;
-        y: -root.edge;
-        width: parent.width + 2 * root.edge;
-        height: root.edge;
-        visible: root.cell.filled && root.cell.top;
-        background: Theme.piece-edge;
+    // The gaps round a placed cell: within its piece the piece's color under the plus part's mark, dark along the
+    // piece's edge.
+    Gap {
+        y: -root.gap;
+        height: root.gap;
+        visible: root.cell.filled;
+        tone: root.cell.top ? root.edge : root.cell.tone;
+        mark: !root.cell.top;
     }
 
-    Rectangle {
-        x: -root.edge;
+    Gap {
         y: parent.height;
-        width: parent.width + 2 * root.edge;
-        height: root.edge;
-        visible: root.cell.filled && root.cell.bottom;
-        background: Theme.piece-edge;
+        height: root.gap;
+        visible: root.cell.filled;
+        tone: root.cell.bottom ? root.edge : root.cell.tone;
+        mark: !root.cell.bottom;
     }
 
-    Rectangle {
-        x: -root.edge;
-        y: -root.edge;
-        width: root.edge;
-        height: parent.height + 2 * root.edge;
-        visible: root.cell.filled && root.cell.left;
-        background: Theme.piece-edge;
+    Gap {
+        x: -root.gap;
+        width: root.gap;
+        visible: root.cell.filled;
+        tone: root.cell.left ? root.edge : root.cell.tone;
+        mark: !root.cell.left;
     }
 
-    Rectangle {
+    Gap {
         x: parent.width;
-        y: -root.edge;
-        width: root.edge;
-        height: parent.height + 2 * root.edge;
-        visible: root.cell.filled && root.cell.right;
-        background: Theme.piece-edge;
+        width: root.gap;
+        visible: root.cell.filled;
+        tone: root.cell.right ? root.edge : root.cell.tone;
+        mark: !root.cell.right;
+    }
+
+    for corner[i] in [root.cell.top-left, root.cell.top-right, root.cell.bottom-left, root.cell.bottom-right]: Gap {
+        x: mod(i, 2) == 0 ? -root.gap : parent.width;
+        y: i < 2 ? -root.gap : parent.height;
+        width: root.gap;
+        height: root.gap;
+        visible: root.cell.filled && corner != Crossing.none;
+        tone: corner == Crossing.within ? root.cell.tone : root.edge;
+        mark: corner == Crossing.within;
     }
 
     Focusable {
@@ -619,15 +653,48 @@ component ShapeView inherits Rectangle {
     property <int> rows: root.columns > 0 ? ceil(root.cells.length / root.columns) : 0;
     property <length> left: (self.width - (root.columns * root.pitch - 2px)) / 2;
     property <length> top: (self.height - (root.rows * root.pitch - 2px)) / 2;
+    // (Whether the shape has a cell at column `x`, row `y`.)
+    pure function has(x: int, y: int) -> bool {
+        x >= 0 && x < root.columns && y >= 0 && y < root.rows && root.cells[y * root.columns + x]
+    }
     for filled[i] in root.cells: Rectangle {
-        x: root.left + mod(i, root.columns) * root.pitch;
-        y: root.top + floor(i / root.columns) * root.pitch;
+        property <int> cx: mod(i, root.columns);
+        property <int> cy: floor(i / root.columns);
+        x: root.left + self.cx * root.pitch;
+        y: root.top + self.cy * root.pitch;
         width: root.cell;
         height: root.cell;
         background: filled ? root.tone : Theme.inset;
         Cross {
             visible: filled && root.plus;
             bar: 1.5px;
+        }
+
+        // The gaps to the next cell of the shape, right and down, and their crossing: as the board's within a piece.
+        Gap {
+            x: parent.width;
+            width: root.pitch - root.cell;
+            visible: filled && root.has(parent.cx + 1, parent.cy);
+            tone: root.tone;
+            mark: true;
+        }
+
+        Gap {
+            y: parent.height;
+            height: root.pitch - root.cell;
+            visible: filled && root.has(parent.cx, parent.cy + 1);
+            tone: root.tone;
+            mark: true;
+        }
+
+        Gap {
+            x: parent.width;
+            y: parent.height;
+            width: root.pitch - root.cell;
+            height: root.pitch - root.cell;
+            visible: filled && root.has(parent.cx + 1, parent.cy) && root.has(parent.cx, parent.cy + 1) && root.has(parent.cx + 1, parent.cy + 1);
+            tone: root.tone;
+            mark: true;
         }
     }
 }
@@ -1059,6 +1126,7 @@ export component NavicustTab inherits Rectangle {
             cell: cell;
             command: floor(i / NavicustView.columns) == NavicustView.command;
             nav-index: i;
+            gap: root.gap;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
