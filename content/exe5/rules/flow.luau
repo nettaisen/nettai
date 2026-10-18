@@ -13,7 +13,6 @@ return {
     sequencer_before_custom = false,
     escape_check = false,
     result_wait = { normal = 0x66, special = 65 },
-    intro_from_black = true,
     -- No low-HP music: EXE5's ROM has no tempo or pitch control (EXE6's `sub_8009158` switch is absent).
     low_hp_music = false,
     -- A win shows the winner's navi's banner only in a link battle that is an operation battle (0x080074D2: battle

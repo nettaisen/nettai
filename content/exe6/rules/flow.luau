@@ -13,9 +13,6 @@ return {
     sequencer_before_custom = true,
     escape_check = true,
     result_wait = { normal = 0x66, special = 0x5E },
-    -- What an EXE6 console shows (presentation, which the frontend reads of a console's own game): a set's first
-    -- battle's intro fades in from white.
-    intro_from_black = false,
     -- The low-HP music switch (`sub_8009158`): while a console's navi is at a quarter of its HP or less, the music
     -- plays a semitone higher and 282/256 as fast.
     low_hp_music = true,
