@@ -1237,9 +1237,9 @@ centered on them, as the original's fonts draw them, on the capitals'
 baseline. A string too wide for its box is narrowed to it, never made
 smaller (text-rendering.md §9.4); it never leaves its box, and its layout
 never reaches the simulation. The battle's lettered pictures (the banners,
-the HUD's and the custom window's labels, the chip window's help pictures)
-are drawn in M PLUS 1 Code, and every number in Bungee, both bundled beside
-Murecho (text-rendering.md §12).
+the HUD's labels, the chip window's help pictures) are drawn in M PLUS 1
+Code, and every number and the custom window's labels in Bungee, both
+bundled beside Murecho (text-rendering.md §12).
 
 **Enhanced and original** (`GraphicsMode`, `Renderer::set_mode`). A
 renderer draws a battle in one of two modes. **Original** draws it exactly

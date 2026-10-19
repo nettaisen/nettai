@@ -218,7 +218,7 @@ impl Letters {
 
     /// Its paint in `palette`.
     pub fn ink(&self, palette: &Palette) -> Ink {
-        Ink { fill: self.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: self.rim.map(|c| palette[c as usize & 15]), bold: 0.0 }
+        Ink { fill: self.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: self.rim.map(|c| palette[c as usize & 15]) }
     }
 
     /// Its face's first color and its shadow's in `palette` (an item's
