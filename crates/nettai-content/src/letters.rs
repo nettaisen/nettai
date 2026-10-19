@@ -991,7 +991,11 @@ fn button_letters(name: &str, b: &nettai_assets::ButtonPictures, say: &mut dyn F
 /// A chip window's lettered picture's lines ([`HelpLetters`]) in its
 /// palette, its letters taken off (its panel's or its frame's color, by
 /// color: its indices are its bit planes', several of them one color); none
-/// for a picture with no lines.
+/// for a picture with no lines, or one that isn't a panel with words: its
+/// panel's and frame's colors less than two thirds of it (a button's art
+/// with its name lettered over it: EXE6's TRASH CHUTE and Beast Out, EXE5's
+/// soul and Arm Change, each under half; the panels are four fifths and
+/// more).
 pub fn help_letters(p: &nettai_assets::Picture) -> Option<HelpLetters> {
     if p.tiles.len() < CustomScreen::PICTURE_TILES {
         return None;
@@ -1004,6 +1008,9 @@ pub fn help_letters(p: &nettai_assets::Picture) -> Option<HelpLetters> {
     picture.pixels.iter().for_each(|&v| *count.entry(color(v)).or_default() += 1);
     let (&panel, _) = count.iter().max_by_key(|(c, n)| (**n, **c))?;
     let ground = |v: u8| color(v) == frame || color(v) == panel;
+    if 3 * picture.pixels.iter().filter(|&&v| ground(v)).count() < 2 * picture.pixels.len() {
+        return None;
+    }
     let lines = lines(&picture, ground, &palette);
     if lines.is_empty() {
         return None;
