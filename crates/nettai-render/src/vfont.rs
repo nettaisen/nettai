@@ -147,6 +147,28 @@ pub enum LetteringFont {
     Display,
     /// The text font (the text layer's own: Murecho, or `--font`'s).
     Text,
+    /// The numbers' font (`numbers::font`: Bungee), whose capitals the HUD's
+    /// small labels are drawn in (the window's labels, CUSTOM).
+    Numbers,
+}
+
+/// Which of the text renderer's fonts draws a glyph: the text font, the
+/// lettering font or the numbers' font.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum FontId {
+    Text,
+    Lettering,
+    Numbers,
+}
+
+impl LetteringFont {
+    fn id(self) -> FontId {
+        match self {
+            LetteringFont::Display => FontId::Lettering,
+            LetteringFont::Text => FontId::Text,
+            LetteringFont::Numbers => FontId::Numbers,
+        }
+    }
 }
 
 impl Lettering {
@@ -196,13 +218,13 @@ struct Style {
     /// How wide its glyphs are drawn against the font's own (the
     /// lettering's narrowing; 1 for the rest).
     narrow: f32,
-    /// In the lettering font ([`Role::Lettering`]).
-    lettering: bool,
+    /// The font that draws it (the lettering's: [`Role::Lettering`]).
+    font: FontId,
 }
 
 impl Role {
     fn style(self) -> Style {
-        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false };
+        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, font: FontId::Text };
         match self {
             Role::Cell => plain,
             // The original's descenders take row 14, their shadow row 15:
@@ -220,7 +242,7 @@ impl Role {
                 descender: None,
                 rows: 16.0,
                 narrow: l.width.max(1) as f32 / 100.0,
-                lettering: l.font == LetteringFont::Display,
+                font: l.font.id(),
             },
         }
     }
@@ -320,20 +342,6 @@ impl VectorFont {
         text.chars().all(|c| has(c) || mark(c).is_some_and(|m| m.letters().into_iter().all(has)))
     }
 
-    /// The width over the height of `c`'s ink (its outline's bounds), None
-    /// where the font has no glyph for it.
-    pub fn ink_aspect(&self, c: char) -> Option<f32> {
-        let font = self.font();
-        let id = font.charmap().map(c);
-        if id == 0 {
-            return None;
-        }
-        let mut context = ScaleContext::new();
-        let b = context.builder(font).size(RES).build().scale_outline(id)?.bounds();
-        let h = b.max.y - b.min.y;
-        (h > 0.0).then(|| (b.max.x - b.min.x) / h)
-    }
-
     /// Whether `c` is a button the text layer draws as its letter in a
     /// ring ([`BUTTON_RING`] times the capitals' height): the font has no
     /// glyph of its own for it.
@@ -410,8 +418,8 @@ struct Placed {
     /// The string's character it draws (what the chatbox's printing
     /// counts).
     unit: usize,
-    /// The lettering font's glyph (else the text font's).
-    lettering: bool,
+    /// The font whose glyph it is.
+    font: FontId,
 }
 
 /// A button mark's ring, in frame pixels as `Placed`: its center and outer
@@ -444,8 +452,8 @@ struct Layout {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct GlyphKey {
     id: GlyphId,
-    /// The lettering font's glyph (else the text font's).
-    lettering: bool,
+    /// The font whose glyph it is.
+    font: FontId,
     width: i32,
     weight: i32,
     shorten: Option<Shorten>,
@@ -461,7 +469,7 @@ impl GlyphKey {
         let texels = |frame: f32| (frame / (g.size * k) * RES * 64.0).round() as i32;
         GlyphKey {
             id: g.id,
-            lettering: g.lettering,
+            font: g.font,
             width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
             weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
             shorten: shorten.map(|f| Shorten { factor: (f * 1024.0).round() as i32, baseline: texels(-g.y * k), floor: texels(-g.y * k - floor) }),
@@ -510,8 +518,10 @@ impl Shorten {
 /// layouts and glyph fields it made.
 pub struct TextRenderer {
     font: std::sync::Arc<VectorFont>,
-    /// The game-style lettering's ([`Role::Lettering`]).
+    /// The game-style lettering's ([`Role::Lettering`]), and the numbers'
+    /// (the labels' lettering in it).
     lettering: std::sync::Arc<VectorFont>,
+    numbers: std::sync::Arc<VectorFont>,
     scaler: ScaleContext,
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
@@ -520,10 +530,10 @@ pub struct TextRenderer {
     glyph_bytes: usize,
     /// Each font's kana box by weight (16ths), once measured (none: the
     /// font has no kana); the lettering font's under `true`.
-    faces: HashMap<(bool, i32), Option<Face>>,
+    faces: HashMap<(FontId, i32), Option<Face>>,
     /// Each font's deepest descender by weight (16ths), in ems under the
     /// baseline.
-    descenders: HashMap<(bool, i32), f32>,
+    descenders: HashMap<(FontId, i32), f32>,
     /// The lettering items painted (their bar, rim, shadow and fill) at an
     /// output's size and place, by all that changes their pixels: a banner
     /// holding still is painted once.
@@ -550,6 +560,7 @@ impl TextRenderer {
         TextRenderer {
             font,
             lettering: lettering_font().clone(),
+            numbers: crate::numbers::font().clone(),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
             layouts: HashMap::new(),
@@ -568,8 +579,12 @@ impl TextRenderer {
     }
 
     /// The font a role's text is drawn in.
-    fn font_of(&self, lettering: bool) -> &VectorFont {
-        if lettering { &self.lettering } else { &self.font }
+    fn font_of(&self, id: FontId) -> &VectorFont {
+        match id {
+            FontId::Text => &self.font,
+            FontId::Lettering => &self.lettering,
+            FontId::Numbers => &self.numbers,
+        }
     }
 
     /// What it has made so far.
@@ -586,7 +601,7 @@ impl TextRenderer {
     /// game's font, and has none.
     pub fn prepare(&mut self, text: &str, role: Role) {
         let st = role.style();
-        if !self.font_of(st.lettering).covers(text) {
+        if !self.font_of(st.font).covers(text) {
             return;
         }
         let shorten = self.shorten(role);
@@ -604,6 +619,40 @@ impl TextRenderer {
     /// `room` wide.
     pub fn fitted_width(&mut self, text: &str, role: Role, room: i32) -> f32 {
         self.layout(text, role, room).width
+    }
+
+    /// Where a string's ink starts and ends, in frame pixels from where its
+    /// first glyph's pen starts, once fitted into a box `room` wide: its
+    /// glyphs' outlines' bounds, without the font's side bearings (none:
+    /// no ink).
+    pub fn ink_extent(&mut self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        let layout = self.layout(text, role, room).clone();
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for g in &layout.glyphs {
+            let vf: &VectorFont = match g.font {
+                FontId::Text => &self.font,
+                FontId::Lettering => &self.lettering,
+                FontId::Numbers => &self.numbers,
+            };
+            let font = vf.font();
+            let mut settings: Vec<Setting<f32>> = Vec::new();
+            if let (Some(_), Some(w)) = (vf.width, g.width) {
+                settings.push(("wdth", w).into());
+            }
+            if let (Some(_), Some(w)) = (vf.weight, g.weight) {
+                settings.push(("wght", w).into());
+            }
+            let mut scaler = self.scaler.builder(font).size(RES).variations(settings).build();
+            let Some(outline) = scaler.scale_outline(g.id) else { continue };
+            let b = outline.bounds();
+            if b.max.x <= b.min.x {
+                continue;
+            }
+            let k = g.size * layout.xscale * g.stretch / RES;
+            lo = lo.min(g.x + b.min.x * k);
+            hi = hi.max(g.x + b.max.x * k);
+        }
+        (lo < hi).then_some((lo, hi))
     }
 
     fn layout(&mut self, text: &str, role: Role, room: i32) -> &Layout {
@@ -628,7 +677,7 @@ impl TextRenderer {
     /// (The lettering's glyphs are narrowed to its width first: `narrow`.)
     fn fit(&mut self, text: &str, role: Role, room: f32) -> Layout {
         let st = role.style();
-        let (weight_axis, width_axis) = (self.font_of(st.lettering).weight, self.font_of(st.lettering).width);
+        let (weight_axis, width_axis) = (self.font_of(st.font).weight, self.font_of(st.font).width);
         let weight = weight_axis.map(|a| st.weight.clamp(a.min, a.max));
         let mut width = width_axis.map(|a| a.default.clamp(a.min, a.max));
         let mut l = narrowed(self.shape(text, st, width, weight), st.narrow);
@@ -657,9 +706,13 @@ impl TextRenderer {
     fn shorten(&mut self, role: Role) -> Option<f32> {
         let st = role.style();
         let depth = st.descender?;
-        let vf: &VectorFont = if st.lettering { &self.lettering } else { &self.font };
+        let vf: &VectorFont = match st.font {
+            FontId::Text => &self.font,
+            FontId::Lettering => &self.lettering,
+            FontId::Numbers => &self.numbers,
+        };
         let weight = vf.weight.map(|a| st.weight.clamp(a.min, a.max));
-        let key = (st.lettering, weight.map_or(0, |w| (w * 16.0).round() as i32));
+        let key = (st.font, weight.map_or(0, |w| (w * 16.0).round() as i32));
         let deepest = match self.descenders.get(&key) {
             Some(&d) => d,
             None => {
@@ -677,18 +730,22 @@ impl TextRenderer {
                 d
             }
         };
-        let px = deepest * st.cap / self.font_of(st.lettering).cap;
+        let px = deepest * st.cap / self.font_of(st.font).cap;
         Some(if px > depth { depth / px } else { 1.0 })
     }
 
     /// A font's kana box at `weight` ([`Face`]), measured once (the
     /// lettering font's, or the text font's).
-    fn face(&mut self, lettering: bool, weight: Option<f32>) -> Option<Face> {
-        let key = (lettering, weight.map_or(0, |w| (w * 16.0).round() as i32));
+    fn face(&mut self, id: FontId, weight: Option<f32>) -> Option<Face> {
+        let key = (id, weight.map_or(0, |w| (w * 16.0).round() as i32));
         if let Some(&f) = self.faces.get(&key) {
             return f;
         }
-        let vf: &VectorFont = if lettering { &self.lettering } else { &self.font };
+        let vf: &VectorFont = match id {
+            FontId::Text => &self.font,
+            FontId::Lettering => &self.lettering,
+            FontId::Numbers => &self.numbers,
+        };
         let font = vf.font();
         let cmap = font.charmap();
         let upem = font.metrics(&[]).units_per_em as f32;
@@ -727,7 +784,7 @@ impl TextRenderer {
     /// the capitals' height less a gap, the first above the second, filling
     /// one cell between the capitals' top and the baseline.
     fn shape(&mut self, text: &str, st: Style, width: Option<f32>, weight: Option<f32>) -> Layout {
-        let lettering = st.lettering;
+        let lettering = st.font;
         let size = st.cap / self.font_of(lettering).cap;
         // Kana and kanji: their size, and how far up from the baseline
         // their glyphs' origin goes.
@@ -738,7 +795,11 @@ impl TextRenderer {
             }
             None => (size, 0.0),
         };
-        let vf: &VectorFont = if lettering { &self.lettering } else { &self.font };
+        let vf: &VectorFont = match lettering {
+            FontId::Text => &self.font,
+            FontId::Lettering => &self.lettering,
+            FontId::Numbers => &self.numbers,
+        };
         let font = vf.font();
         let cmap = font.charmap();
         let cap = vf.cap;
@@ -768,7 +829,7 @@ impl TextRenderer {
                     let (x, y) = (pen + gap + ring / 2.0, cap * size / 2.0);
                     for (id, gx, gy) in glyphs {
                         let (gx, gy) = (x - advance / 2.0 + gx, y - cap * small / 2.0 + gy);
-                        out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i, lettering });
+                        out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i, font: lettering });
                     }
                     out.rings.push(Ring { x, y, radius: ring / 2.0, unit: i });
                     pen += ring + 2.0 * gap;
@@ -787,7 +848,7 @@ impl TextRenderer {
                     for (glyphs, w, y) in [(top, top_w, letter_cap + between), (bottom, bottom_w, 0.0)] {
                         for (id, gx, gy) in glyphs {
                             let gx = x0 + (cell - w) / 2.0 + gx * STACK_STRETCH;
-                            out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i, lettering });
+                            out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i, font: lettering });
                         }
                     }
                     pen = x0 + cell + gap;
@@ -810,7 +871,7 @@ impl TextRenderer {
                         let at = start + c.source.start as usize;
                         let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
                         for g in c.glyphs {
-                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit, lettering });
+                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit, font: lettering });
                             pen += g.advance;
                         }
                     });
@@ -832,7 +893,11 @@ impl TextRenderer {
                 self.glyphs.clear();
                 self.glyph_bytes = 0;
             }
-            let vf: &VectorFont = if key.lettering { &self.lettering } else { &self.font };
+            let vf: &VectorFont = match key.font {
+                FontId::Text => &self.font,
+                FontId::Lettering => &self.lettering,
+                FontId::Numbers => &self.numbers,
+            };
             let font = vf.font();
             let mut settings: Vec<Setting<f32>> = Vec::new();
             if vf.width.is_some() {
@@ -1011,7 +1076,10 @@ impl TextRenderer {
             }
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
-            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
+            // (A frame pixel all round, as the picture's; heavier right and
+            // down where the picture's is.)
+            let heavier = if ink.heavier { (RIM_HEAVIER * s).round() as i32 } else { 0 };
+            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, heavier)));
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
             for y in area.1..area.3 {
@@ -1073,7 +1141,10 @@ impl TextRenderer {
             return None;
         }
         let mut mask = Mask::new(area);
-        for &(c, [bx, by, bw, bh]) in &f.glyphs {
+        // The set's glyphs' ink, in texels: its glyphs' height (the median
+        // of theirs: a capital's, a digit's; a Q's tail or a sign is let be)
+        // and its widest's width.
+        for c in f.set.chars().chain(f.glyphs.iter().map(|g| g.0)) {
             if !self.number_glyphs.contains_key(&c) {
                 let font = crate::numbers::font().font();
                 let mut scaler = self.scaler.builder(font).size(RES).build();
@@ -1084,10 +1155,35 @@ impl TextRenderer {
                 self.made.glyphs += 1;
                 self.number_glyphs.insert(c, glyph);
             }
+        }
+        for (chars, _) in &f.family {
+            for c in chars.chars() {
+                self.number_glyph_ink(c);
+            }
+        }
+        let ink = |c: char| self.number_glyphs.get(&c).and_then(|g| g.as_ref()).map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0));
+        let mut heights: Vec<f32> = f.set.chars().filter_map(|c| ink(c).map(|i| i.1)).collect();
+        heights.sort_by(f32::total_cmp);
+        let tallest = heights.get(heights.len() / 2).copied().or_else(|| f.glyphs.iter().filter_map(|g| ink(g.0).map(|i| i.1)).reduce(f32::max)).unwrap_or(1.0);
+        let widest = f.set.chars().chain(f.glyphs.iter().map(|g| g.0)).filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
+        for &(c, [bx, by, bw, bh]) in &f.glyphs {
             let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&c] else { continue };
-            let out_left = place.x as f32 + (left + bx) * s;
-            let (out_top, out_bottom) = (place.y as f32 + squash(top + by) * s, place.y as f32 + squash(top + by + bh) * s);
-            let sx = bw * s / (x1 - x0).max(1e-3);
+            // (One scale for the set: its glyphs' ink the box's height; its
+            // widest no wider than the box, all narrowed alike where it
+            // would be; each centered in its box: a fixed pitch, each glyph
+            // its own shape.)
+            let scale = bh / tallest.max(1e-3);
+            let mut narrow = (bw / (widest * scale).max(1e-3)).min(1.0);
+            // (A family's sets narrowed alike: the least any needs.)
+            for (chars, width) in &f.family {
+                let widest = chars.chars().filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
+                narrow = narrow.min(width / (widest * scale).max(1e-3));
+            }
+            let (w, h) = ((x1 - x0) * scale * narrow, (y1 - y0) * scale);
+            let (gx, gy) = (bx + (bw - w) / 2.0, by + (bh - h) / 2.0);
+            let out_left = place.x as f32 + (left + gx) * s;
+            let (out_top, out_bottom) = (place.y as f32 + squash(top + gy) * s, place.y as f32 + squash(top + gy + h) * s);
+            let sx = w * s / (x1 - x0).max(1e-3);
             let sy = (out_bottom - out_top) / (y1 - y0).max(1e-3);
             field.draw(out_left - x0 * sx, out_top + y1 * sy, sx, sy, area, &mut mask);
         }
@@ -1123,6 +1219,21 @@ impl TextRenderer {
             }
         }
         Some(out)
+    }
+
+    /// A numbers' font glyph's ink's width and height, in texels (made once).
+    fn number_glyph_ink(&mut self, c: char) -> Option<(f32, f32)> {
+        if !self.number_glyphs.contains_key(&c) {
+            let font = crate::numbers::font().font();
+            let mut scaler = self.scaler.builder(font).size(RES).build();
+            let glyph = scaler.scale_outline(font.charmap().map(c)).and_then(|o| {
+                let b = o.bounds();
+                Some((Sdf::of(o.points(), o.verbs())?, [b.min.x, b.min.y, b.max.x, b.max.y]))
+            });
+            self.made.glyphs += 1;
+            self.number_glyphs.insert(c, glyph);
+        }
+        self.number_glyphs[&c].as_ref().map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0))
     }
 
     /// Paint a layout's glyphs and rings (`at`: where, squashed how) into
@@ -1178,8 +1289,8 @@ struct Laid {
 }
 
 /// The lettering's rim, in frame pixels: as wide as the picture's, one
-/// pixel, and that again half a pixel right and down (the picture's rims
-/// are heavier there).
+/// pixel, and where the picture's is heavier right and down (`Ink::heavier`)
+/// that again half a pixel there.
 const RIM: f32 = 1.0;
 const RIM_HEAVIER: f32 = 0.5;
 
@@ -1792,7 +1903,7 @@ mod tests {
         let mut r = renderer();
         for role in [Role::Cell, Role::FittedCell, Role::Dialogue] {
             let st = role.style();
-            let face = r.face(false, Some(st.weight)).expect("Murecho has kana");
+            let face = r.face(FontId::Text, Some(st.weight)).expect("Murecho has kana");
             assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
             let mut sizes = Vec::new();
             for (text, room) in [("キャノン", 1000), ("バッドメディスン", 64), ("ロックマンEXE", 56), ("攻撃力✕2", 160), ("ガンデルソル3", 56)] {

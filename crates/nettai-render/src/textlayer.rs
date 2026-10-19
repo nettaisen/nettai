@@ -161,8 +161,11 @@ pub struct Ink {
     /// resolution. One color: a flat face.
     pub fill: Vec<u16>,
     /// The rim's color (BGR555): an outline a frame pixel wide around the
-    /// face, heavier right and down, as the picture's is. None: no rim.
+    /// face, as the picture's is. None: no rim.
     pub rim: Option<u16>,
+    /// The rim heavier right and down, as the picture's is (else even, a
+    /// pixel all round).
+    pub heavier: bool,
 }
 
 /// A banner's bar, drawn as a shape at the output's resolution under the
@@ -300,6 +303,17 @@ impl<'f> TextSink<'f> {
         self.lettering && !text.is_empty() && crate::vfont::lettering_font().covers(text)
     }
 
+    /// Whether `text` is drawn as lettering in `font` (the enhanced mode's,
+    /// where the font has every character).
+    pub fn takes_lettering_in(&self, text: &str, font: crate::vfont::LetteringFont) -> bool {
+        use crate::vfont::LetteringFont;
+        match font {
+            LetteringFont::Display => self.takes_lettering(text),
+            LetteringFont::Text => self.takes(text),
+            LetteringFont::Numbers => self.lettering && !text.is_empty() && crate::numbers::font().covers(text),
+        }
+    }
+
     /// Whether the game's numbers are drawn in the numbers' font (the
     /// enhanced mode's: `numbers`).
     pub fn draws_numbers(&self) -> bool {
@@ -321,6 +335,13 @@ impl<'f> TextSink<'f> {
     /// `room` wide (None without a measurer).
     pub fn fitted_width(&self, text: &str, role: Role, room: i32) -> Option<f32> {
         self.measure.map(|m| m.borrow_mut().fitted_width(text, role, room))
+    }
+
+    /// Where `text`'s ink starts and ends in a box `room` wide, from its
+    /// first glyph's pen (`TextRenderer::ink_extent`; None without a
+    /// measurer, or no ink).
+    pub fn ink_extent(&self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        self.measure.and_then(|m| m.borrow_mut().ink_extent(text, role, room))
     }
 
     /// The original mode's: takes nothing.

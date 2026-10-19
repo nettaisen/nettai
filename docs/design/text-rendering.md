@@ -1632,8 +1632,9 @@ the bar's edge).
   letters, their letters' columns either side of the number as one digit and as two), the chip codes of both sets, the
   window's labels, the chip window's lettered pictures (OK's, each button's, each version's own) and the form list
   names (each look, by its first look's letters). The pack keeps what it found (`nettai_assets::letters`, `letters` in
-  `hud.json` and `custom.json`, asset-formats.md) and each picture with its letters taken off as an image beside it
-  (`letters/`). A frontend puts the look in the palette of the moment and the blank tiles in place; it reads no picture.
+  `hud.json` and `custom.json`, asset-formats.md) and each lettered picture as its base with the letters off and a layer
+  of its letters (§12.13). A frontend puts the look in the palette of the moment and the base's tiles in place; it reads
+  no picture.
 - **What isn't found is said.** Extraction writes a line to `extraction.txt` for anything every game has that it
   can't find (a number set with no face, a code glyph with no letter, a form list name whose letters aren't enclosed,
   a label whose maps lay it otherwise, a button whose picture's lines differ in its other palettes). The content audit
@@ -1650,5 +1651,54 @@ the bar's edge).
   START!, TURN n START!, FINAL TURN!, the judge's and the results'), the labels, the help pictures, the gauge's CUSTOM
   and L or R, the waiting label, FINAL TURN, PAUSE, the HP box and the enemies' numbers, the emotion window's count,
   the hand line's and the telops' numbers, the chip window's code and damage, the slots' codes and the Cross names.
-- Left open: EXE4's Japanese OK picture (チップが / えらばれて / いません) reads as four lines, the first two of its
-  words touching (a voiced mark reaches the line above), so its words stay the picture, as they did; the audit says so.
+- **Lines a mark joins** (the user: "yes", to working out EXE4's Japanese OK picture). Its words チップが / えらばれて /
+  いません touch: えらばれて's voiced mark reaches the line above, and no clear row is left between them. A picture's
+  lines are its runs of inked rows, but where a run's next one starts two of the picture's line pitches or more after it
+  (the pitch: the most common step from a run's first row to the next's, with three runs or more), the run is that
+  many lines at that pitch (`letters::line_rows`): rows 19-36 are 19-28 and 29-36, a pitch of 10 to いません at 39. Read
+  again, every other help picture of the three games' packs, in both languages, has the same lines as before (the
+  packs' `letters` are identical but this picture's); the EXE4 audit has 0 problems.
+
+### 12.13 Outlines, layout and the pack's pictures (2026-10-19, later)
+
+The user, in order: "the redeal/ok/other blanks look really janky in exe6, is that correct?"; "i think the blanks in en
+and ja should be the same anyway"; "the scrap/beast button shouldn't have blanks"; "instead of having the composed and
+blanked templates, can you instead just mask the original lettering out in the content then compose it in the
+engine?"; "the custom box fonts like BATTLE CHIP and CROSSSELECT are forcibly packed into the grid which makes it look
+really bad, instead of laid out naturally. could you fix that somehow?", then "BATTLE CHIP and CHIP SELECT and CROSS
+SELECT should be stretched to fill the frame"; "the cross select crosses don't have drop shadows on the names, only
+outlines", "same on the banner, there's no drop shadow on it", "same for Cstmzing...", "and PAUSE", FINAL TURN, and "i
+think there's a lot of drop shadows on hud text where they shouldn't be"; "the text above the custom gauge CUSTOM looks
+really bad too"; "you should bounding box them to the longest one (e.g. tomahawk in japanese) and center align them in
+the same spot on each label, so you don't force the original metrics"; and of the numbers: one scale a set, no glyph
+stretched to its box, then "chip code and chip window damage should probably be the same size?".
+
+- **Outlines as the originals'.** Extraction reads whether a lettering's rim is heavier right and down than up and
+  left (`letters::outline_heavier`: the outline's mean thickness past the face's edges, right and down over left and
+  up by more than half a pixel) and keeps it (`heavier`); every picture of the three games reads even, a pixel all
+  round: banners (BATTLE START!, the results, the judge, FINAL TURN!), PAUSE, the waiting label, FINAL TURN, the Cross
+  names. The text layer draws a lettering's rim even, heavier only where the pack says. What has a one-sided shadow
+  in its pixels keeps a shadow: the 8x16 font (chip names, telop names, the enemy names, "????": its shade is right and
+  down), the damage digits (the hand line, telops, the judge), B:EXIT. The rest have no edge and get none: the HP box's
+  digits, the emotion window's count, the window's labels, CUSTOM, L or R, the codes, the help pictures, the chatbox
+  (whose font has no shade).
+- **Labels and CUSTOM as text.** The window's labels are one run of Bungee at its own spacing (LetteringFont::Numbers),
+  its capitals the letters' ink height, the whole run stretched or narrowed by one factor to put its ink from the
+  original's first letter's ink to its last's (TextRenderer::ink_extent). CUSTOM is the same run at the font's own
+  width, narrowed only if it overruns, standing as the original's letters stand in their cells (`align`).
+- **Cross names in one box.** Every form list name is centered in the columns all of them take, every version's and
+  language's together (`form_name_box`: EXE6's 31 to 69), at Murecho 900's own width, narrowed only where wider.
+- **Numbers at a fixed pitch.** Each set's glyphs are drawn at one scale (its glyphs' ink height the face box's), at
+  their own widths, narrowed alike only where the set's widest would overrun the box, each centered in its box: a 1
+  stands thin, the pitch is the cell's. The signs too. The chip window's code and damage are one family, narrowed
+  alike (`Fitted::family`); no other sets share a line and a height.
+- **One picture, one base.** The pack keeps a lettered picture as a base all its languages share and a layer each
+  (asset-formats.md, "Lettered pictures"; `letters::shared_base`). The Japanese blanks that looked janky were the
+  Japanese pictures' blanks written for viewing in the English pictures' palettes: the chip window's pictures are bit
+  planes, the palette picks the plane, so the other words showed. The data was right (the frames were); with no blank
+  files now each layer is in its own picture's palette. Where two languages' letters cross on a pixel no one index
+  shows as both blanks, the second language shows the base's pixel (extraction notes how many: EXE4's Japanese OK 1
+  and OK-picked 2, EXE5's and EXE6's Japanese OK-picked 6, EXE6's Japanese form list names 460 and 352).
+- **Not lettered.** A chip window picture is a lettered panel only where its panel's and frame's colors are two thirds
+  of it or more: the buttons' art with their names over it (EXE6's TRASH CHUTE / DUST SHOOT and Beast Out, EXE5's soul
+  and Arm Change) have no letters and no blank; no strings had words for them.

@@ -17,14 +17,17 @@ use serde::{Deserialize, Serialize};
 
 /// How a picture's letters look, as palette indices: the face's color on
 /// each of the capitals' rows (top to bottom), the outline's color all
-/// round the face (a rim) or right and down of it (a shadow), the
-/// capitals' first row and how many rows they take, and the letters'
-/// columns with their outline (the first, one past the last).
+/// round the face (a rim) or right and down of it (a shadow), whether the
+/// rim is heavier right and down than up and left (else even, a pixel all
+/// round), the capitals' first row and how many rows they take, and the
+/// letters' columns with their outline (the first, one past the last).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Letters {
     pub fill: Vec<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub heavier: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
     pub top: u8,
@@ -89,13 +92,37 @@ pub struct WordLetters {
 }
 
 /// The custom gauge's frame's word: the cells of its top row that draw it
-/// (from the frame's first), their tiles with the letters taken off, and
-/// the letters (in the cells' picture, from the first cell).
+/// (from the frame's first), their tiles with the letters taken off, the
+/// letters (in the cells' picture, from the first cell) and how they stand
+/// in the cells.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GaugeWord {
     pub cells: Vec<u8>,
     pub blank: Tiles,
     pub letters: Letters,
+    pub align: TextAlign,
+}
+
+/// How a picture's letters stand in it: in its middle (their margins within
+/// two pixels of each other), else from their left edge (a label's mark
+/// before its words, CROSS SELECT's triangle, stands in its left margin);
+/// from their right edge is for a picture that says so.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TextAlign {
+    Left,
+    #[default]
+    Center,
+    Right,
+}
+
+impl TextAlign {
+    /// How letters `span` (the first column, one past the last) stand in a
+    /// picture `width` columns wide.
+    pub fn of(span: [i16; 2], width: usize) -> TextAlign {
+        let (left, right) = (span[0] as i32, width as i32 - span[1] as i32);
+        if (left - right).abs() <= 2 { TextAlign::Center } else { TextAlign::Left }
+    }
 }
 
 /// The emotion window's count's digits in its box (16x16): each digit's
@@ -139,23 +166,24 @@ pub struct HelpLetters {
 
 /// A form list name's letters (9x2 tiles), in one of its looks: the
 /// columns and rows their face takes (the first, the last), the face's
-/// color on each of those rows, and the outline's.
+/// color on each of those rows, the outline's, and whether the outline is
+/// heavier right and down (else even, a pixel all round).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FormNameLetters {
     pub columns: [u8; 2],
     pub rows: [u8; 2],
     pub fill: Vec<u8>,
     pub rim: u8,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub heavier: bool,
 }
 
 /// A window label's letters: their look (`WindowLabel::letters`' colors
-/// alone), the runs of columns they take (each a letter: the first, one
-/// past the last) and the rows of the label's tiles their ink takes (the
-/// first, the last).
+/// alone; their columns, `span`, in the label's tiles) and the rows of the
+/// label's tiles their ink takes (the first, the last).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelLetters {
     pub letters: Letters,
-    pub groups: Vec<[u8; 2]>,
     pub rows: [u8; 2],
 }
 
@@ -222,6 +250,10 @@ pub struct CustomLetters {
     /// tiles with their letters taken off (as `CustomScreen::window_tiles`).
     pub labels: Vec<Option<LabelLetters>>,
     pub window_blank: Tiles,
+    /// The columns of the form list names' bars every name is centered in
+    /// (the first, the last): all their letters' columns, every version's
+    /// and every language's, together.
+    pub form_name_box: Option<[u8; 2]>,
     /// The pack's own language's lettered pictures.
     pub pictures: PictureLetters,
 }
