@@ -270,6 +270,13 @@ impl Shell {
         self.ui.upgrade().expect("the window outlives the app's state")
     }
 
+    /// Something the player waited for has come (the other player at their lobby): the taskbar's button
+    /// flashes, or the dock's icon bounces, until the window is brought forward (nothing while it is).
+    pub fn call_attention(&self) {
+        use slint::winit_030::winit::window::UserAttentionType;
+        self.ui().window().with_winit_window(|w| w.request_user_attention(Some(UserAttentionType::Critical)));
+    }
+
     // ---- The screens -------------------------------------------------------------------------------------
 
     /// The screen shown.
