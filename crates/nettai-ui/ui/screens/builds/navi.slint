@@ -3,16 +3,17 @@
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head, a list's ALL
-// and NONE at its heads' right end); then the note of what is the game's own navi's alone, right after whatever is
-// over it. What is wrong with the build is said where it is (docs/design/app-ui.md §2.66): a fact's heading and a form
-// a problem is about in the error red, and on a line kept for it under the navi's facts, what the build's problems
-// have against the form under the cursor or the pointer, else against the navi. On a phone the panel is over the grid. Its Rust
+// and NONE at its heads' right end). What is wrong with the build is said where it is (docs/design/app-ui.md §2.66): a
+// fact's heading and a form a problem is about in the error red, and on a line kept for it under the navi's facts,
+// what the build's problems have against the form under the cursor or the pointer, else against the navi; where they
+// have nothing, for a navi that isn't the game's own, the note of what is his alone. On a phone the panel is over
+// the grid. Its Rust
 // half is src/screens/builds/navi.rs.
 
 import { Theme, Caps } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Note, Select, Button, ProblemNote, AllNone } from "../../widgets.slint";
+import { Cut, PanelBack, Select, Button, ProblemNote, AllNone } from "../../widgets.slint";
 import { VersionTag } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
@@ -106,8 +107,10 @@ export global NaviView {
     in property <string> fault;
     // The game's choices the build's navi has (none in a game without, or for a navi without).
     in property <[NaviChoice]> choices;
-    // The game's own navi's name: the one a NaviCust and patch cards are of.
+    // The game's own navi's name: the one a NaviCust and patch cards are of; and whether the build's navi is another,
+    // for whom the note says so.
     in property <string> own;
+    in property <bool> other-navi;
 }
 
 // A navi's card: its face over its name. The build's is lit.
@@ -434,6 +437,21 @@ export component NaviTab inherits Rectangle {
         text: NaviView.fault;
     }
 
+    // (Where the build has no problem, the note, for a navi that isn't the game's own: what isn't his.)
+    Text {
+        x: root.panel-x + root.pad;
+        y: root.fault-y;
+        width: root.panel-width - 2 * root.pad;
+        height: 16px;
+        visible: NaviView.fault == "" && NaviView.other-navi;
+        text: root.note;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
     // Under the navi's facts, one after the other: the choices (the user: "the light/dark switcher should be above the
     // souls"), the selector's facts of forms, and the note's place.
     body := VerticalLayout {
@@ -519,11 +537,6 @@ export component NaviTab inherits Rectangle {
                 form: form;
                 nav-index: group.at + j;
             }
-        }
-
-        Note {
-            text: root.note;
-            vertical-alignment: top;
         }
     }
 

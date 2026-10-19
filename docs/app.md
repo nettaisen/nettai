@@ -1272,11 +1272,12 @@ back by `resolve_side`):
   back has "Not allowed" at its row's end in the error red (`NaviForm.banned`): `activate("form", i)` refuses to put it
   in (the refusal's sound; one the build has is taken out as ever), `forms-all` passes it by and counts it left out,
   and a navi the ruleset holds back (`NaviCard.banned`, dimmed) isn't chosen (design §2.68). The tab has no strip (design §2.66: the user, "i don't
-  like having an info thing on the navi view, it's redundant"): the sentences are said in the note's place under the
-  selector, in the note's stead (`NaviView.fault`, `Navi::show_fault`): what the build's problems have against the
+  like having an info thing on the navi view, it's redundant"): the sentences are said on a line kept for them under the
+  navi's facts (`NaviView.fault`, `Navi::show_fault`): what the build's problems have against the
   form under the pointer or the cursor (`Tab::hovered`, `Tab::focused`), the ruleset's among them (a form's own, then
   its fact's about no form of it), else against the navi (and the build's of no part a tab shows), as
-  `Words::summary` says them; the note where neither has any. The place is as tall as the note and a line at least
+  `Words::summary` says them; where neither has any, for a navi that isn't the game's own (`NaviView.other-navi`),
+  the note of what is his alone (design §2.85). The place is as tall as the note and a line at least
   whether it says anything or not, so nothing moves when a problem appears; a phone's the same. The same facts flag
   the tab bar's words (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast form's
   the Navi tab, a Giga chip's the Folder tab, a card's variant's the Patch cards tab), every thing of each version
