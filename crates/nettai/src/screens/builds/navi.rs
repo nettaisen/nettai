@@ -275,7 +275,7 @@ impl Tab for Navi {
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
         // (The focus starts on the build's navi's card.)
-        if shell.nav.focused().is_none_or(|k| !["navi", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit"].contains(&k.id.as_str()))
+        if shell.nav.focused().is_none_or(|k| !["navi", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit", "practice"].contains(&k.id.as_str()))
             && let Some(at) = self.navis.iter().position(|&n| n == chosen)
         {
             shell.nav.focus("navi", at as i32);

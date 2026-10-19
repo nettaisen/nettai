@@ -1389,9 +1389,11 @@ Each is settled unless the user changes it.
 86. **PRACTICE is the build editor's; the header's game still between screens** (2026-10-18). The user: "the
     practice button should probably be moved into the build editor", and "if the game picker doesn't change,
     don't animate it when switching screens".
-    - *PRACTICE* is in the editor's header, at its right before the game (on a phone, where the header has no
-      game, at its right end), a regular button as wide as its word, there when the editor was opened from Play
-      (opened from Practice, its Back is the way back). It goes straight into a practice battle on the build as
+    - *PRACTICE* ends the editor's tab bar, after the ruleset's select and EDIT and a divider (first in the header,
+      before the game: the user, "the practice button is in such a weird place", then chose the tab bar's end); on a
+      phone, whose tab bar has no room, it is the row's width under the Navi tab's ruleset and EDIT. A regular
+      button as wide as its word, there when the editor was opened from Play (opened from Practice, its Back is the
+      way back). It goes straight into a practice battle on the build as
       it is kept; Practice's EXIT and Back come back to the editor on it, whose Back goes to Play. A build that
       can't be played under its ruleset is refused in the editor, why in a dialog. Play's chosen build has EDIT
       and ⋯ alone in its header (on a phone EDIT takes PRACTICE's room).
