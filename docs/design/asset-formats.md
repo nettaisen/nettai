@@ -431,20 +431,36 @@ enhanced graphics draw their words and numbers in fonts by
 (`nettai_content::letters::read`); a frontend reads no picture. Values are
 palette indices and pixels of the picture: a number set's face box (x, y,
 width, height in its 8x16 cells) and paint (`fill` down the rows, `rim` or
-`shadow`); a word's letters (`fill`, the outline, the capitals' `top` and
-`cap`, the letters' `span` of columns); a banner's (by banner, as `banners`)
-with its bar's shape and colors (`bar`) and its letters' columns either side
-of its number (`one_digit`, `two_digits`); the emotion window's counts'
-digit boxes; the chip codes (`codes`, `slot_codes`: a glyph's face box and
-paint, by code); the window's labels' letters, their runs of columns and
-rows (as `labels`); the chip window's lettered pictures' lines (`ok`,
-`ok_picked`, `other`, each button's, each version's); the form list names'
-face (by look, as `form-names-V.png`). The pictures with their letters taken
-off are images under `letters/` (`letters/codes-blank.png`,
-`letters/window-blank.png`, `letters/pictures/ok-blank.png`,
-`letters/form-names-falzar-blank.png`, `letters/l-or-r-0.png`,
-`letters/count-blank.png`, a language's with its suffix), each in its
-source's palette, for viewing. A picture with no entry is drawn as it is.
+`shadow`); a word's letters (`fill`, the outline and whether it is
+`heavier` right and down, else even, the capitals' `top` and `cap`, the
+letters' `span` of columns); a banner's (by banner, as `banners`) with its
+bar's shape and colors (`bar`) and its letters' columns either side of its
+number (`one_digit`, `two_digits`); the gauge's word's cells and how it
+stands in them (`align`); the emotion window's counts' digit boxes; the chip
+codes (`codes`, `slot_codes`: a glyph's face box and paint, by code); the
+window's labels' letters and rows (as `labels`); the chip window's lettered
+pictures' lines (`ok`, `ok_picked`, `other`, each button's, each version's);
+the form list names' face (by look, as `form-names-V.png`) and the box all
+of them are centered in (`form_name_box`).
+
+**Lettered pictures** are kept once, in two parts: the image at the
+picture's own path is its **base**, the picture with every language's
+letters taken off, and `NAME-letters.png` beside it (`letters` in its
+entry) is a layer of what the picture has over the base: each pixel where
+the two differ, its palette index as the image's are, and elsewhere the
+entry after the palette's last ("none", magenta for viewing). Another
+language's picture of it is a layer of its own at its own path
+(`pictures/ok-ja.png`, in that picture's palette) over the same base (`base`
+in its entry: the base's file). Where a layer has pixels that aren't its
+picture's letters (a language whose picture differs from the base off its
+letters: the chip window's pictures are bit planes, their palettes picking
+the plane), `NAME-mask.png` (`letters_mask`) is white on its letters. The
+loader composes each picture (the layer over the base: exactly the ROM's,
+which the original mode draws) and the picture as the enhanced mode shows
+it (the base on its letters, its own pixels elsewhere). Kept so: the
+window's tiles (its labels), the codes and the slots' codes, FINAL TURN, the
+gauge (CUSTOM, L or R), the counts, the chip window's lettered pictures and
+the form list's names. A picture with no layer is drawn as it is.
 
 **Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
 use the same files, with optional fields where its game lays them out
