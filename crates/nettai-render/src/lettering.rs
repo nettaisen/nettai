@@ -25,7 +25,7 @@ pub fn role(l: &Letters, lettering: fn(u8, u8) -> Lettering) -> crate::vfont::Ro
 
 /// `l`'s paint in `palette`.
 pub fn ink(l: &Letters, palette: &Palette) -> Ink {
-    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]), heavier: l.heavier }
+    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]) }
 }
 
 /// `l`'s face's first color and its shadow's in `palette` (an item's
@@ -111,7 +111,7 @@ mod tests {
     /// rim's, the role's capitals.
     #[test]
     fn a_look_in_its_palette() {
-        let l = Letters { fill: vec![8, 8, 7, 1, 1, 8], rim: Some(6), heavier: false, shadow: None, top: 2, cap: 6, span: [8, 16] };
+        let l = Letters { fill: vec![8, 8, 7, 1, 1, 8], rim: Some(6), shadow: None, top: 2, cap: 6, span: [8, 16] };
         let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
         let look = Look::of(&l, &palette, Lettering::display);
         assert_eq!(look.ink.fill, [8, 8, 7, 1, 1, 8].map(|c| palette[c]).to_vec());
