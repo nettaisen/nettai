@@ -211,17 +211,13 @@ pub fn match_frame(seed: u32, datagram: &[u8]) -> Option<&[u8]> {
 /// nettai's version (the workspace's, which the app takes too).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
-/// The part of a nettai version two peers must share to play: its major and
-/// minor numbers ("0.7" of "0.7.3"). A patch release keeps netplay with the
-/// others of its minor version; a minor release breaks it (the user: "patch
-/// version changes don't break netplay compatibility but minor version
-/// changes do"). The first round's digest at loading still stops two
-/// programs that would set a match up differently.
+/// The part of a nettai version two peers must share to play
+/// ([`nettai_replay::line`]: its major and minor numbers). A patch release
+/// keeps netplay with the others of its minor version; a minor release
+/// breaks it. The first round's digest at loading still stops two programs
+/// that would set a match up differently.
 pub fn netplay_line(version: &str) -> &str {
-    match version.match_indices('.').nth(1) {
-        Some((i, _)) => &version[..i],
-        None => version,
-    }
+    nettai_replay::line(version)
 }
 
 /// Why a lobby ended without a match, as a host can tell its player: each

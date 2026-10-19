@@ -203,6 +203,9 @@ fn the_head_says_what_it_plays_on() {
     let engine = h.require("0.2.0", "exe6", h.content).unwrap_err();
     assert_eq!(engine, Mismatch::Engine { replay: "0.1.0".into(), here: "0.2.0".into() });
     assert_eq!(engine.to_string(), "the replay was made on nettai 0.1.0, this is 0.2.0");
+    // (A patch release plays it.)
+    assert_eq!(h.require("0.1.7", "exe6", h.content), Ok(()));
+    assert_eq!((line("0.7.3"), line("1.2.0-rc.1"), line("1.2")), ("0.7", "1.2", "1.2"));
 }
 
 /// A file's head reads by itself, whatever is wrong after it: a file cut

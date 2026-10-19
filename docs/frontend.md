@@ -2500,8 +2500,9 @@ tick's buttons, both players'. The simulation is a function of those alone, so
 playing them again makes the same set, round by round; nothing it makes is
 kept (who won, the score) but the ticks a round and the set ended on, and the
 battle's digest now and then, to tell a replay that reproduces from one that
-doesn't. A replay plays only on the engine and the content it was made with;
-it names them, and another build or pack refuses it with what differs.
+doesn't. A replay plays only on the content it was made with and an engine
+of the same minor version (`nettai_replay::line`: a patch release plays it);
+it names them, and another minor version or pack refuses it with what differs.
 
 **Recording.** nettai records the sets it plays to its
 replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
