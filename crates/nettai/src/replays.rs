@@ -305,7 +305,7 @@ fn guarded<T>(f: impl FnOnce() -> T) -> Option<T> {
 /// The replays in `dir`, newest first: each file read, but one that is as `known` has it.
 fn list(dir: &Path, known: &HashMap<PathBuf, Entry>) -> Vec<Entry> {
     let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
-    let mut out: Vec<Entry> = read.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == "ntrp")).filter_map(|path| entry(path, known)).collect();
+    let mut out: Vec<Entry> = read.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == nettai_frontend::replay::EXTENSION)).filter_map(|path| entry(path, known)).collect();
     out.sort_by(|a, b| b.when.cmp(&a.when).then_with(|| b.path.cmp(&a.path)));
     out
 }

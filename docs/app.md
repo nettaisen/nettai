@@ -1202,7 +1202,7 @@ Not built. What it would take:
 ## 8. Builds
 
 A **build** is a player's side of one game, named and kept: a TOML file of its own,
-`builds/<game>/<name>.toml` in the data folder (`builds/store.rs`). It names its game, the build and the ruleset it
+`builds/<game>/<name>.nettaibuild` in the data folder (`builds/store.rs`). It names its game, the build and the ruleset it
 is made for, then states the side under `[side]` as a match file states one (`nettai_match::file::side_toml`, read
 back by `resolve_side`):
 
@@ -1316,7 +1316,7 @@ back by `resolve_side`):
 **Rulesets** (docs/design/app-ui.md §2.59; `crates/nettai/src/rulesets/`). What may be played: the game's
 presets (its rules/rulesets: Masters class, the cartridges' own rules, first; Senior class, without patch cards;
 Unrestricted, the versions mixed) and the player's own, each a TOML file
-of its own, `rulesets/<game>/<name>.toml` in the data folder (`rulesets/store.rs`, as builds are kept):
+of its own, `rulesets/<game>/<name>.nettairuleset` in the data folder (`rulesets/store.rs`, as builds are kept):
 
     game = "exe6"
     name = "Tournament"
@@ -1330,6 +1330,12 @@ A category is named by the fact of a build it holds back (the folder's chips, th
 `patch_cards`, `crosses` or `souls`, EXE4's and EXE5's `auto_battle_places`: the auto battle data's chips, held
 back apart from the folder's), and its items by their names in the game; what a file doesn't name is
 allowed. Open setups is no ruleset's: it is the lobby's own setting.
+- **Export and import** (a ruleset's page: `rulesets::page`, EXPORT and IMPORT): EXPORT writes the ruleset shown,
+  any (a preset's under its name in the language shown, the host's a joiner views), as such a file where the
+  player says; IMPORT reads files chosen, one or more, each the player's own (named as it says, or for its file where
+  it names none, numbered past the presets' names and the player's own), and the last is shown in place of the one
+  that was, as DUPLICATE's copy is. A file that isn't a ruleset of the game (another game's, one naming what the
+  game hasn't, or no ruleset) is said once the others are in (`UserError::NotARuleset`), why in the log.
 - **The ruleset a build is made for** (§8, Builds; docs/design/app-ui.md §2.73, taking back §2.59's ruleset a
   player plays by) is what Play's list and Practice check each build under (`builds::shelf`: `Own`, `Shelved::made_for`;
   docs/design/versions.md §4), and the list's row names it (`BuildEntry.ruleset`, `ruleset-missing`: build.slint's
@@ -3052,7 +3058,7 @@ match did, or its stage's own where the player hasn't that game's pack. The file
 its own, started when it first asks something, and takes what the thread found at its next frame:
 
 - *The listing.* Each time the screen shows, the replays folder is listed again (a match just recorded is
-  there): every `.ntrp` file is read and what it says of itself kept (its head, its info, its length and its
+  there): every `.nettaireplay` file is read and what it says of itself kept (its head, its info, its length and its
   rounds' starts; not its ticks). A file as it was at the last listing (its size and time) isn't read again.
 - *The score.* A replay holds no result, so each replay of the selected game is played out there (the library's
   `play_out`: no picture, no sound), newest first, and its row gets its score as it is known. What it gave is

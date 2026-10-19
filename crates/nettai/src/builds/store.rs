@@ -1,5 +1,5 @@
 //! The player's builds on disk: each a TOML file of its own in the builds folder (`crate::paths::builds`), a
-//! folder per game (`builds/exe6/<name>.toml`). A build file names its game and the build, then states the
+//! folder per game (`builds/exe6/<name>.nettaibuild`). A build file names its game and the build, then states the
 //! side under `[side]` as a match file states one (`nettai_match::file`: the same names, written by the app or
 //! by hand):
 //!
@@ -51,6 +51,9 @@ use std::path::{Path, PathBuf};
 
 /// The most letters a build's name has.
 pub const NAME_LENGTH: usize = 32;
+
+/// A build file's extension (its text is TOML).
+pub const EXTENSION: &str = "nettaibuild";
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -193,7 +196,7 @@ fn list_in(dir: &Path, game: &str) -> Vec<Listed> {
     let mut out: Vec<Listed> = dir
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "toml"))
+        .filter(|p| p.extension().is_some_and(|e| e == EXTENSION))
         .filter_map(|path| {
             let text = std::fs::read_to_string(&path).ok()?;
             let head = header(&text).ok().filter(|(g, _)| g == game)?;
@@ -286,7 +289,7 @@ fn rename_ruleset_in(dir: &Path, content: &Content, game: &str, from: &Name, to:
 }
 
 /// A path for a new build of `game` named `name` that no file has: the name's letters and digits
-/// (`falzar-heat.toml`), numbered if it is taken.
+/// (`falzar-heat.nettaibuild`), numbered if it is taken.
 pub fn new_path(game: &str, name: &str) -> PathBuf {
     path_for(game, name, None)
 }
@@ -310,12 +313,12 @@ fn path_for(game: &str, name: &str, own: Option<&Path>) -> PathBuf {
         stem = "build".into();
     }
     let dir = folder(game);
-    let mut path = dir.join(format!("{stem}.toml"));
+    let mut path = dir.join(format!("{stem}.{EXTENSION}"));
     for n in 2.. {
         if !path.exists() || own == Some(path.as_path()) {
             break;
         }
-        path = dir.join(format!("{stem}-{n}.toml"));
+        path = dir.join(format!("{stem}-{n}.{EXTENSION}"));
     }
     path
 }
@@ -527,7 +530,7 @@ mod tests {
         let made = [("For the cup", Some(cup.clone())), ("For another", Some(other.clone())), ("For the first", None)];
         for (at, (name, ruleset)) in made.iter().enumerate() {
             let build = Build::new(&content, name, side.clone()).made_for(ruleset.clone());
-            write(&dir.path().join(format!("{at}.toml")), &content, "exe6", &build).unwrap();
+            write(&dir.path().join(format!("{at}.{EXTENSION}")), &content, "exe6", &build).unwrap();
         }
         assert!(rename_ruleset_in(dir.path(), &content, "exe6", &cup, &renamed).is_empty());
         let now: Vec<(String, Option<Name>)> = list_in(dir.path(), "exe6").iter().map(|l| (l.name.clone(), read(&content, "exe6", &l.text).unwrap().ruleset)).collect();
@@ -539,7 +542,7 @@ mod tests {
         assert_eq!(new_name("Falzar", &["falzar".into(), "Falzar 2".into()]), "Falzar 3");
         assert_eq!(new_name("Gregar", &["falzar".into()]), "Gregar");
         let path = new_path("exe6", "  Heat / Elec!! ");
-        assert_eq!(path.file_name().and_then(|n| n.to_str()), Some("heat-elec.toml"));
+        assert_eq!(path.file_name().and_then(|n| n.to_str()), Some("heat-elec.nettaibuild"));
         assert_eq!(clean_name("  A\tname\n"), "A name ");
         assert_eq!(clean_name(&"x".repeat(80)).chars().count(), NAME_LENGTH);
     }

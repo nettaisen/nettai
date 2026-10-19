@@ -793,7 +793,7 @@ Each is settled unless the user changes it.
       goes on meanwhile (the lobby's link with it; §2.74); its Back (‹ LOBBY, ‹ EDITOR) or Esc comes back to the
       control it was opened from. Header: the ruleset's name (a field that renames it, for the player's own: §2.74),
       PRESET as its tag for a preset, and the game, locked. Body, in its units: a row of (until §2.74, the Name
-      field, 360, disabled for a preset and for a ruleset viewed, then) Versions (ONE PER BUILD, MIXED) and, at the right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
+      field, 360, disabled for a preset and for a ruleset viewed, then) Versions (ONE PER BUILD, MIXED) and, at the right, (since §2.84 IMPORT and EXPORT,) DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
       left (an open list 300 wide, rows 52: the category's name, and how much it allows, "All allowed", "None
       allowed" or "12 of 380 allowed"), and the chosen one's items at the right: a head of ALLOW ALL, ALLOW
       NONE, for a category with a version's own items the quick choices (a segmented choice of each version
@@ -1365,6 +1365,20 @@ Each is settled unless the user changes it.
       its next frame. *Controls* changes the bindings as the Settings screen's do (Enter on a box, then the key or
       the button; RESET CONTROLS), the match going on under it by them as they change. No connection panel: the
       connection's corner says it.
+
+84. **Rulesets exported and imported; nettai's files by their own extensions; the window called when the other
+    player comes** (2026-10-18). The user: "add support for ruleset export/import", "can you use more descriptive
+    file extensions? like .nettaireplay and .nettairuleset", and "when someone joins a match, you should set the
+    taskbar/dock icon to immediate attention".
+    - *A ruleset's page has IMPORT and EXPORT* before DUPLICATE and DELETE (on a phone a row of their own under
+      them). EXPORT writes the ruleset shown, whichever it is (a preset under its name in the language shown, the
+      host's that a joiner views), where the player says in the system's dialog; IMPORT reads the files chosen there,
+      each the player's own, and shows the last in place of the one shown, as DUPLICATE's copy is. A file that isn't
+      a ruleset of the game is said in a dialog ("Not a {game} ruleset").
+    - *Extensions:* a replay is `.nettaireplay` (was `.ntrp`), a ruleset `.nettairuleset` and a build
+      `.nettaibuild` (both were `.toml`; their text is still TOML), kept and exported alike.
+    - *The other player's coming* to a lobby the player hosts asks the system for the window's attention at once
+      (the taskbar's button flashes, the dock's icon bounces) until it is brought forward.
 
 ## 3. Chosen where the user gave no answer
 

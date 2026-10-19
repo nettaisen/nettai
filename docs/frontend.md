@@ -2500,7 +2500,7 @@ it names them, and another build or pack refuses it with what differs.
 
 **Recording.** nettai records the sets it plays to its
 replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
---record set.ntrp` a set played headless; in the library,
+--record set.nettaireplay` a set played headless; in the library,
 `Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
 tick. The `info` says when, which side recorded, the players' names, the
 kind of match (`MatchKind::Offline` or `Online`) and whether its setups were
@@ -2533,7 +2533,7 @@ info says so (`Info::open_setups` false, which a host reads from the replay or
 from `Viewer::info()`), and whoever shows the replay hides both setups too
 (docs/design/app-ui.md §3): the file still holds them, as it must.
 
-**Playing back.** `nettai-tool --replay set.ntrp` plays one out and says
+**Playing back.** `nettai-tool --replay set.nettaireplay` plays one out and says
 whether it reproduces, and with `--headless F` renders the set's ticks F
 (`--side left|right`: the console shown; default the recorder's). In the
 library there are three ways, by what is wanted:
