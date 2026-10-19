@@ -266,17 +266,18 @@ fn arrive(add: &mut dyn FnMut(u64, Step)) {
 /// A replay of the queue whose file goes, in the pass's folder while the queue's steps run.
 const QUEUED: &str = "replays/queued.nettaireplay";
 
-/// The play queue's steps (docs/design/app-ui.md §2.91; `NETTAI_TOUR_ONLY=queue` takes them alone): a replay's menu
-/// (on a phone its sheet, with ADD TO QUEUE), five replays added (one PLAY NEXT, one whose file then goes), the
-/// Queue tab with an entry chosen and with the missing one chosen, on a phone an entry's sheet, CLEAR's question,
-/// and the viewer playing the queue, then its next (the missing entry passed by).
+/// The play queue's steps (docs/design/app-ui.md §2.91, §2.92; `NETTAI_TOUR_ONLY=queue` takes them alone): WATCH's
+/// arrow open (on a phone from the replay's sheet), five replays added (one at the start of the queue, one whose
+/// file then goes), the Queue tab with an entry chosen and with the missing one chosen, on a phone an entry's sheet,
+/// CLEAR's question, and the viewer playing the queue, with the popup of what is up next closed and open, then its
+/// next (the replay watched and the missing entry out of the queue), and the Queue tab after.
 pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
     let phone = size == "phone";
     let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str| self::shot(add, lang, size, name, Pair::None, Also::Nothing);
     let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
     let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
-    // (A choice of the replay's menu, by its place: 1 ADD TO QUEUE, 2 PLAY NEXT.)
-    let menu = |choice: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "more", 0, choice))) };
+    // (A choice of WATCH's arrow's menu: 0 ADD TO QUEUE, 1 ADD TO START OF QUEUE.)
+    let menu = |choice: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "watch-more", 0, choice))) };
     arrive(add);
     // The queue, empty from a pass before; and a copy of the newest replay, which sorts first.
     add(
@@ -303,18 +304,21 @@ pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, si
         add(SETTLE, activate("list", 0));
         add(SETTLE, until(|view| view.get_still()));
         shot(add, "queue-replay-sheet");
+        add(SETTLE, activate("sheet.watch-more", 0));
+        shot(add, "queue-watch-split");
+        add(SETTLE, act(Action::Back));
         add(SETTLE, act(Action::Back));
     } else {
-        add(SETTLE, activate("more", 0));
-        shot(add, "queue-replay-menu");
+        add(SETTLE, activate("watch-more", 0));
+        shot(add, "queue-watch-split");
         add(SETTLE, act(Action::Back));
     }
     for row in 0..4 {
         add(SETTLE, focus("list", row));
-        add(SETTLE, menu(1));
+        add(SETTLE, menu(0));
     }
     add(SETTLE, focus("list", 5));
-    add(SETTLE, menu(2));
+    add(SETTLE, menu(1));
     // (The copy goes: its entry is missing.)
     add(
         SETTLE,
@@ -342,13 +346,19 @@ pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, si
     add(SETTLE, activate("clear", 0));
     shot(add, "queue-clear");
     add(SETTLE, act(Action::Back));
-    // The viewer playing the queue from its start, then its next (past the missing entry).
+    // The viewer playing the queue from its start (four up next), the popup of them open, then its next (the replay
+    // watched and the missing entry out of the queue: two up next).
     add(SETTLE, activate("watch-queue", 0));
-    add(SETTLE, until(|view| view.get_watching()));
-    add(SETTLE * 2, focus("next-replay", 0));
+    add(SETTLE, until(|view| view.get_watching() && view.get_up_next().row_count() == 4));
+    add(SETTLE * 2, focus("up-next", 0));
     shot(add, "viewer-queue");
+    add(SETTLE, activate("up-next", 0));
+    add(SETTLE, until(|view| view.get_up_next_open()));
+    shot(add, "viewer-queue-popup");
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, until(|view| !view.get_up_next_open()));
     add(SETTLE, activate("next-replay", 0));
-    add(SETTLE, until(|view| view.get_watching() && view.get_queue_at() == 2));
+    add(SETTLE, until(|view| view.get_watching() && view.get_up_next().row_count() == 2));
     add(SETTLE * 2, focus("seek", 0));
     shot(add, "viewer-queue-next");
     add(SETTLE, act(Action::Back));
