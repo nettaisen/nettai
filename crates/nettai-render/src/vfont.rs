@@ -18,7 +18,7 @@
 //! License 1.1), whose square capitals, narrowed, are near the game's; it
 //! has kana and kanji too. Its strings take the original's paint
 //! ([`Ink`](crate::textlayer::Ink)): a fill that changes down the capitals,
-//! a rim, and a banner's bar under them ([`Bar`](crate::textlayer::Bar)).
+//! a rim, and a banner's bar under them (its shapes: [`Filled`](crate::textlayer::Filled)).
 //! docs/design/text-rendering.md §12.
 
 use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
@@ -1064,7 +1064,12 @@ impl TextRenderer {
                 ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
                 ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
             );
-            let bar = item.bar.as_ref().map(|bar| (bar, bar_area(bar, (k, mid + fine_y), (fine_x, fine_y), place, bounds)));
+            let to_output = |p: &[f32; 2]| [place.x as f32 + (p[0] + fine_x) * s, place.y as f32 + (mid + fine_y + (p[1] + fine_y - mid - fine_y) * k) * s];
+            let bar = item.bar.as_ref().and_then(|bar| {
+                let out: Vec<(Vec<[f32; 2]>, u16)> = bar.iter().map(|f| (f.points.iter().map(to_output).collect(), f.color)).collect();
+                let area = shapes_area(&out, bounds)?;
+                Some((out, area))
+            });
             let all = match bar {
                 Some((_, b)) => (area.0.min(b.0), area.1.min(b.1), area.2.max(b.2), area.3.max(b.3)),
                 None => area,
@@ -1073,8 +1078,8 @@ impl TextRenderer {
                 return None;
             }
             let mut out = Painted::new(all);
-            if let Some((bar, b)) = bar {
-                draw_bar(bar, b, (k, mid + fine_y), (fine_x, fine_y), place, &mut out, color);
+            if let Some((bar, _)) = &bar {
+                draw_shapes(bar, &mut out, color);
             }
             if area.0 >= area.2 || area.1 >= area.3 {
                 return Some(out);
@@ -1416,64 +1421,32 @@ impl Painted {
     }
 }
 
-/// The output pixels a bar covers ([`draw_bar`]), within `bounds`.
-fn bar_area(bar: &crate::textlayer::Bar, (k, mid): (f32, f32), (fine_x, fine_y): (f32, f32), place: &Placement, bounds: (i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
-    let s = place.scale;
-    let squash = |y: f32| mid + (y - mid) * k;
-    let (top, bottom) = (squash(bar.top + fine_y), squash(bar.bottom + fine_y));
-    let left = bar.left_at(bar.bottom).min(bar.left_at(bar.top)) + fine_x;
-    let right = bar.right_at(bar.top).max(bar.right_at(bar.bottom)) + fine_x;
-    (
-        ((place.x as f32 + left * s).floor() as i32).max(bounds.0),
-        ((place.y as f32 + top * s).floor() as i32).max(bounds.1),
-        ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
-        ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
-    )
+/// The output pixels shapes cover (their corners in output pixels), within
+/// `bounds`; none if none.
+fn shapes_area(shapes: &[(Vec<[f32; 2]>, u16)], bounds: (i32, i32, i32, i32)) -> Option<(i32, i32, i32, i32)> {
+    let points = shapes.iter().flat_map(|s| s.0.iter());
+    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for p in points {
+        (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+    }
+    let area = ((x0.floor() as i32).max(bounds.0), (y0.floor() as i32).max(bounds.1), (x1.ceil() as i32).min(bounds.2), (y1.ceil() as i32).min(bounds.3));
+    (area.0 < area.2 && area.1 < area.3).then_some(area)
 }
 
-/// A banner's bar ([`Bar`](crate::textlayer::Bar)) at the output's
-/// resolution, over `area` ([`bar_area`]): each output pixel's coverage and
-/// color from 4x4 points of it, read through the item's squash (`k` about
-/// `mid`).
-fn draw_bar(
-    bar: &crate::textlayer::Bar,
-    (x0, y0, x1, y1): (i32, i32, i32, i32),
-    (k, mid): (f32, f32),
-    (fine_x, fine_y): (f32, f32),
-    place: &Placement,
-    target: &mut Painted,
-    color: &impl Fn(u16) -> u32,
-) {
-    const N: usize = 4;
-    let s = place.scale;
-    let colors = bar.colors;
-    let rgbs: Vec<(u16, u32)> = [colors.top, colors.body, colors.bottom, colors.left, colors.right].iter().map(|&c| (c, color(c))).collect();
-    let rgb = |c: u16| rgbs.iter().find(|r| r.0 == c).map_or(0, |r| r.1);
-    for y in y0..y1 {
-        // The points' rows in the bar (unsquashed).
-        let rows: [f32; N] = std::array::from_fn(|j| {
-            let fy = (y as f32 + (j as f32 + 0.5) / N as f32 - place.y as f32) / s;
-            mid + (fy - mid) / k - fine_y
-        });
-        for x in x0..x1 {
-            let (mut sum, mut n) = ([0u32; 3], 0u32);
-            for &ty in &rows {
-                for i in 0..N {
-                    let fx = (x as f32 + (i as f32 + 0.5) / N as f32 - place.x as f32) / s - fine_x;
-                    if let Some(c) = bar.color_at(fx, ty) {
-                        let c = rgb(c);
-                        sum[0] += (c >> 16) & 0xFF;
-                        sum[1] += (c >> 8) & 0xFF;
-                        sum[2] += c & 0xFF;
-                        n += 1;
-                    }
-                }
-            }
-            if n == 0 {
-                continue;
-            }
-            let avg = ((sum[0] + n / 2) / n) << 16 | ((sum[1] + n / 2) / n) << 8 | (sum[2] + n / 2) / n;
-            target.blend(x, y, avg, ((n * 255 + (N * N) as u32 / 2) / (N * N) as u32) as u8);
+/// Fill shapes (their corners in output pixels) one over another in
+/// `target`: each polygon's analytic coverage (zeno's), its color.
+fn draw_shapes(shapes: &[(Vec<[f32; 2]>, u16)], target: &mut Painted, color: &impl Fn(u16) -> u32) {
+    use swash::zeno::{Command, Mask as Coverage};
+    for (points, c) in shapes {
+        let Some(first) = points.first() else { continue };
+        let mut path = vec![Command::MoveTo(Vector::new(first[0], first[1]))];
+        path.extend(points[1..].iter().map(|p| Command::LineTo(Vector::new(p[0], p[1]))));
+        path.push(Command::Close);
+        let (cover, at) = Coverage::new(&path).render();
+        let rgb = color(*c);
+        for (i, &a) in cover.iter().enumerate().filter(|(_, a)| **a > 0) {
+            let (x, y) = (at.left + (i as u32 % at.width) as i32, at.top + (i as u32 / at.width) as i32);
+            target.blend(x, y, rgb, a);
         }
     }
 }

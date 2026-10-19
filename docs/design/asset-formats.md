@@ -434,7 +434,9 @@ width, height in its 8x16 cells) and paint (`fill` down the rows, `rim` or
 `shadow`); a word's letters (`fill`, the outline and whether it is
 `heavier` right and down, else even, the capitals' `top` and `cap`, the
 letters' `span` of columns); a banner's (by banner, as `banners`) with its
-bar's shape and colors (`bar`) and its letters' columns either side of its
+bar as filled shapes (`bar`: polygons, corners in eighths of a frame pixel,
+each a palette index, filled in order: the body, the right end, the bottom
+line, the top line, the left end) and its letters' columns either side of its
 number (`one_digit`, `two_digits`); the gauge's word's cells and how it
 stands in them (`align`); the emotion window's counts' digit boxes; the chip
 codes (`codes`, `slot_codes`: a glyph's face box and paint, by code); the

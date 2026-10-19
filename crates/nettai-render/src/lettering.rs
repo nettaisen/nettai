@@ -12,10 +12,10 @@
 //! pictures look otherwise has another look in its pack. The words
 //! themselves are the content's strings (`strings::DisplayText::lettering`).
 
-use crate::textlayer::{Bar, BarColors, Ink};
+use crate::textlayer::{Filled, Ink};
 use crate::vfont::Lettering;
 use nettai_assets::Palette;
-use nettai_assets::letters::{BarShape, Letters};
+use nettai_assets::letters::{Letters, Shape};
 
 /// The role words in `l`'s look are drawn in: the lettering font with its
 /// capitals, at `lettering`'s weight and width.
@@ -69,42 +69,25 @@ impl Look {
     }
 }
 
-/// A banner's bar ([`Bar`]) from its shape, in `palette`: its rows, its
-/// ends' slant, its ends (each row's first and last pixel of the bar's
-/// colors), its colors.
-pub fn bar(b: &BarShape, palette: &Palette) -> Bar {
-    let color = |c: u8| palette[c as usize & 15];
-    let slant = b.slant as f32;
-    let [top, body, bottom, left, right] = b.colors;
-    Bar {
-        top: b.rows[0] as f32,
-        bottom: b.rows[1] as f32,
-        left: b.last_row[0] as f32 - slant / 2.0,
-        left_most: b.left_most as f32,
-        right: b.first_row[1] as f32 + slant / 2.0,
-        right_least: b.right_least as f32,
-        slant,
-        line: 1.0,
-        colors: BarColors { top: color(top), body: color(body), bottom: color(bottom), left: color(left), right: color(right) },
-    }
+/// A picture's shapes (a banner's bar: the pack's) in `palette`, its top
+/// left at (`x`, `y`) in frame pixels.
+pub fn shapes(shapes: &[Shape], palette: &Palette, (x, y): (f32, f32)) -> Vec<Filled> {
+    shapes
+        .iter()
+        .map(|s| Filled { points: s.points.iter().map(|p| [x + p[0] as f32 / Shape::UNIT, y + p[1] as f32 / Shape::UNIT]).collect(), color: palette[s.color as usize & 15] })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// A banner's bar (a light top line, a blue body, a navy bottom line,
-    /// ends slanting a pixel a row) as the text layer draws it: its left
-    /// end slants to the picture's first column at the bottom, and stands
-    /// upright from column 3 at the top.
+    /// A picture's shapes in its palette, moved to its place.
     #[test]
-    fn a_bars_shape_in_its_palette() {
-        let shape = BarShape { rows: [3, 8], first_row: [3, 27], last_row: [0, 26], left_most: 3, right_least: 26, slant: 1, colors: [3, 4, 5, 3, 5] };
+    fn shapes_in_their_palette_and_place() {
         let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
-        let bar = bar(&shape, &palette);
-        assert_eq!((bar.top, bar.bottom, bar.slant), (3.0, 8.0, 1.0));
-        assert_eq!(bar.colors, BarColors { top: palette[3], body: palette[4], bottom: palette[5], left: palette[3], right: palette[5] });
-        assert_eq!((bar.left_at(7.5), bar.left_at(3.5)), (0.0, 3.0));
+        let filled = shapes(&[Shape { points: vec![[0, 0], [16, 0], [16, 8]], color: 4 }], &palette, (10.0, 20.0));
+        assert_eq!(filled, vec![Filled { points: vec![[10.0, 20.0], [12.0, 20.0], [12.0, 21.0]], color: palette[4] }]);
     }
 
     /// Letters' look in a palette: the face's colors down the rows, the
