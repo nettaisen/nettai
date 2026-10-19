@@ -1424,36 +1424,36 @@ Each is settled unless the user changes it.
 90. **The replay viewer: the picture whole, its controls over it; the play queue and Autoplay next** (2026-10-19).
     The user: "can you make the replay viewer view the replay to take up the full area? and then the hud is shown on
     hover. also add playlist support and a toggle to autoplay next video on play list (defaults to on)". (The
-    playlist became the play queue, made ahead of time on the Replays screen: §2.91.)
+    playlist became the play queue, made ahead of time on the Replays screen: §2.91; its panel in the viewer became a
+    button and a small popup, and a replay watched leaves the queue: §2.92.)
     - *The picture fills the window,* as a match's does: the largest whole multiple of the frame that fits it (Picture
       size still its most), the backdrop around it. Nothing is beside it or under it.
-    - *Its controls are over it,* the header, the transport, the queue (while it plays) and the footer, fading
-      (`brisk`) out once nothing has been done for 2.5 seconds while the replay plays, and back in at anything done:
-      a key, a pad's button, the pointer moved, a click. They stay while it doesn't play (paused, at its end, a seek
-      waiting), while a setting is taken (the bar, Autoplay next), while the builds or the export are open, and while
-      the pointer rests on the transport or the queue; a replay just begun shows them as an input does. The cursor
-      goes and comes back with them, where it was. Hidden, a press still does what it does: the first key or button
-      is the replay's, not a wake-up only. A click on the picture plays or pauses. A phone keeps its picture over its
-      transport, all of it shown, and the queue under the transport (its rows where the window has room for them; an
-      upright phone of 800 has room for its heading, previous and next, and Autoplay next alone).
-    - *The queue in the viewer:* WATCH watches the one replay, and the viewer shows no queue. Watched from the
-      queue (§2.91), the viewer shows it over the picture's right side, 400 wide above the transport: QUEUE and
-      "Replay 2 of 7", the previous and the next replay that play, Autoplay next, and its entries as the Queue tab's
-      rows (the day alone), the one watched marked, a missing one saying so; Enter or a click on a row watches it (a
-      missing one is refused). N is the next, Shift+N the previous; both pass missing entries by. Each begins behind
-      the two cards, as the first did, at the last one's speed, the input display and the other console's picture as
-      they were; Back goes to the list with the entry last watched chosen in the Queue tab.
-    - *Autoplay next,* OFF | ON in the queue, on at first and remembered (the settings' `replays.autoplay`): a
-      replay played to its end starts the next that plays two seconds after (not while the builds or the export are
-      open); off, or at the queue's end, the viewer stays at the end with its controls, as before.
+    - *Its controls are over it,* the header, the transport and the footer, fading (`brisk`) out once nothing has
+      been done for 2.5 seconds while the replay plays, and back in at anything done: a key, a pad's button, the
+      pointer moved, a click. They stay while it doesn't play (paused, at its end, a seek waiting), while a setting is
+      taken (the bar), while the builds, the export or the queue's popup (§2.92) are open, and while the pointer rests
+      on the transport; a replay just begun shows them as an input does. The cursor goes and comes back with them,
+      where it was. Hidden, a press still does what it does: the first key or button is the replay's, not a wake-up
+      only. A click on the picture plays or pauses. A phone keeps its picture over its transport, all of it shown,
+      the queue's controls a row of the transport's own (§2.92).
+    - *The queue in the viewer:* WATCH watches the one replay, and the viewer has nothing of a queue. Watched from
+      the queue (§2.91), the transport has the queue's next, its button with the count up next, which opens a small
+      popup of the entries up next, and Autoplay next (§2.92; the 400-wide panel this first had, with "Replay 2 of 7"
+      and a previous, is gone). N is the next. Each replay begins behind the two cards, as the first did, at the last
+      one's speed, the input display and the other console's picture as they were; Back goes to the list with the
+      queue's head chosen in the Queue tab.
+    - *Autoplay next,* the transport's switch while the queue plays, on at first and remembered (the settings'
+      `replays.autoplay`): a replay played to its end starts the next that plays two seconds after (not while the
+      builds, the export or the queue's popup are open); off, or at the queue's end, the viewer stays at the end
+      with its controls, as before.
     - *Loose ends,* the user: "fix the loose ends". The pointer hides with the controls, over the picture and
-      around it. The input display and the other console's picture are under the controls: the transport and the
-      queue are drawn over them while shown, not under the inputs.
+      around it. The input display and the other console's picture are under the controls: the transport is drawn
+      over them while shown, not under the inputs.
 91. **The play queue, made ahead of time on the Replays screen** (2026-10-19). The user: "the playlist should not
     play all the replays in order, it should be created ahead of time in the replays view"; then "playlists should
     be ephemeral, i don't want them to save them"; then "it should be a play queue instead".
     - *One queue, named so:* the play queue (QUEUE; Japanese 再生キュー), the selected game's, in the UI text, the
-      code (`Queue`, `ReplaysView.queue`, `QueuePanel`) and these docs. Not named playlists, not several: one list
+      code (`Queue`, `ReplaysView.queue`, `UpNextPopup`) and these docs. Not named playlists, not several: one list
       to line replays up in is what was asked. Each game has its own (the replays list is a game's too).
     - *Nothing is saved:* the queue lives in the Replays screen's state while the app runs and is gone when it quits.
       No file, no settings entry. (Autoplay next is a setting of the viewer's, and stays remembered.)
@@ -1464,15 +1464,50 @@ Each is settled unless the user changes it.
       list, the entry chosen with its still and facts and WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart, REMOVE. Enter
       on an entry watches the queue from it (a click chooses it, as in the list); Delete removes it (its file stays);
       the footer counts the entries. On a phone a tap on an entry opens its sheet with those four.
-    - *Adding:* a replay's menu, ⋯ after SHOW FILE or a right click on its row (Play's builds' kind: `pick_menu`):
-      WATCH, ADD TO QUEUE (at the end), PLAY NEXT (after the entry watched last, at the start before any was),
-      EXPORT VIDEO, SHOW FILE and, apart, DELETE; one that doesn't play has SHOW FILE and DELETE alone. Its
-      opponent's name flies to the QUEUE tab. A replay may be in the queue more than once. A phone's sheet has ADD TO
-      QUEUE under WATCH. An entry's menu (a right click on it) has WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart,
-      REMOVE.
+    - *Adding:* WATCH's arrow (§2.92: ADD TO QUEUE at the end, ADD TO START OF QUEUE at the start, what plays next),
+      or a replay's menu, a right click on its row (Play's builds' kind: `pick_menu`): WATCH, ADD TO QUEUE, ADD TO
+      START OF QUEUE, EXPORT VIDEO, SHOW FILE and, apart, DELETE; one that doesn't play has SHOW FILE and DELETE
+      alone. Its opponent's name flies to the QUEUE tab. A replay may be in the queue more than once. A phone's sheet
+      has the same arrow by WATCH. An entry's menu (a right click on it) has WATCH FROM HERE, MOVE UP, MOVE DOWN and,
+      apart, REMOVE. (This first had ⋯ after SHOW FILE and PLAY NEXT, after the entry watched last: §2.92.)
     - *Missing entries:* an entry whose file is gone (deleted since) is kept and says "Missing: <file>" in its row,
       in the error red; one that no longer plays says why, as the list does. Watching passes both by (from the start,
-      from an entry, next, previous, Autoplay next); nothing takes them out but REMOVE and CLEAR.
+      from an entry, the next, Autoplay next), and since §2.92 a missing entry passed by leaves the queue, as a replay
+      played past does; until watching comes to it, only REMOVE and CLEAR take it out.
+
+92. **The play queue consumed, a popup in the viewer, a split WATCH** (2026-10-19). The user: "the replay queue
+    should remove replays when they're done playing. also the replay queue ui in the player is huge, it should maybe
+    be like a dismissable popup thing? also the ... menu in the replay viewer just restates it, maybe an arrow button
+    on the right of watch that shows more watch options like add to queue and add to start of queue".
+    - *The queue is what is still to watch.* While it plays, its first entry (its head) is the replay watched, and it
+      leaves the queue once it is done: played to its end (at once, whether or not Autoplay next goes on), or skipped
+      by the next. WATCH FROM HERE (and a row of the popup) passes the entries before it, which leave too: a skip
+      over them. Back part way through a replay leaves it at the head, chosen in the Queue tab, to be watched first
+      the next time; Back after its end finds it gone.
+    - *No previous.* A replay played leaves the queue, so nothing in it is before the one watched: PREVIOUS and
+      Shift+N are gone. (The list is where a replay is watched again.)
+    - *Missing entries* are still passed by, and one passed by leaves the queue, as a replay played past does (it
+      was gone or couldn't play; keeping it would make it come up again at each watch).
+    - *The viewer's queue is small.* The 400-wide panel is gone. While the queue plays, the transport's row has,
+      after the clip, three square buttons: the next (two triangles and a bar; N), the queue's button (lines and a
+      triangle, the count up next in a cyan badge over its corner), and Autoplay next, a switch's sign lit while on.
+      On a phone they are a row of the transport's own, Autoplay next at its right with its words. To make room, the
+      round shown ("Round 2 of 3") is the footer's status in place of the rounds' count.
+    - *The popup* opens from the queue's button, anchored to it: 360 wide, its right edge at the button's, above it
+      (under it where there is no room; on a phone across the window). UP NEXT and how many, then the entries after
+      the one watched as the Queue tab's rows (the day alone, a missing one in red), five at once and the rest
+      scrolled; with none, "Nothing else is in the queue." The focus goes into it, on its first row, as into a menu:
+      Esc or B closes it, as do a click outside it and the button again. Enter or a click on a row watches that one,
+      the ones before it passed. While it is open the viewer's controls stay and Autoplay next waits.
+    - *A split WATCH.* The selected replay's ⋯, which restated the panel's buttons, is gone. WATCH has an amber
+      arrow at its right, 2 from it, whose menu opens under the two from WATCH's left edge: ADD TO QUEUE (at the
+      end) and ADD TO START OF QUEUE (in place of PLAY NEXT: the start is what plays next, now that played replays
+      leave). A phone's sheet has the same arrow by WATCH, its menu the picker's sheet. A right click on a row keeps
+      its menu (WATCH, ADD TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO, SHOW FILE, DELETE): the list's rows have no
+      buttons of their own, and a right click is where a desktop looks for them. The Queue tab's entries keep their
+      actions.
+    - *Japanese:* ADD TO START OF QUEUE 再生キューの先頭に追加, UP NEXT 次に再生, "Nothing else is in the queue."
+      再生キューに次のリプレイはありません。
 
 ## 3. Chosen where the user gave no answer
 
@@ -2004,19 +2039,20 @@ DUPLICATE and DELETE.
 ### Replays
 - **The tabs:** REPLAYS and QUEUE (§2.91) over the list.
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the
-  date, the opponent, the score, the length; beside it the selected replay with WATCH, EXPORT VIDEO, SHOW FILE, its
-  menu ⋯ (WATCH, ADD TO QUEUE, PLAY NEXT, EXPORT VIDEO, SHOW FILE, DELETE; a right click on a row opens it too) and,
-  apart, DELETE. No build names (§2.16). A click chooses a replay and doesn't start it (the user: "clicking on a replay
+  date, the opponent, the score, the length; beside it the selected replay with WATCH and its arrow (ADD TO QUEUE,
+  ADD TO START OF QUEUE: §2.92), EXPORT VIDEO, SHOW FILE and, apart, DELETE; a right click on a row opens its menu
+  (WATCH, ADD TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO, SHOW FILE, DELETE). No build names (§2.16). A click chooses a replay and doesn't start it (the user: "clicking on a replay
   shouldn't automatically start it"); WATCH, Enter or the pad's A watches that one replay.
 - **The queue:** the play queue, the selected game's, kept while the app runs and never saved (§2.91): WATCH (from
   its start) and CLEAR over its entries, the list's rows (a missing one says so); beside them the entry chosen with
-  WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart, REMOVE. Missing entries are passed by.
+  WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart, REMOVE. It is what is still to watch: a replay leaves it once
+  played to its end or skipped, and missing entries are passed by and leave (§2.92).
 - **The viewer:** the picture fills the window (§2.90), and over it, shown while wanted and fading after 2.5 seconds
-  without input while it plays: the header, the footer, while the queue plays the queue at the right (QUEUE,
-  "Replay 2 of 7", the previous and next replay, Autoplay next on at first, its rows with the one watched marked; N
-  and Shift+N), and at its foot a transport: the time, a bar to click or drag with a mark where
-  each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
-  round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
+  without input while it plays: the header, the footer (the round shown, "Round 2 of 3"), and at its foot a
+  transport: the time, a bar to click or drag with a mark where each round begins, the length; then to the round's
+  start, a frame back, play or pause, a frame on, the next round; while the queue plays, the next (N), the queue's
+  button with the count up next (its popup of them: §2.92) and Autoplay next (on at first); Speed (½, 1, 2, 4);
+  View (P1, P2); EXPORT VIDEO. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
   period step a frame, the brackets go a round. After BUILDS, two toggles, each off at first (the user: "add
   support for input view and picture in picture in replay viewer"): the input display (I), Practice's, both
   players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom
