@@ -1263,8 +1263,9 @@ pub struct LayeredPicture {
     pub base: Tiles,
     pub base_file: Option<String>,
     pub letters: Vec<bool>,
-    /// Its pixels off its letters that only the original mode shows (where
-    /// its own panel departs from the shared one: `tiles::Layered`).
+    /// Its pixels off its words that only the original mode shows, kept
+    /// with its letters (where its own panel departs from the shared
+    /// one).
     pub hidden: Vec<bool>,
 }
 
@@ -1890,8 +1891,8 @@ pub fn hud_layered(h: &Hud) -> (BTreeMap<String, LayeredPicture>, Vec<(String, u
 /// A picture as the enhanced mode shows it, kept as `l` says
 /// ([`LayeredPicture`]): its base.
 pub fn shown(tiles: &Tiles, l: &LayeredPicture) -> Tiles {
-    // (Its base: every pixel where the picture differs from it is its
-    // letters' or its own panel's, `tiles::Layered`.)
+    // (Its base: every pixel where the picture differs from it is with its
+    // letters, `tiles::Layered`.)
     if l.base.pixels.len() != tiles.pixels.len() {
         return tiles.clone();
     }

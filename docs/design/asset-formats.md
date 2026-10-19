@@ -449,25 +449,19 @@ of them are centered in (`form_name_box`).
 
 **Lettered pictures** are kept once: the image at the picture's own path
 is its **base**, the picture with every language's letters taken off, and
-beside it are layers of what the picture has over the base, each pixel its
-palette index as the image's are where the picture differs from the base in
-that way, and elsewhere the entry after the palette's last ("none", magenta
-for viewing). Each layer holds one kind of pixel only (the user: "it doesn't
-seem like it's a pure text extraction"):
-
-- `NAME-letters.png` (`letters`): its words alone, letters and their ink.
-- `NAME-panel.png` (`panel`): where its own panel departs from the shared
-  one, which only the original mode shows (a body a column wider, a
-  letter's outline drawn in the panel's colors, EXE4's taller Japanese
-  panel).
-
-Another picture of the same base (another language's, another panel
-picture's) has its letters at its own path (`pictures/ok-ja.png`, in that
-picture's palette; `base` in its entry: the base's file) and its own
-`NAME-panel.png` beside. A layer with no pixels isn't written. The loader
-composes each picture as the base, its panel and its letters (what the
-original mode draws) and the picture as the enhanced mode shows it (the
-base).
+`NAME-letters.png` beside it (`letters`) is a layer of its letters: each
+pixel where the picture differs from the base, its palette index as the
+image's are, and elsewhere the entry after the palette's last ("none",
+magenta for viewing). The letters are its words and their ink (the user:
+"it doesn't seem like it's a pure text extraction"), with the few pixels
+where a panel picture's own panel departs from the shared one (a body a
+column wider, a letter's outline drawn in the panel's colors, EXE4's taller
+Japanese panel; the user: "fold them into the letters layer"). Another
+picture of the same base (another language's, another panel picture's) has
+its letters at its own path (`pictures/ok-ja.png`, in that picture's
+palette; `base` in its entry: the base's file). The loader composes each
+picture as its letters over the base (what the original mode draws) and
+the picture as the enhanced mode shows it (the base).
 
 The chip window's pictures are bit planes, their palettes picking the
 plane, so a panel picture's tiles hold the other pictures' words in index
