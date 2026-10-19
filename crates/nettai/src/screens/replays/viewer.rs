@@ -177,7 +177,7 @@ pub struct Watching {
     /// The clip marked for export: its start, and its end once that is marked (`mark_clip`).
     clip: Option<(u32, Option<u32>)>,
     /// When it played to its end, while it is still there (a seek or a step to the end isn't playing to it): the
-    /// playlist's next starts a moment after (`Replays::frame`).
+    /// play queue's next starts a moment after (`Replays::frame`).
     ended: Option<Instant>,
 }
 

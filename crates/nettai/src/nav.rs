@@ -786,7 +786,7 @@ impl Nav {
     }
 
     /// Scroll the list `id`'s row `index` into view, slid there as a reveal is, and enter the list at it next,
-    /// without moving the focus (the replay viewer's playlist, at the replay watched). False if the list isn't laid
+    /// without moving the focus (the replay viewer's queue, at the replay watched). False if the list isn't laid
     /// out yet.
     pub fn reveal_row(&mut self, ui: &AppWindow, id: &str, index: i32) -> bool {
         self.rows.insert(id.to_string(), index);
