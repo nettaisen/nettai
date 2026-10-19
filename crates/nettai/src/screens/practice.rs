@@ -174,8 +174,9 @@ struct Kept {
 pub struct Visit {
     /// A visit is on.
     on: bool,
-    /// It came from the build editor's PRACTICE, which Practice goes back to, on the player's build (else Play).
-    from_editor: bool,
+    /// It came from the build editor's PRACTICE, which Practice goes back to, on the player's build and the tab
+    /// PRACTICE was pressed on (else Play).
+    from_editor: Option<usize>,
     /// The player's build, by its name, and the game it is of: PLAY's chosen one (none: the one Play remembers).
     yours: Option<(String, String)>,
     /// The place chosen, and the game it is of (each its list's place, 0 Random: [`Places`]).
@@ -203,8 +204,8 @@ struct MenuChoices {
 
 impl Visit {
     /// The build editor's PRACTICE: a visit starts, on the defaults, the player's build `yours` of `game` (its name).
-    fn new(game: &str, yours: &str) -> Visit {
-        Visit { on: true, from_editor: true, yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
+    fn new(game: &str, yours: &str, tab: usize) -> Visit {
+        Visit { on: true, from_editor: Some(tab), yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
     }
 
     /// Practice is shown: a visit starts, on the defaults, unless one is on. Whether one started.
@@ -902,20 +903,21 @@ fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Optio
 
 /// The build editor's PRACTICE: a visit to Practice starts, the player's build `build` of `game` (its name, as its
 /// file names it), and Practice goes straight into a session on it ([`Practice`]); leaving, it goes back to the
-/// editor on that build ([`go_back`]).
-pub fn open(shell: &mut Shell, game: &str, build: &str) {
-    shell.practice.visit = Visit::new(game, build);
+/// editor on that build and its tab `tab` ([`go_back`]).
+pub fn open(shell: &mut Shell, game: &str, build: &str, tab: usize) {
+    shell.practice.visit = Visit::new(game, build, tab);
     shell.go(ScreenId::Practice);
 }
 
 /// Leave Practice for where its visit came from: the build editor, on the player's build as it is kept now (by its
-/// place among the game's files: one gone meanwhile, or a visit from elsewhere, goes to Play), Back from there going
-/// to Play.
+/// place among the game's files: one gone meanwhile, or a visit from elsewhere, goes to Play) and the tab PRACTICE
+/// was pressed on (the user: "returning from practice should return to the same tab"), Back from there going to
+/// Play.
 fn go_back(shell: &mut Shell) {
     let visit = &shell.practice.visit;
-    let at = visit.yours.as_ref().filter(|_| visit.from_editor).and_then(|(game, name)| builds::store::list(game).iter().position(|l| l.name == *name));
+    let at = visit.from_editor.zip(visit.yours.as_ref()).and_then(|(tab, (game, name))| Some((builds::store::list(game).iter().position(|l| l.name == *name)?, tab)));
     match at {
-        Some(at) => crate::screens::builds::open(shell, ScreenId::Play, at),
+        Some((at, tab)) => crate::screens::builds::open_on_tab(shell, ScreenId::Play, at, tab),
         None => shell.go(ScreenId::Play),
     }
 }
@@ -1544,7 +1546,7 @@ mod tests {
         let places = Places::of(&content, "exe6");
         let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
         // (the editor's PRACTICE: your build its chosen one, the rest the defaults; Practice shown keeps it.)
-        let mut visit = Visit::new("exe6", "Swords");
+        let mut visit = Visit::new("exe6", "Swords", 0);
         assert!(!visit.arrive(), "the editor's PRACTICE started it");
         assert_eq!((visit.build("exe6", 0), visit.build("exe6", 1), visit.build("exe5", 0)), (Some("Swords"), None, None));
         assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");

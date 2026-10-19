@@ -541,6 +541,19 @@ impl Editor {
         editor
     }
 
+    /// The tab shown, by its place in the bar.
+    pub fn tab_at(&self) -> usize {
+        self.at
+    }
+
+    /// Start on tab `at` in place of the first, where it can be gone to (back from Practice, on the tab its
+    /// PRACTICE was pressed on). Before the editor is first shown.
+    pub fn start_on(&mut self, at: usize) {
+        if at < self.tabs.len() && self.enabled(at) {
+            self.at = at;
+        }
+    }
+
     /// Whether tab `i` can be gone to: one that is the game's own navi's alone can't while the build's navi
     /// is another.
     fn enabled(&self, i: usize) -> bool {
