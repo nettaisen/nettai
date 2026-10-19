@@ -13,6 +13,11 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
+/// The game's text table of the words its pictures show (a banner's, a
+/// label's, a help picture's), by the picture: the enhanced mode draws them
+/// in the lettering font (docs/design/text-rendering.md §12).
+pub const LETTERING: &str = "lettering";
+
 /// A string, and whether it is a translation (another language's than the
 /// content's own, whose shape the battle doesn't count).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -115,6 +120,20 @@ impl<'a> DisplayText<'a> {
         let given = self.language.and_then(|s| s.navi(key)).and_then(|n| n.run_message.as_deref());
         let own = content.strings.navi(key).and_then(|n| n.run_message.as_deref());
         self.pick(given, own, || format!("navis.{key}.run_message"))
+    }
+
+    /// A picture's words, which the enhanced mode draws in the lettering font
+    /// in its place (`lettering`), by the picture's key in the game's text
+    /// table [`LETTERING`] (`banner.battle-start`, `pause`): the language's,
+    /// else the content's own; none where neither has them (the picture
+    /// is drawn: the US Program Advance's logo has no words).
+    pub fn lettering<'b>(&self, content: &'b Content, key: &str) -> Option<&'b str>
+    where
+        'a: 'b,
+    {
+        let given = self.language.and_then(|s| s.text(LETTERING, key));
+        let own = content.strings.text(LETTERING, key);
+        self.pick(given, own, || format!("{LETTERING}.{key}")).map(|s| s.text)
     }
 
     /// What the frames showed that the language's table lacks, since the

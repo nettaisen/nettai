@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 const FONTS: [(&str, &str); 4] = [
     ("Chakra Petch", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
     ("Corporate Logo", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
-    ("M PLUS 1 Code", "crates/nettai-ui/fonts/m-plus-1-code/OFL.txt"),
+    ("M PLUS 1 Code", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
     ("Murecho", "crates/nettai-render/fonts/murecho/OFL.txt"),
 ];
 

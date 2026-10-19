@@ -16,7 +16,7 @@ use crate::compose::{Affine, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
-use crate::vfont::Role;
+use crate::vfont::{Lettering, Role};
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
@@ -653,6 +653,14 @@ struct Window {
     /// the pick's code).
     name: Option<(String, usize)>,
     advance_names: Vec<Option<(String, usize, Option<String>)>>,
+    /// The chip window's picture's key among the lettered pictures
+    /// (`pictures.ok`, `pictures.redeal`), where it shows one; and in the
+    /// enhanced mode its words, each line where the picture's stands (from
+    /// its top left: `help_items`), its letters taken off its tiles.
+    help: Option<String>,
+    help_lines: Vec<TextItem>,
+    /// The damage's digits' words, in the enhanced mode (their cells blank).
+    damage: Option<String>,
     /// Where the blocks go among the layer's tile numbers (the pack's).
     layout: nettai_assets::CustomLayout,
 }
@@ -730,6 +738,9 @@ impl Window {
             record_mark: None,
             name: None,
             advance_names: Vec::new(),
+            help: None,
+            help_lines: Vec::new(),
+            damage: None,
             layout: a.layout,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
@@ -769,6 +780,7 @@ impl Window {
         w.palettes[14] = a.other_palette;
         w.palettes[13] = v.hud.hp_palettes[0];
         w.chip_window(v, text, problems);
+        w.letter_help(v, text);
         w.slots(v, problems);
         w.column(v, problems);
         if form_list.is_some_and(|i| i >= FORM_LIST_OPENING_MAPS) {
@@ -958,8 +970,9 @@ impl Window {
                 self.chip_details(v, c, text, problems);
             }
             SlotKind::Ok => {
-                let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
+                let (p, key) = if cw.picks == 0 { (&a.pictures.ok, "ok") } else { (&a.pictures.ok_picked, "ok-picked") };
                 blank_details(self, p);
+                self.help = Some(format!("pictures.{key}"));
             }
             SlotKind::Button { button, .. } => {
                 if let Some(chip) = v.screen.slots[slot as usize].face {
@@ -982,9 +995,11 @@ impl Window {
                         0
                     };
                     blank_details(self, &look.details(palette));
+                    let name = nettai_content_api::keys::local(&v.b.content.defs.button(button).name);
+                    self.help = Some(format!("pictures.{name}"));
                     // (The button's picture is marked where the caller
                     // names the button: `button:NAME`.)
-                    let what = format!("button:{}", nettai_content_api::keys::local(&v.b.content.defs.button(button).name));
+                    let what = format!("button:{name}");
                     if problems.wants(&what) {
                         self.picture_mark = Some(what);
                     }
@@ -1046,6 +1061,14 @@ impl Window {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
             damage.min(999).to_string().bytes().map(|d| (d - b'0') as usize).collect()
         };
+        // In the enhanced mode the digits in the lettering font (`damage_item`),
+        // their cells blank.
+        let words: String = digits.iter().map(|&d| if d == DIGIT_UNKNOWN { '?' } else { char::from(b'0' + d as u8) }).collect();
+        if !words.is_empty() && text.takes_lettering(&words) && digits_look(a, &[0; 16]).is_some() {
+            self.tiles.fill(self.layout.digits, 6, self.layout.detail_blank);
+            self.damage = Some(words);
+            return;
+        }
         let blanks = 3 - digits.len();
         self.tiles.fill(self.layout.digits, 2 * blanks, self.layout.detail_blank);
         for (i, &d) in digits.iter().enumerate() {
@@ -1393,6 +1416,158 @@ impl Window {
         let clip = Rect::new(x0, 0, x1 + 8 - x0, crate::compose::HEIGHT as i32);
         let past_ranged = self.map[i].palette & 15 >= 14;
         text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
+    }
+
+    /// Where columns `col..col + cells` of the window are on the screen: the
+    /// first's place (sliding in, past the screen's left edge, which the
+    /// layer wraps to its right), and a clip to those it shows.
+    fn columns_at(&self, col: usize, cells: usize, place: Placement) -> Option<(i32, Rect)> {
+        let shown: Vec<(usize, i32)> =
+            (col..col + cells).filter(|c| (place.from..place.to).contains(c)).filter_map(|c| Some((c, screen_x(c as i32, place.scroll)?))).collect();
+        let &(last, last_x) = shown.last()?;
+        let x = last_x - 8 * (last - col) as i32;
+        let along: Vec<i32> = shown.iter().filter(|&&(c, px)| px == x + 8 * (c - col) as i32).map(|&(_, px)| px).collect();
+        let (&x0, &x1) = (along.first()?, along.last()?);
+        Some((x, Rect::new(x0, 0, x1 + 8 - x0, crate::compose::HEIGHT as i32)))
+    }
+
+    /// The window's cells that show `tiles` of its block (a picture, the
+    /// damage's digits), where the map puts them.
+    fn block(&self, tiles: std::ops::Range<u16>) -> Option<Block> {
+        let cells: Vec<(usize, usize, MapEntry)> =
+            self.map.iter().enumerate().filter(|(_, e)| tiles.contains(&e.tile)).map(|(i, e)| (i % COLUMNS, i / COLUMNS, *e)).collect();
+        let (col, row) = (cells.iter().map(|c| c.0).min()?, cells.iter().map(|c| c.1).min()?);
+        let w = cells.iter().map(|c| c.0).max()? + 1 - col;
+        let h = cells.iter().map(|c| c.1).max()? + 1 - row;
+        let palette = cells[0].2.palette;
+        Some(Block { col, row, w, h, palette, cells: cells.into_iter().map(|(c, r, e)| (c - col, r - row, e)).collect() })
+    }
+
+    /// In the enhanced mode, the chip window's lettered picture's words
+    /// (`help`), if the strings have them for its title and its words and
+    /// the lettering font draws them: each line of the picture (`lettering::
+    /// lines`) the words' line in its place and its color, the title's
+    /// bold and narrowed as the game's display letters, and the picture's
+    /// letters taken off its tiles, each pixel its panel's or its frame's
+    /// color, as the window fills a blank name cell with its own. The
+    /// picture stays where the lines don't match the words'.
+    fn letter_help(&mut self, v: &View, text: &TextSink) {
+        let Some(key) = self.help.clone() else { return };
+        let line = |part: &str| text.strings.lettering(&v.b.content, &format!("{key}.{part}")).filter(|w| text.takes_lettering(w));
+        let (Some(title), Some(words)) = (line("title"), line("words")) else { return };
+        let Some(block) = self.block(self.layout.art..self.layout.art + PICTURE_TILES) else { return };
+        let picture = block.picture(&self.tiles);
+        let palette = self.palettes[block.palette as usize & 15];
+        // (Its ground by color: its indices are its bit planes', several of
+        // them one color.)
+        let color = |v: u8| palette[v as usize & 15] & 0x7FFF;
+        let Some(corner) = picture.at(0, 0) else { return };
+        let frame = color(corner);
+        let mut count: std::collections::HashMap<u16, usize> = Default::default();
+        picture.pixels.iter().for_each(|&v| *count.entry(color(v)).or_default() += 1);
+        let Some((&panel, _)) = count.iter().max_by_key(|(c, n)| (**n, **c)) else { return };
+        let ground = |v: u8| color(v) == frame || color(v) == panel;
+        let lines = crate::lettering::lines(&picture, ground, &palette);
+        let wanted: Vec<(&str, bool)> = title.lines().map(|l| (l, true)).chain(words.lines().map(|l| (l, false))).collect();
+        if lines.len() != wanted.len() {
+            return;
+        }
+        block.put(&crate::lettering::erased(&picture, ground), &mut self.tiles);
+        self.help_lines = lines
+            .iter()
+            .zip(wanted)
+            .map(|(line, (words, title))| {
+                let cap = (line.baseline - line.top).clamp(1, 16) as u8;
+                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100 } };
+                let rect = Rect::new(line.span.0, line.top, line.span.1 - line.span.0, cap as i32 + 2);
+                TextItem { align: Align::Center, ..TextItem::new(words, Role::Lettering(lettering), rect, line.color, None) }
+            })
+            .collect();
+    }
+
+    /// The help picture's lines (`letter_help`) where the window shows them.
+    fn help_items(&self, text: &mut TextSink, place: Placement) {
+        if self.help_lines.is_empty() {
+            return;
+        }
+        let Some(block) = self.block(self.layout.art..self.layout.art + PICTURE_TILES) else { return };
+        let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
+        let past_ranged = block.palette & 15 >= 14;
+        for item in &self.help_lines {
+            let rect = item.rect.offset(x, 8 * block.row as i32);
+            text.push(Plane::Hud, TextItem { rect, clip, past_ranged, ..item.clone() });
+        }
+    }
+
+    /// The damage's digits in the lettering font (the enhanced mode's:
+    /// `damage`), in their glyphs' look, ending where the original's last
+    /// digit does.
+    fn damage_item(&self, v: &View, text: &mut TextSink, place: Placement) {
+        let Some(words) = &self.damage else { return };
+        let Some(block) = self.block(self.layout.digits..self.layout.digits + 6) else { return };
+        let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
+        let Some(look) = digits_look(v.assets, &self.palettes[block.palette as usize & 15]) else { return };
+        let Some(width) = crate::lettering::run_width(text, &[(words.clone(), &look)]) else { return };
+        let end = x + 8 * block.w as i32;
+        let Some(items) = crate::lettering::run(text, &[(words.clone(), &look)], (end - width.ceil() as i32, 8 * block.row as i32), 16) else { return };
+        let past_ranged = block.palette & 15 >= 14;
+        for item in items {
+            text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
+        }
+    }
+}
+
+/// The weight of the help pictures' words (their title's is the display
+/// lettering's): the game's small letters are thin.
+const HELP_WEIGHT: u16 = 500;
+
+/// The look of the chip window's damage digits (glyph d of `digits` is
+/// digit d, on its cell's ground: the color at its top left).
+fn digits_look(a: &CustomScreen, palette: &Palette) -> Option<crate::lettering::Look> {
+    let ground = crate::lettering::Picture::glyphs(&a.digits, 0, 1).at(0, 0)?;
+    crate::lettering::glyphs_look(&a.digits, 0, 10, |v| v == ground, palette)
+}
+
+/// Cells of the window's map that show a block of its tiles: their first
+/// column and row, how many columns and rows they span, their palette (the
+/// first's), and each one's place from the first and entry.
+struct Block {
+    col: usize,
+    row: usize,
+    w: usize,
+    h: usize,
+    palette: u8,
+    cells: Vec<(usize, usize, MapEntry)>,
+}
+
+impl Block {
+    /// The cells' tiles as one picture.
+    fn picture(&self, tiles: &LayerTiles) -> crate::lettering::Picture {
+        let (w, h) = (8 * self.w, 8 * self.h);
+        let mut pixels = vec![0; w * h];
+        for &(c, r, e) in &self.cells {
+            let t = tiles.tile(e.tile);
+            for (i, &v) in t.iter().enumerate() {
+                let (x, y) = (i % 8, i / 8);
+                let (x, y) = (if e.hflip { 7 - x } else { x }, if e.vflip { 7 - y } else { y });
+                pixels[(8 * r + y) * w + 8 * c + x] = v;
+            }
+        }
+        crate::lettering::Picture { w, h, pixels }
+    }
+
+    /// A picture's pixels back into the cells' tiles.
+    fn put(&self, p: &crate::lettering::Picture, tiles: &mut LayerTiles) {
+        for &(c, r, e) in &self.cells {
+            let tile: Vec<u8> = (0..64)
+                .map(|i| {
+                    let (x, y) = (i % 8, i / 8);
+                    let (x, y) = (if e.hflip { 7 - x } else { x }, if e.vflip { 7 - y } else { y });
+                    p.pixels[(8 * r + y) * p.w + 8 * c + x]
+                })
+                .collect();
+            tiles.put(e.tile, &Tiles { pixels: tile });
+        }
     }
 }
 
@@ -1756,6 +1931,8 @@ pub fn draw<'a>(
     w.known_icons(&v, place, problems);
     w.mark_icons(&v, place, problems);
     w.name_item(text, place);
+    w.help_items(text, place);
+    w.damage_item(&v, text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
@@ -1778,7 +1955,18 @@ pub fn draw<'a>(
         }
     }
     if screen.look.turn_limit && place.to == COLUMNS {
-        // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette.
+        // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette. In
+        // the enhanced mode its words in the lettering font, in its look,
+        // and its cells with the letters taken off (its own ground).
+        let palette = w.palettes[w.layout.turn_limit_palette as usize & 15];
+        let tiles: Vec<u8> = (0..14u16).flat_map(|i| w.tiles.tile(w.layout.turn_limit + i).to_vec()).collect();
+        let picture = crate::lettering::Picture::grid(&Tiles { pixels: tiles }, 0, 7, 2);
+        if let Some((words, look)) = crate::hud::lettered_word(b, text, "turn-limit", &picture, |v| v == 0, &palette, Lettering::display) {
+            let erased = crate::lettering::erased(&picture, |v| v == 0).to_grid();
+            w.tiles.put(w.layout.turn_limit, &erased);
+            let past_ranged = w.layout.turn_limit_palette & 15 >= 14;
+            text.push(Plane::Hud, TextItem { past_ranged, ..look.in_place(words, (layer_x(15, place.scroll), 4 * 8), 16) });
+        }
         for i in 0..14u16 {
             let e = MapEntry { tile: w.layout.turn_limit + i, hflip: false, vflip: false, palette: w.layout.turn_limit_palette };
             w.cell(hud_layer, e, 15 + (i % 7) as i32, 4 + (i / 7) as i32, place.scroll);

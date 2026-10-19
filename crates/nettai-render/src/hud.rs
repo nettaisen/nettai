@@ -11,7 +11,7 @@ use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
-use crate::vfont::Role;
+use crate::vfont::{Lettering, Role};
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::actor::status;
@@ -667,8 +667,23 @@ pub fn draw<'a>(
     // Custom gauge, top center.
     if custom_gauge && gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
+        // In the enhanced mode the frame's word in the lettering font, in
+        // its look, its cells with their letters taken off (their plate).
+        let word = gauge_word(b, hud, text);
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
-            put(layer, hud, pal, e, GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
+            let (col, row) = (GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
+            match &word {
+                Some((cells, erased, _)) if cells.contains(&i) => {
+                    let k = cells.iter().position(|&c| c == i).unwrap_or(0);
+                    if let Some(t) = erased.get(k) {
+                        layer.draw_tile(t, pal, col * 8, row * 8, e.hflip, e.vflip);
+                    }
+                }
+                _ => put(layer, hud, pal, e, col, row),
+            }
+        }
+        if let Some((_, _, item)) = word {
+            text.push(Plane::Hud, item);
         }
         // (The local console's: EXE4's keeps it full until its own send.)
         let g = b.gauge_for(b.setup.local_side);
@@ -692,8 +707,31 @@ pub fn draw<'a>(
         }
         if g >= FULL {
             let first = if state.frame & 8 == 0 { g0 + GAUGE_L_OR_R } else { g0 + GAUGE_L_OR_R + 4 };
-            for i in 0..4 {
-                put(layer, hud, pal, cell(first + i), 13 + i as i32, 1);
+            // In the enhanced mode the cells with their letters taken off
+            // (the gauge's own ground), and the words in the lettering font
+            // in this frame's look.
+            let tiles: Vec<&[u8]> = (0..4).filter_map(|i| gauge_tile(hud, first + i)).collect();
+            let picture = crate::lettering::Picture { w: 32, h: 8, pixels: tiles_row(&tiles) };
+            let ground = cells_ground(&picture);
+            let words = (tiles.len() == 4).then(|| lettered_word(b, text, "gauge.l-or-r", &picture, |v| ground.contains(&v), pal, Lettering::wide)).flatten();
+            match words {
+                Some((words, look)) => {
+                    let erased = crate::lettering::erased(&picture, |v| ground.contains(&v)).to_grid();
+                    for i in 0..4 {
+                        if let Some(t) = erased.get(i) {
+                            layer.draw_tile(t, pal, (13 + i as i32) * 8, 8, false, false);
+                        }
+                    }
+                    // (A ring mark is drawn about the capitals, 1.15 times
+                    // their height: the picture's ring is the first letter.)
+                    let look = ringed(look, words);
+                    text.push(Plane::Hud, look.in_place(words, (13 * 8, 8), 8));
+                }
+                None => {
+                    for i in 0..4 {
+                        put(layer, hud, pal, cell(first + i), 13 + i as i32, 1);
+                    }
+                }
             }
         }
     }
@@ -704,7 +742,14 @@ pub fn draw<'a>(
     // Japanese, where `sub_801CA34` copies one column fewer.)
     if waiting_ticks(b).is_some_and(|n| (n / 32) % 2 == 0) {
         let columns = (hud.waiting.len() / 2).max(1);
-        for i in 0..2 * columns {
+        // In the enhanced mode its words in the lettering font, in its look.
+        let picture = crate::lettering::Picture::grid(&hud.waiting, 0, columns, 2);
+        let words = lettered_word(b, text, "waiting", &picture, |v| v == 0, &hud.waiting_palette, Lettering::display);
+        let lettered = words.is_some();
+        if let Some((words, look)) = words {
+            text.push(Plane::Hud, look.in_place(words, (22 * 8, 4 * 8), 16));
+        }
+        for i in (0..2 * columns).filter(|_| !lettered) {
             if let Some(t) = hud.waiting.get(i) {
                 layer.draw_tile(t, &hud.waiting_palette, (22 + (i % columns) as i32) * 8, (4 + (i / columns) as i32) * 8, false, false);
             }
@@ -762,15 +807,30 @@ pub fn draw<'a>(
                 put(layer, hud, pal, e, col, 5 + half as i32);
             }
         };
-        let left = left.min(9999).to_string();
-        for (i, d) in left.bytes().enumerate() {
-            digit(layer, d, 13 - left.len() as i32 + i as i32);
+        let (left, right) = (left.min(9999).to_string(), right.min(9999).to_string());
+        // In the enhanced mode the numbers in the lettering font, in the
+        // digits' look: the left one ending where the original's does, the
+        // right one starting where it does.
+        let look = NumberLooks::of(&hud.tiles, (DAMAGE_DIGIT, PLUS_GLYPH, TIMES_GLYPH), pal, text).map(|l| l.digits);
+        let lettered = look.as_ref().and_then(|look| {
+            let ending = crate::lettering::run_width(text, &[(left.clone(), look)])?.ceil() as i32;
+            let mut items = crate::lettering::run(text, &[(left.clone(), look)], (13 * 8 - ending, 5 * 8), 16)?;
+            items.extend(crate::lettering::run(text, &[(right.clone(), look)], (17 * 8, 5 * 8), 16)?);
+            Some(items)
+        });
+        match lettered {
+            Some(items) => items.into_iter().for_each(|item| text.push(Plane::Hud, item)),
+            None => {
+                for (i, d) in left.bytes().enumerate() {
+                    digit(layer, d, 13 - left.len() as i32 + i as i32);
+                }
+                for (i, d) in right.bytes().enumerate() {
+                    digit(layer, d, 17 + i as i32);
+                }
+            }
         }
         let (vs, _) = fonts::cell_glyphs(hud, "VS");
         fonts::layer_text(text, Plane::Hud, layer, hud, "VS", &vs, vs.len(), pal, (14 * 8, 5 * 8), (Role::Cell, Align::Left));
-        for (i, d) in right.min(9999).to_string().bytes().enumerate() {
-            digit(layer, d, 17 + i as i32);
-        }
     }
 
     // The HUD's text lines, in the HP box's palette as the chip's name is.
@@ -891,15 +951,35 @@ pub fn draw<'a>(
         let x = p.x + number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 };
         let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
+        let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
+        // The damage taken, in the enhanced mode: in the lettering font in
+        // the digits' look, ending where the original's last digit ends
+        // (the HP stays the digits' pictures).
+        let lettered = number
+            .damage
+            .then(|| crate::lettering::glyphs_look(digits, 0, 10, |v| v == 0, &hud.enemy_palette))
+            .flatten()
+            .and_then(|look| {
+                let words = value.min(9999).to_string();
+                let width = crate::lettering::run_width(text, &[(words.clone(), &look)])?;
+                crate::lettering::run(text, &[(words, &look)], (x + 32 - width.ceil() as i32, y), 16)
+            });
         let mut group = Vec::new();
         for (k, d) in digits4(value).into_iter().enumerate() {
             if d == 10 {
                 continue;
             }
-            group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None));
+            let (tiles, d) = if lettered.is_some() { (&*BLANK_GLYPH, 0) } else { (digits, d) };
+            group.push(glyph(tiles, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None));
         }
-        let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
-        list.insert_placed(FIELD_LAYER, HP_BUCKET, group, None, (fine.x, fine.y));
+        let tag = lettered.as_ref().map(|_| text.tag());
+        list.insert_placed(FIELD_LAYER, HP_BUCKET, group, tag, (fine.x, fine.y));
+        for item in lettered.into_iter().flatten() {
+            // (Its true place between the frame's pixels, where the
+            // enhanced mode's motion draws the digits there.)
+            let item = if smooth.on { TextItem { fine: (item.fine.0 + fine.x, item.fine.1 + fine.y), ..item } } else { item };
+            text.push(Plane::Sprite(tag.unwrap_or_default()), item);
+        }
     }
     // A flickering emotion window is black two ticks of every four
     // (`sub_801CC94`: its palette blanks), and isn't drawn on the middle
@@ -926,17 +1006,26 @@ pub fn draw<'a>(
     let telops = b.telops_for(local);
     if let (Some(id), None) = (banner, telops[0]) {
         let mut group = Vec::new();
+        let mut words = None;
         if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
-            banner_parts(b, h, layout, number, &mut group);
-            // (The glyphs and the palette a telop loaded over the banner's:
-            // `TelopTiles`.)
-            let at = if layout.number_at.is_some() { 2 } else { 0 };
-            shared.patch(&mut group, &shared.banner, at, 20);
-            if let Some(p) = shared.banner_palette {
-                group.iter_mut().for_each(|part| part.palette = p);
+            // In the enhanced mode its words in the lettering font over its
+            // bar, where the strings have them; blank parts stand in for
+            // its glyphs. (Not where a telop's load changed its glyphs or
+            // its palette: `TelopTiles`, EXE4's.)
+            let clean = shared.banner.is_empty() && shared.banner_palette.is_none();
+            words = clean.then(|| lettered_banner(b, h, layout, number, id, text)).flatten();
+            banner_parts(b, h, layout, number, words.is_some(), &mut group);
+            if words.is_none() {
+                // (The glyphs and the palette a telop loaded over the
+                // banner's: `TelopTiles`.)
+                let at = if layout.number_at.is_some() { 2 } else { 0 };
+                shared.patch(&mut group, &shared.banner, at, 20);
+                if let Some(p) = shared.banner_palette {
+                    group.iter_mut().for_each(|part| part.palette = p);
+                }
             }
         }
-        list.insert_at(FRONT_LAYER, 0, group);
+        insert_named(list, text, 0, group, words);
     }
     // The telops: the banner block's, and the other player's on its own
     // block where telops run apart from the banners (beside a banner, then).
@@ -989,22 +1078,29 @@ pub fn draw<'a>(
     // opponents' HP digits' palette).
     if b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
         let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
-        let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
-        list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
+        // In the enhanced mode its word in the lettering font, in its look,
+        // with blank parts in its glyphs' places.
+        let picture = crate::lettering::Picture::glyphs(&hud.pause, 0, 5);
+        let word = lettered_word(b, text, "pause", &picture, |v| v == 0, &hud.enemy_palette, Lettering::display).map(|(words, look)| look.in_place(words, (x, y), 16));
+        let tiles = if word.is_some() { &*BLANK_GLYPH } else { &hud.pause };
+        let group = (0..5).map(|k| glyph(tiles, if word.is_some() { 0 } else { k }, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
+        insert_named(list, text, NAME_BUCKET, group, word);
     }
     warning_parts(b, hud, &view, list, problems);
 }
 
-/// Queue a front-layer group; one that names a chip on the text layer
-/// (`name`) is tagged, so the item is as deep as its parts.
-fn insert_named<'a>(list: &mut SpriteList<'a>, text: &mut TextSink, bucket: usize, group: Vec<SpritePart<'a>>, name: Option<TextItem>) {
-    match name {
-        Some(item) => {
-            let tag = text.tag();
-            list.insert_tagged(FRONT_LAYER, bucket, group, Some(tag));
-            text.push(Plane::Sprite(tag), item);
-        }
-        None => list.insert_at(FRONT_LAYER, bucket, group),
+/// Queue a front-layer group; one whose words are on the text layer
+/// (`items`: a chip's name, its numbers, a banner's words) is tagged, so
+/// the items are as deep as its parts.
+fn insert_named<'a>(list: &mut SpriteList<'a>, text: &mut TextSink, bucket: usize, group: Vec<SpritePart<'a>>, items: impl IntoIterator<Item = TextItem>) {
+    let mut items = items.into_iter().peekable();
+    if items.peek().is_none() {
+        return list.insert_at(FRONT_LAYER, bucket, group);
+    }
+    let tag = text.tag();
+    list.insert_tagged(FRONT_LAYER, bucket, group, Some(tag));
+    for item in items {
+        text.push(Plane::Sprite(tag), item);
     }
 }
 
@@ -1117,6 +1213,17 @@ fn draw_chip_name(
         return x;
     }
     let i = hand.cursor as usize;
+    let damage = hand.damage.get(i).copied().unwrap_or(0);
+    // In the enhanced mode the numbers in the lettering font, in their
+    // glyphs' looks, from where the original's start.
+    if let Some(looks) = NumberLooks::of(&hud.tiles, (DAMAGE_DIGIT, PLUS_GLYPH, TIMES_GLYPH), pal, text)
+        && let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (x, 18 * 8))
+    {
+        for item in items {
+            text.push(Plane::Hud, item);
+        }
+        return end;
+    }
     let number = |layer: &mut Layer, v: u16, x: &mut i32| {
         for c in v.to_string().bytes() {
             let d = (c - b'0') as u16;
@@ -1127,7 +1234,6 @@ fn draw_chip_name(
             *x += 8;
         }
     };
-    let damage = hand.damage.get(i).copied().unwrap_or(0);
     number(layer, damage, &mut x);
     if bonus != 0 {
         for half in 0..2u16 {
@@ -1492,20 +1598,151 @@ const OWN_ICON_PRIORITY: u8 = 1;
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
 /// `layout` is banner `id`'s (its number in `hud`'s pack).
-fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, out: &mut Vec<SpritePart<'a>>) {
+/// `blank`: blank parts in the glyphs' places, as many (the enhanced mode's
+/// lettering draws the words: `lettered_banner`).
+fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, blank: bool, out: &mut Vec<SpritePart<'a>>) {
     let vscale = Some(banner_scale(&b.banner));
     let pal = hud.banner_palette;
+    let tiles = |own: &'a Tiles| if blank { &*BLANK_GLYPH } else { own };
+    let k_of = |k: usize| if blank { 0 } else { k };
     for k in 0..20usize {
-        out.push(glyph(&layout.glyphs, k, pal, layout.x as i32 + 8 * k as i32, layout.y as i32, 0, vscale));
+        out.push(glyph(tiles(&layout.glyphs), k_of(k), pal, layout.x as i32 + 8 * k as i32, layout.y as i32, 0, vscale));
     }
     if let Some((nx, ny)) = layout.number_at {
-        let n = if id == 0x0C { b.round.turn } else { b.round.round } as usize;
+        let n = banner_number(b, id);
         let (tens, ones) = (n / 10 % 10, n % 10);
         let (tens, nx) = if tens == 0 { (10, nx as i32 - 4) } else { (tens, nx as i32) };
         // The number is drawn in front of the text.
-        out.insert(0, glyph(&hud.banner_digits, ones, pal, nx + 8, ny as i32, 0, vscale));
-        out.insert(0, glyph(&hud.banner_digits, tens, pal, nx, ny as i32, 0, vscale));
+        out.insert(0, glyph(tiles(&hud.banner_digits), k_of(ones), pal, nx + 8, ny as i32, 0, vscale));
+        out.insert(0, glyph(tiles(&hud.banner_digits), k_of(tens), pal, nx, ny as i32, 0, vscale));
     }
+}
+
+/// A tile of the HUD layer by its number (the gauge's block or the
+/// layer's, as `put_px` draws it).
+fn gauge_tile(hud: &Hud, tile: u16) -> Option<&[u8]> {
+    tile.checked_sub(hud.gauge_first_tile)
+        .and_then(|i| hud.gauge_tiles.get(i as usize))
+        .or_else(|| tile.checked_sub(hud.first_tile).and_then(|i| hud.tiles.get(i as usize)))
+}
+
+/// Tiles side by side, as a picture's pixels (8 rows).
+fn tiles_row(tiles: &[&[u8]]) -> Vec<u8> {
+    (0..8).flat_map(|y| tiles.iter().flat_map(move |t| t[8 * y..8 * y + 8].iter().copied())).collect()
+}
+
+/// What is behind the letters of a picture of the HUD layer's cells: its
+/// most common color, and the colors of its last row (the gauge's line).
+fn cells_ground(p: &crate::lettering::Picture) -> Vec<u8> {
+    let mut count = [0usize; 16];
+    p.pixels.iter().for_each(|&v| count[v as usize & 15] += 1);
+    let mut ground = vec![(0..16u8).max_by_key(|&c| count[c as usize]).unwrap_or(0)];
+    for &v in &p.pixels[(p.h - 1) * p.w..] {
+        if !ground.contains(&v) {
+            ground.push(v);
+        }
+    }
+    ground
+}
+
+/// The custom gauge's frame's word in the enhanced mode, if the strings and
+/// the lettering font have it: the cells of the frame's top row between its
+/// corners that aren't its line's own (the row's most common cell), their
+/// tiles with the letters taken off (their plate's color, the cells' most
+/// common: `cells_ground`), and the word in the lettering font where the
+/// cells' letters are, in their look.
+fn gauge_word(b: &Battle, hud: &Hud, text: &TextSink) -> Option<(Vec<usize>, Tiles, TextItem)> {
+    let top = hud.gauge_frame.get(..GAUGE_COLUMNS as usize)?;
+    let blank = *top.iter().max_by_key(|e| top.iter().filter(|o| o.tile == e.tile).count())?;
+    let cells: Vec<usize> = (1..top.len() - 1).filter(|&i| top[i].tile != blank.tile).collect();
+    if cells.is_empty() || cells.windows(2).any(|w| w[1] != w[0] + 1) {
+        return None;
+    }
+    let tiles: Vec<&[u8]> = cells.iter().map(|&i| gauge_tile(hud, top[i].tile)).collect::<Option<_>>()?;
+    let picture = crate::lettering::Picture { w: 8 * tiles.len(), h: 8, pixels: tiles_row(&tiles) };
+    let mut ground: Vec<u8> = gauge_tile(hud, blank.tile)?.to_vec();
+    ground.extend(cells_ground(&picture));
+    let (words, look) = lettered_word(b, text, "gauge.custom", &picture, |v| ground.contains(&v), &hud.gauge_palette, Lettering::wide)?;
+    let x = (GAUGE_COLUMN + cells[0] as i32) * 8;
+    let erased = crate::lettering::erased(&picture, |v| ground.contains(&v)).to_grid();
+    Some((cells, erased, look.in_place(words, (x, 0), 8)))
+}
+
+/// A look whose picture's first letter is a button's ring (Ⓛ) where the
+/// words have one the text layer draws (`vfont`'s marks): its capitals
+/// made as high as the ring, drawn 1.15 times their height about their
+/// middle, needs them, on the same middle.
+fn ringed(look: crate::lettering::Look, words: &str) -> crate::lettering::Look {
+    let Role::Lettering(l) = look.role else { return look };
+    let font = crate::vfont::lettering_font();
+    if !words.chars().next().is_some_and(|c| font.draws_ring(c)) {
+        return look;
+    }
+    let cap = (l.cap as f32 / crate::vfont::BUTTON_RING).round().max(1.0) as u8;
+    let top = l.top + (l.cap - cap.min(l.cap)) / 2;
+    crate::lettering::Look { role: Role::Lettering(Lettering { top, cap, ..l }), ..look }
+}
+
+/// A lettered picture's words and their look, where the enhanced mode draws
+/// them in its place: the strings' words for it (`lettering`'s `key`) where
+/// the lettering font draws them, and the look of the picture's letters
+/// (`ground` behind them) in `palette`.
+pub(crate) fn lettered_word<'b>(
+    b: &'b Battle,
+    text: &TextSink<'b>,
+    key: &str,
+    picture: &crate::lettering::Picture,
+    ground: impl Fn(u8) -> bool,
+    palette: &Palette,
+    lettering: fn(u8, u8) -> Lettering,
+) -> Option<(&'b str, crate::lettering::Look)> {
+    let words = text.strings.lettering(&b.content, key).filter(|w| text.takes_lettering(w))?;
+    let look = crate::lettering::Look::of(picture, ground, crate::lettering::Capitals::First, palette, lettering)?;
+    Some((words, look))
+}
+
+/// The number a numbered banner shows (`sub_801CE28`): the turn's on the
+/// turn's banner (its pack's number 0x0C), else the round's.
+fn banner_number(b: &Battle, id: u8) -> usize {
+    (if id == 0x0C { b.round.turn } else { b.round.round }) as usize
+}
+
+/// A banner as the enhanced mode draws it, if the content's strings have
+/// its words (`lettering`'s `banner.NAME`, the number where the words
+/// say `{n}`) and the lettering font draws them: the words in the lettering
+/// font, centered on the picture's letters (and its number), in the
+/// picture's look (its capitals' rows, its face's colors down them, its
+/// rim), over its bar drawn as a shape (read off the picture: none for a
+/// picture with no bar), with the banners' squash. `number` is its number
+/// in `hud`'s pack.
+fn lettered_banner(b: &Battle, hud: &Hud, layout: &nettai_assets::BannerLayout, number: u8, id: BannerId, text: &TextSink) -> Option<TextItem> {
+    use crate::lettering::{Capitals, Picture};
+    let name = crate::packs::name(&b.content, nettai_content_api::AssetKind::Banner, id.0)?;
+    let words = text.strings.lettering(&b.content, &format!("banner.{}", nettai_content_api::keys::local(name)))?;
+    let words = words.replace("{n}", &banner_number(b, number).to_string());
+    if !text.takes_lettering(&words) {
+        return None;
+    }
+    let picture = Picture::glyphs(&layout.glyphs, 0, 20);
+    let pal = &hud.banner_palette;
+    let bar = crate::lettering::bar(&picture, pal);
+    let bar_colors = bar.as_ref().map(|(_, c)| c.clone()).unwrap_or_default();
+    let letters = crate::lettering::letters(&picture, |v| v == 0 || bar_colors.contains(&v), Capitals::First)?;
+    let (x, y) = (layout.x as i32, layout.y as i32);
+    let mut span = letters.span;
+    if let Some((nx, _)) = layout.number_at {
+        span = (span.0.min(nx as i32 - 4 - x), span.1.max(nx as i32 + 16 - x));
+    }
+    let (face, shadow) = letters.face(pal);
+    let item = TextItem::new(words, letters.role(Lettering::display), Rect::new(x + span.0, y, span.1 - span.0, 16), face, shadow);
+    Some(TextItem {
+        align: Align::Center,
+        clip: Rect::new(x, 0, 160, crate::compose::HEIGHT as i32),
+        vscale: Some(banner_scale(&b.banner)),
+        ink: Some(letters.ink(pal)),
+        bar: bar.map(|(bar, _)| bar.moved(x as f32, y as f32)),
+        ..item
+    })
 }
 
 /// A banner's vertical scale this frame (the texture rows step by this
@@ -1643,7 +1880,7 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 fn name_parts<'a>(
     style: TelopStyle<'a>,
     (words, name): (&str, Vec<u16>),
-    (damage, bonus, doubled): (u16, u16, bool),
+    (number, bonus_value, doubled): (u16, u16, bool),
     remote: bool,
     vscale: Option<i32>,
     out: &mut Vec<SpritePart<'a>>,
@@ -1652,9 +1889,9 @@ fn name_parts<'a>(
     let hud = style.hud;
     // Glyph d of the damage digits, '+' before a bonus.
     let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| style.digit + (c - b'0') as usize).collect() };
-    let (damage, bonus, doubled) = match damage {
+    let (damage, bonus, doubled) = match number {
         0 => (Vec::new(), Vec::new(), false),
-        d => (digits(d), if bonus != 0 { std::iter::once(style.plus).chain(digits(bonus)).collect() } else { Vec::new() }, doubled),
+        d => (digits(d), if bonus_value != 0 { std::iter::once(style.plus).chain(digits(bonus_value)).collect() } else { Vec::new() }, doubled),
     };
     let font = !words.is_empty() && text.takes(words);
     let cells = if font { fonts::box_cells(hud, words, name.len(), 8) } else { name.len() };
@@ -1665,10 +1902,13 @@ fn name_parts<'a>(
     }
     let y = style.at.1 as i32;
     let pal = style.palette;
-    let item = font.then(|| {
-        let item = TextItem::new(words, Role::Cell, Rect::new(x, y, 8 * cells as i32, 16), pal[1], Some(pal[2]));
-        TextItem { align: Align::Center, vscale, ..item }
-    });
+    let mut items: Vec<TextItem> = font
+        .then(|| {
+            let item = TextItem::new(words, Role::Cell, Rect::new(x, y, 8 * cells as i32, 16), pal[1], Some(pal[2]));
+            TextItem { align: Align::Center, vscale, ..item }
+        })
+        .into_iter()
+        .collect();
     let after = x + 8 * cells as i32;
     let glyphs = if font { 0 } else { name.len() };
     for c in name {
@@ -1677,16 +1917,72 @@ fn name_parts<'a>(
         x += 8;
     }
     x = after;
+    // In the enhanced mode the numbers in the lettering font, in their
+    // glyphs' looks, from where the original's start, with blank parts in
+    // their glyphs' places.
+    let numbers = (!damage.is_empty())
+        .then(|| NumberLooks::of(style.numbers, (style.digit, style.plus, style.times), &pal, text))
+        .flatten()
+        .and_then(|looks| looks.items(text, (number, bonus_value, doubled), (after, y)));
+    let lettered = numbers.is_some();
+    if let Some((numbers, _)) = numbers {
+        items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
+    }
+    let numbers = |g: usize| if lettered { (&*BLANK_GLYPH, 0) } else { (style.numbers, g) };
     for g in damage.into_iter().chain(bonus) {
-        out.push(glyph(style.numbers, g, pal, x, y, 0, vscale));
+        let (tiles, g) = numbers(g);
+        out.push(glyph(tiles, g, pal, x, y, 0, vscale));
         x += 8;
     }
-    let signs = doubled.then_some(out.len());
+    let signs = (doubled && !lettered).then_some(out.len());
     if doubled {
-        out.push(glyph(style.numbers, style.times, pal, x, y, 0, vscale));
-        out.push(glyph(style.numbers, style.times + 1, pal, x + 8, y, 0, vscale));
+        let ((tiles, times), (_, two)) = (numbers(style.times), numbers(style.times + 1));
+        out.push(glyph(tiles, times, pal, x, y, 0, vscale));
+        out.push(glyph(tiles, two, pal, x + 8, y, 0, vscale));
     }
-    Laid { name: item, glyphs, signs }
+    Laid { name: items, glyphs, signs }
+}
+
+/// The looks of a chip's damage, its bonus's '+' and the "x2" of a doubled
+/// chip, from the glyphs that draw them in the original (the HUD layer's,
+/// a telop's own: `lettering::glyphs_look`), for the enhanced mode's
+/// lettering: none in the original mode, or where the glyphs have no
+/// letters.
+pub(crate) struct NumberLooks {
+    digits: crate::lettering::Look,
+    plus: crate::lettering::Look,
+    times: crate::lettering::Look,
+}
+
+impl NumberLooks {
+    /// From `tiles`' glyphs: the digits from `digit`, the '+' at `plus`, the
+    /// "x2" at `times` and the next, in `palette`, on a clear ground.
+    pub(crate) fn of(tiles: &Tiles, (digit, plus, times): (usize, usize, usize), palette: &Palette, text: &TextSink) -> Option<NumberLooks> {
+        if !text.takes_lettering("0") {
+            return None;
+        }
+        let look = |first, count| crate::lettering::glyphs_look(tiles, first, count, |v| v == 0, palette);
+        Some(NumberLooks { digits: look(digit, 10)?, plus: look(plus, 1)?, times: look(times, 2)? })
+    }
+
+    /// A chip's damage, then "+bonus" (where it has one) and "×2" (where
+    /// the use doubles it), as text items from `x` on cells' rows `y` (each
+    /// after the one before as the font sets them: the numbers start where
+    /// the original's do, and are as wide as the font's), and where they
+    /// end.
+    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (i32, i32)) -> Option<(Vec<TextItem>, i32)> {
+        let mut parts = vec![(damage.to_string(), &self.digits)];
+        if bonus != 0 {
+            parts.push(("+".to_string(), &self.plus));
+            parts.push((bonus.to_string(), &self.digits));
+        }
+        if doubled {
+            parts.push(("×2".to_string(), &self.times));
+        }
+        let items = crate::lettering::run(text, &parts, (x, y), 16)?;
+        let end = x + crate::lettering::run_width(text, &parts)?.ceil() as i32;
+        Some((items, end))
+    }
 }
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
@@ -1695,7 +1991,7 @@ fn name_parts<'a>(
 /// a doubled chip is (the '2' after it).
 #[derive(Default)]
 struct Laid {
-    name: Option<TextItem>,
+    name: Vec<TextItem>,
     glyphs: usize,
     signs: Option<usize>,
 }
@@ -1864,7 +2160,7 @@ mod tests {
         let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.unwrap();
+        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.into_iter().next().unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
@@ -1876,7 +2172,7 @@ mod tests {
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
-        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems).name.is_none());
+        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems).name.is_empty());
     }
 
     #[test]
@@ -1954,7 +2250,7 @@ mod tests {
         let mut ticks = 0;
         while b.banner.active {
             let mut parts = Vec::new();
-            banner_parts(&b, &hud, &layout, 0, &mut parts);
+            banner_parts(&b, &hud, &layout, 0, false, &mut parts);
             assert_eq!(parts.len(), 20);
             let whole = banner_scale(&b.banner) == 0x100;
             for part in &parts {
