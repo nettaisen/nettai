@@ -164,6 +164,13 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
     let mut colors: Vec<u8> = (0..16u8).filter(|&c| edge[c as usize] > 0).collect();
     colors.sort_by_key(|&c| std::cmp::Reverse((edge[c as usize], c)));
     let (rim, shadow) = colors.iter().take(2).find_map(|&c| outline(c)).unwrap_or((None, None));
+    letters_with(p, ground, capitals, rim, shadow)
+}
+
+/// How the letters of a picture look ([`letters`]) with their outline
+/// given: a rim's color, or a shadow's, or none.
+pub fn letters_with(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals, rim: Option<u8>, shadow: Option<u8>) -> Option<Letters> {
+    let ink = |x: i32, y: i32| p.at(x, y).is_some_and(|v| !ground(v));
     let line = rim.or(shadow);
     let is_face = |x: i32, y: i32| ink(x, y) && (line.is_none() || p.at(x, y) != line);
     // The capitals' rows.
@@ -766,10 +773,28 @@ fn gauge_word(h: &Hud) -> Option<GaugeWord> {
     // off, `gauge_base`.)
     let tiles: Vec<&[u8]> = cells.iter().map(|&i| h.gauge_tiles.get(top[i].tile.checked_sub(h.gauge_first_tile)? as usize)).collect::<Option<_>>()?;
     let picture = Picture { w: 8 * tiles.len(), h: 8, pixels: tiles_row(&tiles) };
-    let mut ground: Vec<u8> = h.layer_tile(blank.tile)?.to_vec();
-    ground.extend(cells_ground(&picture));
-    let letters = letters(&picture, |v| ground.contains(&v), Capitals::First)?;
-    let blank = erased(&picture, |v| ground.contains(&v)).to_grid();
+    // (The word is what its cells draw over the frame's line: each cell is
+    // the line's cell, the row's most common, where it draws the same, and
+    // the word elsewhere, its letters and their outline. The letters stand
+    // so close that their outlines merge into what looks like a tab: the
+    // user, "the dark box is actually the outline of the text, it just
+    // matches up so close". So the word's cells with it taken off are the
+    // line's cell, and the letters are read off the word alone, their
+    // outline a rim.)
+    let line = h.layer_tile(blank.tile)?.to_vec();
+    let line_row = Picture { w: picture.w, h: 8, pixels: tiles_row(&vec![line.as_slice(); tiles.len()]) };
+    let word = Picture { pixels: picture.pixels.iter().zip(&line_row.pixels).map(|(&v, &l)| if v == l { 0 } else { v }).collect(), ..picture.clone() };
+    let mut letters = letters(&word, |v| v == 0, Capitals::First)?;
+    // (Where the letters stand on the line, their outline doesn't keep
+    // them off the ground all round, EXE4's: it is their outline still, the
+    // word's most common color.)
+    if letters.rim.is_none() && letters.shadow.is_none() {
+        let mut count = [0usize; 16];
+        word.pixels.iter().filter(|&&v| v != 0).for_each(|&v| count[v as usize & 15] += 1);
+        let outline = (1..16u8).max_by_key(|&c| count[c as usize])?;
+        letters = letters_with(&word, |v| v == 0, Capitals::First, Some(outline), None)?;
+    }
+    let blank = line_row.to_grid();
     let align = TextAlign::of(letters.span, picture.w);
     Some(GaugeWord { cells: cells.into_iter().map(|c| c as u8).collect(), blank, letters, align })
 }
