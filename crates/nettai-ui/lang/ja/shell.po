@@ -270,13 +270,13 @@ msgid "It can't be played."
 msgstr "再生できません。"
 
 msgid "This is a {} replay. Pick {} to watch it."
-msgstr "これは {} のリプレイです。{} を選ぶと見られます。"
+msgstr "これは {} のリプレイです。{} を選ぶと再生できます。"
 
 msgid "This is a {} replay"
 msgstr "これは {} のリプレイです"
 
 msgid "Pick {} to watch it."
-msgstr "{} を選ぶと見られます。"
+msgstr "{} を選ぶと再生できます。"
 
 msgid "Video export needs ffmpeg. Install it, then try again."
 msgstr "動画の書き出しには ffmpeg が必要です。インストールしてから、もう一度お試しください。"
