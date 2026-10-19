@@ -10,8 +10,9 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// The fonts the UI bundles, each with its license file (from the workspace's root).
-const FONTS: [(&str, &str); 4] = [
+/// The fonts the UI and the battle's drawing bundle, each with its license file (from the workspace's root).
+const FONTS: [(&str, &str); 5] = [
+    ("Bungee", "crates/nettai-render/fonts/bungee/OFL.txt"),
     ("Chakra Petch", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
     ("Corporate Logo", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
     ("M PLUS 1 Code", "crates/nettai-render/fonts/mplus1code/OFL.txt"),

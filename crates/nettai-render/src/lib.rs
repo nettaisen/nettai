@@ -31,6 +31,7 @@ pub mod stage;
 pub mod still;
 pub mod strings;
 pub mod textlayer;
+pub mod numbers;
 pub mod vfont;
 
 pub use render::{Frame, Glide, GraphicsMode, Renderer};

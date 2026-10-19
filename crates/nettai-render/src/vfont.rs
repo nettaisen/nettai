@@ -135,9 +135,6 @@ pub struct Lettering {
     /// How wide the glyphs are drawn, in hundredths of the font's own
     /// width (the banners' tall, narrow capitals: [`Lettering::NARROW`]).
     pub width: u8,
-    /// Each character in a cell this many frame pixels wide, centered in it
-    /// (the numbers: the game's 8-pixel cells); 0: as the font sets them.
-    pub pitch: u8,
 }
 
 impl Lettering {
@@ -150,25 +147,14 @@ impl Lettering {
 
     /// Bold and narrowed, capitals `cap` rows high from row `top`.
     pub fn display(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW, pitch: 0 }
+        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW }
     }
-
-    /// The numbers' (damage, HP, the judge's): bold at the font's own
-    /// width, each character in its 8-pixel cell ([`Lettering::CELL`]), as
-    /// the game's digits are, so a number's digits stand where the
-    /// picture's do and don't move as it changes.
-    pub fn digits(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: 100, pitch: Lettering::CELL }
-    }
-
-    /// The game's numbers' pitch: a digit an 8-pixel cell.
-    pub const CELL: u8 = 8;
 
     /// Bold at the font's own width: the small labels whose letters are as
     /// wide as they are high (CUSTOM, L or R, the help pictures' titles, the
     /// window's labels).
     pub fn wide(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: 100, pitch: 0 }
+        Lettering { top, cap, weight: Lettering::BOLD, width: 100 }
     }
 }
 
@@ -200,14 +186,11 @@ struct Style {
     narrow: f32,
     /// In the lettering font ([`Role::Lettering`]).
     lettering: bool,
-    /// Each character in a cell this many frame pixels wide (0: as the font
-    /// sets them).
-    pitch: f32,
 }
 
 impl Role {
     fn style(self) -> Style {
-        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false, pitch: 0.0 };
+        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false };
         match self {
             Role::Cell => plain,
             // The original's descenders take row 14, their shadow row 15:
@@ -226,7 +209,6 @@ impl Role {
                 rows: 16.0,
                 narrow: l.width.max(1) as f32 / 100.0,
                 lettering: true,
-                pitch: l.pitch as f32,
             },
         }
     }
@@ -288,6 +270,11 @@ impl VectorFont {
     pub fn load(path: &Path) -> Result<VectorFont, String> {
         let data = std::fs::read(path).map_err(|e| format!("can't read the font {}: {e}", path.display()))?;
         VectorFont::from_data(Cow::Owned(data), path.display().to_string())
+    }
+
+    /// A font file compiled in.
+    pub fn from_bytes(data: &'static [u8], name: &str) -> Result<VectorFont, String> {
+        VectorFont::from_data(Cow::Borrowed(data), name.into())
     }
 
     fn from_data(data: Cow<'static, [u8]>, name: String) -> Result<VectorFont, String> {
@@ -422,8 +409,6 @@ struct Layout {
     /// Its role's short descenders: what its glyphs have under the
     /// baseline is drawn this many times as high ([`Shorten`]).
     shorten: Option<f32>,
-    /// Where each of its characters starts and ends, from its left.
-    units: Vec<(f32, f32)>,
 }
 
 /// A glyph field's cache key: what changes its outline's shape (the
@@ -513,6 +498,13 @@ pub struct TextRenderer {
     /// Each font's deepest descender by weight (16ths), in ems under the
     /// baseline.
     descenders: HashMap<(bool, i32), f32>,
+    /// The lettering items painted (their bar, rim, shadow and fill) at an
+    /// output's size and place, by all that changes their pixels: a banner
+    /// holding still is painted once.
+    painted: HashMap<String, Option<Painted>>,
+    /// The numbers' font's glyphs' fields and their ink's bounds (texels:
+    /// left, bottom, right, top), by character (`numbers`).
+    number_glyphs: HashMap<char, Option<(Sdf, [f32; 4])>>,
     made: Made,
 }
 
@@ -539,6 +531,8 @@ impl TextRenderer {
             glyph_bytes: 0,
             faces: HashMap::new(),
             descenders: HashMap::new(),
+            painted: HashMap::new(),
+            number_glyphs: HashMap::new(),
             made: Made::default(),
         }
     }
@@ -612,9 +606,6 @@ impl TextRenderer {
         let weight = weight_axis.map(|a| st.weight.clamp(a.min, a.max));
         let mut width = width_axis.map(|a| a.default.clamp(a.min, a.max));
         let mut l = narrowed(self.shape(text, st, width, weight), st.narrow);
-        if st.pitch > 0.0 {
-            return pitched(l, st.pitch);
-        }
         if l.width <= room || l.width <= 0.0 {
             return l;
         }
@@ -738,7 +729,7 @@ impl TextRenderer {
         };
         let chars: Vec<(usize, char)> = text.char_indices().collect();
         let drawn: Vec<Option<Mark>> = chars.iter().map(|&(_, c)| if cmap.map(c) == 0 { mark(c) } else { None }).collect();
-        let mut out = Layout { xscale: 1.0, units: vec![(0.0, 0.0); chars.len()], ..Layout::default() };
+        let mut out = Layout { xscale: 1.0, ..Layout::default() };
         let mut pen = 0.0f32;
         let gap = size * 0.05;
         let mut i = 0;
@@ -754,7 +745,6 @@ impl TextRenderer {
                         out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i, lettering });
                     }
                     out.rings.push(Ring { x, y, radius: ring / 2.0, unit: i });
-                    out.units[i] = (pen, pen + ring + 2.0 * gap);
                     pen += ring + 2.0 * gap;
                     i += 1;
                 }
@@ -774,7 +764,6 @@ impl TextRenderer {
                             out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i, lettering });
                         }
                     }
-                    out.units[i] = (pen, x0 + cell + gap);
                     pen = x0 + cell + gap;
                     i += 1;
                 }
@@ -794,13 +783,9 @@ impl TextRenderer {
                     b.shape_with(|c| {
                         let at = start + c.source.start as usize;
                         let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
-                        let first = pen;
                         for g in c.glyphs {
                             out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit, lettering });
                             pen += g.advance;
-                        }
-                        if let Some(u) = out.units.get_mut(unit) {
-                            *u = if u.1 > u.0 { (u.0, pen) } else { (first, pen) };
                         }
                     });
                     if tight_comma(&chars, j - 1) {
@@ -857,8 +842,8 @@ impl TextRenderer {
     }
 
     fn draw_item(&mut self, item: &TextItem, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
-        let layout = self.layout(&item.text, item.role, item.rect.w).clone();
-        if layout.glyphs.is_empty() && item.bar.is_none() {
+        let layout = if item.fitted.is_some() { Layout::default() } else { self.layout(&item.text, item.role, item.rect.w).clone() };
+        if layout.glyphs.is_empty() && item.bar.is_none() && item.fitted.is_none() {
             return;
         }
         let s = place.scale;
@@ -898,18 +883,78 @@ impl TextRenderer {
             place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32 + 1,
             place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32 + 1,
         );
-        if let Some(bar) = &item.bar {
-            draw_bar(bar, (k, mid + fine_y), (fine_x, fine_y), place, bounds, &mut target, &color);
-        }
         // Short descenders: how far under the text's baseline its ink may
         // reach (the box's bottom, less the shadow's offset at its most),
         // in frame pixels.
         let floor = (item.rect.y + item.rect.h) as f32 - (item.rect.y as f32 + st.baseline) - SHADOW_MOST;
         let at = Laid { x0, baseline, k, floor, shown: item.shown.unwrap_or(usize::MAX) };
         let offset = (SHADOW * s).round().max(1.0) as i32;
+        if let Some(f) = &item.fitted {
+            // A number in the numbers' font, painted once for what it is and
+            // where.
+            let key = format!("fitted|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}", f, item.rect, item.fades, item.vscale, item.fine, place, bounds);
+            if !self.painted.contains_key(&key) {
+                if self.painted.len() >= PAINTED_KEPT {
+                    self.painted.clear();
+                }
+                let painted = self.paint_fitted(f, item.rect, (k, mid), (fine_x, fine_y), place, bounds, &color);
+                self.painted.insert(key.clone(), painted);
+            }
+            if let Some(p) = &self.painted[&key] {
+                for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
+                    target.blend(p.x + (i % p.w) as i32, p.y + (i / p.w) as i32, rgb, a);
+                }
+            }
+            return;
+        }
         if let Some(ink) = &item.ink {
-            // The lettering's paint: its glyphs' coverage once, then the rim
-            // around it, the shadow and the face's fill drawn from it.
+            // The lettering's paint, painted once for what it is and where:
+            // its bar, then its glyphs' coverage, the rim around it, the
+            // shadow and the face's fill drawn from it.
+            let key = format!(
+                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}",
+                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.bar, item.fine, place, bounds
+            );
+            if !self.painted.contains_key(&key) {
+                if self.painted.len() >= PAINTED_KEPT {
+                    self.painted.clear();
+                }
+                let painted = self.paint_inked(item, ink, &layout, st, &at, place, bounds, (k, mid), (fine_x, fine_y), &color);
+                self.painted.insert(key.clone(), painted);
+            }
+            if let Some(p) = &self.painted[&key] {
+                for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
+                    target.blend(p.x + (i % p.w) as i32, p.y + (i / p.w) as i32, rgb, a);
+                }
+            }
+            return;
+        }
+        let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
+        for (rgb, off) in passes {
+            self.paint_layout(&layout, st, &at, place, bounds, off, &mut Pen { target: &mut target, rgb });
+        }
+    }
+
+    /// A lettering item painted ([`Painted`]): its bar, and its glyphs' coverage once (a [`Mask`]), the rim
+    /// around it, the shadow and the face's fill down the capitals drawn from it.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_inked(
+        &mut self,
+        item: &TextItem,
+        ink: &crate::textlayer::Ink,
+        layout: &Layout,
+        st: Style,
+        at: &Laid,
+        place: &Placement,
+        bounds: (i32, i32, i32, i32),
+        (k, mid): (f32, f32),
+        (fine_x, fine_y): (f32, f32),
+        color: &impl Fn(u16) -> u32,
+    ) -> Option<Painted> {
+        let s = place.scale;
+        let (x0, baseline) = (at.x0, at.baseline);
+        let offset = (SHADOW * s).round().max(1.0) as i32;
+        {
             let cap_top = item.rect.y as f32 + st.baseline - st.cap + fine_y;
             let unsquash = |fy: f32| mid + fine_y + (fy - mid - fine_y) / k;
             // (Its box and a margin, and the cap's height more up and down
@@ -923,11 +968,23 @@ impl TextRenderer {
                 ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
                 ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
             );
+            let bar = item.bar.as_ref().map(|bar| (bar, bar_area(bar, (k, mid + fine_y), (fine_x, fine_y), place, bounds)));
+            let all = match bar {
+                Some((_, b)) => (area.0.min(b.0), area.1.min(b.1), area.2.max(b.2), area.3.max(b.3)),
+                None => area,
+            };
+            if all.0 >= all.2 || all.1 >= all.3 {
+                return None;
+            }
+            let mut out = Painted::new(all);
+            if let Some((bar, b)) = bar {
+                draw_bar(bar, b, (k, mid + fine_y), (fine_x, fine_y), place, &mut out, color);
+            }
             if area.0 >= area.2 || area.1 >= area.3 {
-                return;
+                return Some(out);
             }
             let mut mask = Mask::new(area);
-            self.paint_layout(&layout, st, &at, place, area, 0, &mut mask);
+            self.paint_layout(layout, st, at, place, area, 0, &mut mask);
             let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
@@ -940,27 +997,103 @@ impl TextRenderer {
                     if let Some((rgb, rim)) = &rim {
                         let a = rim.at(x, y);
                         if a > 0 {
-                            target.blend(x, y, *rgb, a);
+                            out.blend(x, y, *rgb, a);
                         }
                     }
                     if let Some(rgb) = shadow {
                         let a = mask.at(x - offset, y - offset);
                         if a > 0 {
-                            target.blend(x, y, rgb, a);
+                            out.blend(x, y, rgb, a);
                         }
                     }
                     let a = mask.at(x, y);
                     if a > 0 {
-                        target.blend(x, y, face, a);
+                        out.blend(x, y, face, a);
                     }
                 }
             }
-            return;
+            Some(out)
         }
-        let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
-        for (rgb, off) in passes {
-            self.paint_layout(&layout, st, &at, place, bounds, off, &mut Pen { target: &mut target, rgb });
+    }
+
+    /// A number in the numbers' font ([`crate::numbers`]), its boxes from
+    /// `rect`'s top left, squashed `k` times about `mid` (a banner's number):
+    /// each character's ink stretched to fill its box, then the rim around
+    /// them (a frame pixel, square, as the game's is) or their shadow (a
+    /// frame pixel right and down), and their face's colors down the boxes'
+    /// rows.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_fitted(
+        &mut self,
+        f: &crate::numbers::Fitted,
+        rect: Rect,
+        (k, mid): (f32, f32),
+        (fine_x, fine_y): (f32, f32),
+        place: &Placement,
+        bounds: (i32, i32, i32, i32),
+        color: &impl Fn(u16) -> u32,
+    ) -> Option<Painted> {
+        let s = place.scale;
+        let (left, top) = (rect.x as f32 + fine_x, rect.y as f32 + fine_y);
+        let mid = mid + fine_y;
+        let squash = |y: f32| mid + (y - mid) * k;
+        let area = (
+            ((place.x as f32 + (left - 2.0) * s).floor() as i32).max(bounds.0),
+            ((place.y as f32 + squash(top - 2.0) * s).floor() as i32).max(bounds.1),
+            ((place.x as f32 + (left + rect.w as f32 + 2.0) * s).ceil() as i32).min(bounds.2),
+            ((place.y as f32 + squash(top + rect.h as f32 + 2.0) * s).ceil() as i32).min(bounds.3),
+        );
+        if area.0 >= area.2 || area.1 >= area.3 {
+            return None;
         }
+        let mut mask = Mask::new(area);
+        for &(c, [bx, by, bw, bh]) in &f.glyphs {
+            if !self.number_glyphs.contains_key(&c) {
+                let font = crate::numbers::font().font();
+                let mut scaler = self.scaler.builder(font).size(RES).build();
+                let glyph = scaler.scale_outline(font.charmap().map(c)).and_then(|o| {
+                    let b = o.bounds();
+                    Some((Sdf::of(o.points(), o.verbs())?, [b.min.x, b.min.y, b.max.x, b.max.y]))
+                });
+                self.made.glyphs += 1;
+                self.number_glyphs.insert(c, glyph);
+            }
+            let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&c] else { continue };
+            let out_left = place.x as f32 + (left + bx) * s;
+            let (out_top, out_bottom) = (place.y as f32 + squash(top + by) * s, place.y as f32 + squash(top + by + bh) * s);
+            let sx = bw * s / (x1 - x0).max(1e-3);
+            let sy = (out_bottom - out_top) / (y1 - y0).max(1e-3);
+            field.draw(out_left - x0 * sx, out_top + y1 * sy, sx, sy, area, &mut mask);
+        }
+        let mut out = Painted::new(area);
+        let one = s.round().max(1.0) as i32;
+        let rim = f.rim.map(|c| (color(c), mask.dilated_square(one)));
+        let shadow = f.shadow.map(color);
+        let fill: Vec<u32> = if f.fill.is_empty() { vec![0] } else { f.fill.iter().map(|&c| color(c)).collect() };
+        let face_top = top + f.glyphs.first().map_or(0.0, |g| g.1[1]);
+        for y in area.1..area.3 {
+            let row = mid + ((y as f32 + 0.5 - place.y as f32) / s - mid) / k - face_top - 0.5;
+            let face = fill_color(&fill, row);
+            for x in area.0..area.2 {
+                if let Some((rgb, rim)) = &rim {
+                    let a = rim.at(x, y);
+                    if a > 0 {
+                        out.blend(x, y, *rgb, a);
+                    }
+                }
+                if let Some(rgb) = shadow {
+                    let a = mask.at(x - one, y - one);
+                    if a > 0 {
+                        out.blend(x, y, rgb, a);
+                    }
+                }
+                let a = mask.at(x, y);
+                if a > 0 {
+                    out.blend(x, y, face, a);
+                }
+            }
+        }
+        Some(out)
     }
 
     /// Paint a layout's glyphs and rings (`at`: where, squashed how) into
@@ -1040,29 +1173,79 @@ fn fill_color(fill: &[u32], row: f32) -> u32 {
     mix(16) | mix(8) | mix(0)
 }
 
-/// A banner's bar ([`Bar`](crate::textlayer::Bar)) at the output's
-/// resolution: each output pixel's coverage and color from 4x4 points of
-/// it, read through the item's squash (`k` about `mid`).
-#[allow(clippy::too_many_arguments)]
-fn draw_bar(
-    bar: &crate::textlayer::Bar,
-    (k, mid): (f32, f32),
-    (fine_x, fine_y): (f32, f32),
-    place: &Placement,
-    bounds: (i32, i32, i32, i32),
-    target: &mut Target,
-    color: &impl Fn(u16) -> u32,
-) {
-    const N: usize = 4;
+/// The lettering items painted kept ([`TextRenderer`]'s `painted`) before
+/// they are made again.
+const PAINTED_KEPT: usize = 32;
+
+/// A lettering item's pixels over an area of the output, painted once
+/// (its bar, rim, shadow and fill, each over the one before), to draw over
+/// the picture through its clip and the frame's depth: each pixel's color
+/// and coverage.
+#[derive(Clone, Debug)]
+struct Painted {
+    x: i32,
+    y: i32,
+    w: usize,
+    px: Vec<(u32, u8)>,
+}
+
+impl Painted {
+    fn new((x0, y0, x1, y1): (i32, i32, i32, i32)) -> Painted {
+        let (w, h) = ((x1 - x0).max(0) as usize, (y1 - y0).max(0) as usize);
+        Painted { x: x0, y: y0, w, px: vec![(0, 0); w * h] }
+    }
+
+    /// `rgb` over the pixel at (x, y), `a` 255ths of it.
+    fn blend(&mut self, x: i32, y: i32, rgb: u32, a: u8) {
+        let (dx, dy) = (x - self.x, y - self.y);
+        if dx < 0 || dy < 0 || dx as usize >= self.w {
+            return;
+        }
+        let Some(p) = self.px.get_mut(dy as usize * self.w + dx as usize) else { return };
+        if a == 255 || p.1 == 0 {
+            *p = (rgb, a);
+            return;
+        }
+        let (sa, da) = (a as f32 / 255.0, p.1 as f32 / 255.0);
+        let oa = sa + da * (1.0 - sa);
+        let mix = |shift: u32| {
+            let (c, d) = (((rgb >> shift) & 0xFF) as f32, ((p.0 >> shift) & 0xFF) as f32);
+            (((c * sa + d * da * (1.0 - sa)) / oa).round() as u32) << shift
+        };
+        *p = (mix(16) | mix(8) | mix(0), (oa * 255.0).round() as u8);
+    }
+}
+
+/// The output pixels a bar covers ([`draw_bar`]), within `bounds`.
+fn bar_area(bar: &crate::textlayer::Bar, (k, mid): (f32, f32), (fine_x, fine_y): (f32, f32), place: &Placement, bounds: (i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
     let s = place.scale;
     let squash = |y: f32| mid + (y - mid) * k;
     let (top, bottom) = (squash(bar.top + fine_y), squash(bar.bottom + fine_y));
     let left = bar.left_at(bar.bottom).min(bar.left_at(bar.top)) + fine_x;
     let right = bar.right_at(bar.top).max(bar.right_at(bar.bottom)) + fine_x;
-    let x0 = ((place.x as f32 + left * s).floor() as i32).max(bounds.0);
-    let x1 = ((place.x as f32 + right * s).ceil() as i32).min(bounds.2);
-    let y0 = ((place.y as f32 + top * s).floor() as i32).max(bounds.1);
-    let y1 = ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3);
+    (
+        ((place.x as f32 + left * s).floor() as i32).max(bounds.0),
+        ((place.y as f32 + top * s).floor() as i32).max(bounds.1),
+        ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
+        ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
+    )
+}
+
+/// A banner's bar ([`Bar`](crate::textlayer::Bar)) at the output's
+/// resolution, over `area` ([`bar_area`]): each output pixel's coverage and
+/// color from 4x4 points of it, read through the item's squash (`k` about
+/// `mid`).
+fn draw_bar(
+    bar: &crate::textlayer::Bar,
+    (x0, y0, x1, y1): (i32, i32, i32, i32),
+    (k, mid): (f32, f32),
+    (fine_x, fine_y): (f32, f32),
+    place: &Placement,
+    target: &mut Painted,
+    color: &impl Fn(u16) -> u32,
+) {
+    const N: usize = 4;
+    let s = place.scale;
     let colors = bar.colors;
     let rgbs: Vec<(u16, u32)> = [colors.top, colors.body, colors.bottom, colors.left, colors.right].iter().map(|&c| (c, color(c))).collect();
     let rgb = |c: u16| rgbs.iter().find(|r| r.0 == c).map_or(0, |r| r.1);
@@ -1117,6 +1300,26 @@ impl Mask {
             return 0;
         }
         self.a[dy as usize * self.w + dx as usize]
+    }
+
+    /// The coverage grown by a square `reach` output pixels each way (the
+    /// game's rims are a pixel's square around the face).
+    fn dilated_square(&self, reach: i32) -> Mask {
+        let half = reach.max(0) as usize;
+        let mut wide = vec![0u8; self.w * self.h];
+        for y in 0..self.h {
+            row_max(&self.a[y * self.w..(y + 1) * self.w], half, &mut wide[y * self.w..(y + 1) * self.w]);
+        }
+        let mut a = vec![0u8; self.w * self.h];
+        for y in 0..self.h as i32 {
+            for from in (y - reach).max(0)..(y + reach + 1).min(self.h as i32) {
+                let (dst, src) = (y as usize * self.w, from as usize * self.w);
+                for x in 0..self.w {
+                    a[dst + x] = a[dst + x].max(wide[src + x]);
+                }
+            }
+        }
+        Mask { a, ..*self }
     }
 
     /// The coverage grown by a disk of `radius` output pixels, and that
@@ -1211,30 +1414,8 @@ fn narrowed(mut l: Layout, k: f32) -> Layout {
     for r in &mut l.rings {
         r.x *= k;
     }
-    for u in &mut l.units {
-        *u = (u.0 * k, u.1 * k);
-    }
     l.width *= k;
     l.xscale *= k;
-    l
-}
-
-/// A layout set at a fixed pitch: each character in a cell `pitch` frame
-/// pixels wide, centered in it, the cells side by side (the game's numbers:
-/// each digit in its 8-pixel cell, so a number's digits stand where the
-/// picture's do and don't move as it changes).
-fn pitched(mut l: Layout, pitch: f32) -> Layout {
-    let moves: Vec<f32> = l.units.iter().enumerate().map(|(u, &(s, e))| u as f32 * pitch + (pitch - (e - s)) / 2.0 - s).collect();
-    for g in &mut l.glyphs {
-        g.x += moves.get(g.unit).copied().unwrap_or(0.0);
-    }
-    for r in &mut l.rings {
-        r.x += moves.get(r.unit).copied().unwrap_or(0.0);
-    }
-    for (u, m) in l.units.iter_mut().zip(&moves) {
-        *u = (u.0 + m, u.1 + m);
-    }
-    l.width = pitch * l.units.len() as f32;
     l
 }
 

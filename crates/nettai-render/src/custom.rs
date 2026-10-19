@@ -1119,7 +1119,7 @@ impl Window {
         // In the enhanced mode the digits in the lettering font (`damage_item`),
         // their cells blank.
         let words: String = digits.iter().map(|&d| if d == DIGIT_UNKNOWN { '?' } else { char::from(b'0' + d as u8) }).collect();
-        if !words.is_empty() && text.takes_lettering(&words) && digits_look(a, &[0; 16]).is_some() {
+        if !words.is_empty() && text.draws_numbers() && crate::numbers::font().covers(&words) && digits_set(a, &[0; 16]).is_some() {
             self.tiles.fill(self.layout.digits, 6, self.layout.detail_blank);
             self.damage = Some(words);
             return;
@@ -1533,7 +1533,7 @@ impl Window {
             .zip(wanted)
             .map(|(line, (words, title))| {
                 let cap = (line.baseline - line.top).clamp(1, 16) as u8;
-                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100, pitch: 0 } };
+                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100 } };
                 let rect = Rect::new(line.span.0, line.top, line.span.1 - line.span.0, cap as i32 + 2);
                 TextItem { align: Align::Center, ..TextItem::new(words, Role::Lettering(lettering), rect, line.color, None) }
             })
@@ -1561,10 +1561,10 @@ impl Window {
         let Some(words) = &self.damage else { return };
         let Some(block) = self.block(self.layout.digits..self.layout.digits + 6) else { return };
         let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
-        let Some(look) = digits_look(v.assets, &self.palettes[block.palette as usize & 15]) else { return };
-        let Some(width) = crate::lettering::run_width(text, &[(words.clone(), &look)]) else { return };
+        let Some(set) = digits_set(v.assets, &self.palettes[block.palette as usize & 15]) else { return };
         let end = x + 8 * block.w as i32;
-        let Some(items) = crate::lettering::run(text, &[(words.clone(), &look)], (end - width.ceil() as i32, 8 * block.row as i32), 16) else { return };
+        let at = (end - crate::numbers::CELL * words.chars().count() as i32, 8 * block.row as i32);
+        let Some(items) = crate::numbers::items(text, &[(words.clone(), &set)], at) else { return };
         let past_ranged = block.palette & 15 >= 14;
         for item in items {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
@@ -1578,9 +1578,9 @@ const HELP_WEIGHT: u16 = 500;
 
 /// The look of the chip window's damage digits (glyph d of `digits` is
 /// digit d, on its cell's ground: the color at its top left).
-fn digits_look(a: &CustomScreen, palette: &Palette) -> Option<crate::lettering::Look> {
+fn digits_set(a: &CustomScreen, palette: &Palette) -> Option<crate::numbers::NumberSet> {
     let ground = crate::lettering::Picture::glyphs(&a.digits, 0, 1).at(0, 0)?;
-    crate::lettering::glyphs_look(&a.digits, 0, 10, |v| v == ground, palette)
+    crate::numbers::NumberSet::of(&a.digits, 0, 10, |v| v == ground, palette)
 }
 
 /// Cells of the window's map that show a block of its tiles: their first
