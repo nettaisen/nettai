@@ -7,7 +7,8 @@
 //! the UI's `screens/builds/`: [`navi`], [`folder`], [`navicust`], [`patch_cards`] and [`auto_battle`].
 //!
 //! **Opened by another screen** ([`open`]: Play's EDIT and Practice's): Back goes straight back to that screen,
-//! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE).
+//! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE). Opened from Play, the header has PRACTICE,
+//! straight into a practice battle with the build, whose EXIT comes back here.
 
 use crate::builds::store;
 use crate::builds::{self};
@@ -65,6 +66,27 @@ impl Builds {
     }
 }
 
+impl Builds {
+    /// PRACTICE (the header's; none where Practice opened the editor): straight into a practice battle with the
+    /// build, as it is kept once the editor is left (`practice::open`), whose EXIT comes back here on it. A build
+    /// that can't be played under its ruleset is refused where it is, why in a dialog.
+    fn practice(&mut self, shell: &mut Shell) {
+        let Some(editor) = &self.editor else { return };
+        if self.back_to == Some(ScreenId::Practice) {
+            return;
+        }
+        let draft = &editor.draft;
+        if !draft.checked.problems.is_empty() {
+            let reason = builds::words::summary(shell, &draft.kit, &draft.checked.problems).filter(|r| !r.is_empty());
+            shell.sound.play(Cue::Refused);
+            return shell.fail(crate::errors::UserError::BuildUnusable { reason });
+        }
+        let (game, name) = (draft.kit.game.clone(), draft.build.name.clone());
+        shell.sound.play(Cue::Pick);
+        crate::screens::practice::open(shell, &game, &name);
+    }
+}
+
 impl Screen for Builds {
     fn main(&self) -> &'static str {
         "tab"
@@ -87,6 +109,9 @@ impl Screen for Builds {
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if id == "practice" {
+            return self.practice(shell);
+        }
         if let Some(editor) = &mut self.editor {
             editor.activate(shell, id, index);
         }

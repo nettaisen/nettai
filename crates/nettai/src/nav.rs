@@ -1044,13 +1044,12 @@ mod tests {
     }
 
     /// Play's builds, as they are laid out at 1280 by 800: Tab goes zone by zone (the builds, the chosen build,
-    /// the ways to play it online) where reading order would go from + NEW BUILD to PRACTICE, at the same height, before
+    /// the ways to play it online) where reading order would go from + NEW BUILD to EDIT, at the same height, before
     /// the list; the arrows go by place, Right from a row of the list being the screen's own (`Screen::route`).
     #[test]
     fn play_tabs_by_its_zones() {
         let play = vec![
             at("new", 32.0, 88.0, 140.0, 40.0),
-            at("practice", 932.0, 112.0, 124.0, 40.0),
             at("edit", 1064.0, 112.0, 120.0, 40.0),
             at("more", 1192.0, 112.0, 40.0, 40.0),
             at("builds", 32.0, 140.0, 400.0, 496.0),
@@ -1060,12 +1059,11 @@ mod tests {
             at("direct", 1090.0, 652.0, 158.0, 40.0),
         ];
         let reading: Vec<String> = reading_order(play.clone()).into_iter().map(|k| k.id).collect();
-        assert_eq!(reading[..5], ["new", "practice", "edit", "more", "builds"]);
-        let zones = ["new", "builds", "practice", "edit", "more", "invite", "code", "join", "direct"];
+        assert_eq!(reading[..4], ["new", "edit", "more", "builds"]);
+        let zones = ["new", "builds", "edit", "more", "invite", "code", "join", "direct"];
         let order: Vec<String> = in_zones(reading_order(play.clone()), &zones).into_iter().map(|k| k.id).collect();
         assert_eq!(order, zones);
         assert_eq!(from(&play, "new", Direction::Down).as_deref(), Some("builds"));
-        assert_eq!(from(&play, "practice", Direction::Right).as_deref(), Some("edit"));
         assert_eq!(from(&play, "edit", Direction::Right).as_deref(), Some("more"));
         assert_eq!(from(&play, "builds", Direction::Down).as_deref(), Some("invite"));
         assert_eq!(from(&play, "invite", Direction::Right).as_deref(), Some("code"));

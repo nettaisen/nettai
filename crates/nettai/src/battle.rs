@@ -851,7 +851,7 @@ mod tests {
         Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() }
     }
 
-    /// A practice session of Practice's own, as PLAY's PRACTICE starts one: the menu open before the battle's
+    /// A practice session of Practice's own, as the editor's PRACTICE starts one: the menu open before the battle's
     /// first tick (`BattleEvent::Started`). The battle steps through its round's opening (at its first tick the
     /// field isn't drawn yet and no music plays) and is held from its custom screen: no tick steps it while the
     /// menu is open, so the custom screen's HP drain (the user: "pause at start doesn't seem to stop custom hp
