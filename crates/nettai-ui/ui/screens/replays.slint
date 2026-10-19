@@ -1079,6 +1079,8 @@ component Transport inherits Rectangle {
 // its controls are passed by).
 component PlaylistPanel inherits Rectangle {
     in property <bool> on;
+    // (Its rows where there is room for one: a phone may have room for the rest alone.)
+    property <bool> rows: root.on && self.height >= 166px;
     PanelBack { }
 
     Label {
@@ -1142,9 +1144,10 @@ component PlaylistPanel inherits Rectangle {
         x: 8px;
         y: 112px;
         width: parent.width - 16px;
-        height: parent.height - 120px;
+        height: max(0px, parent.height - 120px);
+        visible: root.rows;
         nav: "playlist";
-        count: root.on ? ReplaysView.playlist.length : 0;
+        count: root.rows ? ReplaysView.playlist.length : 0;
         chosen: ReplaysView.playlist-at;
         for slot in list.shown: ReplayRowView {
             property <int> at: list.first + slot;
@@ -1169,8 +1172,8 @@ component PlaylistPanel inherits Rectangle {
 // always shown, the transport and the playlist under the picture.
 component ViewerPage inherits Rectangle {
     property <bool> phone: Theme.phone;
-    // (On a phone the playlist is under the transport, where the window is tall enough to show a few of it.)
-    property <bool> listed: ReplaysView.playlist.length > 1 && (!root.phone || page.body-height - root.phone-transport - 268px >= 220px);
+    // (On a phone the playlist is under the transport, where the window is tall enough for it.)
+    property <bool> listed: ReplaysView.playlist.length > 1 && (!root.phone || page.body-height - root.phone-transport - 268px >= 112px);
     property <bool> shown: ReplaysView.hud || controls.has-hover || listing.has-hover;
     // (On a phone, where the page's parts are, in the body's coordinates.)
     property <length> phone-top: 28px;
@@ -1251,7 +1254,7 @@ component ViewerPage inherits Rectangle {
                 x: root.phone ? 0px : page.body-width - self.width;
                 y: root.phone ? root.phone-transport + 268px : 0px;
                 width: root.phone ? page.body-width : 400px;
-                height: root.phone ? page.body-height - self.y : page.body-height - 124px;
+                height: !root.phone ? page.body-height - 124px : page.body-height - self.y >= 166px ? page.body-height - self.y : 112px;
                 visible: root.listed;
                 PlaylistPanel {
                     width: parent.width;
