@@ -412,7 +412,10 @@ impl Renderer {
             Some((font, measure)) if stand_in => (GraphicsMode::Enhanced, Some(&**font), Some(measure)),
             _ => (self.mode, self.font.as_deref(), self.measure.as_ref()),
         };
-        let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref());
+        // (The game-style lettering only in the enhanced mode: the original
+        // mode draws its pictures whatever draws its strings.)
+        let lettering = self.mode == GraphicsMode::Enhanced;
+        let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref()).with_lettering(lettering);
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);

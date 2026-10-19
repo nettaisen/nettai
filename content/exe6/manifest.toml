@@ -10,5 +10,7 @@ depends = ["exelib"]
 # card screen, by the effect's kind and choice; `patch_card_groups`, the two groups the card screen lists them in, by
 # the effects' `group`; `bugs`, each NaviCust bug's name; `builds`, what a build is made of, by name (rules/builds:
 # its versions and its choices' presets); `battle_themes`, each battle theme's name, by its song's asset name
-# (rules/battle_themes).
-text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "battle_themes", "rulesets"]
+# (rules/battle_themes); `lettering`, the words of the battle's lettered pictures (the banners, the HUD's labels, the
+# chip window's help pictures) by picture, which the enhanced graphics draw in a font in their place
+# (docs/design/text-rendering.md §12).
+text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "battle_themes", "rulesets", "lettering"]

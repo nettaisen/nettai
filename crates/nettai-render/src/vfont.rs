@@ -11,6 +11,15 @@
 //! a string too wide for the original's box is narrowed to it, never made
 //! smaller; a font with a width axis (`--font`) draws it in a narrower cut
 //! of itself before narrowing it.
+//!
+//! The game-style lettering (the banners, the HUD's labels, the chip
+//! window's help pictures, the damage numbers: [`Role::Lettering`]) is drawn
+//! in a second bundled font, M PLUS 1 Code (fonts/mplus1code, SIL Open Font
+//! License 1.1), whose square capitals, narrowed, are near the game's; it
+//! has kana and kanji too. Its strings take the original's paint
+//! ([`Ink`](crate::textlayer::Ink)): a fill that changes down the capitals,
+//! a rim, and a banner's bar under them ([`Bar`](crate::textlayer::Bar)).
+//! docs/design/text-rendering.md §12.
 
 use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
 use crate::present::Placement;
@@ -27,6 +36,19 @@ use swash::{CacheKey, FontRef, GlyphId, Setting};
 /// Murecho, its variable cut (weights 100 to 900; 1.4 MB): the font file,
 /// for a host that draws with it otherwise.
 pub const BUNDLED: &[u8] = include_bytes!("../fonts/murecho/Murecho-VariableFont_wght.ttf");
+
+/// M PLUS 1 Code, its variable cut (weights 100 to 700; 3.9 MB): the
+/// game-style lettering's font ([`Role::Lettering`]).
+pub const LETTERING: &[u8] = include_bytes!("../fonts/mplus1code/MPLUS1Code-VariableFont_wght.ttf");
+
+/// The game-style lettering's font, parsed once.
+pub fn lettering_font() -> &'static std::sync::Arc<VectorFont> {
+    static FONT: std::sync::LazyLock<std::sync::Arc<VectorFont>> = std::sync::LazyLock::new(|| {
+        let font = VectorFont::from_data(Cow::Borrowed(LETTERING), "M PLUS 1 Code (bundled)".into());
+        std::sync::Arc::new(font.expect("the bundled lettering font parses"))
+    });
+    &FONT
+}
 
 /// The narrowest width a font with a width axis condenses a name to
 /// before it narrows it (the axis's "condensed").
@@ -47,7 +69,7 @@ const KANA: &str = "アイウエオカキクケコサシスセソタチツテト
 /// A button's letter (Ⓐ drawn by the text layer) against the text's size,
 /// and its ring's diameter and stroke against the capitals' height.
 const BUTTON_LETTER: f32 = 0.68;
-const BUTTON_RING: f32 = 1.15;
+pub const BUTTON_RING: f32 = 1.15;
 const BUTTON_STROKE: f32 = 0.1;
 /// A stacked mark's letters (EX): the gap between them against the
 /// capitals' height (each letter's capitals take half of the rest), how
@@ -94,6 +116,51 @@ pub enum Role {
     /// capitals, digits and kana take rows 1 to 10 (the Japanese font's;
     /// the US font's capitals rows 0 to 10).
     Dialogue,
+    /// The game-style lettering of a picture the text layer draws in its
+    /// place (a banner's words, "PAUSE", a damage number): in the lettering
+    /// font ([`lettering_font`]), its capitals where the picture's are.
+    Lettering(Lettering),
+}
+
+/// How a picture's lettering is drawn ([`Role::Lettering`]), from what the
+/// picture shows (`lettering::Letters`): where its capitals stand, and how
+/// heavy and how wide its glyphs are.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Lettering {
+    /// The capitals' first row in the box, and how many rows they take.
+    pub top: u8,
+    pub cap: u8,
+    /// The weight axis's value.
+    pub weight: u16,
+    /// How wide the glyphs are drawn, in hundredths of the font's own
+    /// width (the banners' tall, narrow capitals: [`Lettering::NARROW`]).
+    pub width: u8,
+}
+
+impl Lettering {
+    /// The width the banners' and the labels' words are drawn at: the
+    /// game's capitals are tall and narrow (the user's audition,
+    /// 2026-10-18: "ok do that").
+    pub const NARROW: u8 = 78;
+    /// The weight of the game's display lettering (the font's heaviest).
+    pub const BOLD: u16 = 700;
+
+    /// Bold and narrowed, capitals `cap` rows high from row `top`.
+    pub fn display(top: u8, cap: u8) -> Lettering {
+        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW }
+    }
+
+    /// Bold at the font's own width (the damage numbers: the game's digits
+    /// are as wide as the font's).
+    pub fn digits(top: u8, cap: u8) -> Lettering {
+        Lettering { top, cap, weight: Lettering::BOLD, width: 100 }
+    }
+
+    /// Bold at the font's own width: the small labels whose letters are as
+    /// wide as they are high (CUSTOM, L or R, the help pictures' titles).
+    pub fn wide(top: u8, cap: u8) -> Lettering {
+        Lettering::digits(top, cap)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -119,20 +186,41 @@ struct Style {
     descender: Option<f32>,
     /// The rows of the original's box for a string (its cells, a line).
     rows: f32,
+    /// How wide its glyphs are drawn against the font's own (the
+    /// lettering's narrowing; 1 for the rest).
+    narrow: f32,
+    /// In the lettering font ([`Role::Lettering`]).
+    lettering: bool,
 }
 
 impl Role {
     fn style(self) -> Style {
+        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false };
         match self {
-            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0 },
+            Role::Cell => plain,
             // The original's descenders take row 14, their shadow row 15:
             // Murecho's g, 3.2 pixels deep at this size, is drawn 1 deep
             // (the test `a_fitted_cells_descenders_end_in_its_cells`).
-            Role::FittedCell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: Some(1.0), rows: 16.0 },
+            Role::FittedCell => Style { descender: Some(1.0), ..plain },
             // (The chatbox's lines are cut where its sprites end, which
             // leaves a third line's descenders room: `chatbox::draw`.)
-            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, descender: None, rows: 12.0 },
+            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, rows: 12.0, ..plain },
+            Role::Lettering(l) => Style {
+                cap: l.cap as f32,
+                baseline: (l.top + l.cap) as f32,
+                weight: l.weight as f32,
+                margin: 0.0,
+                descender: None,
+                rows: 16.0,
+                narrow: l.width.max(1) as f32 / 100.0,
+                lettering: true,
+            },
         }
+    }
+
+    /// Whether it is drawn in the lettering font.
+    pub fn lettering(self) -> bool {
+        matches!(self, Role::Lettering(_))
     }
 }
 
@@ -219,6 +307,13 @@ impl VectorFont {
         let has = |c: char| c.is_whitespace() || cmap.map(c) != 0;
         text.chars().all(|c| has(c) || mark(c).is_some_and(|m| m.letters().into_iter().all(has)))
     }
+
+    /// Whether `c` is a button the text layer draws as its letter in a
+    /// ring ([`BUTTON_RING`] times the capitals' height): the font has no
+    /// glyph of its own for it.
+    pub fn draws_ring(&self, c: char) -> bool {
+        matches!(mark(c), Some(Mark::Button(_))) && self.font().charmap().map(c) == 0
+    }
 }
 
 /// A mark of the game's the text layer draws itself when the font has no
@@ -289,6 +384,8 @@ struct Placed {
     /// The string's character it draws (what the chatbox's printing
     /// counts).
     unit: usize,
+    /// The lettering font's glyph (else the text font's).
+    lettering: bool,
 }
 
 /// A button mark's ring, in frame pixels as `Placed`: its center and outer
@@ -321,6 +418,8 @@ struct Layout {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct GlyphKey {
     id: GlyphId,
+    /// The lettering font's glyph (else the text font's).
+    lettering: bool,
     width: i32,
     weight: i32,
     shorten: Option<Shorten>,
@@ -336,6 +435,7 @@ impl GlyphKey {
         let texels = |frame: f32| (frame / (g.size * k) * RES * 64.0).round() as i32;
         GlyphKey {
             id: g.id,
+            lettering: g.lettering,
             width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
             weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
             shorten: shorten.map(|f| Shorten { factor: (f * 1024.0).round() as i32, baseline: texels(-g.y * k), floor: texels(-g.y * k - floor) }),
@@ -384,18 +484,20 @@ impl Shorten {
 /// layouts and glyph fields it made.
 pub struct TextRenderer {
     font: std::sync::Arc<VectorFont>,
+    /// The game-style lettering's ([`Role::Lettering`]).
+    lettering: std::sync::Arc<VectorFont>,
     scaler: ScaleContext,
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
     glyphs: HashMap<GlyphKey, Option<Sdf>>,
     /// The bytes the fields in `glyphs` take.
     glyph_bytes: usize,
-    /// The font's kana box by weight (16ths), once measured (none: the
-    /// font has no kana).
-    faces: HashMap<i32, Option<Face>>,
-    /// The font's deepest descender by weight (16ths), in ems under the
+    /// Each font's kana box by weight (16ths), once measured (none: the
+    /// font has no kana); the lettering font's under `true`.
+    faces: HashMap<(bool, i32), Option<Face>>,
+    /// Each font's deepest descender by weight (16ths), in ems under the
     /// baseline.
-    descenders: HashMap<i32, f32>,
+    descenders: HashMap<(bool, i32), f32>,
     made: Made,
 }
 
@@ -414,6 +516,7 @@ impl TextRenderer {
     pub fn new(font: std::sync::Arc<VectorFont>) -> TextRenderer {
         TextRenderer {
             font,
+            lettering: lettering_font().clone(),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
             layouts: HashMap::new(),
@@ -429,6 +532,11 @@ impl TextRenderer {
         &self.font
     }
 
+    /// The font a role's text is drawn in.
+    fn font_of(&self, lettering: bool) -> &VectorFont {
+        if lettering { &self.lettering } else { &self.font }
+    }
+
     /// What it has made so far.
     pub fn made(&self) -> Made {
         self.made
@@ -442,10 +550,10 @@ impl TextRenderer {
     /// one by one; a string the font can't draw whole is drawn in the
     /// game's font, and has none.
     pub fn prepare(&mut self, text: &str, role: Role) {
-        if !self.font.covers(text) {
+        let st = role.style();
+        if !self.font_of(st.lettering).covers(text) {
             return;
         }
-        let st = role.style();
         let shorten = self.shorten(role);
         let floor = st.rows - st.baseline - SHADOW_MOST;
         for line in text.lines() {
@@ -482,33 +590,29 @@ impl TextRenderer {
     /// fits; else, with a width axis, in narrower cuts down to
     /// [`NARROWEST`]; else narrowed horizontally to the room, its height
     /// and baseline unchanged. Never wider than the room, never smaller.
+    /// (The lettering's glyphs are narrowed to its width first: `narrow`.)
     fn fit(&mut self, text: &str, role: Role, room: f32) -> Layout {
         let st = role.style();
-        let weight = self.font.weight.map(|a| st.weight.clamp(a.min, a.max));
-        let mut width = self.font.width.map(|a| a.default.clamp(a.min, a.max));
-        let mut l = self.shape(text, st, width, weight);
+        let (weight_axis, width_axis) = (self.font_of(st.lettering).weight, self.font_of(st.lettering).width);
+        let weight = weight_axis.map(|a| st.weight.clamp(a.min, a.max));
+        let mut width = width_axis.map(|a| a.default.clamp(a.min, a.max));
+        let mut l = narrowed(self.shape(text, st, width, weight), st.narrow);
         if l.width <= room || l.width <= 0.0 {
             return l;
         }
-        if let Some(a) = self.font.width {
+        if let Some(a) = width_axis {
             let narrowest = NARROWEST.clamp(a.min, a.default);
             for k in 1..=8 {
                 width = Some(a.default + (narrowest - a.default) * k as f32 / 8.0);
-                l = self.shape(text, st, width, weight);
+                l = narrowed(self.shape(text, st, width, weight), st.narrow);
                 if l.width <= room {
                     return l;
                 }
             }
         }
-        let xscale = room / l.width;
-        for g in &mut l.glyphs {
-            g.x *= xscale;
-        }
-        for r in &mut l.rings {
-            r.x *= xscale;
-        }
-        l.width = (l.width * xscale).min(room);
-        l.xscale = xscale;
+        let width = l.width;
+        let mut l = narrowed(l, room / width);
+        l.width = l.width.min(room);
         l
     }
 
@@ -518,12 +622,13 @@ impl TextRenderer {
     fn shorten(&mut self, role: Role) -> Option<f32> {
         let st = role.style();
         let depth = st.descender?;
-        let weight = self.font.weight.map(|a| st.weight.clamp(a.min, a.max));
-        let key = weight.map_or(0, |w| (w * 16.0).round() as i32);
+        let vf: &VectorFont = if st.lettering { &self.lettering } else { &self.font };
+        let weight = vf.weight.map(|a| st.weight.clamp(a.min, a.max));
+        let key = (st.lettering, weight.map_or(0, |w| (w * 16.0).round() as i32));
         let deepest = match self.descenders.get(&key) {
             Some(&d) => d,
             None => {
-                let font = self.font.font();
+                let font = vf.font();
                 let cmap = font.charmap();
                 let upem = font.metrics(&[]).units_per_em as f32;
                 let settings: Vec<Setting<f32>> = weight.map(|w| ("wght", w).into()).into_iter().collect();
@@ -537,20 +642,22 @@ impl TextRenderer {
                 d
             }
         };
-        let px = deepest * st.cap / self.font.cap;
+        let px = deepest * st.cap / self.font_of(st.lettering).cap;
         Some(if px > depth { depth / px } else { 1.0 })
     }
 
-    /// The font's kana box at `weight` ([`Face`]), measured once.
-    fn face(&mut self, weight: Option<f32>) -> Option<Face> {
-        let key = weight.map_or(0, |w| (w * 16.0).round() as i32);
+    /// A font's kana box at `weight` ([`Face`]), measured once (the
+    /// lettering font's, or the text font's).
+    fn face(&mut self, lettering: bool, weight: Option<f32>) -> Option<Face> {
+        let key = (lettering, weight.map_or(0, |w| (w * 16.0).round() as i32));
         if let Some(&f) = self.faces.get(&key) {
             return f;
         }
-        let font = self.font.font();
+        let vf: &VectorFont = if lettering { &self.lettering } else { &self.font };
+        let font = vf.font();
         let cmap = font.charmap();
         let upem = font.metrics(&[]).units_per_em as f32;
-        let settings: Vec<Setting<f32>> = weight.filter(|_| self.font.weight.is_some()).map(|w| ("wght", w).into()).into_iter().collect();
+        let settings: Vec<Setting<f32>> = weight.filter(|_| vf.weight.is_some()).map(|w| ("wght", w).into()).into_iter().collect();
         let mut scaler = self.scaler.builder(font).size(upem).variations(settings).build();
         let (mut tops, mut bottoms) = (Vec::new(), Vec::new());
         for c in KANA.chars() {
@@ -585,20 +692,22 @@ impl TextRenderer {
     /// the capitals' height less a gap, the first above the second, filling
     /// one cell between the capitals' top and the baseline.
     fn shape(&mut self, text: &str, st: Style, width: Option<f32>, weight: Option<f32>) -> Layout {
-        let size = st.cap / self.font.cap;
+        let lettering = st.lettering;
+        let size = st.cap / self.font_of(lettering).cap;
         // Kana and kanji: their size, and how far up from the baseline
         // their glyphs' origin goes.
-        let (kana_size, kana_rise) = match self.face(weight) {
+        let (kana_size, kana_rise) = match self.face(lettering, weight) {
             Some(f) => {
                 let k = st.cap / (f.top - f.bottom);
                 (k, st.cap / 2.0 - k * (f.top + f.bottom) / 2.0)
             }
             None => (size, 0.0),
         };
-        let font = self.font.font();
+        let vf: &VectorFont = if lettering { &self.lettering } else { &self.font };
+        let font = vf.font();
         let cmap = font.charmap();
-        let cap = self.font.cap;
-        let heavier = self.font.weight.zip(weight).map(|(a, w)| (w + STACK_WEIGHT).min(a.max));
+        let cap = vf.cap;
+        let heavier = vf.weight.zip(weight).map(|(a, w)| (w + STACK_WEIGHT).min(a.max));
         let settings = |weight: Option<f32>| {
             let mut s: Vec<Setting<f32>> = Vec::new();
             if let Some(w) = width {
@@ -624,7 +733,7 @@ impl TextRenderer {
                     let (x, y) = (pen + gap + ring / 2.0, cap * size / 2.0);
                     for (id, gx, gy) in glyphs {
                         let (gx, gy) = (x - advance / 2.0 + gx, y - cap * small / 2.0 + gy);
-                        out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i });
+                        out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i, lettering });
                     }
                     out.rings.push(Ring { x, y, radius: ring / 2.0, unit: i });
                     pen += ring + 2.0 * gap;
@@ -643,7 +752,7 @@ impl TextRenderer {
                     for (glyphs, w, y) in [(top, top_w, letter_cap + between), (bottom, bottom_w, 0.0)] {
                         for (id, gx, gy) in glyphs {
                             let gx = x0 + (cell - w) / 2.0 + gx * STACK_STRETCH;
-                            out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i });
+                            out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i, lettering });
                         }
                     }
                     pen = x0 + cell + gap;
@@ -666,7 +775,7 @@ impl TextRenderer {
                         let at = start + c.source.start as usize;
                         let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
                         for g in c.glyphs {
-                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit });
+                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit, lettering });
                             pen += g.advance;
                         }
                     });
@@ -688,12 +797,13 @@ impl TextRenderer {
                 self.glyphs.clear();
                 self.glyph_bytes = 0;
             }
-            let font = self.font.font();
+            let vf: &VectorFont = if key.lettering { &self.lettering } else { &self.font };
+            let font = vf.font();
             let mut settings: Vec<Setting<f32>> = Vec::new();
-            if self.font.width.is_some() {
+            if vf.width.is_some() {
                 settings.push(("wdth", key.width as f32 / 16.0).into());
             }
-            if self.font.weight.is_some() {
+            if vf.weight.is_some() {
                 settings.push(("wght", key.weight as f32 / 16.0).into());
             }
             let mut scaler = self.scaler.builder(font).size(RES).variations(settings).build();
@@ -724,12 +834,15 @@ impl TextRenderer {
 
     fn draw_item(&mut self, item: &TextItem, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
         let layout = self.layout(&item.text, item.role, item.rect.w).clone();
-        if layout.glyphs.is_empty() {
+        if layout.glyphs.is_empty() && item.bar.is_none() {
             return;
         }
         let s = place.scale;
         let st = item.role.style();
+        // (A sprite's true place, past its whole pixels.)
+        let (fine_x, fine_y) = (item.fine.0 as f32 / 65536.0, item.fine.1 as f32 / 65536.0);
         let x0 = item.rect.x as f32
+            + fine_x
             + match item.align {
                 Align::Left => 0.0,
                 Align::Center => ((item.rect.w as f32 - layout.width) / 2.0).round(),
@@ -738,22 +851,21 @@ impl TextRenderer {
         let baseline = item.rect.y as f32 + st.baseline;
         // The squash: about the box's middle. (The original's stretch cuts
         // its glyphs at the sprite's rows; the text isn't cut.)
+        let mid = item.rect.y as f32 + item.rect.h as f32 / 2.0;
         let (k, baseline) = match item.vscale {
             Some(n) if n > 0 => {
                 let k = 256.0 / n as f32;
-                let mid = item.rect.y as f32 + item.rect.h as f32 / 2.0;
                 (k, mid + (baseline - mid) * k)
             }
             _ => (1.0, baseline),
         };
+        let baseline = baseline + fine_y;
         let clip = item.clip.intersect(Rect::SCREEN);
         if clip.is_empty() {
             return;
         }
-        let shown = item.shown.unwrap_or(usize::MAX);
         let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
         let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
-        let offset = (SHADOW * s).round().max(1.0) as i32;
         // The output pixels the clip shows (a pixel more each way: `Target`
         // tests each against the clip's frame pixels).
         let bounds = (
@@ -762,46 +874,322 @@ impl TextRenderer {
             place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32 + 1,
             place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32 + 1,
         );
+        if let Some(bar) = &item.bar {
+            draw_bar(bar, (k, mid + fine_y), (fine_x, fine_y), place, bounds, &mut target, &color);
+        }
         // Short descenders: how far under the text's baseline its ink may
         // reach (the box's bottom, less the shadow's offset at its most),
         // in frame pixels.
         let floor = (item.rect.y + item.rect.h) as f32 - (item.rect.y as f32 + st.baseline) - SHADOW_MOST;
+        let at = Laid { x0, baseline, k, floor, shown: item.shown.unwrap_or(usize::MAX) };
+        let offset = (SHADOW * s).round().max(1.0) as i32;
+        if let Some(ink) = &item.ink {
+            // The lettering's paint: its glyphs' coverage once, then the rim
+            // around it, the shadow and the face's fill drawn from it.
+            let cap_top = item.rect.y as f32 + st.baseline - st.cap + fine_y;
+            let unsquash = |fy: f32| mid + fine_y + (fy - mid - fine_y) / k;
+            // (Its box and a margin, and the cap's height more up and down
+            // for what stands past the capitals: accents, kana, descenders.)
+            let margin = 2.0 + 2.0 * RIM;
+            let (left, right) = (x0.min(item.rect.x as f32) - margin, (x0 + layout.width).max((item.rect.x + item.rect.w) as f32) + margin);
+            let (top, bottom) = (baseline - (st.cap * 1.6 + margin) * k, baseline + (st.cap * 0.6 + margin) * k);
+            let area = (
+                ((place.x as f32 + left * s).floor() as i32).max(bounds.0),
+                ((place.y as f32 + top * s).floor() as i32).max(bounds.1),
+                ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
+                ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
+            );
+            if area.0 >= area.2 || area.1 >= area.3 {
+                return;
+            }
+            let mut mask = Mask::new(area);
+            self.paint_layout(&layout, st, &at, place, area, 0, &mut mask);
+            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
+            let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
+            let shadow = item.shadow.map(color);
+            for y in area.1..area.3 {
+                // The face's color on this output row: the picture's row
+                // its middle falls on, blended between rows' middles.
+                let row = unsquash((y as f32 + 0.5 - place.y as f32) / s) - cap_top - 0.5;
+                let face = fill_color(&fill, row);
+                for x in area.0..area.2 {
+                    if let Some((rgb, rim)) = &rim {
+                        let a = rim.at(x, y);
+                        if a > 0 {
+                            target.blend(x, y, *rgb, a);
+                        }
+                    }
+                    if let Some(rgb) = shadow {
+                        let a = mask.at(x - offset, y - offset);
+                        if a > 0 {
+                            target.blend(x, y, rgb, a);
+                        }
+                    }
+                    let a = mask.at(x, y);
+                    if a > 0 {
+                        target.blend(x, y, face, a);
+                    }
+                }
+            }
+            return;
+        }
         let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
         for (rgb, off) in passes {
-            for g in layout.glyphs.iter().filter(|g| g.unit < shown) {
-                let Some(field) = self.glyph(GlyphKey::of(g, layout.shorten, k, floor)) else { continue };
-                // The glyph's origin, and a texel's size, in output pixels:
-                // across, where the layout puts it; down, on a whole output
-                // row, so that the baseline and what stands on it are on a
-                // pixel's edge (the chatbox's baseline is half a frame pixel
-                // down, a kana's a part of one).
-                let ox = place.x as f32 + (x0 + g.x) * s + off as f32;
-                let oy = (place.y as f32 + (baseline - g.y * k) * s).round() + off as f32;
-                let (sx, sy) = (g.size * s * layout.xscale * g.stretch / RES, g.size * s * k / RES);
-                field.draw(ox, oy, sx, sy, bounds, &mut Pen { target: &mut target, rgb });
-            }
-            // A button mark's ring: antialiased, its stroke inside its
-            // outer edge, narrowed and squashed with the text.
-            for r in layout.rings.iter().filter(|r| r.unit < shown) {
-                let (rx, ry) = (r.radius * layout.xscale * s, r.radius * k * s);
-                let stroke = (BUTTON_STROKE * st.cap * s).max(1.0);
-                let cx = place.x as f32 + (x0 + r.x) * s + off as f32;
-                let cy = place.y as f32 + (baseline - r.y * k) * s + off as f32;
-                let mean = (rx + ry) / 2.0;
-                for y in (cy - ry - 1.0).floor() as i32..=(cy + ry + 1.0).ceil() as i32 {
-                    for x in (cx - rx - 1.0).floor() as i32..=(cx + rx + 1.0).ceil() as i32 {
-                        let (dx, dy) = ((x as f32 + 0.5 - cx) / rx, (y as f32 + 0.5 - cy) / ry);
-                        // Output pixels out from the outer edge (inside: below 0).
-                        let edge = ((dx * dx + dy * dy).sqrt() - 1.0) * mean;
-                        let a = (0.5 - edge).clamp(0.0, 1.0) * (0.5 + edge + stroke).clamp(0.0, 1.0);
-                        if a > 0.0 {
-                            target.blend(x, y, rgb, (a * 255.0).round() as u8);
-                        }
+            self.paint_layout(&layout, st, &at, place, bounds, off, &mut Pen { target: &mut target, rgb });
+        }
+    }
+
+    /// Paint a layout's glyphs and rings (`at`: where, squashed how) into
+    /// `paint`, `off` output pixels right and down, within `bounds`.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_layout(&mut self, layout: &Layout, st: Style, at: &Laid, place: &Placement, bounds: (i32, i32, i32, i32), off: i32, paint: &mut impl Paint) {
+        let (s, k) = (place.scale, at.k);
+        for g in layout.glyphs.iter().filter(|g| g.unit < at.shown) {
+            let Some(field) = self.glyph(GlyphKey::of(g, layout.shorten, k, at.floor)) else { continue };
+            // The glyph's origin, and a texel's size, in output pixels:
+            // across, where the layout puts it; down, on a whole output
+            // row, so that the baseline and what stands on it are on a
+            // pixel's edge (the chatbox's baseline is half a frame pixel
+            // down, a kana's a part of one).
+            let ox = place.x as f32 + (at.x0 + g.x) * s + off as f32;
+            let oy = (place.y as f32 + (at.baseline - g.y * k) * s).round() + off as f32;
+            let (sx, sy) = (g.size * s * layout.xscale * g.stretch / RES, g.size * s * k / RES);
+            field.draw(ox, oy, sx, sy, bounds, paint);
+        }
+        // A button mark's ring: antialiased, its stroke inside its outer
+        // edge, narrowed and squashed with the text.
+        for r in layout.rings.iter().filter(|r| r.unit < at.shown) {
+            let (rx, ry) = (r.radius * layout.xscale * s, r.radius * k * s);
+            let stroke = (BUTTON_STROKE * st.cap * s).max(1.0);
+            let cx = place.x as f32 + (at.x0 + r.x) * s + off as f32;
+            let cy = place.y as f32 + (at.baseline - r.y * k) * s + off as f32;
+            let mean = (rx + ry) / 2.0;
+            let ys = ((cy - ry - 1.0).floor() as i32).max(bounds.1)..=((cy + ry + 1.0).ceil() as i32).min(bounds.3 - 1);
+            for y in ys {
+                for x in ((cx - rx - 1.0).floor() as i32).max(bounds.0)..=((cx + rx + 1.0).ceil() as i32).min(bounds.2 - 1) {
+                    let (dx, dy) = ((x as f32 + 0.5 - cx) / rx, (y as f32 + 0.5 - cy) / ry);
+                    // Output pixels out from the outer edge (inside: below 0).
+                    let edge = ((dx * dx + dy * dy).sqrt() - 1.0) * mean;
+                    let a = (0.5 - edge).clamp(0.0, 1.0) * (0.5 + edge + stroke).clamp(0.0, 1.0);
+                    if a > 0.0 {
+                        paint.pixel(x, y, (a * 255.0).round() as u8);
                     }
                 }
             }
         }
     }
+}
+
+/// Where a layout is drawn: its left and its baseline in frame pixels (the
+/// squash applied), the squash, the short descenders' floor and how many
+/// of its characters show.
+struct Laid {
+    x0: f32,
+    baseline: f32,
+    k: f32,
+    floor: f32,
+    shown: usize,
+}
+
+/// The lettering's rim, in frame pixels: as wide as the picture's, one
+/// pixel, and that again half a pixel right and down (the picture's rims
+/// are heavier there).
+const RIM: f32 = 1.0;
+const RIM_HEAVIER: f32 = 0.5;
+
+/// The fill's color at `row` (the capitals' rows from the first's middle,
+/// continuous): blended between the two rows it falls between, the first's
+/// or the last's past them.
+fn fill_color(fill: &[u32], row: f32) -> u32 {
+    let last = fill.len() - 1;
+    let r = row.clamp(0.0, last as f32);
+    let i = (r.floor() as usize).min(last);
+    let (a, b) = (fill[i], fill[(i + 1).min(last)]);
+    let t = r - i as f32;
+    if t <= 0.0 || a == b {
+        return a;
+    }
+    let mix = |shift: u32| {
+        let (ca, cb) = (((a >> shift) & 0xFF) as f32, ((b >> shift) & 0xFF) as f32);
+        ((ca + (cb - ca) * t).round() as u32) << shift
+    };
+    mix(16) | mix(8) | mix(0)
+}
+
+/// A banner's bar ([`Bar`](crate::textlayer::Bar)) at the output's
+/// resolution: each output pixel's coverage and color from 4x4 points of
+/// it, read through the item's squash (`k` about `mid`).
+#[allow(clippy::too_many_arguments)]
+fn draw_bar(
+    bar: &crate::textlayer::Bar,
+    (k, mid): (f32, f32),
+    (fine_x, fine_y): (f32, f32),
+    place: &Placement,
+    bounds: (i32, i32, i32, i32),
+    target: &mut Target,
+    color: &impl Fn(u16) -> u32,
+) {
+    const N: usize = 4;
+    let s = place.scale;
+    let squash = |y: f32| mid + (y - mid) * k;
+    let (top, bottom) = (squash(bar.top + fine_y), squash(bar.bottom + fine_y));
+    let left = bar.left_at(bar.bottom).min(bar.left_at(bar.top)) + fine_x;
+    let right = bar.right_at(bar.top).max(bar.right_at(bar.bottom)) + fine_x;
+    let x0 = ((place.x as f32 + left * s).floor() as i32).max(bounds.0);
+    let x1 = ((place.x as f32 + right * s).ceil() as i32).min(bounds.2);
+    let y0 = ((place.y as f32 + top * s).floor() as i32).max(bounds.1);
+    let y1 = ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3);
+    let colors = bar.colors;
+    let rgbs: Vec<(u16, u32)> = [colors.top, colors.body, colors.bottom, colors.left, colors.right].iter().map(|&c| (c, color(c))).collect();
+    let rgb = |c: u16| rgbs.iter().find(|r| r.0 == c).map_or(0, |r| r.1);
+    for y in y0..y1 {
+        // The points' rows in the bar (unsquashed).
+        let rows: [f32; N] = std::array::from_fn(|j| {
+            let fy = (y as f32 + (j as f32 + 0.5) / N as f32 - place.y as f32) / s;
+            mid + (fy - mid) / k - fine_y
+        });
+        for x in x0..x1 {
+            let (mut sum, mut n) = ([0u32; 3], 0u32);
+            for &ty in &rows {
+                for i in 0..N {
+                    let fx = (x as f32 + (i as f32 + 0.5) / N as f32 - place.x as f32) / s - fine_x;
+                    if let Some(c) = bar.color_at(fx, ty) {
+                        let c = rgb(c);
+                        sum[0] += (c >> 16) & 0xFF;
+                        sum[1] += (c >> 8) & 0xFF;
+                        sum[2] += c & 0xFF;
+                        n += 1;
+                    }
+                }
+            }
+            if n == 0 {
+                continue;
+            }
+            let avg = ((sum[0] + n / 2) / n) << 16 | ((sum[1] + n / 2) / n) << 8 | (sum[2] + n / 2) / n;
+            target.blend(x, y, avg, ((n * 255 + (N * N) as u32 / 2) / (N * N) as u32) as u8);
+        }
+    }
+}
+
+/// An item's glyphs' coverage over an area of the output (the lettering's,
+/// whose rim and fill are drawn from it).
+struct Mask {
+    x: i32,
+    y: i32,
+    w: usize,
+    h: usize,
+    a: Vec<u8>,
+}
+
+impl Mask {
+    fn new((x0, y0, x1, y1): (i32, i32, i32, i32)) -> Mask {
+        let (w, h) = ((x1 - x0).max(0) as usize, (y1 - y0).max(0) as usize);
+        Mask { x: x0, y: y0, w, h, a: vec![0; w * h] }
+    }
+
+    fn at(&self, x: i32, y: i32) -> u8 {
+        let (dx, dy) = (x - self.x, y - self.y);
+        if dx < 0 || dy < 0 || dx as usize >= self.w || dy as usize >= self.h {
+            return 0;
+        }
+        self.a[dy as usize * self.w + dx as usize]
+    }
+
+    /// The coverage grown by a disk of `radius` output pixels, and that
+    /// again `heavier` pixels right and down: a rim's.
+    fn dilated(&self, radius: f32, heavier: i32) -> Mask {
+        let r = radius.max(1.0);
+        let reach = r.floor() as i32;
+        // Each row's coverage widened by each half-width the disk has.
+        let halves: Vec<usize> = (-reach..=reach).map(|dy| (r * r - (dy * dy) as f32).max(0.0).sqrt().floor() as usize).collect();
+        let mut widened: HashMap<usize, Vec<u8>> = HashMap::new();
+        for &half in &halves {
+            widened.entry(half).or_insert_with(|| {
+                let mut out = vec![0; self.w * self.h];
+                for y in 0..self.h {
+                    row_max(&self.a[y * self.w..(y + 1) * self.w], half, &mut out[y * self.w..(y + 1) * self.w]);
+                }
+                out
+            });
+        }
+        let mut grown = vec![0u8; self.w * self.h];
+        for y in 0..self.h as i32 {
+            let row = &mut grown[y as usize * self.w..(y as usize + 1) * self.w];
+            for (k, &half) in halves.iter().enumerate() {
+                let from = y + k as i32 - reach;
+                if from < 0 || from >= self.h as i32 {
+                    continue;
+                }
+                let src = &widened[&half][from as usize * self.w..(from as usize + 1) * self.w];
+                for (o, &v) in row.iter_mut().zip(src) {
+                    *o = (*o).max(v);
+                }
+            }
+        }
+        let mut a = grown.clone();
+        if heavier > 0 {
+            let d = heavier as usize;
+            for y in d..self.h {
+                for x in d..self.w {
+                    let v = grown[(y - d) * self.w + x - d];
+                    let o = &mut a[y * self.w + x];
+                    *o = (*o).max(v);
+                }
+            }
+        }
+        Mask { a, ..*self }
+    }
+}
+
+impl Paint for Mask {
+    fn pixel(&mut self, x: i32, y: i32, a: u8) {
+        let (dx, dy) = (x - self.x, y - self.y);
+        if dx < 0 || dy < 0 || dx as usize >= self.w || dy as usize >= self.h {
+            return;
+        }
+        let o = &mut self.a[dy as usize * self.w + dx as usize];
+        *o = (*o).max(a);
+    }
+}
+
+/// `out[x]` the most of `row[x - half..=x + half]` (van Herk's: blocks of
+/// the window's width, their running maxima each way).
+fn row_max(row: &[u8], half: usize, out: &mut [u8]) {
+    if half == 0 {
+        out.copy_from_slice(row);
+        return;
+    }
+    let (n, m) = (row.len(), 2 * half + 1);
+    let len = n + 2 * half;
+    let p = |i: usize| if i >= half && i - half < n { row[i - half] } else { 0 };
+    let mut ahead = vec![0u8; len];
+    let mut behind = vec![0u8; len];
+    for i in 0..len {
+        ahead[i] = if i % m == 0 { p(i) } else { ahead[i - 1].max(p(i)) };
+    }
+    for i in (0..len).rev() {
+        behind[i] = if i % m == m - 1 || i == len - 1 { p(i) } else { behind[i + 1].max(p(i)) };
+    }
+    for (x, o) in out.iter_mut().enumerate() {
+        *o = behind[x].max(ahead[(x + m - 1).min(len - 1)]);
+    }
+}
+
+/// A layout drawn `k` times as wide: its glyphs' places and its rings'
+/// moved in (or out) from its left, its glyphs narrowed with them.
+fn narrowed(mut l: Layout, k: f32) -> Layout {
+    if k == 1.0 {
+        return l;
+    }
+    for g in &mut l.glyphs {
+        g.x *= k;
+    }
+    for r in &mut l.rings {
+        r.x *= k;
+    }
+    l.width *= k;
+    l.xscale *= k;
+    l
 }
 
 /// Whether the character at `k` is a comma the next word follows at once
@@ -1148,7 +1536,7 @@ mod tests {
         let mut r = renderer();
         for role in [Role::Cell, Role::FittedCell, Role::Dialogue] {
             let st = role.style();
-            let face = r.face(Some(st.weight)).expect("Murecho has kana");
+            let face = r.face(false, Some(st.weight)).expect("Murecho has kana");
             assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
             let mut sizes = Vec::new();
             for (text, room) in [("キャノン", 1000), ("バッドメディスン", 64), ("ロックマンEXE", 56), ("攻撃力✕2", 160), ("ガンデルソル3", 56)] {

@@ -15,8 +15,10 @@
 //! out of the frame and hand the sink a [`TextItem`] in the original's box
 //! instead; the renderer works out each item's depth and fades, and the
 //! window or the PNG writer draws the items after scaling (`present`,
-//! `vfont`). Pictures (numbers, banners, chip codes, the Crosses' names)
-//! stay pixel art.
+//! `vfont`). Chip codes, HP numbers, the Crosses' names, buttons and logos
+//! stay pixel art; the game-style lettering of the banners, the HUD's
+//! labels, the chip window's help pictures and the damage numbers is drawn
+//! here too, in the lettering font ([`Role::Lettering`], `lettering`).
 
 use crate::compose::{Fade, HEIGHT, WIDTH};
 pub use crate::render::GraphicsMode;
@@ -101,6 +103,16 @@ pub struct TextItem {
     /// How many characters show (the chatbox printing): the string is laid
     /// out whole, so what shows doesn't move as it grows.
     pub shown: Option<usize>,
+    /// The game-style lettering's paint, where the picture it stands in for
+    /// has more than one face color or a rim (`face` is then its first
+    /// fill color).
+    pub ink: Option<Ink>,
+    /// A banner's bar, drawn under the words.
+    pub bar: Option<Bar>,
+    /// How far past its box the item truly is, 16.16 frame pixels right and
+    /// down: a sprite's true place between the frame's pixels
+    /// (`objects::Fine`, the enhanced mode's motion).
+    pub fine: (i32, i32),
 }
 
 impl TextItem {
@@ -118,7 +130,110 @@ impl TextItem {
             past_ranged: false,
             vscale: None,
             shown: None,
+            ink: None,
+            bar: None,
+            fine: (0, 0),
         }
+    }
+}
+
+/// How the game-style lettering is painted, from the picture it stands in
+/// for (`lettering::Letters`): the face's colors down the capitals, and the
+/// rim around them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ink {
+    /// The face's color on each of the capitals' rows, top to bottom (BGR555,
+    /// before the fades), as the picture has them: drawn blended between
+    /// the rows' middles, so the bands run smoothly at the output's
+    /// resolution. One color: a flat face.
+    pub fill: Vec<u16>,
+    /// The rim's color (BGR555): an outline a frame pixel wide around the
+    /// face, heavier right and down, as the picture's is. None: no rim.
+    pub rim: Option<u16>,
+}
+
+/// A banner's bar, drawn as a shape at the output's resolution under the
+/// words (`lettering::Bar::measure` reads it off the banner's picture): a
+/// band from `top` to `bottom` whose ends slant at the picture's angle, a
+/// line of its top color along its top and of its left color along its
+/// left end, of its bottom color along its bottom and of its right color
+/// along its right end, its body between. In frame pixels, before the
+/// item's squash (which takes it with the words).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bar {
+    pub top: f32,
+    pub bottom: f32,
+    /// The left end where it meets the bottom edge, and the farthest right
+    /// it goes up (the picture's end stands upright near the top).
+    pub left: f32,
+    pub left_most: f32,
+    /// The right end where it meets the top edge, and the farthest left it
+    /// goes down (upright near the bottom).
+    pub right: f32,
+    pub right_least: f32,
+    /// How far right the ends lean a row up.
+    pub slant: f32,
+    /// The lines' width, in frame pixels (the picture's: one).
+    pub line: f32,
+    /// Its colors (BGR555, before the fades).
+    pub colors: BarColors,
+}
+
+/// A bar's colors ([`Bar`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BarColors {
+    pub top: u16,
+    pub body: u16,
+    pub bottom: u16,
+    pub left: u16,
+    pub right: u16,
+}
+
+impl Bar {
+    /// The bar moved `dx` right and `dy` down.
+    pub fn moved(self, dx: f32, dy: f32) -> Bar {
+        Bar {
+            top: self.top + dy,
+            bottom: self.bottom + dy,
+            left: self.left + dx,
+            left_most: self.left_most + dx,
+            right: self.right + dx,
+            right_least: self.right_least + dx,
+            ..self
+        }
+    }
+
+    /// The left end's place on row `y` (a frame row, continuous).
+    pub fn left_at(&self, y: f32) -> f32 {
+        (self.left + self.slant * (self.bottom - y)).min(self.left_most)
+    }
+
+    /// The right end's place on row `y`.
+    pub fn right_at(&self, y: f32) -> f32 {
+        (self.right - self.slant * (y - self.top)).max(self.right_least)
+    }
+
+    /// The color at a point of the frame (continuous), if the bar covers it.
+    pub fn color_at(&self, x: f32, y: f32) -> Option<u16> {
+        if y < self.top || y >= self.bottom {
+            return None;
+        }
+        let (l, r) = (self.left_at(y), self.right_at(y));
+        if x < l || x >= r {
+            return None;
+        }
+        let c = &self.colors;
+        Some(if x < l + self.line {
+            c.left
+        } else if y < self.top + self.line {
+            c.top
+        } else if y >= self.bottom - self.line {
+            c.bottom
+        } else if x >= r - self.line {
+            c.right
+        } else {
+            c.body
+        })
     }
 }
 
@@ -145,11 +260,31 @@ pub struct TextSink<'f> {
     /// The display text the frame shows for content: the player's
     /// language's strings, else the content's own.
     pub strings: crate::strings::DisplayText<'f>,
+    /// The game-style lettering goes to the text layer too (the enhanced
+    /// mode's: [`TextSink::takes_lettering`]).
+    lettering: bool,
 }
 
 impl<'f> TextSink<'f> {
     pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
-        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0, strings: Default::default() }
+        let lettering = mode == GraphicsMode::Enhanced && font.is_some();
+        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering }
+    }
+
+    /// With the game-style lettering left to the pictures however the
+    /// strings are drawn (`on` false: the original mode's frame, whose
+    /// strings a pack without the language's lettering has drawn by the
+    /// vector font: `Renderer::render`).
+    pub fn with_lettering(self, on: bool) -> TextSink<'f> {
+        TextSink { lettering: on && self.lettering, ..self }
+    }
+
+    /// Whether a picture's lettering that says `text` goes to the text
+    /// layer: in the enhanced mode, when the lettering font draws every
+    /// character of it ([`crate::vfont::lettering_font`]); else the
+    /// picture is drawn as the original draws it.
+    pub fn takes_lettering(&self, text: &str) -> bool {
+        self.lettering && !text.is_empty() && crate::vfont::lettering_font().covers(text)
     }
 
     /// With a language's strings table (none: the content's own strings).
