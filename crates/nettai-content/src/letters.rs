@@ -421,7 +421,11 @@ pub fn lines(p: &Picture, ground: impl Fn(u8) -> bool, palette: &Palette) -> Vec
 /// run's first row to the next's, with three runs or more), the run is that
 /// many lines at that pitch: a mark of the lower line's letters (a voiced
 /// mark) reached the line above and left no clear row between (EXE4's
-/// Japanese OK picture: チップが over えらばれて).
+/// Japanese OK picture: チップが over えらばれて). And a run two lines tall
+/// or more (the lines' height: the most common run's, with three runs or
+/// more) is that many lines, each below the first that tall, a row apart,
+/// from its bottom: a letter's descender reached the line below (EXE5's
+/// and EXE6's BLOCKING!: Reject's j over Disturb).
 pub fn line_rows(inked: &[bool]) -> Vec<(usize, usize)> {
     let mut runs: Vec<(usize, usize)> = Vec::new();
     let mut y = 0;
@@ -455,7 +459,25 @@ pub fn line_rows(inked: &[bool]) -> Vec<(usize, usize)> {
             _ => out.push((top, end)),
         }
     }
-    out
+    let mut heights: Vec<usize> = runs.iter().map(|r| r.1 - r.0).collect();
+    heights.sort_unstable();
+    let height = heights[heights.len() / 2];
+    if runs.len() < 3 || height == 0 {
+        return out;
+    }
+    let mut split = Vec::new();
+    for (top, end) in out {
+        let n = (end - top + 1) / (height + 1);
+        if n < 2 {
+            split.push((top, end));
+            continue;
+        }
+        let mut lines: Vec<(usize, usize)> = (0..n - 1).map(|i| (end - (i + 1) * height - i, end - i * (height + 1))).collect();
+        let first_end = lines.last().map_or(end, |l| l.0);
+        lines.push((top, first_end));
+        split.extend(lines.into_iter().rev());
+    }
+    split
 }
 
 /// What is behind a small picture's letters (a chip code in its cell): its
@@ -1342,8 +1364,10 @@ fn most<T: Copy + PartialEq>(seen: &[T]) -> Option<T> {
 /// differs from it): each pixel the color most of the pictures show there,
 /// of those whose letters are no nearer than a pixel's gap (an outline in
 /// the panel's colors lies beside them), else of those whose letters miss
-/// it; where every picture's letters cover it, its row's nearest such
-/// pixel's. The base holds the panel, each pixel an index that shows its
+/// it; where as many show one color as another, of all whose letters miss
+/// it, then its left neighbor's (one picture's own panel never wins against
+/// one other); where every picture's letters cover it, its row's nearest
+/// such pixel's. The base holds the panel, each pixel an index that shows its
 /// color in every picture's palette, and each picture is the base and a
 /// layer of what it has over it, its letters wherever its color differs
 /// from the panel's ([`LayeredPicture`]). With what it found: how many
@@ -1361,21 +1385,48 @@ pub fn shared_panel(variants: &[Variant], columns: usize) -> (Vec<(String, Layer
     let near: Vec<Vec<bool>> = letters.iter().map(|m| grown(m, columns)).collect();
     let mut panel: Vec<Option<(u16, u8)>> = vec![None; n];
     let mut differ = vec![0usize; variants.len()];
-    let mut differing = 0;
-    for i in 0..n {
+    let (mut differing, mut alone) = (0, 0);
+    // (Row by row, left to right, for a tie's left neighbor.)
+    let rows = 8 * (n / Tiles::TILE).div_ceil(columns);
+    for (x, y) in (0..rows).flat_map(|y| (0..8 * columns).map(move |x| (x, y))) {
+        let i = grid_index(0, x, y, columns);
+        if i >= n {
+            continue;
+        }
         let color = |k: usize| (variants[k].color)(i, variants[k].tiles.pixels[i]);
-        let mut seen: Vec<usize> = (0..variants.len()).filter(|&k| !near[k][i]).collect();
-        let far = !seen.is_empty();
-        if !far {
-            seen = (0..variants.len()).filter(|&k| !letters[k][i]).collect();
+        // The colors most of `seen` show (all of them where as many show
+        // each).
+        let tops = |seen: &[usize]| -> Vec<u16> {
+            let count = |c: u16| seen.iter().filter(|&&k| color(k) == c).count();
+            let top = seen.iter().map(|&k| count(color(k))).max().unwrap_or(0);
+            let mut out: Vec<u16> = Vec::new();
+            for c in seen.iter().map(|&k| color(k)).filter(|&c| count(c) == top) {
+                if !out.contains(&c) {
+                    out.push(c);
+                }
+            }
+            out
+        };
+        let far: Vec<usize> = (0..variants.len()).filter(|&k| !near[k][i]).collect();
+        let open: Vec<usize> = (0..variants.len()).filter(|&k| !letters[k][i]).collect();
+        // Those far from their letters; where as many show one color as
+        // another, all whose letters miss it among those colors; then its
+        // left neighbor's (the panel's own pattern).
+        let mut best = tops(&far);
+        if best.len() != 1 {
+            let all = tops(&open);
+            let among: Vec<u16> = all.iter().copied().filter(|c| best.contains(c)).collect();
+            best = if best.is_empty() { all } else if among.is_empty() { best } else { among };
         }
-        let colors: Vec<u16> = seen.iter().map(|&k| color(k)).collect();
-        let Some(c) = most(&colors) else { continue };
-        if far && colors.iter().any(|&o| o != c) {
+        let left = (x > 0).then(|| panel[grid_index(0, x - 1, y, columns)].map(|p| p.0)).flatten();
+        let Some(c) = left.filter(|l| best.len() > 1 && best.contains(l)).or(best.first().copied()) else { continue };
+        let seen = if far.is_empty() { &open } else { &far };
+        alone += (seen.len() == 1) as usize;
+        if !far.is_empty() && far.iter().any(|&k| color(k) != c) {
             differing += 1;
-            seen.iter().filter(|&&k| color(k) != c).for_each(|&k| differ[k] += 1);
+            far.iter().filter(|&&k| color(k) != c).for_each(|&k| differ[k] += 1);
         }
-        let k = seen[colors.iter().position(|&o| o == c).unwrap_or(0)];
+        let k = open.iter().chain(&far).copied().find(|&k| color(k) == c).unwrap_or(0);
         panel[i] = Some((c, variants[k].tiles.pixels[i]));
     }
     let mut base = Tiles { pixels: vec![0; n] };
@@ -1407,7 +1458,11 @@ pub fn shared_panel(variants: &[Variant], columns: usize) -> (Vec<(String, Layer
         })
         .collect();
     let files: Vec<&str> = variants.iter().map(|v| v.file.as_str()).collect();
-    let mut notes = vec![format!("one panel under {}: {} pixels every picture's letters cover, filled from their rows", files.join(", "), open.len())];
+    let mut notes = vec![format!(
+        "one panel under {}: {} pixels every picture's letters cover, filled from their rows; {alone} pixels only one picture shows (the others' letters cover them)",
+        files.join(", "),
+        open.len()
+    )];
     if differing > 0 {
         let by: Vec<String> = variants.iter().zip(&differ).filter(|(_, d)| **d > 0).map(|(v, d)| format!("{} {d}", v.file)).collect();
         notes.push(format!("{differing} pixels where the pictures' panels differ off their letters' edges (in the layers of {})", by.join(", ")));
@@ -1439,34 +1494,43 @@ fn grown(mask: &[bool], columns: usize) -> Vec<bool> {
 /// A version's form list names as the pack keeps them (the user: "for the
 /// cross bar, you should mask out the cross portrait then superimpose it
 /// over the yellow bar"): the bar every name lies on (one name's tiles,
-/// every look's alike); where a name's own bar departs from it (a streak
-/// ending a pixel sooner: the names' tiles, every look's, none elsewhere);
-/// each name's portrait over those (its own pixels, none off it); and each
-/// language's letters over all (by language, the pack's first, named "";
-/// none off them).
+/// every look's alike); each name's portrait over it (its own pixels, none
+/// off it: the names' tiles, every look's); and each language's own
+/// ([`NameLayers`], the pack's first, named "").
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FormNameLayers {
     pub bar: Tiles,
-    pub rows: Vec<Option<u8>>,
     pub portraits: Vec<Option<u8>>,
-    pub letters: Vec<(String, Vec<Option<u8>>)>,
+    pub languages: Vec<NameLayers>,
+}
+
+/// A language's own of a version's form list names: where its names' bars
+/// depart from the shared bar (a streak ending a pixel sooner or later: the
+/// names' tiles, none elsewhere), under the portraits, and its letters over
+/// all.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NameLayers {
+    pub language: String,
+    pub bars: Vec<Option<u8>>,
+    pub letters: Vec<Option<u8>>,
 }
 
 impl FormNameLayers {
-    /// The names with no letters: each its portrait over the bar.
-    pub fn blank(&self) -> Tiles {
+    /// The names with no letters, with `bars` (a language's departures
+    /// from the bar): each its portrait over its bar.
+    pub fn blank(&self, bars: &[Option<u8>]) -> Tiles {
         let looks = self.portraits.len() / (CustomScreen::FORM_NAME_TILES * Tiles::TILE);
         let mut out = Tiles { pixels: self.bar.pixels.repeat(looks) };
-        lay(&mut out, &self.rows);
+        lay(&mut out, bars);
         lay(&mut out, &self.portraits);
         out
     }
 
-    /// The names with `letters` over them.
-    pub fn with(&self, letters: &[Option<u8>]) -> Tiles {
-        let mut out = self.blank();
-        lay(&mut out, letters);
-        out
+    /// A language's names with no letters (one with none of its own: the
+    /// pack's).
+    pub fn blank_in(&self, language: &str) -> Tiles {
+        let own = self.languages.iter().find(|l| l.language == language).or(self.languages.first());
+        self.blank(own.map_or(&[][..], |l| &l.bars[..]))
     }
 }
 
@@ -1496,20 +1560,21 @@ pub fn lay(tiles: &mut Tiles, layer: &[Option<u8>]) {
 /// of the bar the names show differently, how many every portrait covers,
 /// and how many letters or portraits cover in every name (filled from
 /// their rows); or why the names can't be layered.
-pub fn form_name_layers(names: &[(&str, &Tiles, &Tiles)]) -> Result<(FormNameLayers, Vec<String>), String> {
+pub fn form_name_layers(names: &[(usize, &str, &Tiles, &Tiles)]) -> Result<(Vec<FormNameLayers>, Vec<String>), String> {
     let (columns, tiles) = (CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES);
-    let Some(&(_, own, _)) = names.first() else { return Ok(Default::default()) };
+    let Some(&(_, _, own, _)) = names.first() else { return Ok(Default::default()) };
     let per = tiles * Tiles::TILE;
-    if own.pixels.is_empty() || own.pixels.len() % per != 0 || names.iter().any(|(_, t, b)| t.pixels.len() != own.pixels.len() || b.pixels.len() != own.pixels.len()) {
-        return Err("the names aren't all whole names, one size in every language".into());
+    if own.pixels.is_empty() || own.pixels.len() % per != 0 || names.iter().any(|(_, _, t, b)| t.pixels.len() != own.pixels.len() || b.pixels.len() != own.pixels.len()) {
+        return Err("the names aren't all whole names, one size in every version and language".into());
     }
+    let versions = names.iter().map(|n| n.0 + 1).max().unwrap_or(0);
     let looks = own.pixels.len() / per;
     let (w, h) = (8 * columns, 8 * (tiles / columns));
     // Every name of every look and language: its pixels and its letters.
     let mut samples: Vec<(usize, usize, Picture, Vec<bool>)> = names
         .iter()
         .enumerate()
-        .flat_map(|(k, (_, t, b))| {
+        .flat_map(|(k, (_, _, t, b))| {
             (0..looks).map(move |l| {
                 let p = Picture::grid(t, tiles * l, columns, tiles / columns);
                 let q = Picture::grid(b, tiles * l, columns, tiles / columns);
@@ -1550,18 +1615,36 @@ pub fn form_name_layers(names: &[(&str, &Tiles, &Tiles)]) -> Result<(FormNameLay
             face
         })
         .collect();
+    // (Row by row, left to right: where as many names show one value as
+    // another, the streak's, its left neighbor's.)
     let mut bar: Vec<Option<u8>> = vec![None; w * h];
-    let (mut differing, mut behind, mut under) = (0, 0, 0);
-    for (i, b) in bar.iter_mut().enumerate() {
+    let (mut differing, mut even, mut behind, mut under) = (0, 0, 0, 0);
+    for i in 0..w * h {
         let seen: Vec<u8> = samples.iter().zip(&faces).filter(|(s, f)| !f[i] && !s.3[i]).map(|(s, _)| s.2.pixels[i]).collect();
-        match most(&seen) {
-            Some(v) => {
-                differing += seen.iter().any(|&o| o != v) as usize;
-                *b = Some(v);
+        let count = |v: u8| seen.iter().filter(|&&o| o == v).count();
+        let Some(top) = seen.iter().map(|&v| count(v)).max() else {
+            if faces.iter().all(|f| f[i]) {
+                behind += 1;
+            } else {
+                under += 1;
             }
-            None if faces.iter().all(|f| f[i]) => behind += 1,
-            None => under += 1,
-        }
+            continue;
+        };
+        let best: Vec<u8> = seen.iter().copied().filter(|&v| count(v) == top).fold(Vec::new(), |mut b, v| {
+            if !b.contains(&v) {
+                b.push(v);
+            }
+            b
+        });
+        let left = (i % w > 0).then(|| bar[i - 1]).flatten();
+        let v = if best.len() > 1 {
+            even += 1;
+            left.filter(|l| best.contains(l)).unwrap_or(best[0])
+        } else {
+            best[0]
+        };
+        differing += seen.iter().any(|&o| o != v) as usize;
+        bar[i] = Some(v);
     }
     let mut filled = Picture { w, h, pixels: vec![0; w * h] };
     for i in 0..w * h {
@@ -1569,48 +1652,58 @@ pub fn form_name_layers(names: &[(&str, &Tiles, &Tiles)]) -> Result<(FormNameLay
         // (From the bar's own pixels, not the frame's.)
         filled.pixels[i] = bar[i].or_else(|| nearest_known(w, x, |xx| bar[y * w + xx].filter(|_| inside(xx, y)))).unwrap_or(0);
     }
-    let mut portraits = vec![None; own.pixels.len()];
-    for ((_, l, p, _), face) in samples.iter().zip(&faces).filter(|(s, _)| s.0 == 0) {
-        for i in (0..w * h).filter(|&i| face[i]) {
-            portraits[grid_index(tiles * l, i % w, i / w, columns)] = Some(p.pixels[i]);
-        }
-    }
-    // Where a name shows its bar otherwise, in every language that shows
-    // it there.
-    let mut rows = vec![None; own.pixels.len()];
-    let mut split = 0;
-    for l in 0..looks {
-        for i in 0..w * h {
-            let seen: Vec<u8> = samples.iter().zip(&faces).filter(|(s, f)| s.1 == l && !f[i] && !s.3[i]).map(|(s, _)| s.2.pixels[i]).collect();
-            match seen.first() {
-                Some(&v) if seen.iter().any(|&o| o != v) => split += 1,
-                Some(&v) if v != filled.pixels[i] => rows[grid_index(tiles * l, i % w, i / w, columns)] = Some(v),
-                _ => {}
+    let mut out = Vec::new();
+    let mut departing = Vec::new();
+    for version in 0..versions {
+        // Its portraits: its own language's names' (its first).
+        let Some(first) = names.iter().position(|n| n.0 == version) else {
+            out.push(FormNameLayers::default());
+            continue;
+        };
+        let mut portraits = vec![None; own.pixels.len()];
+        for ((_, l, p, _), face) in samples.iter().zip(&faces).filter(|(s, _)| s.0 == first) {
+            for i in (0..w * h).filter(|&i| face[i]) {
+                portraits[grid_index(tiles * l, i % w, i / w, columns)] = Some(p.pixels[i]);
             }
         }
+        // Where each language's names show their bar otherwise.
+        let mut layers = FormNameLayers { bar: filled.to_grid(), portraits, languages: Vec::new() };
+        for (k, (_, language, t, _)) in names.iter().enumerate().filter(|(_, n)| n.0 == version) {
+            let mut bars = vec![None; own.pixels.len()];
+            for ((_, l, p, letters), face) in samples.iter().zip(&faces).filter(|(s, _)| s.0 == k) {
+                for i in (0..w * h).filter(|&i| !face[i] && !letters[i] && p.pixels[i] != filled.pixels[i]) {
+                    bars[grid_index(tiles * l, i % w, i / w, columns)] = Some(p.pixels[i]);
+                }
+            }
+            let blank = layers.blank(&bars);
+            let letters = t.pixels.iter().zip(&blank.pixels).map(|(&a, &b)| (a != b).then_some(a)).collect();
+            departing.push((version, language.to_string(), bars.iter().flatten().count()));
+            layers.languages.push(NameLayers { language: language.to_string(), bars, letters });
+        }
+        out.push(layers);
     }
-    let mut layers = FormNameLayers { bar: filled.to_grid(), rows, portraits, letters: Vec::new() };
-    let blank = layers.blank();
-    layers.letters = names.iter().map(|(lang, t, _)| (lang.to_string(), t.pixels.iter().zip(&blank.pixels).map(|(&a, &b)| (a != b).then_some(a)).collect())).collect();
     let mut notes =
-        vec![format!("one bar under the names: {behind} pixels behind every portrait, {under} under letters or portraits in every name (filled from their rows)")];
-    let departing = layers.rows.iter().flatten().count();
+        vec![format!("one bar under every version's names: {behind} pixels behind every portrait, {under} under letters or portraits in every name (filled from their rows)")];
     if differing > 0 {
-        notes.push(format!("{differing} pixels of the bar some names show otherwise: {departing} pixels of names' own bars"));
+        notes.push(format!("{differing} pixels of the bar some names show otherwise ({even} as many one way as another, decided by the streak)"));
     }
-    if split > 0 {
-        notes.push(format!("{split} pixels of a name's bar its languages show otherwise (in their letters)"));
+    // (By version and language: the caller names them.)
+    for (version, language, n) in departing {
+        notes.push(format!("version {version} language {language:?}: {n} pixels of its names' own bars"));
     }
-    // (A language's portraits are the pack's: what differs is in its
-    // letters.)
-    for (k, face) in samples.iter().zip(&faces).filter(|(s, _)| s.0 > 0) {
-        let (_, l, p, _) = k;
+    // (A language's portraits are its version's own language's: what
+    // differs is in its letters.)
+    for (k, face) in samples.iter().zip(&faces) {
+        let (n, l, p, _) = k;
+        let (version, language) = (names[*n].0, names[*n].1);
+        let Some(theirs) = out.get(version).and_then(|o| o.languages.iter().find(|x| x.language == language)) else { continue };
+        let blank = out[version].blank(&theirs.bars);
         let odd = (0..w * h).filter(|&i| face[i] && p.pixels[i] != blank.pixels[grid_index(tiles * l, i % w, i / w, columns)]).count();
         if odd > 0 {
-            notes.push(format!("{}: look {l}: {odd} pixels of its portrait differ from the pack's (in its letters)", names[k.0].0));
+            notes.push(format!("version {version} language {language:?}: look {l}: {odd} pixels of its portrait differ from its version's (in its letters)"));
         }
     }
-    Ok((layers, notes))
+    Ok((out, notes))
 }
 
 /// The pictures with letters in them, by file, as the pack keeps them:
@@ -1704,28 +1797,45 @@ pub fn custom_layered(c: &CustomScreen) -> (BTreeMap<String, LayeredPicture>, Ve
 /// notes (problems: names that can't be layered).
 pub fn form_names_layered(c: &CustomScreen) -> (Vec<(String, FormNameLayers)>, Vec<String>, Vec<String>) {
     let (l, vs) = (&c.letters, &c.versioned);
-    let (mut out, mut notes, mut problems) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut notes, mut problems) = (Vec::new(), Vec::new());
+    // Every version's names with letters, in every language: one bar under
+    // them all (the user: "falzar and gregar should have the same bar").
+    let mut versions: Vec<&str> = Vec::new();
+    let mut names = Vec::new();
     for (version, v) in std::iter::once((vs.base_version.as_str(), &vs.base)).chain(vs.versions.iter().map(|(n, v)| (n.as_str(), v))) {
         let letters = if version == vs.base_version { &l.pictures.versioned.base } else { l.pictures.versioned.get(version) };
         if letters.form_names.iter().all(Option::is_none) {
             continue;
         }
-        let mut names = vec![("", &v.form_names, &letters.form_names_blank)];
+        let k = versions.len();
+        versions.push(version);
+        names.push((k, "", &v.form_names, &letters.form_names_blank));
         for (lang, lettering) in &c.languages {
             if let Some((_, tiles)) = lettering.form_names.iter().find(|(n, _)| n == version) {
-                names.push((lang.as_str(), tiles, &lettering.letters.versioned.get(version).form_names_blank));
+                names.push((k, lang.as_str(), tiles, &lettering.letters.versioned.get(version).form_names_blank));
             }
-        }
-        let file = vs.name("form-names", Some(version));
-        match form_name_layers(&names) {
-            Ok((layers, found)) => {
-                notes.extend(found.into_iter().map(|n| format!("{file}: {n}")));
-                out.push((version.to_string(), layers));
-            }
-            Err(e) => problems.push(format!("{file}: {e}")),
         }
     }
-    (out, notes, problems)
+    if names.is_empty() {
+        return (Vec::new(), notes, problems);
+    }
+    let named = |n: String| -> String {
+        let mut n = n;
+        for (k, v) in versions.iter().enumerate() {
+            n = n.replace(&format!("version {k} "), &format!("{v} ")).replace(&format!("{v} language \"\""), &format!("{v} (the pack's language)"));
+        }
+        n.replace(" language \"", " \"")
+    };
+    match form_name_layers(&names) {
+        Ok((layers, found)) => {
+            notes.extend(found.into_iter().map(|n| format!("form-names: {}", named(n))));
+            (versions.iter().map(|v| v.to_string()).zip(layers).collect(), notes, problems)
+        }
+        Err(e) => {
+            problems.push(format!("form-names: {e}"));
+            (Vec::new(), notes, problems)
+        }
+    }
 }
 
 /// The HUD's pictures with letters in them, by file, as the pack keeps
@@ -1824,7 +1934,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
     }
     // The form list's names: their portraits over their bar, in every
     // language.
-    let own_names: Vec<(String, Tiles)> = names.iter().map(|(v, l)| (v.clone(), l.blank())).collect();
+    let own_names: Vec<(String, Tiles)> = names.iter().map(|(v, l)| (v.clone(), l.blank_in(""))).collect();
     for (version, blank) in &own_names {
         let v = if *version == c.letters.pictures.versioned.base_version {
             &mut c.letters.pictures.versioned.base
@@ -1863,7 +1973,12 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
                     None => continue,
                 }
             };
-            v.form_names_blank = own_blank.clone();
+            // (A language's own names over their own bars.)
+            let own_names = lettering.form_names.iter().any(|(n, _)| n == version);
+            v.form_names_blank = match names.iter().find(|(n, _)| n == version) {
+                Some((_, layers)) if own_names => layers.blank_in(lang),
+                _ => own_blank.clone(),
+            };
         }
     }
     (notes, problems)
@@ -2330,10 +2445,41 @@ mod tests {
         assert!(set.fill.iter().all(|&c| c == 1));
     }
 
+    /// The shared panel: each pixel what most pictures show away from their
+    /// letters; one picture's own pixel against the others' is in its
+    /// layer; as many each way, the left neighbor's.
+    #[test]
+    fn a_panel_is_what_most_pictures_show_and_one_never_wins_alone() {
+        // Three pictures of one tile: index 1 its panel, a letter (5) at
+        // pixel 0 of each but the first; the second has its own 2 at pixel
+        // 63, far from its letter, against the others' 1; at pixel 20 only
+        // the first and second see the panel (2 against 1, far from their
+        // letters), the third's letter covering it.
+        let base = Tiles { pixels: vec![1; Tiles::TILE] };
+        let mut pictures = vec![base.clone(); 3];
+        for p in &mut pictures[1..] {
+            p.pixels[0] = 5;
+        }
+        pictures[1].pixels[63] = 2;
+        pictures[0].pixels[20] = 2;
+        pictures[2].pixels[20] = 5;
+        let blanks: Vec<Tiles> = pictures.iter().map(|p| Tiles { pixels: p.pixels.iter().map(|&v| if v == 5 { 1 } else { v }).collect() }).collect();
+        let variants: Vec<Variant> = (0..3)
+            .map(|k| Variant { file: format!("p{k}.png"), tiles: &pictures[k], blank: &blanks[k], color: Box::new(|_, v| v as u16) })
+            .collect();
+        let (layered, _) = shared_panel(&variants, 1);
+        let panel = &layered[0].1.base;
+        // (Two against one: the panel's 1; as many each way: the left
+        // neighbor's.)
+        assert_eq!((panel.pixels[63], panel.pixels[20]), (1, 1));
+        assert!(layered[1].1.letters[63], "the second's own pixel is in its layer");
+    }
+
     /// Lines a clear row apart, at their pitch; a run two pitches tall
     /// before the next line (a voiced mark joining two lines) is two lines
     /// at that pitch, the lower from its pitch's row; a run far from the
-    /// next by the title's gap stays one.
+    /// next by the title's gap stays one; a run two lines tall (a
+    /// descender reaching the next) is two lines.
     #[test]
     fn lines_a_mark_joins_are_split_at_their_pitch() {
         // (EXE4's Japanese OK picture: rows 1-8, 10-17, 19-36 and 39-47.)
@@ -2349,6 +2495,13 @@ mod tests {
             inked[a..b].iter_mut().for_each(|r| *r = true);
         }
         assert_eq!(line_rows(&inked), [(2, 10), (11, 19), (23, 31), (32, 40)]);
+        // (EXE6's English BLOCKING!: a title, Reject's j reaching Disturb,
+        // Icon.)
+        let mut inked = vec![false; 48];
+        for (a, b) in [(6, 13), (20, 36), (37, 44)] {
+            inked[a..b].iter_mut().for_each(|r| *r = true);
+        }
+        assert_eq!(line_rows(&inked), [(6, 13), (20, 29), (29, 36), (37, 44)]);
     }
 
     /// A chip code's letter in its cell: its face's box and paint, and the

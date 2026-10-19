@@ -530,6 +530,10 @@ pub struct TextRenderer {
     scaler: ScaleContext,
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
+    /// Strings' ink extents ([`TextRenderer::ink_extent`]), each measured
+    /// once: a static lettering's words (a window label's) are measured
+    /// the first frame they show and kept.
+    extents: HashMap<(String, Role, i32), Option<(f32, f32)>>,
     glyphs: HashMap<GlyphKey, Option<Sdf>>,
     /// The bytes the fields in `glyphs` take.
     glyph_bytes: usize,
@@ -569,6 +573,7 @@ impl TextRenderer {
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
             layouts: HashMap::new(),
+            extents: HashMap::new(),
             glyphs: HashMap::new(),
             glyph_bytes: 0,
             faces: HashMap::new(),
@@ -631,6 +636,16 @@ impl TextRenderer {
     /// glyphs' outlines' bounds, without the font's side bearings (none:
     /// no ink).
     pub fn ink_extent(&mut self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        let key = (text.to_string(), role, room);
+        if let Some(&e) = self.extents.get(&key) {
+            return e;
+        }
+        let e = self.measure_ink(text, role, room);
+        self.extents.insert(key, e);
+        e
+    }
+
+    fn measure_ink(&mut self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
         let layout = self.layout(text, role, room).clone();
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         for g in &layout.glyphs {
