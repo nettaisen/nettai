@@ -36,8 +36,9 @@ fn folder(var: &str, name: &str) -> PathBuf {
     std::env::var_os(var).map(PathBuf::from).unwrap_or_else(|| data().join(name))
 }
 
-/// Where the builds are kept instead, once [`keep_builds_in`] says.
+/// Where the builds and the rulesets are kept instead, once [`keep_builds_in`] says.
 static BUILDS: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+static RULESETS: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
 
 /// The builds, a folder per game: `$NETTAI_BUILDS`, else `builds`.
 pub fn builds() -> PathBuf {
@@ -47,17 +48,23 @@ pub fn builds() -> PathBuf {
     folder("NETTAI_BUILDS", "builds")
 }
 
-/// Keep the builds in `dir` from here on, whatever the environment says: the screenshot pass makes and edits
-/// builds of its own, and never the player's.
+/// Keep the builds in `dir` and the rulesets in `rulesets` from here on, whatever the environment says: the
+/// screenshot pass makes and edits builds and rulesets of its own, and never the player's.
 #[cfg_attr(not(feature = "tour"), allow(dead_code))]
-pub fn keep_builds_in(dir: PathBuf) {
+pub fn keep_builds_in(dir: PathBuf, rulesets: PathBuf) {
     if let Ok(mut kept) = BUILDS.lock() {
         *kept = Some(dir);
+    }
+    if let Ok(mut kept) = RULESETS.lock() {
+        *kept = Some(rulesets);
     }
 }
 
 /// The player's own rulesets, a folder per game: `$NETTAI_RULESETS`, else `rulesets`.
 pub fn rulesets() -> PathBuf {
+    if let Some(dir) = RULESETS.lock().ok().and_then(|kept| kept.clone()) {
+        return dir;
+    }
     folder("NETTAI_RULESETS", "rulesets")
 }
 
