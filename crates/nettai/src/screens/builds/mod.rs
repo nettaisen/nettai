@@ -32,6 +32,8 @@ pub struct Builds {
     editor: Option<Editor>,
     /// The screen that opened the editor ([`open`]), which Back goes back to.
     back_to: Option<ScreenId>,
+    /// The tab the editor opens on next ([`open_on_tab`]), else the first.
+    on_tab: Option<usize>,
 }
 
 /// Show the build at `at` of the selected game's builds (`store::list`'s order, which every list of them has) in
@@ -39,6 +41,17 @@ pub struct Builds {
 /// (`Screen::show`): it reads the builds as they were left.
 pub fn open(shell: &mut Shell, from: ScreenId, at: usize) {
     shell.go(ScreenId::Builds);
+    shell.tell(ScreenId::Builds, &crate::screens::opened_tag(from), at);
+}
+
+/// The tag [`open_on_tab`] says the tab by, before the build ([`Screen::answered`]).
+const ON_TAB: &str = "builds.on-tab";
+
+/// [`open`], the editor on tab `tab` (its place in the bar) in place of the first, where the build can have it: back
+/// from Practice, the tab its PRACTICE was pressed on.
+pub fn open_on_tab(shell: &mut Shell, from: ScreenId, at: usize, tab: usize) {
+    shell.go(ScreenId::Builds);
+    shell.tell(ScreenId::Builds, ON_TAB, tab);
     shell.tell(ScreenId::Builds, &crate::screens::opened_tag(from), at);
 }
 
@@ -53,8 +66,12 @@ impl Builds {
             let build = store::read(kit.content(), &kit.game, &listed.text).map_err(|why| crate::errors::log(&format!("reading the build {}", listed.path.display()), &why)).ok()?;
             Some(Editor::open(shell, kit, listed.path, build))
         });
+        let on_tab = self.on_tab.take();
         match opened {
-            Some(editor) => {
+            Some(mut editor) => {
+                if let Some(tab) = on_tab {
+                    editor.start_on(tab);
+                }
                 self.editor = Some(editor);
                 self.show(shell);
             }
@@ -82,8 +99,9 @@ impl Builds {
             return shell.fail(crate::errors::UserError::BuildUnusable { reason });
         }
         let (game, name) = (draft.kit.game.clone(), draft.build.name.clone());
+        let tab = editor.tab_at();
         shell.sound.play(Cue::Pick);
-        crate::screens::practice::open(shell, &game, &name);
+        crate::screens::practice::open(shell, &game, &name, tab);
     }
 }
 
@@ -178,6 +196,10 @@ impl Screen for Builds {
     }
 
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if tag == ON_TAB {
+            self.on_tab = Some(choice);
+            return;
+        }
         if let Some(from) = opened_by(tag) {
             return self.opened(shell, from, choice);
         }
