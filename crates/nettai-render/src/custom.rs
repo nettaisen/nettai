@@ -898,7 +898,7 @@ impl Window {
             let width = (100.0 * span / natural.max(1.0)).round().clamp(40.0, 200.0) as u8;
             let role = Role::Lettering(Lettering { width, ..lettering });
             let item = TextItem::new(words, role, Rect::new(col0 as i32, 0, (col1 + 1 - col0) as i32, 8 * block.h as i32), fill[0], None);
-            let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim }), ..item };
+            let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim, heavier: found.heavier }), ..item };
             // (Its tiles with the letters taken off, the bar's own colors
             // where they were.)
             self.tiles.put_part(first, &own.form_names_blank, FORM_NAME_TILES * look, FORM_NAME_TILES);

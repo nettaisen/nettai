@@ -203,7 +203,36 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
     let fill: Vec<u8> = fill.into_iter().map(|c| c.unwrap_or(1)).collect();
     let inked: Vec<i32> = (0..p.w as i32).filter(|&x| (0..p.h as i32).any(|y| ink(x, y))).collect();
     let span = [*inked.first()? as i16, (inked.last()? + 1) as i16];
-    Some(Letters { fill, rim, shadow, top: top as u8, cap: (bottom - top + 1) as u8, span })
+    let heavier = rim.is_some_and(|c| outline_heavier(p, &ink, c));
+    Some(Letters { fill, rim, heavier, shadow, top: top as u8, cap: (bottom - top + 1) as u8, span })
+}
+
+/// Whether a rim of color `outline` around the face of a picture's letters
+/// (`ink`: its letters' pixels) is heavier right and down than up and left:
+/// the outline's mean thickness past the face's edges, right and down
+/// together, more than half a pixel over left and up's. (The game's are
+/// even, a pixel all round, but where two letters' outlines meet.)
+pub fn outline_heavier(p: &Picture, ink: &impl Fn(i32, i32) -> bool, outline: u8) -> bool {
+    let is_outline = |x: i32, y: i32| ink(x, y) && p.at(x, y) == Some(outline);
+    let face = |x: i32, y: i32| ink(x, y) && p.at(x, y) != Some(outline);
+    let thickness = |(dx, dy): (i32, i32)| {
+        let (mut sum, mut n) = (0usize, 0usize);
+        for y in 0..p.h as i32 {
+            for x in 0..p.w as i32 {
+                if !face(x, y) || face(x + dx, y + dy) {
+                    continue;
+                }
+                let t = (1..=3).take_while(|&k| is_outline(x + k * dx, y + k * dy)).count();
+                if t > 0 {
+                    sum += t;
+                    n += 1;
+                }
+            }
+        }
+        if n == 0 { 0.0 } else { sum as f32 / n as f32 }
+    };
+    let (left, right, up, down) = (thickness((-1, 0)), thickness((1, 0)), thickness((0, -1)), thickness((0, 1)));
+    right + down - (left + up) > 0.5
 }
 
 /// A banner's bar ([`BarShape`]), read off its picture: the colors of its
@@ -1080,7 +1109,9 @@ fn form_name(picture: &Picture, first_look: &Picture) -> Option<(FormNameLetters
             }
         }
     }
-    let letters = FormNameLetters { columns: [col0 as u8, col1 as u8], rows: [row0 as u8, row1 as u8], fill, rim: found.outline };
+    let ink = |x: i32, y: i32| x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < picture.h && found.mask[y as usize * w + x as usize];
+    let heavier = outline_heavier(picture, &ink, found.outline);
+    let letters = FormNameLetters { columns: [col0 as u8, col1 as u8], rows: [row0 as u8, row1 as u8], fill, rim: found.outline, heavier };
     Some((letters, blank))
 }
 
@@ -1452,6 +1483,17 @@ mod tests {
         assert_eq!((l.rim, l.shadow), (None, Some(2)));
         assert_eq!((l.top, l.cap), (1, 6));
         assert_eq!(l.fill, vec![10, 10, 9, 9, 10, 10]);
+    }
+
+    /// A rim a pixel all round is even; one thicker right and down than up
+    /// and left is heavier there.
+    #[test]
+    fn a_rims_weight_is_read_off_its_sides() {
+        let even = picture(&["......", ".6666.", ".6116.", ".6116.", ".6666.", "......"]);
+        let heavy = picture(&["......", ".6666.", ".61166", ".61166", ".66666", "..6666"]);
+        assert!(!outline_heavier(&even, &|x, y| even.at(x, y).is_some_and(|v| v != 0), 6));
+        assert!(outline_heavier(&heavy, &|x, y| heavy.at(x, y).is_some_and(|v| v != 0), 6));
+        assert!(!letters(&even, |v| v == 0, Capitals::All).unwrap().heavier);
     }
 
     /// Letters with no outline: their face's colors.

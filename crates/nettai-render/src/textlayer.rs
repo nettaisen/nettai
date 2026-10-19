@@ -161,8 +161,11 @@ pub struct Ink {
     /// resolution. One color: a flat face.
     pub fill: Vec<u16>,
     /// The rim's color (BGR555): an outline a frame pixel wide around the
-    /// face, heavier right and down, as the picture's is. None: no rim.
+    /// face, as the picture's is. None: no rim.
     pub rim: Option<u16>,
+    /// The rim heavier right and down, as the picture's is (else even, a
+    /// pixel all round).
+    pub heavier: bool,
 }
 
 /// A banner's bar, drawn as a shape at the output's resolution under the
