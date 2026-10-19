@@ -163,6 +163,11 @@ pub struct Ink {
     /// The rim's color (BGR555): an outline a frame pixel wide around the
     /// face, heavier right and down, as the picture's is. None: no rim.
     pub rim: Option<u16>,
+    /// How much heavier the glyphs' vertical strokes are drawn, in frame
+    /// pixels each way (the window's small labels: the game's letters there
+    /// are two pixels' strokes five rows high, which no cut of the font
+    /// reaches at that size).
+    pub bold: f32,
 }
 
 /// A banner's bar, drawn as a shape at the output's resolution under the

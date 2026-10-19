@@ -985,6 +985,9 @@ impl TextRenderer {
             }
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
+            if ink.bold > 0.0 {
+                mask = mask.widened((ink.bold * s).round().max(1.0) as usize);
+            }
             let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
@@ -1067,6 +1070,9 @@ impl TextRenderer {
         }
         let mut out = Painted::new(area);
         let one = s.round().max(1.0) as i32;
+        // (A shadow as the names' beside them: the text layer's, half a frame
+        // pixel right and down.)
+        let drop = (SHADOW * s).round().max(1.0) as i32;
         let rim = f.rim.map(|c| (color(c), mask.dilated_square(one)));
         let shadow = f.shadow.map(color);
         let fill: Vec<u32> = if f.fill.is_empty() { vec![0] } else { f.fill.iter().map(|&c| color(c)).collect() };
@@ -1082,7 +1088,7 @@ impl TextRenderer {
                     }
                 }
                 if let Some(rgb) = shadow {
-                    let a = mask.at(x - one, y - one);
+                    let a = mask.at(x - drop, y - drop);
                     if a > 0 {
                         out.blend(x, y, rgb, a);
                     }
@@ -1300,6 +1306,16 @@ impl Mask {
             return 0;
         }
         self.a[dy as usize * self.w + dx as usize]
+    }
+
+    /// The coverage grown `reach` output pixels left and right (heavier
+    /// vertical strokes).
+    fn widened(&self, reach: usize) -> Mask {
+        let mut a = vec![0u8; self.w * self.h];
+        for y in 0..self.h {
+            row_max(&self.a[y * self.w..(y + 1) * self.w], reach, &mut a[y * self.w..(y + 1) * self.w]);
+        }
+        Mask { a, ..*self }
     }
 
     /// The coverage grown by a square `reach` output pixels each way (the

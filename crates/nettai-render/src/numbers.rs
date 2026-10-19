@@ -31,6 +31,10 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
 /// A game cell's width: a character a cell.
 pub const CELL: i32 = 8;
 
+/// How much narrower a shadowed set's digits are drawn than its box, in
+/// frame pixels ([`NumberSet::fitted`]).
+const SHADOWED_NARROWER: f32 = 1.0;
+
 /// Characters of a number drawn in the numbers' font
 /// ([`TextItem::fitted`]): each one's face box (x, y, width, height in
 /// frame pixels from the item's box's top left), and the paint.
@@ -81,6 +85,10 @@ impl NumberSet {
     /// `chars` in this set's look, a character a cell from the left.
     pub fn fitted(&self, chars: &str) -> Fitted {
         let [x, y, w, h] = self.face.map(|v| v as f32);
+        // (A set with a shadow stands beside a chip's name, the text layer's
+        // (the damage after it, a telop's): its digits a pixel narrower, so
+        // their strokes are as heavy as the name's.)
+        let (x, w) = if self.shadow.is_some() && w > 2.0 { (x + SHADOWED_NARROWER / 2.0, w - SHADOWED_NARROWER) } else { (x, w) };
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
         Fitted { glyphs, fill: self.fill.clone(), rim: self.rim, shadow: self.shadow }
     }
