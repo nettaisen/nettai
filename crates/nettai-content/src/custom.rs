@@ -545,7 +545,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize, row_of: &dyn Fn(usize) -> u8| {
         let (pngs, doc) = match lettered.get(file) {
             Some(l) => {
-                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters };
+                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters, hidden: &l.hidden };
                 tiles::export_layered(file, t, &layered, layout, rows, [0, owned], row_of)
             }
             None => {

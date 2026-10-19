@@ -1727,6 +1727,12 @@ stretched to its box, then "chip code and chip window damage should probably be 
   its right edge, a tie of one picture each, now broken by every picture whose letters miss it. The crossing pixels
   above are gone with them. A window label's letters are every pixel of its strip off the row's ground, so EXE6's
   CHIP SELECT loses the lighter dot in its P that had been smeared into the strip.
+- **One kind of pixel a layer** (the user, of the pack's files: "why do the extracted masks have shuffle
+  underimposed?", "it doesn't seem like it's a pure text extraction"). A panel picture's layer had been every pixel
+  where it differs from the shared panel by index, with a mask of its letters: the bit planes' other words in the
+  panel's own colors showed as ghosts. A picture now has its letters (its words' ink alone), its own pixels (those
+  bit planes, both modes) and its own panel (departures only the original shows) as layers of their own, no masks;
+  the frames are the same, Original and Enhanced.
 - **Not lettered.** A chip window picture is a lettered panel only where its panel's and frame's colors are two thirds
   of it or more: the buttons' art with their names over it (EXE6's TRASH CHUTE / DUST SHOOT and Beast Out, EXE5's soul
   and Arm Change) have no letters and no blank; no strings had words for them.

@@ -448,24 +448,37 @@ pictures' lines (`ok`, `ok_picked`, `other`, each button's, each version's);
 the form list names' face (by look, as the names' images) and the box all
 of them are centered in (`form_name_box`).
 
-**Lettered pictures** are kept once, in two parts: the image at the
-picture's own path is its **base**, the picture with every language's
-letters taken off, and `NAME-letters.png` beside it (`letters` in its
-entry) is a layer of what the picture has over the base: each pixel where
-the two differ, its palette index as the image's are, and elsewhere the
-entry after the palette's last ("none", magenta for viewing). Another
-language's picture of it is a layer of its own at its own path
-(`pictures/ok-ja.png`, in that picture's palette) over the same base (`base`
-in its entry: the base's file). Where a layer has pixels that aren't its
-picture's letters (a language whose picture differs from the base off its
-letters: the chip window's pictures are bit planes, their palettes picking
-the plane), `NAME-mask.png` (`letters_mask`) is white on its letters. The
-loader composes each picture (the layer over the base: exactly the ROM's,
-which the original mode draws) and the picture as the enhanced mode shows
-it (the base on its letters, its own pixels elsewhere). Kept so: the
-window's tiles (its labels), the codes and the slots' codes, FINAL TURN, the
-gauge (CUSTOM, L or R), the counts and the chip window's lettered pictures.
-A picture with no layer is drawn as it is.
+**Lettered pictures** are kept once: the image at the picture's own path
+is its **base**, the picture with every language's letters taken off, and
+beside it are layers of what the picture has over the base, each pixel its
+palette index as the image's are where the picture differs from the base in
+that way, and elsewhere the entry after the palette's last ("none", magenta
+for viewing). Each layer holds one kind of pixel only (the user: "it doesn't
+seem like it's a pure text extraction"):
+
+- `NAME-letters.png` (`letters`): its words alone, letters and their ink.
+- `NAME-own.png` (`own`): its own pixels off its letters that differ from
+  the base, which both modes show. The chip window's pictures are bit
+  planes, their palettes picking the plane, so a panel picture's tiles hold
+  the other pictures' words in its panel's own colors; they are here, not
+  in its letters.
+- `NAME-panel.png` (`panel`): where its own panel departs from the shared
+  one, which only the original mode shows (a body a column wider, a
+  letter's outline drawn in the panel's colors, EXE4's taller Japanese
+  panel).
+
+Another picture of the same base (another language's, another panel
+picture's) has its letters at its own path (`pictures/ok-ja.png`, in that
+picture's palette; `base` in its entry: the base's file) and its own
+`NAME-own.png` and `NAME-panel.png` beside. A layer with no pixels isn't
+written. The loader composes each picture as the base, its own pixels, its
+panel and its letters (exactly the ROM's, which the original mode draws)
+and the picture as the enhanced mode shows it (its own pixels over the
+base). Kept so: the window's tiles (its labels), the codes and the slots'
+codes, FINAL TURN, the gauge (CUSTOM, L or R), the counts and the chip
+window's lettered pictures. A picture with no letters in any language (a
+button's art: EXE6's TRASH CHUTE and DUST SHOOT) is each language's own
+image, drawn as it is.
 
 The chip window's **panels** with words (OK's, OK-picked's, the other
 slot's, the buttons' that are panels, as the re-deal's; in every language)
