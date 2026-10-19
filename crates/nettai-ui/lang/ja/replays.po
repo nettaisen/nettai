@@ -55,6 +55,37 @@ msgstr "ファイルを表示"
 msgid "Delete replay?"
 msgstr "リプレイを削除しますか?"
 
+# ---- The play queue: replays lined up to be watched one after another (its tab, a replay's menu, an entry's) ----
+
+msgid "Queue"
+msgstr "再生キュー"
+
+msgid "Add to queue"
+msgstr "再生キューに追加"
+
+# Put a replay after the one watched last.
+msgid "Play next"
+msgstr "次に再生"
+
+msgid "Watch from here"
+msgstr "ここから再生"
+
+msgid "Move up"
+msgstr "上へ移動"
+
+msgid "Move down"
+msgstr "下へ移動"
+
+msgid "Clear the queue?"
+msgstr "再生キューをクリアしますか?"
+
+# A queue entry whose file is gone: its file's name.
+msgid "Missing: {}"
+msgstr "見つかりません: {}"
+
+msgid "The queue is empty. Add replays to it from their menus."
+msgstr "再生キューは空です。リプレイのメニューから追加できます。"
+
 # The players of a replay, the one whose console is shown first.
 msgid "{} vs {}"
 msgstr "{} vs {}"
@@ -164,11 +195,8 @@ msgstr "切り抜き"
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
-# The viewer's playlist (the list's replays, watched one after another): its name, which replay of it is watched,
-# and whether the next one starts by itself at the end of one.
-msgid "Playlist"
-msgstr "プレイリスト"
-
+# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): which replay of it
+# is watched, and whether the next one starts by itself at the end of one.
 msgid "Replay {} of {}"
 msgstr "リプレイ {}/{}"
 
