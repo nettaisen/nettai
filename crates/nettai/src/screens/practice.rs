@@ -175,7 +175,7 @@ pub struct Visit {
     /// A visit is on.
     on: bool,
     /// It came from the build editor's PRACTICE, which Practice goes back to, on the player's build and the tab
-    /// PRACTICE was pressed on (else Play).
+    /// PRACTICE was pressed on, this one (else from Play's build menu's, and back to Play).
     from_editor: Option<usize>,
     /// The player's build, by its name, and the game it is of: PLAY's chosen one (none: the one Play remembers).
     yours: Option<(String, String)>,
@@ -203,9 +203,10 @@ struct MenuChoices {
 }
 
 impl Visit {
-    /// The build editor's PRACTICE: a visit starts, on the defaults, the player's build `yours` of `game` (its name).
-    fn new(game: &str, yours: &str, tab: usize) -> Visit {
-        Visit { on: true, from_editor: Some(tab), yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
+    /// PRACTICE (the build editor's on its tab `tab`, or Play's build menu's): a visit starts, on the defaults, the
+    /// player's build `yours` of `game` (its name).
+    fn new(game: &str, yours: &str, tab: Option<usize>) -> Visit {
+        Visit { on: true, from_editor: tab, yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
     }
 
     /// Practice is shown: a visit starts, on the defaults, unless one is on. Whether one started.
@@ -901,10 +902,10 @@ fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Optio
 
 // ---- The screen ----------------------------------------------------------------------------------------------
 
-/// The build editor's PRACTICE: a visit to Practice starts, the player's build `build` of `game` (its name, as its
-/// file names it), and Practice goes straight into a session on it ([`Practice`]); leaving, it goes back to the
-/// editor on that build and its tab `tab` ([`go_back`]).
-pub fn open(shell: &mut Shell, game: &str, build: &str, tab: usize) {
+/// PRACTICE: a visit to Practice starts, the player's build `build` of `game` (its name, as its file names it), and
+/// Practice goes straight into a session on it ([`Practice`]); leaving, it goes back to the editor on that build and
+/// its tab `tab` where the editor's PRACTICE opened it, else (Play's build menu's: none) to Play ([`go_back`]).
+pub fn open(shell: &mut Shell, game: &str, build: &str, tab: Option<usize>) {
     shell.practice.visit = Visit::new(game, build, tab);
     shell.go(ScreenId::Practice);
 }
@@ -1546,7 +1547,7 @@ mod tests {
         let places = Places::of(&content, "exe6");
         let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
         // (the editor's PRACTICE: your build its chosen one, the rest the defaults; Practice shown keeps it.)
-        let mut visit = Visit::new("exe6", "Swords", 0);
+        let mut visit = Visit::new("exe6", "Swords", None);
         assert!(!visit.arrive(), "the editor's PRACTICE started it");
         assert_eq!((visit.build("exe6", 0), visit.build("exe6", 1), visit.build("exe5", 0)), (Some("Swords"), None, None));
         assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
