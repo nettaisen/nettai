@@ -274,7 +274,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize| {
         let (pngs, doc) = match lettered.get(file) {
             Some(l) => {
-                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters, hidden: &l.hidden };
+                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref() };
                 tiles::export_layered(file, t, &layered, layout, rows, [0, owned], |_| 0)
             }
             None => {

@@ -528,15 +528,15 @@ fn element_rows(c: &CustomScreen) -> Vec<Palette> {
 pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
     // The pictures with letters in them, each language's as the base they
-    // share with the letters taken off and its layers over it (its
-    // letters, its own panel: `tiles::export_layered`).
+    // share with the letters taken off and its letters over it
+    // (`tiles::export_layered`).
     let lettered = crate::letters::custom_layered(c).0;
     let name_layers = crate::letters::form_names_layered(c).0;
     let mut layer_files = Vec::new();
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize, row_of: &dyn Fn(usize) -> u8| {
         let (pngs, doc) = match lettered.get(file) {
             Some(l) => {
-                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters, hidden: &l.hidden };
+                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref() };
                 tiles::export_layered(file, t, &layered, layout, rows, [0, owned], row_of)
             }
             None => {
