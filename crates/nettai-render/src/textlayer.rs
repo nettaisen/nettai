@@ -15,10 +15,11 @@
 //! out of the frame and hand the sink a [`TextItem`] in the original's box
 //! instead; the renderer works out each item's depth and fades, and the
 //! window or the PNG writer draws the items after scaling (`present`,
-//! `vfont`). Chip codes, HP numbers, the Crosses' names, buttons and logos
-//! stay pixel art; the game-style lettering of the banners, the HUD's
-//! labels, the chip window's help pictures and the damage numbers is drawn
-//! here too, in the lettering font ([`Role::Lettering`], `lettering`).
+//! `vfont`). Chip codes, the Crosses' names, buttons and logos
+//! stay pixel art; the game-style lettering of the banners, the HUD's and
+//! the custom window's labels and the chip window's help pictures is drawn
+//! here too, in the lettering font ([`Role::Lettering`], `lettering`), and
+//! the numbers in the numbers' font (`numbers`).
 
 use crate::compose::{Fade, HEIGHT, WIDTH};
 pub use crate::render::GraphicsMode;

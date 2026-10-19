@@ -6,8 +6,9 @@ and how, and records the decisions; §9.8 (2026-10-13) is the fix of its sizes a
 a role, a string narrowed to its box, kana and kanji on the capitals; §9.10 (2026-10-14) draws the glyphs from
 signed distance fields made once for every size. §10 is the languages built on it
 (`--lang en|ja`) and where display text lives (no definition holds any: `locales/<lang>.toml`). §11 (2026-10-14) is a
-survey of the battle interface's pictures with lettering, and which of them the enhanced text could draw. §0 to §8
-are the investigation as written before it, unchanged.
+survey of the battle interface's pictures with lettering, and which of them the enhanced text could draw; §12
+(2026-10-19) is what was built of it: the banners (with their bar), the labels and the help pictures in a
+game-style font, the numbers in another. §0 to §8 are the investigation as written before it, unchanged.
 
 The question was: should the frontend draw its text (chip names, descriptions, telops and the rest) with a real
 font file rasterized at run time, instead of the pixel fonts extracted from the user's ROM? This document says what
@@ -1406,3 +1407,165 @@ EXE4: (a) 2, (b) 8, (c) 4.
    DUST SHOOT). The chip window's OK and re-deal pictures only if the user accepts the frontend filling their panel
    from its palette's colors, as it fills the chip window's blank name cells, in place of a picture the ROM
    doesn't have.
+
+## 12. The lettered pictures and the numbers in fonts (as built, 2026-10-19)
+
+The user, in order: "can you redraw and localize some more assets to use smooth rendering? show me which ones you
+plan to do before doing it"; after the plan (§11.7), "you should use a font that matches the game style more. keep the
+english for those that don't differ between games", "make sure the fonts also support japanese"; after a font
+audition, "ok do that. also you should replace the damage numbers with a real font too"; then "you should also redraw
+the banner graphic for enhanced mode", "you should use high res rendering for CROSSSELECT and BATTLE CHIP as well",
+"what about the hp numbers and the ???? trap. also the numbers sould really be fixed width. also yes do that too"
+(CHIP SELECT and B:EXIT), "the number font should match the original font more", "i like bungee" (of a second font
+audition for the numbers), "the ???? trap font should use the telop font", "also the emotion window counter should also
+use the number font. also the chip text looks misaligned sometimes?" and "the colforce one looks wrong".
+
+All of it is the enhanced graphics' alone: the original mode draws the pictures as before, byte for byte (§12.9), and
+nothing here reaches the simulation, its snapshot or `Content::hash()`.
+
+### 12.1 The fonts
+
+| Font | What it draws | Cut | File |
+|---|---|---|---|
+| Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks | 700, 300 | `crates/nettai-render/fonts/murecho` |
+| **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the window's labels, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the window's labels, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
+| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2" | its one cut, each glyph's ink stretched to the game digit's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+
+The three are compiled in (`vfont::LETTERING`, `numbers::FONT`; Bungee is 119 KB, M PLUS 1 Code 3.9 MB, which the
+UI's Slint bundle also embeds). nettai's build script lists each with its `OFL.txt` in the licenses
+(`crates/nettai/build.rs` `FONTS`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
+height, from the picture), its weight and its width; its glyphs are distance fields as the text font's (§9.10), cached
+apart (`GlyphKey::lettering`).
+
+### 12.2 What is drawn as text now, per game
+
+| Picture | EXE6 | EXE5 | EXE4 | Font, look |
+|---|---|---|---|---|
+| Banners (every one with words: the round's and the turn's starts, FINAL TURN!, the results, HIT DAMAGE JUDGE, FLAG DELETED, the liberations', each navi's WIN! and DELETED, and the pack's unnamed ones) | yes | yes | yes | M PLUS 1 Code 78%, two-tone fill and rim, over the bar drawn as a shape (§12.3); the number in Bungee |
+| Japanese Program Advance (プログラムアドバンス, both pictures) | yes | yes | yes | as the banners, no bar |
+| US Program Advance logos (PrgAdvance, ADVANCE) | picture | picture | picture | (no words in the strings) |
+| PAUSE | yes | yes | yes | M PLUS 1 Code 78%, white, slate rim |
+| Cstmzing... / BUSY... / カスタム中… | yes (blinks as before) | yes | yes | M PLUS 1 Code 78%, its fill and rim |
+| CUSTOM (gauge) | yes | yes | yes | its own width, light-to-blue fill on its plate (the letters taken off) |
+| L or R / Ⓛ or Ⓡ (full gauge, both frames' colors) | yes | yes | yes | its own width; EXE6's US rings are the font's circled letters |
+| FINAL TURN (beside the window) | yes | yes | yes | M PLUS 1 Code 78% in its rim and fill |
+| BATTLE CHIP, CHIP SELECT, ▲CROSS SELECT (the tab; its triangle stays), CROSS SELECT (the Cross window's header), B:EXIT | all | BATTLE CHIP, CHIP SELECT | CHIP SELECT | its own width, the letters' color, on their frame or strip (the letters taken off) |
+| Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
+| Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Bungee (§12.4) |
+| HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
+
+Left pixel art, as agreed: the buttons (SHUFFLE, UNITE / uni son, ARM, BLOCK), OK, the Cross window's plates and names,
+the logos (PrgAdvance, ADVANCE, ARM CHANGE, TRASH CHUTE, DUST SHOOT), the hidden chip's "?" icon (a '?' on a framed
+plate: art around it), and chip art, character sprites and backgrounds.
+
+### 12.3 Each look is the picture's own
+
+`crates/nettai-render/src/lettering.rs` reads a picture's look off its palette indices; nothing is a game's in Rust,
+and no picture or style is added to the packs (but the window's labels' places, §12.6):
+
+- `letters(picture, ground, capitals)`: the outline is the edge color (of the letters' pixels next to the ground) that
+  keeps the rest, the face, from the ground all round (a **rim**) or only right and down (a **shadow**); the face's
+  color on each of the capitals' rows (the bands of the banners: cream, pale, white, pale, cream down the letter); the
+  capitals' rows, from the first letter (or all, for a set of digits); the letters' columns. The text layer draws a
+  `textlayer::Ink`: the fill blended between the rows' middles at the output's resolution, and the rim as the glyphs'
+  coverage grown by a disk of a frame pixel and that again half a pixel right and down, as the pictures' rims are
+  heavier there (`vfont::Mask::dilated`).
+- `bar(picture)`: a banner's bar is the colors of its first cell, where that cell is a bar's end (every row of it
+  unbroken to the bar's last pixel on the row); its top and bottom rows, its ends' slant (the rows' first pixels' step,
+  one pixel a row), its upright parts (the ROM's left end stands upright near the top, its right end near the bottom),
+  its length, and the colors of its top line, body, bottom line and ends. `textlayer::Bar` is drawn as that shape at the
+  output's resolution, 4x4 points an output pixel, with the words' squash and bounce (the banners' `vscale`), under
+  them; the Japanese Program Advance has no bar.
+- `lines(picture)`, `erased(picture)`: a help picture's lines (runs of rows of letters, each with its baseline, the row
+  most of its letters end on, and its color) and the picture with its letters taken off, each letter pixel the ground's
+  color nearest it on its row: the panel's or its frame's, by color, since the pictures' indices are bit planes, several
+  of them one color. The same erasing takes the letters off CUSTOM's, L or R's and FINAL TURN's cells.
+- A lettered item is painted once for what it is and where (bar, rim, shadow, fill: `vfont::Painted`, 32 kept), so a
+  banner holding still costs a copy a frame. Measured roughly (fifty frames of BATTLE 1 START! at 10x, headless,
+  writing the PNGs included): 1.83 s against main's 1.70 s.
+
+### 12.4 The numbers
+
+Each set of the game's number glyphs (`numbers::NumberSet`: the HP box's digits, the enemies' in each color, the
+damage digits, a telop's, the chip window's, the banners', the '+', the "x2" pair, the emotion window's counts) is
+read off its glyphs: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
+rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
+Each character is drawn in Bungee in its glyph's cell, its ink stretched to that box (the user's audition), its rim a
+frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
+cell, each where the picture's was, right-aligned numbers ending where they did.
+
+- The emotion window's count: its box is the counts' own with the digits taken off (where the counts differ, the color
+  most of them are there; the HUD's box without a count, `count_box`, is another picture), the digit fitted to the box
+  the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a box with no number.
+- A numbered banner's words are drawn either side of its number (`BATTLE`, `START!`), each centered on the picture's
+  letters on its side; the number is the banner digits' look, in its own color as the original's.
+- The '?' of the chip window's hidden damage is Bungee's '?'.
+
+### 12.5 Words, languages and strings
+
+The words are each game's text table `lettering` in `locales/{en,ja}.toml` (declared in its manifest's `text`): display
+text, outside the hash, each player's own language. Keys: `banner.ASSET` (`{n}` the number), `pause`, `waiting`,
+`gauge.custom`, `gauge.l-or-r`, `turn-limit`, `pictures.NAME.title` and `.words` (the help pictures, by the chip
+window's picture: `ok`, `ok-picked`, a button's name), `window.NAME` (the window's labels). A picture with no words
+in the table (the US Program Advance's logo) is drawn as a picture.
+
+- Words the four ROMs of a game show alike are the English words in `ja.toml` too (BATTLE START!, PAUSE, CUSTOM, FINAL
+  TURN, the window's labels, the help titles). Words that differ by language are each language's ROMs': the navis in the
+  banners (EXE6: ROCKMAN, BLUES, KILLERMAN, AQUAMAN; EXE5: ROCKMAN, BLUES, SEARCHMAN, TODOMAN; EXE4: ROCKMAN, BLUES,
+  NUMBERMAN, HEEL NAVI, NORMAL NAVI), プログラムアドバンス, カスタム中…, the help pictures' Japanese words, and plain
+  "L or R" in Japanese EXE6.
+- **A deliberate change: names the banners' 20 cells shortened are spelled out** in English: TOMAHAWKMAN DELETED (the
+  ROMs' TOMAHAWKMANDELETED, EXE6 and EXE5), EXE5's SEARCHMAN (SERCHMAN), EXE4's NUMBERMAN (NUMBRMAN) and NORMALNAVI
+  (NOMLNAVI). EXE4's HEALNAVI stays as the US ROM spells it (it isn't shortened). The banners' navi names are their
+  own strings: the navis' display names are the ROMs' NameID names in mixed case (TmhkMan), and capitals are no
+  Rust's to make (the app's rule).
+- Not done: the verification workspace's content check doesn't compare these strings with the ROMs (the banners'
+  letters are glyph pointers into a set of letter pictures with no text encoding; a check would need that set's
+  letter order read off the ROM). They were written from the pictures, looked at in both languages.
+
+### 12.6 The window's labels
+
+The pack says where they are (`custom.json` `labels`, asset-formats.md: each one's name, its tiles, its letters' rows
+and colors; the extractor's EXE6 BATTLE CHIP, CHIP SELECT, CROSS SELECT twice and B:EXIT, EXE5's BATTLE CHIP and CHIP
+SELECT, EXE4's CHIP SELECT). Where the window's map shows those tiles the letters' pixels are taken off (each the
+color nearest it on its row that isn't a letter's: the frame's or the strip's own) and the words drawn where they
+stood, sliding, shaking and fading with the window, through the Cross window's opening steps.
+
+### 12.7 Other deliberate changes
+
+- The help pictures' panels are filled from their own colors where the letters were (no blank panel exists in the
+  pack or the ROM: §11.3); so are CUSTOM's plate, L or R's cells, FINAL TURN's and the labels' cells.
+- A telop's name and its numbers follow each other a pixel apart, centered where the original's are, as the hand
+  window's name and damage do: the text layer's name, narrower than the original's glyphs, was centered in their cells
+  and stood apart from its numbers (the user: "the colforce one looks wrong": ColForce 30+30, on main's enhanced mode
+  too). Every telop name with numbers is drawn so; the chip window's and the hand window's names were already right.
+- The text layer's items gained a box offset between frame pixels (`TextItem::fine`), so the HP numbers under objects
+  move with their sprites' true places (the enhanced mode's motion).
+
+### 12.8 Looked at
+
+Headless frames at 3x to 6x, each beside the original mode's at the same tick, in English and Japanese: banners (BATTLE
+1 START!, TURN n START!, FINAL TURN!, HIT DAMAGE JUDGE, MEGAMAN WIN!, the Japanese Program Advance, and through a
+content copy whose round banner was TOMAHAWKMAN DELETED, SEARCHMAN DELETED and NORMAL NAVI WIN!, through their squash
+and bounce), PAUSE, the waiting labels (EXE6, EXE4's BUSY..., カスタム中…), CUSTOM, both L or R frames, FINAL TURN
+(EXE6, EXE4), the window's labels (EXE6 with the Cross tab and the Cross window, EXE5, EXE4), the three help pictures
+(and their Japanese), and the numbers: the HP box, an enemy's HP counting down, the hand window's 40+10, telops'
+30+30 and 100×2, the chip window's damage, the judge's numbers (EXE6, EXE5, EXE4), the banners' number, the emotion
+window's count, the "????" marks. Scenarios: the golden traces machgun and soundmod and the chip lab's recordings
+(flow/judge-win, flow/pause, custom/cross-window-keys, pa/0x140-gigacan1/recipe1, chips/0x001-cannon/atk10, EXE5's
+flow/judge-win and ko-win-netbattle, EXE4's telops/time-up-doubled-side1, custom/pause, flow/ko-cannon).
+
+### 12.9 The original mode is unchanged
+
+Main's frontend (ce73eda28) and this one, both `--text original`, rendered the same PNGs byte for byte with the packs
+extracted again: 16 runs, about 17,700 frames, of the scenarios above, in English and Japanese (EXE6 machgun 1-1500
+twice, judge-win around its custom screens and its end twice, pause, soundmod's telops, cross-window-keys, recipe1 in
+Japanese, atk10; EXE5 judge-win twice and ko-win-netbattle; EXE4 time-up-doubled-side1 twice, pause, ko-cannon). The
+original mode never measures a picture, never asks the strings for lettering, and draws the labels' tiles untouched.
+
+### 12.10 Left open
+
+- The app's preload makes the names' and descriptions' glyphs ahead (§9.10); the lettering's and the numbers' are made
+  the first time a picture shows them.
+- EXE6's Ⓛ and Ⓡ are the lettering font's circled letters (outlines), where the original's are filled badges.
+- The Japanese Program Advance's katakana are upright, where the original's lean.

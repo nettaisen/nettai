@@ -449,7 +449,13 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   is filled with, and where the cursor stands over OK, with its corners.
   `buttons` are the game's own (above: EXE5's special slot is the 3x2 soul
   button, with a palette for Soul Unison and one for Chaos Unison; EXE6's
-  the 4x2 Beast Out).
+  the 4x2 Beast Out). `labels` are the words the window's tiles draw
+  (BATTLE CHIP, CHIP SELECT, CROSS SELECT, B:EXIT), each its `name` (the
+  content's strings say its words: the game's `lettering` table,
+  `window.NAME`), its `tiles` (the first and the last, as the maps number
+  them), the `rows` of them its letters are on (the first and the last of
+  the eight) and the colors of its `letters`: the enhanced graphics take the
+  letters off and draw the words in a font (text-rendering.md §12).
 - EXE4's `custom.json` (docs/design/exe4-map.md §14) says what its screen
   draws otherwise, each left out of the others': its layout's
   `detail_blank` (the color a blank code or damage cell is, 7 where
