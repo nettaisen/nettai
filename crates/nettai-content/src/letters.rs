@@ -12,7 +12,7 @@
 //! name whose letters it can't find) it says, one line each.
 
 use nettai_assets::letters::{
-    BannerLetters, BarShape, CountDigits, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
+    BannerLetters, CountDigits, Shape, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
     HudLetters, HudWords, LabelLetters, Letters, PictureLetters, VersionLetters, WordLetters,
 };
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Tiles, VersionPictures, Versioned, WindowLabel};
@@ -164,6 +164,13 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
     let mut colors: Vec<u8> = (0..16u8).filter(|&c| edge[c as usize] > 0).collect();
     colors.sort_by_key(|&c| std::cmp::Reverse((edge[c as usize], c)));
     let (rim, shadow) = colors.iter().take(2).find_map(|&c| outline(c)).unwrap_or((None, None));
+    letters_with(p, ground, capitals, rim, shadow)
+}
+
+/// How the letters of a picture look ([`letters`]) with their outline
+/// given: a rim's color, or a shadow's, or none.
+pub fn letters_with(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals, rim: Option<u8>, shadow: Option<u8>) -> Option<Letters> {
+    let ink = |x: i32, y: i32| p.at(x, y).is_some_and(|v| !ground(v));
     let line = rim.or(shadow);
     let is_face = |x: i32, y: i32| ink(x, y) && (line.is_none() || p.at(x, y) != line);
     // The capitals' rows.
@@ -203,39 +210,10 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
     let fill: Vec<u8> = fill.into_iter().map(|c| c.unwrap_or(1)).collect();
     let inked: Vec<i32> = (0..p.w as i32).filter(|&x| (0..p.h as i32).any(|y| ink(x, y))).collect();
     let span = [*inked.first()? as i16, (inked.last()? + 1) as i16];
-    let heavier = rim.is_some_and(|c| outline_heavier(p, &ink, c));
-    Some(Letters { fill, rim, heavier, shadow, top: top as u8, cap: (bottom - top + 1) as u8, span })
+    Some(Letters { fill, rim, shadow, top: top as u8, cap: (bottom - top + 1) as u8, span })
 }
 
-/// Whether a rim of color `outline` around the face of a picture's letters
-/// (`ink`: its letters' pixels) is heavier right and down than up and left:
-/// the outline's mean thickness past the face's edges, right and down
-/// together, more than half a pixel over left and up's. (The game's are
-/// even, a pixel all round, but where two letters' outlines meet.)
-pub fn outline_heavier(p: &Picture, ink: &impl Fn(i32, i32) -> bool, outline: u8) -> bool {
-    let is_outline = |x: i32, y: i32| ink(x, y) && p.at(x, y) == Some(outline);
-    let face = |x: i32, y: i32| ink(x, y) && p.at(x, y) != Some(outline);
-    let thickness = |(dx, dy): (i32, i32)| {
-        let (mut sum, mut n) = (0usize, 0usize);
-        for y in 0..p.h as i32 {
-            for x in 0..p.w as i32 {
-                if !face(x, y) || face(x + dx, y + dy) {
-                    continue;
-                }
-                let t = (1..=3).take_while(|&k| is_outline(x + k * dx, y + k * dy)).count();
-                if t > 0 {
-                    sum += t;
-                    n += 1;
-                }
-            }
-        }
-        if n == 0 { 0.0 } else { sum as f32 / n as f32 }
-    };
-    let (left, right, up, down) = (thickness((-1, 0)), thickness((1, 0)), thickness((0, -1)), thickness((0, 1)));
-    right + down - (left + up) > 0.5
-}
-
-/// A banner's bar ([`BarShape`]), read off its picture: the colors of its
+/// A banner's bar ([`bar_shapes`]), read off its picture: the colors of its
 /// first cell (8 columns), where that cell is a bar's end, every row of it
 /// with pixels unbroken from them to the bar's last color on the row
 /// (letters stand on the bar, so nothing between is clear); none for a
@@ -243,7 +221,7 @@ pub fn outline_heavier(p: &Picture, ink: &impl Fn(i32, i32) -> bool, outline: u8
 /// cell is a letter's). Its slant, its ends and its length are the
 /// picture's: each row's first and last pixel of the bar's colors. With it,
 /// the bar's colors.
-pub fn bar(p: &Picture) -> Option<(BarShape, Vec<u8>)> {
+pub fn bar(p: &Picture) -> Option<(Vec<Shape>, Vec<u8>)> {
     let mut colors: Vec<u8> = Vec::new();
     for y in 0..p.h as i32 {
         for x in 0..8 {
@@ -292,16 +270,97 @@ pub fn bar(p: &Picture) -> Option<(BarShape, Vec<u8>)> {
     let left = tally(&mut middle.clone().map(|y| (ends[(y - top) as usize].0, y)));
     let right = tally(&mut middle.clone().map(|y| (ends[(y - top) as usize].1 - 1, y)));
     let (first, last) = (ends[0], ends[ends.len() - 1]);
-    let bar = BarShape {
-        rows: [top as i16, (bottom + 1) as i16],
-        first_row: [first.0 as i16, first.1 as i16],
-        last_row: [last.0 as i16, last.1 as i16],
-        left_most: ends.iter().map(|e| e.0).max()? as i16,
-        right_least: ends.iter().map(|e| e.1).min()? as i16,
-        slant: slant as i16,
-        colors: [top_color, body, bottom_color, left, right],
+    let geometry = BarGeometry {
+        top: top as f32,
+        bottom: (bottom + 1) as f32,
+        left: last.0 as f32 - slant as f32 / 2.0,
+        left_most: ends.iter().map(|e| e.0).max()? as f32,
+        right: first.1 as f32 + slant as f32 / 2.0,
+        right_least: ends.iter().map(|e| e.1).min()? as f32,
+        slant: slant as f32,
     };
+    let bar = bar_shapes(&geometry, [top_color, body, bottom_color, left, right]);
     Some((bar, colors))
+}
+
+/// A banner bar's outline: its top row and one past its bottom one; its
+/// left end where it meets the bottom edge (it slants up to the right from
+/// there) and the farthest right it goes (upright above); its right end
+/// where it meets the top edge (it slants down to the left) and the
+/// farthest left it goes (upright below); and how far an end leans a row.
+#[derive(Clone, Copy, Debug)]
+pub struct BarGeometry {
+    pub top: f32,
+    pub bottom: f32,
+    pub left: f32,
+    pub left_most: f32,
+    pub right: f32,
+    pub right_least: f32,
+    pub slant: f32,
+}
+
+impl BarGeometry {
+    fn left_at(&self, y: f32) -> f32 {
+        (self.left + self.slant * (self.bottom - y)).min(self.left_most)
+    }
+
+    fn right_at(&self, y: f32) -> f32 {
+        (self.right - self.slant * (y - self.top)).max(self.right_least)
+    }
+
+    /// An end's corners down its rows (each end bends once, where it
+    /// stands upright): the left's, or the right's.
+    fn edge(&self, right: bool) -> Vec<[f32; 2]> {
+        let at = |y: f32| if right { self.right_at(y) } else { self.left_at(y) };
+        let mut ys = vec![self.top];
+        if self.slant > 0.0 {
+            let bend = if right { self.top + (self.right - self.right_least) / self.slant } else { self.bottom - (self.left_most - self.left) / self.slant };
+            if bend > self.top && bend < self.bottom {
+                ys.push(bend);
+            }
+        }
+        ys.push(self.bottom);
+        ys.into_iter().map(|y| [at(y), y]).collect()
+    }
+}
+
+/// A bar's shapes (`colors`: its top line's, its body's, its bottom
+/// line's, its left end's and its right end's, palette indices), each line
+/// and end a frame pixel wide, as the pictures' are: the body (the whole
+/// bar), then over it the right end, the bottom line, the top line and the
+/// left end (where two meet, the later's color: left, top, bottom, right).
+pub fn bar_shapes(g: &BarGeometry, [top, body, bottom, left, right]: [u8; 5]) -> Vec<Shape> {
+    const LINE: f32 = 1.0;
+    let (l, r) = (g.edge(false), g.edge(true));
+    let whole: Vec<[f32; 2]> = l.iter().copied().chain(r.iter().rev().copied()).collect();
+    // A band of rows of the bar (`from..to`), clipped from the whole.
+    let rows = |from: f32, to: f32| -> Vec<[f32; 2]> { clip_rows(&clip_rows(&whole, from, true), to, false) };
+    let strip = |edge: &[[f32; 2]], dx: f32| -> Vec<[f32; 2]> { edge.iter().copied().chain(edge.iter().rev().map(|p| [p[0] + dx, p[1]])).collect() };
+    let shape = |points: Vec<[f32; 2]>, color: u8| Shape { points: points.iter().map(|p| p.map(|v| (v * Shape::UNIT).round() as i16)).collect(), color };
+    vec![
+        shape(whole.clone(), body),
+        shape(strip(&r, -LINE), right),
+        shape(rows(g.bottom - LINE, g.bottom), bottom),
+        shape(rows(g.top, g.top + LINE), top),
+        shape(strip(&l, LINE), left),
+    ]
+}
+
+/// A polygon cut at row `y`, keeping what is below it (`below`) or above.
+fn clip_rows(points: &[[f32; 2]], y: f32, below: bool) -> Vec<[f32; 2]> {
+    let keep = |p: &[f32; 2]| if below { p[1] >= y } else { p[1] <= y };
+    let mut out = Vec::new();
+    for k in 0..points.len() {
+        let (a, b) = (points[k], points[(k + 1) % points.len()]);
+        if keep(&a) {
+            out.push(a);
+        }
+        if keep(&a) != keep(&b) {
+            let t = (y - a[1]) / (b[1] - a[1]);
+            out.push([a[0] + t * (b[0] - a[0]), y]);
+        }
+    }
+    out
 }
 
 /// The lines of a picture's lettering, top to bottom: runs of rows with
@@ -714,10 +773,28 @@ fn gauge_word(h: &Hud) -> Option<GaugeWord> {
     // off, `gauge_base`.)
     let tiles: Vec<&[u8]> = cells.iter().map(|&i| h.gauge_tiles.get(top[i].tile.checked_sub(h.gauge_first_tile)? as usize)).collect::<Option<_>>()?;
     let picture = Picture { w: 8 * tiles.len(), h: 8, pixels: tiles_row(&tiles) };
-    let mut ground: Vec<u8> = h.layer_tile(blank.tile)?.to_vec();
-    ground.extend(cells_ground(&picture));
-    let letters = letters(&picture, |v| ground.contains(&v), Capitals::First)?;
-    let blank = erased(&picture, |v| ground.contains(&v)).to_grid();
+    // (The word is what its cells draw over the frame's line: each cell is
+    // the line's cell, the row's most common, where it draws the same, and
+    // the word elsewhere, its letters and their outline. The letters stand
+    // so close that their outlines merge into what looks like a tab: the
+    // user, "the dark box is actually the outline of the text, it just
+    // matches up so close". So the word's cells with it taken off are the
+    // line's cell, and the letters are read off the word alone, their
+    // outline a rim.)
+    let line = h.layer_tile(blank.tile)?.to_vec();
+    let line_row = Picture { w: picture.w, h: 8, pixels: tiles_row(&vec![line.as_slice(); tiles.len()]) };
+    let word = Picture { pixels: picture.pixels.iter().zip(&line_row.pixels).map(|(&v, &l)| if v == l { 0 } else { v }).collect(), ..picture.clone() };
+    let mut letters = letters(&word, |v| v == 0, Capitals::First)?;
+    // (Where the letters stand on the line, their outline doesn't keep
+    // them off the ground all round, EXE4's: it is their outline still, the
+    // word's most common color.)
+    if letters.rim.is_none() && letters.shadow.is_none() {
+        let mut count = [0usize; 16];
+        word.pixels.iter().filter(|&&v| v != 0).for_each(|&v| count[v as usize & 15] += 1);
+        let outline = (1..16u8).max_by_key(|&c| count[c as usize])?;
+        letters = letters_with(&word, |v| v == 0, Capitals::First, Some(outline), None)?;
+    }
+    let blank = line_row.to_grid();
     let align = TextAlign::of(letters.span, picture.w);
     Some(GaugeWord { cells: cells.into_iter().map(|c| c as u8).collect(), blank, letters, align })
 }
@@ -1122,9 +1199,7 @@ fn form_name(picture: &Picture, first_look: &Picture) -> Option<(FormNameLetters
             }
         }
     }
-    let ink = |x: i32, y: i32| x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < picture.h && found.mask[y as usize * w + x as usize];
-    let heavier = outline_heavier(picture, &ink, found.outline);
-    let letters = FormNameLetters { columns: [col0 as u8, col1 as u8], rows: [row0 as u8, row1 as u8], fill, rim: found.outline, heavier };
+    let letters = FormNameLetters { columns: [col0 as u8, col1 as u8], rows: [row0 as u8, row1 as u8], fill, rim: found.outline };
     Some((letters, blank))
 }
 
@@ -1785,11 +1860,12 @@ mod tests {
         ]);
         let (bar, colors) = bar(&p).expect("a bar");
         assert_eq!(colors.len(), 3, "{colors:?}");
-        assert_eq!((bar.rows, bar.slant), ([3, 8], 1));
-        assert_eq!(bar.colors, [3, 4, 5, 3, 5]);
-        // Its left end slants to the picture's first column at the bottom,
-        // and stands upright from column 3 at the top.
-        assert_eq!((bar.first_row, bar.last_row, bar.left_most), ([3, 27], [0, 26], 3));
+        // Its body, right end, bottom line, top line and left end.
+        assert_eq!(bar.iter().map(|s| s.color).collect::<Vec<_>>(), [4, 5, 5, 3, 3]);
+        // The body: the left end slants to the picture's first column at the
+        // bottom and stands upright from column 3 at the top (rows 3 to 8).
+        let whole = &bar[0].points;
+        assert!(whole.contains(&[24, 24]) && whole.contains(&[-4, 64]), "{whole:?}");
         let l = letters(&p, |v| v == 0 || colors.contains(&v), Capitals::First).expect("letters");
         assert_eq!((l.rim, l.shadow, l.top, l.cap), (Some(6), None, 2, 6));
         assert_eq!(l.fill, vec![8, 8, 7, 1, 1, 8]);
@@ -1814,17 +1890,6 @@ mod tests {
         assert_eq!((l.rim, l.shadow), (None, Some(2)));
         assert_eq!((l.top, l.cap), (1, 6));
         assert_eq!(l.fill, vec![10, 10, 9, 9, 10, 10]);
-    }
-
-    /// A rim a pixel all round is even; one thicker right and down than up
-    /// and left is heavier there.
-    #[test]
-    fn a_rims_weight_is_read_off_its_sides() {
-        let even = picture(&["......", ".6666.", ".6116.", ".6116.", ".6666.", "......"]);
-        let heavy = picture(&["......", ".6666.", ".61166", ".61166", ".66666", "..6666"]);
-        assert!(!outline_heavier(&even, &|x, y| even.at(x, y).is_some_and(|v| v != 0), 6));
-        assert!(outline_heavier(&heavy, &|x, y| heavy.at(x, y).is_some_and(|v| v != 0), 6));
-        assert!(!letters(&even, |v| v == 0, Capitals::All).unwrap().heavier);
     }
 
     /// Letters with no outline: their face's colors.
