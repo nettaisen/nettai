@@ -161,8 +161,9 @@ impl Tab for Navi {
                 })
                 .collect();
             view.set_choices(ModelRc::new(VecModel::from(choices)));
-            let own = nettai_match::first_navi(&content, &kit.game).map(|n| names.navi(n)).unwrap_or_default();
-            view.set_own(own.into());
+            let own = nettai_match::first_navi(&content, &kit.game);
+            view.set_own(own.map(|n| names.navi(n)).unwrap_or_default().into());
+            view.set_other_navi(own.is_some_and(|n| n != chosen));
         });
         // The selector: each fact of forms the build chooses, named as the game's rulesets name it ("CROSSES"), with how
         // many it has of its room (none said of the one always chosen), in the error red where it has a problem; its
