@@ -108,8 +108,8 @@ pub struct TextItem {
     /// has more than one face color or a rim (`face` is then its first
     /// fill color).
     pub ink: Option<Ink>,
-    /// A banner's bar, drawn under the words.
-    pub bar: Option<Bar>,
+    /// A banner's bar, drawn under the words (its shapes).
+    pub bar: Option<Vec<Filled>>,
     /// How far past its box the item truly is, 16.16 frame pixels right and
     /// down: a sprite's true place between the frame's pixels
     /// (`objects::Fine`, the enhanced mode's motion).
@@ -165,89 +165,16 @@ pub struct Ink {
     pub rim: Option<u16>,
 }
 
-/// A banner's bar, drawn as a shape at the output's resolution under the
-/// words (the pack's `nettai_assets::letters::BarShape`, `lettering::bar`): a
-/// band from `top` to `bottom` whose ends slant at the picture's angle, a
-/// line of its top color along its top and of its left color along its
-/// left end, of its bottom color along its bottom and of its right color
-/// along its right end, its body between. In frame pixels, before the
-/// item's squash (which takes it with the words).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Bar {
-    pub top: f32,
-    pub bottom: f32,
-    /// The left end where it meets the bottom edge, and the farthest right
-    /// it goes up (the picture's end stands upright near the top).
-    pub left: f32,
-    pub left_most: f32,
-    /// The right end where it meets the top edge, and the farthest left it
-    /// goes down (upright near the bottom).
-    pub right: f32,
-    pub right_least: f32,
-    /// How far right the ends lean a row up.
-    pub slant: f32,
-    /// The lines' width, in frame pixels (the picture's: one).
-    pub line: f32,
-    /// Its colors (BGR555, before the fades).
-    pub colors: BarColors,
-}
-
-/// A bar's colors ([`Bar`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct BarColors {
-    pub top: u16,
-    pub body: u16,
-    pub bottom: u16,
-    pub left: u16,
-    pub right: u16,
-}
-
-impl Bar {
-    /// The bar moved `dx` right and `dy` down.
-    pub fn moved(self, dx: f32, dy: f32) -> Bar {
-        Bar {
-            top: self.top + dy,
-            bottom: self.bottom + dy,
-            left: self.left + dx,
-            left_most: self.left_most + dx,
-            right: self.right + dx,
-            right_least: self.right_least + dx,
-            ..self
-        }
-    }
-
-    /// The left end's place on row `y` (a frame row, continuous).
-    pub fn left_at(&self, y: f32) -> f32 {
-        (self.left + self.slant * (self.bottom - y)).min(self.left_most)
-    }
-
-    /// The right end's place on row `y`.
-    pub fn right_at(&self, y: f32) -> f32 {
-        (self.right - self.slant * (y - self.top)).max(self.right_least)
-    }
-
-    /// The color at a point of the frame (continuous), if the bar covers it.
-    pub fn color_at(&self, x: f32, y: f32) -> Option<u16> {
-        if y < self.top || y >= self.bottom {
-            return None;
-        }
-        let (l, r) = (self.left_at(y), self.right_at(y));
-        if x < l || x >= r {
-            return None;
-        }
-        let c = &self.colors;
-        Some(if x < l + self.line {
-            c.left
-        } else if y < self.top + self.line {
-            c.top
-        } else if y >= self.bottom - self.line {
-            c.bottom
-        } else if x >= r - self.line {
-            c.right
-        } else {
-            c.body
-        })
-    }
+/// A filled shape drawn under an item's words (a banner's bar: the
+/// pack's `nettai_assets::letters::Shape`s, `lettering::shapes`): a polygon,
+/// its corners in frame pixels before the item's squash (which takes it with
+/// the words), filled with analytic coverage at the output's resolution, and
+/// its color (BGR555, before the fades). An item's shapes are filled in
+/// order, each over the ones before.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Filled {
+    pub points: Vec<[f32; 2]>,
+    pub color: u16,
 }
 
 /// What a text item is drawn among, for its depth and its fades.
