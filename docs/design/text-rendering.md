@@ -1428,8 +1428,8 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 | Font | What it draws | Cut | File |
 |---|---|---|---|
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks | 700, 300 | `crates/nettai-render/fonts/murecho` |
-| **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the window's labels, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the window's labels, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
-| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2" | its one cut, each glyph's ink stretched to the game digit's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+| **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
+| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2"; the window's labels (§12.6: "pick bungee") | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
 
 The three are compiled in (`vfont::LETTERING`, `numbers::FONT`; Bungee is 119 KB, M PLUS 1 Code 3.9 MB, which the
 UI's Slint bundle also embeds). nettai's build script lists each with its `OFL.txt` in the licenses
@@ -1449,7 +1449,7 @@ apart (`GlyphKey::lettering`).
 | CUSTOM (gauge) | yes | yes | yes | its own width, light-to-blue fill on its plate (the letters taken off) |
 | L or R / Ⓛ or Ⓡ (full gauge, both frames' colors) | yes | yes | yes | its own width; EXE6's US rings are the font's circled letters |
 | FINAL TURN (beside the window) | yes | yes | yes | M PLUS 1 Code 78% in its rim and fill |
-| BATTLE CHIP, CHIP SELECT, ▲CROSS SELECT (the tab; its triangle stays), CROSS SELECT (the Cross window's header), B:EXIT | all | BATTLE CHIP, CHIP SELECT | CHIP SELECT | its own width, the letters' color, on their frame or strip (the letters taken off) |
+| BATTLE CHIP, CHIP SELECT, ▲CROSS SELECT (the tab; its triangle stays), CROSS SELECT (the Cross window's header), B:EXIT | all | BATTLE CHIP, CHIP SELECT | CHIP SELECT | Bungee, each letter fitted to the original letter's box, in the letters' colors, on their frame or strip (the letters taken off) |
 | Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
 | Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Bungee (§12.4) |
 | HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
@@ -1535,10 +1535,12 @@ The pack says where they are (`custom.json` `labels`, asset-formats.md: each one
 and colors; the extractor's EXE6 BATTLE CHIP, CHIP SELECT, CROSS SELECT twice and B:EXIT, EXE5's BATTLE CHIP and CHIP
 SELECT, EXE4's CHIP SELECT). Where the window's map shows those tiles the letters' pixels are taken off (each the
 color nearest it on its row that isn't a letter's: the frame's or the strip's own) and the words drawn where they
-stood, sliding, shaking and fading with the window, through the Cross window's opening steps. The words span the
-original's letters, from their left edge (the font's width stretched to it), on their five rows, and their vertical
-strokes are drawn half a frame pixel heavier each way (`Ink::bold`): the game's letters there are two-pixel strokes,
-which the font's heaviest cut at that size is not.
+stood, sliding, shaking and fading with the window, through the Cross window's opening steps. They are in Bungee
+(the user, after M PLUS 1 Code at those five rows: "the font for the small window labels are incredibly ugly", then
+"pick bungee but CROSS SELECT is too tall"): each letter of the words (the spaces left out, as the pictures have none)
+fitted to the box of the picture's letter in its place, its columns and the rows the letters' ink takes (the letters'
+own colors alone: not the strip, its shading or an outline), so each label is as tall and as wide as the original's,
+where it was, the strip showing above and below it; in the letters' colors.
 
 ### 12.7 Other deliberate changes
 

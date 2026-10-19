@@ -807,7 +807,8 @@ impl Window {
     /// the letters' look, where they stood.
     fn letter_labels(&mut self, v: &View, text: &TextSink) {
         for label in &v.assets.labels {
-            let Some(words) = text.strings.lettering(&v.b.content, &format!("window.{}", label.name)).filter(|w| text.takes_lettering(w)) else { continue };
+            let words = text.strings.lettering(&v.b.content, &format!("window.{}", label.name));
+            let Some(words) = words.filter(|w| text.draws_numbers() && crate::numbers::font().covers(w)) else { continue };
             let Some(block) = self.block(label.first..label.last + 1) else { continue };
             if block.h != 1 {
                 continue;
@@ -834,20 +835,34 @@ impl Window {
                 }
             }
             block.put(&picture, &mut self.tiles);
-            // The words as wide as the picture's letters, from their left
-            // edge, and as heavy: the game's letters there are five rows of
-            // two-pixel strokes, the font's at that size a pixel.
-            let Role::Lettering(l) = look.role else { continue };
-            let span = (look.span.1 - look.span.0) as f32 - 2.0 * LABEL_BOLD;
-            let Some(natural) = text.fitted_width(words, look.role, 10_000) else { continue };
-            let width = (100.0 * span / natural.max(1.0)).round().clamp(50.0, 250.0) as u8;
-            let rect = Rect::new(look.span.0, top as i32, look.span.1 - look.span.0, (bottom + 1 - top) as i32);
-            let item = TextItem::new(words, Role::Lettering(Lettering { width, ..l }), rect, look.face, look.shadow);
-            let item = TextItem {
-                ink: Some(crate::textlayer::Ink { bold: LABEL_BOLD, ..look.ink.clone() }),
-                fine: ((LABEL_BOLD * 65536.0) as i32, 0),
-                ..item
-            };
+            // Each of the words' letters in the numbers' font (the user:
+            // "pick bungee"), fitted to the box the picture's letter fills:
+            // its own columns, and the rows the letters' ink takes, so the
+            // label stands as tall and as wide as the original's, where it
+            // stood, its strip around it as there.
+            let rows: Vec<usize> = (0..letters.h).filter(|&y| (0..letters.w).any(|x| letters.pixels[y * letters.w + x] != 0)).collect();
+            let (Some(&row0), Some(&row1)) = (rows.first(), rows.last()) else { continue };
+            let columns: Vec<usize> = (0..letters.w).filter(|&x| (0..letters.h).any(|y| letters.pixels[y * letters.w + x] != 0)).collect();
+            let mut groups: Vec<(usize, usize)> = Vec::new();
+            for c in columns {
+                match groups.last_mut() {
+                    Some(g) if g.1 == c => g.1 = c + 1,
+                    _ => groups.push((c, c + 1)),
+                }
+            }
+            let chars: Vec<char> = words.chars().filter(|c| !c.is_whitespace()).collect();
+            // (Letters that touch: the words' letters share the span alike.)
+            if groups.len() != chars.len() {
+                let (Some(first), Some(last)) = (groups.first().map(|g| g.0), groups.last().map(|g| g.1)) else { continue };
+                let w = (last - first) as f32 / chars.len().max(1) as f32;
+                groups = (0..chars.len()).map(|i| (first + (i as f32 * w).round() as usize, first + ((i + 1) as f32 * w).round() as usize)).collect();
+            }
+            let y = (top + row0) as f32;
+            let h = (row1 + 1 - row0) as f32;
+            let glyphs = chars.iter().zip(&groups).map(|(&c, &(a, b))| (c, [a as f32, y, (b - a) as f32, h])).collect();
+            let ink = look.ink.clone();
+            let fitted = crate::numbers::Fitted { glyphs, fill: ink.fill, rim: ink.rim, shadow: look.shadow };
+            let item = TextItem::fitted(fitted, Rect::new(0, 0, picture.w as i32, 8));
             self.labels.push((block.col, block.row, block.w, item));
         }
     }
@@ -1588,11 +1603,6 @@ impl Window {
 /// The weight of the help pictures' words (their title's is the display
 /// lettering's): the game's small letters are thin.
 const HELP_WEIGHT: u16 = 500;
-
-/// How much heavier the window's labels' strokes are drawn, in frame pixels
-/// each way (`Ink::bold`): the game's are two pixels.
-const LABEL_BOLD: f32 = 0.5;
-
 /// The look of the chip window's damage digits (glyph d of `digits` is
 /// digit d, on its cell's ground: the color at its top left).
 fn digits_set(a: &CustomScreen, palette: &Palette) -> Option<crate::numbers::NumberSet> {

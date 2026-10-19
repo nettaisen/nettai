@@ -985,9 +985,6 @@ impl TextRenderer {
             }
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
-            if ink.bold > 0.0 {
-                mask = mask.widened((ink.bold * s).round().max(1.0) as usize);
-            }
             let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
@@ -1306,16 +1303,6 @@ impl Mask {
             return 0;
         }
         self.a[dy as usize * self.w + dx as usize]
-    }
-
-    /// The coverage grown `reach` output pixels left and right (heavier
-    /// vertical strokes).
-    fn widened(&self, reach: usize) -> Mask {
-        let mut a = vec![0u8; self.w * self.h];
-        for y in 0..self.h {
-            row_max(&self.a[y * self.w..(y + 1) * self.w], reach, &mut a[y * self.w..(y + 1) * self.w]);
-        }
-        Mask { a, ..*self }
     }
 
     /// The coverage grown by a square `reach` output pixels each way (the

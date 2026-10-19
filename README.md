@@ -110,8 +110,8 @@ RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/fron
 The picture keeps whole pixels at any window size. Chip names, telops, the chatbox's descriptions and messages and
 the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art: Murecho (Latin
 and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. The battle's lettered
-pictures (the banners, with their bar, the HUD's labels, the custom window's labels and help pictures) are drawn
-there too, in M PLUS 1 Code, and its numbers in Bungee, both bundled beside it. Settings' battle text draws them in
+pictures (the banners, with their bar, the HUD's labels, the chip window's help pictures) are drawn there too, in
+M PLUS 1 Code, and its numbers and the custom window's labels in Bungee, both bundled beside it. Settings' battle text draws them in
 the game's own fonts and pictures instead, exactly as the original does
 ([text-rendering.md](docs/design/text-rendering.md) §9, §12).
 
