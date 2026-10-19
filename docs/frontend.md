@@ -626,7 +626,8 @@ host calls, in order:
   internal). rollback.md §4.9 lists every one, with when.
 - **The lobby and the handshake** (`nettai_frontend::lobby`, rollback.md
   §4.7) check that both players run the same netplay protocol, the same
-  engine, the same game (a match is of one), the same content
+  engine's minor version (`lobby::netplay_line`: "0.7" of 0.7.3; patch
+  releases play together, a minor release doesn't), the same game (a match is of one), the same content
   (`Content::hash`: the definitions, scripts and rule tables, and what the
   battle reads of the pack, the asset names and the animations' timing) and
   the same background pool (`Compat::backgrounds`, its identity: the hash

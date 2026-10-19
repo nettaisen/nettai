@@ -208,9 +208,21 @@ pub fn match_frame(seed: u32, datagram: &[u8]) -> Option<&[u8]> {
     (kind == Kind::Frame as u8 && u32::from_le_bytes(*of) == seed).then_some(frame)
 }
 
-/// nettai's version as peers compare it (the workspace's, which the app
-/// takes too).
+/// nettai's version (the workspace's, which the app takes too).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
+
+/// The part of a nettai version two peers must share to play: its major and
+/// minor numbers ("0.7" of "0.7.3"). A patch release keeps netplay with the
+/// others of its minor version; a minor release breaks it (the user: "patch
+/// version changes don't break netplay compatibility but minor version
+/// changes do"). The first round's digest at loading still stops two
+/// programs that would set a match up differently.
+pub fn netplay_line(version: &str) -> &str {
+    match version.match_indices('.').nth(1) {
+        Some((i, _)) => &version[..i],
+        None => version,
+    }
+}
 
 /// Why a lobby ended without a match, as a host can tell its player: each
 /// reason in the host's own words (a catalog's string, in the player's
@@ -369,8 +381,11 @@ impl Compat {
         if other.protocol != self.protocol {
             return failure(Reason::DifferentVersion, format!("the other side speaks netplay protocol {}, this one {}", other.protocol, self.protocol));
         }
-        if other.engine != self.engine {
-            return failure(Reason::DifferentVersion, format!("the other side runs nettai {}, this one {}: both must run the same version", other.engine, self.engine));
+        if netplay_line(&other.engine) != netplay_line(&self.engine) {
+            return failure(
+                Reason::DifferentVersion,
+                format!("the other side runs nettai {}, this one {}: both must run {}.x", other.engine, self.engine, netplay_line(&self.engine)),
+            );
         }
         if other.game != self.game {
             return failure(Reason::DifferentGame { theirs: other.game.clone() }, format!("the other side plays {}, this one {}: a match is of one game", other.game, self.game));
@@ -2494,6 +2509,22 @@ mod tests {
         assert_ne!(h.seed, first);
     }
 
+    /// Peers of the same minor version play whatever their patch numbers;
+    /// another minor or major version can't.
+    #[test]
+    fn patch_releases_play_together() {
+        assert_eq!(netplay_line("0.7.3"), "0.7");
+        assert_eq!(netplay_line("1.2.0-rc.1"), "1.2");
+        assert_eq!(netplay_line("1.2"), "1.2");
+        let content = nettai_match::testing::exe6_content();
+        let at = |engine: &str, role| Compat { engine: engine.into(), ..Compat::new(&content, role) };
+        assert_eq!(at("0.7.0", Role::Host).mismatch(&at("0.7.5", Role::Join)), None);
+        for other in ["0.8.0", "1.7.0", "0.6.9"] {
+            let failure = at("0.7.0", Role::Host).mismatch(&at(other, Role::Join)).expect(other);
+            assert_eq!(failure.reason, Reason::DifferentVersion, "{other}");
+        }
+    }
+
     /// Peers that can't play together stop, each with a reason its host can
     /// say: another protocol or engine (the program's version), another
     /// game, other content, a build that breaks a rule; one nobody answers
@@ -2516,8 +2547,8 @@ mod tests {
         assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side speaks netplay protocol {v}, this one {}", v + 1)));
         assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused, speaking netplay protocol {} (this one speaks {v})", v + 1)));
         let [h, j] = cant(&|l| l[1].compat.engine = "0.0.0".into());
-        assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run the same version")));
-        assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused: can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run the same version")));
+        assert_eq!((j.reason, j.detail), (Reason::DifferentVersion, format!("can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run 0.0.x")));
+        assert_eq!((h.reason, h.detail), (Reason::DifferentVersion, format!("the other side refused: can't play: the other side runs nettai {ENGINE}, this one 0.0.0: both must run 0.0.x")));
         // Another game: each is told the other's.
         let [h, j] = cant(&|l| l[1].compat.game = "exe5".into());
         assert_eq!((j.reason, j.detail.as_str()), (Reason::DifferentGame { theirs: "exe6".into() }, "can't play: the other side plays exe6, this one exe5: a match is of one game"));
