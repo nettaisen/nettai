@@ -657,9 +657,9 @@ component MatchFacts inherits Rectangle {
 
     rules := Button {
         x: Theme.phone ? parent.width - self.width : root.x2 + ruleset.width + 8px;
-        y: ruleset.y;
+        y: ruleset.y + (ruleset.height - self.height) / 2;
         width: self.natural-width;
-        height: 36px;
+        compact: true;
         nav: "lobby.rules";
         text: PlayView.host ? Caps.of(@tr("Edit")) : Caps.of(@tr("ruleset" => "View"));
     }
@@ -827,7 +827,7 @@ export component PlayScreen inherits Page {
     property <length> message-y: Theme.phone ? 356px : self.body-height - 18px;
     property <length> row-y: Theme.phone ? 188px : root.message-y - 6px - 40px;
     property <length> sheet-height: max(540px, root.row-y - 16px);
-    property <length> more-width: 40px;
+    property <length> more-width: Theme.phone ? 40px : 32px;
     property <bool> none: PlayView.builds.length == 0;
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
     // The lobby (from the moment an invite is out): the two places, the settings, the buttons, the line. A
@@ -932,8 +932,9 @@ export component PlayScreen inherits Page {
 
             edit := Button {
                 x: Theme.phone ? 0px : more.x - 8px - self.width;
-                y: Theme.phone ? 136px : 24px;
+                y: Theme.phone ? 136px : 28px;
                 width: Theme.phone ? root.body-width - 8px - root.more-width : self.natural-width;
+                compact: true;
                 visible: !root.none;
                 nav: "edit";
                 text: Caps.of(@tr("Edit"));
@@ -944,6 +945,7 @@ export component PlayScreen inherits Page {
                 x: Theme.phone ? root.body-width - self.width : root.body-width - 16px - self.width;
                 y: edit.y;
                 width: root.more-width;
+                compact: true;
                 visible: !root.none;
                 enabled: !root.none && PlayView.chosen >= 0;
                 nav: "more";
@@ -952,8 +954,8 @@ export component PlayScreen inherits Page {
 
             // (Its ⋯, three dots over it.)
             Rectangle {
-                x: more.x + 13px;
-                y: more.y + 19px;
+                x: more.x + more.width / 2 - 7.5px;
+                y: more.y + (more.height - 3px) / 2 + 0.5px;
                 width: 3px;
                 height: 3px;
                 visible: !root.none;
@@ -961,8 +963,8 @@ export component PlayScreen inherits Page {
             }
 
             Rectangle {
-                x: more.x + 19px;
-                y: more.y + 19px;
+                x: more.x + more.width / 2 - 1.5px;
+                y: more.y + (more.height - 3px) / 2 + 0.5px;
                 width: 3px;
                 height: 3px;
                 visible: !root.none;
@@ -970,8 +972,8 @@ export component PlayScreen inherits Page {
             }
 
             Rectangle {
-                x: more.x + 25px;
-                y: more.y + 19px;
+                x: more.x + more.width / 2 + 4.5px;
+                y: more.y + (more.height - 3px) / 2 + 0.5px;
                 width: 3px;
                 height: 3px;
                 visible: !root.none;
