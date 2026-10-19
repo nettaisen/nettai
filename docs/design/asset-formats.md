@@ -424,6 +424,28 @@ its version's entry (EXE6's `beast_out`: `buttons/beast_out-V.png`,
 `pictures/beast_out-V.png`), and a language's own tiles or picture of one
 in its language's (`buttons/soul-ja.png`, `pictures/redeal-ja.png`).
 
+**Letters** (`letters` in `hud.json` and `custom.json`, and in each of their
+languages' entries): how the pictures' letters and digits look, which the
+enhanced graphics draw their words and numbers in fonts by
+(text-rendering.md §12.12). Extraction reads them off the pictures
+(`nettai_content::letters::read`); a frontend reads no picture. Values are
+palette indices and pixels of the picture: a number set's face box (x, y,
+width, height in its 8x16 cells) and paint (`fill` down the rows, `rim` or
+`shadow`); a word's letters (`fill`, the outline, the capitals' `top` and
+`cap`, the letters' `span` of columns); a banner's (by banner, as `banners`)
+with its bar's shape and colors (`bar`) and its letters' columns either side
+of its number (`one_digit`, `two_digits`); the emotion window's counts'
+digit boxes; the chip codes (`codes`, `slot_codes`: a glyph's face box and
+paint, by code); the window's labels' letters, their runs of columns and
+rows (as `labels`); the chip window's lettered pictures' lines (`ok`,
+`ok_picked`, `other`, each button's, each version's); the form list names'
+face (by look, as `form-names-V.png`). The pictures with their letters taken
+off are images under `letters/` (`letters/codes-blank.png`,
+`letters/window-blank.png`, `letters/pictures/ok-blank.png`,
+`letters/form-names-falzar-blank.png`, `letters/l-or-r-0.png`,
+`letters/count-blank.png`, a language's with its suffix), each in its
+source's palette, for viewing. A picture with no entry is drawn as it is.
+
 **Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
 use the same files, with optional fields where its game lays them out
 otherwise; an EXE6 pack writes none of them and is byte-identical to before:

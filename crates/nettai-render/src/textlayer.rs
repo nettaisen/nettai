@@ -151,7 +151,7 @@ impl TextItem {
 }
 
 /// How the game-style lettering is painted, from the picture it stands in
-/// for (`lettering::Letters`): the face's colors down the capitals, and the
+/// for (`nettai_assets::letters::Letters`): the face's colors down the capitals, and the
 /// rim around them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ink {
@@ -166,7 +166,7 @@ pub struct Ink {
 }
 
 /// A banner's bar, drawn as a shape at the output's resolution under the
-/// words (`lettering::Bar::measure` reads it off the banner's picture): a
+/// words (the pack's `nettai_assets::letters::BarShape`, `lettering::bar`): a
 /// band from `top` to `bottom` whose ends slant at the picture's angle, a
 /// line of its top color along its top and of its left color along its
 /// left end, of its bottom color along its bottom and of its right color

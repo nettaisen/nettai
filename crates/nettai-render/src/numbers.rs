@@ -8,15 +8,15 @@
 //! each color, the damage digits, the chip window's, a telop's, the
 //! banners') says how its numbers look: the box its faces fill in their
 //! 8x16 cells, the face's colors down its rows, and its outline (a rim all
-//! round, or a shadow right and down), read off the glyphs as the lettering
-//! is ([`crate::lettering::letters`]). Each character is drawn in the
-//! glyph's cell, its ink stretched to fill that box, so a number's digits
-//! stand where the picture's did, each the same width: a number doesn't
-//! move as it changes, and its columns line up. Nothing new is in the pack.
+//! round, or a shadow right and down), as the pack has read them off the
+//! glyphs (`nettai_assets::letters::Digits`). Each character is drawn in
+//! the glyph's cell, its ink stretched to fill that box, so a number's
+//! digits stand where the picture's did, each the same width: a number
+//! doesn't move as it changes, and its columns line up.
 
-use crate::lettering::{Capitals, Picture};
 use crate::textlayer::{Rect, TextItem, TextSink};
-use nettai_assets::{Palette, Tiles};
+use nettai_assets::Palette;
+use nettai_assets::letters::Digits;
 
 /// Bungee: the numbers' font.
 pub const FONT: &[u8] = include_bytes!("../fonts/bungee/Bungee-Regular.ttf");
@@ -67,27 +67,15 @@ pub struct NumberSet {
 }
 
 impl NumberSet {
-    /// The set of `count` glyphs of 8x16 from `first` of `tiles` (glyph k
-    /// is tiles 2k and 2k + 1), `ground` behind them (their cells'
-    /// background), in `palette`.
-    pub fn of(tiles: &Tiles, first: usize, count: usize, ground: impl Fn(u8) -> bool, palette: &Palette) -> Option<NumberSet> {
-        let p = Picture::glyphs(tiles, first, count);
-        let l = crate::lettering::letters(&p, &ground, Capitals::All)?;
-        let line = l.rim.or(l.shadow);
-        let face = |x: usize, y: usize| {
-            let v = p.pixels[y * p.w + x];
-            !ground(v) && Some(v) != line
-        };
-        // The faces' columns in their cells, all the cells' together.
-        let columns: Vec<usize> = (0..8).filter(|&x| (0..count).any(|c| (0..p.h).any(|y| face(8 * c + x, y)))).collect();
-        let (x0, x1) = (*columns.first()? as i32, *columns.last()? as i32);
+    /// A set's look (the pack's, read off its glyphs) in `palette`.
+    pub fn of(d: &Digits, palette: &Palette) -> NumberSet {
         let color = |c: u8| palette[c as usize & 15];
-        Some(NumberSet {
-            face: [x0, l.top as i32, x1 + 1 - x0, l.cap as i32],
-            fill: l.fill.iter().map(|&c| color(c)).collect(),
-            rim: l.rim.map(color),
-            shadow: l.shadow.map(color),
-        })
+        NumberSet {
+            face: d.face.map(|v| v as i32),
+            fill: d.fill.iter().map(|&c| color(c)).collect(),
+            rim: d.rim.map(color),
+            shadow: d.shadow.map(color),
+        }
     }
 
     /// `chars` in this set's look, a character a cell from the left.
@@ -132,24 +120,12 @@ pub fn times() -> &'static str {
 mod tests {
     use super::*;
 
-    /// A set of two digits with a rim: its face box is the faces' columns
-    /// and rows, in their cells; its colors the palette's.
+    /// A set of digits with a rim: its face box, its colors the palette's,
+    /// a digit a cell.
     #[test]
     fn a_sets_face_box_and_paint() {
-        // Two glyphs: a face of color 1 in columns 1 to 6, rows 4 to 11, a
-        // rim of 6 around it.
-        let mut tiles = Tiles { pixels: vec![0; 4 * Tiles::TILE] };
-        for c in 0..2 {
-            for y in 3..13 {
-                for x in 0..8 {
-                    let v = if (4..12).contains(&y) && (1..7).contains(&x) { 1 } else if (3..13).contains(&y) { 6 } else { 0 };
-                    let (tile, row) = (2 * c + y / 8, y % 8);
-                    tiles.pixels[tile * Tiles::TILE + row * 8 + x] = v;
-                }
-            }
-        }
         let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
-        let set = NumberSet::of(&tiles, 0, 2, |v| v == 0, &palette).expect("a set");
+        let set = NumberSet::of(&Digits { face: [1, 4, 6, 8], fill: vec![1; 8], rim: Some(6), shadow: None }, &palette);
         assert_eq!(set.face, [1, 4, 6, 8]);
         assert_eq!((set.rim, set.shadow), (Some(palette[6]), None));
         assert!(set.fill.iter().all(|&c| c == palette[1]));

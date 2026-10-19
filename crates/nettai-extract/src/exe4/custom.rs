@@ -326,6 +326,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
     let map = (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(at(WINDOW_MAP) + 2 * i))).collect();
     let (patches, first_tile) = (at(WINDOW_PATCHES.0), WINDOW_PATCHES.1);
     CustomScreen {
+        letters: Default::default(),
         layout: CustomLayout { ok_cursor: CursorPlace { corners: cursor_corners(rom, at(OK_CORNERS)), ..LAYOUT.ok_cursor }, ..LAYOUT },
         // The window's label: CHIP SELECT over the slots (tiles 0x22 to
         // 0x28, color 4 on 1).
@@ -395,6 +396,7 @@ pub fn lettering(roms: &Roms, base: &CustomScreen) -> nettai_assets::CustomLette
         }
     }
     CustomLettering {
+        letters: Default::default(),
         pictures: SlotPictures { ok: picture(jp, OK), ok_picked: picture(jp, OK_PICKED), other: Picture::default() },
         form_names: Vec::new(),
         buttons: vec![

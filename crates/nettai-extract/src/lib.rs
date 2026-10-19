@@ -291,11 +291,15 @@ fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Re
     // pack's own (`Bundle::for_language`), so no language is a set of
     // placeholders.
     let (us, jp) = (sources[..2].iter().any(|r| r.is_present()), sources[2..].iter().any(|r| r.is_present()));
-    let graphics = match (us, jp) {
+    let mut graphics = match (us, jp) {
         (true, true) => graphics,
         (false, true) => graphics.in_language(JAPANESE).map_err(Error)?.without_language(nettai_assets::BASE_LANGUAGE),
         _ => graphics.without_language(JAPANESE),
     };
+    // The pictures' letters and digits, read once here for the enhanced
+    // graphics (a frontend reads no picture): what isn't found where every
+    // game has it is said (a placeholder picture has none).
+    warnings.extend(nettai_content::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
     // bank where there is one: EXE5's hit, song 0x6D, is louder in the
     // Japanese ROMs, volume 127 for 112.)

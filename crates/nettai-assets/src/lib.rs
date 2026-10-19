@@ -7,6 +7,7 @@
 //! per pixel, where index 0 is transparent.
 
 pub mod custom;
+pub mod letters;
 pub mod lettering;
 pub use lettering::{BASE_LANGUAGE, ButtonLettering, CustomLettering, HudLettering};
 pub use custom::{
@@ -444,6 +445,9 @@ pub struct Hud {
     /// and the other languages' the pack has (`lettering`).
     pub language: String,
     pub languages: Vec<(String, HudLettering)>,
+    /// How its pictures' letters and digits look (`letters`), the words'
+    /// in the language the lettering above is in.
+    pub letters: letters::HudLetters,
 }
 
 /// Where the HUD's code puts its pieces, where games differ (the default:
@@ -588,6 +592,34 @@ impl Chatbox {
 pub const NAVI_MUGSHOTS: u8 = 0x80;
 
 impl Hud {
+    /// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; EXE6's from
+    /// 0x1A0, EXE5's from 0x180): the HP digits (from the first), the HP
+    /// box's blank, the damage digits (EXE6's tiles 0x1B8..), the '?' of a
+    /// defensive chip's "????" (0x1CC), '+' (0x1CE), and the 'x' and '2' of a
+    /// doubled chip (0x1D2, 0x1D4).
+    pub const HP_BLANK: usize = 10;
+    pub const DAMAGE_DIGIT: usize = (0x1B8 - 0x1A0) / 2;
+    pub const HIDDEN_GLYPH: usize = (0x1CC - 0x1A0) / 2;
+    pub const PLUS_GLYPH: usize = (0x1CE - 0x1A0) / 2;
+    pub const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;
+    /// The custom gauge's tiles (from `gauge_first_tile`: EXE6's 0x222,
+    /// EXE5's 0x202): its cell filling by eighths (from the first), filled,
+    /// full (four frames), and its "L or R" (two frames of four).
+    pub const GAUGE_FILLED: u16 = 0x22A - 0x222;
+    pub const GAUGE_FULL: u16 = 0x232 - 0x222;
+    pub const GAUGE_L_OR_R: u16 = 0x236 - 0x222;
+    /// The gauge frame's columns (`gauge_frame`: two rows of them).
+    pub const GAUGE_COLUMNS: usize = 18;
+
+    /// A tile of the HUD layer by its number: the gauge's block's or the
+    /// layer's (the gauge's tiles follow the layer's in EXE6's and EXE5's
+    /// VRAM, and come before them in EXE4's).
+    pub fn layer_tile(&self, tile: u16) -> Option<&[u8]> {
+        tile.checked_sub(self.gauge_first_tile)
+            .and_then(|i| self.gauge_tiles.get(i as usize))
+            .or_else(|| tile.checked_sub(self.first_tile).and_then(|i| self.tiles.get(i as usize)))
+    }
+
     /// Mugshot `number`: its tiles and palettes (an emotion window face
     /// has one; a link navi's two, normal and Full Synchro).
     pub fn mugshot(&self, number: u8) -> Option<(&Tiles, &[Palette])> {

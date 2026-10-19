@@ -38,6 +38,7 @@ pub mod aseprite;
 pub mod custom;
 pub mod hud;
 pub mod image;
+pub mod letters;
 pub mod library;
 pub mod lint;
 pub mod locale;

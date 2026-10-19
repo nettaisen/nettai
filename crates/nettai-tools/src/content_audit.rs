@@ -199,6 +199,8 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, lettered: bool, banks: 
     lookups::chatbox_graphics(hud, p);
     lookups::custom_graphics(a, p);
     lookups::warning(hud, p);
+    // (The letters the enhanced mode draws its words and numbers by.)
+    lookups::pack_letters(c, hud, a, text, p);
     for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);
     }
@@ -295,6 +297,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, lettered: bool, banks: 
                 continue;
             }
             lookups::form_name(a, c, navi, form, p);
+            lookups::form_name_letters(a, c, navi, form, text, p);
             if let Some(said) = text.form_description(c, form).filter(|_| lettered) {
                 lookups::dialogue(font, Lookup::FormDescription(form), said.text, p);
             }
@@ -338,6 +341,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, lettered: bool, banks: 
         }
         // (The judge's banner draws its numbers by its role: `lookups::is_judge`.)
         lookups::banner(packs, c, id, p);
+        lookups::banner_letters(packs, c, id, text, p);
     }
     for h in handles(AssetKind::Background) {
         lookups::background(packs, c, BackgroundId(h), p);

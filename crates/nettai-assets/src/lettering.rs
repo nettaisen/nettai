@@ -48,6 +48,9 @@ pub struct HudLettering {
     /// EXE4's Japanese games', (0x33, 0x6C), 0x0804E2A4, where the US
     /// games moved it to (0x3F, 0x6D)); none: the pack's own.
     pub chatbox_text: Option<(u8, u8)>,
+    /// How this language's words look in the pictures above
+    /// (`HudLetters::words`).
+    pub letters: crate::letters::HudWords,
 }
 
 /// The custom screen's lettering in a language other than the pack's own.
@@ -63,6 +66,9 @@ pub struct CustomLettering {
     /// names' order, as a pack keeps them); a button not listed keeps the
     /// pack's own.
     pub buttons: Vec<(String, ButtonLettering)>,
+    /// How this language's lettered pictures' letters look
+    /// (`CustomLetters::pictures`).
+    pub letters: crate::letters::PictureLetters,
 }
 
 /// What a language has of its own for a named button: its tiles
@@ -103,6 +109,7 @@ impl Hud {
         std::mem::swap(&mut self.waiting, &mut l.waiting);
         std::mem::swap(&mut self.waiting_palette, &mut l.waiting_palette);
         std::mem::swap(&mut self.gauge_tiles, &mut l.gauge_tiles);
+        std::mem::swap(&mut self.letters.words, &mut l.letters);
         // (The language in use keeps the place it took over, to give back.)
         if let Some(place) = &mut l.chatbox_text {
             std::mem::swap(&mut self.layout.chatbox_text, place);
@@ -131,6 +138,7 @@ impl CustomScreen {
         let Some(k) = self.languages.iter().position(|(l, _)| l == to) else { return false };
         let (_, mut l) = self.languages.remove(k);
         std::mem::swap(&mut self.pictures, &mut l.pictures);
+        std::mem::swap(&mut self.letters.pictures, &mut l.letters);
         for (version, names) in &mut l.form_names {
             let own = if *version == self.versioned.base_version {
                 Some(&mut self.versioned.base)
@@ -238,6 +246,7 @@ mod tests {
             languages: vec![(
                 "ja".into(),
                 CustomLettering {
+                    letters: Default::default(),
                     pictures: SlotPictures { ok: Picture { tiles: tiles(2, 42), palette: [0; 16] }, ..Default::default() },
                     form_names: vec![("falzar".into(), tiles(2, 18)), ("gregar".into(), tiles(3, 18))],
                     buttons: vec![

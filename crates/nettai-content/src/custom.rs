@@ -121,6 +121,8 @@ pub struct CustomDoc {
     /// a navi's emblem sprite).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub window_emblem: Option<WindowEmblemDoc>,
+    /// How its pictures' letters and digits look (`crate::letters`).
+    pub letters: crate::letters::CustomLettersDoc,
 }
 
 /// `nettai_assets::WindowLabel`: its name, its tiles (the first and the
@@ -366,6 +368,9 @@ pub struct CustomLanguageDoc {
     /// button's name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub buttons: BTreeMap<String, ButtonLanguageDoc>,
+    /// How this language's lettered pictures' letters look
+    /// (`crate::letters`).
+    pub letters: crate::letters::PictureLettersDoc,
 }
 
 /// A language's own tiles and picture of a named button
@@ -597,7 +602,14 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let picture = own.picture.as_ref().map(|p| image(&format!("pictures/{name}-{lang}.png"), &p.tiles, PICTURE, &[p.palette], 1, &none));
             buttons.insert(name.clone(), ButtonLanguageDoc { tiles, picture });
         }
-        languages.insert(lang.clone(), CustomLanguageDoc { pictures, form_names, buttons });
+        // (Its blanks shown in the pack's own pictures' palettes.)
+        let letters = crate::letters::pictures_doc(
+            c,
+            &l.letters,
+            &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0, &none),
+            &|n| format!("letters/{n}-{lang}.png"),
+        );
+        languages.insert(lang.clone(), CustomLanguageDoc { pictures, form_names, buttons, letters });
     }
     let buttons = c.buttons.iter().map(|(name, b)| button_doc(&mut image, name, name, b, frame0)).collect();
     let window_emblem = c.window_emblem.as_ref().map(|e| WindowEmblemDoc {
@@ -608,6 +620,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         frames: e.frames.iter().map(|f| f.iter().map(tiles::entry_text).collect()).collect(),
         steps: e.steps.clone(),
     });
+    let letters = crate::letters::custom_doc(c, &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0, &none));
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
@@ -651,6 +664,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         element_sprite: c.element_sprite.map(|e| ElementSpriteDoc { at: [e.x, e.y], palette: tiles::palette_text(&e.palette) }),
         cursor_palette: c.cursor_palette.as_ref().map(tiles::palette_text),
         window_emblem,
+        letters,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
@@ -769,7 +783,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             };
             buttons.push((name.clone(), ButtonLettering { tiles, picture }));
         }
-        languages.push((lang.clone(), CustomLettering { pictures, form_names, buttons }));
+        let letters = crate::letters::pictures_from_doc(&d.letters, &mut |d| img(d, report).map(|(t, _)| t))?;
+        languages.push((lang.clone(), CustomLettering { pictures, form_names, buttons, letters }));
     }
     let mut buttons = Vec::new();
     for b in &doc.buttons {
@@ -849,5 +864,6 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         element_sprite,
         cursor_palette,
         window_emblem,
+        letters: crate::letters::custom_from_doc(&doc.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
     })
 }

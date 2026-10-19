@@ -1464,8 +1464,9 @@ plate: art around it), and chip art, character sprites and backgrounds.
 
 ### 12.3 Each look is the picture's own
 
-`crates/nettai-render/src/lettering.rs` reads a picture's look off its palette indices; nothing is a game's in Rust,
-and no picture or style is added to the packs (but the window's labels' places, §12.6):
+`crates/nettai-content/src/letters.rs` reads a picture's look off its palette indices as the pack is made, and the
+pack keeps it (§12.12); the renderer's `lettering.rs` and `numbers.rs` put it in the palette the picture is drawn in.
+Nothing is a game's in Rust, and no style is added to the packs (but the window's labels' places, §12.6):
 
 - `letters(picture, ground, capitals)`: the outline is the edge color (of the letters' pixels next to the ground) that
   keeps the rest, the face, from the ground all round (a **rim**) or only right and down (a **shadow**); the face's
@@ -1492,7 +1493,7 @@ and no picture or style is added to the packs (but the window's labels' places, 
 
 Each set of the game's number glyphs (`numbers::NumberSet`: the HP box's digits, the enemies' in each color, the
 damage digits, a telop's, the chip window's, the banners', the '+', the "x2" pair, the emotion window's counts) is
-read off its glyphs: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
+read off its glyphs as the pack is made: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
 rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
 Each character is drawn in Bungee in its glyph's cell, its ink stretched to that box (the user's audition), its rim a
 frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
@@ -1600,14 +1601,14 @@ and "yes do that use murecho".
   under the hand's slots; A to Z and `*`, not the special codes past them), its letter is taken off the cell and drawn in
   Bungee fitted to the box the glyph's face fills, in its colors (row by row) and its rim or shadow, where it stood, in
   every palette the window gives it. The cell's ground is its most common color and any color filling a whole side of
-  it (the slots' frame: `lettering::ground_of`); the chip window's letters touch their cell's sides, so a color merely
+  it (the slots' frame: `letters::ground_of`); the chip window's letters touch their cell's sides, so a color merely
   on the edge is no ground. The same in every language and game (EXE4's, EXE5's and EXE6's windows).
 - **The Cross names.** EXE6's Cross window shows each Cross's face and name on an orange bar (`form-names-falzar`,
   `-gregar` and their `-ja`, a look under the cursor and a gray one). The words are the strings' `crosses.FORM`
   (the ROMs' short names: SPOUT, THAWK, TENGU, GRND, DUST; HEAT, ELEC, SLASH, ERASE, CHRG; アクア, トマホーク, テング,
   グランド, ダスト; ヒート, エレキ, スラッシュ, キラー, チャージ), each version's own. The letters are found on the
-  picture's first look (`lettering::enclosed_letters`): their outlines are the pixels of the bar's edge color not
-  joined to the bar's edge, and the letters are those and what they enclose; the first look is read since the gray
+  picture's first look (`letters::enclosed_letters`): their outlines are the pixels of the bar's edge color off the
+  bar's edge (a letter's outline may touch it, as トマホーク's and スラッシュ's do), and the letters are those and what they enclose; the first look is read since the gray
   look's face draws pixels of the outline's color. Their pixels, in the look shown, become the nearest pixel on their
   row that is neither letter nor outline (the bar's own colors: no picture added), and the name is drawn as text over
   their span and capitals' rows, its width fitted to the span, the fill the face's colors in that look (white under the
@@ -1617,3 +1618,37 @@ and "yes do that use murecho".
 - Looked at: the chip window's A and `*` and the hand's codes (EXE6 chips/0x001-cannon/atk10, EXE4
   custom/one-code), the Cross window under the cursor and not, in English and Japanese, Falzar
   (custom/cross-window-keys) and Gregar (gregar-console/custom/cross-window-keys).
+
+### 12.12 Read as the pack is made
+
+The user: "can you statically extract all assets and avoid detection at runtime?" (after the Cross names were found
+at run time, and the Japanese トマホーク and スラッシュ quietly stayed pictures where their last letter's outline touched
+the bar's edge).
+
+- **Extraction reads every picture once** (`nettai_content::letters::read`, from `nettai-extract` after the graphics
+  are made, in each language the pack has): the number sets (the HP box's, the enemies' three, the damage digits, '+'
+  and "x2", the banners', a game's own telops', the chip window's), the emotion window's counts and their blank box,
+  "PAUSE", the waiting label, the gauge's CUSTOM and both frames of L or R, FINAL TURN, the banners (their bars, their
+  letters, their letters' columns either side of the number as one digit and as two), the chip codes of both sets, the
+  window's labels, the chip window's lettered pictures (OK's, each button's, each version's own) and the form list
+  names (each look, by its first look's letters). The pack keeps what it found (`nettai_assets::letters`, `letters` in
+  `hud.json` and `custom.json`, asset-formats.md) and each picture with its letters taken off as an image beside it
+  (`letters/`). A frontend puts the look in the palette of the moment and the blank tiles in place; it reads no picture.
+- **What isn't found is said.** Extraction writes a line to `extraction.txt` for anything every game has that it
+  can't find (a number set with no face, a code glyph with no letter, a form list name whose letters aren't enclosed,
+  a label whose maps lay it otherwise, a button whose picture's lines differ in its other palettes). The content audit
+  (`--audit-content`, `lookups::pack_letters`, `banner_letters`, `form_name_letters`) says every picture the strings
+  have words for and the pack has no letters of, and a lettered picture whose lines are fewer or more than its words'.
+  At run time a missing look is a problem of the frame (`lookups::letters`) and the picture is drawn as it is: right for
+  a pack without the words, and no current ROM set makes one.
+- The frames are what they were: main's renderer (f73148761, reading the pictures as it drew) and this one, on the
+  same packs extracted again, drew the same PNGs byte for byte at twice the frame, in the enhanced mode and in the
+  original: 27 runs each, about 22,400 frames, 0 differing (EXE6 machgun 1-1500, judge-win around its custom screens
+  and its end, pause, cross-window-keys of both versions and take-back-cross, each in both languages; soundmod's
+  telops, recipe1 in Japanese; atk10 in both; EXE5 judge-win and picks in both, ko-win-netbattle; EXE4
+  time-up-doubled-side1 in both, custom/pause, flow/ko-cannon, custom/one-code in both). They show the banners (BATTLE
+  START!, TURN n START!, FINAL TURN!, the judge's and the results'), the labels, the help pictures, the gauge's CUSTOM
+  and L or R, the waiting label, FINAL TURN, PAUSE, the HP box and the enemies' numbers, the emotion window's count,
+  the hand line's and the telops' numbers, the chip window's code and damage, the slots' codes and the Cross names.
+- Left open: EXE4's Japanese OK picture (チップが / えらばれて / いません) reads as four lines, the first two of its
+  words touching (a voiced mark reaches the line above), so its words stay the picture, as they did; the audit says so.

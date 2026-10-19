@@ -158,6 +158,7 @@ pub fn lettering(base: &Hud, names: &AssetNames, language: &str) -> HudLettering
         .cloned()
         .unwrap_or_default();
     HudLettering {
+        letters: Default::default(),
         font: tiles(cell.len() * 2),
         font_chars: cell.clone(),
         dialogue_font: font(&cell, &dialogue),
