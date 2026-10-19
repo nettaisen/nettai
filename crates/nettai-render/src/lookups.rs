@@ -538,17 +538,153 @@ pub fn text_line<'a>(hud: &'a Hud, line: usize, problems: &mut Problems) -> Opti
     glyphs
 }
 
+/// Words a picture's lettering is drawn in `font` with (its `what`): the
+/// characters of them the font lacks are a problem, the picture staying as
+/// it is (the text font's are the bundled one's: the frontend's own).
+pub fn drawn_in(what: &str, words: &str, font: crate::vfont::LetteringFont, p: &mut Problems) {
+    use crate::vfont::LetteringFont;
+    static TEXT: std::sync::LazyLock<crate::vfont::VectorFont> = std::sync::LazyLock::new(crate::vfont::VectorFont::bundled);
+    let face: &crate::vfont::VectorFont = match font {
+        LetteringFont::Display => crate::vfont::lettering_font(),
+        LetteringFont::Numbers => crate::numbers::font(),
+        LetteringFont::Text => &TEXT,
+    };
+    let missing: String = words.chars().filter(|&c| !face.covers(&c.to_string())).collect();
+    if !missing.is_empty() {
+        p.note(format!("{what}: the {font:?} font has no {missing:?} of its words {words:?}, so it stays a picture"));
+    }
+}
+
+/// A look's colors as the pack keeps them (palette indices, put in the
+/// palette of the moment: text-rendering.md §12.12): every one a palette
+/// entry, its face's none 0 (transparent), its rim and its shadow none of
+/// its face's. Else a problem.
+fn look_colors(what: &str, fill: &[u8], rim: Option<u8>, shadow: Option<u8>, p: &mut Problems) {
+    let all = fill.iter().chain(rim.iter()).chain(shadow.iter());
+    let why = if all.clone().any(|&c| c > 15) {
+        Some("an index past the palette's 16")
+    } else if fill.is_empty() || fill.contains(&0) {
+        Some("a face of no color or the transparent one")
+    } else if rim.is_some_and(|c| fill.contains(&c)) {
+        Some("a rim in its face's color")
+    } else if shadow.is_some_and(|c| fill.contains(&c)) {
+        Some("a shadow in its face's color")
+    } else {
+        None
+    };
+    if let Some(why) = why {
+        p.note(format!("the pack's look of {what} has {why} (fill {fill:?}, rim {rim:?}, shadow {shadow:?})"));
+    }
+}
+
+/// Every look's colors of a HUD's and a custom screen's letters
+/// ([`look_colors`]).
+fn pack_look_colors(hud: &Hud, a: &CustomScreen, p: &mut Problems) {
+    use nettai_assets::letters::{Digits, Letters};
+    let letters = |what: &str, l: &Letters, p: &mut Problems| look_colors(what, &l.fill, l.rim, l.shadow, p);
+    let digits = |what: &str, d: &Digits, p: &mut Problems| look_colors(what, &d.fill, d.rim, d.shadow, p);
+    let l = &hud.letters;
+    for (what, d) in [("the HP box's digits", &l.hp_digits), ("the damage digits", &l.damage_digits), ("the damage's '+'", &l.plus), ("the damage's \"x2\"", &l.times), ("the banners' digits", &l.banner_digits)] {
+        if let Some(d) = d {
+            digits(what, d, p);
+        }
+    }
+    for (k, d) in l.enemy_digits.iter().enumerate() {
+        if let Some(d) = d {
+            digits(&format!("the HP digits of color {k}"), d, p);
+        }
+    }
+    for (k, d) in l.telop.iter().flatten().enumerate() {
+        digits(&format!("the telops' digits {k}"), d, p);
+    }
+    for (n, c) in l.counts.counts.iter().enumerate() {
+        if let Some(c) = c {
+            look_colors(&format!("the emotion window's count {n}"), &c.fill, c.rim, c.shadow, p);
+        }
+    }
+    if let Some(x) = &l.pause {
+        letters("\"PAUSE\"", x, p);
+    }
+    let w = &l.words;
+    for (k, b) in w.banners.iter().enumerate() {
+        let Some(b) = b else { continue };
+        letters(&format!("banner {k}'s letters"), &b.letters, p);
+        for s in b.bar.iter().flatten() {
+            if s.color > 15 || s.color == 0 {
+                p.note(format!("the pack's look of banner {k}'s bar has a shape of color {}", s.color));
+            }
+        }
+    }
+    if let Some(x) = &w.waiting {
+        letters("the waiting label", x, p);
+    }
+    for (k, x) in w.l_or_r.iter().enumerate() {
+        if let Some(x) = x {
+            letters(&format!("L or R, frame {k}"), &x.letters, p);
+        }
+    }
+    if let Some(g) = &w.gauge {
+        letters("the gauge's word", &g.letters, p);
+    }
+    if a.is_empty() {
+        return;
+    }
+    let cl = &a.letters;
+    for (what, set) in [("the chip window's", &cl.codes), ("the slots'", &cl.slot_codes)] {
+        for (k, g) in set.glyphs.iter().enumerate() {
+            if let Some(g) = g {
+                digits(&format!("{what} chip code {k}"), g, p);
+            }
+        }
+    }
+    if let Some(d) = &cl.digits {
+        digits("the chip window's damage digits", d, p);
+    }
+    if let Some(t) = &cl.turn_limit {
+        letters("FINAL TURN", &t.letters, p);
+    }
+    for (label, found) in a.labels.iter().zip(&cl.labels) {
+        if let Some(found) = found {
+            letters(&format!("window label {:?}", label.name), &found.letters, p);
+        }
+    }
+    let pictures = &cl.pictures;
+    let help = |what: &str, h: &Option<nettai_assets::letters::HelpLetters>, p: &mut Problems| {
+        for line in h.iter().flat_map(|h| &h.lines) {
+            look_colors(&format!("the chip window's picture {what}"), &[line.color], None, None, p);
+        }
+    };
+    help("ok", &pictures.ok, p);
+    help("ok-picked", &pictures.ok_picked, p);
+    help("other", &pictures.other, p);
+    for (name, h) in &pictures.buttons {
+        help(name, h, p);
+    }
+    for (version, v) in std::iter::once((&pictures.versioned.base_version, &pictures.versioned.base)).chain(pictures.versioned.versions.iter().map(|(n, v)| (n, v))) {
+        for (name, h) in &v.buttons {
+            help(name, h, p);
+        }
+        for (k, f) in v.form_names.iter().enumerate() {
+            if let Some(f) = f {
+                look_colors(&format!("{version}'s form list name {k}"), &f.fill, Some(f.rim), None, p);
+            }
+        }
+    }
+}
+
 /// The pack's letters of everything its HUD and its custom screen draw in
 /// fonts in the enhanced mode (`letters`, which a frame looks up as it
 /// draws): its number sets and chip codes always, its lettered pictures
 /// where the content's strings (`text`) have their words, a lettered
-/// picture's lines as many as the words'. For the static audit; the
+/// picture's lines as many as the words', its words all in the lettering
+/// font. For the static audit; the
 /// banners' and the form list's names are `banner_letters` and
 /// `form_name_letters`.
 pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::strings::DisplayText, p: &mut Problems) {
     let need = |found: bool, what: &str, p: &mut Problems| {
         letters(found.then_some(&()), || what.to_string(), p);
     };
+    pack_look_colors(hud, a, p);
     let l = &hud.letters;
     if !hud.tiles.is_empty() {
         need(l.hp_digits.is_some(), "the HP box's digits", p);
@@ -568,7 +704,6 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
             need(l.counts.counts.iter().any(Option::is_some), "the emotion window's counts", p);
         }
     }
-    let words = |key: &str| text.lettering(c, key).is_some();
     let w = &l.words;
     for (key, found) in [
         ("pause", l.pause.is_some()),
@@ -577,8 +712,12 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
         ("gauge.l-or-r", w.l_or_r.iter().all(Option::is_some)),
         ("turn-limit", a.is_empty() || a.letters.turn_limit.is_some()),
     ] {
-        if words(key) {
+        if let Some(said) = text.lettering(c, key) {
             need(found, &format!("the picture of {key:?}"), p);
+            // (The gauge's word in the numbers' font where it has every
+            // character, else the display lettering's.)
+            let font = if key == "gauge.custom" && crate::numbers::font().covers(said) { crate::vfont::LetteringFont::Numbers } else { crate::vfont::LetteringFont::Display };
+            drawn_in(&format!("the picture of {key:?}"), said, font, p);
         }
     }
     if a.is_empty() {
@@ -591,8 +730,9 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
         need((0..27).all(|k| set.glyphs.get(k).is_some_and(Option::is_some)), &format!("{what} chip codes"), p);
     }
     for (k, label) in a.labels.iter().enumerate() {
-        if words(&format!("window.{}", label.name)) {
+        if let Some(said) = text.lettering(c, &format!("window.{}", label.name)) {
             need(cl.labels.get(k).is_some_and(Option::is_some), &format!("window label {:?}", label.name), p);
+            drawn_in(&format!("window label {:?}", label.name), said, crate::vfont::LetteringFont::Numbers, p);
         }
     }
     // The chip window's lettered pictures: OK's, and each button's (the
@@ -600,6 +740,9 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
     let help = |key: &str, found: Option<&nettai_assets::letters::HelpLetters>, p: &mut Problems| {
         let line = |part: &str| text.lettering(c, &format!("{key}.{part}"));
         let (Some(title), Some(said)) = (line("title"), line("words")) else { return };
+        // (Words the lettering font can't draw leave the picture as it is:
+        // the Japanese "シャッフル！" did, its full-width '!'.)
+        drawn_in(&format!("the chip window's picture {key:?}"), &format!("{title}\n{said}"), crate::vfont::LetteringFont::Display, p);
         let lines = title.lines().count() + said.lines().count();
         match found {
             None => need(false, &format!("the chip window's picture {key:?}"), p),
@@ -612,6 +755,8 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
     let pl = &cl.pictures;
     help("pictures.ok", pl.ok.as_ref(), p);
     help("pictures.ok-picked", pl.ok_picked.as_ref(), p);
+    // (Battle mode 1's: no frame draws it yet, its words are kept whole.)
+    help("pictures.other", pl.other.as_ref(), p);
     for (name, _) in &a.buttons {
         help(&format!("pictures.{}", nettai_content_api::keys::local(name)), pl.button(name), p);
     }
@@ -635,6 +780,8 @@ pub fn banner_letters(packs: &Packs, c: &Content, id: BannerId, text: &crate::st
     let numbered = layout.number_at.is_some() && words.contains("{n}");
     let complete = found.is_some_and(|f| !numbered || (f.one_digit.is_some() && f.two_digits.is_some()));
     letters(complete.then_some(&()), || format!("banner {name:?}"), p);
+    // (Its number in the numbers' font.)
+    drawn_in(&format!("banner {name:?}"), &words.replace("{n}", ""), crate::vfont::LetteringFont::Display, p);
 }
 
 /// The pack's letters of form `form`'s name in the form list's window (its
@@ -642,9 +789,8 @@ pub fn banner_letters(packs: &Packs, c: &Content, id: BannerId, text: &crate::st
 /// words (`crosses.FORM`).
 pub fn form_name_letters(a: &CustomScreen, c: &Content, navi: NaviHandle, form: FormHandle, text: &crate::strings::DisplayText, p: &mut Problems) {
     let key = nettai_content_api::keys::local(&c.defs.form(form).key);
-    if text.lettering(c, &format!("crosses.{key}")).is_none() {
-        return;
-    }
+    let Some(said) = text.lettering(c, &format!("crosses.{key}")) else { return };
+    drawn_in(&format!("form {key:?}'s name"), said, crate::custom::CROSS_NAME_FONT, p);
     let Some((_, number)) = crate::custom::form_name_picture(c, a, navi, form) else { return };
     let Some(version) = c.form(form).version.as_deref() else { return };
     let own = a.letters.pictures.versioned.get(version);

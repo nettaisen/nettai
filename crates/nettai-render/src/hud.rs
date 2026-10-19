@@ -1715,7 +1715,10 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
 /// where wider than their columns, standing as they stand in the cells.
 fn gauge_word(b: &Battle, hud: &Hud, text: &TextSink, problems: &mut Problems) -> Option<(Vec<usize>, Tiles, TextItem)> {
     let words = text.strings.lettering(&b.content, "gauge.custom")?;
-    let font = [GAUGE_WORD_FONT, LetteringFont::Display].into_iter().find(|&f| text.takes_lettering_in(words, f))?;
+    let Some(font) = [GAUGE_WORD_FONT, LetteringFont::Display].into_iter().find(|&f| text.takes_lettering_in(words, f)) else {
+        text.lettering_in(words, LetteringFont::Display, || "the picture of \"gauge.custom\"".into(), problems);
+        return None;
+    };
     let found = crate::lookups::letters(hud.letters.words.gauge.as_ref(), || "the picture of \"gauge.custom\"".into(), problems)?;
     let cells: Vec<usize> = found.cells.iter().map(|&c| c as usize).collect();
     let x = (GAUGE_COLUMN + *cells.first()? as i32) * 8;
@@ -1758,7 +1761,10 @@ pub(crate) fn lettered_word<'b>(
     lettering: fn(u8, u8) -> Lettering,
     problems: &mut Problems,
 ) -> Option<(&'b str, crate::lettering::Look)> {
-    let words = text.strings.lettering(&b.content, key).filter(|w| text.takes_lettering(w))?;
+    let words = text.strings.lettering(&b.content, key)?;
+    if !text.lettering_in(words, LetteringFont::Display, || format!("the picture of {key:?}"), problems) {
+        return None;
+    }
     let letters = crate::lookups::letters(letters, || format!("the picture of {key:?}"), problems)?;
     Some((words, crate::lettering::Look::of(letters, palette, lettering)))
 }
@@ -1814,7 +1820,7 @@ fn lettered_banner(
             let (tens, nx) = if n / 10 % 10 == 0 { (None, nx as i32 - 4) } else { (Some(n / 10 % 10), nx as i32) };
             let digits = tens.map_or(format!("{}", n % 10), |t| format!("{t}{}", n % 10));
             let (before, after) = (before.trim_end(), after.trim_start());
-            if ![before, after, &digits].iter().all(|w| w.is_empty() || text.takes_lettering(w)) {
+            if ![before, after, &digits].iter().all(|w| w.is_empty() || text.lettering_in(w, LetteringFont::Display, what, problems)) {
                 return None;
             }
             let set = crate::lookups::letters(hud.letters.banner_digits.as_ref(), || "the banners' digits".into(), problems)?;
@@ -1830,7 +1836,7 @@ fn lettered_banner(
         }
         _ => {
             let words = words.replace("{n}", &banner_number(b, number).to_string());
-            if !text.takes_lettering(&words) {
+            if !text.lettering_in(&words, LetteringFont::Display, what, problems) {
                 return None;
             }
             items.extend(words_in(&words, Some(letters.span)));
