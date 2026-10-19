@@ -135,10 +135,17 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
     }
     // The outline: of the colors of the letters' edge (their pixels next
     // to the ground), most first, the one the rest (the face) is kept from
-    // the ground by: all round (a rim), or only right and down (a shadow).
+    // the ground by: all round (a rim), or only right and down (a shadow:
+    // it follows the face's right and bottom edges, at least half of them,
+    // and lies after the face far more than before it; a lone pixel of
+    // another color in or beside a letter, its own shading, is none: the
+    // user, "B:EXIT in the original did not have a drop shadow").
     let is = |x: i32, y: i32, c: u8| ink(x, y) && p.at(x, y) == Some(c);
     let outline = |c: u8| {
         let (mut face, mut face_edge, mut before, mut after) = (0usize, 0usize, 0usize, 0usize);
+        // (The face's right and bottom edges, and those the color is on.)
+        let (mut exposed, mut shaded) = (0usize, 0usize);
+        let face_at = |x: i32, y: i32| ink(x, y) && !is(x, y, c);
         for y in 0..p.h as i32 {
             for x in 0..p.w as i32 {
                 if !ink(x, y) || is(x, y, c) {
@@ -150,12 +157,18 @@ pub fn letters(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals) -> 
                 }
                 before += is(x - 1, y, c) as usize + is(x, y - 1, c) as usize;
                 after += is(x + 1, y, c) as usize + is(x, y + 1, c) as usize;
+                for (dx, dy) in [(1, 0), (0, 1)] {
+                    if !face_at(x + dx, y + dy) {
+                        exposed += 1;
+                        shaded += is(x + dx, y + dy, c) as usize;
+                    }
+                }
             }
         }
         let enough = face * 5 >= total;
         if enough && face_edge * 4 <= face {
             Some((Some(c), None))
-        } else if enough && after > 0 && 2 * after > 3 * before {
+        } else if enough && after > 0 && 2 * after > 3 * before && 2 * shaded >= exposed {
             Some((None, Some(c)))
         } else {
             None
@@ -2532,6 +2545,36 @@ mod tests {
         assert_eq!(set.face, [1, 4, 6, 8]);
         assert_eq!((set.rim, set.shadow), (Some(6), None));
         assert!(set.fill.iter().all(|&c| c == 1));
+    }
+
+    /// A shadow follows the letters' right and bottom edges; one pixel of
+    /// another color in a letter (its own shading: B:EXIT's B) is none.
+    #[test]
+    fn a_shadow_follows_the_edges_and_a_lone_pixel_is_none() {
+        // (Two 3x5 bars of 5 on ground 2, one 3 in the first's notch.)
+        let (w, h) = (12, 8);
+        let mut pixels = vec![2u8; w * h];
+        for y in 1..6 {
+            for x in (1..4).chain(6..9) {
+                pixels[y * w + x] = 5;
+            }
+        }
+        pixels[3 * w + 3] = 3;
+        let p = Picture { w, h, pixels: pixels.clone() };
+        let found = letters(&p, |v| v == 2, Capitals::All).expect("letters");
+        assert_eq!((found.rim, found.shadow), (None, None));
+        // (Then a shadow of 3 right of and below both.)
+        for y in 2..7 {
+            for x in [4, 9] {
+                pixels[y * w + x] = 3;
+            }
+        }
+        for x in (2..5).chain(7..10) {
+            pixels[6 * w + x] = 3;
+        }
+        let p = Picture { w, h, pixels };
+        let found = letters(&p, |v| v == 2, Capitals::All).expect("letters");
+        assert_eq!((found.rim, found.shadow), (None, Some(3)));
     }
 
     /// The shared panel: each pixel what most pictures show away from their
