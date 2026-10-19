@@ -274,10 +274,29 @@ impl WindowEmblem {
     }
 }
 
+/// A label the window's tiles draw ([`CustomScreen::labels`]): its name
+/// (the content's strings say its words, `window.NAME`), the tiles that
+/// draw it (`first..=last`, as the window's maps number them), the rows of
+/// those tiles its letters are on (`top..=bottom`, of the eight), and the
+/// colors of its letters there: every other pixel is the window's own.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WindowLabel {
+    pub name: String,
+    pub first: u16,
+    pub last: u16,
+    pub top: u8,
+    pub bottom: u8,
+    pub letters: Vec<u8>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomScreen {
     /// Where the blocks below go among the layer's tile numbers.
     pub layout: CustomLayout,
+    /// The window's labels: words drawn into its tiles (BATTLE CHIP on the
+    /// frame, CHIP SELECT over the slots), which the enhanced graphics draw
+    /// in a font in their place.
+    pub labels: Vec<WindowLabel>,
     /// The buttons, by name (a version's own look of one is its
     /// `VersionPictures`').
     pub buttons: Vec<(String, ButtonPictures)>,

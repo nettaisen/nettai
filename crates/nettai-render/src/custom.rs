@@ -661,6 +661,10 @@ struct Window {
     help_lines: Vec<TextItem>,
     /// The damage's digits' words, in the enhanced mode (their cells blank).
     damage: Option<String>,
+    /// In the enhanced mode, the window's labels it shows (`letter_labels`):
+    /// each one's cells (their first column, row and how many columns) and
+    /// its words from the cells' top left, the letters taken off the tiles.
+    labels: Vec<(usize, usize, usize, TextItem)>,
     /// Where the blocks go among the layer's tile numbers (the pack's).
     layout: nettai_assets::CustomLayout,
 }
@@ -741,6 +745,7 @@ impl Window {
             help: None,
             help_lines: Vec::new(),
             damage: None,
+            labels: Vec::new(),
             layout: a.layout,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
@@ -790,7 +795,57 @@ impl Window {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
             // window's columns: drawn on the layer apart).
         }
+        w.letter_labels(v, text);
         w
+    }
+
+    /// In the enhanced mode, the window's labels its map shows (the pack's
+    /// `labels`: BATTLE CHIP, CHIP SELECT...), where the strings have their
+    /// words (`window.NAME`) and the lettering font draws them: their
+    /// letters taken off the tiles (each letter pixel the window's own
+    /// color nearest it on its row), and the words in the lettering font in
+    /// the letters' look, where they stood.
+    fn letter_labels(&mut self, v: &View, text: &TextSink) {
+        for label in &v.assets.labels {
+            let Some(words) = text.strings.lettering(&v.b.content, &format!("window.{}", label.name)).filter(|w| text.takes_lettering(w)) else { continue };
+            let Some(block) = self.block(label.first..label.last + 1) else { continue };
+            if block.h != 1 {
+                continue;
+            }
+            let mut picture = block.picture(&self.tiles);
+            let palette = self.palettes[block.palette as usize & 15];
+            let (top, bottom) = (label.top as usize, (label.bottom as usize).min(7));
+            let is_letter = |v: u8| label.letters.contains(&v);
+            let mut letters = picture.crop(0, top, picture.w, bottom + 1 - top);
+            letters.pixels.iter_mut().for_each(|p| *p = if is_letter(*p) { *p } else { 0 });
+            let Some(look) = crate::lettering::Look::of(&letters, |v| v == 0, crate::lettering::Capitals::First, &palette, Lettering::wide) else { continue };
+            for y in top..=bottom {
+                let row: Vec<u8> = picture.pixels[y * picture.w..(y + 1) * picture.w].to_vec();
+                for x in (0..picture.w).filter(|&x| is_letter(row[x])) {
+                    let left = (0..x).rev().find(|&i| !is_letter(row[i])).map(|i| (x - i, row[i]));
+                    let right = (x + 1..picture.w).find(|&i| !is_letter(row[i])).map(|i| (i - x, row[i]));
+                    let near = match (left, right) {
+                        (Some(l), Some(r)) => Some(if r.0 < l.0 { r.1 } else { l.1 }),
+                        (l, r) => l.or(r).map(|n| n.1),
+                    };
+                    if let Some(n) = near {
+                        picture.pixels[y * picture.w + x] = n;
+                    }
+                }
+            }
+            block.put(&picture, &mut self.tiles);
+            let item = look.in_place(words, (0, top as i32), (bottom + 1 - top) as i32);
+            self.labels.push((block.col, block.row, block.w, item));
+        }
+    }
+
+    /// The window's labels (`letter_labels`) where the window shows them.
+    fn label_items(&self, text: &mut TextSink, place: Placement) {
+        for (col, row, w, item) in &self.labels {
+            let Some((x, clip)) = self.columns_at(*col, *w, place) else { continue };
+            let rect = item.rect.offset(x, 8 * *row as i32);
+            text.push(Plane::Hud, TextItem { rect, clip, ..item.clone() });
+        }
     }
 
     /// The screen's own emblem on the window's map (EXE4's orb, 0x08020028),
@@ -1478,7 +1533,7 @@ impl Window {
             .zip(wanted)
             .map(|(line, (words, title))| {
                 let cap = (line.baseline - line.top).clamp(1, 16) as u8;
-                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100 } };
+                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100, pitch: 0 } };
                 let rect = Rect::new(line.span.0, line.top, line.span.1 - line.span.0, cap as i32 + 2);
                 TextItem { align: Align::Center, ..TextItem::new(words, Role::Lettering(lettering), rect, line.color, None) }
             })
@@ -1933,6 +1988,7 @@ pub fn draw<'a>(
     w.name_item(text, place);
     w.help_items(text, place);
     w.damage_item(&v, text, place);
+    w.label_items(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
