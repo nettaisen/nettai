@@ -887,13 +887,16 @@ impl Window {
             if !text.takes_lettering_in(words, CROSS_NAME_FONT) {
                 continue;
             }
+            // (Centered in the box all the names' letters take, every bar's
+            // alike, at the font's own width, narrowed only where wider than
+            // it: the user, "you should bounding box them to the longest one
+            // (e.g. tomahawk in japanese) and center align them in the same
+            // spot on each label, so you don't force the original metrics".)
             let cap = (row1 + 1 - row0) as u8;
+            let [box0, box1] = v.assets.letters.form_name_box.unwrap_or([col0 as u8, col1 as u8]).map(i32::from);
             let lettering = Lettering { weight: CROSS_NAME_WEIGHT, font: CROSS_NAME_FONT, ..Lettering::wide(row0 as u8, cap) };
-            let span = (col1 + 1 - col0) as f32;
-            let Some(natural) = text.fitted_width(words, Role::Lettering(lettering), 10_000) else { continue };
-            let width = (100.0 * span / natural.max(1.0)).round().clamp(40.0, 200.0) as u8;
-            let role = Role::Lettering(Lettering { width, ..lettering });
-            let item = TextItem::new(words, role, Rect::new(col0 as i32, 0, (col1 + 1 - col0) as i32, 8 * block.h as i32), fill[0], None);
+            let item = TextItem::new(words, Role::Lettering(lettering), Rect::new(box0, 0, box1 + 1 - box0, 8 * block.h as i32), fill[0], None);
+            let item = TextItem { align: Align::Center, ..item };
             let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim, heavier: found.heavier }), ..item };
             // (Its tiles with the letters taken off, the bar's own colors
             // where they were.)

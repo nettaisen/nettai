@@ -262,9 +262,27 @@ fn concat(parts: &[&Tiles]) -> Tiles {
 
 pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
+    // The pictures with letters in them, as images with their letters taken
+    // off, the letters in a layer beside (`tiles::export_lettered`): the
+    // gauge's (its words) and the counts' (their digits).
+    let lettered = crate::letters::hud_layered(h).0;
+    let counts = {
+        let mut counts: Vec<&Tiles> = h.counts.iter().collect();
+        counts.push(&h.count_box);
+        concat(&counts)
+    };
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize| {
-        let (png, doc) = tiles::export_image(file, t, layout, rows, [0, owned], |_| 0);
-        files.push((file.to_string(), png));
+        let (pngs, doc) = match lettered.get(file) {
+            Some(l) => {
+                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters };
+                tiles::export_layered(file, t, &layered, layout, rows, [0, owned], |_| 0)
+            }
+            None => {
+                let (png, doc) = tiles::export_image(file, t, layout, rows, [0, owned], |_| 0);
+                (vec![(file.to_string(), png)], doc)
+            }
+        };
+        files.extend(pngs);
         doc
     };
     let grid = Layout::Grid { columns: 16 };
@@ -321,10 +339,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
     let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
     let pause = image("pause.png", &h.pause, GLYPHS(5), &[h.enemy_palette], 0);
-    let mut counts: Vec<&Tiles> = h.counts.iter().collect();
-    counts.push(&h.count_box);
     let mug0 = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
-    let counts = image("counts.png", &concat(&counts), Layout::Blocks { width: 2, height: 2, columns: 12 }, &[mug0], 0);
+    let counts = image("counts.png", &counts, Layout::Blocks { width: 2, height: 2, columns: 12 }, &[mug0], 0);
     // Banner glyphs: up to 20 glyphs (40 tiles) a banner; text banners
     // have none.
     let banners = h
@@ -378,12 +394,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         let columns = (l.waiting.len() / 2).max(1) as u32;
         let waiting = image(&file("waiting"), &l.waiting, Layout::Grid { columns }, &[l.waiting_palette], 1);
         let gauge = image(&file("gauge"), &l.gauge_tiles, grid, &[h.gauge_palette], 0);
-        let letters = crate::letters::words_doc(
-            &l.letters,
-            h.gauge_palette,
-            &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0),
-            &|n| format!("letters/{n}-{lang}.png"),
-        );
+        let letters = crate::letters::words_doc(&l.letters);
         let dialogue_file = file("dialogue-font");
         dialogue_pngs.push((dialogue_file.clone(), dialogue_image(&l.dialogue_font).to_png()));
         let dialogue_font = DialogueFontDoc {
@@ -427,8 +438,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             }),
         }),
     };
-    let letters =
-        crate::letters::hud_doc(h, &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0), &|n| format!("letters/{n}.png"));
+    let letters = crate::letters::hud_doc(&h.letters);
     let dialogue_font = {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
@@ -488,7 +498,9 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     }
     let img = |d: &TileImage, report: &mut Report| tiles::import_image(dir, prefix, d, report);
     let (tiles, hp) = img(&doc.layer, report)?;
-    let (gauge_tiles, gauge_pal) = img(&doc.gauge, report)?;
+    // (The gauge's and the counts' images are their pictures with their
+    // letters taken off, the letters over them: `tiles::import_lettered`.)
+    let (gauge_tiles, gauge_base, gauge_pal) = tiles::import_lettered(dir, prefix, &doc.gauge, report)?;
     let (font, _) = img(&doc.font, report)?;
     let (digits, enemy_pal) = img(&doc.enemy_digits, report)?;
     let (hidden_icon, icon_pal) = img(&doc.hidden_icon, report)?;
@@ -500,7 +512,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         };
         chip_icons.push(ChipIcon { key: icon.chip.clone(), tiles });
     }
-    let (counts, _) = img(&doc.counts, report)?;
+    let (counts, counts_base, _) = tiles::import_lettered(dir, prefix, &doc.counts, report)?;
     let mut banner_pal = vec![Palette::default()];
     let mut banner_glyphs = Vec::new();
     for b in &doc.banners {
@@ -550,6 +562,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             })
             .collect()
     };
+    let gauge_frame = map(&doc.gauge_frame, report);
     let per_digit_set = digits.len() / 3;
     let banners = doc
         .banners
@@ -623,7 +636,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hp_palettes: [hp[0], hp[1], hp[2]],
         gauge_palette: gauge_pal[0],
         hp_box: map(&doc.hp_box, report),
-        gauge_frame: map(&doc.gauge_frame, report),
+        gauge_frame: gauge_frame.clone(),
         font,
         font_chars: doc.font_chars.clone(),
         enemy_digits: [0, 1, 2].map(|k| slice(&digits, k * per_digit_set, per_digit_set)),
@@ -651,16 +664,23 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         chatbox,
         layout,
         language: doc.language.clone(),
-        languages: import_languages(dir, prefix, &doc, report)?,
-        letters: crate::letters::hud_from_doc(&doc.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
+        languages: import_languages(dir, prefix, &doc, &gauge_frame, report)?,
+        letters: crate::letters::hud_from_doc(
+            &doc.letters,
+            &gauge_base,
+            doc.gauge_first_tile,
+            &gauge_frame,
+            &(0..counts_base.len() / 4).map(|i| slice(&counts_base, 4 * i, 4)).collect::<Vec<_>>(),
+        ),
     })
 }
 
 /// The other languages' lettering (`HudLanguageDoc`).
-fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report) -> Option<Vec<(String, HudLettering)>> {
+fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, gauge_frame: &[MapEntry], report: &mut Report) -> Option<Vec<(String, HudLettering)>> {
     let mut out = Vec::new();
     for (lang, d) in &doc.languages {
         let img = |d: &TileImage, report: &mut Report| tiles::import_image(dir, prefix, d, report);
+        let (gauge_tiles, gauge_base, _) = tiles::import_lettered(dir, prefix, &d.gauge, report)?;
         if d.banners.len() != doc.banners.len() {
             report.error(format!("{prefix}/hud.json"), format!("{lang}'s banners are {}, the pack's {}", d.banners.len(), doc.banners.len()));
             return None;
@@ -696,9 +716,9 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report)
                 banner_palette: banner_palette.unwrap_or(waiting_palette[0]),
                 waiting,
                 waiting_palette: waiting_palette[0],
-                gauge_tiles: img(&d.gauge, report)?.0,
+                gauge_tiles,
                 chatbox_text: d.chatbox_text.map(|[x, y]| (x, y)),
-                letters: crate::letters::words_from_doc(&d.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
+                letters: crate::letters::words_from_doc(&d.letters, &gauge_base, doc.gauge_first_tile, gauge_frame),
             },
         ));
     }
