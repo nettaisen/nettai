@@ -1494,9 +1494,15 @@ Each character is drawn in Bungee in its glyph's cell, its ink stretched to that
 frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
 cell, each where the picture's was, right-aligned numbers ending where they did.
 
-- The emotion window's count: its box is the counts' own with the digits taken off (where the counts differ, the color
-  most of them are there; the HUD's box without a count, `count_box`, is another picture), the digit fitted to the box
-  the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a box with no number.
+- A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
+  a frame pixel right and down as the name's (the original's are both a pixel), and its digits are drawn a pixel
+  narrower than their box, so their strokes are as heavy as the name's (the user: "the damage number and chip names are
+  styled differently in the footer"). The others' rims are a frame pixel all round, as their pictures'.
+- The emotion window's count: its box is the counts' own with the digits taken off (the box around where the counts
+  differ filled with the box's color around it; the HUD's box without a count, `count_box`, is another picture), the
+  digit fitted to the box the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a
+  box with no number. (At first the digits' place took its own most common color, which the digits make the blue of
+  their strokes: the box showed a blue block and the "3" its inverse, nearly a B.)
 - A numbered banner's words are drawn either side of its number (`BATTLE`, `START!`), each centered on the picture's
   letters on its side; the number is the banner digits' look, in its own color as the original's.
 - The '?' of the chip window's hidden damage is Bungee's '?'.
@@ -1529,7 +1535,10 @@ The pack says where they are (`custom.json` `labels`, asset-formats.md: each one
 and colors; the extractor's EXE6 BATTLE CHIP, CHIP SELECT, CROSS SELECT twice and B:EXIT, EXE5's BATTLE CHIP and CHIP
 SELECT, EXE4's CHIP SELECT). Where the window's map shows those tiles the letters' pixels are taken off (each the
 color nearest it on its row that isn't a letter's: the frame's or the strip's own) and the words drawn where they
-stood, sliding, shaking and fading with the window, through the Cross window's opening steps.
+stood, sliding, shaking and fading with the window, through the Cross window's opening steps. The words span the
+original's letters, from their left edge (the font's width stretched to it), on their five rows, and their vertical
+strokes are drawn half a frame pixel heavier each way (`Ink::bold`): the game's letters there are two-pixel strokes,
+which the font's heaviest cut at that size is not.
 
 ### 12.7 Other deliberate changes
 

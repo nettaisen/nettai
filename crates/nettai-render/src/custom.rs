@@ -834,7 +834,20 @@ impl Window {
                 }
             }
             block.put(&picture, &mut self.tiles);
-            let item = look.in_place(words, (0, top as i32), (bottom + 1 - top) as i32);
+            // The words as wide as the picture's letters, from their left
+            // edge, and as heavy: the game's letters there are five rows of
+            // two-pixel strokes, the font's at that size a pixel.
+            let Role::Lettering(l) = look.role else { continue };
+            let span = (look.span.1 - look.span.0) as f32 - 2.0 * LABEL_BOLD;
+            let Some(natural) = text.fitted_width(words, look.role, 10_000) else { continue };
+            let width = (100.0 * span / natural.max(1.0)).round().clamp(50.0, 250.0) as u8;
+            let rect = Rect::new(look.span.0, top as i32, look.span.1 - look.span.0, (bottom + 1 - top) as i32);
+            let item = TextItem::new(words, Role::Lettering(Lettering { width, ..l }), rect, look.face, look.shadow);
+            let item = TextItem {
+                ink: Some(crate::textlayer::Ink { bold: LABEL_BOLD, ..look.ink.clone() }),
+                fine: ((LABEL_BOLD * 65536.0) as i32, 0),
+                ..item
+            };
             self.labels.push((block.col, block.row, block.w, item));
         }
     }
@@ -1575,6 +1588,10 @@ impl Window {
 /// The weight of the help pictures' words (their title's is the display
 /// lettering's): the game's small letters are thin.
 const HELP_WEIGHT: u16 = 500;
+
+/// How much heavier the window's labels' strokes are drawn, in frame pixels
+/// each way (`Ink::bold`): the game's are two pixels.
+const LABEL_BOLD: f32 = 0.5;
 
 /// The look of the chip window's damage digits (glyph d of `digits` is
 /// digit d, on its cell's ground: the color at its top left).

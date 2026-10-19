@@ -1463,17 +1463,32 @@ fn mugshot_parts<'a>(
 }
 
 /// The empty box of the emotion window's counts (16x16 each): where they
-/// all have one color, that; where they differ (their digits' place), the
-/// color most of those pixels are, the box's own behind the digits.
+/// all have one color, that; in their digits' place (the box around where
+/// they differ), the box's own color around it.
 fn count_blank(counts: &[Tiles]) -> crate::lettering::Picture {
     let pictures: Vec<crate::lettering::Picture> = count_boxes(counts).into_iter().map(|t| crate::lettering::Picture::grid(&counts[t], 0, 2, 2)).collect();
     if pictures.is_empty() {
         return crate::lettering::Picture { w: 16, h: 16, pixels: vec![0; 256] };
     }
-    let varies = |i: usize| pictures.iter().any(|p| p.pixels[i] != pictures[0].pixels[i]);
+    // (The digits' place: the box around the pixels the counts differ at, a
+    // pixel every digit has included.)
+    let differs: Vec<usize> = (0..256).filter(|&i| pictures.iter().any(|p| p.pixels[i] != pictures[0].pixels[i])).collect();
+    let (x0, x1) = (differs.iter().map(|i| i % 16).min().unwrap_or(16), differs.iter().map(|i| i % 16).max().unwrap_or(0));
+    let (y0, y1) = (differs.iter().map(|i| i / 16).min().unwrap_or(16), differs.iter().map(|i| i / 16).max().unwrap_or(0));
+    let varies = |i: usize| (x0..=x1).contains(&(i % 16)) && (y0..=y1).contains(&(i / 16));
+    // (The box's own color behind the digits: the one most of the pixels
+    // around their place are, which every count has alike. Not the place's
+    // own most common color: the digits fill most of it.)
     let mut seen = [0usize; 16];
-    for i in (0..256).filter(|&i| varies(i)) {
-        pictures.iter().for_each(|p| seen[p.pixels[i] as usize & 15] += 1);
+    for i in (0..256).filter(|&i| !varies(i)) {
+        let (x, y) = ((i % 16) as i32, (i / 16) as i32);
+        let near = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|&(dx, dy)| {
+            let (nx, ny) = (x + dx, y + dy);
+            (0..16).contains(&nx) && (0..16).contains(&ny) && varies((ny * 16 + nx) as usize)
+        });
+        if near {
+            seen[pictures[0].pixels[i] as usize & 15] += 1;
+        }
     }
     let behind = (0..16u8).max_by_key(|&c| seen[c as usize]).unwrap_or(0);
     let pixels = (0..256).map(|i| if varies(i) { behind } else { pictures[0].pixels[i] }).collect();
