@@ -96,9 +96,8 @@ graphics/
     (a button by the name its content registers it under: redeal, scrap, soul)
     form-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
     (V: falzar, gregar; a version's own look of a button: beast_out;
-    EXE6's names as layers: form-names-bar.png  form-names-V-bar-rows.png
-    form-names-V-portraits.png  form-names-V-letters.png
-    form-names-V-bar-rows-L.png)
+    EXE6's names as layers: form-names-bar.png  form-names-V-portraits.png
+    form-names-V-letters.png)
     (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
@@ -457,11 +456,6 @@ for viewing). Each layer holds one kind of pixel only (the user: "it doesn't
 seem like it's a pure text extraction"):
 
 - `NAME-letters.png` (`letters`): its words alone, letters and their ink.
-- `NAME-own.png` (`own`): its own pixels off its letters that differ from
-  the base, which both modes show. The chip window's pictures are bit
-  planes, their palettes picking the plane, so a panel picture's tiles hold
-  the other pictures' words in its panel's own colors; they are here, not
-  in its letters.
 - `NAME-panel.png` (`panel`): where its own panel departs from the shared
   one, which only the original mode shows (a body a column wider, a
   letter's outline drawn in the panel's colors, EXE4's taller Japanese
@@ -470,11 +464,21 @@ seem like it's a pure text extraction"):
 Another picture of the same base (another language's, another panel
 picture's) has its letters at its own path (`pictures/ok-ja.png`, in that
 picture's palette; `base` in its entry: the base's file) and its own
-`NAME-own.png` and `NAME-panel.png` beside. A layer with no pixels isn't
-written. The loader composes each picture as the base, its own pixels, its
-panel and its letters (exactly the ROM's, which the original mode draws)
-and the picture as the enhanced mode shows it (its own pixels over the
-base). Kept so: the window's tiles (its labels), the codes and the slots'
+`NAME-panel.png` beside. A layer with no pixels isn't written. The loader
+composes each picture as the base, its panel and its letters (what the
+original mode draws) and the picture as the enhanced mode shows it (the
+base).
+
+The chip window's pictures are bit planes, their palettes picking the
+plane, so a panel picture's tiles hold the other pictures' words in index
+values its palette shows in the panel's own colors. Those pixels take the
+shared panel's index (the user: "why do the -own images look like that?
+can you not remove them?"): extraction checks every palette the picture is
+drawn in (its own; a button's others) shows the two alike, and says how
+many it made so (EXE5's 2,638, EXE6's 2,647, EXE4's none) and, as a
+problem, any some palette shows otherwise. So a picture composes to the
+ROM's colors in every palette it is drawn in, and to its indices
+everywhere else. Kept so: the window's tiles (its labels), the codes and the slots'
 codes, FINAL TURN, the gauge (CUSTOM, L or R), the counts and the chip
 window's lettered pictures. A picture with no letters in any language (a
 button's art: EXE6's TRASH CHUTE and DUST SHOOT) is each language's own
@@ -501,26 +505,25 @@ The **form list's names** (EXE6's Cross window) are layers: the bar every
 name of both versions lies on (`form-names-bar.png`, each version's
 `form_names`: one name's 9x2 tiles, in every look alike, the yellow bar
 with its orange streaks, and the frame; the user: "falzar and gregar should
-have the same bar"); where a version's and language's names' own bars
-depart from it (`form-names-V-bar-rows.png`,
-`form_name_bar_rows`; another language's `form-names-V-bar-rows-L.png`, its
-`form_name_bar_rows`: a few pixels, a streak ending a pixel sooner or
-later, as the English SPOUT's does where its Japanese art's doesn't); each
-name's portrait over those (`form-names-V-portraits.png`, every look's
+have the same bar"); each name's portrait over it (`form-names-V-portraits.png`, every look's
 names, the portrait's own pixels and none elsewhere; its palette's rows are
 the names' palettes by look, `form_name_portraits`); and the letters over
 all (`form-names-V-letters.png`, `form_name_letters`; another language's at
-its own path, `form-names-V-ja.png`). The loader lays them in that order for
+its own path, `form-names-V-ja.png`), with the few pixels where a name
+shows the bar otherwise among them (a streak ending a pixel sooner or
+later, as the English SPOUT's does where its Japanese art's doesn't:
+Falzar's English 2, Gregar's English 1 and Japanese 6, each in both looks;
+the user chose "fold into letters"). The loader lays them in that order for
 the original mode; the enhanced mode draws a name in a font over its
-portrait and bar. The bar is what the names show beside their portraits and
+portrait and the shared bar. The bar is what the names show beside their portraits and
 letters (each pixel the value most of them show, every version, look and
 language;
 where as many show one value as another, the streak's: its left
 neighbor's); a portrait is the pixels joined to the name's left edge
 through pixels of no color of the bar's and no letter's; what shows through
 a letter in the bar's colors is the bar's; a language's letters are all its
-pixels that differ from its portraits over its bars: its letters and their
-outline (one of gray ヒート's is the ROM's index 1). The bar's pixels no
+pixels that differ from its portraits over the bar: its letters and their
+outline (one of gray ヒート's is the ROM's index 1) and those few. The bar's pixels no
 name shows (behind every portrait, or under letters or portraits in every
 name) are filled from their rows; the extraction notes how many.
 
