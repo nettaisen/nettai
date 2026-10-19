@@ -457,6 +457,10 @@ struct GlyphKey {
     width: i32,
     weight: i32,
     shorten: Option<Shorten>,
+    /// How far out its field holds distances, in texels (0: the spread an
+    /// edge's antialiasing needs, `sdf::SPREAD`; more: an outline's,
+    /// [`TextRenderer::paint_layout_grown`]).
+    spread: u8,
 }
 
 impl GlyphKey {
@@ -473,6 +477,7 @@ impl GlyphKey {
             width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
             weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
             shorten: shorten.map(|f| Shorten { factor: (f * 1024.0).round() as i32, baseline: texels(-g.y * k), floor: texels(-g.y * k - floor) }),
+            spread: 0,
         }
     }
 }
@@ -911,7 +916,7 @@ impl TextRenderer {
                 if let Some(shorten) = key.shorten {
                     shorten.apply(outline.points_mut());
                 }
-                Sdf::of(outline.points(), outline.verbs())
+                Sdf::of_spread(outline.points(), outline.verbs(), key.spread as f32)
             });
             self.glyph_bytes += field.as_ref().map_or(0, Sdf::size);
             self.made.glyphs += 1;
@@ -1076,10 +1081,16 @@ impl TextRenderer {
             }
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
-            // (A frame pixel all round, as the picture's; heavier right and
-            // down where the picture's is.)
-            let heavier = if ink.heavier { (RIM_HEAVIER * s).round() as i32 } else { 0 };
-            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, heavier)));
+            // (A frame pixel all round, even, as the pictures' are: each
+            // glyph's own shape grown that far, `paint_layout_grown`.)
+            let rim = match ink.rim {
+                Some(c) => {
+                    let mut grown = Mask::new(area);
+                    self.paint_layout_grown(layout, st, at, place, area, RIM * s, &mut grown);
+                    Some((color(c), grown))
+                }
+                None => None,
+            };
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
             for y in area.1..area.3 {
@@ -1141,6 +1152,10 @@ impl TextRenderer {
             return None;
         }
         let mut mask = Mask::new(area);
+        // (The rim: each glyph's own shape grown a frame pixel, even all
+        // round, as the game's are.)
+        let one = s.round().max(1.0) as i32;
+        let mut grown = f.rim.map(|_| Mask::new(area));
         // The set's glyphs' ink, in texels: its glyphs' height (the median
         // of theirs: a capital's, a digit's; a Q's tail or a sign is let be)
         // and its widest's width.
@@ -1150,7 +1165,7 @@ impl TextRenderer {
                 let mut scaler = self.scaler.builder(font).size(RES).build();
                 let glyph = scaler.scale_outline(font.charmap().map(c)).and_then(|o| {
                     let b = o.bounds();
-                    Some((Sdf::of(o.points(), o.verbs())?, [b.min.x, b.min.y, b.max.x, b.max.y]))
+                    Some((Sdf::of_spread(o.points(), o.verbs(), NUMBER_SPREAD)?, [b.min.x, b.min.y, b.max.x, b.max.y]))
                 });
                 self.made.glyphs += 1;
                 self.number_glyphs.insert(c, glyph);
@@ -1186,13 +1201,16 @@ impl TextRenderer {
             let sx = w * s / (x1 - x0).max(1e-3);
             let sy = (out_bottom - out_top) / (y1 - y0).max(1e-3);
             field.draw(out_left - x0 * sx, out_top + y1 * sy, sx, sy, area, &mut mask);
+            if let Some(grown) = &mut grown {
+                field.draw_offset(out_left - x0 * sx, out_top + y1 * sy, sx, sy, s, area, grown);
+            }
         }
         let mut out = Painted::new(area);
-        let one = s.round().max(1.0) as i32;
+        let _ = one;
         // (A shadow as the names' beside them: the text layer's, half a frame
         // pixel right and down.)
         let drop = (SHADOW * s).round().max(1.0) as i32;
-        let rim = f.rim.map(|c| (color(c), mask.dilated_square(one)));
+        let rim = f.rim.zip(grown).map(|(c, grown)| (color(c), grown));
         let shadow = f.shadow.map(color);
         let fill: Vec<u32> = if f.fill.is_empty() { vec![0] } else { f.fill.iter().map(|&c| color(c)).collect() };
         let face_top = top + f.glyphs.first().map_or(0.0, |g| g.1[1]);
@@ -1228,7 +1246,7 @@ impl TextRenderer {
             let mut scaler = self.scaler.builder(font).size(RES).build();
             let glyph = scaler.scale_outline(font.charmap().map(c)).and_then(|o| {
                 let b = o.bounds();
-                Some((Sdf::of(o.points(), o.verbs())?, [b.min.x, b.min.y, b.max.x, b.max.y]))
+                Some((Sdf::of_spread(o.points(), o.verbs(), NUMBER_SPREAD)?, [b.min.x, b.min.y, b.max.x, b.max.y]))
             });
             self.made.glyphs += 1;
             self.number_glyphs.insert(c, glyph);
@@ -1277,6 +1295,45 @@ impl TextRenderer {
     }
 }
 
+impl TextRenderer {
+    /// Paint a layout's glyphs and rings grown by `grow` output pixels all
+    /// round (a rim as wide, even on every side: each glyph's field offset,
+    /// `Sdf::draw_offset`, each ring wider out and in) into `paint`, within
+    /// `bounds`.
+    #[allow(clippy::too_many_arguments)]
+    fn paint_layout_grown(&mut self, layout: &Layout, st: Style, at: &Laid, place: &Placement, bounds: (i32, i32, i32, i32), grow: f32, paint: &mut impl Paint) {
+        let (s, k) = (place.scale, at.k);
+        for g in layout.glyphs.iter().filter(|g| g.unit < at.shown) {
+            let (sx, sy) = (g.size * s * layout.xscale * g.stretch / RES, g.size * s * k / RES);
+            // (Its field as far out as the rim, in texels.)
+            let spread = (grow / sx.min(sy).max(1e-3) + 2.0).ceil().clamp(crate::sdf::SPREAD, 120.0) as u8;
+            let key = GlyphKey { spread, ..GlyphKey::of(g, layout.shorten, k, at.floor) };
+            let Some(field) = self.glyph(key) else { continue };
+            let ox = place.x as f32 + (at.x0 + g.x) * s;
+            let oy = (place.y as f32 + (at.baseline - g.y * k) * s).round();
+            field.draw_offset(ox, oy, sx, sy, grow, bounds, paint);
+        }
+        for r in layout.rings.iter().filter(|r| r.unit < at.shown) {
+            let (rx, ry) = (r.radius * layout.xscale * s + grow, r.radius * k * s + grow);
+            let stroke = (BUTTON_STROKE * st.cap * s).max(1.0) + 2.0 * grow;
+            let cx = place.x as f32 + (at.x0 + r.x) * s;
+            let cy = place.y as f32 + (at.baseline - r.y * k) * s;
+            let mean = (rx + ry) / 2.0;
+            let ys = ((cy - ry - 1.0).floor() as i32).max(bounds.1)..=((cy + ry + 1.0).ceil() as i32).min(bounds.3 - 1);
+            for y in ys {
+                for x in ((cx - rx - 1.0).floor() as i32).max(bounds.0)..=((cx + rx + 1.0).ceil() as i32).min(bounds.2 - 1) {
+                    let (dx, dy) = ((x as f32 + 0.5 - cx) / rx, (y as f32 + 0.5 - cy) / ry);
+                    let edge = ((dx * dx + dy * dy).sqrt() - 1.0) * mean;
+                    let a = (0.5 - edge).clamp(0.0, 1.0) * (0.5 + edge + stroke).clamp(0.0, 1.0);
+                    if a > 0.0 {
+                        paint.pixel(x, y, (a * 255.0).round() as u8);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Where a layout is drawn: its left and its baseline in frame pixels (the
 /// squash applied), the squash, the short descenders' floor and how many
 /// of its characters show.
@@ -1289,10 +1346,13 @@ struct Laid {
 }
 
 /// The lettering's rim, in frame pixels: as wide as the picture's, one
-/// pixel, and where the picture's is heavier right and down (`Ink::heavier`)
-/// that again half a pixel there.
+/// pixel, even all round (each glyph's field offset that far).
 const RIM: f32 = 1.0;
-const RIM_HEAVIER: f32 = 0.5;
+
+/// How far out the numbers' glyphs' fields hold distances, in texels: a
+/// frame pixel's rim at the smallest boxes the game's numbers fill (a
+/// digit's ink some 90 texels high in a box of 4 rows: 23 texels a pixel).
+const NUMBER_SPREAD: f32 = 40.0;
 
 /// The fill's color at `row` (the capitals' rows from the first's middle,
 /// continuous): blended between the two rows it falls between, the first's
@@ -1441,71 +1501,6 @@ impl Mask {
         }
         self.a[dy as usize * self.w + dx as usize]
     }
-
-    /// The coverage grown by a square `reach` output pixels each way (the
-    /// game's rims are a pixel's square around the face).
-    fn dilated_square(&self, reach: i32) -> Mask {
-        let half = reach.max(0) as usize;
-        let mut wide = vec![0u8; self.w * self.h];
-        for y in 0..self.h {
-            row_max(&self.a[y * self.w..(y + 1) * self.w], half, &mut wide[y * self.w..(y + 1) * self.w]);
-        }
-        let mut a = vec![0u8; self.w * self.h];
-        for y in 0..self.h as i32 {
-            for from in (y - reach).max(0)..(y + reach + 1).min(self.h as i32) {
-                let (dst, src) = (y as usize * self.w, from as usize * self.w);
-                for x in 0..self.w {
-                    a[dst + x] = a[dst + x].max(wide[src + x]);
-                }
-            }
-        }
-        Mask { a, ..*self }
-    }
-
-    /// The coverage grown by a disk of `radius` output pixels, and that
-    /// again `heavier` pixels right and down: a rim's.
-    fn dilated(&self, radius: f32, heavier: i32) -> Mask {
-        let r = radius.max(1.0);
-        let reach = r.floor() as i32;
-        // Each row's coverage widened by each half-width the disk has.
-        let halves: Vec<usize> = (-reach..=reach).map(|dy| (r * r - (dy * dy) as f32).max(0.0).sqrt().floor() as usize).collect();
-        let mut widened: HashMap<usize, Vec<u8>> = HashMap::new();
-        for &half in &halves {
-            widened.entry(half).or_insert_with(|| {
-                let mut out = vec![0; self.w * self.h];
-                for y in 0..self.h {
-                    row_max(&self.a[y * self.w..(y + 1) * self.w], half, &mut out[y * self.w..(y + 1) * self.w]);
-                }
-                out
-            });
-        }
-        let mut grown = vec![0u8; self.w * self.h];
-        for y in 0..self.h as i32 {
-            let row = &mut grown[y as usize * self.w..(y as usize + 1) * self.w];
-            for (k, &half) in halves.iter().enumerate() {
-                let from = y + k as i32 - reach;
-                if from < 0 || from >= self.h as i32 {
-                    continue;
-                }
-                let src = &widened[&half][from as usize * self.w..(from as usize + 1) * self.w];
-                for (o, &v) in row.iter_mut().zip(src) {
-                    *o = (*o).max(v);
-                }
-            }
-        }
-        let mut a = grown.clone();
-        if heavier > 0 {
-            let d = heavier as usize;
-            for y in d..self.h {
-                for x in d..self.w {
-                    let v = grown[(y - d) * self.w + x - d];
-                    let o = &mut a[y * self.w + x];
-                    *o = (*o).max(v);
-                }
-            }
-        }
-        Mask { a, ..*self }
-    }
 }
 
 impl Paint for Mask {
@@ -1516,29 +1511,6 @@ impl Paint for Mask {
         }
         let o = &mut self.a[dy as usize * self.w + dx as usize];
         *o = (*o).max(a);
-    }
-}
-
-/// `out[x]` the most of `row[x - half..=x + half]` (van Herk's: blocks of
-/// the window's width, their running maxima each way).
-fn row_max(row: &[u8], half: usize, out: &mut [u8]) {
-    if half == 0 {
-        out.copy_from_slice(row);
-        return;
-    }
-    let (n, m) = (row.len(), 2 * half + 1);
-    let len = n + 2 * half;
-    let p = |i: usize| if i >= half && i - half < n { row[i - half] } else { 0 };
-    let mut ahead = vec![0u8; len];
-    let mut behind = vec![0u8; len];
-    for i in 0..len {
-        ahead[i] = if i % m == 0 { p(i) } else { ahead[i - 1].max(p(i)) };
-    }
-    for i in (0..len).rev() {
-        behind[i] = if i % m == m - 1 || i == len - 1 { p(i) } else { behind[i + 1].max(p(i)) };
-    }
-    for (x, o) in out.iter_mut().enumerate() {
-        *o = behind[x].max(ahead[(x + m - 1).min(len - 1)]);
     }
 }
 

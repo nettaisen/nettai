@@ -17,17 +17,15 @@ use serde::{Deserialize, Serialize};
 
 /// How a picture's letters look, as palette indices: the face's color on
 /// each of the capitals' rows (top to bottom), the outline's color all
-/// round the face (a rim) or right and down of it (a shadow), whether the
-/// rim is heavier right and down than up and left (else even, a pixel all
-/// round), the capitals' first row and how many rows they take, and the
-/// letters' columns with their outline (the first, one past the last).
+/// round the face (a rim, even: a pixel all round, as every picture's is)
+/// or right and down of it (a shadow), the capitals' first row and how many
+/// rows they take, and the letters' columns with their outline (the first,
+/// one past the last).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Letters {
     pub fill: Vec<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub heavier: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
     pub top: u8,
@@ -166,16 +164,14 @@ pub struct HelpLetters {
 
 /// A form list name's letters (9x2 tiles), in one of its looks: the
 /// columns and rows their face takes (the first, the last), the face's
-/// color on each of those rows, the outline's, and whether the outline is
-/// heavier right and down (else even, a pixel all round).
+/// color on each of those rows, and the outline's (even, a pixel all
+/// round).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FormNameLetters {
     pub columns: [u8; 2],
     pub rows: [u8; 2],
     pub fill: Vec<u8>,
     pub rim: u8,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub heavier: bool,
 }
 
 /// A window label's letters: their look (`WindowLabel::letters`' colors

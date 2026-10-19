@@ -66,6 +66,8 @@ pub struct Sdf {
     pub top: f32,
     pub w: usize,
     pub h: usize,
+    /// How far from the outline it holds distances, in texels.
+    pub spread: f32,
     /// Each texel's distance to the outline in [`UNIT`]s, negative inside,
     /// at most [`SPREAD`] either way; rows from the top.
     data: Vec<i16>,
@@ -139,6 +141,14 @@ impl Sdf {
     /// scaled to [`RES`] texels an em); none for an outline with no area
     /// (a space).
     pub fn of(points: &[Vector], verbs: &[Verb]) -> Option<Sdf> {
+        Sdf::of_spread(points, verbs, SPREAD)
+    }
+
+    /// [`Sdf::of`], holding distances `spread` texels from the outline (at
+    /// least [`SPREAD`]): a field an outline is drawn from, as far out as
+    /// the outline's width ([`Sdf::draw_offset`]).
+    pub fn of_spread(points: &[Vector], verbs: &[Verb], spread: f32) -> Option<Sdf> {
+        let spread = spread.max(SPREAD);
         let segments = flatten(points, verbs);
         if segments.is_empty() {
             return None;
@@ -151,10 +161,10 @@ impl Sdf {
         if hi.x <= lo.x || hi.y <= lo.y {
             return None;
         }
-        let left = lo.x.floor() - SPREAD;
-        let top = hi.y.ceil() + SPREAD;
-        let w = (hi.x.ceil() + SPREAD - left) as usize;
-        let h = (top - (lo.y.floor() - SPREAD)) as usize;
+        let left = lo.x.floor() - spread;
+        let top = hi.y.ceil() + spread;
+        let w = (hi.x.ceil() + spread - left) as usize;
+        let h = (top - (lo.y.floor() - spread)) as usize;
         let bands = Bands::new(&segments, top, h);
 
         // Signs: where the outline crosses each row's line through its
@@ -196,27 +206,27 @@ impl Sdf {
         // Distances: each segment's to the texels within the spread of it,
         // row by row (a row's are those within the spread of the part of
         // the segment within the spread of the row).
-        let mut near = vec![SPREAD * SPREAD; w * h];
+        let mut near = vec![spread * spread; w * h];
         for &(p, q) in &edge {
             let d = Vector::new(q.x - p.x, q.y - p.y);
             let len2 = d.x * d.x + d.y * d.y;
             let inv = if len2 > 0.0 { 1.0 / len2 } else { 0.0 };
             let (dxi, idy) = (d.x * inv, if d.y != 0.0 { 1.0 / d.y } else { 0.0 });
-            let j0 = ((top - 0.5 - p.y.max(q.y) - SPREAD).ceil().max(0.0)) as usize;
-            let j1 = ((top - 0.5 - p.y.min(q.y) + SPREAD).floor().max(0.0) as usize).min(h - 1);
+            let j0 = ((top - 0.5 - p.y.max(q.y) - spread).ceil().max(0.0)) as usize;
+            let j1 = ((top - 0.5 - p.y.min(q.y) + spread).floor().max(0.0) as usize).min(h - 1);
             for j in j0..=j1 {
                 let y = top - j as f32 - 0.5;
                 let cy = y - p.y;
                 let (xa, xb) = if d.y == 0.0 {
                     (p.x.min(q.x), p.x.max(q.x))
                 } else {
-                    let ta = ((cy - SPREAD) * idy).clamp(0.0, 1.0);
-                    let tb = ((cy + SPREAD) * idy).clamp(0.0, 1.0);
+                    let ta = ((cy - spread) * idy).clamp(0.0, 1.0);
+                    let tb = ((cy + spread) * idy).clamp(0.0, 1.0);
                     let (xa, xb) = (p.x + ta * d.x, p.x + tb * d.x);
                     (xa.min(xb), xa.max(xb))
                 };
-                let i0 = ((xa - SPREAD - left - 0.5).ceil().max(0.0)) as usize;
-                let i1 = ((xb + SPREAD - left - 0.5).floor().max(0.0) as usize).min(w - 1);
+                let i0 = ((xa - spread - left - 0.5).ceil().max(0.0)) as usize;
+                let i1 = ((xb + spread - left - 0.5).floor().max(0.0) as usize).min(w - 1);
                 if i0 > i1 {
                     continue;
                 }
@@ -236,7 +246,7 @@ impl Sdf {
                 *v = -*v;
             }
         }
-        Some(Sdf { left, top, w, h, data, levels: Default::default() })
+        Some(Sdf { left, top, w, h, spread, data, levels: Default::default() })
     }
 
     /// The bytes it takes.
@@ -280,8 +290,9 @@ impl Sdf {
         let (wl, hl) = ((w - 1) as f32, (h - 1) as f32);
         // The narrowest runs whose deep insides are wholly in and whose
         // cells between are wholly out at this size.
-        let l = (0..DEEP.len()).find(|&l| sure <= DEEP[l] * UNIT).unwrap_or(DEEP.len() - 1);
-        let level = self.levels[l].get_or_init(|| Runs::of(&self.data, w, h, DEEP[l]));
+        let deep = [DEEP[0], self.spread];
+        let l = (0..deep.len()).find(|&l| sure <= deep[l] * UNIT).unwrap_or(deep.len() - 1);
+        let level = self.levels[l].get_or_init(|| Runs::of(&self.data, w, h, deep[l]));
         // The first pixel whose center is in cell `i` or after.
         let column = |i: u16| (ox + (self.left + 0.5 + i as f32) * sx - 0.5).ceil() as i32;
         for y in y0..y1 {
@@ -330,6 +341,52 @@ impl Sdf {
                     if k > 0 {
                         paint.pixel(x, y, k);
                     }
+                }
+            }
+        }
+    }
+}
+
+impl Sdf {
+    /// Draw it grown by `offset` output pixels all round (an outline as wide,
+    /// even on every side, the glyph's own shape out that far: the field
+    /// must hold distances that far, [`Sdf::of_spread`]), as
+    /// [`Sdf::draw`] draws it: each pixel's center sampled, its distance in
+    /// output pixels across the field's gradient, ramped over one pixel.
+    pub fn draw_offset(&self, ox: f32, oy: f32, sx: f32, sy: f32, offset: f32, bounds: (i32, i32, i32, i32), paint: &mut impl Paint) {
+        let (w, h) = (self.w, self.h);
+        let x0 = ((ox + (self.left + 0.5) * sx - 0.5).ceil() as i32).max(bounds.0);
+        let x1 = ((ox + (self.left + w as f32 - 0.5) * sx - 0.5).floor() as i32 + 1).min(bounds.2);
+        let y0 = ((oy - (self.top - 0.5) * sy - 0.5).ceil() as i32).max(bounds.1);
+        let y1 = ((oy - (self.top - h as f32 + 0.5) * sy - 0.5).floor() as i32 + 1).min(bounds.3);
+        if x0 >= x1 || y0 >= y1 {
+            return;
+        }
+        let fine = sx.min(sy);
+        let (isx, isy) = (1.0 / sx, 1.0 / sy);
+        let (wl, hl) = ((w - 1) as f32, (h - 1) as f32);
+        for y in y0..y1 {
+            let v = (self.top - (oy - (y as f32 + 0.5)) * isy - 0.5).clamp(0.0, hl);
+            let j = (v as usize).min(h - 2);
+            let fv = v - j as f32;
+            let (upper, lower) = self.data[j * w..(j + 2) * w].split_at(w);
+            for x in x0..x1 {
+                let u = ((x as f32 + 0.5 - ox) * isx - self.left - 0.5).clamp(0.0, wl);
+                let i = (u as usize).min(w - 2);
+                let fu = u - i as f32;
+                let (a, b, c, d) = (upper[i] as f32, upper[i + 1] as f32, lower[i] as f32, lower[i + 1] as f32);
+                let top = a + (b - a) * fu;
+                let dist = (top + (c + (d - c) * fu - top) * fv) / UNIT;
+                // The output pixels a texel of distance is across the
+                // field's gradient.
+                let gu = (b - a) + ((d - c) - (b - a)) * fv;
+                let gv = (c - a) + ((d - b) - (c - a)) * fu;
+                let g2 = gu * gu + gv * gv;
+                let px = if g2 > 1.0 { (g2 / ((gu * isx).powi(2) + (gv * isy).powi(2))).sqrt() } else { fine };
+                let k = (0.5 - (dist * px - offset)).clamp(0.0, 1.0);
+                let k = (k * 255.0) as u8;
+                if k > 0 {
+                    paint.pixel(x, y, k);
                 }
             }
         }
