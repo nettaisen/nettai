@@ -1263,6 +1263,9 @@ pub struct LayeredPicture {
     pub base: Tiles,
     pub base_file: Option<String>,
     pub letters: Vec<bool>,
+    /// Its pixels off its letters that only the original mode shows (where
+    /// its own panel departs from the shared one: `tiles::Layered`).
+    pub hidden: Vec<bool>,
 }
 
 /// One base for a lettered picture's languages (the user: "i think the
@@ -1309,11 +1312,20 @@ pub fn shared_base(variants: &[Variant]) -> (Vec<(String, LayeredPicture)>, Vec<
         }
     }
     let mut out = Vec::new();
+    // (No language's picture with letters: each as it is, a picture of its
+    // own: a button's art.)
+    if masks.iter().all(|m| !m.contains(&true)) {
+        for v in variants {
+            out.push((v.file.clone(), LayeredPicture { base: v.tiles.clone(), base_file: None, letters: vec![false; v.tiles.pixels.len()], hidden: vec![false; v.tiles.pixels.len()] }));
+        }
+        return (out, Vec::new());
+    }
     for (k, v) in variants.iter().enumerate() {
+        let hidden = vec![false; v.tiles.pixels.len()];
         let picture = if shared.contains(&k) {
-            LayeredPicture { base: base.clone(), base_file: (k > 0).then(|| own.file.clone()), letters: masks[k].clone() }
+            LayeredPicture { base: base.clone(), base_file: (k > 0).then(|| own.file.clone()), letters: masks[k].clone(), hidden }
         } else {
-            LayeredPicture { base: v.blank.clone(), base_file: None, letters: masks[k].clone() }
+            LayeredPicture { base: v.blank.clone(), base_file: None, letters: masks[k].clone(), hidden }
         };
         out.push((v.file.clone(), picture));
     }
@@ -1453,8 +1465,21 @@ pub fn shared_panel(variants: &[Variant], columns: usize) -> (Vec<(String, Layer
         .iter()
         .enumerate()
         .map(|(k, v)| {
-            let letters = (0..n).map(|i| (v.color)(i, v.tiles.pixels[i]) != (v.color)(i, base.pixels[i])).collect();
-            (v.file.clone(), LayeredPicture { base: base.clone(), base_file: (k > 0).then(|| own.file.clone()), letters })
+            // (Its letters: its pixels of a color none of the panel's is in
+            // its palette; where it shows the panel's colors otherwise, its
+            // own panel, a body a column wider or a letter's outline drawn
+            // in them.)
+            let ground: Vec<u16> = (0..n).map(|i| (v.color)(i, base.pixels[i])).fold(Vec::new(), |mut g, c| {
+                if !g.contains(&c) {
+                    g.push(c);
+                }
+                g
+            });
+            let color = |i: usize| (v.color)(i, v.tiles.pixels[i]);
+            let differs = |i: usize| color(i) != (v.color)(i, base.pixels[i]);
+            let letters = (0..n).map(|i| differs(i) && !ground.contains(&color(i))).collect();
+            let hidden = (0..n).map(|i| differs(i) && ground.contains(&color(i))).collect();
+            (v.file.clone(), LayeredPicture { base: base.clone(), base_file: (k > 0).then(|| own.file.clone()), letters, hidden })
         })
         .collect();
     let files: Vec<&str> = variants.iter().map(|v| v.file.as_str()).collect();
@@ -1877,7 +1902,7 @@ pub fn shown(tiles: &Tiles, l: &LayeredPicture) -> Tiles {
         return tiles.clone();
     }
     for (i, &v) in tiles.pixels.iter().enumerate() {
-        if !l.letters.get(i).copied().unwrap_or(false) {
+        if !l.letters.get(i).copied().unwrap_or(false) && !l.hidden.get(i).copied().unwrap_or(false) {
             out.pixels[i] = v;
         }
     }

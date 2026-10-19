@@ -123,22 +123,29 @@ pub struct TileImage {
     /// The palette as exported (see [`crate::image::palette_fingerprint`]).
     pub fingerprint: String,
     /// For a picture with letters in it (`crate::letters`): the image is
-    /// the picture with its letters taken off, and this file its letters
-    /// alone, as large and laid out alike, each pixel a letter's palette
-    /// index as the image's are or, where the picture is the image's, the
-    /// entry after the palette's last (none). The picture is the letters
-    /// over the image.
+    /// its base, the picture with its letters taken off, and this file its
+    /// letters alone (a layer: as large and laid out alike, each pixel a
+    /// letter's palette index as the image's are, or the entry after the
+    /// palette's last, none, off them).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub letters: Option<String>,
-    /// For another language's picture of one with letters: the image is
-    /// this picture's layer over the base, which this file is (the base's
-    /// own picture's image, shared by its languages: [`Layered`]).
+    /// For another picture of one base (another language's, another panel
+    /// picture's): the image is this picture's letters alone (a layer, as
+    /// `letters`), over the base, which this file is ([`Layered`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base: Option<String>,
-    /// Where the layer has pixels that aren't the picture's letters: a mask
-    /// of its letters (white), as large and laid out alike.
+    /// The picture's own pixels off its letters where it differs from the
+    /// base, which both modes show (a layer: the chip window's pictures are
+    /// bit planes, so another picture's words in the panel's own colors; a
+    /// language's own art): `NAME-own.png`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub letters_mask: Option<String>,
+    pub own: Option<String>,
+    /// Where the picture's own panel departs from the shared one off its
+    /// letters, which only the original mode shows (a layer: a body a
+    /// column wider, a letter's outline in the panel's colors):
+    /// `NAME-panel.png`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel: Option<String>,
 }
 
 /// An image of `tiles` with palette rows `rows` (BGR555), of which
@@ -161,33 +168,37 @@ pub fn export_image(
         fingerprint: crate::image::palette_fingerprint(&palette),
         letters: None,
         base: None,
-        letters_mask: None,
+        own: None,
+        panel: None,
     };
     (img.to_png(), doc)
 }
 
-/// How a picture with letters in it is kept ([`export_layered`]): its base,
-/// the picture with every language's letters taken off, which one image
-/// holds for all its languages (`base_file`: the image another picture of
-/// it wrote, a language's; none: this picture writes it), and which of its
-/// pixels are its letters (in tile order: the enhanced mode shows the base
-/// there, and the picture's own pixels elsewhere).
+/// How a picture with letters in it is kept ([`export_layered`]): its base
+/// (the picture with its letters taken off, which one image holds for every
+/// picture that shares it: `base_file`, the image another picture of it
+/// wrote; none: this picture writes it), which of its pixels are its
+/// letters, and which of its other pixels off the base only the original
+/// mode shows (`hidden`: where its own panel departs from a shared one; in
+/// tile order). The enhanced mode shows the base on both, the picture's own
+/// pixels elsewhere.
 pub struct Layered<'a> {
     pub base: &'a Tiles,
     pub base_file: Option<&'a str>,
     pub letters: &'a [bool],
+    pub hidden: &'a [bool],
 }
 
-/// A picture with letters in it as its base and a layer of what it has
-/// over the base ([`TileImage::letters`], [`TileImage::base`]): the pixels
-/// where the picture differs from the base, each its palette index, and
-/// where it doesn't the entry after the palette's last (none); and where
-/// some of those pixels aren't its letters (a language's picture whose
-/// pixels differ from the base's off its letters), a mask of its letters
-/// ([`TileImage::letters_mask`]). The base's own picture writes the base at
-/// `file` and its layer beside (`NAME-letters.png`); another language's
-/// writes its layer at `file`, naming the base's. With no letters, the
-/// picture alone, as [`export_image`].
+/// A picture with letters in it as its base and layers of what it has over
+/// the base, each the pixels where the picture differs from the base of one
+/// kind, its palette index, and elsewhere the entry after the palette's last
+/// (none): its letters ([`TileImage::letters`]: its words alone), its own
+/// pixels both modes show ([`TileImage::own`]) and where its own panel
+/// departs from the shared one ([`TileImage::panel`]), each written only
+/// where it has pixels. The base's own picture writes the base at `file` and
+/// its letters beside (`NAME-letters.png`); another picture of the base
+/// writes its letters at `file`, naming the base's. With nothing over its
+/// own base, the picture alone, as [`export_image`].
 pub fn export_layered(
     file: &str,
     tiles: &Tiles,
@@ -201,51 +212,53 @@ pub fn export_layered(
         let (png, doc) = export_image(file, tiles, layout, rows, owned, &row_of);
         (vec![(file.to_string(), png)], doc)
     };
+    let n = tiles.pixels.len();
     // (A layer needs an entry past the palette's for "none".)
-    if l.base.pixels.len() != tiles.pixels.len() || l.letters.len() != tiles.pixels.len() || rows.len() >= 16 {
+    if l.base.pixels.len() != n || l.letters.len() != n || l.hidden.len() != n || rows.len() >= 16 {
         return plain();
     }
     if l.base_file.is_none() && l.base == tiles {
         return plain();
     }
     let palette = crate::image::palette_rgb(rows);
-    let none = palette.len() as u8;
-    let picture = image(tiles, layout, palette.clone(), &row_of);
-    let blank = image(l.base, layout, palette.clone(), &row_of);
     let layered: Vec<[u8; 3]> = palette.iter().copied().chain([LETTERLESS]).collect();
-    let mut layer = Indexed::new(picture.width, picture.height, layered.clone());
-    for (k, (&v, &b)) in picture.pixels.iter().zip(&blank.pixels).enumerate() {
-        layer.pixels[k] = if v == b { none } else { v };
-    }
-    // (Its mask where the layer has pixels off its letters.)
-    let mut over = Tiles { pixels: vec![0; tiles.pixels.len()] };
-    let mut off_letters = false;
-    for (i, (&v, &b)) in tiles.pixels.iter().zip(&l.base.pixels).enumerate() {
-        if v != b {
-            over.pixels[i] = l.letters[i] as u8;
-            off_letters |= !l.letters[i];
-        }
-    }
+    // Each layer: the picture's pixels of one kind where they differ from
+    // the base.
+    let kind = |i: usize| if l.letters[i] { 0 } else if l.hidden[i] { 2 } else { 1 };
+    let layer = |which: u8| -> Option<Vec<u8>> {
+        let pixels: Vec<Option<u8>> = (0..n).map(|i| (tiles.pixels[i] != l.base.pixels[i] && kind(i) == which).then_some(tiles.pixels[i])).collect();
+        pixels.iter().any(Option::is_some).then(|| export_layer(file, &pixels, tiles.len(), layout, rows, [0, 0], &row_of).0)
+    };
     let stem = file.strip_suffix(".png").unwrap_or(file);
     let mut files = Vec::new();
-    let mask = off_letters.then(|| {
-        let name = format!("{stem}-mask.png");
-        let img = image(&over, layout, vec![[0, 0, 0], [255, 255, 255]], |_| 0);
-        files.push((name.clone(), img.to_png()));
-        name
-    });
+    let extra = |which: u8, name: &str, files: &mut Vec<(String, Vec<u8>)>| {
+        layer(which).map(|png| {
+            let name = format!("{stem}-{name}.png");
+            files.push((name.clone(), png));
+            name
+        })
+    };
+    let own = extra(1, "own", &mut files);
+    let panel = extra(2, "panel", &mut files);
+    let letters = layer(0);
     let doc = match l.base_file {
-        // The base's own picture: the base at `file`, its layer beside.
+        // The base's own picture: the base at `file`, its letters beside.
         None => {
             let (png, doc) = export_image(file, l.base, layout, rows, owned, &row_of);
-            let letters = format!("{stem}-letters.png");
             files.push((file.to_string(), png));
-            files.push((letters.clone(), layer.to_png()));
-            TileImage { letters: Some(letters), letters_mask: mask, ..doc }
+            let letters = letters.map(|png| {
+                let name = format!("{stem}-letters.png");
+                files.push((name.clone(), png));
+                name
+            });
+            TileImage { letters, own, panel, ..doc }
         }
-        // Another language's: its layer at `file`, in its palette.
+        // Another picture of the base: its letters at `file` (none: an
+        // empty layer), in its palette.
         Some(base) => {
-            files.push((file.to_string(), layer.to_png()));
+            let pixels = vec![None; n];
+            let png = letters.unwrap_or_else(|| export_layer(file, &pixels, tiles.len(), layout, rows, [0, 0], &row_of).0);
+            files.push((file.to_string(), png));
             TileImage {
                 file: file.into(),
                 layout,
@@ -254,7 +267,8 @@ pub fn export_layered(
                 fingerprint: crate::image::palette_fingerprint(&layered),
                 letters: None,
                 base: Some(base.to_string()),
-                letters_mask: mask,
+                own,
+                panel,
             }
         }
     };
@@ -301,7 +315,8 @@ pub fn export_layer(
         fingerprint: crate::image::palette_fingerprint(&palette),
         letters: None,
         base: None,
-        letters_mask: None,
+        own: None,
+        panel: None,
     };
     (img.to_png(), doc)
 }
@@ -363,80 +378,66 @@ pub fn import_image(
 }
 
 /// Read a tile image back, with its letters ([`TileImage::letters`],
-/// [`TileImage::base`]): the picture (its layer over its base), the picture
-/// as the enhanced mode shows it (its base where its letters are: its
-/// layer's pixels off them, `letters_mask`, over the base), and its data
-/// palettes. A picture with no layer is both.
+/// [`TileImage::base`]): the picture (its own pixels, its own panel and its
+/// letters over its base) and the picture as the enhanced mode shows it
+/// (its own pixels over its base), and its data palettes. A picture with no
+/// layers is both.
 pub fn import_lettered(
     dir: &std::path::Path,
     prefix: &str,
     doc: &TileImage,
     report: &mut crate::report::Report,
 ) -> Option<(Tiles, Tiles, Vec<nettai_assets::Palette>)> {
-    let load = |file: &str, report: &mut crate::report::Report| match Indexed::load(&dir.join(file)) {
-        Ok(i) => Some(i),
-        Err(e) => {
-            report.error(format!("{prefix}/{file}"), e);
-            None
+    let layered = doc.base.is_some() || doc.letters.is_some() || doc.own.is_some() || doc.panel.is_some();
+    let (base, mut palettes) = match &doc.base {
+        // Another picture of the base: its letters at `file`, in its
+        // palette.
+        Some(base_file) => {
+            let base_doc = TileImage { file: base_file.clone(), palettes: [0, 0], base: None, letters: None, own: None, panel: None, ..doc.clone() };
+            import_base(dir, prefix, &base_doc, report)?
         }
+        None => import_base(dir, prefix, doc, report)?,
     };
-    let (base, palettes, layer) = match (&doc.base, &doc.letters) {
-        // A language's layer at `file`, in its palette, over the base.
-        (Some(base_file), _) => {
-            let base_doc = TileImage { file: base_file.clone(), palettes: [0, 0], base: None, letters: None, letters_mask: None, ..doc.clone() };
-            let (base, _) = import_base(dir, prefix, &base_doc, report)?;
-            let layer = load(&doc.file, report)?;
-            let [first, count] = doc.palettes;
-            let mut palettes = Vec::new();
-            if count > 0 {
-                if let Some(why) = crate::image::palette_change(&doc.fingerprint, &layer.palette, (first + count) * 16) {
-                    report.error(format!("{prefix}/{}", doc.file), why);
-                    return None;
-                }
-                palettes = crate::image::palette_rows(&layer.palette, first + count).0[first..].to_vec();
-            }
-            (base, palettes, Some(layer))
-        }
-        (None, Some(file)) => {
-            let (base, palettes) = import_base(dir, prefix, doc, report)?;
-            (base, palettes, Some(load(file, report)?))
-        }
-        (None, None) => {
-            let (base, palettes) = import_base(dir, prefix, doc, report)?;
-            return Some((base.clone(), base, palettes));
-        }
-    };
-    let Some(layer) = layer else { return Some((base.clone(), base, palettes)) };
-    let (w, h) = doc.layout.size(doc.tiles as u32);
-    if layer.width < w || layer.height < h {
-        report.error(format!("{prefix}/{}", doc.file), format!("the letters are smaller than the {} tiles they lie over", doc.tiles));
-        return None;
+    if !layered {
+        return Some((base.clone(), base, palettes));
     }
-    let mask = match &doc.letters_mask {
-        Some(file) => {
-            let img = load(file, report)?;
-            Some(read(&img, doc.tiles, doc.layout).0)
-        }
-        None => None,
+    let layer = |file: &str, report: &mut crate::report::Report| {
+        let d = TileImage { file: file.into(), palettes: [0, 0], ..doc.clone() };
+        import_layer(dir, prefix, &d, report).map(|l| l.0)
     };
-    // (Its palette's entries past the picture's are none.)
-    let none = (layer.palette.len().saturating_sub(1)) as u8;
-    let (mut tiles, mut shown) = (base.clone(), base.clone());
-    for i in 0..doc.tiles {
-        let (x0, y0) = doc.layout.place(i as u32);
-        for k in 0..64u32 {
-            let v = layer.get(x0 + k % 8, y0 + k / 8);
-            if v < none {
-                let at = i * Tiles::TILE + k as usize;
-                tiles.pixels[at] = v & 15;
-                // (Off its letters: the picture's own pixels show.)
-                if mask.as_ref().is_some_and(|m| m.pixels[at] == 0) {
-                    shown.pixels[at] = v & 15;
-                }
-            }
-        }
+    if doc.base.is_some() {
+        // (Its data palettes are its letters' image's.)
+        let d = TileImage { base: None, ..doc.clone() };
+        palettes = import_layer(dir, prefix, &d, report)?.1;
     }
+    let letters = match (&doc.base, &doc.letters) {
+        (Some(_), _) => Some(layer(&doc.file, report)?),
+        (None, Some(file)) => Some(layer(file, report)?),
+        (None, None) => None,
+    };
+    let own = doc.own.as_ref().map(|f| layer(f, report)).transpose_option()?;
+    let panel = doc.panel.as_ref().map(|f| layer(f, report)).transpose_option()?;
+    let mut shown = base;
+    crate::letters::lay(&mut shown, own.as_deref().unwrap_or(&[]));
+    let mut tiles = shown.clone();
+    crate::letters::lay(&mut tiles, panel.as_deref().unwrap_or(&[]));
+    crate::letters::lay(&mut tiles, letters.as_deref().unwrap_or(&[]));
     Some((tiles, shown, palettes))
+}
+
+/// `Option<Option<T>>` read as "none, or a value that must be there".
+trait TransposeOption<T> {
+    fn transpose_option(self) -> Option<Option<T>>;
+}
+
+impl<T> TransposeOption<T> for Option<Option<T>> {
+    fn transpose_option(self) -> Option<Option<T>> {
+        match self {
+            None => Some(None),
+            Some(None) => None,
+            Some(Some(v)) => Some(Some(v)),
+        }
+    }
 }
 
 /// The image of a tile image alone (no letters over it) and its data
@@ -563,10 +564,10 @@ mod tests {
     use super::*;
 
     /// A picture with letters, in two languages: one base, each language's
-    /// layer of its own pixels over it (a letter of index 0 among them, over
-    /// a pixel that isn't), the second's with a mask where its pixels differ
-    /// off its letters; each read back as its picture and as the enhanced
-    /// mode shows it (the base where its letters are).
+    /// letters alone over it (a letter of index 0 among them, over a pixel
+    /// that isn't), the second's own pixel off its letters in a layer of its
+    /// own; each read back as its picture and as the enhanced mode shows it
+    /// (the base where its letters are).
     #[test]
     fn a_lettered_picture_is_a_shared_base_and_its_layers() {
         let base = Tiles { pixels: vec![3; 2 * Tiles::TILE] };
@@ -580,13 +581,14 @@ mod tests {
         let other_letters: Vec<bool> = (0..own.pixels.len()).map(|i| i == 6).collect();
         let layout = Layout::Grid { columns: 2 };
         let palette: nettai_assets::Palette = std::array::from_fn(|i| i as u16 * 0x421);
-        let (mut files, doc) = export_layered("x.png", &own, &Layered { base: &base, base_file: None, letters: &own_letters }, layout, &[palette], [0, 1], |_| 0);
+        let none = vec![false; base.pixels.len()];
+        let (mut files, doc) = export_layered("x.png", &own, &Layered { base: &base, base_file: None, letters: &own_letters, hidden: &none }, layout, &[palette], [0, 1], |_| 0);
         assert_eq!(files.iter().map(|f| f.0.as_str()).collect::<Vec<_>>(), ["x.png", "x-letters.png"]);
-        assert_eq!((doc.letters.as_deref(), doc.letters_mask.as_deref()), (Some("x-letters.png"), None));
-        let other_layered = Layered { base: &base, base_file: Some("x.png"), letters: &other_letters };
+        assert_eq!((doc.letters.as_deref(), doc.own.as_deref()), (Some("x-letters.png"), None));
+        let other_layered = Layered { base: &base, base_file: Some("x.png"), letters: &other_letters, hidden: &none };
         let (more, other_doc) = export_layered("x-ja.png", &other, &other_layered, layout, &[palette], [0, 1], |_| 0);
-        assert_eq!(more.iter().map(|f| f.0.as_str()).collect::<Vec<_>>(), ["x-ja-mask.png", "x-ja.png"]);
-        assert_eq!((other_doc.base.as_deref(), other_doc.letters_mask.as_deref()), (Some("x.png"), Some("x-ja-mask.png")));
+        assert_eq!(more.iter().map(|f| f.0.as_str()).collect::<Vec<_>>(), ["x-ja-own.png", "x-ja.png"]);
+        assert_eq!((other_doc.base.as_deref(), other_doc.own.as_deref()), (Some("x.png"), Some("x-ja-own.png")));
         files.extend(more);
         let dir = std::env::temp_dir().join(format!("nettai-lettered-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -602,8 +604,7 @@ mod tests {
         assert_eq!((picture, shown, palettes), (other.clone(), off_letters, vec![palette]));
         assert!(!report.has_errors(), "{report}");
         // With no letters, the picture alone.
-        let none = vec![false; base.pixels.len()];
-        let (files, doc) = export_layered("y.png", &base, &Layered { base: &base, base_file: None, letters: &none }, layout, &[palette], [0, 1], |_| 0);
+        let (files, doc) = export_layered("y.png", &base, &Layered { base: &base, base_file: None, letters: &none, hidden: &none }, layout, &[palette], [0, 1], |_| 0);
         assert_eq!((files.len(), doc.letters), (1, None));
         let _ = std::fs::remove_dir_all(&dir);
     }
