@@ -768,7 +768,7 @@ impl Replays {
         self.show_selected(shell);
         if empty {
             self.close_sheet(shell);
-            shell.nav.focus("tab", 1);
+            self.set_tab(shell, false);
         } else if shell.nav.focused().is_some_and(|k| k.id == "queue") {
             shell.nav.focus("queue", self.queue_chosen as i32);
         }
@@ -793,7 +793,7 @@ impl Replays {
     }
 
     /// What the menu of the replay shown beside the list offers (a right click on its row): a replay's (WATCH, ADD
-    /// TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO where it plays; SHOW FILE, DELETE), or a queue entry's (WATCH
+    /// TO QUEUE, PLAY NEXT, EXPORT VIDEO where it plays; SHOW FILE, DELETE), or a queue entry's (WATCH
     /// FROM HERE where it plays; MOVE UP, MOVE DOWN, REMOVE).
     fn menu_actions(&self, shell: &Shell) -> Vec<MenuAction> {
         use MenuAction::*;
@@ -1161,7 +1161,7 @@ impl Screen for Replays {
                 self.online_only = choice == 1;
                 self.fill(shell);
             }
-            // WATCH's arrow's menu (`index` 1: a phone's sheet's): ADD TO QUEUE, ADD TO START OF QUEUE. (A name flies
+            // WATCH's arrow's menu (`index` 1: a phone's sheet's): ADD TO QUEUE, PLAY NEXT. (A name flies
             // from the arrow.)
             (None, "watch-more") => {
                 let from = if index == 1 { ("sheet.watch-more", 0) } else { ("watch-more", 0) };
@@ -1342,7 +1342,10 @@ impl Screen for Replays {
                 self.queue_chosen = 0;
             }
             self.stop_watching(shell);
-            if self.queue_tab {
+            // (The queue played out: no Queue tab to come back to.)
+            if self.queue_tab && self.queue_rows.is_empty() {
+                self.set_tab(shell, false);
+            } else if self.queue_tab {
                 shell.nav.focus("queue", self.queue_chosen as i32);
             }
             return true;
@@ -1363,7 +1366,7 @@ impl Screen for Replays {
             self.close_sheet(shell);
             self.fill_queue(shell);
             self.show_selected(shell);
-            shell.nav.focus("tab", 1);
+            self.set_tab(shell, false);
             return;
         }
         if tag != "delete" || choice != 1 {

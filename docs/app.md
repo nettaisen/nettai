@@ -3096,18 +3096,18 @@ and no more: WATCH starts it), E exports it, Delete asks once (Cancel focused) a
 selected replay as a sheet from the bottom, with its actions one under the other (WATCH and its arrow, EXPORT
 VIDEO, SHOW FILE, DELETE). No build's name is anywhere: a replay has none. WATCH is a split button
 (docs/design/app-ui.md §2.92): its arrow (`watch-more`, an amber `IconButton` 2 from it; the sheet's
-`sheet.watch-more`) opens the other ways to watch the replay, ADD TO QUEUE and ADD TO START OF QUEUE, in a menu
+`sheet.watch-more`) opens the other ways to watch the replay, ADD TO QUEUE and PLAY NEXT, in a menu
 under the two from WATCH's left edge (`Shell::pick_split`: `pick_menu`'s list, as wide as the pair or its 200,
 whichever is more; on a phone the picker's sheet); its choice is heard as `watch-more`'s (index 1 from the sheet).
 The panel has no ⋯: what it would hold is on the panel already. A right click on a row (`row-menu`, whose press
 focused it first; `Shell::pick_menu`, Play's builds' kind, heard as `replay-menu`) opens the replay's menu: WATCH,
-ADD TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO, SHOW FILE and, apart, DELETE (`MenuAction`); one that doesn't
+ADD TO QUEUE, PLAY NEXT, EXPORT VIDEO, SHOW FILE and, apart, DELETE (`MenuAction`); one that doesn't
 play has SHOW FILE and DELETE alone.
 
 **The play queue** (`screens/replays/queue.rs`, `Queue`; docs/design/app-ui.md §2.91) is the second tab
 (`ReplaysView.tab`, the editor's `TabBar`, nav `tab`). Each game has one (`Replays::queues`, by the game's id), held
 in the screen's state while the app runs and never written anywhere: no file, no settings entry. An entry is a
-replay's path in the replays folder. ADD TO QUEUE puts a replay at the end (`Queue::add`), ADD TO START OF QUEUE at
+replay's path in the replays folder. ADD TO QUEUE puts a replay at the end (`Queue::add`), PLAY NEXT at
 the start (`Queue::add_first`), what plays next; a replay may be there twice. The queue is consumed (§2.92): it is
 what is still to watch. Watching from an entry (`Queue::start`) passes the ones before it, which leave; while the
 queue plays, its head is the replay watched (`Replays::current`), which leaves once it is done (`Queue::done`):
@@ -3122,7 +3122,7 @@ watches the queue from it, Delete removes it); beside them the panel of the list
 (`Replays::shown_path`: its still and facts, or its file's name and that it is missing) with WATCH FROM HERE
 (`watch-from`), MOVE UP and MOVE DOWN (`move-up`, `move-down`, `IconButton`s) and, apart, REMOVE (`remove`); a
 right click on an entry opens its menu with the same. On a phone a tap on an entry opens the sheet with those four.
-ADD TO QUEUE and ADD TO START OF QUEUE fly the replay's opponent's name to the QUEUE tab (`Shell::fly`).
+ADD TO QUEUE and PLAY NEXT fly the replay's opponent's name to the QUEUE tab (`Shell::fly`).
 
 **A set of any length.** A replay keeps the match it was played from, and with it the round wins its set was first
 to (the match in nettai-match's binary: a byte, then every round's place: docs/frontend.md §8); its rounds are as

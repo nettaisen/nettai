@@ -307,8 +307,11 @@ export component Button inherits Rectangle {
     // words, on a desktop; a phone's is the standard 40, to be tapped. (docs/design/app-ui.md §2.87: three sizes,
     // compact, standard and big.)
     in property <bool> compact;
+    // Its right side square, uncut: the left half of a split button, whose arrow beside it has the cut (WATCH).
+    in property <bool> square;
     property <bool> small: root.compact && !Theme.phone;
     property <length> inset: root.small ? 12px : 16px;
+    property <length> notch: root.square ? 0px : (root.small ? 7px : 9px);
     out property <bool> focused: hit.focused;
     // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
     // phone alone reads this for the desktop's).
@@ -333,7 +336,7 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: root.small ? 7px : 9px;
+        cut: root.notch;
         background: root.bare ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
         line: root.kind == ButtonKind.text ? transparent : !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
@@ -355,7 +358,7 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: root.small ? 7px : 9px;
+        cut: root.notch;
         background: #ffffff;
         line: transparent;
         opacity: press.v * 0.38;

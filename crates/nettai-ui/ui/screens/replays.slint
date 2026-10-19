@@ -159,7 +159,7 @@ export global ReplaysView {
     // The menu of a replay (a right click on its row; WATCH's arrow has the second and third), and of a queue entry.
     out property <string> watch-word: Caps.of(@tr("Watch"));
     out property <string> add-word: Caps.of(@tr("Add to queue"));
-    out property <string> start-word: Caps.of(@tr("Add to start of queue"));
+    out property <string> start-word: Caps.of(@tr("Play next"));
     out property <string> export-word: Caps.of(@tr("verb" => "Export video"));
     out property <string> file-word: Caps.of(@tr("Show file"));
     out property <string> from-here-word: Caps.of(@tr("Watch from here"));
@@ -508,8 +508,7 @@ component DetailPanel inherits Rectangle {
         visible: ReplaysView.selected;
     }
 
-    // (A replay's: WATCH and its arrow, the other ways to watch it (a split button: ADD TO QUEUE, ADD TO START OF
-    // QUEUE), EXPORT VIDEO, SHOW FILE; apart, DELETE. Hidden in the Queue tab, and passed by.)
+    // (A replay's: WATCH and its arrow, the other ways to watch it (a split button: ADD TO QUEUE, PLAY NEXT), EXPORT VIDEO, SHOW FILE; apart, DELETE. Hidden in the Queue tab, and passed by.)
     HorizontalLayout {
         x: 16px;
         y: parent.height - 108px;
@@ -524,6 +523,7 @@ component DetailPanel inherits Rectangle {
                 nav: "watch";
                 text: Caps.of(@tr("Watch"));
                 kind: ButtonKind.main;
+                square: true;
                 enabled: ReplaysView.tab == 0 && ReplaysView.playable;
             }
 
@@ -663,6 +663,7 @@ component DetailSheet inherits Rectangle {
             nav: "sheet.watch";
             text: Caps.of(@tr("Watch"));
             kind: ButtonKind.main;
+            square: true;
             enabled: !root.queue && ReplaysView.playable;
         }
 
@@ -786,7 +787,8 @@ component ListPage inherits Page {
             y: 0;
             width: root.list-width + (Theme.phone ? 16px : 0px);
             nav: "tab";
-            tabs: [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }, { text: Caps.of(@tr("Queue")), enabled: true, flagged: false }];
+            // (The Queue tab only while the queue holds something.)
+            tabs: ReplaysView.queue.length > 0 ? [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }, { text: Caps.of(@tr("Queue")), enabled: true, flagged: false }] : [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }];
             chosen: ReplaysView.tab;
         }
 

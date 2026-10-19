@@ -24,7 +24,7 @@ impl Queue {
         self.paths.push(path.to_path_buf());
     }
 
-    /// `path` at the start, what plays next (Add to start of queue).
+    /// `path` at the start, what plays next (Play next).
     pub fn add_first(&mut self, path: &Path) {
         self.paths.insert(0, path.to_path_buf());
     }
@@ -83,7 +83,7 @@ mod tests {
         q.paths.iter().map(|p| p.to_str().unwrap()).collect()
     }
 
-    /// Add to queue puts a replay at the end, Add to start of queue at the start; an entry is removed, or moved up
+    /// Add to queue puts a replay at the end, Play next at the start; an entry is removed, or moved up
     /// or down but not past an end; Clear empties it.
     #[test]
     fn entries_are_added_removed_moved_and_cleared() {
