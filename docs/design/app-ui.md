@@ -1380,6 +1380,12 @@ Each is settled unless the user changes it.
     - *The other player's coming* to a lobby the player hosts asks the system for the window's attention at once
       (the taskbar's button flashes, the dock's icon bounces) until it is brought forward.
 
+85. **The Navi tab's note for another navi alone, on the problems' line** (2026-10-18). The user: "you can hide the
+    "navicust and patch cards are megaman only" on the megaman screen and then for other navis display it where the
+    build error would be". The note is gone from under the selector. With MegaMan chosen it isn't said; with another
+    navi it is said on the line kept for the build's problems under the navi's facts (§2.70), quietly (the notes'
+    gray, no problem's mark), where that line has no problem to say; a problem says itself there in its stead.
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1802,8 +1808,9 @@ DUPLICATE and DELETE.
   after the other (§2.63): in EXE4 and EXE5 MegaMan's Light or Dark, a segmented control (LIGHT | DARK) as tall as
   the editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast Out (BEAST OUT: GBeast and
   FBeast side by side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its
-  count (in the error red where it has a problem) over its forms' rows grouped by version; and the note,
-  "NaviCust and patch cards are MegaMan only.", as tall as its words. Nothing there moves when a
+  count (in the error red where it has a problem) over its forms' rows grouped by version. The note,
+  "NaviCust and patch cards are MegaMan only.", is for another navi alone, on the problems' line where it says
+  nothing (§2.85). Nothing there moves when a
   problem appears (§2.65, §2.66): a fact's heading in the error red, a chosen form's name a problem is about in it
   (in a mix of versions, every form of each version the build has), "Not allowed" in the error red at the end of a
   form's row the ruleset holds back (it isn't put in, and ALL leaves it out; one the build has can be taken out,
