@@ -113,6 +113,9 @@ pub struct TextItem {
     /// down: a sprite's true place between the frame's pixels
     /// (`objects::Fine`, the enhanced mode's motion).
     pub fine: (i32, i32),
+    /// A number drawn in the numbers' font in place of the words, each
+    /// character fitted to its game glyph's box (`numbers`).
+    pub fitted: Option<crate::numbers::Fitted>,
 }
 
 impl TextItem {
@@ -133,7 +136,16 @@ impl TextItem {
             ink: None,
             bar: None,
             fine: (0, 0),
+            fitted: None,
         }
+    }
+
+    /// A number in the numbers' font (`numbers`), its characters' boxes
+    /// from `rect`'s top left.
+    pub fn fitted(number: crate::numbers::Fitted, rect: Rect) -> TextItem {
+        let text: String = number.glyphs.iter().map(|g| g.0).collect();
+        let face = number.fill.first().copied().unwrap_or(0);
+        TextItem { fitted: Some(number), ..TextItem::new(text, Role::Cell, rect, face, None) }
     }
 }
 
@@ -285,6 +297,12 @@ impl<'f> TextSink<'f> {
     /// picture is drawn as the original draws it.
     pub fn takes_lettering(&self, text: &str) -> bool {
         self.lettering && !text.is_empty() && crate::vfont::lettering_font().covers(text)
+    }
+
+    /// Whether the game's numbers are drawn in the numbers' font (the
+    /// enhanced mode's: `numbers`).
+    pub fn draws_numbers(&self) -> bool {
+        self.lettering
     }
 
     /// With a language's strings table (none: the content's own strings).

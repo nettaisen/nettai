@@ -243,7 +243,7 @@ pub struct Look {
 
 impl Look {
     /// A picture's letters' look in `palette`, drawn at `lettering`'s
-    /// weight and width (`Lettering::display`, `Lettering::digits`).
+    /// weight and width (`Lettering::display`, `Lettering::wide`).
     pub fn of(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals, palette: &Palette, lettering: fn(u8, u8) -> Lettering) -> Option<Look> {
         let l = letters(p, ground, capitals)?;
         let (face, shadow) = l.face(palette);
@@ -262,40 +262,6 @@ impl Look {
         let rect = crate::textlayer::Rect::new(x + self.span.0, y, self.span.1 - self.span.0, h);
         self.item(words, rect, crate::textlayer::Align::Center)
     }
-}
-
-/// The look of a set of glyphs of 8x16 that draw a number (ten digits from
-/// `first` of `tiles`, or a sign: `count` of them), `ground` behind them,
-/// in `palette`: their capitals are all their rows.
-pub fn glyphs_look(tiles: &Tiles, first: usize, count: usize, ground: impl Fn(u8) -> bool, palette: &Palette) -> Option<Look> {
-    Look::of(&Picture::glyphs(tiles, first, count), ground, Capitals::All, palette, Lettering::digits)
-}
-
-/// Words in their looks set one after another from `x` (each where the
-/// one before ends, as the lettering font sets it), on rows `y` to
-/// `y + h`: the enhanced mode's damage and its signs ("+30", "×2"). None
-/// if the font lacks a character of them, or without the text layer's
-/// layouts.
-pub fn run(text: &crate::textlayer::TextSink, parts: &[(String, &Look)], (x, y): (i32, i32), h: i32) -> Option<Vec<crate::textlayer::TextItem>> {
-    let mut out = Vec::new();
-    let mut at = x as f32;
-    for (words, look) in parts {
-        if !text.takes_lettering(words) {
-            return None;
-        }
-        let width = text.fitted_width(words, look.role, 1000)?;
-        let rect = crate::textlayer::Rect::new(at.floor() as i32, y, width.ceil() as i32 + 1, h);
-        // (Where the one before ends, between the frame's pixels.)
-        let fine = (((at - at.floor()) * 65536.0) as i32, 0);
-        out.push(crate::textlayer::TextItem { fine, ..look.item(words.as_str(), rect, crate::textlayer::Align::Left) });
-        at += width;
-    }
-    Some(out)
-}
-
-/// How wide `parts` are set one after another ([`run`]), in frame pixels.
-pub fn run_width(text: &crate::textlayer::TextSink, parts: &[(String, &Look)]) -> Option<f32> {
-    parts.iter().map(|(words, look)| text.fitted_width(words, look.role, 1000)).sum()
 }
 
 /// A banner's bar ([`Bar`]), read off its picture in `palette`: the colors
