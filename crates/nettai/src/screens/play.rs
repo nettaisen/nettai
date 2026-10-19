@@ -717,6 +717,11 @@ impl Play {
         self.live = Live::default();
         self.show_card(shell);
         self.show(shell);
+        // (The player hosting may have gone to another window as they waited: the other player's coming calls
+        // them back.)
+        if !self.joining() {
+            shell.call_attention();
+        }
     }
 
     /// A match is agreed: the two cards, and the match made ready behind them; each side's bar is its own
