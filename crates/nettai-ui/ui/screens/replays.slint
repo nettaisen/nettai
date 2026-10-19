@@ -1186,14 +1186,52 @@ component ViewerPage inherits Rectangle {
         ground: root.phone ? Theme.inset : transparent;
     }
 
+    // (While the page is hidden the pointer is too, over the picture and around it.)
+    TouchArea {
+        mouse-cursor: root.shown ? MouseCursor.default : MouseCursor.none;
+    }
+
     TouchArea {
         x: room.x + Shell.picture-x;
         y: room.y + Shell.picture-y;
         width: Shell.picture-width;
         height: Shell.picture-height;
+        mouse-cursor: root.shown ? MouseCursor.default : MouseCursor.none;
         clicked => {
             Nav.activate("play", 0);
         }
+    }
+
+    // Over the picture, each while it is on (and there throughout, shown by `visible`: an `if` would be a
+    // component of its own): the other console's picture in the bottom right corner of the one shown, a line
+    // around it; and the input display in its top right corner, under the line the battle's own text takes there
+    // (its top eighth), as Practice's is. Both are placed by the picture's room (`Picture`: in the window's
+    // coordinates, as this page's are), take no clicks, and are under the page: the transport and the playlist
+    // are over them while they are shown.
+    Rectangle {
+        visible: ReplaysView.inset-on && Shell.picture-shown;
+        x: Shell.picture-room-x + ReplaysView.inset-x - 1px;
+        y: Shell.picture-room-y + ReplaysView.inset-y - 1px;
+        width: ReplaysView.inset-width + 2px;
+        height: ReplaysView.inset-height + 2px;
+        border-width: 1px;
+        border-color: Theme.line;
+        Image {
+            x: 1px;
+            y: 1px;
+            width: ReplaysView.inset-width;
+            height: ReplaysView.inset-height;
+            source: ReplaysView.inset;
+            image-rendering: pixelated;
+        }
+    }
+
+    InputDisplay {
+        visible: ReplaysView.inputs && Shell.picture-shown;
+        x: Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
+        y: Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        held-top: ReplaysView.held-shown;
+        held-bottom: ReplaysView.held-other;
     }
 
     page := Page {
@@ -1274,36 +1312,6 @@ export component ReplaysScreen inherits Rectangle {
     }
     if ReplaysView.watching: ViewerPage {
         Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // Over the viewer's picture, each while it is on (and there throughout, shown by `visible`: an `if` would be a
-    // component of its own): the other console's picture in the bottom right corner of the one shown, a line
-    // around it; and the input display in its top right corner, under the line the battle's own text takes there
-    // (its top eighth), as Practice's is. Both are placed by the picture's room (`Picture`: in the window's
-    // coordinates, as this screen's are) and take no clicks.
-    Rectangle {
-        visible: ReplaysView.watching && ReplaysView.inset-on && Shell.picture-shown;
-        x: Shell.picture-room-x + ReplaysView.inset-x - 1px;
-        y: Shell.picture-room-y + ReplaysView.inset-y - 1px;
-        width: ReplaysView.inset-width + 2px;
-        height: ReplaysView.inset-height + 2px;
-        border-width: 1px;
-        border-color: Theme.line;
-        Image {
-            x: 1px;
-            y: 1px;
-            width: ReplaysView.inset-width;
-            height: ReplaysView.inset-height;
-            source: ReplaysView.inset;
-            image-rendering: pixelated;
-        }
-    }
-
-    InputDisplay {
-        visible: ReplaysView.watching && ReplaysView.inputs && Shell.picture-shown;
-        x: Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
-        y: Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
-        held-top: ReplaysView.held-shown;
-        held-bottom: ReplaysView.held-other;
     }
 }
 
