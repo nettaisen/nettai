@@ -1433,7 +1433,8 @@ Each is settled unless the user changes it.
       rests on the transport or the playlist; a replay just begun shows them as an input does. The cursor goes and
       comes back with them, where it was. Hidden, a press still does what it does: the first key or button is the
       replay's, not a wake-up only. A click on the picture plays or pauses. A phone keeps its picture over its
-      transport, all of it shown.
+      transport, all of it shown, and the playlist under the transport (its rows where the window has room for
+      them; an upright phone of 800 has room for its name, previous and next, and Autoplay next alone).
     - *A playlist is the list:* WATCH (Enter, a phone's sheet's WATCH) makes the list as it is shown (All or Online,
       the search, newest first) the playlist, the replays of it that play here, and watches the one chosen. Chosen
       here, where the user said "playlist support" and no more: the screen has no multi-select or row menu to build
