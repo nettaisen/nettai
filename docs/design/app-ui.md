@@ -1448,6 +1448,9 @@ Each is settled unless the user changes it.
     - *Autoplay next,* OFF | ON in the playlist, on at first and remembered (the settings' `replays.autoplay`): a
       replay played to its end starts the next two seconds after (not while the builds or the export are open);
       off, or at the playlist's end, the viewer stays at the end with its controls, as before.
+    - *Loose ends,* the user: "fix the loose ends". The pointer hides with the controls, over the picture and
+      around it. The input display and the other console's picture are under the controls: the transport and the
+      playlist are drawn over them while shown, not under the inputs.
 
 ## 3. Chosen where the user gave no answer
 
