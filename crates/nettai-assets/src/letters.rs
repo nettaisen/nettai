@@ -92,13 +92,37 @@ pub struct WordLetters {
 }
 
 /// The custom gauge's frame's word: the cells of its top row that draw it
-/// (from the frame's first), their tiles with the letters taken off, and
-/// the letters (in the cells' picture, from the first cell).
+/// (from the frame's first), their tiles with the letters taken off, the
+/// letters (in the cells' picture, from the first cell) and how they stand
+/// in the cells.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GaugeWord {
     pub cells: Vec<u8>,
     pub blank: Tiles,
     pub letters: Letters,
+    pub align: TextAlign,
+}
+
+/// How a picture's letters stand in it: in its middle (their margins within
+/// two pixels of each other), else from their left edge (a label's mark
+/// before its words, CROSS SELECT's triangle, stands in its left margin);
+/// from their right edge is for a picture that says so.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TextAlign {
+    Left,
+    #[default]
+    Center,
+    Right,
+}
+
+impl TextAlign {
+    /// How letters `span` (the first column, one past the last) stand in a
+    /// picture `width` columns wide.
+    pub fn of(span: [i16; 2], width: usize) -> TextAlign {
+        let (left, right) = (span[0] as i32, width as i32 - span[1] as i32);
+        if (left - right).abs() <= 2 { TextAlign::Center } else { TextAlign::Left }
+    }
 }
 
 /// The emotion window's count's digits in its box (16x16): each digit's
@@ -155,14 +179,14 @@ pub struct FormNameLetters {
 }
 
 /// A window label's letters: their look (`WindowLabel::letters`' colors
-/// alone), the runs of columns they take (each a letter: the first, one
-/// past the last) and the rows of the label's tiles their ink takes (the
-/// first, the last).
+/// alone; their columns, `span`, in the label's tiles), the rows of the
+/// label's tiles their ink takes (the first, the last), and how they stand
+/// in the label's tiles.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelLetters {
     pub letters: Letters,
-    pub groups: Vec<[u8; 2]>,
     pub rows: [u8; 2],
+    pub align: TextAlign,
 }
 
 /// Glyphs of letters in cells (the chip codes): each glyph's letter (none:
