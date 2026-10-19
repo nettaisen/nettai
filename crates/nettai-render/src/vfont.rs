@@ -135,6 +135,18 @@ pub struct Lettering {
     /// How wide the glyphs are drawn, in hundredths of the font's own
     /// width (the banners' tall, narrow capitals: [`Lettering::NARROW`]).
     pub width: u8,
+    /// Which bundled font draws it.
+    pub font: LetteringFont,
+}
+
+/// The font a picture's lettering is drawn in ([`Lettering::font`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum LetteringFont {
+    /// The lettering font ([`lettering_font`]: M PLUS 1 Code).
+    #[default]
+    Display,
+    /// The text font (the text layer's own: Murecho, or `--font`'s).
+    Text,
 }
 
 impl Lettering {
@@ -147,14 +159,14 @@ impl Lettering {
 
     /// Bold and narrowed, capitals `cap` rows high from row `top`.
     pub fn display(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW }
+        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW, font: LetteringFont::Display }
     }
 
     /// Bold at the font's own width: the small labels whose letters are as
     /// wide as they are high (CUSTOM, L or R, the help pictures' titles, the
     /// window's labels).
     pub fn wide(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: 100 }
+        Lettering { top, cap, weight: Lettering::BOLD, width: 100, font: LetteringFont::Display }
     }
 }
 
@@ -208,7 +220,7 @@ impl Role {
                 descender: None,
                 rows: 16.0,
                 narrow: l.width.max(1) as f32 / 100.0,
-                lettering: true,
+                lettering: l.font == LetteringFont::Display,
             },
         }
     }

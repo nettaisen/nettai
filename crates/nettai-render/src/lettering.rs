@@ -404,6 +404,107 @@ pub fn lines(p: &Picture, ground: impl Fn(u8) -> bool, palette: &Palette) -> Vec
     out
 }
 
+/// What is behind a small picture's letters (a chip code in its cell): its
+/// most common color and the colors that fill a whole side of it (a cell's
+/// frame), where letters don't reach. (A letter may touch a side: the chip
+/// window's codes fill their cell's width.)
+pub fn ground_of(p: &Picture) -> Vec<u8> {
+    let mut count = [0usize; 16];
+    p.pixels.iter().for_each(|&v| count[v as usize & 15] += 1);
+    let mut ground = vec![(0..16u8).max_by_key(|&c| count[c as usize]).unwrap_or(0)];
+    if p.w == 0 || p.h == 0 {
+        return ground;
+    }
+    let at = |x: usize, y: usize| p.pixels[y * p.w + x];
+    let sides: [Vec<u8>; 4] = [
+        (0..p.w).map(|x| at(x, 0)).collect(),
+        (0..p.w).map(|x| at(x, p.h - 1)).collect(),
+        (0..p.h).map(|y| at(0, y)).collect(),
+        (0..p.h).map(|y| at(p.w - 1, y)).collect(),
+    ];
+    for side in sides {
+        if side.iter().all(|&v| v == side[0]) && !ground.contains(&side[0]) {
+            ground.push(side[0]);
+        }
+    }
+    ground
+}
+
+/// Letters a picture draws with outlines in its own edge's color (EXE6's
+/// Cross names on their bars): which pixels are theirs (`mask`), and the
+/// outline's color.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Enclosed {
+    pub mask: Vec<bool>,
+    pub outline: u8,
+}
+
+/// The letters a picture draws in outlines of its edge's color ([`Enclosed`]):
+/// the edge's color is the one most of its edge pixels are; the outlines are
+/// its pixels of that color not joined to the edge's; the letters are the
+/// outlines and what they enclose, in the outlines' box: what isn't reached
+/// from the box's edge without crossing one. None if it has none.
+pub fn enclosed_letters(p: &Picture) -> Option<Enclosed> {
+    let (w, h) = (p.w as i32, p.h as i32);
+    let at = |x: i32, y: i32| p.pixels[(y * w + x) as usize];
+    let edge = |x: i32, y: i32| x == 0 || y == 0 || x == w - 1 || y == h - 1;
+    let mut count = [0usize; 16];
+    for y in 0..h {
+        for x in (0..w).filter(|&x| edge(x, y)) {
+            count[at(x, y) as usize & 15] += 1;
+        }
+    }
+    let outline = (0..16u8).max_by_key(|&c| count[c as usize])?;
+    let near = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    // The outline's color joined to the edge.
+    let mut joined = vec![false; p.pixels.len()];
+    let mut stack: Vec<(i32, i32)> = (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).filter(|&(x, y)| edge(x, y) && at(x, y) == outline).collect();
+    while let Some((x, y)) = stack.pop() {
+        let i = (y * w + x) as usize;
+        if joined[i] {
+            continue;
+        }
+        joined[i] = true;
+        for (dx, dy) in near {
+            let (nx, ny) = (x + dx, y + dy);
+            if nx >= 0 && ny >= 0 && nx < w && ny < h && at(nx, ny) == outline && !joined[(ny * w + nx) as usize] {
+                stack.push((nx, ny));
+            }
+        }
+    }
+    let inner: Vec<(i32, i32)> = (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).filter(|&(x, y)| at(x, y) == outline && !joined[(y * w + x) as usize]).collect();
+    let (x0, x1) = (inner.iter().map(|p| p.0).min()?, inner.iter().map(|p| p.0).max()?);
+    let (y0, y1) = (inner.iter().map(|p| p.1).min()?, inner.iter().map(|p| p.1).max()?);
+    // What the box's edge reaches without crossing an outline.
+    let inside = |x: i32, y: i32| (x0..=x1).contains(&x) && (y0..=y1).contains(&y);
+    let mut reached = vec![false; p.pixels.len()];
+    let mut stack: Vec<(i32, i32)> = (y0..=y1)
+        .flat_map(|y| (x0..=x1).map(move |x| (x, y)))
+        .filter(|&(x, y)| (x == x0 || x == x1 || y == y0 || y == y1) && at(x, y) != outline)
+        .collect();
+    while let Some((x, y)) = stack.pop() {
+        let i = (y * w + x) as usize;
+        if reached[i] {
+            continue;
+        }
+        reached[i] = true;
+        for (dx, dy) in near {
+            let (nx, ny) = (x + dx, y + dy);
+            if inside(nx, ny) && at(nx, ny) != outline && !reached[(ny * w + nx) as usize] {
+                stack.push((nx, ny));
+            }
+        }
+    }
+    let mask = (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            let i = (y * w + x) as usize;
+            inside(x, y) && (if at(x, y) == outline { !joined[i] } else { !reached[i] })
+        })
+        .collect();
+    Some(Enclosed { mask, outline })
+}
+
 /// A picture with its letters taken off: each of their pixels the color
 /// of the ground nearest it on its row (the left's where both are as
 /// near), as the original fills a blank cell with its window's colors. A
@@ -511,5 +612,40 @@ mod tests {
         let p = picture(&["eee44eee", "e114411e", "e133311e"]);
         let ground = |v: u8| v == 1 || v == 14;
         assert_eq!(erased(&p, ground).pixels, picture(&["eeeeeeee", "e111111e", "e111111e"]).pixels);
+    }
+
+    /// A chip code's ground: its cell's most common color and a frame
+    /// filling a side; a letter touching a side (the chip window's A fills
+    /// its cell's width) stays a letter.
+    #[test]
+    fn a_codes_ground_is_its_cells_color_and_frame() {
+        let slot = picture(&["38888883", "3888b883", "388b8b83", "38bbbbb3", "33888833", "33333333"]);
+        assert_eq!(ground_of(&slot), vec![8, 3]);
+        let window = picture(&["88888888", "88bbb888", "bbb8bbb8", "bbbbbbb8", "bb888bb8", "88888888"]);
+        assert_eq!(ground_of(&window), vec![8]);
+    }
+
+    /// A Cross's name on its bar: letters outlined in the bar's edge color
+    /// (d), apart from the bar's own edge, with what they enclose.
+    #[test]
+    fn a_names_enclosed_letters_are_found() {
+        let p = picture(&[
+            "dddddddddddd",
+            "d9999999999d",
+            "d99ddd9ddd9d",
+            "d99d1d9d1d9d",
+            "d99ddd9ddd9d",
+            "d9999999999d",
+            "dddddddddddd",
+        ]);
+        let found = enclosed_letters(&p).expect("letters");
+        assert_eq!(found.outline, 13);
+        let mask: Vec<usize> = (0..p.pixels.len()).filter(|&i| found.mask[i]).collect();
+        let row = |y: usize, xs: &[usize]| xs.iter().map(|&x| y * 12 + x).collect::<Vec<_>>();
+        let mut want = Vec::new();
+        for y in 2..5 {
+            want.extend(row(y, &[3, 4, 5, 7, 8, 9]));
+        }
+        assert_eq!(mask, want);
     }
 }
