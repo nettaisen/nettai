@@ -896,7 +896,7 @@ impl Window {
             // One font for both languages (the user: "i would prefer the same
             // font for the cross names in en and jp", then "yes do that use
             // murecho"), as wide and as tall as the picture's letters.
-            if !text.takes_lettering_in(words, CROSS_NAME_FONT) {
+            if !text.lettering_in(words, CROSS_NAME_FONT, || format!("form {key:?}'s name"), problems) {
                 continue;
             }
             // (Centered in the box all the names' letters take, every bar's
@@ -927,8 +927,8 @@ impl Window {
         let a = v.assets;
         for (k, label) in a.labels.iter().enumerate() {
             let words = text.strings.lettering(&v.b.content, &format!("window.{}", label.name));
-            let Some(words) = words.filter(|w| text.draws_numbers() && crate::numbers::font().covers(w)) else { continue };
             let what = || format!("window label {:?}", label.name);
+            let Some(words) = words.filter(|w| text.lettering_in(w, LetteringFont::Numbers, what, problems)) else { continue };
             let Some(found) = crate::lookups::letters(a.letters.labels.get(k).and_then(Option::as_ref), what, problems) else { continue };
             let Some(block) = self.block(label.first..label.last + 1) else { continue };
             if block.h != 1 {
@@ -1656,13 +1656,18 @@ impl Window {
     /// picture stays where the lines don't match the words'.
     fn letter_help(&mut self, v: &View, text: &TextSink, problems: &mut Problems) {
         let Some((key, letters)) = self.help.clone() else { return };
-        let line = |part: &str| text.strings.lettering(&v.b.content, &format!("{key}.{part}")).filter(|w| text.takes_lettering(w));
+        let line = |part: &str| text.strings.lettering(&v.b.content, &format!("{key}.{part}"));
         let (Some(title), Some(words)) = (line("title"), line("words")) else { return };
-        let Some(found) = crate::lookups::letters(letters.as_ref(), || format!("the chip window's picture {key:?}"), problems) else { return };
+        let what = || format!("the chip window's picture {key:?}");
+        if !text.lettering_in(&format!("{title}\n{words}"), LetteringFont::Display, what, problems) {
+            return;
+        }
+        let Some(found) = crate::lookups::letters(letters.as_ref(), what, problems) else { return };
         let Some(block) = self.block(self.layout.art..self.layout.art + PICTURE_TILES) else { return };
         let palette = self.palettes[block.palette as usize & 15];
         let wanted: Vec<(&str, bool)> = title.lines().map(|l| (l, true)).chain(words.lines().map(|l| (l, false))).collect();
         if found.lines.len() != wanted.len() {
+            problems.note(format!("{}: {} lines of letters, its words {}, so it stays a picture", what(), found.lines.len(), wanted.len()));
             return;
         }
         // (Its tiles with the letters taken off: its panel's or its
@@ -1739,7 +1744,7 @@ fn code_letter(code: u8) -> Option<char> {
 
 /// The font of the form list's names (EXE6's Crosses'), in both languages,
 /// and its weight.
-const CROSS_NAME_FONT: LetteringFont = LetteringFont::Text;
+pub(crate) const CROSS_NAME_FONT: LetteringFont = LetteringFont::Text;
 const CROSS_NAME_WEIGHT: u16 = 900;
 
 /// The weight of the help pictures' words (their title's is the display

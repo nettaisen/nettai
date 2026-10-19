@@ -238,6 +238,34 @@ impl<'f> TextSink<'f> {
         }
     }
 
+    /// Whether a picture's lettering that says `text` goes to the text
+    /// layer in `font` ([`TextSink::takes_lettering_in`]); where the frame
+    /// letters pictures but the font lacks some of its characters, a
+    /// problem (`what`'s words): the picture stays as it is.
+    pub fn lettering_in(&self, text: &str, font: crate::vfont::LetteringFont, what: impl FnOnce() -> String, problems: &mut crate::audit::Problems) -> bool {
+        if self.takes_lettering_in(text, font) {
+            return true;
+        }
+        if let Some(missing) = self.lacks_in(text, font) {
+            problems.note(format!("{}: the {font:?} font has no {missing:?} of its words {text:?}, so it stays a picture", what()));
+        }
+        false
+    }
+
+    /// The characters of `text` that `font` lacks, where the frame letters
+    /// pictures (none: it has them all, or the frame letters none).
+    pub fn lacks_in(&self, text: &str, font: crate::vfont::LetteringFont) -> Option<String> {
+        use crate::vfont::LetteringFont;
+        let covers: &dyn Fn(&str) -> bool = match font {
+            _ if !self.lettering => return None,
+            LetteringFont::Display => &|c| crate::vfont::lettering_font().covers(c),
+            LetteringFont::Numbers => &|c| crate::numbers::font().covers(c),
+            LetteringFont::Text => &|c| self.font.is_some_and(|f| f.covers(c)),
+        };
+        let missing: String = text.chars().filter(|&c| !covers(&c.to_string())).collect();
+        (!missing.is_empty()).then_some(missing)
+    }
+
     /// Whether the game's numbers are drawn in the numbers' font (the
     /// enhanced mode's: `numbers`).
     pub fn draws_numbers(&self) -> bool {
