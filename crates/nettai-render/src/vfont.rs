@@ -1011,7 +1011,10 @@ impl TextRenderer {
             }
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
-            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, (RIM_HEAVIER * s).round() as i32)));
+            // (A frame pixel all round, as the picture's; heavier right and
+            // down where the picture's is.)
+            let heavier = if ink.heavier { (RIM_HEAVIER * s).round() as i32 } else { 0 };
+            let rim = ink.rim.map(|c| (color(c), mask.dilated(RIM * s, heavier)));
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
             for y in area.1..area.3 {
@@ -1178,8 +1181,8 @@ struct Laid {
 }
 
 /// The lettering's rim, in frame pixels: as wide as the picture's, one
-/// pixel, and that again half a pixel right and down (the picture's rims
-/// are heavier there).
+/// pixel, and where the picture's is heavier right and down (`Ink::heavier`)
+/// that again half a pixel there.
 const RIM: f32 = 1.0;
 const RIM_HEAVIER: f32 = 0.5;
 
