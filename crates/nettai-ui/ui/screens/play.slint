@@ -221,6 +221,7 @@ export global PlayView {
     out property <string> new-name: @tr("New build");
     out property <string> delete-word: Caps.of(@tr("Delete"));
     // The build's menu (⋯, or a right click on its row), DELETE apart after them.
+    out property <string> practice-word: Caps.of(@tr("Practice"));
     out property <string> duplicate-word: Caps.of(@tr("Duplicate"));
     out property <string> save-files: @tr("Save files");
     public pure function delete-title(name: string) -> string {
@@ -827,7 +828,7 @@ export component PlayScreen inherits Page {
     property <length> message-y: Theme.phone ? 356px : self.body-height - 18px;
     property <length> row-y: Theme.phone ? 188px : root.message-y - 6px - 40px;
     property <length> sheet-height: max(540px, root.row-y - 16px);
-    property <length> more-width: Theme.phone ? 40px : 32px;
+    property <length> more-width: 40px;
     property <bool> none: PlayView.builds.length == 0;
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
     // The lobby (from the moment an invite is out): the two places, the settings, the buttons, the line. A
@@ -906,9 +907,9 @@ export component PlayScreen inherits Page {
         }
 
         // The chosen build: its overview (the wide sheet) with EDIT and ⋯ in its header's right; on a phone, no
-        // overview, and the two in a row under the box. ⋯ opens the build's menu (DUPLICATE and, apart, DELETE). A
+        // overview, and the two in a row under the box. ⋯ opens the build's menu (PRACTICE, DUPLICATE and, apart, DELETE). A
         // build whose file doesn't read has an empty frame, EDIT unavailable and only DELETE in its menu. With no build
-        // neither is there. (PRACTICE is the editor's: docs/design/app-ui.md §2.86.)
+        // neither is there. (PRACTICE is the editor's and the menu's: docs/design/app-ui.md §2.86, §2.88.)
         Arrive {
             order: 1;
             PanelBack {
@@ -932,9 +933,8 @@ export component PlayScreen inherits Page {
 
             edit := Button {
                 x: Theme.phone ? 0px : more.x - 8px - self.width;
-                y: Theme.phone ? 136px : 28px;
+                y: Theme.phone ? 136px : 24px;
                 width: Theme.phone ? root.body-width - 8px - root.more-width : self.natural-width;
-                compact: true;
                 visible: !root.none;
                 nav: "edit";
                 text: Caps.of(@tr("Edit"));
@@ -945,7 +945,6 @@ export component PlayScreen inherits Page {
                 x: Theme.phone ? root.body-width - self.width : root.body-width - 16px - self.width;
                 y: edit.y;
                 width: root.more-width;
-                compact: true;
                 visible: !root.none;
                 enabled: !root.none && PlayView.chosen >= 0;
                 nav: "more";
