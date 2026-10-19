@@ -55,7 +55,8 @@ msgstr "ファイルを表示"
 msgid "Delete replay?"
 msgstr "リプレイを削除しますか?"
 
-# ---- The play queue: replays lined up to be watched one after another (its tab, a replay's menu, an entry's) ----
+# ---- The play queue: replays lined up to be watched one after another, each leaving it once watched (its tab,
+# WATCH's arrow and a replay's menu, an entry's) ----
 
 msgid "Queue"
 msgstr "再生キュー"
@@ -63,9 +64,9 @@ msgstr "再生キュー"
 msgid "Add to queue"
 msgstr "再生キューに追加"
 
-# Put a replay after the one watched last.
-msgid "Play next"
-msgstr "次に再生"
+# Put a replay at the queue's start: what plays next.
+msgid "Add to start of queue"
+msgstr "再生キューの先頭に追加"
 
 msgid "Watch from here"
 msgstr "ここから再生"
@@ -83,8 +84,9 @@ msgstr "再生キューをクリアしますか?"
 msgid "Missing: {}"
 msgstr "見つかりません: {}"
 
-msgid "The queue is empty. Add replays to it from their menus."
-msgstr "再生キューは空です。リプレイのメニューから追加できます。"
+# Watch: WATCH's own word (再生); the arrow beside it opens Add to queue and Add to start of queue.
+msgid "The queue is empty. Add replays to it with the arrow beside Watch."
+msgstr "再生キューは空です。「再生」の横の矢印から追加できます。"
 
 # The players of a replay, the one whose console is shown first.
 msgid "{} vs {}"
@@ -195,13 +197,17 @@ msgstr "切り抜き"
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
-# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): which replay of it
-# is watched, and whether the next one starts by itself at the end of one.
-msgid "Replay {} of {}"
-msgstr "リプレイ {}/{}"
-
+# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): whether the next one
+# starts by itself at the end of one (a phone's words by its switch), and the popup of the entries still to watch
+# after the one watched, with what is said when there are none.
 msgid "Autoplay next"
 msgstr "次を自動再生"
+
+msgid "Up next"
+msgstr "次に再生"
+
+msgid "Nothing else is in the queue."
+msgstr "再生キューに次のリプレイはありません。"
 
 # ---- The export ----
 
@@ -266,8 +272,3 @@ msgstr "MP4 動画"
 msgid "Builds"
 msgstr "構築"
 
-# The viewer's footer: how many rounds the replay has.
-msgid "{n} round"
-msgid_plural "{n} rounds"
-msgstr[0] "{n} ラウンド"
-msgstr[1] "{n} ラウンド"

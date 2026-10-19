@@ -85,7 +85,9 @@ const GRID_CELL_KEY: &str = "pick.grid.cell";
 /// some) are set apart in the error color, or a grid of the choices' pictures.
 enum Look {
     Select,
-    Menu { apart: Option<usize> },
+    /// A menu of actions: by its control's right edge, or (`under`) under a pair of them from the first's left
+    /// edge (a split button's).
+    Menu { apart: Option<usize>, under: bool },
     Grid(ModelRc<slint::Image>),
 }
 
@@ -678,7 +680,8 @@ impl Shell {
     /// many rows as it has, up to [`PICKER_ROWS`] and to what the window has room for by the select; more
     /// scroll, the chosen one in view as it opens.
     pub fn pick(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize) {
-        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Select, chosen as i32);
+        let by = self.rect_of(&Key::new(id, index));
+        self.open_picker(Key::new(id, index), by, options, Look::Select, chosen as i32);
     }
 
     /// Open a menu of actions (Play's build menu) as a select's list, by the control `at` (its ⋯ button, or the
@@ -686,7 +689,22 @@ impl Shell {
     /// choice as `Screen::choose(id, index, choice)`. The rows from `apart` on are set apart under a line, in the
     /// error color (DELETE). No row is marked; the cursor starts on the first.
     pub fn pick_menu(&mut self, id: &str, index: i32, at: &Key, options: Vec<String>, apart: Option<usize>) {
-        self.open_picker(Key::new(id, index), at, options, Look::Menu { apart }, -1);
+        let by = self.rect_of(at);
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart, under: false }, -1);
+    }
+
+    /// Open a split button's menu (Replays' WATCH and its arrow, `at`): as [`Shell::pick_menu`], under the two
+    /// from the first's left edge, as wide as both or [`MENU_WIDTH`], whichever is more.
+    pub fn pick_split(&mut self, id: &str, index: i32, at: [&Key; 2], options: Vec<String>) {
+        let (first, second) = (self.rect_of(at[0]), self.rect_of(at[1]));
+        let right = first.right().max(second.right());
+        let by = Rect { x: first.x, y: first.y.min(second.y), w: right - first.x, h: first.h.max(second.h) };
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true }, -1);
+    }
+
+    /// Where a control is in the window, as it was last laid out (nowhere: the window's corner).
+    pub fn rect_of(&self, key: &Key) -> Rect {
+        self.nav.registry().borrow().rect(key).unwrap_or_default()
     }
 
     /// Open a select's choices as a grid of their pictures by it (Practice's Arena and Background; on a phone, a
@@ -694,14 +712,15 @@ impl Shell {
     /// fill in as they are drawn) over its name, five to a row (a phone's three), as many rows shown as there
     /// are, up to [`GRID_ROWS`] and to what the window has room for; more scroll, the chosen one in view.
     pub fn pick_grid(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize, pictures: ModelRc<slint::Image>) {
-        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Grid(pictures), chosen as i32);
+        let by = self.rect_of(&Key::new(id, index));
+        self.open_picker(Key::new(id, index), by, options, Look::Grid(pictures), chosen as i32);
     }
 
-    /// Open the list of `key`'s choices by the control `at`, `chosen` marked (-1: none, the cursor on the first).
-    fn open_picker(&mut self, key: Key, at: &Key, options: Vec<String>, look: Look, chosen: i32) {
+    /// Open the list of `key`'s choices by the rectangle `by` (its control's), `chosen` marked (-1: none, the
+    /// cursor on the first).
+    fn open_picker(&mut self, key: Key, by: Rect, options: Vec<String>, look: Look, chosen: i32) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
-        let by = self.nav.registry().borrow().rect(at).unwrap_or_default();
         let window = ui.window().size().to_logical(ui.window().scale_factor());
         let grid = matches!(look, Look::Grid(_)).then(|| Grid::of(self.scale.phone, window.width));
         // (A phone's sheet is at the window's foot, three fifths of it at the most.)
@@ -719,6 +738,7 @@ impl Shell {
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
             Look::Select => (by.w, by.x),
+            Look::Menu { under: true, .. } => (MENU_WIDTH.max(by.w), by.x),
             Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
             Look::Grid(_) => (grid.map_or(0.0, |g| g.width()), by.x),
         };
@@ -734,7 +754,7 @@ impl Shell {
         shell.set_picker_options(ModelRc::new(VecModel::from(options.into_iter().map(Into::into).collect::<Vec<slint::SharedString>>())));
         shell.set_picker_menu(matches!(look, Look::Menu { .. }));
         shell.set_picker_apart(match &look {
-            Look::Menu { apart: Some(apart) } => *apart as i32,
+            Look::Menu { apart: Some(apart), .. } => *apart as i32,
             _ => -1,
         });
         shell.set_picker_chosen(chosen);

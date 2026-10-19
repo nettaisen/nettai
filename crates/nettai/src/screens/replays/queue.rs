@@ -1,51 +1,45 @@
-//! The play queue (docs/design/app-ui.md §2.91; docs/app.md §16): replays lined up on the Replays screen to be
-//! watched one after another, a game's own. It is kept while the app runs and never saved (the user: "playlists
+//! The play queue (docs/design/app-ui.md §2.91, §2.92; docs/app.md §16): replays lined up on the Replays screen to
+//! be watched one after another, a game's own. It is kept while the app runs and never saved (the user: "playlists
 //! should be ephemeral, i don't want them to save them").
 //!
+//! It is what is still to watch (the user: "the replay queue should remove replays when they're done playing"):
+//! while it plays, its first entry, the head, is the replay watched, and leaves once it is done: played to its end,
+//! or passed by a skip to the next. Watching from an entry passes the ones before it, which leave too. Back
+//! part way through a replay leaves it at the head, to be watched first the next time.
+//!
 //! An entry is a replay's file. One whose file is gone (deleted since it was added) or that no longer plays here
-//! stays in the queue, shown as missing, and watching passes it by: whether each entry plays is the screen's to
-//! say (`plays`, from its rows), not the queue's.
+//! stays in the queue, shown as missing, until watching comes to it: it is passed by, and leaves as a replay played
+//! past does. Whether each entry plays is the screen's to say (`plays`, from its rows), not the queue's.
 
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Queue {
     pub paths: Vec<PathBuf>,
-    /// The entry watched last (while the queue plays, the one watched): Play next puts a replay after it.
-    pub at: Option<usize>,
 }
 
 impl Queue {
-    /// `path` at the end.
+    /// `path` at the end (Add to queue).
     pub fn add(&mut self, path: &Path) {
         self.paths.push(path.to_path_buf());
     }
 
-    /// `path` after the entry watched last (at the start where none was): its place.
-    pub fn add_next(&mut self, path: &Path) -> usize {
-        let to = self.at.map_or(0, |at| at + 1).min(self.paths.len());
-        self.paths.insert(to, path.to_path_buf());
-        to
+    /// `path` at the start, what plays next (Add to start of queue).
+    pub fn add_first(&mut self, path: &Path) {
+        self.paths.insert(0, path.to_path_buf());
     }
 
     /// Entry `entry` taken out.
     pub fn remove(&mut self, entry: usize) {
-        if entry >= self.paths.len() {
-            return;
+        if entry < self.paths.len() {
+            self.paths.remove(entry);
         }
-        self.paths.remove(entry);
-        self.at = match self.at {
-            Some(at) if at == entry => None,
-            Some(at) if at > entry => Some(at - 1),
-            at => at,
-        };
     }
 
     /// Entry `entry` moved one place up (`by` -1) or down (1): its new place, or none at an end.
     pub fn shift(&mut self, entry: usize, by: i32) -> Option<usize> {
         let to = entry.checked_add_signed(by as isize).filter(|&to| to < self.paths.len() && entry < self.paths.len())?;
         self.paths.swap(entry, to);
-        self.at = self.at.map(|at| if at == entry { to } else if at == to { entry } else { at });
         Some(to)
     }
 
@@ -58,21 +52,18 @@ impl Queue {
         (from..plays.len()).find(|&at| plays[at])
     }
 
-    /// The entry that plays `by` entries from `from` (-1 the one before, 1 the one after), the missing ones passed
-    /// by; none past an end.
-    pub fn beside(from: usize, by: i32, plays: &[bool]) -> Option<usize> {
-        let step = by.signum() as isize;
-        let (mut at, mut left) = (from as isize, by.unsigned_abs());
-        while left > 0 {
-            at += step;
-            if at < 0 || at as usize >= plays.len() {
-                return None;
-            }
-            if plays[at as usize] {
-                left -= 1;
-            }
-        }
-        (step != 0).then_some(at as usize)
+    /// Watch from entry `from`: the first entry from it on that plays becomes the head, and the ones before it
+    /// leave (passed by: those before `from`, and the missing ones after it). Its file; none, and nothing changed,
+    /// where none from `from` on plays.
+    pub fn start(&mut self, from: usize, plays: &[bool]) -> Option<PathBuf> {
+        let at = Queue::first_from(from, plays)?;
+        self.paths.drain(..at);
+        self.paths.first().cloned()
+    }
+
+    /// The head is done (played to its end, or skipped): it leaves.
+    pub fn done(&mut self) {
+        self.remove(0);
     }
 }
 
@@ -92,55 +83,74 @@ mod tests {
         q.paths.iter().map(|p| p.to_str().unwrap()).collect()
     }
 
-    /// Add to queue puts a replay at the end, Play next after the one watched last (at the start before any was);
-    /// an entry is removed, or moved up or down but not past an end, the one watched last followed; Clear empties it.
+    /// Add to queue puts a replay at the end, Add to start of queue at the start; an entry is removed, or moved up
+    /// or down but not past an end; Clear empties it.
     #[test]
     fn entries_are_added_removed_moved_and_cleared() {
         let mut q = queue(&["a", "b", "c"]);
-        assert_eq!(q.add_next(Path::new("x")), 0);
+        q.add_first(Path::new("x"));
         assert_eq!(names(&q), ["x", "a", "b", "c"]);
-        q.at = Some(2);
-        assert_eq!(q.add_next(Path::new("y")), 3);
-        assert_eq!(names(&q), ["x", "a", "b", "y", "c"]);
         // (A replay may be in it twice.)
         q.add(Path::new("a"));
-        assert_eq!(names(&q), ["x", "a", "b", "y", "c", "a"]);
+        assert_eq!(names(&q), ["x", "a", "b", "c", "a"]);
 
         assert_eq!(q.shift(2, -1), Some(1));
-        assert_eq!((names(&q), q.at), (vec!["x", "b", "a", "y", "c", "a"], Some(1)));
+        assert_eq!(names(&q), ["x", "b", "a", "c", "a"]);
         assert_eq!(q.shift(0, -1), None);
-        assert_eq!(q.shift(5, 1), None);
+        assert_eq!(q.shift(4, 1), None);
         assert_eq!(q.shift(0, 1), Some(1));
-        assert_eq!((names(&q), q.at), (vec!["b", "x", "a", "y", "c", "a"], Some(0)));
+        assert_eq!(names(&q), ["b", "x", "a", "c", "a"]);
 
         q.remove(3);
-        assert_eq!((names(&q), q.at), (vec!["b", "x", "a", "c", "a"], Some(0)));
-        q.at = Some(3);
-        q.remove(1);
-        assert_eq!((names(&q), q.at), (vec!["b", "a", "c", "a"], Some(2)));
-        q.remove(2);
-        assert_eq!(q.at, None);
+        assert_eq!(names(&q), ["b", "x", "a", "a"]);
         q.remove(9);
-        assert_eq!(q.paths.len(), 3);
+        assert_eq!(q.paths.len(), 4);
 
-        q.at = Some(1);
         q.clear();
         assert_eq!(q, Queue::default());
     }
 
-    /// Watching starts at the first entry that plays from the one asked for; next and previous pass the missing
-    /// ones by, and stop at the ends.
+    /// Watching is consumed: the head plays and leaves when done; watching from an entry passes the ones before
+    /// it, and missing entries are passed by and leave as they are reached; past the end nothing plays.
     #[test]
-    fn missing_entries_are_skipped() {
+    fn played_replays_leave_the_queue() {
+        let mut q = queue(&["a", "b", "c", "d"]);
+        let all = [true; 4];
+        // WATCH: the head plays; done, it leaves, and the next is the head.
+        assert_eq!(q.start(0, &all).as_deref(), Some(Path::new("a")));
+        assert_eq!(names(&q), ["a", "b", "c", "d"]);
+        q.done();
+        assert_eq!(q.start(0, &all[1..]).as_deref(), Some(Path::new("b")));
+        // A skip to the next: the head is done, then the next plays.
+        q.done();
+        assert_eq!(names(&q), ["c", "d"]);
+        // Watch from here on the second entry: the first is passed and leaves.
+        assert_eq!(q.start(1, &[true, true]).as_deref(), Some(Path::new("d")));
+        assert_eq!(names(&q), ["d"]);
+        q.done();
+        assert_eq!(q.start(0, &[]), None);
+        assert!(q.paths.is_empty());
+    }
+
+    /// Missing entries are passed by and leave once reached; where nothing from the entry asked for plays, the
+    /// queue is left as it was.
+    #[test]
+    fn missing_entries_are_skipped_and_leave() {
         let plays = [false, true, false, false, true, true, false];
         assert_eq!(Queue::first_from(0, &plays), Some(1));
         assert_eq!(Queue::first_from(2, &plays), Some(4));
         assert_eq!(Queue::first_from(6, &plays), None);
-        assert_eq!(Queue::beside(1, 1, &plays), Some(4));
-        assert_eq!(Queue::beside(4, -1, &plays), Some(1));
-        assert_eq!(Queue::beside(1, -1, &plays), None);
-        assert_eq!(Queue::beside(5, 1, &plays), None);
-        assert_eq!(Queue::beside(1, 2, &plays), Some(5));
-        assert_eq!(Queue::first_from(0, &[false, false]), None);
+
+        let mut q = queue(&["m1", "a", "m2", "m3", "b", "c", "m4"]);
+        assert_eq!(q.start(0, &plays).as_deref(), Some(Path::new("a")));
+        assert_eq!(names(&q), ["a", "m2", "m3", "b", "c", "m4"]);
+        q.done();
+        assert_eq!(q.start(0, &plays[2..]).as_deref(), Some(Path::new("b")));
+        assert_eq!(names(&q), ["b", "c", "m4"]);
+        q.done();
+        q.done();
+        // (Only a missing one is left: nothing plays, and it stays.)
+        assert_eq!(q.start(0, &[false]), None);
+        assert_eq!(names(&q), ["m4"]);
     }
 }

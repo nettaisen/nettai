@@ -11,12 +11,14 @@
 //! a dialog of its own ([`export::Export`]) over the list or the viewer.
 //!
 //! The picture fills the window, and the viewer's controls are over it while they are wanted ([`HUD_IDLE`]).
-//! WATCH watches the one replay. The play queue ([`Queue`], docs/design/app-ui.md §2.91) is made ahead of time:
-//! a replay's menu (⋯, or a right click on its row) adds it, and the Queue tab shows it, reorders it, takes
-//! entries out of it, clears it and watches it from its start or from an entry. While the queue plays, the viewer
-//! shows it, goes to its previous or next replay or any of it, and with Autoplay next on (the settings remember
-//! it: [`AUTOPLAY`]) starts the next a moment after one ends ([`NEXT_AFTER`]), behind the two cards as the first
-//! was (§2.90). A queue is the selected game's, kept while the app runs and never saved.
+//! WATCH watches the one replay; the arrow beside it (a split button: `Shell::pick_split`) adds it to the play
+//! queue ([`Queue`], docs/design/app-ui.md §2.91, §2.92), at its end or at its start, as does a right click on its
+//! row. The Queue tab shows the queue, reorders it, takes entries out of it, clears it and watches it from its start
+//! or from an entry. The queue is what is still to watch: while it plays its head is the replay watched, which
+//! leaves it once played to its end or skipped. The viewer then has the queue's next (skip), its button with the
+//! count up next, which opens a small popup of them, and Autoplay next (the settings remember it: [`AUTOPLAY`]),
+//! which starts the next a moment after one ends ([`NEXT_AFTER`]), behind the two cards as the first was (§2.90).
+//! A queue is the selected game's, kept while the app runs and never saved.
 
 mod export;
 mod queue;
@@ -80,13 +82,21 @@ fn set_autoplay(shell: &mut Shell, on: bool) {
     shell.ui().global::<ReplaysView>().set_autoplay(on);
 }
 
-/// What a replay's menu (⋯, or a right click on its row) does, and what a queue entry's does: each in its
-/// order, DELETE and REMOVE last, set apart.
+/// The viewer's popup of what is up next in the queue: its scope (`Nav::open`), its rows, its width on a desktop,
+/// the most rows it shows at once (more scroll), and the room its heading and its padding take.
+const UP_NEXT: &str = "upnext.";
+const UP_NEXT_ROW: &str = "upnext.row";
+const UP_NEXT_WIDTH: f32 = 360.0;
+const UP_NEXT_ROWS: usize = 5;
+const UP_NEXT_ROOM: f32 = 52.0;
+
+/// What a replay's menu (a right click on its row) does, and what a queue entry's does: each in its order, DELETE
+/// and REMOVE last, set apart.
 #[derive(Clone, Copy, PartialEq)]
 enum MenuAction {
     Watch,
     AddToQueue,
-    PlayNext,
+    AddToStart,
     Export,
     ShowFile,
     Delete,
@@ -226,10 +236,12 @@ pub struct Replays {
     queue_model: Rc<VecModel<ReplayRow>>,
     queue_chosen: usize,
     queue_path: Option<PathBuf>,
-    /// The viewer plays the queue: it shows the queue, and next and previous go through it.
+    /// The viewer plays the queue: it has the queue's next, its count and Autoplay next.
     queued: bool,
-    /// The viewer's queue is to show the replay watched (once it is laid out).
-    reveal_queue: bool,
+    /// The replay watched is still the queue's head: it hasn't been played to its end (when it leaves the queue).
+    current: bool,
+    /// The viewer's popup of what is up next is open.
+    up_next: bool,
     /// The speed the queue's next replay starts at: the last one's.
     carry_speed: Option<i32>,
     /// Whether the viewer's controls are shown, as the view was last told; and when a replay began, which shows
@@ -604,6 +616,7 @@ impl Replays {
     /// Leave the viewer for the list.
     fn stop_watching(&mut self, shell: &mut Shell) {
         let Some(w) = self.watching.take() else { return };
+        self.close_up_next(shell);
         self.overlays = w.overlays();
         shell.lock_game(false);
         shell.ui().global::<ReplaysView>().set_watching(false);
@@ -613,74 +626,111 @@ impl Replays {
         self.fill(shell);
     }
 
-    /// The queue's entry watched (while it plays), or watched last.
-    fn queue_at(&self, shell: &Shell) -> Option<usize> {
-        self.queue(shell).and_then(|q| q.at)
-    }
-
-    /// Watch the queue from its entry `from` on: the first of them that plays (none: refused). The queue's rows are
-    /// as the list last made them.
+    /// Watch the queue from its entry `from` on: the first of them that plays (none: refused), the ones before it
+    /// passed and out of the queue. The queue's rows are as the list last made them.
     fn watch_queue(&mut self, shell: &mut Shell, from: usize) {
-        let Some(at) = Queue::first_from(from, &self.plays()) else { return shell.sound.play(Cue::Refused) };
-        let Some(path) = self.queue_mut(shell).map(|q| {
-            q.at = Some(at);
-            q.paths[at].clone()
-        }) else {
-            return;
-        };
+        let plays = self.plays();
+        let Some(path) = self.queue_mut(shell).and_then(|q| q.start(from, &plays)) else { return shell.sound.play(Cue::Refused) };
+        self.queue_chosen = 0;
+        self.fill_queue(shell);
         self.queued = true;
+        self.current = true;
         self.watch(shell, &path, None);
     }
 
-    /// Watch the queue's replay `at`: the one watched is left (its speed and what is on over its picture go on to
-    /// the next), and the next is made ready behind the two cards. Back while they show goes to the list.
-    fn play_at(&mut self, shell: &mut Shell, at: usize) {
-        let Some(path) = self.queue_mut(shell).and_then(|q| {
-            q.at = Some(at);
-            q.paths.get(at).cloned()
-        }) else {
-            return;
-        };
+    /// While the queue plays: its entry `from` (counted from its head, the replay watched while it is still there)
+    /// on, the first that plays, the ones before it out of the queue (the replay watched among them: it is done);
+    /// none that plays: refused. The replay watched is left (its speed and what is on over its picture go on to the
+    /// next), and the next is made ready behind the two cards. Back while they show goes to the list.
+    fn play_from(&mut self, shell: &mut Shell, from: usize) {
+        let plays = self.plays();
+        let queued = self.queued;
+        let Some(path) = self.queue_mut(shell).filter(|_| queued).and_then(|q| q.start(from, &plays)) else { return shell.sound.play(Cue::Refused) };
+        self.close_up_next(shell);
         self.carry_speed = self.watching.as_ref().map(Watching::speed);
         if let Some(e) = self.export.take() {
             e.close(shell);
         }
-        self.queue_chosen = at;
+        self.queue_chosen = 0;
+        self.current = true;
         self.stop_watching(shell);
         self.watch(shell, &path, None);
     }
 
-    /// The queue's replay that plays `by` from the one watched (refused past its ends, or where the queue isn't
-    /// playing).
-    fn step_queue(&mut self, shell: &mut Shell, by: i32) {
-        match self.queue_at(shell).filter(|_| self.queued).and_then(|at| Queue::beside(at, by, &self.plays())) {
-            Some(at) => self.play_at(shell, at),
-            None => shell.sound.play(Cue::Refused),
-        }
+    /// The queue's next (the replay watched skipped, if it is still the head): refused where none plays after it,
+    /// or where the queue isn't playing.
+    fn next_in_queue(&mut self, shell: &mut Shell) {
+        self.play_from(shell, self.current as usize);
     }
 
-    /// The queue, in the viewer: shown while it plays.
+    /// The replay watched was played to its end: it leaves the queue (once).
+    fn played_out(&mut self, shell: &mut Shell) {
+        if !std::mem::take(&mut self.current) {
+            return;
+        }
+        if let Some(queue) = self.queue_mut(shell) {
+            queue.done();
+        }
+        self.fill_queue(shell);
+        self.show_queue(shell);
+    }
+
+    /// The queue, in the viewer, while it plays: the entries up next (after the replay watched while it is the
+    /// head), whether one of them plays, and Autoplay next.
     fn show_queue(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
-        let at = self.queue_at(shell).filter(|_| self.queued);
-        let plays = self.plays();
-        view.set_queued(at.is_some());
-        view.set_queue_at(at.map_or(-1, |at| at as i32));
-        view.set_has_previous(at.and_then(|at| Queue::beside(at, -1, &plays)).is_some());
-        view.set_has_next(at.and_then(|at| Queue::beside(at, 1, &plays)).is_some());
+        let skip = self.current as usize;
+        let rows = if self.queued { self.queue_rows.get(skip..).unwrap_or_default().to_vec() } else { Vec::new() };
+        view.set_queued(self.queued);
+        view.set_has_next(self.queued && Queue::first_from(skip, &self.plays()).is_some());
+        view.set_up_next(ModelRc::new(VecModel::from(rows)));
         view.set_autoplay(autoplay(shell));
-        self.reveal_queue = at.is_some();
         self.hud = None;
     }
 
-    /// The selected replay added to the queue: at its end, or (`next`) after the one watched last. Its opponent's
-    /// name flies from `from` (its row, or the button pressed) to the Queue tab.
-    fn enqueue(&mut self, shell: &mut Shell, next: bool, from: (&str, i32)) {
+    /// Open the popup of what is up next by the queue's button, or close it (the button again).
+    fn toggle_up_next(&mut self, shell: &mut Shell) {
+        if self.up_next {
+            return self.close_up_next(shell);
+        }
+        if !self.queued {
+            return shell.sound.play(Cue::Refused);
+        }
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        let count = view.get_up_next().row_count();
+        // (Above the button where there is room, else under it; at its right edge on a desktop, across a phone.)
+        let by = shell.rect_of(&Key::new("up-next", 0));
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        let width = if shell.scale.phone { window.width - 32.0 } else { UP_NEXT_WIDTH };
+        let rows = count.clamp(1, UP_NEXT_ROWS);
+        let height = UP_NEXT_ROOM + rows as f32 * 44.0 + 8.0;
+        let y = if by.y - 6.0 - height >= 8.0 { by.y - 6.0 - height } else { by.bottom() + 6.0 };
+        let x = if shell.scale.phone { 16.0 } else { (by.right() - width).clamp(8.0, (window.width - width - 8.0).max(8.0)) };
+        view.set_up_next_x(x);
+        view.set_up_next_y(y);
+        view.set_up_next_width(width);
+        view.set_up_next_rows(rows as i32);
+        view.set_up_next_open(true);
+        self.up_next = true;
+        shell.nav.open(UP_NEXT, Key::new(UP_NEXT_ROW, 0));
+    }
+
+    fn close_up_next(&mut self, shell: &mut Shell) {
+        if std::mem::take(&mut self.up_next) {
+            shell.nav.close(UP_NEXT);
+            shell.ui().global::<ReplaysView>().set_up_next_open(false);
+        }
+    }
+
+    /// The selected replay added to the queue: at its end, or (`first`) at its start, what plays next. Its
+    /// opponent's name flies from `from` (its row, or the button pressed) to the Queue tab.
+    fn enqueue(&mut self, shell: &mut Shell, first: bool, from: (&str, i32)) {
         let Some(path) = self.selected.clone().filter(|_| !self.queue_tab && self.playable(shell)) else { return shell.sound.play(Cue::Refused) };
         let Some(queue) = self.queue_mut(shell) else { return };
-        if next {
-            queue.add_next(&path);
+        if first {
+            queue.add_first(&path);
         } else {
             queue.add(&path);
         }
@@ -742,22 +792,22 @@ impl Replays {
         });
     }
 
-    /// What the menu of the replay shown beside the list offers: a replay's (WATCH, ADD TO QUEUE, PLAY NEXT,
-    /// EXPORT VIDEO where it plays; SHOW FILE, DELETE), or a queue entry's (WATCH FROM HERE where it plays; MOVE UP,
-    /// MOVE DOWN, REMOVE).
+    /// What the menu of the replay shown beside the list offers (a right click on its row): a replay's (WATCH, ADD
+    /// TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO where it plays; SHOW FILE, DELETE), or a queue entry's (WATCH
+    /// FROM HERE where it plays; MOVE UP, MOVE DOWN, REMOVE).
     fn menu_actions(&self, shell: &Shell) -> Vec<MenuAction> {
         use MenuAction::*;
         let plays = shell.ui().global::<ReplaysView>().get_playable();
         match (self.queue_tab, plays) {
-            (false, true) => vec![Watch, AddToQueue, PlayNext, Export, ShowFile, Delete],
+            (false, true) => vec![Watch, AddToQueue, AddToStart, Export, ShowFile, Delete],
             (false, false) => vec![ShowFile, Delete],
             (true, true) => vec![WatchFromHere, MoveUp, MoveDown, Remove],
             (true, false) => vec![MoveUp, MoveDown, Remove],
         }
     }
 
-    /// The menu of the replay shown beside the list, by the control `at` (⋯, or the row a right click was on):
-    /// its choice is heard as `more`'s.
+    /// The menu of the replay shown beside the list, by the row a right click was on (`at`): its choice is heard as
+    /// `replay-menu`'s.
     fn open_menu(&mut self, shell: &mut Shell, at: &Key) {
         if self.shown_path().is_none() {
             return shell.sound.play(Cue::Refused);
@@ -770,7 +820,7 @@ impl Replays {
             .map(|a| match a {
                 MenuAction::Watch => view.get_watch_word(),
                 MenuAction::AddToQueue => view.get_add_word(),
-                MenuAction::PlayNext => view.get_next_word(),
+                MenuAction::AddToStart => view.get_start_word(),
                 MenuAction::Export => view.get_export_word(),
                 MenuAction::ShowFile => view.get_file_word(),
                 MenuAction::Delete => view.get_delete(),
@@ -782,19 +832,31 @@ impl Replays {
             .map(|w| w.to_string())
             .collect();
         let apart = actions.iter().position(|a| matches!(a, MenuAction::Delete | MenuAction::Remove));
-        shell.pick_menu("more", 0, at, words, apart);
+        shell.pick_menu("replay-menu", 0, at, words, apart);
     }
 
-    /// A choice of the menu, by its place in it; `at` is where it was opened (a name flies from there).
+    /// WATCH's arrow (a phone's sheet's, `sheet`): the other ways to watch the selected replay, under the two.
+    fn open_watch_menu(&mut self, shell: &mut Shell, sheet: bool) {
+        if !self.playable(shell) || self.queue_tab {
+            return shell.sound.play(Cue::Refused);
+        }
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        let words = vec![view.get_add_word().to_string(), view.get_start_word().to_string()];
+        let (watch, arrow) = if sheet { ("sheet.watch", "sheet.watch-more") } else { ("watch", "watch-more") };
+        shell.pick_split("watch-more", sheet as i32, [&Key::new(watch, 0), &Key::new(arrow, 0)], words);
+    }
+
+    /// A choice of the menu, by its place in it (a name flies from the row it was opened on).
     fn menu_chosen(&mut self, shell: &mut Shell, choice: i32) {
         let from = match (self.queue_tab, self.selected.as_ref()) {
-            (false, Some(path)) => self.rows.iter().position(|&i| self.library.entries[i].path == *path).map_or(("more", 0), |at| ("list", at as i32)),
-            _ => ("more", 0),
+            (false, Some(path)) => self.rows.iter().position(|&i| self.library.entries[i].path == *path).map_or(("watch", 0), |at| ("list", at as i32)),
+            _ => ("watch", 0),
         };
         match usize::try_from(choice).ok().and_then(|at| self.menu_actions(shell).get(at).copied()) {
             Some(MenuAction::Watch) => self.act(shell, "watch"),
             Some(MenuAction::AddToQueue) => self.enqueue(shell, false, from),
-            Some(MenuAction::PlayNext) => self.enqueue(shell, true, from),
+            Some(MenuAction::AddToStart) => self.enqueue(shell, true, from),
             Some(MenuAction::Export) => self.act(shell, "export"),
             Some(MenuAction::ShowFile) => self.act(shell, "file"),
             Some(MenuAction::Delete) => self.act(shell, "delete"),
@@ -810,31 +872,27 @@ impl Replays {
     ///
     /// The controls show while the player has done anything in the last [`HUD_IDLE`] (or the replay has just
     /// begun), while the replay doesn't play (paused, at its end, held by a seek or a drag), while a setting is taken,
-    /// while the builds or the export are open, and always on a phone; the pointer resting on the transport or the
-    /// queue holds them too (the UI's own). Hidden, the cursor goes with them.
+    /// while the builds, the export or the popup of what is up next are open, and always on a phone; the pointer
+    /// resting on the transport holds them too (the UI's own). Hidden, the cursor goes with them.
+    ///
+    /// A replay of the queue played to its end leaves the queue at once; with Autoplay next on, the next that plays
+    /// starts [`NEXT_AFTER`] later.
     fn follow_viewer(&mut self, shell: &mut Shell, now: Instant) {
         let Some(w) = &self.watching else { return };
         let lately = [shell.last_input, self.woke].into_iter().flatten().any(|at| now.saturating_duration_since(at) < HUD_IDLE);
-        let shown = shell.scale.phone || lately || !w.playing() || shell.nav.grabbed() || w.builds_shown() || self.export.is_some();
+        let shown = shell.scale.phone || lately || !w.playing() || shell.nav.grabbed() || w.builds_shown() || self.export.is_some() || self.up_next;
         if self.hud != Some(shown) {
             self.hud = Some(shown);
             shell.ui().global::<ReplaysView>().set_hud(shown);
         }
-        let at = self.queue_at(shell).filter(|_| self.queued);
-        if self.reveal_queue
-            && let Some(at) = at
-            && shell.nav.reveal_row(&shell.ui(), "queue", at as i32)
-        {
-            self.reveal_queue = false;
+        let ended = w.ended_for(now);
+        let held = self.export.is_some() || w.builds_shown() || self.up_next || shell.dialog.is_some();
+        if !self.queued || ended.is_none() {
+            return;
         }
-        let due = w.ended_for(now).is_some_and(|t| t >= NEXT_AFTER) && autoplay(shell);
-        if due
-            && self.export.is_none()
-            && !w.builds_shown()
-            && shell.dialog.is_none()
-            && let Some(next) = at.and_then(|at| Queue::beside(at, 1, &self.plays()))
-        {
-            self.play_at(shell, next);
+        self.played_out(shell);
+        if ended.is_some_and(|t| t >= NEXT_AFTER) && autoplay(shell) && !held && Queue::first_from(0, &self.plays()).is_some() {
+            self.play_from(shell, 0);
         }
     }
 
@@ -884,7 +942,6 @@ impl Replays {
             "move-up" => return self.move_entry(shell, -1),
             "move-down" => return self.move_entry(shell, 1),
             "remove" => return self.remove_entry(shell),
-            "add" => return self.enqueue(shell, false, ("sheet.add", 0)),
             _ => {}
         }
         let Some(path) = self.selected.clone().filter(|_| !self.queue_tab) else { return };
@@ -897,7 +954,7 @@ impl Replays {
             "export" => self.open_export(shell, &path, None, None),
             "file" => show_file(&path),
             "delete" => self.ask_delete(shell),
-            "more" => self.open_menu(shell, &Key::new("more", 0)),
+            "watch-more" => self.open_watch_menu(shell, self.sheet),
             _ => {}
         }
     }
@@ -973,6 +1030,7 @@ impl Screen for Replays {
             e.close(shell);
         }
         self.close_sheet(shell);
+        self.close_up_next(shell);
         if let Some(w) = self.watching.take() {
             self.overlays = w.overlays();
             shell.ui().global::<ReplaysView>().set_watching(false);
@@ -991,20 +1049,15 @@ impl Screen for Replays {
         }
         if self.watching.is_some() {
             match id {
-                "previous-replay" => return self.step_queue(shell, -1),
-                "next-replay" => return self.step_queue(shell, 1),
-                // (A row of the queue: its replay, but one that is missing.)
-                "queue" => {
-                    let at = index.max(0) as usize;
-                    if self.queued && self.queue_at(shell) != Some(at) {
-                        if self.plays().get(at) == Some(&true) {
-                            self.play_at(shell, at);
-                        } else {
-                            shell.sound.play(Cue::Refused);
-                        }
-                    }
-                    return;
+                "next-replay" => return self.next_in_queue(shell),
+                "up-next" => return self.toggle_up_next(shell),
+                "upnext.close" => return self.close_up_next(shell),
+                // (A row up next: its replay, the ones before it passed; one that is missing is refused.)
+                UP_NEXT_ROW => {
+                    let at = index.max(0) as usize + self.current as usize;
+                    return if self.plays().get(at) == Some(&true) { self.play_from(shell, at) } else { shell.sound.play(Cue::Refused) };
                 }
+                "autoplay" => return set_autoplay(shell, !autoplay(shell)),
                 _ => {}
             }
         }
@@ -1086,7 +1139,6 @@ impl Screen for Replays {
             (Some(w), "seek") => w.skip(5 * by),
             (Some(w), "speed-step") => w.set_speed(w.speed() + by),
             (Some(w), "view-step") => w.set_view(shell, (w.side() ^ 1) as i32),
-            (Some(_), "autoplay") => set_autoplay(shell, by > 0),
             (None, "kind") => {
                 self.online_only = by > 0;
                 self.fill(shell);
@@ -1105,14 +1157,19 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             // (The bar: held at `choice` of 10,000, or with `index` 1 let go there.)
             (Some(w), "seek") => w.drag(choice, index == 1),
-            (Some(_), "autoplay") => set_autoplay(shell, choice == 1),
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);
             }
-            // The menu of the replay or the queue entry shown beside the list: from ⋯, or a right click on a row
-            // (the press chose it first).
-            (None, "more") => self.menu_chosen(shell, choice),
+            // WATCH's arrow's menu (`index` 1: a phone's sheet's): ADD TO QUEUE, ADD TO START OF QUEUE. (A name flies
+            // from the arrow.)
+            (None, "watch-more") => {
+                let from = if index == 1 { ("sheet.watch-more", 0) } else { ("watch-more", 0) };
+                self.enqueue(shell, choice == 1, from);
+            }
+            // The menu of the replay or the queue entry shown beside the list, by a right click on a row (the press
+            // chose it first).
+            (None, "replay-menu") => self.menu_chosen(shell, choice),
             (None, "row-menu") => match shell.nav.focused().map(|k| k.id.clone()).as_deref() {
                 Some(list @ ("list" | "queue")) => {
                     let at = Key::new(list, index);
@@ -1170,20 +1227,20 @@ impl Screen for Replays {
             return false;
         }
         match list.as_deref() {
-            Some("list") => shell.nav.focus_first(&shell.ui(), &["watch", "export", "file", "more", "delete"]),
+            Some("list") => shell.nav.focus_first(&shell.ui(), &["watch", "watch-more", "export", "file", "delete"]),
             Some("queue") => shell.nav.focus_first(&shell.ui(), &["watch-from", "move-up", "move-down", "remove"]),
             _ => false,
         }
     }
 
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        if self.export.is_some() || self.sheet {
+        if self.export.is_some() || self.sheet || self.up_next {
             return false;
         }
-        // (N the queue's next replay, Shift+N its previous, while it plays.)
+        // (N the queue's next replay, while it plays.)
         if self.watching.is_some() && key.code == KeyCode::KeyN {
             if !key.repeat {
-                self.step_queue(shell, if key.shift { -1 } else { 1 });
+                self.next_in_queue(shell);
             }
             return true;
         }
@@ -1223,7 +1280,7 @@ impl Screen for Replays {
     fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
         // Select shows both builds, or puts them away.
         match &mut self.watching {
-            Some(w) if self.export.is_none() && button == gamepad_facade::Button::Back => {
+            Some(w) if self.export.is_none() && !self.up_next && button == gamepad_facade::Button::Back => {
                 w.toggle_builds(shell);
                 true
             }
@@ -1234,6 +1291,9 @@ impl Screen for Replays {
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
         if self.export.is_some() {
             return true;
+        }
+        if self.up_next {
+            return false;
         }
         if let Some(w) = &mut self.watching {
             // The shoulders go a round; the pad's north button plays and pauses.
@@ -1266,15 +1326,20 @@ impl Screen for Replays {
             self.close_sheet(shell);
             return true;
         }
+        if self.up_next {
+            self.close_up_next(shell);
+            return true;
+        }
         if let Some(w) = &mut self.watching
             && w.hide_builds(shell)
         {
             return true;
         }
         if self.watching.is_some() {
-            // (From the queue, its entry watched last is the one chosen in the Queue tab.)
-            if let Some(at) = self.queue_at(shell).filter(|_| std::mem::take(&mut self.queued)) {
-                self.queue_chosen = at;
+            // (From the queue, its head is the one chosen in the Queue tab: the replay watched stays there where it
+            // wasn't played to its end.)
+            if std::mem::take(&mut self.queued) {
+                self.queue_chosen = 0;
             }
             self.stop_watching(shell);
             if self.queue_tab {
