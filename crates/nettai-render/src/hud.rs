@@ -1838,7 +1838,7 @@ fn lettered_banner(
     }
     // The bar under the first item; every item cut to the banner's box.
     let first = items.first_mut()?;
-    first.bar = found.bar.as_ref().map(|bar| crate::lettering::bar(bar, pal).moved(x as f32, y as f32));
+    first.bar = found.bar.as_ref().map(|bar| crate::lettering::shapes(bar, pal, (x as f32, y as f32)));
     for item in &mut items {
         item.clip = Rect::new(x, 0, 160, crate::compose::HEIGHT as i32);
     }

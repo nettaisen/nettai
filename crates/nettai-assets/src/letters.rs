@@ -17,17 +17,15 @@ use serde::{Deserialize, Serialize};
 
 /// How a picture's letters look, as palette indices: the face's color on
 /// each of the capitals' rows (top to bottom), the outline's color all
-/// round the face (a rim) or right and down of it (a shadow), whether the
-/// rim is heavier right and down than up and left (else even, a pixel all
-/// round), the capitals' first row and how many rows they take, and the
-/// letters' columns with their outline (the first, one past the last).
+/// round the face (a rim, even: a pixel all round, as every picture's is)
+/// or right and down of it (a shadow), the capitals' first row and how many
+/// rows they take, and the letters' columns with their outline (the first,
+/// one past the last).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Letters {
     pub fill: Vec<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub heavier: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
     pub top: u8,
@@ -52,21 +50,18 @@ pub struct Digits {
 /// width, height in the cell) and its paint.
 pub type CellLetter = Digits;
 
-/// A banner's bar as a shape: its first row and one past its last; its
-/// first row's ends (the first column, one past the last) and its last
-/// row's; the rightmost of its rows' first columns and the leftmost of
-/// their ends; how far a row's first column is right of the next's; and
-/// the colors (palette indices) of its top line, body, bottom line, left
-/// end and right end.
+/// A filled shape of a picture's: a polygon (its corners, in eighths of a
+/// frame pixel from the picture's top left, in order) and its color (a
+/// palette index). A picture's shapes are filled one over another in order.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BarShape {
-    pub rows: [i16; 2],
-    pub first_row: [i16; 2],
-    pub last_row: [i16; 2],
-    pub left_most: i16,
-    pub right_least: i16,
-    pub slant: i16,
-    pub colors: [u8; 5],
+pub struct Shape {
+    pub points: Vec<[i16; 2]>,
+    pub color: u8,
+}
+
+impl Shape {
+    /// Its points' unit, over a frame pixel.
+    pub const UNIT: f32 = 8.0;
 }
 
 /// A banner's letters: its bar (none: the picture has none), its letters
@@ -75,8 +70,10 @@ pub struct BarShape {
 /// (`[before, after]`; none: no letters there).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BannerLetters {
+    /// Its bar's shapes: its body, then its right end, its bottom line, its
+    /// top line and its left end over it (none: the picture has no bar).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bar: Option<BarShape>,
+    pub bar: Option<Vec<Shape>>,
     pub letters: Letters,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_digit: Option<[Option<[i16; 2]>; 2]>,
@@ -166,16 +163,14 @@ pub struct HelpLetters {
 
 /// A form list name's letters (9x2 tiles), in one of its looks: the
 /// columns and rows their face takes (the first, the last), the face's
-/// color on each of those rows, the outline's, and whether the outline is
-/// heavier right and down (else even, a pixel all round).
+/// color on each of those rows, and the outline's (even, a pixel all
+/// round).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FormNameLetters {
     pub columns: [u8; 2],
     pub rows: [u8; 2],
     pub fill: Vec<u8>,
     pub rim: u8,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub heavier: bool,
 }
 
 /// A window label's letters: their look (`WindowLabel::letters`' colors
