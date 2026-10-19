@@ -967,8 +967,7 @@ fn label_letters(c: &CustomScreen, label: &WindowLabel, window: &mut Tiles) -> R
     let inked = |x: usize, y: usize| letters_only.pixels[y * letters_only.w + x] != 0;
     let rows: Vec<usize> = (0..letters_only.h).filter(|&y| (0..letters_only.w).any(|x| inked(x, y))).collect();
     let (Some(&row0), Some(&row1)) = (rows.first(), rows.last()) else { return Err("no letters in its colors".into()) };
-    let align = TextAlign::of(found.span, picture.w);
-    Ok(LabelLetters { letters: found, rows: [(top + row0) as u8, (top + row1) as u8], align })
+    Ok(LabelLetters { letters: found, rows: [(top + row0) as u8, (top + row1) as u8] })
 }
 
 /// The window's maps' columns (15 a row).

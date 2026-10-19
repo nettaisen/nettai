@@ -621,6 +621,40 @@ impl TextRenderer {
         self.layout(text, role, room).width
     }
 
+    /// Where a string's ink starts and ends, in frame pixels from where its
+    /// first glyph's pen starts, once fitted into a box `room` wide: its
+    /// glyphs' outlines' bounds, without the font's side bearings (none:
+    /// no ink).
+    pub fn ink_extent(&mut self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        let layout = self.layout(text, role, room).clone();
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for g in &layout.glyphs {
+            let vf: &VectorFont = match g.font {
+                FontId::Text => &self.font,
+                FontId::Lettering => &self.lettering,
+                FontId::Numbers => &self.numbers,
+            };
+            let font = vf.font();
+            let mut settings: Vec<Setting<f32>> = Vec::new();
+            if let (Some(_), Some(w)) = (vf.width, g.width) {
+                settings.push(("wdth", w).into());
+            }
+            if let (Some(_), Some(w)) = (vf.weight, g.weight) {
+                settings.push(("wght", w).into());
+            }
+            let mut scaler = self.scaler.builder(font).size(RES).variations(settings).build();
+            let Some(outline) = scaler.scale_outline(g.id) else { continue };
+            let b = outline.bounds();
+            if b.max.x <= b.min.x {
+                continue;
+            }
+            let k = g.size * layout.xscale * g.stretch / RES;
+            lo = lo.min(g.x + b.min.x * k);
+            hi = hi.max(g.x + b.max.x * k);
+        }
+        (lo < hi).then_some((lo, hi))
+    }
+
     fn layout(&mut self, text: &str, role: Role, room: i32) -> &Layout {
         let key = (text.to_string(), role, room);
         if !self.layouts.contains_key(&key) {
