@@ -1141,7 +1141,10 @@ impl TextRenderer {
             return None;
         }
         let mut mask = Mask::new(area);
-        for &(c, [bx, by, bw, bh]) in &f.glyphs {
+        // The set's glyphs' ink, in texels: its glyphs' height (the median
+        // of theirs: a capital's, a digit's; a Q's tail or a sign is let be)
+        // and its widest's width.
+        for c in f.set.chars().chain(f.glyphs.iter().map(|g| g.0)) {
             if !self.number_glyphs.contains_key(&c) {
                 let font = crate::numbers::font().font();
                 let mut scaler = self.scaler.builder(font).size(RES).build();
@@ -1152,10 +1155,35 @@ impl TextRenderer {
                 self.made.glyphs += 1;
                 self.number_glyphs.insert(c, glyph);
             }
+        }
+        for (chars, _) in &f.family {
+            for c in chars.chars() {
+                self.number_glyph_ink(c);
+            }
+        }
+        let ink = |c: char| self.number_glyphs.get(&c).and_then(|g| g.as_ref()).map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0));
+        let mut heights: Vec<f32> = f.set.chars().filter_map(|c| ink(c).map(|i| i.1)).collect();
+        heights.sort_by(f32::total_cmp);
+        let tallest = heights.get(heights.len() / 2).copied().or_else(|| f.glyphs.iter().filter_map(|g| ink(g.0).map(|i| i.1)).reduce(f32::max)).unwrap_or(1.0);
+        let widest = f.set.chars().chain(f.glyphs.iter().map(|g| g.0)).filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
+        for &(c, [bx, by, bw, bh]) in &f.glyphs {
             let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&c] else { continue };
-            let out_left = place.x as f32 + (left + bx) * s;
-            let (out_top, out_bottom) = (place.y as f32 + squash(top + by) * s, place.y as f32 + squash(top + by + bh) * s);
-            let sx = bw * s / (x1 - x0).max(1e-3);
+            // (One scale for the set: its glyphs' ink the box's height; its
+            // widest no wider than the box, all narrowed alike where it
+            // would be; each centered in its box: a fixed pitch, each glyph
+            // its own shape.)
+            let scale = bh / tallest.max(1e-3);
+            let mut narrow = (bw / (widest * scale).max(1e-3)).min(1.0);
+            // (A family's sets narrowed alike: the least any needs.)
+            for (chars, width) in &f.family {
+                let widest = chars.chars().filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
+                narrow = narrow.min(width / (widest * scale).max(1e-3));
+            }
+            let (w, h) = ((x1 - x0) * scale * narrow, (y1 - y0) * scale);
+            let (gx, gy) = (bx + (bw - w) / 2.0, by + (bh - h) / 2.0);
+            let out_left = place.x as f32 + (left + gx) * s;
+            let (out_top, out_bottom) = (place.y as f32 + squash(top + gy) * s, place.y as f32 + squash(top + gy + h) * s);
+            let sx = w * s / (x1 - x0).max(1e-3);
             let sy = (out_bottom - out_top) / (y1 - y0).max(1e-3);
             field.draw(out_left - x0 * sx, out_top + y1 * sy, sx, sy, area, &mut mask);
         }
@@ -1191,6 +1219,21 @@ impl TextRenderer {
             }
         }
         Some(out)
+    }
+
+    /// A numbers' font glyph's ink's width and height, in texels (made once).
+    fn number_glyph_ink(&mut self, c: char) -> Option<(f32, f32)> {
+        if !self.number_glyphs.contains_key(&c) {
+            let font = crate::numbers::font().font();
+            let mut scaler = self.scaler.builder(font).size(RES).build();
+            let glyph = scaler.scale_outline(font.charmap().map(c)).and_then(|o| {
+                let b = o.bounds();
+                Some((Sdf::of(o.points(), o.verbs())?, [b.min.x, b.min.y, b.max.x, b.max.y]))
+            });
+            self.made.glyphs += 1;
+            self.number_glyphs.insert(c, glyph);
+        }
+        self.number_glyphs[&c].as_ref().map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0))
     }
 
     /// Paint a layout's glyphs and rings (`at`: where, squashed how) into
