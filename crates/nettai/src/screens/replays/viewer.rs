@@ -176,6 +176,9 @@ pub struct Watching {
     held: Option<[u16; 2]>,
     /// The clip marked for export: its start, and its end once that is marked (`mark_clip`).
     clip: Option<(u32, Option<u32>)>,
+    /// When it played to its end, while it is still there (a seek or a step to the end isn't playing to it): the
+    /// playlist's next starts a moment after (`Replays::frame`).
+    ended: Option<Instant>,
 }
 
 impl Watching {
@@ -185,7 +188,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, clip: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, clip: None, ended: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -215,6 +218,16 @@ impl Watching {
     /// Whether ticks run: it isn't paused, held by a seek or a drag, at its end, or stopped.
     pub fn playing(&self) -> bool {
         !self.viewer.paused() && self.pending.is_none() && self.drag.is_none() && !self.viewer.at_end() && self.viewer.stopped().is_none()
+    }
+
+    /// How long since it played to its end, while it is still there.
+    pub fn ended_for(&self, now: Instant) -> Option<Duration> {
+        self.ended.map(|at| now.saturating_duration_since(at))
+    }
+
+    /// Both builds are shown over the picture.
+    pub fn builds_shown(&self) -> bool {
+        self.builds
     }
 
     /// The tick the bar shows: where a drag holds it, where a seek is going, else where the viewer is.
@@ -586,6 +599,11 @@ impl Watching {
         let playing = self.playing();
         let began = Instant::now();
         let ran = if playing { self.viewer.advance(elapsed) } else { 0 };
+        self.ended = match (self.viewer.at_end(), self.ended) {
+            (false, _) => None,
+            (true, Some(at)) => Some(at),
+            (true, None) => (ran > 0).then_some(now),
+        };
         if ran > 0 {
             self.surface.stale = true;
             if let Some(s) = &mut self.stats {

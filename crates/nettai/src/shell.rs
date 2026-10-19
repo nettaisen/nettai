@@ -263,6 +263,9 @@ pub struct Shell {
     composing: bool,
     /// The settings aren't written (the screenshot pass changes them as it goes).
     pub keep_nothing: bool,
+    /// When the player last did anything: a key or a pad's button pressed, the pointer moved, clicked or
+    /// scrolled, a finger on the window. (A replay's viewer shows its controls for a while after it.)
+    pub last_input: Option<Instant>,
 }
 
 impl Shell {
@@ -924,6 +927,7 @@ impl App {
             shift: false,
             composing: false,
             keep_nothing: still,
+            last_input: None,
         };
         App {
             shell,
@@ -1367,6 +1371,7 @@ impl App {
             return false;
         }
         self.shell.nav.used_pointer();
+        self.shell.last_input = Some(crate::clock::now());
         true
     }
 
@@ -1420,6 +1425,7 @@ impl App {
         if !pressed {
             return !editing;
         }
+        self.shell.last_input = Some(now);
         let press = KeyPress { code, text, repeat, shift: self.shell.shift };
         // The battle has the keys: Esc is nettai's menu, a key bound to no button may be its owner's.
         if self.shell.battle_has_keys() {
@@ -1658,6 +1664,7 @@ impl App {
         if events.buttons.is_empty() && events.actions.is_empty() {
             return;
         }
+        self.shell.last_input = Some(now);
         self.shell.nav.used_keys(true);
         if self.shell.battle_has_keys() {
             if let Some(at) = events.at {

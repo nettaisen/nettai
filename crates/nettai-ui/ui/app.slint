@@ -16,7 +16,7 @@ import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } from "screens/play.slint";
 import { PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
-import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
+import { ReplaysScreen, ReplaysOverlay, ReplaysView } from "screens/replays.slint";
 import { RulesetPage, RulesetView } from "ruleset.slint";
 
 export { Theme, Audit, Nav, NavKind }
@@ -139,13 +139,14 @@ export component AppWindow inherits Window {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
-    // frame: an animation here would start over each time the control it is going to moved.)
+    // frame: an animation here would start over each time the control it is going to moved.) It goes with a
+    // replay's controls when they hide.
     Cursor {
         x: Nav.x - 5px;
         y: Nav.y - 5px;
         width: Nav.w + 10px;
         height: Nav.h + 10px;
-        visible: Nav.shown && Nav.id != "";
+        visible: Nav.shown && Nav.id != "" && !(ReplaysView.watching && !ReplaysView.hud);
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }

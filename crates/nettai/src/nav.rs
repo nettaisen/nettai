@@ -785,6 +785,31 @@ impl Nav {
         nav.set_reveal_seq(self.reveal_seq);
     }
 
+    /// Scroll the list `id`'s row `index` into view, slid there as a reveal is, and enter the list at it next,
+    /// without moving the focus (the replay viewer's playlist, at the replay watched). False if the list isn't laid
+    /// out yet.
+    pub fn reveal_row(&mut self, ui: &AppWindow, id: &str, index: i32) -> bool {
+        self.rows.insert(id.to_string(), index);
+        let dy = {
+            let registry = self.registry.borrow();
+            let Some(l) = registry.lists.get(id) else { return false };
+            let y = l.view.y + index as f32 * l.pitch - l.scroll;
+            if y < l.view.y {
+                y - l.view.y
+            } else if y + l.row_height > l.view.bottom() {
+                y + l.row_height - l.view.bottom()
+            } else {
+                return true;
+            }
+        };
+        let nav = ui.global::<nettai_ui::Nav>();
+        self.reveal_seq += 1;
+        nav.set_reveal_id(id.into());
+        nav.set_reveal_dy(dy);
+        nav.set_reveal_seq(self.reveal_seq);
+        true
+    }
+
     /// Scroll the page `id`'s control into view at its top (a settings group jumped to), without moving the
     /// focus.
     pub fn reveal_at_top(&mut self, ui: &AppWindow, id: &str, index: i32, room: f32) {

@@ -9,6 +9,12 @@
 //! The viewer is the library's `Viewer` ([`viewer::Watching`]): the shell makes it ready behind the two cards
 //! and hands it over, and this screen shows its picture, plays its sound and has its transport. The export is
 //! a dialog of its own ([`export::Export`]) over the list or the viewer.
+//!
+//! The picture fills the window, and the viewer's controls are over it while they are wanted ([`HUD_IDLE`]).
+//! WATCH makes the list as it is shown (filtered, searched, newest first) a [`Playlist`]: the replays of it that
+//! play here, watched from the one chosen on. The viewer shows it, goes to its previous or next replay or any of
+//! it, and with Autoplay next on (the settings remember it: [`AUTOPLAY`]) starts the next a moment after one
+//! ends ([`NEXT_AFTER`]), behind the two cards as the first was (docs/design/app-ui.md §2.90).
 
 mod export;
 mod viewer;
@@ -42,6 +48,59 @@ const VIEWER: &str = "replays.viewer";
 
 /// The most a search is.
 const SEARCH_LENGTH: usize = 24;
+
+/// How long the viewer's controls stay over a replay playing after the last thing the player did (a key, a pad's
+/// button, the pointer moved): then they fade.
+const HUD_IDLE: Duration = Duration::from_millis(2500);
+
+/// How long a replay of a playlist stays at its end before the next starts, with Autoplay next on.
+const NEXT_AFTER: Duration = Duration::from_secs(2);
+
+/// The settings' key Autoplay next is remembered by (`Settings::remembered`): "off", else it is on.
+const AUTOPLAY: &str = "replays.autoplay";
+
+/// Whether the playlist's next replay starts by itself at the end of one.
+fn autoplay(shell: &Shell) -> bool {
+    shell.settings.remembered.get(AUTOPLAY).is_none_or(|v| v != "off")
+}
+
+/// Autoplay next on or off, remembered.
+fn set_autoplay(shell: &mut Shell, on: bool) {
+    if on {
+        shell.settings.remembered.remove(AUTOPLAY);
+    } else {
+        shell.settings.remembered.insert(AUTOPLAY.into(), "off".into());
+    }
+    shell.save_settings();
+    shell.ui().global::<ReplaysView>().set_autoplay(on);
+}
+
+/// The replays watched one after another: the list's as WATCH found it (those of it that play here, each with
+/// its row), and the one watched.
+#[derive(Default)]
+struct Playlist {
+    paths: Vec<PathBuf>,
+    rows: Vec<ReplayRow>,
+    at: usize,
+}
+
+impl Playlist {
+    /// The replays `listed` (each with its row), watched from `from` on; `from` alone where it isn't among them.
+    fn of(listed: Vec<(PathBuf, ReplayRow)>, from: &Path) -> Playlist {
+        match listed.iter().position(|(path, _)| path == from) {
+            Some(at) => {
+                let (paths, rows) = listed.into_iter().unzip();
+                Playlist { paths, rows, at }
+            }
+            None => Playlist { paths: vec![from.to_path_buf()], rows: vec![ReplayRow::default()], at: 0 },
+        }
+    }
+
+    /// The replay `by` from the one watched, if the playlist has it.
+    fn beside(&self, by: i32) -> Option<usize> {
+        self.at.checked_add_signed(by as isize).filter(|&at| at < self.paths.len())
+    }
+}
 
 /// A length of time as minutes and seconds (`5:31`; with `padded`, `05:31`).
 fn clock(time: Duration, padded: bool) -> String {
@@ -159,6 +218,16 @@ pub struct Replays {
     env_game_asked: bool,
     /// The app is kept awake for this screen (`Shell::stay_awake`): a replay plays, or a video is being made.
     awake: bool,
+    playlist: Playlist,
+    playlist_model: Rc<VecModel<ReplayRow>>,
+    /// The playlist's list is to show the replay watched (once it is laid out).
+    reveal_playlist: bool,
+    /// The speed the playlist's next replay starts at: the last one's.
+    carry_speed: Option<i32>,
+    /// Whether the viewer's controls are shown, as the view was last told; and when a replay began, which shows
+    /// them as an input does.
+    hud: Option<bool>,
+    woke: Option<Instant>,
 }
 
 impl Replays {
@@ -449,6 +518,74 @@ impl Replays {
         self.fill(shell);
     }
 
+    /// The replays listed that play here, each with its row, in the list's order.
+    fn listed(&self) -> Vec<(PathBuf, ReplayRow)> {
+        let rows = self.rows.iter().enumerate().filter_map(|(at, &i)| Some((self.library.entries[i].path.clone(), self.model.row_data(at)?)));
+        rows.filter(|(_, row)| row.reason.is_empty()).collect()
+    }
+
+    /// Watch the playlist's replay `at`: the one watched is left (its speed and what is on over its picture go on
+    /// to the next), and the next is made ready behind the two cards. Back while they show goes to the list, on it.
+    fn play_at(&mut self, shell: &mut Shell, at: usize) {
+        let Some(path) = self.playlist.paths.get(at).cloned() else { return };
+        self.playlist.at = at;
+        self.carry_speed = self.watching.as_ref().map(Watching::speed);
+        if let Some(e) = self.export.take() {
+            e.close(shell);
+        }
+        self.selected = Some(path.clone());
+        self.stop_watching(shell);
+        self.watch(shell, &path, None);
+    }
+
+    /// The playlist's replay `by` from the one watched (refused past its ends).
+    fn step_playlist(&mut self, shell: &mut Shell, by: i32) {
+        match self.playlist.beside(by) {
+            Some(at) => self.play_at(shell, at),
+            None => shell.sound.play(Cue::Refused),
+        }
+    }
+
+    /// The playlist, in the viewer.
+    fn show_playlist(&mut self, shell: &mut Shell) {
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        self.playlist_model.set_vec(self.playlist.rows.clone());
+        view.set_playlist(ModelRc::from(self.playlist_model.clone()));
+        view.set_playlist_at(self.playlist.at as i32);
+        view.set_autoplay(autoplay(shell));
+        self.reveal_playlist = true;
+        self.hud = None;
+    }
+
+    /// A frame of the viewer: its controls shown or hidden, and the playlist's next started where it is due.
+    ///
+    /// The controls show while the player has done anything in the last [`HUD_IDLE`] (or the replay has just
+    /// begun), while the replay doesn't play (paused, at its end, held by a seek or a drag), while a setting is taken,
+    /// while the builds or the export are open, and always on a phone; the pointer resting on the transport or the
+    /// playlist holds them too (the UI's own). Hidden, the cursor goes with them.
+    fn follow_viewer(&mut self, shell: &mut Shell, now: Instant) {
+        let Some(w) = &self.watching else { return };
+        let lately = [shell.last_input, self.woke].into_iter().flatten().any(|at| now.saturating_duration_since(at) < HUD_IDLE);
+        let shown = shell.scale.phone || lately || !w.playing() || shell.nav.grabbed() || w.builds_shown() || self.export.is_some();
+        if self.hud != Some(shown) {
+            self.hud = Some(shown);
+            shell.ui().global::<ReplaysView>().set_hud(shown);
+        }
+        if self.reveal_playlist && shell.nav.reveal_row(&shell.ui(), "playlist", self.playlist.at as i32) {
+            self.reveal_playlist = false;
+        }
+        let due = w.ended_for(now).is_some_and(|t| t >= NEXT_AFTER) && autoplay(shell);
+        if due
+            && self.export.is_none()
+            && !w.builds_shown()
+            && shell.dialog.is_none()
+            && let Some(next) = self.playlist.beside(1)
+        {
+            self.play_at(shell, next);
+        }
+    }
+
     /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's), with the clip
     /// marked in the viewer, if any.
     fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, clip: Option<std::ops::Range<u32>>) {
@@ -492,7 +629,10 @@ impl Replays {
     fn act(&mut self, shell: &mut Shell, what: &str) {
         let Some(path) = self.selected.clone() else { return };
         match what {
-            "watch" => self.watch(shell, &path, None),
+            "watch" => {
+                self.playlist = Playlist::of(self.listed(), &path);
+                self.watch(shell, &path, None);
+            }
             "export" => self.open_export(shell, &path, None, None),
             "file" => show_file(&path),
             "delete" => self.ask_delete(shell),
@@ -526,6 +666,7 @@ impl Replays {
         } else if shell.ready().is_some() {
             self.started = true;
             shell.go(ScreenId::Replays);
+            self.playlist = Playlist::of(Vec::new(), &path);
             self.watch(shell, &path, None);
         }
     }
@@ -548,6 +689,7 @@ impl Screen for Replays {
             if let Some(e) = &mut self.export {
                 e.show(shell);
             }
+            self.show_playlist(shell);
             return;
         }
         shell.ui().global::<ReplaysView>().set_watching(false);
@@ -583,6 +725,20 @@ impl Screen for Replays {
                 self.export.take().expect("it is open").close(shell);
             }
             return;
+        }
+        if self.watching.is_some() {
+            match id {
+                "previous-replay" => return self.step_playlist(shell, -1),
+                "next-replay" => return self.step_playlist(shell, 1),
+                "playlist" => {
+                    let at = index.max(0) as usize;
+                    if at != self.playlist.at {
+                        self.play_at(shell, at);
+                    }
+                    return;
+                }
+                _ => {}
+            }
         }
         if let Some(w) = &mut self.watching {
             match id {
@@ -644,6 +800,7 @@ impl Screen for Replays {
             (Some(w), "seek") => w.skip(5 * by),
             (Some(w), "speed-step") => w.set_speed(w.speed() + by),
             (Some(w), "view-step") => w.set_view(shell, (w.side() ^ 1) as i32),
+            (Some(_), "autoplay") => set_autoplay(shell, by > 0),
             (None, "kind") => {
                 self.online_only = by > 0;
                 self.fill(shell);
@@ -662,6 +819,7 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             // (The bar: held at `choice` of 10,000, or with `index` 1 let go there.)
             (Some(w), "seek") => w.drag(choice, index == 1),
+            (Some(_), "autoplay") => set_autoplay(shell, choice == 1),
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);
@@ -708,6 +866,13 @@ impl Screen for Replays {
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
         if self.export.is_some() || self.sheet {
             return false;
+        }
+        // (N the playlist's next replay, Shift+N its previous.)
+        if self.watching.is_some() && key.code == KeyCode::KeyN {
+            if !key.repeat {
+                self.step_playlist(shell, if key.shift { -1 } else { 1 });
+            }
+            return true;
         }
         if let Some(w) = &mut self.watching {
             match key.code {
@@ -833,7 +998,12 @@ impl Screen for Replays {
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         let BattleEvent::Watching(viewer) = event else { return };
         let Some(path) = self.opening.take() else { return };
-        self.watching = Some(Watching::new(viewer, path, self.sides.take(), self.overlays));
+        let mut watching = Watching::new(viewer, path, self.sides.take(), self.overlays);
+        if let Some(speed) = self.carry_speed.take() {
+            watching.set_speed(speed);
+        }
+        self.watching = Some(watching);
+        self.woke = Some(crate::clock::now());
         // (`show` sets the viewer's view.)
         shell.refresh();
     }
@@ -868,7 +1038,9 @@ impl Screen for Replays {
                 }
                 self.stop_watching(shell);
                 shell.fail(UserError::Other);
+                return;
             }
+            self.follow_viewer(shell, now);
             return;
         }
         // The selected replay's still, where its box is on screen.
@@ -897,6 +1069,21 @@ mod tests {
         assert_eq!(clock(Duration::from_secs(331), true), "05:31");
         assert_eq!(clock(Duration::from_millis(59_999), false), "0:59");
         assert_eq!(clock(Duration::from_secs(4000), true), "66:40");
+    }
+
+    /// WATCH's playlist is the list's replays that play, from the one watched on; next and previous stop at its
+    /// ends. A replay not among them (`NETTAI_REPLAY`'s) is a playlist of its own.
+    #[test]
+    fn a_playlist_is_the_list_from_the_one_watched() {
+        let row = |opponent: &str| ReplayRow { opponent: opponent.into(), ..ReplayRow::default() };
+        let listed = vec![("a".into(), row("Lan")), ("b".into(), row("Mayl")), ("c".into(), row("Dex"))];
+        let list = Playlist::of(listed.clone(), Path::new("b"));
+        assert_eq!((list.paths.len(), list.at, list.rows[2].opponent.as_str()), (3, 1, "Dex"));
+        assert_eq!((list.beside(-1), list.beside(1)), (Some(0), Some(2)));
+        let last = Playlist::of(listed, Path::new("c"));
+        assert_eq!((last.beside(1), last.beside(-3)), (None, None));
+        let alone = Playlist::of(Vec::new(), Path::new("d"));
+        assert_eq!((alone.beside(1), alone.at, alone.paths), (None, 0, vec![PathBuf::from("d")]));
     }
 
     /// A set's score is the recorder's: the rounds they won and lost, and how the set went for them (the
