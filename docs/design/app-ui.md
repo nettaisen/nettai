@@ -1404,12 +1404,18 @@ Each is settled unless the user changes it.
 87. **Buttons in three sizes** (2026-10-18). The user: "is the edit and menu button on a build too big?", then
     "should all the buttons across the app be the same size?", and of three sizes by what a button does, "ok do that".
     - *Compact*, 32 tall and as wide as its words (12 of room at each side, its words 12): a tool inside a panel or a
-      bar. Play's chosen build's EDIT and ⋯ (32 by 32), the editor's tab bar's EDIT and PRACTICE, the lobby's ruleset
-      EDIT or VIEW. On a phone it is a standard button, to be tapped.
+      bar: the editor's tab bar's EDIT and PRACTICE, the lobby's ruleset EDIT or VIEW (Play's chosen build's EDIT and
+      ⋯ were, until §2.88). On a phone it is a standard button, to be tapped.
     - *Standard*, 40 tall, 120 wide at least: an action standing on its own in a page or a dialog (HOST, JOIN, the
       ruleset page's, a dialog's).
     - *Big*, 52 tall: a phone's main actions.
     No button is given a height of its own any more (the tab bar's and the lobby's were 36).
+
+88. **Play's build: EDIT standard again, PRACTICE in its menu** (2026-10-18). The user: "actually the edit button on
+    the build should still be the big size. also put practice in the dropdown menu". EDIT and ⋯ on Play's chosen
+    build are standard buttons again (40 tall; ⋯ 40 by 40, matching EDIT), and the build's menu starts with PRACTICE,
+    straight into a practice battle on the chosen build, whose EXIT comes back to Play with it still chosen (the
+    editor's PRACTICE stays, coming back to the editor). A build that can't be played: the reserved line says why.
 
 ## 3. Chosen where the user gave no answer
 
@@ -1650,11 +1656,12 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
 - **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 564
-  tall here, 540 at least), framed, with EDIT and ⋯ (32 by 32) in its header at the right, 16 in from the frame and 28
-  down, 8 apart (compact buttons, §2.87, EDIT as wide as its word); the version's tag follows the
+  tall here, 540 at least), framed, with EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
+  down, 8 apart (standard buttons, §2.88, EDIT as wide as its word); the version's tag follows the
   build's name, 12 after it (the user: "the version indiactor should be next to the build name in the play
-  screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
-  under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE and
+  screen i think"). ⋯ opens **the build's menu** (PRACTICE first since §2.88), the selects' list (§2.43) 200 wide
+  under it, its right edge at the button's (over it where there is no room under; a phone's sheet): PRACTICE (a
+  practice battle on the build, whose EXIT comes back here with it still chosen), DUPLICATE and
   DELETE (a build is renamed in the editor's header: §2.74), in the buttons' type, DELETE under a line in the error color. The cursor starts on the
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
   build whose file doesn't read has an empty frame, EDIT unavailable and DELETE alone in its menu;

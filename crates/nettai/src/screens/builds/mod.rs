@@ -101,7 +101,7 @@ impl Builds {
         let (game, name) = (draft.kit.game.clone(), draft.build.name.clone());
         let tab = editor.tab_at();
         shell.sound.play(Cue::Pick);
-        crate::screens::practice::open(shell, &game, &name, tab);
+        crate::screens::practice::open(shell, &game, &name, Some(tab));
     }
 }
 
