@@ -101,6 +101,7 @@ fn bundle() -> Bundle {
         ],
     };
     let hud = Hud {
+        letters: Default::default(),
         tiles: tiles(6, 7),
         first_tile: 0x1A0,
         gauge_tiles: tiles(3, 8),
@@ -176,6 +177,7 @@ fn bundle() -> Bundle {
         languages: vec![(
             "ja".into(),
             HudLettering {
+                letters: Default::default(),
                 font: tiles(8, 34),
                 font_chars: [" ", "0", "ア", "\u{E002}"].map(String::from).to_vec(),
                 dialogue_font: DialogueFont {
@@ -238,6 +240,7 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
+        letters: Default::default(),
         layout: CustomLayout {
             column_cells: 0x89,
             turn_limit: 0x8D,
@@ -347,6 +350,7 @@ fn custom() -> CustomScreen {
         languages: vec![(
             "ja".into(),
             CustomLettering {
+                letters: Default::default(),
                 pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), other: picture(95) },
                 form_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
                 // The soul button's label in this language (its three
@@ -414,7 +418,10 @@ fn import(dir: &Path) -> (Option<Bundle>, Report) {
 #[test]
 fn graphics_read_back_exactly() {
     let dir = temp("roundtrip");
-    let b = bundle();
+    let mut b = bundle();
+    // (With its pictures' letters as extraction reads them, whatever they
+    // are in these made-up tiles.)
+    nettai_content::letters::read(&mut b);
     write_pack(&dir, &b);
     let (back, report) = import(&dir);
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");

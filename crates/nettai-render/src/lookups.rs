@@ -16,6 +16,18 @@ use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Conte
 use nettai_battle::field::PanelType;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
+/// The pack's letters of `what` (`nettai_assets::letters`: a picture's
+/// letters or digits, as the pack read them off it), where the enhanced
+/// mode draws its words or numbers in a font: none is a problem (the pack
+/// predates them, or its picture has none), and the picture is drawn as it
+/// is.
+pub fn letters<'a, T>(found: Option<&'a T>, what: impl FnOnce() -> String, problems: &mut Problems) -> Option<&'a T> {
+    if found.is_none() {
+        problems.note(format!("the pack has no letters of {} (extract it again)", what()));
+    }
+    found
+}
+
 /// A sprite's name for a problem's text (`sprite "bomb"`).
 pub fn sprite_name(c: &Content, id: SpriteId) -> String {
     match crate::packs::name(c, AssetKind::Sprite, id.0) {
@@ -524,4 +536,119 @@ pub fn text_line<'a>(hud: &'a Hud, line: usize, problems: &mut Problems) -> Opti
         problems.note(format!("the pack has no HUD text line {line}"));
     }
     glyphs
+}
+
+/// The pack's letters of everything its HUD and its custom screen draw in
+/// fonts in the enhanced mode (`letters`, which a frame looks up as it
+/// draws): its number sets and chip codes always, its lettered pictures
+/// where the content's strings (`text`) have their words, a lettered
+/// picture's lines as many as the words'. For the static audit; the
+/// banners' and the form list's names are `banner_letters` and
+/// `form_name_letters`.
+pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::strings::DisplayText, p: &mut Problems) {
+    let need = |found: bool, what: &str, p: &mut Problems| {
+        letters(found.then_some(&()), || what.to_string(), p);
+    };
+    let l = &hud.letters;
+    if !hud.tiles.is_empty() {
+        need(l.hp_digits.is_some(), "the HP box's digits", p);
+        need(l.damage_digits.is_some(), "the damage digits", p);
+        need(l.plus.is_some(), "the damage's '+'", p);
+        need(l.times.is_some(), "the damage's \"x2\"", p);
+        for (k, d) in l.enemy_digits.iter().enumerate() {
+            need(d.is_some(), &format!("the HP digits of color {k}"), p);
+        }
+        if hud.banners.iter().any(|b| b.number_at.is_some()) {
+            need(l.banner_digits.is_some(), "the banners' digits", p);
+        }
+        if hud.layout.telop.is_some() {
+            need(l.telop.is_some(), "the telops' digits", p);
+        }
+        if hud.counts.len() > 1 {
+            need(l.counts.counts.iter().any(Option::is_some), "the emotion window's counts", p);
+        }
+    }
+    let words = |key: &str| text.lettering(c, key).is_some();
+    let w = &l.words;
+    for (key, found) in [
+        ("pause", l.pause.is_some()),
+        ("waiting", w.waiting.is_some()),
+        ("gauge.custom", w.gauge.is_some()),
+        ("gauge.l-or-r", w.l_or_r.iter().all(Option::is_some)),
+        ("turn-limit", a.is_empty() || a.letters.turn_limit.is_some()),
+    ] {
+        if words(key) {
+            need(found, &format!("the picture of {key:?}"), p);
+        }
+    }
+    if a.is_empty() {
+        return;
+    }
+    let cl = &a.letters;
+    need(cl.digits.is_some(), "the chip window's damage digits", p);
+    for (what, set) in [("the chip window's", &cl.codes), ("the slots'", &cl.slot_codes)] {
+        // (A to Z, then '*'.)
+        need((0..27).all(|k| set.glyphs.get(k).is_some_and(Option::is_some)), &format!("{what} chip codes"), p);
+    }
+    for (k, label) in a.labels.iter().enumerate() {
+        if words(&format!("window.{}", label.name)) {
+            need(cl.labels.get(k).is_some_and(Option::is_some), &format!("window label {:?}", label.name), p);
+        }
+    }
+    // The chip window's lettered pictures: OK's, and each button's (the
+    // pack's, and each version's own).
+    let help = |key: &str, found: Option<&nettai_assets::letters::HelpLetters>, p: &mut Problems| {
+        let line = |part: &str| text.lettering(c, &format!("{key}.{part}"));
+        let (Some(title), Some(said)) = (line("title"), line("words")) else { return };
+        let lines = title.lines().count() + said.lines().count();
+        match found {
+            None => need(false, &format!("the chip window's picture {key:?}"), p),
+            Some(f) if f.lines.len() != lines => {
+                p.note(format!("the chip window's picture {key:?} has {} lines of letters, its words {lines}", f.lines.len()));
+            }
+            Some(_) => {}
+        }
+    };
+    let pl = &cl.pictures;
+    help("pictures.ok", pl.ok.as_ref(), p);
+    help("pictures.ok-picked", pl.ok_picked.as_ref(), p);
+    for (name, _) in &a.buttons {
+        help(&format!("pictures.{}", nettai_content_api::keys::local(name)), pl.button(name), p);
+    }
+    for (version, own) in std::iter::once((&a.versioned.base_version, &a.versioned.base)).chain(a.versioned.versions.iter().map(|(v, o)| (v, o))) {
+        let letters = pl.versioned.get(version);
+        for (name, _) in &own.buttons {
+            help(&format!("pictures.{}", nettai_content_api::keys::local(name)), letters.button(name), p);
+        }
+    }
+}
+
+/// The pack's letters of banner `id` (its words', its bar's, its number's
+/// places), where the content's strings have its words (`banner.NAME`).
+pub fn banner_letters(packs: &Packs, c: &Content, id: BannerId, text: &crate::strings::DisplayText, p: &mut Problems) {
+    let Some(name) = crate::packs::name(c, AssetKind::Banner, id.0) else { return };
+    let Some(words) = text.lettering(c, &format!("banner.{}", nettai_content_api::keys::local(name))) else { return };
+    let Some((hud, layout, n)) = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n))) else {
+        return;
+    };
+    let found = hud.letters.words.banners.get(n as usize / 4).and_then(Option::as_ref);
+    let numbered = layout.number_at.is_some() && words.contains("{n}");
+    let complete = found.is_some_and(|f| !numbered || (f.one_digit.is_some() && f.two_digits.is_some()));
+    letters(complete.then_some(&()), || format!("banner {name:?}"), p);
+}
+
+/// The pack's letters of form `form`'s name in the form list's window (its
+/// version's, in both its looks), where the content's strings have its
+/// words (`crosses.FORM`).
+pub fn form_name_letters(a: &CustomScreen, c: &Content, navi: NaviHandle, form: FormHandle, text: &crate::strings::DisplayText, p: &mut Problems) {
+    let key = nettai_content_api::keys::local(&c.defs.form(form).key);
+    if text.lettering(c, &format!("crosses.{key}")).is_none() {
+        return;
+    }
+    let Some((_, number)) = crate::custom::form_name_picture(c, a, navi, form) else { return };
+    let Some(version) = c.form(form).version.as_deref() else { return };
+    let own = a.letters.pictures.versioned.get(version);
+    let looks = [number, number + CustomScreen::FORM_NAMES_UNDER_CURSOR];
+    let found = looks.iter().all(|&k| own.form_names.get(k).is_some_and(Option::is_some));
+    letters(found.then_some(&()), || format!("form {key:?}'s name"), p);
 }

@@ -123,7 +123,7 @@ pub enum Role {
 }
 
 /// How a picture's lettering is drawn ([`Role::Lettering`]), from what the
-/// picture shows (`lettering::Letters`): where its capitals stand, and how
+/// picture shows (`nettai_assets::letters::Letters`): where its capitals stand, and how
 /// heavy and how wide its glyphs are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Lettering {

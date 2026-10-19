@@ -92,6 +92,8 @@ pub struct HudDoc {
     pub language: String,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, HudLanguageDoc>,
+    /// How its pictures' letters and digits look (`crate::letters`).
+    pub letters: crate::letters::HudLettersDoc,
 }
 
 /// `nettai_assets::HudLayout`: "PAUSE"'s place, the HP numbers' priority,
@@ -181,6 +183,8 @@ pub struct HudLanguageDoc {
     /// the pack's own does (`layout.chatbox_text`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chatbox_text: Option<[u8; 2]>,
+    /// How this language's words look (`crate::letters`).
+    pub letters: crate::letters::HudWordsDoc,
 }
 
 /// The chatbox: the box's tiles with its palette, its maps (30x8 entries a
@@ -374,6 +378,12 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         let columns = (l.waiting.len() / 2).max(1) as u32;
         let waiting = image(&file("waiting"), &l.waiting, Layout::Grid { columns }, &[l.waiting_palette], 1);
         let gauge = image(&file("gauge"), &l.gauge_tiles, grid, &[h.gauge_palette], 0);
+        let letters = crate::letters::words_doc(
+            &l.letters,
+            h.gauge_palette,
+            &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0),
+            &|n| format!("letters/{n}-{lang}.png"),
+        );
         let dialogue_file = file("dialogue-font");
         dialogue_pngs.push((dialogue_file.clone(), dialogue_image(&l.dialogue_font).to_png()));
         let dialogue_font = DialogueFontDoc {
@@ -394,6 +404,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
                 waiting,
                 gauge,
                 chatbox_text: l.chatbox_text.map(|(x, y)| [x, y]),
+                letters,
             },
         );
     }
@@ -416,6 +427,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             }),
         }),
     };
+    let letters =
+        crate::letters::hud_doc(h, &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0), &|n| format!("letters/{n}.png"));
     let dialogue_font = {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
@@ -459,6 +472,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         layout,
         language: h.language.clone(),
         languages,
+        letters,
     };
     files.extend(dialogue_pngs);
     files.push(("hud.json".into(), json_lines(&doc)));
@@ -638,6 +652,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         layout,
         language: doc.language.clone(),
         languages: import_languages(dir, prefix, &doc, report)?,
+        letters: crate::letters::hud_from_doc(&doc.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
     })
 }
 
@@ -683,6 +698,7 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report)
                 waiting_palette: waiting_palette[0],
                 gauge_tiles: img(&d.gauge, report)?.0,
                 chatbox_text: d.chatbox_text.map(|[x, y]| (x, y)),
+                letters: crate::letters::words_from_doc(&d.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
             },
         ));
     }

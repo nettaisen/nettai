@@ -50,6 +50,7 @@ pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
         })
         .collect();
     HudLettering {
+        letters: Default::default(),
         font: tiles(rom, at(FONT), 0x40 * FONT_GLYPHS as usize),
         font_chars: cell.iter().take(FONT_GLYPHS as usize).cloned().collect(),
         dialogue_font: dialogue_font(jp, (&cell, &dialogue)),
@@ -80,6 +81,7 @@ pub fn custom(roms: &Roms) -> CustomLettering {
         )
     };
     CustomLettering {
+        letters: Default::default(),
         pictures: SlotPictures {
             ok: picture(jp, OK),
             ok_picked: picture(jp, OK_PICKED),

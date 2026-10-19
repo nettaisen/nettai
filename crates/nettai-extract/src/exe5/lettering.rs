@@ -83,6 +83,7 @@ pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
         })
         .collect();
     HudLettering {
+        letters: Default::default(),
         font: tiles(rom, at(FONT), 0x40 * FONT_GLYPHS),
         font_chars: (0..FONT_GLYPHS)
             .map(|k| cell.get(k).cloned().unwrap_or_else(|| format!("[{k:03x}]")))
@@ -107,6 +108,7 @@ pub fn custom(roms: &Roms) -> CustomLettering {
     };
     let (jp, any) = (roms.jp(), roms.any());
     CustomLettering {
+        letters: Default::default(),
         pictures: SlotPictures {
             ok: picture(jp, OK),
             ok_picked: picture(jp, OK_PICKED),

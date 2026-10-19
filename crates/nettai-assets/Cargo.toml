@@ -6,3 +6,5 @@ license.workspace = true
 description = "The battle graphics in typed form: what a content pack's graphics load into and nettai-render draws with"
 
 [dependencies]
+# The letters' plain values (`letters`) as the pack's documents write them.
+serde = { version = "1", features = ["derive"] }

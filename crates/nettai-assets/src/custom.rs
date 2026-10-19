@@ -363,6 +363,9 @@ pub struct CustomScreen {
     pub advance_name_colors: Vec<[u16; 4]>,
     /// The other languages' pictures with words (`crate::lettering`).
     pub languages: Vec<(String, crate::CustomLettering)>,
+    /// How its pictures' letters and digits look (`crate::letters`), the
+    /// lettered pictures' in the language the pictures above are in.
+    pub letters: crate::letters::CustomLetters,
     /// The chip window's element icon as a sprite (EXE4's); none: as the
     /// window's tiles (`layout.element`).
     pub element_sprite: Option<ElementSprite>,
@@ -376,6 +379,18 @@ pub struct CustomScreen {
 }
 
 impl CustomScreen {
+    /// The window frame's first tile number (`window_tiles`).
+    pub const WINDOW_TILE: u16 = 0x01;
+    /// A form list name's tiles (9x2, `VersionPictures::form_names`).
+    pub const FORM_NAME_COLUMNS: usize = 9;
+    pub const FORM_NAME_TILES: usize = 18;
+    /// The form list names' looks: a version's forms on the cursor's row
+    /// (from the first), then on the others' (from this).
+    pub const FORM_NAMES_UNDER_CURSOR: usize = 5;
+    /// A chip window picture's tiles (7x6, row by row).
+    pub const PICTURE_COLUMNS: usize = 7;
+    pub const PICTURE_TILES: usize = 42;
+
     /// A chip's picture by its key.
     pub fn chip_art(&self, key: &str) -> Option<&ChipArt> {
         self.chip_art.iter().find(|a| a.key == key).filter(|a| !a.picture.tiles.is_empty())
