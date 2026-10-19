@@ -276,7 +276,8 @@ pub fn bar(p: &Picture) -> Option<(BarShape, Vec<u8>)> {
 }
 
 /// The lines of a picture's lettering, top to bottom: runs of rows with
-/// letters on them (pixels not `ground`), a clear row apart. Each line's
+/// letters on them (pixels not `ground`), a clear row apart ([`line_rows`]:
+/// two lines a mark joins are told apart by the lines' pitch). Each line's
 /// baseline is under the last row most of its letters (runs of columns)
 /// reach, so a descender doesn't move it; its color is the one most of its
 /// pixels are in `palette` (the index of its first pixel of that color).
@@ -284,17 +285,8 @@ pub fn lines(p: &Picture, ground: impl Fn(u8) -> bool, palette: &Palette) -> Vec
     let ink = |x: i32, y: i32| p.at(x, y).is_some_and(|v| !ground(v));
     let inked: Vec<bool> = (0..p.h as i32).map(|y| (0..p.w as i32).any(|x| ink(x, y))).collect();
     let mut out = Vec::new();
-    let mut y = 0;
-    while y < p.h {
-        if !inked[y] {
-            y += 1;
-            continue;
-        }
-        let top = y;
-        while y < p.h && inked[y] {
-            y += 1;
-        }
-        let rows = top as i32..y as i32;
+    for (top, end) in line_rows(&inked) {
+        let rows = top as i32..end as i32;
         let columns: Vec<i32> = (0..p.w as i32).filter(|&x| rows.clone().any(|r| ink(x, r))).collect();
         let (Some(&first), Some(&last)) = (columns.first(), columns.last()) else { continue };
         // Each letter's last row, and the most common of them.
@@ -314,7 +306,7 @@ pub fn lines(p: &Picture, ground: impl Fn(u8) -> bool, palette: &Palette) -> Vec
                 None => seen.push((b, 1)),
             }
         }
-        let baseline = seen.iter().max_by_key(|s| (s.1, s.0)).map_or(y as i32, |s| s.0 + 1);
+        let baseline = seen.iter().max_by_key(|s| (s.1, s.0)).map_or(end as i32, |s| s.0 + 1);
         // (Each color with its first index and how many pixels.)
         let mut colors: Vec<(u16, u8, usize)> = Vec::new();
         for r in rows.clone() {
@@ -330,6 +322,50 @@ pub fn lines(p: &Picture, ground: impl Fn(u8) -> bool, palette: &Palette) -> Vec
         }
         let color = colors.iter().max_by_key(|s| (s.2, s.0)).map_or(0, |s| s.1);
         out.push(HelpLine { top: top as u8, baseline: baseline as u8, span: [first as u8, (last + 1) as u8], color });
+    }
+    out
+}
+
+/// The rows of a picture's lines (each its first and one past its last),
+/// from which of its rows have letters on them (`inked`): the runs of such
+/// rows a clear row apart, but where a run's next one starts two of the
+/// lines' pitches or more after it (the pitch: the most common step from a
+/// run's first row to the next's, with three runs or more), the run is that
+/// many lines at that pitch: a mark of the lower line's letters (a voiced
+/// mark) reached the line above and left no clear row between (EXE4's
+/// Japanese OK picture: チップが over えらばれて).
+pub fn line_rows(inked: &[bool]) -> Vec<(usize, usize)> {
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    let mut y = 0;
+    while y < inked.len() {
+        if !inked[y] {
+            y += 1;
+            continue;
+        }
+        let top = y;
+        while y < inked.len() && inked[y] {
+            y += 1;
+        }
+        runs.push((top, y));
+    }
+    let mut steps: Vec<usize> = runs.windows(2).map(|w| w[1].0 - w[0].0).collect();
+    steps.sort_unstable();
+    let Some(&pitch) = steps.get(steps.len() / 2).filter(|_| steps.len() >= 2) else { return runs };
+    let mut out = Vec::new();
+    for (k, &(top, end)) in runs.iter().enumerate() {
+        let step = runs.get(k + 1).map(|next| next.0 - top);
+        let n = step.map_or(1, |s| (s + pitch / 2) / pitch.max(1));
+        match step {
+            Some(step) if pitch > 0 && step + 1 >= 2 * pitch && n >= 2 && end - top > pitch => {
+                for i in 0..n {
+                    let (from, to) = (top + i * step / n, (top + (i + 1) * step / n).min(end));
+                    if from < to {
+                        out.push((from, to));
+                    }
+                }
+            }
+            _ => out.push((top, end)),
+        }
     }
     out
 }
@@ -1509,6 +1545,27 @@ mod tests {
         assert_eq!(set.face, [1, 4, 6, 8]);
         assert_eq!((set.rim, set.shadow), (Some(6), None));
         assert!(set.fill.iter().all(|&c| c == 1));
+    }
+
+    /// Lines a clear row apart, at their pitch; a run two pitches tall
+    /// before the next line (a voiced mark joining two lines) is two lines
+    /// at that pitch, the lower from its pitch's row; a run far from the
+    /// next by the title's gap stays one.
+    #[test]
+    fn lines_a_mark_joins_are_split_at_their_pitch() {
+        // (EXE4's Japanese OK picture: rows 1-8, 10-17, 19-36 and 39-47.)
+        let mut inked = vec![false; 48];
+        for (a, b) in [(1, 9), (10, 18), (19, 37), (39, 48)] {
+            inked[a..b].iter_mut().for_each(|r| *r = true);
+        }
+        assert_eq!(line_rows(&inked), [(1, 9), (10, 18), (19, 29), (29, 37), (39, 48)]);
+        // (EXE6's English OK picture: a title of two lines, a gap, two
+        // lines of words.)
+        let mut inked = vec![false; 48];
+        for (a, b) in [(2, 10), (11, 19), (23, 31), (32, 40)] {
+            inked[a..b].iter_mut().for_each(|r| *r = true);
+        }
+        assert_eq!(line_rows(&inked), [(2, 10), (11, 19), (23, 31), (32, 40)]);
     }
 
     /// A chip code's letter in its cell: its face's box and paint, and the

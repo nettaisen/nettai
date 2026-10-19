@@ -1650,5 +1650,10 @@ the bar's edge).
   START!, TURN n START!, FINAL TURN!, the judge's and the results'), the labels, the help pictures, the gauge's CUSTOM
   and L or R, the waiting label, FINAL TURN, PAUSE, the HP box and the enemies' numbers, the emotion window's count,
   the hand line's and the telops' numbers, the chip window's code and damage, the slots' codes and the Cross names.
-- Left open: EXE4's Japanese OK picture (チップが / えらばれて / いません) reads as four lines, the first two of its
-  words touching (a voiced mark reaches the line above), so its words stay the picture, as they did; the audit says so.
+- **Lines a mark joins** (the user: "yes", to working out EXE4's Japanese OK picture). Its words チップが / えらばれて /
+  いません touch: えらばれて's voiced mark reaches the line above, and no clear row is left between them. A picture's
+  lines are its runs of inked rows, but where a run's next one starts two of the picture's line pitches or more after it
+  (the pitch: the most common step from a run's first row to the next's, with three runs or more), the run is that
+  many lines at that pitch (`letters::line_rows`): rows 19-36 are 19-28 and 29-36, a pitch of 10 to いません at 39. Read
+  again, every other help picture of the three games' packs, in both languages, has the same lines as before (the
+  packs' `letters` are identical but this picture's); the EXE4 audit has 0 problems.
