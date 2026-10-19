@@ -337,6 +337,13 @@ impl<'f> TextSink<'f> {
         self.measure.map(|m| m.borrow_mut().fitted_width(text, role, room))
     }
 
+    /// Where `text`'s ink starts and ends in a box `room` wide, from its
+    /// first glyph's pen (`TextRenderer::ink_extent`; None without a
+    /// measurer, or no ink).
+    pub fn ink_extent(&self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        self.measure.and_then(|m| m.borrow_mut().ink_extent(text, role, room))
+    }
+
     /// The original mode's: takes nothing.
     pub fn original() -> TextSink<'static> {
         TextSink::new(GraphicsMode::Original, None)

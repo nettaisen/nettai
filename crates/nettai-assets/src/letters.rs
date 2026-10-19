@@ -179,14 +179,12 @@ pub struct FormNameLetters {
 }
 
 /// A window label's letters: their look (`WindowLabel::letters`' colors
-/// alone; their columns, `span`, in the label's tiles), the rows of the
-/// label's tiles their ink takes (the first, the last), and how they stand
-/// in the label's tiles.
+/// alone; their columns, `span`, in the label's tiles) and the rows of the
+/// label's tiles their ink takes (the first, the last).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelLetters {
     pub letters: Letters,
     pub rows: [u8; 2],
-    pub align: TextAlign,
 }
 
 /// Glyphs of letters in cells (the chip codes): each glyph's letter (none:

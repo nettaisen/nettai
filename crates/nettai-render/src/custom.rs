@@ -932,11 +932,22 @@ impl Window {
             // letters' ink, narrowed as a whole where it is wider than their
             // columns, standing as they stand in the label's tiles; in their
             // look.
+            // (Then the run as wide as their columns, the user: "BATTLE CHIP
+            // and CHIP SELECT and CROSS SELECT should be stretched to fill the
+            // frame": its ink from the first letter's ink to the last's, one
+            // factor for the whole run.)
             let [row0, row1] = found.rows;
-            let lettering = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(row0, row1 + 1 - row0) };
-            let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(&found.letters, &palette, Lettering::wide) };
+            let natural = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(row0, row1 + 1 - row0) };
             let [from, to] = found.letters.span.map(i32::from);
-            let item = look.item(words, Rect::new(from, 0, to - from, 8), align_of(found.align));
+            let Some((ink0, ink1)) = text.ink_extent(words, Role::Lettering(natural), 10_000) else { continue };
+            let width = (100.0 * (to - from) as f32 / (ink1 - ink0).max(1.0)).round().clamp(25.0, 255.0) as u8;
+            let lettering = Lettering { width, ..natural };
+            let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(&found.letters, &palette, Lettering::wide) };
+            // (The box from where the first glyph's pen starts, so that its
+            // ink starts at the letters' first column.)
+            let scale = width as f32 / 100.0;
+            let pen = from - (ink0 * scale).round() as i32;
+            let item = look.item(words, Rect::new(pen, 0, to - pen + 8, 8), Align::Left);
             self.labels.push((block.col, block.row, block.w, item));
         }
     }
