@@ -7,13 +7,13 @@ a window by nettai (docs/app.md).
 
     cargo run -p nettai-tools -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-tools -- --match match.toml --headless 1-120 --out <dir> --keys 100:a
-    cargo run -p nettai-tools -- --replay set.ntrp --headless 1-600 --side right --out <dir>
+    cargo run -p nettai-tools -- --replay set.nettaireplay --headless 1-600 --side right --out <dir>
     cargo run -p nettai-tools -- --match match.toml --show-folders            # the setup, said
     cargo run -p nettai-tools -- --match match.toml --save-match played.toml  # keep the seed played
-    cargo run -p nettai-tools -- --replay set.ntrp                            # does it reproduce?
-    cargo run -p nettai-tools -- --replay set.ntrp --nut set.nut              # the replay as video (NUT)
-    cargo run -p nettai-tools -- --replay set.ntrp --nut - --scale 2 | ffmpeg -f nut -i - out.mp4
-    cargo run -p nettai-tools -- --replay set.ntrp --mp4 round2.mp4 --round 2 --scale 4
+    cargo run -p nettai-tools -- --replay set.nettaireplay                            # does it reproduce?
+    cargo run -p nettai-tools -- --replay set.nettaireplay --nut set.nut              # the replay as video (NUT)
+    cargo run -p nettai-tools -- --replay set.nettaireplay --nut - --scale 2 | ffmpeg -f nut -i - out.mp4
+    cargo run -p nettai-tools -- --replay set.nettaireplay --mp4 round2.mp4 --round 2 --scale 4
     cargo run -p nettai-tools -- --match match.toml --audit-content           # what is missing?
     cargo run -p nettai-tools -- --audit <trace.jsonl>...                     # and in these traces?
 
@@ -74,8 +74,8 @@ tick compared with what the original recorded; the first difference is printed.
 `--replay FILE --nut OUT` writes the replay as a NUT stream (FFmpeg's container: raw RGB frames and PCM sound in
 one stream, on exact time bases; docs/frontend.md §8, "Video") to the file `OUT`, or to standard output for `-`:
 
-    nettai-tool --replay set.ntrp --nut - | ffmpeg -f nut -i - out.mp4
-    nettai-tool --replay set.ntrp --nut - --scale 4 | ffmpeg -f nut -i - -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a aac -ar 48000 out.mp4
+    nettai-tool --replay set.nettaireplay --nut - | ffmpeg -f nut -i - out.mp4
+    nettai-tool --replay set.nettaireplay --nut - --scale 4 | ffmpeg -f nut -i - -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a aac -ar 48000 out.mp4
 
 It holds one frame a tick, the picture a viewer playing the replay straight is shown (the text included) and the
 sound the tick made, and `ffmpeg` and `ffprobe` (9.0.2) read it as it is, from the pipe or from a file, with
