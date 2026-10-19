@@ -619,15 +619,19 @@ mod tests {
         let other_game = ReplayPlayer::new(&five, &replay, None).err().unwrap();
         assert_eq!(other_game, Refused::OtherGame { replay: "exe6".into(), here: "exe5".into() });
         assert_eq!(other_game.to_string(), "the replay is of exe6, not exe5");
-        // Another version's: the content's hash, the engine's version, or
-        // a first battle that isn't the recording's.
-        let changes: [fn(&mut Replay); 3] = [|r| r.head.content ^= 1, |r| r.head.engine.push('x'), |r| r.head.start ^= 1];
+        // Another version's: the content's hash, the engine's minor
+        // version, or a first battle that isn't the recording's.
+        let changes: [fn(&mut Replay); 3] = [|r| r.head.content ^= 1, |r| r.head.engine = "999.0.0".into(), |r| r.head.start ^= 1];
         for change in changes {
             let mut other = replay.clone();
             change(&mut other);
             let refused = ReplayPlayer::new(&content, &other, None).err().unwrap();
             assert!(matches!(refused, Refused::OtherVersion(_)), "{refused:?}");
         }
+        // (A patch release of its engine plays it.)
+        let mut patched = replay.clone();
+        patched.head.engine = format!("{}.99", nettai_replay::line(ENGINE));
+        assert!(ReplayPlayer::new(&content, &patched, None).is_ok());
         let mut moved = replay.clone();
         moved.head.start ^= 1;
         assert!(play_out(&content, &moved).unwrap_err().to_string().starts_with("the replay's match makes another battle on this engine"));
