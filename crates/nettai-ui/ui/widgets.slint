@@ -303,10 +303,16 @@ export component Button inherits Rectangle {
     in property <bool> danger;
     // 52 tall (a phone's READY).
     in property <bool> big;
+    // A tool inside a panel or a bar (a build's EDIT and ⋯, the editor's tab bar's): 32 tall and as wide as its
+    // words, on a desktop; a phone's is the standard 40, to be tapped. (docs/design/app-ui.md §2.87: three sizes,
+    // compact, standard and big.)
+    in property <bool> compact;
+    property <bool> small: root.compact && !Theme.phone;
+    property <length> inset: root.small ? 12px : 16px;
     out property <bool> focused: hit.focused;
     // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
     // phone alone reads this for the desktop's).
-    out property <length> natural-width: max(120px, label.preferred-width + 32px);
+    out property <length> natural-width: root.small ? max(32px, label.preferred-width + 2 * root.inset) : max(120px, label.preferred-width + 32px);
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     property <brush> fill-main: hit.has-hover ? Theme.action.brighter(12%) : Theme.action;
     property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
@@ -319,7 +325,7 @@ export component Button inherits Rectangle {
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
-    height: root.big ? 52px : 40px;
+    height: root.big ? 52px : root.small ? 32px : 40px;
     width: root.natural-width;
     press := Pulse {
         seq: root.presses;
@@ -327,7 +333,7 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: 9px;
+        cut: root.small ? 7px : 9px;
         background: root.bare ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
         line: root.kind == ButtonKind.text ? transparent : !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
@@ -349,21 +355,21 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: 9px;
+        cut: root.small ? 7px : 9px;
         background: #ffffff;
         line: transparent;
         opacity: press.v * 0.38;
     }
 
     label := Text {
-        x: 16px;
+        x: root.inset;
         y: root.dip;
-        width: parent.width - 32px;
+        width: parent.width - 2 * root.inset;
         height: parent.height;
         text: root.text;
         color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : root.kind == ButtonKind.text && !hit.has-hover && !hit.focused ? Theme.muted : Theme.text;
         font-family: Theme.display;
-        font-size: root.big ? 16px : 13px;
+        font-size: root.big ? 16px : root.small ? 12px : 13px;
         font-weight: root.kind == ButtonKind.main ? Theme.display-bold : Theme.display-semibold;
         letter-spacing: Theme.button-tracking;
         horizontal-alignment: center;

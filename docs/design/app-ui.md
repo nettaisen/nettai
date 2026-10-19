@@ -1401,6 +1401,16 @@ Each is settled unless the user changes it.
     - *The header's game* doesn't slide in with a screen's header: it slides only when the game changes.
     - *Build and ruleset files* no longer start with a comment line.
 
+87. **Buttons in three sizes** (2026-10-18). The user: "is the edit and menu button on a build too big?", then
+    "should all the buttons across the app be the same size?", and of three sizes by what a button does, "ok do that".
+    - *Compact*, 32 tall and as wide as its words (12 of room at each side, its words 12): a tool inside a panel or a
+      bar. Play's chosen build's EDIT and ⋯ (32 by 32), the editor's tab bar's EDIT and PRACTICE, the lobby's ruleset
+      EDIT or VIEW. On a phone it is a standard button, to be tapped.
+    - *Standard*, 40 tall, 120 wide at least: an action standing on its own in a page or a dialog (HOST, JOIN, the
+      ruleset page's, a dialog's).
+    - *Big*, 52 tall: a phone's main actions.
+    No button is given a height of its own any more (the tab bar's and the lobby's were 36).
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1640,8 +1650,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
 - **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 564
-  tall here, 540 at least), framed, with EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
-  down, 8 apart (EDIT a regular button, as wide as its word); the version's tag follows the
+  tall here, 540 at least), framed, with EDIT and ⋯ (32 by 32) in its header at the right, 16 in from the frame and 28
+  down, 8 apart (compact buttons, §2.87, EDIT as wide as its word); the version's tag follows the
   build's name, 12 after it (the user: "the version indiactor should be next to the build name in the play
   screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
   under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE and
