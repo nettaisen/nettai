@@ -7,7 +7,7 @@
 //! the UI's `screens/builds/`: [`navi`], [`folder`], [`navicust`], [`patch_cards`] and [`auto_battle`].
 //!
 //! **Opened by another screen** ([`open`]: Play's EDIT and Practice's): Back goes straight back to that screen,
-//! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE). Opened from Play, the header has PRACTICE,
+//! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE). Opened from Play, the tab bar ends in PRACTICE,
 //! straight into a practice battle with the build, whose EXIT comes back here.
 
 use crate::builds::store;
@@ -67,7 +67,7 @@ impl Builds {
 }
 
 impl Builds {
-    /// PRACTICE (the header's; none where Practice opened the editor): straight into a practice battle with the
+    /// PRACTICE (at the tab bar's end; a phone's on the Navi tab; none where Practice opened the editor): straight into a practice battle with the
     /// build, as it is kept once the editor is left (`practice::open`), whose EXIT comes back here on it. A build
     /// that can't be played under its ruleset is refused where it is, why in a dialog.
     fn practice(&mut self, shell: &mut Shell) {
@@ -93,7 +93,9 @@ impl Screen for Builds {
     }
 
     fn show(&mut self, shell: &mut Shell) {
-        shell.ui().global::<BuildsView>().set_to_practice(self.back_to == Some(ScreenId::Practice));
+        let to_practice = self.back_to == Some(ScreenId::Practice);
+        shell.ui().global::<BuildsView>().set_to_practice(to_practice);
+        shell.ui().global::<nettai_ui::NaviView>().set_practice(!to_practice);
         // (The editor's build is its game's: the game can't change under it.)
         if let Some(editor) = &mut self.editor {
             editor.show(shell);

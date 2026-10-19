@@ -97,10 +97,6 @@ export component BuildsScreen inherits Page {
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.name;
     title-nav: "name";
-    // (PRACTICE: straight into a practice battle with the build, whose EXIT comes back here; none where the editor was
-    // opened from Practice, whose Back goes back to it.)
-    action: BuildsView.to-practice ? "" : Caps.of(@tr("Practice"));
-    action-nav: "practice";
     back: BuildsView.to-practice ? Caps.of(@tr("Practice")) : Caps.of(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
@@ -116,9 +112,12 @@ export component BuildsScreen inherits Page {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // (At the bar's right end on a desktop, the ruleset the build is made for, and EDIT: its page. A phone has them at
-    // the top of the Navi tab.)
-    property <length> ruleset-width: Theme.phone ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + 16px;
+    // (At the bar's right end on a desktop, the ruleset the build is made for, and EDIT: its page; then past a divider
+    // PRACTICE, straight into a practice battle with the build, whose EXIT comes back here (none where the editor was
+    // opened from Practice, whose Back goes back to it). A phone has them on the Navi tab.)
+    property <bool> practice: !BuildsView.to-practice;
+    property <length> practice-width: root.practice ? 16px + 1px + 16px + practice-button.width : 0px;
+    property <length> ruleset-width: Theme.phone ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + root.practice-width + 16px;
     tab-bar := TabBar {
         x: Theme.phone ? -8px : 0px;
         y: root.bar-y;
@@ -152,13 +151,32 @@ export component BuildsScreen inherits Page {
     }
 
     rules-edit := Button {
-        x: root.body-width - self.width;
+        x: root.body-width - root.practice-width - self.width;
         y: root.bar-y;
         width: self.natural-width;
         height: 36px;
         visible: !Theme.phone;
         nav: Theme.phone ? "" : "ruleset-edit";
         text: Caps.of(@tr("Edit"));
+    }
+
+    Rectangle {
+        x: rules-edit.x + rules-edit.width + 16px;
+        y: root.bar-y + 8px;
+        width: 1px;
+        height: 20px;
+        visible: !Theme.phone && root.practice;
+        background: Theme.line;
+    }
+
+    practice-button := Button {
+        x: root.body-width - self.width;
+        y: root.bar-y;
+        width: self.natural-width;
+        height: 36px;
+        visible: !Theme.phone && root.practice;
+        nav: !Theme.phone && root.practice ? "practice" : "";
+        text: Caps.of(@tr("Practice"));
     }
 
     EditorBody {

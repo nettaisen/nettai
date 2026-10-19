@@ -111,6 +111,8 @@ export global NaviView {
     // for whom the note says so.
     in property <string> own;
     in property <bool> other-navi;
+    // PRACTICE is offered (none where Practice opened the editor): on a phone here, under the ruleset's row.
+    in property <bool> practice;
 }
 
 // A navi's card: its face over its name. The build's is lit.
@@ -317,7 +319,7 @@ export component NaviTab inherits Rectangle {
     property <length> panel-height: Theme.phone ? root.body-y + body.preferred-height + root.pad : self.height;
     property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
     // (On a phone the ruleset's select is between the panel and the grid.)
-    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px : 0px;
+    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px + (NaviView.practice ? 52px : 0px) : 0px;
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> card-height: Theme.phone ? 84px : 140px;
@@ -560,5 +562,15 @@ export component NaviTab inherits Rectangle {
         visible: Theme.phone;
         nav: Theme.phone ? "ruleset-edit" : "";
         text: Caps.of(@tr("Edit"));
+    }
+
+    // (On a phone, PRACTICE under them, the row's width: the tab bar has no room for it.)
+    Button {
+        x: 0;
+        y: root.panel-height + 64px;
+        width: root.width;
+        visible: Theme.phone && NaviView.practice;
+        nav: Theme.phone && NaviView.practice ? "practice" : "";
+        text: Caps.of(@tr("Practice"));
     }
 }

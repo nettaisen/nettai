@@ -880,19 +880,14 @@ export component Header inherits Rectangle {
     // The title is a name changed in place (the build editor's build's, the player's own ruleset's): a text field of
     // this name in the title's place, always drawn as one (docs/design/app-ui.md §2.74).
     in property <string> title-nav;
-    // A button at the header's right, before the game: its words and its control's name (the build editor's
-    // PRACTICE). Empty: none.
-    in property <string> action;
-    in property <string> action-nav;
-    property <length> action-width: root.action == "" ? 0px : action-button.width + 12px;
     property <bool> field: root.title-nav != "" && !root.logo;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
-    property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) - root.action-width : root.title-x + root.title-width + 16px;
+    property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
     property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
     // The title's room: what the tag and the game leave of the header.
-    property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.action-width - root.tag-width;
+    property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.tag-width;
     property <length> title-width: min(title-text.preferred-width, root.title-room);
     // (The field takes the room up to 400 from just before the title's place, its text where the title's is; it
     // scrolls what it doesn't show.)
@@ -1019,16 +1014,6 @@ export component Header inherits Rectangle {
         x: root.tag-x;
         text: root.logo ? "" : root.tag.text;
         tone: root.tag.tone;
-        opacity: arrive.t;
-    }
-
-    action-button := Button {
-        x: parent.width - root.pad - (root.game ? game.width + 16px : 0px) - self.width;
-        y: (parent.height - self.height) / 2;
-        width: self.natural-width;
-        visible: root.action != "";
-        nav: root.action == "" ? "" : root.action-nav;
-        text: root.action;
         opacity: arrive.t;
     }
 
@@ -1254,9 +1239,6 @@ export component Page inherits Rectangle {
     // The header's tag after the title, and its title a field of this name (a name changed in place).
     in property <VersionTag> tag;
     in property <string> title-nav;
-    // A button at the header's right, before the game (`Header.action`).
-    in property <string> action;
-    in property <string> action-nav;
     in property <[Hint]> hints;
     // The footer's right end (docs/design/app-ui.md §2.80): how many of what the screen lists there are, "N things",
     // or "N of M things" where the build has a limit; nothing on a screen that lists nothing. (An update's line takes
@@ -1272,8 +1254,6 @@ export component Page inherits Rectangle {
         game: root.game;
         tag: root.tag;
         title-nav: root.title-nav;
-        action: root.action;
-        action-nav: root.action-nav;
     }
 
     // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What
