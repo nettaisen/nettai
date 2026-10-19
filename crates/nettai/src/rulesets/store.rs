@@ -100,7 +100,7 @@ pub fn text(content: &Content, game: &str, ruleset: &Ruleset) -> String {
         versions: if ruleset.one_per_build { ONE_PER_BUILD } else { MIXED }.to_string(),
         banned: ruleset.banned_names(content).into_iter().collect(),
     };
-    format!("# A nettai ruleset (docs/app.md §8).\n\n{}", toml::to_string(&f).expect("a ruleset serializes"))
+    toml::to_string(&f).expect("a ruleset serializes")
 }
 
 /// Write a ruleset to `path` (its folder made if it isn't there).

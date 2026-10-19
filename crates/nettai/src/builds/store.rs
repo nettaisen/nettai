@@ -249,7 +249,7 @@ pub fn text(content: &Content, game: &str, build: &Build) -> String {
     }
     let ruleset = build.ruleset.as_ref().map(crate::rulesets::name_text);
     let head = toml::to_string(&Header { game, name: &build.name, ruleset }).expect("a header serializes");
-    let mut text = format!("# A nettai build (docs/app.md §8).\n\n{head}\n{}", nettai_match::file::side_toml(content, "side", &build.side));
+    let mut text = format!("{head}\n{}", nettai_match::file::side_toml(content, "side", &build.side));
     if build.aside != Facts::defaults(content) {
         text.push_str("\n# Kept while the build's navi takes none of it.\n");
         text.push_str(&nettai_match::file::side_toml(content, "aside", &Side { facts: build.aside.clone() }));
