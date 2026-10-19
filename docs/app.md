@@ -3112,6 +3112,25 @@ screen runs the ticks due, presents the picture into the window's texture if one
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
   the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
+- *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
+  the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, playlist,
+  footer) is over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
+  (`Replays::follow_viewer`, told to `ReplaysView.hud`): within `HUD_IDLE` (2.5 s) of the last input
+  (`Shell::last_input`: a key or a pad's button pressed, the window's pointer events) or of the replay's start,
+  or while the replay doesn't play (`Watching::playing`), a setting is taken, the builds or the export are open,
+  or on a phone. The UI adds the pointer resting on the transport or the playlist (a `TouchArea` around each,
+  whose `has-hover` its children's hover keeps). The cursor isn't drawn while the page is hidden. A click on the
+  picture is PLAY's.
+- *The playlist* (`Playlist`): WATCH makes it of the list as shown, the rows whose replay plays here (each
+  with its row's data, the list's `ReplayRow`), from the one watched. The viewer shows it while it has more than
+  one, in `PlaylistPanel` (the list's rows, `compact`), the row watched scrolled into view as it shows
+  (`Nav::reveal_row`, which moves no focus). PREVIOUS and NEXT (`previous-replay`, `next-replay`; N, Shift+N)
+  and a row (`playlist`) go to that replay: the viewer is left as Back leaves it, and the replay made ready
+  behind the two cards as the first was; its speed is carried over (`carry_speed`), and the overlays already
+  were. *Autoplay next* (`autoplay`, a `Seg`) is remembered by `Settings::remembered`'s `replays.autoplay`
+  ("off"; on when absent). The viewer notes when a replay played to its end (`Watching::ended_for`: ticks ran
+  and it is there; a seek or a step to the end isn't), and the screen starts the next `NEXT_AFTER` (2 s) later,
+  unless the builds, the export or a dialog are open.
 - *What fails, and what shows under it.* One that fails as it is opened is the error's dialog over the list
   (`Shell::fail`): its file doesn't read now (it changed since the list read it), the library refuses it, the
   engine stops making its first battle (`watch` and the cards' last step each start its set inside the library's
@@ -3157,7 +3176,8 @@ screen runs the ticks due, presents the picture into the window's texture if one
   (`Info::open_setups`): its BUILDS can't be pressed.
 - *What else may be over the picture* (the user: "add support for input view and picture in picture in replay
   viewer"), each off at first, toggled by its transport button after BUILDS (lit while it is on) or a key, and
-  kept from one replay to the next while the app runs (not saved: the viewer saves no setting of its own):
+  kept from one replay to the next while the app runs (not saved: Autoplay next is the one setting the viewer
+  saves):
   - *The input display* (I): Practice's (§15; one component, `ui/inputs.slint`'s `InputDisplay`, which Practice
     places too), in the picture's top right corner as Practice's is, the console shown's player's buttons in
     red over the other's in blue (the colors of their sides of the picture). The buttons are the battle's own
