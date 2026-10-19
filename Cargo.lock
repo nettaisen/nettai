@@ -3178,7 +3178,7 @@ dependencies = [
 
 [[package]]
 name = "nettai"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "arboard",
  "chrono",
@@ -3300,7 +3300,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-frontend"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "m4a",
  "nettai-assets",
