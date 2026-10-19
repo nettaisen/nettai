@@ -1469,7 +1469,8 @@ pack keeps it (§12.12); the renderer's `lettering.rs` and `numbers.rs` put it i
 Nothing is a game's in Rust, and no style is added to the packs (but the window's labels' places, §12.6):
 
 - `letters(picture, ground, capitals)`: the outline is the edge color (of the letters' pixels next to the ground) that
-  keeps the rest, the face, from the ground all round (a **rim**) or only right and down (a **shadow**); the face's
+  keeps the rest, the face, from the ground all round (a **rim**) or only right and down (a **shadow**: along at least
+  half the face's right and bottom edges, so a lone pixel of a letter's own shading isn't one); the face's
   color on each of the capitals' rows (the bands of the banners: cream, pale, white, pale, cream down the letter); the
   capitals' rows, from the first letter (or all, for a set of digits); the letters' columns. The text layer draws a
   `textlayer::Ink`: the fill blended between the rows' middles at the output's resolution, and the rim as the glyphs'
@@ -1697,9 +1698,10 @@ stretched to its box, then "chip code and chip window damage should probably be 
   round: banners (BATTLE START!, the results, the judge, FINAL TURN!), PAUSE, the waiting label, FINAL TURN, the Cross
   names. The text layer draws a lettering's rim even, heavier only where the pack says. What has a one-sided shadow
   in its pixels keeps a shadow: the 8x16 font (chip names, telop names, the enemy names, "????": its shade is right and
-  down), the damage digits (the hand line, telops, the judge), B:EXIT. The rest have no edge and get none: the HP box's
-  digits, the emotion window's count, the window's labels, CUSTOM, L or R, the codes, the help pictures, the chatbox
-  (whose font has no shade).
+  down), the damage digits (the hand line, telops, the judge). The rest have no edge and get none: the HP box's
+  digits, the emotion window's count, the window's labels (B:EXIT too: the user, "B:EXIT in the original did not
+  have a drop shadow"; one shading pixel in its B had read as one, as one in EXE4's slot code Q), CUSTOM, L or R, the
+  codes, the help pictures, the chatbox (whose font has no shade).
 - **Labels and CUSTOM as text.** The window's labels are one run of Bungee at its own spacing (LetteringFont::Numbers),
   its capitals the letters' ink height, the whole run stretched or narrowed by one factor to put its ink from the
   original's first letter's ink to its last's (TextRenderer::ink_extent). CUSTOM is the same run at the font's own
