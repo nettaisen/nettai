@@ -152,6 +152,9 @@ impl SharedLoads {
 #[derive(Default)]
 pub struct SharedGlyphs {
     tiles: Tiles,
+    /// The emotion window's count box, its digits taken off (the enhanced
+    /// mode's count in the numbers' font: `count_blank`).
+    count_blank: Tiles,
     /// The banner's glyphs (by number) drawn from `tiles` (from their first
     /// tile there).
     banner: Vec<(usize, usize)>,
@@ -226,6 +229,9 @@ pub fn shared_glyphs<'a>(
     problems: &mut Problems,
 ) -> SharedGlyphs {
     let mut out = SharedGlyphs::default();
+    if text.draws_numbers() && assets.hud.counts.len() > 1 {
+        out.count_blank = count_blank(&assets.hud.counts).to_grid();
+    }
     let hud = &assets.hud;
     let Some((look, t)) = hud.layout.telop.as_ref().and_then(|l| l.tiles.map(|t| (l, t))) else { return out };
     let s = &state.shared;
@@ -782,12 +788,12 @@ pub fn draw<'a>(
             if b.linked[side as usize & 1].chip.is_none() {
                 continue;
             }
-            // In the enhanced mode the marks in the numbers' font, in their
-            // glyph's look, a mark a cell.
-            let marks = crate::numbers::NumberSet::of(&hud.tiles, HIDDEN_GLYPH, 1, |v| v == 0, pal)
-                .and_then(|set| crate::numbers::items(text, &[("????".to_string(), &set)], (8 * column, 16)));
-            if let Some(items) = marks {
-                items.into_iter().for_each(|item| text.push(Plane::Hud, item));
+            // In the enhanced mode the marks as a telop draws a hidden chip's
+            // name: the text layer's cell role in the palette's face and
+            // shadow (the user: "the ???? trap font should use the telop
+            // font").
+            if text.takes("????") {
+                text.push(Plane::Hud, TextItem::new("????", Role::Cell, Rect::new(8 * column, 16, 32, 16), pal[1], Some(pal[2])));
                 continue;
             }
             for i in 0..8i32 {
@@ -1001,13 +1007,26 @@ pub fn draw<'a>(
     let hidden = b.hud_hidden.emotion_window;
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        mugshot_parts(b, hud, packs, state, r, shift, &mut group, problems);
+        let mut count = mugshot_parts(b, hud, packs, state, r, shift, (shared, text), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
             }
+            // (The count blacks out with the window.)
+            if let Some(f) = count.as_mut().and_then(|c| c.fitted.as_mut()) {
+                f.fill.iter_mut().for_each(|c| *c = 0);
+                f.rim = f.rim.map(|_| 0);
+                f.shadow = f.shadow.map(|_| 0);
+            }
         }
-        list.insert_at(FRONT_LAYER, 0, group);
+        match count {
+            Some(item) => {
+                let tag = text.tag();
+                list.insert_tagged(FRONT_LAYER, 0, group, Some(tag));
+                text.push(Plane::Sprite(tag), item);
+            }
+            None => list.insert_at(FRONT_LAYER, 0, group),
+        }
     }
     // The banner block's banner, where no telop lays on it. (The banner's
     // own pack's HUD draws it, by its number there.)
@@ -1374,9 +1393,10 @@ fn mugshot_parts<'a>(
     state: &HudState,
     r: ObjectRef,
     x: i32,
+    (shared, text): (&'a SharedGlyphs, &TextSink),
     out: &mut Vec<SpritePart<'a>>,
     problems: &mut Problems,
-) {
+) -> Option<TextItem> {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
     // A link navi's own face, its definition's (MegaMan's, the navi that
@@ -1384,13 +1404,13 @@ fn mugshot_parts<'a>(
     let navi = b.content.navi(stats.navi);
     if !navi.changes_form() {
         // (The mugshot's own pack's HUD holds its picture.)
-        let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
+        let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return None };
         let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         out.push(block(tiles, 32, 16, pal, x, EMOTION_WINDOW_Y));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
         note_true_face(b, packs, side, navi.version.as_deref(), x, problems);
-        return;
+        return None;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
     // A form chosen on the custom screen shows in the window until the
@@ -1405,7 +1425,7 @@ fn mugshot_parts<'a>(
         face.emotion,
         face.base_variant || nettai_battle::kinds::player::face_charged(b, side as u8),
         problems,
-    ) else { return };
+    ) else { return None };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     let pal = window_faded(b, pal);
@@ -1415,16 +1435,117 @@ fn mugshot_parts<'a>(
     // without a count: a face that brings none (EXE5's souls') shows its
     // side's count (`window_count`).
     let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
-    let tiles = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
-        Some(own) => Some(own),
-        None if face_hud.count_box.is_empty() => window_count(b, side as u8).and_then(|n| face_hud.counts.get(n as usize)),
-        None if b.looks[side & 1].window_count => hud.counts.get(face.count as usize).or(Some(&hud.count_box)),
-        None => Some(&hud.count_box),
+    let (tiles, count) = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
+        Some(own) => (Some(own), None),
+        None if face_hud.count_box.is_empty() => {
+            let n = window_count(b, side as u8).map(|n| n as usize);
+            (n.and_then(|n| face_hud.counts.get(n)), n.filter(|&n| n < face_hud.counts.len()).map(|n| (face_hud, n)))
+        }
+        None if b.looks[side & 1].window_count => {
+            let n = face.count as usize;
+            (hud.counts.get(n).or(Some(&hud.count_box)), (n < hud.counts.len()).then_some((hud, n)))
+        }
+        None => (Some(&hud.count_box), None),
+    };
+    // In the enhanced mode a count in the numbers' font on the empty box
+    // (the counts' own box, their digits taken off: `count_blank`; the HUD's
+    // box without a count is another picture).
+    let number = count.and_then(|(h, n)| count_number(&h.counts, n, &pal, (x + 32, EMOTION_WINDOW_Y), text));
+    let tiles = match (&number, tiles) {
+        (Some(_), Some(_)) => Some(&shared.count_blank),
+        (_, tiles) => tiles,
     };
     if let Some(tiles) = tiles {
         out.push(block(tiles, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
     }
     note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), x, problems);
+    number
+}
+
+/// The empty box of the emotion window's counts (16x16 each): where they
+/// all have one color, that; where they differ (their digits' place), the
+/// color most of those pixels are, the box's own behind the digits.
+fn count_blank(counts: &[Tiles]) -> crate::lettering::Picture {
+    let pictures: Vec<crate::lettering::Picture> = count_boxes(counts).into_iter().map(|t| crate::lettering::Picture::grid(&counts[t], 0, 2, 2)).collect();
+    if pictures.is_empty() {
+        return crate::lettering::Picture { w: 16, h: 16, pixels: vec![0; 256] };
+    }
+    let varies = |i: usize| pictures.iter().any(|p| p.pixels[i] != pictures[0].pixels[i]);
+    let mut seen = [0usize; 16];
+    for i in (0..256).filter(|&i| varies(i)) {
+        pictures.iter().for_each(|p| seen[p.pixels[i] as usize & 15] += 1);
+    }
+    let behind = (0..16u8).max_by_key(|&c| seen[c as usize]).unwrap_or(0);
+    let pixels = (0..256).map(|i| if varies(i) { behind } else { pictures[0].pixels[i] }).collect();
+    crate::lettering::Picture { w: 16, h: 16, pixels }
+}
+
+/// The counts that are one box with a number in it: those whose edges (the
+/// first and last rows and columns) are the first count's (EXE6's last two
+/// are other boxes).
+fn count_boxes(counts: &[Tiles]) -> Vec<usize> {
+    let pictures: Vec<crate::lettering::Picture> = counts.iter().map(|t| crate::lettering::Picture::grid(t, 0, 2, 2)).collect();
+    let edge = |p: &crate::lettering::Picture| -> Vec<u8> { (0..256).filter(|i| i / 16 == 0 || i / 16 == 15 || i % 16 == 0 || i % 16 == 15).map(|i| p.pixels[i]).collect() };
+    let Some(first) = pictures.first() else { return Vec::new() };
+    (0..pictures.len()).filter(|&k| edge(&pictures[k]) == edge(first)).collect()
+}
+
+/// The emotion window's count `n` in the numbers' font, if the text layer
+/// draws numbers: its digits fitted to the boxes the counts' digits fill
+/// (each a single digit's: the union of theirs; a count of two digits, its
+/// own two, apart by the clear columns between them), in their colors in
+/// `palette`, on the box at (x, y).
+fn count_number(counts: &[Tiles], n: usize, palette: &Palette, (x, y): (i32, i32), text: &TextSink) -> Option<TextItem> {
+    let chars = n.to_string();
+    if !text.draws_numbers() || !crate::numbers::font().covers(&chars) || !count_boxes(counts).contains(&n) {
+        return None;
+    }
+    let blank = count_blank(counts);
+    // A count's digits: its pixels that aren't the box's.
+    let ink = |m: usize| -> Option<crate::lettering::Picture> {
+        let p = crate::lettering::Picture::grid(counts.get(m)?, 0, 2, 2);
+        let pixels = p.pixels.iter().zip(&blank.pixels).map(|(&v, &b)| if v == b { 0 } else { v }).collect();
+        Some(crate::lettering::Picture { pixels, ..p })
+    };
+    let bounds = |p: &crate::lettering::Picture, (from, to): (usize, usize)| -> Option<[i32; 4]> {
+        let inked = |x: usize, y: usize| (from..to).contains(&x) && p.pixels[y * 16 + x] != 0;
+        let xs: Vec<usize> = (0..16).filter(|&x| (0..16).any(|y| inked(x, y))).collect();
+        let ys: Vec<usize> = (0..16).filter(|&y| (0..16).any(|x| inked(x, y))).collect();
+        let (x0, x1, y0, y1) = (*xs.first()?, *xs.last()?, *ys.first()?, *ys.last()?);
+        Some([x0 as i32, y0 as i32, (x1 - x0 + 1) as i32, (y1 - y0 + 1) as i32])
+    };
+    let union = |a: [i32; 4], b: [i32; 4]| {
+        let (x0, y0) = (a[0].min(b[0]), a[1].min(b[1]));
+        [x0, y0, (a[0] + a[2]).max(b[0] + b[2]) - x0, (a[1] + a[3]).max(b[1] + b[3]) - y0]
+    };
+    let this = ink(n)?;
+    // (A box with no number: the picture.)
+    if this.pixels.iter().all(|&v| v == 0) {
+        return None;
+    }
+    let boxes: Vec<[i32; 4]> = if chars.len() == 1 {
+        let single = count_boxes(counts).into_iter().filter(|&m| m.to_string().len() == 1).filter_map(|m| bounds(&ink(m)?, (0, 16))).reduce(union)?;
+        vec![single]
+    } else {
+        // The count's own columns, in runs apart by clear ones.
+        let columns: Vec<usize> = (0..16).filter(|&x| (0..16).any(|y| this.pixels[y * 16 + x] != 0)).collect();
+        let mut runs: Vec<(usize, usize)> = Vec::new();
+        for c in columns {
+            match runs.last_mut() {
+                Some(r) if r.1 == c => r.1 = c + 1,
+                _ => runs.push((c, c + 1)),
+            }
+        }
+        if runs.len() != chars.len() {
+            return None;
+        }
+        runs.iter().map(|&r| bounds(&this, r)).collect::<Option<_>>()?
+    };
+    let l = crate::lettering::letters(&this, |v| v == 0, crate::lettering::Capitals::All)?;
+    let color = |c: u8| palette[c as usize & 15];
+    let glyphs = chars.chars().zip(boxes).map(|(c, b)| (c, b.map(|v| v as f32))).collect();
+    let fitted = crate::numbers::Fitted { glyphs, fill: l.fill.iter().map(|&c| color(c)).collect(), rim: l.rim.map(color), shadow: l.shadow.map(color) };
+    Some(TextItem::fitted(fitted, Rect::new(x, y, 16, 16)))
 }
 
 /// The emotion window's palette (sprite palette 12: `byte_30016D0`) as
@@ -1972,13 +2093,23 @@ fn name_parts<'a>(
         x += 8;
     }
     x = after;
-    // In the enhanced mode the numbers in the lettering font, in their
-    // glyphs' looks, from where the original's start, with blank parts in
-    // their glyphs' places.
-    let numbers = (!damage.is_empty())
-        .then(|| NumberSets::of(style.numbers, (style.digit, style.plus, style.times), &pal, text))
-        .flatten()
-        .and_then(|looks| looks.items(text, (number, bonus_value, doubled), (after, y)));
+    // In the enhanced mode the numbers in the numbers' font, in their
+    // glyphs' looks, with blank parts in their glyphs' places. With the
+    // name on the text layer they follow it a pixel after its words, as the
+    // hand window's do, and the two are centered where the original's name
+    // and numbers are (its name's glyphs fill their cells; the text layer's
+    // words, narrower, centered in them, stood apart from the numbers).
+    let sets = (!damage.is_empty()).then(|| NumberSets::of(style.numbers, (style.digit, style.plus, style.times), &pal, text)).flatten();
+    let mut at = after;
+    if let (Some(item), true) = (items.first_mut(), sets.is_some())
+        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
+    {
+        let shown = w.ceil() as i32 + 1 + 8 * (damage.len() + bonus.len()) as i32;
+        let start = item.rect.x + (8 * width - shown) / 2;
+        *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
+        at = start + w.ceil() as i32 + 1;
+    }
+    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y)));
     let lettered = numbers.is_some();
     if let Some((numbers, _)) = numbers {
         items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
