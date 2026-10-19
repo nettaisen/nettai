@@ -1730,9 +1730,11 @@ stretched to its box, then "chip code and chip window damage should probably be 
 - **One kind of pixel a layer** (the user, of the pack's files: "why do the extracted masks have shuffle
   underimposed?", "it doesn't seem like it's a pure text extraction"). A panel picture's layer had been every pixel
   where it differs from the shared panel by index, with a mask of its letters: the bit planes' other words in the
-  panel's own colors showed as ghosts. A picture now has its letters (its words' ink alone), its own pixels (those
-  bit planes, both modes) and its own panel (departures only the original shows) as layers of their own, no masks;
-  the frames are the same, Original and Enhanced.
+  panel's own colors showed as ghosts. A picture now has its letters (its words' ink alone) and its own panel
+  (departures only the original shows) as layers of their own, no masks. The bit planes' pixels take the shared
+  panel's index where every palette the picture is drawn in shows the two alike (all of them: "can you not remove
+  them?"), and a name's few bar pixels that differ from the shared bar are in its letters ("fold into letters"). The
+  Original frames are the same; the pictures compose to the ROM's colors, not all its indices.
 - **Not lettered.** A chip window picture is a lettered panel only where its panel's and frame's colors are two thirds
   of it or more: the buttons' art with their names over it (EXE6's TRASH CHUTE / DUST SHOOT and Beast Out, EXE5's soul
   and Arm Change) have no letters and no blank; no strings had words for them.
