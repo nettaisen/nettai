@@ -644,7 +644,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
   at)`), whose Back comes back here with it still chosen (renamed there, by its new name: `play::follow_rename`,
-  which Practice's visit follows too); the editor's header has PRACTICE (design §2.86: `Builds::practice`),
+  which Practice's visit follows too); the editor's tab bar ends in PRACTICE (a phone's Navi tab has it under the ruleset; design §2.86:
+  `Builds::practice`),
   straight into a practice battle on it (`screens::practice::open`, by the build's name), whose EXIT comes back to
   the editor on it (`practice::go_back`, §15). With no build of the
   game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, EDIT and ⋯
@@ -2241,7 +2242,7 @@ The pass has nothing of the player's to go by: its settings are the defaults, an
 outside its own walk are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through
 Play as a player makes them, and Replays lists replays of the pass's own.
 
-**Practice's steps** (`tour/practice.rs`) walk the editor's PRACTICE (Play's EDIT, then the header's; the two cards, then the battle with the practice
+**Practice's steps** (`tour/practice.rs`) walk the editor's PRACTICE (`practice::open`, as it opens Practice; the two cards, then the battle with the practice
 menu open over it as it starts, the focus on RESUME, a step checking both), the menu's Dummy's build (a value
 apart, the set started over; its list; a list of 24 names, scrolled), the battle, and the practice menu (each
 Battle row with its value changed, a pair apart; the Arena's and Background's grids and Music's list, and a
