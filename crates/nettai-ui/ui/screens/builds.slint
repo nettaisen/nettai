@@ -152,9 +152,9 @@ export component BuildsScreen inherits Page {
 
     rules-edit := Button {
         x: root.body-width - root.practice-width - self.width;
-        y: root.bar-y;
+        y: root.bar-y + 2px;
         width: self.natural-width;
-        height: 36px;
+        compact: true;
         visible: !Theme.phone;
         nav: Theme.phone ? "" : "ruleset-edit";
         text: Caps.of(@tr("Edit"));
@@ -171,9 +171,9 @@ export component BuildsScreen inherits Page {
 
     practice-button := Button {
         x: root.body-width - self.width;
-        y: root.bar-y;
+        y: root.bar-y + 2px;
         width: self.natural-width;
-        height: 36px;
+        compact: true;
         visible: !Theme.phone && root.practice;
         nav: !Theme.phone && root.practice ? "practice" : "";
         text: Caps.of(@tr("Practice"));
