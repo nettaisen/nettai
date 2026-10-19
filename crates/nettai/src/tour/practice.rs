@@ -195,7 +195,7 @@ fn practice_from_play(app: &mut App, held: bool) {
     app.shell.hold_cards = held;
     let Some(game) = app.shell.game().map(str::to_string) else { return };
     let name = crate::screens::play::remembered(&app.shell, &game).unwrap_or_default();
-    practice::open(&mut app.shell, &game, &name);
+    practice::open(&mut app.shell, &game, &name, 0);
 }
 
 /// Practice's steps of one language at one size.
@@ -456,7 +456,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             forget(&mut app);
             app.shell.practice.tour_files = true;
             app.shell.hold_cards = false;
-            practice::open(&mut app.shell, &game, &first);
+            // (As pressed on the Folder tab, which the EXIT below comes back to.)
+            practice::open(&mut app.shell, &game, &first, 1);
             app.go_now(ScreenId::Practice);
         }),
     );
@@ -491,7 +492,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         ),
     );
     shot(add, "practice-menu-edited", lang, size, Differs::Unheld, false);
-    // EXIT: the editor on the player's build (the first), which the editor's PRACTICE came from, its header's
+    // EXIT: the editor on the player's build (the first) and the tab PRACTICE was pressed on (the Folder's), its
     // PRACTICE there and Back going to Play.
     add(SETTLE, focus("menu.exit", 0));
     add(SETTLE, act(Action::Confirm));
@@ -501,9 +502,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             |app, ui| {
                 let view = ui.global::<BuildsView>();
                 let first = app.shell.game().and_then(|game| store::list(game).first().map(|b| b.name.clone())).unwrap_or_default();
-                app.shell.screen() == ScreenId::Builds && !view.get_to_practice() && view.get_name() == first.as_str() && !practice::running(&app.shell)
+                app.shell.screen() == ScreenId::Builds && !view.get_to_practice() && view.get_tab() == 1 && view.get_name() == first.as_str() && !practice::running(&app.shell)
             },
-            "Builds' editor on the player's build, back from Practice's EXIT",
+            "Builds' editor on the player's build and its Folder tab, back from Practice's EXIT",
         ),
     );
     shot(add, "practice-exit-editor", lang, size, Differs::Unheld, false);
