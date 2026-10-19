@@ -3093,8 +3093,28 @@ only where even that doesn't.
 which the score's column holds; the rounds alone where the set wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
 between All and Online is there only while the game has replays of both kinds. Enter on a row watches it (a click chooses it
 and no more: WATCH starts it), E exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
-selected replay as a sheet from the bottom, with the four actions one under the other. No build's name is
-anywhere: a replay has none.
+selected replay as a sheet from the bottom, with its actions one under the other (WATCH, ADD TO QUEUE, EXPORT
+VIDEO, SHOW FILE, DELETE). No build's name is anywhere: a replay has none. The replay's menu (`more`: ⋯ after SHOW
+FILE, or `row-menu`, a right click on a row, whose press focused it first; `Shell::pick_menu`, Play's builds' kind)
+has WATCH, ADD TO QUEUE, PLAY NEXT, EXPORT VIDEO, SHOW FILE and, apart, DELETE (`MenuAction`); one that doesn't play
+has SHOW FILE and DELETE alone.
+
+**The play queue** (`screens/replays/queue.rs`, `Queue`; docs/design/app-ui.md §2.91) is the second tab
+(`ReplaysView.tab`, the editor's `TabBar`, nav `tab`). Each game has one (`Replays::queues`, by the game's id), held
+in the screen's state while the app runs and never written anywhere: no file, no settings entry. An entry is a
+replay's path in the replays folder; the queue keeps the entry watched last (`Queue::at`), after which PLAY NEXT
+puts a replay (ADD TO QUEUE puts it at the end; a replay may be there twice), and which the moves and removals
+follow. `Replays::fill_queue` makes its rows as the list's are (`ReplaysView.queue`, the same `ReplayRow`, each
+played out for its score), from the library's entries as last listed: an entry whose file isn't there any more is a
+row saying `Missing: <file>` (`ReplaysView.missing`), and one that no longer plays says why, as the list does. Both
+stay until REMOVE or CLEAR; whether each plays is its row's (`Replays::plays`: no reason), and watching passes those
+that don't by (`Queue::first_from`, `Queue::beside`). The tab: WATCH (`watch-queue`, from the first entry that
+plays) and CLEAR (`clear`, asking once, Cancel focused) over the entries (`queue`; a click chooses one, Enter
+watches the queue from it, Delete removes it); beside them the panel of the list shows the entry chosen
+(`Replays::shown_path`: its still and facts, or its file's name and that it is missing) with WATCH FROM HERE
+(`watch-from`), MOVE UP and MOVE DOWN (`move-up`, `move-down`, `IconButton`s) and, apart, REMOVE (`remove`); a
+right click on an entry opens its menu with the same. On a phone a tap on an entry opens the sheet with those four.
+ADD TO QUEUE and PLAY NEXT fly the replay's opponent's name to the QUEUE tab (`Shell::fly`).
 
 **A set of any length.** A replay keeps the match it was played from, and with it the round wins its set was first
 to (the match in nettai-match's binary: a byte, then every round's place: docs/frontend.md §8); its rounds are as
@@ -3113,24 +3133,25 @@ screen runs the ticks due, presents the picture into the window's texture if one
   the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
 - *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
-  the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, playlist,
+  the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, queue,
   footer) is over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
   (`Replays::follow_viewer`, told to `ReplaysView.hud`): within `HUD_IDLE` (2.5 s) of the last input
   (`Shell::last_input`: a key or a pad's button pressed, the window's pointer events) or of the replay's start,
   or while the replay doesn't play (`Watching::playing`), a setting is taken, the builds or the export are open,
-  or on a phone. The UI adds the pointer resting on the transport or the playlist (a `TouchArea` around each,
+  or on a phone. The UI adds the pointer resting on the transport or the queue (a `TouchArea` around each,
   whose `has-hover` its children's hover keeps). The cursor isn't drawn while the page is hidden. A click on the
   picture is PLAY's.
-- *The playlist* (`Playlist`): WATCH makes it of the list as shown, the rows whose replay plays here (each
-  with its row's data, the list's `ReplayRow`), from the one watched. The viewer shows it while it has more than
-  one, in `PlaylistPanel` (the list's rows, `compact`), the row watched scrolled into view as it shows
-  (`Nav::reveal_row`, which moves no focus). PREVIOUS and NEXT (`previous-replay`, `next-replay`; N, Shift+N)
-  and a row (`playlist`) go to that replay: the viewer is left as Back leaves it, and the replay made ready
-  behind the two cards as the first was; its speed is carried over (`carry_speed`), and the overlays already
-  were. *Autoplay next* (`autoplay`, a `Seg`) is remembered by `Settings::remembered`'s `replays.autoplay`
-  ("off"; on when absent). The viewer notes when a replay played to its end (`Watching::ended_for`: ticks ran
-  and it is there; a seek or a step to the end isn't), and the screen starts the next `NEXT_AFTER` (2 s) later,
-  unless the builds, the export or a dialog are open.
+- *The queue* (`Queue`): WATCH watches one replay (`Replays::queued` false), and the viewer shows no queue. Watched
+  from the queue (`Replays::watch_queue`, `queued`), the viewer shows it in `QueuePanel` (`ReplaysView.queued`; the
+  Queue tab's rows, `compact`), the entry watched (`ReplaysView.queue-at`, `Queue::at`) scrolled into view as it shows
+  (`Nav::reveal_row`, which moves no focus). PREVIOUS and NEXT (`previous-replay`, `next-replay`; N, Shift+N; each
+  available while an entry that plays is that way: `has-previous`, `has-next`) and a row (`queue`; a missing one is
+  refused) go to that replay: the viewer is left as Back leaves it, and the replay made ready behind the two cards
+  as the first was; its speed is carried over (`carry_speed`), and the overlays already were. Back to the list, the
+  entry watched last is the Queue tab's chosen one. *Autoplay next* (`autoplay`, a `Seg`) is remembered by
+  `Settings::remembered`'s `replays.autoplay` ("off"; on when absent). The viewer notes when a replay played to its
+  end (`Watching::ended_for`: ticks ran and it is there; a seek or a step to the end isn't), and the screen starts
+  the next that plays `NEXT_AFTER` (2 s) later, unless the builds, the export or a dialog are open.
 - *What fails, and what shows under it.* One that fails as it is opened is the error's dialog over the list
   (`Shell::fail`): its file doesn't read now (it changed since the list read it), the library refuses it, the
   engine stops making its first battle (`watch` and the cards' last step each start its set inside the library's
