@@ -96,8 +96,9 @@ graphics/
     (a button by the name its content registers it under: redeal, scrap, soul)
     form-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
     (V: falzar, gregar; a version's own look of a button: beast_out;
-    EXE6's names as layers: form-names-V-bar.png  form-names-V-bar-rows.png
-    form-names-V-portraits.png  form-names-V-letters.png)
+    EXE6's names as layers: form-names-bar.png  form-names-V-bar-rows.png
+    form-names-V-portraits.png  form-names-V-letters.png
+    form-names-V-bar-rows-L.png)
     (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
@@ -471,8 +472,10 @@ slot's, the buttons' that are panels, as the re-deal's; in every language)
 share one base, `pictures/ok.png` (the user: "ok/other/redeal actually share
 the same background"), recovered from the pictures themselves: each pixel
 the color most of them show there, of those whose letters are no nearer
-than a pixel's gap (an outline in the panel's colors lies beside them),
-else of those whose letters miss it; where every picture's letters cover it
+than a pixel's gap (an outline in the panel's colors lies beside them);
+where as many show one color as another, of all whose letters miss it,
+then its left neighbor's (EXE4's right edge had taken the Japanese OK's
+own taller body from one picture against one); where every picture's letters cover it
 (8 pixels in EXE5's and EXE6's, none in EXE4's), its row's nearest such
 pixel's. A picture's letters are wherever its color differs from the
 panel's, its outline and any of its panel that differs with them (EXE5's
@@ -482,26 +485,31 @@ so the enhanced mode shows the one panel under every picture's words. The
 extraction notes how many pixels the panels differ at, by picture.
 
 The **form list's names** (EXE6's Cross window) are layers: the bar every
-name lies on (`form-names-V-bar.png`, one name's 9x2 tiles, in every look
-alike: the yellow bar with its orange streaks, and the frame), where a
-name's own bar departs from it (`form-names-V-bar-rows.png`,
-`form_name_bar_rows`, a few pixels: a streak ending a pixel sooner), each
-name's portrait over those (`form-names-V-portraits.png`, every look's names,
-the portrait's own pixels and none elsewhere; its palette's rows are the
-names' palettes by look, `form_name_portraits`), and the letters over both
-(`form-names-V-letters.png`, `form_name_letters`; another language's at its
-own path, `form-names-V-ja.png`). The loader lays the portrait over the bar,
-and the letters over both for the original mode; the enhanced mode draws a
-name in a font over the portrait and bar. The bar is what the names show
-beside their portraits and letters (each pixel the value most of them show,
-every look and language); a portrait is the pixels joined to the name's left
-edge through pixels of no color of the bar's and no letter's; a language's
-letters are all its pixels that differ from the portrait over the bars:
-its letters and their outline (and one pixel of SPOUT's English art, whose
-bar there its Japanese art shows otherwise). What shows through a letter in
-the bar's colors is the bar's. The bar's pixels no name shows
-(behind every portrait, or under letters or portraits in every name) are
-filled from their rows; the extraction notes how many.
+name of both versions lies on (`form-names-bar.png`, each version's
+`form_names`: one name's 9x2 tiles, in every look alike, the yellow bar
+with its orange streaks, and the frame; the user: "falzar and gregar should
+have the same bar"); where a version's and language's names' own bars
+depart from it (`form-names-V-bar-rows.png`,
+`form_name_bar_rows`; another language's `form-names-V-bar-rows-L.png`, its
+`form_name_bar_rows`: a few pixels, a streak ending a pixel sooner or
+later, as the English SPOUT's does where its Japanese art's doesn't); each
+name's portrait over those (`form-names-V-portraits.png`, every look's
+names, the portrait's own pixels and none elsewhere; its palette's rows are
+the names' palettes by look, `form_name_portraits`); and the letters over
+all (`form-names-V-letters.png`, `form_name_letters`; another language's at
+its own path, `form-names-V-ja.png`). The loader lays them in that order for
+the original mode; the enhanced mode draws a name in a font over its
+portrait and bar. The bar is what the names show beside their portraits and
+letters (each pixel the value most of them show, every version, look and
+language;
+where as many show one value as another, the streak's: its left
+neighbor's); a portrait is the pixels joined to the name's left edge
+through pixels of no color of the bar's and no letter's; what shows through
+a letter in the bar's colors is the bar's; a language's letters are all its
+pixels that differ from its portraits over its bars: its letters and their
+outline (one of gray ヒート's is the ROM's index 1). The bar's pixels no
+name shows (behind every portrait, or under letters or portraits in every
+name) are filled from their rows; the extraction notes how many.
 
 A window **label**'s letters (BATTLE CHIP, CHIP SELECT, the CROSSSELECT tab
 and header, B:EXIT) are taken off its strip as every pixel, from a pixel

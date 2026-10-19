@@ -1658,6 +1658,24 @@ the bar's edge).
   many lines at that pitch (`letters::line_rows`): rows 19-36 are 19-28 and 29-36, a pitch of 10 to いません at 39. Read
   again, every other help picture of the three games' packs, in both languages, has the same lines as before (the
   packs' `letters` are identical but this picture's); the EXE4 audit has 0 problems.
+- **Colors stay palette indices** (decided 2026-10-19: do not redo). A look's colors (its face down the rows, its rim,
+  its shadow, a bar's shapes) are indices into the palette the original draws that picture with at that moment: the
+  custom window's live palette (a code's, a Cross name's under the cursor or used), the gauge's, the banners', the
+  emotion window's as its fade record leaves it. That is the lookup the original mode does for the tiles, not sampling
+  or guessing, and it keeps the cursor's flashes, the used looks and the fades exact. Resolving them to RGB per state at
+  extraction would mean listing every palette state a picture is drawn in and fading RGB again, a second palette
+  system that disagrees with the original wherever a state is missed. The content audit checks each look's indices
+  instead: every index it names is a palette entry, its fill isn't index 0 (transparent), and its rim isn't its fill.
+- **Words a font can't draw** leave a picture as it is, and that is never silent. The content audit checks every
+  lettering string against the font it is drawn in (`lookups::drawn_in`: the labels' and the gauge's word in the numbers'
+  font, the Cross names in the text font, the rest in the lettering font), and a frame that keeps a picture for a
+  missing character, or for a help picture whose lines are fewer or more than its words', says so
+  (`TextSink::lettering_in`). EXE4's, EXE5's and EXE6's Japanese "チップフォルダを / シャッフル！" stayed pixels for its
+  full-width '!' (M PLUS 1 Code has none); the strings now say "シャッフル!". The battle-mode-1 picture's words
+  (`pictures.other`: BLOCKING!) are in the strings of EXE5 and EXE6 too, so the audit covers them.
+- **Measured once.** A label's ink extent (its run stretched to its letters' columns) is measured the first frame it
+  shows and kept (`TextRenderer::ink_extent`); the fonts' kana boxes and the numbers' glyphs' ink were already measured
+  once a font. They stay measured, not constants: the text font can be the player's own.
 
 ### 12.13 Outlines, layout and the pack's pictures (2026-10-19, later)
 
@@ -1699,6 +1717,16 @@ stretched to its box, then "chip code and chip window damage should probably be 
   files now each layer is in its own picture's palette. Where two languages' letters cross on a pixel no one index
   shows as both blanks, the second language shows the base's pixel (extraction notes how many: EXE4's Japanese OK 1
   and OK-picked 2, EXE5's and EXE6's Japanese OK-picked 6, EXE6's Japanese form list names 460 and 352).
+- **Shared grounds, recovered** (later the same day; the user: "ok/other/redeal actually share the same background",
+  "for the cross bar, you should mask out the cross portrait then superimpose it over the yellow bar", "falzar and
+  gregar should have the same bar"). The chip window's panels with words, every picture and language, share one
+  panel; the Cross names of both versions lie on one bar, each with its portrait as a layer of its own; a picture's or
+  name's letters are what differs from those, so its layer holds its letters and their outline and nothing of the
+  ground. Both grounds are what most pictures show where their letters aren't (asset-formats.md, "Lettered
+  pictures"), never one picture against one other: EXE4's panel had taken a pixel of its Japanese OK's taller body at
+  its right edge, a tie of one picture each, now broken by every picture whose letters miss it. The crossing pixels
+  above are gone with them. A window label's letters are every pixel of its strip off the row's ground, so EXE6's
+  CHIP SELECT loses the lighter dot in its P that had been smeared into the strip.
 - **Not lettered.** A chip window picture is a lettered panel only where its panel's and frame's colors are two thirds
   of it or more: the buttons' art with their names over it (EXE6's TRASH CHUTE / DUST SHOOT and Beast Out, EXE5's soul
   and Arm Change) have no letters and no blank; no strings had words for them.
