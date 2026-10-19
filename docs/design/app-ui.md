@@ -1464,7 +1464,7 @@ Each is settled unless the user changes it.
       list, the entry chosen with its still and facts and WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart, REMOVE. Enter
       on an entry watches the queue from it (a click chooses it, as in the list); Delete removes it (its file stays);
       the footer counts the entries. On a phone a tap on an entry opens its sheet with those four.
-    - *Adding:* WATCH's arrow (§2.92: ADD TO QUEUE at the end, ADD TO START OF QUEUE at the start, what plays next),
+    - *Adding:* WATCH's arrow (§2.92: ADD TO QUEUE at the end, PLAY NEXT at the start, what plays next),
       or a replay's menu, a right click on its row (Play's builds' kind: `pick_menu`): WATCH, ADD TO QUEUE, ADD TO
       START OF QUEUE, EXPORT VIDEO, SHOW FILE and, apart, DELETE; one that doesn't play has SHOW FILE and DELETE
       alone. Its opponent's name flies to the QUEUE tab. A replay may be in the queue more than once. A phone's sheet
@@ -1501,13 +1501,19 @@ Each is settled unless the user changes it.
       the ones before it passed. While it is open the viewer's controls stay and Autoplay next waits.
     - *A split WATCH.* The selected replay's ⋯, which restated the panel's buttons, is gone. WATCH has an amber
       arrow at its right, 2 from it, whose menu opens under the two from WATCH's left edge: ADD TO QUEUE (at the
-      end) and ADD TO START OF QUEUE (in place of PLAY NEXT: the start is what plays next, now that played replays
+      end) and PLAY NEXT (adding at the start: the start is what plays next, now that played replays
       leave). A phone's sheet has the same arrow by WATCH, its menu the picker's sheet. A right click on a row keeps
-      its menu (WATCH, ADD TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO, SHOW FILE, DELETE): the list's rows have no
+      its menu (WATCH, ADD TO QUEUE, PLAY NEXT, EXPORT VIDEO, SHOW FILE, DELETE): the list's rows have no
       buttons of their own, and a right click is where a desktop looks for them. The Queue tab's entries keep their
       actions.
-    - *Japanese:* ADD TO START OF QUEUE 再生キューの先頭に追加, UP NEXT 次に再生, "Nothing else is in the queue."
+    - *Japanese:* PLAY NEXT 次に再生, UP NEXT このあと再生, "Nothing else is in the queue."
       再生キューに次のリプレイはありません。
+93. **The Queue tab while the queue holds something; a split button's cut on its arrow; PLAY NEXT** (2026-10-19). The
+    user: "if the queue is empty, hide the queue tab. also if a button has an arrow button, the right side of the
+    button itself should not be notched but the arrow should be", then "also \"add to start of queue\" is too long".
+    The Queue tab is in the tab bar only while the queue holds a replay; emptied (REMOVE, CLEAR, or played out), the
+    Replays tab is chosen. WATCH's right side is square (`Button`'s `square`), its arrow keeps the cut, so the two
+    read as one button. ADD TO START OF QUEUE is PLAY NEXT again (次に再生; UP NEXT is このあと再生).
 
 ## 3. Chosen where the user gave no answer
 
@@ -2040,8 +2046,8 @@ DUPLICATE and DELETE.
 - **The tabs:** REPLAYS and QUEUE (§2.91) over the list.
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the
   date, the opponent, the score, the length; beside it the selected replay with WATCH and its arrow (ADD TO QUEUE,
-  ADD TO START OF QUEUE: §2.92), EXPORT VIDEO, SHOW FILE and, apart, DELETE; a right click on a row opens its menu
-  (WATCH, ADD TO QUEUE, ADD TO START OF QUEUE, EXPORT VIDEO, SHOW FILE, DELETE). No build names (§2.16). A click chooses a replay and doesn't start it (the user: "clicking on a replay
+  PLAY NEXT: §2.92), EXPORT VIDEO, SHOW FILE and, apart, DELETE; a right click on a row opens its menu
+  (WATCH, ADD TO QUEUE, PLAY NEXT, EXPORT VIDEO, SHOW FILE, DELETE). No build names (§2.16). A click chooses a replay and doesn't start it (the user: "clicking on a replay
   shouldn't automatically start it"); WATCH, Enter or the pad's A watches that one replay.
 - **The queue:** the play queue, the selected game's, kept while the app runs and never saved (§2.91): WATCH (from
   its start) and CLEAR over its entries, the list's rows (a missing one says so); beside them the entry chosen with
