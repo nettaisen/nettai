@@ -1418,7 +1418,9 @@ the banner graphic for enhanced mode", "you should use high res rendering for CR
 "what about the hp numbers and the ???? trap. also the numbers sould really be fixed width. also yes do that too"
 (CHIP SELECT and B:EXIT), "the number font should match the original font more", "i like bungee" (of a second font
 audition for the numbers), "the ???? trap font should use the telop font", "also the emotion window counter should also
-use the number font. also the chip text looks misaligned sometimes?" and "the colforce one looks wrong".
+use the number font. also the chip text looks misaligned sometimes?" and "the colforce one looks wrong"; then "also
+the chip letters and the text in the cross select screen", "i would prefer the same font for the cross names in en and
+jp" and "yes do that use murecho" (§12.11).
 
 All of it is the enhanced graphics' alone: the original mode draws the pictures as before, byte for byte (§12.9), and
 nothing here reaches the simulation, its snapshot or `Content::hash()`.
@@ -1427,9 +1429,9 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 
 | Font | What it draws | Cut | File |
 |---|---|---|---|
-| Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks | 700, 300 | `crates/nettai-render/fonts/murecho` |
+| Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
-| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2"; the window's labels (§12.6: "pick bungee") | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2"; the window's labels (§12.6: "pick bungee"); the chip codes (§12.11) | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
 
 The three are compiled in (`vfont::LETTERING`, `numbers::FONT`; Bungee is 119 KB, M PLUS 1 Code 3.9 MB, which the
 UI's Slint bundle also embeds). nettai's build script lists each with its `OFL.txt` in the licenses
@@ -1453,8 +1455,10 @@ apart (`GlyphKey::lettering`).
 | Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
 | Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Bungee (§12.4) |
 | HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
+| Chip codes (A to Z, `*`: the chip window's, the hand's under the slots) | yes | yes | yes | Bungee, fitted to the code's glyph's box, its colors (§12.11) |
+| The Cross window's names (SPOUT ... CHRG, アクア ... チャージ) | yes | (no Crosses) | (no Crosses) | Murecho 900 in both languages, white or gray with the bar's dark outline, on the bar rebuilt from its colors (§12.11) |
 
-Left pixel art, as agreed: the buttons (SHUFFLE, UNITE / uni son, ARM, BLOCK), OK, the Cross window's plates and names,
+Left pixel art, as agreed: the buttons (SHUFFLE, UNITE / uni son, ARM, BLOCK), OK, the Cross window's plates and faces,
 the logos (PrgAdvance, ADVANCE, ARM CHANGE, TRASH CHUTE, DUST SHOOT), the hidden chip's "?" icon (a '?' on a framed
 plate: art around it), and chip art, character sprites and backgrounds.
 
@@ -1512,7 +1516,8 @@ cell, each where the picture's was, right-aligned numbers ending where they did.
 The words are each game's text table `lettering` in `locales/{en,ja}.toml` (declared in its manifest's `text`): display
 text, outside the hash, each player's own language. Keys: `banner.ASSET` (`{n}` the number), `pause`, `waiting`,
 `gauge.custom`, `gauge.l-or-r`, `turn-limit`, `pictures.NAME.title` and `.words` (the help pictures, by the chip
-window's picture: `ok`, `ok-picked`, a button's name), `window.NAME` (the window's labels). A picture with no words
+window's picture: `ok`, `ok-picked`, a button's name), `window.NAME` (the window's labels), `crosses.FORM` (EXE6's
+Cross names, by the form's key: §12.11). A picture with no words
 in the table (the US Program Advance's logo) is drawn as a picture.
 
 - Words the four ROMs of a game show alike are the English words in `ja.toml` too (BATTLE START!, PAUSE, CUSTOM, FINAL
@@ -1574,9 +1579,41 @@ twice, judge-win around its custom screens and its end twice, pause, soundmod's 
 Japanese, atk10; EXE5 judge-win twice and ko-win-netbattle; EXE4 time-up-doubled-side1 twice, pause, ko-cannon). The
 original mode never measures a picture, never asks the strings for lettering, and draws the labels' tiles untouched.
 
+For the chip codes and the Cross names (§12.11), main at 9deacee5f against this one, the same way: 20 runs, about
+18,600 frames, 0 differing: the runs above (machgun in Japanese only) and cross-window-keys in Japanese, Gregar's
+cross-window-keys in both languages, EXE4's custom/one-code and EXE5's custom/picks.
+
 ### 12.10 Left open
 
 - The app's preload makes the names' and descriptions' glyphs ahead (§9.10); the lettering's and the numbers' are made
   the first time a picture shows them.
 - EXE6's Ⓛ and Ⓡ are the lettering font's circled letters (outlines), where the original's are filled badges.
 - The Japanese Program Advance's katakana are upright, where the original's lean.
+
+### 12.11 The chip codes and the Cross names
+
+The user: "also the chip letters and the text in the cross select screen", then, of a first build in M PLUS 1 Code
+for the Japanese names and Bungee for the English, "i would prefer the same font for the cross names in en and jp"
+and "yes do that use murecho".
+
+- **Chip codes.** Wherever the window puts a code's glyph (`custom/codes.png` in the chip window, `custom/slot-codes.png`
+  under the hand's slots; A to Z and `*`, not the special codes past them), its letter is taken off the cell and drawn in
+  Bungee fitted to the box the glyph's face fills, in its colors (row by row) and its rim or shadow, where it stood, in
+  every palette the window gives it. The cell's ground is its most common color and any color filling a whole side of
+  it (the slots' frame: `lettering::ground_of`); the chip window's letters touch their cell's sides, so a color merely
+  on the edge is no ground. The same in every language and game (EXE4's, EXE5's and EXE6's windows).
+- **The Cross names.** EXE6's Cross window shows each Cross's face and name on an orange bar (`form-names-falzar`,
+  `-gregar` and their `-ja`, a look under the cursor and a gray one). The words are the strings' `crosses.FORM`
+  (the ROMs' short names: SPOUT, THAWK, TENGU, GRND, DUST; HEAT, ELEC, SLASH, ERASE, CHRG; アクア, トマホーク, テング,
+  グランド, ダスト; ヒート, エレキ, スラッシュ, キラー, チャージ), each version's own. The letters are found on the
+  picture's first look (`lettering::enclosed_letters`): their outlines are the pixels of the bar's edge color not
+  joined to the bar's edge, and the letters are those and what they enclose; the first look is read since the gray
+  look's face draws pixels of the outline's color. Their pixels, in the look shown, become the nearest pixel on their
+  row that is neither letter nor outline (the bar's own colors: no picture added), and the name is drawn as text over
+  their span and capitals' rows, its width fitted to the span, the fill the face's colors in that look (white under the
+  cursor, gray otherwise) and a rim of the outline's color. The font is one setting in `custom.rs`
+  (`CROSS_NAME_FONT`, `CROSS_NAME_WEIGHT`: the text font, Murecho, at 900), for both languages; the face stays the
+  picture's.
+- Looked at: the chip window's A and `*` and the hand's codes (EXE6 chips/0x001-cannon/atk10, EXE4
+  custom/one-code), the Cross window under the cursor and not, in English and Japanese, Falzar
+  (custom/cross-window-keys) and Gregar (gregar-console/custom/cross-window-keys).

@@ -16,7 +16,7 @@ use crate::compose::{Affine, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
-use crate::vfont::{Lettering, Role};
+use crate::vfont::{Lettering, LetteringFont, Role};
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
@@ -665,6 +665,15 @@ struct Window {
     /// each one's cells (their first column, row and how many columns) and
     /// its words from the cells' top left, the letters taken off the tiles.
     labels: Vec<(usize, usize, usize, TextItem)>,
+    /// The chip codes the window shows (the chip window's, the slots'):
+    /// each one's tiles (the first, how many) and its letter, for the
+    /// enhanced mode to draw in the numbers' font (`letter_codes`).
+    codes: Vec<(u16, u16, char)>,
+    /// The form list's names it shows: each one's first tile, its form and
+    /// its name's picture in its first look (the one under the cursor,
+    /// whose Cross's face has no outline color: `letter_form_names` reads the
+    /// letters off it).
+    form_name_tiles: Vec<(u16, FormHandle, crate::lettering::Picture)>,
     /// Where the blocks go among the layer's tile numbers (the pack's).
     layout: nettai_assets::CustomLayout,
 }
@@ -746,6 +755,8 @@ impl Window {
             help_lines: Vec::new(),
             damage: None,
             labels: Vec::new(),
+            codes: Vec::new(),
+            form_name_tiles: Vec::new(),
             layout: a.layout,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
@@ -796,7 +807,125 @@ impl Window {
             // window's columns: drawn on the layer apart).
         }
         w.letter_labels(v, text);
+        w.letter_codes(text);
+        w.letter_form_names(v, text);
         w
+    }
+
+    /// In the enhanced mode, the chip codes the window shows (`codes`) in
+    /// the numbers' font (the user: "also the chip letters"): each code's
+    /// letter taken off its cell (the cell's own colors: its most common and
+    /// those filling a whole side, each letter pixel the nearest of them on
+    /// its row) and
+    /// drawn fitted to the box the picture's letter fills, in its colors and
+    /// its rim or shadow, where it stood.
+    fn letter_codes(&mut self, text: &TextSink) {
+        if !text.draws_numbers() {
+            return;
+        }
+        for (first, count, code) in std::mem::take(&mut self.codes) {
+            let words = code.to_string();
+            if !crate::numbers::font().covers(&words) {
+                continue;
+            }
+            let Some(block) = self.block(first..first + count) else { continue };
+            let picture = block.picture(&self.tiles);
+            let palette = self.palettes[block.palette as usize & 15];
+            let ground = crate::lettering::ground_of(&picture);
+            let is_ground = |v: u8| ground.contains(&v);
+            let Some(l) = crate::lettering::letters(&picture, is_ground, crate::lettering::Capitals::All) else { continue };
+            let line = l.rim.or(l.shadow);
+            let face = |x: usize, y: usize| {
+                let v = picture.pixels[y * picture.w + x];
+                !is_ground(v) && Some(v) != line
+            };
+            let xs: Vec<usize> = (0..picture.w).filter(|&x| (0..picture.h).any(|y| face(x, y))).collect();
+            let ys: Vec<usize> = (0..picture.h).filter(|&y| (0..picture.w).any(|x| face(x, y))).collect();
+            let (Some(&x0), Some(&x1), Some(&y0), Some(&y1)) = (xs.first(), xs.last(), ys.first(), ys.last()) else { continue };
+            block.put(&crate::lettering::erased(&picture, is_ground), &mut self.tiles);
+            let color = |c: u8| palette[c as usize & 15];
+            let glyph = (code, [x0 as f32, y0 as f32, (x1 + 1 - x0) as f32, (y1 + 1 - y0) as f32]);
+            let fitted = crate::numbers::Fitted { glyphs: vec![glyph], fill: l.fill.iter().map(|&c| color(c)).collect(), rim: l.rim.map(color), shadow: l.shadow.map(color) };
+            let item = TextItem::fitted(fitted, Rect::new(0, 0, picture.w as i32, picture.h as i32));
+            self.labels.push((block.col, block.row, block.w, item));
+        }
+    }
+
+    /// In the enhanced mode, the form list's names (`form_name_tiles`: EXE6's
+    /// Crosses' on their bars, the user: "also ... the text in the cross
+    /// select screen") as text, where the strings have them (`crosses.FORM`,
+    /// the ROMs' short names): their letters (the outlines the bar's own
+    /// edge color draws apart from the bar, and what they enclose) taken
+    /// off the bar, each pixel the bar's color nearest it on its row, and the
+    /// words drawn in their look (their face's colors, a rim in the outline's
+    /// color) over their span, in one font for both languages
+    /// (`CROSS_NAME_FONT`, `CROSS_NAME_WEIGHT`), as wide and as tall as the
+    /// picture's letters. The Cross's face stays the picture's.
+    fn letter_form_names(&mut self, v: &View, text: &TextSink) {
+        if !text.draws_numbers() {
+            return;
+        }
+        for (first, form, first_look) in std::mem::take(&mut self.form_name_tiles) {
+            let key = format!("crosses.{}", nettai_content_api::keys::local(&v.b.content.defs.form(form).key));
+            let Some(words) = text.strings.lettering(&v.b.content, &key) else { continue };
+            let Some(block) = self.block(first..first + FORM_NAME_TILES as u16) else { continue };
+            let picture = block.picture(&self.tiles);
+            let palette = self.palettes[block.palette as usize & 15];
+            // (Where the letters are: the first look's, the same letters,
+            // whose Cross's face draws no pixel of the outline's color, as the
+            // other look's grayed face does.)
+            let Some(found) = crate::lettering::enclosed_letters(&first_look).filter(|_| first_look.w == picture.w && first_look.h == picture.h) else { continue };
+            let is_face = |x: usize, y: usize| found.mask[y * picture.w + x] && picture.pixels[y * picture.w + x] != found.outline;
+            let rows: Vec<usize> = (0..picture.h).filter(|&y| (0..picture.w).any(|x| is_face(x, y))).collect();
+            let columns: Vec<usize> = (0..picture.w).filter(|&x| (0..picture.h).any(|y| is_face(x, y))).collect();
+            let (Some(&row0), Some(&row1), Some(&col0), Some(&col1)) = (rows.first(), rows.last(), columns.first(), columns.last()) else { continue };
+            // The face's color on each of its rows.
+            let fill: Vec<u16> = (row0..=row1)
+                .map(|y| {
+                    let mut seen = [0usize; 16];
+                    (0..picture.w).filter(|&x| is_face(x, y)).for_each(|x| seen[picture.pixels[y * picture.w + x] as usize & 15] += 1);
+                    palette[(0..16).max_by_key(|&c| seen[c]).unwrap_or(0)]
+                })
+                .collect();
+            let rim = Some(palette[found.outline as usize & 15]);
+            // One font for both languages (the user: "i would prefer the same
+            // font for the cross names in en and jp", then "yes do that use
+            // murecho"), as wide and as tall as the picture's letters.
+            let covered = match CROSS_NAME_FONT {
+                LetteringFont::Text => text.takes(words),
+                LetteringFont::Display => text.takes_lettering(words),
+            };
+            if !covered {
+                continue;
+            }
+            let cap = (row1 + 1 - row0) as u8;
+            let lettering = Lettering { weight: CROSS_NAME_WEIGHT, font: CROSS_NAME_FONT, ..Lettering::wide(row0 as u8, cap) };
+            let span = (col1 + 1 - col0) as f32;
+            let Some(natural) = text.fitted_width(words, Role::Lettering(lettering), 10_000) else { continue };
+            let width = (100.0 * span / natural.max(1.0)).round().clamp(40.0, 200.0) as u8;
+            let role = Role::Lettering(Lettering { width, ..lettering });
+            let item = TextItem::new(words, role, Rect::new(col0 as i32, 0, (col1 + 1 - col0) as i32, picture.h as i32), fill[0], None);
+            let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim }), ..item };
+            let is_letter = |v: usize| found.mask[v];
+            let mut erased = picture.clone();
+            for y in 0..picture.h {
+                for x in (0..picture.w).filter(|&x| is_letter(y * picture.w + x)) {
+                    // (The bar's own pixels only: neither a letter's nor its
+                    // edge's.)
+                    let source = |i: usize| !is_letter(y * picture.w + i) && picture.pixels[y * picture.w + i] != found.outline;
+                    let left = (0..x).rev().find(|&i| source(i)).map(|i| (x - i, picture.pixels[y * picture.w + i]));
+                    let right = (x + 1..picture.w).find(|&i| source(i)).map(|i| (i - x, picture.pixels[y * picture.w + i]));
+                    if let Some(n) = match (left, right) {
+                        (Some(l), Some(r)) => Some(if r.0 < l.0 { r.1 } else { l.1 }),
+                        (l, r) => l.or(r).map(|n| n.1),
+                    } {
+                        erased.pixels[y * picture.w + x] = n;
+                    }
+                }
+            }
+            block.put(&erased, &mut self.tiles);
+            self.labels.push((block.col, block.row, block.w, item));
+        }
     }
 
     /// In the enhanced mode, the window's labels its map shows (the pack's
@@ -1006,6 +1135,10 @@ impl Window {
             let name = number + if slot == w.cursor as usize { 0 } else { 5 };
             let at = self.layout.form_names + (FORM_NAME_TILES * slot) as u16;
             self.tiles.put_part(at, &own.form_names, FORM_NAME_TILES * name, FORM_NAME_TILES);
+            if let Some(form) = w.forms[slot] {
+                let first_look = crate::lettering::Picture::grid(&own.form_names, FORM_NAME_TILES * number, 9, 2);
+                self.form_name_tiles.push((at, form, first_look));
+            }
             for i in 0..FORM_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
@@ -1126,6 +1259,9 @@ impl Window {
         self.palettes[9] = self.frame_palette(v, Some(c), problems);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(self.layout.code, &a.codes, 2 * code, 2);
+        if let Some(letter) = code_letter(c.code.0) {
+            self.codes.push((self.layout.code, 2, letter));
+        }
         let family = data.family.0 as usize;
         if family < a.element_colors.len() {
             self.tiles.put_part(self.layout.element, &a.elements, 4 * family, 4);
@@ -1231,7 +1367,12 @@ impl Window {
                     // show blank.
                     match c.code.0 {
                         0x1B | 0x1C => self.tiles.fill(at + 4, 2, self.layout.slot_blank),
-                        code => self.tiles.put_part(at + 4, &a.slot_codes, 2 * code.min(EMPTY_SLOT_CODE) as usize, 2),
+                        code => {
+                            self.tiles.put_part(at + 4, &a.slot_codes, 2 * code.min(EMPTY_SLOT_CODE) as usize, 2);
+                            if let Some(letter) = code_letter(code) {
+                                self.codes.push((at + 4, 2, letter));
+                            }
+                        }
                     }
                     at += 6;
                 }
@@ -1561,7 +1702,7 @@ impl Window {
             .zip(wanted)
             .map(|(line, (words, title))| {
                 let cap = (line.baseline - line.top).clamp(1, 16) as u8;
-                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { top: 0, cap, weight: HELP_WEIGHT, width: 100 } };
+                let lettering = if title { Lettering::wide(0, cap) } else { Lettering { weight: HELP_WEIGHT, ..Lettering::wide(0, cap) } };
                 let rect = Rect::new(line.span.0, line.top, line.span.1 - line.span.0, cap as i32 + 2);
                 TextItem { align: Align::Center, ..TextItem::new(words, Role::Lettering(lettering), rect, line.color, None) }
             })
@@ -1599,6 +1740,21 @@ impl Window {
         }
     }
 }
+
+/// A chip code's letter: A to Z, then `*` (none for the special codes past
+/// it).
+fn code_letter(code: u8) -> Option<char> {
+    match code {
+        0..26 => Some(char::from(b'A' + code)),
+        26 => Some('*'),
+        _ => None,
+    }
+}
+
+/// The font of the form list's names (EXE6's Crosses'), in both languages,
+/// and its weight.
+const CROSS_NAME_FONT: LetteringFont = LetteringFont::Text;
+const CROSS_NAME_WEIGHT: u16 = 900;
 
 /// The weight of the help pictures' words (their title's is the display
 /// lettering's): the game's small letters are thin.
