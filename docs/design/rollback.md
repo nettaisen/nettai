@@ -160,7 +160,10 @@ an EXE6 link battle measured there is 32 KB.)
   and enum discriminants hash the same on 32- and 64-bit targets) with a folded 128-bit multiply;
 - a compile-time assertion requires a little-endian target (slices of integers reach the hasher as raw bytes);
 - the hasher's output is pinned by a test: changing it changes every digest;
-- peers must run the same engine build: the digest covers the state's layout, which changes with the engine.
+- peers must run the same engine's minor version (`lobby::netplay_line`: patch releases play together, a minor
+  release doesn't): the digest covers the state's layout, which changes with the engine. So a patch release must
+  not change the simulation, the state's layout, the digest or the protocol; any change of those takes a minor
+  release. (The content's hash, the protocol's version and the first round's digest at loading are still compared.)
 
 **Left out, as presentation** (the simulation never reads them): the tick's sound cues, each sprite's `Look`, the
 banner's id (`Banner::id`; its lifetime is in), the objects' `VISIBLE` header flag and who else sees them
