@@ -1482,7 +1482,7 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
     }
     let color = |c: u8| palette[c as usize & 15];
     let glyphs = chars.chars().zip(&d.glyphs).map(|(c, b)| (c, b.map(|v| v as f32))).collect();
-    let fitted = crate::numbers::Fitted { glyphs, fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color) };
+    let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), family: Vec::new(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color) };
     Some(TextItem::fitted(fitted, Rect::new(x, y, 16, 16)))
 }
 
@@ -2075,7 +2075,7 @@ impl NumberSets {
             return None;
         }
         let [digits, plus, times] = letters?.map(|d| crate::numbers::NumberSet::of(d, palette));
-        Some(NumberSets { digits, plus, times })
+        Some(NumberSets { digits, plus: plus.with_set("+"), times: times.with_set(&format!("{}2", crate::numbers::times())) })
     }
 
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where

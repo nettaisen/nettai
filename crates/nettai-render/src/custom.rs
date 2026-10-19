@@ -848,8 +848,20 @@ impl Window {
             self.tiles.put_part(first, &set.blank, 2 * glyph, 2);
             let palette = self.palettes[block.palette as usize & 15];
             let color = |c: u8| palette[c as usize & 15];
-            let [x, y, w, h] = look.face.map(|v| v as f32);
-            let fitted = crate::numbers::Fitted { glyphs: vec![(code, [x, y, w, h])], fill: look.fill.iter().map(|&c| color(c)).collect(), rim: look.rim.map(color), shadow: look.shadow.map(color) };
+            // (Each code centered in the box all the set's codes fill, the
+            // pitch the cell's; the chip window's code one family with its
+            // damage: the user, "chip code and chip window damage should
+            // probably be the same size?")
+            let Some([x, y, w, h]) = code_box(set) else { continue };
+            let family = if slot { Vec::new() } else { a.letters.digits.iter().map(|d| (crate::numbers::DIGITS.to_string(), d.face[2] as f32)).collect() };
+            let fitted = crate::numbers::Fitted {
+                glyphs: vec![(code, [x, y, w, h])],
+                set: crate::numbers::CODES.into(),
+                family,
+                fill: look.fill.iter().map(|&c| color(c)).collect(),
+                rim: look.rim.map(color),
+                shadow: look.shadow.map(color),
+            };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));
         }
@@ -1693,7 +1705,9 @@ impl Window {
         let Some(block) = self.block(self.layout.digits..self.layout.digits + 6) else { return };
         let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
         let Some(digits) = v.assets.letters.digits.as_ref() else { return };
-        let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]);
+        // (One family with the chip window's code beside it.)
+        let family = code_box(&v.assets.letters.codes).map(|b| vec![(crate::numbers::CODES.to_string(), b[2])]).unwrap_or_default();
+        let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]).with_family(family);
         let end = x + 8 * block.w as i32;
         let at = (end - crate::numbers::CELL * words.chars().count() as i32, 8 * block.row as i32);
         let Some(items) = crate::numbers::items(text, &[(words.clone(), &set)], at) else { return };
@@ -1702,6 +1716,17 @@ impl Window {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
         }
     }
+}
+
+/// The box a set of chip codes' faces fill in their cells (x, y, width,
+/// height: all of them together).
+fn code_box(set: &nettai_assets::letters::GlyphLetters) -> Option<[f32; 4]> {
+    let faces: Vec<[u8; 4]> = set.glyphs.iter().flatten().map(|g| g.face).collect();
+    let x0 = faces.iter().map(|f| f[0]).min()?;
+    let x1 = faces.iter().map(|f| f[0] + f[2]).max()?;
+    let y0 = faces.iter().map(|f| f[1]).min()?;
+    let y1 = faces.iter().map(|f| f[1] + f[3]).max()?;
+    Some([x0 as f32, y0 as f32, (x1 - x0) as f32, (y1 - y0) as f32])
 }
 
 /// Where words stand in their box, as the picture's letters stand in theirs.
