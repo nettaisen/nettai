@@ -241,7 +241,8 @@ component ReplayRowView inherits Rectangle {
     Text {
         x: 12px;
         width: root.date-width;
-        text: root.narrow ? root.replay.day : root.replay.day + " · " + root.replay.time;
+        // (A missing queue entry has no day.)
+        text: root.narrow || root.replay.day == "" ? root.replay.day : root.replay.day + " · " + root.replay.time;
         color: Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
