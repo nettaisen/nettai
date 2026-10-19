@@ -185,8 +185,8 @@ pub(super) fn forget(app: &mut App) {
     app.shell.practice.visit.leave();
 }
 
-/// Practice entered as the build editor's PRACTICE enters it (`practice::open`), on Play's chosen build, the cards
-/// held when `held`. (The pass's own builds have no files, which the editor opens: its EXIT goes to Play.)
+/// Practice entered as Play's build menu's PRACTICE enters it (`practice::open`, no editor's tab), on Play's chosen
+/// build, the cards held when `held`: its EXIT goes back to Play.
 fn practice_from_play(app: &mut App, held: bool) {
     forget(app);
     app.shell.practice.tour_files = false;
@@ -195,7 +195,7 @@ fn practice_from_play(app: &mut App, held: bool) {
     app.shell.hold_cards = held;
     let Some(game) = app.shell.game().map(str::to_string) else { return };
     let name = crate::screens::play::remembered(&app.shell, &game).unwrap_or_default();
-    practice::open(&mut app.shell, &game, &name, 0);
+    practice::open(&mut app.shell, &game, &name, None);
 }
 
 /// Practice's steps of one language at one size.
@@ -457,7 +457,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.shell.practice.tour_files = true;
             app.shell.hold_cards = false;
             // (As pressed on the Folder tab, which the EXIT below comes back to.)
-            practice::open(&mut app.shell, &game, &first, 1);
+            practice::open(&mut app.shell, &game, &first, Some(1));
             app.go_now(ScreenId::Practice);
         }),
     );

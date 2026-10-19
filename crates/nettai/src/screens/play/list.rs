@@ -36,9 +36,10 @@ fn keep(kit: &Kit, build: &Build) -> Result<(), UserError> {
     })
 }
 
-/// What the build's menu does, in its order: DELETE last, set apart.
+/// What the build's menu does, in its order: PRACTICE first, DELETE last, set apart.
 #[derive(Clone, Copy, PartialEq)]
 enum MenuAction {
+    Practice,
     Duplicate,
     Delete,
 }
@@ -66,7 +67,7 @@ impl Play {
     /// DELETE alone; with none, nothing.
     fn menu_actions(&self) -> &'static [MenuAction] {
         match (self.build(), self.chosen_build()) {
-            (_, Some(_)) => &[MenuAction::Duplicate, MenuAction::Delete],
+            (_, Some(_)) => &[MenuAction::Practice, MenuAction::Duplicate, MenuAction::Delete],
             (Some(_), None) => &[MenuAction::Delete],
             (None, None) => &[],
         }
@@ -84,6 +85,7 @@ impl Play {
         let words = actions
             .iter()
             .map(|a| match a {
+                MenuAction::Practice => view.get_practice_word(),
                 MenuAction::Duplicate => view.get_duplicate_word(),
                 MenuAction::Delete => view.get_delete_word(),
             })
@@ -96,6 +98,7 @@ impl Play {
     /// A choice of the build's menu, by its place in it.
     pub(super) fn menu_chosen(&mut self, shell: &mut Shell, choice: i32) {
         match usize::try_from(choice).ok().and_then(|at| self.menu_actions().get(at)) {
+            Some(MenuAction::Practice) => self.practice(shell),
             Some(MenuAction::Duplicate) => self.duplicate(shell),
             Some(MenuAction::Delete) => self.ask_delete(shell),
             None => {}
@@ -302,6 +305,23 @@ impl Play {
         }
         self.notice.clear();
         crate::screens::builds::open(shell, ScreenId::Play, self.chosen);
+    }
+
+    /// The menu's PRACTICE (the user: "also put practice in the dropdown menu"; the editor has it too): straight into
+    /// a practice battle, the player's build the chosen one (`practice::open`), whose EXIT comes back here with it
+    /// still chosen. One that can't be played: the reserved line says why, as HOST's does.
+    pub(super) fn practice(&mut self, shell: &mut Shell) {
+        match (self.side(shell, false), self.builds_of.clone(), self.build().map(|b| b.name().to_string())) {
+            (Ok(_), Some(game), Some(name)) => {
+                self.notice.clear();
+                crate::screens::practice::open(shell, &game, &name, None);
+            }
+            (Err(problem), _, _) => {
+                self.problem = Some(problem);
+                self.refuse_or_show(shell);
+            }
+            _ => {}
+        }
     }
 
     /// DUPLICATE: a copy of the chosen build, named for it, made for its ruleset.
