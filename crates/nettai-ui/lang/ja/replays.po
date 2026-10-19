@@ -164,6 +164,17 @@ msgstr "切り抜き"
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
+# The viewer's playlist (the list's replays, watched one after another): its name, which replay of it is watched,
+# and whether the next one starts by itself at the end of one.
+msgid "Playlist"
+msgstr "プレイリスト"
+
+msgid "Replay {} of {}"
+msgstr "リプレイ {}/{}"
+
+msgid "Autoplay next"
+msgstr "次を自動再生"
+
 # ---- The export ----
 
 msgid "Export video"

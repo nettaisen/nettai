@@ -1,7 +1,7 @@
 // Replays (docs/design/app-ui.md §6): the selected game's replays, newest first, with the selected one beside
-// them; the viewer, the picture over its transport; and the export's dialog. On a phone the list is the page,
-// the selected replay opens as a sheet from the bottom, and the viewer's controls are stacked under the
-// picture. Its Rust half is src/screens/replays.rs.
+// them; the viewer, the picture filling the window with its controls and its playlist over it; and the export's
+// dialog. On a phone the list is the page, the selected replay opens as a sheet from the bottom, and the viewer's
+// controls are stacked under the picture. Its Rust half is src/screens/replays.rs.
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
@@ -104,6 +104,15 @@ export global ReplaysView {
     in property <length> inset-y;
     in property <length> inset-width;
     in property <length> inset-height;
+    // The viewer's controls are shown over the picture (docs/design/app-ui.md §2.90): the app says when (an input
+    // lately, paused or at the end, a setting taken, the builds or the export open; always on a phone). The
+    // pointer resting on the transport or the playlist holds them too.
+    in property <bool> hud: true;
+    // The playlist (the list's replays as WATCH found them): their rows, the one watched, and whether the next
+    // starts by itself at the end of one (Autoplay next, remembered).
+    in property <[ReplayRow]> playlist;
+    in property <int> playlist-at;
+    in property <bool> autoplay: true;
 
     // ---- The export's dialog ----
     in property <bool> exporting;
@@ -183,11 +192,14 @@ export global ReplaysView {
 // ---- The list -------------------------------------------------------------------------------------------
 
 // A replay's row: the date, the opponent, the score and the length, each in a column of its own width.
+// `compact` (the viewer's playlist): the day alone in a narrower column, as a phone's.
 component ReplayRowView inherits Rectangle {
     in property <ReplayRow> replay;
     in property <string> nav;
     in property <int> nav-index;
-    property <length> date-width: Theme.phone ? 76px : 124px;
+    in property <bool> compact;
+    property <bool> narrow: Theme.phone || root.compact;
+    property <length> date-width: root.narrow ? 76px : 124px;
     property <length> score-width: Theme.phone ? 56px : 76px;
     property <length> length-width: 44px;
     property <length> rest: self.width - 36px - root.date-width;
@@ -201,7 +213,7 @@ component ReplayRowView inherits Rectangle {
     Text {
         x: 12px;
         width: root.date-width;
-        text: Theme.phone ? root.replay.day : root.replay.day + " · " + root.replay.time;
+        text: root.narrow ? root.replay.day : root.replay.day + " · " + root.replay.time;
         color: Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
@@ -865,7 +877,7 @@ component TransportButtons inherits Rectangle {
     }
 }
 
-// The transport under the picture: the time, the bar, the length; then the buttons, the round, and at the
+// The transport at the foot of the picture: the time, the bar, the length; then the buttons, the round, and at the
 // right the speed, the side watched from and the export. On a phone the bar, the buttons across, then the speed,
 // the side and the export one under the other. The times are in boxes of their own width, so the bar keeps its
 // length as the clock runs. (One component for both: the parts of the other shape are hidden and can't be
@@ -1061,58 +1073,197 @@ component Transport inherits Rectangle {
     }
 }
 
-component ViewerPage inherits Page {
-    // The picture's box: three times the frame at the reference size; on a phone the window's whole width, as
-    // the battle's (the gutters can be the difference between one multiple and the next).
-    property <length> picture-width: Theme.phone ? self.body-width + 2 * Theme.margin : 720px;
-    property <length> picture-height: self.picture-width * 2 / 3;
-    property <length> top: Theme.phone ? 28px : max(0px, (self.body-height - self.picture-height - 124px) / 2);
-    title: Theme.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
-    back: Caps.of(@tr("Replays"));
-    status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
-    // (B and Select show both builds, where they may be.)
-    hints: ReplaysView.builds-open ? [
-        { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
-        { key: ",", key2: ".", text: @tr("Step a frame") },
-        { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
-        { key: "C", text: @tr("Clip") },
-        { key: "B", pad: PadButton.select, text: @tr("Builds") },
-        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
-    ] : [
-        { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
-        { key: ",", key2: ".", text: @tr("Step a frame") },
-        { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
-        { key: "C", text: @tr("Clip") },
-        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
-    ];
-    Arrive {
-        order: 0;
-        // (A phone's header has room for a word: who is playing is said here.)
-        Value {
-            x: 0;
-            y: 0;
-            height: 20px;
-            text: Theme.phone ? ReplaysView.title : "";
-        }
+// The playlist, over the picture's right side beside the header and the transport (on a phone under the
+// transport): its name and which replay of it this is, the previous and the next replay, Autoplay next, and its
+// replays as the list has them, the one watched marked. Shown while the playlist has more than one (`on`; hidden,
+// its controls are passed by).
+component PlaylistPanel inherits Rectangle {
+    in property <bool> on;
+    // (Its rows where there is room for one: a phone may have room for the rest alone.)
+    property <bool> rows: root.on && self.height >= 166px;
+    PanelBack { }
 
-        Picture {
-            x: Theme.phone ? -Theme.margin : (root.body-width - root.picture-width) / 2;
-            y: root.top;
-            width: root.picture-width;
-            height: root.picture-height;
-            ground: Theme.inset;
+    Label {
+        x: 16px;
+        y: 12px;
+        width: parent.width - 132px;
+        height: 20px;
+        text: Caps.of(@tr("Playlist"));
+        color: Theme.cursor;
+    }
+
+    Text {
+        x: 16px;
+        y: 32px;
+        width: parent.width - 132px;
+        height: 20px;
+        text: @tr("Replay {} of {}", ReplaysView.playlist-at + 1, ReplaysView.playlist.length);
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // (Two triangles, with a bar where the playlist ends that way.)
+    IconButton {
+        x: parent.width - 108px;
+        y: 12px;
+        nav: "previous-replay";
+        icon: "M 2 3 h 2 v 10 h -2 Z M 9 3 L 4.5 8 L 9 13 Z M 14 3 L 9.5 8 L 14 13 Z";
+        enabled: root.on && ReplaysView.playlist-at > 0;
+    }
+
+    IconButton {
+        x: parent.width - 56px;
+        y: 12px;
+        nav: "next-replay";
+        icon: "M 2 3 L 6.5 8 L 2 13 Z M 7 3 L 11.5 8 L 7 13 Z M 12 3 h 2 v 10 h -2 Z";
+        enabled: root.on && ReplaysView.playlist-at < ReplaysView.playlist.length - 1;
+    }
+
+    Label {
+        x: 16px;
+        y: 64px;
+        width: autoplay.x - 28px;
+        height: 36px;
+        text: Caps.of(@tr("Autoplay next"));
+    }
+
+    autoplay := Seg {
+        x: parent.width - 16px - self.width;
+        y: 64px;
+        nav: "autoplay";
+        first: Caps.of(@tr("Off"));
+        second: Caps.of(@tr("On"));
+        chosen: ReplaysView.autoplay ? 1 : 0;
+        enabled: root.on;
+    }
+
+    list := ListView {
+        x: 8px;
+        y: 112px;
+        width: parent.width - 16px;
+        height: max(0px, parent.height - 120px);
+        visible: root.rows;
+        nav: "playlist";
+        count: root.rows ? ReplaysView.playlist.length : 0;
+        chosen: ReplaysView.playlist-at;
+        for slot in list.shown: ReplayRowView {
+            property <int> at: list.first + slot;
+            x: 0;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            replay: ReplaysView.playlist[self.at];
+            nav: list.nav;
+            nav-index: self.at;
+            compact: true;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+}
+
+// The viewer: the picture fills the window (the largest whole multiple of the frame that fits, as a match's), and
+// the page (the header, the transport, the playlist, the footer) is over it, shown while `ReplaysView.hud` says or
+// the pointer rests on the transport or the playlist, fading in and out (docs/design/app-ui.md §2.90). A click on
+// the picture plays or pauses. On a phone the picture has the window's width under the header and the page is
+// always shown, the transport and the playlist under the picture.
+component ViewerPage inherits Rectangle {
+    property <bool> phone: Theme.phone;
+    // (On a phone the playlist is under the transport, where the window is tall enough for it.)
+    property <bool> listed: ReplaysView.playlist.length > 1 && (!root.phone || page.body-height - root.phone-transport - 268px >= 112px);
+    property <bool> shown: ReplaysView.hud || controls.has-hover || listing.has-hover;
+    // (On a phone, where the page's parts are, in the body's coordinates.)
+    property <length> phone-top: 28px;
+    property <length> phone-transport: root.phone-top + root.width * 2 / 3 + 12px;
+    room := Picture {
+        x: 0;
+        y: root.phone ? Theme.header + 16px + root.phone-top : 0px;
+        width: root.width;
+        height: root.phone ? root.width * 2 / 3 : root.height;
+        ground: root.phone ? Theme.inset : transparent;
+    }
+
+    TouchArea {
+        x: room.x + Shell.picture-x;
+        y: room.y + Shell.picture-y;
+        width: Shell.picture-width;
+        height: Shell.picture-height;
+        clicked => {
+            Nav.activate("play", 0);
         }
     }
 
-    Arrive {
-        order: 1;
-        Transport {
-            x: 0;
-            y: root.top + root.picture-height + (Theme.phone ? 12px : 16px);
-            width: root.body-width;
-            height: Theme.phone ? 256px : 108px;
+    page := Page {
+        opacity: root.shown ? 1 : 0;
+        animate opacity {
+            duration: Theme.brisk;
+            easing: ease-out;
+        }
+        title: root.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
+        back: Caps.of(@tr("Replays"));
+        status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
+        // (B and Select show both builds, where they may be.)
+        hints: ReplaysView.builds-open ? [
+            { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: ",", key2: ".", text: @tr("Step a frame") },
+            { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+            { key: "C", text: @tr("Clip") },
+            { key: "B", pad: PadButton.select, text: @tr("Builds") },
+            { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+        ] : [
+            { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: ",", key2: ".", text: @tr("Step a frame") },
+            { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+            { key: "C", text: @tr("Clip") },
+            { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+        ];
+        Arrive {
+            order: 0;
+            // (A phone's header has room for a word: who is playing is said here.)
+            Value {
+                x: 0;
+                y: 0;
+                height: 20px;
+                text: root.phone ? ReplaysView.title : "";
+            }
+        }
 
-            Rectangle { }  // (Copied in: docs/app.md §14.)
+        Arrive {
+            order: 1;
+            // (A touch under the transport: the pointer resting on it holds the page.)
+            controls := TouchArea {
+                x: 0;
+                y: root.phone ? root.phone-transport : page.body-height - self.height;
+                width: page.body-width;
+                height: root.phone ? 256px : 108px;
+                Transport {
+                    width: parent.width;
+                    height: parent.height;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
+                }
+            }
+        }
+
+        Arrive {
+            order: 2;
+            listing := TouchArea {
+                x: root.phone ? 0px : page.body-width - self.width;
+                y: root.phone ? root.phone-transport + 268px : 0px;
+                width: root.phone ? page.body-width : 400px;
+                height: !root.phone ? page.body-height - 124px : page.body-height - self.y >= 166px ? page.body-height - self.y : 112px;
+                visible: root.listed;
+                PlaylistPanel {
+                    width: parent.width;
+                    height: parent.height;
+                    on: root.listed;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
+                }
+            }
         }
     }
 }
