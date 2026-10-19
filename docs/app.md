@@ -626,7 +626,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   a build and the ways to play it). + NEW BUILD over the player's builds of the selected game as a list
   (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
   rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
-  beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
+  beside it (the wide sheet, §8) with EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
   leaves them); and under the overview, one row of the app's controls (40 tall): at its left edge HOST
   (`invite`, the main action's look while there is a build: an invite, as CREATE INVITE was), then the code's
   field (`code`, 208 wide, "Invite code"; Enter in it joins, as JOIN does, and Enter in the direct connection's
@@ -644,12 +644,13 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
   at)`), whose Back comes back here with it still chosen (renamed there, by its new name: `play::follow_rename`,
-  which Practice's visit follows too); PRACTICE goes straight into a practice battle on it
-  (`screens::practice::open`, by the build's name), whose EXIT comes back here too (§15). With no build of the
-  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, PRACTICE, EDIT and ⋯
+  which Practice's visit follows too); the editor's header has PRACTICE (design §2.86: `Builds::practice`),
+  straight into a practice battle on it (`screens::practice::open`, by the build's name), whose EXIT comes back to
+  the editor on it (`practice::go_back`, §15). With no build of the
+  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, EDIT and ⋯
   aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
-  can't be played, why. Right from the list goes to PRACTICE and Tab goes in reading order (`Screen::route`,
-  §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, PRACTICE, EDIT
+  can't be played, why. Right from the list goes to EDIT and Tab goes in reading order (`Screen::route`,
+  §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, EDIT
   and ⋯ in a row under it, then HOST the column's width (52 tall), the field and JOIN under it, DIRECT CONNECT
   the column's width under them, and no overview. The field keeps what is typed as a code: capitals, a code's
   six characters, shown in threes, whatever it was typed with (`code_typed`, `code_shown`). A pad can't type:
@@ -2240,7 +2241,7 @@ The pass has nothing of the player's to go by: its settings are the defaults, an
 outside its own walk are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through
 Play as a player makes them, and Replays lists replays of the pass's own.
 
-**Practice's steps** (`tour/practice.rs`) walk Play's PRACTICE (the two cards, then the battle with the practice
+**Practice's steps** (`tour/practice.rs`) walk the editor's PRACTICE (Play's EDIT, then the header's; the two cards, then the battle with the practice
 menu open over it as it starts, the focus on RESUME, a step checking both), the menu's Dummy's build (a value
 apart, the set started over; its list; a list of 24 names, scrolled), the battle, and the practice menu (each
 Battle row with its value changed, a pair apart; the Arena's and Background's grids and Music's list, and a
@@ -2403,7 +2404,7 @@ NETTAI_PACKS=data NETTAI_TOUR=/tmp/reel NETTAI_REEL=/tmp/reel/nettai-showreel.mp
 ```
 
 It shows, in about 90 seconds: the main menu with its demo battle and the title music, a change of game to EXE5,
-EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); Play's PRACTICE, the cards,
+EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); the editor's PRACTICE, the cards,
 the practice menu open as the battle starts, the arena stepped there and its Music stepped to a battle theme,
 which plays, the dummy set to Moves around, and a fight in which the player's side
 presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
@@ -2744,8 +2745,8 @@ build gone, or no longer one that can be played) goes back to Play with the fail
 - **The battle's music** starts with the battle, as any battle that plays the pick (§1, "The battle's music"):
   nothing plays it before, and the title music comes back on Play after.
 
-**A visit** (`practice::Visit`, in `Shell::practice`): from Play's PRACTICE (`Visit::new`) until a screen other
-than Practice and Builds is shown. Builds is part of it: the menu's EDIT goes there and its Back comes back
+**A visit** (`practice::Visit`, in `Shell::practice`): from the editor's PRACTICE (`Visit::new`, which Practice's EXIT goes back to:
+`practice::go_back`) until a screen other than Practice and Builds is shown. Builds is part of it: the menu's EDIT goes there and its Back comes back
 (`Practice::away` keeps the visit through Practice's leaving for it; any other screen shown ends it,
 `Visit::shown`, as Practice leaving for one does). The player's build, the dummy's build, Arena, Background,
 Music and the menu's choices are the visit's: each visit starts on the defaults (the user: "going into practice

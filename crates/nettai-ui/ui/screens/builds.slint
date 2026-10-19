@@ -97,6 +97,10 @@ export component BuildsScreen inherits Page {
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.name;
     title-nav: "name";
+    // (PRACTICE: straight into a practice battle with the build, whose EXIT comes back here; none where the editor was
+    // opened from Practice, whose Back goes back to it.)
+    action: BuildsView.to-practice ? "" : Caps.of(@tr("Practice"));
+    action-nav: "practice";
     back: BuildsView.to-practice ? Caps.of(@tr("Practice")) : Caps.of(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
