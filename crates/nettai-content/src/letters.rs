@@ -957,6 +957,7 @@ pub fn custom_letters(c: &CustomScreen, say: &mut dyn FnMut(String)) -> CustomLe
         // (A tile past the last glyph's stays: the blanks are the glyphs'
         // image, tile for tile.)
         out.blank.pixels.extend_from_slice(&tiles.pixels[out.blank.pixels.len().min(tiles.pixels.len())..]);
+        out.face = GlyphLetters::face_of(&out.glyphs);
         out
     };
     let codes = glyphs(&c.codes, &|k| Picture::glyphs(&c.codes, k, 1), &Picture::to_glyphs);
@@ -1597,6 +1598,11 @@ pub struct GaugeWordDoc {
 pub struct CustomLettersDoc {
     pub codes: Vec<Option<Digits>>,
     pub slot_codes: Vec<Option<Digits>>,
+    /// The boxes all the codes', and all the slots' codes', faces fill.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codes_face: Option<[u8; 4]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot_codes_face: Option<[u8; 4]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub digits: Option<Digits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1743,6 +1749,8 @@ pub fn custom_doc(l: &CustomLetters) -> CustomLettersDoc {
     CustomLettersDoc {
         codes: l.codes.glyphs.clone(),
         slot_codes: l.slot_codes.glyphs.clone(),
+        codes_face: l.codes.face,
+        slot_codes_face: l.slot_codes.face,
         digits: l.digits.clone(),
         turn_limit: l.turn_limit.as_ref().map(|w| w.letters.clone()),
         labels: l.labels.clone(),
@@ -1790,8 +1798,8 @@ pub struct PictureBases<'a> {
 /// The custom screen's letters from the pack.
 pub fn custom_from_doc(d: &CustomLettersDoc, b: &CustomBases) -> CustomLetters {
     CustomLetters {
-        codes: GlyphLetters { glyphs: d.codes.clone(), blank: b.codes.clone() },
-        slot_codes: GlyphLetters { glyphs: d.slot_codes.clone(), blank: b.slot_codes.clone() },
+        codes: GlyphLetters { face: d.codes_face, glyphs: d.codes.clone(), blank: b.codes.clone() },
+        slot_codes: GlyphLetters { face: d.slot_codes_face, glyphs: d.slot_codes.clone(), blank: b.slot_codes.clone() },
         digits: d.digits.clone(),
         turn_limit: d.turn_limit.as_ref().map(|l| WordLetters { letters: l.clone(), blank: b.turn_limit.clone() }),
         labels: d.labels.clone(),

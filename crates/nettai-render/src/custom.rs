@@ -852,7 +852,7 @@ impl Window {
             // pitch the cell's; the chip window's code one family with its
             // damage: the user, "chip code and chip window damage should
             // probably be the same size?")
-            let Some([x, y, w, h]) = code_box(set) else { continue };
+            let Some([x, y, w, h]) = set.face.map(|f| f.map(f32::from)) else { continue };
             let family = if slot { Vec::new() } else { a.letters.digits.iter().map(|d| (crate::numbers::DIGITS.to_string(), d.face[2] as f32)).collect() };
             let fitted = crate::numbers::Fitted {
                 glyphs: vec![(code, [x, y, w, h])],
@@ -1706,7 +1706,7 @@ impl Window {
         let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
         let Some(digits) = v.assets.letters.digits.as_ref() else { return };
         // (One family with the chip window's code beside it.)
-        let family = code_box(&v.assets.letters.codes).map(|b| vec![(crate::numbers::CODES.to_string(), b[2])]).unwrap_or_default();
+        let family = v.assets.letters.codes.face.map(|b| vec![(crate::numbers::CODES.to_string(), b[2] as f32)]).unwrap_or_default();
         let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]).with_family(family);
         let end = x + 8 * block.w as i32;
         let at = (end - crate::numbers::CELL * words.chars().count() as i32, 8 * block.row as i32);
@@ -1716,17 +1716,6 @@ impl Window {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
         }
     }
-}
-
-/// The box a set of chip codes' faces fill in their cells (x, y, width,
-/// height: all of them together).
-fn code_box(set: &nettai_assets::letters::GlyphLetters) -> Option<[f32; 4]> {
-    let faces: Vec<[u8; 4]> = set.glyphs.iter().flatten().map(|g| g.face).collect();
-    let x0 = faces.iter().map(|f| f[0]).min()?;
-    let x1 = faces.iter().map(|f| f[0] + f[2]).max()?;
-    let y0 = faces.iter().map(|f| f[1]).min()?;
-    let y1 = faces.iter().map(|f| f[1] + f[3]).max()?;
-    Some([x0 as f32, y0 as f32, (x1 - x0) as f32, (y1 - y0) as f32])
 }
 
 /// Where words stand in their box, as the picture's letters stand in theirs.
