@@ -678,7 +678,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(3000, step_to("exe4"));
     add(3000, step_to("exe6"));
 
-    // 2. Practice: the editor's PRACTICE (Play's EDIT, then its header's), the cards, the battle with the practice menu open over it; the arena stepped
+    // 2. Practice: the editor's PRACTICE (Play's EDIT, then the tab bar's), the cards, the battle with the practice menu open over it; the arena stepped
     // (the set starting over on it behind the menu), the music stepped to a battle theme, which plays; the dummy
     // set to move around; the fight, the player's side pressing by itself.
     add(3000, go(ScreenId::Play));
