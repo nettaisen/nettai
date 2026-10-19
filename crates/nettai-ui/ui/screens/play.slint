@@ -905,11 +905,10 @@ export component PlayScreen inherits Page {
             }
         }
 
-        // The chosen build: its overview (the wide sheet) with PRACTICE, EDIT and ⋯ in its header's right; on a
-        // phone, no overview, and the three in a row under the box. PRACTICE goes straight into a practice battle
-        // with it; ⋯ opens the build's menu (DUPLICATE and, apart, DELETE). A build whose file doesn't read
-        // has an empty frame, PRACTICE and EDIT unavailable and only DELETE in its menu. With no build none of them
-        // is there.
+        // The chosen build: its overview (the wide sheet) with EDIT and ⋯ in its header's right; on a phone, no
+        // overview, and the two in a row under the box. ⋯ opens the build's menu (DUPLICATE and, apart, DELETE). A
+        // build whose file doesn't read has an empty frame, EDIT unavailable and only DELETE in its menu. With no build
+        // neither is there. (PRACTICE is the editor's: docs/design/app-ui.md §2.86.)
         Arrive {
             order: 1;
             PanelBack {
@@ -928,22 +927,13 @@ export component PlayScreen inherits Page {
                 height: Theme.phone ? self.sheet-height : root.sheet-height;
                 visible: !Theme.phone && root.usable && PlayView.sheet.name != "";
                 build: PlayView.sheet;
-                tools: train.width + 8px + edit.width + 8px + root.more-width;
-            }
-
-            train := Button {
-                x: Theme.phone ? 0px : edit.x - 8px - self.width;
-                y: edit.y;
-                visible: !root.none;
-                nav: "practice";
-                text: Caps.of(@tr("Practice"));
-                enabled: root.usable;
+                tools: edit.width + 8px + root.more-width;
             }
 
             edit := Button {
-                x: Theme.phone ? train.width + 8px : more.x - 8px - self.width;
+                x: Theme.phone ? 0px : more.x - 8px - self.width;
                 y: Theme.phone ? 136px : 24px;
-                width: Theme.phone ? root.body-width - train.width - 16px - root.more-width : self.natural-width;
+                width: Theme.phone ? root.body-width - 8px - root.more-width : self.natural-width;
                 visible: !root.none;
                 nav: "edit";
                 text: Caps.of(@tr("Edit"));

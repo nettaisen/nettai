@@ -18,7 +18,7 @@
 //!
 //! The walk is the pass's, held still as it is (no settings read or written, its own builds and replays, the
 //! demo battles' seeds fixed), but with motion on and the battles playing: the main menu and its demo battle
-//! through a change of game to each and back; Practice (PLAY's PRACTICE, the practice menu open as the battle
+//! through a change of game to each and back; Practice (the editor's PRACTICE, the practice menu open as the battle
 //! starts, the arena and the music stepped there, the dummy set to move around, a fight in which the player's
 //! side presses by itself);
 //! the builds (Play's; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
@@ -678,10 +678,12 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(3000, step_to("exe4"));
     add(3000, step_to("exe6"));
 
-    // 2. Practice: PLAY's PRACTICE, the cards, the battle with the practice menu open over it; the arena stepped
+    // 2. Practice: the editor's PRACTICE (Play's EDIT, then its header's), the cards, the battle with the practice menu open over it; the arena stepped
     // (the set starting over on it behind the menu), the music stepped to a battle theme, which plays; the dummy
     // set to move around; the fight, the player's side pressing by itself.
     add(3000, go(ScreenId::Play));
+    add(1500, focus("edit", 0));
+    add(500, act(Action::Confirm));
     add(1500, focus("practice", 0));
     add(500, act(Action::Confirm));
     reach(add, |app| {

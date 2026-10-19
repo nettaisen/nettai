@@ -2,18 +2,19 @@
 //! `ui/screens/practice.slint`: the practice menu and the input display, over the battle.
 //!
 //! **A practice session** is a battle against a dummy with the practice menu over it, and any screen may start
-//! one ([`start`]): Practice does when PLAY's PRACTICE opens it, and Play does beside a waiting invite, with rows
+//! one ([`start`]): Practice does when the build editor's PRACTICE opens it, and Play does beside a waiting invite, with rows
 //! of its own at the top of the menu in place of EXIT, the menu otherwise the same (but for Music and EDIT). It has no end and is not recorded: its battles are single battles, and one that ends is followed by another on a seed of its own. The session
 //! is held by the shell (`Shell::practice`) and its battle is always this screen's (`ScreenId::Practice` owns
 //! it), so this module hears its menu and its events whatever screen is shown.
 //!
-//! **The screen** ([`Practice`]) has no page of its own: its battle fills the window. PLAY's PRACTICE opens it
-//! ([`open`]) with the build chosen there as the player's, and it goes straight into a session (the user: "i
+//! **The screen** ([`Practice`]) has no page of its own: its battle fills the window. The build editor's PRACTICE
+//! opens it ([`open`]) with the build edited as the player's (the user: "the practice button should probably be
+//! moved into the build editor"; it was Play's), and it goes straight into a session (the user: "i
 //! feel like the practice button is in a weird place", then the whole play/build/practice flow rethought):
 //! the dummy on the player's own build, Arena and Background Random, the game's own music, every option at its
 //! normal value, and the practice menu open over the battle as it starts ("when practice mode starts you should
-//! also bring up the menu immediately"), its focus on RESUME. The menu's EXIT, or Back, goes back to Play with
-//! the build still chosen. A [`Visit`] is the time from PRACTICE to back on Play: what the menu sets lasts
+//! also bring up the menu immediately"), its focus on RESUME. The menu's EXIT, or Back, goes back to the editor
+//! on that build ([`go_back`]). A [`Visit`] is the time from PRACTICE to leaving: what the menu sets lasts
 //! through it, and the next starts on the defaults.
 //!
 //! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle held behind it, its music
@@ -92,7 +93,7 @@ pub struct Start {
     /// no Dummy's build).
     pub builds: Vec<Pick>,
     pub dummys: usize,
-    /// The practice menu opens over the battle as it starts (PLAY's PRACTICE, and back from the editor).
+    /// The practice menu opens over the battle as it starts (the editor's PRACTICE, and back from the editor).
     pub menu: bool,
 }
 
@@ -164,8 +165,7 @@ struct Kept {
     dummys: Option<String>,
 }
 
-/// A visit to Practice: from PLAY's PRACTICE until Play, or any screen other than Practice and Builds' editor,
-/// is shown again. The editor is part of it: the menu's EDIT goes there, and its Back comes back.
+/// A visit to Practice: from the build editor's PRACTICE until Practice is left other than by the menu's EDIT. The editor is part of it: the menu's EDIT goes there, and its Back comes back.
 /// Through it the sessions keep the Dummy's build, Arena, Background and Music and the menu's choices the player
 /// set; each visit starts on their defaults: the dummy on the player's own build, Random, Random, the game's own,
 /// every option normal (the user: "going into practice should reset all the arena settings, there's no reason
@@ -174,6 +174,8 @@ struct Kept {
 pub struct Visit {
     /// A visit is on.
     on: bool,
+    /// It came from the build editor's PRACTICE, which Practice goes back to, on the player's build (else Play).
+    from_editor: bool,
     /// The player's build, by its name, and the game it is of: PLAY's chosen one (none: the one Play remembers).
     yours: Option<(String, String)>,
     /// The place chosen, and the game it is of (each its list's place, 0 Random: [`Places`]).
@@ -200,9 +202,9 @@ struct MenuChoices {
 }
 
 impl Visit {
-    /// PLAY's PRACTICE: a visit starts, on the defaults, the player's build `yours` of `game` (its name).
+    /// The build editor's PRACTICE: a visit starts, on the defaults, the player's build `yours` of `game` (its name).
     fn new(game: &str, yours: &str) -> Visit {
-        Visit { on: true, yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
+        Visit { on: true, from_editor: true, yours: Some((game.to_string(), yours.to_string())), ..Visit::default() }
     }
 
     /// Practice is shown: a visit starts, on the defaults, unless one is on. Whether one started.
@@ -221,7 +223,7 @@ impl Visit {
         }
     }
 
-    /// The visit is over (back on Play, or the screenshot pass starting a walk): what it kept goes, and the next
+    /// The visit is over (Practice left, or the screenshot pass starting a walk): what it kept goes, and the next
     /// starts on the defaults.
     pub fn leave(&mut self) {
         *self = Visit::default();
@@ -898,11 +900,24 @@ fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Optio
 
 // ---- The screen ----------------------------------------------------------------------------------------------
 
-/// PLAY's PRACTICE: a visit to Practice starts, the player's build `build` of `game` (its name, as Play lists it),
-/// and Practice goes straight into a session on it ([`Practice`]).
+/// The build editor's PRACTICE: a visit to Practice starts, the player's build `build` of `game` (its name, as its
+/// file names it), and Practice goes straight into a session on it ([`Practice`]); leaving, it goes back to the
+/// editor on that build ([`go_back`]).
 pub fn open(shell: &mut Shell, game: &str, build: &str) {
     shell.practice.visit = Visit::new(game, build);
     shell.go(ScreenId::Practice);
+}
+
+/// Leave Practice for where its visit came from: the build editor, on the player's build as it is kept now (by its
+/// place among the game's files: one gone meanwhile, or a visit from elsewhere, goes to Play), Back from there going
+/// to Play.
+fn go_back(shell: &mut Shell) {
+    let visit = &shell.practice.visit;
+    let at = visit.yours.as_ref().filter(|_| visit.from_editor).and_then(|(game, name)| builds::store::list(game).iter().position(|l| l.name == *name));
+    match at {
+        Some(at) => crate::screens::builds::open(shell, ScreenId::Play, at),
+        None => shell.go(ScreenId::Play),
+    }
 }
 
 /// The game's builds as Practice reads them: as Play lists them (`play::shelved`), or with the screenshot pass's
@@ -930,7 +945,7 @@ fn picks(listed: &[builds::shelf::Shelved]) -> Vec<Pick> {
 }
 
 /// Practice: no page of its own, its session's battle filling the window. Shown, it starts a session of its own on
-/// the visit ([`Practice::start_own`]); EXIT or Back goes back to Play.
+/// the visit ([`Practice::start_own`]); EXIT or Back goes back to the editor ([`go_back`]).
 #[derive(Default)]
 pub struct Practice {
     /// `NETTAI_PRACTICE` was answered.
@@ -1138,17 +1153,17 @@ impl Screen for Practice {
         if running(shell) {
             return;
         }
-        // Come from elsewhere than PLAY's PRACTICE (the screenshot pass), a visit starts on the defaults; back from
+        // Come from elsewhere than the editor's PRACTICE (the screenshot pass), a visit starts on the defaults; back from
         // the editor, the visit goes on.
         shell.practice.visit.arrive();
         if let Err(error) = self.start_own(shell) {
-            shell.go(ScreenId::Play);
+            go_back(shell);
             shell.fail(error);
         }
     }
 
     fn hide(&mut self, shell: &mut Shell) {
-        // (Its own session ends with it: back on Play, or off to the editor.)
+        // (Its own session ends with it: back to the editor, or off to the menu's EDIT's.)
         if shell.practice.session.as_ref().is_some_and(|s| s.from.is_none()) {
             end(shell);
         }
@@ -1158,10 +1173,10 @@ impl Screen for Practice {
         }
     }
 
-    /// Back (before the battle has the keys: in the battle Esc opens the menu) goes to Play, with the build
-    /// chosen there still chosen.
+    /// Back (before the battle has the keys: in the battle Esc opens the menu) goes back to the editor
+    /// ([`go_back`]).
     fn back(&mut self, shell: &mut Shell) -> bool {
-        shell.go(ScreenId::Play);
+        go_back(shell);
         true
     }
 
@@ -1175,7 +1190,7 @@ impl Screen for Practice {
                 }
                 // (A session another screen started has its EXIT, if it gave one: that screen hears it.)
                 Some(MenuButton::Exit) => match &shell.practice.session {
-                    Some(Session { from: None, .. }) => shell.go(ScreenId::Play),
+                    Some(Session { from: None, .. }) => go_back(shell),
                     Some(Session { from: Some((to, tag)), exit: true, .. }) => {
                         let (to, tag) = (*to, *tag);
                         shell.tell(to, tag, EXIT);
@@ -1262,9 +1277,9 @@ impl Screen for Practice {
             },
             BattleEvent::Stopped(reason) => {
                 end(shell);
-                // (Practice has nothing to show without its battle: Play again.)
+                // (Practice has nothing to show without its battle: back where it came from.)
                 if shell.screen() == ScreenId::Practice {
-                    shell.go(ScreenId::Play);
+                    go_back(shell);
                 }
                 if let Some(error) = UserError::of_stop(reason) {
                     shell.fail(error);
@@ -1528,9 +1543,9 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let places = Places::of(&content, "exe6");
         let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
-        // (PLAY's PRACTICE: your build its chosen one, the rest the defaults; Practice shown keeps it.)
+        // (the editor's PRACTICE: your build its chosen one, the rest the defaults; Practice shown keeps it.)
         let mut visit = Visit::new("exe6", "Swords");
-        assert!(!visit.arrive(), "PLAY's PRACTICE started it");
+        assert!(!visit.arrive(), "the editor's PRACTICE started it");
         assert_eq!((visit.build("exe6", 0), visit.build("exe6", 1), visit.build("exe5", 0)), (Some("Swords"), None, None));
         assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
         assert_eq!((&visit.menu, &visit.dummys_build), (&MenuChoices::default(), &None), "the menu's defaults, the dummy on your build");

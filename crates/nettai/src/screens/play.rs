@@ -3,7 +3,7 @@
 //!
 //! The player's builds of the selected game are here (`list`: + NEW BUILD over them, whose dialog also starts one
 //! from a save file; the chosen one's overview beside them with EDIT, which opens it in Builds' editor, and ⋯, its
-//! menu of DUPLICATE, RENAME and DELETE). The player picks one and practices with it (PRACTICE, beside EDIT), or
+//! menu of DUPLICATE, RENAME and DELETE). The player picks one and practices with it (the editor's PRACTICE), or
 //! makes a link with it: HOST makes an invite (a room of the signaling server, whose code the server picks), JOIN
 //! joins one by the code typed, and DIRECT CONNECT's dialog hosts directly (this machine listening on a UDP port)
 //! or joins a direct host by its address. From the moment an invite is out (or this machine hosts) Play shows the
@@ -1432,7 +1432,7 @@ impl Screen for Play {
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
-            "builds" | "build" | "new" | "edit" | "more" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
+            "builds" | "build" | "new" | "edit" | "more" | "invite" | "join" | "direct" => part == PlayPart::Builds,
             "wait.copy" | "wait.cancel" | "wait.train" => matches!(self.stage, Stage::Waiting),
             // (The match's settings and the player's own are the host's to set while it waits too.)
             "lobby.first-to" | "lobby.open" | "lobby.custom-time" | "lobby.ruleset" | "lobby.rules" | "lobby.delay" => matches!(self.stage, Stage::Lobby | Stage::Waiting),
@@ -1459,7 +1459,6 @@ impl Screen for Play {
             "new" => self.ask_new(shell),
             "edit" => self.edit_chosen(shell),
             "more" => self.open_menu(shell, &Key::new("more", 0)),
-            "practice" => self.practice(shell),
             "name.confirm" => self.confirm(shell),
             "name.cancel" => self.close_dialog(shell),
             // (New builds of saves: the system's file dialog, as the dialog closes.)
@@ -1740,9 +1739,9 @@ impl Screen for Play {
         true
     }
 
-    /// The builds' part on a desktop: Right from the list goes past the overview (no control) to PRACTICE, or EDIT
-    /// or ⋯ where it can't be used; Tab goes through the zones in their order, the builds (+ NEW BUILD, the list),
-    /// the chosen build (PRACTICE, EDIT, ⋯), then the ways to play it online (HOST, the code, JOIN, DIRECT
+    /// The builds' part on a desktop: Right from the list goes past the overview (no control) to EDIT, or ⋯
+    /// where it can't be used; Tab goes through the zones in their order, the builds (+ NEW BUILD, the list),
+    /// the chosen build (EDIT, ⋯), then the ways to play it online (HOST, the code, JOIN, DIRECT
     /// CONNECT). (On a phone the one column is that order already.)
     fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
         if self.part() != PlayPart::Builds || shell.scale.phone || self.naming.is_some() || self.direct.is_some() || self.boxes.is_some() {
@@ -1750,9 +1749,9 @@ impl Screen for Play {
         }
         let ui = shell.ui();
         match action {
-            Action::Right if shell.nav.focused().is_some_and(|k| k.id == "builds") => shell.nav.focus_first(&ui, &["practice", "edit", "more"]),
+            Action::Right if shell.nav.focused().is_some_and(|k| k.id == "builds") => shell.nav.focus_first(&ui, &["edit", "more"]),
             Action::NextFocus | Action::PreviousFocus => {
-                shell.nav.tab_in(&ui, action == Action::PreviousFocus, &["new", "builds", "practice", "edit", "more", "invite", "code", "join", "direct"]);
+                shell.nav.tab_in(&ui, action == Action::PreviousFocus, &["new", "builds", "edit", "more", "invite", "code", "join", "direct"]);
                 true
             }
             _ => false,

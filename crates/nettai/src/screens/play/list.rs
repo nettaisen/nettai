@@ -3,9 +3,8 @@
 //! (`nettai_match::build::Builds::new_build`: its own navi, the forms of the version chosen, the folder a new save starts
 //! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of each save file chosen in the
 //! system's dialog, one or more (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens
-//! the chosen build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
-//! PRACTICE goes straight into a practice battle with it (`crate::screens::practice::open`), whose EXIT comes
-//! back here too; the
+//! the chosen build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen
+//! (its header's PRACTICE goes into a practice battle with it); the
 //! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE and, apart, DELETE (which asks
 //! once, Cancel focused). A build is renamed in the editor, its header's name a field (docs/design/app-ui.md §2.74).
 
@@ -303,23 +302,6 @@ impl Play {
         }
         self.notice.clear();
         crate::screens::builds::open(shell, ScreenId::Play, self.chosen);
-    }
-
-    /// PRACTICE: straight into a practice battle, the player's build the chosen one (`practice::open`), whose EXIT
-    /// comes back here with it still chosen. With no build, or one that can't be played, the reserved line says
-    /// why, as HOST's does.
-    pub(super) fn practice(&mut self, shell: &mut Shell) {
-        match (self.side(shell, false), self.builds_of.clone(), self.build().map(|b| b.name().to_string())) {
-            (Ok(_), Some(game), Some(name)) => {
-                self.notice.clear();
-                crate::screens::practice::open(shell, &game, &name);
-            }
-            (Err(problem), _, _) => {
-                self.problem = Some(problem);
-                self.refuse_or_show(shell);
-            }
-            _ => {}
-        }
     }
 
     /// DUPLICATE: a copy of the chosen build, named for it, made for its ruleset.
