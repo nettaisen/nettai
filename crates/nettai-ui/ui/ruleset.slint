@@ -102,6 +102,8 @@ export global RulesetView {
         }
         return @tr("{} of {} allowed", n, of);
     }
+    // What the system's file dialogs say they ask for.
+    out property <string> ruleset-files: @tr("Ruleset files");
     public pure function delete-title(name: string) -> string {
         return @tr("Delete {}?", name);
     }
@@ -267,7 +269,7 @@ export component RulesetPage inherits Page {
     // the head over the items, no panels).
     property <length> list-width: 300px;
     property <length> pad: 16px;
-    property <length> panel-y: Theme.phone ? 180px : 64px;
+    property <length> panel-y: Theme.phone ? 228px : 64px;
     property <length> foot: 26px;
     property <length> panel-height: self.body-height - root.panel-y - root.foot;
     property <length> right-x: Theme.phone ? 0px : root.list-width + 24px;
@@ -307,7 +309,7 @@ export component RulesetPage inherits Page {
     // its items.)
     Arrive {
         order: 0;
-        // ---- The row: Version exclusives, DUPLICATE and DELETE.
+        // ---- The row: Version exclusives, IMPORT, EXPORT, DUPLICATE and DELETE.
         // (Whether a build keeps to one version's own things, as a cartridge does, or may mix the versions': the user,
         // "versions: one per build is weird wording, you should make it more understandable". On a phone the word is
         // over the control, which the width wouldn't hold beside it.)
@@ -341,12 +343,30 @@ export component RulesetPage inherits Page {
             enabled: RulesetView.deletable;
         }
 
-        Button {
+        duplicate := Button {
             x: RulesetView.deletable ? delete.x - 8px - self.width : root.body-width - self.width;
             y: delete.y;
             width: self.natural-width;
             nav: "rules.duplicate";
             text: Caps.of(@tr("Duplicate"));
+        }
+
+        // (A file of the ruleset shown, written where the player says; and a file read in as their own, shown in its
+        // place, as a duplicate is. On a phone a row of their own under the others.)
+        export := Button {
+            x: Theme.phone ? root.body-width - self.width : duplicate.x - 8px - self.width;
+            y: Theme.phone ? delete.y + 48px : delete.y;
+            width: self.natural-width;
+            nav: "rules.export";
+            text: Caps.of(@tr("verb" => "Export"));
+        }
+
+        Button {
+            x: export.x - 8px - self.width;
+            y: export.y;
+            width: self.natural-width;
+            nav: "rules.import";
+            text: Caps.of(@tr("verb" => "Import"));
         }
     }
 

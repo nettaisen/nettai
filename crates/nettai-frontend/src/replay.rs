@@ -31,6 +31,9 @@ use crate::driver::{Driver, Place, Step};
 /// which the app takes too).
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
+/// A replay file's extension (`20261018-213000-exe6.nettaireplay`).
+pub const EXTENSION: &str = "nettaireplay";
+
 /// The set's ticks between two digests a recording keeps (besides each
 /// round's end's).
 pub const DIGEST_EVERY: u64 = 60;

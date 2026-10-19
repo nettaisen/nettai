@@ -150,7 +150,7 @@ in place of the found one of its game, and `--help` lists the options:
 
     cargo run --release -p nettai-tools -- --match match.toml --headless 1-120 --out <dir>   # render frames to PNG
     cargo run --release -p nettai-tools -- <trace.jsonl> --headless 150,300 --out <dir>      # a recorded match's
-    cargo run --release -p nettai-tools -- --replay set.ntrp                                 # does it reproduce?
+    cargo run --release -p nettai-tools -- --replay set.nettaireplay                                 # does it reproduce?
 
 A trace is the recorded inputs of a real match; the traces live with the verification workspace (below).
 

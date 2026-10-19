@@ -1,5 +1,5 @@
-//! The player's own rulesets on disk: each a TOML file of its own in the rulesets folder
-//! (`crate::paths::rulesets`), a folder per game (`rulesets/exe6/<name>.toml`), as builds are kept. A ruleset's
+//! The player's own rulesets on disk: each a file of its own (TOML) in the rulesets folder
+//! (`crate::paths::rulesets`), a folder per game (`rulesets/exe6/<name>.nettairuleset`), as builds are kept. A ruleset's
 //! file names its game and the ruleset, whether each build must be one version's, and what each category holds
 //! back, by the category's fact and the things' names in the game (`nettai_match::ruleset::Ruleset::banned_names`):
 //!
@@ -20,6 +20,9 @@ use nettai_match::ruleset::{Name, Ruleset, Rulesets};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+/// A ruleset file's extension (its text is TOML), the player's own and one exported alike.
+pub const EXTENSION: &str = "nettairuleset";
 
 /// Each build one version's, as a file says it.
 const ONE_PER_BUILD: &str = "one_per_build";
@@ -57,7 +60,7 @@ pub fn list(game: &str) -> Vec<Listed> {
     let mut out: Vec<Listed> = dir
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "toml"))
+        .filter(|p| p.extension().is_some_and(|e| e == EXTENSION))
         .filter_map(|path| {
             let text = std::fs::read_to_string(&path).ok()?;
             let f: RulesetFile = toml::from_str(&text).ok().filter(|f: &RulesetFile| f.game == game)?;
@@ -108,10 +111,9 @@ pub fn write(path: &Path, content: &Content, game: &str, ruleset: &Ruleset) -> R
     std::fs::write(path, text(content, game, ruleset)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// A path for a new ruleset of `game` named `name` that no file has: the name's letters and digits
-/// (`tournament.toml`), numbered if it is taken.
-pub fn new_path(game: &str, name: &str) -> PathBuf {
-    let mut stem: String = name
+/// A file's name for a ruleset named `name`, without its extension: the name's letters and digits (`tournament`).
+pub fn stem(name: &str) -> String {
+    let stem: String = name
         .chars()
         .map(|c| if c.is_alphanumeric() { c.to_lowercase().next().unwrap_or(c) } else { '-' })
         .collect::<String>()
@@ -119,16 +121,20 @@ pub fn new_path(game: &str, name: &str) -> PathBuf {
         .filter(|p| !p.is_empty())
         .collect::<Vec<_>>()
         .join("-");
-    if stem.is_empty() {
-        stem = "ruleset".into();
-    }
+    if stem.is_empty() { "ruleset".into() } else { stem }
+}
+
+/// A path for a new ruleset of `game` named `name` that no file has: its [`stem`] (`tournament.nettairuleset`), numbered if
+/// it is taken.
+pub fn new_path(game: &str, name: &str) -> PathBuf {
+    let stem = stem(name);
     let dir = folder(game);
-    let mut path = dir.join(format!("{stem}.toml"));
+    let mut path = dir.join(format!("{stem}.{EXTENSION}"));
     for n in 2.. {
         if !path.exists() {
             break;
         }
-        path = dir.join(format!("{stem}-{n}.toml"));
+        path = dir.join(format!("{stem}-{n}.{EXTENSION}"));
     }
     path
 }

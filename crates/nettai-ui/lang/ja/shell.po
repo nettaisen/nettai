@@ -309,6 +309,13 @@ msgstr "{}のセーブではありません。"
 msgid "Not a {} save"
 msgstr "{}のセーブではありません"
 
+# A file chosen to import as a ruleset that isn't one of the game's: {} is the game, as the header shows it.
+msgid "Not a {} ruleset."
+msgstr "{}のルールではありません。"
+
+msgid "Not a {} ruleset"
+msgstr "{}のルールではありません"
+
 # A game whose pack is there and can't be loaded: {} is the game, as the header shows it.
 msgid "{}'s data is out of date. Extract it again."
 msgstr "{} のデータが古くなっています。もう一度抽出してください。"

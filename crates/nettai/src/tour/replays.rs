@@ -146,15 +146,15 @@ pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         }
         let info = Info { when, side, kind: if online { MatchKind::Online } else { MatchKind::Offline }, open_setups, names };
         let ticks = cut.map(|part| (replay.ticks.len() as f32 * part) as usize);
-        save(&format!("{i:02}.ntrp"), &written(replay, &info, ticks), when)?;
+        save(&format!("{i:02}.nettaireplay"), &written(replay, &info, ticks), when)?;
     }
     // Three that aren't played: of another layout, of other content, and no replay at all.
-    save("old.ntrp", b"NTRP\x02another nettai's", october(9, 23, 40))?;
+    save("old.nettaireplay", b"NTRP\x02another nettai's", october(9, 23, 40))?;
     let mut other = sets[0].clone();
     other.head.content ^= 1;
     let when = october(9, 12, 0);
-    save("other.ntrp", &written(&other, &Info { when, names: [me, "weenie".into()], ..Info::of(MatchKind::Online, 0) }, None), when)?;
-    save("notes.ntrp", b"not a replay", october(1, 8, 0))?;
+    save("other.nettaireplay", &written(&other, &Info { when, names: [me, "weenie".into()], ..Info::of(MatchKind::Online, 0) }, None), when)?;
+    save("notes.nettaireplay", b"not a replay", october(1, 8, 0))?;
     std::fs::write(dir.join("made"), b"").map_err(|e| e.to_string())
 }
 
@@ -415,7 +415,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
 
 /// The file of the replay that fails as it is watched ([`watch_failed`]), in the pass's folder while its steps
 /// run.
-const CHANGED: &str = "replays/changed.ntrp";
+const CHANGED: &str = "replays/changed.nettaireplay";
 
 /// A replay that fails as it is watched, up to its shot: its file, a copy of the first's, damaged after the
 /// list read it (its size and its time as they were, so that the list keeps it as playable), and WATCH pressed
@@ -426,7 +426,7 @@ fn watch_failed(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) 
     add(
         SETTLE,
         Box::new(|_, app, tour| {
-            let copied = std::fs::copy(tour.dir.join("replays/00.ntrp"), tour.dir.join(CHANGED));
+            let copied = std::fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(CHANGED));
             let made = copied.and_then(|_| std::fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
             if let Err(why) = made {
                 eprintln!("tour: the replay to damage couldn't be made: {why}");
@@ -577,7 +577,7 @@ fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> boo
     add(
         SETTLE,
         Box::new(|_, app, tour| {
-            let scrap = tour.dir.join("replays/scrap.ntrp");
+            let scrap = tour.dir.join("replays/scrap.nettaireplay");
             let made = std::fs::write(&scrap, b"to be deleted").and_then(|()| std::fs::File::options().write(true).open(&scrap)?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
             if let Err(why) = made {
                 say(tour, "replays.txt", &format!("the file to delete couldn't be made: {why}\n"));
@@ -601,7 +601,7 @@ fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> boo
         SETTLE,
         Box::new(|ui, app, tour| {
             let view = ui.global::<ReplaysView>();
-            let there = tour.dir.join("replays/scrap.ntrp").exists();
+            let there = tour.dir.join("replays/scrap.nettaireplay").exists();
             let focus = app.borrow().shell.nav.focused().map(|k| format!("{}[{}]", k.id, k.index)).unwrap_or_default();
             say(tour, "replays.txt", &format!("{}: a file deleted from the list: the file is {}, the list has {} (18 without it), the focus is on {focus}\n", tour.tag.borrow(), if there { "still there" } else { "gone" }, view.get_count()));
         }),
@@ -655,10 +655,10 @@ mod tests {
         let info = |when: u64, side: u8| Info { when, names: ["Lan".into(), "Chaud".into()], ..Info::of(MatchKind::Online, side) };
         let mut other = replay.clone();
         other.head.content ^= 1;
-        std::fs::write(dir.join("first.ntrp"), written(&replay, &info(100, 0), None)).unwrap();
-        std::fs::write(dir.join("second.ntrp"), written(&replay, &info(300, 1), Some(600))).unwrap();
-        std::fs::write(dir.join("other.ntrp"), written(&other, &info(200, 0), None)).unwrap();
-        std::fs::write(dir.join("old.ntrp"), b"NTRP\x02another nettai's").unwrap();
+        std::fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 0), None)).unwrap();
+        std::fs::write(dir.join("second.nettaireplay"), written(&replay, &info(300, 1), Some(600))).unwrap();
+        std::fs::write(dir.join("other.nettaireplay"), written(&other, &info(200, 0), None)).unwrap();
+        std::fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
         std::fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
         let cache = dir.join("kept/replays-played.toml");
 
@@ -668,7 +668,7 @@ mod tests {
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
         let entries = library.entries.clone();
         let names: Vec<&str> = entries.iter().map(|e| e.path.file_name().unwrap().to_str().unwrap()).collect();
-        assert_eq!(names, ["old.ntrp", "second.ntrp", "other.ntrp", "first.ntrp"]);
+        assert_eq!(names, ["old.nettaireplay", "second.nettaireplay", "other.nettaireplay", "first.nettaireplay"]);
         assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 2 })));
         let second = entries[1].read.as_ref().unwrap();
         assert_eq!((second.ticks, second.rounds.as_slice(), second.info.side, second.head.game.as_str()), (600, &[0][..], 1, "exe6"));
@@ -690,7 +690,7 @@ mod tests {
 
         // Another run: the two that played are kept, the refused one is found refused again, and a file changed
         // since is played out anew.
-        std::fs::write(dir.join("first.ntrp"), written(&replay, &info(100, 1), None)).unwrap();
+        std::fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 1), None)).unwrap();
         let mut again = Library::default();
         again.cache = Some(cache.clone());
         again.list(&dir);
@@ -726,16 +726,16 @@ mod tests {
         other_game.head.game = "exe5".into();
         let mut other_damaged = written(&other_game, &Info { when: 100, ..Info::of(MatchKind::Online, 0) }, None);
         other_damaged.push(0xE0);
-        std::fs::write(dir.join("damaged.ntrp"), &damaged).unwrap();
-        std::fs::write(dir.join("other.ntrp"), &other_damaged).unwrap();
-        std::fs::write(dir.join("old.ntrp"), b"NTRP\x02another nettai's").unwrap();
+        std::fs::write(dir.join("damaged.nettaireplay"), &damaged).unwrap();
+        std::fs::write(dir.join("other.nettaireplay"), &other_damaged).unwrap();
+        std::fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
         let mut library = Library::default();
         library.list(&dir);
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
         let of = |name: &str| library.entries.iter().find(|e| e.path.ends_with(name)).map(|e| (e.read.is_ok(), e.game.clone())).unwrap();
-        assert_eq!(of("damaged.ntrp"), (false, Some("exe6".into())));
-        assert_eq!(of("other.ntrp"), (false, Some("exe5".into())));
-        assert_eq!(of("old.ntrp"), (false, None));
+        assert_eq!(of("damaged.nettaireplay"), (false, Some("exe6".into())));
+        assert_eq!(of("other.nettaireplay"), (false, Some("exe5".into())));
+        assert_eq!(of("old.nettaireplay"), (false, None));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
