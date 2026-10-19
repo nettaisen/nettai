@@ -28,12 +28,22 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
     &FONT_PARSED
 }
 
-/// The width over the height of `c`'s ink in the numbers' font, worked
-/// out once a character.
-pub fn ink_aspect(c: char) -> Option<f32> {
-    static ASPECTS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<char, Option<f32>>>> = std::sync::LazyLock::new(Default::default);
-    let mut aspects = ASPECTS.lock().unwrap_or_else(|e| e.into_inner());
-    *aspects.entry(c).or_insert_with(|| font().ink_aspect(c))
+/// A set of digits' characters (and the chip window's '?').
+pub const DIGITS: &str = "0123456789?";
+
+/// The chip codes' characters.
+pub const CODES: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ*";
+
+impl NumberSet {
+    /// The set as the set of `chars` (a sign's: '+', "x2").
+    pub fn with_set(self, chars: &str) -> NumberSet {
+        NumberSet { set: chars.into(), ..self }
+    }
+
+    /// The set as one family with other sets beside it (`Fitted::family`).
+    pub fn with_family(self, family: Vec<(String, f32)>) -> NumberSet {
+        NumberSet { family, ..self }
+    }
 }
 
 /// A game cell's width: a character a cell.
@@ -45,10 +55,19 @@ const SHADOWED_NARROWER: f32 = 1.0;
 
 /// Characters of a number drawn in the numbers' font
 /// ([`TextItem::fitted`]): each one's face box (x, y, width, height in
-/// frame pixels from the item's box's top left), and the paint.
+/// frame pixels from the item's box's top left), the characters of its set
+/// (`set`: the glyphs are drawn at one scale, the set's tallest ink the
+/// boxes' height, at their own widths, narrowed alike where the set's
+/// widest would be wider than its box, each centered in its box), and the
+/// paint.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fitted {
     pub glyphs: Vec<(char, [f32; 4])>,
+    pub set: String,
+    /// Other sets drawn beside it as one family (the chip window's code and
+    /// its damage), each with its boxes' width: the family is narrowed alike,
+    /// by the least any of its sets needs.
+    pub family: Vec<(String, f32)>,
     /// The face's colors down the boxes' rows (BGR555), its rim's and its
     /// shadow's.
     pub fill: Vec<u16>,
@@ -61,6 +80,9 @@ pub struct Fitted {
 pub struct NumberSet {
     /// The box its faces fill in their cells: x, y, width, height.
     pub face: [i32; 4],
+    /// Its characters (`Fitted::set`), and its family's (`Fitted::family`).
+    pub set: String,
+    pub family: Vec<(String, f32)>,
     pub fill: Vec<u16>,
     pub rim: Option<u16>,
     pub shadow: Option<u16>,
@@ -72,6 +94,8 @@ impl NumberSet {
         let color = |c: u8| palette[c as usize & 15];
         NumberSet {
             face: d.face.map(|v| v as i32),
+            set: DIGITS.into(),
+            family: Vec::new(),
             fill: d.fill.iter().map(|&c| color(c)).collect(),
             rim: d.rim.map(color),
             shadow: d.shadow.map(color),
@@ -86,7 +110,7 @@ impl NumberSet {
         // their strokes are as heavy as the name's.)
         let (x, w) = if self.shadow.is_some() && w > 2.0 { (x + SHADOWED_NARROWER / 2.0, w - SHADOWED_NARROWER) } else { (x, w) };
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
-        Fitted { glyphs, fill: self.fill.clone(), rim: self.rim, shadow: self.shadow }
+        Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow }
     }
 }
 
