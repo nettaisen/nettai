@@ -1890,7 +1890,7 @@ docs/design/app-ui.md §4 is the look; this is where it lives.
 
 **The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, Corporate Logo 700
 for Japanese display text, M PLUS 1 Code and Murecho, all under the SIL Open Font License, each with its license
-beside it in `fonts/`), the metrics, and the durations. A screen uses these and writes no color, size or duration
+beside it in `fonts/`, M PLUS 1 Code's and Murecho's in nettai-render's, which draws battles with them), the metrics, and the durations. A screen uses these and writes no color, size or duration
 of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
 Petch, 700 for both in Corporate Logo, which is bundled at that weight alone).
 

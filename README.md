@@ -109,9 +109,11 @@ RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/fron
 
 The picture keeps whole pixels at any window size. Chip names, telops, the chatbox's descriptions and messages and
 the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art: Murecho (Latin
-and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. Settings' battle text draws
-them in the game's own fonts instead, exactly as the original does
-([text-rendering.md](docs/design/text-rendering.md) §9).
+and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. The battle's lettered
+pictures (the banners, with their bar, the HUD's labels, the custom window's labels and help pictures) are drawn
+there too, in M PLUS 1 Code, and its numbers in Bungee, both bundled beside it. Settings' battle text draws them in
+the game's own fonts and pictures instead, exactly as the original does
+([text-rendering.md](docs/design/text-rendering.md) §9, §12).
 
 To play another player (the app's Play screen, not built yet; the library and the link under it are), both choose
 the same game and meet in a room of the signaling server by its code (the first in hosts, the left navi), through
