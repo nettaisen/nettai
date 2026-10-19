@@ -269,6 +269,8 @@ export enum ErrorKind {
     cant-write-video,
     export-failed,
     wrong-game-save,
+    // A file that isn't a ruleset of the game (it doesn't read, is another game's, or names what the game hasn't).
+    not-a-ruleset,
     game-outdated,
     // No pack of a game, and no Legacy Collection to extract it from.
     no-legacy-collection,
@@ -368,6 +370,9 @@ export global Errors {
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not a {} save.", detail);
         }
+        if kind == ErrorKind.not-a-ruleset {
+            return @tr("Not a {} ruleset.", detail);
+        }
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date. Extract it again.", detail);
         }
@@ -453,6 +458,9 @@ export global Errors {
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not a {} save", detail);
         }
+        if kind == ErrorKind.not-a-ruleset {
+            return @tr("Not a {} ruleset", detail);
+        }
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date", detail);
         }
@@ -535,6 +543,9 @@ export global Errors {
             return @tr("Details are in the log file.");
         }
         if kind == ErrorKind.wrong-game-save {
+            return "";
+        }
+        if kind == ErrorKind.not-a-ruleset {
             return "";
         }
         if kind == ErrorKind.game-outdated {

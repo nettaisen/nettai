@@ -22,6 +22,9 @@ use std::sync::Arc;
 /// What the page's controls' names begin with: the focus's scope while it is open.
 pub const PREFIX: &str = "rules.";
 
+/// A ruleset file's extensions, as the system's file dialogs ask for them.
+const EXTENSIONS: [&str; 1] = [store::EXTENSION];
+
 /// The tag of the question DELETE asks (`Screen::answered`: 1 deletes).
 pub const DELETE: &str = "rules.delete";
 
@@ -350,6 +353,82 @@ impl Page {
         Outcome::Changed(self.shown.clone())
     }
 
+    /// The ruleset files' kind and extensions, as the system's file dialogs ask for them.
+    fn files_kind(shell: &Shell) -> String {
+        shell.ui().global::<RulesetView>().get_ruleset_files().to_string()
+    }
+
+    /// EXPORT: the ruleset shown written to a file where the player says (a ruleset's file, as the player's own are
+    /// kept: `store`), named as it is shown (a preset's in the language shown), to be imported elsewhere.
+    fn export(&self, shell: &mut Shell) -> Outcome {
+        let graphics = self.kit.ready.graphics(shell.lang);
+        let names = Names::of(self.kit.content(), &graphics);
+        let name = shown_name(&names, &self.shown.ruleset.name);
+        let Some(path) = shell.choose_save(&Self::files_kind(shell), &EXTENSIONS, &format!("{}.{}", store::stem(&name), store::EXTENSION)) else { return Outcome::Nothing };
+        let mut ruleset = self.shown.ruleset.clone();
+        ruleset.name = Name::Own(name);
+        if let Err(why) = store::write(&path, self.kit.content(), &self.kit.game, &ruleset) {
+            crate::errors::log("exporting a ruleset", &why);
+            shell.fail(crate::errors::UserError::Other);
+        }
+        Outcome::Nothing
+    }
+
+    /// IMPORT: ruleset files chosen in the system's dialog, one or more, each the player's own (named as its file
+    /// says, or for the file where it names none; numbered past the presets' names and the player's own), saved; the last shown in this one's place, as a
+    /// duplicate is. A file that isn't a ruleset of the game (another game's, or naming what it hasn't) doesn't stop
+    /// the others: the first such is said once they are in.
+    fn import(&mut self, shell: &mut Shell) -> Outcome {
+        let paths = shell.choose_files(&Self::files_kind(shell), &EXTENSIONS);
+        let graphics = self.kit.ready.graphics(shell.lang);
+        let kit = self.kit.clone();
+        let names = Names::of(kit.content(), &graphics);
+        let mut taken: Vec<String> = store::list(&kit.game).into_iter().map(|l| l.name).collect();
+        taken.extend(self.rulesets.presets.iter().map(|p| shown_name(&names, &p.name)));
+        let (mut made, mut refused) = (None, None);
+        for path in &paths {
+            let read = std::fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|text| store::read(&self.rulesets, kit.content(), &text));
+            let mut ruleset = match read {
+                Ok(ruleset) => ruleset,
+                Err(why) => {
+                    crate::errors::log(&format!("importing the ruleset {}", path.display()), &why);
+                    refused.get_or_insert(crate::errors::UserError::NotARuleset { game: Shell::game_name(&kit.game) });
+                    continue;
+                }
+            };
+            let own = match &ruleset.name {
+                Name::Own(own) => clean_name(own),
+                _ => String::new(),
+            };
+            // (A file that names none is named for itself.)
+            let stem = path.file_stem().map(|s| clean_name(&s.to_string_lossy())).unwrap_or_default();
+            let name = crate::builds::store::new_name(Some(own.trim_end()).filter(|n| !n.is_empty()).unwrap_or(stem.trim_end()), &taken);
+            ruleset.name = Name::Own(name.clone());
+            let path = store::new_path(&kit.game, &name);
+            if let Err(why) = store::write(&path, kit.content(), &kit.game, &ruleset) {
+                crate::errors::log("importing a ruleset", &why);
+                refused.get_or_insert(crate::errors::UserError::Other);
+                continue;
+            }
+            taken.push(name);
+            made = Some(Pickable { ruleset, path: Some(path) });
+        }
+        let outcome = match made {
+            Some(made) => {
+                self.shown = made;
+                self.viewed = false;
+                self.show(shell);
+                shell.sound.play(Cue::Pick);
+                Outcome::Changed(self.shown.clone())
+            }
+            None => Outcome::Nothing,
+        };
+        if let Some(error) = refused {
+            shell.fail(error);
+        }
+        outcome
+    }
+
     /// Enter, a click or a tap on one of the page's controls.
     pub fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) -> Outcome {
         match id {
@@ -404,6 +483,8 @@ impl Page {
                 self.change(shell, |r, _| r.one_per_build = one)
             }
             "rules.duplicate" => self.duplicate(shell),
+            "rules.export" => self.export(shell),
+            "rules.import" => self.import(shell),
             "rules.delete" if self.editable() => {
                 let ui = shell.ui();
                 let view = ui.global::<RulesetView>();

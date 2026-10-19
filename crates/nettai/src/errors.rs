@@ -66,6 +66,8 @@ pub enum UserError {
     ExportFailed,
     /// A save is another game's: `game` is the game it was to be of, as shown (EXE6).
     WrongGameSave { game: String },
+    /// A file isn't a ruleset of the game: `game` is the game, as shown. Why is in the log.
+    NotARuleset { game: String },
     /// A game's pack is there and can't be loaded (it was extracted for another version of the game's
     /// content): `game` is the game, as shown. The other games play.
     GameOutdated { game: String },
@@ -106,6 +108,7 @@ impl UserError {
             UserError::CantWriteVideo => (ErrorKind::CantWriteVideo, ""),
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
+            UserError::NotARuleset { game } => (ErrorKind::NotARuleset, game),
             UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
             UserError::NoLegacyCollection => (ErrorKind::NoLegacyCollection, ""),
             UserError::ExtractFailed { game } => (ErrorKind::ExtractFailed, game),

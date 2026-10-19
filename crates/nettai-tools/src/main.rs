@@ -108,7 +108,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    shown, left or right (default: the side that recorded it)
   --nut OUT        with --replay: write it as video, a NUT stream of raw
                    frames (RGB) and PCM sound, to the file OUT, or to standard
-                   output for `-` (so `nettai-tool --replay set.ntrp --nut - |
+                   output for `-` (so `nettai-tool --replay set.nettaireplay --nut - |
                    ffmpeg -f nut -i - out.mp4` makes an MP4): a frame a tick,
                    as a viewer playing it straight shows and plays it, each
                    round a chapter ('Round N') and the sound titled with its
@@ -756,12 +756,12 @@ mod tests {
             vec!["--pack", "p", "--draw", "--audit", "a.jsonl", "b.jsonl", "--lookups", "l.tsv"],
             vec!["--match", "exe6.toml", "--pack", "p", "--audit-content", "--lookups", "s.tsv"],
             vec!["--match", "m.toml", "--mute", "--headless", "100,300", "--out", "o", "--keys", "100:a"],
-            vec!["--replay", "set.ntrp", "--headless", "1-60", "--side", "right"],
+            vec!["--replay", "set.nettaireplay", "--headless", "1-60", "--side", "right"],
             vec!["--match", "m.toml", "--show-folders", "--save-match", "played.toml"],
-            vec!["--replay", "set.ntrp"],
-            vec!["--replay", "set.ntrp", "--nut", "-", "--scale", "3", "--side", "right", "--round", "2"],
-            vec!["--replay", "set.ntrp", "--mp4", "set.mp4", "--ticks", "1-600", "--mute"],
-            vec!["--replay", "set.ntrp", "--mp4", "both.mp4", "--both-sides", "--side", "right", "--scale", "2"],
+            vec!["--replay", "set.nettaireplay"],
+            vec!["--replay", "set.nettaireplay", "--nut", "-", "--scale", "3", "--side", "right", "--round", "2"],
+            vec!["--replay", "set.nettaireplay", "--mp4", "set.mp4", "--ticks", "1-600", "--mute"],
+            vec!["--replay", "set.nettaireplay", "--mp4", "both.mp4", "--both-sides", "--side", "right", "--scale", "2"],
         ] {
             assert!(args(&options).is_ok(), "{options:?}: {:?}", args(&options).err());
         }
@@ -773,7 +773,7 @@ mod tests {
         for (options, why) in [
             (vec![], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--host", "7777"], "unknown option --host (a window's options are nettai's)"),
-            (vec!["--match", "m.toml", "--replay", "r.ntrp"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
+            (vec!["--match", "m.toml", "--replay", "r.nettaireplay"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["t.jsonl"], "a trace is rendered (--headless F) or audited (--audit); no window watches one"),
             (vec!["--audit-content"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--keys", "1:a"], "--keys holds buttons in a match file's set played headless (--match FILE --headless F)"),
@@ -781,11 +781,11 @@ mod tests {
             (vec!["a.jsonl", "b.jsonl", "--headless", "1"], "one trace at a time (several with --audit)"),
             (vec!["--match", "m.toml", "--objects"], "--objects, --mark and --png-scale go with --headless"),
             (vec!["--match", "m.toml", "--nut", "-"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
-            (vec!["--replay", "r.ntrp", "--nut", "-", "--headless", "1"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
-            (vec!["--replay", "r.ntrp", "--nut", "-", "--mp4", "o.mp4"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
-            (vec!["--replay", "r.ntrp", "--scale", "2"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
-            (vec!["--replay", "r.ntrp", "--both-sides"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
-            (vec!["--replay", "r.ntrp", "--nut", "-", "--round", "1", "--ticks", "1-9"], "a video shows a round (--round N) or a range of frames (--ticks A-B), not both"),
+            (vec!["--replay", "r.nettaireplay", "--nut", "-", "--headless", "1"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
+            (vec!["--replay", "r.nettaireplay", "--nut", "-", "--mp4", "o.mp4"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
+            (vec!["--replay", "r.nettaireplay", "--scale", "2"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
+            (vec!["--replay", "r.nettaireplay", "--both-sides"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
+            (vec!["--replay", "r.nettaireplay", "--nut", "-", "--round", "1", "--ticks", "1-9"], "a video shows a round (--round N) or a range of frames (--ticks A-B), not both"),
         ] {
             assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
         }

@@ -22,7 +22,7 @@
 //!   machine busy with something else says the same.
 //!
 //! ```text
-//! cargo run --release -p nettai-frontend --example seek -- --game exe6 --seed 7 [--ticks 18000] [--save set.ntrp]
+//! cargo run --release -p nettai-frontend --example seek -- --game exe6 --seed 7 [--ticks 18000] [--save set.nettaireplay]
 //! ```
 //!
 //! `--ticks` stops the recording after that many (default 18000: five
@@ -213,7 +213,7 @@ fn run() -> Result<String, String> {
     // The set, recorded: both navis mashing.
     let m = nettai_match::pick::live(content, &name, seed, None)?;
     let m = nettai_match::Match { seed: Some(seed), ..m };
-    let path = save.clone().unwrap_or_else(|| std::env::temp_dir().join(format!("nettai-seek-{}.ntrp", std::process::id())));
+    let path = save.clone().unwrap_or_else(|| std::env::temp_dir().join(format!("nettai-seek-{}.nettaireplay", std::process::id())));
     let file = std::fs::File::create(&path).map_err(|e| format!("can't write {}: {e}", path.display()))?;
     let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
     let driver = LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64);

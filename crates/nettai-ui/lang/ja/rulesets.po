@@ -58,3 +58,16 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} 件"
 msgstr[1] "{n} 件"
+
+# The page's buttons: a file of the ruleset shown, written out; a file read in as the player's own.
+msgctxt "verb"
+msgid "Export"
+msgstr "書き出す"
+
+msgctxt "verb"
+msgid "Import"
+msgstr "読み込む"
+
+# What the system's file dialogs ask for.
+msgid "Ruleset files"
+msgstr "ルールファイル"
