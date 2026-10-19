@@ -12,7 +12,7 @@
 //! name whose letters it can't find) it says, one line each.
 
 use nettai_assets::letters::{
-    BannerLetters, BarShape, CountDigits, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
+    BannerLetters, BarShape, CountDigits, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
     HudLetters, HudWords, LabelLetters, Letters, PictureLetters, VersionLetters, WordLetters,
 };
 use crate::tiles::{Layout, TileImage};
@@ -704,7 +704,8 @@ fn gauge_word(h: &Hud) -> Option<GaugeWord> {
     ground.extend(cells_ground(&picture));
     let letters = letters(&picture, |v| ground.contains(&v), Capitals::First)?;
     let blank = erased(&picture, |v| ground.contains(&v)).to_grid();
-    Some(GaugeWord { cells: cells.into_iter().map(|c| c as u8).collect(), blank, letters })
+    let align = TextAlign::of(letters.span, picture.w);
+    Some(GaugeWord { cells: cells.into_iter().map(|c| c as u8).collect(), blank, letters, align })
 }
 
 /// A banner's letters ([`BannerLetters`]): none for one with no glyphs (a
@@ -966,14 +967,8 @@ fn label_letters(c: &CustomScreen, label: &WindowLabel, window: &mut Tiles) -> R
     let inked = |x: usize, y: usize| letters_only.pixels[y * letters_only.w + x] != 0;
     let rows: Vec<usize> = (0..letters_only.h).filter(|&y| (0..letters_only.w).any(|x| inked(x, y))).collect();
     let (Some(&row0), Some(&row1)) = (rows.first(), rows.last()) else { return Err("no letters in its colors".into()) };
-    let mut groups: Vec<[u8; 2]> = Vec::new();
-    for x in (0..letters_only.w).filter(|&x| (0..letters_only.h).any(|y| inked(x, y))) {
-        match groups.last_mut() {
-            Some(g) if g[1] as usize == x => g[1] = x as u8 + 1,
-            _ => groups.push([x as u8, x as u8 + 1]),
-        }
-    }
-    Ok(LabelLetters { letters: found, groups, rows: [(top + row0) as u8, (top + row1) as u8] })
+    let align = TextAlign::of(found.span, picture.w);
+    Ok(LabelLetters { letters: found, rows: [(top + row0) as u8, (top + row1) as u8], align })
 }
 
 /// The window's maps' columns (15 a row).
@@ -1166,6 +1161,7 @@ pub struct WordDoc {
 pub struct GaugeWordDoc {
     pub cells: Vec<u8>,
     pub letters: Letters,
+    pub align: TextAlign,
     pub blank: TileImage,
 }
 
@@ -1284,6 +1280,7 @@ pub fn words_doc(w: &HudWords, gauge_palette: Palette, image: &mut ImageOut, fil
         gauge: w.gauge.as_ref().map(|g| GaugeWordDoc {
             cells: g.cells.clone(),
             letters: g.letters.clone(),
+            align: g.align,
             blank: image(&file("gauge-word"), &g.blank, Layout::Grid { columns: g.blank.len().max(1) as u32 }, &[gauge_palette]),
         }),
     }
@@ -1314,7 +1311,7 @@ pub fn words_from_doc(d: &HudWordsDoc, image: &mut ImageIn) -> Option<HudWords> 
         }
     }
     let gauge = match &d.gauge {
-        Some(g) => Some(GaugeWord { cells: g.cells.clone(), blank: image(&g.blank)?, letters: g.letters.clone() }),
+        Some(g) => Some(GaugeWord { cells: g.cells.clone(), blank: image(&g.blank)?, letters: g.letters.clone(), align: g.align }),
         None => None,
     };
     Some(HudWords { banners: d.banners.clone(), waiting: d.waiting.clone(), l_or_r, gauge })

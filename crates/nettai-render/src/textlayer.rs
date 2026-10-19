@@ -303,6 +303,17 @@ impl<'f> TextSink<'f> {
         self.lettering && !text.is_empty() && crate::vfont::lettering_font().covers(text)
     }
 
+    /// Whether `text` is drawn as lettering in `font` (the enhanced mode's,
+    /// where the font has every character).
+    pub fn takes_lettering_in(&self, text: &str, font: crate::vfont::LetteringFont) -> bool {
+        use crate::vfont::LetteringFont;
+        match font {
+            LetteringFont::Display => self.takes_lettering(text),
+            LetteringFont::Text => self.takes(text),
+            LetteringFont::Numbers => self.lettering && !text.is_empty() && crate::numbers::font().covers(text),
+        }
+    }
+
     /// Whether the game's numbers are drawn in the numbers' font (the
     /// enhanced mode's: `numbers`).
     pub fn draws_numbers(&self) -> bool {

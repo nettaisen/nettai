@@ -11,7 +11,7 @@ use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
-use crate::vfont::{Lettering, Role};
+use crate::vfont::{LetteringFont, Lettering, Role};
 use nettai_assets::letters::Digits;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
@@ -1705,18 +1705,30 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
 }
 
 /// The custom gauge's frame's word in the enhanced mode, if the strings and
-/// the lettering font have it: the cells of the frame's top row that draw it
-/// (the pack's `GaugeWord`), their tiles with the letters taken off (their
-/// plate's color), and the word in the lettering font where the cells'
-/// letters are, in their look.
+/// a font have it: the cells of the frame's top row that draw it (the pack's
+/// `GaugeWord`), their tiles with the letters taken off (their plate's
+/// color), and the word laid out as text where the cells' letters are, in
+/// their look (the user: "the text above the custom gauge CUSTOM looks
+/// really bad too"): in the numbers' font, as the window's labels are (the
+/// lettering font where it lacks a character), its capitals as high as the
+/// picture's letters' ink, at the font's own spacing, narrowed as a whole
+/// where wider than their columns, standing as they stand in the cells.
 fn gauge_word(b: &Battle, hud: &Hud, text: &TextSink, problems: &mut Problems) -> Option<(Vec<usize>, Tiles, TextItem)> {
-    let found = hud.letters.words.gauge.as_ref();
-    let (words, look) = lettered_word(b, text, "gauge.custom", found.map(|g| &g.letters), &hud.gauge_palette, Lettering::wide, problems)?;
-    let found = found?;
+    let words = text.strings.lettering(&b.content, "gauge.custom")?;
+    let font = [GAUGE_WORD_FONT, LetteringFont::Display].into_iter().find(|&f| text.takes_lettering_in(words, f))?;
+    let found = crate::lookups::letters(hud.letters.words.gauge.as_ref(), || "the picture of \"gauge.custom\"".into(), problems)?;
     let cells: Vec<usize> = found.cells.iter().map(|&c| c as usize).collect();
     let x = (GAUGE_COLUMN + *cells.first()? as i32) * 8;
-    Some((cells, found.blank.clone(), look.in_place(words, (x, 0), 8)))
+    let l = &found.letters;
+    let lettering = Lettering { font, ..Lettering::wide(l.top, l.cap) };
+    let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(l, &hud.gauge_palette, Lettering::wide) };
+    let [from, to] = l.span.map(i32::from);
+    let item = look.item(words, Rect::new(x + from, 0, to - from, 8), crate::custom::align_of(found.align));
+    Some((cells, found.blank.clone(), item))
 }
+
+/// The font of the gauge's word (CUSTOM): the window's labels'.
+const GAUGE_WORD_FONT: LetteringFont = LetteringFont::Numbers;
 
 /// A look whose picture's first letter is a button's ring (Ⓛ) where the
 /// words have one the text layer draws (`vfont`'s marks): its capitals

@@ -884,11 +884,7 @@ impl Window {
             // One font for both languages (the user: "i would prefer the same
             // font for the cross names in en and jp", then "yes do that use
             // murecho"), as wide and as tall as the picture's letters.
-            let covered = match CROSS_NAME_FONT {
-                LetteringFont::Text => text.takes(words),
-                LetteringFont::Display => text.takes_lettering(words),
-            };
-            if !covered {
+            if !text.takes_lettering_in(words, CROSS_NAME_FONT) {
                 continue;
             }
             let cap = (row1 + 1 - row0) as u8;
@@ -924,51 +920,23 @@ impl Window {
                 continue;
             }
             let palette = self.palettes[block.palette as usize & 15];
-            let look = crate::lettering::Look::of(&found.letters, &palette, Lettering::wide);
             // Its tiles with the letters taken off (the window's own colors
             // where they were).
             let n = (label.last + 1 - label.first) as usize;
             self.tiles.put_part(label.first, &a.letters.window_blank, (label.first - WINDOW_TILE) as usize, n);
-            // Each of the words' letters in the numbers' font (the user:
-            // "pick bungee"), fitted to the box the picture's letter fills:
-            // its own columns, and the rows the letters' ink takes, so the
-            // label stands as tall and as wide as the original's, where it
-            // stood, its strip around it as there.
-            let [row0, row1] = found.rows.map(usize::from);
-            let mut groups: Vec<(usize, usize)> = found.groups.iter().map(|g| (g[0] as usize, g[1] as usize)).collect();
-            let chars: Vec<char> = words.chars().filter(|c| !c.is_whitespace()).collect();
-            // (Letters that touch: the words' letters share the span alike.)
-            if groups.len() != chars.len() {
-                let (Some(first), Some(last)) = (groups.first().map(|g| g.0), groups.last().map(|g| g.1)) else { continue };
-                let w = (last - first) as f32 / chars.len().max(1) as f32;
-                groups = (0..chars.len()).map(|i| (first + (i as f32 * w).round() as usize, first + ((i + 1) as f32 * w).round() as usize)).collect();
-            }
-            let y = row0 as f32;
-            let h = (row1 + 1 - row0) as f32;
-            // (No letter stretched wider than the label's letters are on
-            // the whole: a narrow letter in a wide box, as the original's I
-            // with its serifs, stands at that width in the box's middle;
-            // the user: "the I in CHIP SELECT looks so bad".)
-            let natural: Vec<Option<f32>> = chars.iter().map(|&c| crate::numbers::ink_aspect(c).map(|a| a * h)).collect();
-            let mut stretches: Vec<f32> = groups.iter().zip(&natural).filter_map(|(&(a, b), n)| n.map(|n| (b - a) as f32 / n)).collect();
-            stretches.sort_by(f32::total_cmp);
-            let stretch = stretches.get(stretches.len() / 2).copied();
-            let glyphs = chars
-                .iter()
-                .zip(&groups)
-                .zip(&natural)
-                .map(|((&c, &(a, b)), n)| {
-                    let room = (b - a) as f32;
-                    let w = match (n, stretch) {
-                        (Some(n), Some(s)) => (n * s).min(room),
-                        _ => room,
-                    };
-                    (c, [a as f32 + (room - w) / 2.0, y, w, h])
-                })
-                .collect();
-            let ink = look.ink.clone();
-            let fitted = crate::numbers::Fitted { glyphs, fill: ink.fill, rim: ink.rim, shadow: look.shadow };
-            let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8));
+            // Its words laid out as text in the numbers' font (the user:
+            // "pick bungee", then "the custom box fonts like BATTLE CHIP and
+            // CROSSSELECT are forcibly packed into the grid which makes it
+            // look really bad, instead of laid out naturally"): one run, the
+            // font's own spacing, its capitals as high as the picture's
+            // letters' ink, narrowed as a whole where it is wider than their
+            // columns, standing as they stand in the label's tiles; in their
+            // look.
+            let [row0, row1] = found.rows;
+            let lettering = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(row0, row1 + 1 - row0) };
+            let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(&found.letters, &palette, Lettering::wide) };
+            let [from, to] = found.letters.span.map(i32::from);
+            let item = look.item(words, Rect::new(from, 0, to - from, 8), align_of(found.align));
             self.labels.push((block.col, block.row, block.w, item));
         }
     }
@@ -1719,6 +1687,15 @@ impl Window {
         for item in items {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
         }
+    }
+}
+
+/// Where words stand in their box, as the picture's letters stand in theirs.
+pub(crate) fn align_of(a: nettai_assets::letters::TextAlign) -> Align {
+    match a {
+        nettai_assets::letters::TextAlign::Left => Align::Left,
+        nettai_assets::letters::TextAlign::Center => Align::Center,
+        nettai_assets::letters::TextAlign::Right => Align::Right,
     }
 }
 
