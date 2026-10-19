@@ -92,8 +92,9 @@ fn renders_a_live_battle_to_png() {
     let written = headless::render_frames(&mut player, Vec::new(), &wanted, &out, 1, &mut log).unwrap();
     assert_eq!(written, vec![1, 100]);
 
-    // Tick 1: the screen starts fully faded to white.
-    assert_eq!(pixel(&out.join("frame_00001.png"), 120, 80), [255, 255, 255]);
+    // Tick 1: the screen starts fully faded to black (every game's intro
+    // fades in from black, as EXE5's does).
+    assert_eq!(pixel(&out.join("frame_00001.png"), 120, 80), [0, 0, 0]);
 
     // Tick 100: the intro is over and the custom screen is up (nobody
     // pressed OK), so the field and the navis are 15 pixels lower. Panels:
