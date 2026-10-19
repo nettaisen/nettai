@@ -378,11 +378,12 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
-    // (`NETTAI_TOUR_ONLY=play`, `replays` or `keys`: those steps alone. `play-away-host` and `play-away-join`:
+    // (`NETTAI_TOUR_ONLY=play`, `replays`, `queue` or `keys`: those steps alone. `play-away-host` and `play-away-join`:
     // two apps on one machine, the host's window taken away from under their link.)
     match std::env::var("NETTAI_TOUR_ONLY").as_deref() {
         Ok("play") => return crate::screens::play::tour::steps(&mut add, &shot, size == "phone"),
         Ok("replays") => return replays::steps(&mut add, lang, size),
+        Ok("queue") => return replays::queue_steps(&mut add, lang, size),
         Ok("keys") => return confirm_keys::steps(&mut add, &shot),
         Ok("play-away-host") => return crate::screens::play::tour::apart(&mut add, true),
         Ok("play-away-join") => return crate::screens::play::tour::apart(&mut add, false),

@@ -185,10 +185,13 @@ fn playback(ui: &AppWindow, app: &App) -> Vec<Option<Rect>> {
 
 /// The replays' steps of one language at one size. `add` takes each step with the time it waits first.
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
-    let phone = size == "phone";
-    // A shot, as `super::walk` takes them: the texts' check started again, the picture written, a pair
-    // compared.
-    let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair, also: Also| {
+    steps_to_queue(add, lang, size);
+    queue_steps(add, lang, size);
+}
+
+/// A shot, as `super::walk` takes them: the texts' check started again, the picture written, a pair compared.
+fn shot(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str, name: &'static str, pair: Pair, also: Also) {
+    {
         let tag = format!("{name}-{lang}-{size}");
         let t = tag.clone();
         add(
@@ -220,28 +223,23 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
                 }
             }),
         );
-    };
-    let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
-    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
-    // What a click or a key on one of the screen's own controls does.
-    let activate = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, id, index))) };
-    let key = |code: KeyCode, times: u32| -> Step {
-        Box::new(move |_, app, _| {
-            app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
-                for _ in 0..times {
-                    s.key(shell, &KeyPress { code, text: None, repeat: false, shift: false });
-                }
-            })
-        })
-    };
-    // Wait, before the next step, for what the view says.
-    let until = |what: fn(&ReplaysView) -> bool| -> Step {
-        Box::new(move |_, _, tour: &Rc<Tour>| {
-            *tour.until.borrow_mut() = Some(Box::new(move |app: &App| what(&app.shell.ui().global::<ReplaysView>())));
-        })
-    };
+    }
+}
 
-    // The pass's replays, and the list once each is played out and the first one's still is made.
+/// Wait, before the next step, for what the view says.
+fn until(what: fn(&ReplaysView) -> bool) -> Step {
+    Box::new(move |_, _, tour: &Rc<Tour>| {
+        *tour.until.borrow_mut() = Some(Box::new(move |app: &App| what(&app.shell.ui().global::<ReplaysView>())));
+    })
+}
+
+/// What a click or a key on one of the screen's own controls does.
+fn activate(id: &'static str, index: i32) -> Step {
+    Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, id, index)))
+}
+
+/// The pass's replays made, Replays shown, and the list once each is played out and the first one's still is made.
+fn arrive(add: &mut dyn FnMut(u64, Step)) {
     add(
         SETTLE,
         Box::new(|_, app, tour| {
@@ -251,6 +249,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             }
             // (A copy a pass stopped part way left.)
             let _ = std::fs::remove_file(tour.dir.join(CHANGED));
+            let _ = std::fs::remove_file(tour.dir.join(QUEUED));
             app.go_now(ScreenId::Replays);
             app.shell.nav.focus("list", 0);
             app.shell.nav.show_cursor(true, false);
@@ -262,6 +261,129 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         add(SETTLE, until(|view| view.get_listed() && view.get_still() && view.get_rows().iter().all(|row| !row.score.is_empty() || !row.reason.is_empty())));
     }
     add(SETTLE, Box::new(|_, _, _| {}));
+}
+
+/// A replay of the queue whose file goes, in the pass's folder while the queue's steps run.
+const QUEUED: &str = "replays/queued.nettaireplay";
+
+/// The play queue's steps (docs/design/app-ui.md §2.91; `NETTAI_TOUR_ONLY=queue` takes them alone): a replay's menu
+/// (on a phone its sheet, with ADD TO QUEUE), five replays added (one PLAY NEXT, one whose file then goes), the
+/// Queue tab with an entry chosen and with the missing one chosen, on a phone an entry's sheet, CLEAR's question,
+/// and the viewer playing the queue, then its next (the missing entry passed by).
+pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
+    let phone = size == "phone";
+    let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str| self::shot(add, lang, size, name, Pair::None, Also::Nothing);
+    let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
+    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
+    // (A choice of the replay's menu, by its place: 1 ADD TO QUEUE, 2 PLAY NEXT.)
+    let menu = |choice: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "more", 0, choice))) };
+    arrive(add);
+    // The queue, empty from a pass before; and a copy of the newest replay, which sorts first.
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            let made = std::fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(QUEUED));
+            if let Err(why) = made {
+                eprintln!("tour: the replay to queue couldn't be made: {why}");
+            }
+            let mut app = app.borrow_mut();
+            app.with_screen(ScreenId::Replays, |s, shell| {
+                s.activate(shell, "tab", 0);
+                s.answered(shell, "clear", 1);
+            });
+            app.go_now(ScreenId::Menu);
+            app.go_now(ScreenId::Replays);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    add(SETTLE, until(|view| view.get_listed() && view.get_count() == 19));
+    add(SETTLE, focus("list", 0));
+    add(SETTLE, until(|view| view.get_still()));
+    if phone {
+        add(SETTLE, activate("list", 0));
+        add(SETTLE, until(|view| view.get_still()));
+        shot(add, "queue-replay-sheet");
+        add(SETTLE, act(Action::Back));
+    } else {
+        add(SETTLE, activate("more", 0));
+        shot(add, "queue-replay-menu");
+        add(SETTLE, act(Action::Back));
+    }
+    for row in 0..4 {
+        add(SETTLE, focus("list", row));
+        add(SETTLE, menu(1));
+    }
+    add(SETTLE, focus("list", 5));
+    add(SETTLE, menu(2));
+    // (The copy goes: its entry is missing.)
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            let _ = std::fs::remove_file(tour.dir.join(QUEUED));
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Menu);
+            app.go_now(ScreenId::Replays);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    add(SETTLE, until(|view| view.get_listed() && view.get_count() == 18));
+    add(SETTLE, activate("tab", 1));
+    add(SETTLE, focus("queue", 2));
+    add(SETTLE, until(|view| view.get_still() && view.get_queue().iter().all(|row| !row.score.is_empty() || !row.reason.is_empty())));
+    shot(add, "queue");
+    add(SETTLE, focus("queue", 1));
+    shot(add, "queue-missing");
+    if phone {
+        add(SETTLE, activate("queue", 2));
+        add(SETTLE, until(|view| view.get_still()));
+        shot(add, "queue-sheet");
+        add(SETTLE, act(Action::Back));
+    }
+    add(SETTLE, activate("clear", 0));
+    shot(add, "queue-clear");
+    add(SETTLE, act(Action::Back));
+    // The viewer playing the queue from its start, then its next (past the missing entry).
+    add(SETTLE, activate("watch-queue", 0));
+    add(SETTLE, until(|view| view.get_watching()));
+    add(SETTLE * 2, focus("next-replay", 0));
+    shot(add, "viewer-queue");
+    add(SETTLE, activate("next-replay", 0));
+    add(SETTLE, until(|view| view.get_watching() && view.get_queue_at() == 2));
+    add(SETTLE * 2, focus("seek", 0));
+    shot(add, "viewer-queue-next");
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, until(|view| !view.get_watching()));
+    shot(add, "queue-after");
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.with_screen(ScreenId::Replays, |s, shell| {
+                s.answered(shell, "clear", 1);
+                s.activate(shell, "tab", 0);
+            });
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}
+
+/// The replays' steps up to the queue's (`queue_steps`).
+fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
+    let phone = size == "phone";
+    let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair, also: Also| self::shot(add, lang, size, name, pair, also);
+    let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
+    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
+    let key = |code: KeyCode, times: u32| -> Step {
+        Box::new(move |_, app, _| {
+            app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
+                for _ in 0..times {
+                    s.key(shell, &KeyPress { code, text: None, repeat: false, shift: false });
+                }
+            })
+        })
+    };
+
+    arrive(add);
     shot(add, "replays", Pair::None, Also::Nothing);
     if phone {
         // A phone: the selected replay's sheet.
