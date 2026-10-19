@@ -24,7 +24,7 @@ use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{
     ButtonLettering, ButtonPictures, ButtonPlace, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, ElementSprite, Emblem,
-    MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned, WindowEmblem,
+    MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned, WindowEmblem, WindowLabel,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -101,6 +101,9 @@ pub struct CustomDoc {
     /// Where the blocks go among the HUD layer's tile numbers: the game's
     /// own layout (every pack says its game's; none stands in).
     pub layout: LayoutDoc,
+    /// The window's labels (`nettai_assets::WindowLabel`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<LabelDoc>,
     /// The buttons, by the name their content registers them under: each
     /// one's tiles by set, its picture in the chip window with that
     /// picture's palettes, and how the screen draws it.
@@ -118,6 +121,17 @@ pub struct CustomDoc {
     /// a navi's emblem sprite).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub window_emblem: Option<WindowEmblemDoc>,
+}
+
+/// `nettai_assets::WindowLabel`: its name, its tiles (the first and the
+/// last), its letters' rows of them (the first and the last) and their
+/// colors.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LabelDoc {
+    pub name: String,
+    pub tiles: [u16; 2],
+    pub rows: [u8; 2],
+    pub letters: Vec<u8>,
 }
 
 /// `nettai_assets::ElementSprite`: its place from the window's left edge
@@ -628,6 +642,11 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
         layout: c.layout.into(),
+        labels: c
+            .labels
+            .iter()
+            .map(|l| LabelDoc { name: l.name.clone(), tiles: [l.first, l.last], rows: [l.top, l.bottom], letters: l.letters.clone() })
+            .collect(),
         buttons,
         element_sprite: c.element_sprite.map(|e| ElementSpriteDoc { at: [e.x, e.y], palette: tiles::palette_text(&e.palette) }),
         cursor_palette: c.cursor_palette.as_ref().map(tiles::palette_text),
@@ -779,6 +798,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
     }
     Some(CustomScreen {
         layout: doc.layout.into(),
+        labels: doc
+            .labels
+            .iter()
+            .map(|l| WindowLabel { name: l.name.clone(), first: l.tiles[0], last: l.tiles[1], top: l.rows[0], bottom: l.rows[1], letters: l.letters.clone() })
+            .collect(),
         buttons,
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,

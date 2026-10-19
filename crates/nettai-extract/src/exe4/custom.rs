@@ -29,7 +29,7 @@ use crate::exe4::hud::palette;
 use crate::exe4::rom::{Place, Rom, Roms, Source, Version};
 use nettai_assets::{
     ButtonPictures, ButtonPlace, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, ElementSprite, MapEntry, PatchList, Picture, SlotPictures,
-    Tiles, VersionPictures, Versioned, WindowEmblem,
+    Tiles, VersionPictures, Versioned, WindowEmblem, WindowLabel,
 };
 
 /// The window frame's tiles (to tile 1, 62 tiles), the picked column's
@@ -327,6 +327,9 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
     let (patches, first_tile) = (at(WINDOW_PATCHES.0), WINDOW_PATCHES.1);
     CustomScreen {
         layout: CustomLayout { ok_cursor: CursorPlace { corners: cursor_corners(rom, at(OK_CORNERS)), ..LAYOUT.ok_cursor }, ..LAYOUT },
+        // The window's label: CHIP SELECT over the slots (tiles 0x22 to
+        // 0x28, color 4 on 1).
+        labels: vec![WindowLabel { name: "chip-select".into(), first: 0x22, last: 0x28, top: 3, bottom: 6, letters: vec![4] }],
         buttons: vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), redeal)],
         window_tiles,
         column_cells: block(art, COLUMN_CELLS),

@@ -20,7 +20,7 @@ use crate::exe5::hud::palette;
 use crate::exe5::rom::{Place, Rom, Roms, Source, Version};
 use nettai_assets::{
     ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry,
-    Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned,
+    Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned, WindowLabel,
 };
 use nettai_content::names::AssetNames;
 
@@ -360,10 +360,23 @@ pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> Custom
     if art.is_present() { drawn(art, c) } else { c }
 }
 
+
+/// A window label ([`WindowLabel`]): its name, its tiles, its letters' rows
+/// and colors.
+fn label(name: &str, (first, last): (u16, u16), (top, bottom): (u8, u8), letters: &[u8]) -> WindowLabel {
+    WindowLabel { name: name.into(), first, last, top, bottom, letters: letters.to_vec() }
+}
+
 /// `c` with what the four ROMs have alike, read from `src`.
 fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
     let (rom, at) = (src.rom, |place: Place| src.at(place));
     let glyphs = |(place, n): (Place, usize)| tiles(src, (place, 0x40 * n));
+    let labels = vec![
+        // BATTLE CHIP on the window's top frame (tiles 2 to 10, color 3 on
+        // 6), CHIP SELECT over the slots (0x27 to 0x2D, 4 on 2).
+        label("battle-chip", (0x02, 0x0A), (1, 5), &[3]),
+        label("chip-select", (0x27, 0x2D), (3, 6), &[4]),
+    ];
     let map = |a: u32| -> Vec<MapEntry> {
         (0..MAP_CELLS)
             .map(|i| MapEntry::from_gba(rom.u16(a + 2 * i)))
@@ -377,6 +390,7 @@ fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
             },
             ..LAYOUT
         },
+        labels,
         window_tiles: tiles(src, WINDOW_TILES),
         column_cells: tiles(src, COLUMN_CELLS),
         turn_limit: tiles(src, TURN_LIMIT),

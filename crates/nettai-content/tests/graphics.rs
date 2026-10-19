@@ -257,6 +257,11 @@ fn custom() -> CustomScreen {
             ok_cursor: cursor(0),
             regular: (2, 100),
         },
+        // Two labels, one with letters of two colors.
+        labels: vec![
+            WindowLabel { name: "battle-chip".into(), first: 2, last: 10, top: 1, bottom: 5, letters: vec![7] },
+            WindowLabel { name: "b-exit".into(), first: 0x81, last: 0x87, top: 2, bottom: 6, letters: vec![5, 3] },
+        ],
         // A special slot's button with icons, and two over the slots' row
         // (two cells of 2x3 a set): one that shows its uses left, one that
         // holds a chip and has another rule for its sets.

@@ -14,7 +14,7 @@ use crate::exe6::hud::CHIPS;
 use crate::exe6::{Place, Rom, Roms, Source, Version, u32at};
 use nettai_assets::{
     ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry,
-    Palette, Picture, SlotPictures, Tiles, VersionPictures, Versioned, palettes_from_bytes,
+    Palette, Picture, SlotPictures, Tiles, VersionPictures, Versioned, WindowLabel, palettes_from_bytes,
 };
 use nettai_content::names::AssetNames;
 
@@ -364,11 +364,34 @@ pub fn custom(roms: &Roms, names: &AssetNames) -> CustomScreen {
     if art.is_present() { drawn(art, c) } else { c }
 }
 
+/// The window's labels, in its tiles (`WINDOW_TILES`, the four ROMs'
+/// alike): BATTLE CHIP on its top frame (tiles 2 to 10, color 7 on 6),
+/// CHIP SELECT over the slots (0x27 to 0x2D, 4 on 1), CROSS SELECT on the
+/// Cross tab (0x4A to 0x54, 5 on 2: its triangle stays) and in the Cross
+/// window's header (0x58 to 0x62), and B:EXIT at its foot (0x81 to 0x87:
+/// 5 and its B's 3, on 2).
+fn labels() -> Vec<WindowLabel> {
+    vec![
+        label("battle-chip", (0x02, 0x0A), (1, 5), &[7]),
+        label("chip-select", (0x27, 0x2D), (3, 6), &[4]),
+        label("cross-select", (0x4A, 0x54), (2, 6), &[5]),
+        label("cross-select", (0x58, 0x62), (1, 5), &[5]),
+        label("b-exit", (0x81, 0x87), (2, 6), &[5, 3]),
+    ]
+}
+
+/// A window label ([`WindowLabel`]): its name, its tiles, its letters' rows
+/// and colors.
+fn label(name: &str, (first, last): (u16, u16), (top, bottom): (u8, u8), letters: &[u8]) -> WindowLabel {
+    WindowLabel { name: name.into(), first, last, top, bottom, letters: letters.to_vec() }
+}
+
 /// `c` with what the four ROMs have alike, read from `src`.
 fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
     let (rom, at) = (src.rom, |place: Place| src.at(place));
     let glyphs = |(place, n): (Place, usize)| tiles(src, (place, 0x40 * n));
     CustomScreen {
+        labels: labels(),
         window_tiles: tiles(src, WINDOW_TILES),
         column_cells: tiles(src, COLUMN_CELLS),
         turn_limit: tiles(src, TURN_LIMIT),

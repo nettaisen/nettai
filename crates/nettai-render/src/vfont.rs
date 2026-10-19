@@ -135,6 +135,9 @@ pub struct Lettering {
     /// How wide the glyphs are drawn, in hundredths of the font's own
     /// width (the banners' tall, narrow capitals: [`Lettering::NARROW`]).
     pub width: u8,
+    /// Each character in a cell this many frame pixels wide, centered in it
+    /// (the numbers: the game's 8-pixel cells); 0: as the font sets them.
+    pub pitch: u8,
 }
 
 impl Lettering {
@@ -147,19 +150,25 @@ impl Lettering {
 
     /// Bold and narrowed, capitals `cap` rows high from row `top`.
     pub fn display(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW }
+        Lettering { top, cap, weight: Lettering::BOLD, width: Lettering::NARROW, pitch: 0 }
     }
 
-    /// Bold at the font's own width (the damage numbers: the game's digits
-    /// are as wide as the font's).
+    /// The numbers' (damage, HP, the judge's): bold at the font's own
+    /// width, each character in its 8-pixel cell ([`Lettering::CELL`]), as
+    /// the game's digits are, so a number's digits stand where the
+    /// picture's do and don't move as it changes.
     pub fn digits(top: u8, cap: u8) -> Lettering {
-        Lettering { top, cap, weight: Lettering::BOLD, width: 100 }
+        Lettering { top, cap, weight: Lettering::BOLD, width: 100, pitch: Lettering::CELL }
     }
+
+    /// The game's numbers' pitch: a digit an 8-pixel cell.
+    pub const CELL: u8 = 8;
 
     /// Bold at the font's own width: the small labels whose letters are as
-    /// wide as they are high (CUSTOM, L or R, the help pictures' titles).
+    /// wide as they are high (CUSTOM, L or R, the help pictures' titles, the
+    /// window's labels).
     pub fn wide(top: u8, cap: u8) -> Lettering {
-        Lettering::digits(top, cap)
+        Lettering { top, cap, weight: Lettering::BOLD, width: 100, pitch: 0 }
     }
 }
 
@@ -191,11 +200,14 @@ struct Style {
     narrow: f32,
     /// In the lettering font ([`Role::Lettering`]).
     lettering: bool,
+    /// Each character in a cell this many frame pixels wide (0: as the font
+    /// sets them).
+    pitch: f32,
 }
 
 impl Role {
     fn style(self) -> Style {
-        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false };
+        let plain = Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0, narrow: 1.0, lettering: false, pitch: 0.0 };
         match self {
             Role::Cell => plain,
             // The original's descenders take row 14, their shadow row 15:
@@ -214,6 +226,7 @@ impl Role {
                 rows: 16.0,
                 narrow: l.width.max(1) as f32 / 100.0,
                 lettering: true,
+                pitch: l.pitch as f32,
             },
         }
     }
@@ -409,6 +422,8 @@ struct Layout {
     /// Its role's short descenders: what its glyphs have under the
     /// baseline is drawn this many times as high ([`Shorten`]).
     shorten: Option<f32>,
+    /// Where each of its characters starts and ends, from its left.
+    units: Vec<(f32, f32)>,
 }
 
 /// A glyph field's cache key: what changes its outline's shape (the
@@ -597,6 +612,9 @@ impl TextRenderer {
         let weight = weight_axis.map(|a| st.weight.clamp(a.min, a.max));
         let mut width = width_axis.map(|a| a.default.clamp(a.min, a.max));
         let mut l = narrowed(self.shape(text, st, width, weight), st.narrow);
+        if st.pitch > 0.0 {
+            return pitched(l, st.pitch);
+        }
         if l.width <= room || l.width <= 0.0 {
             return l;
         }
@@ -720,7 +738,7 @@ impl TextRenderer {
         };
         let chars: Vec<(usize, char)> = text.char_indices().collect();
         let drawn: Vec<Option<Mark>> = chars.iter().map(|&(_, c)| if cmap.map(c) == 0 { mark(c) } else { None }).collect();
-        let mut out = Layout { xscale: 1.0, ..Layout::default() };
+        let mut out = Layout { xscale: 1.0, units: vec![(0.0, 0.0); chars.len()], ..Layout::default() };
         let mut pen = 0.0f32;
         let gap = size * 0.05;
         let mut i = 0;
@@ -736,6 +754,7 @@ impl TextRenderer {
                         out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i, lettering });
                     }
                     out.rings.push(Ring { x, y, radius: ring / 2.0, unit: i });
+                    out.units[i] = (pen, pen + ring + 2.0 * gap);
                     pen += ring + 2.0 * gap;
                     i += 1;
                 }
@@ -755,6 +774,7 @@ impl TextRenderer {
                             out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i, lettering });
                         }
                     }
+                    out.units[i] = (pen, x0 + cell + gap);
                     pen = x0 + cell + gap;
                     i += 1;
                 }
@@ -774,9 +794,13 @@ impl TextRenderer {
                     b.shape_with(|c| {
                         let at = start + c.source.start as usize;
                         let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
+                        let first = pen;
                         for g in c.glyphs {
                             out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit, lettering });
                             pen += g.advance;
+                        }
+                        if let Some(u) = out.units.get_mut(unit) {
+                            *u = if u.1 > u.0 { (u.0, pen) } else { (first, pen) };
                         }
                     });
                     if tight_comma(&chars, j - 1) {
@@ -1187,8 +1211,30 @@ fn narrowed(mut l: Layout, k: f32) -> Layout {
     for r in &mut l.rings {
         r.x *= k;
     }
+    for u in &mut l.units {
+        *u = (u.0 * k, u.1 * k);
+    }
     l.width *= k;
     l.xscale *= k;
+    l
+}
+
+/// A layout set at a fixed pitch: each character in a cell `pitch` frame
+/// pixels wide, centered in it, the cells side by side (the game's numbers:
+/// each digit in its 8-pixel cell, so a number's digits stand where the
+/// picture's do and don't move as it changes).
+fn pitched(mut l: Layout, pitch: f32) -> Layout {
+    let moves: Vec<f32> = l.units.iter().enumerate().map(|(u, &(s, e))| u as f32 * pitch + (pitch - (e - s)) / 2.0 - s).collect();
+    for g in &mut l.glyphs {
+        g.x += moves.get(g.unit).copied().unwrap_or(0.0);
+    }
+    for r in &mut l.rings {
+        r.x += moves.get(r.unit).copied().unwrap_or(0.0);
+    }
+    for (u, m) in l.units.iter_mut().zip(&moves) {
+        *u = (u.0 + m, u.1 + m);
+    }
+    l.width = pitch * l.units.len() as f32;
     l
 }
 

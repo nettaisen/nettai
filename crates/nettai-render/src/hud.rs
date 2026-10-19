@@ -657,10 +657,17 @@ pub fn draw<'a>(
         for (i, &e) in hud.hp_box.iter().enumerate() {
             put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
+        // In the enhanced mode the HP in the lettering font, in the digits'
+        // look, each digit in its cell, the cells blank (the box's glyph 10).
+        let lettered = hp_box_number(hud, pal, shown, (shift + 8, 0), text);
         for (k, d) in digits4(shown).into_iter().enumerate() {
+            let d = if lettered.is_some() { HP_BLANK } else { d };
             let top = MapEntry { tile: hud.first_tile + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
             put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
             put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
+        }
+        for item in lettered.into_iter().flatten() {
+            text.push(Plane::Hud, item);
         }
     }
 
@@ -771,8 +778,21 @@ pub fn draw<'a>(
     let marks_hidden = b.message.is_some() || b.hud_hidden.defensive_marks || result_started(b);
     if !open && !hide_boxes && !crate::custom::gauge_held(b) && !marks_hidden {
         let pal = &hud.hp_palettes[0];
+        // In the enhanced mode the marks in the lettering font, in their
+        // glyph's look, each in its cell.
+        let marks = text
+            .strings
+            .lettering(&b.content, "hidden")
+            .filter(|w| text.takes_lettering(w))
+            .and_then(|words| Some((words, crate::lettering::glyphs_look(&hud.tiles, HIDDEN_GLYPH, 1, |v| v == 0, pal)?)));
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {
+                continue;
+            }
+            if let Some((words, look)) = &marks
+                && let Some(items) = crate::lettering::run(text, &[(words.to_string(), look)], (8 * column, 16), 16)
+            {
+                items.into_iter().for_each(|item| text.push(Plane::Hud, item));
                 continue;
             }
             for i in 0..8i32 {
@@ -952,11 +972,11 @@ pub fn draw<'a>(
         let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
         let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
-        // The damage taken, in the enhanced mode: in the lettering font in
-        // the digits' look, ending where the original's last digit ends
-        // (the HP stays the digits' pictures).
-        let lettered = number
-            .damage
+        // In the enhanced mode the number (the HP, or the damage taken) in
+        // the lettering font in the digits' look, each digit in its cell, the
+        // last ending where the original's does.
+        let lettered = text
+            .takes_lettering("0")
             .then(|| crate::lettering::glyphs_look(digits, 0, 10, |v| v == 0, &hud.enemy_palette))
             .flatten()
             .and_then(|look| {
@@ -1616,6 +1636,24 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerL
         out.insert(0, glyph(tiles(&hud.banner_digits), k_of(ones), pal, nx + 8, ny as i32, 0, vscale));
         out.insert(0, glyph(tiles(&hud.banner_digits), k_of(tens), pal, nx, ny as i32, 0, vscale));
     }
+}
+
+/// The HP box's blank cell: glyph 10 of its digits' (`digits4`'s blank).
+const HP_BLANK: usize = 10;
+
+/// The HP box's number in the enhanced mode, if the lettering font draws
+/// it: right-aligned in the box's four cells from (x, y), each digit in its
+/// cell, in the look of the box's digits (glyphs 0 to 9 of the HUD layer's
+/// tiles) on their ground (the colors of the blank cell, glyph 10).
+fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), text: &TextSink) -> Option<Vec<TextItem>> {
+    if !text.takes_lettering("0") {
+        return None;
+    }
+    let blank = crate::lettering::Picture::glyphs(&hud.tiles, HP_BLANK, 1);
+    let look = crate::lettering::glyphs_look(&hud.tiles, 0, 10, |v| blank.pixels.contains(&v), palette)?;
+    let words = shown.min(9999).to_string();
+    let width = crate::lettering::run_width(text, &[(words.clone(), &look)])?;
+    crate::lettering::run(text, &[(words, &look)], (x + 32 - width.ceil() as i32, y), 16)
 }
 
 /// A tile of the HUD layer by its number (the gauge's block or the
