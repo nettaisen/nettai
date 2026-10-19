@@ -1386,6 +1386,18 @@ Each is settled unless the user changes it.
     navi it is said on the line kept for the build's problems under the navi's facts (§2.70), quietly (the notes'
     gray, no problem's mark), where that line has no problem to say; a problem says itself there in its stead.
 
+86. **PRACTICE is the build editor's; the header's game still between screens** (2026-10-18). The user: "the
+    practice button should probably be moved into the build editor", and "if the game picker doesn't change,
+    don't animate it when switching screens".
+    - *PRACTICE* is in the editor's header, at its right before the game (on a phone, where the header has no
+      game, at its right end), a regular button as wide as its word, there when the editor was opened from Play
+      (opened from Practice, its Back is the way back). It goes straight into a practice battle on the build as
+      it is kept; Practice's EXIT and Back come back to the editor on it, whose Back goes to Play. A build that
+      can't be played under its ruleset is refused in the editor, why in a dialog. Play's chosen build has EDIT
+      and ⋯ alone in its header (on a phone EDIT takes PRACTICE's room).
+    - *The header's game* doesn't slide in with a screen's header: it slides only when the game changes.
+    - *Build and ruleset files* no longer start with a comment line.
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1614,7 +1626,7 @@ Each is in the mockups under the same name.
 
 ### Play
 The builds and the ways to play one, on one screen (§2.50), built around "pick a build, then what to do with it"
-(§2.57): the builds, the chosen build (PRACTICE, EDIT and ⋯ in its header), and a row of controls for playing it
+(§2.57): the builds, the chosen build (EDIT and ⋯ in its header; PRACTICE is the editor's since §2.86), and a row of controls for playing it
 online, read in that order. In the body's units (1216 by 644 at the reference window):
 - **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
   the game has no build), and under it from 52 the player's builds of the game, an open list down to 564 (rows
@@ -1625,15 +1637,15 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
 - **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 564
-  tall here, 540 at least), framed, with PRACTICE, EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
-  down, 8 apart (PRACTICE and EDIT regular buttons, as wide as their words); the version's tag follows the
+  tall here, 540 at least), framed, with EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
+  down, 8 apart (EDIT a regular button, as wide as its word); the version's tag follows the
   build's name, 12 after it (the user: "the version indiactor should be next to the build name in the play
   screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
   under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE and
   DELETE (a build is renamed in the editor's header: §2.74), in the buttons' type, DELETE under a line in the error color. The cursor starts on the
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
-  build whose file doesn't read has an empty frame, PRACTICE and EDIT unavailable and DELETE alone in its menu;
-  with no build, none of the three is there.
+  build whose file doesn't read has an empty frame, EDIT unavailable and DELETE alone in its menu;
+  with no build, neither is there.
 - **The ways to play it online** (§2.57), one row of the app's controls at the body's foot, under the overview
   (from 424 to its right edge), at 580, 40 tall, no panel and no label over it:
   - **HOST**, the main action's button while there is a build (an online match is what PLAY is for, and HOST is
@@ -1646,26 +1658,24 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     the invite code allow more than 6 characters?").
   - **DIRECT CONNECT**, a text button (no fill, no line, its words muted) as wide as its words, at the row's
     right end, its right edge the overview's (the user: "direct connect should be deemphasized"). It opens the direct connection's dialog (below).
-  Under them at 626 the reserved line (18 tall, as wide as the overview, 12). Pressed with no build, PRACTICE,
+  Under them at 626 the reserved line (18 tall, as wide as the overview, 12). Pressed with no build,
   HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why; a code no match
   has, "No match with that code.". The list and the overview grow down to 16 over the row: both end at 564 (the
   overview's wide sheet is 540 at least).
 - **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
   FROM A SAVE FILE…, which closes it and opens the system's file dialog for saves, one or more; a build is made of
   each and named for its file, the last made chosen (Builds, below).
-- **PRACTICE** starts a practice battle with the chosen build as the player's; the practice menu's EXIT comes
-  back with it still chosen.
 - **EDIT** opens the chosen build in Builds' editor, whose Back (‹ PLAY) comes back with the build still chosen.
 - The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to HOST. The
   arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to HOST, Right from
-  any row of the list to PRACTICE (past the overview, which takes no focus; to EDIT or ⋯ where it can't be used),
-  along the header PRACTICE, EDIT, ⋯, Down from them to the row; along the row Right goes HOST, the field, JOIN,
-  DIRECT CONNECT. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, the field, JOIN,
+  any row of the list to EDIT (past the overview, which takes no focus; to ⋯ where it can't be used),
+  along the header EDIT, ⋯, Down from them to the row; along the row Right goes HOST, the field, JOIN,
+  DIRECT CONNECT. Tab goes in reading order: + NEW BUILD, the list, EDIT, ⋯, HOST, the field, JOIN,
   DIRECT CONNECT. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
   in a box, 72 tall, its ruleset at its status line's right end as a row's (Enter opens the builds as a sheet,
-  a select's list: §2.77); at 136 PRACTICE (as wide as its
-  word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
+  a select's list: §2.77); at 136 EDIT (the column's
+  width less ⋯) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
   as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 DIRECT CONNECT
   the column's width; at 356 the reserved line (two lines, 40). The overview isn't shown there (the editor shows
   the build whole).
@@ -1719,8 +1729,9 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   practice battle filling the window, STOP PRACTICE at its menu's top going back) and CANCEL INVITE under it.
 
 ### Practice
-- **No screen of its own** (§2.57): PLAY's PRACTICE goes straight into a practice battle, the two cards and the
-  jack-in first as for any battle. It starts on the defaults: the player's build PLAY's chosen one, the dummy on
+- **No screen of its own** (§2.57): the build editor's PRACTICE (§2.86) goes straight into a practice battle, the
+  two cards and the jack-in first as for any battle; EXIT and Back go back to the editor on the build. It starts
+  on the defaults: the player's build the one edited, the dummy on
   the same build, Arena Random, Background Random, Music the game's own, and the menu's options at their
   defaults (Stands still, Normal, every option normal, the input display off). The practice menu is open over
   the battle as it starts, the focus on RESUME (the user: "when practice mode starts you should also bring up

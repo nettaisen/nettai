@@ -1,4 +1,4 @@
-//! The screenshot pass's steps for Practice (docs/app.md §13): PLAY's PRACTICE (the two cards, the battle with the
+//! The screenshot pass's steps for Practice (docs/app.md §13): the editor's PRACTICE (the two cards, the battle with the
 //! practice menu open over it as it starts), the menu's Dummy's build (a value apart, its list, a list of more
 //! choices than it shows at once), the battle, the practice menu (a value changed, the focus a row apart, the
 //! dummy that fights (its Action, and its Level under it), the arena's grid, the arena, the background and the
@@ -185,24 +185,25 @@ pub(super) fn forget(app: &mut App) {
     app.shell.practice.visit.leave();
 }
 
-/// PLAY's PRACTICE pressed, the cards held: Play shown, its first build chosen (the pass's own, or with `files` the
-/// builds folder's), and PRACTICE confirmed.
-fn practice_from_play(app: &mut App, files: bool) {
+/// Practice entered as the build editor's PRACTICE enters it (`practice::open`), on Play's chosen build, the cards
+/// held when `held`. (The pass's own builds have no files, which the editor opens: its EXIT goes to Play.)
+fn practice_from_play(app: &mut App, held: bool) {
     forget(app);
-    app.shell.practice.tour_files = files;
+    app.shell.practice.tour_files = false;
     app.go_now(ScreenId::Play);
     app.shell.nav.show_cursor(true, false);
-    app.shell.hold_cards = true;
-    app.shell.nav.focus("practice", 0);
-    app.act(Action::Confirm);
+    app.shell.hold_cards = held;
+    let Some(game) = app.shell.game().map(str::to_string) else { return };
+    let name = crate::screens::play::remembered(&app.shell, &game).unwrap_or_default();
+    practice::open(&mut app.shell, &game, &name);
 }
 
 /// Practice's steps of one language at one size.
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
-    // PLAY's PRACTICE: straight into a practice battle on the build chosen there, the two cards first; then the
+    // The editor's PRACTICE (Play's first build's EDIT): straight into a practice battle on the build, the two cards first; then the
     // battle with the practice menu open over it as it starts, the focus on RESUME.
-    add(SETTLE, Box::new(|_, app, _| practice_from_play(&mut app.borrow_mut(), false)));
-    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice && practice::running(&app.shell), "Practice, its session on, from PLAY's PRACTICE"));
+    add(SETTLE, Box::new(|_, app, _| practice_from_play(&mut app.borrow_mut(), true)));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice && practice::running(&app.shell), "Practice, its session on, from the editor's PRACTICE"));
     shot(add, "practice-versus", lang, size, Differs::Unheld, false);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_cards = false));
     add(4000, Box::new(|_, _, _| {}));
@@ -419,7 +420,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(150, hold(0));
     add(2000, tell(lang, size, "the fight again"));
 
-    // EXIT: Play again, the build still chosen.
+    // EXIT: where Practice was entered from (the editor on the build; the pass's own, with no file, Play).
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -435,7 +436,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-exit", lang, size, Differs::Unheld, false);
 
     // EDIT under the Dummy's build: the builds folder listing the pass's own files (a new build of each version,
-    // kept as a player's are), PLAY's PRACTICE on the first; the dummy on the second; its EDIT focused; the Builds
+    // kept as a player's are), the editor's PRACTICE on the first; the dummy on the second; its EDIT focused; the Builds
     // editor it opens on that build, Back saying PRACTICE; and Back, the practice battle again with the menu open
     // over it, the dummy still on that build.
     add(
@@ -490,6 +491,22 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         ),
     );
     shot(add, "practice-menu-edited", lang, size, Differs::Unheld, false);
+    // EXIT: the editor on the player's build (the first), which the editor's PRACTICE came from, its header's
+    // PRACTICE there and Back going to Play.
+    add(SETTLE, focus("menu.exit", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(
+        SETTLE,
+        expect(
+            |app, ui| {
+                let view = ui.global::<BuildsView>();
+                let first = app.shell.game().and_then(|game| store::list(game).first().map(|b| b.name.clone())).unwrap_or_default();
+                app.shell.screen() == ScreenId::Builds && !view.get_to_practice() && view.get_name() == first.as_str() && !practice::running(&app.shell)
+            },
+            "Builds' editor on the player's build, back from Practice's EXIT",
+        ),
+    );
+    shot(add, "practice-exit-editor", lang, size, Differs::Unheld, false);
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -531,7 +548,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
 }
 
-/// The motion probe's bursts of what Practice moves: the battle entered from PLAY's PRACTICE (the cards, the
+/// The motion probe's bursts of what Practice moves: the battle entered from the editor's PRACTICE (the cards, the
 /// jack-in, the menu sliding in as it starts), the practice menu closing and opening, a row's value sliding.
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
     // (A burst, as `tour::motion_walk`'s: `trigger` starts something moving, and a shot is taken at each of
@@ -566,11 +583,9 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
             let mut app = app.borrow_mut();
             forget(&mut app);
             app.go_now(ScreenId::Play);
-            app.shell.nav.show_cursor(true, false);
-            app.shell.nav.focus("practice", 0);
         }),
     );
-    burst(add, "practice-entered", &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100, 1400, 1700], act(Action::Confirm));
+    burst(add, "practice-entered", &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100, 1400, 1700], Box::new(|_, app, _| practice_from_play(&mut app.borrow_mut(), false)));
     add(1500, Box::new(|_, _, _| {}));
     burst(add, "practice-menu-closes", &[0, 40, 90, 160], act(Action::Back));
     burst(add, "practice-menu-opens", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
