@@ -626,7 +626,8 @@ host calls, in order:
   internal). rollback.md §4.9 lists every one, with when.
 - **The lobby and the handshake** (`nettai_frontend::lobby`, rollback.md
   §4.7) check that both players run the same netplay protocol, the same
-  engine, the same game (a match is of one), the same content
+  engine's minor version (`lobby::netplay_line`: "0.7" of 0.7.3; patch
+  releases play together, a minor release doesn't), the same game (a match is of one), the same content
   (`Content::hash`: the definitions, scripts and rule tables, and what the
   battle reads of the pack, the asset names and the animations' timing) and
   the same background pool (`Compat::backgrounds`, its identity: the hash
@@ -2499,8 +2500,9 @@ tick's buttons, both players'. The simulation is a function of those alone, so
 playing them again makes the same set, round by round; nothing it makes is
 kept (who won, the score) but the ticks a round and the set ended on, and the
 battle's digest now and then, to tell a replay that reproduces from one that
-doesn't. A replay plays only on the engine and the content it was made with;
-it names them, and another build or pack refuses it with what differs.
+doesn't. A replay plays only on the content it was made with and an engine
+of the same minor version (`nettai_replay::line`: a patch release plays it);
+it names them, and another minor version or pack refuses it with what differs.
 
 **Recording.** nettai records the sets it plays to its
 replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
