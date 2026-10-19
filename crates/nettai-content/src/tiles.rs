@@ -264,6 +264,93 @@ pub fn export_layered(
 /// The color a letters image shows where it has no letter (for viewing).
 const LETTERLESS: [u8; 3] = [255, 0, 255];
 
+/// A layer of a picture's (what lies over what is under it: a Cross's
+/// portrait over its name's bar, the name's letters over both) as an image
+/// of `pixels` (in tile order, as many as `tiles` tiles have): each pixel
+/// its palette index or, where the layer has none, the entry after the
+/// palette's last. Its palette's rows `owned` are data, as
+/// [`export_image`]'s.
+pub fn export_layer(
+    file: &str,
+    pixels: &[Option<u8>],
+    tiles: usize,
+    layout: Layout,
+    rows: &[nettai_assets::Palette],
+    owned: [usize; 2],
+    row_of: impl Fn(usize) -> u8,
+) -> (Vec<u8>, TileImage) {
+    let palette: Vec<[u8; 3]> = crate::image::palette_rgb(rows).into_iter().chain([LETTERLESS]).collect();
+    let none = (palette.len() - 1) as u8;
+    let (w, h) = layout.size(tiles as u32);
+    let mut img = Indexed::new(w, h, palette.clone());
+    img.pixels.iter_mut().for_each(|p| *p = none);
+    for i in 0..tiles {
+        let (x0, y0) = layout.place(i as u32);
+        let r = row_of(i) << 4;
+        for k in 0..Tiles::TILE {
+            if let Some(Some(v)) = pixels.get(i * Tiles::TILE + k) {
+                img.set(x0 + (k % 8) as u32, y0 + (k / 8) as u32, r | (v & 15));
+            }
+        }
+    }
+    let doc = TileImage {
+        file: file.into(),
+        layout,
+        tiles,
+        palettes: owned,
+        fingerprint: crate::image::palette_fingerprint(&palette),
+        letters: None,
+        base: None,
+        letters_mask: None,
+    };
+    (img.to_png(), doc)
+}
+
+/// Read a layer back ([`export_layer`]): its pixels (none where it has
+/// none) and its data palettes.
+pub fn import_layer(
+    dir: &std::path::Path,
+    prefix: &str,
+    doc: &TileImage,
+    report: &mut crate::report::Report,
+) -> Option<(Vec<Option<u8>>, Vec<nettai_assets::Palette>)> {
+    let name = format!("{prefix}/{}", doc.file);
+    let img = match Indexed::load(&dir.join(&doc.file)) {
+        Ok(i) => i,
+        Err(e) => {
+            report.error(&name, e);
+            return None;
+        }
+    };
+    let [first, count] = doc.palettes;
+    let mut palettes = Vec::new();
+    if count > 0 {
+        if let Some(why) = crate::image::palette_change(&doc.fingerprint, &img.palette, (first + count) * 16) {
+            report.error(&name, why);
+            return None;
+        }
+        palettes = crate::image::palette_rows(&img.palette, first + count).0[first..].to_vec();
+    }
+    let (w, h) = doc.layout.size(doc.tiles as u32);
+    if img.width < w || img.height < h {
+        report.error(&name, format!("the layer is smaller than the {} tiles it lies over", doc.tiles));
+        return None;
+    }
+    // (Its palette's last entry is none.)
+    let none = (img.palette.len().saturating_sub(1)) as u8;
+    let mut out = vec![None; doc.tiles * Tiles::TILE];
+    for i in 0..doc.tiles {
+        let (x0, y0) = doc.layout.place(i as u32);
+        for k in 0..Tiles::TILE {
+            let v = img.get(x0 + (k % 8) as u32, y0 + (k / 8) as u32);
+            if v < none {
+                out[i * Tiles::TILE + k] = Some(v & 15);
+            }
+        }
+    }
+    Some((out, palettes))
+}
+
 /// Read a tile image back: its tiles and its data palettes.
 pub fn import_image(
     dir: &std::path::Path,
@@ -518,6 +605,23 @@ mod tests {
         let none = vec![false; base.pixels.len()];
         let (files, doc) = export_layered("y.png", &base, &Layered { base: &base, base_file: None, letters: &none }, layout, &[palette], [0, 1], |_| 0);
         assert_eq!((files.len(), doc.letters), (1, None));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A layer's pixels, and none where it has none, read back as written,
+    /// with the palette rows it owns.
+    #[test]
+    fn a_layer_round_trips() {
+        let pixels: Vec<Option<u8>> = (0..3 * Tiles::TILE).map(|i| (i % 5 != 0).then_some((i % 16) as u8)).collect();
+        let layout = Layout::Blocks { width: 1, height: 1, columns: 1 };
+        let rows: Vec<nettai_assets::Palette> = (0..3).map(|r| std::array::from_fn(|i| (r * 16 + i) as u16 * 0x21)).collect();
+        let (png, doc) = export_layer("l.png", &pixels, 3, layout, &rows, [0, 3], |i| i as u8);
+        let dir = std::env::temp_dir().join(format!("nettai-layer-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("l.png"), png).unwrap();
+        let mut report = crate::report::Report::default();
+        assert_eq!(import_layer(&dir, "t", &doc, &mut report), Some((pixels, rows)));
+        assert!(!report.has_errors(), "{report}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
