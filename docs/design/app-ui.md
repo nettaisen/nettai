@@ -1416,6 +1416,10 @@ Each is settled unless the user changes it.
     build are standard buttons again (40 tall; ⋯ 40 by 40, matching EDIT), and the build's menu starts with PRACTICE,
     straight into a practice battle on the chosen build, whose EXIT comes back to Play with it still chosen (the
     editor's PRACTICE stays, coming back to the editor). A build that can't be played: the reserved line says why.
+89. **A new build opens in the editor** (2026-10-19). The user: "after creating a new build, it should go directly
+    into the editor". NEW BUILD's dialog, confirmed, keeps the build and opens it in Builds' editor, whose Back comes
+    back to Play with it chosen. Builds made of save files (FROM A SAVE FILE…, a save dropped on the window) stay in
+    the list as before: several can be made at once, and the list's line says what an import put the save on.
 
 ## 3. Chosen where the user gave no answer
 
