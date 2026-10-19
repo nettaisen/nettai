@@ -247,9 +247,10 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
 /// keeps as it goes, the texts' check, and the game asked for.
 fn begin(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) -> Rc<Tour> {
     let _ = std::fs::create_dir_all(&dir);
-    // (The builds the pass makes and lists are its own, never the player's.)
+    // (The builds and rulesets the pass makes and lists are its own, never the player's.)
     let _ = std::fs::remove_dir_all(dir.join("builds"));
-    crate::paths::keep_builds_in(dir.join("builds"));
+    let _ = std::fs::remove_dir_all(dir.join("rulesets"));
+    crate::paths::keep_builds_in(dir.join("builds"), dir.join("rulesets"));
     let tour = Rc::new(Tour {
         dir,
         tag: Default::default(),
