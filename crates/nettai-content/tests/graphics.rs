@@ -195,7 +195,12 @@ fn bundle() -> Bundle {
             },
         )],
     };
-    Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
+    let mut b = Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() };
+    // (With its pictures' letters as extraction reads them, whatever they
+    // are in these made-up tiles: a lettered picture is written as its image
+    // with the letters off and its letters beside.)
+    nettai_content::letters::read(&mut b);
+    b
 }
 
 /// A cursor's place.
@@ -418,10 +423,7 @@ fn import(dir: &Path) -> (Option<Bundle>, Report) {
 #[test]
 fn graphics_read_back_exactly() {
     let dir = temp("roundtrip");
-    let mut b = bundle();
-    // (With its pictures' letters as extraction reads them, whatever they
-    // are in these made-up tiles.)
-    nettai_content::letters::read(&mut b);
+    let b = bundle();
     write_pack(&dir, &b);
     let (back, report) = import(&dir);
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
@@ -437,7 +439,8 @@ fn graphics_read_back_exactly() {
 #[test]
 fn an_exe4_custom_screen_reads_back_exactly() {
     let dir = temp("exe4-custom");
-    let b = Bundle { custom: custom_exe4(), ..bundle() };
+    let mut b = Bundle { custom: custom_exe4(), ..bundle() };
+    nettai_content::letters::read(&mut b);
     write_pack(&dir, &b);
     let (back, report) = import(&dir);
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");

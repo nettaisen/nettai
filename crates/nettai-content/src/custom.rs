@@ -513,9 +513,22 @@ fn element_rows(c: &CustomScreen) -> Vec<Palette> {
 
 pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
+    // The pictures with letters in them, each language's as the base they
+    // share with the letters taken off and a layer of its own pixels over
+    // it (`tiles::export_layered`).
+    let lettered = crate::letters::custom_layered(c).0;
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize, row_of: &dyn Fn(usize) -> u8| {
-        let (png, doc) = tiles::export_image(file, t, layout, rows, [0, owned], row_of);
-        files.push((file.to_string(), png));
+        let (pngs, doc) = match lettered.get(file) {
+            Some(l) => {
+                let layered = tiles::Layered { base: &l.base, base_file: l.base_file.as_deref(), letters: &l.letters };
+                tiles::export_layered(file, t, &layered, layout, rows, [0, owned], row_of)
+            }
+            None => {
+                let (png, doc) = tiles::export_image(file, t, layout, rows, [0, owned], row_of);
+                (vec![(file.to_string(), png)], doc)
+            }
+        };
+        files.extend(pngs);
         doc
     };
     let none = |_: usize| 0u8;
@@ -602,13 +615,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let picture = own.picture.as_ref().map(|p| image(&format!("pictures/{name}-{lang}.png"), &p.tiles, PICTURE, &[p.palette], 1, &none));
             buttons.insert(name.clone(), ButtonLanguageDoc { tiles, picture });
         }
-        // (Its blanks shown in the pack's own pictures' palettes.)
-        let letters = crate::letters::pictures_doc(
-            c,
-            &l.letters,
-            &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0, &none),
-            &|n| format!("letters/{n}-{lang}.png"),
-        );
+        let letters = crate::letters::pictures_doc(&l.letters);
         languages.insert(lang.clone(), CustomLanguageDoc { pictures, form_names, buttons, letters });
     }
     let buttons = c.buttons.iter().map(|(name, b)| button_doc(&mut image, name, name, b, frame0)).collect();
@@ -620,7 +627,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         frames: e.frames.iter().map(|f| f.iter().map(tiles::entry_text).collect()).collect(),
         steps: e.steps.clone(),
     });
-    let letters = crate::letters::custom_doc(c, &mut |f: &str, t: &Tiles, layout: Layout, rows: &[Palette]| image(f, t, layout, rows, 0, &none));
+    let letters = crate::letters::custom_doc(&c.letters);
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
@@ -678,7 +685,14 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
-    let img = |d: &TileImage, report: &mut Report| tiles::import_image(dir, prefix, d, report);
+    // (Each image as it is too, by file: a lettered picture's is the
+    // picture with its letters taken off, `lettered_bases`.)
+    let bases: std::cell::RefCell<BTreeMap<String, Tiles>> = Default::default();
+    let img = |d: &TileImage, report: &mut Report| {
+        let (tiles, base, palettes) = tiles::import_lettered(dir, prefix, d, report)?;
+        bases.borrow_mut().insert(d.file.clone(), base);
+        Some((tiles, palettes))
+    };
     let map = |v: &[String], report: &mut Report| -> Vec<MapEntry> {
         v.iter()
             .map(|s| {
@@ -783,8 +797,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             };
             buttons.push((name.clone(), ButtonLettering { tiles, picture }));
         }
-        let letters = crate::letters::pictures_from_doc(&d.letters, &mut |d| img(d, report).map(|(t, _)| t))?;
-        languages.push((lang.clone(), CustomLettering { pictures, form_names, buttons, letters }));
+        // (Its letters once every image is read: below.)
+        languages.push((lang.clone(), CustomLettering { pictures, form_names, buttons, letters: Default::default() }));
     }
     let mut buttons = Vec::new();
     for b in &doc.buttons {
@@ -811,7 +825,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         let (tiles, palettes) = img(&e.image, report)?;
         emblems.push(Emblem { navi: e.navi.clone(), tiles, palette: palettes.first().copied().unwrap_or([0; 16]) });
     }
-    Some(CustomScreen {
+    let mut screen = CustomScreen {
         layout: doc.layout.into(),
         labels: doc
             .labels
@@ -864,6 +878,66 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         element_sprite,
         cursor_palette,
         window_emblem,
-        letters: crate::letters::custom_from_doc(&doc.letters, &mut |d| img(d, report).map(|(t, _)| t))?,
-    })
+        letters: Default::default(),
+    };
+    // The letters, their blanks the lettered pictures' images
+    // (`lettered_bases`): a language's own where it has them, else the
+    // pack's.
+    let bases = bases.take();
+    let none = Tiles::default();
+    let base = |file: &str| bases.get(file).unwrap_or(&none);
+    let picture_bases = |lang: Option<&str>| {
+        let s = lang.map_or(String::new(), |l| format!("-{l}"));
+        let own = |name: &str| -> &Tiles { bases.get(&format!("{name}{s}.png")).unwrap_or_else(|| base(&format!("{name}.png"))) };
+        let vs = &screen.versioned;
+        let version = |which: Option<&str>, v| version_bases(&bases, &none, vs, which, v, &s);
+        crate::letters::PictureBases {
+            ok: own("pictures/ok"),
+            ok_picked: own("pictures/ok-picked"),
+            other: own("pictures/other"),
+            buttons: screen.buttons.iter().map(|(n, _)| (n.as_str(), own(&format!("pictures/{n}")))).collect(),
+            versions: std::iter::once((vs.base_version.as_str(), version(None, &vs.base)))
+                .chain(vs.versions.iter().map(|(n, v)| (n.as_str(), version(Some(n), v))))
+                .map(|(n, (b, f))| (n, b, f))
+                .collect(),
+        }
+    };
+    let languages: Vec<Option<nettai_assets::letters::PictureLetters>> = screen
+        .languages
+        .iter()
+        .map(|(lang, _)| doc.languages.get(lang.as_str()).map(|d| crate::letters::pictures_from_doc(&d.letters, &picture_bases(Some(lang)))))
+        .collect();
+    let letters = crate::letters::custom_from_doc(
+        &doc.letters,
+        &crate::letters::CustomBases {
+            codes: base(&doc.codes.file),
+            slot_codes: base(&doc.slot_codes.file),
+            window: base(&doc.window.file),
+            turn_limit: base(&doc.turn_limit.file),
+            pictures: picture_bases(None),
+        },
+    );
+    for ((_, l), letters) in screen.languages.iter_mut().zip(languages) {
+        l.letters = letters.unwrap_or_default();
+    }
+    screen.letters = letters;
+    Some(screen)
+}
+
+/// A version's buttons' and form list names' images as the pack keeps them
+/// (`bases`, by file: `lettered_bases`), the form list names a language's
+/// own (`suffix`) where it has them (`letters::PictureBases`).
+fn version_bases<'a>(
+    bases: &'a BTreeMap<String, Tiles>,
+    none: &'a Tiles,
+    vs: &Versioned<VersionPictures>,
+    which: Option<&str>,
+    v: &'a VersionPictures,
+    suffix: &str,
+) -> (Vec<(&'a str, &'a Tiles)>, &'a Tiles) {
+    let base = |file: String| bases.get(&file).unwrap_or(none);
+    let buttons = v.buttons.iter().map(|(n, _)| (n.as_str(), base(format!("pictures/{}.png", vs.name(n, which))))).collect();
+    let own = vs.name("form-names", Some(which.unwrap_or(&vs.base_version)));
+    let names = bases.get(&format!("{own}{suffix}.png")).unwrap_or_else(|| base(format!("{}.png", vs.name("form-names", which))));
+    (buttons, names)
 }

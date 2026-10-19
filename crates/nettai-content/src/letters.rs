@@ -15,9 +15,9 @@ use nettai_assets::letters::{
     BannerLetters, BarShape, CountDigits, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
     HudLetters, HudWords, LabelLetters, Letters, PictureLetters, VersionLetters, WordLetters,
 };
-use crate::tiles::{Layout, TileImage};
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Tiles, VersionPictures, Versioned, WindowLabel};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// A picture's palette indices, `w` by `h`, row by row.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -598,6 +598,16 @@ pub fn read(bundle: &mut Bundle) -> Vec<String> {
             }
         }
     }
+    // (The box every form list name is centered in.)
+    let c = &mut bundle.custom;
+    let all = std::iter::once(&c.letters.pictures).chain(c.languages.iter().map(|(_, l)| &l.letters));
+    let spans: Vec<[u8; 2]> = all
+        .flat_map(|p| std::iter::once(&p.versioned.base).chain(p.versioned.versions.iter().map(|(_, v)| v)))
+        .flat_map(|v| v.form_names.iter().flatten().map(|f| f.columns))
+        .collect();
+    c.letters.form_name_box = spans.iter().map(|s| s[0]).min().zip(spans.iter().map(|s| s[1]).max()).map(|(a, b)| [a, b]);
+    // (The blanks as the pack keeps them: one base a picture.)
+    problems.extend(settle(bundle).into_iter().map(|n| format!("note: {n}")));
     problems
 }
 
@@ -662,8 +672,10 @@ pub fn hud_words(h: &Hud, say: &mut dyn FnMut(String)) -> HudWords {
         say("no letters found in the waiting label".into());
     }
     let l_or_r = [0u16, 1].map(|frame| {
-        let first = h.gauge_first_tile + Hud::GAUGE_L_OR_R + 4 * frame;
-        let tiles: Vec<&[u8]> = (0..4).filter_map(|i| h.layer_tile(first + i)).collect();
+        let first = Hud::GAUGE_L_OR_R as usize + 4 * frame as usize;
+        // (The gauge's own tiles: the pack keeps them with the letters
+        // taken off, `gauge_base`.)
+        let tiles: Vec<&[u8]> = (0..4).filter_map(|i| h.gauge_tiles.get(first + i)).collect();
         if tiles.len() != 4 {
             return None;
         }
@@ -698,7 +710,9 @@ fn gauge_word(h: &Hud) -> Option<GaugeWord> {
     if cells.is_empty() || cells.windows(2).any(|w| w[1] != w[0] + 1) {
         return None;
     }
-    let tiles: Vec<&[u8]> = cells.iter().map(|&i| h.layer_tile(top[i].tile)).collect::<Option<_>>()?;
+    // (The gauge's own tiles: the pack keeps them with the letters taken
+    // off, `gauge_base`.)
+    let tiles: Vec<&[u8]> = cells.iter().map(|&i| h.gauge_tiles.get(top[i].tile.checked_sub(h.gauge_first_tile)? as usize)).collect::<Option<_>>()?;
     let picture = Picture { w: 8 * tiles.len(), h: 8, pixels: tiles_row(&tiles) };
     let mut ground: Vec<u8> = h.layer_tile(blank.tile)?.to_vec();
     ground.extend(cells_ground(&picture));
@@ -743,8 +757,10 @@ fn banner_letters(layout: &nettai_assets::BannerLayout) -> Option<BannerLetters>
 /// The emotion window's counts' boxes ([`CountLetters`]): their box with no
 /// digits, where the HUD has more than one count, and each count's digits.
 fn count_letters(counts: &[Tiles]) -> CountLetters {
-    let blank = if counts.len() > 1 { count_blank(counts).to_grid() } else { Tiles::default() };
-    CountLetters { blank, counts: (0..counts.len()).map(|n| count_digits(counts, n)).collect() }
+    let digits: Vec<Option<CountDigits>> = (0..counts.len()).map(|n| count_digits(counts, n)).collect();
+    // (The blank box where a count's digits are drawn in a font.)
+    let blank = if digits.iter().any(Option::is_some) { count_blank(counts).to_grid() } else { Tiles::default() };
+    CountLetters { blank, counts: digits }
 }
 
 /// The empty box of the emotion window's counts (16x16 each): where they
@@ -861,6 +877,9 @@ pub fn custom_letters(c: &CustomScreen, say: &mut dyn FnMut(String)) -> CustomLe
                 }
             }
         }
+        // (A tile past the last glyph's stays: the blanks are the glyphs'
+        // image, tile for tile.)
+        out.blank.pixels.extend_from_slice(&tiles.pixels[out.blank.pixels.len().min(tiles.pixels.len())..]);
         out
     };
     let codes = glyphs(&c.codes, &|k| Picture::glyphs(&c.codes, k, 1), &Picture::to_glyphs);
@@ -899,7 +918,7 @@ pub fn custom_letters(c: &CustomScreen, say: &mut dyn FnMut(String)) -> CustomLe
             found.ok()
         })
         .collect();
-    CustomLetters { codes, slot_codes, digits, turn_limit, labels, window_blank, pictures: picture_letters(c, say) }
+    CustomLetters { codes, slot_codes, digits, turn_limit, labels, window_blank, form_name_box: None, pictures: picture_letters(c, say) }
 }
 
 /// The chip codes with letters: A to Z, then '*'.
@@ -1109,10 +1128,354 @@ fn form_name(picture: &Picture, first_look: &Picture) -> Option<(FormNameLetters
     Some((letters, blank))
 }
 
+/// A picture with letters in it in one language, for its shared base
+/// ([`shared_base`]): its file in the pack, its tiles, its tiles with its
+/// letters taken off (as read: its blank), and the color its palette gives
+/// index `v` at pixel `i` (in tile order).
+pub struct Variant<'a> {
+    pub file: String,
+    pub tiles: &'a Tiles,
+    pub blank: &'a Tiles,
+    pub color: Box<dyn Fn(usize, u8) -> u16 + 'a>,
+}
+
+/// How the pack keeps one language's picture of a lettered picture: the
+/// base all its languages share, the file that holds it (none: this
+/// picture's own, the first language's), and which of its pixels are its
+/// letters (`tiles::Layered`).
+#[derive(Clone, Debug)]
+pub struct LayeredPicture {
+    pub base: Tiles,
+    pub base_file: Option<String>,
+    pub letters: Vec<bool>,
+}
+
+/// One base for a lettered picture's languages (the user: "i think the
+/// blanks in en and ja should be the same anyway"), the first its own: each
+/// language's letters (where its blank differs from it) taken off, every
+/// other pixel the first's. Where the first has its letters, its blank's
+/// pixel, or one that shows each language that has letters there as its
+/// blank does, in its own palette, if one does; where only another language
+/// has letters, that language's blank's. Each picture is then the base and
+/// a layer of its own pixels where they differ (`tiles::export_layered`),
+/// and the enhanced mode shows the base where its letters are, its own
+/// pixels elsewhere: its blank, but where two languages' letters cross on a
+/// pixel no one index shows as both blanks (those pixels, by language, are
+/// counted: the second value). A language whose picture is another size
+/// keeps a base of its own (its blank).
+pub fn shared_base(variants: &[Variant]) -> (Vec<(String, LayeredPicture)>, Vec<(String, usize)>) {
+    let Some(own) = variants.first() else { return (Vec::new(), Vec::new()) };
+    let n = own.tiles.pixels.len();
+    let alike = |v: &Variant| v.tiles.pixels.len() == n && v.blank.pixels.len() == n;
+    let letters = |v: &Variant| -> Vec<bool> {
+        if v.blank.pixels.len() != v.tiles.pixels.len() {
+            return vec![false; v.tiles.pixels.len()];
+        }
+        v.tiles.pixels.iter().zip(&v.blank.pixels).map(|(a, b)| a != b).collect()
+    };
+    let masks: Vec<Vec<bool>> = variants.iter().map(letters).collect();
+    let shared: Vec<usize> = (0..variants.len()).filter(|&k| k == 0 || alike(&variants[k])).collect();
+    let mut base = Tiles { pixels: own.tiles.pixels.clone() };
+    let mut crossed = vec![0usize; variants.len()];
+    for i in 0..n {
+        let with: Vec<usize> = shared.iter().copied().filter(|&k| masks[k][i]).collect();
+        let Some(&first) = with.first() else { continue };
+        // (An index that shows as each one's blank, in each one's palette.)
+        let fits = |v: u8| with.iter().all(|&k| (variants[k].color)(i, v) == (variants[k].color)(i, variants[k].blank.pixels[i]));
+        let candidates = with.iter().map(|&k| variants[k].blank.pixels[i]).chain(0..16);
+        match candidates.into_iter().find(|&v| fits(v)) {
+            Some(v) => base.pixels[i] = v,
+            None => {
+                base.pixels[i] = variants[first].blank.pixels[i];
+                for &k in &with[1..] {
+                    crossed[k] += 1;
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for (k, v) in variants.iter().enumerate() {
+        let picture = if shared.contains(&k) {
+            LayeredPicture { base: base.clone(), base_file: (k > 0).then(|| own.file.clone()), letters: masks[k].clone() }
+        } else {
+            LayeredPicture { base: v.blank.clone(), base_file: None, letters: masks[k].clone() }
+        };
+        out.push((v.file.clone(), picture));
+    }
+    let crossed = variants.iter().zip(crossed).filter(|(_, c)| *c > 0).map(|(v, c)| (v.file.clone(), c)).collect();
+    (out, crossed)
+}
+
+/// The pictures with letters in them, by file, as the pack keeps them
+/// (`letters::shared_base`): the window's (its labels), the codes', FINAL
+/// TURN's, and with a base each one's languages share, the chip window's
+/// lettered pictures (OK's, the buttons', each version's) and the form
+/// list's names (each version's).
+pub fn custom_layered(c: &CustomScreen) -> (BTreeMap<String, LayeredPicture>, Vec<(String, usize)>) {
+    let l = &c.letters;
+    let vs = &c.versioned;
+    let mut out = BTreeMap::new();
+    let mut crossed = Vec::new();
+    let mut add = |variants: Vec<Variant>| {
+        let (layered, c) = shared_base(&variants);
+        out.extend(layered);
+        crossed.extend(c);
+    };
+    let flat = |p: Palette| Box::new(move |_: usize, v: u8| p[v as usize & 15]) as Box<dyn Fn(usize, u8) -> u16>;
+    fn single<'a>(file: &str, tiles: &'a Tiles, blank: &'a Tiles) -> Vec<Variant<'a>> {
+        vec![Variant { file: file.into(), tiles, blank, color: Box::new(|_, v| v as u16) }]
+    }
+    // (Each alone: its colors don't matter, one language.)
+    let mut singles: Vec<Vec<Variant>> = vec![
+        single("window.png", &c.window_tiles, &l.window_blank),
+        single("codes.png", &c.codes, &l.codes.blank),
+        single("slot-codes.png", &c.slot_codes, &l.slot_codes.blank),
+    ];
+    if let Some(t) = &l.turn_limit {
+        singles.push(single("turn-limit.png", &c.turn_limit, &t.blank));
+    }
+    for v in singles {
+        add(v);
+    }
+    let blank = |h: &'_ Option<nettai_assets::letters::HelpLetters>, tiles: &'_ Tiles| -> Tiles { h.as_ref().map_or_else(|| tiles.clone(), |h| h.blank.clone()) };
+    let mut kept: Vec<Tiles> = Vec::new();
+    // The chip window's pictures for OK, in each language.
+    type Pick = fn(&nettai_assets::SlotPictures) -> &nettai_assets::Picture;
+    type Letters = fn(&nettai_assets::letters::PictureLetters) -> &Option<nettai_assets::letters::HelpLetters>;
+    let slots: [(&str, Pick, Letters); 3] = [
+        ("ok", |p| &p.ok, |l| &l.ok),
+        ("ok-picked", |p| &p.ok_picked, |l| &l.ok_picked),
+        ("other", |p| &p.other, |l| &l.other),
+    ];
+    for (name, pick, letters) in slots {
+        kept.clear();
+        kept.push(blank(letters(&l.pictures), &pick(&c.pictures).tiles));
+        for (_, lang) in &c.languages {
+            kept.push(blank(letters(&lang.letters), &pick(&lang.pictures).tiles));
+        }
+        let mut variants = vec![Variant { file: format!("pictures/{name}.png"), tiles: &pick(&c.pictures).tiles, blank: &kept[0], color: flat(pick(&c.pictures).palette) }];
+        for (k, (lang, lettering)) in c.languages.iter().enumerate() {
+            let p = pick(&lettering.pictures);
+            variants.push(Variant { file: format!("pictures/{name}-{lang}.png"), tiles: &p.tiles, blank: &kept[k + 1], color: flat(p.palette) });
+        }
+        add(variants);
+    }
+    // The buttons' pictures: the pack's (and a language's own), each
+    // version's own.
+    for (name, b) in &c.buttons {
+        let own = blank(&l.pictures.buttons.iter().find(|(n, _)| n == name).and_then(|(_, h)| h.clone()), &b.picture.tiles);
+        let langs: Vec<(String, nettai_assets::Picture, Tiles)> = c
+            .languages
+            .iter()
+            .filter_map(|(lang, lettering)| {
+                let (_, own) = lettering.buttons.iter().find(|(n, _)| n == name)?;
+                let p = own.picture.clone()?;
+                let h = lettering.letters.buttons.iter().find(|(n, _)| n == name).and_then(|(_, h)| h.clone());
+                let blank = blank(&h, &p.tiles);
+                Some((format!("pictures/{name}-{lang}.png"), p, blank))
+            })
+            .collect();
+        let mut variants = vec![Variant { file: format!("pictures/{name}.png"), tiles: &b.picture.tiles, blank: &own, color: flat(b.picture.palette) }];
+        for (file, p, blank) in &langs {
+            variants.push(Variant { file: file.clone(), tiles: &p.tiles, blank, color: flat(p.palette) });
+        }
+        add(variants);
+    }
+    for (which, v) in std::iter::once((None, &vs.base)).chain(vs.versions.iter().map(|(n, v)| (Some(n.as_str()), v))) {
+        let letters = l.pictures.versioned.get(which.unwrap_or(&vs.base_version));
+        let letters = if which.is_none() { &l.pictures.versioned.base } else { letters };
+        for (name, b) in &v.buttons {
+            let own = blank(&letters.buttons.iter().find(|(n, _)| n == name).and_then(|(_, h)| h.clone()), &b.picture.tiles);
+            add(vec![Variant { file: format!("pictures/{}.png", vs.name(name, which)), tiles: &b.picture.tiles, blank: &own, color: flat(b.picture.palette) }]);
+        }
+        // The form list's names, in each language: each look in its own
+        // palette.
+        let looks = v.form_names.len() / CustomScreen::FORM_NAME_TILES;
+        let palettes = v.form_name_palettes.clone();
+        let color = move || {
+            let palettes = palettes.clone();
+            Box::new(move |i: usize, c: u8| {
+                let row = (i / (CustomScreen::FORM_NAME_TILES * Tiles::TILE)).min(looks.saturating_sub(1));
+                palettes.get(row).map_or(c as u16, |p| p[c as usize & 15])
+            }) as Box<dyn Fn(usize, u8) -> u16>
+        };
+        let version = which.unwrap_or(&vs.base_version).to_string();
+        let mut variants = vec![Variant { file: format!("{}.png", vs.name("form-names", which)), tiles: &v.form_names, blank: &letters.form_names_blank, color: color() }];
+        for (lang, lettering) in &c.languages {
+            let Some((_, names)) = lettering.form_names.iter().find(|(n, _)| *n == version) else { continue };
+            let theirs = lettering.letters.versioned.get(&version);
+            variants.push(Variant { file: format!("{}-{lang}.png", vs.name("form-names", Some(&version))), tiles: names, blank: &theirs.form_names_blank, color: color() });
+        }
+        add(variants);
+    }
+    (out, crossed)
+}
+
+/// The HUD's pictures with letters in them, by file, as the pack keeps
+/// them (`shared_base`): the gauge's (its words), its languages sharing
+/// its base, and the counts' (their digits); with the pixels where two
+/// languages' letters cross on no shared index, by file.
+pub fn hud_layered(h: &Hud) -> (BTreeMap<String, LayeredPicture>, Vec<(String, usize)>) {
+    let mut out = BTreeMap::new();
+    let mut crossed = Vec::new();
+    let gauge_bases: Vec<(String, &Tiles, Tiles)> = std::iter::once(("gauge.png".to_string(), &h.gauge_tiles, &h.letters.words))
+        .chain(h.languages.iter().map(|(lang, l)| (format!("gauge-{lang}.png"), &l.gauge_tiles, &l.letters)))
+        .map(|(file, tiles, words)| (file, tiles, gauge_base(tiles, h.gauge_first_tile, &h.gauge_frame, words)))
+        .collect();
+    let gauge_palette = h.gauge_palette;
+    let variants = gauge_bases
+        .iter()
+        .map(|(file, tiles, blank)| Variant { file: file.clone(), tiles, blank, color: Box::new(move |_, v| gauge_palette[v as usize & 15]) })
+        .collect::<Vec<_>>();
+    let (layered, c) = shared_base(&variants);
+    out.extend(layered);
+    crossed.extend(c);
+    let mut counts: Vec<&Tiles> = h.counts.iter().collect();
+    counts.push(&h.count_box);
+    let counts = Tiles { pixels: counts.iter().flat_map(|t| t.pixels.iter().copied()).collect() };
+    let mut base = counts_base(&h.counts, &h.letters.counts);
+    base.push(h.count_box.clone());
+    let base = Tiles { pixels: base.iter().flat_map(|t| t.pixels.iter().copied()).collect() };
+    let variants = vec![Variant { file: "counts.png".into(), tiles: &counts, blank: &base, color: Box::new(|_, v| v as u16) }];
+    out.extend(shared_base(&variants).0);
+    (out, crossed)
+}
+
+/// A picture as the enhanced mode shows it, kept as `l` says
+/// ([`LayeredPicture`]): its base where its letters are, its own pixels
+/// elsewhere.
+pub fn shown(tiles: &Tiles, l: &LayeredPicture) -> Tiles {
+    let mut out = l.base.clone();
+    if out.pixels.len() != tiles.pixels.len() {
+        return tiles.clone();
+    }
+    for (i, &v) in tiles.pixels.iter().enumerate() {
+        if !l.letters.get(i).copied().unwrap_or(false) {
+            out.pixels[i] = v;
+        }
+    }
+    out
+}
+
+/// The pictures' blanks as the pack keeps them (`custom_layered`,
+/// `hud_layered`: one base a picture for its languages), so that a bundle
+/// read is the bundle written: each one the picture as the enhanced mode
+/// shows it (`shown`). What it changes of a blank (the pixels where two
+/// languages' letters cross and no index shows as both blanks), by
+/// picture.
+pub fn settle(bundle: &mut Bundle) -> Vec<String> {
+    let mut notes = Vec::new();
+    let mut say = |crossed: Vec<(String, usize)>| {
+        notes.extend(crossed.into_iter().map(|(file, n)| format!("{file}: {n} pixels where its letters cross another language's show the shared base")));
+    };
+    // The gauge's words, in each language.
+    let (map, crossed) = hud_layered(&bundle.hud);
+    say(crossed);
+    let h = &mut bundle.hud;
+    let (first, frame) = (h.gauge_first_tile, h.gauge_frame.clone());
+    if let Some(l) = map.get("gauge.png") {
+        let s = shown(&h.gauge_tiles, l);
+        h.letters.words = settled_words(&h.letters.words, &s, first, &frame);
+    }
+    for (lang, lettering) in &mut h.languages {
+        if let Some(l) = map.get(&format!("gauge-{lang}.png")) {
+            let s = shown(&lettering.gauge_tiles, l);
+            lettering.letters = settled_words(&lettering.letters, &s, first, &frame);
+        }
+    }
+    if bundle.custom.is_empty() {
+        return notes;
+    }
+    let (map, crossed) = custom_layered(&bundle.custom);
+    say(crossed);
+    let c = &mut bundle.custom;
+    let set = |h: &mut Option<HelpLetters>, tiles: &Tiles, file: &str| {
+        if let (Some(h), Some(l)) = (h.as_mut(), map.get(file)) {
+            h.blank = shown(tiles, l);
+        }
+    };
+    set(&mut c.letters.pictures.ok, &c.pictures.ok.tiles, "pictures/ok.png");
+    set(&mut c.letters.pictures.ok_picked, &c.pictures.ok_picked.tiles, "pictures/ok-picked.png");
+    set(&mut c.letters.pictures.other, &c.pictures.other.tiles, "pictures/other.png");
+    for (name, h) in &mut c.letters.pictures.buttons {
+        if let Some((_, b)) = c.buttons.iter().find(|(n, _)| n == name) {
+            set(h, &b.picture.tiles, &format!("pictures/{name}.png"));
+        }
+    }
+    let vs = c.versioned.clone();
+    let names = |which: Option<&str>| format!("{}.png", vs.name("form-names", which));
+    let own_names: Vec<(String, Tiles)> = std::iter::once((vs.base_version.clone(), &vs.base))
+        .chain(vs.versions.iter().map(|(n, v)| (n.clone(), v)))
+        .map(|(version, v)| {
+            let which = (version != vs.base_version || !vs.versions.is_empty()).then_some(version.as_str());
+            let file = if version == vs.base_version { names(None) } else { names(which) };
+            (version.clone(), map.get(&file).map_or_else(|| v.form_names.clone(), |l| shown(&v.form_names, l)))
+        })
+        .collect();
+    for (version, blank) in &own_names {
+        let v = if *version == c.letters.pictures.versioned.base_version {
+            &mut c.letters.pictures.versioned.base
+        } else {
+            match c.letters.pictures.versioned.versions.iter_mut().find(|(n, _)| n == version) {
+                Some((_, v)) => v,
+                None => continue,
+            }
+        };
+        if map.contains_key(&names(Some(version))) || map.contains_key(&names(None)) {
+            v.form_names_blank = blank.clone();
+        }
+    }
+    let own_buttons = c.letters.pictures.buttons.clone();
+    for (lang, lettering) in &mut c.languages {
+        let p = &mut lettering.letters;
+        set(&mut p.ok, &lettering.pictures.ok.tiles, &format!("pictures/ok-{lang}.png"));
+        set(&mut p.ok_picked, &lettering.pictures.ok_picked.tiles, &format!("pictures/ok-picked-{lang}.png"));
+        set(&mut p.other, &lettering.pictures.other.tiles, &format!("pictures/other-{lang}.png"));
+        for (name, h) in &mut p.buttons {
+            match lettering.buttons.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.picture.as_ref()) {
+                // (Its own picture: its layer over the shared base.)
+                Some(picture) => set(h, &picture.tiles, &format!("pictures/{name}-{lang}.png")),
+                // (The pack's picture: as the pack's shows.)
+                None => {
+                    if let (Some(h), Some((_, Some(own)))) = (h.as_mut(), own_buttons.iter().find(|(n, _)| n == name)) {
+                        h.blank = own.blank.clone();
+                    }
+                }
+            }
+        }
+        for (version, own_blank) in &own_names {
+            let v = if *version == p.versioned.base_version {
+                &mut p.versioned.base
+            } else {
+                match p.versioned.versions.iter_mut().find(|(n, _)| n == version) {
+                    Some((_, v)) => v,
+                    None => continue,
+                }
+            };
+            let file = format!("{}-{lang}.png", vs.name("form-names", Some(version)));
+            match (lettering.form_names.iter().find(|(n, _)| n == version), map.get(&file)) {
+                (Some((_, tiles)), Some(l)) => v.form_names_blank = shown(tiles, l),
+                (None, _) => v.form_names_blank = own_blank.clone(),
+                _ => {}
+            }
+        }
+    }
+    notes
+}
+
+/// A language's HUD words with their blanks read off the gauge as the
+/// enhanced mode shows it (`shown`).
+fn settled_words(w: &HudWords, gauge: &Tiles, first: u16, frame: &[MapEntry]) -> HudWords {
+    let doc = words_doc(w);
+    words_from_doc(&doc, gauge, first, frame)
+}
+
 /// How the pack writes the letters (`hud.json`'s and `custom.json`'s
-/// `letters`, and each language's): the plain values as they are, the
-/// pictures with their letters taken off as images beside the others
-/// (`letters/`), each in its source's palette for viewing.
+/// `letters`, and each language's): the plain values as they are. The
+/// pictures with their letters taken off are no files of their own: a
+/// lettered picture's image is that, with its letters in a layer of their
+/// own beside it (`TileImage::letters`), and the blanks here are read off
+/// those images ([`gauge_base`], [`counts_base`], `CustomBases`).
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct HudLettersDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1130,9 +1493,7 @@ pub struct HudLettersDoc {
     pub telop: Option<[Digits; 3]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pause: Option<Letters>,
-    /// The emotion window's count box with no digits, and each count's.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub count_blank: Option<TileImage>,
+    /// Each count's digits in the emotion window's box.
     pub counts: Vec<Option<CountDigits>>,
     pub words: HudWordsDoc,
 }
@@ -1143,16 +1504,9 @@ pub struct HudWordsDoc {
     pub banners: Vec<Option<BannerLetters>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub waiting: Option<Letters>,
-    pub l_or_r: [Option<WordDoc>; 2],
+    pub l_or_r: [Option<Letters>; 2],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gauge: Option<GaugeWordDoc>,
-}
-
-/// `WordLetters`.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WordDoc {
-    pub letters: Letters,
-    pub blank: TileImage,
 }
 
 /// `GaugeWord`.
@@ -1161,96 +1515,55 @@ pub struct GaugeWordDoc {
     pub cells: Vec<u8>,
     pub letters: Letters,
     pub align: TextAlign,
-    pub blank: TileImage,
 }
 
 /// `CustomLetters`.
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CustomLettersDoc {
-    pub codes: GlyphsDoc,
-    pub slot_codes: GlyphsDoc,
+    pub codes: Vec<Option<Digits>>,
+    pub slot_codes: Vec<Option<Digits>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub digits: Option<Digits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub turn_limit: Option<WordDoc>,
+    pub turn_limit: Option<Letters>,
     pub labels: Vec<Option<LabelLetters>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub window_blank: Option<TileImage>,
+    pub form_name_box: Option<[u8; 2]>,
     pub pictures: PictureLettersDoc,
 }
 
-/// `GlyphLetters`.
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct GlyphsDoc {
-    pub glyphs: Vec<Option<Digits>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub blank: Option<TileImage>,
-}
-
-/// `PictureLetters`: the versions' with the base's first.
+/// `PictureLetters`: each picture's lines; the versions' with the base's
+/// first.
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PictureLettersDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ok: Option<HelpDoc>,
+    pub ok: Option<Vec<HelpLine>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ok_picked: Option<HelpDoc>,
+    pub ok_picked: Option<Vec<HelpLine>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub other: Option<HelpDoc>,
-    pub buttons: Vec<NamedHelpDoc>,
+    pub other: Option<Vec<HelpLine>>,
+    pub buttons: Vec<NamedLinesDoc>,
     pub versions: Vec<VersionLettersDoc>,
 }
 
-/// `HelpLetters`.
+/// A button's picture's lines, by the button's name.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct HelpDoc {
-    pub lines: Vec<HelpLine>,
-    pub blank: TileImage,
-}
-
-/// A button's picture's `HelpLetters`, by its name.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NamedHelpDoc {
+pub struct NamedLinesDoc {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub help: Option<HelpDoc>,
+    pub lines: Option<Vec<HelpLine>>,
 }
 
 /// `VersionLetters`, by its version's name.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VersionLettersDoc {
     pub version: String,
-    pub buttons: Vec<NamedHelpDoc>,
+    pub buttons: Vec<NamedLinesDoc>,
     pub form_names: Vec<Option<FormNameLetters>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub form_names_blank: Option<TileImage>,
 }
 
-/// Writes an image of tiles (its file, the tiles, their layout, the
-/// palettes it shows them in) and says it ([`TileImage`]).
-pub type ImageOut<'a> = dyn FnMut(&str, &Tiles, Layout, &[Palette]) -> TileImage + 'a;
-/// Reads an image's tiles back.
-pub type ImageIn<'a> = dyn FnMut(&TileImage) -> Option<Tiles> + 'a;
-
-const GLYPH_LAYOUT: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
-const PICTURE_LAYOUT: Layout = Layout::Blocks { width: 7, height: 6, columns: 1 };
-const FORM_NAME_LAYOUT: Layout = Layout::Blocks { width: 9, height: 2, columns: 1 };
-
-fn blank_out(image: &mut ImageOut, file: &str, t: &Tiles, layout: Layout, palettes: &[Palette]) -> Option<TileImage> {
-    (!t.is_empty()).then(|| image(file, t, layout, palettes))
-}
-
-fn blank_in(image: &mut ImageIn, doc: &Option<TileImage>) -> Option<Tiles> {
-    match doc {
-        Some(d) => image(d),
-        None => Some(Tiles::default()),
-    }
-}
-
-/// The HUD's letters as the pack writes them; `file` names an image (the
-/// language's suffix added).
-pub fn hud_doc(h: &Hud, image: &mut ImageOut, file: &dyn Fn(&str) -> String) -> HudLettersDoc {
-    let l = &h.letters;
-    let mug0 = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
+/// The HUD's letters as the pack writes them.
+pub fn hud_doc(l: &HudLetters) -> HudLettersDoc {
     HudLettersDoc {
         hp_digits: l.hp_digits.clone(),
         damage_digits: l.damage_digits.clone(),
@@ -1260,34 +1573,83 @@ pub fn hud_doc(h: &Hud, image: &mut ImageOut, file: &dyn Fn(&str) -> String) -> 
         banner_digits: l.banner_digits.clone(),
         telop: l.telop.clone(),
         pause: l.pause.clone(),
-        count_blank: blank_out(image, &file("count-blank"), &l.counts.blank, Layout::Blocks { width: 2, height: 2, columns: 1 }, &[mug0]),
         counts: l.counts.counts.clone(),
-        words: words_doc(&l.words, h.gauge_palette, image, file),
+        words: words_doc(&l.words),
     }
 }
 
 /// A language's HUD words as the pack writes them.
-pub fn words_doc(w: &HudWords, gauge_palette: Palette, image: &mut ImageOut, file: &dyn Fn(&str) -> String) -> HudWordsDoc {
-    let mut word = |name: &str, w: &WordLetters| WordDoc {
-        letters: w.letters.clone(),
-        blank: image(&file(name), &w.blank, Layout::Grid { columns: w.blank.len().max(1) as u32 }, &[gauge_palette]),
-    };
+pub fn words_doc(w: &HudWords) -> HudWordsDoc {
     HudWordsDoc {
         banners: w.banners.clone(),
         waiting: w.waiting.clone(),
-        l_or_r: [0, 1].map(|k| w.l_or_r[k].as_ref().map(|l| word(&format!("l-or-r-{k}"), l))),
-        gauge: w.gauge.as_ref().map(|g| GaugeWordDoc {
-            cells: g.cells.clone(),
-            letters: g.letters.clone(),
-            align: g.align,
-            blank: image(&file("gauge-word"), &g.blank, Layout::Grid { columns: g.blank.len().max(1) as u32 }, &[gauge_palette]),
-        }),
+        l_or_r: [0, 1].map(|k| w.l_or_r[k].as_ref().map(|l| l.letters.clone())),
+        gauge: w.gauge.as_ref().map(|g| GaugeWordDoc { cells: g.cells.clone(), letters: g.letters.clone(), align: g.align }),
     }
 }
 
-/// The HUD's letters from the pack.
-pub fn hud_from_doc(d: &HudLettersDoc, image: &mut ImageIn) -> Option<HudLetters> {
-    Some(HudLetters {
+/// The gauge's tiles (`Hud::gauge_tiles`, from tile number `first`) with
+/// the letters of its words taken off: the gauge's image in the pack.
+pub fn gauge_base(gauge: &Tiles, first: u16, frame: &[MapEntry], w: &HudWords) -> Tiles {
+    let mut base = gauge.clone();
+    for (k, blank) in gauge_word_tiles(first, frame, w) {
+        if let (Some(t), Some(range)) = (blank.get(k.1), base.pixels.get_mut(k.0 * Tiles::TILE..(k.0 + 1) * Tiles::TILE)) {
+            range.copy_from_slice(t);
+        }
+    }
+    base
+}
+
+/// Where the gauge's words' tiles are among the gauge's (each its index
+/// there and its index in its word's blank tiles), with those blanks.
+fn gauge_word_tiles<'w>(first: u16, frame: &[MapEntry], w: &'w HudWords) -> Vec<((usize, usize), &'w Tiles)> {
+    let mut out = Vec::new();
+    for (f, l) in w.l_or_r.iter().enumerate() {
+        if let Some(l) = l {
+            for i in 0..4 {
+                out.push(((Hud::GAUGE_L_OR_R as usize + 4 * f + i, i), &l.blank));
+            }
+        }
+    }
+    if let Some(g) = &w.gauge {
+        for (i, &c) in g.cells.iter().enumerate() {
+            if let Some(e) = frame.get(c as usize)
+                && let Some(k) = e.tile.checked_sub(first)
+            {
+                out.push(((k as usize, i), &g.blank));
+            }
+        }
+    }
+    out
+}
+
+/// A language's HUD words from the pack: their blanks from the gauge's
+/// image (`gauge_base`, from tile number `first`).
+pub fn words_from_doc(d: &HudWordsDoc, gauge_base: &Tiles, first: u16, frame: &[MapEntry]) -> HudWords {
+    let tiles = |ks: &mut dyn Iterator<Item = usize>| Tiles { pixels: ks.flat_map(|k| gauge_base.get(k).unwrap_or(&[0; Tiles::TILE]).to_vec()).collect() };
+    let l_or_r = [0usize, 1].map(|f| {
+        d.l_or_r[f].as_ref().map(|letters| WordLetters { letters: letters.clone(), blank: tiles(&mut (0..4).map(|i| Hud::GAUGE_L_OR_R as usize + 4 * f + i)) })
+    });
+    let gauge = d.gauge.as_ref().map(|g| {
+        let ks: Vec<usize> = g.cells.iter().filter_map(|&c| frame.get(c as usize)?.tile.checked_sub(first)).map(usize::from).collect();
+        GaugeWord { cells: g.cells.clone(), blank: tiles(&mut ks.into_iter()), letters: g.letters.clone(), align: g.align }
+    });
+    HudWords { banners: d.banners.clone(), waiting: d.waiting.clone(), l_or_r, gauge }
+}
+
+/// The emotion window's counts with their digits taken off: the counts'
+/// image in the pack (each a count's box with no digits where the count
+/// has digits, the count's picture otherwise).
+pub fn counts_base(counts: &[Tiles], l: &CountLetters) -> Vec<Tiles> {
+    counts.iter().enumerate().map(|(n, t)| if l.counts.get(n).is_some_and(Option::is_some) { l.blank.clone() } else { t.clone() }).collect()
+}
+
+/// The HUD's letters from the pack: the gauge's words' blanks from the
+/// gauge's image (`gauge_base`), the counts' blank box from the counts'
+/// image (`counts_base`: a count with digits).
+pub fn hud_from_doc(d: &HudLettersDoc, gauge_base: &Tiles, first: u16, frame: &[MapEntry], counts_base: &[Tiles]) -> HudLetters {
+    let blank = d.counts.iter().position(Option::is_some).and_then(|n| counts_base.get(n)).cloned().unwrap_or_default();
+    HudLetters {
         hp_digits: d.hp_digits.clone(),
         damage_digits: d.damage_digits.clone(),
         plus: d.plus.clone(),
@@ -1296,129 +1658,102 @@ pub fn hud_from_doc(d: &HudLettersDoc, image: &mut ImageIn) -> Option<HudLetters
         banner_digits: d.banner_digits.clone(),
         telop: d.telop.clone(),
         pause: d.pause.clone(),
-        counts: CountLetters { blank: blank_in(image, &d.count_blank)?, counts: d.counts.clone() },
-        words: words_from_doc(&d.words, image)?,
-    })
-}
-
-/// A language's HUD words from the pack.
-pub fn words_from_doc(d: &HudWordsDoc, image: &mut ImageIn) -> Option<HudWords> {
-    let mut l_or_r = [None, None];
-    for (k, w) in d.l_or_r.iter().enumerate() {
-        if let Some(w) = w {
-            l_or_r[k] = Some(WordLetters { letters: w.letters.clone(), blank: image(&w.blank)? });
-        }
+        counts: CountLetters { blank, counts: d.counts.clone() },
+        words: words_from_doc(&d.words, gauge_base, first, frame),
     }
-    let gauge = match &d.gauge {
-        Some(g) => Some(GaugeWord { cells: g.cells.clone(), blank: image(&g.blank)?, letters: g.letters.clone(), align: g.align }),
-        None => None,
-    };
-    Some(HudWords { banners: d.banners.clone(), waiting: d.waiting.clone(), l_or_r, gauge })
 }
 
 /// The custom screen's letters as the pack writes them.
-pub fn custom_doc(c: &CustomScreen, image: &mut ImageOut) -> CustomLettersDoc {
-    let l = &c.letters;
-    let frame0 = c.frame_palettes.first().copied().unwrap_or([0; 16]);
-    let glyphs = |image: &mut ImageOut, name: &str, g: &GlyphLetters, layout: Layout| GlyphsDoc {
-        glyphs: g.glyphs.clone(),
-        blank: blank_out(image, &format!("letters/{name}.png"), &g.blank, layout, &[frame0]),
-    };
-    let codes = glyphs(image, "codes-blank", &l.codes, GLYPH_LAYOUT(28));
-    let slot_codes = glyphs(image, "slot-codes-blank", &l.slot_codes, Layout::Blocks { width: 2, height: 1, columns: 14 });
-    let turn_limit = l.turn_limit.as_ref().map(|w| WordDoc {
-        letters: w.letters.clone(),
-        blank: image("letters/turn-limit-blank.png", &w.blank, Layout::Grid { columns: 7 }, &[frame0]),
-    });
-    let window_blank = blank_out(image, "letters/window-blank.png", &l.window_blank, Layout::Grid { columns: 16 }, &c.frame_palettes);
+pub fn custom_doc(l: &CustomLetters) -> CustomLettersDoc {
     CustomLettersDoc {
-        codes,
-        slot_codes,
+        codes: l.codes.glyphs.clone(),
+        slot_codes: l.slot_codes.glyphs.clone(),
         digits: l.digits.clone(),
-        turn_limit,
+        turn_limit: l.turn_limit.as_ref().map(|w| w.letters.clone()),
         labels: l.labels.clone(),
-        window_blank,
-        pictures: pictures_doc(c, &l.pictures, image, &|n| format!("letters/{n}.png")),
+        form_name_box: l.form_name_box,
+        pictures: pictures_doc(&l.pictures),
     }
 }
 
-/// A language's lettered pictures as the pack writes them (`c` the screen
-/// they are read off, in that language).
-pub fn pictures_doc(c: &CustomScreen, p: &PictureLetters, image: &mut ImageOut, file: &dyn Fn(&str) -> String) -> PictureLettersDoc {
-    let help = |image: &mut ImageOut, name: &str, h: &Option<HelpLetters>, palette: Palette| {
-        h.as_ref().map(|h| HelpDoc { lines: h.lines.clone(), blank: image(&file(&format!("pictures/{name}-blank")), &h.blank, PICTURE_LAYOUT, &[palette]) })
-    };
-    let buttons = |image: &mut ImageOut, prefix: &str, own: &[(String, Option<HelpLetters>)], pictures: &[(String, nettai_assets::ButtonPictures)]| {
-        own.iter()
-            .map(|(name, h)| {
-                let palette = pictures.iter().find(|(n, _)| n == name).map_or([0; 16], |(_, b)| b.picture.palette);
-                NamedHelpDoc { name: name.clone(), help: help(image, &format!("{prefix}{name}"), h, palette) }
-            })
-            .collect::<Vec<_>>()
-    };
-    let vs = &c.versioned;
-    let version = |image: &mut ImageOut, which: Option<&str>, v: &VersionLetters, own: &VersionPictures| VersionLettersDoc {
-        version: which.unwrap_or(&p.versioned.base_version).to_string(),
-        buttons: buttons(image, &format!("{}-", vs.name("button", which)), &v.buttons, &own.buttons),
-        form_names: v.form_names.clone(),
-        form_names_blank: blank_out(image, &file(&format!("{}-blank", vs.name("form-names", which))), &v.form_names_blank, FORM_NAME_LAYOUT, &own.form_name_palettes),
-    };
-    let mut versions = vec![version(image, None, &p.versioned.base, &vs.base)];
-    for (name, v) in &p.versioned.versions {
-        versions.push(version(image, Some(name), v, vs.get(name)));
-    }
+/// A language's lettered pictures as the pack writes them.
+pub fn pictures_doc(p: &PictureLetters) -> PictureLettersDoc {
+    let lines = |h: &Option<HelpLetters>| h.as_ref().map(|h| h.lines.clone());
+    let buttons = |b: &[(String, Option<HelpLetters>)]| b.iter().map(|(name, h)| NamedLinesDoc { name: name.clone(), lines: lines(h) }).collect();
+    let version = |name: &str, v: &VersionLetters| VersionLettersDoc { version: name.to_string(), buttons: buttons(&v.buttons), form_names: v.form_names.clone() };
+    let vs = &p.versioned;
     PictureLettersDoc {
-        ok: help(image, "ok", &p.ok, c.pictures.ok.palette),
-        ok_picked: help(image, "ok-picked", &p.ok_picked, c.pictures.ok_picked.palette),
-        other: help(image, "other", &p.other, c.pictures.other.palette),
-        buttons: buttons(image, "", &p.buttons, &c.buttons),
-        versions,
+        ok: lines(&p.ok),
+        ok_picked: lines(&p.ok_picked),
+        other: lines(&p.other),
+        buttons: buttons(&p.buttons),
+        versions: std::iter::once(version(&vs.base_version, &vs.base)).chain(vs.versions.iter().map(|(n, v)| version(n, v))).collect(),
     }
+}
+
+/// The custom screen's lettered images in the pack, their letters taken
+/// off: what the letters' blanks are read from.
+pub struct CustomBases<'a> {
+    pub codes: &'a Tiles,
+    pub slot_codes: &'a Tiles,
+    pub window: &'a Tiles,
+    pub turn_limit: &'a Tiles,
+    pub pictures: PictureBases<'a>,
+}
+
+/// A language's lettered pictures' images, their letters taken off (its
+/// own where it has them, else the pack's): the chip window's pictures,
+/// the buttons' (by name), each version's buttons' and form list names.
+pub struct PictureBases<'a> {
+    pub ok: &'a Tiles,
+    pub ok_picked: &'a Tiles,
+    pub other: &'a Tiles,
+    pub buttons: Vec<(&'a str, &'a Tiles)>,
+    pub versions: Vec<(&'a str, Vec<(&'a str, &'a Tiles)>, &'a Tiles)>,
 }
 
 /// The custom screen's letters from the pack.
-pub fn custom_from_doc(d: &CustomLettersDoc, image: &mut ImageIn) -> Option<CustomLetters> {
-    let glyphs = |image: &mut ImageIn, g: &GlyphsDoc| Some(GlyphLetters { glyphs: g.glyphs.clone(), blank: blank_in(image, &g.blank)? });
-    let turn_limit = match &d.turn_limit {
-        Some(w) => Some(WordLetters { letters: w.letters.clone(), blank: image(&w.blank)? }),
-        None => None,
-    };
-    Some(CustomLetters {
-        codes: glyphs(image, &d.codes)?,
-        slot_codes: glyphs(image, &d.slot_codes)?,
+pub fn custom_from_doc(d: &CustomLettersDoc, b: &CustomBases) -> CustomLetters {
+    CustomLetters {
+        codes: GlyphLetters { glyphs: d.codes.clone(), blank: b.codes.clone() },
+        slot_codes: GlyphLetters { glyphs: d.slot_codes.clone(), blank: b.slot_codes.clone() },
         digits: d.digits.clone(),
-        turn_limit,
+        turn_limit: d.turn_limit.as_ref().map(|l| WordLetters { letters: l.clone(), blank: b.turn_limit.clone() }),
         labels: d.labels.clone(),
-        window_blank: blank_in(image, &d.window_blank)?,
-        pictures: pictures_from_doc(&d.pictures, image)?,
-    })
+        window_blank: b.window.clone(),
+        form_name_box: d.form_name_box,
+        pictures: pictures_from_doc(&d.pictures, &b.pictures),
+    }
 }
 
 /// A language's lettered pictures from the pack.
-pub fn pictures_from_doc(d: &PictureLettersDoc, image: &mut ImageIn) -> Option<PictureLetters> {
-    let help = |image: &mut ImageIn, h: &Option<HelpDoc>| -> Option<Option<HelpLetters>> {
-        Some(match h {
-            Some(h) => Some(HelpLetters { lines: h.lines.clone(), blank: image(&h.blank)? }),
-            None => None,
-        })
+pub fn pictures_from_doc(d: &PictureLettersDoc, b: &PictureBases) -> PictureLetters {
+    let help = |lines: &Option<Vec<HelpLine>>, base: Option<&Tiles>| {
+        lines.as_ref().map(|lines| HelpLetters { lines: lines.clone(), blank: base.cloned().unwrap_or_default() })
     };
-    let buttons = |image: &mut ImageIn, b: &[NamedHelpDoc]| -> Option<Vec<(String, Option<HelpLetters>)>> {
-        b.iter().map(|b| Some((b.name.clone(), help(image, &b.help)?))).collect()
-    };
-    let mut versions = Vec::new();
-    for v in &d.versions {
-        let letters = VersionLetters { buttons: buttons(image, &v.buttons)?, form_names: v.form_names.clone(), form_names_blank: blank_in(image, &v.form_names_blank)? };
-        versions.push((v.version.clone(), letters));
+    fn find<'a>(list: &[(&str, &'a Tiles)], name: &str) -> Option<&'a Tiles> {
+        list.iter().find(|(n, _)| *n == name).map(|(_, t)| *t)
     }
-    let mut versions = versions.into_iter();
+    let buttons = |doc: &[NamedLinesDoc], bases: &[(&str, &Tiles)]| -> Vec<(String, Option<HelpLetters>)> {
+        doc.iter().map(|n| (n.name.clone(), help(&n.lines, find(bases, &n.name)))).collect()
+    };
+    let mut versions = d.versions.iter().map(|v| {
+        let own = b.versions.iter().find(|(n, _, _)| *n == v.version);
+        let letters = VersionLetters {
+            buttons: buttons(&v.buttons, own.map_or(&[][..], |o| &o.1[..])),
+            form_names: v.form_names.clone(),
+            form_names_blank: own.map(|o| o.2.clone()).unwrap_or_default(),
+        };
+        (v.version.clone(), letters)
+    });
     let (base_version, base) = versions.next().unwrap_or_default();
-    Some(PictureLetters {
-        ok: help(image, &d.ok)?,
-        ok_picked: help(image, &d.ok_picked)?,
-        other: help(image, &d.other)?,
-        buttons: buttons(image, &d.buttons)?,
+    PictureLetters {
+        ok: help(&d.ok, Some(b.ok)),
+        ok_picked: help(&d.ok_picked, Some(b.ok_picked)),
+        other: help(&d.other, Some(b.other)),
+        buttons: buttons(&d.buttons, &b.buttons),
         versioned: Versioned { base, base_version, versions: versions.collect() },
-    })
+    }
 }
 
 #[cfg(test)]

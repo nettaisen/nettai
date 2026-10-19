@@ -250,6 +250,10 @@ pub struct CustomLetters {
     /// tiles with their letters taken off (as `CustomScreen::window_tiles`).
     pub labels: Vec<Option<LabelLetters>>,
     pub window_blank: Tiles,
+    /// The columns of the form list names' bars every name is centered in
+    /// (the first, the last): all their letters' columns, every version's
+    /// and every language's, together.
+    pub form_name_box: Option<[u8; 2]>,
     /// The pack's own language's lettered pictures.
     pub pictures: PictureLetters,
 }
