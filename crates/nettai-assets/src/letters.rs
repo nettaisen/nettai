@@ -183,12 +183,26 @@ pub struct LabelLetters {
 }
 
 /// Glyphs of letters in cells (the chip codes): each glyph's letter (none:
-/// a glyph with none), and the glyphs with their letters taken off, laid as
-/// the glyphs are.
+/// a glyph with none), the box all their faces fill in their cells (x, y,
+/// width, height: every code is centered in it), and the glyphs with their
+/// letters taken off, laid as the glyphs are.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GlyphLetters {
     pub glyphs: Vec<Option<CellLetter>>,
+    pub face: Option<[u8; 4]>,
     pub blank: Tiles,
+}
+
+impl GlyphLetters {
+    /// The box glyphs' faces fill together.
+    pub fn face_of(glyphs: &[Option<CellLetter>]) -> Option<[u8; 4]> {
+        let faces: Vec<[u8; 4]> = glyphs.iter().flatten().map(|g| g.face).collect();
+        let x0 = faces.iter().map(|f| f[0]).min()?;
+        let x1 = faces.iter().map(|f| f[0] + f[2]).max()?;
+        let y0 = faces.iter().map(|f| f[1]).min()?;
+        let y1 = faces.iter().map(|f| f[1] + f[3]).max()?;
+        Some([x0, y0, x1 - x0, y1 - y0])
+    }
 }
 
 /// The HUD's letters and digits (`Hud::letters`).
