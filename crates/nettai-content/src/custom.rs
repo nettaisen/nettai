@@ -391,7 +391,23 @@ pub struct ButtonLanguageDoc {
 pub struct VersionDoc {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buttons: Vec<ButtonDoc>,
+    /// The Cross window's names: the bar they lie on (one name's tiles,
+    /// `NAME-bar.png`) where the names are kept as layers over it
+    /// (`letters::FormNameLayers`), else the names as they are.
     pub form_names: TileImage,
+    /// Where a name's own bar departs from it (a layer of every look's
+    /// names, `NAME-bar-rows.png`: a streak ending a pixel sooner).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form_name_bar_rows: Option<TileImage>,
+    /// Each name's portrait over the bar (a layer, `tiles::export_layer`,
+    /// of every look's names: `NAME-portraits.png`, its palette's rows the
+    /// names' palettes by look).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form_name_portraits: Option<TileImage>,
+    /// The names' letters over both (a layer: `NAME-letters.png`; another
+    /// language's, its `form_names`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form_name_letters: Option<TileImage>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -517,6 +533,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     // share with the letters taken off and a layer of its own pixels over
     // it (`tiles::export_layered`).
     let lettered = crate::letters::custom_layered(c).0;
+    let name_layers = crate::letters::form_names_layered(c).0;
+    let mut layer_files = Vec::new();
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize, row_of: &dyn Fn(usize) -> u8| {
         let (pngs, doc) = match lettered.get(file) {
             Some(l) => {
@@ -560,11 +578,33 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut version = |which: Option<&str>, v: &VersionPictures| {
         let names = v.form_names.len() / FORM_NAME_TILES;
         let file = |name: &str| format!("{}.png", vs.name(name, which));
-        VersionDoc {
-            buttons: v.buttons.iter().map(|(name, b)| button_doc(&mut image, name, &vs.name(name, which), b, frame0)).collect(),
-            form_names: image(&file("form-names"), &v.form_names, FORM_NAME, &v.form_name_palettes, v.form_name_palettes.len(), &|i| {
-                ((i / FORM_NAME_TILES).min(names.saturating_sub(1))) as u8
-            }),
+        let buttons = v.buttons.iter().map(|(name, b)| button_doc(&mut image, name, &vs.name(name, which), b, frame0)).collect();
+        let look = |i: usize| ((i / FORM_NAME_TILES).min(names.saturating_sub(1))) as u8;
+        let owned = v.form_name_palettes.len();
+        match name_layers.iter().find(|(n, _)| n == which.unwrap_or(&vs.base_version)) {
+            // Its names as layers: the bar, the portraits, the letters.
+            Some((_, layers)) => {
+                let stem = vs.name("form-names", which);
+                let first = [v.form_name_palettes.first().copied().unwrap_or([0; 16])];
+                let (png, bar) = tiles::export_image(&format!("{stem}-bar.png"), &layers.bar, FORM_NAME, &first, [0, 0], |_| 0);
+                layer_files.push((bar.file.clone(), png));
+                let mut layer = |name: &str, pixels: &[Option<u8>], owned: usize| {
+                    let (png, doc) = tiles::export_layer(&format!("{stem}-{name}.png"), pixels, v.form_names.len(), FORM_NAME, &v.form_name_palettes, [0, owned], look);
+                    layer_files.push((doc.file.clone(), png));
+                    doc
+                };
+                let bar_rows = layers.rows.iter().any(Option::is_some).then(|| layer("bar-rows", &layers.rows, 0));
+                let portraits = layer("portraits", &layers.portraits, owned);
+                let letters = layers.letters.first().map(|(_, l)| layer("letters", l, 0));
+                VersionDoc { buttons, form_names: bar, form_name_bar_rows: bar_rows, form_name_portraits: Some(portraits), form_name_letters: letters }
+            }
+            None => VersionDoc {
+                buttons,
+                form_names: image(&file("form-names"), &v.form_names, FORM_NAME, &v.form_name_palettes, owned, &look),
+                form_name_bar_rows: None,
+                form_name_portraits: None,
+                form_name_letters: None,
+            },
         }
     };
     let own = version(None, &vs.base);
@@ -604,7 +644,18 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let own = vs.version(version).unwrap_or(&vs.base);
             let n = names.len() / FORM_NAME_TILES;
             let file = format!("{}-{lang}.png", vs.name("form-names", Some(version)));
-            let doc = image(&file, names, FORM_NAME, &own.form_name_palettes, 0, &|i| ((i / FORM_NAME_TILES).min(n.saturating_sub(1))) as u8);
+            let look = |i: usize| ((i / FORM_NAME_TILES).min(n.saturating_sub(1))) as u8;
+            // (Its letters as a layer over the version's names' portraits
+            // and bar, where those are layers.)
+            let layered = name_layers.iter().find(|(v, _)| v == version).and_then(|(_, layers)| layers.letters.iter().find(|(l, _)| l == lang));
+            let doc = match layered {
+                Some((_, letters)) => {
+                    let (png, doc) = tiles::export_layer(&file, letters, names.len(), FORM_NAME, &own.form_name_palettes, [0, 0], look);
+                    layer_files.push((file.clone(), png));
+                    doc
+                }
+                None => image(&file, names, FORM_NAME, &own.form_name_palettes, 0, &look),
+            };
             form_names.insert(version.clone(), doc);
         }
         let mut buttons = BTreeMap::new();
@@ -673,6 +724,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         window_emblem,
         letters,
     };
+    files.extend(layer_files);
     files.push(("custom.json".into(), json_lines(&doc)));
     files
 }
@@ -758,20 +810,61 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             },
         ))
     };
-    let version = |d: &VersionDoc, report: &mut Report| -> Option<VersionPictures> {
+    // A version's pictures, and its names with no letters where they are
+    // kept as layers (their portraits over their bar).
+    let version = |d: &VersionDoc, report: &mut Report| -> Option<(VersionPictures, Option<Tiles>)> {
         let mut buttons = Vec::new();
         for b in &d.buttons {
             buttons.push(button(b, report)?);
         }
-        let (form_names, form_name_palettes) = img(&d.form_names, report)?;
-        Some(VersionPictures { buttons, form_names, form_name_palettes })
+        let (form_names, form_name_palettes, blank) = match (&d.form_name_portraits, &d.form_name_letters) {
+            (None, None) => {
+                let (t, p) = img(&d.form_names, report)?;
+                (t, p, None)
+            }
+            (Some(portraits), Some(letters)) => {
+                let (bar, _) = img(&d.form_names, report)?;
+                let (portraits, palettes) = tiles::import_layer(dir, prefix, portraits, report)?;
+                let (letters, _) = tiles::import_layer(dir, prefix, letters, report)?;
+                if bar.len() != FORM_NAME_TILES || portraits.len() != letters.len() || portraits.len() % (FORM_NAME_TILES * Tiles::TILE) != 0 {
+                    report.error(format!("{prefix}/{}", d.form_names.file), format!("a bar is one name's {FORM_NAME_TILES} tiles, under the names' portraits and letters"));
+                    return None;
+                }
+                let mut blank = Tiles { pixels: bar.pixels.repeat(portraits.len() / (FORM_NAME_TILES * Tiles::TILE)) };
+                if let Some(rows) = &d.form_name_bar_rows {
+                    let (rows, _) = tiles::import_layer(dir, prefix, rows, report)?;
+                    if rows.len() != portraits.len() {
+                        report.error(format!("{prefix}/{}", d.form_names.file), "the names' own bars aren't as many tiles as the names");
+                        return None;
+                    }
+                    crate::letters::lay(&mut blank, &rows);
+                }
+                crate::letters::lay(&mut blank, &portraits);
+                let mut names = blank.clone();
+                crate::letters::lay(&mut names, &letters);
+                (names, palettes, Some(blank))
+            }
+            _ => {
+                report.error(&name, "a version's names have both their portraits and their letters as layers, or neither");
+                return None;
+            }
+        };
+        Some((VersionPictures { buttons, form_names, form_name_palettes }, blank))
     };
-    let base = version(&doc.own, report)?;
+    let (base, base_blank) = version(&doc.own, report)?;
     let (form_list_cursor, form_list_cursor_palettes) = img(&doc.form_list_cursor, report)?;
     let form_list_cursor_palette = form_list_cursor_palettes.first().copied().unwrap_or([0; 16]);
     let mut versioned = Versioned::new(&doc.base_version, base);
+    let mut name_blanks: Vec<(String, Tiles)> = base_blank.map(|b| (doc.base_version.clone(), b)).into_iter().collect();
     for v in &doc.versions {
-        versioned.versions.push((v.version.clone(), version(&v.own, report)?));
+        let (own, blank) = version(&v.own, report)?;
+        versioned.versions.push((v.version.clone(), own));
+        name_blanks.extend(blank.map(|b| (v.version.clone(), b)));
+    }
+    // (The names' images with no letters, as the letters' blanks are read:
+    // `version_bases`.)
+    for (version, blank) in &name_blanks {
+        bases.borrow_mut().insert(format!("{}.png", versioned.name("form-names", Some(version))), blank.clone());
     }
     let palette = |v: &[String], report: &mut Report| tiles::parse_palette(v, report, &name);
     let mut languages = Vec::new();
@@ -783,7 +876,22 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         };
         let mut form_names = Vec::new();
         for (version, i) in &d.form_names {
-            form_names.push((version.clone(), img(i, report)?.0));
+            match name_blanks.iter().find(|(v, _)| v == version) {
+                // (Its letters as a layer over the version's names'
+                // portraits and bar.)
+                Some((_, blank)) => {
+                    let (letters, _) = tiles::import_layer(dir, prefix, i, report)?;
+                    if letters.len() != blank.pixels.len() {
+                        report.error(format!("{prefix}/{}", i.file), "its letters aren't as many tiles as the names they lie over");
+                        return None;
+                    }
+                    let mut names = blank.clone();
+                    crate::letters::lay(&mut names, &letters);
+                    bases.borrow_mut().insert(format!("{}-{lang}.png", versioned.name("form-names", Some(version))), blank.clone());
+                    form_names.push((version.clone(), names));
+                }
+                None => form_names.push((version.clone(), img(i, report)?.0)),
+            }
         }
         let mut buttons = Vec::new();
         for (name, own) in &d.buttons {

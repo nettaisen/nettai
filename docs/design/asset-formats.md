@@ -95,7 +95,9 @@ graphics/
     buttons/BUTTON.png  pictures/BUTTON.png  buttons/BUTTON-icons.png
     (a button by the name its content registers it under: redeal, scrap, soul)
     form-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
-    (V: falzar, gregar; a version's own look of a button: beast_out)
+    (V: falzar, gregar; a version's own look of a button: beast_out;
+    EXE6's names as layers: form-names-V-bar.png  form-names-V-bar-rows.png
+    form-names-V-portraits.png  form-names-V-letters.png)
     (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
@@ -442,7 +444,7 @@ stands in them (`align`); the emotion window's counts' digit boxes; the chip
 codes (`codes`, `slot_codes`: a glyph's face box and paint, by code); the
 window's labels' letters and rows (as `labels`); the chip window's lettered
 pictures' lines (`ok`, `ok_picked`, `other`, each button's, each version's);
-the form list names' face (by look, as `form-names-V.png`) and the box all
+the form list names' face (by look, as the names' images) and the box all
 of them are centered in (`form_name_box`).
 
 **Lettered pictures** are kept once, in two parts: the image at the
@@ -461,8 +463,51 @@ loader composes each picture (the layer over the base: exactly the ROM's,
 which the original mode draws) and the picture as the enhanced mode shows
 it (the base on its letters, its own pixels elsewhere). Kept so: the
 window's tiles (its labels), the codes and the slots' codes, FINAL TURN, the
-gauge (CUSTOM, L or R), the counts, the chip window's lettered pictures and
-the form list's names. A picture with no layer is drawn as it is.
+gauge (CUSTOM, L or R), the counts and the chip window's lettered pictures.
+A picture with no layer is drawn as it is.
+
+The chip window's **panels** with words (OK's, OK-picked's, the other
+slot's, the buttons' that are panels, as the re-deal's; in every language)
+share one base, `pictures/ok.png` (the user: "ok/other/redeal actually share
+the same background"), recovered from the pictures themselves: each pixel
+the color most of them show there, of those whose letters are no nearer
+than a pixel's gap (an outline in the panel's colors lies beside them),
+else of those whose letters miss it; where every picture's letters cover it
+(8 pixels in EXE5's and EXE6's, none in EXE4's), its row's nearest such
+pixel's. A picture's letters are wherever its color differs from the
+panel's, its outline and any of its panel that differs with them (EXE5's
+and EXE6's CHIP DATA TRANSMISSION and BLOCKING! widen the panel's body a
+column each side; EXE4's Japanese OK pictures are drawn on a taller one),
+so the enhanced mode shows the one panel under every picture's words. The
+extraction notes how many pixels the panels differ at, by picture.
+
+The **form list's names** (EXE6's Cross window) are layers: the bar every
+name lies on (`form-names-V-bar.png`, one name's 9x2 tiles, in every look
+alike: the yellow bar with its orange streaks, and the frame), where a
+name's own bar departs from it (`form-names-V-bar-rows.png`,
+`form_name_bar_rows`, a few pixels: a streak ending a pixel sooner), each
+name's portrait over those (`form-names-V-portraits.png`, every look's names,
+the portrait's own pixels and none elsewhere; its palette's rows are the
+names' palettes by look, `form_name_portraits`), and the letters over both
+(`form-names-V-letters.png`, `form_name_letters`; another language's at its
+own path, `form-names-V-ja.png`). The loader lays the portrait over the bar,
+and the letters over both for the original mode; the enhanced mode draws a
+name in a font over the portrait and bar. The bar is what the names show
+beside their portraits and letters (each pixel the value most of them show,
+every look and language); a portrait is the pixels joined to the name's left
+edge through pixels of no color of the bar's and no letter's; a language's
+letters are all its pixels that differ from the portrait over the bars:
+its letters and their outline (and one pixel of SPOUT's English art, whose
+bar there its Japanese art shows otherwise). What shows through a letter in
+the bar's colors is the bar's. The bar's pixels no name shows
+(behind every portrait, or under letters or portraits in every name) are
+filled from their rows; the extraction notes how many.
+
+A window **label**'s letters (BATTLE CHIP, CHIP SELECT, the CROSSSELECT tab
+and header, B:EXIT) are taken off its strip as every pixel, from a pixel
+before its letters' first column to one past their last, that isn't the
+row's ground (the color most of the row's other pixels there are): a letter's
+lighter dot (EXE6's CHIP SELECT's P) goes with it.
 
 **Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
 use the same files, with optional fields where its game lays them out
