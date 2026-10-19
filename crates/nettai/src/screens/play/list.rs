@@ -1,7 +1,7 @@
 //! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds over the tiles
 //! that practice with one or make a link. + NEW BUILD makes one of the game's own
 //! (`nettai_match::build::Builds::new_build`: its own navi, the forms of the version chosen, the folder a new save starts
-//! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of each save file chosen in the
+//! with; there are no random builds) and opens it in Builds' editor, or, by its dialog's FROM A SAVE FILE…, one of each save file chosen in the
 //! system's dialog, one or more (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens
 //! the chosen build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen
 //! (its header's PRACTICE goes into a practice battle with it); the
@@ -211,21 +211,32 @@ impl Play {
         }
     }
 
-    /// Keep `build` as a new file, and choose it.
-    fn add(&mut self, shell: &mut Shell, kit: &Kit, build: &Build) {
+    /// Keep `build` as a new file, and choose it. Whether it was kept.
+    fn add(&mut self, shell: &mut Shell, kit: &Kit, build: &Build) -> bool {
         match keep(kit, build) {
-            Ok(()) => self.reload(shell, Some(build.name.clone())),
-            Err(error) => shell.fail(error),
+            Ok(()) => {
+                self.reload(shell, Some(build.name.clone()));
+                true
+            }
+            Err(error) => {
+                shell.fail(error);
+                false
+            }
         }
     }
 
     /// A new build from the game's `version`th group (its version's forms), named `name`, made for the ruleset the
-    /// player last chose ([`made_for_new`]).
+    /// player last chose ([`made_for_new`]), opened in Builds' editor (the user: "after creating a new build, it
+    /// should go directly into the editor"), whose Back comes back here with it chosen.
     fn create(&mut self, shell: &mut Shell, kit: &Kit, name: &str, version: usize) {
         let Some(version) = kit.builds.groups.get(version) else { return };
         self.notice.clear();
         match kit.builds.new_build(kit.content(), &version.id) {
-            Ok(side) => self.add(shell, kit, &Build::new(kit.content(), name, side).made_for(made_for_new(shell, kit))),
+            Ok(side) => {
+                if self.add(shell, kit, &Build::new(kit.content(), name, side).made_for(made_for_new(shell, kit))) {
+                    self.edit_chosen(shell);
+                }
+            }
             Err(why) => {
                 crate::errors::log("making a new build", &why);
                 shell.fail(UserError::Other);
