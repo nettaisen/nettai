@@ -28,6 +28,14 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
     &FONT_PARSED
 }
 
+/// The width over the height of `c`'s ink in the numbers' font, worked
+/// out once a character.
+pub fn ink_aspect(c: char) -> Option<f32> {
+    static ASPECTS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<char, Option<f32>>>> = std::sync::LazyLock::new(Default::default);
+    let mut aspects = ASPECTS.lock().unwrap_or_else(|e| e.into_inner());
+    *aspects.entry(c).or_insert_with(|| font().ink_aspect(c))
+}
+
 /// A game cell's width: a character a cell.
 pub const CELL: i32 = 8;
 

@@ -988,7 +988,27 @@ impl Window {
             }
             let y = (top + row0) as f32;
             let h = (row1 + 1 - row0) as f32;
-            let glyphs = chars.iter().zip(&groups).map(|(&c, &(a, b))| (c, [a as f32, y, (b - a) as f32, h])).collect();
+            // (No letter stretched wider than the label's letters are on
+            // the whole: a narrow letter in a wide box, as the original's I
+            // with its serifs, stands at that width in the box's middle;
+            // the user: "the I in CHIP SELECT looks so bad".)
+            let natural: Vec<Option<f32>> = chars.iter().map(|&c| crate::numbers::ink_aspect(c).map(|a| a * h)).collect();
+            let mut stretches: Vec<f32> = groups.iter().zip(&natural).filter_map(|(&(a, b), n)| n.map(|n| (b - a) as f32 / n)).collect();
+            stretches.sort_by(f32::total_cmp);
+            let stretch = stretches.get(stretches.len() / 2).copied();
+            let glyphs = chars
+                .iter()
+                .zip(&groups)
+                .zip(&natural)
+                .map(|((&c, &(a, b)), n)| {
+                    let room = (b - a) as f32;
+                    let w = match (n, stretch) {
+                        (Some(n), Some(s)) => (n * s).min(room),
+                        _ => room,
+                    };
+                    (c, [a as f32 + (room - w) / 2.0, y, w, h])
+                })
+                .collect();
             let ink = look.ink.clone();
             let fitted = crate::numbers::Fitted { glyphs, fill: ink.fill, rim: ink.rim, shadow: look.shadow };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, picture.w as i32, 8));

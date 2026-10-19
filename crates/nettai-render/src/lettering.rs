@@ -441,7 +441,8 @@ pub struct Enclosed {
 
 /// The letters a picture draws in outlines of its edge's color ([`Enclosed`]):
 /// the edge's color is the one most of its edge pixels are; the outlines are
-/// its pixels of that color not joined to the edge's; the letters are the
+/// its pixels of that color off the edge (a letter's outline may touch it,
+/// as EXE6's Japanese トマホーク and スラッシュ do); the letters are the
 /// outlines and what they enclose, in the outlines' box: what isn't reached
 /// from the box's edge without crossing one. None if it has none.
 pub fn enclosed_letters(p: &Picture) -> Option<Enclosed> {
@@ -456,22 +457,8 @@ pub fn enclosed_letters(p: &Picture) -> Option<Enclosed> {
     }
     let outline = (0..16u8).max_by_key(|&c| count[c as usize])?;
     let near = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-    // The outline's color joined to the edge.
-    let mut joined = vec![false; p.pixels.len()];
-    let mut stack: Vec<(i32, i32)> = (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).filter(|&(x, y)| edge(x, y) && at(x, y) == outline).collect();
-    while let Some((x, y)) = stack.pop() {
-        let i = (y * w + x) as usize;
-        if joined[i] {
-            continue;
-        }
-        joined[i] = true;
-        for (dx, dy) in near {
-            let (nx, ny) = (x + dx, y + dy);
-            if nx >= 0 && ny >= 0 && nx < w && ny < h && at(nx, ny) == outline && !joined[(ny * w + nx) as usize] {
-                stack.push((nx, ny));
-            }
-        }
-    }
+    // (The edge itself only: an outline joined to it is a letter's.)
+    let joined: Vec<bool> = (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).map(|(x, y)| edge(x, y)).collect();
     let inner: Vec<(i32, i32)> = (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).filter(|&(x, y)| at(x, y) == outline && !joined[(y * w + x) as usize]).collect();
     let (x0, x1) = (inner.iter().map(|p| p.0).min()?, inner.iter().map(|p| p.0).max()?);
     let (y0, y1) = (inner.iter().map(|p| p.1).min()?, inner.iter().map(|p| p.1).max()?);
@@ -645,6 +632,27 @@ mod tests {
         let mut want = Vec::new();
         for y in 2..5 {
             want.extend(row(y, &[3, 4, 5, 7, 8, 9]));
+        }
+        assert_eq!(mask, want);
+    }
+
+    /// A letter whose outline touches the bar's edge is still a letter.
+    #[test]
+    fn a_letter_touching_the_edge_is_found() {
+        let p = picture(&[
+            "dddddddddddd",
+            "d9999999999d",
+            "d99ddd9ddddd",
+            "d99d1d9d11dd",
+            "d99ddd9ddddd",
+            "d9999999999d",
+            "dddddddddddd",
+        ]);
+        let found = enclosed_letters(&p).expect("letters");
+        let mask: Vec<usize> = (0..p.pixels.len()).filter(|&i| found.mask[i]).collect();
+        let mut want = Vec::new();
+        for y in 2..5 {
+            want.extend([3, 4, 5, 7, 8, 9, 10].map(|x| y * 12 + x));
         }
         assert_eq!(mask, want);
     }

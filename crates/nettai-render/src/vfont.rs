@@ -320,6 +320,20 @@ impl VectorFont {
         text.chars().all(|c| has(c) || mark(c).is_some_and(|m| m.letters().into_iter().all(has)))
     }
 
+    /// The width over the height of `c`'s ink (its outline's bounds), None
+    /// where the font has no glyph for it.
+    pub fn ink_aspect(&self, c: char) -> Option<f32> {
+        let font = self.font();
+        let id = font.charmap().map(c);
+        if id == 0 {
+            return None;
+        }
+        let mut context = ScaleContext::new();
+        let b = context.builder(font).size(RES).build().scale_outline(id)?.bounds();
+        let h = b.max.y - b.min.y;
+        (h > 0.0).then(|| (b.max.x - b.min.x) / h)
+    }
+
     /// Whether `c` is a button the text layer draws as its letter in a
     /// ring ([`BUTTON_RING`] times the capitals' height): the font has no
     /// glyph of its own for it.
