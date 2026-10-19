@@ -12,8 +12,9 @@
 //! marks, the ticks a round and the set ended on, which a reader may go by
 //! without playing, and the battle's digest every so often, which a
 //! playback compares to tell it reproduces. A replay plays only on the
-//! engine and the content it was made with: the head names them, and a
-//! player refuses another's ([`Head::require`]).
+//! content it was made with and an engine of the same minor version (a
+//! patch release plays it: [`line`]): the head names them, and a player
+//! refuses another's ([`Head::require`]).
 //!
 //! ```text
 //! file   := "NTRP", layout (a byte: 1), head, info, match, input
@@ -63,6 +64,20 @@ pub const MAGIC: &[u8; 4] = b"NTRP";
 /// The layout this crate writes and reads.
 pub const LAYOUT: u8 = 1;
 
+/// The part of a nettai version that says what its simulation is: its
+/// major and minor numbers ("0.7" of "0.7.3"). Engines of one line play the
+/// same matches the same way (a patch release changes no simulation, state
+/// layout, digest or protocol: docs/design/rollback.md), so a replay plays
+/// on any of its line, and netplay peers of one line play together (the
+/// user: "patch version changes don't break netplay compatibility but minor
+/// version changes do").
+pub fn line(version: &str) -> &str {
+    match version.match_indices('.').nth(1) {
+        Some((i, _)) => &version[..i],
+        None => version,
+    }
+}
+
 /// What a replay is played on: the engine, the game and its content, and
 /// the battle they make before any tick.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,7 +111,7 @@ impl Head {
     }
 
     /// That a replay of this head plays on `engine`'s build of `game`'s
-    /// `content`: or what differs.
+    /// `content` (an engine of the replay's [`line`]): or what differs.
     pub fn require(&self, engine: &str, game: &str, content: u64) -> Result<(), Mismatch> {
         if self.game != game {
             return Err(Mismatch::Game { replay: self.game.clone(), here: game.to_string() });
@@ -104,7 +119,7 @@ impl Head {
         if self.content != content {
             return Err(Mismatch::Content { replay: self.content, here: content });
         }
-        if self.engine != engine {
+        if line(&self.engine) != line(engine) {
             return Err(Mismatch::Engine { replay: self.engine.clone(), here: engine.to_string() });
         }
         Ok(())
@@ -119,7 +134,7 @@ pub enum Mismatch {
     Game { replay: String, here: String },
     /// It was made on other content (the hashes).
     Content { replay: u64, here: u64 },
-    /// It was made on another engine (the versions).
+    /// It was made on an engine of another minor version (the versions).
     Engine { replay: String, here: String },
 }
 
