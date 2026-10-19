@@ -1394,7 +1394,8 @@ Each is settled unless the user changes it.
       phone, whose tab bar has no room, it is the row's width under the Navi tab's ruleset and EDIT. A regular
       button as wide as its word, there when the editor was opened from Play (opened from Practice, its Back is the
       way back). It goes straight into a practice battle on the build as
-      it is kept; Practice's EXIT and Back come back to the editor on it, whose Back goes to Play. A build that
+      it is kept; Practice's EXIT and Back come back to the editor on it, on the tab PRACTICE was pressed on (the user:
+      "returning from practice should return to the same tab"), whose Back goes to Play. A build that
       can't be played under its ruleset is refused in the editor, why in a dialog. Play's chosen build has EDIT
       and ⋯ alone in its header (on a phone EDIT takes PRACTICE's room).
     - *The header's game* doesn't slide in with a screen's header: it slides only when the game changes.
