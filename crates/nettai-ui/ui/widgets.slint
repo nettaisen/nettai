@@ -568,9 +568,12 @@ export component Stepper inherits Rectangle {
         wrap: word-wrap;
     }
 
+    // (The header's game slides only when it changes: a screen's header is made anew with the screen, and the game it
+    // shows, the same as the last one's, stays still.)
     slide := Tween {
         seq: root.changes;
         duration: Theme.brisk;
+        settled: root.title && root.changes == 0;
     }
 
     hit := Focusable {
