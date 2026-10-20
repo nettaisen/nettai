@@ -241,7 +241,11 @@ digest covers all of it. Peer-specific presentation is derived per viewer instea
 Related shared setup: the battle settings. Netbattle settings come in pairs that differ only in which navi the
 actor list spawns first (for example entries 0 and 1), which decides object slots and update order; both peers
 must use the same entry. The content is shared setup too: `RoundSetup::content` is the hash (`Content::hash`) of
-the content the round runs on, so peers whose setups agree run the same data.
+the content the round runs on, so peers whose setups agree run the same data. The hash takes each Luau module as
+its code, not its text: its bytecode compiled without debug information and without each function's starting line
+(`nettai_luau::sandbox::identity_compiler`, `nettai_luau::verify::identity`), so an edit to a module's comments,
+layout or local names leaves the content the same, and any edit to its code or constants makes another. The
+compiler is pinned (`luau0-src`); a new one may compile the same text otherwise, and is a minor version.
 
 So are the keys the round's host answers in the battle's place (`RoundSetup::host_keys`: the pause, and L's run
 key on the custom screen; docs/engine/battle-flow.md §3.5). They change what a tick does with a button, so they

@@ -230,7 +230,7 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         for key in ["cannon", "minibomb"] {
             assert_eq!(c.defs.chip_by_key(key), turned.defs.chip_by_key(key), "{game}: {key}'s handle");
         }
-        assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' text, an init.luau's too");
+        assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' code, an init.luau's too");
     }
 }
 

@@ -25,8 +25,9 @@ use std::collections::BTreeMap;
 
 use nettai_content_api::{PackKind, PackManifest, keys, packs};
 
-/// The content's Luau modules.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// The content's Luau modules. Its hash (part of the content hash) takes
+/// each module as its code, not its text ([`module_identity`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scripts {
     /// Source text by module name: its pack, then its path in the pack
     /// without `.luau` (`exe6:objects/sun-beam/sun_beam`, `keys::module_name`).
@@ -277,6 +278,46 @@ end
 
 ";
 
+impl std::hash::Hash for Scripts {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        let Scripts { modules, packs, dirs: _, compiled: _, held } = self;
+        modules.len().hash(h);
+        for (name, source) in modules {
+            name.hash(h);
+            module_identity(source).hash(h);
+        }
+        packs.hash(h);
+        held.hash(h);
+    }
+}
+
+/// A module's identity in the content hash: a hash of its bytecode as
+/// compiled without debug information (`nettai_luau::sandbox::
+/// identity_compiler`) and without its functions' lines
+/// (`nettai_luau::verify::identity`), so an edit to its comments, layout or local names
+/// leaves the content the same and any edit to its code makes another (a
+/// module that doesn't compile: its text). The compiler is pinned
+/// (`luau0-src`); a new one may compile the same text otherwise, which a
+/// minor version is for anyway. Kept by source, as computing it compiles.
+fn module_identity(source: &str) -> u64 {
+    use std::collections::HashMap;
+    use std::sync::{LazyLock, Mutex};
+    static KEPT: LazyLock<Mutex<HashMap<u64, u64>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+    let text = crate::digest::stable_hash(source);
+    if let Some(&id) = KEPT.lock().unwrap_or_else(|e| e.into_inner()).get(&text) {
+        return id;
+    }
+    let id = match nettai_luau::sandbox::identity_compiler().compile(source) {
+        Ok(bytecode) => match nettai_luau::verify::identity(&bytecode) {
+            Ok(code) => crate::digest::stable_hash(&code[..]),
+            Err(_) => crate::digest::stable_hash(&bytecode[..]),
+        },
+        Err(_) => crate::digest::stable_hash(&("text", source)),
+    };
+    KEPT.lock().unwrap_or_else(|e| e.into_inner()).insert(text, id);
+    id
+}
+
 /// The packs' folders the define phase reads modules from
 /// ([`Scripts::dirs`]): where the content came from on this machine, so
 /// content equality and the content hash leave it out.
@@ -322,6 +363,21 @@ impl std::hash::Hash for CompiledModules {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The content hash takes a module's code, not its text: comments,
+    /// layout and local names aren't the content; the code is.
+    #[test]
+    fn the_hash_is_the_code_not_its_text() {
+        let hash = |source: &str| crate::digest::stable_hash(&Scripts::dir("game", [("m".to_string(), source.to_string())].into()));
+        let base = hash("local function add(a)\n    return a + 1\nend\n\nreturn { add = add }\n");
+        assert_eq!(hash("-- One more than a.\nlocal function add(n) return n + 1 end -- (n: a number)\nreturn {add = add}"), base);
+        let nested = |gap: &str| hash(&format!("local function outer(a)\n{gap}    local function inner(b)\n        return b * 2\n    end\n{gap}    return inner(a)\nend\n{gap}return {{ outer = outer }}\n"));
+        assert_eq!(nested(""), nested("\n\n    -- a comment of several\n    -- lines, between functions\n\n"), "lines above a function");
+        assert_eq!(nested(&"\n".repeat(300)), nested(""), "a function starting past line 127 (a longer varint)");
+        assert_ne!(hash("local function add(a)\n    return a + 2\nend\n\nreturn { add = add }\n"), base, "another constant");
+        assert_ne!(hash("local function add(a)\n    return a + 1\nend\n\nreturn { plus = add }\n"), base, "another key");
+        assert_ne!(hash("return {"), hash("return {{"), "text that doesn't compile: its text");
+    }
     use crate::content::Content;
 
     type Game = (String, BTreeMap<String, String>);
