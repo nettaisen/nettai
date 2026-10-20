@@ -1035,14 +1035,20 @@ impl TextRenderer {
             // its bar, then its glyphs' coverage, the rim around it, the
             // shadow and the face's fill drawn from it.
             let key = format!(
-                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}",
-                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.fine, place, bounds
+                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}",
+                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.fine, place, bounds, item.slant
             );
             if !self.painted.contains_key(&key) {
                 if self.painted.len() >= PAINTED_KEPT {
                     self.painted.clear();
                 }
-                let painted = self.paint_inked(item, ink, &layout, st, &at, place, bounds, (k, mid), (fine_x, fine_y), &color);
+                let mut painted = self.paint_inked(item, ink, &layout, st, &at, place, bounds, (k, mid), (fine_x, fine_y), &color);
+                // (Slanted: each row moved right by the slant for how far up
+                // from the box's bottom it is, at the output's resolution.)
+                if item.slant != 0 {
+                    let bottom = place.y as f32 + (item.rect.y + item.rect.h) as f32 * s;
+                    painted = painted.map(|p| p.sheared(item.slant as f32 / 100.0, bottom));
+                }
                 self.painted.insert(key.clone(), painted);
             }
             if let Some(p) = &self.painted[&key] {
@@ -1479,6 +1485,42 @@ impl Painted {
     fn new((x0, y0, x1, y1): (i32, i32, i32, i32)) -> Painted {
         let (w, h) = ((x1 - x0).max(0) as usize, (y1 - y0).max(0) as usize);
         Painted { x: x0, y: y0, w, px: vec![(0, 0); w * h] }
+    }
+
+    /// The paint sheared: each row moved right by `slant` output pixels for
+    /// each one it is above row `bottom` (left below it), between pixels
+    /// its two neighbors' coverage blended; the area widened to hold it.
+    fn sheared(&self, slant: f32, bottom: f32) -> Painted {
+        let h = if self.w == 0 { 0 } else { self.px.len() / self.w };
+        let shift = |y: usize| slant * (bottom - (self.y as f32 + y as f32 + 0.5));
+        let (lo, hi) = (0..h).map(shift).fold((0.0f32, 0.0f32), |(a, b), v| (a.min(v), b.max(v)));
+        let (left, right) = (lo.floor() as i32, hi.ceil() as i32);
+        let w = self.w + (right - left) as usize + 1;
+        let mut out = Painted { x: self.x + left, y: self.y, w, px: vec![(0, 0); w * h] };
+        for y in 0..h {
+            let d = shift(y) - left as f32;
+            let (whole, part) = (d.floor() as usize, d - d.floor());
+            for x in 0..self.w {
+                let (rgb, a) = self.px[y * self.w + x];
+                if a == 0 {
+                    continue;
+                }
+                // (Its coverage split between the two pixels it lands across.)
+                let (a0, a1) = ((a as f32 * (1.0 - part)).round() as u8, (a as f32 * part).round() as u8);
+                for (dx, aa) in [(0, a0), (1, a1)] {
+                    if aa > 0 {
+                        let i = y * w + x + whole + dx;
+                        if let Some(o) = out.px.get_mut(i) {
+                            // (Where two meet, their colors weighed by their coverage.)
+                            let (wa, wb) = (o.1 as u32, aa as u32);
+                            let mix = |sh: u32| ((((o.0 >> sh) & 0xFF) * wa + ((rgb >> sh) & 0xFF) * wb) / (wa + wb).max(1)) << sh;
+                            *o = (mix(16) | mix(8) | mix(0), (wa + wb).min(255) as u8);
+                        }
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// `rgb` over the pixel at (x, y), `a` 255ths of it.

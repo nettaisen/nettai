@@ -46,6 +46,12 @@ pub fn to_svg(d: &Drawing, view: &dyn Fn(u8, u8) -> u16) -> String {
         if let Some(r) = t.shadow {
             let _ = write!(extra, " data-shadow=\"{r}\"");
         }
+        if t.lettering {
+            extra.push_str(" data-font=\"lettering\"");
+        }
+        if t.slant != 0 {
+            let _ = write!(extra, " data-slant=\"{}\"", t.slant as f64 / 100.0);
+        }
         let _ = writeln!(
             s,
             "<text data-words=\"{}\" data-box=\"{} {} {} {}\" data-color=\"{}\"{extra} fill=\"#{cr:02x}{cg:02x}{cb:02x}\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>",
@@ -143,7 +149,9 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
 /// A `text` element's words: `data-words` the string's key, `data-box` the
 /// box its capitals fill (x y width height), `data-color` (and
 /// `data-palette`) the face's color, `data-rim` and `data-shadow` the
-/// outline's and the shadow's; its `x`, `y`, size and contents are for
+/// outline's and the shadow's, `data-slant` its slant (pixels right for
+/// each one up), `data-font` its font (`numbers`, the default, or
+/// `lettering`); its `x`, `y`, size and contents are for
 /// viewing only.
 fn words_of(tag: &str) -> Result<nettai_assets::shapes::Words, String> {
     let key = attribute(tag, "data-words").ok_or("a text has no data-words")?.to_string();
@@ -161,7 +169,16 @@ fn words_of(tag: &str) -> Result<nettai_assets::shapes::Words, String> {
     };
     let color = index("data-color")?.ok_or("a text has no data-color")?;
     let palette = index("data-palette")?.unwrap_or(0);
-    Ok(nettai_assets::shapes::Words { key, rect: [x, y, w, h], palette, color, rim: index("data-rim")?, shadow: index("data-shadow")? })
+    let slant = match attribute(tag, "data-slant") {
+        Some(t) => (t.parse::<f64>().map_err(|_| format!("data-slant {t:?} isn't a number"))? * 100.0).round() as i16,
+        None => 0,
+    };
+    let lettering = match attribute(tag, "data-font") {
+        None | Some("numbers") => false,
+        Some("lettering") => true,
+        Some(t) => return Err(format!("data-font {t:?} isn't numbers or lettering")),
+    };
+    Ok(nettai_assets::shapes::Words { key, rect: [x, y, w, h], palette, color, rim: index("data-rim")?, shadow: index("data-shadow")?, slant, lettering })
 }
 
 fn unit_of(tag: &str, name: &str) -> Result<i32, String> {

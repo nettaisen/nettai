@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
+<!-- The Program Advance banner's logo (Japanese): a dark band slanting as the words do, its words on it in italic letters, white, drawn as text. -->
+<!-- The dark band, slanting -->
+<path d="M7.139 1.484 A1.5 1.5 0 0 1 8.548 0.5 L85.787 0.5 A1.5 1.5 0 0 1 87.274 2.198 L85.674 14.198 A1.5 1.5 0 0 1 84.187 15.5 L4.148 15.5 A1.5 1.5 0 0 1 2.739 13.484 Z" fill-rule="evenodd" fill="#292929" data-color="6"/>
+<!-- The words, italic, white -->
+<text data-words="logo.program-advance" data-box="4 2 80 11" fill="#f7ffff" data-color="1" data-slant="0.5" data-font="lettering" x="4" y="13" font-size="14.667" textLength="80">プログラムアドバンス</text>
+</svg>

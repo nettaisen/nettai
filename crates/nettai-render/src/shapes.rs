@@ -110,7 +110,10 @@ pub fn words(
             problems.note(format!("{}: the strings have none: not drawn", what()));
             continue;
         };
-        if !text.lettering_in(words, LetteringFont::Numbers, what, problems) {
+        // (The numbers' font where it has every letter and the drawing
+        // doesn't ask for the lettering font, else that: kana, mixed case.)
+        let font = if !t.lettering && text.takes_lettering_in(words, LetteringFont::Numbers) { LetteringFont::Numbers } else { LetteringFont::Display };
+        if !text.lettering_in(words, font, what, problems) {
             continue;
         }
         let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
@@ -123,14 +126,14 @@ pub fn words(
         for (k, line) in lines.iter().enumerate() {
             let line_top = y + k as f32 * (h + gap) / n;
             let (top, cap) = (line_top.round() as i32, ((h + gap) / n - gap).round().clamp(1.0, 255.0) as i32);
-            let natural = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(0, cap as u8) };
+            let natural = Lettering { font, ..Lettering::wide(0, cap as u8) };
             let Some((ink0, ink1)) = text.ink_extent(line, Role::Lettering(natural), 10_000) else { continue };
             let width = (100.0 * w / (ink1 - ink0).max(1.0)).round().clamp(25.0, 255.0) as u8;
             let lettering = Lettering { width, ..natural };
             let rect = Rect::new(x.floor() as i32 - 2, top, w.ceil() as i32 + 4, cap);
             let item = TextItem::new(*line, Role::Lettering(lettering), rect, face, shadow);
             let ink = crate::textlayer::Ink { fill: vec![face], rim: t.rim.map(|c| color(t.palette, c)) };
-            out.push(TextItem { align: crate::textlayer::Align::Center, ink: Some(ink), ..item });
+            out.push(TextItem { align: crate::textlayer::Align::Center, ink: Some(ink), slant: t.slant, ..item });
         }
     }
     out

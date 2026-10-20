@@ -28,7 +28,10 @@ pub struct Drawing {
 /// its capitals fill (x, y, width, height in `Drawing::UNIT`s of a frame
 /// pixel from the drawing's top left: their top to their baseline, the run
 /// fitted to the width), the face's color, and the outline's and the
-/// shadow's colors where it has them (palette indices, of row `palette`).
+/// shadow's colors where it has them (palette indices, of row `palette`),
+/// its slant (hundredths of a pixel right for each pixel up: 0, upright),
+/// and whether it is in the lettering font (mixed case, kana) rather than
+/// the numbers' (capitals).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Words {
     pub key: String,
@@ -37,6 +40,8 @@ pub struct Words {
     pub color: u8,
     pub rim: Option<u8>,
     pub shadow: Option<u8>,
+    pub slant: i16,
+    pub lettering: bool,
 }
 
 impl Drawing {
