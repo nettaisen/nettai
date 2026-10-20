@@ -701,11 +701,15 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
                     }
                 }
             }
-            let drawing = if whole { sh.drawing(&file, canvas.grid()) } else { None };
-            match drawing {
+            if !whole {
+                say(format!("{file}: its button's pictures have no such set: its looks stay pictures"));
+                sets.clear();
+                break;
+            }
+            match sh.drawing(&file, canvas.grid()) {
                 Some(d) => sets.push(d),
+                // (Why is said where it is read.)
                 None => {
-                    say(format!("{file}: its button's pictures have no such set: its looks stay pictures"));
                     sets.clear();
                     break;
                 }

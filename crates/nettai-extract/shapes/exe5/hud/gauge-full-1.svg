@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
+<!-- The full gauge shimmering, frame 2 of 4: the capsule a pixel up and to the right. -->
+<rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
+<rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
+<path d="M3.707 0.293 A1 1 0 0 1 4.414 0 L7 0 A1 1 0 0 1 8 1 L8 2.586 A1 1 0 0 1 7.707 3.293 L5.293 5.707 A1 1 0 0 1 4.586 6 L2 6 A1 1 0 0 1 1 5 L1 3.414 A1 1 0 0 1 1.293 2.707 Z" fill-rule="evenodd" fill="#00a500" data-color="11"/>
+<path d="M4.297 1.117 A0.4 0.4 0 0 1 4.58 1 L6.6 1 A0.4 0.4 0 0 1 7 1.4 L7 2.42 A0.4 0.4 0 0 1 6.883 2.703 L4.703 4.883 A0.4 0.4 0 0 1 4.42 5 L2.4 5 A0.4 0.4 0 0 1 2 4.6 L2 3.58 A0.4 0.4 0 0 1 2.117 3.297 Z" fill-rule="evenodd" fill="#00ff00" data-color="3"/>
+</svg>

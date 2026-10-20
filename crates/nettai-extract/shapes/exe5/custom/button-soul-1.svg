@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="128" viewBox="0 0 24 16">
+<!-- The soul button, unavailable: lit white, a light gray face, shaded gray, its words white (its words drawn as text): a dark outline with rounded corners. -->
+<!-- The window round it -->
+<rect x="0" y="0" width="24" height="16" fill="#e7e7ef" data-color="2"/>
+<!-- The plate's outline -->
+<path d="M1 3 A2 2 0 0 1 3 1 L22 1 A2 2 0 0 1 24 3 L24 14 A2 2 0 0 1 22 16 L3 16 A2 2 0 0 1 1 14 Z" fill-rule="evenodd" fill="#292929" data-color="8"/>
+<!-- Its shade along the right and the bottom -->
+<path d="M2 3 A1 1 0 0 1 3 2 L22 2 A1 1 0 0 1 23 3 L23 14 A1 1 0 0 1 22 15 L3 15 A1 1 0 0 1 2 14 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3"/>
+<!-- Its light along the top and the left -->
+<path d="M2 3 A1 1 0 0 1 3 2 L23 2 L21 3 L4 3 L4 14 L2 15 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1"/>
+<!-- Brightest in the top left corner -->
+<path d="M2 2.5 A0.5 0.5 0 0 1 2.5 2 L5 2 L5 3 L2 3 Z" fill-rule="evenodd" fill="#e7e7e7" data-color="9"/>
+<!-- The face -->
+<rect x="4" y="3" width="17" height="11" fill="#e7e7e7" data-color="9"/>
+<!-- The words -->
+<text data-words="window.unite" data-box="4 4 17 9" fill="#f7ffff" data-color="1" x="4" y="13" font-size="12" textLength="17">UNITE</text>
+</svg>
