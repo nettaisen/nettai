@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use web_time::Instant;
 
 /// A pack's stamp file.
 const STAMP: &str = "stamp.toml";
@@ -222,7 +222,9 @@ impl Extractor {
         }
         queue.running = true;
         let (dir, waiting, told) = (self.dir.clone(), self.queue.clone(), self.told.clone());
-        std::thread::spawn(move || work(&dir, &waiting, &*told));
+        if let Err(why) = nettai_thread::spawn("extracting", move || work(&dir, &waiting, &*told)) {
+            crate::errors::log("starting the extraction", &why);
+        }
     }
 
     /// Extract game `id` next, if it is waiting (the player stepped to it).

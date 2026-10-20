@@ -353,7 +353,8 @@ impl Games {
         let (id, lang) = (id.to_string(), lang.to_string());
         let options = game::Options { packs_dir: self.packs.clone(), ..game::Options::default() };
         let told = Arc::new(told);
-        std::thread::spawn(move || {
+        let name = format!("loading {id}");
+        let started = nettai_thread::spawn(&name, move || {
             let tell = |step: Step| {
                 let (id, told) = (id.clone(), told.clone());
                 let _ = slint::invoke_from_event_loop(move || told(id, step));
@@ -378,6 +379,9 @@ impl Games {
             })();
             tell(Step::Done(loaded.map(Box::new).map_err(|e: game::LoadError| format!("{e}\n{}", e.report))));
         });
+        if let Err(why) = started {
+            crate::errors::log(&format!("starting {name}"), &why);
+        }
     }
 
     /// A part of `id`'s loading ended: how far it is now, or the game (or why there is none: to the log).
@@ -433,12 +437,16 @@ impl Games {
                 continue;
             }
             let (id, lang, game, told) = (entry.id.clone(), lang.to_string(), ready.loaded.game.clone(), told.clone());
-            std::thread::spawn(move || match game.graphics(&lang) {
+            let name = format!("loading {id} in {lang}");
+            let started = nettai_thread::spawn(&name.clone(), move || match game.graphics(&lang) {
                 Ok(graphics) => {
                     let _ = slint::invoke_from_event_loop(move || told(id, lang, graphics));
                 }
-                Err(e) => crate::errors::log(&format!("loading {id} in {lang}"), &format_args!("{e}\n{}", e.report)),
+                Err(e) => crate::errors::log(&name, &format_args!("{e}\n{}", e.report)),
             });
+            if let Err(why) = started {
+                crate::errors::log("starting a language's loading", &why);
+            }
         }
     }
 

@@ -15,7 +15,8 @@ use nettai_battle::content::SoundRole;
 use nettai_content_api::assets::AssetKind;
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::FRAME_RATE;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// The name a pack gives its title screen's music.
 const TITLE_MUSIC: &str = "title-screen";

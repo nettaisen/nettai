@@ -56,7 +56,8 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 use viewer::{MENU, MenuItem, Overlays, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.

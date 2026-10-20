@@ -21,7 +21,7 @@ use nettai_battle::input::keys;
 use crate::builds::store;
 use nettai_ui::{AppWindow, BuildsView, PracticeOption, Theme};
 use slint::ComponentHandle;
-use std::time::Instant;
+use web_time::Instant;
 
 /// What a shot may differ from the one kept before it in.
 #[derive(Clone, Copy, PartialEq)]

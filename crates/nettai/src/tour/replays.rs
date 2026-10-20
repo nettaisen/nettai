@@ -116,7 +116,7 @@ pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         nettai_fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         // (A file that doesn't read is listed by when it was written.)
         let file = nettai_fs::File::options().write(true).open(&path).map_err(|e| e.to_string())?;
-        file.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(when)).map_err(|e| e.to_string())
+        file.set_modified(web_time::UNIX_EPOCH + std::time::Duration::from_secs(when)).map_err(|e| e.to_string())
     };
     // (Which set, the side that recorded, the other player, when, online, open setups, cut after this part.)
     let me = shell.settings.name.clone();
@@ -569,7 +569,7 @@ fn watch_failed(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) 
         SETTLE,
         Box::new(|_, app, tour| {
             let copied = nettai_fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(CHANGED));
-            let made = copied.and_then(|_| nettai_fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
+            let made = copied.and_then(|_| nettai_fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(web_time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
             if let Err(why) = made {
                 eprintln!("tour: the replay to damage couldn't be made: {why}");
             }
@@ -733,7 +733,7 @@ fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> boo
         SETTLE,
         Box::new(|_, app, tour| {
             let scrap = tour.dir.join("replays/scrap.nettaireplay");
-            let made = nettai_fs::write(&scrap, b"to be deleted").and_then(|()| nettai_fs::File::options().write(true).open(&scrap)?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
+            let made = nettai_fs::write(&scrap, b"to be deleted").and_then(|()| nettai_fs::File::options().write(true).open(&scrap)?.set_modified(web_time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
             if let Err(why) = made {
                 say(tour, "replays.txt", &format!("the file to delete couldn't be made: {why}\n"));
             }
@@ -771,7 +771,7 @@ mod tests {
 
     /// Take what the library's thread finds until `enough` says so of all it found (a minute at the most).
     fn wait(library: &mut Library, enough: impl Fn(&[Found]) -> bool) {
-        let (began, mut found) = (std::time::Instant::now(), Vec::new());
+        let (began, mut found) = (web_time::Instant::now(), Vec::new());
         while !enough(&found) {
             assert!(began.elapsed() < std::time::Duration::from_secs(60), "the replays' thread didn't answer");
             std::thread::sleep(std::time::Duration::from_millis(5));
@@ -784,7 +784,7 @@ mod tests {
     /// answer comes may be the one before.
     fn kept(cache: &std::path::Path, files: &[&crate::replays::Entry]) -> String {
         let want: Vec<String> = files.iter().map(|e| format!("file = \"{:016x}\"", e.digest.unwrap())).collect();
-        let began = std::time::Instant::now();
+        let began = web_time::Instant::now();
         loop {
             let text = nettai_fs::read_to_string(cache).unwrap_or_default();
             if text.matches("[[played]]").count() == want.len() && want.iter().all(|w| text.contains(w.as_str())) {
@@ -851,7 +851,7 @@ mod tests {
         again.list(&dir);
         wait(&mut again, |found| found.iter().any(|f| matches!(f, Found::Listed)));
         let entries = again.entries.clone();
-        let began = std::time::Instant::now();
+        let began = web_time::Instant::now();
         for entry in &entries[1..] {
             again.play(entry, &content, hash);
         }

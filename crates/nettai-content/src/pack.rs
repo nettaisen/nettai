@@ -156,6 +156,11 @@ pub(crate) fn read_a_part() {
 
 /// Run `f` over `items` on all cores, keeping order.
 fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    // (The browser's threads are Web Workers, started from the event loop: this runs on one already, the
+    // extraction's, and goes through the items itself.)
+    if cfg!(target_arch = "wasm32") {
+        return items.iter().map(f).collect();
+    }
     let n = std::thread::available_parallelism().map_or(4, |n| n.get()).min(items.len().max(1));
     let chunk = items.len().div_ceil(n).max(1);
     std::thread::scope(|s| {

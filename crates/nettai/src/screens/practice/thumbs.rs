@@ -93,7 +93,7 @@ impl Thumbs {
         if now {
             make(&content, &graphics, &owned, &places, &wanted, &send);
         } else {
-            let spawned = std::thread::Builder::new().name(format!("{game} places")).spawn(move || {
+            let spawned = nettai_thread::spawn(&format!("{game} places"), move || {
                 make(&content, &graphics, &owned, &places, &wanted, &send);
             });
             if let Err(why) = spawned {

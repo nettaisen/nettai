@@ -35,7 +35,8 @@ use slint::ComponentHandle;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// The pass's builds, by name: a new build each, of the game's versions in turn. The last breaks a rule.
 const BUILDS: [&str; 5] = ["Ladder 10-18", "Swords", "Rush", "Tournament", "ジャッジ対策 v3"];

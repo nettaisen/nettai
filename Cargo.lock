@@ -3207,6 +3207,7 @@ dependencies = [
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-thread",
  "nettai-ui",
  "nettai-video",
  "objc2 0.6.4",
@@ -3221,6 +3222,7 @@ dependencies = [
  "tempfile",
  "toml 0.8.23",
  "velopack",
+ "web-time",
  "winresource",
  "zip 2.4.2",
 ]
@@ -3322,6 +3324,7 @@ dependencies = [
  "nettai-replay",
  "nettai-rtc",
  "sha2 0.10.9",
+ "web-time",
 ]
 
 [[package]]
@@ -3373,8 +3376,10 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-fs",
+ "nettai-thread",
  "png 0.17.16",
  "swash",
+ "web-time",
 ]
 
 [[package]]
@@ -3401,6 +3406,13 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "web-time",
+]
+
+[[package]]
+name = "nettai-thread"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -8,6 +8,10 @@ description = "Draws nettai battles into frames: the stage, the objects, the HUD
 # Drawing only: no window, sound, network or command line (nettai-frontend
 # plays the battles it draws; nettai and nettai-tools are the programs around both).
 [dependencies]
+# Threads: std::thread's on the desktop, Web Workers in the browser.
+nettai-thread = { path = "../nettai-thread" }
+# The clock: std's on the desktop, the browser's `performance.now()` there (std's panics).
+web-time = "1"
 # Files: std::fs's on the desktop, the page's tree in the browser.
 nettai-fs = { path = "../nettai-fs" }
 nettai-battle = { path = "../nettai-battle" }
