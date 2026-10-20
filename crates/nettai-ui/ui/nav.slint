@@ -44,6 +44,7 @@ export global Nav {
     // begin one (empty: the field's own text, all selected).
     in property <bool> editing;
     in property <int> edit-seq;
+    in property <int> edit-heard;
     in property <string> edit-seed;
     // A scrolling page or list is asked to move by `reveal-dy` to bring the focused control into view.
     in property <string> reveal-id;
@@ -72,6 +73,10 @@ export global Nav {
     callback edit-began(string, int, string);
     callback edited(string, int, string);
     callback edit-done(string, int, string);
+    // In a browser, the field being edited holds this now (what the app kept of what was typed: a code in capitals,
+    // a name at its length): the input laid over it is told (nettai_platform::text_entry). The field says it each
+    // time `edit-heard` counts a change the app heard.
+    callback edit-kept(string);
     // The wheel or a drag scrolled something: the cursor's place is out of date until the controls say theirs.
     callback scrolled();
 }

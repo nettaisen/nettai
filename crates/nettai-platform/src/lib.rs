@@ -6,11 +6,13 @@
 //! - [`time`]: the clock (std's; in the browser `performance.now()` and `Date.now()`);
 //! - [`dialog`]: files and folders to open, and where to save one (the system's dialogs; in the browser its file
 //!   input, its folder dialog and downloads), and files dropped on the page;
-//! - [`clipboard`]: text copied.
+//! - [`clipboard`]: text copied;
+//! - [`text_entry`]: a field's text typed (in the browser an HTML input laid over it, for its input method).
 
 pub mod clipboard;
 pub mod dialog;
 pub mod fs;
+pub mod text_entry;
 pub mod thread;
 
 /// The clock, as `std::time` names it.

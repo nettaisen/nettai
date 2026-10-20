@@ -378,6 +378,7 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     nav.on_hover(move |id, index, on| tell(&a, NavInput::Hover(id.into(), index, on)));
     let a = app.clone();
     nav.on_edit_began(move |_, _, text| tell(&a, NavInput::EditBegan(text.into())));
+    nav.on_edit_kept(|text| nettai_platform::text_entry::keep(&text));
     let a = app.clone();
     nav.on_edited(move |_, _, text| tell(&a, NavInput::Edited(text.into())));
     let a = app.clone();

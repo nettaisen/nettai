@@ -1177,7 +1177,16 @@ isolated (COOP and COEP), which a page with threads must be.
   again only after a click and the browser's permission prompt, and every game is extracted as the folder is
   chosen, so it would matter only when a new version extracts again.
 - **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, downloaded); the picture's texture (the
-  battle's picture is drawn as an image, not into WebGL directly); IME over the canvas.
+  battle's picture is drawn as an image, not into WebGL directly: Slint 1.18 borrows no texture on wasm, its
+  femtovg renderer builds that only off it, so a texture would need Slint changed).
+- **Text typed.** winit gives the canvas no input method, so a field being edited has an HTML `<input>` laid over
+  it (`nettai_platform::text_entry`), in its place, in the system's face: it takes the keys, the input method's
+  composing and candidates, the caret and the selection; its changes go to the app as the field's own would, and
+  the field says back what the app kept of each (a code in capitals, a name at its length: `Nav.edit-kept`, each
+  time `Nav.edit-heard` counts a change), which the input shows. Enter, Esc, Up, Down, Tab and a click elsewhere
+  end it as the desktop's keys do (`App::entry`). The field's own text and Slint's input are hidden under it.
+  Typed into in headless Chrome (2026-10-20): the invite code's field, letters and Japanese, capitals and its
+  length kept, Esc and Tab.
 - **Size.** A release's module is optimized without its names (binaryen's wasm-opt, if installed: `brew install
   binaryen`), 49.6 MB to 38.5, and every file is compressed beside it, which serve.py sends: the page is 12.7 MB
   over the wire (the module 11.3 with brotli, the content 1.4). Of the module's 38 MB, 18 are the UI's embedded
