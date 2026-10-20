@@ -1786,7 +1786,10 @@ pixel, so a frame colors it in the palette's colors of the moment, after the fad
 and keeps what it colored while the colors hold; a drawing is laid at whole output pixels (a sprite's part of a pixel,
 at most half an output pixel, isn't shown); when the output's scale changes the drawings are rasterized again away
 from the frames, the old rasters resampled until then, and a banner's squash is the raster resampled. Nothing is read
-or rasterized while the battle plays (`nettai-tool --time` counts it); the cells it may draw in (the tiles it stands in for aren't drawn); and
+or rasterized while the battle plays (`nettai-tool --time` counts it). The text layer's items are kept the same
+way: each painted once for what it is (its words, font, size, style and colors before the fades, at the output's
+scale), unplaced, laid at whole output pixels and faded as it is laid; drawings and text share one cache, the least
+recently used let go first; the cells it may draw in (the tiles it stands in for aren't drawn); and
 a mask of the pixels it keeps off (`Drawn::off`: the Cross names' portraits stay the picture's, over the vector bar).
 Where something must stay hidden behind a frame (the chatbox's box hides the navi's HP), the tiles are still drawn
 under the shapes, but only where the shapes cover (`shapes::coverage`), so the box keeps its place in front without

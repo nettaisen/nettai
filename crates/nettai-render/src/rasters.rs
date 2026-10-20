@@ -14,18 +14,67 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
-/// A drawing colored at a size: each pixel's color (0RGB) and coverage, `w`
-/// pixels a row.
-pub struct Tinted {
+/// Something painted at the output's scale, unplaced: each pixel's color
+/// (0RGB) and coverage, `w` pixels a row, its top left (`x`, `y`) from
+/// where it is laid.
+#[derive(Default)]
+pub struct Image {
+    pub x: i32,
+    pub y: i32,
     pub w: usize,
     pub h: usize,
     pub px: Vec<(u32, u8)>,
 }
 
+impl Image {
+    /// Its pixels laid with its origin at output pixel (`ox`, `oy`), those
+    /// in `bounds` (left, top, right, bottom) given to `put` (x, y, color,
+    /// coverage).
+    pub fn blit(&self, ox: i32, oy: i32, bounds: (i32, i32, i32, i32), mut put: impl FnMut(i32, i32, u32, u8)) {
+        for ly in 0..self.h {
+            let y = oy + self.y + ly as i32;
+            if y < bounds.1 || y >= bounds.3 {
+                continue;
+            }
+            for lx in 0..self.w {
+                let (rgb, a) = self.px[ly * self.w + lx];
+                let x = ox + self.x + lx as i32;
+                if a > 0 && x >= bounds.0 && x < bounds.2 {
+                    put(x, y, rgb, a);
+                }
+            }
+        }
+    }
+}
+
+/// What a painted image is known by: a drawing colored, or a text item.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum ImageKey {
+    Drawing(TintKey),
+    /// A text item by all that makes its pixels (`vfont`'s `draw_item`).
+    Text(String),
+}
+
+/// The images painted, by what they are, the least recently used let go
+/// first: one cache for the drawings and the text.
+#[derive(Default)]
+pub struct Images(Lru<ImageKey, Arc<Image>>);
+
+impl Images {
+    pub fn get(&mut self, k: &ImageKey) -> Option<Arc<Image>> {
+        self.0.get(k)
+    }
+
+    pub fn put(&mut self, k: ImageKey, v: Arc<Image>) {
+        let bytes = v.px.len() * 8 + 64;
+        self.0.put(k, v, bytes);
+    }
+}
+
 /// What a colored drawing is known by: the drawing, the raster's scale and
 /// the size it is drawn at (bits), its flips, and its entries' colors.
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct TintKey {
+pub struct TintKey {
     hash: u64,
     raster: u32,
     scale: u32,
@@ -47,7 +96,6 @@ pub struct Rasters {
     rasters: Made,
     /// Rasters being made at another scale, away from the frames.
     pending: Option<(f32, Receiver<Made>)>,
-    tinted: Lru<TintKey, Arc<Tinted>>,
     /// Drawings rasterized while a frame was drawn (none known before it).
     pub late: u64,
     /// The drawings last given (`prepare_all`).
@@ -105,7 +153,6 @@ impl Rasters {
         self.rasters = self.parsed.iter().map(|(&h, p)| (h, Arc::new(p.raster(scale, 1.0)))).collect();
         self.scale = scale;
         self.pending = None;
-        self.tinted.clear();
     }
 
     /// Ready to draw at `scale`: the first frame rasterizes every known
@@ -122,7 +169,6 @@ impl Rasters {
                 self.rasters = made;
                 self.scale = s;
                 self.pending = None;
-                self.tinted.clear();
             } else if *s == scale {
                 return;
             }
@@ -141,7 +187,7 @@ impl Rasters {
 
     /// `d` colored (`colors`: its entries' colors, 0RGB) and flipped, at
     /// `scale` output pixels a frame pixel, `vscale` times that down.
-    pub fn tinted(&mut self, d: &Drawing, colors: &[u32], flip: (bool, bool), scale: f32, vscale: f32) -> Option<Arc<Tinted>> {
+    pub fn tinted(&mut self, images: &mut Images, d: &Drawing, colors: &[u32], flip: (bool, bool), scale: f32, vscale: f32) -> Option<Arc<Image>> {
         self.at_scale(scale);
         if !self.rasters.contains_key(&d.hash) {
             // (A drawing no one said was coming: rasterized now.)
@@ -150,8 +196,8 @@ impl Rasters {
             self.rasters.insert(d.hash, Arc::new(p.raster(self.scale, 1.0)));
         }
         let raster = self.rasters.get(&d.hash)?.clone();
-        let key = TintKey { hash: d.hash, raster: self.scale.to_bits(), scale: scale.to_bits(), vscale: vscale.to_bits(), flip, colors: colors.to_vec() };
-        if let Some(t) = self.tinted.get(&key) {
+        let key = ImageKey::Drawing(TintKey { hash: d.hash, raster: self.scale.to_bits(), scale: scale.to_bits(), vscale: vscale.to_bits(), flip, colors: colors.to_vec() });
+        if let Some(t) = images.get(&key) {
             return Some(t);
         }
         let mut t = tint(&raster, colors, flip);
@@ -160,15 +206,14 @@ impl Rasters {
             t = resample(&t, fx, fy);
         }
         let t = Arc::new(t);
-        let bytes = t.px.len() * 8;
-        self.tinted.put(key, t.clone(), bytes);
+        images.put(key, t.clone());
         Some(t)
     }
 }
 
 /// A raster in its entries' colors, flipped as asked (the whole raster's
 /// size, clear past its covered box).
-fn tint(r: &Raster, colors: &[u32], (hflip, vflip): (bool, bool)) -> Tinted {
+fn tint(r: &Raster, colors: &[u32], (hflip, vflip): (bool, bool)) -> Image {
     let mut px = vec![(0u32, 0u8); r.w * r.h];
     let [ax, ay, aw, ah] = r.area;
     for y in ay..ay + ah {
@@ -194,12 +239,12 @@ fn tint(r: &Raster, colors: &[u32], (hflip, vflip): (bool, bool)) -> Tinted {
             px[oy * r.w + ox] = ((un(rr) << 16) | (un(gg) << 8) | un(bb), a);
         }
     }
-    Tinted { w: r.w, h: r.h, px }
+    Image { x: 0, y: 0, w: r.w, h: r.h, px }
 }
 
 /// A colored drawing resized `fx` by `fy` times (bilinear, its colors by
 /// their coverage).
-fn resample(t: &Tinted, fx: f32, fy: f32) -> Tinted {
+fn resample(t: &Image, fx: f32, fy: f32) -> Image {
     let w = ((t.w as f32 * fx).ceil() as usize).max(1);
     let h = ((t.h as f32 * fy).ceil() as usize).max(1);
     let at = |x: i64, y: i64| -> [f32; 4] {
@@ -231,11 +276,11 @@ fn resample(t: &Tinted, fx: f32, fy: f32) -> Tinted {
             px[y * w + x] = ((un(v[0]) << 16) | (un(v[1]) << 8) | un(v[2]), v[3].round().min(255.0) as u8);
         }
     }
-    Tinted { w, h, px }
+    Image { x: 0, y: 0, w, h, px }
 }
 
 /// A cache of at most `BUDGET` bytes, the least recently used let go first.
-struct Lru<K, V> {
+pub struct Lru<K, V> {
     map: HashMap<K, (V, u64, usize)>,
     tick: u64,
     bytes: usize,
@@ -247,8 +292,8 @@ impl<K, V> Default for Lru<K, V> {
     }
 }
 
-/// What the colored drawings kept may take: a custom screen, the HUD and
-/// the banners at a 4K output's scale, several times over.
+/// What the images kept may take: a custom screen, the HUD, the chatbox and
+/// their text at a 4K output's scale, several times over.
 const BUDGET: usize = 256 << 20;
 
 impl<K: std::hash::Hash + Eq + Clone, V: Clone> Lru<K, V> {
@@ -275,10 +320,6 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> Lru<K, V> {
         }
     }
 
-    fn clear(&mut self) {
-        self.map.clear();
-        self.bytes = 0;
-    }
 }
 
 #[cfg(test)]
@@ -296,20 +337,21 @@ mod tests {
     fn colored_from_one_raster_and_made_again_at_a_new_scale() {
         let d = square();
         let mut r = Rasters::default();
+        let mut i = Images::default();
         r.prepare_all(&Arc::new(vec![d.clone()]), 2.0);
-        let t = r.tinted(&d, &[0xFF0000, 0x00FF00], (false, false), 2.0, 1.0).unwrap();
+        let t = r.tinted(&mut i, &d, &[0xFF0000, 0x00FF00], (false, false), 2.0, 1.0).unwrap();
         assert_eq!((t.w, t.h), (16, 16));
         assert_eq!(t.px[0], (0xFF0000, 255));
         assert_eq!(t.px[8 * 16 + 8], (0x00FF00, 255));
-        let t = r.tinted(&d, &[0x0000FF, 0xFFFFFF], (false, false), 2.0, 1.0).unwrap();
+        let t = r.tinted(&mut i, &d, &[0x0000FF, 0xFFFFFF], (false, false), 2.0, 1.0).unwrap();
         assert_eq!((t.px[0], t.px[8 * 16 + 8]), ((0x0000FF, 255), (0xFFFFFF, 255)));
         assert_eq!(r.late, 0);
-        let t = r.tinted(&d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0).unwrap();
+        let t = r.tinted(&mut i, &d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0).unwrap();
         assert_eq!((t.w, t.h), (32, 32), "resampled meanwhile");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while r.scale != 4.0 && std::time::Instant::now() < deadline {
             std::thread::sleep(std::time::Duration::from_millis(5));
-            r.tinted(&d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0);
+            r.tinted(&mut i, &d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0);
         }
         assert_eq!(r.scale, 4.0, "made again away from the frames");
         assert_eq!(r.late, 0);
