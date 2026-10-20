@@ -740,6 +740,9 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     if let Some((_, layers)) = nettai_content::letters::form_names_layered(c).0.first() {
         s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form-name-bar", g));
     }
+    // (By name, as a pack keeps them.)
+    s.buttons.sort_by(|a, b| a.0.cmp(&b.0));
+    s.pictures.sort_by(|a, b| a.0.cmp(&b.0));
     // The enemy names' bar: its end (the bar's cells right of it), its
     // cell (more of them either side).
     if c.name_bar.len() >= 4 {
