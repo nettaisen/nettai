@@ -1,18 +1,17 @@
-//! A replay as video. Three pieces, each usable without the others:
+//! A replay as video: played through a [`Viewer`] frame by frame, and made an MP4 the same way on every platform.
+//! The pieces:
 //!
-//! - [`nut`]: the NUT container (FFmpeg's), written: raw frames and PCM
-//!   sound in one stream on any `std::io::Write`. It knows nothing of
-//!   replays.
-//! - [`write`] and [`export`]: a replay played through a
-//!   [`Viewer`] and written as such a stream: the whole replay or a part of
-//!   it (a round, a range of ticks), from either console or both side by
-//!   side ([`Sides`]), the picture at a whole multiple of the frame's
-//!   240x160.
-//! - [`mp4`]: `ffmpeg` run as a child that reads a NUT stream from a pipe
-//!   and writes an MP4 (H.264 and AAC), into a file that takes its name
-//!   only once it is whole. [`export_mp4`] is the two together. No encoder
-//!   and no ffmpeg library is linked: without ffmpeg installed, a host can
-//!   still save the NUT stream itself.
+//! - The playing: a replay through a [`Viewer`], the whole of it or a part (a round, a range of ticks), from either
+//!   console or both side by side ([`Sides`]), the picture at a whole multiple of the frame's 240x160, a frame and
+//!   its sound at a time.
+//! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (written the playing as a NUT stream of raw
+//!   frames and PCM sound, which it encodes and says the packets of back; its `write_nut` saves that stream
+//!   itself), the browser's own in a browser (WebCodecs). Either makes the picture's H.264 and a sound track's AAC
+//!   (or the browser's Opus) a console shown.
+//! - [`fmp4`]: the MP4 of what the encoder makes, fragmented, written to any `std::io::Write` a fragment at a time
+//!   as it is made (a file; in a browser, the file being saved): its tracks, its sound tracks' titles and its
+//!   rounds as chapters.
+//! - [`export`] and [`write_mp4`]: the three together, frames to the encoder to the MP4.
 //!
 //! **What a video holds.** One frame of the picture a tick, and the sound
 //! the tick made, exactly as a viewer playing the part straight shows and
@@ -30,7 +29,7 @@
 //! player's name ([`Titles`]); the first is the default. Each round is a
 //! chapter, titled in the host's words, from the frame its picture begins
 //! on ([`chapters`]). They are said in the stream's info packets
-//! ([`nut::Info`]), which ffmpeg keeps in the MP4.
+//! ([`Info`]), and the MP4's ([`fmp4`]).
 //!
 //! **The picture is scaled here**, by whole multiples and the nearest
 //! pixel, not left at 240x160 for ffmpeg: in the enhanced mode the
@@ -44,28 +43,44 @@
 //! drawing and the sound are functions of the replay.
 //!
 //! ```ignore
-//! // On a thread of its own: the progress goes to the UI, which may cancel.
+//! // On a thread of its own: the progress goes to the UI, which may cancel. `to` is the file (a dialog's).
 //! let titles = Titles { rounds: vec!["Round 1".into(), "Round 2".into()], sides: Default::default() };
 //! let options = Options { scale: 3, view: None, sides: Sides::One, part: Part::Round(2), titles };
-//! let result = nettai_video::export_mp4(&game, &replay, &options, &mp4::Settings::default(), &path, &mut |p| {
+//! let result = nettai_video::export(&game, &replay, &options, &Encoding::default(), to, &mut |p| {
 //!     tx.send(p).ok();
 //!     if canceled.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
 //! });
-//! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Disk(_)) | Err(Error::Canceled) ...
+//! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Encoder(_)) | Err(Error::Canceled) ...
 //! ```
 
-pub mod mp4;
-pub mod nut;
+pub mod encode;
+pub mod fmp4;
+
+// The platform's encoder, each with its `start`: ffmpeg on the desktop (and the NUT stream it is written), the
+// browser's own in a browser.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ffmpeg;
+#[cfg(not(target_arch = "wasm32"))]
+use ffmpeg as platform;
+#[cfg(target_arch = "wasm32")]
+mod webcodecs;
+#[cfg(target_arch = "wasm32")]
+use webcodecs as platform;
+// (The browser's resampler is plain Rust: its tests run on the desktop too.)
+#[cfg(all(test, not(target_arch = "wasm32")))]
+#[path = "webcodecs/resample.rs"]
+mod resample;
+
+pub use encode::{Audio, Chapter, Chroma, Encoding, Info, Video};
 
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::TICK_SECONDS;
-use nettai_frontend::replay::{Info, Refused, Replay};
+use nettai_frontend::replay::{Info as ReplayInfo, Refused, Replay};
 use nettai_frontend::viewer::{Speed, Viewer};
 use nettai_render::compose::{HEIGHT, WIDTH};
 use std::fmt;
 use std::io::{self, Write};
 use std::ops::{ControlFlow, Range};
-use std::path::Path;
 
 /// The largest multiple of the frame a video's picture is made at: 3840 by
 /// 2560.
@@ -175,7 +190,7 @@ impl Titles {
     }
 
     /// The track of `side`'s sound, in a replay that says `info` of itself.
-    pub fn side(&self, side: u8, info: &Info) -> String {
+    pub fn side(&self, side: u8, info: &ReplayInfo) -> String {
         let side = side.min(1) as usize;
         [self.sides[side].trim(), info.names[side].trim()]
             .into_iter()
@@ -193,9 +208,9 @@ impl Titles {
 /// of it is still the round it ended). The video's first frame is its
 /// round's; a round whose picture begins on the video's last frame has no
 /// chapter (there is nothing of it to go to: a round's part ends so).
-pub fn chapters(rounds: &[u32], ticks: &Range<u32>, titles: &Titles) -> Vec<nut::Chapter> {
+pub fn chapters(rounds: &[u32], ticks: &Range<u32>, titles: &Titles) -> Vec<Chapter> {
     let frames = ticks.end.saturating_sub(ticks.start);
-    let mut out: Vec<nut::Chapter> = Vec::new();
+    let mut out: Vec<Chapter> = Vec::new();
     for (i, &start) in rounds.iter().enumerate() {
         let (begins, ends) = (start.saturating_sub(1), rounds.get(i + 1).map_or(u32::MAX, |next| next.saturating_sub(1)));
         if ends <= ticks.start || begins >= ticks.end {
@@ -205,7 +220,7 @@ pub fn chapters(rounds: &[u32], ticks: &Range<u32>, titles: &Titles) -> Vec<nut:
         if first > 0 && first + 1 >= frames {
             continue;
         }
-        out.push(nut::Chapter { start: first as u64, frames: 0, title: titles.round(i as u32 + 1) });
+        out.push(Chapter { start: first as u64, frames: 0, title: titles.round(i as u32 + 1) });
     }
     let starts: Vec<u64> = out.iter().skip(1).map(|c| c.start).chain([frames as u64]).collect();
     for (chapter, end) in out.iter_mut().zip(starts) {
@@ -260,6 +275,8 @@ pub enum Error {
     /// `ffmpeg` ran and failed: its exit code (none: a signal ended it)
     /// and the last of what it wrote to its standard error.
     FfmpegFailed { code: Option<i32>, log: String },
+    /// The browser's encoder (WebCodecs) refused or failed: what it said.
+    Encoder(String),
     /// The caller canceled it. Nothing is left of the file.
     Canceled,
 }
@@ -276,6 +293,7 @@ impl fmt::Display for Error {
             Error::NoFfmpeg(e) => write!(f, "ffmpeg couldn't be started: {e}"),
             Error::FfmpegFailed { code: Some(code), log } => write!(f, "ffmpeg failed (exit code {code}): {}", log.trim()),
             Error::FfmpegFailed { code: None, log } => write!(f, "ffmpeg was stopped: {}", log.trim()),
+            Error::Encoder(said) => write!(f, "the browser's encoder: {said}"),
             Error::Canceled => write!(f, "canceled"),
         }
     }
@@ -295,17 +313,15 @@ impl std::error::Error for Error {
 /// stop (the video is canceled).
 pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
-/// Write the replay `viewer` plays to `out` as a NUT stream, as `options`
-/// say: their part, the picture `scale` times the frame's size, from the
-/// console of their view (none: the one the viewer shows; with
-/// [`Sides::Both`], beside it the other's), each console shown's sound a
-/// track if the viewer has sound, and the part's rounds as chapters
-/// ([`chapters`]), titled by their titles. The viewer is left paused at the
-/// part's end, at the original's speed. `progress` is told before the
-/// first frame and after each, and may stop it ([`Error::Canceled`]: what
-/// was written of the stream stays in `out`, which is the caller's to
-/// throw away).
-pub fn write<W: Write>(viewer: &mut Viewer, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
+/// Where a video's frames go, each its picture's RGB bytes and each console shown's sound: a NUT stream, or an MP4
+/// being encoded.
+pub(crate) trait Frames {
+    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error>;
+}
+
+/// [`write`]'s playing: the part played and each frame given to what `open` makes of the video's picture, sound
+/// and chapters.
+pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: OnProgress, open: impl FnOnce(Video, Option<Audio>, &Info) -> Result<F, Error>) -> Result<F, Error> {
     let Options { scale, view, sides, ref part, ref titles } = *options;
     if !(1..=MOST_SCALE).contains(&scale) {
         return Err(Error::Scale(scale));
@@ -334,15 +350,15 @@ pub fn write<W: Write>(viewer: &mut Viewer, options: &Options, out: W, progress:
     // rows of the two are put side by side. The sound is a track a console
     // shown, in the same order.)
     let (width, height) = (WIDTH * scale as usize, HEIGHT * scale as usize);
-    let video = nut::Video { width: (width * sides.count()) as u32, height: height as u32, frame_time: TICK_SECONDS };
+    let video = Video { width: (width * sides.count()) as u32, height: height as u32, frame_time: TICK_SECONDS };
     let shown = [viewer.view(), viewer.view() ^ 1];
     let shown = &shown[..sides.count()];
-    let audio = viewer.has_sound().then_some(nut::Audio { sample_rate: nettai_audio::SAMPLE_RATE, tracks: shown.len() });
-    let info = nut::Info {
+    let audio = viewer.has_sound().then_some(Audio { sample_rate: nettai_audio::SAMPLE_RATE, tracks: shown.len() });
+    let info = Info {
         titles: if audio.is_some() { shown.iter().map(|&side| titles.side(side, viewer.info())).collect() } else { Vec::new() },
         chapters: chapters(viewer.rounds(), &ticks, titles),
     };
-    let mut stream = nut::Writer::with_info(out, video, audio, &info).map_err(Error::Write)?;
+    let mut stream = open(video, audio, &info)?;
     let mut picture = vec![0u32; width * height];
     let mut other = vec![0u32; if sides == Sides::Both { width * height } else { 0 }];
     let mut rgb = Vec::with_capacity(width * sides.count() * height * 3);
@@ -369,45 +385,70 @@ pub fn write<W: Write>(viewer: &mut Viewer, options: &Options, out: W, progress:
             viewer.take_samples_of(side, heard);
         }
         let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
-        stream.frame(&rgb, &tracks).map_err(Error::Write)?;
+        stream.frame(&rgb, &tracks)?;
         at.written += 1;
         tell(at)?;
     }
-    stream.finish().map_err(Error::Write)
+    Ok(stream)
 }
 
-/// Write a replay to `out` as a NUT stream ([`write`]), on a loaded game:
-/// its graphics, its text as it was loaded, its sound if it was. It plays
-/// the replay through a viewer of its own, on the thread it is called on
-/// (a host calls it on one that isn't its window's).
-pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
-    let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write(&mut viewer, options, out, progress)
-}
-
-/// Write a replay as an MP4 at `to`, through `ffmpeg` ([`mp4::Encoder`]):
-/// the file is there, whole, only when this returns `Ok`; canceled or
-/// failed, nothing of it is left.
-pub fn export_mp4(game: &Loaded, replay: &Replay, options: &Options, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
+/// Write a replay as an MP4 to `to`, as it is made, on a loaded game (its graphics, its text as it was loaded, its
+/// sound if it was): [`write_mp4`], through a viewer of its own, on the thread it is called on (a host calls it on
+/// one that isn't its window's). The same on the desktop and in a browser.
+pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<W, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
     write_mp4(&mut viewer, options, encoding, to, progress)
 }
 
-/// [`write`], to an MP4 at `to` through `ffmpeg`.
-pub fn write_mp4(viewer: &mut Viewer, options: &Options, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
-    // (What can't be made is said before ffmpeg is started.)
-    if !(1..=MOST_SCALE).contains(&options.scale) {
-        return Err(Error::Scale(options.scale));
+/// Write the replay `viewer` plays as an MP4 to `to`, as it is made: its frames and sound encoded by the
+/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser) and made a fragmented MP4 a
+/// fragment at a time ([`fmp4`]), its sound tracks titled and its rounds chapters. `to` is
+/// given back with the MP4 whole in it; canceled or failed, what was written is the caller's to let go.
+pub fn write_mp4<W: Write>(viewer: &mut Viewer, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<W, Error> {
+    play(viewer, options, progress, |video, audio, info| Mp4::start(video, audio, info, encoding, to))?.finish()
+}
+
+/// An MP4 being made: the encoder's frames in, what it makes muxed into the file as it comes.
+struct Mp4<W: Write> {
+    encoder: Option<Box<dyn encode::Backend>>,
+    muxer: Option<fmp4::Muxer<W>>,
+}
+
+impl<W: Write> Mp4<W> {
+    fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding, to: W) -> Result<Mp4<W>, Error> {
+        let encoder = platform::start(video, audio, info, encoding)?;
+        let frame = video.frame_time.0 as f64 / video.frame_time.1 as f64;
+        let chapters = info.chapters.iter().map(|c| fmp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
+        Ok(Mp4 { encoder: Some(encoder), muxer: Some(fmp4::Muxer::new(to, info.titles.clone(), chapters)) })
     }
-    options.part.ticks(viewer.rounds(), viewer.length())?;
-    let mut encoder = mp4::Encoder::start(to, encoding)?;
-    match write(viewer, options, &mut encoder, progress) {
-        Ok(_) => encoder.finish(),
-        // (A pipe that closed is ffmpeg having stopped: why is its to say.)
-        Err(Error::Write(e)) => Err(encoder.failed(e)),
-        Err(other) => {
+
+    fn muxed(&mut self, events: Vec<encode::Event>) -> Result<(), Error> {
+        let muxer = self.muxer.as_mut().expect("muxing till finished");
+        events.into_iter().try_for_each(|e| muxer.event(e))
+    }
+
+    fn finish(mut self) -> Result<W, Error> {
+        let encoder = self.encoder.take().expect("finished once");
+        let rest = encoder.finish()?;
+        self.muxed(rest)?;
+        self.muxer.take().expect("finished once").finish()
+    }
+}
+
+impl<W: Write> Frames for Mp4<W> {
+    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error> {
+        let encoder = self.encoder.as_mut().expect("encoding till finished");
+        encoder.frame(rgb, sound)?;
+        let made = encoder.events()?;
+        self.muxed(made)
+    }
+}
+
+impl<W: Write> Drop for Mp4<W> {
+    /// Canceled or failed: the encoder is stopped.
+    fn drop(&mut self) {
+        if let Some(encoder) = self.encoder.take() {
             encoder.cancel();
-            Err(other)
         }
     }
 }

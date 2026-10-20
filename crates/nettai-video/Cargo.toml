@@ -3,7 +3,7 @@ name = "nettai-video"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "A replay as video: a NUT stream of raw frames and PCM sound on any writer, and ffmpeg run as a child to make an MP4 of one. No encoder and no ffmpeg library is linked"
+description = "A replay as video: played frame by frame, encoded by the platform's encoder (ffmpeg run as a child on the desktop, WebCodecs in a browser) and written as a fragmented MP4 as it is made; or as a NUT stream of raw frames and PCM sound"
 
 [dependencies]
 # The replay's viewer: the picture and the sound of each tick.
@@ -12,6 +12,16 @@ nettai-frontend = { path = "../nettai-frontend" }
 nettai-render = { path = "../nettai-render" }
 # The sound's sample rate (no audio device).
 nettai-audio = { path = "../nettai-audio", default-features = false }
+
+# The MP4's boxes (`fmp4`), and ffmpeg's read back (`ffmpeg`).
+mp4-atom = "0.16"
+
+# The browser's encoder (`webcodecs`): WebCodecs through wasm-bindgen, on a worker of its own (the platform's).
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+nettai-platform = { path = "../nettai-platform" }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
 
 [dev-dependencies]
 # A short recorded set, graphics without a pack and a sound of every cue.

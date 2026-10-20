@@ -28,6 +28,14 @@ pub fn lock<T: ?Sized>(mutex: &Mutex<T>) -> LockResult<MutexGuard<'_, T>> {
     }
 }
 
+/// Run the future `work` makes on a thread of its own, on its event loop, till it is done: the browser's (a
+/// Web Worker), for work that waits on what the browser answers later (WebCodecs: nettai-video). (Only the
+/// browser has it.)
+#[cfg(target_arch = "wasm32")]
+pub fn spawn_async(name: &str, work: impl FnOnce() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static) -> std::io::Result<()> {
+    web::spawn_async(name, Box::new(work))
+}
+
 /// The global the page sets to its shim's URL, before the app starts (crates/nettai-web/web/index.html).
 pub const SHIM: &str = "nettaiShim";
 
@@ -44,40 +52,62 @@ mod web {
     use wasm_bindgen::prelude::*;
 
     type Work = Box<dyn FnOnce() + Send>;
+    /// Work that waits on the thread's own event loop: what makes the future, which needn't be `Send`.
+    pub type AsyncWork = Box<dyn FnOnce() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()>>> + Send>;
 
     #[wasm_bindgen(inline_js = r#"
 const WORKER = `
 self.onmessage = async (event) => {
-    const [shim, module, memory, work] = event.data;
+    const [shim, module, memory, work, waits] = event.data;
     self.nettaiShim = shim;
     const m = await import(shim);
     const wasm = await m.default({ module_or_path: module, memory });
-    m.nettai_thread_run(work);
+    if (waits) await m.nettai_thread_run_async(work); else m.nettai_thread_run(work);
     if (wasm.__wbindgen_thread_destroy) wasm.__wbindgen_thread_destroy();
     self.close();
 };
 `;
 let url = null;
-export function nettai_thread_spawn(name, module, memory, work) {
+export function nettai_thread_spawn(name, module, memory, work, waits) {
     const shim = globalThis.nettaiShim;
     if (!shim) throw new Error("the page didn't say where its module is (globalThis.nettaiShim)");
     url ??= URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
     const worker = new Worker(url, { type: "module", name });
     worker.onerror = (e) => console.error(`thread ${name}:`, e.message ?? e);
-    worker.postMessage([shim, module, memory, work]);
+    worker.postMessage([shim, module, memory, work, waits]);
 }
 "#)]
     extern "C" {
         #[wasm_bindgen(catch)]
-        fn nettai_thread_spawn(name: &str, module: JsValue, memory: JsValue, work: u32) -> Result<(), JsValue>;
+        fn nettai_thread_spawn(name: &str, module: JsValue, memory: JsValue, work: u32, waits: bool) -> Result<(), JsValue>;
     }
 
     pub fn spawn(name: &str, work: Work) -> std::io::Result<()> {
         let work = Box::into_raw(Box::new(work)) as u32;
-        nettai_thread_spawn(name, wasm_bindgen::module(), wasm_bindgen::memory(), work).map_err(|why| {
+        nettai_thread_spawn(name, wasm_bindgen::module(), wasm_bindgen::memory(), work, false).map_err(|why| {
             // (The work never runs: it is dropped here, as a thread that couldn't start drops it.)
             drop(unsafe { Box::from_raw(work as *mut Work) });
             std::io::Error::other(format!("{why:?}"))
+        })
+    }
+
+    /// A Web Worker of its own that runs a future on its event loop (what WebCodecs and the like answer on) till it
+    /// is done; the future is made there.
+    pub fn spawn_async(name: &str, work: AsyncWork) -> std::io::Result<()> {
+        let work = Box::into_raw(Box::new(work)) as u32;
+        nettai_thread_spawn(name, wasm_bindgen::module(), wasm_bindgen::memory(), work, true).map_err(|why| {
+            drop(unsafe { Box::from_raw(work as *mut AsyncWork) });
+            std::io::Error::other(format!("{why:?}"))
+        })
+    }
+
+    /// An async thread's start: the future the work makes, run to its end.
+    #[wasm_bindgen]
+    pub fn nettai_thread_run_async(work: u32) -> js_sys::Promise {
+        let work = unsafe { Box::from_raw(work as *mut AsyncWork) };
+        wasm_bindgen_futures::future_to_promise(async move {
+            work().await;
+            Ok(JsValue::UNDEFINED)
         })
     }
 
