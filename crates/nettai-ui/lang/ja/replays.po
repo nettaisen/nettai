@@ -52,6 +52,9 @@ msgstr "動画を書き出す"
 msgid "Show file"
 msgstr "ファイルを表示"
 
+msgid "Save replay"
+msgstr "リプレイを保存"
+
 msgid "Delete replay?"
 msgstr "リプレイを削除しますか?"
 

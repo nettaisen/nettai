@@ -167,7 +167,8 @@ export global ReplaysView {
     out property <string> add-word: Caps.of(@tr("Add to queue"));
     out property <string> start-word: Caps.of(@tr("Play next"));
     out property <string> export-word: Caps.of(@tr("verb" => "Export video"));
-    out property <string> file-word: Caps.of(@tr("Show file"));
+    // (In the browser its files are the page's: the replay is downloaded.)
+    out property <string> file-word: Theme.web ? Caps.of(@tr("Save replay")) : Caps.of(@tr("Show file"));
     out property <string> from-here-word: Caps.of(@tr("Watch from here"));
     out property <string> up-word: Caps.of(@tr("Move up"));
     out property <string> down-word: Caps.of(@tr("Move down"));
@@ -559,7 +560,7 @@ component DetailPanel inherits Rectangle {
 
         Button {
             nav: "file";
-            text: Caps.of(@tr("Show file"));
+            text: ReplaysView.file-word;
             enabled: ReplaysView.tab == 0 && ReplaysView.selected;
         }
     }
@@ -709,7 +710,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: !root.queue;
             nav: "sheet.file";
-            text: Caps.of(@tr("Show file"));
+            text: ReplaysView.file-word;
             enabled: !root.queue;
         }
 
@@ -1447,7 +1448,9 @@ component ExportOptions inherits Rectangle {
         enabled: !root.busy;
     }
 
+    // (Not in the browser, which asks where each time.)
     path-label := Value {
+        visible: !Theme.web;
         x: root.phone ? root.edge : sides.x + sides.width + 24px;
         y: root.phone ? root.edge + 104px : root.edge;
         width: root.phone ? root.label : self.preferred-width;
@@ -1456,12 +1459,13 @@ component ExportOptions inherits Rectangle {
     }
 
     PathBox {
+        visible: !Theme.web;
         x: path-label.x + path-label.width + 12px;
         y: path-label.y;
         width: max(80px, root.width - root.edge - self.x);
         nav: "export.path";
         value: ReplaysView.export-path;
-        enabled: !root.busy;
+        enabled: !root.busy && !Theme.web;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
