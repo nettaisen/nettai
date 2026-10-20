@@ -495,7 +495,7 @@ fn end() {
         Err(why) => said += &format!("FAILED: {why}\n"),
     }
     eprint!("reel: {said}");
-    let _ = std::fs::write(reel.dir.join("reel.txt"), &said);
+    let _ = nettai_fs::write(reel.dir.join("reel.txt"), &said);
     super::FAILED.with(|f| f.set(encoded.is_err()));
     super::WALKING.with(|w| *w.borrow_mut() = None);
     let _ = slint::quit_event_loop();
@@ -596,7 +596,7 @@ fn make_builds(app: &App) {
             continue;
         };
         let content = ready.content();
-        let _ = std::fs::remove_dir_all(crate::builds::store::folder(&game));
+        let _ = nettai_fs::remove_dir_all(crate::builds::store::folder(&game));
         for b in crate::screens::practice::new_builds(content, &game).unwrap_or_default() {
             let build = crate::builds::store::Build::new(content, &b.name, b.side);
             if let Err(why) = crate::builds::store::write(

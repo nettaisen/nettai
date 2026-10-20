@@ -262,7 +262,7 @@ impl Games {
     /// The extraction of game `id` says how far it is, or that it ended. True if its pack landed (it can be
     /// loaded now). A failure is told the player, and the game's old pack, if it has one, is loaded as it is.
     pub fn extracting(&mut self, id: &str, told: Told) -> bool {
-        let has_pack = self.packs.join(id).join(nettai_content::pack::MANIFEST).is_file();
+        let has_pack = nettai_fs::is_file(self.packs.join(id).join(nettai_content::pack::MANIFEST));
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return false };
         match told {
             Told::Progress(p) => {

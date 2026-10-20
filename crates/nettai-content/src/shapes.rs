@@ -427,7 +427,7 @@ pub fn write(files: &mut Files, name: &str, d: &Drawing) -> String {
 /// read).
 pub fn read(dir: &Path, prefix: &str, file: &str, report: &mut Report) -> Option<Drawing> {
     let name = format!("{prefix}/{file}");
-    let text = match std::fs::read_to_string(dir.join(file)) {
+    let text = match nettai_fs::read_to_string(dir.join(file)) {
         Ok(t) => t,
         Err(e) => {
             report.error(&name, e.to_string());

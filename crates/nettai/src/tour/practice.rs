@@ -105,7 +105,7 @@ fn shot(add: &mut dyn FnMut(u64, Step), name: &'static str, lang: &'static str, 
 fn say(tour: &Tour, said: &str) {
     use std::io::Write;
     eprint!("tour: {said}");
-    if let Ok(mut file) = std::fs::File::options().create(true).append(true).open(tour.dir.join("practice.txt")) {
+    if let Ok(mut file) = nettai_fs::File::options().create(true).append(true).open(tour.dir.join("practice.txt")) {
         let _ = file.write_all(said.as_bytes());
     }
 }
@@ -165,7 +165,7 @@ fn focus_row(option: PracticeOption) -> Step {
 /// The pass's own builds of the selected game, gone (the folder is the pass's: `paths::keep_builds_in`).
 fn clear_builds(app: &App) {
     if let Some(game) = app.shell.game() {
-        let _ = std::fs::remove_dir_all(store::folder(game));
+        let _ = nettai_fs::remove_dir_all(store::folder(game));
     }
 }
 

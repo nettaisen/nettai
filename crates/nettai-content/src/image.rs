@@ -62,7 +62,7 @@ impl Indexed {
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        std::fs::write(path, self.to_png())
+        nettai_fs::write(path, self.to_png())
     }
 
     /// Read an indexed PNG of any bit depth. Other color types are refused
@@ -105,7 +105,7 @@ impl Indexed {
     }
 
     pub fn load(path: &Path) -> Result<Indexed, String> {
-        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+        let bytes = nettai_fs::read(path).map_err(|e| e.to_string())?;
         Indexed::from_png(&bytes)
     }
 }

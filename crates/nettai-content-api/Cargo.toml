@@ -6,6 +6,8 @@ license.workspace = true
 description = "The battle engine's content API: what chips, attacks and effects see of the core"
 
 [dependencies]
+# Files: std::fs's on the desktop, the page's tree in the browser.
+nettai-fs = { path = "../nettai-fs" }
 # SpriteId is written "CC-II" in content files; the derives (`serde(transparent)`).
 serde = { version = "1", features = ["derive"] }
 # A pack's manifest (manifest.toml: its kind, its uses, its definitions).

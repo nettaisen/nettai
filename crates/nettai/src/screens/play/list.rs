@@ -284,7 +284,7 @@ impl Play {
     /// A build of the save at `path`, named for the file (none of `taken`), and what the save was put on where that
     /// changed what it held ("Imported as Dark MegaMan"; empty where nothing did).
     fn build_of_save(&self, shell: &Shell, kit: &Kit, path: &Path, taken: &[String]) -> Result<(Build, String), UserError> {
-        let file = std::fs::read(path).map_err(|why| {
+        let file = nettai_fs::read(path).map_err(|why| {
             crate::errors::log(&format!("reading the save {}", path.display()), &why);
             UserError::Other
         })?;
@@ -366,7 +366,7 @@ impl Play {
     /// The chosen build's file goes; the one after it is chosen, or the one before where it was the last.
     pub(super) fn delete(&mut self, shell: &mut Shell) {
         let Some(entry) = self.build() else { return };
-        if let Err(why) = std::fs::remove_file(&entry.listed.path) {
+        if let Err(why) = nettai_fs::remove_file(&entry.listed.path) {
             crate::errors::log(&format!("deleting the build {}", entry.listed.path.display()), &why);
             return shell.fail(UserError::Other);
         }

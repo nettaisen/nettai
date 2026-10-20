@@ -322,7 +322,7 @@ impl Export {
         if self.both {
             stem.push_str(" both sides");
         }
-        self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !p.exists()).expect("some number is free");
+        self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !nettai_fs::exists(p)).expect("some number is free");
     }
 
     /// Set the view from the export mode's state.
@@ -454,7 +454,7 @@ impl Export {
         // (A file of that name made since the export mode began isn't written over, unless the player chose it.)
         self.name(shell);
         if let Some(folder) = self.to.parent()
-            && let Err(why) = std::fs::create_dir_all(folder)
+            && let Err(why) = nettai_fs::create_dir_all(folder)
         {
             crate::errors::log(&doing, &format_args!("{}: {why}", folder.display()));
             return self.fail(shell, UserError::CantWriteVideo);
@@ -557,7 +557,7 @@ fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let mut dialog = rfd::FileDialog::new().add_filter(kind, &["mp4"]);
-        if let Some(folder) = to.parent().filter(|f| f.is_dir()) {
+        if let Some(folder) = to.parent().filter(|f| nettai_fs::is_dir(f)) {
             dialog = dialog.set_directory(folder);
         }
         if let Some(name) = to.file_name() {

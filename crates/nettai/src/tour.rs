@@ -246,10 +246,10 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
 /// The pass's start, the walk's or the showreel's: its folder (the builds it makes and lists its own), what it
 /// keeps as it goes, the texts' check, and the game asked for.
 fn begin(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) -> Rc<Tour> {
-    let _ = std::fs::create_dir_all(&dir);
+    let _ = nettai_fs::create_dir_all(&dir);
     // (The builds and rulesets the pass makes and lists are its own, never the player's.)
-    let _ = std::fs::remove_dir_all(dir.join("builds"));
-    let _ = std::fs::remove_dir_all(dir.join("rulesets"));
+    let _ = nettai_fs::remove_dir_all(dir.join("builds"));
+    let _ = nettai_fs::remove_dir_all(dir.join("rulesets"));
     crate::paths::keep_builds_in(dir.join("builds"), dir.join("rulesets"));
     let tour = Rc::new(Tour {
         dir,
@@ -1033,7 +1033,7 @@ fn flush_burst(tour: &Tour) {
         let path = tour
             .dir
             .join(format!("motion-{}-{ms:04}ms.png", burst.name));
-        let Ok(file) = std::fs::File::create(&path) else {
+        let Ok(file) = nettai_fs::File::create(&path) else {
             continue;
         };
         let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
@@ -1112,7 +1112,7 @@ fn write(ui: &AppWindow, tour: &Tour, tag: &str) -> Option<SharedPixelBuffer<Rgb
         eprintln!("tour: can't take a snapshot for {}", path.display());
         return None;
     };
-    let file = match std::fs::File::create(&path) {
+    let file = match nettai_fs::File::create(&path) {
         Ok(f) => std::io::BufWriter::new(f),
         Err(e) => {
             eprintln!("tour: {}: {e}", path.display());
@@ -1282,7 +1282,7 @@ fn report(tour: &Tour, note: &str) {
         }
     }
     let path = tour.dir.join("report.txt");
-    if let Err(e) = std::fs::write(&path, &report) {
+    if let Err(e) = nettai_fs::write(&path, &report) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");

@@ -1300,6 +1300,7 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
+ "nettai-fs",
  "nettai-match",
  "serde",
  "serde_json",
@@ -1312,6 +1313,7 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
+ "nettai-fs",
  "nettai-match",
  "serde",
  "serde_json",
@@ -1324,6 +1326,7 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
+ "nettai-fs",
  "nettai-match",
  "serde",
  "serde_json",
@@ -3199,6 +3202,7 @@ dependencies = [
  "nettai-content-api",
  "nettai-extract",
  "nettai-frontend",
+ "nettai-fs",
  "nettai-match",
  "nettai-render",
  "nettai-replay",
@@ -3259,6 +3263,7 @@ dependencies = [
  "nettai-assets",
  "nettai-battle",
  "nettai-content-api",
+ "nettai-fs",
  "png 0.17.16",
  "resvg",
  "serde",
@@ -3271,6 +3276,7 @@ dependencies = [
 name = "nettai-content-api"
 version = "0.1.0"
 dependencies = [
+ "nettai-fs",
  "serde",
  "toml 0.8.23",
 ]
@@ -3295,6 +3301,7 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-frontend",
+ "nettai-fs",
  "nettai-tools",
  "tempfile",
 ]
@@ -3315,6 +3322,13 @@ dependencies = [
  "nettai-replay",
  "nettai-rtc",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "nettai-fs"
+version = "0.1.0"
+dependencies = [
+ "web-time",
 ]
 
 [[package]]
@@ -3358,6 +3372,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-fs",
  "png 0.17.16",
  "swash",
 ]

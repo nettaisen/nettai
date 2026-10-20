@@ -104,18 +104,18 @@ fn october(day: u32, hour: u32, minute: u32) -> u64 {
 
 /// Make the pass's replays in `dir`, if they aren't there.
 pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
-    if dir.join("made").exists() {
+    if nettai_fs::exists(dir.join("made")) {
         return Ok(());
     }
-    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    nettai_fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let (game, ready) = shell.ready().ok_or("no game is ready")?;
     let set = |seed: u32| record(ready.content(), &game, seed, MOST_TICKS);
     let sets = [set(SEEDS[0])?, set(SEEDS[1])?, set(SEEDS[2])?];
     let save = |name: &str, bytes: &[u8], when: u64| -> Result<(), String> {
         let path = dir.join(name);
-        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        nettai_fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         // (A file that doesn't read is listed by when it was written.)
-        let file = std::fs::File::options().write(true).open(&path).map_err(|e| e.to_string())?;
+        let file = nettai_fs::File::options().write(true).open(&path).map_err(|e| e.to_string())?;
         file.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(when)).map_err(|e| e.to_string())
     };
     // (Which set, the side that recorded, the other player, when, online, open setups, cut after this part.)
@@ -155,7 +155,7 @@ pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
     let when = october(9, 12, 0);
     save("other.nettaireplay", &written(&other, &Info { when, names: [me, "weenie".into()], ..Info::of(MatchKind::Online, 0) }, None), when)?;
     save("notes.nettaireplay", b"not a replay", october(1, 8, 0))?;
-    std::fs::write(dir.join("made"), b"").map_err(|e| e.to_string())
+    nettai_fs::write(dir.join("made"), b"").map_err(|e| e.to_string())
 }
 
 /// Whether a shot is one of a pair, which may differ only where its step touched.
@@ -248,8 +248,8 @@ fn arrive(add: &mut dyn FnMut(u64, Step)) {
                 eprintln!("tour: the replays couldn't be made: {why}");
             }
             // (A copy a pass stopped part way left.)
-            let _ = std::fs::remove_file(tour.dir.join(CHANGED));
-            let _ = std::fs::remove_file(tour.dir.join(QUEUED));
+            let _ = nettai_fs::remove_file(tour.dir.join(CHANGED));
+            let _ = nettai_fs::remove_file(tour.dir.join(QUEUED));
             app.go_now(ScreenId::Replays);
             app.shell.nav.focus("list", 0);
             app.shell.nav.show_cursor(true, false);
@@ -282,7 +282,7 @@ pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, si
     add(
         SETTLE,
         Box::new(|_, app, tour| {
-            let made = std::fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(QUEUED));
+            let made = nettai_fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(QUEUED));
             if let Err(why) = made {
                 eprintln!("tour: the replay to queue couldn't be made: {why}");
             }
@@ -319,7 +319,7 @@ pub(super) fn queue_steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, si
     add(
         SETTLE,
         Box::new(|_, app, tour| {
-            let _ = std::fs::remove_file(tour.dir.join(QUEUED));
+            let _ = nettai_fs::remove_file(tour.dir.join(QUEUED));
             let mut app = app.borrow_mut();
             app.go_now(ScreenId::Menu);
             app.go_now(ScreenId::Replays);
@@ -549,7 +549,7 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
         Box::new(|_, app, tour| {
             let mut app = app.borrow_mut();
             app.act(Action::Back);
-            let _ = std::fs::remove_file(tour.dir.join(CHANGED));
+            let _ = nettai_fs::remove_file(tour.dir.join(CHANGED));
             app.go_now(ScreenId::Menu);
         }),
     );
@@ -568,8 +568,8 @@ fn watch_failed(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) 
     add(
         SETTLE,
         Box::new(|_, app, tour| {
-            let copied = std::fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(CHANGED));
-            let made = copied.and_then(|_| std::fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
+            let copied = nettai_fs::copy(tour.dir.join("replays/00.nettaireplay"), tour.dir.join(CHANGED));
+            let made = copied.and_then(|_| nettai_fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
             if let Err(why) = made {
                 eprintln!("tour: the replay to damage couldn't be made: {why}");
             }
@@ -600,14 +600,14 @@ fn watch_failed(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) 
 /// Damage the replay at `path` where nothing shows it: its first tick's record made one no writer writes, its
 /// size and its time as they were.
 fn damage(path: &Path) -> Result<(), String> {
-    let mut bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-    let was = std::fs::metadata(path).and_then(|m| m.modified()).map_err(|e| e.to_string())?;
+    let mut bytes = nettai_fs::read(path).map_err(|e| e.to_string())?;
+    let was = nettai_fs::metadata(path).and_then(|m| m.modified()).map_err(|e| e.to_string())?;
     let replay = Replay::read(&bytes).map_err(|e| e.to_string())?;
     // (Where its input starts: after what a file of no ticks holds.)
     let start = written(&replay, &replay.info, Some(0)).len();
     *bytes.get_mut(start).ok_or("the replay has no input")? |= 0x20;
-    std::fs::write(path, &bytes).map_err(|e| e.to_string())?;
-    std::fs::File::options().write(true).open(path).and_then(|f| f.set_modified(was)).map_err(|e| e.to_string())
+    nettai_fs::write(path, &bytes).map_err(|e| e.to_string())?;
+    nettai_fs::File::options().write(true).open(path).and_then(|f| f.set_modified(was)).map_err(|e| e.to_string())
 }
 
 /// `NETTAI_TOUR_EXPORT`: a real export of the first replay's last round, at twice the frame, into the pass's
@@ -657,14 +657,14 @@ fn export(add: &mut dyn FnMut(u64, Step)) {
 /// Add `said` to the pass's file `name`, and to the terminal.
 fn say(tour: &Tour, name: &str, said: &str) {
     eprint!("tour: {said}");
-    if let Ok(mut file) = std::fs::File::options().create(true).append(true).open(tour.dir.join(name)) {
+    if let Ok(mut file) = nettai_fs::File::options().create(true).append(true).open(tour.dir.join(name)) {
         let _ = file.write_all(said.as_bytes());
     }
 }
 
 /// The videos and the parts of videos in the pass's folder, each with its size.
 fn videos(tour: &Tour) -> Vec<String> {
-    let files = std::fs::read_dir(&tour.dir).into_iter().flatten().flatten().map(|e| e.path());
+    let files = nettai_fs::read_dir(&tour.dir).into_iter().flatten().flatten().map(|e| e.path());
     files.filter(|p| p.extension().is_some_and(|x| x == "mp4" || x == "part")).map(|p| format!("{} ({} bytes)", p.display(), p.metadata().map_or(0, |m| m.len()))).collect()
 }
 
@@ -733,7 +733,7 @@ fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> boo
         SETTLE,
         Box::new(|_, app, tour| {
             let scrap = tour.dir.join("replays/scrap.nettaireplay");
-            let made = std::fs::write(&scrap, b"to be deleted").and_then(|()| std::fs::File::options().write(true).open(&scrap)?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
+            let made = nettai_fs::write(&scrap, b"to be deleted").and_then(|()| nettai_fs::File::options().write(true).open(&scrap)?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
             if let Err(why) = made {
                 say(tour, "replays.txt", &format!("the file to delete couldn't be made: {why}\n"));
             }
@@ -756,7 +756,7 @@ fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> boo
         SETTLE,
         Box::new(|ui, app, tour| {
             let view = ui.global::<ReplaysView>();
-            let there = tour.dir.join("replays/scrap.nettaireplay").exists();
+            let there = nettai_fs::exists(tour.dir.join("replays/scrap.nettaireplay"));
             let focus = app.borrow().shell.nav.focused().map(|k| format!("{}[{}]", k.id, k.index)).unwrap_or_default();
             say(tour, "replays.txt", &format!("{}: a file deleted from the list: the file is {}, the list has {} (18 without it), the focus is on {focus}\n", tour.tag.borrow(), if there { "still there" } else { "gone" }, view.get_count()));
         }),
@@ -786,7 +786,7 @@ mod tests {
         let want: Vec<String> = files.iter().map(|e| format!("file = \"{:016x}\"", e.digest.unwrap())).collect();
         let began = std::time::Instant::now();
         loop {
-            let text = std::fs::read_to_string(cache).unwrap_or_default();
+            let text = nettai_fs::read_to_string(cache).unwrap_or_default();
             if text.matches("[[played]]").count() == want.len() && want.iter().all(|w| text.contains(w.as_str())) {
                 return text;
             }
@@ -804,17 +804,17 @@ mod tests {
     fn a_folder_is_listed_and_its_replays_played_out_off_the_thread() {
         let content = nettai_match::testing::exe6_content();
         let dir = std::env::temp_dir().join(format!("nettai-replays-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let _ = nettai_fs::remove_dir_all(&dir);
+        nettai_fs::create_dir_all(&dir).unwrap();
         let replay = record(&content, "exe6", 7, 900).unwrap();
         let info = |when: u64, side: u8| Info { when, names: ["Lan".into(), "Chaud".into()], ..Info::of(MatchKind::Online, side) };
         let mut other = replay.clone();
         other.head.content ^= 1;
-        std::fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 0), None)).unwrap();
-        std::fs::write(dir.join("second.nettaireplay"), written(&replay, &info(300, 1), Some(600))).unwrap();
-        std::fs::write(dir.join("other.nettaireplay"), written(&other, &info(200, 0), None)).unwrap();
-        std::fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
-        std::fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
+        nettai_fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 0), None)).unwrap();
+        nettai_fs::write(dir.join("second.nettaireplay"), written(&replay, &info(300, 1), Some(600))).unwrap();
+        nettai_fs::write(dir.join("other.nettaireplay"), written(&other, &info(200, 0), None)).unwrap();
+        nettai_fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
+        nettai_fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
         let cache = dir.join("kept/replays-played.toml");
 
         let mut library = Library::default();
@@ -845,7 +845,7 @@ mod tests {
 
         // Another run: the two that played are kept, the refused one is found refused again, and a file changed
         // since is played out anew.
-        std::fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 1), None)).unwrap();
+        nettai_fs::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 1), None)).unwrap();
         let mut again = Library::default();
         again.cache = Some(cache.clone());
         again.list(&dir);
@@ -862,7 +862,7 @@ mod tests {
         // (The changed file's new outcome in the old one's place.)
         kept(&cache, &[&entries[1], &entries[3]]);
         eprintln!("the second listing's three answered in {:.2?}", began.elapsed());
-        let _ = std::fs::remove_dir_all(&dir);
+        let _ = nettai_fs::remove_dir_all(&dir);
     }
 
     /// A file whose head reads names its game whatever is wrong after it, and is listed with that game's
@@ -871,8 +871,8 @@ mod tests {
     fn a_file_that_doesnt_read_is_listed_with_the_game_its_head_names() {
         let content = nettai_match::testing::exe6_content();
         let dir = std::env::temp_dir().join(format!("nettai-replays-games-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let _ = nettai_fs::remove_dir_all(&dir);
+        nettai_fs::create_dir_all(&dir).unwrap();
         let replay = record(&content, "exe6", 7, 60).unwrap();
         let bytes = written(&replay, &Info { when: 100, ..Info::of(MatchKind::Online, 0) }, None);
         let mut damaged = bytes.clone();
@@ -881,9 +881,9 @@ mod tests {
         other_game.head.game = "exe5".into();
         let mut other_damaged = written(&other_game, &Info { when: 100, ..Info::of(MatchKind::Online, 0) }, None);
         other_damaged.push(0xE0);
-        std::fs::write(dir.join("damaged.nettaireplay"), &damaged).unwrap();
-        std::fs::write(dir.join("other.nettaireplay"), &other_damaged).unwrap();
-        std::fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
+        nettai_fs::write(dir.join("damaged.nettaireplay"), &damaged).unwrap();
+        nettai_fs::write(dir.join("other.nettaireplay"), &other_damaged).unwrap();
+        nettai_fs::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
         let mut library = Library::default();
         library.list(&dir);
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
@@ -891,6 +891,6 @@ mod tests {
         assert_eq!(of("damaged.nettaireplay"), (false, Some("exe6".into())));
         assert_eq!(of("other.nettaireplay"), (false, Some("exe5".into())));
         assert_eq!(of("old.nettaireplay"), (false, None));
-        let _ = std::fs::remove_dir_all(&dir);
+        let _ = nettai_fs::remove_dir_all(&dir);
     }
 }

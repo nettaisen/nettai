@@ -174,10 +174,10 @@ impl Shaper {
     /// asked, each in `view`'s colors by its name.
     pub fn finish(mut self, view: &dyn Fn(&str, u8, u8) -> u16) -> Vec<String> {
         if let Some(dir) = &self.sources {
-            let _ = std::fs::create_dir_all(dir);
+            let _ = nettai_fs::create_dir_all(dir);
             for (name, g, d) in self.kept.drain(..) {
                 let file = name.replace('/', "-");
-                let _ = std::fs::write(dir.join(format!("{file}.svg")), beside(&name, &g, d.as_ref(), view));
+                let _ = nettai_fs::write(dir.join(format!("{file}.svg")), beside(&name, &g, d.as_ref(), view));
                 // (Its pixels as text, a character each: its palette index
                 // in hex, '.' clear, '#' a hole; a row a line.)
                 let text: String = g
@@ -194,7 +194,7 @@ impl Shaper {
                             + "\n"
                     })
                     .collect();
-                let _ = std::fs::write(dir.join(format!("{file}.txt")), text);
+                let _ = nettai_fs::write(dir.join(format!("{file}.txt")), text);
             }
         }
         self.notes

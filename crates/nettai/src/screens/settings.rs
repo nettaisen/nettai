@@ -396,7 +396,7 @@ impl Screen for Settings {
 
 /// Show a folder in the system's file manager.
 fn show_folder(path: &std::path::Path) {
-    let _ = std::fs::create_dir_all(path);
+    let _ = nettai_fs::create_dir_all(path);
     let program = if cfg!(target_os = "macos") {
         "open"
     } else if cfg!(target_os = "windows") {

@@ -1532,7 +1532,7 @@ impl Screen for Replays {
         }
         let Some(path) = self.selected.clone() else { return };
         self.close_sheet(shell);
-        match std::fs::remove_file(&path) {
+        match nettai_fs::remove_file(&path) {
             Ok(()) => {
                 // The row after it takes its place.
                 let at = self.rows.iter().position(|&i| self.library.entries[i].path == path);
