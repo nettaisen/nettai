@@ -12,7 +12,7 @@ license = "MPL-2.0"
 [workspace.dependencies]
 m4a = { path = "crates/m4a" }
 nettai-battle = { path = "crates/nettai-battle" }
-cpal = "0.15"
+cpal = "0.18"
 # Rollback netcode core (Tango's); Cargo.lock pins the revision.
 getgud = { git = "https://github.com/tangobattle/getgud" }
 # Netplay transport (Tango's): reliable, ordered delivery of the players'

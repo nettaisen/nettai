@@ -267,12 +267,22 @@ pub struct Output {
     _stream: cpal::Stream,
 }
 
+/// The audio host: the system's default; in the browser an AudioWorklet where the module has Wasm's atomics (its
+/// memory shared), else WebAudio.
+fn host() -> cpal::Host {
+    #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+    if let Ok(host) = cpal::host_from_id(cpal::HostId::AudioWorklet) {
+        return host;
+    }
+    cpal::default_host()
+}
+
 impl Output {
     /// Open the default output device.
     pub fn open() -> Result<Output, OutputError> {
-        let device = cpal::default_host().default_output_device().ok_or(OutputError::NoDevice)?;
+        let device = host().default_output_device().ok_or(OutputError::NoDevice)?;
         let config = device.default_output_config().map_err(|e| OutputError::Device(e.to_string()))?;
-        let device_rate = config.sample_rate().0;
+        let device_rate = config.sample_rate();
         let channels = config.channels() as usize;
         let shared = Arc::new(Shared {
             ring: Ring::new(ROOM),
@@ -302,11 +312,11 @@ impl Output {
         };
         let err = |e| eprintln!("audio stream error: {e}");
         let stream = match config.sample_format() {
-            cpal::SampleFormat::F32 => device.build_output_stream(&config.clone().into(), move |d: &mut [f32], _| fill(d), err, None),
+            cpal::SampleFormat::F32 => device.build_output_stream(config.clone().into(), move |d: &mut [f32], _| fill(d), err, None),
             cpal::SampleFormat::I16 => {
                 let mut buf = Vec::new();
                 device.build_output_stream(
-                    &config.clone().into(),
+                    config.clone().into(),
                     move |d: &mut [i16], _| {
                         buf.resize(d.len(), 0.0f32);
                         fill(&mut buf);
@@ -323,6 +333,12 @@ impl Output {
         .map_err(|e| OutputError::Device(e.to_string()))?;
         stream.play().map_err(|e| OutputError::Device(e.to_string()))?;
         Ok(Output { shared, device_rate, _stream: stream })
+    }
+
+    /// Start the device again if it was held: a browser starts a page's sound only after a click or a key, so its
+    /// host calls this on each.
+    pub fn resume(&self) {
+        let _ = self._stream.play();
     }
 
     /// Queue samples for the device: what the battle's ticks since the last

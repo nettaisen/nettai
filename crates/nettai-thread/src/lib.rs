@@ -6,6 +6,26 @@
 //! Nothing waits for the thread: what it makes goes back by a channel or the event loop. (A browser's page may not
 //! block, so there is no `join`.)
 
+use std::sync::{LockResult, Mutex, MutexGuard};
+#[cfg(target_arch = "wasm32")]
+use std::sync::TryLockError;
+
+/// `mutex` locked, as `Mutex::lock` does. A browser's page may not wait on its main thread (`Atomics.wait` is
+/// refused there, and the module is ended), so in the browser a lock held by another thread is tried again till it
+/// is free: every lock the main thread shares with a thread must be taken through this, and held for moments only.
+pub fn lock<T: ?Sized>(mutex: &Mutex<T>) -> LockResult<MutexGuard<'_, T>> {
+    #[cfg(not(target_arch = "wasm32"))]
+    return mutex.lock();
+    #[cfg(target_arch = "wasm32")]
+    loop {
+        match mutex.try_lock() {
+            Ok(guard) => return Ok(guard),
+            Err(TryLockError::Poisoned(poisoned)) => return Err(poisoned),
+            Err(TryLockError::WouldBlock) => std::hint::spin_loop(),
+        }
+    }
+}
+
 /// The global the page sets to its shim's URL, before the app starts (crates/nettai-web/web/index.html).
 pub const SHIM: &str = "nettaiShim";
 

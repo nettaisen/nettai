@@ -232,7 +232,7 @@ pub fn log(doing: &str, said: &dyn std::fmt::Display) {
     // (The browser's log is the page's console as well: its file is in the page's storage.)
     #[cfg(target_arch = "wasm32")]
     ::log::warn!(target: "nettai", "{doing}: {said}");
-    let Ok(mut file) = LOG.lock() else { return };
+    let Ok(mut file) = nettai_thread::lock(&LOG) else { return };
     if file.is_none() {
         let path = crate::paths::log();
         if let Some(dir) = path.parent() {
