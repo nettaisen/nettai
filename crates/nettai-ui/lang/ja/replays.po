@@ -179,8 +179,8 @@ msgstr "リプレイ"
 msgid "Round {} of {}"
 msgstr "ラウンド {}/{}"
 
-msgid "View"
-msgstr "視点"
+msgid "Player"
+msgstr "プレイヤー"
 
 msgid "Play or pause"
 msgstr "再生/一時停止"

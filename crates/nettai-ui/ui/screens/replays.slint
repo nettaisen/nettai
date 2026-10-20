@@ -182,7 +182,7 @@ export global ReplaysView {
     out property <string> inset-word: Caps.of(@tr("Other side's picture"));
     out property <string> speed-word: Caps.of(@tr("Playback speed"));
     // (The ⋯ menu's row for the side shown, P1 or P2 at its right: it opens the two in its place.)
-    out property <string> side-word: Caps.of(@tr("View"));
+    out property <string> side-word: Caps.of(@tr("Player"));
     pure public function replay-count(n: int) -> string {
         return @tr("{n} replay" | "{n} replays" % n);
     }
@@ -1415,7 +1415,7 @@ component ExportOptions inherits Rectangle {
         y: root.phone ? root.edge + 52px : root.edge;
         width: root.phone ? root.label : self.preferred-width;
         height: 40px;
-        text: @tr("View");
+        text: @tr("Player");
     }
 
     view := Seg {

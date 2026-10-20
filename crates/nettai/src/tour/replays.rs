@@ -498,7 +498,7 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Confirm));
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
-    // (The ⋯ menu's rows, chosen as a click on them is heard: VIEW is its first, opening P1 and P2; EXPORT VIDEO its
+    // (The ⋯ menu's rows, chosen as a click on them is heard: PLAYER is its first, opening P1 and P2; EXPORT VIDEO its
     // last.)
     let menu = |row: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "more", 0, row))) };
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "side", 0, 1))));
@@ -513,7 +513,7 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     shot(add, "viewer-overlays", Pair::None, Also::Nothing);
     add(SETTLE, key(KeyCode::KeyI, 1));
     add(SETTLE, key(KeyCode::KeyP, 1));
-    // The playback speed: its row in the ⋯ menu (the fifth: VIEW, BUILDS, INPUT DISPLAY, OTHER SIDE'S PICTURE, PLAYBACK SPEED), its own menu of the four, 2× chosen (the badge by the
+    // The playback speed: its row in the ⋯ menu (the fifth: PLAYER, BUILDS, INPUT DISPLAY, OTHER SIDE'S PICTURE, PLAYBACK SPEED), its own menu of the four, 2× chosen (the badge by the
     // buttons), then 1× again.
     add(SETTLE, activate("more", 0));
     shot(add, "viewer-menu", Pair::None, Also::Nothing);
