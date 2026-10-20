@@ -1519,6 +1519,9 @@ export component GroupTitle inherits Rectangle {
 export component Bar inherits Rectangle {
     // 0 to 1.
     in property <float> value;
+    // Whether the fill slides to a new value: for a value that moves in steps. One that moves every frame (an
+    // export's) is shown as it is: a slide begun again each frame never gets anywhere.
+    in property <bool> smooth: true;
     property <float> sweep: Theme.motion && root.value < 1 ? mod(animation-tick(), 1.1s) / 1.1s : 0;
     height: 4px;
     Rectangle {
@@ -1533,7 +1536,7 @@ export component Bar inherits Rectangle {
         drop-shadow-color: Theme.glow;
         clip: true;
         animate width {
-            duration: Theme.brisk;
+            duration: root.smooth ? Theme.brisk : 0ms;
             easing: ease-out;
         }
         Rectangle {
