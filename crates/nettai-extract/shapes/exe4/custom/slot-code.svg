@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 16 8">
 <!-- A slot's code plate with no letter: a dark plate, its bottom corners rounded, in the frame's color. -->
 <rect x="0" y="0" width="16" height="8" fill="#7b9cde" data-color="3"/>
-<path d="M1 0 H15 V5 A2 2 0 0 1 13 7 H3 A2 2 0 0 1 1 5 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
+<path d="M1 0 H15 V6 A1 1 0 0 1 14 7 H2 A1 1 0 0 1 1 6 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
 </svg>

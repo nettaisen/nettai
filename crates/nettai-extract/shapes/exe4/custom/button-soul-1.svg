@@ -3,7 +3,7 @@
 <!-- The window round it -->
 <rect x="0" y="0" width="24" height="16" fill="#f7ffff" data-color="1"/>
 <!-- The plate's outline -->
-<path d="M2 2.6 A0.6 0.6 0 0 1 2.6 2 L23.4 2 A0.6 0.6 0 0 1 24 2.6 L24 15.4 A0.6 0.6 0 0 1 23.4 16 L2.6 16 A0.6 0.6 0 0 1 2 15.4 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
+<path d="M2 2.6 L2 2 L2.6 2 L23.4 2 L24 2 L24 2.6 L24 15.4 L24 16 L23.4 16 L2.6 16 L2 16 L2 15.4 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
 <!-- Its shade along the right and the bottom -->
 <path d="M3 3 L23 3 L23 15 L3 15 Z" fill-rule="evenodd" fill="#4a637b" data-color="5"/>
 <!-- Its light along the top -->
