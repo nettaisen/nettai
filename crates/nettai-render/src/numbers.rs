@@ -12,7 +12,9 @@
 //! glyphs (`nettai_assets::letters::Digits`). Each character is drawn in
 //! the glyph's cell, its ink stretched to fill that box, so a number's
 //! digits stand where the picture's did, each the same width: a number
-//! doesn't move as it changes, and its columns line up.
+//! doesn't move as it changes, and its columns line up. The numbers after
+//! a chip's name are set as the font sets them, tabular, as tall as the
+//! name's capitals ([`after_words`]).
 
 use crate::textlayer::{Rect, TextItem, TextSink};
 use nettai_assets::Palette;
@@ -48,10 +50,6 @@ impl NumberSet {
 
 /// A game cell's width: a character a cell.
 pub const CELL: i32 = 8;
-
-/// How much narrower a shadowed set's digits are drawn than its box, in
-/// frame pixels ([`NumberSet::fitted`]).
-const SHADOWED_NARROWER: f32 = 1.0;
 
 /// Characters of a number drawn in the numbers' font
 /// ([`TextItem::fitted`]): each one's face box (x, y, width, height in
@@ -105,10 +103,6 @@ impl NumberSet {
     /// `chars` in this set's look, a character a cell from the left.
     pub fn fitted(&self, chars: &str) -> Fitted {
         let [x, y, w, h] = self.face.map(|v| v as f32);
-        // (A set with a shadow stands beside a chip's name, the text layer's
-        // (the damage after it, a telop's): its digits a pixel narrower, so
-        // their strokes are as heavy as the name's.)
-        let (x, w) = if self.shadow.is_some() && w > 2.0 { (x + SHADOWED_NARROWER / 2.0, w - SHADOWED_NARROWER) } else { (x, w) };
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
         Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow }
     }
@@ -133,6 +127,56 @@ pub fn items(text: &TextSink, parts: &[(String, &NumberSet)], (x, y): (i32, i32)
         at += CELL * n;
     }
     Some(out)
+}
+
+/// A character's advance in the numbers' font, over its capitals' height.
+fn advance(c: char) -> f32 {
+    let f = font().font();
+    let cap = f.metrics(&[]).cap_height.max(1.0);
+    f.glyph_metrics(&[]).advance_width(f.charmap().map(c)) / cap
+}
+
+/// The advance every digit takes, over the capitals' height: the widest
+/// digit's, so a number's digits stand in columns and it doesn't shift as
+/// it changes.
+fn digit_advance() -> f32 {
+    static ADVANCE: std::sync::LazyLock<f32> = std::sync::LazyLock::new(|| ('0'..='9').map(advance).fold(0.0, f32::max));
+    *ADVANCE
+}
+
+/// Numbers after a name's words (a chip's damage, its bonus's '+', its
+/// "x2"), in their sets' looks, set as the font sets them from `x` (frame
+/// pixels) on cells' rows `y`: their capitals `cap` tall standing on
+/// `baseline` (down from the row's top), as the name's beside them are;
+/// each digit the digits' one advance, a sign its own. Where they would
+/// run past `limit` (where the original's numbers ended), all are narrowed
+/// alike to end there. An item for each part, and where they end. None
+/// where the text layer draws no numbers, or the font lacks a character.
+pub fn after_words(text: &TextSink, parts: &[(String, &NumberSet)], (x, y): (f32, i32), (cap, baseline): (f32, f32), limit: Option<f32>) -> Option<(Vec<TextItem>, f32)> {
+    if !text.draws_numbers() || parts.iter().any(|(chars, _)| !font().covers(chars)) {
+        return None;
+    }
+    let pitch = |c: char| if c.is_ascii_digit() { digit_advance() } else { advance(c) } * cap;
+    let natural: f32 = parts.iter().flat_map(|(chars, _)| chars.chars()).map(pitch).sum();
+    let k = match limit {
+        Some(l) if x + natural > l && natural > 0.0 => ((l - x) / natural).max(0.5),
+        _ => 1.0,
+    };
+    let mut out = Vec::new();
+    let mut at = x;
+    for (chars, set) in parts {
+        let left = at.floor();
+        let mut glyphs = Vec::new();
+        for c in chars.chars() {
+            let w = pitch(c) * k;
+            glyphs.push((c, [at - left, baseline - cap, w, cap]));
+            at += w;
+        }
+        let rect = Rect::new(left as i32, y, (at - left).ceil() as i32 + 1, 16);
+        let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow };
+        out.push(TextItem::fitted(f, rect));
+    }
+    Some((out, at))
 }
 
 /// The character the font draws for the game's "x" of "x2".
