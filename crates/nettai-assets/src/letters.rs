@@ -279,6 +279,9 @@ pub struct VersionLetters {
     pub buttons: Vec<(String, Option<HelpLetters>)>,
     pub form_names: Vec<Option<FormNameLetters>>,
     pub form_names_blank: Tiles,
+    /// Where each name's portrait is over its bar (as `form_names_blank`:
+    /// 1 a portrait's pixel, 0 the bar's), where the pack keeps them apart.
+    pub form_name_portraits: Tiles,
 }
 
 impl VersionLetters {

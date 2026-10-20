@@ -388,6 +388,8 @@ pub struct Views {
     icon: nettai_assets::Palette,
     cursor: nettai_assets::Palette,
     form_cursor: nettai_assets::Palette,
+    picture: nettai_assets::Palette,
+    form_name: nettai_assets::Palette,
     frame: nettai_assets::Palette,
     other: nettai_assets::Palette,
 }
@@ -404,6 +406,8 @@ impl Views {
             icon: c.icon_palette,
             cursor: c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default(),
             form_cursor: c.form_list_cursor_palette,
+            picture: c.pictures.ok.palette,
+            form_name: c.versioned.base.form_name_palettes.first().copied().unwrap_or_default(),
             frame: c.frame_palettes.first().copied().unwrap_or_default(),
             other: c.other_palette,
         }
@@ -421,6 +425,8 @@ impl Views {
             n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
             n if n.starts_with("custom/cursor") => self.cursor[k],
             n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
+            n if n.starts_with("custom/picture") => self.picture[k],
+            "custom/form-name-bar" => self.form_name[k],
             _ => match p {
                 11 => self.icon[k],
                 13 => self.hp[k],
@@ -679,6 +685,27 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         if !sets.is_empty() {
             s.buttons.push((name.clone(), sets));
         }
+    }
+    // The chip window's pictures with their letters off, the pack's own
+    // language's and each other language's.
+    let langs = std::iter::once((String::new(), &c.letters.pictures)).chain(c.languages.iter().map(|(l, x)| (format!("-{l}"), &x.letters)));
+    for (suffix, p) in langs {
+        let named = [("ok", p.ok.as_ref()), ("ok-picked", p.ok_picked.as_ref()), ("other", p.other.as_ref())].into_iter().map(|(n, l)| (n.to_string(), l)).chain(p.buttons.iter().map(|(n, l)| (n.clone(), l.as_ref())));
+        for (name, letters) in named {
+            let Some(l) = letters else { continue };
+            let file = format!("custom/picture-{name}{suffix}");
+            if sh.file(&file).is_none() {
+                continue;
+            }
+            if let Some(d) = tiles_grid(&l.blank, 0, 7, 6).and_then(|g| sh.drawing(&file, g)) {
+                s.pictures.push((format!("{name}{suffix}"), d));
+            }
+        }
+    }
+    // The bar the form list's names lie on (every version's, where the
+    // names come apart into it, their portraits and their letters).
+    if let Some((_, layers)) = nettai_content::letters::form_names_layered(c).0.first() {
+        s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form-name-bar", g));
     }
     // The enemy names' bar: its end (the bar's cells right of it), its
     // cell (more of them either side).

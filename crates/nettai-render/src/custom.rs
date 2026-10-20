@@ -1084,6 +1084,27 @@ impl Window {
             // where they were.)
             self.tiles.put_part(first, &own.form_names_blank, FORM_NAME_TILES * look, FORM_NAME_TILES);
             self.labels.push((block.col, block.row, block.w, item));
+            // (The bar drawn as shapes where the pack has its drawing, kept
+            // off its portrait's pixels, which stay the picture's.)
+            if let Some(d) = v.assets.shapes.form_name_bar.as_ref().filter(|d| text.draws_shapes() && [8 * block.w, 8 * block.h] == [d.size[0] as usize, d.size[1] as usize]) {
+                let (w, h) = (8 * block.w, 8 * block.h);
+                let tiles = own.form_name_portraits.pixels.get(FORM_NAME_TILES * look * 64..FORM_NAME_TILES * (look + 1) * 64);
+                let off = tiles.map(|t| {
+                    let mut off = vec![false; w * h];
+                    for (i, &p) in t.iter().enumerate() {
+                        let (k, j) = (i / 64, i % 64);
+                        let (x, y) = (8 * (k % block.w) + j % 8, 8 * (k / block.w) + j / 8);
+                        if p != 0 && x < w && y < h {
+                            off[y * w + x] = true;
+                        }
+                    }
+                    (w, off)
+                });
+                let mut drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                drawn.off = off;
+                // (Its cells' tiles drawn still, for the portrait.)
+                self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (w as i32, h as i32))));
+            }
         }
     }
 
@@ -1871,6 +1892,22 @@ impl Window {
         // (Its tiles with the letters taken off: its panel's or its
         // frame's color where they were.)
         self.tiles.put(self.layout.art, &found.blank);
+        // (Drawn as shapes where the pack has its drawing: the language's
+        // own, else the pack's.)
+        if text.draws_shapes() {
+            let name = key.trim_start_matches("pictures.");
+            let own = format!("{name}-{}", v.hud.language());
+            let find = |n: &str| v.assets.shapes.pictures.iter().find(|(k, _)| k == n).map(|(_, d)| d);
+            if let Some(d) = find(&own).or_else(|| find(name)).filter(|d| [8 * block.w, 8 * block.h] == [d.size[0] as usize, d.size[1] as usize]) {
+                let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
+                for c in block.col..block.col + block.w {
+                    for r in block.row..block.row + block.h {
+                        self.drawn_cells[r * COLUMNS + c] = true;
+                    }
+                }
+            }
+        }
         self.help_lines = found
             .lines
             .iter()

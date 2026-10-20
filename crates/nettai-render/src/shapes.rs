@@ -33,7 +33,7 @@ pub fn drawn(d: &Drawing, color: impl Fn(&Region) -> u16, (hflip, vflip): (bool,
         .filter(|(rings, _)| !rings.is_empty())
         .collect();
     let hash = hash_of(&regions);
-    Drawn { regions, cells: None, hash }
+    Drawn { regions, cells: None, off: None, hash }
 }
 
 /// Several drawings as one (each moved by its offset in frame pixels),
@@ -44,7 +44,7 @@ pub fn joined(parts: Vec<(Drawn, (f32, f32))>) -> Drawn {
         .flat_map(|(d, (dx, dy))| d.regions.into_iter().map(move |(rings, c)| (rings.into_iter().map(|r| r.into_iter().map(|[x, y]| [x + dx, y + dy]).collect()).collect(), c)))
         .collect();
     let hash = hash_of(&regions);
-    Drawn { regions, cells: None, hash }
+    Drawn { regions, cells: None, off: None, hash }
 }
 
 fn hash_of(regions: &[(Vec<Vec<[f32; 2]>>, u16)]) -> u64 {

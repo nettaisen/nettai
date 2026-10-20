@@ -493,6 +493,10 @@ pub struct CustomShapesDoc {
     pub name_bar: Vec<String>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub buttons: std::collections::BTreeMap<String, Vec<String>>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub pictures: std::collections::BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form_name_bar: Option<String>,
 }
 
 impl CustomShapesDoc {
@@ -589,6 +593,8 @@ pub fn write_custom(files: &mut Files, s: &CustomShapes, c: &nettai_assets::Cust
         form_list_cursor: s.form_list_cursor.iter().enumerate().map(|(k, d)| w(&format!("form-list-cursor-{k}"), d, &in_palette(c.form_list_cursor_palette))).collect(),
         name_bar: s.name_bar.iter().enumerate().map(|(k, d)| w(&format!("name-bar-{k}"), d, &in_palette(hud_palette))).collect(),
         buttons: s.buttons.iter().map(|(name, sets)| (name.clone(), sets.iter().enumerate().map(|(k, d)| w(&format!("button-{name}-{k}"), d, &in_palette(frame))).collect())).collect(),
+        pictures: s.pictures.iter().map(|(name, d)| (name.clone(), w(&format!("picture-{name}"), d, &in_palette(c.pictures.ok.palette)))).collect(),
+        form_name_bar: s.form_name_bar.as_ref().map(|d| w("form-name-bar", d, &in_palette(c.versioned.base.form_name_palettes.first().copied().unwrap_or_default()))),
     }
 }
 
@@ -607,6 +613,8 @@ pub fn read_custom(dir: &Path, prefix: &str, d: &CustomShapesDoc, report: &mut R
         form_list_cursor: d.form_list_cursor.iter().map(|f| r(f)).collect(),
         name_bar: d.name_bar.iter().map(|f| r(f)).collect(),
         buttons: d.buttons.iter().map(|(name, sets)| (name.clone(), sets.iter().map(|f| r(f)).collect())).collect(),
+        pictures: d.pictures.iter().map(|(name, f)| (name.clone(), r(f))).collect(),
+        form_name_bar: d.form_name_bar.as_deref().map(&mut r),
     }
 }
 

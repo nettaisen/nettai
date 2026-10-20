@@ -171,12 +171,15 @@ pub struct Ink {
 /// A drawing in place of a picture ([`TextItem::drawn`]): its regions,
 /// filled one over another in order, each its rings (frame pixels from the
 /// item's box's top left, even-odd) and its color (BGR555, before the
-/// fades); the 8x8 cells of its box it may draw in (none: all of them); and
-/// a hash of the regions, to know a drawing painted before.
+/// fades); the 8x8 cells of its box it may draw in (none: all of them); the
+/// frame pixels of its box it keeps off (a picture's over it there: its
+/// width and a flag a pixel, row by row; none: none); and a hash of the
+/// regions, to know a drawing painted before.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Drawn {
     pub regions: Vec<(Vec<Vec<[f32; 2]>>, u16)>,
     pub cells: Option<Vec<[u8; 2]>>,
+    pub off: Option<(usize, Vec<bool>)>,
     pub hash: u64,
 }
 
