@@ -4,8 +4,8 @@
 <rect x="0" y="24" width="88" height="64" fill="#c6d6de" data-color="2" data-palette="9"/>
 <rect x="0" y="24" width="1" height="64" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The grooves down its sides, from the window's edge at 45 degrees -->
-<path d="M0 30.5 L1.2 30.5 L3.561 32.861 A1.5 1.5 0 0 1 4 33.921 L4 96 L0 96 L0 95 L3 95 L3 34.031 A0.8 0.8 0 0 0 2.766 33.466 L0.8 31.5 L0 31.5 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M88 29.5 L86.8 29.5 L84.439 31.861 A1.5 1.5 0 0 0 84 32.921 L84 96 L88 96 L88 95 L85 95 L85 33.031 A0.8 0.8 0 0 1 85.234 32.466 L87.2 30.5 L88 30.5 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M0 31 H1 L3.207 33.207 A1 1 0 0 1 3.5 33.914 V95.5 H0" fill="none" stroke="#738ca5" stroke-width="1" data-stroke="4" data-palette="9"/>
+<path d="M88 30 H87 L84.793 32.207 A1 1 0 0 0 84.5 32.914 V95.5 H88" fill="none" stroke="#738ca5" stroke-width="1" data-stroke="4" data-palette="9"/>
 <!-- The box round the names -->
 <path d="M7 31 H81 V88 H7 Z M8 32 V88 H80 V32 Z" fill="#4a637b" data-color="5" data-palette="9"/>
 <!-- Beside the header row (its words stay the picture's): the panel, the grooves and the box's sides going on down -->
