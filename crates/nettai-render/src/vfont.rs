@@ -248,13 +248,6 @@ impl Role {
         }
     }
 
-    /// Its capitals' height and its baseline (down from its box's top), in
-    /// frame pixels.
-    pub fn cap_and_baseline(self) -> (f32, f32) {
-        let st = self.style();
-        (st.cap, st.baseline)
-    }
-
     /// Whether it is drawn in the lettering font.
     pub fn lettering(self) -> bool {
         matches!(self, Role::Lettering(_))
@@ -337,7 +330,7 @@ impl VectorFont {
         Ok(VectorFont { data, offset, key, width, weight, cap, name })
     }
 
-    pub(crate) fn font(&self) -> FontRef<'_> {
+    fn font(&self) -> FontRef<'_> {
         FontRef { data: &self.data, offset: self.offset, key: self.key }
     }
 
@@ -1363,11 +1356,8 @@ impl TextRenderer {
         let shadow = f.shadow.map(color);
         let fill: Vec<u32> = if f.fill.is_empty() { vec![0] } else { f.fill.iter().map(|&c| color(c)).collect() };
         let face_top = top + f.glyphs.first().map_or(0.0, |g| g.1[1]);
-        // (The face's colors down its rows, as many as the box is high: the
-        // glyph's own rows, or spread over a box of another height.)
-        let rows = fill.len() as f32 / f.glyphs.first().map_or(fill.len() as f32, |g| g.1[3]).max(1e-3);
         for y in area.1..area.3 {
-            let row = (mid + ((y as f32 + 0.5 - place.y as f32) / s - mid) / k - face_top) * rows - 0.5;
+            let row = mid + ((y as f32 + 0.5 - place.y as f32) / s - mid) / k - face_top - 0.5;
             let face = fill_color(&fill, row);
             for x in area.0..area.2 {
                 if let Some((rgb, rim)) = &rim {
