@@ -1020,6 +1020,7 @@ impl Window {
                 fill: look.fill.iter().map(|&c| color(c)).collect(),
                 rim: look.rim.map(color),
                 shadow: look.shadow.map(color),
+                face: crate::numbers::Face::Letters,
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));
@@ -1953,8 +1954,7 @@ impl Window {
         let Some(digits) = v.assets.letters.digits.as_ref() else { return };
         let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]);
         let end = crate::numbers::picture_span(&set, x + 8 * block.w as i32 - crate::numbers::CELL, 1).1;
-        let room = (x as f32, (x + 8 * block.w as i32) as f32);
-        let Some((items, _)) = crate::numbers::laid(text, &[(words.clone(), &set)], 8 * block.row as i32, crate::numbers::Anchor::Right(end), Some(room)) else { return };
+        let Some((items, _)) = crate::numbers::laid(text, &[(words.clone(), &set)], 8 * block.row as i32, crate::numbers::Anchor::Right(end)) else { return };
         let past_ranged = block.palette & 15 >= 14;
         for item in items {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
