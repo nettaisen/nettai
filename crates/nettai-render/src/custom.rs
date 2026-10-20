@@ -703,6 +703,10 @@ struct Window {
     /// The first tiles of the empty slots' code plates (no letter), for
     /// the enhanced mode to draw as shapes as the others' are.
     blank_plates: Vec<u16>,
+    /// The buttons laid in the slots' run or at their places: each one's
+    /// first tile, how many, its name and the set it shows, for the
+    /// enhanced mode to draw as shapes.
+    buttons_laid: Vec<(u16, usize, String, usize)>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -789,6 +793,7 @@ impl Window {
             drawn_cells: vec![false; COLUMNS * ROWS],
             empty_icons: Vec::new(),
             blank_plates: Vec::new(),
+            buttons_laid: Vec::new(),
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
         // Cross tab) or without; or the form list window's.
@@ -884,6 +889,18 @@ impl Window {
                     self.drawn_cells[r as usize * COLUMNS + c as usize] = true;
                 }
                 let palettes = self.palettes;
+                // (Its words where it stands in for the cell their box's
+                // middle is in: on the drawing, over it.)
+                let u = nettai_assets::shapes::Drawing::UNIT;
+                let ours = |t: &nettai_assets::shapes::Words| {
+                    let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
+                    let (c, r) = (((x + w / 2.0) / 8.0) as u8, ((y + h / 2.0) / 8.0) as u8);
+                    cells.contains(&[c, r])
+                };
+                let shown = nettai_assets::shapes::Drawing { words: part.drawing.words.iter().filter(|t| ours(t)).cloned().collect(), ..Default::default() };
+                for item in crate::shapes::words(&shown, |p, c| palettes[p as usize & 15][c as usize & 15], text, &v.b.content, problems) {
+                    self.labels.push((0, 0, COLUMNS, item));
+                }
                 let mut d = crate::shapes::drawn(&part.drawing, |r| palettes[r.palette as usize & 15][r.color as usize & 15], (false, false), None);
                 d.cells = Some(cells);
                 self.shapes.push((0, 0, COLUMNS, crate::shapes::item(d, (0, 0), (8 * COLUMNS as i32, 8 * ROWS as i32))));
@@ -901,6 +918,28 @@ impl Window {
                 self.shapes.push((x, y, 2, crate::shapes::item(d, (0, 0), (16, 16))));
                 for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                     self.drawn_cells[(y + dy) * COLUMNS + x + dx] = true;
+                }
+            }
+        }
+        // The buttons, each set's drawing over the cells its tiles were laid
+        // in (a block its drawing's size), its words over it.
+        for (first, count, name, set) in std::mem::take(&mut self.buttons_laid) {
+            let Some(d) = a.shapes.buttons.iter().find(|(n, _)| *n == name).and_then(|(_, sets)| sets.get(set)) else { continue };
+            let Some(block) = self.block(first..first + count as u16) else { continue };
+            if [8 * block.w, 8 * block.h] != [d.size[0] as usize, d.size[1] as usize] {
+                problems.note(format!("button {name:?}'s drawing is {}x{}, its cells {}x{}: drawn as its tiles", d.size[0], d.size[1], 8 * block.w, 8 * block.h));
+                continue;
+            }
+            let palette = self.palettes[block.palette as usize & 15];
+            for mut item in crate::shapes::words(d, |_, c| palette[c as usize & 15], text, &v.b.content, problems) {
+                item.rect = item.rect.offset(8 * block.col as i32, 8 * block.row as i32);
+                self.labels.push((0, 0, COLUMNS, item));
+            }
+            let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+            self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
+            for c in block.col..block.col + block.w {
+                for r in block.row..block.row + block.h {
+                    self.drawn_cells[r * COLUMNS + c] = true;
                 }
             }
         }
@@ -1505,13 +1544,19 @@ impl Window {
                     } else if crate::lookups::button(a, v.buttons, &v.b.content, button, problems).is_some()
                         && let Some(look) = v.button_look(button)
                     {
+                        let name = v.b.content.defs.button(button).name.clone();
+                        let set = look.set(state) / look.count.max(1);
                         match look.pack.place {
                             // (At its own place: EXE4's UNITE button.)
-                            Some(p) => self.placed_button(look.pack, p, look.set(state) / look.count.max(1)),
+                            Some(p) => {
+                                self.placed_button(look.pack, p, set);
+                                self.buttons_laid.push((p.first_tile, look.pack.width as usize * look.pack.height as usize, name, set));
+                            }
                             // (The slots after it start past its tiles; the
                             // special slot is the last.)
                             None => {
                                 self.tiles.put_part(at, &look.pack.tiles, look.set(state), look.count);
+                                self.buttons_laid.push((at, look.count, name, set));
                                 at += look.count as u16;
                             }
                         }

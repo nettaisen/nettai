@@ -295,6 +295,10 @@ pub struct CustomShapes {
     pub form_list_cursor: Vec<Drawing>,
     /// The enemy names' bar: its slanted end, its cell (8x16 each).
     pub name_bar: Vec<Drawing>,
+    /// The buttons' looks, by the name their content registers them under:
+    /// each set's drawing (a cell its pictures' width and height in tiles,
+    /// as many side by side as the button takes), its words on it.
+    pub buttons: Vec<(String, Vec<Drawing>)>,
 }
 
 impl CustomShapes {

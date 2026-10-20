@@ -491,6 +491,8 @@ pub struct CustomShapesDoc {
     pub form_list_cursor: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub name_bar: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub buttons: std::collections::BTreeMap<String, Vec<String>>,
 }
 
 impl CustomShapesDoc {
@@ -586,6 +588,7 @@ pub fn write_custom(files: &mut Files, s: &CustomShapes, c: &nettai_assets::Cust
         cursor: s.cursor.iter().enumerate().map(|(k, d)| w(&format!("cursor-{k}"), d, &in_palette(cursor))).collect(),
         form_list_cursor: s.form_list_cursor.iter().enumerate().map(|(k, d)| w(&format!("form-list-cursor-{k}"), d, &in_palette(c.form_list_cursor_palette))).collect(),
         name_bar: s.name_bar.iter().enumerate().map(|(k, d)| w(&format!("name-bar-{k}"), d, &in_palette(hud_palette))).collect(),
+        buttons: s.buttons.iter().map(|(name, sets)| (name.clone(), sets.iter().enumerate().map(|(k, d)| w(&format!("button-{name}-{k}"), d, &in_palette(frame))).collect())).collect(),
     }
 }
 
@@ -603,6 +606,7 @@ pub fn read_custom(dir: &Path, prefix: &str, d: &CustomShapesDoc, report: &mut R
         cursor: d.cursor.iter().map(|f| r(f)).collect(),
         form_list_cursor: d.form_list_cursor.iter().map(|f| r(f)).collect(),
         name_bar: d.name_bar.iter().map(|f| r(f)).collect(),
+        buttons: d.buttons.iter().map(|(name, sets)| (name.clone(), sets.iter().map(|f| r(f)).collect())).collect(),
     }
 }
 
