@@ -1,2 +1,22 @@
+# Builds for the browser (crates/nettai-web): Wasm's atomics, so its threads are Web Workers on one shared memory.
+# The standard library is built again with them (nightly with rust-src; stable ignores [unstable], and a build for
+# the machine itself builds none: only one with --target). WASI SDK 34's settings are the machine's
+# (WASI_SDK_PATH in ~/.cargo/config.toml's [env]; crates/nettai-luau/README.md).
+[unstable]
+build-std = ["std", "panic_abort"]
+
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"
+# A shared memory the page makes (imported), as large as Wasm's 32-bit memory may be; the thread-local storage's
+# symbols that wasm-bindgen sets up each thread with.
+rustflags = [
+    "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals",
+    "-C", "link-arg=--shared-memory",
+    "-C", "link-arg=--import-memory",
+    "-C", "link-arg=--max-memory=4294967296",
+    "-C", "link-arg=--export=__wasm_init_tls",
+    "-C", "link-arg=--export=__tls_size",
+    "-C", "link-arg=--export=__tls_align",
+    "-C", "link-arg=--export=__tls_base",
+    "-C", "link-arg=--export=__heap_base",
+]

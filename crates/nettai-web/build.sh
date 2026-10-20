@@ -5,13 +5,15 @@
 #   bash crates/nettai-web/build.sh [release|dev] [out]     (default: release, target/web/site)
 #   python3 crates/nettai-web/serve.py [out]                (serves it as a page with threads must be)
 #
-# Needs: Rust nightly with rust-src (the standard library is built again with atomics), the wasm32-unknown-unknown
-# target, wasm-bindgen-cli at Cargo.lock's wasm-bindgen version, and WASI SDK 34 at $WASI_SDK_PATH (Luau's C++:
-# crates/nettai-luau/README.md).
+# The module is cargo's alone: `cargo +nightly build --target wasm32-unknown-unknown -p nettai-web`, its flags and
+# the standard library built again with atomics in .cargo/config.toml. This script makes the page of it.
+#
+# Needs: Rust nightly with rust-src, the wasm32-unknown-unknown target, wasm-bindgen-cli at Cargo.lock's
+# wasm-bindgen version, and WASI SDK 34 at WASI_SDK_PATH, in the environment or ~/.cargo/config.toml's [env]
+# (Luau's C++: crates/nettai-luau/README.md).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-: "${WASI_SDK_PATH:?Set WASI_SDK_PATH to an extracted WASI SDK 34 (crates/nettai-luau/README.md)}"
 profile="${1:-release}"
 out="${2:-target/web/site}"
 case "$profile" in
@@ -27,15 +29,8 @@ if [ "$want" != "$have" ]; then
     exit 1
 fi
 
-# Atomics and a shared memory the page makes (imported), as large as Wasm's 32-bit memory may be; the thread-local
-# storage's symbols that wasm-bindgen sets up each thread with. (Its own target folder: these flags make every crate
-# another build.)
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target/web}"
-export RUSTFLAGS="-C target-feature=+atomics,+bulk-memory,+mutable-globals \
--C link-arg=--shared-memory -C link-arg=--import-memory -C link-arg=--max-memory=4294967296 \
--C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align \
--C link-arg=--export=__tls_base -C link-arg=--export=__heap_base"
-cargo +nightly build --locked -Zbuild-std=std,panic_abort --target wasm32-unknown-unknown -p nettai-web --profile "$profile"
+CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target}"
+cargo +nightly build --locked --target wasm32-unknown-unknown -p nettai-web --profile "$profile"
 
 mkdir -p "$out"
 wasm-bindgen --target web --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unknown/$dir/nettai_web.wasm"

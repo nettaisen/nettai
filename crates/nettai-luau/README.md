@@ -6,8 +6,11 @@ workspace is not ported by this change.
 
 ## Build
 
-Use stable Rust with the `wasm32-unknown-unknown` target, and [WASI SDK 34](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34).
-Extract the SDK for your build machine and set `WASI_SDK_PATH` to its directory.
+Use nightly Rust with rust-src and the `wasm32-unknown-unknown` target (the standard library is built again
+with atomics), and [WASI SDK 34](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34).
+Extract the SDK for your build machine and set `WASI_SDK_PATH` to its directory (in the environment, or in
+`~/.cargo/config.toml`'s `[env]`). The target's flags (atomics, a shared memory) and its standard library built
+again with them are in .cargo/config.toml, the browser app's (crates/nettai-web).
 The SDK supplies Clang, libc++, and libc at build time; its WASI imports and
 allocator are removed from the libc copy linked into the module.
 
