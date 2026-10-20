@@ -17,10 +17,11 @@
 <path d="M12.8 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V18 L9 16.6 V11.5 A1.5 1.5 0 0 1 10.5 10 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
 <path d="M11.6 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V15.2 L9 14 V11.5 A1.5 1.5 0 0 1 10.5 10 H10.9 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
 <path d="M10.4 9 A2.5 2.5 0 0 0 8 11.5 V12.4 L8.8 11.6 A1.6 1.6 0 0 1 10.4 9.8 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<rect x="78" y="33" width="1" height="51" rx="0.5" fill="#524a5a" data-color="10" data-palette="9"/>
-<rect x="78" y="41" width="1" height="32" rx="0.5" fill="#4a637b" data-color="5" data-palette="9"/>
-<rect x="78" y="49" width="1" height="8" rx="0.5" fill="#738ca5" data-color="4" data-palette="9"/>
-<rect x="78" y="51" width="1" height="3" rx="0.5" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The glint down the chip window's right side: a streak tapering to a point at each end, lighter toward its middle -->
+<polygon points="78.5,33 79,45.75 79,71.25 78.5,84 78,71.25 78,45.75" fill="#524a5a" data-color="10" data-palette="9"/>
+<polygon points="78.5,41 79,49 79,65 78.5,73 78,65 78,49" fill="#4a637b" data-color="5" data-palette="9"/>
+<polygon points="78.5,49 79,51 79,55 78.5,57 78,55 78,51" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="78.5,51 79,52 79,53 78.5,54 78,53 78,52" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The panel -->
 <rect x="0" y="88" width="88" height="16" fill="#eff7ff" data-color="1" data-palette="9"/>
 <!-- The Cross tab: its outline, its step down slanting at 45 degrees -->

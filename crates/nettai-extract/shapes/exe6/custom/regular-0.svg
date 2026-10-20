@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32">
-<!-- The Regular chip's frame (frame 1 of 2), square round the slot as every box a chip's icon goes in: a dark red band, lit along its top, a red line along its inside, the left side wider with a lit block at its top and bottom corners. -->
+<!-- The Regular chip's frame (frame 1 of 2), square round the slot as every box a chip's icon goes in: a dark red band, lit along its top, a red line along its inside, the left side wider with a lamp at its top and bottom ends. -->
 <!-- The dark red band round the slot -->
 <path d="M2 4 A1 1 0 0 1 3 3 L22 3 A1 1 0 0 1 23 4 L23 20 A1 1 0 0 1 22 21 L3 21 A1 1 0 0 1 2 20 Z M6 5 L21 5 L21 19 L6 19 Z" fill-rule="evenodd" fill="#bd314a" data-color="15"/>
 <!-- Lit along its top -->
@@ -9,13 +9,11 @@
 <rect x="21" y="4" width="1" height="16" fill="#ff3121" data-color="14"/>
 <rect x="3" y="19" width="19" height="1" fill="#ff3121" data-color="14"/>
 <rect x="2" y="8" width="1" height="7" fill="#ff3121" data-color="14"/>
-<!-- The lit blocks at the left side's corners -->
-<rect x="2" y="4" width="1" height="3" fill="#f79418" data-color="10"/>
-<rect x="3" y="4" width="2" height="1" fill="#ffd629" data-color="12"/>
-<rect x="3" y="5" width="1" height="2" fill="#ffd629" data-color="12"/>
-<rect x="4" y="5" width="1" height="2" fill="#ef4a00" data-color="11"/>
-<rect x="2" y="16" width="1" height="3" fill="#f79418" data-color="10"/>
-<rect x="3" y="16" width="2" height="1" fill="#ffd629" data-color="12"/>
-<rect x="3" y="17" width="1" height="2" fill="#ffd629" data-color="12"/>
-<rect x="4" y="17" width="1" height="2" fill="#ef4a00" data-color="11"/>
+<!-- A lamp at each end of the left side: a small rounded square, lit down its left edge, brightest toward its lower right -->
+<rect x="2" y="4" width="3" height="3" rx="0.8" fill="#ffd629" data-color="12"/>
+<path d="M2.9 4 H2.8 A0.8 0.8 0 0 0 2 4.8 V6.2 A0.8 0.8 0 0 0 2.8 7 H2.9 Z" fill="#f79418" data-color="10"/>
+<rect x="3.9" y="5" width="1.1" height="2" rx="0.5" fill="#ef4a00" data-color="11"/>
+<rect x="2" y="16" width="3" height="3" rx="0.8" fill="#ffd629" data-color="12"/>
+<path d="M2.9 16 H2.8 A0.8 0.8 0 0 0 2 16.8 V18.2 A0.8 0.8 0 0 0 2.8 19 H2.9 Z" fill="#f79418" data-color="10"/>
+<rect x="3.9" y="17" width="1.1" height="2" rx="0.5" fill="#ef4a00" data-color="11"/>
 </svg>
