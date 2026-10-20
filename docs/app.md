@@ -3150,7 +3150,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   each row: `check`, drawn at its right; `dim`; `line`, over a group's first; `value`, a choice's value at its right
   in the muted color), 264 wide with its right edge at the button's, over it where there is more room (as it is at
   the window's foot), heard as `more`. Its rows are `viewer::MENU`'s, made by `Watching::menu` as it opens and done
-  by `Watching::choose`: P1 and P2 (the side shown checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S
+  by `Watching::choose`: VIEW (the side shown at its right; it opens P1 and P2 in its place, `Watching::side_menu`, the one shown checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S
   PICTURE (each checked while on); PLAYBACK SPEED, the speed set as its value, which opens the speeds' own menu in
   its place (`Watching::speed_menu`, the same picker by ⋯, ½×, 1×, 2×, 4× with the one set checked, heard as
   `speed`: `choose_speed`; the focus is put on ⋯ first, for that menu to give it back to); and EXPORT VIDEO, which
@@ -3314,7 +3314,7 @@ Playing, pausing, stepping and seeking work as they do outside it.
   controls are there outside the mode too, hidden and not focusable (`enabled` false): one component (§14).
 - *The options* (`ExportOptions`, under an `if`) are a panel 108 tall, 12 over the transport (on a phone 208,
   under it): Size (2, 4 and 6 times the frame, 4 chosen), View (the viewer's side: `export.view` sets
-  `Watching::set_view` and the export follows, as it does the ⋯ menu's P1 and P2), Sides (One, or Both: the user,
+  `Watching::set_view` and the export follows, as it does the ⋯ menu's VIEW), Sides (One, or Both: the user,
   "add support for two sided side by side export"), Save as; under them the bar and its line, which while nothing
   exports says to drag the handles. The footer's hints in the mode: Space, comma and period, the arrows ("Move a
   handle"), Back as Cancel.

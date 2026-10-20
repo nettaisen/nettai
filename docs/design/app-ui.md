@@ -1657,6 +1657,10 @@ Each is settled unless the user changes it.
       つまみを動かす; "Drag the handles on the bar to choose the part to export." バーの両端のつまみをドラッグして、書き出す範囲を選びます。
       (書き出し as the app already had it.) Range 範囲, Start 開始, End 終了, NOW 現在位置, "Export video" the
       dialog's title (動画の書き出し) and the three messages about times are gone from the catalog.
+97. **The side shown behind a VIEW row** (2026-10-19). The user: "P1/P2 should probably be also in like a submenu".
+    The ⋯ menu's P1 and P2 rows are one VIEW row (視点, the export's word), the side shown at its right; it opens
+    P1 and P2 in its place, the one shown checked, as PLAYBACK SPEED opens the speeds (§2.96). The menu is VIEW;
+    BUILDS, INPUT DISPLAY, OTHER SIDE'S PICTURE; PLAYBACK SPEED; EXPORT VIDEO.
 
 ## 3. Chosen where the user gave no answer
 

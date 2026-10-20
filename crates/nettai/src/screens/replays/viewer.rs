@@ -62,12 +62,12 @@ pub struct Overlays {
     pub inset: bool,
 }
 
-/// What the transport's ⋯ menu holds, in its order (docs/design/app-ui.md §2.95, §2.96): the two sides' consoles
-/// (the one shown checked), what may be over the picture (each checked while it is on), the playback speed (the
+/// What the transport's ⋯ menu holds, in its order (docs/design/app-ui.md §2.95, §2.96, §2.97): the side shown (the
+/// console's, P1 or P2 at the row's right; it opens the two sides' own menu, [`Watching::side_menu`]), what may be over the picture (each checked while it is on), the playback speed (the
 /// speed set at the row's right; it opens the speeds' own menu, [`Watching::speed_menu`]), and the export.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
-    Side(u8),
+    Side,
     Builds,
     Inputs,
     Inset,
@@ -75,7 +75,7 @@ pub enum MenuItem {
     Export,
 }
 
-pub const MENU: [MenuItem; 7] = [MenuItem::Side(0), MenuItem::Side(1), MenuItem::Builds, MenuItem::Inputs, MenuItem::Inset, MenuItem::Speed, MenuItem::Export];
+pub const MENU: [MenuItem; 6] = [MenuItem::Side, MenuItem::Builds, MenuItem::Inputs, MenuItem::Inset, MenuItem::Speed, MenuItem::Export];
 
 /// The speeds as the menus and the badge say them.
 const SPEED_WORDS: [&str; 4] = ["½×", "1×", "2×", "4×"];
@@ -476,17 +476,26 @@ impl Watching {
         MENU.iter()
             .map(|&item| {
                 let (word, check, dim) = match item {
-                    MenuItem::Side(side) => (if side == 0 { view.get_p1() } else { view.get_p2() }.to_string(), self.side() == side, false),
+                    MenuItem::Side => (view.get_side_word().to_string(), false, false),
                     MenuItem::Builds => (view.get_builds_word().to_string(), self.builds, self.sides.is_none()),
                     MenuItem::Inputs => (view.get_inputs_word().to_string(), self.overlays.inputs, false),
                     MenuItem::Inset => (view.get_inset_word().to_string(), self.overlays.inset, false),
                     MenuItem::Speed => (view.get_speed_word().to_string(), false, false),
                     MenuItem::Export => (view.get_export_word().to_string(), false, exporting),
                 };
-                let value = if item == MenuItem::Speed { SPEED_WORDS[self.speed() as usize].into() } else { Default::default() };
+                let value = match item {
+                    MenuItem::Speed => SPEED_WORDS[self.speed() as usize].into(),
+                    MenuItem::Side => if self.side() == 0 { view.get_p1() } else { view.get_p2() }.to_string().into(),
+                    _ => Default::default(),
+                };
                 (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed | MenuItem::Export), value })
             })
             .collect()
+    }
+
+    /// The side's own menu, which its row of the ⋯ menu opens in its place: P1 and P2, the one shown checked.
+    pub fn side_menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
+        [view.get_p1(), view.get_p2()].iter().enumerate().map(|(at, word)| (word.to_string(), PickMark { check: self.side() == at as u8, ..Default::default() })).collect()
     }
 
     /// The playback speed's own menu, which its row of the ⋯ menu opens in its place: the four, the one set checked.
@@ -498,7 +507,7 @@ impl Watching {
     /// screen's (`Replays::choose`): the speeds' menu, the export mode.
     pub fn choose(&mut self, shell: &mut Shell, item: MenuItem) {
         match item {
-            MenuItem::Side(side) => self.set_view(shell, side as i32),
+            MenuItem::Side => {}
             MenuItem::Builds => self.toggle_builds(shell),
             MenuItem::Inputs => self.toggle_inputs(shell),
             MenuItem::Inset => self.toggle_inset(shell),
