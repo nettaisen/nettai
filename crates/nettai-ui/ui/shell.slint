@@ -390,6 +390,10 @@ export global Errors {
             return @tr("{}'s data is out of date. Extract it again.", detail);
         }
         if kind == ErrorKind.no-legacy-collection {
+            // (A browser has no Steam to install from: only the folder.)
+            if Theme.web {
+                return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Choose its folder.");
+            }
             return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder.");
         }
         if kind == ErrorKind.extract-failed {
@@ -565,6 +569,9 @@ export global Errors {
             return @tr("Extract it again.");
         }
         if kind == ErrorKind.no-legacy-collection {
+            if Theme.web {
+                return @tr("Choose its folder.");
+            }
             return @tr("Install it from Steam, or choose its folder.");
         }
         return @tr("Details are in the log file.");
