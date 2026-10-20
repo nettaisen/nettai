@@ -557,7 +557,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
     // The chatbox's box, each of its maps: its kinds' (the message box,
     // the description box), each at its opening steps.
     let g = &h.chatbox;
-    let mut maps: Vec<(String, Option<(Grid, Vec<[u8; 2]>)>)> = Vec::new();
+    let mut maps: Vec<NamedMap> = Vec::new();
     for (kind, steps) in g.boxes.iter().enumerate() {
         for (step, map) in steps.iter().enumerate() {
             let name = format!("hud/chatbox-{kind}-{step}");
@@ -674,7 +674,7 @@ fn mugshot_frame(h: &Hud, say: &mut dyn FnMut(String)) -> Option<MugshotFrame> {
 pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> CustomShapes {
     let mut s = CustomShapes::default();
     let window = if c.letters.window_blank.len() == c.window_tiles.len() { &c.letters.window_blank } else { &c.window_tiles };
-    let mut maps: Vec<(String, Option<(Grid, Vec<[u8; 2]>)>)> = Vec::new();
+    let mut maps: Vec<NamedMap> = Vec::new();
     for (k, m) in c.window_maps.iter().enumerate() {
         maps.push((format!("custom/window-{k}"), window_grid(c, window, m, &c.window_patches, false, say)));
     }
@@ -863,11 +863,15 @@ fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &Pat
     Some((canvas.grid(), cells))
 }
 
+/// A map by its drawing's name: its picture and the cells of its own, if it
+/// can be read as one.
+type NamedMap = (String, Option<(Grid, Vec<[u8; 2]>)>);
+
 /// The maps' frames ([`MapDrawing`]), from the drawings of maps that have
 /// one: each map's cells, each of the first drawing (the map's own, then
 /// the others in order) that draws something there and was drawn for the
 /// same pixels there.
-fn map_drawings(maps: &[(String, Option<(Grid, Vec<[u8; 2]>)>)], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
+fn map_drawings(maps: &[NamedMap], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
     // Each map's own drawing, with its pixels at their centers.
     let drawn: Vec<Option<(Drawing, Vec<Label>)>> = maps
         .iter()
