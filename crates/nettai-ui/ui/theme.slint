@@ -146,6 +146,9 @@ export global Theme {
     out property <length> menu-word: phone ? 32px : 48px;
     out property <length> menu-tracking: cjk ? 1px : phone ? 2.4px : 3.6px;
 
+    // The app runs in a browser (nettai-web): no Steam, no direct links, the browser's own dialogs.
+    in property <bool> web;
+
     // Metrics. `phone` is the upright-phone layout (the app sets it when the window is taller than wide): one
     // column, no footer, everything tapped at least 44 tall.
     in property <bool> phone;

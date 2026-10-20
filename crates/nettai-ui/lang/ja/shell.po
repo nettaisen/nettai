@@ -333,6 +333,11 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2"
 msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です"
 msgid "Install it from Steam, or choose its folder."
 msgstr "Steam でインストールするか、そのフォルダを選んでください。"
+# The same in a browser (nettai-web), which has no Steam to install it from.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. Choose its folder."
+msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です。そのフォルダを選んでください。"
+msgid "Choose its folder."
+msgstr "そのフォルダを選んでください。"
 msgid "Choose folder"
 msgstr "フォルダを選ぶ"
 # A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.

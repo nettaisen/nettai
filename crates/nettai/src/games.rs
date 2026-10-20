@@ -172,6 +172,7 @@ impl Games {
             Some(install) => {
                 games.found(install);
             }
+            None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen"),
             None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
         }
         if games.list.iter().any(|e| matches!(e.state, State::NoPack) && nettai_extract::Game::named(&e.id).is_some()) {
