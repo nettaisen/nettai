@@ -88,6 +88,9 @@ struct Proto {
     name: Option<String>,
     line: u32,
     upvalue_names: Vec<String>,
+    /// Where its bytes say where it is (its size's, its line's), which
+    /// [`identity`] leaves out.
+    placing: Vec<(usize, usize)>,
 }
 
 struct Reader<'a> {
@@ -159,8 +162,11 @@ fn parse(bytecode: &[u8]) -> Result<(Vec<Proto>, usize), String> {
     }
     let mut protos = Vec::new();
     for _ in 0..r.size()? {
+        let mut placing = Vec::new();
         let end = if version >= 12 {
+            let from = r.at;
             let n = r.size()?;
+            placing.push((from, r.at));
             Some(r.at + n)
         } else {
             None
@@ -215,7 +221,9 @@ fn parse(bytecode: &[u8]) -> Result<(Vec<Proto>, usize), String> {
             }
         }
         let children = (0..r.size()?).map(|_| r.size()).collect::<Result<Vec<_>, _>>()?;
+        let from = r.at;
         let line = r.varint()? as u32;
+        placing.push((from, r.at));
         let name = string(r.varint()?);
         let mut upvalue_names = Vec::new();
         if let Some(end) = end {
@@ -234,13 +242,29 @@ fn parse(bytecode: &[u8]) -> Result<(Vec<Proto>, usize), String> {
                 }
             }
         }
-        protos.push(Proto { code, nups, closures, children, name, line, upvalue_names });
+        protos.push(Proto { code, nups, closures, children, name, line, upvalue_names, placing });
     }
     let main = r.size()?;
     if main >= protos.len() {
         return Err("no main function".into());
     }
     Ok((protos, main))
+}
+
+/// A module's bytecode as what it does: without the line each function
+/// starts on (which a compile without debug information still records) or
+/// the sizes that depend on it, so a comment or a blank line above a
+/// function leaves it the same (the content hash's `module_identity`).
+pub fn identity(bytecode: &[u8]) -> Result<Vec<u8>, String> {
+    let (protos, _) = parse(bytecode)?;
+    let mut out = Vec::with_capacity(bytecode.len());
+    let mut at = 0;
+    for &(from, to) in protos.iter().flat_map(|p| &p.placing) {
+        out.extend_from_slice(&bytecode[at..from]);
+        at = to;
+    }
+    out.extend_from_slice(&bytecode[at..]);
+    Ok(out)
 }
 
 /// Line and debug info; returns the upvalue names (if any).

@@ -72,6 +72,14 @@ pub fn compiler() -> Compiler {
     Compiler::new().set_optimization_level(1).set_debug_level(2).set_disabled_builtins(NOT_BUILTINS)
 }
 
+/// The compiler a module's identity is compiled with (the content hash's):
+/// [`compiler`]'s settings without debug information, so a module's
+/// comments, layout and local names aren't part of what it is; its code
+/// and constants are.
+pub fn identity_compiler() -> Compiler {
+    compiler().set_debug_level(0)
+}
+
 /// A VM with the content standard library.
 pub fn new_vm(debug_print: bool) -> mlua::Result<Lua> {
     #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
