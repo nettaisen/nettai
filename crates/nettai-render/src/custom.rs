@@ -2180,15 +2180,16 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
         .collect()
 }
 
-/// Eight blank tiles: the parts drawn as shapes stand in, so the sprite
-/// limit counts theirs.
-static BLANK_TILES: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 8 * Tiles::TILE] });
+/// Sixteen blank tiles (a 32x32 part's): the parts drawn as shapes stand
+/// in, so the sprite limit counts theirs.
+static BLANK_TILES: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 16 * Tiles::TILE] });
 
-/// In the enhanced mode, 8x8 parts whose tile has a drawing (`drawings`, by
-/// the part's first tile) drawn as shapes: each part blank in its place,
+/// In the enhanced mode, parts that have a drawing (`drawings`, by the
+/// part's first tile over `per`, the tiles a drawing is) drawn as shapes:
+/// each part blank in its place,
 /// its drawing flipped as it is and in its palette on the text layer as
 /// deep as it (`tags`, by the parts' places in the queue from `at`).
-fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes::Drawing], text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
+fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes::Drawing], per: usize, text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
     tags.resize(at, None);
     if !text.draws_shapes() || drawings.is_empty() {
         tags.resize(at + parts.len(), None);
@@ -2196,7 +2197,7 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
     }
     parts
         .into_iter()
-        .map(|part| match drawings.get(part.first_tile) {
+        .map(|part| match drawings.get(part.first_tile / per.max(1)).filter(|_| part.first_tile % per.max(1) == 0) {
             Some(d) => {
                 let tag = text.tag();
                 tags.push(Some(tag));
@@ -2469,8 +2470,11 @@ pub fn draw<'a>(
     // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
     // after the cursor (EXE6's `sub_8026CCC`).
     let regular_first = b.content.rules().custom_screen.states_in_choosing;
+    // (The Regular chip's frame: as shapes where the pack has its drawings,
+    // by its frame, 16 tiles each.)
     if drawn.regular && regular_first {
-        queue.push(regular_part(&v, a));
+        let parts = drawn_parts(vec![regular_part(&v, a)], &a.shapes.regular, 16, text, &mut tags, queue.len());
+        queue.extend(parts);
     }
     // The offered form's flying icon (EXE5's soul choice's: its state 9's
     // routines draw it before the screen's others).
@@ -2482,7 +2486,7 @@ pub fn draw<'a>(
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(&v, packs, problems));
     if let Some(frame) = drawn.cursor {
-        let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, text, &mut tags, queue.len());
+        let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, 1, text, &mut tags, queue.len());
         queue.extend(parts);
     }
     queue.extend(element_part(&v, a, place));
@@ -2498,13 +2502,14 @@ pub fn draw<'a>(
         queue.push(part);
     }
     if drawn.regular && !regular_first {
-        queue.push(regular_part(&v, a));
+        let parts = drawn_parts(vec![regular_part(&v, a)], &a.shapes.regular, 16, text, &mut tags, queue.len());
+        queue.extend(parts);
     }
     if drawn.held {
         queue.extend(held_part(&v, packs, problems));
     }
     if let Some(frame) = drawn.form_list_cursor {
-        let parts = drawn_parts(form_list_cursor_parts(&v, a, frame), &a.shapes.form_list_cursor, text, &mut tags, queue.len());
+        let parts = drawn_parts(form_list_cursor_parts(&v, a, frame), &a.shapes.form_list_cursor, 1, text, &mut tags, queue.len());
         queue.extend(parts);
     }
     for (k, part) in queue.into_iter().enumerate() {

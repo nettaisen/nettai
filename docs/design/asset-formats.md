@@ -450,7 +450,8 @@ of them are centered in (`form_name_box`).
 **Frames as shapes** (`shapes` in `hud.json` and `custom.json`, a banner's
 `bar`; text-rendering.md §13): the HUD's and the custom screen's frames as
 filled shapes, which the enhanced graphics draw at the output's resolution
-in place of their pictures. Each is an SVG file under `shapes/` beside the
+in place of their pictures (a banner with no bar, a logo: its `logo`, the
+whole picture). Each is an SVG file under `shapes/` beside the
 pictures: its `viewBox` the picture's size in frame pixels, its shapes
 (`rect`, with `rx` a rounded one; `circle`; `polygon`; `path` of absolute M,
 L, H, V, A and Z) filled one over another in the file's order, each
@@ -466,7 +467,7 @@ viewing. The JSON says what SVG can't: which cells of a map a drawing
 stands in for (a window map's, the gauge's frame, the chatbox's boxes:
 `parts`, each a file and its cells, the first drawing whose pixels a cell
 has), and which of a set each file is (the gauge's cells and full frames,
-the cursors, each button's sets by name, the chip window's pictures by
+the cursors, the Regular chip's frame, each button's sets by name, the chip window's pictures by
 name, a language's own as `NAME-L`). The emotion window's faces are kept
 without the ring round them (`mugshot_frame`: the ring as a picture, each
 face's ring color; none where a face covers its ring and keeps it); the

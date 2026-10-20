@@ -442,7 +442,7 @@ impl Views {
             "hud/navi-box" => self.navi[k],
             n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
             n if n.starts_with("hud/chatbox") => self.chatbox[k],
-            n if n.starts_with("custom/cursor") => self.cursor[k],
+            n if n.starts_with("custom/cursor") || n.starts_with("custom/regular") => self.cursor[k],
             n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
             n if n.starts_with("custom/picture") => self.picture[k],
             "custom/form-name-bar" => self.form_name[k],
@@ -756,6 +756,9 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     if let Some((_, layers)) = nettai_content::letters::form_names_layered(c).0.first() {
         s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form-name-bar", g));
     }
+    // The Regular chip's frame, its frames (32x32 each).
+    let regular: Vec<Option<Drawing>> = (0..c.regular.len() / 16).map(|k| sh.tiles(&format!("custom/regular-{k}"), &c.regular, 16 * k, 4, 4)).collect();
+    s.regular = all(regular);
     // (By name, as a pack keeps them.)
     s.buttons.sort_by(|a, b| a.0.cmp(&b.0));
     s.pictures.sort_by(|a, b| a.0.cmp(&b.0));

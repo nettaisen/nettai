@@ -309,6 +309,8 @@ pub struct CustomShapes {
     /// The bar the form list's names lie on (9x2 tiles), their portraits
     /// over it kept as pictures.
     pub form_name_bar: Option<Drawing>,
+    /// The Regular chip's frame (32x32), its frames.
+    pub regular: Vec<Drawing>,
 }
 
 impl CustomShapes {

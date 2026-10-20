@@ -1792,9 +1792,10 @@ What stands in for what:
 - **HUD**: the HP box, the gauge's frame (its word as text, §12) and cells (the fill cut where it ends, so it fills
   smoothly), its full shimmer's frames, the L or R cells; the emotion window's frame (its ring a drawing; the faces kept
   without it in the pack, `MugshotFrame`), the count box and the link navi's box; the banners' bars (with their
-  squash); the chatbox's boxes, open and opening.
+  squash); the English Program Advance logos, whole; the chatbox's boxes, open and opening.
 - **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
-  opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the empty slots' boxes
+  opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the Regular chip's
+  frame, the empty slots' boxes
   (square, as every box a chip's icon goes in) and the slots' code plates (rounded, the empty ones' too), the enemy
   names' bar, the Cross names' bar, OK (in the window's drawing), the buttons by set (`button-NAME-K`: SHUFFLE in all
   three games, EXE5's soul and arm change buttons, EXE4's soul button), and the chip window's panel for OK and the
