@@ -18,7 +18,8 @@
 //! License 1.1), whose square capitals, narrowed, are near the game's; it
 //! has kana and kanji too. Its strings take the original's paint
 //! ([`Ink`](crate::textlayer::Ink)): a fill that changes down the capitals,
-//! a rim, and a banner's bar under them (its shapes: [`Filled`](crate::textlayer::Filled)).
+//! a rim. A drawing of a frame ([`Drawn`](crate::textlayer::Drawn)) is
+//! filled with analytic coverage, its shapes one over another.
 //! docs/design/text-rendering.md §12.
 
 use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
@@ -943,10 +944,17 @@ impl TextRenderer {
     /// Draw a frame's text items over its scaled picture in `out` (0RGB,
     /// `out_w` pixels a row), each where the frame's depth keys let it.
     pub fn draw(&mut self, items: &[TextItem], depth: &[u32], place: &Placement, out: &mut [u32], out_w: usize) {
+        self.draw_over(items, depth, None, place, out, out_w);
+    }
+
+    /// [`TextRenderer::draw`], each item hidden too where an overlay in
+    /// front of it was drawn (`cover`: the overlays' depth keys on the
+    /// output's pixels, `smooth::draw_overlays_covering`).
+    pub fn draw_over(&mut self, items: &[TextItem], depth: &[u32], cover: Option<&[u32]>, place: &Placement, out: &mut [u32], out_w: usize) {
         // The frame pixel each output column and row of the picture shows.
         let columns: Vec<i32> = (0..place.width).map(|dx| place.frame_pixel(place.x + dx, place.y).map_or(0, |p| p.0)).collect();
         let rows: Vec<i32> = (0..place.height).map(|dy| place.frame_pixel(place.x, place.y + dy).map_or(0, |p| p.1)).collect();
-        let frame = FrameMap { x: place.x, y: place.y, columns: &columns, rows: &rows };
+        let frame = FrameMap { x: place.x, y: place.y, columns: &columns, rows: &rows, cover };
         for item in items {
             self.draw_item(item, depth, place, &frame, out, out_w);
         }
@@ -954,7 +962,11 @@ impl TextRenderer {
 
     fn draw_item(&mut self, item: &TextItem, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
         let layout = if item.fitted.is_some() { Layout::default() } else { self.layout(&item.text, item.role, item.rect.w).clone() };
-        if layout.glyphs.is_empty() && item.bar.is_none() && item.fitted.is_none() {
+        if let Some(d) = &item.drawn {
+            self.draw_drawn(item, d, depth, place, frame, out, out_w);
+            return;
+        }
+        if layout.glyphs.is_empty() && item.fitted.is_none() {
             return;
         }
         let s = place.scale;
@@ -1023,8 +1035,8 @@ impl TextRenderer {
             // its bar, then its glyphs' coverage, the rim around it, the
             // shadow and the face's fill drawn from it.
             let key = format!(
-                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}",
-                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.bar, item.fine, place, bounds
+                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}",
+                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.fine, place, bounds
             );
             if !self.painted.contains_key(&key) {
                 if self.painted.len() >= PAINTED_KEPT {
@@ -1046,7 +1058,65 @@ impl TextRenderer {
         }
     }
 
-    /// A lettering item painted ([`Painted`]): its bar, and its glyphs' coverage once (a [`Mask`]), the rim
+    /// A drawing ([`Drawn`](crate::textlayer::Drawn)) over the picture: its
+    /// regions filled one over another at the output's resolution in its box
+    /// (squashed about its middle as a banner's words are), painted once for
+    /// what it is and where, then drawn through its clip, its cells and the
+    /// frame's depth keys.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_drawn(&mut self, item: &TextItem, d: &crate::textlayer::Drawn, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
+        let s = place.scale;
+        let clip = item.clip.intersect(Rect::SCREEN);
+        if clip.is_empty() {
+            return;
+        }
+        let bounds = (
+            place.x + (clip.x as f32 * s).floor() as i32,
+            place.y + (clip.y as f32 * s).floor() as i32,
+            place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32,
+            place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32,
+        );
+        let (fine_x, fine_y) = (item.fine.0 as f32 / 65536.0, item.fine.1 as f32 / 65536.0);
+        let (x0, y0) = (item.rect.x as f32 + fine_x, item.rect.y as f32 + fine_y);
+        let mid = y0 + item.rect.h as f32 / 2.0;
+        let k = match item.vscale {
+            Some(n) if n > 0 => 256.0 / n as f32,
+            _ => 1.0,
+        };
+        let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
+        let key = format!("drawn|{}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}", d.hash, item.rect, item.fades, item.vscale, item.fine, place, bounds);
+        if !self.painted.contains_key(&key) {
+            if self.painted.len() >= PAINTED_KEPT {
+                self.painted.clear();
+            }
+            let to_output = |p: &[f32; 2]| [place.x as f32 + (x0 + p[0]) * s, place.y as f32 + (mid + (y0 + p[1] - mid) * k) * s];
+            let shapes: Vec<(Vec<Vec<[f32; 2]>>, u16)> = d.regions.iter().map(|(rings, c)| (rings.iter().map(|r| r.iter().map(to_output).collect()).collect(), *c)).collect();
+            let painted = rings_area(&shapes, bounds).map(|area| {
+                let mut p = Painted::new(area);
+                fill_rings(&shapes, &mut p, &color);
+                p
+            });
+            self.painted.insert(key.clone(), painted);
+        }
+        let Some(p) = &self.painted[&key] else { return };
+        // (Only in its cells, where it has them: the frame pixel each output
+        // pixel shows, from its box's top left.)
+        let in_cells = |x: i32, y: i32| -> bool {
+            let Some(cells) = &d.cells else { return true };
+            let (Some(&fx), Some(&fy)) = (frame.columns.get((x - frame.x) as usize), frame.rows.get((y - frame.y) as usize)) else { return false };
+            let (cx, cy) = ((fx - item.rect.x).div_euclid(8), (fy - item.rect.y).div_euclid(8));
+            cx >= 0 && cy >= 0 && cells.iter().any(|c| c[0] as i32 == cx && c[1] as i32 == cy)
+        };
+        let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
+        for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
+            let (x, y) = (p.x + (i % p.w) as i32, p.y + (i / p.w) as i32);
+            if in_cells(x, y) {
+                target.blend(x, y, rgb, a);
+            }
+        }
+    }
+
+    /// A lettering item painted ([`Painted`]): its glyphs' coverage once (a [`Mask`]), the rim
     /// around it, the shadow and the face's fill down the capitals drawn from it.
     #[allow(clippy::too_many_arguments)]
     fn paint_inked(
@@ -1059,7 +1129,7 @@ impl TextRenderer {
         place: &Placement,
         bounds: (i32, i32, i32, i32),
         (k, mid): (f32, f32),
-        (fine_x, fine_y): (f32, f32),
+        (_, fine_y): (f32, f32),
         color: &impl Fn(u16) -> u32,
     ) -> Option<Painted> {
         let s = place.scale;
@@ -1079,26 +1149,10 @@ impl TextRenderer {
                 ((place.x as f32 + right * s).ceil() as i32).min(bounds.2),
                 ((place.y as f32 + bottom * s).ceil() as i32).min(bounds.3),
             );
-            let to_output = |p: &[f32; 2]| [place.x as f32 + (p[0] + fine_x) * s, place.y as f32 + (mid + fine_y + (p[1] + fine_y - mid - fine_y) * k) * s];
-            let bar = item.bar.as_ref().and_then(|bar| {
-                let out: Vec<(Vec<[f32; 2]>, u16)> = bar.iter().map(|f| (f.points.iter().map(to_output).collect(), f.color)).collect();
-                let area = shapes_area(&out, bounds)?;
-                Some((out, area))
-            });
-            let all = match bar {
-                Some((_, b)) => (area.0.min(b.0), area.1.min(b.1), area.2.max(b.2), area.3.max(b.3)),
-                None => area,
-            };
-            if all.0 >= all.2 || all.1 >= all.3 {
+            if area.0 >= area.2 || area.1 >= area.3 {
                 return None;
             }
-            let mut out = Painted::new(all);
-            if let Some((bar, _)) = &bar {
-                draw_shapes(bar, &mut out, color);
-            }
-            if area.0 >= area.2 || area.1 >= area.3 {
-                return Some(out);
-            }
+            let mut out = Painted::new(area);
             let mut mask = Mask::new(area);
             self.paint_layout(layout, st, at, place, area, 0, &mut mask);
             // (A frame pixel all round, even, as the pictures' are: each
@@ -1436,10 +1490,10 @@ impl Painted {
     }
 }
 
-/// The output pixels shapes cover (their corners in output pixels), within
-/// `bounds`; none if none.
-fn shapes_area(shapes: &[(Vec<[f32; 2]>, u16)], bounds: (i32, i32, i32, i32)) -> Option<(i32, i32, i32, i32)> {
-    let points = shapes.iter().flat_map(|s| s.0.iter());
+/// The output pixels regions cover (their rings' corners in output
+/// pixels), within `bounds`; none if none.
+fn rings_area(shapes: &[(Vec<Vec<[f32; 2]>>, u16)], bounds: (i32, i32, i32, i32)) -> Option<(i32, i32, i32, i32)> {
+    let points = shapes.iter().flat_map(|s| s.0.iter().flatten());
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
     for p in points {
         (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
@@ -1448,16 +1502,22 @@ fn shapes_area(shapes: &[(Vec<[f32; 2]>, u16)], bounds: (i32, i32, i32, i32)) ->
     (area.0 < area.2 && area.1 < area.3).then_some(area)
 }
 
-/// Fill shapes (their corners in output pixels) one over another in
-/// `target`: each polygon's analytic coverage (zeno's), its color.
-fn draw_shapes(shapes: &[(Vec<[f32; 2]>, u16)], target: &mut Painted, color: &impl Fn(u16) -> u32) {
-    use swash::zeno::{Command, Mask as Coverage};
-    for (points, c) in shapes {
-        let Some(first) = points.first() else { continue };
-        let mut path = vec![Command::MoveTo(Vector::new(first[0], first[1]))];
-        path.extend(points[1..].iter().map(|p| Command::LineTo(Vector::new(p[0], p[1]))));
-        path.push(Command::Close);
-        let (cover, at) = Coverage::new(&path).render();
+/// Fill regions (their rings' corners in output pixels, even-odd) one over
+/// another in `target`: each one's analytic coverage (zeno's), its color.
+fn fill_rings(shapes: &[(Vec<Vec<[f32; 2]>>, u16)], target: &mut Painted, color: &impl Fn(u16) -> u32) {
+    use swash::zeno::{Command, Fill, Mask as Coverage};
+    for (rings, c) in shapes {
+        let mut path = Vec::new();
+        for ring in rings {
+            let Some(first) = ring.first() else { continue };
+            path.push(Command::MoveTo(Vector::new(first[0], first[1])));
+            path.extend(ring[1..].iter().map(|p| Command::LineTo(Vector::new(p[0], p[1]))));
+            path.push(Command::Close);
+        }
+        if path.is_empty() {
+            continue;
+        }
+        let (cover, at) = Coverage::new(&path).style(Fill::EvenOdd).render();
         let rgb = color(*c);
         for (i, &a) in cover.iter().enumerate().filter(|(_, a)| **a > 0) {
             let (x, y) = (at.left + (i as u32 % at.width) as i32, at.top + (i as u32 / at.width) as i32);
@@ -1551,6 +1611,8 @@ struct FrameMap<'f> {
     y: i32,
     columns: &'f [i32],
     rows: &'f [i32],
+    /// The overlays' depth keys on the output's pixels (none: no overlays).
+    cover: Option<&'f [u32]>,
 }
 
 /// Where an item's pixels go: the output, through its clip and the frame's
@@ -1576,6 +1638,9 @@ impl Target<'_> {
         }
         debug_assert!((fy as usize) < HEIGHT);
         let i = y as usize * self.out_w + x as usize;
+        if self.frame.cover.and_then(|c| c.get(i)).is_some_and(|&d| d < self.key) {
+            return;
+        }
         let Some(o) = self.out.get_mut(i) else { return };
         if a == 255 {
             *o = rgb;
@@ -1602,7 +1667,8 @@ impl Target<'_> {
         let (xa, xb) = (xa.max(f.x), xb.min(f.x + f.columns.len() as i32));
         let (clip0, clip1) = (self.clip.x, self.clip.x + self.clip.w);
         for (x, &fx) in (xa..xb).zip(&f.columns[(xa - f.x).max(0) as usize..]) {
-            if fx >= clip0 && fx < clip1 && depth.is_none_or(|d| d[fx as usize] >= self.key)
+            let covered = f.cover.and_then(|c| c.get(row + x as usize)).is_some_and(|&d| d < self.key);
+            if fx >= clip0 && fx < clip1 && depth.is_none_or(|d| d[fx as usize] >= self.key) && !covered
                 && let Some(o) = self.out.get_mut(row + x as usize)
             {
                 *o = rgb;

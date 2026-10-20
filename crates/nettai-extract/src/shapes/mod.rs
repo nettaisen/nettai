@@ -91,6 +91,7 @@ const MATCH: f32 = 0.85;
 /// The drawings of one game read and checked, and what was found.
 pub struct Shaper {
     game: String,
+    views: Views,
     notes: Vec<String>,
     /// (With `NETTAI_SHAPES_SOURCES` set to a folder: each picture written
     /// there as an SVG of its pixels, with its drawing beside where it has
@@ -100,9 +101,9 @@ pub struct Shaper {
 }
 
 impl Shaper {
-    pub fn new(game: &str) -> Shaper {
+    pub fn new(game: &str, views: Views) -> Shaper {
         let sources = std::env::var_os("NETTAI_SHAPES_SOURCES").map(std::path::PathBuf::from);
-        Shaper { game: game.to_string(), notes: Vec::new(), sources, kept: Vec::new() }
+        Shaper { game: game.to_string(), views, notes: Vec::new(), sources, kept: Vec::new() }
     }
 
     /// The hand-drawn file of `name` for this game (`GAME/NAME.svg`), else
@@ -129,7 +130,9 @@ impl Shaper {
             }
         };
         let d = match nettai_content::shapes::from_svg(text) {
-            Ok(d) => d,
+            // (Its fills its colors in the picture's first palette, as the
+            // pack keeps it.)
+            Ok(d) => nettai_assets::shapes::Drawing { source: nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k)), ..d },
             Err(e) => {
                 self.notes.push(format!("{path}: {e}: it stays a picture"));
                 return None;
@@ -321,7 +324,7 @@ impl Shaper {
 /// `banner_name`; and the emotion window's frame apart from its faces:
 /// `Hud::mugshot_frame`), and say what was found.
 pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> String) -> Vec<String> {
-    let mut sh = Shaper::new(game);
+    let mut sh = Shaper::new(game, Views::of(bundle));
     let mut problems = Vec::new();
     if !bundle.hud.tiles.is_empty() {
         // The banners' bars, in each language's pictures (a bar the same as
@@ -354,33 +357,69 @@ pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> Stri
         bundle.custom.shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
     }
     // (The colors each is looked at in: its picture's first palette.)
-    problems.extend(sh.finish(&|name, p, k| view(bundle, name, p, k)));
+    let views = Views::of(bundle);
+    problems.extend(sh.finish(&|name, p, k| views.color(name, p, k)));
     problems
 }
 
-/// The color drawing `name` (`hud/hp-box`, `banners/battle-start`...) is
-/// looked at in for its palette entry (row `p`, index `k`): its picture's
-/// first palette's.
-pub fn view(bundle: &Bundle, name: &str, p: u8, k: u8) -> u16 {
-    let (h, c) = (&bundle.hud, &bundle.custom);
-    let k = k as usize & 15;
-    let face = h.mugshots.first().map(|m| m.1).unwrap_or_default();
-    let frame = c.frame_palettes.first().copied().unwrap_or_default();
-    match name {
-        n if n.starts_with("banner") => h.banner_palette[k],
-        n if n.starts_with("hud/gauge") => h.gauge_palette[k],
-        "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => h.hp_palettes[0][k],
-        n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") || n == "hud/navi-box" => face[k],
-        "custom/empty-icon" => c.icon_palette[k],
-        n if n.starts_with("custom/cursor") => c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default()[k],
-        n if n.starts_with("custom/form-list-cursor") => c.form_list_cursor_palette[k],
-        _ => match p {
-            11 => c.icon_palette[k],
-            13 => h.hp_palettes[0][k],
-            14 | 15 => c.other_palette[k],
-            _ => frame[k],
-        },
+/// The colors the drawings are looked at in, by their names: each
+/// picture's first palette.
+pub struct Views {
+    banner: nettai_assets::Palette,
+    gauge: nettai_assets::Palette,
+    hp: nettai_assets::Palette,
+    face: nettai_assets::Palette,
+    navi: nettai_assets::Palette,
+    icon: nettai_assets::Palette,
+    cursor: nettai_assets::Palette,
+    form_cursor: nettai_assets::Palette,
+    frame: nettai_assets::Palette,
+    other: nettai_assets::Palette,
+}
+
+impl Views {
+    pub fn of(bundle: &Bundle) -> Views {
+        let (h, c) = (&bundle.hud, &bundle.custom);
+        Views {
+            banner: h.banner_palette,
+            gauge: h.gauge_palette,
+            hp: h.hp_palettes[0],
+            face: h.mugshots.first().map(|m| m.1).unwrap_or_default(),
+            navi: h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or_default(),
+            icon: c.icon_palette,
+            cursor: c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default(),
+            form_cursor: c.form_list_cursor_palette,
+            frame: c.frame_palettes.first().copied().unwrap_or_default(),
+            other: c.other_palette,
+        }
     }
+
+    /// The color drawing `name` (`hud/hp-box`, `banners/battle-start`...)
+    /// shows its palette entry (row `p`, index `k`) in.
+    pub fn color(&self, name: &str, p: u8, k: u8) -> u16 {
+        let k = k as usize & 15;
+        match name {
+            n if n.starts_with("banner") => self.banner[k],
+            n if n.starts_with("hud/gauge") => self.gauge[k],
+            "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => self.hp[k],
+            "hud/navi-box" => self.navi[k],
+            n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
+            n if n.starts_with("custom/cursor") => self.cursor[k],
+            n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
+            _ => match p {
+                11 => self.icon[k],
+                13 => self.hp[k],
+                14 | 15 => self.other[k],
+                _ => self.frame[k],
+            },
+        }
+    }
+}
+
+/// The color drawing `name` is looked at in for its palette entry (row `p`,
+/// index `k`): its picture's first palette's.
+pub fn view(bundle: &Bundle, name: &str, p: u8, k: u8) -> u16 {
+    Views::of(bundle).color(name, p, k)
 }
 
 /// A banner's bar's picture ([`nettai_content::letters::bar_colors`]: none

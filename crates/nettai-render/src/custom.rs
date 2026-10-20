@@ -690,6 +690,12 @@ struct Window {
     form_name_tiles: Vec<(u16, FormHandle, usize)>,
     /// Where the blocks go among the layer's tile numbers (the pack's).
     layout: nettai_assets::CustomLayout,
+    /// In the enhanced mode, the frames drawn as shapes (`shape_frames`):
+    /// each one's cells (their first column, row and how many columns) and
+    /// its item from the cells' top left; and the cells they stand in for,
+    /// whose tiles aren't drawn.
+    shapes: Vec<(usize, usize, usize, TextItem)>,
+    drawn_cells: Vec<bool>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -772,6 +778,8 @@ impl Window {
             codes: Vec::new(),
             form_name_tiles: Vec::new(),
             layout: a.layout,
+            shapes: Vec::new(),
+            drawn_cells: vec![false; COLUMNS * ROWS],
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
         // Cross tab) or without; or the form list window's.
@@ -823,7 +831,81 @@ impl Window {
         w.letter_labels(v, text, problems);
         w.letter_codes(v, text, problems);
         w.letter_form_names(v, text, problems);
+        w.shape_frames(v, form_list, text, problems);
         w
+    }
+
+    /// In the enhanced mode, the frames the pack has drawings of drawn as
+    /// shapes (`nettai_assets::shapes`): the window's map's (the drawings
+    /// of its cells, each where the cell is laid as the map says: a cell the
+    /// screen laid otherwise is drawn as its tiles, a problem), and the
+    /// picked column's cells, flipped as they are laid; each in the palette
+    /// its cells are drawn in.
+    fn shape_frames(&mut self, v: &View, form_list: Option<usize>, text: &TextSink, problems: &mut Problems) {
+        if !text.draws_shapes() {
+            return;
+        }
+        let a = v.assets;
+        let (drawing, map) = match form_list {
+            Some(i) => (a.shapes.form_list_maps.get(i), a.form_list_maps.get(i)),
+            None => {
+                let k = (v.screen.look.form_list_tab as usize).min(a.window_maps.len().saturating_sub(1));
+                (a.shapes.window_maps.get(k), a.window_maps.get(k))
+            }
+        };
+        if let (Some(Some(m)), Some(map)) = (drawing, map) {
+            for part in &m.parts {
+                let cells: Vec<[u8; 2]> = part
+                    .cells
+                    .iter()
+                    .copied()
+                    .filter(|&[c, r]| {
+                        let i = r as usize * COLUMNS + c as usize;
+                        let same = map.get(i).is_some_and(|e| *e == self.map[i]);
+                        if !same {
+                            problems.note(format!("the window's drawing {:?} stands in for cell ({c}, {r}), which the screen laid otherwise: drawn as its tiles", part.name));
+                        }
+                        same
+                    })
+                    .collect();
+                if cells.is_empty() {
+                    continue;
+                }
+                for &[c, r] in &cells {
+                    self.drawn_cells[r as usize * COLUMNS + c as usize] = true;
+                }
+                let palettes = self.palettes;
+                let mut d = crate::shapes::drawn(&part.drawing, |r| palettes[r.palette as usize & 15][r.color as usize & 15], (false, false), None);
+                d.cells = Some(cells);
+                self.shapes.push((0, 0, COLUMNS, crate::shapes::item(d, (0, 0), (8 * COLUMNS as i32, 8 * ROWS as i32))));
+            }
+        }
+        // The picked column's cells, as `column` laid them.
+        if a.shapes.column_cells.len() >= 2 {
+            let [left, right] = self.layout.column_columns.map(usize::from);
+            for i in 0..5 {
+                let row = self.layout.column_row as usize + 2 * i;
+                for x in [left, right] {
+                    let e = self.map[row * COLUMNS + x];
+                    let Some(k) = e.tile.checked_sub(self.layout.column_cells).map(|k| k as usize / 2).filter(|&k| k < 2) else { continue };
+                    let palette = self.palettes[e.palette as usize & 15];
+                    let d = crate::shapes::drawn(&a.shapes.column_cells[k], |r| palette[r.color as usize & 15], (e.hflip, e.vflip), None);
+                    self.shapes.push((x, row, 1, crate::shapes::item(d, (0, 0), (8, 16))));
+                    self.drawn_cells[row * COLUMNS + x] = true;
+                    self.drawn_cells[(row + 1) * COLUMNS + x] = true;
+                }
+            }
+        }
+    }
+
+    /// The frames drawn as shapes (`shape_frames`) where the window shows
+    /// them, before the words on them.
+    fn shape_items(&self, text: &mut TextSink, place: Placement) {
+        for (col, row, w, item) in &self.shapes {
+            let Some((x, clip)) = self.columns_at(*col, *w, place) else { continue };
+            let rect = item.rect.offset(x, 8 * *row as i32);
+            text.push(Plane::Hud, TextItem { rect, clip: clip.intersect(rect), ..item.clone() });
+        }
     }
 
     /// In the enhanced mode, the chip codes the window shows (`codes`) in
@@ -864,6 +946,17 @@ impl Window {
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));
+            // (A slot's code's plate drawn as shapes, where the pack has
+            // its drawing, under the letter.)
+            if let Some(plate) = a.shapes.slot_code.as_ref().filter(|_| slot && text.draws_shapes()) {
+                let d = crate::shapes::drawn(plate, |r| palette[r.color as usize & 15], (false, false), None);
+                self.shapes.push((block.col, block.row, block.w, crate::shapes::item(d, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
+                for c in block.col..block.col + block.w {
+                    for r in block.row..block.row + block.h {
+                        self.drawn_cells[r * COLUMNS + c] = true;
+                    }
+                }
+            }
         }
     }
 
@@ -1469,10 +1562,14 @@ impl Window {
         }
     }
 
-    /// Draw window columns `from..to` on the layer, scrolled.
+    /// Draw window columns `from..to` on the layer, scrolled (but the cells
+    /// drawn as shapes: `shape_frames`).
     fn draw(&self, layer: &mut Layer, place: Placement) {
         for y in 0..ROWS {
             for x in place.from..place.to {
+                if self.drawn_cells[y * COLUMNS + x] {
+                    continue;
+                }
                 let e = self.map[y * COLUMNS + x];
                 let Some(px) = screen_x(x as i32, place.scroll) else { continue };
                 let past_ranged = e.palette & 15 >= 14;
@@ -1812,24 +1909,40 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     // the language's: the name still ends at column 30.)
     let len = if text.takes(name) { fonts::box_cells(v.hud, name, glyphs.len(), ENEMY_NAME_CELLS) } else { glyphs.len() };
     let len = len.min(ENEMY_NAME_CELLS);
-    let col = 0x1E - len as i32;
+    let name_col = 0x1E - len as i32;
     let palette = &w.palettes[13];
-    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), (Role::FittedCell, Align::Left));
     // The bar: the slanted end, then one cell a glyph (eight at most; a
-    // ninth glyph has bar cells from column 21 on, no end).
+    // ninth glyph has bar cells from column 21 on, no end). In the enhanced
+    // mode drawn as shapes where the pack has its drawings, under the name.
     let bar = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 13 };
     let cells = len.min(8);
     let mut col = 0x1D - cells as i32;
+    let drawn = (text.draws_shapes() && v.assets.shapes.name_bar.len() >= 2).then_some(&v.assets.shapes.name_bar);
+    let piece = |text: &mut TextSink, d: &nettai_assets::shapes::Drawing, col: i32| {
+        let item = crate::shapes::item(crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None), (layer_x(col, 0), 0), (8, 16));
+        text.push(Plane::Hud, item);
+    };
     if len < ENEMY_NAME_CELLS {
-        w.cell(hud_layer, bar(w.layout.name_bar), col, 0, 0);
-        w.cell(hud_layer, bar(w.layout.name_bar + 1), col, 1, 0);
+        match drawn {
+            Some(d) => piece(text, &d[0], col),
+            None => {
+                w.cell(hud_layer, bar(w.layout.name_bar), col, 0, 0);
+                w.cell(hud_layer, bar(w.layout.name_bar + 1), col, 1, 0);
+            }
+        }
         col += 1;
     }
     let n = if len < ENEMY_NAME_CELLS { len } else { ENEMY_NAME_CELLS };
     for k in 0..n as i32 {
-        w.cell(hud_layer, bar(w.layout.name_bar + 2), col + k, 0, 0);
-        w.cell(hud_layer, bar(w.layout.name_bar + 3), col + k, 1, 0);
+        match drawn {
+            Some(d) => piece(text, &d[1], col + k),
+            None => {
+                w.cell(hud_layer, bar(w.layout.name_bar + 2), col + k, 0, 0);
+                w.cell(hud_layer, bar(w.layout.name_bar + 3), col + k, 1, 0);
+            }
+        }
     }
+    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * name_col, 0), (Role::FittedCell, Align::Left));
 }
 
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
@@ -1928,6 +2041,41 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             mosaic: None,
             vscale: None,
             affine: None,
+        })
+        .collect()
+}
+
+/// Eight blank tiles: the parts drawn as shapes stand in, so the sprite
+/// limit counts theirs.
+static BLANK_TILES: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 8 * Tiles::TILE] });
+
+/// In the enhanced mode, 8x8 parts whose tile has a drawing (`drawings`, by
+/// the part's first tile) drawn as shapes: each part blank in its place,
+/// its drawing flipped as it is and in its palette on the text layer as
+/// deep as it (`tags`, by the parts' places in the queue from `at`).
+fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes::Drawing], text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
+    tags.resize(at, None);
+    if !text.draws_shapes() || drawings.is_empty() {
+        tags.resize(at + parts.len(), None);
+        return parts;
+    }
+    parts
+        .into_iter()
+        .map(|part| match drawings.get(part.first_tile) {
+            Some(d) => {
+                let tag = text.tag();
+                tags.push(Some(tag));
+                let (x, y) = (part.x as i32, part.y as i32);
+                let (x, y) = (if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y });
+                let palette = part.palette;
+                let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (part.hflip, part.vflip), None);
+                text.push(Plane::Sprite(tag), crate::shapes::item(drawn, (x, y), (part.width as i32, part.height as i32)));
+                SpritePart { tiles: &BLANK_TILES, first_tile: 0, ..part }
+            }
+            None => {
+                tags.push(None);
+                part
+            }
         })
         .collect()
 }
@@ -2125,6 +2273,7 @@ pub fn draw<'a>(
     }
     w.known_icons(&v, place, problems);
     w.mark_icons(&v, place, problems);
+    w.shape_items(text, place);
     w.name_item(text, place);
     w.help_items(text, place);
     w.damage_item(&v, text, place);
@@ -2177,6 +2326,9 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
+    // (Parts drawn as shapes in the enhanced mode, each queued with its
+    // tag: `drawn_parts`.)
+    let mut tags: Vec<Option<u32>> = Vec::new();
     // Where the screen's states are the choosing's, its tick queues the
     // Regular chip's frame before the state's own sprites (EXE4's
     // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
@@ -2195,7 +2347,8 @@ pub fn draw<'a>(
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(&v, packs, problems));
     if let Some(frame) = drawn.cursor {
-        queue.extend(cursor_parts(&v, a, frame));
+        let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, text, &mut tags, queue.len());
+        queue.extend(parts);
     }
     queue.extend(element_part(&v, a, place));
     // (A screen with an emblem of its own draws it on the window's map.)
@@ -2216,10 +2369,11 @@ pub fn draw<'a>(
         queue.extend(held_part(&v, packs, problems));
     }
     if let Some(frame) = drawn.form_list_cursor {
-        queue.extend(form_list_cursor_parts(&v, a, frame));
+        let parts = drawn_parts(form_list_cursor_parts(&v, a, frame), &a.shapes.form_list_cursor, text, &mut tags, queue.len());
+        queue.extend(parts);
     }
-    for part in queue {
-        list.insert_at(SPRITE_LAYER, 0, vec![part]);
+    for (k, part) in queue.into_iter().enumerate() {
+        list.insert_tagged(SPRITE_LAYER, 0, vec![part], tags.get(k).copied().flatten());
     }
     let _ = OK_SLOT;
 }

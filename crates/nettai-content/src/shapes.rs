@@ -306,7 +306,9 @@ pub type Files = Vec<(String, Vec<u8>)>;
 /// Write `d` as `shapes/NAME.svg` into `files`; its file's name.
 pub fn write(files: &mut Files, name: &str, d: &Drawing, view: &dyn Fn(u8, u8) -> u16) -> String {
     let file = format!("shapes/{name}.svg");
-    let text = if d.source.is_empty() { to_svg(d, view) } else { recolor(&d.source, view) };
+    // (A drawing read from its file is written as it was read: extraction
+    // set its fills.)
+    let text = if d.source.is_empty() { to_svg(d, view) } else { d.source.clone() };
     files.push((file.clone(), text.into_bytes()));
     file
 }
