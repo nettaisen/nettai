@@ -14,6 +14,7 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
+use nettai_assets::shapes::MugshotFrame;
 use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, HudLettering, MapEntry, NaviMugshot, Palette, TelopLook, TelopTiles, Tiles};
 use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
@@ -94,6 +95,24 @@ pub struct HudDoc {
     pub languages: BTreeMap<String, HudLanguageDoc>,
     /// How its pictures' letters and digits look (`crate::letters`).
     pub letters: crate::letters::HudLettersDoc,
+    /// Its frames as shapes (`crate::frames`).
+    #[serde(default, skip_serializing_if = "crate::shapes::HudShapesDoc::is_empty")]
+    pub shapes: crate::shapes::HudShapesDoc,
+    /// The emotion window's frame apart from the faces, whose images are
+    /// without it where it is apart.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mugshot_frame: Option<MugshotFrameDoc>,
+}
+
+/// The emotion window's frame (`nettai_assets::shapes::MugshotFrame`): its
+/// ring (an image as a face's, index 1 where the ring is), and each face's
+/// ring's color, by mugshot and the link navis' (null: the face's image
+/// keeps its ring, which its face covers in places).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MugshotFrameDoc {
+    pub ring: TileImage,
+    pub colors: Vec<Option<u8>>,
+    pub navi_colors: Vec<Option<u8>>,
 }
 
 /// `nettai_assets::HudLayout`: "PAUSE"'s place, the HP numbers' priority,
@@ -254,6 +273,9 @@ pub struct BannerDoc {
     /// Its glyphs, with the banner palette (none for the telops).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<TileImage>,
+    /// Its bar as shapes (`crate::shapes`: none, it has none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar: Option<String>,
 }
 
 fn concat(parts: &[&Tiles]) -> Tiles {
@@ -262,6 +284,8 @@ fn concat(parts: &[&Tiles]) -> Tiles {
 
 pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
+    // (The banners' bars' drawings: `crate::shapes`.)
+    let mut bars: crate::shapes::Files = Vec::new();
     // The pictures with letters in them, as images with their letters taken
     // off, the letters in a layer beside (`tiles::export_lettered`): the
     // gauge's (its words) and the counts' (their digits).
@@ -304,13 +328,17 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .collect();
     // Not in chip-icons/, where a chip may be named anything.
     let hidden_icon = image("hidden-icon.png", &h.hidden_icon, icon, &[h.icon_palette], 1);
+    // (A face whose frame is apart is written without it: `mugshot_frame`.)
+    let ringless = |faces: Option<&Vec<Option<(u8, Tiles)>>>, i: usize| faces.and_then(|f| f.get(i)).and_then(|f| f.as_ref()).map(|(_, t)| t.clone());
+    let frame = h.mugshot_frame.as_ref();
     let mugshots = h
         .mugshots
         .iter()
         .enumerate()
         .map(|(i, (t, p))| {
             let file = format!("mugshots/{}.png", names.mugshot(i as u8));
-            image(&file, t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
+            let t = ringless(frame.map(|f| &f.faces), i).unwrap_or_else(|| t.clone());
+            image(&file, &t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
         })
         .collect();
     let mugshot_boxes = if h.mugshot_boxes.iter().all(Tiles::is_empty) {
@@ -333,9 +361,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .enumerate()
         .map(|(i, m)| {
             let file = format!("mugshots/{}.png", names.mugshot(nettai_assets::NAVI_MUGSHOTS + i as u8));
-            image(&file, &m.tiles, face, &m.palettes, 2)
+            let t = ringless(frame.map(|f| &f.navi_faces), i).unwrap_or_else(|| m.tiles.clone());
+            image(&file, &t, face, &m.palettes, 2)
         })
         .collect();
+    let mug_palette = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
+    let mugshot_frame = frame.map(|f| MugshotFrameDoc {
+        ring: image("mugshots/frame.png", &f.ring, face, &[mug_palette], 0),
+        colors: f.faces.iter().map(|f| f.as_ref().map(|(c, _)| *c)).collect(),
+        navi_colors: f.navi_faces.iter().map(|f| f.as_ref().map(|(c, _)| *c)).collect(),
+    });
     let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
     let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
     let pause = image("pause.png", &h.pause, GLYPHS(5), &[h.enemy_palette], 0);
@@ -350,12 +385,14 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .map(|(i, b)| {
             let file = format!("banners/{}.png", names.banner(4 * i as u8));
             let img = (!b.glyphs.is_empty()).then(|| image(&file, &b.glyphs, GLYPHS(20), &[h.banner_palette], 1));
+            let bar = b.bar.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(h.banner_palette)));
             BannerDoc {
                 at: [b.x, b.y],
                 kind: b.kind,
                 glyphs: b.glyphs.len() / 2,
                 number_at: b.number_at.map(|(x, y)| [x, y]),
                 image: img,
+                bar,
             }
         })
         .collect();
@@ -388,6 +425,9 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
                     number_at: b.number_at.map(|(x, y)| [x, y]),
                     image: (!b.glyphs.is_empty())
                         .then(|| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), &b.glyphs, GLYPHS(20), &[l.banner_palette], 1)),
+                    bar: b.bar.as_ref().map(|d| {
+                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(l.banner_palette))
+                    }),
                 })
             })
             .collect();
@@ -483,8 +523,11 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         language: h.language.clone(),
         languages,
         letters,
+        shapes: crate::shapes::write_hud(&mut files, &h.shapes, h),
+        mugshot_frame,
     };
     files.extend(dialogue_pngs);
+    files.extend(bars);
     files.push(("hud.json".into(), json_lines(&doc)));
     files
 }
@@ -528,20 +571,43 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let (banner_digits, _) = img(&doc.banner_digits, report)?;
     let (waiting, waiting_pal) = img(&doc.waiting, report)?;
     let (warning, warning_pal) = img(&doc.warning, report)?;
+    // (A face whose frame is apart is its image with the ring laid over
+    // it in its color: `MugshotFrameDoc`.)
+    let mut frame = match &doc.mugshot_frame {
+        Some(f) => Some((MugshotFrame { ring: img(&f.ring, report)?.0, ..MugshotFrame::default() }, f)),
+        None => None,
+    };
     let mut mugshots = Vec::new();
-    for m in &doc.mugshots {
+    for (i, m) in doc.mugshots.iter().enumerate() {
         let (t, p) = img(m, report)?;
+        let t = match frame.as_mut() {
+            Some((f, d)) => {
+                let color = d.colors.get(i).copied().flatten();
+                f.faces.push(color.map(|c| (c, t.clone())));
+                color.map_or(t.clone(), |c| f.with_ring(&t, c))
+            }
+            None => t,
+        };
         mugshots.push((t, p[0]));
     }
     let mut navi_mugshots = Vec::new();
-    for m in &doc.navi_mugshots {
+    for (i, m) in doc.navi_mugshots.iter().enumerate() {
         let (tiles, p) = img(m, report)?;
         let (Some(&normal), Some(&angry)) = (p.first(), p.get(1)) else {
             report.error(&name, format!("{} needs two palettes (normal, angry)", m.file));
             return None;
         };
+        let tiles = match frame.as_mut() {
+            Some((f, d)) => {
+                let color = d.navi_colors.get(i).copied().flatten();
+                f.navi_faces.push(color.map(|c| (c, tiles.clone())));
+                color.map_or(tiles.clone(), |c| f.with_ring(&tiles, c))
+            }
+            None => tiles,
+        };
         navi_mugshots.push(NaviMugshot { tiles, palettes: [normal, angry] });
     }
+    let mugshot_frame = frame.map(|(f, _)| f);
     let mut mugshot_boxes = Vec::new();
     for b in &doc.mugshot_boxes {
         mugshot_boxes.push(match b {
@@ -574,6 +640,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             kind: b.kind,
             glyphs: if glyphs.is_empty() { glyphs } else { slice(&glyphs, 0, 2 * b.glyphs) },
             number_at: b.number_at.map(|[x, y]| (x, y)),
+            bar: b.bar.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default()),
         })
         .collect();
     let dialogue_font = import_dialogue_font(dir, prefix, &doc.dialogue_font, report)?;
@@ -672,6 +739,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             &gauge_frame,
             &(0..counts_base.len() / 4).map(|i| slice(&counts_base, 4 * i, 4)).collect::<Vec<_>>(),
         ),
+        shapes: crate::shapes::read_hud(dir, prefix, &doc.shapes, report),
+        mugshot_frame,
     })
 }
 
@@ -699,7 +768,8 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, gauge_frame: &[MapEn
                         }
                         None => Tiles::default(),
                     };
-                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)) })
+                    let bar = b.bar.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default());
+                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)), bar })
                 }
                 None => None,
             });

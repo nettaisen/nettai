@@ -222,6 +222,7 @@ pub fn banner_at(rom: &Rom, (banners, filler): (u32, u32), id: u32) -> BannerLay
         kind,
         glyphs,
         number_at,
+        bar: None,
     }
 }
 

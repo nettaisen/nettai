@@ -123,6 +123,9 @@ pub struct CustomDoc {
     pub window_emblem: Option<WindowEmblemDoc>,
     /// How its pictures' letters and digits look (`crate::letters`).
     pub letters: crate::letters::CustomLettersDoc,
+    /// Its frames as shapes (`crate::frames`).
+    #[serde(default, skip_serializing_if = "crate::shapes::CustomShapesDoc::is_empty")]
+    pub shapes: crate::shapes::CustomShapesDoc,
 }
 
 /// `nettai_assets::WindowLabel`: its name, its tiles (the first and the
@@ -192,6 +195,11 @@ pub struct LayoutDoc {
     /// (Left out: (2, 100), EXE6's and EXE5's.)
     #[serde(default = "regular", skip_serializing_if = "is_regular")]
     pub regular: [i16; 2],
+    /// The picked column's cells' two columns and first row, the form list
+    /// window's names' first column and row, on the window's map.
+    pub column_columns: [u8; 2],
+    pub column_row: u8,
+    pub form_names_at: [u8; 2],
 }
 
 fn detail_blank() -> u8 {
@@ -254,8 +262,14 @@ impl From<CustomLayout> for LayoutDoc {
             empty_palette,
             ok_cursor,
             regular,
+            column_columns,
+            column_row,
+            form_names_at,
         } = l;
         LayoutDoc {
+            column_columns,
+            column_row,
+            form_names_at,
             column_cells,
             turn_limit,
             turn_limit_palette,
@@ -297,8 +311,14 @@ impl From<LayoutDoc> for CustomLayout {
             empty_palette,
             ok_cursor,
             regular,
+            column_columns,
+            column_row,
+            form_names_at,
         } = l;
         CustomLayout {
+            column_columns,
+            column_row,
+            form_names_at,
             column_cells,
             turn_limit,
             turn_limit_palette,
@@ -525,7 +545,7 @@ fn element_rows(c: &CustomScreen) -> Vec<Palette> {
         .collect()
 }
 
-pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
+pub fn export(c: &CustomScreen, hud_palette: Palette) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
     // The pictures with letters in them, each language's as the base they
     // share with the letters taken off and its letters over it
@@ -723,6 +743,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         cursor_palette: c.cursor_palette.as_ref().map(tiles::palette_text),
         window_emblem,
         letters,
+        shapes: crate::shapes::write_custom(&mut files, &c.shapes, c, hud_palette),
     };
     files.extend(layer_files);
     files.push(("custom.json".into(), json_lines(&doc)));
@@ -983,6 +1004,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         cursor_palette,
         window_emblem,
         letters: Default::default(),
+        shapes: crate::shapes::read_custom(dir, prefix, &doc.shapes, report),
     };
     // The letters, their blanks the lettered pictures' images
     // (`lettered_bases`): a language's own where it has them, else the

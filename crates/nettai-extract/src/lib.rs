@@ -29,6 +29,7 @@ mod exe5;
 mod exe6;
 mod placeholders;
 mod rom;
+pub mod shapes;
 mod sound;
 mod sprite;
 
@@ -300,6 +301,9 @@ fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Re
     // graphics (a frontend reads no picture): what isn't found where every
     // game has it is said (a placeholder picture has none).
     warnings.extend(nettai_content::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
+    // The frames as shapes, read once here for the enhanced graphics (and
+    // the emotion window's frame apart from its faces).
+    warnings.extend(shapes::read(&mut graphics).into_iter().map(|p| format!("frames: {p}")));
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
     // bank where there is one: EXE5's hit, song 0x6D, is louder in the
     // Japanese ROMs, volume 127 for 112.)

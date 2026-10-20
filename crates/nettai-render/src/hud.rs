@@ -1842,9 +1842,8 @@ fn lettered_banner(
             items.extend(words_in(&words, Some(letters.span)));
         }
     }
-    // The bar under the first item; every item cut to the banner's box.
-    let first = items.first_mut()?;
-    first.bar = found.bar.as_ref().map(|bar| crate::lettering::shapes(bar, pal, (x as f32, y as f32)));
+    // Every item cut to the banner's box.
+    items.first()?;
     for item in &mut items {
         item.clip = Rect::new(x, 0, 160, crate::compose::HEIGHT as i32);
     }
@@ -2368,7 +2367,7 @@ mod tests {
                 }
             }
         }
-        let layout = BannerLayout { x: 52, y: 64, kind: 0, glyphs: Tiles { pixels }, number_at: None };
+        let layout = BannerLayout { x: 52, y: 64, kind: 0, glyphs: Tiles { pixels }, number_at: None, bar: None };
         let hud = Hud { banner_palette: std::array::from_fn(|i| i as u16 * 0x0421), ..hud() };
         let steps = BannerSteps { slide_in: 9, hold: 30, slide_out: 9, release: BannerRelease::SlidesOut, bounces: false };
         let mut b = battle();

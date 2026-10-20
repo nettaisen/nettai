@@ -9,6 +9,7 @@
 pub mod custom;
 pub mod letters;
 pub mod lettering;
+pub mod shapes;
 pub use lettering::{BASE_LANGUAGE, ButtonLettering, CustomLettering, HudLettering};
 pub use custom::{
     ButtonPictures, ButtonPlace, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, ElementSprite, Emblem, MapPatch, PatchList, Picture,
@@ -448,6 +449,10 @@ pub struct Hud {
     /// How its pictures' letters and digits look (`letters`), the words'
     /// in the language the lettering above is in.
     pub letters: letters::HudLetters,
+    /// Its frames as shapes (`shapes`), and the emotion window's frame apart
+    /// from its faces.
+    pub shapes: shapes::HudShapes,
+    pub mugshot_frame: Option<shapes::MugshotFrame>,
 }
 
 /// Where the HUD's code puts its pieces, where games differ (the default:
@@ -610,6 +615,13 @@ impl Hud {
     pub const GAUGE_L_OR_R: u16 = 0x236 - 0x222;
     /// The gauge frame's columns (`gauge_frame`: two rows of them).
     pub const GAUGE_COLUMNS: usize = 18;
+    /// The gauge's fill: sixteen cells from the frame's column 1 of its row
+    /// 1 (the screen's column 7), over its cells there; a full gauge's "L or
+    /// R" over four of them from the frame's column 7.
+    pub const GAUGE_FILL_ROW: usize = 1;
+    pub const GAUGE_FILL_COLUMN: usize = 1;
+    pub const GAUGE_FILL_CELLS: usize = 16;
+    pub const GAUGE_L_OR_R_COLUMN: usize = 7;
 
     /// A tile of the HUD layer by its number: the gauge's block's or the
     /// layer's (the gauge's tiles follow the layer's in EXE6's and EXE5's
@@ -779,6 +791,8 @@ pub struct BannerLayout {
     pub glyphs: Tiles,
     /// Where the number goes (kind 1).
     pub number_at: Option<(u8, u8)>,
+    /// Its bar as shapes (`shapes`; none: it has none, or none was read).
+    pub bar: Option<shapes::Drawing>,
 }
 
 #[cfg(test)]

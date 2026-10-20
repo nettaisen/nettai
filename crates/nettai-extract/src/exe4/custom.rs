@@ -70,6 +70,9 @@ const LAYOUT: CustomLayout = CustomLayout {
     empty_palette: Some(9),
     ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
     regular: (1, 100),
+    column_columns: [11, 14],
+    column_row: 3,
+    form_names_at: [1, 1],
 };
 /// The cursor's corners (two frames of four words: y in the low half, x
 /// and the flips, 0x1000 h and 0x2000 v, in the high): over OK
@@ -327,6 +330,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
     let (patches, first_tile) = (at(WINDOW_PATCHES.0), WINDOW_PATCHES.1);
     CustomScreen {
         letters: Default::default(),
+        shapes: Default::default(),
         layout: CustomLayout { ok_cursor: CursorPlace { corners: cursor_corners(rom, at(OK_CORNERS)), ..LAYOUT.ok_cursor }, ..LAYOUT },
         // The window's label: CHIP SELECT over the slots (tiles 0x22 to
         // 0x28, color 4 on 1).

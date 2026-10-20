@@ -139,6 +139,9 @@ const LAYOUT: CustomLayout = CustomLayout {
         ],
     },
     regular: (2, 100),
+    column_columns: [11, 14],
+    column_row: 3,
+    form_names_at: [1, 1],
 };
 /// The cursor over the special slot's button (Beast Out: `sub_8028904`,
 /// `byte_8028918`), and over a button two slots wide in the slots' row (the

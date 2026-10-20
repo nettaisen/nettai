@@ -64,6 +64,9 @@ const LAYOUT: CustomLayout = CustomLayout {
         corners: [[(0, 0, false, false); 4]; 2],
     },
     regular: (2, 100),
+    column_columns: [11, 14],
+    column_row: 3,
+    form_names_at: [1, 1],
 };
 /// The cursor over the soul button (0x08024734: at (0x58, 0x88)), its
 /// corners read from `CURSOR_CORNERS`; and over a button two slots wide in

@@ -50,30 +50,12 @@ pub struct Digits {
 /// width, height in the cell) and its paint.
 pub type CellLetter = Digits;
 
-/// A filled shape of a picture's: a polygon (its corners, in eighths of a
-/// frame pixel from the picture's top left, in order) and its color (a
-/// palette index). A picture's shapes are filled one over another in order.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Shape {
-    pub points: Vec<[i16; 2]>,
-    pub color: u8,
-}
-
-impl Shape {
-    /// Its points' unit, over a frame pixel.
-    pub const UNIT: f32 = 8.0;
-}
-
-/// A banner's letters: its bar (none: the picture has none), its letters
-/// (on the bar's colors), and the columns its letters take, whole and, for
+/// A banner's letters: its letters (on its bar's colors; the bar itself is
+/// drawn as shapes, `BannerLayout::bar`), and the columns its letters take, whole and, for
 /// a numbered banner, either side of its number as one digit and as two
 /// (`[before, after]`; none: no letters there).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BannerLetters {
-    /// Its bar's shapes: its body, then its right end, its bottom line, its
-    /// top line and its left end over it (none: the picture has no bar).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bar: Option<Vec<Shape>>,
     pub letters: Letters,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_digit: Option<[Option<[i16; 2]>; 2]>,
