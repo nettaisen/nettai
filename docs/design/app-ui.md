@@ -1872,8 +1872,9 @@ Each is in the mockups under the same name.
   game last used is extracted first; the others behind the menu, one after the other, and switching to one not
   extracted yet shows its bar.
 - **No game, and no Legacy Collection:** the logo, the error's line ("nettai needs Battle Network Legacy Collection
-  Vol. 2. Install it from Steam, or choose its folder.") and CHOOSE FOLDER, which opens the system's folder
-  dialog. Where a game can be played, the same error is a dialog with CHOOSE FOLDER and OK.
+  Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the
+  exe folder onto this window."; in a browser the same steps, "onto this page"; two lines more than the bar's room) and
+  CHOOSE FOLDER, which opens the system's folder dialog. A folder dropped on the window does the same. Where a game can be played, the same error is a dialog with CHOOSE FOLDER and OK.
 - **Before a battle** (online, practice, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
   folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
@@ -2322,7 +2323,7 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the port to host on is taken | That port is already in use. |
 | a save is another game's | Not a BN6 save. |
 | a game's pack is there and can't be loaded | BN6's data is out of date. Extract it again. |
-| a game has no pack, and no Legacy Collection is found | nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder. |
+| a game has no pack, and no Legacy Collection is found | nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window. |
 | a game's pack couldn't be extracted | BN6's data couldn't be extracted. Details are in the log file. |
 | anything else | Something went wrong. Details are in the log file. |
 

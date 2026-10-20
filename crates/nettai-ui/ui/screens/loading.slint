@@ -14,9 +14,11 @@ export component LoadingScreen inherits Rectangle {
     // room between them. `top` is the name's: the icon, the name and the bar are centered together.
     property <length> mark: Theme.phone ? 112px : 160px;
     property <length> mark-gap: Theme.phone ? 12px : 16px;
-    property <length> top: (self.height - 158px - root.mark - root.mark-gap) / 2 + root.mark + root.mark-gap;
+    property <length> top: (self.height - 158px - root.steps - root.mark - root.mark-gap) / 2 + root.mark + root.mark-gap;
     // No game, and the Legacy Collection not found: its error's line, and the way to its folder.
     property <bool> wants-folder: Shell.no-games && Shell.extracts;
+    // The room the line's steps from Steam take below what the bar's would (two lines more).
+    property <length> steps: root.wants-folder ? 32px : 0px;
     // The logo settles into place as the app starts.
     arrive := Tween {
         duration: Theme.set-piece;
@@ -85,12 +87,13 @@ export component LoadingScreen inherits Rectangle {
     }
 
     // No game has a pack: what to do about it. With the app's own packs, the Legacy Collection is what is missing
-    // (the error's own line: three lines on a phone in Japanese, down to the button's top less 4). Else the packs
+    // (the error's own line with the steps to drag the folder in from Steam: five lines on a phone in Japanese, down
+    // to the button's top less 4). Else the packs
     // folder named (`$NETTAI_PACKS`), which starts a line of its own and breaks where it must.
     Note {
         y: root.top + 116px;
         width: root.column;
-        height: root.wants-folder ? 64px : 88px;
+        height: root.wants-folder ? 64px + root.steps : 88px;
         vertical-alignment: TextVerticalAlignment.top;
         wrap: root.wants-folder ? word-wrap : char-wrap;
         visible: Shell.no-games;
@@ -100,7 +103,7 @@ export component LoadingScreen inherits Rectangle {
 
     Button {
         x: (parent.width - self.width) / 2;
-        y: root.top + 184px;
+        y: root.top + 184px + root.steps;
         visible: root.wants-folder;
         enabled: root.wants-folder;
         nav: "source.choose";

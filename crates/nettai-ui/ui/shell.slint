@@ -390,11 +390,13 @@ export global Errors {
             return @tr("{}'s data is out of date. Extract it again.", detail);
         }
         if kind == ErrorKind.no-legacy-collection {
-            // (A browser has no Steam to install from: only the folder.)
+            // (How to drag its folder in from Steam, which shows where it is installed: the install's `exe` folder,
+            // the first thing in it. A browser has no Steam to install from, and is a page. The button chooses the
+            // folder too.)
             if Theme.web {
-                return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Choose its folder.");
+                return @tr("nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }
-            return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder.");
+            return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window.");
         }
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
@@ -570,9 +572,9 @@ export global Errors {
         }
         if kind == ErrorKind.no-legacy-collection {
             if Theme.web {
-                return @tr("Choose its folder.");
+                return @tr("In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }
-            return @tr("Install it from Steam, or choose its folder.");
+            return @tr("Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window.");
         }
         return @tr("Details are in the log file.");
     }

@@ -253,13 +253,15 @@ pub fn show_file(path: &Path) {
     }
 }
 
-/// Files dropped on the page go to `dropped`, from now on. (On the desktop the window's own events carry them,
-/// winit's `DroppedFile`, and this does nothing.)
-pub fn take_drops(dropped: impl FnMut(Vec<PathBuf>) + 'static) {
+/// Files and folders dropped on the page go to `dropped`, from now on: a path for each. A file is read into the
+/// app's files whole; of a folder, only the files at `wanted` (paths within it, as [`open_folder`] takes them), and
+/// its path is a folder holding those (an empty one if none is there). (On the desktop the window's own events
+/// carry them, winit's `DroppedFile`, the folder's own path, and this does nothing.)
+pub fn take_drops(wanted: &[&str], dropped: impl FnMut(Vec<PathBuf>) + 'static) {
     #[cfg(target_arch = "wasm32")]
-    web::take_drops(Box::new(dropped));
+    web::take_drops(wanted, Box::new(dropped));
     #[cfg(not(target_arch = "wasm32"))]
-    drop(dropped);
+    drop((wanted, dropped));
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -313,12 +315,54 @@ export async function nettai_open_folder(wanted) {
     for (const path of wanted) await find(root, path.split("/").filter(Boolean), "", files);
     return await read(files);
 }
-export function nettai_take_drops(dropped) {
+// A dropped folder's contents, through the File and Directory Entries API (the one every browser has for drops):
+// its entries, which come in batches till one is empty; a file entry's file.
+function entries(dir) {
+    const reader = dir.createReader();
+    return new Promise((resolve, reject) => {
+        const all = [];
+        const more = () => reader.readEntries((batch) => {
+            if (!batch.length) return resolve(all);
+            all.push(...batch);
+            more();
+        }, reject);
+        more();
+    });
+}
+function fileOf(entry) {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+}
+async function findIn(dir, parts, at, out) {
+    const [part, ...rest] = parts;
+    for (const entry of await entries(dir)) {
+        if (rest.length === 0) {
+            if (entry.isFile && matches(part, entry.name)) out.push([at + entry.name, await fileOf(entry)]);
+        } else if (entry.isDirectory && entry.name.toLowerCase() === part.toLowerCase()) {
+            await findIn(entry, rest, at + entry.name + "/", out);
+        }
+    }
+}
+export function nettai_take_drops(wanted, dropped) {
     document.addEventListener("dragover", (e) => e.preventDefault());
     document.addEventListener("drop", async (e) => {
         e.preventDefault();
-        const files = [...(e.dataTransfer?.files ?? [])];
-        if (files.length) dropped(await read(files.map((f) => [f.name, f])));
+        // (Each item's entry and file taken at once: the drop's data is gone once the handler waits.)
+        const items = [...(e.dataTransfer?.items ?? [])].filter((i) => i.kind === "file").map((i) => [i.webkitGetAsEntry?.(), i.getAsFile()]);
+        const files = [];
+        const folders = [];
+        for (const [entry, file] of items) {
+            if (entry?.isDirectory) {
+                folders.push(entry.name);
+                try {
+                    for (const path of wanted) await findIn(entry, path.split("/").filter(Boolean), entry.name + "/", files);
+                } catch (why) {
+                    console.warn(`reading the folder dropped, ${entry.name}:`, why);
+                }
+            } else if (file) {
+                files.push([file.name, file]);
+            }
+        }
+        if (files.length || folders.length) dropped(await read(files), folders);
     });
 }
 export async function nettai_save_stream(kind, extensions, name) {
@@ -343,7 +387,7 @@ export function nettai_download(name, bytes) {
         fn nettai_lot() -> u32;
         fn nettai_open_files(extensions: Vec<String>) -> js_sys::Promise;
         fn nettai_open_folder(wanted: Vec<String>) -> js_sys::Promise;
-        fn nettai_take_drops(dropped: &Closure<dyn FnMut(js_sys::Array)>);
+        fn nettai_take_drops(wanted: Vec<String>, dropped: &Closure<dyn FnMut(js_sys::Array, js_sys::Array)>);
         fn nettai_download(name: &str, bytes: &[u8]);
         fn nettai_save_stream(kind: &str, extensions: Vec<String>, name: &str) -> js_sys::Promise;
         fn nettai_sleep(ms: u32) -> js_sys::Promise;
@@ -421,6 +465,11 @@ export function nettai_download(name, bytes) {
         PathBuf::from(under).join(nettai_lot().to_string())
     }
 
+    /// A path within what was chosen, as a path within the lot's folder alone: no `..` or root takes it out.
+    fn within(path: &str) -> PathBuf {
+        Path::new(path).components().filter(|c| matches!(c, std::path::Component::Normal(_))).collect()
+    }
+
     /// Files the page read (`[path, bytes]` each, the path within what was chosen) put in the app's files under
     /// `dir`; their paths there.
     fn keep(dir: &Path, files: &JsValue) -> Vec<PathBuf> {
@@ -428,10 +477,7 @@ export function nettai_download(name, bytes) {
             .iter()
             .filter_map(|entry| {
                 let entry = js_sys::Array::from(&entry);
-                let within = entry.get(0).as_string()?;
-                // (Within the lot's folder alone: no `..` or root takes a file out of it.)
-                let within: PathBuf = Path::new(&within).components().filter(|c| matches!(c, std::path::Component::Normal(_))).collect();
-                let path = dir.join(within);
+                let path = dir.join(within(&entry.get(0).as_string()?));
                 crate::fs::preload(&path, js_sys::Uint8Array::new(&entry.get(1)).to_vec());
                 Some(path)
             })
@@ -471,9 +517,21 @@ export function nettai_download(name, bytes) {
         });
     }
 
-    pub fn take_drops(mut dropped: Box<dyn FnMut(Vec<PathBuf>)>) {
-        let heard = Closure::<dyn FnMut(js_sys::Array)>::new(move |files: js_sys::Array| dropped(keep(&lot("/dropped"), &files)));
-        nettai_take_drops(&heard);
+    pub fn take_drops(wanted: &[&str], mut dropped: Box<dyn FnMut(Vec<PathBuf>)>) {
+        let heard = Closure::<dyn FnMut(js_sys::Array, js_sys::Array)>::new(move |files: js_sys::Array, folders: js_sys::Array| {
+            let dir = lot("/dropped");
+            let kept = keep(&dir, &files);
+            // (Each folder dropped as a path, its files in it; each file dropped outside one as its own.)
+            let folders: Vec<PathBuf> = folders.iter().filter_map(|f| f.as_string()).map(|f| dir.join(within(&f))).filter(|f| f != &dir).collect();
+            for folder in &folders {
+                if let Err(why) = crate::fs::create_dir_all(folder) {
+                    log::warn!("keeping the folder dropped, {}: {why}", folder.display());
+                }
+            }
+            let loose = kept.into_iter().filter(|p| !folders.iter().any(|f| p.starts_with(f)));
+            dropped(folders.iter().cloned().chain(loose).collect());
+        });
+        nettai_take_drops(wanted.iter().map(|w| w.to_string()).collect(), &heard);
         // (The page's for as long as it is open.)
         heard.forget();
     }

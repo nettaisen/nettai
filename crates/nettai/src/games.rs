@@ -195,6 +195,12 @@ impl Games {
             .collect()
     }
 
+    /// Whether a game's pack is wanted (missing, or another build's) and none is being made of it: the Legacy
+    /// Collection's folder would be taken.
+    pub fn wants_source(&self) -> bool {
+        self.extracts && !self.wanted().is_empty()
+    }
+
     /// The Legacy Collection `install` is where the packs wanted come from: each game whose ROMs it has can be
     /// extracted ([`State::Extractable`]) when it is first loaded. How many there are.
     pub fn found(&mut self, install: Install) -> usize {
