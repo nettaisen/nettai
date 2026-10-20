@@ -7,11 +7,13 @@
 //! - [`dialog`]: files and folders to open, and where to save one (the system's dialogs; in the browser its file
 //!   input, its folder dialog and downloads), and files dropped on the page;
 //! - [`clipboard`]: text copied;
+//! - [`page`]: the page the app is in (a browser's), whose size its window follows;
 //! - [`text_entry`]: a field's text typed (in the browser an HTML input laid over it, for its input method);
 
 pub mod clipboard;
 pub mod dialog;
 pub mod fs;
+pub mod page;
 pub mod text_entry;
 pub mod thread;
 
