@@ -891,7 +891,7 @@ pub fn draw<'a>(
         };
         let (left, right) = (left.min(9999).to_string(), right.min(9999).to_string());
         // In the enhanced mode the numbers in the numbers' font, in the
-        // digits' look, a digit a cell: the left one ending where the
+        // digits' look (`numbers::laid`): the left one ending where the
         // original's does, the right one starting where it does.
         let set = text
             .draws_numbers()
@@ -899,8 +899,11 @@ pub fn draw<'a>(
             .flatten()
             .map(|d| crate::numbers::NumberSet::of(d, pal));
         let lettered = set.and_then(|set| {
-            let mut items = crate::numbers::items(text, &[(left.clone(), &set)], (8 * (13 - left.len() as i32), 5 * 8))?;
-            items.extend(crate::numbers::items(text, &[(right.clone(), &set)], (17 * 8, 5 * 8))?);
+            let ends = crate::numbers::picture_span(&set, 8 * (13 - left.len() as i32), left.len()).1;
+            let starts = crate::numbers::picture_span(&set, 17 * 8, right.len()).0;
+            // (Each in the four cells the original's may take.)
+            let mut items = crate::numbers::laid(text, &[(left.clone(), &set)], 5 * 8, crate::numbers::Anchor::Right(ends), Some((9.0 * 8.0, 13.0 * 8.0)))?.0;
+            items.extend(crate::numbers::laid(text, &[(right.clone(), &set)], 5 * 8, crate::numbers::Anchor::Left(starts), Some((17.0 * 8.0, 21.0 * 8.0)))?.0);
             Some(items)
         });
         match lettered {
@@ -1038,14 +1041,21 @@ pub fn draw<'a>(
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
         let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
         // In the enhanced mode the number (the HP, or the damage taken) in
-        // the numbers' font, in the digits' look, a digit a cell where the
-        // original's are, with blank parts in their places.
+        // the numbers' font, in the digits' look (`numbers::laid`): centered
+        // where the original's is, or the damage taken from where it starts,
+        // with blank parts in their places.
         let words = value.min(9999).to_string();
         let first = 4 - words.len() as i32;
         let found = text.draws_numbers().then(|| hud.letters.enemy_digits[e.color.min(2) as usize].as_ref()).flatten();
         let lettered = found
             .map(|d| crate::numbers::NumberSet::of(d, &hud.enemy_palette))
-            .and_then(|set| crate::numbers::items(text, &[(words, &set)], (x + 8 * first, y)));
+            .and_then(|set| {
+                let (a, b) = crate::numbers::picture_span(&set, x + 8 * first, words.len());
+                let anchor = if number.damage { crate::numbers::Anchor::Left(a) } else { crate::numbers::Anchor::Center((a + b) / 2.0) };
+                // (In the four cells the original's may take.)
+                let room = (x as f32, (x + 32) as f32);
+                crate::numbers::laid(text, &[(words, &set)], y, anchor, Some(room)).map(|l| l.0)
+            });
         let mut group = Vec::new();
         for (k, d) in digits4(value).into_iter().enumerate() {
             if d == 10 {
@@ -1322,27 +1332,33 @@ fn draw_chip_name(
     let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
-    // the enhanced mode a pixel after the name as the text layer draws it.
+    // the enhanced mode after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
+    let mut words_end = None;
     if text.takes(words)
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
+        words_end = Some(w);
     }
     if !shows_damage(b, chip) {
         return x;
     }
     let i = hand.cursor as usize;
     let damage = hand.damage.get(i).copied().unwrap_or(0);
-    // In the enhanced mode the numbers in the lettering font, in their
-    // glyphs' looks, from where the original's start.
-    if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text)
-        && let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (x, 18 * 8))
-    {
-        for item in items {
-            text.push(Plane::Hud, item);
+    // In the enhanced mode the numbers in the numbers' font, in their
+    // glyphs' looks, a word's space after the name's words, ending by where
+    // the original's end.
+    if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text) {
+        let glyphs = |v: u16| v.to_string().len() as i32;
+        let original_end = 8 * (cells as i32 + glyphs(damage) + if bonus != 0 { 1 + glyphs(bonus) } else { 0 } + if doubled { 2 } else { 0 });
+        let from = words_end.unwrap_or(x as f32);
+        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8), Some(original_end as f32)) {
+            for item in items {
+                text.push(Plane::Hud, item);
+            }
+            return end.ceil() as i32;
         }
-        return end;
     }
     let number = |layer: &mut Layer, v: u16, x: &mut i32| {
         for c in v.to_string().bytes() {
@@ -1823,9 +1839,10 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerL
 const HP_BLANK: usize = Hud::HP_BLANK;
 
 /// The HP box's number in the enhanced mode, if the lettering font draws
-/// it: right-aligned in the box's four cells from (x, y), each digit in its
-/// cell, in the numbers' font in the look of the box's digits (glyphs 0 to
-/// 9 of the HUD layer's tiles, on the colors of the blank cell, glyph 10).
+/// it: right-aligned in the box's four cells from (x, y), ending where the
+/// original's last digit does (`numbers::laid`), in the numbers' font in
+/// the look of the box's digits (glyphs 0 to 9 of the HUD layer's tiles, on
+/// the colors of the blank cell, glyph 10).
 fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), text: &TextSink, problems: &mut Problems) -> Option<Vec<TextItem>> {
     if !text.draws_numbers() {
         return None;
@@ -1833,8 +1850,8 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
     let digits = crate::lookups::letters(hud.letters.hp_digits.as_ref(), || "the HP box's digits".into(), problems)?;
     let set = crate::numbers::NumberSet::of(digits, palette);
     let words = shown.min(9999).to_string();
-    let cells = words.len() as i32;
-    crate::numbers::items(text, &[(words, &set)], (x + crate::numbers::CELL * (4 - cells), y))
+    let end = crate::numbers::picture_span(&set, x + crate::numbers::CELL * 3, 1).1;
+    crate::numbers::laid(text, &[(words, &set)], y, crate::numbers::Anchor::Right(end), Some((x as f32, (x + 4 * crate::numbers::CELL) as f32))).map(|l| l.0)
 }
 
 /// The custom gauge's frame's word in the enhanced mode, if the strings and
@@ -1959,7 +1976,9 @@ fn lettered_banner(
             let set = crate::lookups::letters(hud.letters.banner_digits.as_ref(), || "the banners' digits".into(), problems)?;
             let set = crate::numbers::NumberSet::of(set, pal);
             let at = if tens.is_some() { nx } else { nx + 8 };
-            let number = crate::numbers::items(text, &[(digits, &set)], (at, ny as i32))?;
+            let (a, b) = crate::numbers::picture_span(&set, at, digits.len());
+            let room = (at as f32, (at + 8 * digits.len() as i32) as f32);
+            let number = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Center((a + b) / 2.0), Some(room))?.0;
             // (Its words either side of where the number's picture is: the
             // pack's columns of the letters there, for one digit or two.)
             let [before_span, after_span] = if tens.is_some() { found.two_digits? } else { found.one_digit? };
@@ -2172,16 +2191,21 @@ fn name_parts<'a>(
     // and numbers are (its name's glyphs fill their cells; the text layer's
     // words, narrower, centered in them, stood apart from the numbers).
     let sets = (!damage.is_empty()).then(|| NumberSets::of(style.letters, &pal, text)).flatten();
-    let mut at = after;
-    if let (Some(item), true) = (items.first_mut(), sets.is_some())
+    let mut at = after as f32;
+    // (Where the original's numbers end: the name and its numbers no wider.)
+    let limit = Some((after + 8 * (damage.len() + bonus.len()) as i32 + if doubled { 16 } else { 0 }) as f32);
+    if let (Some(item), Some(looks)) = (items.first_mut(), sets.as_ref())
         && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
+        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y), None)
     {
-        let shown = w.ceil() as i32 + 1 + 8 * (damage.len() + bonus.len()) as i32;
-        let start = item.rect.x + (8 * width - shown) / 2;
+        // (The name and its numbers but the "x2" centered where the
+        // original's are; the "x2" after them, as the original's.)
+        let shown = (w + end).min((8 * width) as f32);
+        let start = item.rect.x + ((8 * width) as f32 - shown) as i32 / 2;
         *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
-        at = start + w.ceil() as i32 + 1;
+        at = start as f32 + w;
     }
-    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y)));
+    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y), limit));
     let lettered = numbers.is_some();
     if let Some((numbers, _)) = numbers {
         items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
@@ -2223,9 +2247,11 @@ impl NumberSets {
     }
 
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where
-    /// the use doubles it), in the numbers' font from `x` on cells' rows `y`,
-    /// a character a cell as the original's glyphs stand, and where they end.
-    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (i32, i32)) -> Option<(Vec<TextItem>, i32)> {
+    /// the use doubles it), in the numbers' font laid as every number is
+    /// (`numbers::laid`) a word's space after a name's words ending at `x`
+    /// (frame pixels), on cells' rows `y`, narrowed to end by `limit` where
+    /// they would pass it; and where they end.
+    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32), limit: Option<f32>) -> Option<(Vec<TextItem>, f32)> {
         let mut parts = vec![(damage.to_string(), &self.digits)];
         if bonus != 0 {
             parts.push(("+".to_string(), &self.plus));
@@ -2234,10 +2260,15 @@ impl NumberSets {
         if doubled {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
-        let cells: i32 = parts.iter().map(|p| p.0.chars().count() as i32).sum();
-        Some((crate::numbers::items(text, &parts, (x, y))?, x + crate::numbers::CELL * cells))
+        let from = x + WORD_SPACE;
+        let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::Left(from), limit.map(|l| (from, l)))?;
+        Some((items, end))
     }
 }
+
+/// The space between a chip's name and its numbers, in frame pixels:
+/// about a word's space of the name's.
+const WORD_SPACE: f32 = 3.0;
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
 /// (the enhanced mode's), how many of its parts, from the first, are the

@@ -330,7 +330,7 @@ impl VectorFont {
         Ok(VectorFont { data, offset, key, width, weight, cap, name })
     }
 
-    fn font(&self) -> FontRef<'_> {
+    pub(crate) fn font(&self) -> FontRef<'_> {
         FontRef { data: &self.data, offset: self.offset, key: self.key }
     }
 

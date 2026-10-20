@@ -10,9 +10,12 @@
 //! 8x16 cells, the face's colors down its rows, and its outline (a rim all
 //! round, or a shadow right and down), as the pack has read them off the
 //! glyphs (`nettai_assets::letters::Digits`). Each character is drawn in
-//! the glyph's cell, its ink stretched to fill that box, so a number's
-//! digits stand where the picture's did, each the same width: a number
-//! doesn't move as it changes, and its columns line up.
+//! the face box's height, set as the font sets it (`laid`): each digit the
+//! digits' one advance at that height (the widest digit's: a number doesn't
+//! move as it changes, and its columns line up), a sign its own advance with
+//! clear space either side, the run placed against the end the picture's
+//! number sits against (its right, its left, its middle). Every number has
+//! the same spacing for its height.
 
 use crate::textlayer::{Rect, TextItem, TextSink};
 use nettai_assets::Palette;
@@ -48,10 +51,6 @@ impl NumberSet {
 
 /// A game cell's width: a character a cell.
 pub const CELL: i32 = 8;
-
-/// How much narrower a shadowed set's digits are drawn than its box, in
-/// frame pixels ([`NumberSet::fitted`]).
-const SHADOWED_NARROWER: f32 = 1.0;
 
 /// Characters of a number drawn in the numbers' font
 /// ([`TextItem::fitted`]): each one's face box (x, y, width, height in
@@ -105,34 +104,120 @@ impl NumberSet {
     /// `chars` in this set's look, a character a cell from the left.
     pub fn fitted(&self, chars: &str) -> Fitted {
         let [x, y, w, h] = self.face.map(|v| v as f32);
-        // (A set with a shadow stands beside a chip's name, the text layer's
-        // (the damage after it, a telop's): its digits a pixel narrower, so
-        // their strokes are as heavy as the name's.)
-        let (x, w) = if self.shadow.is_some() && w > 2.0 { (x + SHADOWED_NARROWER / 2.0, w - SHADOWED_NARROWER) } else { (x, w) };
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
         Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow }
     }
 }
 
-/// Numbers and signs in their sets' looks set one after another from
-/// (x, y), a character an 8-pixel cell as the game's glyphs stand: an item
-/// for each part. None where the text layer draws no numbers (the original
-/// mode), or the font lacks a character.
-pub fn items(text: &TextSink, parts: &[(String, &NumberSet)], (x, y): (i32, i32)) -> Option<Vec<TextItem>> {
-    if !text.draws_numbers() {
+/// A character's advance in the numbers' font, over its capitals' height.
+fn advance(c: char) -> f32 {
+    let f = font().font();
+    let cap = f.metrics(&[]).cap_height.max(1.0);
+    f.glyph_metrics(&[]).advance_width(f.charmap().map(c)) / cap
+}
+
+/// A character's ink's width and height in the numbers' font, over its
+/// capitals' height (a sign's box is its ink's height: `Fitted`).
+fn ink(c: char) -> (f32, f32) {
+    let f = font().font();
+    let cap = f.metrics(&[]).cap_height.max(1.0);
+    let mut ctx = swash::scale::ScaleContext::new();
+    let mut scaler = ctx.builder(f).build();
+    scaler.scale_outline(f.charmap().map(c)).map_or((0.0, 1.0), |o| {
+        let b = o.bounds();
+        ((b.max.x - b.min.x) / cap, ((b.max.y - b.min.y) / cap).max(1e-3))
+    })
+}
+
+/// The advance every digit takes, over the capitals' height: the widest
+/// digit's, so a number's digits stand in columns and it doesn't shift as
+/// it changes.
+fn digit_advance() -> f32 {
+    static ADVANCE: std::sync::LazyLock<f32> = std::sync::LazyLock::new(|| ('0'..='9').map(advance).fold(0.0, f32::max));
+    *ADVANCE
+}
+
+/// The clear space either side of a sign ('+', the "x" of "x2"), over the
+/// digits' height beside it: more than its own advance leaves, so it never
+/// touches a digit.
+const SIGN_SPACE: f32 = 0.3;
+
+/// Where a run of numbers is placed: its left edge, its right edge or its
+/// middle at this x (frame pixels).
+#[derive(Clone, Copy, Debug)]
+pub enum Anchor {
+    Left(f32),
+    Right(f32),
+    Center(f32),
+}
+
+/// Where the picture's number of `n` glyphs of `set` from cell column `x`
+/// (frame pixels) has its ink: its first face's left and its last's right.
+pub fn picture_span(set: &NumberSet, x: i32, n: usize) -> (f32, f32) {
+    let [fx, _, fw, _] = set.face.map(|v| v as f32);
+    (x as f32 + fx, x as f32 + (CELL * n.saturating_sub(1) as i32) as f32 + fx + fw)
+}
+
+/// Numbers and signs in their sets' looks laid as one run on cells' rows
+/// `y` as the font sets them, each part at its set's face box's height
+/// and rows: each digit the digits' one advance, a sign its own advance
+/// and clear space either side; placed by `anchor`, and where the run
+/// would be wider than `room` (left, right), narrowed alike to fit it. An
+/// item for each part, and where the run starts and ends. None where the
+/// text layer draws no numbers (the original mode), or the font lacks a
+/// character.
+pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anchor, room: Option<(f32, f32)>) -> Option<(Vec<TextItem>, (f32, f32))> {
+    if !text.draws_numbers() || parts.iter().any(|(chars, _)| !font().covers(chars)) {
         return None;
     }
-    let mut out = Vec::new();
-    let mut at = x;
-    for (chars, set) in parts {
-        if !font().covers(chars) {
-            return None;
+    // (A sign's clear space by the run's digits' height, its tallest.)
+    let tallest = parts.iter().map(|(_, set)| set.face[3] as f32).fold(0.0, f32::max);
+    // (A sign is drawn its ink the box's height: its width its ink's at
+    // that height; its clear space either side kept however the run is
+    // narrowed.)
+    let pad = SIGN_SPACE * tallest;
+    let is_digit = |c: char| c.is_ascii_digit() || c == '?';
+    let width = |c: char, h: f32| {
+        if is_digit(c) {
+            digit_advance() * h
+        } else {
+            let (w, ih) = ink(c);
+            w / ih * h
         }
-        let n = chars.chars().count() as i32;
-        out.push(TextItem::fitted(set.fitted(chars), Rect::new(at, y, CELL * n, 16)));
-        at += CELL * n;
+    };
+    let chars = || parts.iter().flat_map(|(chars, set)| chars.chars().filter(|c| *c != ' ').map(move |c| (c, set.face[3] as f32)));
+    let glyphs: f32 = chars().map(|(c, h)| width(c, h)).sum();
+    let pads = 2.0 * pad * chars().filter(|(c, _)| !is_digit(*c)).count() as f32;
+    let k = match room {
+        Some((a, b)) if glyphs + pads > b - a && glyphs > 0.0 => ((b - a - pads) / glyphs).clamp(0.5, 1.0),
+        _ => 1.0,
+    };
+    let total = glyphs * k + pads;
+    let mut start = match anchor {
+        Anchor::Left(x) => x,
+        Anchor::Right(x) => x - total,
+        Anchor::Center(x) => x - total / 2.0,
+    };
+    if let Some((a, b)) = room {
+        start = start.min(b - total).max(a);
     }
-    Some(out)
+    let mut out = Vec::new();
+    let mut at = start;
+    for (chars, set) in parts {
+        let [_, top, _, h] = set.face.map(|v| v as f32);
+        let left = at.floor();
+        let mut glyphs = Vec::new();
+        for c in chars.chars().filter(|c| *c != ' ') {
+            let space = if is_digit(c) { 0.0 } else { pad };
+            let w = width(c, h) * k;
+            glyphs.push((c, [at - left + space, top, w, h]));
+            at += w + 2.0 * space;
+        }
+        let rect = Rect::new(left as i32, y, (at - left).ceil() as i32 + 1, 16);
+        let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow };
+        out.push(TextItem::fitted(f, rect));
+    }
+    Some((out, (start, at)))
 }
 
 /// The character the font draws for the game's "x" of "x2".
