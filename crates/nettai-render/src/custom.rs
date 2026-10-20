@@ -1109,8 +1109,9 @@ impl Window {
             if let Some(form) = w.forms[slot] {
                 self.form_name_tiles.push((at, form, name));
             }
+            let [x0, y0] = self.layout.form_names_at.map(usize::from);
             for i in 0..FORM_NAME_TILES {
-                let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
+                let (x, y) = (x0 + i % 9, y0 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
             }
         }
@@ -1452,14 +1453,16 @@ impl Window {
             self.tiles.put_part(at, tiles, first, 4);
             let filled = (i < picks.len() || v.screen.look.column_kept == Some(i as u8)) as u16;
             let tile = self.layout.column_cells + 2 * filled;
-            for (x, hflip) in [(11, false), (14, true)] {
-                self.map[(3 + 2 * i) * COLUMNS + x] = MapEntry { tile, hflip, vflip: false, palette: 9 };
-                self.map[(4 + 2 * i) * COLUMNS + x] = MapEntry { tile: tile + 1, hflip, vflip: false, palette: 9 };
+            let [left, right] = self.layout.column_columns.map(usize::from);
+            let row = self.layout.column_row as usize + 2 * i;
+            for (x, hflip) in [(left, false), (right, true)] {
+                self.map[row * COLUMNS + x] = MapEntry { tile, hflip, vflip: false, palette: 9 };
+                self.map[(row + 1) * COLUMNS + x] = MapEntry { tile: tile + 1, hflip, vflip: false, palette: 9 };
             }
             // (An empty cell's icon in the empty icon's palette, where the
             // pack has one: EXE4's 0x0801FB6E.)
             if let Some(p) = self.layout.empty_palette.filter(|_| filled == 0) {
-                for (x, y) in [(12, 3 + 2 * i), (13, 3 + 2 * i), (12, 4 + 2 * i), (13, 4 + 2 * i)] {
+                for (x, y) in [(left + 1, row), (left + 2, row), (left + 1, row + 1), (left + 2, row + 1)] {
                     self.map[y * COLUMNS + x].palette = p;
                 }
             }

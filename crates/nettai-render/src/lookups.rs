@@ -609,11 +609,6 @@ fn pack_look_colors(hud: &Hud, a: &CustomScreen, p: &mut Problems) {
     for (k, b) in w.banners.iter().enumerate() {
         let Some(b) = b else { continue };
         letters(&format!("banner {k}'s letters"), &b.letters, p);
-        for s in b.bar.iter().flatten() {
-            if s.color > 15 || s.color == 0 {
-                p.note(format!("the pack's look of banner {k}'s bar has a shape of color {}", s.color));
-            }
-        }
     }
     if let Some(x) = &w.waiting {
         letters("the waiting label", x, p);

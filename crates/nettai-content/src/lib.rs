@@ -47,6 +47,7 @@ pub mod midi;
 pub mod names;
 pub mod pack;
 pub mod report;
+pub mod shapes;
 pub mod index;
 pub mod song;
 pub mod sound;

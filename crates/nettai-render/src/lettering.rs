@@ -12,10 +12,10 @@
 //! pictures look otherwise has another look in its pack. The words
 //! themselves are the content's strings (`strings::DisplayText::lettering`).
 
-use crate::textlayer::{Filled, Ink};
+use crate::textlayer::Ink;
 use crate::vfont::Lettering;
 use nettai_assets::Palette;
-use nettai_assets::letters::{Letters, Shape};
+use nettai_assets::letters::Letters;
 
 /// The role words in `l`'s look are drawn in: the lettering font with its
 /// capitals, at `lettering`'s weight and width.
@@ -69,26 +69,9 @@ impl Look {
     }
 }
 
-/// A picture's shapes (a banner's bar: the pack's) in `palette`, its top
-/// left at (`x`, `y`) in frame pixels.
-pub fn shapes(shapes: &[Shape], palette: &Palette, (x, y): (f32, f32)) -> Vec<Filled> {
-    shapes
-        .iter()
-        .map(|s| Filled { points: s.points.iter().map(|p| [x + p[0] as f32 / Shape::UNIT, y + p[1] as f32 / Shape::UNIT]).collect(), color: palette[s.color as usize & 15] })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A picture's shapes in its palette, moved to its place.
-    #[test]
-    fn shapes_in_their_palette_and_place() {
-        let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
-        let filled = shapes(&[Shape { points: vec![[0, 0], [16, 0], [16, 8]], color: 4 }], &palette, (10.0, 20.0));
-        assert_eq!(filled, vec![Filled { points: vec![[10.0, 20.0], [12.0, 20.0], [12.0, 21.0]], color: palette[4] }]);
-    }
 
     /// Letters' look in a palette: the face's colors down the rows, the
     /// rim's, the role's capitals.

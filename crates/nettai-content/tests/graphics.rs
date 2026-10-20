@@ -102,6 +102,8 @@ fn bundle() -> Bundle {
     };
     let hud = Hud {
         letters: Default::default(),
+        shapes: Default::default(),
+        mugshot_frame: None,
         tiles: tiles(6, 7),
         first_tile: 0x1A0,
         gauge_tiles: tiles(3, 8),
@@ -130,8 +132,8 @@ fn bundle() -> Bundle {
         pause: tiles(10, 32),
         texts: vec![vec![1, 2, 3], vec![]],
         banners: vec![
-            BannerLayout { x: 52, y: 64, kind: 1, glyphs: tiles(40, 30), number_at: Some((104, 64)) },
-            BannerLayout { x: 0, y: 32, kind: 3, glyphs: Tiles::default(), number_at: None },
+            BannerLayout { x: 52, y: 64, kind: 1, glyphs: tiles(40, 30), number_at: Some((104, 64)), bar: None },
+            BannerLayout { x: 0, y: 32, kind: 3, glyphs: Tiles::default(), number_at: None, bar: None },
         ],
         banner_digits: tiles(22, 31),
         banner_palette: palette(47),
@@ -186,7 +188,7 @@ fn bundle() -> Bundle {
                     chars: vec!["ア".into(), "研".into()],
                 },
                 texts: vec![vec![3, 2, 1]],
-                banners: vec![Some(BannerLayout { x: 44, y: 64, kind: 1, glyphs: tiles(40, 35), number_at: Some((104, 64)) }), None],
+                banners: vec![Some(BannerLayout { x: 44, y: 64, kind: 1, glyphs: tiles(40, 35), number_at: Some((104, 64)), bar: None }), None],
                 banner_palette: palette(57),
                 waiting: tiles(14, 36),
                 waiting_palette: palette(57),
@@ -246,6 +248,7 @@ fn custom() -> CustomScreen {
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
         letters: Default::default(),
+        shapes: Default::default(),
         layout: CustomLayout {
             column_cells: 0x89,
             turn_limit: 0x8D,
@@ -264,6 +267,9 @@ fn custom() -> CustomScreen {
             empty_palette: None,
             ok_cursor: cursor(0),
             regular: (2, 100),
+            column_columns: [11, 14],
+            column_row: 3,
+            form_names_at: [1, 1],
         },
         // Two labels, one with letters of two colors.
         labels: vec![

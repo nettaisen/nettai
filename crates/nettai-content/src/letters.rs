@@ -12,7 +12,7 @@
 //! name whose letters it can't find) it says, one line each.
 
 use nettai_assets::letters::{
-    BannerLetters, CountDigits, Shape, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
+    BannerLetters, CountDigits, TextAlign, CountLetters, CustomLetters, Digits, FormNameLetters, GaugeWord, GlyphLetters, HelpLetters, HelpLine,
     HudLetters, HudWords, LabelLetters, Letters, PictureLetters, VersionLetters, WordLetters,
 };
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Tiles, VersionPictures, Versioned, WindowLabel};
@@ -226,15 +226,14 @@ pub fn letters_with(p: &Picture, ground: impl Fn(u8) -> bool, capitals: Capitals
     Some(Letters { fill, rim, shadow, top: top as u8, cap: (bottom - top + 1) as u8, span })
 }
 
-/// A banner's bar ([`bar_shapes`]), read off its picture: the colors of its
-/// first cell (8 columns), where that cell is a bar's end, every row of it
-/// with pixels unbroken from them to the bar's last color on the row
-/// (letters stand on the bar, so nothing between is clear); none for a
-/// picture with no bar (the Japanese Program Advance's words, whose first
-/// cell is a letter's). Its slant, its ends and its length are the
-/// picture's: each row's first and last pixel of the bar's colors. With it,
-/// the bar's colors.
-pub fn bar(p: &Picture) -> Option<(Vec<Shape>, Vec<u8>)> {
+/// A banner's bar's colors, read off its picture: the colors of its first
+/// cell (8 columns), where that cell is a bar's end, every row of it with
+/// pixels unbroken from them to the bar's last color on the row (letters
+/// stand on the bar, so nothing between is clear); none for a picture with
+/// no bar (the Japanese Program Advance's words, whose first cell is a
+/// letter's). Its letters are what stands on them; nettai-extract draws the
+/// bar itself as shapes (`nettai_assets::BannerLayout::bar`).
+pub fn bar_colors(p: &Picture) -> Option<Vec<u8>> {
     let mut colors: Vec<u8> = Vec::new();
     for y in 0..p.h as i32 {
         for x in 0..8 {
@@ -251,129 +250,14 @@ pub fn bar(p: &Picture) -> Option<(Vec<Shape>, Vec<u8>)> {
     let of_bar = |x: i32, y: i32| p.at(x, y).is_some_and(|v| colors.contains(&v));
     let rows: Vec<i32> = (0..p.h as i32).filter(|&y| (0..8).any(|x| of_bar(x, y))).collect();
     let (top, bottom) = (*rows.first()?, *rows.last()?);
-    let mut ends = Vec::new();
     for y in top..=bottom {
         let first = (0..p.w as i32).find(|&x| of_bar(x, y))?;
         let last = (0..p.w as i32).rev().find(|&x| of_bar(x, y))?;
         if (first..=last).any(|x| p.at(x, y) == Some(0)) {
             return None;
         }
-        ends.push((first, last + 1));
     }
-    // The slant: how far each row's first pixel is right of the next's,
-    // most often.
-    let mut steps: Vec<i32> = ends.windows(2).map(|w| w[0].0 - w[1].0).collect();
-    steps.sort_unstable();
-    let slant = steps.get(steps.len() / 2).copied().unwrap_or(0).max(0);
-    let most = |count: &[usize; 16]| (0..16).max_by_key(|&c| (count[c], c)).unwrap_or(0) as u8;
-    let tally = |pixels: &mut dyn Iterator<Item = (i32, i32)>| {
-        let mut count = [0usize; 16];
-        for (x, y) in pixels {
-            if let Some(v) = p.at(x, y).filter(|_| of_bar(x, y)) {
-                count[v as usize & 15] += 1;
-            }
-        }
-        most(&count)
-    };
-    let row = |y: i32| (0..p.w as i32).map(move |x| (x, y));
-    let top_color = tally(&mut row(top));
-    let bottom_color = tally(&mut row(bottom));
-    let middle = (top + 1)..bottom;
-    let body = tally(&mut middle.clone().flat_map(row));
-    let left = tally(&mut middle.clone().map(|y| (ends[(y - top) as usize].0, y)));
-    let right = tally(&mut middle.clone().map(|y| (ends[(y - top) as usize].1 - 1, y)));
-    let (first, last) = (ends[0], ends[ends.len() - 1]);
-    let geometry = BarGeometry {
-        top: top as f32,
-        bottom: (bottom + 1) as f32,
-        left: last.0 as f32 - slant as f32 / 2.0,
-        left_most: ends.iter().map(|e| e.0).max()? as f32,
-        right: first.1 as f32 + slant as f32 / 2.0,
-        right_least: ends.iter().map(|e| e.1).min()? as f32,
-        slant: slant as f32,
-    };
-    let bar = bar_shapes(&geometry, [top_color, body, bottom_color, left, right]);
-    Some((bar, colors))
-}
-
-/// A banner bar's outline: its top row and one past its bottom one; its
-/// left end where it meets the bottom edge (it slants up to the right from
-/// there) and the farthest right it goes (upright above); its right end
-/// where it meets the top edge (it slants down to the left) and the
-/// farthest left it goes (upright below); and how far an end leans a row.
-#[derive(Clone, Copy, Debug)]
-pub struct BarGeometry {
-    pub top: f32,
-    pub bottom: f32,
-    pub left: f32,
-    pub left_most: f32,
-    pub right: f32,
-    pub right_least: f32,
-    pub slant: f32,
-}
-
-impl BarGeometry {
-    fn left_at(&self, y: f32) -> f32 {
-        (self.left + self.slant * (self.bottom - y)).min(self.left_most)
-    }
-
-    fn right_at(&self, y: f32) -> f32 {
-        (self.right - self.slant * (y - self.top)).max(self.right_least)
-    }
-
-    /// An end's corners down its rows (each end bends once, where it
-    /// stands upright): the left's, or the right's.
-    fn edge(&self, right: bool) -> Vec<[f32; 2]> {
-        let at = |y: f32| if right { self.right_at(y) } else { self.left_at(y) };
-        let mut ys = vec![self.top];
-        if self.slant > 0.0 {
-            let bend = if right { self.top + (self.right - self.right_least) / self.slant } else { self.bottom - (self.left_most - self.left) / self.slant };
-            if bend > self.top && bend < self.bottom {
-                ys.push(bend);
-            }
-        }
-        ys.push(self.bottom);
-        ys.into_iter().map(|y| [at(y), y]).collect()
-    }
-}
-
-/// A bar's shapes (`colors`: its top line's, its body's, its bottom
-/// line's, its left end's and its right end's, palette indices), each line
-/// and end a frame pixel wide, as the pictures' are: the body (the whole
-/// bar), then over it the right end, the bottom line, the top line and the
-/// left end (where two meet, the later's color: left, top, bottom, right).
-pub fn bar_shapes(g: &BarGeometry, [top, body, bottom, left, right]: [u8; 5]) -> Vec<Shape> {
-    const LINE: f32 = 1.0;
-    let (l, r) = (g.edge(false), g.edge(true));
-    let whole: Vec<[f32; 2]> = l.iter().copied().chain(r.iter().rev().copied()).collect();
-    // A band of rows of the bar (`from..to`), clipped from the whole.
-    let rows = |from: f32, to: f32| -> Vec<[f32; 2]> { clip_rows(&clip_rows(&whole, from, true), to, false) };
-    let strip = |edge: &[[f32; 2]], dx: f32| -> Vec<[f32; 2]> { edge.iter().copied().chain(edge.iter().rev().map(|p| [p[0] + dx, p[1]])).collect() };
-    let shape = |points: Vec<[f32; 2]>, color: u8| Shape { points: points.iter().map(|p| p.map(|v| (v * Shape::UNIT).round() as i16)).collect(), color };
-    vec![
-        shape(whole.clone(), body),
-        shape(strip(&r, -LINE), right),
-        shape(rows(g.bottom - LINE, g.bottom), bottom),
-        shape(rows(g.top, g.top + LINE), top),
-        shape(strip(&l, LINE), left),
-    ]
-}
-
-/// A polygon cut at row `y`, keeping what is below it (`below`) or above.
-fn clip_rows(points: &[[f32; 2]], y: f32, below: bool) -> Vec<[f32; 2]> {
-    let keep = |p: &[f32; 2]| if below { p[1] >= y } else { p[1] <= y };
-    let mut out = Vec::new();
-    for k in 0..points.len() {
-        let (a, b) = (points[k], points[(k + 1) % points.len()]);
-        if keep(&a) {
-            out.push(a);
-        }
-        if keep(&a) != keep(&b) {
-            let t = (y - a[1]) / (b[1] - a[1]);
-            out.push([a[0] + t * (b[0] - a[0]), y]);
-        }
-    }
-    out
+    Some(colors)
 }
 
 /// The lines of a picture's lettering, top to bottom: runs of rows with
@@ -843,8 +727,7 @@ fn banner_letters(layout: &nettai_assets::BannerLayout) -> Option<BannerLetters>
         return None;
     }
     let picture = Picture::glyphs(&layout.glyphs, 0, 20);
-    let bar = bar(&picture);
-    let bar_colors = bar.as_ref().map(|(_, c)| c.clone()).unwrap_or_default();
+    let bar_colors = bar_colors(&picture).unwrap_or_default();
     let ground = |v: u8| v == 0 || bar_colors.contains(&v);
     let found = letters(&picture, ground, Capitals::First)?;
     // The letters' columns in the picture's columns `from..to`, where it
@@ -865,7 +748,7 @@ fn banner_letters(layout: &nettai_assets::BannerLayout) -> Option<BannerLetters>
         Some((nx, _)) => (Some(sides(nx as i32 - 4)), Some(sides(nx as i32))),
         None => (None, None),
     };
-    Some(BannerLetters { bar: bar.map(|(b, _)| b), letters: found, one_digit, two_digits })
+    Some(BannerLetters { letters: found, one_digit, two_digits })
 }
 
 /// The emotion window's counts' boxes ([`CountLetters`]): their box with no
@@ -2400,7 +2283,7 @@ mod tests {
     /// middle, a dark rim) on its bar (a light top line, a blue body, a navy
     /// bottom line, ends slanting a pixel a row).
     #[test]
-    fn a_banners_letters_and_bar_read_off_its_picture() {
+    fn a_banners_letters_read_off_its_bar() {
         let p = picture(&[
             "................................",
             "........66666666................",
@@ -2413,14 +2296,8 @@ mod tests {
             "........66666666................",
             "................................",
         ]);
-        let (bar, colors) = bar(&p).expect("a bar");
+        let colors = bar_colors(&p).expect("a bar");
         assert_eq!(colors.len(), 3, "{colors:?}");
-        // Its body, right end, bottom line, top line and left end.
-        assert_eq!(bar.iter().map(|s| s.color).collect::<Vec<_>>(), [4, 5, 5, 3, 3]);
-        // The body: the left end slants to the picture's first column at the
-        // bottom and stands upright from column 3 at the top (rows 3 to 8).
-        let whole = &bar[0].points;
-        assert!(whole.contains(&[24, 24]) && whole.contains(&[-4, 64]), "{whole:?}");
         let l = letters(&p, |v| v == 0 || colors.contains(&v), Capitals::First).expect("letters");
         assert_eq!((l.rim, l.shadow, l.top, l.cap), (Some(6), None, 2, 6));
         assert_eq!(l.fill, vec![8, 8, 7, 1, 1, 8]);
@@ -2459,7 +2336,7 @@ mod tests {
     #[test]
     fn no_bar_without_a_bars_end() {
         let p = picture(&["..6666....6666..", ".661166..661166.", ".611116..611116.", ".666666..666666."]);
-        assert!(bar(&p).is_none());
+        assert!(bar_colors(&p).is_none());
     }
 
     #[test]

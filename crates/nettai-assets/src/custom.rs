@@ -146,6 +146,14 @@ pub struct CustomLayout {
     /// first slot (EXE6's `sub_802899C` and EXE5's: (2, 100); EXE4's
     /// 0x0801EF28: (1, 100)).
     pub regular: (i16, i16),
+    /// Where the screen lays the picked column's cells on the window's map
+    /// (EXE6's `sub_8029CD4`): its two columns (the second's cells flipped)
+    /// and its first row, a cell two rows, five of them.
+    pub column_columns: [u8; 2],
+    pub column_row: u8,
+    /// Where it lays the form list window's names (EXE6's `sub_802794A`):
+    /// the first's column and row, each 9x2, one under another.
+    pub form_names_at: [u8; 2],
 }
 
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
@@ -376,6 +384,8 @@ pub struct CustomScreen {
     /// The emblem the screen draws on its window by frames (EXE4's), in
     /// place of a navi's emblem sprite (`emblems`).
     pub window_emblem: Option<WindowEmblem>,
+    /// Its frames as shapes (`crate::shapes`).
+    pub shapes: crate::shapes::CustomShapes,
 }
 
 impl CustomScreen {
