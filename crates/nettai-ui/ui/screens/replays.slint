@@ -1475,6 +1475,7 @@ component ExportOptions inherits Rectangle {
         y: root.line-y;
         width: root.width - 2 * root.edge;
         value: ReplaysView.export-state == ExportState.done ? 1 : (root.busy ? ReplaysView.export-progress : 0);
+        smooth: false;
     }
 
     Note {
