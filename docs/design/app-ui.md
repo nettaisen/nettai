@@ -1427,7 +1427,8 @@ Each is settled unless the user changes it.
     playlist became the play queue, made ahead of time on the Replays screen: §2.91; its panel in the viewer became a
     button and a small popup, and a replay watched leaves the queue: §2.92; the transport's buttons were cut down,
     the next and Autoplay next moving into that popup: §2.94; VIEW, the speeds and EXPORT VIDEO became one ⋯ menu,
-    and the clip left the viewer for the export's Range: §2.95.)
+    and the clip left the viewer for the export's Range: §2.95; the export became the viewer's export mode, the bar
+    got a preview under the pointer, and the speeds a row of their own with a badge: §2.96.)
     - *The picture fills the window,* as a match's does: the largest whole multiple of the frame that fits it (Picture
       size still its most), the backdrop around it. Nothing is beside it or under it.
     - *Its controls are over it,* the header, the transport and the footer, fading (`brisk`) out once nothing has
@@ -1564,6 +1565,11 @@ Each is settled unless the user changes it.
     alone:
 
     `Range: [Whole replay v]  Start [0:41] [Now]  End [0:53] [Now]`
+
+    (§2.96 changed this the same day: the export is no longer a dialog but the viewer's export mode, its range two
+    handles on the bar with SET START HERE and SET END HERE; Start, End, NOW and their messages are gone; the ⋯
+    menu's four speeds are one PLAYBACK SPEED row that opens them. What follows is what §2.95 itself did; the builds'
+    place, ⋯ and its other rows, and the keys stand as it left them.)
     - *The builds don't cover the controls.* Their page reached down to the footer, over the transport, whose
       clicks it took (one between the sheets went nowhere), so VIEW couldn't be pressed to uncheck BUILDS; only a
       click on a sheet, B, Select or Esc put them away. Now they end 12 over the transport, on a phone over the
@@ -1595,6 +1601,62 @@ Each is settled unless the user changes it.
       Custom 指定範囲, "Type a time as m:ss." 時間は「分:秒」の形で入力してください。, "The start must be before the
       end." 開始は終了より前にしてください。, "The replay ends at {}." リプレイは {} で終わります。 VIEW's 表示 (`menu`),
       Speed 速度, Clip 切り抜き and the three clip rows' words are gone from the catalog.
+96. **The export as a mode of the viewer; a preview over the bar; the speed said** (2026-10-19). The user: "export
+    video is hard to use, maybe clicking on it puts the player into an export mode where you can pick a clip range
+    etc. also unrelated can you also render thumbnails on mouseover the seek bar? the speed controls are also unclear
+    about what it's doing".
+    - *The export mode.* EXPORT VIDEO (the ⋯ menu's) no longer opens a dialog: the viewer goes into an export mode.
+      The picture stays, and playing, pausing, stepping and seeking all work; the controls stay shown while it is on.
+      From the list (EXPORT VIDEO, E, the pad's north button, a row's menu, a phone's sheet), the replay opens in the
+      viewer in that mode, paused at its start. The ⋯ menu's EXPORT VIDEO is dim while in it.
+    - *The range on the bar:* a band in the code color (the clip's of §2.94) between two handles, brackets taller
+      than the playhead, the start's opening right and the end's left; the whole match at first. The pointer pressed
+      within 8 of a handle drags it (the nearer one; the pointer's shape is the resize arrows over one), anywhere
+      else on the bar seeks as before; the picture follows a dragged handle (in the kept states' steps while held,
+      exactly where it is let go). A handle stops a frame short of the other and at the match's ends: the range is
+      never empty or reversed. Each handle is a control: the focus starts on the start's as the mode begins, Tab and
+      the arrows' Up and Down move through them and the buttons, and on one Left and Right nudge it a frame (with
+      Shift a second; on a pad the d-pad a frame and the shoulders a second), the picture going to where it is, paused;
+      Enter on one goes to it.
+    - *The transport in the mode:* to the round's start, play or pause, the next round (and the speed's badge); then,
+      in the round shown's place, SET START HERE and SET END HERE (each puts its handle where the viewer is; where
+      that passes the other handle, the other goes to the match's edge, so that the range keeps the time set), the
+      Range's list (Whole match, each round, and the last range of the player's own as Custom, each with its length:
+      a quick choice, as asked "if cheap"), the range's times in the code color ("00:41–00:53"); at the right, before
+      the queue's button and ⋯, CANCEL (CLOSE once an export is saved) and EXPORT. On a phone, under the buttons, the
+      two HERE side by side, the Range across, CANCEL and EXPORT side by side: the transport is 260 tall in the mode.
+    - *The options* in a panel 108 tall, 12 over the transport (on a phone 208, under it): Size, View, Sides, Save as
+      in a row (on a phone three rows), and under them the bar and its line: how far the export is, "Saved.", what
+      went wrong, or, while nothing exports, "Drag the handles on the bar to choose the part to export." View is the
+      viewer's side: changing it shows that console, and the ⋯ menu's P1 and P2 change it, so what is exported is
+      what is shown. Range, Start and End's words, the typed times, NOW and the three messages about times are gone:
+      the user, "I'd drop them". A range of the player's own names the file "… part 00.41–00.53", as before.
+    - *Leaving:* Esc, B, or CANCEL: an export under way is stopped first (the mode stays, to export again), else the
+      mode ends, the focus back on the bar. The builds (B) are put away as it begins; shown in it, they end 12 over
+      its options. Back from the viewer, the queue's next, and the engine stopping end it too (an export under way
+      stopped). The footer's hints in the mode: Space, comma and period, "Move a handle" (the arrows), and Back as
+      Cancel.
+    - *The preview over the bar:* while the pointer is over the bar, a box above it at the pointer (kept over the
+      bar's length), with the battle at the time under the pointer at the frame's size (240 by 160, at the window's
+      density) and that time under it. It is drawn by a second viewer of the replay, silent, on a thread of its own,
+      started at the first hover: the same renderer and graphics mode (Enhanced or Original as set) and language as
+      the viewer's, the console shown, and seeks to the second's first tick and presents it. Nothing of the viewer
+      watched is touched (its battle, sound, kept states, position), and no engine change was needed: the library's
+      seeking on another instance. The thread indexes the replay ahead while nothing is asked (a silent tick is 17.5
+      µs: 0.3 s of the thread for five minutes, about 2.5 MB of kept states), so a preview is a seek of under 240
+      ticks and one picture, a few milliseconds. Asked one at a time, the latest hovered only, at most one each 120
+      ms; kept by the second, the console and the density, up to 32 MB (about 50 at twice the frame), the least
+      lately seen going first; until a second's own is drawn the nearest kept shows, the box alone before any. A
+      phone has no pointer over the bar, and no preview.
+    - *The speed said:* the ⋯ menu's four bare rows (½× 1× 2× 4×) are one row, PLAYBACK SPEED, with the speed set at
+      its right in the muted color (the picker's rows have a value now, `PickMark::value`); choosing it opens the
+      four in its place, the one set checked. While the speed isn't 1× a small badge in the cursor's color by the
+      play buttons says it ("2×"). A group's title in the picker was the other choice; a row that opens its choices
+      is the kind a player's settings menu has, keeps the menu at seven rows, and needed no row the focus passes by.
+    - *Japanese:* PLAYBACK SPEED 再生速度; SET START HERE ここを開始点に, SET END HERE ここを終了点に; "Move a handle"
+      つまみを動かす; "Drag the handles on the bar to choose the part to export." バーの両端のつまみをドラッグして、書き出す範囲を選びます。
+      (書き出し as the app already had it.) Range 範囲, Start 開始, End 終了, NOW 現在位置, "Export video" the
+      dialog's title (動画の書き出し) and the three messages about times are gone from the catalog.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2136,26 +2198,37 @@ DUPLICATE and DELETE.
   played to its end or skipped, and missing entries are passed by and leave (§2.92).
 - **The viewer:** the picture fills the window (§2.90), and over it, shown while wanted and fading after 2.5 seconds
   without input while it plays: the header, the footer (the replay's rounds, "3 rounds"), and at its foot a
-  transport (§2.94, §2.95): the time, a bar to click or drag with a mark where each round begins, the length; then
-  to the round's start, play or pause, the next round, and the round shown ("Round 2 of 3"); at the right, while the
-  queue plays, the queue's button with the count up next (its popup: NEXT, N, and Autoplay next, on at first, over
-  the entries up next: §2.92), and ⋯. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
-  period step a frame, the brackets go a round. The ⋯ menu has the side shown (P1, P2, the one shown checked);
-  BUILDS (B; dim where the setups weren't open) and two toggles, each off at first and checked while on (the user:
-  "add support for input view and picture in picture in replay viewer"): INPUT DISPLAY (I), Practice's, both
-  players' buttons in the picture's top right corner; and OTHER SIDE'S PICTURE (P), the other console's, small in
-  the bottom right corner of the one shown; the speeds (½×, 1×, 2×, 4×, the one set checked); and EXPORT VIDEO.
-  Both builds are over the picture and never over the transport, the header or the footer (§2.95). The part to
-  export (the user: "add the ability to export a clip in the replay viewer") is chosen in the export's dialog, its
-  Range, with NOW taking where the viewer is (§2.95); the viewer marks none. On a phone: the bar; the three buttons
-  with the queue's and ⋯ at the right.
-- **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
-  first), View, Sides (One, or Both side by side, the View's at the left: the user, "add support for two
-  sided side by side export"; with Both a sound track a side, the left's first: "for 2 sided replays, audio track 1
-  should be left player audio, audio track 2 should be right player audio"), Range (the whole match, chosen at
-  first; each round where there is more than one; or Custom, "Custom · 00:12"), Start and End (minutes and seconds,
-  each with NOW, the viewer's time; they say the range chosen, and a change makes it Custom, the file named "… part
-  01.02–01.15"; what is wrong is said under them: §2.95), Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  transport (§2.94, §2.95, §2.96): the time, a bar to click or drag with a mark where each round begins, the
+  length; then to the round's start, play or pause, the next round, a badge of the speed while it isn't 1× ("2×"),
+  and the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button with the count up
+  next (its popup: NEXT, N, and Autoplay next, on at first, over the entries up next: §2.92), and ⋯. The pointer
+  over the bar shows a preview above it: the battle at the time under the pointer, the frame's size, that time under
+  it (§2.96). Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and period step a frame, the
+  brackets go a round. The ⋯ menu has the side shown (P1, P2, the one shown checked); BUILDS (B; dim where the
+  setups weren't open) and two toggles, each off at first and checked while on (the user: "add support for input
+  view and picture in picture in replay viewer"): INPUT DISPLAY (I), Practice's, both players' buttons in the
+  picture's top right corner; and OTHER SIDE'S PICTURE (P), the other console's, small in the bottom right corner of
+  the one shown; PLAYBACK SPEED, the speed set at the row's right ("1×"), which opens the four (½×, 1×, 2×, 4×, the
+  one set checked) in its place; and EXPORT VIDEO, which puts the viewer in its export mode (dim while it is in it).
+  Both builds are over the picture and never over the transport, the header or the footer (§2.95). On a phone: the
+  bar; the three buttons with the queue's and ⋯ at the right.
+- **Export:** the viewer's export mode (§2.96; until then a dialog), from the ⋯ menu's EXPORT VIDEO, or from the
+  list (EXPORT VIDEO, E, the pad's north button, a row's menu), which opens the viewer in it, paused at the start.
+  The picture stays, and playing and seeking work as before. The part exported (the user: "add the ability to
+  export a clip in the replay viewer") is a range on the bar, shaded in the code color between two handles,
+  brackets taller than the playhead, the whole match at first: a handle is dragged (the picture following it), or,
+  focused, nudged by Left and Right a frame (Shift: a second; a pad's shoulders a second); SET START HERE and SET
+  END HERE put one where the viewer is (the other going to the match's edge where it would pass it). The transport's
+  row has those two, the Range's list (the whole match; each round where there is more than one; Custom, the last
+  range of the player's own, "Custom · 0:12"), the range's times ("00:41–00:53"), CANCEL (CLOSE once saved) and
+  EXPORT. Over the transport a panel of the options: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
+  first), View (the viewer's side, which it follows), Sides (One, or Both side by side, the View's at the left: the
+  user, "add support for two sided side by side export"; with Both a sound track a side, the left's first: "for 2
+  sided replays, audio track 1 should be left player audio, audio track 2 should be right player audio"), Save as;
+  under them the progress bar and its line, which says to drag the handles while nothing exports. A range of the
+  player's own names the file "… part 01.02–01.15". Esc or B stops an export under way, else leaves the mode; while
+  it is on the controls stay shown. On a phone the range's rows are under the transport's buttons and the options
+  under the transport. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
   (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.) Every
