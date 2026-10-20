@@ -1322,27 +1322,33 @@ fn draw_chip_name(
     let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
-    // the enhanced mode a pixel after the name as the text layer draws it.
+    // the enhanced mode after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
+    let mut words_end = None;
     if text.takes(words)
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
+        words_end = Some(w);
     }
     if !shows_damage(b, chip) {
         return x;
     }
     let i = hand.cursor as usize;
     let damage = hand.damage.get(i).copied().unwrap_or(0);
-    // In the enhanced mode the numbers in the lettering font, in their
-    // glyphs' looks, from where the original's start.
-    if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text)
-        && let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (x, 18 * 8))
-    {
-        for item in items {
-            text.push(Plane::Hud, item);
+    // In the enhanced mode the numbers in the numbers' font, in their
+    // glyphs' looks, a word's space after the name's words, ending by where
+    // the original's end.
+    if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text) {
+        let glyphs = |v: u16| v.to_string().len() as i32;
+        let original_end = 8 * (cells as i32 + glyphs(damage) + if bonus != 0 { 1 + glyphs(bonus) } else { 0 } + if doubled { 2 } else { 0 });
+        let from = words_end.unwrap_or(x as f32);
+        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8), Role::FittedCell, Some(original_end as f32)) {
+            for item in items {
+                text.push(Plane::Hud, item);
+            }
+            return end.ceil() as i32;
         }
-        return end;
     }
     let number = |layer: &mut Layer, v: u16, x: &mut i32| {
         for c in v.to_string().bytes() {
@@ -2172,16 +2178,21 @@ fn name_parts<'a>(
     // and numbers are (its name's glyphs fill their cells; the text layer's
     // words, narrower, centered in them, stood apart from the numbers).
     let sets = (!damage.is_empty()).then(|| NumberSets::of(style.letters, &pal, text)).flatten();
-    let mut at = after;
-    if let (Some(item), true) = (items.first_mut(), sets.is_some())
+    let mut at = after as f32;
+    // (Where the original's numbers end: the name and the numbers no wider.)
+    let limit = Some((after + 8 * (damage.len() + bonus.len()) as i32 + if doubled { 16 } else { 0 }) as f32);
+    if let (Some(item), Some(looks)) = (items.first_mut(), sets.as_ref())
         && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
+        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y), Role::Cell, None)
     {
-        let shown = w.ceil() as i32 + 1 + 8 * (damage.len() + bonus.len()) as i32;
-        let start = item.rect.x + (8 * width - shown) / 2;
+        // (The name and its numbers but the "x2" centered where the
+        // original's are; the "x2" after them, as the original's.)
+        let shown = (w + end).min((8 * width) as f32);
+        let start = item.rect.x + ((8 * width) as f32 - shown) as i32 / 2;
         *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
-        at = start + w.ceil() as i32 + 1;
+        at = start as f32 + w;
     }
-    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y)));
+    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y), Role::Cell, limit));
     let lettered = numbers.is_some();
     if let Some((numbers, _)) = numbers {
         items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
@@ -2223,9 +2234,12 @@ impl NumberSets {
     }
 
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where
-    /// the use doubles it), in the numbers' font from `x` on cells' rows `y`,
-    /// a character a cell as the original's glyphs stand, and where they end.
-    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (i32, i32)) -> Option<(Vec<TextItem>, i32)> {
+    /// the use doubles it), in the numbers' font after its name's words
+    /// (`x`, frame pixels, where they end) on cells' rows `y`, as tall as
+    /// the name's capitals (`role`'s) and set at the font's own advances
+    /// (`numbers::after_words`), ending by `limit` at the latest; and where
+    /// they end.
+    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32), role: Role, limit: Option<f32>) -> Option<(Vec<TextItem>, f32)> {
         let mut parts = vec![(damage.to_string(), &self.digits)];
         if bonus != 0 {
             parts.push(("+".to_string(), &self.plus));
@@ -2234,10 +2248,15 @@ impl NumberSets {
         if doubled {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
-        let cells: i32 = parts.iter().map(|p| p.0.chars().count() as i32).sum();
-        Some((crate::numbers::items(text, &parts, (x, y))?, x + crate::numbers::CELL * cells))
+        let (cap, baseline) = role.cap_and_baseline();
+        // (A word's space after the name, as the font's would be.)
+        crate::numbers::after_words(text, &parts, (x + WORD_SPACE * cap, y), (cap, baseline), limit)
     }
 }
+
+/// The space between a chip's name and its numbers, over the name's
+/// capitals' height: about a word's space.
+const WORD_SPACE: f32 = 0.3;
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
 /// (the enhanced mode's), how many of its parts, from the first, are the
