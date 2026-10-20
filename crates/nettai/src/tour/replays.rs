@@ -489,25 +489,23 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Confirm));
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| if shell.scale.phone { s.step(shell, "view-step", 0, 1) } else { s.activate(shell, "view", 1) })));
+    // (The ⋯ menu's rows, chosen as a click on them is heard: P2 is its second, EXPORT VIDEO its last.)
+    let menu = |row: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "more", 0, row))) };
+    add(SETTLE, menu(1));
     shot(add, "viewer-other-side", Pair::None, Also::Nothing);
     // Both builds (the match's setups were open), the other console's player's at the left.
-    add(SETTLE, activate("builds", 0));
+    add(SETTLE, key(KeyCode::KeyB, 1));
     shot(add, "viewer-builds", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
     // The input display and the other console's picture in the corner (I and P), on together, then off.
     add(SETTLE, key(KeyCode::KeyI, 1));
-    add(SETTLE, activate("inset", 0));
-    shot(add, "viewer-overlays", Pair::None, Also::Nothing);
-    add(SETTLE, activate("inputs", 0));
     add(SETTLE, key(KeyCode::KeyP, 1));
-    // A clip marked (C): its start, two seconds on, then its end; the export then offers it, chosen.
-    add(SETTLE, key(KeyCode::KeyC, 1));
-    add(SETTLE, key(KeyCode::Period, 120));
-    shot(add, "viewer-clip-start", Pair::None, Also::Nothing);
-    add(SETTLE, activate("clip", 0));
-    shot(add, "viewer-clip", Pair::None, Also::Nothing);
-    add(SETTLE, activate("export", 0));
+    shot(add, "viewer-overlays", Pair::None, Also::Nothing);
+    add(SETTLE, key(KeyCode::KeyI, 1));
+    add(SETTLE, key(KeyCode::KeyP, 1));
+    // The export, from the viewer: its Range the whole match, NOW taking where the viewer is as the End.
+    add(SETTLE, menu(9));
+    add(SETTLE, activate("export.end-now", 0));
     shot(add, "viewer-export", Pair::None, Also::Nothing);
     // Both consoles side by side.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "export.sides", 0, 1))));

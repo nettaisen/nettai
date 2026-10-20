@@ -1426,13 +1426,14 @@ Each is settled unless the user changes it.
     hover. also add playlist support and a toggle to autoplay next video on play list (defaults to on)". (The
     playlist became the play queue, made ahead of time on the Replays screen: §2.91; its panel in the viewer became a
     button and a small popup, and a replay watched leaves the queue: §2.92; the transport's buttons were cut down,
-    the next and Autoplay next moving into that popup: §2.94.)
+    the next and Autoplay next moving into that popup: §2.94; VIEW, the speeds and EXPORT VIDEO became one ⋯ menu,
+    and the clip left the viewer for the export's Range: §2.95.)
     - *The picture fills the window,* as a match's does: the largest whole multiple of the frame that fits it (Picture
       size still its most), the backdrop around it. Nothing is beside it or under it.
     - *Its controls are over it,* the header, the transport and the footer, fading (`brisk`) out once nothing has
       been done for 2.5 seconds while the replay plays, and back in at anything done: a key, a pad's button, the
       pointer moved, a click. They stay while it doesn't play (paused, at its end, a seek waiting), while a setting is
-      taken (the bar), while the builds, the export, VIEW's menu (§2.94) or the queue's popup (§2.92) are open, and
+      taken (the bar), while the builds, the export, the ⋯ menu (§2.95) or the queue's popup (§2.92) are open, and
       while the pointer rests
       on the transport; a replay just begun shows them as an input does. The cursor goes and comes back with them,
       where it was. Hidden, a press still does what it does: the first key or button is the replay's, not a wake-up
@@ -1447,7 +1448,7 @@ Each is settled unless the user changes it.
       with the queue's head chosen in the Queue tab.
     - *Autoplay next,* the switch at the top of the queue's popup (§2.94), on at first and remembered (the settings'
       `replays.autoplay`): a replay played to its end starts the next that plays two seconds after (not while the
-      builds, the export, VIEW's menu or the queue's popup are open); off, or at the queue's end, the viewer stays at the end
+      builds, the export, the ⋯ menu or the queue's popup are open); off, or at the queue's end, the viewer stays at the end
       with its controls, as before.
     - *Loose ends,* the user: "fix the loose ends". The pointer hides with the controls, over the picture and
       around it. The input display and the other console's picture are under the controls: the transport is drawn
@@ -1495,7 +1496,8 @@ Each is settled unless the user changes it.
       button more, the queue's (lines and a triangle, the count up next in a cyan badge over its corner), between
       VIEW and EXPORT VIDEO; on a phone at the right end of the row of buttons. (This first put three in the
       transport, the next and Autoplay next beside the queue's, a phone's a row of their own, and moved the round
-      shown to the footer to make room; §2.94 moved those two into the popup and the round back.)
+      shown to the footer to make room; §2.94 moved those two into the popup and the round back; since §2.95 it is
+      just before ⋯ at the row's right end, on a phone too.)
     - *The popup* opens from the queue's button, anchored to it: 360 wide, its right edge at the button's, above it
       (under it where there is no room; on a phone across the window). At its top NEXT (the replay watched skipped,
       as N; dim where no entry that plays is up next) and, at the right, Autoplay next with its words, a switch's
@@ -1524,6 +1526,11 @@ Each is settled unless the user changes it.
     the shapes put to them chose
 
     `|<   >   >|    ====seek====    1x 2x 4x   [View v] [Queue 3]`
+
+    (§2.95 changed this the same day: VIEW, the speeds and EXPORT VIDEO are one ⋯ menu at the row's right end, the
+    queue's button before it, and the clip is no longer marked in the viewer but chosen in the export's dialog, its
+    Range. What follows is what §2.94 itself did; the play buttons, the round shown, the queue's and the keys B, I
+    and P stand as it left them.)
     - *To play:* the round's start, play or pause, the next round. The frame steps' buttons are gone; comma and
       period still step a frame, and the footer's hint still says so.
     - *VIEW,* a standard button with a small arrow pointing down (`ArrowDown`, a select's), in the place the side's
@@ -1549,6 +1556,45 @@ Each is settled unless the user changes it.
     - *Japanese:* VIEW 表示 (its own context, `menu`: the export's View stays 視点), OTHER SIDE'S PICTURE 相手側の画面,
       MARK CLIP START 切り抜きの開始点を設定, MARK CLIP END 切り抜きの終了点を設定, CLEAR CLIP 切り抜きを解除; BUILDS
       構築, INPUT DISPLAY 入力表示 and NEXT 次へ as the app already has them.
+95. **One ⋯ menu in the viewer; the builds off the transport; the clip chosen in the export** (2026-10-19). The
+    user: "the builds view is impossible to close once opened because it covers the view menu. the menu should just
+    be like a ... and you should put speed and export video in there as well. mark clip start should be like its own
+    control i think or something and not shoved in the menu like that". Asked to choose for the clip, after "the
+    clip controls are unintuitive", they chose no clip control in the viewer at all, the range picked in the export
+    alone:
+
+    `Range: [Whole replay v]  Start [0:41] [Now]  End [0:53] [Now]`
+    - *The builds don't cover the controls.* Their page reached down to the footer, over the transport, whose
+      clicks it took (one between the sheets went nowhere), so VIEW couldn't be pressed to uncheck BUILDS; only a
+      click on a sheet, B, Select or Esc put them away. Now they end 12 over the transport, on a phone over the
+      picture alone; the header, the transport and the footer stay uncovered and work, and the ⋯ menu (the shell's,
+      over everything) unchecks BUILDS. A click between the sheets puts them away again. The popup up next is over
+      them. The input display and the other side's picture take no clicks and are under the transport, as before.
+    - *⋯* (an icon button of three dots, the transport's size, as Play's build's ⋯) replaces VIEW, the speeds (and
+      their label) and EXPORT VIDEO. Its menu opens with its right edge at the button's, over it (on a phone the
+      picker's sheet): P1 and P2, the console shown checked; under a line BUILDS (dim where the setups weren't
+      open), INPUT DISPLAY and OTHER SIDE'S PICTURE, each checked while on; under a line ½×, 1×, 2× and 4×, the
+      speed set checked; under a line EXPORT VIDEO, which opens the export's dialog as the button did.
+    - *The transport:* the round's start, play or pause, the next round, "Round 2 of 3"; at the right, while the
+      queue plays, the queue's button, then ⋯. On a phone the bar over the three buttons, the queue's and ⋯ at the
+      right of their row, each 40 by 44: the transport is 104 tall (from 208), no Speed stepper and no EXPORT VIDEO
+      under it.
+    - *No clip in the viewer:* C, the clip's menu row and its band on the bar are gone, and the viewer keeps no
+      clip. The export's dialog has Range (Part's place, 範囲 as Part already was in Japanese): the whole match
+      (chosen at first, from the viewer too), each round where there is more than one, or Custom, its length after
+      it. Under it Start and End, each a field of minutes and seconds (`0:41`; seconds alone are taken too) with
+      NOW, which takes where the viewer is (it pauses as the dialog opens; from the list NOW is dim). They always
+      say the range chosen (a round's start and end); typing either or pressing a NOW makes the range Custom, from
+      Start to End. What is wrong is said under them in the error color, the field's edge red: "Type a time as
+      m:ss.", "The replay ends at 3:12." (past its end), "The start must be before the end."; EXPORT is then
+      refused, the field taken. The export uses the range as it used the clip, its file named "… part 00.41–00.53".
+      "Whole replay" in the user's sketch is the existing "Whole match" (試合全体).
+    - *The keys stay:* Space, comma and period, the brackets, B (and Select), I, P, N; C is gone with the clip. No
+      key ever set the speed (`NETTAI_REPLAY_SPEED` and the viewer's probe aside).
+    - *Japanese:* Range 範囲, Start 開始, End 終了, NOW 現在位置 (the playback position: its own context, `range`),
+      Custom 指定範囲, "Type a time as m:ss." 時間は「分:秒」の形で入力してください。, "The start must be before the
+      end." 開始は終了より前にしてください。, "The replay ends at {}." リプレイは {} で終わります。 VIEW's 表示 (`menu`),
+      Speed 速度, Clip 切り抜き and the three clip rows' words are gone from the catalog.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2090,27 +2136,26 @@ DUPLICATE and DELETE.
   played to its end or skipped, and missing entries are passed by and leave (§2.92).
 - **The viewer:** the picture fills the window (§2.90), and over it, shown while wanted and fading after 2.5 seconds
   without input while it plays: the header, the footer (the replay's rounds, "3 rounds"), and at its foot a
-  transport (§2.94): the time, a bar to click or drag with a mark where each round begins, the length; then to the
-  round's start, play or pause, the next round, and the round shown ("Round 2 of 3"); at the right Speed (½, 1, 2,
-  4), VIEW and its arrow, while the queue plays the queue's button with the count up next (its popup: NEXT, N, and
-  Autoplay next, on at first, over the entries up next: §2.92), and EXPORT VIDEO. Space plays, the bar taken
-  (Enter) Left and Right seek 5 seconds, comma and period step a frame, the brackets go a round. VIEW's menu has
-  the side shown (P1, P2, the one shown checked); BUILDS (B; dim where the setups weren't open) and two toggles,
-  each off at first and checked while on (the user: "add support for input view and picture in picture in replay
-  viewer"): INPUT DISPLAY (I), Practice's, both players' buttons in the picture's top right corner; and OTHER
-  SIDE'S PICTURE (P), the other console's, small in the bottom right corner of the one shown. Then the clip to
-  export (C, or the menu's last row, MARK CLIP START, MARK CLIP END or CLEAR CLIP by what it does next; the user:
-  "add the ability to export a clip in the replay viewer"): the first marks its start where the replay is, the
-  second its end (the two the other way round where it is before the start), the third clears it; the bar shows
-  it as a band in the code color with a mark at each end taller than the handle, a start alone running to where
-  the replay is. On a phone: the bar; the three buttons with VIEW and the queue's at the right; Speed's stepper;
-  EXPORT VIDEO.
+  transport (§2.94, §2.95): the time, a bar to click or drag with a mark where each round begins, the length; then
+  to the round's start, play or pause, the next round, and the round shown ("Round 2 of 3"); at the right, while the
+  queue plays, the queue's button with the count up next (its popup: NEXT, N, and Autoplay next, on at first, over
+  the entries up next: §2.92), and ⋯. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
+  period step a frame, the brackets go a round. The ⋯ menu has the side shown (P1, P2, the one shown checked);
+  BUILDS (B; dim where the setups weren't open) and two toggles, each off at first and checked while on (the user:
+  "add support for input view and picture in picture in replay viewer"): INPUT DISPLAY (I), Practice's, both
+  players' buttons in the picture's top right corner; and OTHER SIDE'S PICTURE (P), the other console's, small in
+  the bottom right corner of the one shown; the speeds (½×, 1×, 2×, 4×, the one set checked); and EXPORT VIDEO.
+  Both builds are over the picture and never over the transport, the header or the footer (§2.95). The part to
+  export (the user: "add the ability to export a clip in the replay viewer") is chosen in the export's dialog, its
+  Range, with NOW taking where the viewer is (§2.95); the viewer marks none. On a phone: the bar; the three buttons
+  with the queue's and ⋯ at the right.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
   first), View, Sides (One, or Both side by side, the View's at the left: the user, "add support for two
   sided side by side export"; with Both a sound track a side, the left's first: "for 2 sided replays, audio track 1
-  should be left player audio, audio track 2 should be right player audio"), Part (the whole match, each round
-  where there is more than one, and the clip marked in the viewer, which it opens on: "Clip 01:02–01:15 · 00:13",
-  the file named "… clip 01.02–01.15"), Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  should be left player audio, audio track 2 should be right player audio"), Range (the whole match, chosen at
+  first; each round where there is more than one; or Custom, "Custom · 00:12"), Start and End (minutes and seconds,
+  each with NOW, the viewer's time; they say the range chosen, and a change makes it Custom, the file named "… part
+  01.02–01.15"; what is wrong is said under them: §2.95), Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
   (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.) Every

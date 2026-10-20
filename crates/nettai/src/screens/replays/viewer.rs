@@ -10,8 +10,8 @@
 //! players' builds in, the console shown's player's at the left; the sides of a match whose setups weren't open
 //! aren't kept.
 //!
-//! Two things more may be on over the picture, each off at first and toggled by its row of the transport's VIEW
-//! menu ([`ViewItem`], which has the sides and the clip too) or a key
+//! Two things more may be on over the picture, each off at first and toggled by its row of the transport's ⋯
+//! menu ([`MenuItem`], which has the sides, the speeds and the export too) or a key
 //! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
 //! the console shown's player's row over the other's); and the other console's picture, small in the picture's
 //! corner, presented from the same tick as the one shown (the library's `Viewer::present_view`: the replay is
@@ -57,18 +57,34 @@ pub struct Overlays {
     pub inset: bool,
 }
 
-/// What the transport's VIEW menu holds, in its order (docs/design/app-ui.md §2.94): the two sides' consoles (the one
-/// shown checked), what may be over the picture (each checked while it is on), and the clip to export.
+/// What the transport's ⋯ menu holds, in its order (docs/design/app-ui.md §2.95): the two sides' consoles (the one
+/// shown checked), what may be over the picture (each checked while it is on), the four speeds (the one set
+/// checked), and the export.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ViewItem {
+pub enum MenuItem {
     Side(u8),
     Builds,
     Inputs,
     Inset,
-    Clip,
+    Speed(u8),
+    Export,
 }
 
-pub const VIEW_MENU: [ViewItem; 6] = [ViewItem::Side(0), ViewItem::Side(1), ViewItem::Builds, ViewItem::Inputs, ViewItem::Inset, ViewItem::Clip];
+pub const MENU: [MenuItem; 10] = [
+    MenuItem::Side(0),
+    MenuItem::Side(1),
+    MenuItem::Builds,
+    MenuItem::Inputs,
+    MenuItem::Inset,
+    MenuItem::Speed(0),
+    MenuItem::Speed(1),
+    MenuItem::Speed(2),
+    MenuItem::Speed(3),
+    MenuItem::Export,
+];
+
+/// The speeds as the menu says them.
+const SPEED_WORDS: [&str; 4] = ["½×", "1×", "2×", "4×"];
 
 /// The other console's picture is a whole multiple of the frame about this part of the shown one's width (a
 /// third), at least the frame itself, in the display's pixels.
@@ -84,7 +100,6 @@ struct Told {
     second: u64,
     round: u32,
     playing: bool,
-    clip: (f32, f32),
 }
 
 /// What the viewer costs (`NETTAI_PLAY_STATS`): said every two seconds.
@@ -188,8 +203,6 @@ pub struct Watching {
     overlays: Overlays,
     inset: Surface,
     held: Option<[u16; 2]>,
-    /// The clip marked for export: its start, and its end once that is marked (`mark_clip`).
-    clip: Option<(u32, Option<u32>)>,
     /// When it played to its end, while it is still there (a seek or a step to the end isn't playing to it): the
     /// play queue's next starts a moment after (`Replays::frame`).
     ended: Option<Instant>,
@@ -202,7 +215,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, clip: None, ended: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -244,8 +257,9 @@ impl Watching {
         self.builds
     }
 
-    /// The tick the bar shows: where a drag holds it, where a seek is going, else where the viewer is.
-    fn shown(&self) -> u32 {
+    /// The tick the bar shows: where a drag holds it, where a seek is going, else where the viewer is (the
+    /// export's NOW takes it).
+    pub fn shown(&self) -> u32 {
         self.drag.or(self.pending).unwrap_or(self.viewer.position())
     }
 
@@ -290,7 +304,6 @@ impl Watching {
         }
         view.set_builds_shown(self.builds);
         self.show_side(&view);
-        view.set_speed(self.speed());
         self.told = None;
         self.tell(&view);
         view.set_watching(true);
@@ -299,7 +312,6 @@ impl Watching {
     /// Who is playing, the console shown first (its side is at the picture's left).
     fn show_side(&self, view: &ReplaysView) {
         let (info, side) = (self.viewer.info(), self.viewer.view());
-        view.set_view(side as i32);
         view.set_title(view.invoke_versus(name(view, info, side).into(), name(view, info, side ^ 1).into()));
     }
 
@@ -307,12 +319,7 @@ impl Watching {
     fn tell(&mut self, view: &ReplaysView) {
         let tick = self.shown();
         let length = self.viewer.length().max(1) as f32;
-        // (The clip's ends, 0 to 1, or -1 where unmarked: a start alone runs to where the replay is.)
-        let clip = match self.clip {
-            None => (-1.0, -1.0),
-            Some((start, end)) => (start as f32 / length, end.map_or(-1.0, |e| e as f32 / length)),
-        };
-        let now = Told { position: tick as f32 / length, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing(), clip };
+        let now = Told { position: tick as f32 / length, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing() };
         let was = self.told.as_ref();
         if was.is_none_or(|t| t.position != now.position) {
             view.set_position(now.position);
@@ -325,10 +332,6 @@ impl Watching {
         }
         if was.is_none_or(|t| t.playing != now.playing) {
             view.set_playing(now.playing);
-        }
-        if was.is_none_or(|t| t.clip != now.clip) {
-            view.set_clip_start(now.clip.0);
-            view.set_clip_end(now.clip.1);
         }
         self.told = Some(now);
     }
@@ -448,59 +451,34 @@ impl Watching {
         self.show_overlays(&shell.ui().global::<ReplaysView>());
     }
 
-    /// C, or VIEW's clip row: mark the clip's start where the replay is; then its end (the two the other way
-    /// round where it is before the start; refused on the start itself); then, marked, clear it.
-    pub fn mark_clip(&mut self, shell: &mut Shell) {
-        let at = self.shown();
-        self.clip = match self.clip {
-            None => Some((at, None)),
-            Some((start, None)) if at == start => {
-                shell.sound.play(Cue::Refused);
-                return;
-            }
-            Some((start, None)) => Some((start.min(at), Some(start.max(at)))),
-            Some((_, Some(_))) => None,
-        };
-    }
-
-    /// The VIEW menu's rows ([`VIEW_MENU`]): each one's words and marks. A group's first has a line over it; BUILDS is
-    /// dim where the match's setups weren't open (`toggle_builds` refuses it); the clip's words say what C does next.
-    pub fn view_menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
-        VIEW_MENU
-            .iter()
+    /// The ⋯ menu's rows ([`MENU`]): each one's words and marks. A group's first has a line over it; BUILDS is dim
+    /// where the match's setups weren't open (`toggle_builds` refuses it).
+    pub fn menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
+        MENU.iter()
             .map(|&item| {
                 let (word, check, dim) = match item {
-                    ViewItem::Side(side) => (if side == 0 { view.get_p1() } else { view.get_p2() }, self.side() == side, false),
-                    ViewItem::Builds => (view.get_builds_word(), self.builds, self.sides.is_none()),
-                    ViewItem::Inputs => (view.get_inputs_word(), self.overlays.inputs, false),
-                    ViewItem::Inset => (view.get_inset_word(), self.overlays.inset, false),
-                    ViewItem::Clip => match self.clip {
-                        None => (view.get_clip_start_word(), false, false),
-                        Some((_, None)) => (view.get_clip_end_word(), false, false),
-                        Some(_) => (view.get_clip_clear_word(), false, false),
-                    },
+                    MenuItem::Side(side) => (if side == 0 { view.get_p1() } else { view.get_p2() }.to_string(), self.side() == side, false),
+                    MenuItem::Builds => (view.get_builds_word().to_string(), self.builds, self.sides.is_none()),
+                    MenuItem::Inputs => (view.get_inputs_word().to_string(), self.overlays.inputs, false),
+                    MenuItem::Inset => (view.get_inset_word().to_string(), self.overlays.inset, false),
+                    MenuItem::Speed(at) => (SPEED_WORDS[at as usize].to_string(), self.speed() == at as i32, false),
+                    MenuItem::Export => (view.get_export_word().to_string(), false, false),
                 };
-                (word.to_string(), PickMark { check, dim, line: matches!(item, ViewItem::Builds | ViewItem::Clip) })
+                (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed(0) | MenuItem::Export) })
             })
             .collect()
     }
 
-    /// A row of the VIEW menu chosen: as its key does (the side: as the side chosen).
-    pub fn choose_view(&mut self, shell: &mut Shell, item: ViewItem) {
+    /// A row of the ⋯ menu chosen: as its key does (the side: as the side chosen). The export is the screen's
+    /// (`Replays::choose`), which opens its dialog.
+    pub fn choose(&mut self, shell: &mut Shell, item: MenuItem) {
         match item {
-            ViewItem::Side(side) => self.set_view(shell, side as i32),
-            ViewItem::Builds => self.toggle_builds(shell),
-            ViewItem::Inputs => self.toggle_inputs(shell),
-            ViewItem::Inset => self.toggle_inset(shell),
-            ViewItem::Clip => self.mark_clip(shell),
-        }
-    }
-
-    /// The clip marked, start and end: the part of the replay the export offers.
-    pub fn clip(&self) -> Option<std::ops::Range<u32>> {
-        match self.clip {
-            Some((start, Some(end))) => Some(start..end),
-            _ => None,
+            MenuItem::Side(side) => self.set_view(shell, side as i32),
+            MenuItem::Builds => self.toggle_builds(shell),
+            MenuItem::Inputs => self.toggle_inputs(shell),
+            MenuItem::Inset => self.toggle_inset(shell),
+            MenuItem::Speed(at) => self.set_speed(at as i32),
+            MenuItem::Export => {}
         }
     }
 

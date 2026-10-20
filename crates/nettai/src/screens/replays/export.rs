@@ -6,6 +6,11 @@
 //! reads it each frame. The file takes its name only once it is whole (the library's `mp4::Encoder`): stopped
 //! or failed, nothing of it is left. What went wrong is said in the dialog's line, in the player's words
 //! (`UserError::of_export`); the app saves an MP4 and nothing else.
+//!
+//! The part exported is the dialog's Range (docs/design/app-ui.md §2.95): the whole match, a round, or a part of the
+//! player's own, whose Start and End are typed as minutes and seconds or taken from where the viewer is (NOW). The
+//! two always say the range chosen; a change to either makes it the player's own. What is wrong with them is said
+//! under them, and the export waits until it is put right.
 
 use super::{clock, name, played};
 use crate::errors::UserError;
@@ -13,12 +18,13 @@ use crate::nav::Key;
 use crate::replays::Summary;
 use crate::shell::Shell;
 use nettai_frontend::game::{Loaded, Sound, GraphicsMode};
-use nettai_frontend::player::time_of;
+use nettai_frontend::player::{tick_at, time_of};
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_video::{Options, Part, Progress, Sides, Titles, mp4};
 use slint::ComponentHandle;
 use std::ops::{ControlFlow, Range};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -33,6 +39,18 @@ const FOLDER: &str = "replays.export-folder";
 
 /// The most of a path the dialog shows (its middle is left out past it).
 const PATH_SHOWN: usize = 42;
+
+/// The most a typed time holds (`12:34`, and some room besides).
+const TIME_LENGTH: usize = 8;
+
+/// What is wrong with a Start or an End: it isn't a time; it is past the replay's end; the start isn't before the
+/// end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Problem {
+    Form,
+    PastEnd,
+    Order,
+}
 
 /// What the export's thread and the dialog share.
 #[derive(Default)]
@@ -67,10 +85,17 @@ pub struct Export {
     /// Both consoles side by side (`side`'s at the left, its sound the first track, the other's the second), or
     /// `side`'s alone.
     both: bool,
-    /// The part: 0 the whole match, else that round; or, one past the rounds, the clip.
+    /// The part: 0 the whole match, else that round; or, one past the rounds, the player's own (`custom`).
     part: u32,
-    /// The clip marked in the viewer, if any: its ticks.
-    clip: Option<Range<u32>>,
+    /// The part of the player's own, its ticks.
+    custom: Range<u32>,
+    /// Start and End: each as typed, and its tick where it is a time. They say the part chosen until changed.
+    times: [String; 2],
+    ticks: [Option<u32>; 2],
+    /// What is wrong with Start (0) or End (1), if anything.
+    problem: Option<(usize, Problem)>,
+    /// Where the viewer was as the dialog opened from it (NOW's), as a tick.
+    now: Option<u32>,
     to: PathBuf,
     /// The player chose the place: it isn't named again as the part changes.
     placed: bool,
@@ -116,9 +141,9 @@ fn shown(path: &Path, phone: bool) -> String {
 }
 
 impl Export {
-    /// Open the dialog for the replay at `replay`, shown from `side`: with `clip`, the clip marked in the viewer,
-    /// a part to choose and the one chosen at first.
-    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, clip: Option<Range<u32>>) -> Export {
+    /// Open the dialog for the replay at `replay`, shown from `side`, the whole match chosen: from the viewer, with
+    /// `now`, the tick it is at, which NOW takes.
+    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, now: Option<u32>) -> Export {
         let mut export = Export {
             replay: replay.to_path_buf(),
             summary: summary.clone(),
@@ -126,16 +151,18 @@ impl Export {
             side: side.min(1),
             both: false,
             part: 0,
-            clip,
+            custom: 0..summary.ticks,
+            times: Default::default(),
+            ticks: [None; 2],
+            problem: None,
+            now: now.map(|t| t.min(summary.ticks)),
             to: PathBuf::new(),
             placed: false,
             running: None,
             state: ExportState::Idle,
             error: None,
         };
-        if export.clip.is_some() {
-            export.part = export.last_part();
-        }
+        export.fill_times();
         export.name(shell);
         export.show(shell);
         shell.ui().global::<ReplaysView>().set_exporting(true);
@@ -162,45 +189,62 @@ impl Export {
         }
     }
 
-    /// The last part: the clip, where one is marked, else the last round.
+    /// The last part: the player's own, after the rounds.
     fn last_part(&self) -> u32 {
-        self.parts() + self.clip.is_some() as u32
+        self.parts() + 1
     }
 
-    /// Part `part`'s clip, where it is the clip.
-    fn clip_of(&self, part: u32) -> Option<&Range<u32>> {
-        self.clip.as_ref().filter(|_| part == self.parts() + 1)
-    }
-
-    /// A part's length, in ticks.
-    fn ticks(&self, part: u32) -> u32 {
+    /// A part's ticks.
+    fn range(&self, part: u32) -> Range<u32> {
         let rounds = &self.summary.rounds;
-        if let Some(clip) = self.clip_of(part) {
-            return clip.len() as u32;
-        }
         match part {
-            0 => self.summary.ticks,
-            n => rounds.get(n as usize).copied().unwrap_or(self.summary.ticks) - rounds[n as usize - 1],
+            0 => 0..self.summary.ticks,
+            n if n > self.parts() => self.custom.clone(),
+            n => rounds[n as usize - 1]..rounds.get(n as usize).copied().unwrap_or(self.summary.ticks),
         }
     }
 
     fn part_label(&self, view: &ReplaysView, part: u32) -> String {
-        let length = clock(time_of(self.ticks(part) as u64), true);
-        if let Some(clip) = self.clip_of(part) {
-            let at = |tick: u32| -> slint::SharedString { clock(time_of(tick as u64), true).into() };
-            return view.invoke_clip_part(at(clip.start), at(clip.end), length.into()).into();
-        }
+        let length = clock(time_of(self.range(part).len() as u64), true);
         match part {
             0 => view.invoke_whole(length.into()).into(),
+            n if n > self.parts() => view.invoke_custom_part(length.into()).into(),
             n => view.invoke_round_part(n as i32, length.into()).into(),
         }
     }
 
     /// The round a part starts in, from 1.
     fn first_round(&self, part: u32) -> u32 {
-        match self.clip_of(part) {
-            Some(clip) => self.summary.rounds.iter().filter(|&&r| r <= clip.start).count().max(1) as u32,
-            None => part.max(1),
+        let start = self.range(part).start;
+        self.summary.rounds.iter().filter(|&&r| r <= start).count().max(1) as u32
+    }
+
+    /// Start and End as the part chosen says them, nothing wrong.
+    fn fill_times(&mut self) {
+        let range = self.range(self.part);
+        self.ticks = [Some(range.start), Some(range.end)];
+        self.times = [range.start, range.end].map(|t| clock(time_of(t as u64), false));
+        self.problem = None;
+    }
+
+    /// Start and End looked at: what is wrong with them, Start's first; else the part they say, which is the player's
+    /// own where it isn't the one chosen.
+    fn check_times(&mut self) {
+        let length = self.summary.ticks;
+        let problem = match self.ticks {
+            [None, _] => Some((0, Problem::Form)),
+            [_, None] => Some((1, Problem::Form)),
+            [Some(start), _] if start >= length => Some((0, Problem::PastEnd)),
+            [_, Some(end)] if end > length => Some((1, Problem::PastEnd)),
+            [Some(start), Some(end)] if start >= end => Some((1, Problem::Order)),
+            _ => None,
+        };
+        self.problem = problem;
+        if let ([Some(start), Some(end)], None) = (self.ticks, problem)
+            && self.range(self.part) != (start..end)
+        {
+            self.custom = start..end;
+            self.part = self.last_part();
         }
     }
 
@@ -221,10 +265,10 @@ impl Export {
         let folder = shell.settings.remembered.get(FOLDER).map(PathBuf::from).unwrap_or_else(|| videos().join("nettai"));
         let info = &self.summary.info;
         let mut stem = file_safe(&format!("{} {}", played(&view, info.when).file, name(&view, info, info.side ^ 1)));
-        if let Some(clip) = self.clip_of(self.part) {
-            // (The clip's start and end, as the bar's clock says them, with dots: a colon is no file's.)
+        if self.part > self.parts() {
+            // (The part's start and end, as the bar's clock says them, with dots: a colon is no file's.)
             let at = |tick: u32| clock(time_of(tick as u64), true).replace(':', ".");
-            stem.push_str(&format!(" clip {}–{}", at(clip.start), at(clip.end)));
+            stem.push_str(&format!(" part {}–{}", at(self.custom.start), at(self.custom.end)));
         } else if self.part > 0 {
             stem.push_str(&format!(" round {}", self.part));
         }
@@ -242,6 +286,17 @@ impl Export {
         view.set_export_view(self.side as i32);
         view.set_export_sides(self.both as i32);
         view.set_export_part(self.part_label(&view, self.part).into());
+        view.set_export_start(self.times[0].as_str().into());
+        view.set_export_end(self.times[1].as_str().into());
+        view.set_export_now(self.now.is_some());
+        view.set_export_bad(self.problem.map_or(-1, |(at, _)| at as i32));
+        let length: slint::SharedString = clock(time_of(self.summary.ticks as u64), false).into();
+        view.set_export_problem(match self.problem {
+            None => Default::default(),
+            Some((_, Problem::Form)) => view.get_time_form(),
+            Some((_, Problem::PastEnd)) => view.invoke_past_end(length),
+            Some((_, Problem::Order)) => view.get_time_order(),
+        });
         view.set_export_path(shown(&self.to, shell.scale.phone).into());
         view.set_export_state(self.state);
         view.set_export_error(self.error.as_ref().map(|e| e.line(&ui)).unwrap_or_default().into());
@@ -263,6 +318,7 @@ impl Export {
 
     fn set_part(&mut self, shell: &mut Shell, part: u32) {
         self.part = part.min(self.last_part());
+        self.fill_times();
         self.name(shell);
         self.show(shell);
     }
@@ -291,6 +347,18 @@ impl Export {
                 self.show(shell);
             }
             "sides" if self.open_to_change() => self.set_both(shell, !self.both),
+            // (NOW: where the viewer is, Start's or End's; from the list there is none.)
+            "start-now" | "end-now" if self.open_to_change() => match self.now {
+                Some(now) => {
+                    let at = (what == "end-now") as usize;
+                    self.ticks[at] = Some(now);
+                    self.times[at] = clock(time_of(now as u64), false);
+                    self.check_times();
+                    self.name(shell);
+                    self.show(shell);
+                }
+                None => shell.sound.play(crate::sound::Cue::Refused),
+            },
             "path" if self.open_to_change() => {
                 let kind = shell.ui().global::<ReplaysView>().get_video_kind();
                 if let Some(mut to) = choose(&kind, &self.to) {
@@ -336,6 +404,28 @@ impl Export {
         self.show(shell);
     }
 
+    /// Start or End typed in (`done`: the edit ended, and what it holds is looked at).
+    pub fn edit(&mut self, shell: &mut Shell, what: &str, text: &str, done: bool) {
+        let at = match what {
+            "start" => 0,
+            "end" => 1,
+            _ => return,
+        };
+        if !self.open_to_change() {
+            return;
+        }
+        self.times[at] = text.chars().filter(|c| !c.is_control()).take(TIME_LENGTH).collect();
+        if done {
+            self.ticks[at] = parse_time(&self.times[at]).map(|t| tick_at(t) as u32);
+            if let Some(tick) = self.ticks[at] {
+                self.times[at] = clock(time_of(tick as u64), false);
+            }
+            self.check_times();
+            self.name(shell);
+        }
+        self.show(shell);
+    }
+
     /// Esc, or CANCEL: an export under way is stopped (the dialog stays, to export again); else true, and the
     /// dialog is to close.
     pub fn back(&mut self, _shell: &mut Shell) -> bool {
@@ -352,6 +442,12 @@ impl Export {
     fn start(&mut self, shell: &mut Shell) {
         if !self.open_to_change() {
             return;
+        }
+        // (Start or End not put right: the export waits, the field taken.)
+        if let Some((at, _)) = self.problem {
+            shell.sound.play(crate::sound::Cue::Refused);
+            self.show(shell);
+            return shell.nav.focus(if at == 0 { "export.start" } else { "export.end" }, 0);
         }
         let Some((_, ready)) = shell.ready() else { return };
         let doing = format!("exporting {}", self.replay.display());
@@ -387,10 +483,10 @@ impl Export {
             let rounds = (1..=self.summary.rounds.len() as i32).map(|n| view.invoke_chapter(n).into()).collect();
             Titles { rounds, sides: [0, 1].map(|side| name(&view, &self.summary.info, side)) }
         };
-        let part = match self.clip_of(self.part) {
-            Some(clip) => Part::Ticks(clip.clone()),
-            None if self.part == 0 => Part::Whole,
-            None => Part::Round(self.part),
+        let part = match self.part {
+            0 => Part::Whole,
+            n if n > self.parts() => Part::Ticks(self.custom.clone()),
+            n => Part::Round(n),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
         let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
@@ -470,6 +566,20 @@ impl Export {
     }
 }
 
+/// A time as typed: minutes and seconds (`1:05`), or seconds alone (`65`). None: it isn't one.
+fn parse_time(text: &str) -> Option<Duration> {
+    let text = text.trim();
+    let number = |part: &str| -> Option<u64> { (!part.is_empty() && part.len() <= 4 && part.bytes().all(|b| b.is_ascii_digit())).then(|| part.parse().ok()).flatten() };
+    let seconds = match text.split_once(':') {
+        Some((minutes, seconds)) => {
+            let seconds = number(seconds).filter(|&s| s < 60 && seconds.len() <= 2)?;
+            number(minutes)? * 60 + seconds
+        }
+        None => number(text)?,
+    };
+    Some(Duration::from_secs(seconds))
+}
+
 /// Ask the player where to save the video, in the system's dialog, starting from where it is to go.
 fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -511,6 +621,18 @@ mod tests {
         assert!(long.starts_with("/a/folder/with") && long.ends_with("someone round 2.mp4") && long.contains('…'), "{long}");
         assert_eq!(shown(Path::new("/videos/a.mp4"), false), "/videos/a.mp4");
         assert_eq!(shown(path, true), "2026-10-11 someone round 2.mp4");
+    }
+
+    /// A time is typed as minutes and seconds, or as seconds alone; anything else isn't one.
+    #[test]
+    fn a_time_is_minutes_and_seconds() {
+        assert_eq!(parse_time("0:41"), Some(Duration::from_secs(41)));
+        assert_eq!(parse_time(" 12:05 "), Some(Duration::from_secs(725)));
+        assert_eq!(parse_time("65"), Some(Duration::from_secs(65)));
+        assert_eq!(parse_time("1:5"), Some(Duration::from_secs(65)));
+        for bad in ["", ":", "1:", ":30", "1:60", "1:234", "a:10", "1:2:3", "-1", "1.5"] {
+            assert_eq!(parse_time(bad), None, "{bad}");
+        }
     }
 
     /// The sizes offered are even multiples of the frame, the first one four times.

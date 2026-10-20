@@ -179,9 +179,6 @@ msgstr "リプレイ"
 msgid "Round {} of {}"
 msgstr "ラウンド {}/{}"
 
-msgid "Speed"
-msgstr "速度"
-
 msgid "View"
 msgstr "視点"
 
@@ -190,9 +187,6 @@ msgstr "再生/一時停止"
 
 msgid "Step a frame"
 msgstr "コマ送り"
-
-msgid "Clip"
-msgstr "切り抜き"
 
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
@@ -203,24 +197,10 @@ msgid_plural "{n} rounds"
 msgstr[0] "{n} ラウンド"
 msgstr[1] "{n} ラウンド"
 
-# The transport's VIEW menu: the side whose console is shown (P1, P2), both builds (Builds), the input display
-# (Input display, Practice's), the other side's console small in the picture's corner, and the clip to export, its
-# words by what choosing it does next (its start marked, then its end, then cleared).
-msgctxt "menu"
-msgid "View"
-msgstr "表示"
-
+# The transport's ⋯ menu: the side whose console is shown (P1, P2), both builds (Builds), the input display (Input
+# display, Practice's), the other side's console small in the picture's corner, the speeds and Export video.
 msgid "Other side's picture"
 msgstr "相手側の画面"
-
-msgid "Mark clip start"
-msgstr "切り抜きの開始点を設定"
-
-msgid "Mark clip end"
-msgstr "切り抜きの終了点を設定"
-
-msgid "Clear clip"
-msgstr "切り抜きを解除"
 
 # The viewer's play queue (the replays lined up in the Queue tab, watched one after another): its popup of the
 # entries still to watch after the one watched, with NEXT (Next, 次へ: skip to the next replay) and whether the next
@@ -242,8 +222,33 @@ msgstr "動画の書き出し"
 msgid "Size"
 msgstr "サイズ"
 
-msgid "Part"
+# The part of the replay exported: the whole match, a round, or the player's own (Custom), from its Start to its
+# End, each typed as minutes and seconds or taken from where the viewer is (Now: the playback position).
+msgid "Range"
 msgstr "範囲"
+
+msgctxt "range"
+msgid "Start"
+msgstr "開始"
+
+msgctxt "range"
+msgid "End"
+msgstr "終了"
+
+msgctxt "range"
+msgid "Now"
+msgstr "現在位置"
+
+# What is wrong with the Start or the End: not a time (m:ss is minutes and seconds); the start not before the end;
+# past the replay's end ({}: its length).
+msgid "Type a time as m:ss."
+msgstr "時間は「分:秒」の形で入力してください。"
+
+msgid "The start must be before the end."
+msgstr "開始は終了より前にしてください。"
+
+msgid "The replay ends at {}."
+msgstr "リプレイは {} で終わります。"
 
 # The consoles a video shows: the view's alone, or both side by side (the view's at the left, heard).
 msgid "Sides"
@@ -266,8 +271,8 @@ msgstr "試合全体 · {}"
 msgid "Round {} · {}"
 msgstr "ラウンド {} · {}"
 
-msgid "Clip {}–{} · {}"
-msgstr "切り抜き {}–{} · {}"
+msgid "Custom · {}"
+msgstr "指定範囲 · {}"
 
 # A round's chapter in an exported video.
 msgid "Round {}"
