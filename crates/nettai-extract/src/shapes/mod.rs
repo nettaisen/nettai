@@ -210,14 +210,28 @@ fn raster(d: &Drawing, w: usize, h: usize) -> Vec<Label> {
         .collect()
 }
 
+/// Whether pixel `at` (its center) is under words written on `d` (their
+/// box and a pixel round it, for their outline): the picture's letters
+/// there aren't the drawing's to match.
+fn under_words(d: &Drawing, at: [f32; 2]) -> bool {
+    let u = Drawing::UNIT;
+    d.words.iter().any(|t| {
+        let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
+        at[0] >= x - 1.0 && at[0] <= x + w + 1.0 && at[1] >= y - 1.0 && at[1] <= y + h + 1.0
+    })
+}
+
 /// The share of `grid`'s pixels in `cells` (8x8 each) that `d` gives at
-/// their centers.
+/// their centers (words' boxes aside).
 fn matching_in(grid: &Grid, d: &Drawing, cells: &[[u8; 2]]) -> f32 {
     let got = raster(d, grid.w, grid.h);
     let (mut total, mut same) = (0usize, 0usize);
     for &[cx, cy] in cells {
         for i in 0..64 {
             let k = (8 * cy as usize + i / 8) * grid.w + 8 * cx as usize + i % 8;
+            if under_words(d, [(k % grid.w) as f32 + 0.5, (k / grid.w) as f32 + 0.5]) {
+                continue;
+            }
             total += 1;
             same += (got[k] == grid.cells[k]) as usize;
         }
@@ -225,18 +239,18 @@ fn matching_in(grid: &Grid, d: &Drawing, cells: &[[u8; 2]]) -> f32 {
     if total == 0 { 1.0 } else { same as f32 / total as f32 }
 }
 
-/// The share of `grid`'s pixels (holes aside) that `d`, filled one shape
-/// over another, gives at their centers.
+/// The share of `grid`'s pixels (holes and words' boxes aside) that `d`,
+/// filled one shape over another, gives at their centers.
 pub fn matching(grid: &Grid, d: &Drawing) -> f32 {
     let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
     let (mut total, mut same) = (0usize, 0usize);
     for y in 0..grid.h {
         for x in 0..grid.w {
             let want = grid.cells[y * grid.w + x];
-            if want == Label::Hole {
+            let at = [x as f32 + 0.5, y as f32 + 0.5];
+            if want == Label::Hole || under_words(d, at) {
                 continue;
             }
-            let at = [x as f32 + 0.5, y as f32 + 0.5];
             let got = d.regions.iter().zip(&rings).rev().find(|(_, r)| nettai_assets::shapes::inside(r, at)).map_or(Label::Clear, |(r, _)| Label::Color(r.palette, r.color));
             total += 1;
             same += (got == want) as usize;
@@ -713,20 +727,6 @@ fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &Pat
     if let Some(e) = &c.window_emblem {
         for y in e.y as usize..(e.y + e.height) as usize {
             for x in e.x as usize..(e.x + e.width) as usize {
-                mark(x, y, &mut hole);
-            }
-        }
-    }
-    // OK: the cells its cursor's corners (8x8 each, the place less 3) take
-    // half of or more.
-    let o = &l.ok_cursor;
-    let corners = o.corners[0];
-    let (x0, x1) = (corners.iter().map(|k| o.x as i32 - 3 + k.1 as i32).min()?, corners.iter().map(|k| o.x as i32 - 3 + k.1 as i32 + 8).max()?);
-    let (y0, y1) = (corners.iter().map(|k| o.y as i32 - 3 + k.0 as i32).min()?, corners.iter().map(|k| o.y as i32 - 3 + k.0 as i32 + 8).max()?);
-    for y in 0..ROWS {
-        for x in 0..COLUMNS {
-            let over = |a0: i32, a1: i32, c0: i32| (a1.min(c0 + 8) - a0.max(c0)).max(0);
-            if over(x0, x1, 8 * x as i32) >= 4 && over(y0, y1, 8 * y as i32) >= 4 {
                 mark(x, y, &mut hole);
             }
         }

@@ -33,6 +33,34 @@ pub fn to_svg(d: &Drawing, view: &dyn Fn(u8, u8) -> u16) -> String {
             path_text(&r.path)
         );
     }
+    for t in &d.words {
+        let [cr, cg, cb] = crate::image::rgb(view(t.palette, t.color));
+        let [x, y, w, h] = t.rect;
+        let mut extra = String::new();
+        if t.palette != 0 {
+            let _ = write!(extra, " data-palette=\"{}\"", t.palette);
+        }
+        if let Some(r) = t.rim {
+            let _ = write!(extra, " data-rim=\"{r}\"");
+        }
+        if let Some(r) = t.shadow {
+            let _ = write!(extra, " data-shadow=\"{r}\"");
+        }
+        let _ = writeln!(
+            s,
+            "<text data-words=\"{}\" data-box=\"{} {} {} {}\" data-color=\"{}\"{extra} fill=\"#{cr:02x}{cg:02x}{cb:02x}\" x=\"{}\" y=\"{}\" font-size=\"{}\">{}</text>",
+            t.key,
+            number(x),
+            number(y),
+            number(w),
+            number(h),
+            t.color,
+            number(x),
+            number(y + h),
+            number(h * 4 / 3),
+            t.key
+        );
+    }
     s.push_str("</svg>\n");
     s
 }
@@ -81,12 +109,17 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
     let v: Vec<f64> = view.split_whitespace().map(|t| t.parse::<f64>().map_err(|_| format!("viewBox {view:?}"))).collect::<Result<_, _>>()?;
     let [_, _, w, h] = v[..] else { return Err(format!("viewBox {view:?}")) };
     let mut regions = Vec::new();
+    let mut words = Vec::new();
     let mut rest = text;
     while let Some(i) = rest.find('<') {
         let end = rest[i..].find('>').ok_or("a tag isn't closed")? + i;
         let tag = &rest[i..=end];
         rest = &rest[end + 1..];
         let name: String = tag[1..].chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+        if name == "text" {
+            words.push(words_of(tag)?);
+            continue;
+        }
         let path = match name.as_str() {
             "rect" => rect_path(tag)?,
             "circle" => circle_path(tag)?,
@@ -104,7 +137,31 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         }
         regions.push(Region { palette, color, path });
     }
-    Ok(Drawing { size: [w as u16, h as u16], regions, source: text.to_string() })
+    Ok(Drawing { size: [w as u16, h as u16], regions, words, source: text.to_string() })
+}
+
+/// A `text` element's words: `data-words` the string's key, `data-box` the
+/// box its capitals fill (x y width height), `data-color` (and
+/// `data-palette`) the face's color, `data-rim` and `data-shadow` the
+/// outline's and the shadow's; its `x`, `y`, size and contents are for
+/// viewing only.
+fn words_of(tag: &str) -> Result<nettai_assets::shapes::Words, String> {
+    let key = attribute(tag, "data-words").ok_or("a text has no data-words")?.to_string();
+    let b = attribute(tag, "data-box").ok_or("a text has no data-box")?;
+    let v: Vec<i32> = b.split_whitespace().map(|t| t.parse::<f64>().map(|v| (v * Drawing::UNIT as f64).round() as i32).map_err(|_| format!("data-box {b:?}"))).collect::<Result<_, _>>()?;
+    let [x, y, w, h] = v[..] else { return Err(format!("data-box {b:?} isn't four numbers")) };
+    let index = |name: &str| -> Result<Option<u8>, String> {
+        match attribute(tag, name) {
+            Some(t) => match t.parse::<u8>() {
+                Ok(c) if c <= 15 => Ok(Some(c)),
+                _ => Err(format!("{name} {t:?} isn't a palette index")),
+            },
+            None => Ok(None),
+        }
+    };
+    let color = index("data-color")?.ok_or("a text has no data-color")?;
+    let palette = index("data-palette")?.unwrap_or(0);
+    Ok(nettai_assets::shapes::Words { key, rect: [x, y, w, h], palette, color, rim: index("data-rim")?, shadow: index("data-shadow")? })
 }
 
 fn unit_of(tag: &str, name: &str) -> Result<i32, String> {
@@ -567,6 +624,7 @@ mod tests {
                     path: vec![Step::Move([u / 2, u]), Step::Arc { radius: 3 * u / 2, large: false, sweep: true, to: [2 * u, -u / 4] }, Step::Line([u / 8, 3]), Step::Close],
                 },
             ],
+            words: Vec::new(),
             source: String::new(),
         };
         let back = from_svg(&to_svg(&d, &|_, c| c as u16 * 0x421)).unwrap();
