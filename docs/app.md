@@ -641,7 +641,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   others are made), as a save dropped on the window does (`builds::import`), saying quietly in the reserved line
   what the chosen one's save was put on where that changed it ("Imported as Dark MegaMan"); ⋯ (`more`) and a right
   click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): PRACTICE (design §2.88: `practice::open`
-  with no editor's tab, whose EXIT comes back here), DUPLICATE and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
+  with no editor's tab, whose EXIT comes back here), DUPLICATE (its copy kept, chosen and opened in Builds' editor, as a new build is) and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
   at)`), whose Back comes back here with it still chosen (renamed there, by its new name: `play::follow_rename`,
   which Practice's visit follows too); the editor's tab bar ends in PRACTICE (a phone's Navi tab has it under the ruleset; design §2.86:

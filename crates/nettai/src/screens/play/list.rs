@@ -5,8 +5,8 @@
 //! system's dialog, one or more (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens
 //! the chosen build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen
 //! (its header's PRACTICE goes into a practice battle with it); the
-//! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE and, apart, DELETE (which asks
-//! once, Cancel focused). A build is renamed in the editor, its header's name a field (docs/design/app-ui.md §2.74).
+//! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE (whose copy opens in the editor)
+//! and, apart, DELETE (which asks once, Cancel focused). A build is renamed in the editor, its header's name a field (docs/design/app-ui.md §2.74).
 
 use super::{Play, remembered_build};
 use crate::builds::store::{self, Build};
@@ -335,12 +335,16 @@ impl Play {
         }
     }
 
-    /// DUPLICATE: a copy of the chosen build, named for it, made for its ruleset.
+    /// DUPLICATE: a copy of the chosen build, named for it, made for its ruleset, opened in Builds' editor (the
+    /// user: "when duplicating a save it should enter the save editor for that save"), whose Back comes back here
+    /// with the copy chosen.
     pub(super) fn duplicate(&mut self, shell: &mut Shell) {
         let (Some(kit), Some((_, build))) = (builds::kit(shell), self.chosen_build()) else { return };
         let copy = build.named(&store::new_name(&build.name, &self.taken()));
         self.notice.clear();
-        self.add(shell, &kit, &copy);
+        if self.add(shell, &kit, &copy) {
+            self.edit_chosen(shell);
+        }
     }
 
     /// DELETE: asked once whether the chosen build goes, Cancel focused.
