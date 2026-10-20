@@ -22,7 +22,7 @@
 //! filled with analytic coverage, its shapes one over another.
 //! docs/design/text-rendering.md §12.
 
-use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
+use crate::compose::{Fade, HEIGHT, WIDTH, apply_fade, to_rgb};
 use crate::present::Placement;
 use crate::sdf::{Paint, RES, Sdf};
 use crate::textlayer::{Align, Rect, TextItem};
@@ -547,7 +547,9 @@ pub struct TextRenderer {
     /// The lettering items painted (their bar, rim, shadow and fill) at an
     /// output's size and place, by all that changes their pixels: a banner
     /// holding still is painted once.
-    painted: HashMap<String, Option<Painted>>,
+    /// What it painted, unplaced, by what it is (its drawings colored, its
+    /// text items painted), the least recently used let go first.
+    images: crate::rasters::Images,
     /// The numbers' font's glyphs' fields and their ink's bounds (texels:
     /// left, bottom, right, top), by character (`numbers`).
     number_glyphs: HashMap<char, Option<(Sdf, [f32; 4])>>,
@@ -585,7 +587,7 @@ impl TextRenderer {
             glyph_bytes: 0,
             faces: HashMap::new(),
             descenders: HashMap::new(),
-            painted: HashMap::new(),
+            images: Default::default(),
             number_glyphs: HashMap::new(),
             made: Made::default(),
             rasters: Default::default(),
@@ -977,11 +979,52 @@ impl TextRenderer {
             return;
         }
         let s = place.scale;
-        let st = item.role.style();
-        // (A sprite's true place, past its whole pixels.)
+        let clip = item.clip.intersect(Rect::SCREEN);
+        if clip.is_empty() {
+            return;
+        }
+        // The output pixels the clip shows (a pixel more each way: `Target`
+        // tests each against the clip's frame pixels).
+        let bounds = (
+            place.x + (clip.x as f32 * s).floor() as i32 - 1,
+            place.y + (clip.y as f32 * s).floor() as i32 - 1,
+            place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32 + 1,
+            place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32 + 1,
+        );
+        // Painted once for what it is, unplaced (its box's top left at the
+        // output's (0, 0), in its colors before the fades), and laid at
+        // whole output pixels where it is, faded there.
         let (fine_x, fine_y) = (item.fine.0 as f32 / 65536.0, item.fine.1 as f32 / 65536.0);
+        let ox = (place.x as f32 + s * (item.rect.x as f32 + fine_x)).round() as i32;
+        let oy = (place.y as f32 + s * (item.rect.y as f32 + fine_y)).round() as i32;
+        let key = crate::rasters::ImageKey::Text(format!(
+            "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}|{}",
+            item.text, item.role, (item.rect.w, item.rect.h), item.align, item.face, item.shadow, item.vscale, item.shown, item.ink, item.fitted, item.slant, s
+        ));
+        let image = match self.images.get(&key) {
+            Some(i) => i,
+            None => {
+                let local = TextItem { rect: Rect::new(0, 0, item.rect.w, item.rect.h), fine: (0, 0), clip: Rect::new(0, 0, item.rect.w, item.rect.h), ..item.clone() };
+                let lp = Placement { x: 0, y: 0, width: place.width, height: place.height, scale: s };
+                let i = std::sync::Arc::new(self.paint_text(&local, &layout, &lp).map(crate::rasters::Image::from).unwrap_or_default());
+                self.images.put(key, i.clone());
+                i
+            }
+        };
+        let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
+        let fades = item.fades;
+        let faded = |rgb: u32| if fades == [Fade::None, Fade::None] { rgb } else { fade_rgb(fade_rgb(rgb, fades[0]), fades[1]) };
+        image.blit(ox, oy, bounds, |x, y, rgb, a| target.blend(x, y, faded(rgb), a));
+    }
+
+    /// A text item painted at the output's scale where `place` puts it,
+    /// in its colors as they are before the fades: its numbers (`fitted`),
+    /// its lettering (`ink`) or its string (a shadow under it), cropped to
+    /// what it covers.
+    fn paint_text(&mut self, item: &TextItem, layout: &Layout, place: &Placement) -> Option<Painted> {
+        let s = place.scale;
+        let st = item.role.style();
         let x0 = item.rect.x as f32
-            + fine_x
             + match item.align {
                 Align::Left => 0.0,
                 Align::Center => ((item.rect.w as f32 - layout.width) / 2.0).round(),
@@ -998,20 +1041,16 @@ impl TextRenderer {
             }
             _ => (1.0, baseline),
         };
-        let baseline = baseline + fine_y;
-        let clip = item.clip.intersect(Rect::SCREEN);
-        if clip.is_empty() {
-            return;
-        }
-        let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
-        let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
-        // The output pixels the clip shows (a pixel more each way: `Target`
-        // tests each against the clip's frame pixels).
+        let color = |c: u16| to_rgb(c);
+        // (All it may cover: its box, its words past it, and eight frame
+        // pixels round them, its box's height more up and down.)
+        let (left, right) = (x0.min(0.0) - 8.0, (x0 + layout.width).max(item.rect.w as f32) + 8.0);
+        let (top, bottom) = (-(item.rect.h as f32) - 8.0, 2.0 * item.rect.h as f32 + 8.0);
         let bounds = (
-            place.x + (clip.x as f32 * s).floor() as i32 - 1,
-            place.y + (clip.y as f32 * s).floor() as i32 - 1,
-            place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32 + 1,
-            place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32 + 1,
+            place.x + (left * s).floor() as i32,
+            place.y + (top * s).floor() as i32,
+            place.x + (right * s).ceil() as i32,
+            place.y + (bottom * s).ceil() as i32,
         );
         // Short descenders: how far under the text's baseline its ink may
         // reach (the box's bottom, less the shadow's offset at its most),
@@ -1020,55 +1059,25 @@ impl TextRenderer {
         let at = Laid { x0, baseline, k, floor, shown: item.shown.unwrap_or(usize::MAX) };
         let offset = (SHADOW * s).round().max(1.0) as i32;
         if let Some(f) = &item.fitted {
-            // A number in the numbers' font, painted once for what it is and
-            // where.
-            let key = format!("fitted|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}", f, item.rect, item.fades, item.vscale, item.fine, place, bounds);
-            if !self.painted.contains_key(&key) {
-                if self.painted.len() >= PAINTED_KEPT {
-                    self.painted.clear();
-                }
-                let painted = self.paint_fitted(f, item.rect, (k, mid), (fine_x, fine_y), place, bounds, &color);
-                self.painted.insert(key.clone(), painted);
-            }
-            if let Some(p) = &self.painted[&key] {
-                for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
-                    target.blend(p.x + (i % p.w) as i32, p.y + (i / p.w) as i32, rgb, a);
-                }
-            }
-            return;
+            return self.paint_fitted(f, item.rect, (k, mid), (0.0, 0.0), place, bounds, &color);
         }
         if let Some(ink) = &item.ink {
-            // The lettering's paint, painted once for what it is and where:
-            // its bar, then its glyphs' coverage, the rim around it, the
-            // shadow and the face's fill drawn from it.
-            let key = format!(
-                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}",
-                item.text, item.role, item.rect, item.align, item.face, item.shadow, item.fades, item.vscale, item.shown, ink, item.fine, place, bounds, item.slant
-            );
-            if !self.painted.contains_key(&key) {
-                if self.painted.len() >= PAINTED_KEPT {
-                    self.painted.clear();
-                }
-                let mut painted = self.paint_inked(item, ink, &layout, st, &at, place, bounds, (k, mid), (fine_x, fine_y), &color);
-                // (Slanted: each row moved right by the slant for how far up
-                // from the box's bottom it is, at the output's resolution.)
-                if item.slant != 0 {
-                    let bottom = place.y as f32 + (item.rect.y + item.rect.h) as f32 * s;
-                    painted = painted.map(|p| p.sheared(item.slant as f32 / 100.0, bottom));
-                }
-                self.painted.insert(key.clone(), painted);
+            let mut painted = self.paint_inked(item, ink, layout, st, &at, place, bounds, (k, mid), (0.0, 0.0), &color);
+            // (Slanted: each row moved right by the slant for how far up
+            // from the box's bottom it is, at the output's resolution.)
+            if item.slant != 0 {
+                let bottom = place.y as f32 + (item.rect.y + item.rect.h) as f32 * s;
+                painted = painted.map(|p| p.sheared(item.slant as f32 / 100.0, bottom));
             }
-            if let Some(p) = &self.painted[&key] {
-                for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
-                    target.blend(p.x + (i % p.w) as i32, p.y + (i / p.w) as i32, rgb, a);
-                }
-            }
-            return;
+            return painted;
         }
+        let mut painted = Painted::new(bounds);
         let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
         for (rgb, off) in passes {
-            self.paint_layout(&layout, st, &at, place, bounds, off, &mut Pen { target: &mut target, rgb });
+            let mut pen = |x: i32, y: i32, a: u8| painted.blend(x, y, rgb, a);
+            self.paint_layout(layout, st, &at, place, bounds, off, &mut pen);
         }
+        painted.cropped()
     }
 
     /// A drawing ([`Drawn`](crate::textlayer::Drawn)) over the picture: its
@@ -1132,7 +1141,7 @@ impl TextRenderer {
         // Each piece from its raster, colored now, at whole output pixels.
         for piece in &d.pieces {
             let colors: Vec<u32> = piece.colors.iter().map(|&c| color(c)).collect();
-            let Some(t) = self.rasters.tinted(&piece.drawing, &colors, piece.flip, s, k) else { continue };
+            let Some(t) = self.rasters.tinted(&mut self.images, &piece.drawing, &colors, piece.flip, s, k) else { continue };
             let left = place.x as f32 + s * (x0 + piece.at.0);
             let top = place.y as f32 + s * (mid + (y0 + piece.at.1 - mid) * k);
             let (ox, oy) = (left.round() as i32, top.round() as i32);
@@ -1508,7 +1517,6 @@ fn fill_color(fill: &[u32], row: f32) -> u32 {
 
 /// The lettering items painted kept ([`TextRenderer`]'s `painted`) before
 /// they are made again.
-const PAINTED_KEPT: usize = 32;
 
 /// A lettering item's pixels over an area of the output, painted once
 /// (its bar, rim, shadow and fill, each over the one before), to draw over
@@ -1564,6 +1572,23 @@ impl Painted {
         out
     }
 
+    /// Cut to the pixels it covers (none: none).
+    fn cropped(self) -> Option<Painted> {
+        let h = if self.w == 0 { 0 } else { self.px.len() / self.w };
+        let (mut x0, mut y0, mut x1, mut y1) = (self.w, h, 0, 0);
+        for y in 0..h {
+            let row = &self.px[y * self.w..(y + 1) * self.w];
+            let Some(first) = row.iter().position(|p| p.1 > 0) else { continue };
+            let last = row.iter().rposition(|p| p.1 > 0).unwrap_or(first);
+            (x0, y0, x1, y1) = (x0.min(first), y0.min(y), x1.max(last + 1), y1.max(y + 1));
+        }
+        if x0 >= x1 {
+            return None;
+        }
+        let px = (y0..y1).flat_map(|y| self.px[y * self.w + x0..y * self.w + x1].iter().copied()).collect();
+        Some(Painted { x: self.x + x0 as i32, y: self.y + y0 as i32, w: x1 - x0, px })
+    }
+
     /// `rgb` over the pixel at (x, y), `a` 255ths of it.
     fn blend(&mut self, x: i32, y: i32, rgb: u32, a: u8) {
         let (dx, dy) = (x - self.x, y - self.y);
@@ -1583,6 +1608,23 @@ impl Painted {
         };
         *p = (mix(16) | mix(8) | mix(0), (oa * 255.0).round() as u8);
     }
+}
+
+impl From<Painted> for crate::rasters::Image {
+    fn from(p: Painted) -> Self {
+        let h = if p.w == 0 { 0 } else { p.px.len() / p.w };
+        crate::rasters::Image { x: p.x, y: p.y, w: p.w, h, px: p.px }
+    }
+}
+
+/// A color (0RGB, as `to_rgb` widens the frame's) faded as `apply_fade`
+/// fades the frame's colors: each channel at the frame's five bits.
+fn fade_rgb(rgb: u32, fade: Fade) -> u32 {
+    if fade == Fade::None {
+        return rgb;
+    }
+    let five = |shift: u32| ((rgb >> (shift + 3)) & 0x1F) as u16;
+    to_rgb(apply_fade(five(16) | five(8) << 5 | five(0) << 10, fade))
 }
 
 /// An item's glyphs' coverage over an area of the output (the lettering's,
@@ -1740,45 +1782,9 @@ impl Target<'_> {
         *o = mix(16) | mix(8) | mix(0);
     }
 
-    /// Output pixels `xa` to one before `xb` of row `y`, in `rgb` whole.
-    fn fill(&mut self, y: i32, xa: i32, xb: i32, rgb: u32) {
-        let f = self.frame;
-        let Some(&fy) = f.rows.get((y - f.y) as usize) else { return };
-        if fy < self.clip.y || fy >= self.clip.y + self.clip.h {
-            return;
-        }
-        // (A frame without depth keys hides nothing.)
-        let depth = self.depth.get(fy as usize * WIDTH..(fy as usize + 1) * WIDTH);
-        let row = y as usize * self.out_w;
-        let (xa, xb) = (xa.max(f.x), xb.min(f.x + f.columns.len() as i32));
-        let (clip0, clip1) = (self.clip.x, self.clip.x + self.clip.w);
-        for (x, &fx) in (xa..xb).zip(&f.columns[(xa - f.x).max(0) as usize..]) {
-            let covered = f.cover.and_then(|c| c.get(row + x as usize)).is_some_and(|&d| d < self.key);
-            if fx >= clip0 && fx < clip1 && depth.is_none_or(|d| d[fx as usize] >= self.key) && !covered
-                && let Some(o) = self.out.get_mut(row + x as usize)
-            {
-                *o = rgb;
-            }
-        }
-    }
 }
 
 /// A target in a color: what a glyph's field paints.
-struct Pen<'t, 'o> {
-    target: &'t mut Target<'o>,
-    rgb: u32,
-}
-
-impl Paint for Pen<'_, '_> {
-    fn pixel(&mut self, x: i32, y: i32, a: u8) {
-        self.target.blend(x, y, self.rgb, a);
-    }
-
-    fn span(&mut self, y: i32, xa: i32, xb: i32) {
-        self.target.fill(y, xa, xb, self.rgb);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
