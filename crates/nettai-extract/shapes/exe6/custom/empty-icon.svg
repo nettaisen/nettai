@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- An empty slot's box (16x16), square as every box a chip's icon goes in: the gap round it in the frame's color, a frame, the dark inside, a shade along its right and bottom ending in a bevel at each end. -->
+<!-- The gap round the box -->
+<rect x="0" y="0" width="16" height="16" fill="#e7e7e7" data-color="9"/>
+<!-- The box's frame -->
+<rect x="1" y="1" width="14" height="14" fill="#4a637b" data-color="5"/>
+<!-- The shade along the inside's right and bottom -->
+<rect x="2" y="2" width="12" height="12" fill="#dedeef" data-color="6"/>
+<!-- The dark inside -->
+<polygon points="2,2 14,2 13,3 13,13 3,13 2,14" fill="#a5adbd" data-color="7"/>
+</svg>

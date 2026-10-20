@@ -696,6 +696,13 @@ struct Window {
     /// whose tiles aren't drawn.
     shapes: Vec<(usize, usize, usize, TextItem)>,
     drawn_cells: Vec<bool>,
+    /// The cells (top left, as column and row) where an empty slot's box
+    /// was laid (the slots' and the picked column's), for the enhanced mode
+    /// to draw as shapes (`shape_frames`).
+    empty_icons: Vec<(usize, usize)>,
+    /// The first tiles of the empty slots' code plates (no letter), for
+    /// the enhanced mode to draw as shapes as the others' are.
+    blank_plates: Vec<u16>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -780,6 +787,8 @@ impl Window {
             layout: a.layout,
             shapes: Vec::new(),
             drawn_cells: vec![false; COLUMNS * ROWS],
+            empty_icons: Vec::new(),
+            blank_plates: Vec::new(),
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
         // Cross tab) or without; or the form list window's.
@@ -878,6 +887,35 @@ impl Window {
                 let mut d = crate::shapes::drawn(&part.drawing, |r| palettes[r.palette as usize & 15][r.color as usize & 15], (false, false), None);
                 d.cells = Some(cells);
                 self.shapes.push((0, 0, COLUMNS, crate::shapes::item(d, (0, 0), (8 * COLUMNS as i32, 8 * ROWS as i32))));
+            }
+        }
+        // The empty slots' boxes, where `slots` and `column` laid them, each
+        // in its cells' palette.
+        if let Some(d) = &a.shapes.empty_icon {
+            for &(x, y) in &self.empty_icons {
+                if x + 1 >= COLUMNS || y + 1 >= ROWS {
+                    continue;
+                }
+                let palette = self.palettes[self.map[y * COLUMNS + x].palette as usize & 15];
+                let d = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                self.shapes.push((x, y, 2, crate::shapes::item(d, (0, 0), (16, 16))));
+                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                    self.drawn_cells[(y + dy) * COLUMNS + x + dx] = true;
+                }
+            }
+        }
+        // The empty slots' code plates, as the others' (`letter_codes`).
+        if let Some(plate) = &a.shapes.slot_code {
+            for first in std::mem::take(&mut self.blank_plates) {
+                let Some(block) = self.block(first..first + 2) else { continue };
+                let palette = self.palettes[block.palette as usize & 15];
+                let d = crate::shapes::drawn(plate, |r| palette[r.color as usize & 15], (false, false), None);
+                self.shapes.push((block.col, block.row, block.w, crate::shapes::item(d, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
+                for c in block.col..block.col + block.w {
+                    for r in block.row..block.row + block.h {
+                        self.drawn_cells[r * COLUMNS + c] = true;
+                    }
+                }
             }
         }
         // The picked column's cells, as `column` laid them.
@@ -1433,6 +1471,7 @@ impl Window {
                     let Some(c) = v.screen.look.slot_chips[s] else { continue };
                     if v.screen.look.slot_picked[s] {
                         self.tiles.put(at, &a.empty_icon);
+                        self.empty_icon_at(s);
                     } else if let Some(icon) = v.icon(c, problems) {
                         self.tiles.put(at, icon);
                     }
@@ -1457,6 +1496,7 @@ impl Window {
                         // one once it is used, its code blank.
                         if slot.state == SlotState::Selected {
                             self.tiles.put(at, &a.empty_icon);
+                            self.empty_icon_at(s);
                         } else if let Some((icon, _)) = crate::lookups::chip_icon(&v.packs, &v.b.content, chip, problems) {
                             self.tiles.put(at, icon);
                         }
@@ -1479,7 +1519,9 @@ impl Window {
                 }
                 SlotKind::Empty => {
                     self.tiles.put(at, &a.empty_icon);
+                    self.empty_icon_at(s);
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
+                    self.blank_plates.push(at + 4);
                     at += 6;
                 }
                 // (The special slot's button's hidden look, if it has one;
@@ -1528,6 +1570,14 @@ impl Window {
         }
     }
 
+    /// Slot `s`'s icon cells (the first ten slots': `slots`' palettes'),
+    /// where its empty box was laid.
+    fn empty_icon_at(&mut self, s: usize) {
+        if s < 10 {
+            self.empty_icons.push((1 + 2 * (s % 5), 13 + 3 * (s / 5)));
+        }
+    }
+
     /// The picked chips' column: the icons the screen copied in
     /// (`sub_80281D4`), and the cells' frames (`sub_8029CD4`).
     fn column(&mut self, v: &View, problems: &mut Problems) {
@@ -1542,6 +1592,9 @@ impl Window {
                 None if picks.get(i) == Some(&SPECIAL_SLOT) => offered_icon(v),
                 None => None,
             };
+            if icon.is_none() {
+                self.empty_icons.push((self.layout.column_columns[0] as usize + 1, self.layout.column_row as usize + 2 * i));
+            }
             let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
             self.tiles.put_part(at, tiles, first, 4);
             let filled = (i < picks.len() || v.screen.look.column_kept == Some(i as u8)) as u16;
