@@ -56,6 +56,20 @@ pub struct PackGraphics {
 }
 
 impl PackGraphics {
+    /// Every pack's drawings (`Bundle::drawings`), each once; the
+    /// chatbox's coverages made now (`shapes::coverage`).
+    pub fn drawings(&self) -> Arc<Vec<nettai_assets::shapes::Drawing>> {
+        let mut seen = std::collections::HashSet::new();
+        let all: Vec<nettai_assets::shapes::Drawing> =
+            self.bundles.iter().flat_map(|b| b.drawings()).filter(|d| d.hash != 0 && seen.insert(d.hash)).map(|d| nettai_assets::shapes::Drawing { words: Vec::new(), ..d.clone() }).collect();
+        for b in &self.bundles {
+            for d in b.hud.shapes.chatbox.iter().flatten().flat_map(|m| m.parts.iter().map(|p| &p.drawing)) {
+                crate::shapes::coverage(d);
+            }
+        }
+        Arc::new(all)
+    }
+
     /// One pack's graphics: every asset is its.
     pub fn one(bundle: Arc<Bundle>) -> PackGraphics {
         PackGraphics { bundles: vec![bundle], own: PackId(0), others: Default::default() }

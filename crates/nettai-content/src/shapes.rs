@@ -99,7 +99,13 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         paint("fill", "data-color")?;
         paint("stroke", "data-stroke")?;
     }
-    let d = Drawing { size: [w as u16, h as u16], source: text.into(), colors, words };
+    let hash = {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        text.hash(&mut h);
+        h.finish()
+    };
+    let d = Drawing { size: [w as u16, h as u16], source: text.into(), hash, colors, words };
     usvg::Tree::from_xmltree(&doc, &options(String::new())).map_err(|e| e.to_string())?;
     Ok(d)
 }
@@ -144,6 +150,86 @@ pub fn paint(d: &Drawing, rgb: &dyn Fn(u8, u8) -> [u8; 3], transform: tiny_skia:
     let transform = transform.pre_scale(d.size[0] as f32 / view.width(), d.size[1] as f32 / view.height());
     resvg::render(&tree, transform, pixmap);
     Ok(())
+}
+
+/// SVG files read into trees ([`Parsed::of`]) and drawings rasterized
+/// ([`Parsed::raster`]) in this process: a frontend does both when a pack is
+/// loaded (and rasterizes again when its output's scale changes), never
+/// while it plays.
+pub fn work_done() -> (u64, u64) {
+    (PARSES.load(std::sync::atomic::Ordering::Relaxed), RASTERS.load(std::sync::atomic::Ordering::Relaxed))
+}
+
+static PARSES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static RASTERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// A drawing's file read for rasterizing, once: a tree for each three of its
+/// palette entries (`Drawing::colors`), those three in pure red, green and
+/// blue and every other one black, so one raster of each gives each entry's
+/// share of every pixel.
+pub struct Parsed {
+    trees: Vec<usvg::Tree>,
+    size: [u16; 2],
+    entries: usize,
+}
+
+/// A drawing rasterized at a scale ([`Parsed::raster`]): its pixels' coverage
+/// (`alpha`) and each palette entry's share of them (premultiplied, out of
+/// 255: a pixel's color is the sum of each entry's color by its share), `w`
+/// by `h` output pixels from the drawing's top left.
+pub struct Raster {
+    pub w: usize,
+    pub h: usize,
+    pub alpha: Vec<u8>,
+    pub shares: Vec<Vec<u8>>,
+}
+
+impl Parsed {
+    pub fn of(d: &Drawing) -> Result<Parsed, String> {
+        let basis = [[255, 0, 0], [0, 255, 0], [0, 0, 255]];
+        let groups = d.colors.len().div_ceil(3).max(1);
+        let mut trees = Vec::with_capacity(groups);
+        for g in 0..groups {
+            let rgb = |p: u8, c: u8| {
+                let k = d.colors.iter().position(|&e| e == (p, c)).unwrap_or(usize::MAX);
+                if k / 3 == g { basis[k % 3] } else { [0, 0, 0] }
+            };
+            PARSES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            trees.push(usvg::Tree::from_str(&d.source, &options(style(d, &rgb, false))).map_err(|e| e.to_string())?);
+        }
+        Ok(Parsed { trees, size: d.size, entries: d.colors.len() })
+    }
+
+    /// The drawing rasterized at `scale` output pixels a frame pixel
+    /// (`vscale` times that down), smoothed.
+    pub fn raster(&self, scale: f32, vscale: f32) -> Raster {
+        RASTERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let (sx, sy) = (scale, scale * vscale);
+        let w = (self.size[0] as f32 * sx).ceil().max(1.0) as usize;
+        let h = (self.size[1] as f32 * sy).ceil().max(1.0) as usize;
+        let mut alpha = vec![0u8; w * h];
+        let mut shares = vec![Vec::new(); self.entries];
+        for (g, tree) in self.trees.iter().enumerate() {
+            let Some(mut pixmap) = tiny_skia::Pixmap::new(w as u32, h as u32) else { break };
+            let view = tree.size();
+            let t = tiny_skia::Transform::from_scale(sx * self.size[0] as f32 / view.width(), sy * self.size[1] as f32 / view.height());
+            resvg::render(tree, t, &mut pixmap.as_mut());
+            let px = pixmap.pixels();
+            if g == 0 {
+                for (a, p) in alpha.iter_mut().zip(px) {
+                    *a = p.alpha();
+                }
+            }
+            for c in 0..3 {
+                let k = 3 * g + c;
+                if k >= self.entries {
+                    break;
+                }
+                shares[k] = px.iter().map(|p| [p.red(), p.green(), p.blue()][c]).collect();
+            }
+        }
+        Raster { w, h, alpha, shares }
+    }
 }
 
 /// The palette entry `d` shows at each of its pixels' centers (row by row,

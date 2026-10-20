@@ -81,6 +81,19 @@ impl Bundle {
     pub fn background(&self, id: u8) -> Option<&Background> {
         self.backgrounds.get(id as usize).and_then(|b| b.as_ref())
     }
+    /// Every drawing of its frames (`shapes`): the HUD's, the banners'
+    /// (each language's too), the custom screen's; a frontend draws them
+    /// from these, made ready when the pack is loaded.
+    pub fn drawings(&self) -> Vec<&shapes::Drawing> {
+        let mut out: Vec<&shapes::Drawing> = Vec::new();
+        out.extend(self.hud.shapes.drawings());
+        out.extend(self.custom.shapes.drawings());
+        let banners = self.hud.banners.iter().chain(self.hud.languages.iter().flat_map(|(_, l)| l.banners.iter().flatten()));
+        for b in banners {
+            out.extend(b.bar.iter().chain(b.logo.iter()));
+        }
+        out
+    }
 }
 
 /// 8x8 tiles, 64 palette indices each (row-major).

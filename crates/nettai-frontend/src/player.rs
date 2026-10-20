@@ -158,6 +158,7 @@ fn made_so_far(renderer: &Renderer, text: Option<&TextRenderer>) -> Late {
         reads: nettai_content::pack::reads(),
         layouts: made.layouts + renderer.layouts_made(),
         glyphs: made.glyphs,
+        rasters: made.rasters,
     }
 }
 
@@ -215,6 +216,7 @@ impl Player {
             reads: now.reads - self.before.reads,
             layouts: now.layouts.saturating_sub(self.before.layouts),
             glyphs: now.glyphs.saturating_sub(self.before.glyphs),
+            rasters: now.rasters.saturating_sub(self.before.rasters),
         }
     }
 

@@ -68,6 +68,9 @@ pub struct Frame {
     /// The squashed and turned sprites the enhanced mode's motion draws at
     /// the output's resolution (left out of `pixels`), front first.
     pub overlays: Vec<crate::smooth::Overlay>,
+    /// The packs' drawings (`Bundle::drawings`), for the text layer to have
+    /// them rasterized before it draws the first of them (`present`).
+    pub drawings: Option<Arc<Vec<nettai_assets::shapes::Drawing>>>,
 }
 
 /// A background between two of the frame's pixels: `present` draws the
@@ -154,6 +157,8 @@ pub struct Renderer {
     /// out, the text stays. The original mode has
     /// none of them, whatever this says.
     pub reduce_motion: bool,
+    /// The packs' drawings, gathered as they are set.
+    drawings: Arc<Vec<nettai_assets::shapes::Drawing>>,
 }
 
 impl Renderer {
@@ -164,7 +169,9 @@ impl Renderer {
 
     /// A renderer of several packs' graphics.
     pub fn with_packs(graphics: PackGraphics) -> Renderer {
+        let drawings = graphics.drawings();
         Renderer {
+            drawings,
             graphics,
             // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3: the
             // game's pack's `hud_priority`, set each frame).
@@ -253,6 +260,7 @@ impl Renderer {
     /// mid-battle is no reset. The frame's lookups are checked again
     /// against what is drawn from now.
     pub fn set_graphics(&mut self, graphics: PackGraphics) {
+        self.drawings = graphics.drawings();
         self.graphics = graphics;
         self.problems.recheck();
     }
@@ -553,7 +561,8 @@ impl Renderer {
             let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
             Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
-        let mut frame = Frame { pixels, depth, text, glide, nudge: None, lift: None, overlays };
+        let drawings = (!Vec::is_empty(&text)).then(|| self.drawings.clone());
+        let mut frame = Frame { pixels, depth, text, glide, nudge: None, lift: None, overlays, drawings };
         if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
             crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
         }

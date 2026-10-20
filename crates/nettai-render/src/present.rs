@@ -97,6 +97,11 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
     if let Some(t) = text
         && !frame.text.is_empty()
     {
+        // (The packs' drawings rasterized at this scale before the first
+        // is drawn: once, or again away from the frames when it changes.)
+        if let Some(d) = &frame.drawings {
+            t.rasters.prepare_all(d, place.scale);
+        }
         t.draw_over(&frame.text, &frame.depth, (!cover.is_empty()).then_some(&cover[..]), &place, out, w);
     }
     place

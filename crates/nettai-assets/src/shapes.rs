@@ -20,6 +20,8 @@ use crate::Tiles;
 pub struct Drawing {
     pub size: [u16; 2],
     pub source: std::sync::Arc<str>,
+    /// A hash of its source, to know it by (0: none read).
+    pub hash: u64,
     pub colors: Vec<(u8, u8)>,
     pub words: Vec<Words>,
 }
@@ -125,6 +127,14 @@ impl HudShapes {
     pub fn is_empty(&self) -> bool {
         *self == HudShapes::default()
     }
+
+    /// Every drawing it has.
+    pub fn drawings(&self) -> Vec<&Drawing> {
+        let maps = self.gauge_frame.iter().chain(self.chatbox.iter().flatten()).flat_map(|m| m.parts.iter().map(|p| &p.drawing));
+        let cells = self.gauge_cells.iter().flat_map(|g| [&g.empty, &g.filled].into_iter().chain(&g.full).chain(&g.l_or_r));
+        let one = [&self.hp_box, &self.count_blank, &self.count_box, &self.navi_box, &self.mugshot_frame].into_iter().flatten();
+        maps.chain(cells).chain(one).chain(self.mugshot_boxes.iter().flatten()).chain(&self.chatbox_arrow).collect()
+    }
 }
 
 /// The emotion window's frame, apart from the faces: its ring (index 1
@@ -219,5 +229,14 @@ pub struct CustomShapes {
 impl CustomShapes {
     pub fn is_empty(&self) -> bool {
         *self == CustomShapes::default()
+    }
+
+    /// Every drawing it has.
+    pub fn drawings(&self) -> Vec<&Drawing> {
+        let maps = self.window_maps.iter().chain(&self.form_list_maps).flatten().flat_map(|m| m.parts.iter().map(|p| &p.drawing));
+        let sets = self.column_cells.iter().chain(&self.cursor).chain(&self.form_list_cursor).chain(&self.name_bar).chain(&self.regular);
+        let one = [&self.empty_icon, &self.slot_code, &self.form_name_bar].into_iter().flatten();
+        let buttons = self.buttons.iter().flat_map(|(_, sets)| sets.iter());
+        maps.chain(sets).chain(one).chain(buttons).chain(self.pictures.iter().map(|(_, d)| d)).collect()
     }
 }

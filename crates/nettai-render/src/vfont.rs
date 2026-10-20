@@ -552,6 +552,8 @@ pub struct TextRenderer {
     /// left, bottom, right, top), by character (`numbers`).
     number_glyphs: HashMap<char, Option<(Sdf, [f32; 4])>>,
     made: Made,
+    /// The frames' drawings, rasterized ahead (`rasters`).
+    pub rasters: crate::rasters::Rasters,
 }
 
 /// What a text renderer has made so far that it didn't have: each is the
@@ -563,6 +565,10 @@ pub struct Made {
     pub layouts: u64,
     /// Glyphs' signed distance fields made from the font's outlines.
     pub glyphs: u64,
+    /// Drawings rasterized while a frame was drawn, none having said they
+    /// were coming (`rasters`: a pack's are rasterized before the first
+    /// picture, and again away from the frames when the scale changes).
+    pub rasters: u64,
 }
 
 impl TextRenderer {
@@ -582,6 +588,7 @@ impl TextRenderer {
             painted: HashMap::new(),
             number_glyphs: HashMap::new(),
             made: Made::default(),
+            rasters: Default::default(),
         }
     }
 
@@ -600,7 +607,7 @@ impl TextRenderer {
 
     /// What it has made so far.
     pub fn made(&self) -> Made {
-        self.made
+        Made { rasters: self.rasters.late, ..self.made }
     }
 
     /// Make the fields of the glyphs `text` is drawn with in `role` (in a
@@ -1090,17 +1097,19 @@ impl TextRenderer {
             _ => 1.0,
         };
         let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
-        let key = format!("drawn|{}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}", d.hash, item.rect, item.fades, item.vscale, item.fine, place, bounds);
-        if !self.painted.contains_key(&key) {
-            if self.painted.len() >= PAINTED_KEPT {
-                self.painted.clear();
-            }
-            let painted = paint_drawn(d, (x0, y0, mid, k), place, bounds, &color);
-            self.painted.insert(key.clone(), painted);
-        }
-        let Some(p) = &self.painted[&key] else { return };
         // (Only in its cells, where it has them: the frame pixel each output
         // pixel shows, from its box's top left.)
+        // (Its cells as a grid of flags, a cell a flag, to look up.)
+        let grid_w = (item.rect.w.max(0) as usize).div_ceil(8);
+        let grid: Option<Vec<bool>> = d.cells.as_ref().map(|cells| {
+            let mut g = vec![false; grid_w * (item.rect.h.max(0) as usize).div_ceil(8)];
+            for c in cells {
+                if let Some(f) = g.get_mut(c[1] as usize * grid_w + c[0] as usize).filter(|_| (c[0] as usize) < grid_w) {
+                    *f = true;
+                }
+            }
+            g
+        });
         let in_cells = |x: i32, y: i32| -> bool {
             if d.cells.is_none() && d.off.is_none() {
                 return true;
@@ -1115,15 +1124,48 @@ impl TextRenderer {
             {
                 return false;
             }
-            let Some(cells) = &d.cells else { return true };
+            let Some(grid) = &grid else { return true };
             let (cx, cy) = (dx.div_euclid(8), dy.div_euclid(8));
-            cx >= 0 && cy >= 0 && cells.iter().any(|c| c[0] as i32 == cx && c[1] as i32 == cy)
+            cx >= 0 && cy >= 0 && (cx as usize) < grid_w && grid.get(cy as usize * grid_w + cx as usize) == Some(&true)
         };
         let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
-        for (i, &(rgb, a)) in p.px.iter().enumerate().filter(|(_, px)| px.1 > 0) {
-            let (x, y) = (p.x + (i % p.w) as i32, p.y + (i / p.w) as i32);
-            if in_cells(x, y) {
-                target.blend(x, y, rgb, a);
+        // Each piece from its raster, colored now, at whole output pixels.
+        for piece in &d.pieces {
+            let colors: Vec<u32> = piece.colors.iter().map(|&c| color(c)).collect();
+            let Some(t) = self.rasters.tinted(&piece.drawing, &colors, piece.flip, s, k) else { continue };
+            let left = place.x as f32 + s * (x0 + piece.at.0);
+            let top = place.y as f32 + s * (mid + (y0 + piece.at.1 - mid) * k);
+            let (ox, oy) = (left.round() as i32, top.round() as i32);
+            // (Cut to its columns `from`..`to`: each output column's share
+            // of them.)
+            let cut = |lx: usize| -> f32 {
+                match piece.cut {
+                    None => 1.0,
+                    Some((from, to)) => {
+                        let (a, b) = (from * s, to * s);
+                        ((lx as f32 + 1.0).min(b) - (lx as f32).max(a)).clamp(0.0, 1.0)
+                    }
+                }
+            };
+            for ly in 0..t.h {
+                let y = oy + ly as i32;
+                if y < bounds.1 || y >= bounds.3 {
+                    continue;
+                }
+                for lx in 0..t.w {
+                    let (rgb, a) = t.px[ly * t.w + lx];
+                    let x = ox + lx as i32;
+                    if a == 0 || x < bounds.0 || x >= bounds.2 {
+                        continue;
+                    }
+                    let a = match piece.cut {
+                        None => a,
+                        Some(_) => (a as f32 * cut(lx)).round() as u8,
+                    };
+                    if a > 0 && in_cells(x, y) {
+                        target.blend(x, y, rgb, a);
+                    }
+                }
             }
         }
     }
@@ -1541,65 +1583,6 @@ impl Painted {
         };
         *p = (mix(16) | mix(8) | mix(0), (oa * 255.0).round() as u8);
     }
-}
-
-/// A drawing's pieces drawn by resvg one over another within `bounds` (output
-/// pixels): each from its box's top left (`x0`, `y0` in frame pixels, moved
-/// by its own place) squashed `k` times about row `mid`, flipped and cut as
-/// it says, in its colors through `color`; cropped to what it covers (none:
-/// nothing).
-fn paint_drawn(d: &crate::textlayer::Drawn, (x0, y0, mid, k): (f32, f32, f32, f32), place: &Placement, bounds: (i32, i32, i32, i32), color: &impl Fn(u16) -> u32) -> Option<Painted> {
-    use nettai_content::shapes::tiny_skia::{FillRule, Mask, Pixmap, PixmapPaint, Rect as SkRect, Transform};
-    let s = place.scale;
-    let (w, h) = ((bounds.2 - bounds.0).max(0) as u32, (bounds.3 - bounds.1).max(0) as u32);
-    let mut pixmap = Pixmap::new(w, h)?;
-    for piece in &d.pieces {
-        let size = piece.drawing.size;
-        let (sx, hx) = if piece.flip.0 { (-1.0, size[0] as f32) } else { (1.0, 0.0) };
-        let (sy, hy) = if piece.flip.1 { (-1.0, size[1] as f32) } else { (1.0, 0.0) };
-        // (Its frame pixels' left and top in the pixmap.)
-        let left = place.x as f32 - bounds.0 as f32 + s * (x0 + piece.at.0);
-        let top = place.y as f32 - bounds.1 as f32 + s * (mid + (y0 + piece.at.1 - mid) * k);
-        let transform = Transform::from_row(s * sx, 0.0, 0.0, s * k * sy, left + s * hx, top + s * k * hy);
-        let rgb = |p: u8, c: u8| {
-            let v = piece.drawing.colors.iter().position(|&e| e == (p, c)).and_then(|i| piece.colors.get(i)).map_or(0, |&c| color(c));
-            [(v >> 16) as u8, (v >> 8) as u8, v as u8]
-        };
-        let drawn = match piece.cut {
-            None => nettai_content::shapes::paint(&piece.drawing, &rgb, transform, false, &mut pixmap.as_mut()),
-            Some((from, to)) => {
-                let mut part = Pixmap::new(w, h)?;
-                let r = nettai_content::shapes::paint(&piece.drawing, &rgb, transform, false, &mut part.as_mut());
-                let (xa, xb) = ((left + s * from).max(0.0), (left + s * to).min(w as f32));
-                if let Some(rect) = SkRect::from_ltrb(xa, 0.0, xb, h as f32) {
-                    let mut mask = Mask::new(w, h)?;
-                    mask.fill_path(&nettai_content::shapes::tiny_skia::PathBuilder::from_rect(rect), FillRule::Winding, true, Transform::identity());
-                    pixmap.draw_pixmap(0, 0, part.as_ref(), &PixmapPaint::default(), Transform::identity(), Some(&mask));
-                }
-                r
-            }
-        };
-        debug_assert!(drawn.is_ok(), "{drawn:?}");
-    }
-    // (Its covered pixels' box, straight colors.)
-    let px = pixmap.pixels();
-    let covered = |i: usize| px[i].alpha() > 0;
-    let (mut ax, mut ay, mut bx, mut by) = (w as usize, h as usize, 0usize, 0usize);
-    for i in (0..px.len()).filter(|&i| covered(i)) {
-        let (x, y) = (i % w as usize, i / w as usize);
-        (ax, ay, bx, by) = (ax.min(x), ay.min(y), bx.max(x + 1), by.max(y + 1));
-    }
-    if ax >= bx || ay >= by {
-        return None;
-    }
-    let mut out = Painted::new((bounds.0 + ax as i32, bounds.1 + ay as i32, bounds.0 + bx as i32, bounds.1 + by as i32));
-    for y in ay..by {
-        for x in ax..bx {
-            let c = px[y * w as usize + x].demultiply();
-            out.px[(y - ay) * (bx - ax) + x - ax] = (((c.red() as u32) << 16) | ((c.green() as u32) << 8) | c.blue() as u32, c.alpha());
-        }
-    }
-    Some(out)
 }
 
 /// An item's glyphs' coverage over an area of the output (the lettering's,

@@ -341,11 +341,11 @@ fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], 
     let drawing = shapes.get(kind * 4 + step as usize).and_then(Option::as_ref).filter(|_| sink.draws_shapes());
     // (Each cell a drawing stands in for: the pixels the drawing covers, to
     // be in front of what the box hides, drawn as tiles under it.)
-    let mut covered: Vec<Option<(usize, std::rc::Rc<Vec<bool>>)>> = vec![None; map.len()];
+    let mut covered: Vec<Option<(usize, std::sync::Arc<Vec<bool>>)>> = vec![None; map.len()];
     if let Some(m) = drawing {
         let (w, h) = (8 * Graphics::COLUMNS as i32, 8 * (map.len() / Graphics::COLUMNS) as i32);
         for part in &m.parts {
-            let coverage = std::rc::Rc::new(crate::shapes::coverage(&part.drawing));
+            let coverage = crate::shapes::coverage(&part.drawing);
             for &[c, r] in &part.cells {
                 if let Some(d) = covered.get_mut(r as usize * Graphics::COLUMNS + c as usize) {
                     *d = Some((part.drawing.size[0] as usize, coverage.clone()));

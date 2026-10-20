@@ -1780,9 +1780,13 @@ map each drawing stands in for (the custom window's maps, the Cross window's, th
 `nettai_assets::shapes::MapDrawing`, each cell drawn by the first drawing, the map's own then the others most like
 it, that draws there and was drawn for the same pixels), and which of a set each is. The renderer (`shapes.rs`) turns a
 drawing into a text-layer item (`textlayer::Drawn`): its pieces (a drawing each, flipped as its tiles are laid, cut
-where a gauge's fill ends), each drawn by resvg at the output's scale in the palette's colors of the moment (a style
-sheet sets each `data-color`'s fill and `data-stroke`'s stroke, after the fades; painted once for its colors, scale
-and place); the cells it may draw in (the tiles it stands in for aren't drawn); and
+where a gauge's fill ends), each from its raster (`rasters.rs`): every drawing of the packs is read once and rasterized
+by resvg at the output's scale before the first picture (a preload's), keeping each palette entry's share of every
+pixel, so a frame colors it in the palette's colors of the moment, after the fades, without drawing the file again,
+and keeps what it colored while the colors hold; a drawing is laid at whole output pixels (a sprite's part of a pixel,
+at most half an output pixel, isn't shown); when the output's scale changes the drawings are rasterized again away
+from the frames, the old rasters resampled until then, and a banner's squash is the raster resampled. Nothing is read
+or rasterized while the battle plays (`nettai-tool --time` counts it); the cells it may draw in (the tiles it stands in for aren't drawn); and
 a mask of the pixels it keeps off (`Drawn::off`: the Cross names' portraits stay the picture's, over the vector bar).
 Where something must stay hidden behind a frame (the chatbox's box hides the navi's HP), the tiles are still drawn
 under the shapes, but only where the shapes cover (`shapes::coverage`), so the box keeps its place in front without
