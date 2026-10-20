@@ -35,7 +35,7 @@ mod tour {
     use nettai_battle::Content;
     use nettai_match::Side;
     use std::sync::Arc;
-    use web_time::Instant;
+    use nettai_platform::time::Instant;
 
     pub fn net() -> Option<Net> {
         None
@@ -91,7 +91,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// How long a match stays on screen once its set is over, before the player is back in the lobby, where nettai
 /// shows no result of its own (a set that ended some other way than won, lost or drawn). The game shows the
@@ -1302,11 +1302,11 @@ impl Play {
 fn recorder(content: &std::sync::Arc<nettai_battle::Content>, agreed: &Agreement, game: &str) -> Option<Recorder> {
     let dir = crate::paths::replays();
     let made = (|| -> Result<Recorder, String> {
-        nettai_fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        let when = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        nettai_platform::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let when = nettai_platform::time::SystemTime::now().duration_since(nettai_platform::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
         let path = dir.join(format!("{stamp}-{game}.{}", nettai_frontend::replay::EXTENSION));
-        let file = nettai_fs::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let file = nettai_platform::fs::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         Recorder::of_agreement(Box::new(std::io::BufWriter::new(file)), content, agreed, when)
     })();
     made.map_err(|why| crate::errors::log("making a match's replay file", &why)).ok()
@@ -1875,6 +1875,20 @@ impl Screen for Play {
     fn dropped(&mut self, shell: &mut Shell, path: &std::path::Path) {
         if self.part() == PlayPart::Builds && self.naming.is_none() && self.direct.is_none() && self.boxes.is_none() {
             self.import(shell, &[path.to_path_buf()]);
+        }
+    }
+
+    /// Saves or rulesets chosen in the system's dialog, which FROM A SAVE FILE… or IMPORT opened.
+    fn chosen(&mut self, shell: &mut Shell, purpose: &str, paths: &[std::path::PathBuf]) {
+        match purpose {
+            list::SAVE_FILES => self.import(shell, paths),
+            rules_page::RULESET_FILES => {
+                if let Some(page) = self.rules.as_mut() {
+                    let outcome = page.import_paths(shell, paths);
+                    self.ruleset_outcome(shell, outcome);
+                }
+            }
+            _ => {}
         }
     }
 

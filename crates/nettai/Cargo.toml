@@ -6,12 +6,8 @@ license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"
 
 [dependencies]
-# Threads: std::thread's on the desktop, Web Workers in the browser.
-nettai-thread = { path = "../nettai-thread" }
-# The clock: std's on the desktop, the browser's `performance.now()` there (std's panics).
-web-time = "1"
-# Files: std::fs's on the desktop, the page's tree in the browser.
-nettai-fs = { path = "../nettai-fs" }
+# Files, threads, time and dialogs: the desktop's, or the browser's.
+nettai-platform = { path = "../nettai-platform" }
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
@@ -59,27 +55,19 @@ nettai-extract = { path = "../nettai-extract" }
 # The collection's archives (`bnlc.rs`, ported from Tango's).
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
-# An invite's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
 # releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
 # release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
 velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
-arboard = { version = "3", default-features = false }
-# A save to make a build of, chosen in the system's file dialog.
-rfd = "0.15"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
 # The Legacy Collection's install, found through Steam, and its ROMs read out of its archives (`bnlc.rs`, ported
 # from Tango's, with the crates it uses).
 steamlocate = "2"
 
-# The browser's: its folder dialog, the page's files and its clock (`web.rs`).
+# The log on the browser's console.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-# The log on the page's console.
 console_log = "1"
 
 # A terminate request's signals, taken back from SDL (`quit.rs`). (In the tree already.)

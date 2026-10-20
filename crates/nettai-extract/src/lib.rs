@@ -14,7 +14,7 @@
 //! ```no_run
 //! use nettai_extract::{extract, Game, RomSet};
 //! let mut roms = RomSet::default();
-//! roms.insert(nettai_fs::read("falzar.gba")?)?;
+//! roms.insert(nettai_platform::fs::read("falzar.gba")?)?;
 //! let assets = extract(Game::Exe6, &roms)?;
 //! // Use assets.graphics / assets.sound directly, or embed the open-format files.
 //! let files = assets.files()?;
@@ -438,7 +438,7 @@ impl Extraction {
     /// [`Extraction::write`], telling `progress` how far it is as it goes (a fraction, 0 to 1: the files made,
     /// each written, then read back), for a host that shows a bar. What it writes is `write`'s, byte for byte.
     pub fn write_reporting(&self, root: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), Error> {
-        if nettai_fs::exists(root) && nettai_fs::read_dir(root)?.next().is_some() {
+        if nettai_platform::fs::exists(root) && nettai_platform::fs::read_dir(root)?.next().is_some() {
             return Err(Error(format!(
                 "{} is not empty; choose a new pack directory",
                 root.display()

@@ -1319,8 +1319,8 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
- "nettai-fs",
  "nettai-match",
+ "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -1332,8 +1332,8 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
- "nettai-fs",
  "nettai-match",
+ "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -1345,8 +1345,8 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
- "nettai-fs",
  "nettai-match",
+ "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -3160,7 +3160,6 @@ dependencies = [
 name = "nettai"
 version = "0.9.0"
 dependencies = [
- "arboard",
  "chrono",
  "console_log",
  "exe4-compat",
@@ -3172,7 +3171,6 @@ dependencies = [
  "i-slint-core",
  "icu_casemap",
  "icu_locale_core",
- "js-sys",
  "libc 0.2.190",
  "log",
  "nettai-audio",
@@ -3181,18 +3179,16 @@ dependencies = [
  "nettai-content-api",
  "nettai-extract",
  "nettai-frontend",
- "nettai-fs",
  "nettai-match",
+ "nettai-platform",
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
- "nettai-thread",
  "nettai-ui",
  "nettai-video",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
  "png 0.17.16",
- "rfd",
  "serde",
  "serde_json",
  "slint",
@@ -3201,9 +3197,6 @@ dependencies = [
  "tempfile",
  "toml 0.8.23",
  "velopack",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-time",
  "winresource",
  "zip 2.4.2",
 ]
@@ -3246,7 +3239,7 @@ dependencies = [
  "nettai-assets",
  "nettai-battle",
  "nettai-content-api",
- "nettai-fs",
+ "nettai-platform",
  "png 0.17.16",
  "resvg",
  "serde",
@@ -3259,7 +3252,7 @@ dependencies = [
 name = "nettai-content-api"
 version = "0.1.0"
 dependencies = [
- "nettai-fs",
+ "nettai-platform",
  "serde",
  "toml 0.8.23",
 ]
@@ -3284,7 +3277,7 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-frontend",
- "nettai-fs",
+ "nettai-platform",
  "nettai-tools",
  "tempfile",
 ]
@@ -3301,19 +3294,11 @@ dependencies = [
  "nettai-content-api",
  "nettai-match",
  "nettai-netplay",
+ "nettai-platform",
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
  "sha2 0.10.9",
- "web-time",
-]
-
-[[package]]
-name = "nettai-fs"
-version = "0.1.0"
-dependencies = [
- "nettai-thread",
- "web-time",
 ]
 
 [[package]]
@@ -3350,6 +3335,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nettai-platform"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "js-sys",
+ "log",
+ "rfd",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-time",
+]
+
+[[package]]
 name = "nettai-render"
 version = "0.1.0"
 dependencies = [
@@ -3357,11 +3355,9 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
- "nettai-fs",
- "nettai-thread",
+ "nettai-platform",
  "png 0.17.16",
  "swash",
- "web-time",
 ]
 
 [[package]]
@@ -3388,13 +3384,6 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "web-time",
-]
-
-[[package]]
-name = "nettai-thread"
-version = "0.1.0"
-dependencies = [
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -3445,7 +3434,7 @@ dependencies = [
  "console_error_panic_hook",
  "js-sys",
  "nettai",
- "nettai-fs",
+ "nettai-platform",
  "tar",
  "wasm-bindgen",
 ]

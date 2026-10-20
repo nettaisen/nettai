@@ -3,6 +3,8 @@
 //! page's shared memory, runs the work, frees its stack and ends. The module must be built with Wasm's atomics
 //! (crates/nettai-web), and the page must have said where its shim is ([`SHIM`]).
 //!
+//! Every lock the page's main thread shares with a thread is taken through [`lock`].
+//!
 //! Nothing waits for the thread: what it makes goes back by a channel or the event loop. (A browser's page may not
 //! block, so there is no `join`.)
 

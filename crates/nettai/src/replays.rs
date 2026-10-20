@@ -26,7 +26,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use web_time::{Instant, SystemTime, UNIX_EPOCH};
+use nettai_platform::time::{Instant, SystemTime, UNIX_EPOCH};
 
 /// The replays the reel goes through: the latest few.
 const REEL: usize = 5;
@@ -160,7 +160,7 @@ impl Library {
         let (jobs, _) = self.worker.get_or_insert_with(|| {
             let (jobs, taken) = channel();
             let (tell, told) = channel();
-            nettai_thread::spawn("replays", move || work(taken, tell, cache)).expect("a thread can be started");
+            nettai_platform::thread::spawn("replays", move || work(taken, tell, cache)).expect("a thread can be started");
             (jobs, told)
         });
         let _ = jobs.send(job);
@@ -304,19 +304,19 @@ fn guarded<T>(f: impl FnOnce() -> T) -> Option<T> {
 
 /// The replays in `dir`, newest first: each file read, but one that is as `known` has it.
 fn list(dir: &Path, known: &HashMap<PathBuf, Entry>) -> Vec<Entry> {
-    let Ok(read) = nettai_fs::read_dir(dir) else { return Vec::new() };
+    let Ok(read) = nettai_platform::fs::read_dir(dir) else { return Vec::new() };
     let mut out: Vec<Entry> = read.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == nettai_frontend::replay::EXTENSION)).filter_map(|path| entry(path, known)).collect();
     out.sort_by(|a, b| b.when.cmp(&a.when).then_with(|| b.path.cmp(&a.path)));
     out
 }
 
 fn entry(path: PathBuf, known: &HashMap<PathBuf, Entry>) -> Option<Entry> {
-    let meta = nettai_fs::metadata(&path).ok()?;
+    let meta = nettai_platform::fs::metadata(&path).ok()?;
     let stamp = Stamp { len: meta.len(), modified: meta.modified().ok() };
     if let Some(was) = known.get(&path).filter(|e| e.stamp == stamp) {
         return Some(was.clone());
     }
-    let (read, game, digest) = match nettai_fs::read(&path) {
+    let (read, game, digest) = match nettai_platform::fs::read(&path) {
         Ok(bytes) => {
             let read = Replay::read(&bytes).map(Summary::of);
             // (A file whose rest doesn't read may still say whose it is.)
@@ -335,7 +335,7 @@ fn entry(path: PathBuf, known: &HashMap<PathBuf, Entry>) -> Option<Entry> {
 
 /// A replay's file, read. (One that can't be read at all is a damaged one.)
 pub fn read(path: &Path) -> Result<Replay, ReadError> {
-    let bytes = nettai_fs::read(path).map_err(|e| ReadError::Damaged(format!("{}: {e}", path.display())))?;
+    let bytes = nettai_platform::fs::read(path).map_err(|e| ReadError::Damaged(format!("{}: {e}", path.display())))?;
     Replay::read(&bytes)
 }
 
@@ -383,7 +383,7 @@ impl Reel {
         let (tell, found) = channel();
         let game = game.to_string();
         // (None started: the sender is dropped, and the reel has nothing.)
-        let _ = nettai_thread::spawn("reel", move || {
+        let _ = nettai_platform::thread::spawn("reel", move || {
             let latest = list(&dir, &HashMap::new()).into_iter().filter(|e| e.read.as_ref().is_ok_and(|s| s.head.game == game)).take(REEL);
             // (One that doesn't read any more is passed over.)
             let _ = tell.send(latest.filter_map(|e| read(&e.path).ok()).collect());

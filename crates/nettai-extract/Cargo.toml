@@ -6,8 +6,8 @@ license.workspace = true
 description = "Embeddable EXE4, EXE5 and EXE6 asset extraction and command-line tool"
 
 [dependencies]
-# Files: std::fs's on the desktop, the page's tree in the browser.
-nettai-fs = { path = "../nettai-fs" }
+# Files, threads, time and dialogs: the desktop's, or the browser's.
+nettai-platform = { path = "../nettai-platform" }
 m4a.workspace = true
 nettai-assets = { path = "../nettai-assets" }
 nettai-content = { path = "../nettai-content" }

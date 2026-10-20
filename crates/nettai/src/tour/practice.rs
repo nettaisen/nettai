@@ -21,7 +21,7 @@ use nettai_battle::input::keys;
 use crate::builds::store;
 use nettai_ui::{AppWindow, BuildsView, PracticeOption, Theme};
 use slint::ComponentHandle;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// What a shot may differ from the one kept before it in.
 #[derive(Clone, Copy, PartialEq)]
@@ -105,7 +105,7 @@ fn shot(add: &mut dyn FnMut(u64, Step), name: &'static str, lang: &'static str, 
 fn say(tour: &Tour, said: &str) {
     use std::io::Write;
     eprint!("tour: {said}");
-    if let Ok(mut file) = nettai_fs::File::options().create(true).append(true).open(tour.dir.join("practice.txt")) {
+    if let Ok(mut file) = nettai_platform::fs::File::options().create(true).append(true).open(tour.dir.join("practice.txt")) {
         let _ = file.write_all(said.as_bytes());
     }
 }
@@ -165,7 +165,7 @@ fn focus_row(option: PracticeOption) -> Step {
 /// The pass's own builds of the selected game, gone (the folder is the pass's: `paths::keep_builds_in`).
 fn clear_builds(app: &App) {
     if let Some(game) = app.shell.game() {
-        let _ = nettai_fs::remove_dir_all(store::folder(game));
+        let _ = nettai_platform::fs::remove_dir_all(store::folder(game));
     }
 }
 

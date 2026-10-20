@@ -39,8 +39,6 @@ mod stage;
 // (The browser's app is the page's, which has no updater: its stand-in says none is found.)
 #[cfg_attr(target_arch = "wasm32", path = "updates_web.rs")]
 mod updates;
-#[cfg(target_arch = "wasm32")]
-pub mod web;
 // (The screenshot pass is the `tour` feature's: a player's build has none of it. The tests compile it all the
 // same, so that it keeps compiling.)
 #[cfg(any(test, feature = "tour"))]
@@ -55,7 +53,7 @@ use slint::{ComponentHandle, RenderingState};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 thread_local! {
     /// The app's state, on the window's thread (work done on other threads comes back to it through the event
@@ -113,6 +111,12 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let app = Rc::new(RefCell::new(App::new(&ui, tour.is_some())));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
     wire(&ui, &app);
+    // (The browser's page hears files dropped on it; the desktop's window has its own events for them.)
+    nettai_platform::dialog::take_drops(|paths| {
+        for path in paths {
+            with_app(|app| app.dropped(&path));
+        }
+    });
     app.borrow_mut().start();
     // (After the app's own start: the gamepads' library has taken the terminate requests by now.)
     quit::watch();

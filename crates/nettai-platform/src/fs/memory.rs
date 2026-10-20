@@ -36,7 +36,7 @@ static ROOT: Node = Node::Dir;
 static TREE: Mutex<Tree> = Mutex::new(Tree { nodes: BTreeMap::new(), watched: None, changes: Vec::new() });
 
 fn tree() -> MutexGuard<'static, Tree> {
-    nettai_thread::lock(&TREE).unwrap_or_else(|poisoned| poisoned.into_inner())
+    crate::thread::lock(&TREE).unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// `path` from the root, its `.` and `..` resolved.

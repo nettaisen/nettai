@@ -27,6 +27,11 @@ use nettai_extract::Game;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+/// The per-game archives of a folder chosen as the install, at the three places [`Install::at`] looks: the
+/// browser reads them, and no more, from the folder chosen (`nettai_platform::dialog::open_folder`). (`exe?*`: not
+/// the shared `exe.dat`, which holds no ROM and is large.)
+pub const ARCHIVES: [&str; 3] = ["exe/data/exe?*.dat", "data/exe?*.dat", "exe?*.dat"];
+
 /// Vol. 2's Steam app id (Tango's `Volume::Vol2`).
 #[cfg(not(target_arch = "wasm32"))]
 const STEAM_APP_ID: u32 = 1798020;
@@ -101,13 +106,13 @@ fn steam() -> Option<PathBuf> {
 
 /// The per-game archives in an install's data folder: each `exe*.dat` but the shared `exe.dat`.
 fn archives(data: &Path) -> Vec<PathBuf> {
-    let Ok(read) = nettai_fs::read_dir(data) else { return Vec::new() };
+    let Ok(read) = nettai_platform::fs::read_dir(data) else { return Vec::new() };
     let mut out: Vec<PathBuf> = read
         .flatten()
         .map(|entry| entry.path())
         .filter(|p| {
             let name = p.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
-            name != "exe.dat" && name.starts_with("exe") && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dat")) && nettai_fs::is_file(p)
+            name != "exe.dat" && name.starts_with("exe") && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dat")) && nettai_platform::fs::is_file(p)
         })
         .collect();
     out.sort();
@@ -134,8 +139,8 @@ fn scan(archive: &Path) -> Result<Vec<Rom>, String> {
     Ok(out)
 }
 
-fn open(archive: &Path) -> Result<zip::ZipArchive<nettai_fs::File>, String> {
-    let file = nettai_fs::File::open(archive).map_err(|e| e.to_string())?;
+fn open(archive: &Path) -> Result<zip::ZipArchive<nettai_platform::fs::File>, String> {
+    let file = nettai_platform::fs::File::open(archive).map_err(|e| e.to_string())?;
     zip::ZipArchive::new(file).map_err(|e| e.to_string())
 }
 
@@ -164,8 +169,8 @@ pub mod tests {
 
     /// A zip archive at `path` of `entries` (a name and its bytes), compressed as the collection's may be.
     pub fn archive(path: &Path, entries: &[(&str, &[u8])]) {
-        nettai_fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let mut zip = zip::ZipWriter::new(nettai_fs::File::create(path).unwrap());
+        nettai_platform::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut zip = zip::ZipWriter::new(nettai_platform::fs::File::create(path).unwrap());
         for (name, bytes) in entries {
             zip.start_file(*name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).unwrap();
             zip.write_all(bytes).unwrap();
@@ -182,7 +187,7 @@ pub mod tests {
         archive(&data.join("exe.dat"), &[("bg/a.tga", b"art")]);
         archive(&data.join("exe6.dat"), &[]);
         archive(&data.join("exe4.dat"), &[]);
-        nettai_fs::write(data.join("notes.txt"), b"").unwrap();
+        nettai_platform::fs::write(data.join("notes.txt"), b"").unwrap();
         let install = Install { data: data.clone(), archives: vec![data.join("exe4.dat"), data.join("exe6.dat")] };
         assert_eq!(Install::at(dir.path()).as_ref(), Some(&install));
         assert_eq!(Install::at(&dir.path().join("exe")).as_ref(), Some(&install));
@@ -203,7 +208,7 @@ pub mod tests {
         let (us, jp, other) = (fake_rom("BR6E", 0x1000), fake_rom("BR5J", 0x2000), fake_rom("AREE", 0x1000));
         archive(&data.join("exe6.dat"), &[("exe6_rom_e.srl", &us), ("readme.txt", b"BR6E"), ("roms/exe6f_rom_f.srl", &jp), ("exe1_rom_e.srl", &other)]);
         archive(&data.join("exe7.dat"), &[("again/exe6_rom_e.srl", &us)]);
-        nettai_fs::write(data.join("exe5.dat"), b"not a zip").unwrap();
+        nettai_platform::fs::write(data.join("exe5.dat"), b"not a zip").unwrap();
         let install = Install::at(dir.path()).unwrap();
         assert_eq!(install.archives.len(), 3);
         let roms = install.roms();
@@ -212,7 +217,7 @@ pub mod tests {
         assert_eq!(read(&roms[0]).unwrap(), us);
         assert_eq!(read(&roms[1]).unwrap(), jp);
         // An archive gone since: a failure to read, said in words for the log.
-        nettai_fs::remove_file(data.join("exe6.dat")).unwrap();
+        nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
         assert!(read(&roms[0]).unwrap_err().contains("exe6_rom_e.srl"));
     }
 }

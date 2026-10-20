@@ -18,6 +18,7 @@ use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_frontend::game::GraphicsMode;
+use nettai_platform::dialog::Filter;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
 use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
@@ -27,7 +28,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 thread_local! {
     /// Each game's name in the language shown, by the game's id (`Shell::game_name`; `Shell::name_games` reads
@@ -812,38 +813,30 @@ impl Shell {
 
     /// Copy `text` to the system's clipboard (an invite's code, an address).
     pub fn copy(&self, text: &str) {
-        // (The browser's clipboard isn't the app's yet.)
-        #[cfg(target_arch = "wasm32")]
-        let _ = text;
-        #[cfg(not(target_arch = "wasm32"))]
-        match arboard::Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
-            Ok(()) => {}
-            Err(why) => crate::errors::log("copying to the clipboard", &why),
-        }
+        nettai_platform::clipboard::copy(text);
     }
 
     /// Ask the player for files to open, one or more, in the system's dialog: `kind` names what is asked for (in
-    /// the language shown), `extensions` are those they may have. None: they chose none. The app's frames wait
-    /// while the dialog is up.
-    pub fn choose_files(&self, kind: &str, extensions: &[&str]) -> Vec<std::path::PathBuf> {
-        #[cfg(not(target_arch = "wasm32"))]
-        return rfd::FileDialog::new().add_filter(kind, extensions).pick_files().unwrap_or_default();
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = (kind, extensions);
-            Vec::new()
-        }
+    /// the language shown), `extensions` are those they may have, `purpose` what they are for. The screen shown
+    /// hears those chosen with `purpose` (`Screen::chosen`), once this call is done: the browser's dialog answers
+    /// later, and the desktop's is heard the same way.
+    pub fn choose_files(&self, kind: &str, extensions: &[&str], purpose: &'static str) {
+        nettai_platform::dialog::open_files(Filter { kind, extensions }, move |paths| {
+            if !paths.is_empty() {
+                let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.chosen(purpose, &paths)));
+            }
+        });
     }
 
-    /// Ask the player where to save a file named `name`, as [`Shell::choose_files`].
+    /// Ask the player where to save a file named `name`; once it is written there, [`Shell::saved`]. (In the
+    /// browser it is a path in the app's files, and `saved` downloads it.)
     pub fn choose_save(&self, kind: &str, extensions: &[&str], name: &str) -> Option<std::path::PathBuf> {
-        #[cfg(not(target_arch = "wasm32"))]
-        return rfd::FileDialog::new().add_filter(kind, extensions).set_file_name(name).save_file();
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = (kind, extensions, name);
-            None
-        }
+        nettai_platform::dialog::save_path(Filter { kind, extensions }, name, None)
+    }
+
+    /// The file [`Shell::choose_save`] said is written.
+    pub fn saved(&self, path: &std::path::Path) {
+        nettai_platform::dialog::saved(path);
     }
 
     // ---- The window's scale ------------------------------------------------------------------------------
@@ -1191,15 +1184,11 @@ impl App {
     /// is up). A folder that holds the collection is kept in the settings, and the packs wanted are extracted
     /// from it; one that doesn't is said, and nothing is kept.
     fn choose_source(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-            self.source_chosen(folder);
-        }
-        // (The browser's folder dialog answers later: its archives are read into the page's files first.)
-        #[cfg(target_arch = "wasm32")]
-        crate::web::choose_collection(|folder| {
+        // (Heard once this call is done: the browser's dialog answers later, its archives read into the app's
+        // files first.)
+        nettai_platform::dialog::open_folder(&crate::bnlc::ARCHIVES, |folder| {
             if let Some(folder) = folder {
-                crate::with_app(|app| app.source_chosen(folder));
+                let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.source_chosen(folder)));
             }
         });
     }
@@ -1897,6 +1886,16 @@ impl App {
         } else {
             self.shell.keys.held &= !keys::RIGHT;
         }
+    }
+
+    /// Files the player chose for `purpose` ([`Shell::choose_files`]): the screen shown hears them.
+    pub fn chosen(&mut self, purpose: &str, paths: &[std::path::PathBuf]) {
+        if self.shell.battle.is_some() || self.shell.dialog.is_some() {
+            return;
+        }
+        let shown = self.shell.screen;
+        self.call(shown, |s, shell| s.chosen(shell, purpose, paths));
+        self.settle();
     }
 
     /// A file was dropped on the window: the screen shown may want it (a save, for a build of it).

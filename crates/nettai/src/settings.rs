@@ -108,7 +108,7 @@ pub fn clean_name(name: &str) -> String {
 impl Settings {
     /// The settings as the file has them (the defaults where it isn't there or doesn't read).
     pub fn load() -> Settings {
-        let mut s: Settings = nettai_fs::read_to_string(crate::paths::settings()).ok().and_then(|t| toml::from_str(&t).ok()).unwrap_or_default();
+        let mut s: Settings = nettai_platform::fs::read_to_string(crate::paths::settings()).ok().and_then(|t| toml::from_str(&t).ok()).unwrap_or_default();
         s.name = clean_name(&s.name);
         s.music = s.music.min(100);
         s.effects = s.effects.min(100);
@@ -120,10 +120,10 @@ impl Settings {
     pub fn save(&self) -> Result<(), String> {
         let path = crate::paths::settings();
         if let Some(dir) = path.parent() {
-            nettai_fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+            nettai_platform::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         let text = toml::to_string(self).map_err(|e| e.to_string())?;
-        nettai_fs::write(&path, format!("# nettai's settings (docs/app.md §9).\n\n{text}")).map_err(|e| format!("{}: {e}", path.display()))
+        nettai_platform::fs::write(&path, format!("# nettai's settings (docs/app.md §9).\n\n{text}")).map_err(|e| format!("{}: {e}", path.display()))
     }
 
     /// The battle's buttons as bound: the defaults, with what the file binds otherwise.

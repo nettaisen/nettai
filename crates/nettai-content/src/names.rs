@@ -152,7 +152,7 @@ struct IndexFile {
 /// A pack's asset index (its own names, unqualified).
 pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api::PackIndex> {
     let path = root.join(INDEX);
-    let text = match nettai_fs::read_to_string(&path) {
+    let text = match nettai_platform::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
             report.error(INDEX, format!("can't read: {e}"));

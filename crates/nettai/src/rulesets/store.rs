@@ -56,13 +56,13 @@ pub fn folder(game: &str) -> PathBuf {
 /// Game `game`'s own rulesets, by name: each file of its folder that is a ruleset of it (a file that isn't one is
 /// left out).
 pub fn list(game: &str) -> Vec<Listed> {
-    let Ok(dir) = nettai_fs::read_dir(folder(game)) else { return Vec::new() };
+    let Ok(dir) = nettai_platform::fs::read_dir(folder(game)) else { return Vec::new() };
     let mut out: Vec<Listed> = dir
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == EXTENSION))
         .filter_map(|path| {
-            let text = nettai_fs::read_to_string(&path).ok()?;
+            let text = nettai_platform::fs::read_to_string(&path).ok()?;
             let f: RulesetFile = toml::from_str(&text).ok().filter(|f: &RulesetFile| f.game == game)?;
             Some(Listed { path, name: f.name, text })
         })
@@ -106,9 +106,9 @@ pub fn text(content: &Content, game: &str, ruleset: &Ruleset) -> String {
 /// Write a ruleset to `path` (its folder made if it isn't there).
 pub fn write(path: &Path, content: &Content, game: &str, ruleset: &Ruleset) -> Result<(), String> {
     if let Some(dir) = path.parent() {
-        nettai_fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        nettai_platform::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
-    nettai_fs::write(path, text(content, game, ruleset)).map_err(|e| format!("{}: {e}", path.display()))
+    nettai_platform::fs::write(path, text(content, game, ruleset)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// A file's name for a ruleset named `name`, without its extension: the name's letters and digits (`tournament`).
@@ -131,7 +131,7 @@ pub fn new_path(game: &str, name: &str) -> PathBuf {
     let dir = folder(game);
     let mut path = dir.join(format!("{stem}.{EXTENSION}"));
     for n in 2.. {
-        if !nettai_fs::exists(&path) {
+        if !nettai_platform::fs::exists(&path) {
             break;
         }
         path = dir.join(format!("{stem}-{n}.{EXTENSION}"));

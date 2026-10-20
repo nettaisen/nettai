@@ -54,7 +54,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};

@@ -24,6 +24,9 @@ use std::path::{Path, PathBuf};
 /// The save files a build is made of: what the emulators and Tango name them.
 const SAVES: [&str; 4] = ["sav", "sa1", "srm", "raw"];
 
+/// What saves chosen in the system's dialog are for, as Play hears them (`Screen::chosen`).
+pub(super) const SAVE_FILES: &str = "saves";
+
 /// The tag of the question DELETE asks (`Screen::answered`: 1 is DELETE).
 pub(super) const DELETE: &str = "play.delete";
 
@@ -248,10 +251,8 @@ impl Play {
     /// of each.
     pub(super) fn import_chosen_files(&mut self, shell: &mut Shell) {
         let kind = shell.ui().global::<PlayView>().get_save_files().to_string();
-        let paths = shell.choose_files(&kind, &SAVES);
-        if !paths.is_empty() {
-            self.import(shell, &paths);
-        }
+        // (Heard as `Screen::chosen`.)
+        shell.choose_files(&kind, &SAVES, SAVE_FILES);
     }
 
     /// A build of each save at `paths`, named for its file; the last one made is chosen. A save that makes none
@@ -284,7 +285,7 @@ impl Play {
     /// A build of the save at `path`, named for the file (none of `taken`), and what the save was put on where that
     /// changed what it held ("Imported as Dark MegaMan"; empty where nothing did).
     fn build_of_save(&self, shell: &Shell, kit: &Kit, path: &Path, taken: &[String]) -> Result<(Build, String), UserError> {
-        let file = nettai_fs::read(path).map_err(|why| {
+        let file = nettai_platform::fs::read(path).map_err(|why| {
             crate::errors::log(&format!("reading the save {}", path.display()), &why);
             UserError::Other
         })?;
@@ -366,7 +367,7 @@ impl Play {
     /// The chosen build's file goes; the one after it is chosen, or the one before where it was the last.
     pub(super) fn delete(&mut self, shell: &mut Shell) {
         let Some(entry) = self.build() else { return };
-        if let Err(why) = nettai_fs::remove_file(&entry.listed.path) {
+        if let Err(why) = nettai_platform::fs::remove_file(&entry.listed.path) {
             crate::errors::log(&format!("deleting the build {}", entry.listed.path.display()), &why);
             return shell.fail(UserError::Other);
         }

@@ -1142,16 +1142,22 @@ target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wa
 `$WASI_SDK_PATH`), and `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
 isolated (COOP and COEP), which a page with threads must be.
 
+- **nettai-platform** is what the app asks of the system, the same calls on both: `fs`, `thread`, `time`,
+  `dialog` (files to open, a folder, where to save, files dropped) and `clipboard`. A dialog answers through a
+  callback, after the call on both (the browser's later), and the screen shown hears the files
+  (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
+  read as far as the app names its files (the collection's archives: `bnlc::ARCHIVES`); a file saved is
+  downloaded.
 - **Luau on longjmp.** Slint's and winit's web backends rule out `-C panic=unwind` (wasm-bindgen then asks every
   closure to be `UnwindSafe`, and winit has no `run_app` with Rust's `exception-handling` feature), so Luau is built
   with `LUA_USE_LONGJMP` (Wasm exception handling's setjmp/longjmp, in C alone), and the module is `panic=abort`:
   a panic in the browser ends the page's module (said on the console: console_error_panic_hook).
 - **Threads** are Web Workers on one shared memory (the build's atomics; Luau takes the SDK's threads build):
-  `nettai_thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
+  `nettai_platform::thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
   stack. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
-  is taken through `nettai_thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
+  is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
   queue's and the shapes' cache's, each held for moments.
-- **Files** are nettai-fs's: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
+- **Files** are `nettai_platform::fs`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
   page puts the data folder (`/data`: settings, builds, replays, packs) in it from the origin private file system
   before the app starts, and writes back what changes, a few times a second: side by side, a pack's stamp last (a
   page closed partway leaves no pack that looks whole), and nothing in a dot folder (`packs/.new`). The content
@@ -1164,11 +1170,15 @@ isolated (COOP and COEP), which a page with threads must be.
   files) kept in about 11 s; a reload plays from them without the folder.
 - **Sound** is cpal 0.18's AudioWorklet on the shared memory, started again on each click or key (a page's sound
   starts only then). **Time** is web-time's. The log is the console as well (console_log).
-- **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, saved with `showSaveFilePicker`); the
-  picture's texture (the battle's picture is drawn as an image, not into WebGL directly); the clipboard; opening a
-  save or a replay from a file (`choose_files`); direct links (the browser has no sockets: netplay is WebRTC);
-  IME over the canvas; remembering the collection's folder (its handle kept in IndexedDB); a smaller module
-  (49 MB before wasm-opt and compression).
+- **No direct connect** (the user: "web should not support direct connect"): the browser has no sockets, and
+  its button isn't there (`Theme.web`); netplay is WebRTC through the signaling server. Nor does it say anything
+  of Steam: the missing collection's words are "choose its folder".
+- **The collection's folder isn't remembered** past the page: a folder handle kept in IndexedDB could be read
+  again only after a click and the browser's permission prompt, and every game is extracted as the folder is
+  chosen, so it would matter only when a new version extracts again.
+- **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, downloaded); the picture's texture (the
+  battle's picture is drawn as an image, not into WebGL directly); IME over the canvas; a smaller module (49 MB
+  before wasm-opt and compression).
 
 ## 7. Android and iOS
 

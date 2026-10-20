@@ -308,7 +308,7 @@ impl VectorFont {
 
     /// A TrueType or OpenType font file (its first face).
     pub fn load(path: &Path) -> Result<VectorFont, String> {
-        let data = nettai_fs::read(path).map_err(|e| format!("can't read the font {}: {e}", path.display()))?;
+        let data = nettai_platform::fs::read(path).map_err(|e| format!("can't read the font {}: {e}", path.display()))?;
         VectorFont::from_data(Cow::Owned(data), path.display().to_string())
     }
 

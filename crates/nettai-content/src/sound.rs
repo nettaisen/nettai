@@ -344,7 +344,7 @@ fn inline(d: &VoiceDoc) -> String {
 // ---- Import ----------------------------------------------------------------------
 
 fn read_toml<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {
-    let text = match nettai_fs::read_to_string(path) {
+    let text = match nettai_platform::fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {
             report.error(name, format!("can't read: {e}"));
@@ -361,7 +361,7 @@ fn read_toml<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &m
 }
 
 fn files_in(dir: &Path, ext: &str) -> Vec<String> {
-    let mut v: Vec<String> = nettai_fs::read_dir(dir)
+    let mut v: Vec<String> = nettai_platform::fs::read_dir(dir)
         .into_iter()
         .flatten()
         .flatten()
@@ -511,7 +511,7 @@ pub fn import_with_versions(dir: &Path, prefix: &str, report: &mut Report) -> Op
             continue;
         };
         let midi_name = f(&format!("songs/{}", sd.midi));
-        let bytes = match nettai_fs::read(dir.join("songs").join(&sd.midi)) {
+        let bytes = match nettai_platform::fs::read(dir.join("songs").join(&sd.midi)) {
             Ok(b) => b,
             Err(e) => {
                 report.error(&midi_name, format!("can't read: {e}"));
@@ -562,7 +562,7 @@ pub fn import_with_versions(dir: &Path, prefix: &str, report: &mut Report) -> Op
 
 fn import_sample(dir: &Path, prefix: &str, n: &str, d: &SampleDoc, report: &mut Report) -> Option<Sample> {
     let file = format!("{prefix}/{}", d.file);
-    let bytes = match nettai_fs::read(dir.join(&d.file)) {
+    let bytes = match nettai_platform::fs::read(dir.join(&d.file)) {
         Ok(b) => b,
         Err(e) => {
             report.error(&file, format!("can't read: {e}"));

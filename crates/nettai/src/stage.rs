@@ -14,7 +14,7 @@ use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, WIDTH};
 use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// How the picture fits a space: the display's pixels a frame pixel takes
 /// (`scale`), and the pixels a frame pixel takes in the picture presented
