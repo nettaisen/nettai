@@ -197,9 +197,34 @@ msgstr "切り抜き"
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
-# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): whether the next one
-# starts by itself at the end of one (a phone's words by its switch), and the popup of the entries still to watch
-# after the one watched, with what is said when there are none.
+# The viewer's footer: how many rounds the replay has.
+msgid "{n} round"
+msgid_plural "{n} rounds"
+msgstr[0] "{n} ラウンド"
+msgstr[1] "{n} ラウンド"
+
+# The transport's VIEW menu: the side whose console is shown (P1, P2), both builds (Builds), the input display
+# (Input display, Practice's), the other side's console small in the picture's corner, and the clip to export, its
+# words by what choosing it does next (its start marked, then its end, then cleared).
+msgctxt "menu"
+msgid "View"
+msgstr "表示"
+
+msgid "Other side's picture"
+msgstr "相手側の画面"
+
+msgid "Mark clip start"
+msgstr "切り抜きの開始点を設定"
+
+msgid "Mark clip end"
+msgstr "切り抜きの終了点を設定"
+
+msgid "Clear clip"
+msgstr "切り抜きを解除"
+
+# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): its popup of the
+# entries still to watch after the one watched, with NEXT (Next, 次へ: skip to the next replay) and whether the next
+# one starts by itself at the end of one (the words by its switch) at its top, and what is said when there are none.
 msgid "Autoplay next"
 msgstr "次を自動再生"
 

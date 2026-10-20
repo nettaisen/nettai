@@ -15,10 +15,14 @@
 //! queue ([`Queue`], docs/design/app-ui.md §2.91, §2.92), at its end or at its start, as does a right click on its
 //! row. The Queue tab shows the queue, reorders it, takes entries out of it, clears it and watches it from its start
 //! or from an entry. The queue is what is still to watch: while it plays its head is the replay watched, which
-//! leaves it once played to its end or skipped. The viewer then has the queue's next (skip), its button with the
-//! count up next, which opens a small popup of them, and Autoplay next (the settings remember it: [`AUTOPLAY`]),
-//! which starts the next a moment after one ends ([`NEXT_AFTER`]), behind the two cards as the first was (§2.90).
-//! A queue is the selected game's, kept while the app runs and never saved.
+//! leaves it once played to its end or skipped. The viewer's transport then has the queue's button with the count
+//! up next, which opens a small popup of them with the queue's next (skip; N) and Autoplay next (the settings
+//! remember it: [`AUTOPLAY`]), which starts the next a moment after one ends ([`NEXT_AFTER`]), behind the two cards
+//! as the first was (§2.90). A queue is the selected game's, kept while the app runs and never saved.
+//!
+//! The transport keeps few buttons (§2.94): to the round's start, play or pause, the next round, and VIEW, whose
+//! menu (`Shell::pick_marked`, [`viewer::ViewItem`]) has the side watched from, the builds, the input display, the
+//! other side's picture and the clip, each also a key's.
 
 mod export;
 mod queue;
@@ -48,7 +52,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-use viewer::{Overlays, Watching};
+use viewer::{Overlays, VIEW_MENU, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.
 const VIEWER: &str = "replays.viewer";
@@ -83,12 +87,13 @@ fn set_autoplay(shell: &mut Shell, on: bool) {
 }
 
 /// The viewer's popup of what is up next in the queue: its scope (`Nav::open`), its rows, its width on a desktop,
-/// the most rows it shows at once (more scroll), and the room its heading and its padding take.
+/// the most rows it shows at once (more scroll), and the room over its rows (NEXT and Autoplay next, and the
+/// heading).
 const UP_NEXT: &str = "upnext.";
 const UP_NEXT_ROW: &str = "upnext.row";
 const UP_NEXT_WIDTH: f32 = 360.0;
 const UP_NEXT_ROWS: usize = 5;
-const UP_NEXT_ROOM: f32 = 52.0;
+const UP_NEXT_ROOM: f32 = 96.0;
 
 /// What a replay's menu (a right click on its row) does, and what a queue entry's does: each in its order, DELETE
 /// and REMOVE last, set apart.
@@ -714,7 +719,15 @@ impl Replays {
         view.set_up_next_rows(rows as i32);
         view.set_up_next_open(true);
         self.up_next = true;
-        shell.nav.open(UP_NEXT, Key::new(UP_NEXT_ROW, 0));
+        // (On its first row; with none, on NEXT, or where no replay plays after this one, on Autoplay next.)
+        let first = if count > 0 {
+            UP_NEXT_ROW
+        } else if view.get_has_next() {
+            "upnext.next"
+        } else {
+            "upnext.autoplay"
+        };
+        shell.nav.open(UP_NEXT, Key::new(first, 0));
     }
 
     fn close_up_next(&mut self, shell: &mut Shell) {
@@ -872,7 +885,7 @@ impl Replays {
     ///
     /// The controls show while the player has done anything in the last [`HUD_IDLE`] (or the replay has just
     /// begun), while the replay doesn't play (paused, at its end, held by a seek or a drag), while a setting is taken,
-    /// while the builds, the export or the popup of what is up next are open, and always on a phone; the pointer
+    /// while the builds, the export, VIEW's menu or the popup of what is up next are open, and always on a phone; the pointer
     /// resting on the transport holds them too (the UI's own). Hidden, the cursor goes with them.
     ///
     /// A replay of the queue played to its end leaves the queue at once; with Autoplay next on, the next that plays
@@ -880,13 +893,14 @@ impl Replays {
     fn follow_viewer(&mut self, shell: &mut Shell, now: Instant) {
         let Some(w) = &self.watching else { return };
         let lately = [shell.last_input, self.woke].into_iter().flatten().any(|at| now.saturating_duration_since(at) < HUD_IDLE);
-        let shown = shell.scale.phone || lately || !w.playing() || shell.nav.grabbed() || w.builds_shown() || self.export.is_some() || self.up_next;
+        let open = w.builds_shown() || self.export.is_some() || self.up_next || shell.picker_open();
+        let shown = shell.scale.phone || lately || !w.playing() || shell.nav.grabbed() || open;
         if self.hud != Some(shown) {
             self.hud = Some(shown);
             shell.ui().global::<ReplaysView>().set_hud(shown);
         }
         let ended = w.ended_for(now);
-        let held = self.export.is_some() || w.builds_shown() || self.up_next || shell.dialog.is_some();
+        let held = open || shell.dialog.is_some();
         if !self.queued || ended.is_none() {
             return;
         }
@@ -1049,15 +1063,15 @@ impl Screen for Replays {
         }
         if self.watching.is_some() {
             match id {
-                "next-replay" => return self.next_in_queue(shell),
                 "up-next" => return self.toggle_up_next(shell),
                 "upnext.close" => return self.close_up_next(shell),
+                "upnext.next" => return self.next_in_queue(shell),
+                "upnext.autoplay" => return set_autoplay(shell, !autoplay(shell)),
                 // (A row up next: its replay, the ones before it passed; one that is missing is refused.)
                 UP_NEXT_ROW => {
                     let at = index.max(0) as usize + self.current as usize;
                     return if self.plays().get(at) == Some(&true) { self.play_from(shell, at) } else { shell.sound.play(Cue::Refused) };
                 }
-                "autoplay" => return set_autoplay(shell, !autoplay(shell)),
                 _ => {}
             }
         }
@@ -1066,14 +1080,12 @@ impl Screen for Replays {
                 "seek" | "play" => w.toggle(),
                 "round-start" => w.round(-1),
                 "next-round" => w.round(1),
-                "frame-back" => w.step(-1),
-                "frame-on" => w.step(1),
-                "builds" | "builds.sheet" => w.toggle_builds(shell),
-                "inputs" => w.toggle_inputs(shell),
-                "inset" => w.toggle_inset(shell),
-                "clip" => w.mark_clip(shell),
+                "builds.sheet" => w.toggle_builds(shell),
+                "view-menu" => {
+                    let rows = w.view_menu(&shell.ui().global::<ReplaysView>());
+                    shell.pick_marked("view-menu", 0, &Key::new("view-menu", 0), rows);
+                }
                 "speed" => w.set_speed(index),
-                "view" => w.set_view(shell, index),
                 "export" => {
                     let (path, side, clip) = (w.path().to_path_buf(), w.side(), w.clip());
                     self.open_export(shell, &path, Some(side), clip);
@@ -1138,7 +1150,6 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             (Some(w), "seek") => w.skip(5 * by),
             (Some(w), "speed-step") => w.set_speed(w.speed() + by),
-            (Some(w), "view-step") => w.set_view(shell, (w.side() ^ 1) as i32),
             (None, "kind") => {
                 self.online_only = by > 0;
                 self.fill(shell);
@@ -1157,6 +1168,12 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             // (The bar: held at `choice` of 10,000, or with `index` 1 let go there.)
             (Some(w), "seek") => w.drag(choice, index == 1),
+            // (The transport's VIEW menu: `Watching::view_menu`'s rows.)
+            (Some(w), "view-menu") => {
+                if let Some(&item) = VIEW_MENU.get(choice.max(0) as usize) {
+                    w.choose_view(shell, item);
+                }
+            }
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);

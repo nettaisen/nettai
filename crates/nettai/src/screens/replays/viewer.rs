@@ -10,7 +10,8 @@
 //! players' builds in, the console shown's player's at the left; the sides of a match whose setups weren't open
 //! aren't kept.
 //!
-//! Two things more may be on over the picture, each off at first and toggled by its transport button or a key
+//! Two things more may be on over the picture, each off at first and toggled by its row of the transport's VIEW
+//! menu ([`ViewItem`], which has the sides and the clip too) or a key
 //! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
 //! the console shown's player's row over the other's); and the other console's picture, small in the picture's
 //! corner, presented from the same tick as the one shown (the library's `Viewer::present_view`: the replay is
@@ -29,7 +30,7 @@ use crate::stage::Surface;
 use nettai_match::Side;
 use nettai_frontend::player::{FRAME_RATE, TICK_SECONDS, tick_at, time_of};
 use nettai_frontend::viewer::{KEYFRAME_EVERY, ROUND_START_GRACE, Speed, Viewer};
-use nettai_ui::ReplaysView;
+use nettai_ui::{PickMark, ReplaysView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -55,6 +56,19 @@ pub struct Overlays {
     pub inputs: bool,
     pub inset: bool,
 }
+
+/// What the transport's VIEW menu holds, in its order (docs/design/app-ui.md §2.94): the two sides' consoles (the one
+/// shown checked), what may be over the picture (each checked while it is on), and the clip to export.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewItem {
+    Side(u8),
+    Builds,
+    Inputs,
+    Inset,
+    Clip,
+}
+
+pub const VIEW_MENU: [ViewItem; 6] = [ViewItem::Side(0), ViewItem::Side(1), ViewItem::Builds, ViewItem::Inputs, ViewItem::Inset, ViewItem::Clip];
 
 /// The other console's picture is a whole multiple of the frame about this part of the shown one's width (a
 /// third), at least the frame itself, in the display's pixels.
@@ -434,7 +448,7 @@ impl Watching {
         self.show_overlays(&shell.ui().global::<ReplaysView>());
     }
 
-    /// C, or the clip button: mark the clip's start where the replay is; then its end (the two the other way
+    /// C, or VIEW's clip row: mark the clip's start where the replay is; then its end (the two the other way
     /// round where it is before the start; refused on the start itself); then, marked, clear it.
     pub fn mark_clip(&mut self, shell: &mut Shell) {
         let at = self.shown();
@@ -447,6 +461,39 @@ impl Watching {
             Some((start, None)) => Some((start.min(at), Some(start.max(at)))),
             Some((_, Some(_))) => None,
         };
+    }
+
+    /// The VIEW menu's rows ([`VIEW_MENU`]): each one's words and marks. A group's first has a line over it; BUILDS is
+    /// dim where the match's setups weren't open (`toggle_builds` refuses it); the clip's words say what C does next.
+    pub fn view_menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
+        VIEW_MENU
+            .iter()
+            .map(|&item| {
+                let (word, check, dim) = match item {
+                    ViewItem::Side(side) => (if side == 0 { view.get_p1() } else { view.get_p2() }, self.side() == side, false),
+                    ViewItem::Builds => (view.get_builds_word(), self.builds, self.sides.is_none()),
+                    ViewItem::Inputs => (view.get_inputs_word(), self.overlays.inputs, false),
+                    ViewItem::Inset => (view.get_inset_word(), self.overlays.inset, false),
+                    ViewItem::Clip => match self.clip {
+                        None => (view.get_clip_start_word(), false, false),
+                        Some((_, None)) => (view.get_clip_end_word(), false, false),
+                        Some(_) => (view.get_clip_clear_word(), false, false),
+                    },
+                };
+                (word.to_string(), PickMark { check, dim, line: matches!(item, ViewItem::Builds | ViewItem::Clip) })
+            })
+            .collect()
+    }
+
+    /// A row of the VIEW menu chosen: as its key does (the side: as the side chosen).
+    pub fn choose_view(&mut self, shell: &mut Shell, item: ViewItem) {
+        match item {
+            ViewItem::Side(side) => self.set_view(shell, side as i32),
+            ViewItem::Builds => self.toggle_builds(shell),
+            ViewItem::Inputs => self.toggle_inputs(shell),
+            ViewItem::Inset => self.toggle_inset(shell),
+            ViewItem::Clip => self.mark_clip(shell),
+        }
     }
 
     /// The clip marked, start and end: the part of the replay the export offers.

@@ -6,7 +6,7 @@
 import { Theme, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture, DialogFrame } from "../shell.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar, ArrowDown } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
 import { BuildSheet, BuildOverview } from "../build.slint";
 import { InputDisplay } from "../inputs.slint";
@@ -124,8 +124,8 @@ export global ReplaysView {
     in property <length> inset-width;
     in property <length> inset-height;
     // The viewer's controls are shown over the picture (docs/design/app-ui.md §2.90): the app says when (an input
-    // lately, paused or at the end, a setting taken, the builds, the export or the popup up next open; always on a
-    // phone). The pointer resting on the transport holds them too.
+    // lately, paused or at the end, a setting taken, the builds, the export, VIEW's menu or the popup up next open;
+    // always on a phone). The pointer resting on the transport holds them too.
     in property <bool> hud: true;
     // Whether the queue's next replay starts by itself at the end of one (Autoplay next, remembered).
     in property <bool> autoplay: true;
@@ -168,6 +168,14 @@ export global ReplaysView {
     out property <string> remove-word: Caps.of(@tr("Remove"));
     out property <string> clear-title: @tr("Clear the queue?");
     out property <string> clear: Caps.of(@tr("Clear"));
+    // The viewer's VIEW menu (docs/design/app-ui.md §2.94): the sides (`p1`, `p2`), what may be over the picture, and
+    // the clip to export, its words by what it does next.
+    out property <string> builds-word: Caps.of(@tr("Builds"));
+    out property <string> inputs-word: Caps.of(@tr("Input display"));
+    out property <string> inset-word: Caps.of(@tr("Other side's picture"));
+    out property <string> clip-start-word: Caps.of(@tr("Mark clip start"));
+    out property <string> clip-end-word: Caps.of(@tr("Mark clip end"));
+    out property <string> clip-clear-word: Caps.of(@tr("Clear clip"));
     pure public function replay-count(n: int) -> string {
         return @tr("{n} replay" | "{n} replays" % n);
     }
@@ -920,7 +928,7 @@ component ListPage inherits Page {
 
 // ---- The viewer -----------------------------------------------------------------------------------------
 
-// One of a row of choices (a speed, a side): each is a control of its own, so the arrows walk through them and
+// One of a row of choices (a speed): each is a control of its own, so the arrows walk through them and
 // past them, and Enter chooses.
 component Choice inherits Rectangle {
     in property <string> nav;
@@ -1066,12 +1074,9 @@ component SeekBar inherits Rectangle {
     }
 }
 
-// The buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next round;
-// and, `apart` further on, both builds (where the match's setups were open), the input display and the other
-// console's picture in the corner, each lit while it is shown, and the clip to export, lit while one is marked. `pitch` is how far apart they are.
+// The buttons of the transport (docs/design/app-ui.md §2.94): to the round's start, play or pause, the next round.
+// (A frame is stepped by the keys alone: comma and period.)
 component TransportButtons inherits Rectangle {
-    in property <length> pitch: 52px;
-    in property <length> apart: 12px;
     IconButton {
         x: 0;
         nav: "round-start";
@@ -1079,80 +1084,31 @@ component TransportButtons inherits Rectangle {
     }
 
     IconButton {
-        x: root.pitch;
-        nav: "frame-back";
-        icon: "M 10.5 4 L 5.5 8 L 10.5 12 Z";
-    }
-
-    IconButton {
-        x: 2 * root.pitch;
+        x: 52px;
         nav: "play";
         icon: ReplaysView.playing ? "M 4 3 h 3 v 10 h -3 Z M 9 3 h 3 v 10 h -3 Z" : "M 5 2.5 L 13 8 L 5 13.5 Z";
         main: true;
     }
 
     IconButton {
-        x: 3 * root.pitch;
-        nav: "frame-on";
-        icon: "M 5.5 4 L 10.5 8 L 5.5 12 Z";
-    }
-
-    IconButton {
-        x: 4 * root.pitch;
+        x: 104px;
         nav: "next-round";
         icon: "M 3 3 L 9.5 8 L 3 13 Z M 11 3 h 2 v 10 h -2 Z";
     }
-
-    // (Two sheets side by side, each hollow.)
-    IconButton {
-        x: 5 * root.pitch + root.apart;
-        nav: "builds";
-        icon: "M 1 3 h 6 v 10 h -6 Z M 2.5 4.5 v 7 h 3 v -7 Z M 9 3 h 6 v 10 h -6 Z M 10.5 4.5 v 7 h 3 v -7 Z";
-        enabled: ReplaysView.builds-open;
-        lit: ReplaysView.builds-shown;
-    }
-
-    // (A pad's cross and two buttons.)
-    IconButton {
-        x: 6 * root.pitch + root.apart;
-        nav: "inputs";
-        icon: "M 1 7 h 2.5 v -2.5 h 2 v 2.5 h 2.5 v 2 h -2.5 v 2.5 h -2 v -2.5 h -2.5 Z M 10 8.5 h 2.5 v 2.5 h -2.5 Z M 12.5 5 h 2.5 v 2.5 h -2.5 Z";
-        lit: ReplaysView.inputs;
-    }
-
-    // (A screen, hollow, with a small one in its corner.)
-    IconButton {
-        x: 7 * root.pitch + root.apart;
-        nav: "inset";
-        icon: "M 1 3 h 14 v 10 h -14 Z M 2.5 4.5 v 7 h 11 v -7 Z M 8 7.5 h 4.5 v 3 h -4.5 Z";
-        lit: ReplaysView.inset-on;
-    }
-
-    // (Two brackets: a part of the replay.) The clip to export: its start, its end, then cleared (C).
-    IconButton {
-        x: 8 * root.pitch + root.apart;
-        nav: "clip";
-        icon: "M 2 3 h 4 v 1.5 h -2.5 v 7 h 2.5 v 1.5 h -4 Z M 14 3 h -4 v 1.5 h 2.5 v 7 h -2.5 v 1.5 h 4 Z";
-        lit: ReplaysView.clip-start >= 0;
-    }
 }
 
-// The transport at the foot of the picture: the time, the bar, the length; then the buttons, while the queue
-// plays its own (the next, its button with the count up next, Autoplay next), and at the right the speed, the side
-// watched from and the export. On a phone the bar, the buttons across, then the speed, the side and the export one
-// under the other, and while the queue plays a row of its own under them. The times are in boxes of their own width, so the bar keeps its
-// length as the clock runs. (One component for both: the parts of the other shape are hidden and can't be
-// focused, which costs less than a conditional for each, docs/app.md §14.)
+// The transport at the foot of the picture (docs/design/app-ui.md §2.94): the time, the bar, the length; then the
+// buttons and the round shown, and at the right the speed, VIEW (its menu: the side watched from, what is over the
+// picture, the clip), while the queue plays its button with the count up next, and the export. On a phone the bar,
+// the buttons with VIEW and the queue's at the right, then the speed and the export one under the other. The times
+// are in boxes of their own width, so the bar keeps its length as the clock runs. (One component for both: the
+// parts of the other shape are hidden and can't be focused, which costs less than a conditional for each,
+// docs/app.md §14.)
 component Transport inherits Rectangle {
     property <bool> phone: Theme.phone;
     property <length> edge: root.phone ? 12px : 16px;
     property <length> inner: self.width - 2 * root.edge;
     property <length> clock: root.phone ? 44px : 48px;
-    // (The queue's: after the transport's buttons on a desktop; on a phone a row of their own, Autoplay next at its
-    // right with its words.)
-    property <length> queue-x: root.phone ? root.edge : root.edge + 492px;
-    property <length> queue-y: root.phone ? 254px : 52px;
-    property <length> autoplay-x: root.phone ? self.width - root.edge - 40px : root.queue-x + 104px;
     PanelBack { }
 
     Mono {
@@ -1185,30 +1141,40 @@ component Transport inherits Rectangle {
     TransportButtons {
         x: root.edge;
         y: root.phone ? 48px : 52px;
-        width: root.phone ? root.inner : 468px;
+        width: 144px;
         height: root.phone ? 44px : 40px;
-        pitch: root.phone ? (root.inner - 40px) / 8 : 52px;
-        apart: root.phone ? 0px : 12px;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // The queue's, while it plays: its next (the replay watched skipped; N), its button, the count up next over
-    // it, which opens the popup of them, and Autoplay next, lit while on. (Hidden, passed by.)
-    // (Two triangles and a bar: to the next.)
-    IconButton {
-        x: root.queue-x;
-        y: root.queue-y;
-        visible: ReplaysView.queued;
-        nav: "next-replay";
-        icon: "M 2 3 L 6.5 8 L 2 13 Z M 7 3 L 11.5 8 L 7 13 Z M 12 3 h 2 v 10 h -2 Z";
-        enabled: ReplaysView.queued && ReplaysView.has-next;
+    Text {
+        x: root.edge + 168px;
+        y: 52px;
+        width: max(0px, speed-label.x - 12px - self.x);
+        height: 40px;
+        visible: !root.phone;
+        text: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
     }
 
-    // (Three lines, a triangle by the last: a list to play.)
-    IconButton {
-        x: root.queue-x + 52px;
-        y: root.queue-y;
+    export := Button {
+        x: root.phone ? root.edge : parent.width - root.edge - self.natural-width;
+        y: root.phone ? 156px : 52px;
+        width: root.phone ? root.inner : self.natural-width;
+        nav: "export";
+        text: Caps.of(@tr("verb" => "Export video"));
+    }
+
+    // The queue's button, while it plays: the count up next over it, which opens the popup of them (and in it the
+    // next and Autoplay next). (Hidden, passed by. Three lines, a triangle by the last: a list to play.)
+    queue := IconButton {
+        x: root.phone ? parent.width - root.edge - self.width : export.x - 16px - self.width;
+        y: root.phone ? 48px : 52px;
         visible: ReplaysView.queued;
         nav: "up-next";
         icon: "M 1 3 h 14 v 2 h -14 Z M 1 7 h 14 v 2 h -14 Z M 1 11 h 8 v 2 h -8 Z M 10.5 10 L 15 12.5 L 10.5 15 Z";
@@ -1217,68 +1183,22 @@ component Transport inherits Rectangle {
         badge: ReplaysView.queued ? "\{ReplaysView.up-next.length}" : "";
     }
 
-    // (A switch: its knob a triangle at the right while on, a square at the left while off.)
-    IconButton {
-        x: root.autoplay-x;
-        y: root.queue-y;
-        visible: ReplaysView.queued;
-        nav: "autoplay";
-        icon: ReplaysView.autoplay ? "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 9 6.5 L 12.5 8 L 9 9.5 Z" : "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 3.5 6.5 h 3 v 3 h -3 Z";
-        enabled: ReplaysView.queued;
-        lit: ReplaysView.autoplay;
-    }
-
-    Value {
-        x: root.queue-x + 104px;
-        y: 252px;
-        width: root.autoplay-x - 12px - self.x;
-        height: 44px;
-        visible: root.phone && ReplaysView.queued;
-        text: @tr("Autoplay next");
-        horizontal-alignment: right;
-    }
-
-    export := Button {
-        x: root.phone ? root.edge : parent.width - root.edge - self.natural-width;
-        y: root.phone ? 204px : 52px;
-        width: root.phone ? root.inner : self.natural-width;
-        nav: "export";
-        text: Caps.of(@tr("verb" => "Export video"));
-    }
-
-    side2 := Choice {
-        x: export.x - 16px - self.width;
-        y: 54px;
-        nav: "view";
-        nav-index: 1;
-        text: ReplaysView.p2;
-        chosen: ReplaysView.view == 1;
-        visible: !root.phone;
-        enabled: !root.phone;
-    }
-
-    side1 := Choice {
-        x: side2.x - self.width + 1px;
-        y: 54px;
-        nav: "view";
-        nav-index: 0;
-        text: ReplaysView.p1;
-        chosen: ReplaysView.view == 0;
-        visible: !root.phone;
-        enabled: !root.phone;
-    }
-
-    view-label := Label {
-        x: side1.x - 8px - self.width;
-        y: 52px;
-        width: self.preferred-width;
-        height: 40px;
-        visible: !root.phone;
-        text: Caps.of(@tr("View"));
+    // VIEW and its arrow: the menu of the side watched from, both builds, the input display, the other side's
+    // picture and the clip (the app's, `Shell::pick_marked`).
+    view-menu := Button {
+        property <length> right: ReplaysView.queued ? queue.x - (root.phone ? 12px : 16px) : (root.phone ? parent.width - root.edge : export.x - 16px);
+        x: self.right - self.width;
+        y: root.phone ? 50px : 52px;
+        width: root.phone ? 104px : self.natural-width + 16px;
+        nav: "view-menu";
+        text: Caps.of(@tr("menu" => "View"));
+        ArrowDown {
+            x: parent.width - 22px;
+        }
     }
 
     speed4 := Choice {
-        x: view-label.x - 16px - self.width;
+        x: view-menu.x - 16px - self.width;
         y: 54px;
         nav: "speed";
         nav-index: 3;
@@ -1346,25 +1266,6 @@ component Transport inherits Rectangle {
         enabled: root.phone;
         nav: "speed-step";
         value: ReplaysView.speed == 0 ? "½×" : ReplaysView.speed == 1 ? "1×" : ReplaysView.speed == 2 ? "2×" : "4×";
-        value-width: 112px;
-    }
-
-    Value {
-        x: root.edge;
-        y: 152px;
-        width: root.inner - 196px;
-        height: 44px;
-        visible: root.phone;
-        text: @tr("View");
-    }
-
-    Stepper {
-        x: parent.width - root.edge - self.width;
-        y: 156px;
-        visible: root.phone;
-        enabled: root.phone;
-        nav: "view-step";
-        value: ReplaysView.view == 0 ? ReplaysView.p1 : ReplaysView.p2;
         value-width: 112px;
     }
 }
@@ -1444,8 +1345,7 @@ component ViewerPage inherits Rectangle {
         }
         title: root.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
         back: Caps.of(@tr("Replays"));
-        // (The round shown, where the transport has the queue's controls.)
-        status: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
+        status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
         // (B and Select show both builds, where they may be.)
         hints: ReplaysView.builds-open ? [
             { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
@@ -1479,7 +1379,7 @@ component ViewerPage inherits Rectangle {
                 x: 0;
                 y: root.phone ? root.phone-transport : page.body-height - self.height;
                 width: page.body-width;
-                height: root.phone ? (ReplaysView.queued ? 304px : 256px) : 108px;
+                height: root.phone ? 208px : 108px;
                 Transport {
                     width: parent.width;
                     height: parent.height;
@@ -1752,7 +1652,8 @@ component ViewerBuilds inherits Rectangle {
     }
 }
 
-// The play queue's entries up next, over the viewer, by the queue's button (docs/design/app-ui.md §2.92): UP NEXT
+// The play queue's entries up next, over the viewer, by the queue's button (docs/design/app-ui.md §2.92, §2.94):
+// NEXT (the replay watched skipped, as N) and Autoplay next, its switch at the right with its words; then UP NEXT
 // and how many, then their rows (the day alone; a missing one says so), a few at once and the rest scrolled. Enter or
 // a click on a row watches it (the ones before it passed). A scope of its own (`upnext.`): Esc, B, a click outside
 // it or the button again close it.
@@ -1767,7 +1668,7 @@ component UpNextPopup inherits Rectangle {
         x: ReplaysView.up-next-x;
         y: ReplaysView.up-next-y;
         width: ReplaysView.up-next-width;
-        height: 52px + ReplaysView.up-next-rows * Theme.row + 8px;
+        height: 96px + ReplaysView.up-next-rows * Theme.row + 8px;
         background: Theme.panel;
         border-width: 1px;
         border-color: Theme.line;
@@ -1775,9 +1676,44 @@ component UpNextPopup inherits Rectangle {
         drop-shadow-color: #000000a0;
         TouchArea { }
 
+        next := Button {
+            x: 16px;
+            y: 12px;
+            nav: "upnext.next";
+            compact: true;
+            text: Caps.of(@tr("Next"));
+            enabled: ReplaysView.has-next;
+        }
+
+        Value {
+            x: next.x + next.width + 12px;
+            y: autoplay.y;
+            width: max(0px, autoplay.x - 12px - self.x);
+            height: autoplay.height;
+            text: @tr("Autoplay next");
+            horizontal-alignment: right;
+        }
+
+        // (A switch: its knob a triangle at the right while on, a square at the left while off.)
+        autoplay := IconButton {
+            x: parent.width - 16px - self.width;
+            y: Theme.phone ? 10px : 8px;
+            nav: "upnext.autoplay";
+            icon: ReplaysView.autoplay ? "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 9 6.5 L 12.5 8 L 9 9.5 Z" : "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 3.5 6.5 h 3 v 3 h -3 Z";
+            lit: ReplaysView.autoplay;
+        }
+
+        Rectangle {
+            x: 16px;
+            y: 63px;
+            width: parent.width - 32px;
+            height: 1px;
+            background: Theme.line;
+        }
+
         Label {
             x: 16px;
-            y: 14px;
+            y: 68px;
             width: parent.width - 132px;
             height: 24px;
             text: Caps.of(@tr("Up next"));
@@ -1786,7 +1722,7 @@ component UpNextPopup inherits Rectangle {
 
         Text {
             x: parent.width - 116px;
-            y: 14px;
+            y: 68px;
             width: 100px;
             height: 24px;
             text: ReplaysView.replay-count(ReplaysView.up-next.length);
@@ -1800,7 +1736,7 @@ component UpNextPopup inherits Rectangle {
 
         list := ListView {
             x: 4px;
-            y: 52px;
+            y: 96px;
             width: parent.width - 8px;
             height: ReplaysView.up-next-rows * Theme.row;
             nav: "upnext.row";
@@ -1823,7 +1759,7 @@ component UpNextPopup inherits Rectangle {
 
         Note {
             x: 16px;
-            y: 52px;
+            y: 96px;
             width: parent.width - 32px;
             height: Theme.row;
             visible: ReplaysView.up-next.length == 0;
