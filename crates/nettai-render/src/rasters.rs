@@ -166,19 +166,20 @@ impl Rasters {
     }
 }
 
-/// A raster in its entries' colors, flipped as asked.
+/// A raster in its entries' colors, flipped as asked (the whole raster's
+/// size, clear past its covered box).
 fn tint(r: &Raster, colors: &[u32], (hflip, vflip): (bool, bool)) -> Tinted {
     let mut px = vec![(0u32, 0u8); r.w * r.h];
-    for y in 0..r.h {
-        for x in 0..r.w {
-            let i = y * r.w + x;
-            let a = r.alpha[i];
+    let [ax, ay, aw, ah] = r.area;
+    for y in ay..ay + ah {
+        for x in ax..ax + aw {
+            let a = r.alpha[(y - ay) * aw + x - ax];
             if a == 0 {
                 continue;
             }
             let (mut rr, mut gg, mut bb) = (0u32, 0u32, 0u32);
             for (share, &c) in r.shares.iter().zip(colors) {
-                let w = share.get(i).copied().unwrap_or(0) as u32;
+                let w = share.at(x, y) as u32;
                 if w != 0 {
                     rr += w * ((c >> 16) & 0xFF);
                     gg += w * ((c >> 8) & 0xFF);
