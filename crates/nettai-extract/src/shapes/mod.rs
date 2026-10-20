@@ -132,7 +132,7 @@ impl Shaper {
         let d = match nettai_content::shapes::from_svg(text) {
             // (Its fills its colors in the picture's first palette, as the
             // pack keeps it.)
-            Ok(d) => nettai_assets::shapes::Drawing { source: nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k)), ..d },
+            Ok(d) => nettai_assets::shapes::Drawing { source: nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k)).into(), ..d },
             Err(e) => {
                 self.notes.push(format!("{path}: {e}: it stays a picture"));
                 return None;
@@ -144,7 +144,7 @@ impl Shaper {
         }
         let used: std::collections::BTreeSet<Label> = grid.cells.iter().copied().filter(|l| matches!(l, Label::Color(..))).collect();
         let words = d.words.iter().flat_map(|t| [Some(t.color), t.rim, t.shadow].into_iter().flatten().map(move |c| (t.palette, c)));
-        for (p, c) in d.regions.iter().map(|r| (r.palette, r.color)).chain(words) {
+        for (p, c) in d.colors.iter().copied().chain(words) {
             if c == 0 || !used.contains(&Label::Color(p, c)) {
                 self.notes.push(format!("{path}: color {p}:{c} isn't one the picture uses: it stays a picture"));
                 return None;
@@ -200,15 +200,9 @@ impl Shaper {
     }
 }
 
-/// `d` filled one shape over another, at the centers of `w` by `h` pixels.
-fn raster(d: &Drawing, w: usize, h: usize) -> Vec<Label> {
-    let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
-    (0..w * h)
-        .map(|i| {
-            let at = [(i % w) as f32 + 0.5, (i / w) as f32 + 0.5];
-            d.regions.iter().zip(&rings).rev().find(|(_, r)| nettai_assets::shapes::inside(r, at)).map_or(Label::Clear, |(r, _)| Label::Color(r.palette, r.color))
-        })
-        .collect()
+/// `d` drawn at the centers of its pixels: each one's palette entry.
+fn raster(d: &Drawing) -> Vec<Label> {
+    nettai_content::shapes::labels(d).into_iter().map(|l| l.map_or(Label::Clear, |(p, c)| Label::Color(p, c))).collect()
 }
 
 /// Whether pixel `at` (its center) is under words written on `d` (their
@@ -227,7 +221,7 @@ fn under_words(d: &Drawing, at: [f32; 2]) -> bool {
 /// The share of `grid`'s pixels in `cells` (8x8 each) that `d` gives at
 /// their centers (words' boxes aside).
 fn matching_in(grid: &Grid, d: &Drawing, cells: &[[u8; 2]]) -> f32 {
-    let got = raster(d, grid.w, grid.h);
+    let got = raster(d);
     let (mut total, mut same) = (0usize, 0usize);
     for &[cx, cy] in cells {
         for i in 0..64 {
@@ -245,18 +239,16 @@ fn matching_in(grid: &Grid, d: &Drawing, cells: &[[u8; 2]]) -> f32 {
 /// The share of `grid`'s pixels (holes and words' boxes aside) that `d`,
 /// filled one shape over another, gives at their centers.
 pub fn matching(grid: &Grid, d: &Drawing) -> f32 {
-    let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
+    let got = raster(d);
     let (mut total, mut same) = (0usize, 0usize);
     for y in 0..grid.h {
         for x in 0..grid.w {
             let want = grid.cells[y * grid.w + x];
-            let at = [x as f32 + 0.5, y as f32 + 0.5];
-            if want == Label::Hole || under_words(d, at) {
+            if want == Label::Hole || under_words(d, [x as f32 + 0.5, y as f32 + 0.5]) {
                 continue;
             }
-            let got = d.regions.iter().zip(&rings).rev().find(|(_, r)| nettai_assets::shapes::inside(r, at)).map_or(Label::Clear, |(r, _)| Label::Color(r.palette, r.color));
             total += 1;
-            same += (got == want) as usize;
+            same += (got.get(y * grid.w + x) == Some(&want)) as usize;
         }
     }
     if total == 0 { 1.0 } else { same as f32 / total as f32 }
@@ -289,13 +281,10 @@ fn beside(name: &str, g: &Grid, d: Option<&Drawing>, view: &dyn Fn(&str, u8, u8)
         }
     }
     if let Some(d) = d {
-        let svg = nettai_content::shapes::to_svg(d, &|p, c| view(name, p, c));
-        out += &format!("<g transform=\"translate({} 0)\">\n", w + 1);
-        for line in svg.lines().filter(|l| l.starts_with("<path")) {
-            out += line;
-            out.push('\n');
-        }
-        out += "</g>\n";
+        // (Its file's contents, in the view's colors.)
+        let svg = nettai_content::shapes::recolor(&d.source, &|p, c| view(name, p, c));
+        let inner = svg.find("<svg").and_then(|i| svg[i..].find('>').map(|e| i + e + 1)).zip(svg.rfind("</svg>")).map_or("", |(a, b)| &svg[a..b]);
+        out += &format!("<g transform=\"translate({} 0)\">\n{inner}\n</g>\n", w + 1);
     }
     out += "</svg>\n";
     out
@@ -891,7 +880,7 @@ fn map_drawings(maps: &[NamedMap], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
             // (A map need not have its own: another's may draw all its cells.)
             sh.file(name)?;
             let d = sh.read(name, grid)?;
-            let raster = raster(&d, grid.w, grid.h);
+            let raster = raster(&d);
             Some((d, raster))
         })
         .collect();

@@ -1065,10 +1065,10 @@ impl TextRenderer {
     }
 
     /// A drawing ([`Drawn`](crate::textlayer::Drawn)) over the picture: its
-    /// regions filled one over another at the output's resolution in its box
-    /// (squashed about its middle as a banner's words are), painted once for
-    /// what it is and where, then drawn through its clip, its cells and the
-    /// frame's depth keys.
+    /// pieces drawn one over another by resvg at the output's resolution in
+    /// its box (squashed about its middle as a banner's words are), painted
+    /// once for what it is and where, then drawn through its clip, its cells
+    /// and the frame's depth keys.
     #[allow(clippy::too_many_arguments)]
     fn draw_drawn(&mut self, item: &TextItem, d: &crate::textlayer::Drawn, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
         let s = place.scale;
@@ -1095,13 +1095,7 @@ impl TextRenderer {
             if self.painted.len() >= PAINTED_KEPT {
                 self.painted.clear();
             }
-            let to_output = |p: &[f32; 2]| [place.x as f32 + (x0 + p[0]) * s, place.y as f32 + (mid + (y0 + p[1] - mid) * k) * s];
-            let shapes: Vec<(Vec<Vec<[f32; 2]>>, u16)> = d.regions.iter().map(|(rings, c)| (rings.iter().map(|r| r.iter().map(to_output).collect()).collect(), *c)).collect();
-            let painted = rings_area(&shapes, bounds).map(|area| {
-                let mut p = Painted::new(area);
-                fill_rings(&shapes, &mut p, &color);
-                p
-            });
+            let painted = paint_drawn(d, (x0, y0, mid, k), place, bounds, &color);
             self.painted.insert(key.clone(), painted);
         }
         let Some(p) = &self.painted[&key] else { return };
@@ -1544,40 +1538,63 @@ impl Painted {
     }
 }
 
-/// The output pixels regions cover (their rings' corners in output
-/// pixels), within `bounds`; none if none.
-fn rings_area(shapes: &[(Vec<Vec<[f32; 2]>>, u16)], bounds: (i32, i32, i32, i32)) -> Option<(i32, i32, i32, i32)> {
-    let points = shapes.iter().flat_map(|s| s.0.iter().flatten());
-    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
-    for p in points {
-        (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+/// A drawing's pieces drawn by resvg one over another within `bounds` (output
+/// pixels): each from its box's top left (`x0`, `y0` in frame pixels, moved
+/// by its own place) squashed `k` times about row `mid`, flipped and cut as
+/// it says, in its colors through `color`; cropped to what it covers (none:
+/// nothing).
+fn paint_drawn(d: &crate::textlayer::Drawn, (x0, y0, mid, k): (f32, f32, f32, f32), place: &Placement, bounds: (i32, i32, i32, i32), color: &impl Fn(u16) -> u32) -> Option<Painted> {
+    use nettai_content::shapes::tiny_skia::{FillRule, Mask, Pixmap, PixmapPaint, Rect as SkRect, Transform};
+    let s = place.scale;
+    let (w, h) = ((bounds.2 - bounds.0).max(0) as u32, (bounds.3 - bounds.1).max(0) as u32);
+    let mut pixmap = Pixmap::new(w, h)?;
+    for piece in &d.pieces {
+        let size = piece.drawing.size;
+        let (sx, hx) = if piece.flip.0 { (-1.0, size[0] as f32) } else { (1.0, 0.0) };
+        let (sy, hy) = if piece.flip.1 { (-1.0, size[1] as f32) } else { (1.0, 0.0) };
+        // (Its frame pixels' left and top in the pixmap.)
+        let left = place.x as f32 - bounds.0 as f32 + s * (x0 + piece.at.0);
+        let top = place.y as f32 - bounds.1 as f32 + s * (mid + (y0 + piece.at.1 - mid) * k);
+        let transform = Transform::from_row(s * sx, 0.0, 0.0, s * k * sy, left + s * hx, top + s * k * hy);
+        let rgb = |p: u8, c: u8| {
+            let v = piece.drawing.colors.iter().position(|&e| e == (p, c)).and_then(|i| piece.colors.get(i)).map_or(0, |&c| color(c));
+            [(v >> 16) as u8, (v >> 8) as u8, v as u8]
+        };
+        let drawn = match piece.cut {
+            None => nettai_content::shapes::paint(&piece.drawing, &rgb, transform, false, &mut pixmap.as_mut()),
+            Some((from, to)) => {
+                let mut part = Pixmap::new(w, h)?;
+                let r = nettai_content::shapes::paint(&piece.drawing, &rgb, transform, false, &mut part.as_mut());
+                let (xa, xb) = ((left + s * from).max(0.0), (left + s * to).min(w as f32));
+                if let Some(rect) = SkRect::from_ltrb(xa, 0.0, xb, h as f32) {
+                    let mut mask = Mask::new(w, h)?;
+                    mask.fill_path(&nettai_content::shapes::tiny_skia::PathBuilder::from_rect(rect), FillRule::Winding, true, Transform::identity());
+                    pixmap.draw_pixmap(0, 0, part.as_ref(), &PixmapPaint::default(), Transform::identity(), Some(&mask));
+                }
+                r
+            }
+        };
+        debug_assert!(drawn.is_ok(), "{drawn:?}");
     }
-    let area = ((x0.floor() as i32).max(bounds.0), (y0.floor() as i32).max(bounds.1), (x1.ceil() as i32).min(bounds.2), (y1.ceil() as i32).min(bounds.3));
-    (area.0 < area.2 && area.1 < area.3).then_some(area)
-}
-
-/// Fill regions (their rings' corners in output pixels, even-odd) one over
-/// another in `target`: each one's analytic coverage (zeno's), its color.
-fn fill_rings(shapes: &[(Vec<Vec<[f32; 2]>>, u16)], target: &mut Painted, color: &impl Fn(u16) -> u32) {
-    use swash::zeno::{Command, Fill, Mask as Coverage};
-    for (rings, c) in shapes {
-        let mut path = Vec::new();
-        for ring in rings {
-            let Some(first) = ring.first() else { continue };
-            path.push(Command::MoveTo(Vector::new(first[0], first[1])));
-            path.extend(ring[1..].iter().map(|p| Command::LineTo(Vector::new(p[0], p[1]))));
-            path.push(Command::Close);
-        }
-        if path.is_empty() {
-            continue;
-        }
-        let (cover, at) = Coverage::new(&path).style(Fill::EvenOdd).render();
-        let rgb = color(*c);
-        for (i, &a) in cover.iter().enumerate().filter(|(_, a)| **a > 0) {
-            let (x, y) = (at.left + (i as u32 % at.width) as i32, at.top + (i as u32 / at.width) as i32);
-            target.blend(x, y, rgb, a);
+    // (Its covered pixels' box, straight colors.)
+    let px = pixmap.pixels();
+    let covered = |i: usize| px[i].alpha() > 0;
+    let (mut ax, mut ay, mut bx, mut by) = (w as usize, h as usize, 0usize, 0usize);
+    for i in (0..px.len()).filter(|&i| covered(i)) {
+        let (x, y) = (i % w as usize, i / w as usize);
+        (ax, ay, bx, by) = (ax.min(x), ay.min(y), bx.max(x + 1), by.max(y + 1));
+    }
+    if ax >= bx || ay >= by {
+        return None;
+    }
+    let mut out = Painted::new((bounds.0 + ax as i32, bounds.1 + ay as i32, bounds.0 + bx as i32, bounds.1 + by as i32));
+    for y in ay..by {
+        for x in ax..bx {
+            let c = px[y * w as usize + x].demultiply();
+            out.px[(y - ay) * (bx - ax) + x - ax] = (((c.red() as u32) << 16) | ((c.green() as u32) << 8) | c.blue() as u32, c.alpha());
         }
     }
+    Some(out)
 }
 
 /// An item's glyphs' coverage over an area of the output (the lettering's,

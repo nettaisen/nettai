@@ -545,7 +545,7 @@ fn element_rows(c: &CustomScreen) -> Vec<Palette> {
         .collect()
 }
 
-pub fn export(c: &CustomScreen, hud_palette: Palette) -> Vec<(String, Vec<u8>)> {
+pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
     // The pictures with letters in them, each language's as the base they
     // share with the letters taken off and its letters over it
@@ -743,7 +743,7 @@ pub fn export(c: &CustomScreen, hud_palette: Palette) -> Vec<(String, Vec<u8>)> 
         cursor_palette: c.cursor_palette.as_ref().map(tiles::palette_text),
         window_emblem,
         letters,
-        shapes: crate::shapes::write_custom(&mut files, &c.shapes, c, hud_palette),
+        shapes: crate::shapes::write_custom(&mut files, &c.shapes),
     };
     files.extend(layer_files);
     files.push(("custom.json".into(), json_lines(&doc)));

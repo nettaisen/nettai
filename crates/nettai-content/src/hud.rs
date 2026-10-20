@@ -389,8 +389,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .map(|(i, b)| {
             let file = format!("banners/{}.png", names.banner(4 * i as u8));
             let img = (!b.glyphs.is_empty()).then(|| image(&file, &b.glyphs, GLYPHS(20), &[h.banner_palette], 1));
-            let bar = b.bar.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(h.banner_palette)));
-            let logo = b.logo.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(h.banner_palette)));
+            let bar = b.bar.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d));
+            let logo = b.logo.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d));
             BannerDoc {
                 at: [b.x, b.y],
                 kind: b.kind,
@@ -432,10 +432,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
                     image: (!b.glyphs.is_empty())
                         .then(|| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), &b.glyphs, GLYPHS(20), &[l.banner_palette], 1)),
                     bar: b.bar.as_ref().map(|d| {
-                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(l.banner_palette))
+                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d)
                     }),
                     logo: b.logo.as_ref().map(|d| {
-                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(l.banner_palette))
+                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d)
                     }),
                 })
             })
@@ -532,7 +532,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         language: h.language.clone(),
         languages,
         letters,
-        shapes: crate::shapes::write_hud(&mut files, &h.shapes, h),
+        shapes: crate::shapes::write_hud(&mut files, &h.shapes),
         mugshot_frame,
     };
     files.extend(dialogue_pngs);

@@ -19,6 +19,9 @@ toml = "0.8"
 # Writing TOML with hex ids and flag words (the version toml uses).
 toml_edit = "0.22"
 miniz_oxide = "0.8"
+# Reading and drawing the frames' drawings (`shapes`, SVG): the version
+# Slint builds into the app, so the build has one copy.
+resvg = { version = "=0.48.1", default-features = false }
 
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }

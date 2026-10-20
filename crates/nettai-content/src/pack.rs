@@ -179,7 +179,7 @@ pub fn export_graphics(b: &Bundle, names: &AssetNames) -> Files {
         }
     }
     files.extend(hud::export(&b.hud, names).into_iter().map(|(n, d)| (format!("graphics/hud/{n}"), d)));
-    files.extend(custom::export(&b.custom, b.hud.hp_palettes[0]).into_iter().map(|(n, d)| (format!("graphics/custom/{n}"), d)));
+    files.extend(custom::export(&b.custom).into_iter().map(|(n, d)| (format!("graphics/custom/{n}"), d)));
     files
 }
 

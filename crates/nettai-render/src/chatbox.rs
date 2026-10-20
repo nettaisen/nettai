@@ -291,7 +291,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         match assets.hud.shapes.chatbox_arrow.get(frame as usize).filter(|_| sink.draws_shapes()) {
             Some(d) => {
                 let tag = sink.tag();
-                let drawn = crate::shapes::drawn(d, |r| g.text_palette[r.color as usize & 15], (false, false), None);
+                let drawn = crate::shapes::drawn(d, |_, c| g.text_palette[c as usize & 15], (false, false), None);
                 sink.push(Plane::Sprite(tag), crate::shapes::item(drawn, at, (16, 16)));
                 list.insert_tagged(LAYER, FRONT_BUCKET, vec![SpritePart { tiles: &BLANK_ARROW, first_tile: 0, ..arrow }], Some(tag));
             }
@@ -351,7 +351,7 @@ fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], 
                     *d = Some((part.drawing.size[0] as usize, coverage.clone()));
                 }
             }
-            let mut d = crate::shapes::drawn(&part.drawing, |r| g.palette[r.color as usize & 15], (false, false), None);
+            let mut d = crate::shapes::drawn(&part.drawing, |_, c| g.palette[c as usize & 15], (false, false), None);
             d.cells = Some(part.cells.clone());
             sink.push(Plane::Bg0, crate::shapes::item(d, (0, 8 * BOX_ROW), (w, h)));
         }

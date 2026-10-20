@@ -172,19 +172,31 @@ pub struct Ink {
     pub rim: Option<u16>,
 }
 
-/// A drawing in place of a picture ([`TextItem::drawn`]): its regions,
-/// filled one over another in order, each its rings (frame pixels from the
-/// item's box's top left, even-odd) and its color (BGR555, before the
-/// fades); the 8x8 cells of its box it may draw in (none: all of them); the
-/// frame pixels of its box it keeps off (a picture's over it there: its
-/// width and a flag a pixel, row by row; none: none); and a hash of the
-/// regions, to know a drawing painted before.
+/// A drawing in place of a picture ([`TextItem::drawn`]): its pieces,
+/// drawn one over another in order; the 8x8 cells of its box it may draw in
+/// (none: all of them); the frame pixels of its box it keeps off (a
+/// picture's over it there: its width and a flag a pixel, row by row; none:
+/// none); and a hash of the pieces, to know a drawing painted before.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Drawn {
-    pub regions: Vec<(Vec<Vec<[f32; 2]>>, u16)>,
+    pub pieces: Vec<Piece>,
     pub cells: Option<Vec<[u8; 2]>>,
     pub off: Option<(usize, Vec<bool>)>,
     pub hash: u64,
+}
+
+/// A drawing in a [`Drawn`]: the drawing (its words apart), the color of
+/// each of its palette entries (`Drawing::colors`; BGR555, before the
+/// fades), flipped within its box (horizontally, vertically), its top left
+/// at `at` (frame pixels from the item's box's), cut to its columns
+/// `from`..`to` (its own frame pixels, after the flip; none: all of it).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Piece {
+    pub drawing: nettai_assets::shapes::Drawing,
+    pub colors: Vec<u16>,
+    pub flip: (bool, bool),
+    pub at: (f32, f32),
+    pub cut: Option<(f32, f32)>,
 }
 
 /// What a text item is drawn among, for its depth and its fades.
