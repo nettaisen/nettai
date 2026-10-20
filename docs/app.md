@@ -3133,36 +3133,38 @@ the viewer's round steps go by the rounds the file marks, whatever their number.
 (`Play::Watch`: §2) and hands over. The cards say who played and nothing of what they brought. Each frame the
 screen runs the ticks due, presents the picture into the window's texture if one ran, and hands the sound on:
 
-- *The transport* (docs/design/app-ui.md §2.94: few buttons): the time, the bar (a click or a drag; a mark where
-  each later round begins), the length; to the round's start, play or pause, the next round (`TransportButtons`),
-  the round shown ("Round 2 of 3"); the speed (½, 1, 2, 4), VIEW (`view-menu`, a `Button` with an `ArrowDown`),
-  while the queue plays the queue's button (below), EXPORT VIDEO. The footer's status counts the rounds. The focus
-  starts on the bar, which Enter takes, Left and Right then going five seconds (a setting, as a slider is: §11);
-  the speeds are each a control, so the arrows walk through the row and past it. Space plays and pauses, comma
-  and period step a frame (and pause; no button does), the brackets (and the shoulders) go a round, Enter on the
-  bar plays and pauses, Esc goes back to the list. At its end a replay stops with the transport there; play
-  starts it again.
-- *VIEW's menu* is the app's picker as a menu whose rows have marks (`Shell::pick_marked`; the UI's `PickMark`
-  each row: `check`, drawn at its right; `dim`; `line`, over a group's first), 264 wide under the button from its
-  left edge (over it where there is more room), heard as `view-menu`. Its rows are `viewer::VIEW_MENU`'s, made by
-  `Watching::view_menu` as it opens and done by `Watching::choose_view`: P1 and P2 (the side shown checked:
-  `set_view`), BUILDS, INPUT DISPLAY and OTHER SIDE'S PICTURE (each checked while on), and the clip, its words by
-  what `mark_clip` does next (MARK CLIP START, MARK CLIP END, CLEAR CLIP). BUILDS is dim where the setups weren't
-  open: the shell refuses a dim row itself (`Picking::dim`), the menu staying open, so the screen never hears it.
-  While the menu is open the controls stay and Autoplay next waits (`Shell::picker_open`).
+- *The transport* (docs/design/app-ui.md §2.94, §2.95: few buttons): the time, the bar (a click or a drag; a mark
+  where each later round begins), the length; to the round's start, play or pause, the next round
+  (`TransportButtons`), the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button
+  (below), and ⋯ (`more`, an `IconButton` of three dots, as Play's build's ⋯). The footer's status counts the
+  rounds. The focus starts on the bar, which Enter takes, Left and Right then going five seconds (a setting, as a
+  slider is: §11). Space plays and pauses, comma and period step a frame (and pause; no button does), the brackets
+  (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list. At its end a replay
+  stops with the transport there; play starts it again. The viewer marks no clip: the part of a replay to export
+  is the export dialog's Range (below).
+- *The ⋯ menu* is the app's picker as a menu whose rows have marks (`Shell::pick_marked`; the UI's `PickMark`
+  each row: `check`, drawn at its right; `dim`; `line`, over a group's first), 264 wide with its right edge at the
+  button's, over it where there is more room (as it is at the window's foot), heard as `more`. Its rows are
+  `viewer::MENU`'s, made by `Watching::menu` as it opens and done by `Watching::choose`: P1 and P2 (the side shown
+  checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S PICTURE (each checked while on); ½×, 1×, 2×, 4× (the
+  speed set checked: `set_speed`); and EXPORT VIDEO, which the screen does (`Replays::choose`: the dialog, opened
+  with where the viewer is for its NOW). Ten rows, which the picker shows at once (`PICKER_ROWS`). BUILDS is dim
+  where the setups weren't open: the shell refuses a dim row itself (`Picking::dim`), the menu staying open, so the
+  screen never hears it. While the menu is open the controls stay and Autoplay next waits (`Shell::picker_open`).
+  The menu is the shell's `PickerLayer`, over every screen and its overlay: nothing over the viewer covers it.
 - *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
   the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, footer) is
   over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
   (`Replays::follow_viewer`, told to `ReplaysView.hud`): within `HUD_IDLE` (2.5 s) of the last input
   (`Shell::last_input`: a key or a pad's button pressed, the window's pointer events) or of the replay's start,
-  or while the replay doesn't play (`Watching::playing`), a setting is taken, the builds, the export, VIEW's menu
+  or while the replay doesn't play (`Watching::playing`), a setting is taken, the builds, the export, the ⋯ menu
   or the popup up next are open, or on a phone. The UI adds the pointer resting on the transport (a `TouchArea` around it,
   whose `has-hover` its children's hover keeps). The cursor isn't drawn while the page is hidden. A click on the
   picture is PLAY's.
 - *The queue* (`Queue`): WATCH watches one replay (`Replays::queued` false), and the viewer has nothing of a
   queue. Watched from the queue (`Replays::watch_queue`, `queued`, `current`), the transport has one more, the
   queue's button (`up-next`, the count up next over its corner: `IconButton::badge`, `ReplaysView.up-next`'s
-  length), between VIEW and EXPORT VIDEO (a phone's at the right end of its row of buttons). Its popup has at its
+  length), just before ⋯ at the row's right end, a desktop's and a phone's alike. Its popup has at its
   top the next (`upnext.next`, NEXT, as N, which works with the popup open or not; while an entry that plays is up
   next: `has-next`) and Autoplay next (`upnext.autoplay`, a switch's sign lit while on, with its words). (Until
   §2.94 those two were the transport's, beside the queue's button.) The next skips the replay watched: it leaves the queue,
@@ -3183,7 +3185,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   played to its end. *Autoplay next* is remembered by `Settings::remembered`'s `replays.autoplay` ("off"; on when
   absent). The viewer notes when a replay played to its end (`Watching::ended_for`: ticks ran and it is there; a
   seek or a step to the end isn't): the screen takes it out of the queue at once (`Replays::played_out`), and with
-  Autoplay next on starts the next that plays `NEXT_AFTER` (2 s) later, unless the builds, the export, VIEW's menu,
+  Autoplay next on starts the next that plays `NEXT_AFTER` (2 s) later, unless the builds, the export, the ⋯ menu,
   the popup or a dialog are open.
 - *What fails, and what shows under it.* One that fails as it is opened is the error's dialog over the list
   (`Shell::fail`): its file doesn't read now (it changed since the list read it), the library refuses it, the
@@ -3219,17 +3221,22 @@ screen runs the ticks due, presents the picture into the window's texture if one
   `NETTAI_WINDOW_PROBE=hide:20:12`: the timer ran one frame, then nothing for the 12 seconds, and the replay went
   on from the tick it was at, its stretches as loud as without the hiding. The app is kept awake
   (`Shell::stay_awake`) while a replay plays in a window that is drawn, and while a video is being made.
-- *The builds.* Where the match's setups were open, BUILDS (VIEW's menu, checked while they are shown; B, or
+- *The builds.* Where the match's setups were open, BUILDS (the ⋯ menu, checked while they are shown; B, or
   Select on a pad) shows both over the picture's sides, as a match shows them: each the narrow sheet of
   `BuildOverview` (§8), the console shown's player's at the left in red, the other's at the right in blue (the
   colors of their sides of the picture), YOU over the name of the side that recorded it and OPPONENT over the
   other's, each name the player's (a replay holds no build's). They are a scope of their own: each sheet is a
-  control, and a press or a click on them, BUILDS, B, Select or Esc puts them away; the replay goes on under
-  them, and its keys still work. On a phone they are one under the other in a page that scrolls (each sheet is
+  control, and a press or a click on them or between them (`builds.sheet`), BUILDS, B, Select or Esc puts them
+  away; the replay goes on under them, and its keys still work. They never cover the transport, the header or the
+  footer (docs/design/app-ui.md §2.95; until then their page reached the footer, over the transport, whose clicks
+  went to it, so the menu that unchecks BUILDS couldn't be opened): on a desktop they end 12 over the transport
+  (`ViewerBuilds::foot`: the page's body ends 24 over the footer, the transport 108 tall at its foot), on a phone
+  they are over the picture alone, down to 12 over the transport. They are under the popup up next in
+  `ReplaysOverlay`, so that it opens over them. On a phone they are one under the other in a page that scrolls (each sheet is
   then one column, 1158 tall). The sides of a match whose setups weren't open aren't kept at all
-  (`Info::open_setups`): its BUILDS is dim in VIEW's menu, and it and B are refused.
+  (`Info::open_setups`): its BUILDS is dim in the ⋯ menu, and it and B are refused.
 - *What else may be over the picture* (the user: "add support for input view and picture in picture in replay
-  viewer"), each off at first, toggled by its row of VIEW's menu after BUILDS (checked while it is on) or a key, and
+  viewer"), each off at first, toggled by its row of the ⋯ menu after BUILDS (checked while it is on) or a key, and
   kept from one replay to the next while the app runs (not saved: Autoplay next is the one setting the viewer
   saves):
   - *The input display* (I): Practice's (§15; one component, `ui/inputs.slint`'s `InputDisplay`, which Practice
@@ -3249,14 +3256,20 @@ screen runs the ticks due, presents the picture into the window's texture if one
   Neither has a footer hint: with them the pseudo-locale's hints no longer left the status its room.
 - *On a phone* the picture has the window's whole width, as the battle's has (§9): a window 780 of the display's
   pixels wide shows three times the frame, where the page's gutters left room for two. The transport is under
-  it, 208 tall: the bar; the three buttons (each 40 by 44) with VIEW (104 wide) and, while the queue plays, the
-  queue's button at the right; Speed as a stepper; EXPORT VIDEO. VIEW's menu is the picker's sheet, the side among
-  its rows (a phone's View stepper is gone: §2.94). One component is both shapes
-  (the other shape's parts hidden and passed by), since two under an `if` each cost more (§14).
+  it, 104 tall: the bar; the three buttons (each 40 by 44), and at the right, while the queue plays, the queue's
+  button, then ⋯ (each 40 by 44). The ⋯ menu is the picker's sheet. One component is both shapes (what differs
+  placed by `Theme.phone`), since two under an `if` each cost more (§14).
 
 **The export** (`Export`) is a dialog of one size from its start to its end: Size (2, 4 and 6 times the frame,
-4 chosen), View, Sides (One, or Both: the user, "add support for two sided side by side export"), Part (the
-whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. With Both, the video is both
+4 chosen), View, Sides (One, or Both: the user, "add support for two sided side by side export"), Range (the
+whole match, chosen at first; a round, where there is more than one; or Custom, a part of the player's own: §2.95),
+Start and End, Save as, the bar and its line, CANCEL and EXPORT. Start and End always say the range chosen (as
+minutes and seconds); typing either (`m:ss`, or seconds alone: `export::parse_time`) or pressing its NOW, which
+takes where the viewer was as the dialog opened (`Export::now`; dim from the list), makes the range Custom from the
+one to the other, and Range then says Custom and its length. What is wrong is said under them in the error color,
+the field's edge red (`Problem`): not a time ("Type a time as m:ss."), past the replay's end ("The replay ends at
+3:12."), or the start not before the end; EXPORT is then refused, the field taken. A Custom export is
+`Part::Ticks` (as the viewer's clip was until §2.95), its file named "part 00.41–00.53". With Both, the video is both
 consoles side by side, the View's at the left and the other's at the right, twice as wide (the Size says the
 video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's `Sides::Both`,
 docs/frontend.md §8), and the file's name ends "both sides". Its sound is two tracks, not a mix (the user:

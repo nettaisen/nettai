@@ -697,14 +697,14 @@ impl Shell {
         self.open_picker(Key::new(id, index), by, options, Look::Menu { apart, under: false, width: MENU_WIDTH }, -1);
     }
 
-    /// Open a menu whose rows have marks (the replay viewer's VIEW: `nettai_ui::PickMark`), under the control `at`
-    /// from its left edge (over it where there is more room), [`MARKED_WIDTH`] wide: a check by a switch that is on
+    /// Open a menu whose rows have marks (the replay viewer's ⋯: `nettai_ui::PickMark`), by the control `at` with its
+    /// right edge at `at`'s (over it where there is more room), [`MARKED_WIDTH`] wide: a check by a switch that is on
     /// or the one chosen of a set, a line over the first of a group, and dim the rows that can't be chosen now, which
     /// are refused with the menu staying open. Else as [`Shell::pick_menu`].
     pub fn pick_marked(&mut self, id: &str, index: i32, at: &Key, rows: Vec<(String, nettai_ui::PickMark)>) {
         let by = self.rect_of(at);
         let (options, marks): (Vec<String>, Vec<nettai_ui::PickMark>) = rows.into_iter().unzip();
-        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true, width: MARKED_WIDTH }, -1);
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: false, width: MARKED_WIDTH }, -1);
         if let Some(picking) = &mut self.picking {
             picking.dim = marks.iter().map(|m| m.dim).collect();
         }

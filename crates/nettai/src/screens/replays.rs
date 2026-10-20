@@ -20,9 +20,10 @@
 //! remember it: [`AUTOPLAY`]), which starts the next a moment after one ends ([`NEXT_AFTER`]), behind the two cards
 //! as the first was (§2.90). A queue is the selected game's, kept while the app runs and never saved.
 //!
-//! The transport keeps few buttons (§2.94): to the round's start, play or pause, the next round, and VIEW, whose
-//! menu (`Shell::pick_marked`, [`viewer::ViewItem`]) has the side watched from, the builds, the input display, the
-//! other side's picture and the clip, each also a key's.
+//! The transport keeps few buttons (§2.94, §2.95): to the round's start, play or pause, the next round, and ⋯, whose
+//! menu (`Shell::pick_marked`, [`viewer::MenuItem`]) has the side watched from, the builds, the input display, the
+//! other side's picture (each also a key's), the speed and the export. The part of a replay to export is chosen in
+//! the export's dialog alone (its Range, with a Start and an End and NOW, the viewer's time).
 
 mod export;
 mod queue;
@@ -52,7 +53,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-use viewer::{Overlays, VIEW_MENU, Watching};
+use viewer::{MENU, MenuItem, Overlays, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.
 const VIEWER: &str = "replays.viewer";
@@ -885,7 +886,7 @@ impl Replays {
     ///
     /// The controls show while the player has done anything in the last [`HUD_IDLE`] (or the replay has just
     /// begun), while the replay doesn't play (paused, at its end, held by a seek or a drag), while a setting is taken,
-    /// while the builds, the export, VIEW's menu or the popup of what is up next are open, and always on a phone; the pointer
+    /// while the builds, the export, the ⋯ menu or the popup of what is up next are open, and always on a phone; the pointer
     /// resting on the transport holds them too (the UI's own). Hidden, the cursor goes with them.
     ///
     /// A replay of the queue played to its end leaves the queue at once; with Autoplay next on, the next that plays
@@ -910,16 +911,16 @@ impl Replays {
         }
     }
 
-    /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's), with the clip
-    /// marked in the viewer, if any.
-    fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, clip: Option<std::ops::Range<u32>>) {
+    /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's); from the viewer,
+    /// with the time it is at (`now`, the tick: NOW's).
+    fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, now: Option<u32>) {
         let Some(entry) = self.library.entries.iter().find(|e| e.path == *path) else { return };
         let Ok(summary) = &entry.read else { return };
         if let Some(w) = &mut self.watching {
             w.pause();
             w.hide_builds(shell);
         }
-        self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side), clip));
+        self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side), now));
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -1081,14 +1082,9 @@ impl Screen for Replays {
                 "round-start" => w.round(-1),
                 "next-round" => w.round(1),
                 "builds.sheet" => w.toggle_builds(shell),
-                "view-menu" => {
-                    let rows = w.view_menu(&shell.ui().global::<ReplaysView>());
-                    shell.pick_marked("view-menu", 0, &Key::new("view-menu", 0), rows);
-                }
-                "speed" => w.set_speed(index),
-                "export" => {
-                    let (path, side, clip) = (w.path().to_path_buf(), w.side(), w.clip());
-                    self.open_export(shell, &path, Some(side), clip);
+                "more" => {
+                    let rows = w.menu(&shell.ui().global::<ReplaysView>());
+                    shell.pick_marked("more", 0, &Key::new("more", 0), rows);
                 }
                 _ => {}
             }
@@ -1149,7 +1145,6 @@ impl Screen for Replays {
         }
         match (&mut self.watching, id) {
             (Some(w), "seek") => w.skip(5 * by),
-            (Some(w), "speed-step") => w.set_speed(w.speed() + by),
             (None, "kind") => {
                 self.online_only = by > 0;
                 self.fill(shell);
@@ -1168,12 +1163,15 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             // (The bar: held at `choice` of 10,000, or with `index` 1 let go there.)
             (Some(w), "seek") => w.drag(choice, index == 1),
-            // (The transport's VIEW menu: `Watching::view_menu`'s rows.)
-            (Some(w), "view-menu") => {
-                if let Some(&item) = VIEW_MENU.get(choice.max(0) as usize) {
-                    w.choose_view(shell, item);
+            // (The transport's ⋯ menu: `Watching::menu`'s rows; EXPORT VIDEO opens the dialog from where the viewer is.)
+            (Some(w), "more") => match MENU.get(choice.max(0) as usize) {
+                Some(MenuItem::Export) => {
+                    let (path, side, now) = (w.path().to_path_buf(), w.side(), w.shown());
+                    self.open_export(shell, &path, Some(side), Some(now));
                 }
-            }
+                Some(&item) => w.choose(shell, item),
+                None => {}
+            },
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);
@@ -1198,7 +1196,13 @@ impl Screen for Replays {
         }
     }
 
-    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, _done: bool) {
+    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, done: bool) {
+        if let Some(what) = id.strip_prefix("export.") {
+            if let Some(e) = &mut self.export {
+                e.edit(shell, what, text, done);
+            }
+            return;
+        }
         if id != "search" {
             return;
         }
@@ -1278,9 +1282,7 @@ impl Screen for Replays {
                 // picture.)
                 KeyCode::KeyI if !key.repeat => w.toggle_inputs(shell),
                 KeyCode::KeyP if !key.repeat => w.toggle_inset(shell),
-                // (C marks a clip to export: its start, its end, then clears it.)
-                KeyCode::KeyC if !key.repeat => w.mark_clip(shell),
-                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP | KeyCode::KeyC => {}
+                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP => {}
                 _ => return false,
             }
             return true;
