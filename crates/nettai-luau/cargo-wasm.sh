@@ -13,6 +13,5 @@ case "$cargo_command" in
     build|check|test) ;;
     *) echo "expected build, check, or test" >&2; exit 2 ;;
 esac
-exec cargo +nightly "$cargo_command" --locked \
-    -Zbuild-std=std,panic_unwind \
+exec cargo "$cargo_command" --locked \
     -p nettai-luau --target wasm32-unknown-unknown "$@"

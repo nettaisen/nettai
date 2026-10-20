@@ -6,35 +6,35 @@ workspace is not ported by this change.
 
 ## Build
 
-Use Rust nightly with `rust-src`, and [WASI SDK 34](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34).
+Use stable Rust with the `wasm32-unknown-unknown` target, and [WASI SDK 34](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34).
 Extract the SDK for your build machine and set `WASI_SDK_PATH` to its directory.
 The SDK supplies Clang, libc++, and libc at build time; its WASI imports and
 allocator are removed from the libc copy linked into the module.
 
 ```sh
-rustup component add rust-src --toolchain nightly
-rustup target add wasm32-unknown-unknown --toolchain nightly
+rustup target add wasm32-unknown-unknown
 export WASI_SDK_PATH=/path/to/wasi-sdk-34.0-arm64-macos
 
 bash crates/nettai-luau/cargo-wasm.sh build
 # Or: cargo-wasm.sh check / cargo-wasm.sh build --release
 ```
 
-The wrapper just runs Cargo with the required target and standard-library build
-flags. Both `mlua` 0.12.2 and Luau are unmodified crates.io dependencies. There
+The wrapper just runs Cargo with the required target. Both `mlua` 0.12.2 and Luau are unmodified crates.io dependencies. There
 are no source patches, generated dependency copies, or alternate lockfiles.
 
-The repository's `.cargo/config.toml` enables standard Wasm exception handling
-and `panic=unwind` for this target. Rebuilding `std` is required: Luau implements
-script errors with C++ exceptions, which cross Rust callback frames. With
-`panic=abort` those callbacks abort instead of returning an error. When using
-this crate from another workspace, copy those target rustflags and the root
-`[patch.crates-io]` entry for the small `libc` shim described below.
+Luau is built with `LUA_USE_LONGJMP`: a script error is a `longjmp` (Wasm
+exception handling's, `-mllvm -wasm-enable-sjlj`) that crosses Rust callback
+frames, as mlua's errors do with every C Lua. Luau's compiler throws and catches
+C++ exceptions inside C++ alone. Rust takes no part in either, so the module is
+an ordinary `panic=abort` build with the prebuilt `std`; Slint's and winit's web
+backends need that (under `panic=unwind` wasm-bindgen asks their closures to be
+`UnwindSafe`, and winit has no `run_app` with Rust's `exception-handling`
+feature). A Rust panic traps. When using this crate from another workspace,
+copy the root `[patch.crates-io]` entry for the small `libc` shim described
+below.
 
 Leave the `jit` feature off. Use a Wasm engine with standard exception handling
-(`try_table`); the legacy exception encoding is not used. Rust panics require
-the same unwinding support, and an uncaught panic at a non-unwinding exported
-function still traps normally.
+(`try_table`); the legacy exception encoding is not used.
 
 ## Test
 
@@ -67,8 +67,8 @@ example does not use wasm-bindgen or a WASI shim.
   the environment is empty, clock queries are unsupported, file descriptor
   operations report bad descriptors, and process exit traps. The content
   sandbox exposes neither OS functions nor Luau's private random generator.
-- LLVM's Wasm unwinder is built with Rust supplying the single exception tag;
-  see [wasm/README.md](wasm/README.md).
+- The SDK's own libunwind defines the C++ exception tag, and its libsetjmp
+  the `longjmp` tag.
 - The [libc shim](wasm/libc/src/lib.rs) re-exports unmodified upstream `libc`
   and adds the file APIs missing on bare Wasm. `tmpfile()` returns null, so
   stock mlua's `heap_dump()` returns its existing "unable to dump heap" error.
