@@ -19,7 +19,7 @@
 //! with no drawing stays a picture, and that is said.
 
 use nettai_assets::shapes::{CustomShapes, Drawing, GaugeCells, HudShapes, MapDrawing, MugshotFrame};
-use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, PatchList, Tiles};
+use nettai_assets::{Bundle, Chatbox, CustomScreen, Hud, MapEntry, PatchList, Tiles};
 
 /// The hand-drawn SVG files (`shapes/`), by path from there.
 mod drawn {
@@ -390,6 +390,7 @@ pub struct Views {
     form_cursor: nettai_assets::Palette,
     picture: nettai_assets::Palette,
     form_name: nettai_assets::Palette,
+    chatbox: nettai_assets::Palette,
     frame: nettai_assets::Palette,
     other: nettai_assets::Palette,
 }
@@ -407,6 +408,7 @@ impl Views {
             cursor: c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default(),
             form_cursor: c.form_list_cursor_palette,
             picture: c.pictures.ok.palette,
+            chatbox: h.chatbox.palette,
             form_name: c.versioned.base.form_name_palettes.first().copied().unwrap_or_default(),
             frame: c.frame_palettes.first().copied().unwrap_or_default(),
             other: c.other_palette,
@@ -423,6 +425,7 @@ impl Views {
             "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => self.hp[k],
             "hud/navi-box" => self.navi[k],
             n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
+            n if n.starts_with("hud/chatbox") => self.chatbox[k],
             n if n.starts_with("custom/cursor") => self.cursor[k],
             n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
             n if n.starts_with("custom/picture") => self.picture[k],
@@ -534,6 +537,32 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
             }
         }
         s.mugshot_frame = sh.drawing("hud/mugshot-frame", c.grid());
+    }
+    // The chatbox's box, each of its maps: its kinds' (the message box,
+    // the description box), each at its opening steps.
+    let g = &h.chatbox;
+    let mut maps: Vec<(String, Option<(Grid, Vec<[u8; 2]>)>)> = Vec::new();
+    for (kind, steps) in g.boxes.iter().enumerate() {
+        for (step, map) in steps.iter().enumerate() {
+            let name = format!("hud/chatbox-{kind}-{step}");
+            if map.len() != Chatbox::COLUMNS * Chatbox::ROWS {
+                maps.push((name, None));
+                continue;
+            }
+            let mut c = Canvas::new(8 * Chatbox::COLUMNS, 8 * Chatbox::ROWS, Label::Clear);
+            let mut cells = Vec::new();
+            for (i, e) in map.iter().enumerate() {
+                let (x, y) = (i % Chatbox::COLUMNS, i / Chatbox::COLUMNS);
+                if let Some(t) = g.tiles.get(e.tile as usize) {
+                    c.tile(t, 8 * x, 8 * y, e.hflip, e.vflip, 0);
+                    cells.push([x as u8, y as u8]);
+                }
+            }
+            maps.push((name, Some((c.grid(), cells))));
+        }
+    }
+    if maps.iter().any(|(n, _)| sh.file(n).is_some()) {
+        s.chatbox = map_drawings(&maps, sh);
     }
     (s, frame)
 }

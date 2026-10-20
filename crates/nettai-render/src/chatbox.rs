@@ -235,7 +235,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     let c = &shown.chatbox;
     let (text_x, text_y) = text_at(&assets.hud);
     if let Some(step) = c.box_step() {
-        draw_box(g, shown.kind, step, names_layer);
+        draw_box(g, &assets.hud.shapes.chatbox, shown.kind, step, names_layer, sink);
     }
     // chatbox_804021C: the text, when the box is open; the line buffer's
     // last row of sprites first.
@@ -319,13 +319,45 @@ pub fn text_at(hud: &nettai_assets::Hud) -> (i32, i32) {
     (hud.layout.chatbox_text.0 as i32, hud.layout.chatbox_text.1 as i32)
 }
 
-/// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`).
-fn draw_box(g: &Graphics, kind: usize, step: u8, layer: &mut Layer) {
+/// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`);
+/// in the enhanced mode the cells the pack has drawings of drawn as shapes
+/// (`nettai_assets::shapes`), in the box's palette, the rest as tiles.
+fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], kind: usize, step: u8, layer: &mut Layer, sink: &mut TextSink) {
     let Some(map) = g.boxes.get(kind).and_then(|steps| steps.get(step as usize)) else { return };
+    let drawing = shapes.get(kind * 4 + step as usize).and_then(Option::as_ref).filter(|_| sink.draws_shapes());
+    // (Each cell a drawing stands in for: the pixels the drawing covers, to
+    // be in front of what the box hides, drawn as tiles under it.)
+    let mut covered: Vec<Option<(usize, std::rc::Rc<Vec<bool>>)>> = vec![None; map.len()];
+    if let Some(m) = drawing {
+        let (w, h) = (8 * Graphics::COLUMNS as i32, 8 * (map.len() / Graphics::COLUMNS) as i32);
+        for part in &m.parts {
+            let coverage = std::rc::Rc::new(crate::shapes::coverage(&part.drawing));
+            for &[c, r] in &part.cells {
+                if let Some(d) = covered.get_mut(r as usize * Graphics::COLUMNS + c as usize) {
+                    *d = Some((part.drawing.size[0] as usize, coverage.clone()));
+                }
+            }
+            let mut d = crate::shapes::drawn(&part.drawing, |r| g.palette[r.color as usize & 15], (false, false), None);
+            d.cells = Some(part.cells.clone());
+            sink.push(Plane::Bg0, crate::shapes::item(d, (0, 8 * BOX_ROW), (w, h)));
+        }
+    }
     for (i, e) in map.iter().enumerate() {
         let (col, row) = ((i % Graphics::COLUMNS) as i32, (i / Graphics::COLUMNS) as i32);
-        if let Some(t) = g.tiles.get(e.tile as usize) {
-            layer.draw_tile(t, &g.palette, 8 * col, 8 * (BOX_ROW + row), e.hflip, e.vflip);
+        let Some(t) = g.tiles.get(e.tile as usize) else { continue };
+        match &covered[i] {
+            Some((w, coverage)) => {
+                let mut tile = [0u8; 64];
+                for (k, p) in tile.iter_mut().enumerate() {
+                    let (x, y) = (if e.hflip { 7 - k % 8 } else { k % 8 }, if e.vflip { 7 - k / 8 } else { k / 8 });
+                    let at = (8 * row as usize + k / 8) * w + 8 * col as usize + k % 8;
+                    if coverage.get(at) == Some(&true) {
+                        *p = t[8 * y + x];
+                    }
+                }
+                layer.draw_tile(&tile, &g.palette, 8 * col, 8 * (BOX_ROW + row), false, false);
+            }
+            None => layer.draw_tile(t, &g.palette, 8 * col, 8 * (BOX_ROW + row), e.hflip, e.vflip),
         }
     }
 }

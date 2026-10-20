@@ -464,6 +464,8 @@ pub struct HudShapesDoc {
     pub mugshot_boxes: Vec<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mugshot_frame: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chatbox: Vec<Option<MapShapeDoc>>,
 }
 
 impl HudShapesDoc {
@@ -517,6 +519,8 @@ pub fn write_hud(files: &mut Files, s: &HudShapes, h: &nettai_assets::Hud) -> Hu
     let gauge = in_palette(h.gauge_palette);
     let face = in_palette(h.mugshots.first().map(|m| m.1).unwrap_or_default());
     let gauge_frame = s.gauge_frame.as_ref().map(|m| write_map(files, m, &gauge));
+    let chat = in_palette(h.chatbox.palette);
+    let chatbox = s.chatbox.iter().map(|m| m.as_ref().map(|m| write_map(files, m, &chat))).collect();
     let mut w = |name: &str, d: &Drawing, view: &dyn Fn(u8, u8) -> u16| write(files, name, d, view);
     HudShapesDoc {
         hp_box: s.hp_box.as_ref().map(|d| w("hp-box", d, &hp)),
@@ -538,14 +542,17 @@ pub fn write_hud(files: &mut Files, s: &HudShapes, h: &nettai_assets::Hud) -> Hu
             .map(|(k, d)| d.as_ref().map(|d| w(&format!("mugshot-box-{k}"), d, &in_palette(h.mugshots.get(k).map(|m| m.1).unwrap_or_default()))))
             .collect(),
         mugshot_frame: s.mugshot_frame.as_ref().map(|d| w("mugshot-frame", d, &face)),
+        chatbox,
     }
 }
 
 /// The HUD's drawings read back.
 pub fn read_hud(dir: &Path, prefix: &str, d: &HudShapesDoc, report: &mut Report) -> HudShapes {
     let gauge_frame = d.gauge_frame.as_ref().map(|m| read_map(dir, prefix, m, report));
+    let chatbox = d.chatbox.iter().map(|m| m.as_ref().map(|m| read_map(dir, prefix, m, report))).collect();
     let mut r = |file: &str| read(dir, prefix, file, report).unwrap_or_default();
     HudShapes {
+        chatbox,
         hp_box: d.hp_box.as_deref().map(&mut r),
         gauge_frame,
         gauge_cells: d.gauge_cells.as_ref().map(|g| GaugeCells {

@@ -213,6 +213,9 @@ pub struct HudShapes {
     /// The emotion window's frame around the face (4x2 tiles), color 1 its
     /// ring's (each face's own color: `MugshotFrame`).
     pub mugshot_frame: Option<Drawing>,
+    /// The chatbox's box for each of its maps (`Chatbox::boxes`: by kind,
+    /// its opening steps), as the custom window's.
+    pub chatbox: Vec<Option<MapDrawing>>,
 }
 
 impl HudShapes {
