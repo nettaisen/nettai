@@ -6,6 +6,8 @@ license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"
 
 [dependencies]
+# Files: std::fs's on the desktop, the page's tree in the browser.
+nettai-fs = { path = "../nettai-fs" }
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
@@ -27,10 +29,6 @@ sys-locale = "0.3"
 # Text in capitals by the language's own rules (`lang::upper`: a Turkish i is İ), from Unicode's data built in.
 icu_casemap = "2"
 icu_locale_core = "2"
-# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
-# releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
-# release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
-velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
 # The log's and a replay's times in the local time.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The screenshot pass's pictures (the `tour` feature's).
@@ -57,6 +55,10 @@ nettai-extract = { path = "../nettai-extract" }
 
 # An invite's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
+# releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
+# release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
+velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
 arboard = { version = "3", default-features = false }
 # A save to make a build of, chosen in the system's file dialog.
 rfd = "0.15"

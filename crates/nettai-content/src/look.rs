@@ -126,10 +126,10 @@ pub fn parse(text: &str, file: &str) -> Result<Look, String> {
 /// Pack folder `pack`'s look; `None` when it states none (the app draws it in its own).
 pub fn load(pack: &Path) -> Result<Option<Look>, String> {
     let path = path(pack);
-    if !path.is_file() {
+    if !nettai_fs::is_file(&path) {
         return Ok(None);
     }
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let text = nettai_fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
     parse(&text, &path.display().to_string()).map(Some)
 }
 

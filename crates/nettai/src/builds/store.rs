@@ -192,13 +192,13 @@ pub fn list(game: &str) -> Vec<Listed> {
 
 /// [`list`] of folder `dir`.
 fn list_in(dir: &Path, game: &str) -> Vec<Listed> {
-    let Ok(dir) = std::fs::read_dir(dir) else { return Vec::new() };
+    let Ok(dir) = nettai_fs::read_dir(dir) else { return Vec::new() };
     let mut out: Vec<Listed> = dir
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == EXTENSION))
         .filter_map(|path| {
-            let text = std::fs::read_to_string(&path).ok()?;
+            let text = nettai_fs::read_to_string(&path).ok()?;
             let head = header(&text).ok().filter(|(g, _)| g == game)?;
             Some(Listed { path, name: head.1, text })
         })
@@ -260,9 +260,9 @@ pub fn text(content: &Content, game: &str, build: &Build) -> String {
 /// Write a build to `path` (its folder made if it isn't there).
 pub fn write(path: &Path, content: &Content, game: &str, build: &Build) -> Result<(), String> {
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        nettai_fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
-    std::fs::write(path, text(content, game, build)).map_err(|e| format!("{}: {e}", path.display()))
+    nettai_fs::write(path, text(content, game, build)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// Ruleset `from` renamed `to` in each of game `game`'s builds made for it: its file read on `content` and written
@@ -315,7 +315,7 @@ fn path_for(game: &str, name: &str, own: Option<&Path>) -> PathBuf {
     let dir = folder(game);
     let mut path = dir.join(format!("{stem}.{EXTENSION}"));
     for n in 2.. {
-        if !path.exists() || own == Some(path.as_path()) {
+        if !nettai_fs::exists(&path) || own == Some(path.as_path()) {
             break;
         }
         path = dir.join(format!("{stem}-{n}.{EXTENSION}"));

@@ -6,6 +6,8 @@ license.workspace = true
 description = "The original games' numbers for EXE4's content (content/exe4/compat), and what reads them: the codecs of EXE4's records and its recorded battles (traces), decoded into the engine's terms, and its saves and their import (a save into a side, by the game's facts). The engine never depends on it."
 
 [dependencies]
+# Files: std::fs's on the desktop, the page's tree in the browser.
+nettai-fs = { path = "../nettai-fs" }
 nettai-battle.workspace = true
 nettai-content-api = { path = "../nettai-content-api" }
 serde = { version = "1", features = ["derive"] }

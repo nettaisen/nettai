@@ -304,19 +304,19 @@ fn guarded<T>(f: impl FnOnce() -> T) -> Option<T> {
 
 /// The replays in `dir`, newest first: each file read, but one that is as `known` has it.
 fn list(dir: &Path, known: &HashMap<PathBuf, Entry>) -> Vec<Entry> {
-    let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
+    let Ok(read) = nettai_fs::read_dir(dir) else { return Vec::new() };
     let mut out: Vec<Entry> = read.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == nettai_frontend::replay::EXTENSION)).filter_map(|path| entry(path, known)).collect();
     out.sort_by(|a, b| b.when.cmp(&a.when).then_with(|| b.path.cmp(&a.path)));
     out
 }
 
 fn entry(path: PathBuf, known: &HashMap<PathBuf, Entry>) -> Option<Entry> {
-    let meta = std::fs::metadata(&path).ok()?;
+    let meta = nettai_fs::metadata(&path).ok()?;
     let stamp = Stamp { len: meta.len(), modified: meta.modified().ok() };
     if let Some(was) = known.get(&path).filter(|e| e.stamp == stamp) {
         return Some(was.clone());
     }
-    let (read, game, digest) = match std::fs::read(&path) {
+    let (read, game, digest) = match nettai_fs::read(&path) {
         Ok(bytes) => {
             let read = Replay::read(&bytes).map(Summary::of);
             // (A file whose rest doesn't read may still say whose it is.)
@@ -335,7 +335,7 @@ fn entry(path: PathBuf, known: &HashMap<PathBuf, Entry>) -> Option<Entry> {
 
 /// A replay's file, read. (One that can't be read at all is a damaged one.)
 pub fn read(path: &Path) -> Result<Replay, ReadError> {
-    let bytes = std::fs::read(path).map_err(|e| ReadError::Damaged(format!("{}: {e}", path.display())))?;
+    let bytes = nettai_fs::read(path).map_err(|e| ReadError::Damaged(format!("{}: {e}", path.display())))?;
     Replay::read(&bytes)
 }
 

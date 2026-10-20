@@ -184,10 +184,10 @@ pub fn parse(text: &str, file: &str) -> Result<Library, String> {
 /// list by key).
 pub fn load(pack: &Path) -> Result<Option<Library>, String> {
     let path = path(pack);
-    if !path.is_file() {
+    if !nettai_fs::is_file(&path) {
         return Ok(None);
     }
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let text = nettai_fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
     parse(&text, &path.display().to_string()).map(Some)
 }
 

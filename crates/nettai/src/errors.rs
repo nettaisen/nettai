@@ -215,7 +215,7 @@ impl UserError {
 }
 
 /// The log file, opened at the first line written.
-static LOG: Mutex<Option<std::fs::File>> = Mutex::new(None);
+static LOG: Mutex<Option<nettai_fs::File>> = Mutex::new(None);
 
 /// The local time's offset from UTC, read as the libraries' logs are caught ([`catch_library_logs`], at the
 /// start), which the log's times are told in. Not read again at each line: chrono reads the local zone through a
@@ -233,9 +233,9 @@ pub fn log(doing: &str, said: &dyn std::fmt::Display) {
     if file.is_none() {
         let path = crate::paths::log();
         if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
+            let _ = nettai_fs::create_dir_all(dir);
         }
-        *file = std::fs::OpenOptions::new().create(true).append(true).open(path).ok();
+        *file = nettai_fs::OpenOptions::new().create(true).append(true).open(path).ok();
     }
     if let Some(f) = file.as_mut() {
         let _ = f.write_all(line.as_bytes());

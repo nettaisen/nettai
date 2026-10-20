@@ -61,7 +61,7 @@ pub fn content() -> PathBuf {
     let beside = program.as_ref().map(|dir| dir.join("content"));
     // (nettai.app/Contents/MacOS/nettai ships its content in nettai.app/Contents/Resources/content.)
     let bundled = program.as_ref().filter(|_| cfg!(target_os = "macos")).and_then(|dir| Some(dir.parent()?.join("Resources/content")));
-    if let Some(dir) = [&beside, &bundled].into_iter().flatten().find(|dir| dir.is_dir()) {
+    if let Some(dir) = [&beside, &bundled].into_iter().flatten().find(|dir| nettai_fs::is_dir(dir)) {
         return dir.clone();
     }
     match REPOSITORY {
@@ -183,8 +183,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("nettai-index-{}", std::process::id()));
         let write = |path: &str, text: &str| {
             let p = dir.join(path);
-            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-            std::fs::write(p, text).unwrap();
+            nettai_fs::create_dir_all(p.parent().unwrap()).unwrap();
+            nettai_fs::write(p, text).unwrap();
         };
         write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n");
         write("lib/x.luau", "return {}\n");
@@ -213,6 +213,6 @@ mod tests {
         let mut r = Report::default();
         assert!(read(&dir, &["j".into()], &mut r).is_none());
         assert!(r.to_string().contains("no pack j"), "{r}");
-        std::fs::remove_dir_all(&dir).ok();
+        nettai_fs::remove_dir_all(&dir).ok();
     }
 }

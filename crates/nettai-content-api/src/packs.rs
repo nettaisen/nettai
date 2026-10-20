@@ -203,7 +203,7 @@ impl Dirs {
     /// reads.
     pub fn names(&self) -> Vec<String> {
         fn walk(pack: &str, root: &Path, dir: &Path, out: &mut Vec<String>) {
-            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            let Ok(entries) = nettai_fs::read_dir(dir) else { return };
             for path in entries.flatten().map(|e| e.path()) {
                 if path.is_dir() {
                     walk(pack, root, &path, out);
@@ -230,12 +230,12 @@ impl Modules for Dirs {
     /// hash covers its sources byte for byte, and a file saved on Windows
     /// is the same content as one saved elsewhere.
     fn read(&self, name: &str) -> Option<String> {
-        let text = std::fs::read_to_string(self.file(name)?).ok()?;
+        let text = nettai_fs::read_to_string(self.file(name)?).ok()?;
         Some(if text.contains("\r\n") { text.replace("\r\n", "\n") } else { text })
     }
 
     fn has(&self, name: &str) -> bool {
-        self.file(name).is_some_and(|f| f.is_file())
+        self.file(name).is_some_and(|f| nettai_fs::is_file(&f))
     }
 }
 
@@ -321,7 +321,7 @@ pub fn sections_of(source: &str) -> Vec<&'static str> {
 pub fn read(dir: &Path, id: &str) -> Result<PackManifest, String> {
     let at = format!("{id}/{MANIFEST}");
     let path = dir.join(id).join(MANIFEST);
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e} (no pack {id} in {})", path.display(), dir.display()))?;
+    let text = nettai_fs::read_to_string(&path).map_err(|e| format!("{}: {e} (no pack {id} in {})", path.display(), dir.display()))?;
     let m = PackManifest::parse(&text, &at)?;
     if m.id != id {
         return Err(format!("{at}: id {:?} isn't its folder's name, {id}", m.id));
@@ -331,10 +331,10 @@ pub fn read(dir: &Path, id: &str) -> Result<PackManifest, String> {
 
 /// Every pack of content `dir` (each folder with a manifest), by name.
 pub fn packs(dir: &Path) -> Result<Vec<PackManifest>, String> {
-    let mut names: Vec<String> = std::fs::read_dir(dir)
+    let mut names: Vec<String> = nettai_fs::read_dir(dir)
         .map_err(|e| format!("{}: {e} (is this a content directory?)", dir.display()))?
         .flatten()
-        .filter(|e| e.path().join(MANIFEST).is_file())
+        .filter(|e| nettai_fs::is_file(e.path().join(MANIFEST)))
         .filter_map(|e| e.file_name().to_str().map(String::from))
         .collect();
     names.sort();
@@ -459,7 +459,7 @@ pub fn requires(source: &str) -> Vec<String> {
 /// to the modules checked against it; Luau's .luaurc names none.)
 pub fn declarations(dir: &Path, all: &BTreeMap<String, PackManifest>, id: &str) -> Result<Vec<PathBuf>, String> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
-        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(()) };
+        let Ok(entries) = nettai_fs::read_dir(dir) else { return Ok(()) };
         let mut entries: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
         entries.sort();
         for path in entries {
@@ -509,10 +509,10 @@ mod tests {
     #[test]
     fn a_crlf_module_reads_as_lf() {
         let dir = std::env::temp_dir().join(format!("nettai-crlf-{}", std::process::id()));
-        std::fs::create_dir_all(dir.join("g")).unwrap();
-        std::fs::write(dir.join("g/init.luau"), "--!strict\r\nreturn {}\r\n").unwrap();
+        nettai_fs::create_dir_all(dir.join("g")).unwrap();
+        nettai_fs::write(dir.join("g/init.luau"), "--!strict\r\nreturn {}\r\n").unwrap();
         let read = Dirs(BTreeMap::from([("g".to_string(), dir.join("g"))])).read("g:init");
-        std::fs::remove_dir_all(&dir).unwrap();
+        nettai_fs::remove_dir_all(&dir).unwrap();
         assert_eq!(read.as_deref(), Some("--!strict\nreturn {}\n"));
     }
 
@@ -541,10 +541,10 @@ mod tests {
         assert_eq!(find(&memory, &BTreeMap::new(), "g:init", "@lib/x").as_deref(), Ok("lib:x"));
         // Packs' folders, and memory before them (a tool's stand-in).
         let dir = std::env::temp_dir().join(format!("nettai-packs-{}", std::process::id()));
-        std::fs::create_dir_all(dir.join("g/chips/cannon")).unwrap();
-        std::fs::write(dir.join("g/chips/cannon/init.luau"), "return 1").unwrap();
-        std::fs::write(dir.join("g/chips/cannon/shot.luau"), "return 2").unwrap();
-        std::fs::write(dir.join("g/types.d.luau"), "").unwrap();
+        nettai_fs::create_dir_all(dir.join("g/chips/cannon")).unwrap();
+        nettai_fs::write(dir.join("g/chips/cannon/init.luau"), "return 1").unwrap();
+        nettai_fs::write(dir.join("g/chips/cannon/shot.luau"), "return 2").unwrap();
+        nettai_fs::write(dir.join("g/types.d.luau"), "").unwrap();
         let dirs = Dirs::of_content(&dir, ["g"]);
         assert_eq!(dirs.names(), ["g:chips/cannon/init", "g:chips/cannon/shot"]);
         assert_eq!(dirs.read("g:chips/cannon/shot").as_deref(), Some("return 2"));
@@ -554,7 +554,7 @@ mod tests {
         let both = (stand_in, dirs);
         assert_eq!(both.read("g:chips/cannon/shot").as_deref(), Some("return 3"));
         assert_eq!(both.read("g:chips/cannon/init").as_deref(), Some("return 1"));
-        std::fs::remove_dir_all(&dir).ok();
+        nettai_fs::remove_dir_all(&dir).ok();
     }
 
     /// A module gives the sections whose type a top-level local of its is
