@@ -1143,7 +1143,8 @@ target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wa
 isolated (COOP and COEP), which a page with threads must be.
 
 - **nettai-platform** is what the app asks of the system, the same calls on both: `fs`, `thread`, `time`,
-  `dialog` (files to open, a folder, where to save, files dropped) and `clipboard`. A dialog answers through a
+  `dialog` (files to open, a folder, where to save, a file written as it is made, files dropped), `clipboard`,
+  `text_entry` and `page` (the window is the page's whole, following its size). A dialog answers through a
   callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
   read as far as the app names its files (the collection's archives: `bnlc::ARCHIVES`); a file saved is
@@ -1154,7 +1155,8 @@ isolated (COOP and COEP), which a page with threads must be.
   a panic in the browser ends the page's module (said on the console: console_error_panic_hook).
 - **Threads** are Web Workers on one shared memory (the build's atomics; Luau takes the SDK's threads build):
   `nettai_platform::thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
-  stack. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
+  stack (`spawn_async`: a future on the worker's event loop, for WebCodecs). A worker's own threads are started by
+  the page, which it asks: a worker's workers start only while its event loop runs, and it may be busy. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
   is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
   queue's and the shapes' cache's, each held for moments.
 - **Files** are `nettai_platform::fs`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
@@ -1176,9 +1178,19 @@ isolated (COOP and COEP), which a page with threads must be.
 - **The collection's folder isn't remembered** past the page: a folder handle kept in IndexedDB could be read
   again only after a click and the browser's permission prompt, and every game is extracted as the folder is
   chosen, so it would matter only when a new version extracts again.
-- **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, downloaded); the picture's texture (the
-  battle's picture is drawn as an image, not into WebGL directly: Slint 1.18 borrows no texture on wasm, its
-  femtovg renderer builds that only off it, so a texture would need Slint changed).
+- **A replay's video** is nettai-video's on both platforms: the playing's frames to the platform's encoder to one
+  fragmented MP4 (`fmp4`, written to any `std::io::Write` a fragment at a time), its sound tracks titled and its
+  rounds chapters. The encoder is ffmpeg on the desktop and WebCodecs in a browser (H.264, and AAC or Opus, an
+  encoder a sound track). EXPORT writes it to `nettai_platform::dialog::save_stream_to`'s file: the path itself on
+  the desktop (as `NAME.part`, named once whole), the browser's save dialog's file there, streamed to as it is
+  made. Exported in headless Chrome (2026-10-20): 25 s at 4x, 13 MB in 14 writes; both sides at 1920x640 with two
+  tracks (the first the default) and the chapter; every frame decoding from 0.
+- **The page**: the app fills it and follows its size; a preload screen (the app's loading screen's sun,
+  wordmark and bar, in its places) shows the download (against build.sh's sizes.json) and the kept files' loading,
+  and fades as the app draws.
+- **Not yet:** the picture's texture (the battle's picture is drawn as an image, not into WebGL directly: Slint
+  1.18 borrows no texture on wasm, its femtovg renderer builds that only off it, so a texture would need Slint
+  changed).
 - **Text typed.** winit gives the canvas no input method, so a field being edited has an HTML `<input>` laid over
   it (`nettai_platform::text_entry`), in its place, in the system's face: it takes the keys, the input method's
   composing and candidates, the caret and the selection; its changes go to the app as the field's own would, and
