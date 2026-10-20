@@ -129,10 +129,11 @@ impl Shaper {
                 return None;
             }
         };
-        let d = match nettai_content::shapes::from_svg(text) {
-            // (Its fills its colors in the picture's first palette, as the
-            // pack keeps it.)
-            Ok(d) => nettai_assets::shapes::Drawing { source: nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k)).into(), ..d },
+        // (Its fills its colors in the picture's first palette, as the pack
+        // keeps it, and read so.)
+        let colored = nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k));
+        let d = match nettai_content::shapes::from_svg(text).and_then(|_| nettai_content::shapes::from_svg(&colored)) {
+            Ok(d) => d,
             Err(e) => {
                 self.notes.push(format!("{path}: {e}: it stays a picture"));
                 return None;
