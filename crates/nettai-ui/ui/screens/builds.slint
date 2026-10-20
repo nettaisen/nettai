@@ -152,7 +152,9 @@ export component BuildsScreen inherits Page {
 
     rules-edit := Button {
         x: root.body-width - root.practice-width - self.width;
-        y: root.bar-y + 2px;
+        y: root.bar-y;
+        // (As tall as the ruleset's select beside them: the user, "make the buttons next to dropdowns the same height".)
+        height: 36px;
         width: self.natural-width;
         compact: true;
         visible: !Theme.phone;
@@ -171,7 +173,9 @@ export component BuildsScreen inherits Page {
 
     practice-button := Button {
         x: root.body-width - self.width;
-        y: root.bar-y + 2px;
+        y: root.bar-y;
+        // (As tall as the ruleset's select beside them: the user, "make the buttons next to dropdowns the same height".)
+        height: 36px;
         width: self.natural-width;
         compact: true;
         visible: !Theme.phone && root.practice;

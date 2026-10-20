@@ -658,8 +658,10 @@ component MatchFacts inherits Rectangle {
 
     rules := Button {
         x: Theme.phone ? parent.width - self.width : root.x2 + ruleset.width + 8px;
-        y: ruleset.y + (ruleset.height - self.height) / 2;
+        y: ruleset.y;
         width: self.natural-width;
+        // (As tall as the select beside it.)
+        height: ruleset.height;
         compact: true;
         nav: "lobby.rules";
         text: PlayView.host ? Caps.of(@tr("Edit")) : Caps.of(@tr("ruleset" => "View"));
