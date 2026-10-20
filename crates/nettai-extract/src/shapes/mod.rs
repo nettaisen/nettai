@@ -906,7 +906,8 @@ fn map_drawings(maps: &[(String, Option<(Grid, Vec<[u8; 2]>)>)], sh: &mut Shaper
                 }
             }
             if missing > 0 {
-                sh.notes.push(format!("{name}: {missing} cells no drawing draws stay pictures: {}", missed.join(" ")));
+                let more = if missed.len() > 12 { format!(" and {} more", missed.len() - 12) } else { String::new() };
+                sh.notes.push(format!("{name}: {missing} cells no drawing draws stay pictures: {}{more}", missed.iter().take(12).cloned().collect::<Vec<_>>().join(" ")));
             }
             let parts: Vec<nettai_assets::shapes::MapPart> = parts
                 .into_iter()
@@ -915,7 +916,7 @@ fn map_drawings(maps: &[(String, Option<(Grid, Vec<[u8; 2]>)>)], sh: &mut Shaper
                     let share = matching_in(grid, d, &cells);
                     let line = format!("{name}: {} for {} cells: {:.1}% of their pixels", maps[o].0, cells.len(), 100.0 * share);
                     sh.notes.push(if share < MATCH { format!("{line}, far from the picture") } else { format!("note: {line}") });
-                    Some(nettai_assets::shapes::MapPart { name: maps[o].0.trim_start_matches("custom/").to_string(), drawing: d.clone(), cells })
+                    Some(nettai_assets::shapes::MapPart { name: maps[o].0.trim_start_matches("custom/").trim_start_matches("hud/").to_string(), drawing: d.clone(), cells })
                 })
                 .collect();
             if sh.sources.is_some() {

@@ -1247,9 +1247,11 @@ Bungee, both bundled beside Murecho, and EXE6's Cross names in Murecho
 renderer draws a battle in one of two modes. **Original** draws it exactly
 as the original does: the text in the game's own fonts into the frame and
 nothing moved that the game holds still. **Enhanced** draws the text with
-the vector font (above) and, unless `Renderer::reduce_motion` says
-otherwise, draws smoothly what the original itself moves; its text stays
-either way. It smooths only motion the original has, over the same frames,
+the vector font (above), the HUD's and the custom screen's frames, buttons
+and panels as the pack's drawings at the output's resolution, in the palettes
+the pictures are drawn in at the moment (text-rendering.md §13), and, unless
+`Renderer::reduce_motion` says otherwise, draws smoothly what the original
+itself moves; its text and its frames stay either way. It smooths only motion the original has, over the same frames,
 and adds none: nothing comes in with an animation the game doesn't have.
 (The HUD's intro, which brought the HUD's pieces in at each round's start,
 is gone: the user, "don't animate extra slide ins that weren't present in

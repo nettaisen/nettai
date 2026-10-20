@@ -1476,12 +1476,10 @@ Nothing is a game's in Rust, and no style is added to the packs (but the window'
   `textlayer::Ink`: the fill blended between the rows' middles at the output's resolution, and the rim as the glyphs'
   coverage grown by a disk of a frame pixel and that again half a pixel right and down, as the pictures' rims are
   heavier there (`vfont::Mask::dilated`).
-- `bar(picture)`: a banner's bar is the colors of its first cell, where that cell is a bar's end (every row of it
-  unbroken to the bar's last pixel on the row); its top and bottom rows, its ends' slant (the rows' first pixels' step,
-  one pixel a row), its upright parts (the ROM's left end stands upright near the top, its right end near the bottom),
-  its length, and the colors of its top line, body, bottom line and ends. `textlayer::Bar` is drawn as that shape at the
-  output's resolution, 4x4 points an output pixel, with the words' squash and bounce (the banners' `vscale`), under
-  them; the Japanese Program Advance has no bar.
+- `bar_colors(picture)`: a banner's bar is the colors of its first cell, where that cell is a bar's end (every row of
+  it unbroken to the bar's last pixel on the row); its letters are what stands on them. The bar itself is a drawing
+  (§13), drawn with the words' squash and bounce (the banners' `vscale`), under them; the Japanese Program Advance has
+  no bar.
 - `lines(picture)`, `erased(picture)`: a help picture's lines (runs of rows of letters, each with its baseline, the row
   most of its letters end on, and its color) and the picture with its letters taken off, each letter pixel the ground's
   color nearest it on its row: the panel's or its frame's, by color, since the pictures' indices are bit planes, several
