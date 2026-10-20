@@ -34,7 +34,7 @@ use nettai_battle::battle::{battle_flags, mode};
 use nettai_battle::input::keys;
 use nettai_frontend::driver::bot_buttons;
 use nettai_ui::{AppWindow, BattleKind, PracticeOption, ReplaysView};
-use nettai_video::nut;
+use nettai_video::ffmpeg::nut;
 use slint::{ComponentHandle, PhysicalSize};
 use std::cell::{Cell, RefCell};
 use std::io::{BufWriter, Read, Write as _};
@@ -278,7 +278,7 @@ fn encode(
         "scale={}:{}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p",
         OUT.0, OUT.1
     );
-    let mut child = Command::new(nettai_video::mp4::find_ffmpeg())
+    let mut child = Command::new(nettai_video::ffmpeg::find_ffmpeg())
         .args([
             "-hide_banner",
             "-nostdin",
@@ -333,7 +333,7 @@ fn encode(
         let _ = said.read_to_string(&mut text);
         text
     });
-    let video = nut::Video {
+    let video = nettai_video::Video {
         width,
         height,
         frame_time: (1, RATE as u32),
@@ -342,7 +342,7 @@ fn encode(
         let mut nut = nut::Writer::new(
             BufWriter::with_capacity(1 << 22, stdin),
             video,
-            Some(nut::Audio {
+            Some(nettai_video::Audio {
                 sample_rate: SAMPLE_RATE as u32,
                 tracks: 1,
             }),

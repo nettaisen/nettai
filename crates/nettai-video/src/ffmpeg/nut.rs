@@ -72,6 +72,9 @@
 //! Not written: end-of-relevance frames (a "SHOULD": the picture's frames
 //! are a fixed time apart, so the last one's length is known).
 
+use crate::encode::{Audio, Info, Video};
+#[cfg(test)]
+use crate::encode::Chapter;
 use std::io::{self, Write};
 
 /// The first bytes of every NUT file.
@@ -116,43 +119,6 @@ const PICTURE_CODE: u8 = 1;
 /// each next one is (2^23, then 2^26, 2^29...).
 const FIRST_REPEAT: u64 = 1 << 23;
 const REPEAT_SHIFT: u32 = 3;
-
-/// The picture's stream: its size in pixels, and the time one frame takes
-/// as a fraction of a second (numerator, denominator), in lowest terms.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Video {
-    pub width: u32,
-    pub height: u32,
-    pub frame_time: (u32, u32),
-}
-
-/// The sound's streams: `tracks` of them (1 to [`MOST_TRACKS`]), each
-/// stereo, at this many samples a second.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Audio {
-    pub sample_rate: u32,
-    pub tracks: usize,
-}
-
-/// What a stream says of itself besides its frames, in its info packets.
-/// The first sound track is the default one.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Info {
-    /// The sound tracks' titles, by track (an empty one, or one past these:
-    /// the track has none).
-    pub titles: Vec<String>,
-    /// The chapters, in the order they start.
-    pub chapters: Vec<Chapter>,
-}
-
-/// A chapter: from a frame of the picture, for some frames, under a title.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Chapter {
-    /// Its first frame (the frames counted from 0), and how many it has.
-    pub start: u64,
-    pub frames: u64,
-    pub title: String,
-}
 
 /// A stream's time base: the seconds one of its pts units takes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -3,17 +3,16 @@ use super::*;
 /// The command line is the one the module states.
 #[test]
 fn the_command_line_is_as_stated() {
-    let args = Settings::default().arguments(Path::new("out.mp4.part"));
-    let said: Vec<String> = args.iter().map(|a| a.to_string_lossy().into_owned()).collect();
+    let said: Vec<String> = arguments(&Encoding::default()).iter().map(|a| a.to_string_lossy().into_owned()).collect();
     assert_eq!(
         said.join(" "),
-        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0 \
+        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0:v -map 0:a? -map_chapters -1 \
          -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709 \
-         -c:v libx264 -preset medium -tune animation -crf 16 \
+         -c:v libx264 -preset medium -tune animation -crf 16 -g 120 \
          -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
-         -c:a aac -b:a 192k -ar 48000 -movflags +faststart -f mp4 -y out.mp4.part"
+         -c:a aac -b:a 192k -ar 48000 -f mp4 -movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 2000000 pipe:1"
     );
-    let full = Settings { crf: 0, chroma: Chroma::Full, audio_kbps: 320, ..Settings::default() }.arguments(Path::new("o"));
+    let full = arguments(&Encoding { crf: 0, chroma: Chroma::Full, audio_kbps: 320, ..Encoding::default() });
     let said: Vec<String> = full.iter().map(|a| a.to_string_lossy().into_owned()).collect();
     assert!(said.contains(&"scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv444p,setparams=color_primaries=bt709:color_trc=bt709".to_string()));
     assert!(said.windows(2).any(|w| w == ["-crf", "0"]) && said.windows(2).any(|w| w == ["-b:a", "320k"]));
@@ -66,19 +65,18 @@ fn one_at_a_time() -> std::sync::MutexGuard<'static, ()> {
     TURN.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-/// An ffmpeg that isn't there is said as that, and leaves nothing; so is a
-/// place no file can be made in, as the disk's.
+/// A video's stream as the tests' stand-ins take it: a picture of 2 by 2, one sound track.
+fn small() -> (Video, Option<Audio>, Info) {
+    (Video { width: 2, height: 2, frame_time: (4389, 262_144) }, Some(Audio { sample_rate: 32_768, tracks: 1 }), Info::default())
+}
+
+/// An ffmpeg that isn't there is said as that.
 #[test]
-fn no_ffmpeg_and_no_place_are_told_apart() {
+fn no_ffmpeg_is_said() {
     let _turn = one_at_a_time();
     let dir = scratch("none");
-    let to = dir.join("out.mp4");
-    let settings = Settings { ffmpeg: dir.join("no-such-ffmpeg"), ..Settings::default() };
-    assert!(matches!(Encoder::start(&to, &settings), Err(Error::NoFfmpeg(_))));
-    assert_eq!(left_in(&dir), Vec::<String>::new());
-    let nowhere = dir.join("no-such-folder").join("out.mp4");
-    assert!(matches!(Encoder::start(&nowhere, &settings), Err(Error::Disk(_))));
-    assert!(matches!(Encoder::start(Path::new("/"), &settings), Err(Error::Disk(_))));
+    let (video, audio, info) = small();
+    assert!(matches!(Ffmpeg::start(&dir.join("no-such-ffmpeg"), video, audio, &info, &Encoding::default()), Err(Error::NoFfmpeg(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -97,116 +95,69 @@ fn left_in(dir: &Path) -> Vec<String> {
     names
 }
 
-/// The encoder's dealings with its child, with stand-ins for ffmpeg (shell
-/// scripts that take its arguments: the file to write is the last): one
-/// that copies what it is piped into the file, one that fails saying why,
-/// one that says the disk is full, one that never ends.
+/// The encoder's dealings with its child, with stand-ins for ffmpeg (shell scripts that take its arguments): one
+/// that fails saying why, one that says the disk is full, one that closes its input, one that never ends.
 #[cfg(unix)]
 mod with_a_stand_in {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    /// A program in `dir` that runs `script` (a shell's, its arguments
-    /// ffmpeg's), as the settings' ffmpeg.
-    fn stand_in(dir: &Path, script: &str) -> Settings {
+    /// A program in `dir` that runs `script` (a shell's, its arguments ffmpeg's), as ffmpeg.
+    fn stand_in(dir: &Path, script: &str) -> PathBuf {
         let program = dir.join("stand-in-ffmpeg");
         std::fs::write(&program, format!("#!/bin/sh\n{script}\n")).unwrap();
         std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
-        Settings { ffmpeg: program, ..Settings::default() }
+        program
     }
 
-    /// (The last argument: the file.)
-    const OUT: &str = "for last; do :; done";
-
-    /// A megabyte of stream: more than a pipe holds.
-    fn stream() -> Vec<u8> {
-        (0..1 << 20).map(|i| (i % 251) as u8).collect()
+    /// The stand-in started, and written `frames` frames of the small stream (what writing them said).
+    fn fed(program: &Path, frames: usize) -> (Box<dyn Backend>, Result<(), Error>) {
+        let (video, audio, info) = small();
+        let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(program, video, audio, &info, &Encoding::default()).unwrap());
+        let sound = [[0.25f32, -0.25]; 548];
+        let written = (0..frames).try_for_each(|_| ffmpeg.frame(&[7u8; 12], &[&sound[..]]));
+        (ffmpeg, written)
     }
 
-    /// The file takes its name once the child has ended well, whole;
-    /// until then only the part is there.
-    #[test]
-    fn the_file_takes_its_name_when_it_is_whole() {
-        let _turn = one_at_a_time();
-        let dir = scratch("whole");
-        let settings = stand_in(&dir, &format!("{OUT}; cat > \"$last\""));
-        let to = dir.join("out.mp4");
-        std::fs::write(&to, b"an older video").unwrap();
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        encoder.write_all(&stream()).unwrap();
-        assert_eq!(left_in(&dir), ["out.mp4", "out.mp4.part", "stand-in-ffmpeg"]);
-        assert_eq!(std::fs::read(&to).unwrap(), b"an older video", "the file before is there until the new one is whole");
-        encoder.finish().unwrap();
-        assert_eq!(left_in(&dir), ["out.mp4", "stand-in-ffmpeg"]);
-        assert!(std::fs::read(&to).unwrap() == stream());
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    /// Canceled or let go of, the child is stopped (one that would never
-    /// end, too) and nothing is left; a file of that name from before
-    /// stays as it was.
-    #[test]
-    fn canceled_nothing_is_left() {
-        let _turn = one_at_a_time();
-        let dir = scratch("canceled");
-        let settings = stand_in(&dir, &format!("{OUT}; head -c 1048576 > \"$last\"; exec sleep 600"));
-        let to = dir.join("out.mp4");
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        encoder.write_all(&stream()).unwrap();
-        let started = std::time::Instant::now();
-        encoder.cancel();
-        assert!(started.elapsed().as_secs() < 60, "the child wasn't stopped");
-        assert_eq!(left_in(&dir), ["stand-in-ffmpeg"]);
-        std::fs::write(&to, b"an older video").unwrap();
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        encoder.write_all(&stream()).unwrap();
-        drop(encoder);
-        assert_eq!(left_in(&dir), ["out.mp4", "stand-in-ffmpeg"]);
-        assert_eq!(std::fs::read(&to).unwrap(), b"an older video");
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    /// An ffmpeg that fails is said with its exit code and what it wrote
-    /// to its standard error, whether it fails at the end or closes its
-    /// pipe in mid-stream; one that says the disk is full is the disk's
-    /// error. Nothing is left either way.
+    /// An ffmpeg that fails is said with its exit code and what it wrote to its standard error, whether it fails at
+    /// the end or closes its input in mid-stream; one that says the disk is full is the disk's error.
     #[test]
     fn a_failure_is_said_with_what_ffmpeg_said() {
         let _turn = one_at_a_time();
         let dir = scratch("failed");
-        let to = dir.join("out.mp4");
         // At the end, having read everything.
-        let settings = stand_in(&dir, "cat > /dev/null; echo 'Unknown encoder libx264' >&2; exit 8");
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        encoder.write_all(&stream()).unwrap();
-        match encoder.finish() {
+        let (ffmpeg, written) = fed(&stand_in(&dir, "cat > /dev/null; echo 'Unknown encoder libx264' >&2; exit 8"), 30);
+        written.unwrap();
+        match ffmpeg.finish() {
             Err(Error::FfmpegFailed { code: Some(8), log }) => assert_eq!(log, "Unknown encoder libx264\n"),
             other => panic!("{other:?}"),
         }
-        assert_eq!(left_in(&dir), ["stand-in-ffmpeg"]);
         // In mid-stream: the pipe closes under the writer.
-        let settings = stand_in(&dir, "echo 'pipe:0: Invalid data found when processing input' >&2; exit 183");
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        let broke = (0..64).find_map(|_| encoder.write_all(&stream()).err()).expect("the pipe closes");
-        match encoder.failed(broke) {
-            Error::FfmpegFailed { code: Some(183), log } => assert_eq!(log, "pipe:0: Invalid data found when processing input\n"),
+        let (_, written) = fed(&stand_in(&dir, "echo 'pipe:0: Invalid data found when processing input' >&2; exit 183"), 20_000);
+        match written {
+            Err(Error::FfmpegFailed { code: Some(183), log }) => assert_eq!(log, "pipe:0: Invalid data found when processing input\n"),
             other => panic!("{other:?}"),
         }
-        assert_eq!(left_in(&dir), ["stand-in-ffmpeg"]);
         // The disk full.
-        let settings = stand_in(&dir, "cat > /dev/null; echo 'Error writing trailer: No space left on device' >&2; exit 228");
-        let mut encoder = Encoder::start(&to, &settings).unwrap();
-        encoder.write_all(&stream()).unwrap();
-        match encoder.finish() {
+        let (ffmpeg, written) = fed(&stand_in(&dir, "cat > /dev/null; echo 'Error writing trailer: No space left on device' >&2; exit 228"), 30);
+        written.unwrap();
+        match ffmpeg.finish() {
             Err(Error::Disk(e)) => assert!(e.to_string().contains("No space left on device")),
             other => panic!("{other:?}"),
         }
-        assert_eq!(left_in(&dir), ["stand-in-ffmpeg"]);
-        // An error of the writer's own (not the pipe's) is the writer's.
-        let settings = stand_in(&dir, "cat > /dev/null");
-        let encoder = Encoder::start(&to, &settings).unwrap();
-        assert!(matches!(encoder.failed(io::Error::other("the replay's own")), Error::Write(_)));
-        assert_eq!(left_in(&dir), ["stand-in-ffmpeg"]);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Canceled, the child is stopped, one that would never end too.
+    #[test]
+    fn canceled_the_child_is_stopped() {
+        let _turn = one_at_a_time();
+        let dir = scratch("canceled");
+        let (ffmpeg, written) = fed(&stand_in(&dir, "exec sleep 600"), 1);
+        written.unwrap();
+        let started = std::time::Instant::now();
+        ffmpeg.cancel();
+        assert!(started.elapsed().as_secs() < 60, "the child wasn't stopped");
         let _ = std::fs::remove_dir_all(dir);
     }
 }
@@ -222,7 +173,7 @@ mod with_a_stand_in {
 #[ignore]
 fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     use crate::tests::{options, viewer};
-    use crate::{Options, Part, Sides, Titles, write, write_mp4};
+    use crate::{Options, Part, Sides, Titles, write_mp4};
     use std::ops::ControlFlow;
     use std::process::Command;
     let _turn = one_at_a_time();
@@ -230,8 +181,8 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
     let dir = scratch("ffmpeg");
     let part = Part::Ticks(200..320);
-    let nut = write(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
-    let file = crate::nut::reading::read(&nut).unwrap();
+    let nut = write_nut(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+    let file = nut::reading::read(&nut).unwrap();
     std::fs::write(dir.join("part.nut"), &nut).unwrap();
     let run = |program: &str, args: &[&str]| -> Vec<u8> {
         let out = Command::new(program).current_dir(&dir).args(args).output().unwrap_or_else(|e| panic!("{program}: {e}"));
@@ -258,7 +209,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:a", "-f", "f32le", "-"]].concat()) == sound);
     // The MP4: every frame, H.264 and AAC, the picture close to the frames.
     let to = dir.join("part.mp4");
-    write_mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &Settings::default(), &to, &mut |_| ControlFlow::Continue(())).unwrap();
+    write_mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &Encoding::default(), std::fs::File::create(&to).unwrap(), &mut |_| ControlFlow::Continue(())).unwrap();
     assert_eq!(left_in(&dir), ["part.mp4", "part.nut"]);
     let probed = String::from_utf8(run(
         "ffprobe",
@@ -274,24 +225,30 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert!((off as f64 / pictures.len() as f64) < 2.0, "the MP4's pictures are {} off a byte", off as f64 / pictures.len() as f64);
     // Both sides across the second round's start: a track each, the left
     // console's first and the default, each named for its player; the
-    // rounds as chapters, the second from the frame its picture begins on
-    // (59 frames in: the tick before its first); and the chapter text track
-    // last.
+    // rounds as chapters (Nero's chpl), the second from the frame its picture begins on
+    // (59 frames in: the tick before its first).
     let second = replay.round_starts()[1];
     let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
     let both = Options { scale: 1, view: None, sides: Sides::Both, part: Part::Ticks(second - 60..second + 60), titles };
-    write_mp4(&mut viewer(&content, &replay, 1), &both, &Settings::default(), &dir.join("both.mp4"), &mut |_| ControlFlow::Continue(())).unwrap();
+    write_mp4(&mut viewer(&content, &replay, 1), &both, &Encoding::default(), std::fs::File::create(dir.join("both.mp4")).unwrap(), &mut |_| ControlFlow::Continue(())).unwrap();
     let entries = "stream=codec_type,codec_name:stream_disposition=default:stream_tags=name,handler_name";
     let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();
     assert_eq!(
         probed.lines().collect::<Vec<_>>(),
-        ["h264,video,1,VideoHandler", "aac,audio,1,Chaud,Chaud", "aac,audio,0,Lan,Lan", "bin_data,data,0,SubtitleHandler"],
+        ["h264,video,1,nettai", "aac,audio,1,Chaud", "aac,audio,0,Lan"],
         "{probed}"
     );
     let entries = "chapter=start_time,end_time:chapter_tags=title";
     let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();
     let at = |frames: f64| format!("{:.6}", frames * 4389.0 / 262_144.0);
-    assert_eq!(probed.lines().collect::<Vec<_>>(), [format!("0.000000,{},Round 1", at(59.0)), format!("{},{},Round 2", at(59.0), at(120.0))], "{probed}");
+    // (The last ends with the file, whose sound runs to its last AAC frame's end, a frame past the picture's.)
+    let length = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "both.mp4"])).unwrap();
+    let length = format!("{:.6}", length.trim().parse::<f64>().unwrap());
+    assert!(length.parse::<f64>().unwrap() - 120.0 * 4389.0 / 262_144.0 < 0.05, "the file is {length} s long");
+    assert_eq!(probed.lines().collect::<Vec<_>>(), [format!("0.000000,{},Round 1", at(59.0)), format!("{},{length},Round 2", at(59.0))], "{probed}");
+    // The picture is shown from its start (its edit list past x264's reordering).
+    let starts = String::from_utf8(run("ffprobe", &["-v", "error", "-select_streams", "v", "-show_entries", "stream=start_time", "-of", "csv=p=0", "both.mp4"])).unwrap();
+    assert_eq!(starts.trim(), "0.000000", "the picture starts at {starts}");
     // Each track decodes to its side's sound: they differ.
     let left = run("ffmpeg", &[&quiet[..], &["-i", "both.mp4", "-map", "0:a:0", "-f", "f32le", "-"]].concat());
     let right = run("ffmpeg", &[&quiet[..], &["-i", "both.mp4", "-map", "0:a:1", "-f", "f32le", "-"]].concat());

@@ -20,7 +20,8 @@ use crate::shell::Shell;
 use nettai_frontend::game::{GraphicsMode, Loaded, Sound};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
-use nettai_video::{Options, Part, Progress, Sides, Titles, mp4};
+use nettai_platform::dialog::{Filter, Stream};
+use nettai_video::{Encoding, Options, Part, Progress, Sides, Titles};
 use slint::ComponentHandle;
 use std::ops::{ControlFlow, Range};
 use std::path::{Path, PathBuf};
@@ -39,6 +40,14 @@ const FOLDER: &str = "replays.export-folder";
 /// The most of a path the options show (its middle is left out past it).
 const PATH_SHOWN: usize = 42;
 
+/// What the video's file is for, as `Replays` hears it once it is made (`Screen::chosen`).
+pub const VIDEO_FILE: &str = "video";
+
+thread_local! {
+    /// The video's file as it was made, till `Replays` hears of it.
+    static CHOSEN: std::cell::RefCell<Option<std::io::Result<Option<Stream>>>> = const { std::cell::RefCell::new(None) };
+}
+
 /// What the export's thread and the export mode share.
 #[derive(Default)]
 struct Shared {
@@ -46,19 +55,20 @@ struct Shared {
     done: Option<Result<(), nettai_video::Error>>,
 }
 
-/// An export under way. Dropped, it is stopped: the thread is told, and waited for (it removes what it wrote).
+/// An export under way. Dropped, it is stopped: the thread is told, and ends at its next frame, its file let go.
 struct Running {
     stop: Arc<AtomicBool>,
     shared: Arc<Mutex<Shared>>,
-    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+/// What the export's thread and the export mode share, taken as the page's main thread may take a lock.
+fn share(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
+    nettai_platform::thread::lock(shared).unwrap_or_else(|e| e.into_inner())
 }
 
 impl Drop for Running {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
     }
 }
 
@@ -108,6 +118,10 @@ pub fn set_here(range: &Range<u32>, length: u32, end: bool, tick: u32) -> Range<
 
 /// The system's folder for videos.
 fn videos() -> PathBuf {
+    // (In the browser a video is made in the app's files and downloaded: `Shell::saved`.)
+    if cfg!(target_arch = "wasm32") {
+        return PathBuf::from("/videos");
+    }
     let var = |name: &str| std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from);
     let home = if cfg!(target_os = "windows") { var("USERPROFILE") } else { var("HOME") };
     let found = if cfg!(target_os = "macos") {
@@ -440,25 +454,43 @@ impl Export {
         }
     }
 
-    /// Start the export, on a thread of its own.
+    /// EXPORT: the export starts, on a thread of its own, written to its file as it is made: on the desktop at the
+    /// path the export mode says, in the browser where its save dialog says (which a page may open only on a click
+    /// or a key). The file is heard once this call is done (`Replays`' `Screen::chosen`, [`VIDEO_FILE`]).
     fn start(&mut self, shell: &mut Shell) {
         if !self.open_to_change() {
             return;
         }
+        // (A file of that name made since the export mode began isn't written over, unless the player chose it.)
+        self.name(shell);
+        let kind = shell.ui().global::<ReplaysView>().get_video_kind().to_string();
+        nettai_platform::dialog::save_stream_to(Filter { kind: &kind, extensions: &["mp4"] }, &self.to, |chosen| {
+            CHOSEN.with(|kept| *kept.borrow_mut() = Some(chosen));
+            let _ = slint::invoke_from_event_loop(|| crate::with_app(|app| app.chosen(VIDEO_FILE, &[])));
+        });
+    }
+
+    /// The video's file, made (or none chosen, or it couldn't be): the export starts, written to it.
+    pub fn chosen_file(&mut self, shell: &mut Shell) {
+        let Some(chosen) = CHOSEN.with(|kept| kept.borrow_mut().take()) else { return };
+        match chosen {
+            Ok(Some(stream)) if self.open_to_change() => self.begin(shell, stream),
+            Ok(_) => {}
+            Err(why) => {
+                crate::errors::log(&format!("exporting {}", self.replay.display()), &format_args!("{}: {why}", self.to.display()));
+                self.fail(shell, UserError::CantWriteVideo);
+            }
+        }
+    }
+
+    /// The export started, written to `to` as it is made.
+    fn begin(&mut self, shell: &mut Shell, to: Stream) {
         let Some((_, ready)) = shell.ready() else { return };
         let doing = format!("exporting {}", self.replay.display());
         let replay = match crate::replays::read(&self.replay) {
             Ok(replay) => replay,
             Err(why) => return self.fail(shell, UserError::of_replay_read(&doing, &why)),
         };
-        // (A file of that name made since the export mode began isn't written over, unless the player chose it.)
-        self.name(shell);
-        if let Some(folder) = self.to.parent()
-            && let Err(why) = nettai_platform::fs::create_dir_all(folder)
-        {
-            crate::errors::log(&doing, &format_args!("{}: {why}", folder.display()));
-            return self.fail(shell, UserError::CantWriteVideo);
-        }
         // What the thread plays from: the game as the window shows it, shared.
         let game = game_for_thread(shell, &ready, true);
         let sides = if self.both { Sides::Both } else { Sides::One };
@@ -475,19 +507,22 @@ impl Export {
             None => Part::Ticks(self.range.clone()),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
-        let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
-        let (stop, shared, to) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())), self.to.clone());
+        // (The platform's encoder: on the desktop the ffmpeg found here.)
+        let encoding = Encoding::default();
+        let (stop, shared) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())));
         let (stopped, told) = (stop.clone(), shared.clone());
-        let thread = std::thread::Builder::new().name("export".into()).spawn(move || {
-            let result = nettai_video::export_mp4(&game, &replay, &options, &encoding, &to, &mut |progress| {
-                told.lock().unwrap_or_else(|e| e.into_inner()).progress = Some(progress);
+        let work = move || {
+            let mut progress = |progress| {
+                share(&told).progress = Some(progress);
                 if stopped.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
-            });
-            told.lock().unwrap_or_else(|e| e.into_inner()).done = Some(result);
-        });
-        match thread {
-            Ok(thread) => {
-                self.running = Some(Running { stop, shared, thread: Some(thread) });
+            };
+            // (Whole: the file kept. Canceled or failed: let go, nothing of it left.)
+            let result = nettai_video::export(&game, &replay, &options, &encoding, to, &mut progress).map(Stream::finish);
+            share(&told).done = Some(result);
+        };
+        match nettai_platform::thread::spawn("export", work) {
+            Ok(()) => {
+                self.running = Some(Running { stop, shared });
                 self.state = ExportState::Running;
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
@@ -515,7 +550,7 @@ impl Export {
     pub fn frame(&mut self, shell: &mut Shell) {
         let Some(running) = &self.running else { return };
         let (progress, done) = {
-            let mut shared = running.shared.lock().unwrap_or_else(|e| e.into_inner());
+            let mut shared = share(&running.shared);
             (shared.progress.take(), shared.done.take())
         };
         let ui = shell.ui();
@@ -555,7 +590,7 @@ impl Export {
 /// Ask the player where to save the video, in the system's dialog, starting from where it is to go.
 fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     let name = to.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    nettai_platform::dialog::save_path(nettai_platform::dialog::Filter { kind, extensions: &["mp4"] }, &name, Some(to))
+    nettai_platform::dialog::save_path(Filter { kind, extensions: &["mp4"] }, &name, Some(to))
 }
 
 #[cfg(test)]

@@ -1081,6 +1081,15 @@ impl Replays {
 }
 
 impl Screen for Replays {
+    /// The video's file, made as the export's EXPORT asked (in the browser, chosen in its save dialog).
+    fn chosen(&mut self, shell: &mut Shell, purpose: &str, _paths: &[std::path::PathBuf]) {
+        if purpose == export::VIDEO_FILE
+            && let Some(export) = self.export.as_mut()
+        {
+            export.chosen_file(shell);
+        }
+    }
+
     fn main(&self) -> &'static str {
         "list"
     }

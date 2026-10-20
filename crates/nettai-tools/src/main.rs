@@ -573,15 +573,22 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
     // (The chapters "Round N" and the tracks the players' names, in English.)
     let options = Options { scale, view: None, sides, part, titles: Titles::default() };
     let wrote = if let Some(to) = &args.mp4 {
-        nettai_video::write_mp4(&mut viewer, &options, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
+        // (Written as it is made; failed or canceled, removed.)
+        let made = std::fs::File::create(to).map_err(nettai_video::Error::Disk).and_then(|file| {
+            nettai_video::write_mp4(&mut viewer, &options, &nettai_video::Encoding::default(), std::io::BufWriter::with_capacity(1 << 20, file), &mut progress)
+        });
+        if made.is_err() {
+            let _ = std::fs::remove_file(to);
+        }
+        made.map(|_| to.display().to_string())
     } else {
         let to = args.nut.as_deref().expect("a video's stream");
         if to == Path::new("-") {
             let out = std::io::BufWriter::with_capacity(1 << 20, std::io::stdout().lock());
-            nettai_video::write(&mut viewer, &options, out, &mut progress).map(|_| "standard output".to_string())
+            nettai_video::ffmpeg::write_nut(&mut viewer, &options, out, &mut progress).map(|_| "standard output".to_string())
         } else {
             let file = std::fs::File::create(to).unwrap_or_else(|e| fail(format!("can't write {}: {e}", to.display())));
-            let written = nettai_video::write(&mut viewer, &options, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
+            let written = nettai_video::ffmpeg::write_nut(&mut viewer, &options, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
             if written.is_err() {
                 // (No part of a stream is left under the file's name.)
                 let _ = std::fs::remove_file(to);
