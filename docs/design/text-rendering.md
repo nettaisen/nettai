@@ -1498,14 +1498,10 @@ Each character is drawn in Bungee in its glyph's cell, its ink stretched to that
 frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
 cell, each where the picture's was, right-aligned numbers ending where they did.
 
-- The numbers after a chip's name (its damage, the '+' of a bonus and the bonus, the "x2"), in the hand's label under
-  the HUD and in a telop, are set as the font sets them, not a digit a cell (the user: "you should respace it", "but
-  also the numbers should be fixed width"): a word's space after the name's words, their capitals as tall as the
-  name's, each digit the digits' one advance (the widest digit's, so a number's columns line up and it doesn't shift
-  as it changes), a sign its own advance; their colors spread down their height, their shadow the text layer's, half
-  a frame pixel right and down as the name's. Where the name and its numbers would run past where the original's
-  numbers end, the numbers are narrowed alike to end there. The numbers that count in place (the HP box, the
-  enemies', the damage taken, the chip window's) keep a digit a cell.
+- A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
+  a frame pixel right and down as the name's (the original's are both a pixel), and its digits are drawn a pixel
+  narrower than their box, so their strokes are as heavy as the name's (the user: "the damage number and chip names are
+  styled differently in the footer"). The others' rims are a frame pixel all round, as their pictures'.
 - The emotion window's count: its box is the counts' own with the digits taken off (the box around where the counts
   differ filled with the box's color around it; the HUD's box without a count, `count_box`, is another picture), the
   digit fitted to the box the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a
