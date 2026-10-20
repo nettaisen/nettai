@@ -11,7 +11,7 @@
 //! aren't kept.
 //!
 //! Two things more may be on over the picture, each off at first and toggled by its row of the transport's ⋯
-//! menu ([`MenuItem`], which has the sides, the speeds and the export too) or a key
+//! menu ([`MenuItem`], which has the sides, the playback speed and the export too) or a key
 //! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
 //! the console shown's player's row over the other's); and the other console's picture, small in the picture's
 //! corner, presented from the same tick as the one shown (the library's `Viewer::present_view`: the replay is
@@ -21,7 +21,12 @@
 //! Its sound is at the levels Settings has (the shell's `battle_levels`: Music is the replay's music too). And
 //! it stands still while the window isn't drawn (minimized, hidden, covered: the frames the shell's timer runs
 //! then): nothing of a replay has to go on unseen, and the player finds it where they left it.
+//!
+//! While the pointer is over the bar, a preview of the battle at the time under it shows above it
+//! ([`Thumbnails`]: a silent viewer of the same replay on a thread of its own, started at the first hover).
 
+use super::export::game_for_thread;
+use super::thumbnails::{Bucket, Thumbnails};
 use super::{clock, name, played};
 use crate::nav::Key;
 use crate::shell::Shell;
@@ -57,33 +62,22 @@ pub struct Overlays {
     pub inset: bool,
 }
 
-/// What the transport's ⋯ menu holds, in its order (docs/design/app-ui.md §2.95): the two sides' consoles (the one
-/// shown checked), what may be over the picture (each checked while it is on), the four speeds (the one set
-/// checked), and the export.
+/// What the transport's ⋯ menu holds, in its order (docs/design/app-ui.md §2.95, §2.96): the two sides' consoles
+/// (the one shown checked), what may be over the picture (each checked while it is on), the playback speed (the
+/// speed set at the row's right; it opens the speeds' own menu, [`Watching::speed_menu`]), and the export.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
     Side(u8),
     Builds,
     Inputs,
     Inset,
-    Speed(u8),
+    Speed,
     Export,
 }
 
-pub const MENU: [MenuItem; 10] = [
-    MenuItem::Side(0),
-    MenuItem::Side(1),
-    MenuItem::Builds,
-    MenuItem::Inputs,
-    MenuItem::Inset,
-    MenuItem::Speed(0),
-    MenuItem::Speed(1),
-    MenuItem::Speed(2),
-    MenuItem::Speed(3),
-    MenuItem::Export,
-];
+pub const MENU: [MenuItem; 7] = [MenuItem::Side(0), MenuItem::Side(1), MenuItem::Builds, MenuItem::Inputs, MenuItem::Inset, MenuItem::Speed, MenuItem::Export];
 
-/// The speeds as the menu says them.
+/// The speeds as the menus and the badge say them.
 const SPEED_WORDS: [&str; 4] = ["½×", "1×", "2×", "4×"];
 
 /// The other console's picture is a whole multiple of the frame about this part of the shown one's width (a
@@ -206,6 +200,8 @@ pub struct Watching {
     /// When it played to its end, while it is still there (a seek or a step to the end isn't playing to it): the
     /// play queue's next starts a moment after (`Replays::frame`).
     ended: Option<Instant>,
+    /// The bar's previews, from the first hover over it.
+    thumbs: Option<Thumbnails>,
 }
 
 impl Watching {
@@ -215,7 +211,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -230,6 +226,11 @@ impl Watching {
     /// The side whose console is shown.
     pub fn side(&self) -> u8 {
         self.viewer.view()
+    }
+
+    /// The replay's length in ticks.
+    pub fn length(&self) -> u32 {
+        self.viewer.length()
     }
 
     /// The speed, as its place among the four.
@@ -290,7 +291,11 @@ impl Watching {
         self.surface.refresh();
         self.inset.refresh();
         self.held = None;
+        // (The previews are drawn anew: the language or the graphics may have changed under them.)
+        self.thumbs = None;
+        view.set_thumb_shown(false);
         self.show_overlays(&view);
+        self.show_speed(&view);
         let length = self.viewer.length().max(1) as f32;
         let marks: Vec<f32> = self.viewer.rounds().iter().skip(1).map(|&start| start as f32 / length).collect();
         view.set_marks(ModelRc::new(VecModel::from(marks)));
@@ -337,6 +342,13 @@ impl Watching {
     }
 
     // ---- The transport ----------------------------------------------------------------------------------
+
+    /// Go to `tick` and pause there (a handle's place, or a nudge of it: the picture shows the frame it is at).
+    pub fn go_to(&mut self, tick: u32) {
+        self.viewer.set_paused(true);
+        self.drag = None;
+        self.go(tick);
+    }
 
     /// Go to `tick`: at once where the replay is indexed that far, else once it is.
     fn go(&mut self, tick: u32) {
@@ -426,6 +438,12 @@ impl Watching {
         self.queue.clear();
     }
 
+    /// The speed's badge by the play buttons: its sign while it isn't 1×, else nothing.
+    pub fn show_speed(&self, view: &ReplaysView) {
+        let at = self.speed() as usize;
+        view.set_speed(if at == 1 { Default::default() } else { SPEED_WORDS[at].into() });
+    }
+
     /// Show `side`'s console.
     pub fn set_view(&mut self, shell: &mut Shell, side: i32) {
         if self.viewer.set_view(side.clamp(0, 1) as u8) {
@@ -452,8 +470,9 @@ impl Watching {
     }
 
     /// The ⋯ menu's rows ([`MENU`]): each one's words and marks. A group's first has a line over it; BUILDS is dim
-    /// where the match's setups weren't open (`toggle_builds` refuses it).
-    pub fn menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
+    /// where the match's setups weren't open (`toggle_builds` refuses it), EXPORT VIDEO in the export mode; PLAYBACK
+    /// SPEED says the speed set at its right.
+    pub fn menu(&self, view: &ReplaysView, exporting: bool) -> Vec<(String, PickMark)> {
         MENU.iter()
             .map(|&item| {
                 let (word, check, dim) = match item {
@@ -461,24 +480,61 @@ impl Watching {
                     MenuItem::Builds => (view.get_builds_word().to_string(), self.builds, self.sides.is_none()),
                     MenuItem::Inputs => (view.get_inputs_word().to_string(), self.overlays.inputs, false),
                     MenuItem::Inset => (view.get_inset_word().to_string(), self.overlays.inset, false),
-                    MenuItem::Speed(at) => (SPEED_WORDS[at as usize].to_string(), self.speed() == at as i32, false),
-                    MenuItem::Export => (view.get_export_word().to_string(), false, false),
+                    MenuItem::Speed => (view.get_speed_word().to_string(), false, false),
+                    MenuItem::Export => (view.get_export_word().to_string(), false, exporting),
                 };
-                (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed(0) | MenuItem::Export) })
+                let value = if item == MenuItem::Speed { SPEED_WORDS[self.speed() as usize].into() } else { Default::default() };
+                (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed | MenuItem::Export), value })
             })
             .collect()
     }
 
-    /// A row of the ⋯ menu chosen: as its key does (the side: as the side chosen). The export is the screen's
-    /// (`Replays::choose`), which opens its dialog.
+    /// The playback speed's own menu, which its row of the ⋯ menu opens in its place: the four, the one set checked.
+    pub fn speed_menu(&self) -> Vec<(String, PickMark)> {
+        SPEED_WORDS.iter().enumerate().map(|(at, word)| (word.to_string(), PickMark { check: self.speed() == at as i32, ..Default::default() })).collect()
+    }
+
+    /// A row of the ⋯ menu chosen: as its key does (the side: as the side chosen). The speed and the export are the
+    /// screen's (`Replays::choose`): the speeds' menu, the export mode.
     pub fn choose(&mut self, shell: &mut Shell, item: MenuItem) {
         match item {
             MenuItem::Side(side) => self.set_view(shell, side as i32),
             MenuItem::Builds => self.toggle_builds(shell),
             MenuItem::Inputs => self.toggle_inputs(shell),
             MenuItem::Inset => self.toggle_inset(shell),
-            MenuItem::Speed(at) => self.set_speed(at as i32),
-            MenuItem::Export => {}
+            MenuItem::Speed | MenuItem::Export => {}
+        }
+    }
+
+    /// The speed chosen in its menu, at `at` of the four.
+    pub fn choose_speed(&mut self, shell: &Shell, at: i32) {
+        self.set_speed(at);
+        self.show_speed(&shell.ui().global::<ReplaysView>());
+    }
+
+    /// The pointer over the bar at `part` of 10,000 of the replay, or (none) off it: the time there is said, and the
+    /// preview of its second asked for (the thread started at the first).
+    pub fn hover(&mut self, shell: &Shell, part: Option<i32>) {
+        let Some(part) = part else {
+            if let Some(thumbs) = &mut self.thumbs {
+                thumbs.hover(None);
+            }
+            return;
+        };
+        let tick = (self.viewer.length() as u64 * part.clamp(0, 10_000) as u64 / 10_000) as u32;
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        view.set_thumb_time(clock(time_of(tick as u64), true).into());
+        if self.thumbs.is_none() {
+            let Some((_, ready)) = shell.ready() else { return };
+            self.thumbs = Some(Thumbnails::start(game_for_thread(shell, &ready, false), self.path.clone()));
+        }
+        // (At the window's density, as the picture is: a whole multiple of the frame.)
+        let density = ui.window().scale_factor().round().max(1.0) as u32;
+        let bucket = Bucket::of(tick, self.viewer.view(), density);
+        if let Some(thumbs) = &mut self.thumbs {
+            thumbs.hover(Some(bucket));
+            view.set_thumb_shown(thumbs.has(&bucket));
         }
     }
 
@@ -528,10 +584,15 @@ impl Watching {
         view.set_right_build(sheet(left ^ 1));
     }
 
-    /// The bar held at `part` of 10,000 of the replay, or (`done`) let go there. While it is held the picture
-    /// follows in steps: the state the viewer keeps at or before it, which costs no playing.
+    /// The bar held at `part` of 10,000 of the replay, or (`done`) let go there.
     pub fn drag(&mut self, part: i32, done: bool) {
-        let target = (self.viewer.length() as u64 * part.clamp(0, 10_000) as u64 / 10_000) as u32;
+        self.drag_to((self.viewer.length() as u64 * part.clamp(0, 10_000) as u64 / 10_000) as u32, done);
+    }
+
+    /// The bar (or a handle of the export's range) held at `target`, or (`done`) let go there. While it is held the
+    /// picture follows in steps: the state the viewer keeps at or before it, which costs no playing.
+    pub fn drag_to(&mut self, target: u32, done: bool) {
+        let target = target.min(self.viewer.length());
         self.pending = None;
         if done {
             self.drag = None;
@@ -655,6 +716,10 @@ impl Watching {
         let view = ui.global::<ReplaysView>();
         self.show_held(&view);
         self.tell(&view);
+        if let Some(image) = self.thumbs.as_mut().and_then(|t| t.frame(now)) {
+            view.set_thumb(image);
+            view.set_thumb_shown(true);
+        }
         self.report(now, elapsed);
     }
 

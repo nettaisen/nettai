@@ -1,30 +1,29 @@
-//! A replay's export as video (docs/design/app-ui.md §6, "Export"; docs/app.md §16): the dialog's choices, and
-//! the export itself, which is nettai-video's `export_mp4` on a thread of its own: it plays the replay through
-//! a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
+//! A replay's export as video (docs/design/app-ui.md §2.96; docs/app.md §16): the viewer's export mode, its range
+//! and its options, and the export itself, which is nettai-video's `export_mp4` on a thread of its own: it plays the
+//! replay through a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
 //!
-//! The thread tells how far it is and is told to stop through what the two share ([`Shared`]); the dialog
-//! reads it each frame. The file takes its name only once it is whole (the library's `mp4::Encoder`): stopped
-//! or failed, nothing of it is left. What went wrong is said in the dialog's line, in the player's words
+//! The thread tells how far it is and is told to stop through what the two share ([`Shared`]); the export mode
+//! reads it each frame. The file takes its name only once it is whole (the library's `mp4::Encoder`): stopped or
+//! failed, nothing of it is left. What went wrong is said in the options' line, in the player's words
 //! (`UserError::of_export`); the app saves an MP4 and nothing else.
 //!
-//! The part exported is the dialog's Range (docs/design/app-ui.md §2.95): the whole match, a round, or a part of the
-//! player's own, whose Start and End are typed as minutes and seconds or taken from where the viewer is (NOW). The
-//! two always say the range chosen; a change to either makes it the player's own. What is wrong with them is said
-//! under them, and the export waits until it is put right.
+//! The part exported is a range of the replay's ticks, shown on the viewer's bar between two handles: the whole
+//! match at first; a round, or the whole match again, by the Range's list; or any part by the handles (dragged,
+//! nudged by a frame or a second, or set where the viewer is). The range is always whole: its start before its end,
+//! both within the replay ([`moved`], [`set_here`]). One that is no round and not the whole match is the player's
+//! own (Custom), and the Range's list keeps the last such to go back to.
 
 use super::{clock, name, played};
 use crate::errors::UserError;
-use crate::nav::Key;
 use crate::replays::Summary;
 use crate::shell::Shell;
-use nettai_frontend::game::{Loaded, Sound, GraphicsMode};
-use nettai_frontend::player::{tick_at, time_of};
+use nettai_frontend::game::{GraphicsMode, Loaded, Sound};
+use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_video::{Options, Part, Progress, Sides, Titles, mp4};
 use slint::ComponentHandle;
 use std::ops::{ControlFlow, Range};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -37,22 +36,10 @@ const FIRST_SIZE: usize = 1;
 /// Where the folder last exported to is remembered (the settings' `remembered`).
 const FOLDER: &str = "replays.export-folder";
 
-/// The most of a path the dialog shows (its middle is left out past it).
+/// The most of a path the options show (its middle is left out past it).
 const PATH_SHOWN: usize = 42;
 
-/// The most a typed time holds (`12:34`, and some room besides).
-const TIME_LENGTH: usize = 8;
-
-/// What is wrong with a Start or an End: it isn't a time; it is past the replay's end; the start isn't before the
-/// end.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Problem {
-    Form,
-    PastEnd,
-    Order,
-}
-
-/// What the export's thread and the dialog share.
+/// What the export's thread and the export mode share.
 #[derive(Default)]
 struct Shared {
     progress: Option<Progress>,
@@ -75,33 +62,48 @@ impl Drop for Running {
     }
 }
 
-/// The export's dialog, open.
+/// The viewer's export mode.
 pub struct Export {
     /// The replay's file, and what it says of itself.
     replay: PathBuf,
     summary: Summary,
     size: usize,
+    /// The console exported: the viewer's, which it follows.
     side: u8,
     /// Both consoles side by side (`side`'s at the left, its sound the first track, the other's the second), or
     /// `side`'s alone.
     both: bool,
-    /// The part: 0 the whole match, else that round; or, one past the rounds, the player's own (`custom`).
-    part: u32,
-    /// The part of the player's own, its ticks.
-    custom: Range<u32>,
-    /// Start and End: each as typed, and its tick where it is a time. They say the part chosen until changed.
-    times: [String; 2],
-    ticks: [Option<u32>; 2],
-    /// What is wrong with Start (0) or End (1), if anything.
-    problem: Option<(usize, Problem)>,
-    /// Where the viewer was as the dialog opened from it (NOW's), as a tick.
-    now: Option<u32>,
+    /// The ticks exported: the start before the end, both within the replay.
+    range: Range<u32>,
+    /// The last range of the player's own (no round, not the whole match), which the Range's list offers as Custom.
+    custom: Option<Range<u32>>,
     to: PathBuf,
-    /// The player chose the place: it isn't named again as the part changes.
+    /// The player chose the place: it isn't named again as the range changes.
     placed: bool,
     running: Option<Running>,
     state: ExportState,
     error: Option<UserError>,
+}
+
+/// `range` with its start (or, `end`, its end) moved to `tick` and held there: the start a tick before the end at
+/// least, both within the replay's `length` ticks. (A handle dragged or nudged stops at the other.)
+pub fn moved(range: &Range<u32>, length: u32, end: bool, tick: u32) -> Range<u32> {
+    let length = length.max(1);
+    let (start, stop) = (range.start.min(length - 1), range.end.clamp(1, length));
+    if end { start..tick.clamp(start + 1, length) } else { tick.min(stop - 1)..stop }
+}
+
+/// `range` with its start (or, `end`, its end) set at `tick`, where the viewer is (SET START HERE, SET END HERE):
+/// where that passes the other end, the other end goes to the replay's edge, its end (or its start).
+pub fn set_here(range: &Range<u32>, length: u32, end: bool, tick: u32) -> Range<u32> {
+    let length = length.max(1);
+    if end {
+        let tick = tick.clamp(1, length);
+        (if range.start < tick { range.start } else { 0 })..tick
+    } else {
+        let tick = tick.min(length - 1);
+        tick..(if range.end > tick { range.end.min(length) } else { length })
+    }
 }
 
 /// The system's folder for videos.
@@ -124,7 +126,7 @@ fn file_safe(text: &str) -> String {
     kept.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// A path as the dialog shows it: from the player's home where it is in it, its middle left out where it is
+/// A path as the options show it: from the player's home where it is in it, its middle left out where it is
 /// long; on a phone, whose box is short, the file's name alone.
 fn shown(path: &Path, phone: bool) -> String {
     if phone {
@@ -140,45 +142,68 @@ fn shown(path: &Path, phone: bool) -> String {
     chars[..head].iter().chain(['…'].iter()).chain(chars[chars.len() - tail..].iter()).collect()
 }
 
+/// The game as the window shows it (the language, the graphics mode, the text as the settings have it), for a thread
+/// of its own to play a replay on: the export's with the game's own sound, the bar's previews' with none.
+pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) -> Loaded {
+    let mode = shell.settings.graphics();
+    Loaded {
+        found: ready.loaded.found.clone(),
+        game: ready.loaded.game.clone(),
+        graphics: ready.graphics(shell.lang),
+        mode,
+        reduce_motion: shell.reduces_motion(),
+        font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced),
+        // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
+        sound: if sound {
+            crate::music::sound(&shell.games, ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() })
+        } else {
+            None
+        },
+    }
+}
+
 impl Export {
-    /// Open the dialog for the replay at `replay`, shown from `side`, the whole match chosen: from the viewer, with
-    /// `now`, the tick it is at, which NOW takes.
-    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, now: Option<u32>) -> Export {
+    /// Begin the export mode for the replay at `replay`, shown from `side`, the whole match chosen.
+    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8) -> Export {
         let mut export = Export {
             replay: replay.to_path_buf(),
             summary: summary.clone(),
             size: FIRST_SIZE,
             side: side.min(1),
             both: false,
-            part: 0,
-            custom: 0..summary.ticks,
-            times: Default::default(),
-            ticks: [None; 2],
-            problem: None,
-            now: now.map(|t| t.min(summary.ticks)),
+            range: 0..summary.ticks.max(1),
+            custom: None,
             to: PathBuf::new(),
             placed: false,
             running: None,
             state: ExportState::Idle,
             error: None,
         };
-        export.fill_times();
         export.name(shell);
         export.show(shell);
         shell.ui().global::<ReplaysView>().set_exporting(true);
-        shell.nav.open("export.", Key::new("export.go", 0));
         export
     }
 
-    /// Close it: an export under way is stopped.
+    /// End the export mode: an export under way is stopped.
     pub fn close(self, shell: &mut Shell) {
-        shell.nav.close("export.");
         shell.ui().global::<ReplaysView>().set_exporting(false);
     }
 
     /// Whether an export is under way.
     pub fn running(&self) -> bool {
         self.running.is_some()
+    }
+
+    /// The replay's ticks.
+    fn length(&self) -> u32 {
+        self.summary.ticks.max(1)
+    }
+
+    /// The console exported follows the viewer's.
+    pub fn set_side(&mut self, shell: &mut Shell, side: u8) {
+        self.side = side.min(1);
+        self.show(shell);
     }
 
     /// The rounds there are to choose: each where there is more than one.
@@ -189,63 +214,83 @@ impl Export {
         }
     }
 
-    /// The last part: the player's own, after the rounds.
-    fn last_part(&self) -> u32 {
-        self.parts() + 1
-    }
-
-    /// A part's ticks.
-    fn range(&self, part: u32) -> Range<u32> {
+    /// A part's ticks: 0 the whole match, else that round's.
+    fn range_of(&self, part: u32) -> Range<u32> {
         let rounds = &self.summary.rounds;
         match part {
-            0 => 0..self.summary.ticks,
-            n if n > self.parts() => self.custom.clone(),
-            n => rounds[n as usize - 1]..rounds.get(n as usize).copied().unwrap_or(self.summary.ticks),
+            0 => 0..self.length(),
+            n => rounds[n as usize - 1]..rounds.get(n as usize).copied().unwrap_or(self.length()),
         }
     }
 
-    fn part_label(&self, view: &ReplaysView, part: u32) -> String {
-        let length = clock(time_of(self.range(part).len() as u64), true);
-        match part {
-            0 => view.invoke_whole(length.into()).into(),
-            n if n > self.parts() => view.invoke_custom_part(length.into()).into(),
-            n => view.invoke_round_part(n as i32, length.into()).into(),
+    /// The part the range is (none: the player's own).
+    fn part(&self) -> Option<u32> {
+        (0..=self.parts()).find(|&part| self.range_of(part) == self.range)
+    }
+
+    /// The Range's list: the whole match, each round where there is more than one, and the last range of the player's
+    /// own where there is one.
+    fn choices(&self) -> Vec<Range<u32>> {
+        (0..=self.parts()).map(|part| self.range_of(part)).chain(self.custom.clone()).collect()
+    }
+
+    /// A range as the Range's list says it, with its length.
+    fn label(&self, view: &ReplaysView, range: &Range<u32>) -> String {
+        let length = clock(time_of(range.len() as u64), true);
+        match (0..=self.parts()).find(|&part| self.range_of(part) == *range) {
+            Some(0) => view.invoke_whole(length.into()).into(),
+            Some(n) => view.invoke_round_part(n as i32, length.into()).into(),
+            None => view.invoke_custom_part(length.into()).into(),
         }
     }
 
-    /// The round a part starts in, from 1.
-    fn first_round(&self, part: u32) -> u32 {
-        let start = self.range(part).start;
-        self.summary.rounds.iter().filter(|&&r| r <= start).count().max(1) as u32
+    /// The round the range starts in, from 1.
+    fn first_round(&self) -> u32 {
+        self.summary.rounds.iter().filter(|&&r| r <= self.range.start).count().max(1) as u32
     }
 
-    /// Start and End as the part chosen says them, nothing wrong.
-    fn fill_times(&mut self) {
-        let range = self.range(self.part);
-        self.ticks = [Some(range.start), Some(range.end)];
-        self.times = [range.start, range.end].map(|t| clock(time_of(t as u64), false));
-        self.problem = None;
+    /// Where a handle is: the range's start, or (`end`) its end.
+    pub fn handle(&self, end: bool) -> u32 {
+        if end { self.range.end } else { self.range.start }
     }
 
-    /// Start and End looked at: what is wrong with them, Start's first; else the part they say, which is the player's
-    /// own where it isn't the one chosen.
-    fn check_times(&mut self) {
-        let length = self.summary.ticks;
-        let problem = match self.ticks {
-            [None, _] => Some((0, Problem::Form)),
-            [_, None] => Some((1, Problem::Form)),
-            [Some(start), _] if start >= length => Some((0, Problem::PastEnd)),
-            [_, Some(end)] if end > length => Some((1, Problem::PastEnd)),
-            [Some(start), Some(end)] if start >= end => Some((1, Problem::Order)),
-            _ => None,
-        };
-        self.problem = problem;
-        if let ([Some(start), Some(end)], None) = (self.ticks, problem)
-            && self.range(self.part) != (start..end)
-        {
-            self.custom = start..end;
-            self.part = self.last_part();
+    /// A handle dragged or nudged to `tick`, held by the other and the replay's ends: where it is then (none while it
+    /// exports, when the range can't change).
+    pub fn drag(&mut self, shell: &mut Shell, end: bool, tick: u32) -> Option<u32> {
+        let range = moved(&self.range, self.length(), end, tick);
+        self.set_range(shell, range).then(|| self.handle(end))
+    }
+
+    /// A handle nudged by `by` ticks (refused, and heard so, while it exports).
+    pub fn nudge(&mut self, shell: &mut Shell, end: bool, by: i32) -> Option<u32> {
+        let tick = self.handle(end).saturating_add_signed(by);
+        let to = self.drag(shell, end, tick);
+        if to.is_none() {
+            shell.sound.play(crate::sound::Cue::Refused);
         }
+        to
+    }
+
+    /// A handle set at `tick`, where the viewer is (SET START HERE, SET END HERE): the other goes to the replay's
+    /// edge where this one would pass it.
+    pub fn here(&mut self, shell: &mut Shell, end: bool, tick: u32) -> bool {
+        let range = set_here(&self.range, self.length(), end, tick);
+        self.set_range(shell, range)
+    }
+
+    /// The range made `range` (refused while it exports, silently: a drag asks at every move): the player's own, if it
+    /// is no round and not the whole match.
+    fn set_range(&mut self, shell: &mut Shell, range: Range<u32>) -> bool {
+        if !self.open_to_change() {
+            return false;
+        }
+        self.range = range;
+        if self.part().is_none() {
+            self.custom = Some(self.range.clone());
+        }
+        self.name(shell);
+        self.show(shell);
+        true
     }
 
     /// A size as the video's pixels and the multiple of the frame: with both sides, twice as wide.
@@ -265,12 +310,14 @@ impl Export {
         let folder = shell.settings.remembered.get(FOLDER).map(PathBuf::from).unwrap_or_else(|| videos().join("nettai"));
         let info = &self.summary.info;
         let mut stem = file_safe(&format!("{} {}", played(&view, info.when).file, name(&view, info, info.side ^ 1)));
-        if self.part > self.parts() {
-            // (The part's start and end, as the bar's clock says them, with dots: a colon is no file's.)
-            let at = |tick: u32| clock(time_of(tick as u64), true).replace(':', ".");
-            stem.push_str(&format!(" part {}–{}", at(self.custom.start), at(self.custom.end)));
-        } else if self.part > 0 {
-            stem.push_str(&format!(" round {}", self.part));
+        match self.part() {
+            Some(0) => {}
+            Some(round) => stem.push_str(&format!(" round {round}")),
+            None => {
+                // (The range's start and end, as the bar's clock says them, with dots: a colon is no file's.)
+                let at = |tick: u32| clock(time_of(tick as u64), true).replace(':', ".");
+                stem.push_str(&format!(" part {}–{}", at(self.range.start), at(self.range.end)));
+            }
         }
         if self.both {
             stem.push_str(" both sides");
@@ -278,25 +325,19 @@ impl Export {
         self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !p.exists()).expect("some number is free");
     }
 
-    /// Set the view from the dialog's state.
+    /// Set the view from the export mode's state.
     pub fn show(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
         view.set_export_size(Export::size_label(SIZES[self.size], self.both).into());
         view.set_export_view(self.side as i32);
         view.set_export_sides(self.both as i32);
-        view.set_export_part(self.part_label(&view, self.part).into());
-        view.set_export_start(self.times[0].as_str().into());
-        view.set_export_end(self.times[1].as_str().into());
-        view.set_export_now(self.now.is_some());
-        view.set_export_bad(self.problem.map_or(-1, |(at, _)| at as i32));
-        let length: slint::SharedString = clock(time_of(self.summary.ticks as u64), false).into();
-        view.set_export_problem(match self.problem {
-            None => Default::default(),
-            Some((_, Problem::Form)) => view.get_time_form(),
-            Some((_, Problem::PastEnd)) => view.invoke_past_end(length),
-            Some((_, Problem::Order)) => view.get_time_order(),
-        });
+        view.set_export_part(self.label(&view, &self.range).into());
+        let at = |tick: u32| clock(time_of(tick as u64), true);
+        view.set_export_range(format!("{}–{}", at(self.range.start), at(self.range.end)).into());
+        let length = self.length() as f32;
+        view.set_range_start(self.range.start as f32 / length);
+        view.set_range_end(self.range.end as f32 / length);
         view.set_export_path(shown(&self.to, shell.scale.phone).into());
         view.set_export_state(self.state);
         view.set_export_error(self.error.as_ref().map(|e| e.line(&ui)).unwrap_or_default().into());
@@ -316,11 +357,11 @@ impl Export {
         true
     }
 
-    fn set_part(&mut self, shell: &mut Shell, part: u32) {
-        self.part = part.min(self.last_part());
-        self.fill_times();
-        self.name(shell);
-        self.show(shell);
+    /// The Range's choice at `at` (the whole match, a round, the last of the player's own).
+    fn set_choice(&mut self, shell: &mut Shell, at: usize) {
+        let choices = self.choices();
+        let range = choices[at.min(choices.len() - 1)].clone();
+        self.set_range(shell, range);
     }
 
     /// Both consoles side by side, or the view's alone (the file's name says which).
@@ -330,7 +371,7 @@ impl Export {
         self.show(shell);
     }
 
-    /// Enter or a click on one of its controls (its name after `export.`). True: the dialog is to close.
+    /// Enter or a click on one of its controls (its name after `export.`). True: the export mode is to end.
     pub fn activate(&mut self, shell: &mut Shell, what: &str) -> bool {
         match what {
             "cancel" => return self.back(shell),
@@ -339,26 +380,12 @@ impl Export {
             "part" if self.open_to_change() => {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
-                let options = (0..=self.last_part()).map(|part| self.part_label(&view, part)).collect();
-                shell.pick("export.part", 0, options, self.part as usize);
-            }
-            "view" if self.open_to_change() => {
-                self.side ^= 1;
-                self.show(shell);
+                let choices = self.choices();
+                let chosen = choices.iter().position(|r| *r == self.range).unwrap_or(0);
+                let options = choices.iter().map(|range| self.label(&view, range)).collect();
+                shell.pick("export.part", 0, options, chosen);
             }
             "sides" if self.open_to_change() => self.set_both(shell, !self.both),
-            // (NOW: where the viewer is, Start's or End's; from the list there is none.)
-            "start-now" | "end-now" if self.open_to_change() => match self.now {
-                Some(now) => {
-                    let at = (what == "end-now") as usize;
-                    self.ticks[at] = Some(now);
-                    self.times[at] = clock(time_of(now as u64), false);
-                    self.check_times();
-                    self.name(shell);
-                    self.show(shell);
-                }
-                None => shell.sound.play(crate::sound::Cue::Refused),
-            },
             "path" if self.open_to_change() => {
                 let kind = shell.ui().global::<ReplaysView>().get_video_kind();
                 if let Some(mut to) = choose(&kind, &self.to) {
@@ -374,16 +401,14 @@ impl Export {
         false
     }
 
-    /// Left or Right on one of its controls.
+    /// Left or Right on one of its settings.
     pub fn step(&mut self, shell: &mut Shell, what: &str, by: i32) {
         if !self.open_to_change() {
             return;
         }
         match what {
             "size" => self.size = (self.size as i32 + by).clamp(0, SIZES.len() as i32 - 1) as usize,
-            "view" => self.side = (by > 0) as u8,
             "sides" => return self.set_both(shell, by > 0),
-            "part" => return self.set_part(shell, (self.part as i32 + by).clamp(0, self.last_part() as i32) as u32),
             _ => {}
         }
         self.show(shell);
@@ -396,38 +421,15 @@ impl Export {
         }
         match what {
             "size" => self.size = choice.clamp(0, SIZES.len() as i32 - 1) as usize,
-            "view" => self.side = choice.clamp(0, 1) as u8,
             "sides" => return self.set_both(shell, choice > 0),
-            "part" => return self.set_part(shell, choice.max(0) as u32),
+            "part" => return self.set_choice(shell, choice.max(0) as usize),
             _ => {}
         }
         self.show(shell);
     }
 
-    /// Start or End typed in (`done`: the edit ended, and what it holds is looked at).
-    pub fn edit(&mut self, shell: &mut Shell, what: &str, text: &str, done: bool) {
-        let at = match what {
-            "start" => 0,
-            "end" => 1,
-            _ => return,
-        };
-        if !self.open_to_change() {
-            return;
-        }
-        self.times[at] = text.chars().filter(|c| !c.is_control()).take(TIME_LENGTH).collect();
-        if done {
-            self.ticks[at] = parse_time(&self.times[at]).map(|t| tick_at(t) as u32);
-            if let Some(tick) = self.ticks[at] {
-                self.times[at] = clock(time_of(tick as u64), false);
-            }
-            self.check_times();
-            self.name(shell);
-        }
-        self.show(shell);
-    }
-
-    /// Esc, or CANCEL: an export under way is stopped (the dialog stays, to export again); else true, and the
-    /// dialog is to close.
+    /// Esc, B or CANCEL: an export under way is stopped (the export mode stays, to export again); else true, and the
+    /// export mode is to end.
     pub fn back(&mut self, _shell: &mut Shell) -> bool {
         match &self.running {
             Some(running) => {
@@ -443,19 +445,13 @@ impl Export {
         if !self.open_to_change() {
             return;
         }
-        // (Start or End not put right: the export waits, the field taken.)
-        if let Some((at, _)) = self.problem {
-            shell.sound.play(crate::sound::Cue::Refused);
-            self.show(shell);
-            return shell.nav.focus(if at == 0 { "export.start" } else { "export.end" }, 0);
-        }
         let Some((_, ready)) = shell.ready() else { return };
         let doing = format!("exporting {}", self.replay.display());
         let replay = match crate::replays::read(&self.replay) {
             Ok(replay) => replay,
             Err(why) => return self.fail(shell, UserError::of_replay_read(&doing, &why)),
         };
-        // (A file of that name made since the dialog opened isn't written over, unless the player chose it.)
+        // (A file of that name made since the export mode began isn't written over, unless the player chose it.)
         self.name(shell);
         if let Some(folder) = self.to.parent()
             && let Err(why) = std::fs::create_dir_all(folder)
@@ -463,18 +459,8 @@ impl Export {
             crate::errors::log(&doing, &format_args!("{}: {why}", folder.display()));
             return self.fail(shell, UserError::CantWriteVideo);
         }
-        // What the thread plays from: the game as the window shows it (the language, the graphics mode), shared.
-        let mode = shell.settings.graphics();
-        let game = Loaded {
-            found: ready.loaded.found.clone(),
-            game: ready.loaded.game.clone(),
-            graphics: ready.graphics(shell.lang),
-            mode,
-            reduce_motion: shell.reduces_motion(),
-            font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced),
-            // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
-            sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
-        };
+        // What the thread plays from: the game as the window shows it, shared.
+        let game = game_for_thread(shell, &ready, true);
         let sides = if self.both { Sides::Both } else { Sides::One };
         // The chapters ("Round 1"...) and the sound's tracks (each side's player) in the words the window shows.
         let titles = {
@@ -483,10 +469,10 @@ impl Export {
             let rounds = (1..=self.summary.rounds.len() as i32).map(|n| view.invoke_chapter(n).into()).collect();
             Titles { rounds, sides: [0, 1].map(|side| name(&view, &self.summary.info, side)) }
         };
-        let part = match self.part {
-            0 => Part::Whole,
-            n if n > self.parts() => Part::Ticks(self.custom.clone()),
-            n => Part::Round(n),
+        let part = match self.part() {
+            Some(0) => Part::Whole,
+            Some(round) => Part::Round(round),
+            None => Part::Ticks(self.range.clone()),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
         let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
@@ -506,7 +492,7 @@ impl Export {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
                 view.set_export_progress(0.0);
-                view.set_export_round(self.first_round(self.part) as i32);
+                view.set_export_round(self.first_round() as i32);
                 view.set_export_rounds(self.summary.rounds.len() as i32);
                 self.show(shell);
                 shell.nav.focus("export.cancel", 0);
@@ -566,20 +552,6 @@ impl Export {
     }
 }
 
-/// A time as typed: minutes and seconds (`1:05`), or seconds alone (`65`). None: it isn't one.
-fn parse_time(text: &str) -> Option<Duration> {
-    let text = text.trim();
-    let number = |part: &str| -> Option<u64> { (!part.is_empty() && part.len() <= 4 && part.bytes().all(|b| b.is_ascii_digit())).then(|| part.parse().ok()).flatten() };
-    let seconds = match text.split_once(':') {
-        Some((minutes, seconds)) => {
-            let seconds = number(seconds).filter(|&s| s < 60 && seconds.len() <= 2)?;
-            number(minutes)? * 60 + seconds
-        }
-        None => number(text)?,
-    };
-    Some(Duration::from_secs(seconds))
-}
-
 /// Ask the player where to save the video, in the system's dialog, starting from where it is to go.
 fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -623,15 +595,59 @@ mod tests {
         assert_eq!(shown(path, true), "2026-10-11 someone round 2.mp4");
     }
 
-    /// A time is typed as minutes and seconds, or as seconds alone; anything else isn't one.
+    /// A handle dragged or nudged is held: the start stays a tick before the end at least, and both stay within the
+    /// replay, however far it is taken.
     #[test]
-    fn a_time_is_minutes_and_seconds() {
-        assert_eq!(parse_time("0:41"), Some(Duration::from_secs(41)));
-        assert_eq!(parse_time(" 12:05 "), Some(Duration::from_secs(725)));
-        assert_eq!(parse_time("65"), Some(Duration::from_secs(65)));
-        assert_eq!(parse_time("1:5"), Some(Duration::from_secs(65)));
-        for bad in ["", ":", "1:", ":30", "1:60", "1:234", "a:10", "1:2:3", "-1", "1.5"] {
-            assert_eq!(parse_time(bad), None, "{bad}");
+    fn a_handle_is_held_by_the_other_and_the_ends() {
+        let length = 1000;
+        let range = 100..500;
+        // Within: where it is taken.
+        assert_eq!(moved(&range, length, false, 250), 250..500);
+        assert_eq!(moved(&range, length, true, 750), 100..750);
+        // Past the other: a tick before it, or after.
+        assert_eq!(moved(&range, length, false, 500), 499..500);
+        assert_eq!(moved(&range, length, false, 900), 499..500);
+        assert_eq!(moved(&range, length, true, 100), 100..101);
+        assert_eq!(moved(&range, length, true, 0), 100..101);
+        // Past the replay's ends: at them.
+        assert_eq!(moved(&range, length, true, 5000), 100..1000);
+        assert_eq!(moved(&range, length, false, 0), 0..500);
+        // (A range already at an end, nudged on: as it was.)
+        assert_eq!(moved(&(0..1000), length, true, 1001), 0..1000);
+        assert_eq!(moved(&(999..1000), length, false, 1000), 999..1000);
+        // (Nothing makes it empty or reversed, whatever is asked.)
+        for (start, end) in [(0, 1), (0, 1000), (998, 999), (999, 1000), (500, 501)] {
+            for tick in [0, 1, 499, 500, 501, 999, 1000, u32::MAX] {
+                for end_moved in [false, true] {
+                    let r = moved(&(start..end), length, end_moved, tick);
+                    assert!(r.start < r.end && r.end <= length, "{start}..{end}, {} to {tick}: {r:?}", if end_moved { "end" } else { "start" });
+                }
+            }
+        }
+    }
+
+    /// SET START HERE and SET END HERE put the handle where the viewer is; where that passes the other handle, the
+    /// other goes to the replay's edge, so the range is still whole and holds the time set.
+    #[test]
+    fn here_moves_the_other_handle_aside() {
+        let length = 1000;
+        let range = 100..500;
+        assert_eq!(set_here(&range, length, false, 300), 300..500);
+        assert_eq!(set_here(&range, length, true, 300), 100..300);
+        // Past the end: the end goes to the replay's.
+        assert_eq!(set_here(&range, length, false, 700), 700..1000);
+        assert_eq!(set_here(&range, length, false, 500), 500..1000);
+        // Before the start: the start goes to the replay's.
+        assert_eq!(set_here(&range, length, true, 50), 0..50);
+        assert_eq!(set_here(&range, length, true, 100), 0..100);
+        // At the replay's very ends: a tick from them.
+        assert_eq!(set_here(&range, length, false, 1000), 999..1000);
+        assert_eq!(set_here(&range, length, true, 0), 0..1);
+        for tick in [0, 1, 500, 999, 1000, u32::MAX] {
+            for end in [false, true] {
+                let r = set_here(&range, length, end, tick);
+                assert!(r.start < r.end && r.end <= length, "{tick}: {r:?}");
+            }
         }
     }
 

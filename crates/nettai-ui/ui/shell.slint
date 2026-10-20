@@ -52,11 +52,13 @@ export struct Hint {
 
 // A menu row's marks (`Shell.picker-marks`: the replay viewer's ⋯): `check`, a check at its right (a switch that
 // is on, or the one chosen of a set); `dim`, it can't be chosen now (the app refuses it, the menu staying open);
-// `line`, a line over it, the first of a group.
+// `line`, a line over it, the first of a group; `value`, what a row that opens a choice of its own has chosen, at its
+// right in the muted color (the viewer's PLAYBACK SPEED: "1×").
 export struct PickMark {
     check: bool,
     dim: bool,
     line: bool,
+    value: string,
 }
 
 export struct DialogButton {
@@ -1489,13 +1491,25 @@ component PickRow inherits Rectangle {
 
     Value {
         x: 12px;
-        width: parent.width - (root.mark.check ? 48px : 24px);
+        width: parent.width - (root.mark.check ? 48px : root.mark.value != "" ? 72px : 24px);
         text: root.text;
         color: root.mark.dim ? Theme.dim : root.danger ? Theme.bad : Theme.text;
         font-family: root.menu ? Theme.display : Theme.body;
         font-size: root.menu ? 13px : 14px;
         font-weight: root.menu ? Theme.display-semibold : 400;
         letter-spacing: root.menu ? Theme.button-tracking : 0px;
+    }
+
+    Text {
+        x: parent.width - 12px - self.width;
+        width: 56px;
+        visible: root.mark.value != "";
+        text: root.mark.value;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 13px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
     }
 
     // (A check: drawn, as no font has to have one.)
