@@ -1136,40 +1136,39 @@ menu, so no press is timed then.
 
 ## 6. The web
 
-What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
-(crates/nettai-luau/README.md; fetched from https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-34,
-`wasi-sdk-34.0-arm64-macos.tar.gz` on an Apple machine, and `WASI_SDK_PATH` set to where it is unpacked):
+The app runs in a browser (Chromium: the folder dialog is `showDirectoryPicker`): crates/nettai-web is the module
+the page loads and the page itself (web/index.html). `bash crates/nettai-web/build.sh` builds it into
+target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wasm-bindgen version, WASI SDK 34 at
+`$WASI_SDK_PATH`), and `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
+isolated (COOP and COEP), which a page with threads must be.
 
-- **The engine type-checks.** With the SDK and `-Zbuild-std=std,panic_unwind`, nettai-frontend type-checks for
-  the target, and with it nettai-battle, nettai-luau, nettai-content, nettai-render, nettai-match,
-  nettai-netplay, nettai-replay and nettai-audio. So do nettai-rtc and nettai-extract's library.
-- **The app doesn't build yet; winit's web backend is the blocker.** Luau's errors are C++ exceptions, so the
-  target is built with `panic=unwind` (`.cargo/config.toml`). Under `panic=unwind` with its `std` feature,
-  wasm-bindgen requires every `Closure` to be `UnwindSafe`, and winit 0.30's web backend (Slint's) has closures
-  that aren't (`Rc<RefCell<…>>` captures).
-  - Ways through:
-    - patch winit (wrap its closures in `AssertUnwindSafe`; about a dozen sites);
-    - wait for a winit or Slint that does;
-    - run Luau out of the UI's module, which the battle's synchronous calls into Luau rule out.
-- **What it needs once it builds:**
-  - **Time and threads.** `std::time::Instant` panics on this target, so the app's clock must use `web-time`
-    (nettai-rtc does already). `std::thread::spawn` panics too: a game's parts and a language's graphics must be
-    read in steps on the event loop (the library's `game::Loading` steps), or in a worker.
-  - **Files.** The content (Luau modules) must be embedded or fetched; nettai-luau already takes modules from the
-    host (`Pack::new`/`Pack::of`), but nettai-content's loaders read paths. The packs can't be served (they come
-    from the user's ROMs). The user brings them: a dropped pack folder kept in IndexedDB, or their ROMs extracted
-    in the browser (nettai-extract's library builds for wasm32, and `extract` works in memory). Replays go to
-    IndexedDB, with download and upload.
-  - **Sound.** cpal's `wasm-bindgen` feature (WebAudio), started on the first click as browsers require.
-  - **Gamepads.** gamepad-facade's web backend is the browser's Gamepad API; the app's side is the same.
-  - **Netplay** is nettai-rtc on the web (the browser's `RTCPeerConnection`, through datachannel-facade).
-  - **Rendering.** Slint's femtovg on WebGL2, which calls the rendering notifier, so the clock carries over.
-- **IME on the web.** Slint's canvas can't host the browser's IME, so a text field gets a small HTML `<input>`
-  laid over the canvas while it is edited: the field's edit (§11) hands the host its rectangle and its text; the
-  host places an absolutely positioned `<input>` there, in the field's face and size, its border and background
-  transparent, so the Slint field stays the one that's seen; its `input` and `compositionend` events hand the
-  value back; Enter, Tab, Esc, the arrows up and down, and blur end it. On the desktop nothing is laid over and
-  the Slint field takes the keys. The overlay isn't built.
+- **Luau on longjmp.** Slint's and winit's web backends rule out `-C panic=unwind` (wasm-bindgen then asks every
+  closure to be `UnwindSafe`, and winit has no `run_app` with Rust's `exception-handling` feature), so Luau is built
+  with `LUA_USE_LONGJMP` (Wasm exception handling's setjmp/longjmp, in C alone), and the module is `panic=abort`:
+  a panic in the browser ends the page's module (said on the console: console_error_panic_hook).
+- **Threads** are Web Workers on one shared memory (the build's atomics; Luau takes the SDK's threads build):
+  `nettai_thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
+  stack. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
+  is taken through `nettai_thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
+  queue's and the shapes' cache's, each held for moments.
+- **Files** are nettai-fs's: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
+  page puts the data folder (`/data`: settings, builds, replays, packs) in it from the origin private file system
+  before the app starts, and writes back what changes, a few times a second: side by side, a pack's stamp last (a
+  page closed partway leaves no pack that looks whole), and nothing in a dot folder (`packs/.new`). The content
+  (`/content`) is one archive the page fetches (content.tar).
+- **The Legacy Collection.** CHOOSE FOLDER opens the browser's folder dialog; of the folder chosen (the install's
+  own, its `exe` or its `exe/data`) the per-game archives are read into `/legacy-collection`, and extracted from as
+  on the desktop. The archives are the page's only while it is open, so every game the collection has is
+  extracted at once, not as it is first loaded. Measured in headless Chrome with an install-shaped folder of the
+  twelve ROMs (2026-10-20): BN6 2.0 s, BN4 3.0 s, BN5 1.9 s, on a worker, the window live; the three packs (3,414
+  files) kept in about 11 s; a reload plays from them without the folder.
+- **Sound** is cpal 0.18's AudioWorklet on the shared memory, started again on each click or key (a page's sound
+  starts only then). **Time** is web-time's. The log is the console as well (console_log).
+- **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, saved with `showSaveFilePicker`); the
+  picture's texture (the battle's picture is drawn as an image, not into WebGL directly); the clipboard; opening a
+  save or a replay from a file (`choose_files`); direct links (the browser has no sockets: netplay is WebRTC);
+  IME over the canvas; remembering the collection's folder (its handle kept in IndexedDB); a smaller module
+  (49 MB before wasm-opt and compression).
 
 ## 7. Android and iOS
 
