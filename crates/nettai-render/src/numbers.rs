@@ -158,39 +158,51 @@ impl NumberSet {
     }
 }
 
-/// A character's advance in the numbers' font, over its capitals' height.
-fn advance(c: char) -> f32 {
+/// A glyph of the numbers' font's ink box, in font units: left, bottom,
+/// right, top (none: no ink).
+fn ink_box(glyph: u16) -> Option<[f32; 4]> {
     let f = digits_font().font();
-    let co = coords();
-    let cap = f.metrics(&co).cap_height.max(1.0);
-    f.glyph_metrics(&co).advance_width(f.charmap().map(c)) / cap
-}
-
-/// A character's ink's width and height in the numbers' font, over its
-/// capitals' height (a sign's box is its ink's height: `Fitted`).
-fn ink(c: char) -> (f32, f32) {
-    let f = digits_font().font();
-    let cap = f.metrics(&coords()).cap_height.max(1.0);
     let mut ctx = swash::scale::ScaleContext::new();
-    let mut scaler = ctx.builder(f).variations(Face::Digits.axes().iter().copied()).build();
-    scaler.scale_outline(f.charmap().map(c)).map_or((0.0, 1.0), |o| {
+    let mut scaler = ctx.builder(f).size(f.metrics(&coords()).units_per_em as f32).variations(Face::Digits.axes().iter().copied()).build();
+    scaler.scale_outline(glyph).map(|o| {
         let b = o.bounds();
-        ((b.max.x - b.min.x) / cap, ((b.max.y - b.min.y) / cap).max(1e-3))
+        [b.min.x, b.min.y, b.max.x, b.max.y]
     })
 }
 
-/// The advance every digit takes, over the capitals' height: the widest
-/// digit's, so a number's digits stand in columns and it doesn't shift as
-/// it changes.
-fn digit_advance() -> f32 {
-    static ADVANCE: std::sync::LazyLock<f32> = std::sync::LazyLock::new(|| ('0'..='9').map(advance).fold(0.0, f32::max));
-    *ADVANCE
+/// Whether the numbers' font has tabular figures (`tnum`): Teko hasn't,
+/// and its digits' advances differ, so a digit takes the widest digit's
+/// advance, its glyph centered in it, as a font's tabular figures are.
+fn has_tnum() -> bool {
+    static HAS: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| digits_font().font().features().any(|f| f.tag() == swash::tag_from_bytes(b"tnum")));
+    *HAS
 }
 
-/// The clear space either side of a sign ('+', the "x" of "x2"), over the
-/// digits' height beside it: more than its own advance leaves, so it never
-/// touches a digit.
-const SIGN_SPACE: f32 = 0.3;
+/// `text` shaped in the numbers' font (kerned, tabular where the font has
+/// it), in font units: each glyph's character, glyph, offset and advance.
+fn shaped(text: &str) -> Vec<(char, u16, f32, f32)> {
+    let f = digits_font().font();
+    let upem = f.metrics(&coords()).units_per_em as f32;
+    let mut ctx = swash::shape::ShapeContext::new();
+    let mut shaper = ctx.builder(f).size(upem).variations(Face::Digits.axes().iter().copied()).features([("kern", 1u16), ("tnum", 1)]).build();
+    shaper.add_str(text);
+    let chars: Vec<char> = text.chars().collect();
+    let starts: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+    let mut out = Vec::new();
+    shaper.shape_with(|cluster| {
+        let at = starts.iter().position(|&i| i == cluster.source.start as usize).unwrap_or(0);
+        for g in cluster.glyphs {
+            out.push((chars.get(at).copied().unwrap_or(' '), g.id, g.x, g.advance));
+        }
+    });
+    out
+}
+
+/// The widest digit's advance in the numbers' font, in font units.
+fn digit_advance() -> f32 {
+    static ADVANCE: std::sync::LazyLock<f32> = std::sync::LazyLock::new(|| shaped("0123456789").iter().map(|g| g.3).fold(0.0, f32::max));
+    *ADVANCE
+}
 
 /// Where a run of numbers is placed: its left edge, its right edge or its
 /// middle at this x (frame pixels).
@@ -208,60 +220,67 @@ pub fn picture_span(set: &NumberSet, x: i32, n: usize) -> (f32, f32) {
     (x as f32 + fx, x as f32 + (CELL * n.saturating_sub(1) as i32) as f32 + fx + fw)
 }
 
-/// Numbers and signs in their sets' looks laid as one run on cells' rows
-/// `y` as the font sets them, each part at its set's face box's height
-/// and rows: each digit the digits' one advance, a sign its own ink's
-/// width and clear space either side; placed by `anchor`, never squeezed.
-/// An item for each part, and where the run starts and ends. None where the
-/// text layer draws no numbers (the original mode), or the font lacks a
-/// character.
+/// Numbers and signs in their sets' looks set as one run of the numbers'
+/// font on cells' rows `y`, with the font's own metrics (shaped, kerned,
+/// tabular figures where it has them, else each digit the widest digit's
+/// advance with its glyph centered in it), each part at its set's face
+/// box's height and rows, never squeezed; placed by `anchor` (the run's
+/// advances' start, end or middle). An item for each part, and where the
+/// run's advances start and end. None where the text layer draws no
+/// numbers (the original mode), or the font lacks a character.
 pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anchor) -> Option<(Vec<TextItem>, (f32, f32))> {
     if !text.draws_numbers() || parts.iter().any(|(chars, _)| !digits_font().covers(chars)) {
         return None;
     }
-    // (A sign's clear space by the run's digits' height, its tallest.)
-    let tallest = parts.iter().map(|(_, set)| set.face[3] as f32).fold(0.0, f32::max);
-    // (A sign is drawn its ink the box's height: its width its ink's at
-    // that height, and its clear space either side.)
-    let pad = SIGN_SPACE * tallest;
-    let is_digit = |c: char| c.is_ascii_digit() || c == '?';
-    let width = |c: char, h: f32| {
-        if is_digit(c) {
-            digit_advance() * h
-        } else {
-            let (w, ih) = ink(c);
-            w / ih * h
-        }
+    let f = digits_font().font();
+    let is_digit = |c: char| c.is_ascii_digit();
+    // (Each part's frame pixels a font unit: its set's ink the box's
+    // height, as `Fitted` draws it.)
+    let unit = |set: &NumberSet| {
+        let mut heights: Vec<f32> = set.set.chars().filter_map(|c| ink_box(f.charmap().map(c))).map(|b| b[3] - b[1]).collect();
+        heights.sort_by(f32::total_cmp);
+        set.face[3] as f32 / heights.get(heights.len() / 2).copied().unwrap_or(1.0).max(1e-3)
     };
-    let chars = || parts.iter().flat_map(|(chars, set)| chars.chars().filter(|c| *c != ' ').map(move |c| (c, set.face[3] as f32)));
-    let glyphs: f32 = chars().map(|(c, h)| width(c, h)).sum();
-    // (A sign's space before and after it: the "x" of "x2" holds to its
-    // '2', a third of it after.)
-    let spaces = |c: char| if is_digit(c) { (0.0, 0.0) } else if c == '+' { (pad, pad) } else { (pad, pad / 3.0) };
-    let pads: f32 = chars().map(|(c, _)| spaces(c).0 + spaces(c).1).sum();
-    let total = glyphs + pads;
+    // (The whole run shaped as one string, each glyph its part's.)
+    let whole: String = parts.iter().map(|(chars, _)| chars.replace(' ', "")).collect();
+    let mut owner = Vec::new();
+    for (k, (chars, set)) in parts.iter().enumerate() {
+        let u = unit(set);
+        owner.extend(chars.chars().filter(|c| *c != ' ').map(|_| (k, u)));
+    }
+    let glyphs = shaped(&whole);
+    let tabular = !has_tnum();
+    let advance = |c: char, a: f32| if tabular && is_digit(c) { digit_advance() } else { a };
+    let total: f32 = glyphs.iter().enumerate().map(|(i, g)| advance(g.0, g.3) * owner.get(i).map_or(0.0, |o| o.1)).sum();
     let start = match anchor {
         Anchor::Left(x) => x,
         Anchor::Right(x) => x - total,
         Anchor::Center(x) => x - total / 2.0,
     };
-    let mut out = Vec::new();
-    let mut at = start;
-    for (chars, set) in parts {
-        let [_, top, _, h] = set.face.map(|v| v as f32);
-        let left = at.floor();
-        let mut glyphs = Vec::new();
-        for c in chars.chars().filter(|c| *c != ' ') {
-            let (before, after) = spaces(c);
-            let w = width(c, h);
-            glyphs.push((c, [at - left + before, top, w, h]));
-            at += before + w + after;
+    let mut boxes: Vec<Vec<(char, [f32; 4])>> = vec![Vec::new(); parts.len()];
+    let mut pen = start;
+    for (i, &(c, glyph, dx, a)) in glyphs.iter().enumerate() {
+        let Some(&(k, u)) = owner.get(i) else { break };
+        let adv = advance(c, a);
+        if let Some([x0, _, x1, _]) = ink_box(glyph) {
+            // (Its ink where the font sets it: centered in the widest
+            // digit's advance where that stands for its own.)
+            let centered = (adv - a) / 2.0;
+            let [_, top, _, h] = parts[k].1.face.map(|v| v as f32);
+            boxes[k].push((c, [pen + (centered + dx + x0) * u, top, (x1 - x0) * u, h]));
         }
-        let rect = Rect::new(left as i32, y, (at - left).ceil() as i32 + 1, 16);
+        pen += adv * u;
+    }
+    let mut out = Vec::new();
+    for ((_, set), glyphs) in parts.iter().zip(boxes) {
+        let Some(left) = glyphs.iter().map(|g| g.1[0]).reduce(f32::min).map(f32::floor) else { continue };
+        let right = glyphs.iter().map(|g| g.1[0] + g.1[2]).fold(left, f32::max);
+        let glyphs = glyphs.into_iter().map(|(c, [x, top, w, h])| (c, [x - left, top, w, h])).collect();
+        let rect = Rect::new(left as i32, y, (right - left).ceil() as i32 + 1, 16);
         let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow, face: Face::Digits };
         out.push(TextItem::fitted(f, rect));
     }
-    Some((out, (start, at)))
+    Some((out, (start, pen)))
 }
 
 /// The character the font draws for the game's "x" of "x2".

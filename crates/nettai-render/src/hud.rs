@@ -1347,7 +1347,7 @@ fn draw_chip_name(
     // glyphs' looks, a word's space after the name's words.
     if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text) {
         let from = words_end.unwrap_or(x as f32);
-        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8)) {
+        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8), Role::FittedCell) {
             for item in items {
                 text.push(Plane::Hud, item);
             }
@@ -1969,15 +1969,39 @@ fn lettered_banner(
             }
             let set = crate::lookups::letters(hud.letters.banner_digits.as_ref(), || "the banners' digits".into(), problems)?;
             let set = crate::numbers::NumberSet::of(set, pal);
-            let at = if tens.is_some() { nx } else { nx + 8 };
-            let (a, b) = crate::numbers::picture_span(&set, at, digits.len());
-            let number = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Center((a + b) / 2.0))?.0;
-            // (Its words either side of where the number's picture is: the
-            // pack's columns of the letters there, for one digit or two.)
+            // (The words and the number one run, the lettering's word space
+            // between them, centered where the picture's words and number
+            // are: from the first word's letters to the last's.)
             let [before_span, after_span] = if tens.is_some() { found.two_digits? } else { found.one_digit? };
-            items.extend((!before.is_empty()).then(|| words_in(before, before_span)).flatten());
-            items.extend((!after.is_empty()).then(|| words_in(after, after_span)).flatten());
+            let role = crate::lettering::role(letters, Lettering::display);
+            let extent = |w: &str| if w.is_empty() { Some((0.0, 0.0)) } else { text.ink_extent(w, role, 10_000) };
+            let ((b0, b1), (a0, a1)) = (extent(before)?, extent(after)?);
+            let space = match (text.ink_extent("I I", role, 10_000), text.ink_extent("II", role, 10_000)) {
+                (Some((_, spaced)), Some((_, tight))) => (spaced - tight).max(0.0),
+                _ => 3.0,
+            };
+            let tight = [!before.is_empty(), !after.is_empty()];
+            // (The number's advances' width: the font's own metrics.)
+            let (_, (n0, n1)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Left(0.0))?;
+            let gaps = space * (tight[0] as u8 + tight[1] as u8) as f32;
+            let total = (b1 - b0) + gaps + (n1 - n0) + (a1 - a0);
+            let from = before_span.map_or(nx, |s| x + s[0] as i32) as f32;
+            let to = after_span.map_or(nx + 16, |s| x + s[1] as i32) as f32;
+            let mut at = (from + to) / 2.0 - total / 2.0;
+            let word = |w: &str, pen: f32| {
+                let item = TextItem::new(w, role, Rect::new(pen.floor() as i32, y, 160, 16), face, shadow);
+                let fine = (((pen - pen.floor()) * 65536.0) as i32, 0);
+                TextItem { align: Align::Left, vscale, fine, ink: Some(crate::lettering::ink(letters, pal)), ..item }
+            };
+            if !before.is_empty() {
+                items.push(word(before, at - b0));
+                at += (b1 - b0) + space;
+            }
+            let (number, (_, end)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Left(at))?;
             items.extend(number.into_iter().map(|item| TextItem { vscale, ..item }));
+            if !after.is_empty() {
+                items.push(word(after, end + space - a0));
+            }
         }
         _ => {
             let words = words.replace("{n}", &banner_number(b, number).to_string());
@@ -2187,7 +2211,7 @@ fn name_parts<'a>(
     let mut at = after as f32;
     if let (Some(item), Some(looks)) = (items.first_mut(), sets.as_ref())
         && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
-        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y))
+        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y), Role::Cell)
     {
         // (The name and its numbers but the "x2" centered where the
         // original's are; the "x2" after them, as the original's.)
@@ -2196,7 +2220,7 @@ fn name_parts<'a>(
         *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
         at = start as f32 + w;
     }
-    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y)));
+    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y), Role::Cell));
     let lettered = numbers.is_some();
     if let Some((numbers, _)) = numbers {
         items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
@@ -2239,9 +2263,10 @@ impl NumberSets {
 
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where
     /// the use doubles it), in the numbers' font laid as every number is
-    /// (`numbers::laid`) a word's space after a name's words ending at `x`
-    /// (frame pixels), on cells' rows `y`; and where they end.
-    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32)) -> Option<(Vec<TextItem>, f32)> {
+    /// (`numbers::laid`) a word space of the name's font (`role`'s) after
+    /// a name's words ending at `x` (frame pixels), on cells' rows `y`; and
+    /// where they end.
+    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32), role: Role) -> Option<(Vec<TextItem>, f32)> {
         let mut parts = vec![(damage.to_string(), &self.digits)];
         if bonus != 0 {
             parts.push(("+".to_string(), &self.plus));
@@ -2250,15 +2275,13 @@ impl NumberSets {
         if doubled {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
-        let from = x + WORD_SPACE;
+        // (The name's font's space: what it sets between two words.)
+        let space = text.fitted_width("I I", role, 1000).zip(text.fitted_width("II", role, 1000)).map_or(3.0, |(a, b)| (a - b).max(0.0));
+        let from = x + space;
         let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::Left(from))?;
         Some((items, end))
     }
 }
-
-/// The space between a chip's name and its numbers, in frame pixels:
-/// about a word's space of the name's.
-const WORD_SPACE: f32 = 3.0;
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
 /// (the enhanced mode's), how many of its parts, from the first, are the
