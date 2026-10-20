@@ -1,17 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
-<!-- The chatbox's key-wait arrow, frame 1 of 3 (0 pixels down: its bob): a capped shield pointing down, a dark outline, each part lit along its top and left, its shadow down and to the right. -->
-<!-- Its shadow -->
-<path d="M4 4.3 A0.3 0.3 0 0 1 4.3 4 L13.7 4 A0.3 0.3 0 0 1 14 4.3 L14 9.834 A0.4 0.4 0 0 1 13.883 10.117 L9.566 14.434 A0.8 0.8 0 0 1 8.434 14.434 L4.117 10.117 A0.4 0.4 0 0 1 4 9.834 Z" fill-rule="evenodd" fill="#313952" data-color="9"/>
-<path d="M4 1.6 A0.6 0.6 0 0 1 4.6 1 L13.4 1 A0.6 0.6 0 0 1 14 1.6 L14 4.4 A0.6 0.6 0 0 1 13.4 5 L4.6 5 A0.6 0.6 0 0 1 4 4.4 Z" fill-rule="evenodd" fill="#313952" data-color="9"/>
-<!-- The shield: its outline, its face, lit along its top and left -->
-<path d="M3 3.3 A0.3 0.3 0 0 1 3.3 3 L12.7 3 A0.3 0.3 0 0 1 13 3.3 L13 8.834 A0.4 0.4 0 0 1 12.883 9.117 L8.566 13.434 A0.8 0.8 0 0 1 7.434 13.434 L3.117 9.117 A0.4 0.4 0 0 1 3 8.834 Z" fill-rule="evenodd" fill="#21a521" data-color="12"/>
-<path d="M4 4.2 A0.2 0.2 0 0 1 4.2 4 L11.8 4 A0.2 0.2 0 0 1 12 4.2 L12 8.462 A0.3 0.3 0 0 1 11.912 8.674 L8.354 12.232 A0.5 0.5 0 0 1 7.646 12.232 L4.088 8.674 A0.3 0.3 0 0 1 4 8.462 Z" fill-rule="evenodd" fill="#84ff63" data-color="14"/>
-<path d="M4.8 5 A0.2 0.2 0 0 1 5 4.8 L12.2 4.8 A0.2 0.2 0 0 1 12.4 5 L12.4 8.979 A0.3 0.3 0 0 1 12.312 9.191 L8.954 12.549 A0.5 0.5 0 0 1 8.246 12.549 L4.888 9.191 A0.3 0.3 0 0 1 4.8 8.979 Z" fill-rule="evenodd" fill="#39ff00" data-color="13"/>
-<path d="M4 4.3 A0.3 0.3 0 0 1 4.3 4 L5 4 L5 5 L4 5 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
-<!-- The cap over it: its outline, a light band, a darker one -->
-<path d="M3 0.6 A0.6 0.6 0 0 1 3.6 0 L12.4 0 A0.6 0.6 0 0 1 13 0.6 L13 3.4 A0.6 0.6 0 0 1 12.4 4 L3.6 4 A0.6 0.6 0 0 1 3 3.4 Z" fill-rule="evenodd" fill="#21a521" data-color="12"/>
-<path d="M4 1.3 A0.3 0.3 0 0 1 4.3 1 L11.7 1 A0.3 0.3 0 0 1 12 1.3 L12 2 L4 2 Z" fill-rule="evenodd" fill="#84ff63" data-color="14"/>
-<rect x="4" y="2" width="8" height="1" fill="#39ff00" data-color="13"/>
-<path d="M4 1.3 A0.3 0.3 0 0 1 4.3 1 L5 1 L5 2 L4 2 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
-<rect x="4" y="2" width="1" height="1" fill="#84ff63" data-color="14"/>
+<!-- The chatbox's key-wait arrow, frame 1 of 3 (0 pixels down: its bob): a capped shield pointing down, a dark green outline a pixel wide all round, the cap's band and the shield's face lit along their tops and left sides with a glint in the corner, its shadow down and to the right. -->
+<defs>
+<path id="outline" d="M3 0.8 A0.8 0.8 0 0 1 3.8 0 L12.2 0 A0.8 0.8 0 0 1 13 0.8 L13 8.793 A0.5 0.5 0 0 1 12.854 9.146 L9.264 12.736 A0.9 0.9 0 0 1 8.627 13 L7.373 13 A0.9 0.9 0 0 1 6.736 12.736 L3.146 9.146 A0.5 0.5 0 0 1 3 8.793 Z"/>
+<clipPath id="face"><path d="M4 4.3 A0.3 0.3 0 0 1 4.3 4 L11.7 4 A0.3 0.3 0 0 1 12 4.3 L12 8.462 A0.3 0.3 0 0 1 11.912 8.674 L8.762 11.824 A0.6 0.6 0 0 1 8.337 12 L7.663 12 A0.6 0.6 0 0 1 7.238 11.824 L4.088 8.674 A0.3 0.3 0 0 1 4 8.462 Z"/></clipPath>
+<clipPath id="cap"><path d="M4 1.3 A0.3 0.3 0 0 1 4.3 1 L11.7 1 A0.3 0.3 0 0 1 12 1.3 L12 2.8 A0.2 0.2 0 0 1 11.8 3 L4.2 3 A0.2 0.2 0 0 1 4 2.8 Z"/></clipPath>
+</defs>
+<g transform="translate(0 0)">
+<!-- Its shadow: the arrow's shape a pixel right and a pixel down -->
+<use href="#outline" x="1" data-color="9" fill="#313952"/>
+<use href="#outline" y="1" data-color="9" fill="#313952"/>
+<!-- The outline -->
+<use href="#outline" data-color="12" fill="#21a521"/>
+<!-- The cap's band and the shield's face: light, the face's own green over them a pixel right and down, so the light shows along their tops and left sides -->
+<path d="M4 1.3 A0.3 0.3 0 0 1 4.3 1 L11.7 1 A0.3 0.3 0 0 1 12 1.3 L12 2.8 A0.2 0.2 0 0 1 11.8 3 L4.2 3 A0.2 0.2 0 0 1 4 2.8 Z" data-color="14" fill="#84ff63"/>
+<g clip-path="url(#cap)"><path d="M4 1.3 A0.3 0.3 0 0 1 4.3 1 L11.7 1 A0.3 0.3 0 0 1 12 1.3 L12 2.8 A0.2 0.2 0 0 1 11.8 3 L4.2 3 A0.2 0.2 0 0 1 4 2.8 Z" transform="translate(1 1)" data-color="13" fill="#39ff00"/></g>
+<path d="M4 4.3 A0.3 0.3 0 0 1 4.3 4 L11.7 4 A0.3 0.3 0 0 1 12 4.3 L12 8.462 A0.3 0.3 0 0 1 11.912 8.674 L8.762 11.824 A0.6 0.6 0 0 1 8.337 12 L7.663 12 A0.6 0.6 0 0 1 7.238 11.824 L4.088 8.674 A0.3 0.3 0 0 1 4 8.462 Z" data-color="14" fill="#84ff63"/>
+<g clip-path="url(#face)"><path d="M4 4.3 A0.3 0.3 0 0 1 4.3 4 L11.7 4 A0.3 0.3 0 0 1 12 4.3 L12 8.462 A0.3 0.3 0 0 1 11.912 8.674 L8.762 11.824 A0.6 0.6 0 0 1 8.337 12 L7.663 12 A0.6 0.6 0 0 1 7.238 11.824 L4.088 8.674 A0.3 0.3 0 0 1 4 8.462 Z" transform="translate(1 1)" data-color="13" fill="#39ff00"/></g>
+<!-- The glints in their top left corners -->
+<circle cx="4.55" cy="1.55" r="0.55" data-color="15" fill="#f7fff7"/>
+<circle cx="4.55" cy="4.55" r="0.55" data-color="15" fill="#f7fff7"/>
+</g>
 </svg>
