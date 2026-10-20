@@ -1477,7 +1477,8 @@ impl Screen for Play {
                 self.problem = self.connect(shell, Way::Code(self.code.clone())).err();
                 self.refuse_or_show(shell);
             }
-            "direct" => self.open_direct(shell),
+            // (The browser has no direct links: its button isn't there.)
+            "direct" if !cfg!(target_arch = "wasm32") => self.open_direct(shell),
             // ---- The code's boxes: Enter on one goes to the next, and from the last to JOIN.
             "boxes.join" => {
                 self.close_boxes(shell);

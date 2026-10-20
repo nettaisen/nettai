@@ -1020,7 +1020,8 @@ export component PlayScreen inherits Page {
                 text: Caps.of(@tr("Join"));
             }
 
-            Button {
+            // (A browser has no sockets of its own: links are WebRTC's alone, through the signaling server.)
+            if !Theme.web: Button {
                 x: root.body-width - self.width;
                 y: Theme.phone ? code.y + code.height + 12px : root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
