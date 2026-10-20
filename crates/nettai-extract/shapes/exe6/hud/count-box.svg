@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- The box beside the face: a plate under a frame two pixels wide on its right, its bottom right corner cut at 45 degrees. -->
+<polygon points="0,0 14,0 14,11.5 9.5,16 0,16" fill="#2942c6" data-color="1"/>
+<polygon points="0,1 12,1 12,11.5 8.5,15 0,15" fill="#63bdff" data-color="2"/>
+</svg>

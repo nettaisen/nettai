@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
+<!-- The Cross window opening, 24 rows down (what differs from the custom window's and from the open Cross window's): the same frame, its bottom under the tab still the window's. -->
+<!-- The panel -->
+<rect x="0" y="24" width="88" height="64" fill="#c6d6de" data-color="2" data-palette="9"/>
+<rect x="0" y="24" width="1" height="64" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The inner lines -->
+<polygon points="0,29.5 4,33.5 4,88 3,88 3,33.5 0,30.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="88,29.5 84,33.5 84,88 85,88 85,33.5 88,30.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The box round the names -->
+<path d="M7 31 H81 V88 H7 Z M8 32 V88 H80 V32 Z" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The window's bottom under the tab, its lines going on down -->
+<rect x="72" y="96" width="16" height="4" fill="#c6d6de" data-color="2" data-palette="9"/>
+<rect x="78" y="96" width="1" height="4" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="79" y="96" width="1" height="4" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="80" y="96" width="1" height="4" fill="#4a637b" data-color="5" data-palette="9"/>
+<rect x="84" y="96" width="1" height="4" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="72" y="100" width="16" height="1" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="72" y="101" width="16" height="3" fill="#eff7ff" data-color="1" data-palette="9"/>
+</svg>

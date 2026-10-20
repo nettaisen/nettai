@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- An empty slot: a dark plate in two frames a pixel wide, a shadow a pixel wide along its right and bottom inside. -->
+<rect x="0" y="0" width="16" height="16" fill="#9cadbd" data-color="9"/>
+<rect x="1" y="1" width="14" height="14" fill="#5a6b6b" data-color="5"/>
+<rect x="2" y="2" width="12" height="12" fill="#292929" data-color="7"/>
+<path d="M13 3 H14 V14 H3 V13 H13 Z" fill="#524a52" data-color="6"/>
+</svg>

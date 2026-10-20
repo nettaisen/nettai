@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
+<!-- The custom window's frame, with the Cross tab (every cell the screen doesn't lay something in; another window map uses this drawing where its cells are the same). Drawn as the pixel art means it: straight bands, a rounded chip window with its shine, the tab with its triangle and its slanted step, the column's housing as concentric rings, chamfered corners. -->
+<!-- The left border's bands -->
+<rect x="0" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
+<rect x="1" y="0" width="2" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
+<rect x="3" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
+<rect x="4" y="0" width="4" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
+<!-- The top strip (BATTLE CHIP, its letters drawn as text over it) -->
+<rect x="4" y="0" width="80" height="8" fill="#dedeef" data-color="6" data-palette="9"/>
+<!-- The column's left bands -->
+<rect x="80" y="0" width="4" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
+<rect x="84" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
+<rect x="85" y="0" width="3" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
+<!-- The chip window -->
+<path d="M7 10 A2 2 0 0 1 9 8 H79 A2 2 0 0 1 81 10 V88 H7 Z" fill="#292929" data-color="8" data-palette="9"/>
+<!-- The shine's rim, darker down the side -->
+<polygon points="8,10 9,9 15,9 14.346,9.016 13.725,9.104 13.136,9.264 12.58,9.496 12.056,9.8 11.565,10.176 11.106,10.624 10.68,11.144 10.286,11.736 9.925,12.4 9.596,13.136 9.3,13.944 9.036,14.824 8,15" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="8,14.5 9.036,14.824 8.805,15.776 8.606,16.8 8.44,17.896 8,18.5" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The shine -->
+<polygon points="15,9 14.346,9.016 13.725,9.104 13.136,9.264 12.58,9.496 12.056,9.8 11.565,10.176 11.106,10.624 10.68,11.144 10.286,11.736 9.925,12.4 9.596,13.136 9.3,13.944 9.036,14.824 8.805,15.776 8.606,16.8 8.44,17.896 8.306,19.064 8.205,20.304 8.136,21.616 8.1,23 8.5,23.5 8.759,22.23 9.035,21.02 9.329,19.87 9.64,18.78 9.969,17.75 10.315,16.78 10.679,15.87 11.06,15.02 11.459,14.23 11.875,13.5 12.309,12.83 12.76,12.22 13.229,11.67 13.715,11.18 14.219,10.75 14.74,10.38 15.279,10.07 15.835,9.82 16.409,9.63 17,9.5" fill="#524a5a" data-color="10" data-palette="9"/>
+<rect x="78" y="33" width="1" height="8" fill="#524a5a" data-color="10" data-palette="9"/>
+<rect x="78" y="41" width="1" height="8" fill="#4a637b" data-color="5" data-palette="9"/>
+<rect x="78" y="49" width="1" height="2" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="78" y="51" width="1" height="3" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="78" y="54" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="78" y="57" width="1" height="16" fill="#4a637b" data-color="5" data-palette="9"/>
+<rect x="78" y="73" width="1" height="11" fill="#524a5a" data-color="10" data-palette="9"/>
+<!-- The panel -->
+<rect x="0" y="88" width="88" height="16" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The Cross tab: its outline, its step down slanting at 45 degrees -->
+<polygon points="0,88 88,88 88,101 58.5,101 54.5,97 0,97" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="1,89 88,89 88,100 59.5,100 55.5,96 1,96" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- The step's shadow -->
+<polygon points="53.5,97 54.5,97 58.5,101 57.5,101" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The groove at the tab's right end -->
+<polygon points="88,93.5 88,94.5 84,98.5 84,97.5" fill="#9cadbd" data-color="3" data-palette="9"/>
+<polygon points="88,94.5 88,95.5 85,98.5 85,100 84,100 84,98.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The tab's triangle: an outline on a base, a fill, a highlight along its left side -->
+<polygon points="6.5,89 11,93.5 11,95 2,95 2,93.5" fill="#ce6339" data-color="13" data-palette="9"/>
+<polygon points="6.5,90 10.5,94 2.5,94" fill="#ffad29" data-color="12" data-palette="9"/>
+<polygon points="6.5,90 7,90.5 3.5,94 2.5,94" fill="#fff729" data-color="11" data-palette="9"/>
+<rect x="0" y="104" width="8" height="48" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The slots' side: a line, a groove down it, two notches -->
+<rect x="0" y="105" width="6" height="2" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="5" y="107" width="1" height="45" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="0" y="125" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="0" y="138" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bottom -->
+<rect x="0" y="152" width="120" height="2" fill="#eff7ff" data-color="1" data-palette="9"/>
+<polygon points="0,154 120,154 120,156 0,156" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="0,156 120,156 120,157.5 118.5,159 0,159" fill="#9cadbd" data-color="3" data-palette="9"/>
+<polygon points="0,159 118.5,159 117.5,160 0,160" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="16" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="29" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="90" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="103" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The bottom left corner: a slanted band where the side turns into the bar -->
+<polygon points="0,154 4.5,154 0,158.5" fill="#eff7ff" data-color="1" data-palette="9"/>
+<polygon points="4.5,154 6.5,154 1.5,159 -0.5,159" fill="#c6d6de" data-color="2" data-palette="9"/>
+<polygon points="6,154.5 7.5,156 4.5,156" fill="#9cadbd" data-color="3" data-palette="9"/>
+<polygon points="5,152 6,152 7.5,153.5 8,154 8,156 7.5,156 5,153.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="5.5,152 6.5,152 8.5,154 7.5,154" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bottom right corner: the bar's end, chamfered -->
+<polygon points="118.5,152 120,152 120,157.5 117.5,160 117.5,159 114.5,156 116.5,154" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="117.5,152 118.5,152 116.5,154 115.5,154" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The column's bottom: bands turning 45 degrees into its level bottom -->
+<rect x="88" y="104" width="32" height="8" fill="#eff7ff" data-color="1" data-palette="9"/>
+<polygon points="86.51,104 93.51,111 114.49,111 121.49,104" fill="#9cadbd" data-color="3" data-palette="9"/>
+<polygon points="87.93,104 93.93,110 114.07,110 120.07,104" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="89.34,104 94.34,109 113.66,109 118.66,104" fill="#c6d6de" data-color="2" data-palette="9"/>
+<polygon points="90.76,104 94.76,108 113.24,108 117.24,104" fill="#eff7ff" data-color="1" data-palette="9"/>
+<polygon points="92.17,104 95.17,107 112.83,107 115.83,104" fill="#4a637b" data-color="5" data-palette="9"/>
+<polygon points="95,104 96,105 112,105 113,104" fill="#292929" data-color="8" data-palette="9"/>
+<!-- The column's right border -->
+<rect x="118" y="104" width="1" height="8" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="119" y="104" width="1" height="8" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The orb's housing: the dark corner left of its arch -->
+<rect x="88" y="0" width="8" height="8" fill="#292929" data-color="8" data-palette="9"/>
+<!-- The housing's outer line -->
+<path d="M88 24 V12 A16 16 0 0 1 120 12 V24 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="88" y="0" width="1" height="24" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M89 24 V12 A15 15 0 0 1 119 12 V24 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- Its white ring -->
+<path d="M90 24 V12 A14 14 0 0 1 118 12 V24 Z" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The orb: a line, a dark gray ring, the dark hole with its slots -->
+<circle cx="104" cy="12" r="12" fill="#738ca5" data-color="4" data-palette="9"/>
+<circle cx="104" cy="12" r="11" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The socket under the orb -->
+<polygon points="92,24 92,19.5 116,19.5 116,24" fill="#4a637b" data-color="5" data-palette="9"/>
+<circle cx="104" cy="12" r="9" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="93" y="10" width="22" height="3" fill="#292929" data-color="8" data-palette="9"/>
+<!-- The socket's V and its light -->
+<polygon points="95.5,19.5 97,19.5 102.5,22.5 101,22.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="112.5,19.5 111,19.5 105.5,22.5 107,22.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="104,19.8 106.2,23 101.8,23" fill="#9cadbd" data-color="3" data-palette="9"/>
+<polygon points="104,21.3 105.2,23 102.8,23" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- The column's inside -->
+<rect x="95" y="23" width="18" height="1" fill="#292929" data-color="8" data-palette="9"/>
+</svg>

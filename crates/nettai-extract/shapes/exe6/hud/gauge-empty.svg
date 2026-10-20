@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
+<!-- A cell of the custom gauge, empty: the trough, a dark line under it and the frame's bottom line. -->
+<rect x="0" y="0" width="8" height="6" fill="#424284" data-color="15"/>
+<rect x="0" y="6" width="8" height="1" fill="#292929" data-color="2"/>
+<rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
+</svg>

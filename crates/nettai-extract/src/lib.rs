@@ -303,7 +303,7 @@ fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Re
     warnings.extend(nettai_content::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
     // The frames as shapes, read once here for the enhanced graphics (and
     // the emotion window's frame apart from its faces).
-    warnings.extend(shapes::read(&mut graphics).into_iter().map(|p| format!("frames: {p}")));
+    warnings.extend(shapes::read(&mut graphics, game.id(), &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
     // bank where there is one: EXE5's hit, song 0x6D, is louder in the
     // Japanese ROMs, volume 127 for 112.)

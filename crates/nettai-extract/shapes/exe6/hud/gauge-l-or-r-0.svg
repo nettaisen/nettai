@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 32 8">
+<!-- The full gauge's "L or R" cells with their letters off: the dark trough and the frame's bottom line. -->
+<rect x="0" y="0" width="32" height="7" fill="#292929" data-color="2"/>
+<rect x="0" y="7" width="32" height="1" fill="#39526b" data-color="12"/>
+</svg>

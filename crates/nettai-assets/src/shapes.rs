@@ -2,27 +2,113 @@
 //! at the output's resolution (docs/design/text-rendering.md §13): the
 //! banners' bars, the HUD's boxes and gauge, the emotion window's frame,
 //! the enemy names' bar, the custom window's frame, its column's cells, its
-//! slots' boxes and its cursors. Each is fitted once from its picture as a
-//! pack is made (nettai-extract) and kept in the pack as an SVG file beside
-//! it. A frontend fills the shapes in the palette the picture is drawn in
-//! at the time, where the picture would be; a picture with no shapes here
-//! is drawn as it is.
+//! slots' boxes and its cursors. Each is drawn by hand from its picture
+//! (nettai-extract's `shapes/`), checked against the ROM's picture as a pack
+//! is made and kept in the pack as an SVG file beside it. A frontend fills
+//! the shapes, one over another in order, in the palette the picture is
+//! drawn in at the time, where the picture would be; a picture with no
+//! shapes here is drawn as it is.
 
 use crate::Tiles;
 
-/// A picture as shapes: its size in frame pixels, and its regions, one
-/// color each, which meet with no gap and no overlap (a partition of what
-/// the picture draws).
+/// A picture as shapes: its size in frame pixels, its regions, one color
+/// each, filled one over another in order, and the SVG file it was read
+/// from (kept as drawn, to write into a pack).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Drawing {
     pub size: [u16; 2],
     pub regions: Vec<Region>,
+    pub source: String,
 }
 
 impl Drawing {
     /// Its points' unit, over a frame pixel (their coordinates are whole
     /// numbers of it).
     pub const UNIT: f32 = 64.0;
+}
+
+impl Region {
+    /// Its rings as points in frame pixels, its arcs in short lines (a
+    /// tenth of a radian or less each).
+    pub fn rings(&self) -> Vec<Vec<[f32; 2]>> {
+        let u = Drawing::UNIT;
+        let f = |p: [i32; 2]| [p[0] as f32 / u, p[1] as f32 / u];
+        let mut out: Vec<Vec<[f32; 2]>> = Vec::new();
+        let mut at = [0.0f32; 2];
+        for step in &self.path {
+            match *step {
+                Step::Move(p) => {
+                    at = f(p);
+                    out.push(vec![at]);
+                }
+                Step::Line(p) => {
+                    at = f(p);
+                    if let Some(r) = out.last_mut() {
+                        r.push(at);
+                    }
+                }
+                Step::Arc { radius, large, sweep, to } => {
+                    let to = f(to);
+                    let r = radius as f32 / u;
+                    let points = arc_points(at, to, r, large, sweep);
+                    if let Some(ring) = out.last_mut() {
+                        ring.extend(points);
+                    }
+                    at = to;
+                }
+                Step::Close => {}
+            }
+        }
+        out
+    }
+}
+
+/// An SVG arc's points from `a` (left out) to `b` (in): of radius `r` (at
+/// least half the chord), the larger arc or not, turning the way of
+/// increasing angles or not.
+fn arc_points(a: [f32; 2], b: [f32; 2], r: f32, large: bool, sweep: bool) -> Vec<[f32; 2]> {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let h = (dx * dx + dy * dy).sqrt() / 2.0;
+    if h < 1e-6 {
+        return vec![b];
+    }
+    let r = r.max(h);
+    let d = (r * r - h * h).max(0.0).sqrt();
+    let (mx, my) = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0);
+    let (ux, uy) = (-dy / (2.0 * h), dx / (2.0 * h));
+    let sign = if large != sweep { 1.0 } else { -1.0 };
+    let (cx, cy) = (mx + sign * d * ux, my + sign * d * uy);
+    let a0 = (a[1] - cy).atan2(a[0] - cx);
+    let mut a1 = (b[1] - cy).atan2(b[0] - cx);
+    let tau = std::f32::consts::TAU;
+    if sweep && a1 < a0 {
+        a1 += tau;
+    }
+    if !sweep && a1 > a0 {
+        a1 -= tau;
+    }
+    let steps = ((a1 - a0).abs() / 0.1).ceil().max(1.0) as usize;
+    let mut out: Vec<[f32; 2]> = (1..steps).map(|k| a0 + (a1 - a0) * k as f32 / steps as f32).map(|t| [cx + r * t.cos(), cy + r * t.sin()]).collect();
+    out.push(b);
+    out
+}
+
+/// Whether point `p` is inside rings `rings` (even-odd).
+pub fn inside(rings: &[Vec<[f32; 2]>], p: [f32; 2]) -> bool {
+    let mut odd = false;
+    for ring in rings {
+        let n = ring.len();
+        for i in 0..n {
+            let (a, b) = (ring[i], ring[(i + 1) % n]);
+            if (a[1] > p[1]) != (b[1] > p[1]) {
+                let x = a[0] + (p[1] - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
+                if x > p[0] {
+                    odd = !odd;
+                }
+            }
+        }
+    }
+    odd
 }
 
 /// A region of a drawing: its color (a palette index; of the palette row
@@ -48,12 +134,23 @@ pub enum Step {
     Close,
 }
 
-/// A map's frame as shapes: the drawing (the map's top left its top left)
-/// and the cells it stands in for, as (column, row): the map's own tiles
-/// that nothing lays over (the patches, the runs the screen lays itself,
-/// a button, the emblem are holes in it).
+/// A map's frame as shapes: drawings (each the map's size, its top left
+/// the map's), each standing in for some of its cells, as (column, row):
+/// cells whose pixels the drawing was drawn for, of the map's own tiles
+/// that nothing lays over (the patches, the runs the screen lays itself, a
+/// button, the emblem are holes in it). One drawing may serve several maps
+/// where their cells are alike (the custom window with the Cross tab and
+/// without), each map's own drawing its cells that differ.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MapDrawing {
+    pub parts: Vec<MapPart>,
+}
+
+/// A drawing of a map's ([`MapDrawing`]): its name (its file's: the map
+/// it was drawn for), the drawing, the cells it stands in for.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MapPart {
+    pub name: String,
     pub drawing: Drawing,
     pub cells: Vec<[u8; 2]>,
 }
@@ -61,18 +158,18 @@ pub struct MapDrawing {
 impl MapDrawing {
     /// Whether it stands in for cell (column, row).
     pub fn covers(&self, column: usize, row: usize) -> bool {
-        self.cells.iter().any(|c| c[0] as usize == column && c[1] as usize == row)
+        self.parts.iter().any(|p| p.cells.iter().any(|c| c[0] as usize == column && c[1] as usize == row))
     }
 }
 
 /// The custom gauge's cells as shapes (8x8 each): its empty cell, its
-/// cell filled by eighths (the first empty), filled, full (its frames),
-/// and the "L or R" cells (their frames, 32x8 each, their letters off).
-/// `cut`: each cell filled by eighths is the filled cell to that column and
-/// the empty one past it, so a fill may end anywhere.
+/// filled cell, full (its frames), and the "L or R" cells (their frames,
+/// 32x8 each, their letters off). `cut`: each cell filled by eighths is the
+/// filled cell to that column and the empty one past it, so a fill may end
+/// anywhere (else the fill is drawn as its pictures).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GaugeCells {
-    pub steps: Vec<Drawing>,
+    pub empty: Drawing,
     pub filled: Drawing,
     pub full: Vec<Drawing>,
     pub l_or_r: Vec<Drawing>,
