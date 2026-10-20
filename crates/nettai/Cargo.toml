@@ -56,6 +56,8 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 # Each game's pack, extracted from the player's Legacy Collection on start-up (`packs.rs`; docs/app.md §17).
 nettai-extract = { path = "../nettai-extract" }
+# The collection's archives (`bnlc.rs`, ported from Tango's).
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # An invite's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -71,7 +73,14 @@ glow = "0.16"
 # The Legacy Collection's install, found through Steam, and its ROMs read out of its archives (`bnlc.rs`, ported
 # from Tango's, with the crates it uses).
 steamlocate = "2"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# The browser's: its folder dialog, the page's files and its clock (`web.rs`).
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+# The log on the page's console.
+console_log = "1"
 
 # A terminate request's signals, taken back from SDL (`quit.rs`). (In the tree already.)
 [target.'cfg(unix)'.dependencies]

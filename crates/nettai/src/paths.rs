@@ -12,6 +12,10 @@ use std::path::PathBuf;
 
 /// The app's data folder.
 pub fn data() -> PathBuf {
+    // (The browser's are the page's files, under one folder the page keeps: crates/nettai-web.)
+    if cfg!(target_arch = "wasm32") {
+        return PathBuf::from("/data");
+    }
     if let Some(dir) = std::env::var_os("NETTAI_DATA") {
         return PathBuf::from(dir);
     }

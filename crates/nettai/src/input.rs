@@ -397,6 +397,7 @@ pub struct Keys {
 impl Keys {
     /// A key event of the window: the GBA button it is bound to, held or let go. (The buttons are followed
     /// whatever has the keys, so none sticks.) The button, if it was newly pressed.
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn event(&mut self, bindings: &Bindings, event: &KeyEvent, at: Instant) -> Option<u16> {
         let PhysicalKey::Code(code) = event.physical_key else { return None };
         self.key(bindings, code, event.state == ElementState::Pressed, event.repeat, at)

@@ -9,6 +9,10 @@ fn main() {
     println!("cargo:rerun-if-env-changed=WASI_SDK_PATH");
     let sdk = PathBuf::from(env::var_os("WASI_SDK_PATH").expect("set WASI_SDK_PATH to wasi-sdk 34 (see crates/nettai-luau/README.md)"))
         .canonicalize().expect("WASI_SDK_PATH must name an existing SDK directory");
+    // A module with Wasm's atomics (the app's, whose threads are Web Workers on one shared memory: crates/nettai-web)
+    // takes the SDK's threads build of Luau's C++ and its runtime; any other the single-threaded one.
+    let atomics = env::var("CARGO_CFG_TARGET_FEATURE").is_ok_and(|f| f.split(',').any(|f| f == "atomics"));
+    let c_target = if atomics { "wasm32-wasip1-threads" } else { "wasm32-wasip1" };
     let cxx = sdk.join(format!("bin/clang++{}", env::consts::EXE_SUFFIX));
     let ar = sdk.join(format!("bin/llvm-ar{}", env::consts::EXE_SUFFIX));
     // Build scripts run in their own single-threaded process. Only the C++
@@ -21,12 +25,12 @@ fn main() {
         // newer libc++ headers no longer provide. Its compiler's C++
         // exceptions stay inside C++; its script errors are setjmp/longjmp,
         // both on Wasm exception handling.
-        env::set_var("CXXFLAGS_wasm32_unknown_unknown", "--target=wasm32-wasip1 -fwasm-exceptions -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false -include cstdlib");
+        env::set_var("CXXFLAGS_wasm32_unknown_unknown", format!("--target={c_target} -fwasm-exceptions -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false -include cstdlib"));
     }
     // Script errors longjmp across Rust callback frames (as mlua's do with
     // every C Lua), so Rust needs no unwinding: the module is panic=abort,
     // which Slint's and winit's web backends require.
-    let artifacts = luau0_src::Build::new().target("wasm32-wasip1").use_longjmp(true).build();
+    let artifacts = luau0_src::Build::new().target(c_target).use_longjmp(true).build();
     println!("cargo:rustc-link-search=native={}", artifacts.lib_dir().display());
     for lib in artifacts.libs() {
         println!("cargo:rustc-link-lib=static={lib}");
@@ -35,7 +39,7 @@ fn main() {
     // tag), its setjmp runtime (which defines the longjmp tag), and libc.
     for lib in ["c++", "c++abi", "unwind", "setjmp", "c"] {
         let output = std::process::Command::new(&cxx)
-            .args(["--target=wasm32-wasip1", "-fwasm-exceptions", &format!("-print-file-name=lib{lib}.a")])
+            .args([&format!("--target={c_target}"), "-fwasm-exceptions", &format!("-print-file-name=lib{lib}.a")])
             .output().expect("run wasi-sdk clang++");
         assert!(output.status.success(), "query wasi-sdk libraries");
         let path = PathBuf::from(String::from_utf8(output.stdout).unwrap().trim());

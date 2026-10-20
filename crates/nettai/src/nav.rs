@@ -206,6 +206,7 @@ impl Registry {
     }
 
     /// Every control's name and size, as laid out now (the screenshot pass's check that motion changes none).
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn sizes(&self) -> Vec<(Key, (f32, f32))> {
         self.items.iter().map(|(key, item)| (key.clone(), (item.rect.w, item.rect.h))).collect()
     }
@@ -476,6 +477,7 @@ impl Nav {
     }
 
     /// Where the cursor is: the focused control's place, as the UI was last told it.
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn cursor(&self) -> Option<Rect> {
         self.told.as_ref().map(|(_, rect)| *rect)
     }
@@ -541,6 +543,7 @@ impl Nav {
     }
 
     /// Whether the scope `prefix` is open.
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn is_open(&self, prefix: &str) -> bool {
         self.scopes.iter().any(|s| s.prefix == prefix)
     }
@@ -788,6 +791,7 @@ impl Nav {
     /// Scroll the list `id`'s row `index` into view, slid there as a reveal is, and enter the list at it next,
     /// without moving the focus (the replay viewer's queue, at the replay watched). False if the list isn't laid
     /// out yet.
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn reveal_row(&mut self, ui: &AppWindow, id: &str, index: i32) -> bool {
         self.rows.insert(id.to_string(), index);
         let dy = {
