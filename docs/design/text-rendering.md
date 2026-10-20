@@ -1496,19 +1496,21 @@ damage digits, a telop's, the chip window's, the banners', the '+', the "x2" pai
 read off its glyphs as the pack is made: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
 rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
 Every number is laid one way (`numbers::laid`; the user: "why can't the hp and the damage number in the custom
-screen and the damage number in the telop all have the same number spacing?"): in Teko 600 at its face box's height,
-each digit the digits' one advance at that height (the widest digit's: tabular, so a number's columns line up and it
-doesn't shift as it changes), a sign ('+', the "x" of "x2") its ink's width and clear space either side so it never
-touches a digit; the run placed against the end the picture's number sits against (the HP box's and the chip
-window's right, the damage taken's left, an enemy's HP and a banner's number their middle, a chip's damage a word's
-space after its name), never squeezed. The numbers were Bungee at first ("i like bungee", 2026-10-19), whose digits are
-about as wide as they are tall, wider than the game's, so most places had them narrowed (the HP box's four digits to
-0.8 of their width, a chip's "40+10" to 0.75); the user then compared nine fonts in place and switched to Teko ("can
-you use teko 600 without squeezing?", 2026-10-20), a condensed face that fits every boxed number at its own width. A
-chip's damage after its name runs past where the original's ended where it is longer ("40 + 30 × 2"): nothing
-follows it in the hand's label or a telop. The '+' has clear space either side; the "x" of "x2" before it and a
-third of that after, holding to its '2'. Its rim is a frame pixel's square around it, or its shadow a frame pixel
-right and down.
+screen and the damage number in the telop all have the same number spacing?", then "why are you not just using the
+font's own metrics for layout?"): in Teko 600 at its face box's height, the whole run shaped as one string by swash
+with the font's own metrics (its advances and kerning, the '+' and the "x" of "x2" too), never squeezed. Teko has no
+tabular figures (`tnum`) and its digits' advances differ, so each digit takes the widest digit's advance, its glyph
+centered in it, as a font's tabular figures are: a number's columns line up and it doesn't shift as it changes. The
+run is placed against the end the picture's number sits against: the HP box's and the chip window's right, the
+damage taken's left, an enemy's HP its middle, the judge's two numbers ending and starting where theirs do, a chip's
+damage one word space of the name's font after its name's measured end, a telop's name and numbers centered where the
+original's are. A numbered banner's words and number are one run: the words in the lettering font, the number in
+Teko, the lettering font's word space between them, centered where the picture's words and number are. The numbers
+were Bungee at first ("i like bungee", 2026-10-19), whose digits are about as wide as they are tall, wider than the
+game's, so most places had them narrowed; the user compared nine fonts in place and switched to Teko ("can you use teko
+600 without squeezing?", 2026-10-20), a condensed face that fits every boxed number at its own width. A chip's damage
+after its name runs past where the original's ended where it is longer ("40+30×2"): nothing follows it in the hand's
+label or a telop. Its rim is a frame pixel's square around it, or its shadow a frame pixel right and down.
 
 - A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
   a frame pixel right and down as the name's (the original's are both a pixel). The others' rims are a frame pixel all

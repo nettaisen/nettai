@@ -1317,7 +1317,10 @@ impl TextRenderer {
             // would be; each centered in its box: a fixed pitch, each glyph
             // its own shape.)
             let scale = bh / tallest.max(1e-3);
-            let mut narrow = (bw / (widest * scale).max(1e-3)).min(1.0);
+            // (The numbers' run, `numbers::laid`, gives each glyph a box at
+            // least its own ink's width: narrowed by its own ink, never.)
+            let own = if face == crate::numbers::Face::Digits { x1 - x0 } else { widest };
+            let mut narrow = (bw / (own * scale).max(1e-3)).min(1.0);
             // (A family's sets narrowed alike: the least any needs.)
             for (chars, width) in &f.family {
                 let widest = chars.chars().filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
