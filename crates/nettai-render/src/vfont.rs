@@ -1173,6 +1173,11 @@ impl TextRenderer {
                 Some(c) => {
                     let mut grown = Mask::new(area);
                     self.paint_layout_grown(layout, st, at, place, area, ink.rim_width * s, &mut grown);
+                    // (An outline wider than a pixel fills what the letters
+                    // close in, as the pictures' do: ロ's inside.)
+                    if ink.rim_width > RIM {
+                        grown.fill_enclosed();
+                    }
                     Some((color(c), grown))
                 }
                 None => None,
@@ -1611,6 +1616,33 @@ impl Mask {
     fn new((x0, y0, x1, y1): (i32, i32, i32, i32)) -> Mask {
         let (w, h) = ((x1 - x0).max(0) as usize, (y1 - y0).max(0) as usize);
         Mask { x: x0, y: y0, w, h, a: vec![0; w * h] }
+    }
+
+    /// Its uncovered pixels that are closed in (none of them reaches its
+    /// edge through uncovered pixels) covered whole.
+    fn fill_enclosed(&mut self) {
+        let (w, h) = (self.w, self.h);
+        let open = |a: u8| a < 128;
+        let mut outside = vec![false; w * h];
+        let mut stack: Vec<usize> = (0..w * h).filter(|&i| (i % w == 0 || i % w == w - 1 || i / w == 0 || i / w == h - 1) && open(self.a[i])).collect();
+        for &i in &stack {
+            outside[i] = true;
+        }
+        while let Some(i) = stack.pop() {
+            let (x, y) = (i % w, i / w);
+            let next = [(x > 0).then(|| i - 1), (x + 1 < w).then(|| i + 1), (y > 0).then(|| i - w), (y + 1 < h).then(|| i + w)];
+            for j in next.into_iter().flatten() {
+                if !outside[j] && open(self.a[j]) {
+                    outside[j] = true;
+                    stack.push(j);
+                }
+            }
+        }
+        for (a, out) in self.a.iter_mut().zip(outside) {
+            if !out {
+                *a = 255;
+            }
+        }
     }
 
     fn at(&self, x: i32, y: i32) -> u8 {
