@@ -205,7 +205,16 @@ impl Overlay {
 /// row), back to front, each where the frame's depth keys (the lifted
 /// frame's or the nudged frame's, on the output pixels that show them) say
 /// nothing in front of it won the pixel.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn draw_overlays(overlays: &[Overlay], depth: &[u32], nudge: Option<&Nudge>, lift: Option<&Lift>, place: &Placement, out: &mut [u32], w: usize) {
+    draw_overlays_covering(overlays, depth, nudge, lift, place, out, w, None);
+}
+
+/// [`draw_overlays`], and in `cover` (as large as `out`) the depth key of
+/// the frontmost overlay drawn on each output pixel, for what is drawn over
+/// the picture after them (the text layer: `vfont::TextRenderer::draw_over`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn draw_overlays_covering(overlays: &[Overlay], depth: &[u32], nudge: Option<&Nudge>, lift: Option<&Lift>, place: &Placement, out: &mut [u32], w: usize, mut cover: Option<&mut [u32]>) {
     let s = place.scale as f64;
     for o in overlays.iter().rev() {
         let left = o.x as f64 + o.fine.0 as f64 / 65536.0;
@@ -230,7 +239,11 @@ pub(crate) fn draw_overlays(overlays: &[Overlay], depth: &[u32], nudge: Option<&
                 if front < o.depth {
                     continue;
                 }
-                out[(place.y + dy) as usize * w + (place.x + dx) as usize] = to_rgb(color);
+                let at = (place.y + dy) as usize * w + (place.x + dx) as usize;
+                out[at] = to_rgb(color);
+                if let Some(c) = cover.as_deref_mut().and_then(|c| c.get_mut(at)) {
+                    *c = (*c).min(o.depth);
+                }
             }
         }
     }

@@ -26,6 +26,7 @@ pub mod pictures;
 pub mod present;
 pub mod render;
 pub mod sdf;
+pub mod shapes;
 pub mod smooth;
 pub mod stage;
 pub mod still;

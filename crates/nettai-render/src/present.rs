@@ -86,13 +86,18 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
             glide_row(g, depth, nudge, &place, &nudged, dy, fy, line);
         }
     }
+    // (The overlays' depth keys on the output pixels they draw, for the text
+    // layer's items behind them: an emblem spinning over a window drawn as
+    // shapes.)
+    let mut cover: Vec<u32> = Vec::new();
     if !frame.overlays.is_empty() {
-        crate::smooth::draw_overlays(&frame.overlays, &frame.depth, frame.nudge.as_ref(), frame.lift.as_ref(), &place, out, w);
+        cover = vec![u32::MAX; out.len()];
+        crate::smooth::draw_overlays_covering(&frame.overlays, &frame.depth, frame.nudge.as_ref(), frame.lift.as_ref(), &place, out, w, Some(&mut cover));
     }
     if let Some(t) = text
         && !frame.text.is_empty()
     {
-        t.draw(&frame.text, &frame.depth, &place, out, w);
+        t.draw_over(&frame.text, &frame.depth, (!cover.is_empty()).then_some(&cover[..]), &place, out, w);
     }
     place
 }

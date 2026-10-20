@@ -19,7 +19,8 @@
 //! stay pixel art; the game-style lettering of the banners, the HUD's and
 //! the custom window's labels and the chip window's help pictures is drawn
 //! here too, in the lettering font ([`Role::Lettering`], `lettering`), and
-//! the numbers in the numbers' font (`numbers`).
+//! the numbers in the numbers' font (`numbers`); and the frames drawn as
+//! shapes in their pictures' place (`shapes`).
 
 use crate::compose::{Fade, HEIGHT, WIDTH};
 pub use crate::render::GraphicsMode;
@@ -108,8 +109,10 @@ pub struct TextItem {
     /// has more than one face color or a rim (`face` is then its first
     /// fill color).
     pub ink: Option<Ink>,
-    /// A banner's bar, drawn under the words (its shapes).
-    pub bar: Option<Vec<Filled>>,
+    /// A drawing of the battle's frames in place of its picture (the
+    /// pack's shapes: `crate::shapes`), filled at the output's resolution
+    /// in its box: a banner's bar, a box, a window's frame.
+    pub drawn: Option<Drawn>,
     /// How far past its box the item truly is, 16.16 frame pixels right and
     /// down: a sprite's true place between the frame's pixels
     /// (`objects::Fine`, the enhanced mode's motion).
@@ -135,7 +138,7 @@ impl TextItem {
             vscale: None,
             shown: None,
             ink: None,
-            bar: None,
+            drawn: None,
             fine: (0, 0),
             fitted: None,
         }
@@ -165,16 +168,16 @@ pub struct Ink {
     pub rim: Option<u16>,
 }
 
-/// A filled shape drawn under an item's words (a banner's bar: the
-/// pack's `nettai_assets::letters::Shape`s, `lettering::shapes`): a polygon,
-/// its corners in frame pixels before the item's squash (which takes it with
-/// the words), filled with analytic coverage at the output's resolution, and
-/// its color (BGR555, before the fades). An item's shapes are filled in
-/// order, each over the ones before.
+/// A drawing in place of a picture ([`TextItem::drawn`]): its regions,
+/// filled one over another in order, each its rings (frame pixels from the
+/// item's box's top left, even-odd) and its color (BGR555, before the
+/// fades); the 8x8 cells of its box it may draw in (none: all of them); and
+/// a hash of the regions, to know a drawing painted before.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Filled {
-    pub points: Vec<[f32; 2]>,
-    pub color: u16,
+pub struct Drawn {
+    pub regions: Vec<(Vec<Vec<[f32; 2]>>, u16)>,
+    pub cells: Option<Vec<[u8; 2]>>,
+    pub hash: u64,
 }
 
 /// What a text item is drawn among, for its depth and its fades.
@@ -269,6 +272,12 @@ impl<'f> TextSink<'f> {
     /// Whether the game's numbers are drawn in the numbers' font (the
     /// enhanced mode's: `numbers`).
     pub fn draws_numbers(&self) -> bool {
+        self.lettering
+    }
+
+    /// Whether the frames the pack has drawings of are drawn as shapes (the
+    /// enhanced mode's: `shapes`).
+    pub fn draws_shapes(&self) -> bool {
         self.lettering
     }
 

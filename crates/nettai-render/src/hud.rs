@@ -661,13 +661,20 @@ pub fn draw<'a>(
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
-        for (i, &e) in hud.hp_box.iter().enumerate() {
-            put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
-        }
         // In the enhanced mode the HP in the numbers' font over the cells
-        // left blank (the box's glyph 10).
+        // left blank (the box's glyph 10), and the box drawn as shapes where
+        // the pack has its drawing.
         let lettered = hp_box_number(hud, pal, shown, (shift + 8, 0), text, problems);
-        for (k, d) in digits4(shown).into_iter().enumerate() {
+        let drawn = hud.shapes.hp_box.as_ref().filter(|_| lettered.is_some() && text.draws_shapes());
+        match drawn {
+            Some(d) => text.push(Plane::Hud, crate::shapes::item(crate::shapes::drawn(d, |r| pal[r.color as usize & 15], (false, false), None), (shift, 0), (48, 16))),
+            None => {
+                for (i, &e) in hud.hp_box.iter().enumerate() {
+                    put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
+                }
+            }
+        }
+        for (k, d) in digits4(shown).into_iter().enumerate().filter(|_| drawn.is_none()) {
             let d = if lettered.is_some() { HP_BLANK } else { d };
             let top = MapEntry { tile: hud.first_tile + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
             put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
@@ -681,11 +688,25 @@ pub fn draw<'a>(
     // Custom gauge, top center.
     if custom_gauge && gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
+        let color = |r: &nettai_assets::shapes::Region| pal[r.color as usize & 15];
         // In the enhanced mode the frame's word in the lettering font, in
-        // its look, its cells with their letters taken off (their plate).
+        // its look, its cells with their letters taken off (their plate);
+        // and the frame and its cells drawn as shapes where the pack has
+        // their drawings (`shapes`), the word over them.
         let word = gauge_word(b, hud, text, problems);
+        let frame_drawn = hud.shapes.gauge_frame.as_ref().filter(|_| text.draws_shapes());
+        if let Some(m) = frame_drawn {
+            for part in &m.parts {
+                let mut d = crate::shapes::drawn(&part.drawing, color, (false, false), None);
+                d.cells = Some(part.cells.clone());
+                text.push(Plane::Hud, crate::shapes::item(d, (GAUGE_COLUMN * 8, 0), (GAUGE_COLUMNS * 8, 16)));
+            }
+        }
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             let (col, row) = (GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
+            if frame_drawn.is_some_and(|m| m.covers(i % GAUGE_COLUMNS as usize, i / GAUGE_COLUMNS as usize)) {
+                continue;
+            }
             match &word {
                 Some((cells, erased, _)) if cells.contains(&i) => {
                     let k = cells.iter().position(|&c| c == i).unwrap_or(0);
@@ -703,36 +724,77 @@ pub fn draw<'a>(
         let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
-        // (Its fill a pixel longer, for the output to show the part of a
-        // pixel the counter is past its whole pixels: `gauge_sub`. A gauge
-        // a pixel short of full shows its cells all filled, not full.)
-        let fill = if smooth.nudged && g < FULL { g as u32 + GAUGE_UNITS_A_PIXEL } else { g as u32 };
-        for i in 0..16u32 {
-            let tile = if g >= FULL {
-                g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
-            } else if i < fill >> 10 {
-                g0 + GAUGE_FILLED
-            } else if i == fill >> 10 {
-                g0 + ((fill >> 7) & 7) as u16
+        let full_frame = (state.frame & 8 != 0) as usize;
+        let l_or_r = (g >= FULL)
+            .then(|| {
+                let found = hud.letters.words.l_or_r[full_frame].as_ref();
+                lettered_word(b, text, "gauge.l-or-r", found.map(|f| &f.letters), pal, Lettering::wide, problems).zip(found)
+            })
+            .flatten();
+        // The cells drawn as shapes (the pack's, where each cell filling by
+        // eighths is its filled cell cut short): the fill's end where the
+        // counter is, between the pixels in the enhanced mode's motion.
+        let cells_drawn = hud.shapes.gauge_cells.as_ref().filter(|c| text.draws_shapes() && c.cut && (g < FULL || l_or_r.is_some()));
+        if let Some(c) = cells_drawn {
+            let at = |i: usize| ((Hud::GAUGE_FILL_COLUMN + i) as f32 * 8.0, Hud::GAUGE_FILL_ROW as f32 * 8.0);
+            let mut parts = Vec::new();
+            if g >= FULL {
+                let look = &c.full[((state.frame as usize / 7) & 3) % c.full.len().max(1)];
+                for i in 0..Hud::GAUGE_FILL_CELLS {
+                    let column = Hud::GAUGE_FILL_COLUMN + i;
+                    if (Hud::GAUGE_L_OR_R_COLUMN..Hud::GAUGE_L_OR_R_COLUMN + 4).contains(&column) {
+                        continue;
+                    }
+                    parts.push((crate::shapes::drawn(look, color, (false, false), Some((0.0, 8.0))), at(i)));
+                }
+                if let Some(d) = c.l_or_r.get(full_frame) {
+                    parts.push((crate::shapes::drawn(d, color, (false, false), None), ((Hud::GAUGE_L_OR_R_COLUMN as f32) * 8.0, Hud::GAUGE_FILL_ROW as f32 * 8.0)));
+                }
             } else {
-                g0
-            };
-            put(layer, hud, pal, cell(tile), 7 + i as i32, 1);
+                let filled = if smooth.on { g as f32 / GAUGE_UNITS_A_PIXEL as f32 } else { (g as u32 >> 7) as f32 };
+                for i in 0..Hud::GAUGE_FILL_CELLS {
+                    let past = (filled - 8.0 * i as f32).clamp(0.0, 8.0);
+                    if past > 0.0 {
+                        parts.push((crate::shapes::drawn(&c.filled, color, (false, false), Some((0.0, past))), at(i)));
+                    }
+                    if past < 8.0 {
+                        parts.push((crate::shapes::drawn(&c.empty, color, (false, false), Some((past, 8.0))), at(i)));
+                    }
+                }
+            }
+            text.push(Plane::Hud, crate::shapes::item(crate::shapes::joined(parts), (GAUGE_COLUMN * 8, 0), (GAUGE_COLUMNS * 8, 16)));
+        } else {
+            // (Its fill a pixel longer, for the output to show the part of
+            // a pixel the counter is past its whole pixels: `gauge_sub`. A
+            // gauge a pixel short of full shows its cells all filled, not
+            // full.)
+            let fill = if smooth.nudged && g < FULL { g as u32 + GAUGE_UNITS_A_PIXEL } else { g as u32 };
+            for i in 0..16u32 {
+                let tile = if g >= FULL {
+                    g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
+                } else if i < fill >> 10 {
+                    g0 + GAUGE_FILLED
+                } else if i == fill >> 10 {
+                    g0 + ((fill >> 7) & 7) as u16
+                } else {
+                    g0
+                };
+                put(layer, hud, pal, cell(tile), 7 + i as i32, 1);
+            }
         }
         if g >= FULL {
-            let frame = (state.frame & 8 != 0) as usize;
-            let first = g0 + GAUGE_L_OR_R + 4 * frame as u16;
+            let first = g0 + GAUGE_L_OR_R + 4 * full_frame as u16;
             // In the enhanced mode the cells with their letters taken off
-            // (the gauge's own ground), and the words in the lettering font
-            // in this frame's look.
-            let found = hud.letters.words.l_or_r[frame].as_ref();
-            let words = lettered_word(b, text, "gauge.l-or-r", found.map(|f| &f.letters), pal, Lettering::wide, problems);
-            match words.zip(found) {
+            // (the gauge's own ground, or its drawing), and the words in the
+            // lettering font in this frame's look.
+            match l_or_r {
                 Some(((words, look), found)) => {
-                    let erased = &found.blank;
-                    for i in 0..4 {
-                        if let Some(t) = erased.get(i) {
-                            layer.draw_tile(t, pal, (13 + i as i32) * 8, 8, false, false);
+                    if cells_drawn.is_none() {
+                        let erased = &found.blank;
+                        for i in 0..4 {
+                            if let Some(t) = erased.get(i) {
+                                layer.draw_tile(t, pal, (13 + i as i32) * 8, 8, false, false);
+                            }
                         }
                     }
                     // (A ring mark is drawn about the capitals, 1.15 times
@@ -1012,25 +1074,32 @@ pub fn draw<'a>(
     let hidden = b.hud_hidden.emotion_window;
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        let mut count = mugshot_parts(b, hud, packs, state, r, shift, (shared, text), &mut group, problems);
+        let mut items = mugshot_parts(b, hud, packs, state, r, shift, (shared, text), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
             }
-            // (The count blacks out with the window.)
-            if let Some(f) = count.as_mut().and_then(|c| c.fitted.as_mut()) {
-                f.fill.iter_mut().for_each(|c| *c = 0);
-                f.rim = f.rim.map(|_| 0);
-                f.shadow = f.shadow.map(|_| 0);
+            // (The count and the shapes black out with the window.)
+            for item in &mut items {
+                if let Some(f) = item.fitted.as_mut() {
+                    f.fill.iter_mut().for_each(|c| *c = 0);
+                    f.rim = f.rim.map(|_| 0);
+                    f.shadow = f.shadow.map(|_| 0);
+                }
+                if let Some(d) = item.drawn.as_mut() {
+                    d.regions.iter_mut().for_each(|r| r.1 = 0);
+                    d.hash = d.hash.wrapping_add(1);
+                }
             }
         }
-        match count {
-            Some(item) => {
-                let tag = text.tag();
-                list.insert_tagged(FRONT_LAYER, 0, group, Some(tag));
+        if items.is_empty() {
+            list.insert_at(FRONT_LAYER, 0, group);
+        } else {
+            let tag = text.tag();
+            list.insert_tagged(FRONT_LAYER, 0, group, Some(tag));
+            for item in items {
                 text.push(Plane::Sprite(tag), item);
             }
-            None => list.insert_at(FRONT_LAYER, 0, group),
         }
     }
     // The banner block's banner, where no telop lays on it. (The banner's
@@ -1401,7 +1470,8 @@ fn mugshot_parts<'a>(
     (shared, text): (&'a SharedGlyphs, &TextSink),
     out: &mut Vec<SpritePart<'a>>,
     problems: &mut Problems,
-) -> Option<TextItem> {
+) -> Vec<TextItem> {
+    let mut items = Vec::new();
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
     // A link navi's own face, its definition's (MegaMan's, the navi that
@@ -1409,13 +1479,16 @@ fn mugshot_parts<'a>(
     let navi = b.content.navi(stats.navi);
     if !navi.changes_form() {
         // (The mugshot's own pack's HUD holds its picture.)
-        let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return None };
+        let Some((tiles, palettes, number)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return items };
         let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
+        let picture = navi.mugshot.and_then(|m| crate::packs::mugshot(&b.content, m));
+        let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
+        let tiles = face_with_ring(face_hud, number, tiles, &pal, x, text, &mut items);
         out.push(block(tiles, 32, 16, pal, x, EMOTION_WINDOW_Y));
-        out.push(block(&hud.navi_box, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
+        out.push(box_part(hud.shapes.navi_box.as_ref(), &hud.navi_box, &pal, x, text, &mut items));
         note_true_face(b, packs, side, navi.version.as_deref(), x, problems);
-        return None;
+        return items;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
     // A form chosen on the custom screen shows in the window until the
@@ -1430,16 +1503,22 @@ fn mugshot_parts<'a>(
         face.emotion,
         face.base_variant || nettai_battle::kinds::player::face_charged(b, side as u8),
         problems,
-    ) else { return None };
+    ) else { return items };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     let pal = window_faded(b, pal);
+    let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
+    let gfx = match picture {
+        Some(m) => face_with_ring(face_hud, packs.mugshot(m).1, gfx, &pal, x, text, &mut items),
+        None => gfx,
+    };
     out.push(block(gfx, 32, 16, pal, x, EMOTION_WINDOW_Y));
     // The box beside it: the face's own (EXE5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
     // without a count: a face that brings none (EXE5's souls') shows its
-    // side's count (`window_count`).
-    let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
+    // side's count (`window_count`). (Each box's drawing where the pack has
+    // one, for the enhanced mode.)
+    let own_drawing = picture.and_then(|m| face_hud.shapes.mugshot_boxes.get(m.id as usize)).and_then(Option::as_ref);
     let (tiles, count) = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
         Some(own) => (Some(own), None),
         None if face_hud.count_box.is_empty() => {
@@ -1456,15 +1535,51 @@ fn mugshot_parts<'a>(
     // (the counts' own box, their digits taken off: `count_blank`; the HUD's
     // box without a count is another picture).
     let number = count.and_then(|(h, n)| count_number(&h.letters.counts, n, &pal, (x + 32, EMOTION_WINDOW_Y), text));
-    let tiles = match (&number, tiles) {
-        (Some(_), Some(_)) => Some(&shared.count_blank),
-        (_, tiles) => tiles,
+    let (tiles, drawing) = match (&number, tiles) {
+        (Some(_), Some(_)) => (Some(&shared.count_blank), count.and_then(|(h, _)| h.shapes.count_blank.as_ref())),
+        (_, Some(t)) if std::ptr::eq(t, &hud.count_box) => (Some(t), hud.shapes.count_box.as_ref()),
+        (_, Some(t)) if own_drawing.is_some() && picture.and_then(|m| face_hud.mugshot_box(m.id)).is_some_and(|own| std::ptr::eq(own, t)) => (Some(t), own_drawing),
+        (_, tiles) => (tiles, None),
     };
     if let Some(tiles) = tiles {
-        out.push(block(tiles, 16, 16, pal, x + 32, EMOTION_WINDOW_Y));
+        out.push(box_part(drawing, tiles, &pal, x, text, &mut items));
     }
     note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), x, problems);
-    number
+    items.extend(number);
+    items
+}
+
+/// Four blank tiles: the part a box drawn as shapes stands in, so the
+/// sprite limit counts the box's.
+static BLANK_BOX: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 4 * Tiles::TILE] });
+
+/// The emotion window's box beside the face (16x16 at (x + 32, its row)):
+/// its drawing as shapes where it has one and the frame draws them (a
+/// blank part in its place), else its tiles.
+fn box_part<'a>(drawing: Option<&nettai_assets::shapes::Drawing>, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> SpritePart<'a> {
+    match drawing.filter(|_| text.draws_shapes()) {
+        Some(d) => {
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |r| pal[r.color as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
+            block(&BLANK_BOX, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y)
+        }
+        None => block(tiles, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y),
+    }
+}
+
+/// Face `number` of `face_hud`'s for the emotion window: where its pack has
+/// the window's frame apart from its faces and draws it as shapes, the face
+/// without its ring and the ring drawn in its color (an item in `items`);
+/// else the face as it is.
+fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
+    let ring = face_hud.shapes.mugshot_frame.as_ref().filter(|_| text.draws_shapes());
+    let apart = face_hud.mugshot_frame.as_ref().and_then(|f| f.face(number));
+    match (ring, apart) {
+        (Some(d), Some((color, face))) => {
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_| pal[color as usize & 15], (false, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
+            face
+        }
+        _ => tiles,
+    }
 }
 
 /// The emotion window's count `n` in the numbers' font, if the text layer
@@ -1780,7 +1895,7 @@ fn banner_number(b: &Battle, id: u8) -> usize {
 /// say `{n}`) and the lettering font draws them: the words in the lettering
 /// font, centered on the picture's letters (and its number), in the
 /// picture's look (its capitals' rows, its face's colors down them, its
-/// rim), over its bar drawn as a shape (read off the picture: none for a
+/// rim), over its bar drawn as shapes (the pack's drawing: none for a
 /// picture with no bar), with the banners' squash. `number` is its number
 /// in `hud`'s pack.
 fn lettered_banner(
@@ -1842,8 +1957,14 @@ fn lettered_banner(
             items.extend(words_in(&words, Some(letters.span)));
         }
     }
-    // Every item cut to the banner's box.
+    // The bar under the words: the pack's drawing of it (none: the picture
+    // has none), squashed with them.
     items.first()?;
+    if let Some(bar) = &layout.bar {
+        let d = crate::shapes::drawn(bar, |r| pal[r.color as usize & 15], (false, false), None);
+        items.insert(0, TextItem { vscale, ..crate::shapes::item(d, (x, y), (160, 16)) });
+    }
+    // Every item cut to the banner's box.
     for item in &mut items {
         item.clip = Rect::new(x, 0, 160, crate::compose::HEIGHT as i32);
     }
