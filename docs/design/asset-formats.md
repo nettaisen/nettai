@@ -452,18 +452,24 @@ of them are centered in (`form_name_box`).
 filled shapes, which the enhanced graphics draw at the output's resolution
 in place of their pictures (a banner with no bar, a logo: its `logo`, the
 whole picture). Each is an SVG file under `shapes/` beside the
-pictures: its `viewBox` the picture's size in frame pixels, its shapes
-(`rect`, with `rx` a rounded one; `circle`; `polygon`; `path` of absolute M,
-L, H, V, A and Z) filled one over another in the file's order, each
-even-odd, each naming its color as `data-color` (a palette index) and, where
-the picture is laid in several palettes (a window map's), `data-palette`
-(the row); its `fill` is that color in the picture's first palette, for
-viewing only. A `text` element is words written on the drawing: the
-string's key in the game's strings (`data-words`), the box its capitals
-fill (`data-box`: x y width height; lines one under another share its
-height), its face's color (`data-color`) and its outline's and shadow's
-(`data-rim`, `data-shadow`); its position, size and contents are for
-viewing. The JSON says what SVG can't: which cells of a map a drawing
+pictures: its `viewBox` the picture's size in frame pixels, read and drawn
+by usvg and resvg (the version Slint builds into the app), so any SVG a
+drawing needs works: shapes, paths with curves, strokes, groups,
+transforms, `use`, clip paths. Its colors are the palette's at the time it
+is drawn: each shape (or a group round it) names its fill's palette index
+as `data-color` and its stroke's as `data-stroke`, and, where the picture
+is laid in several palettes (a window map's), the row as `data-palette` on
+it or round it; every shape outside `defs` and clip paths names its paint
+so (`fill="none"` where it has none). The file's own `fill` and `stroke`
+are those colors in the picture's first palette, for viewing only. A
+`text` element with `data-words` is words written on the drawing, drawn
+by the text layer, not as the file's: the string's key in the game's
+strings (`data-words`), the box its capitals fill (`data-box`: x y width
+height; lines one under another share its height), its face's color
+(`data-color`), its outline's and shadow's (`data-rim`, `data-shadow`),
+the outline's width (`data-rim-width`, pixels; 1 if not given), its slant
+(`data-slant`) and font (`data-font`); its position, size and contents are
+for viewing. The JSON says what SVG can't: which cells of a map a drawing
 stands in for (a window map's, the gauge's frame, the chatbox's boxes:
 `parts`, each a file and its cells, the first drawing whose pixels a cell
 has), and which of a set each file is (the gauge's cells and full frames,
