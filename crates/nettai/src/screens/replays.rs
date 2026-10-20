@@ -1251,15 +1251,18 @@ impl Screen for Replays {
     }
 
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        if self.export.is_some() || self.sheet || self.up_next {
+        if self.export.is_some() || self.sheet {
             return false;
         }
-        // (N the queue's next replay, while it plays.)
+        // (N the queue's next replay, while it plays: its popup open or not.)
         if self.watching.is_some() && key.code == KeyCode::KeyN {
             if !key.repeat {
                 self.next_in_queue(shell);
             }
             return true;
+        }
+        if self.up_next {
+            return false;
         }
         if let Some(w) = &mut self.watching {
             match key.code {
