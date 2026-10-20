@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
 <!-- EXE5's custom window's frame (every cell the screen doesn't lay something in): a gray frame with dark holes down its left edge, a light groove round the chip window's frame, the chip window with rounded corners and its glare in three corners, the panel under it (its outline rounded at the top left, its top stepping down at the right), the bottom bar and the right frame, the column's housing with the orb's socket on top, the OK button. -->
 <!-- The gray frame -->
-<rect x="0" y="0" width="88" height="96" fill="#cecece" data-color="6" data-palette="9"/>
+<rect x="0" y="0" width="88" height="100" fill="#cecece" data-color="6" data-palette="9"/>
 <!-- The holes down the left edge: lit along their top and right edges -->
 <rect x="0" y="8" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
 <path d="M0 9 L1.4 9 A0.6 0.6 0 0 1 2 9.6 L2 14.4 A0.6 0.6 0 0 1 1.4 15 L0 15 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
