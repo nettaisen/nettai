@@ -3,7 +3,7 @@
 //! `tour` feature's: `tour/reel.rs`), which runs the app a frame at a time on a clock of its own whatever each frame
 //! takes to capture, and whose frames' times are that clock's.
 
-use std::time::Instant;
+use web_time::Instant;
 
 /// Now.
 pub fn now() -> Instant {

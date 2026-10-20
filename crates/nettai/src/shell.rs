@@ -26,7 +26,8 @@ use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 thread_local! {
     /// Each game's name in the language shown, by the game's id (`Shell::game_name`; `Shell::name_games` reads

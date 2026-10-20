@@ -45,7 +45,8 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 // A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
 // own, called from `walk` and `motion_walk` with one line.

@@ -26,7 +26,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use web_time::{Instant, SystemTime, UNIX_EPOCH};
 
 /// The replays the reel goes through: the latest few.
 const REEL: usize = 5;
@@ -160,7 +160,7 @@ impl Library {
         let (jobs, _) = self.worker.get_or_insert_with(|| {
             let (jobs, taken) = channel();
             let (tell, told) = channel();
-            std::thread::Builder::new().name("replays".into()).spawn(move || work(taken, tell, cache)).expect("a thread can be started");
+            nettai_thread::spawn("replays", move || work(taken, tell, cache)).expect("a thread can be started");
             (jobs, told)
         });
         let _ = jobs.send(job);
@@ -382,7 +382,8 @@ impl Reel {
     pub fn of(game: &str, dir: PathBuf) -> Reel {
         let (tell, found) = channel();
         let game = game.to_string();
-        std::thread::spawn(move || {
+        // (None started: the sender is dropped, and the reel has nothing.)
+        let _ = nettai_thread::spawn("reel", move || {
             let latest = list(&dir, &HashMap::new()).into_iter().filter(|e| e.read.as_ref().is_ok_and(|s| s.head.game == game)).take(REEL);
             // (One that doesn't read any more is passed over.)
             let _ = tell.send(latest.filter_map(|e| read(&e.path).ok()).collect());

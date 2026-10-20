@@ -9,7 +9,7 @@
 use crate::battle::BattleEvent;
 use crate::input::{Action, KeyPress};
 use crate::shell::Shell;
-use std::time::Instant;
+use web_time::Instant;
 
 pub mod builds;
 pub mod menu;

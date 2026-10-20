@@ -6,6 +6,10 @@ license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"
 
 [dependencies]
+# Threads: std::thread's on the desktop, Web Workers in the browser.
+nettai-thread = { path = "../nettai-thread" }
+# The clock: std's on the desktop, the browser's `performance.now()` there (std's panics).
+web-time = "1"
 # Files: std::fs's on the desktop, the page's tree in the browser.
 nettai-fs = { path = "../nettai-fs" }
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).

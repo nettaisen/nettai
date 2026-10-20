@@ -22,7 +22,8 @@ use nettai_frontend::player::{tick_at, time_of};
 use nettai_frontend::viewer::Viewer;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// The preview's size, in the frame's pixels: the frame itself (in the UI's units, as large; at the window's density
 /// in the display's pixels).
@@ -147,7 +148,7 @@ impl Thumbnails {
     pub fn start(game: Loaded, path: PathBuf) -> Thumbnails {
         let (asks, asked) = mpsc::channel();
         let (done, drawn) = mpsc::channel();
-        let started = std::thread::Builder::new().name("previews".into()).spawn(move || work(game, path, asked, done));
+        let started = nettai_thread::spawn("previews", move || work(game, path, asked, done));
         if let Err(why) = &started {
             crate::errors::log("starting the bar's previews", why);
         }

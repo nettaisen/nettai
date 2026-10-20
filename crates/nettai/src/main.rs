@@ -54,7 +54,8 @@ use slint::winit_030::{EventResult, WinitWindowAccessor, winit};
 use slint::{ComponentHandle, RenderingState};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 thread_local! {
     /// The app's state, on the window's thread (work done on other threads comes back to it through the event

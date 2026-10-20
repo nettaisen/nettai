@@ -53,7 +53,8 @@
 //! channel, so the network side can run on a thread of its own.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
