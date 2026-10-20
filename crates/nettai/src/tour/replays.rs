@@ -1,9 +1,9 @@
 //! The screenshot pass's steps through Replays (docs/app.md §13): the list, the selected replay, a search, a
-//! file that doesn't read (selected as the screen arrives from the menu), the delete question, the export's
-//! dialog (idle, under way, failed), the two cards, the viewer (a focus move and a second of playback apart,
-//! each a pair), the other console, the input display with the other console's picture in the corner, the
-//! export's dialog over the viewer (one side, both sides), a replay that fails as it is watched, and on a phone
-//! the selected replay's sheet.
+//! file that doesn't read (selected as the screen arrives from the menu), the delete question, the viewer's export
+//! mode from the list (idle, a handle nudged, under way, failed), the two cards, the viewer (a focus move and a
+//! second of playback apart, each a pair), the other console, the input display with the other console's picture in
+//! the corner, the ⋯ menu, the playback speed's menu and its badge, the export mode from the viewer (one side, both
+//! sides), a replay that fails as it is watched, and on a phone the selected replay's sheet.
 //!
 //! The pass has replays of its own, made here the first time through (`crate::replays::folder` is the pass's
 //! folder while it runs): three sets of the selected game played by themselves and recorded, written again
@@ -423,14 +423,17 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     add(SETTLE, act(Action::Back));
     delete(add, until);
 
-    // The export's dialog: as it opens; as an export under way and a failed one look (set on the view: no
-    // export runs here); then closed.
+    // The viewer's export mode, from the list (E): paused at the start, the range the whole match, the focus on its
+    // start's handle; the handle a second on (Shift+Right, the picture following it); as an export under way and a
+    // failed one look (set on the view: no export runs here); then the mode left, and the viewer.
     add(SETTLE, focus("list", 0));
     add(SETTLE, until(|view| view.get_still()));
     add(SETTLE, key(KeyCode::KeyE, 1));
+    add(SETTLE, until(|view| view.get_watching() && view.get_exporting()));
+    add(SETTLE * 2, focus("export.handle", 0));
     shot(add, "replays-export", Pair::First, Also::Nothing);
-    add(SETTLE, act(Action::Left));
-    shot(add, "replays-export-focus", Pair::Second, Also::Nothing);
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| { s.key(shell, &KeyPress { code: KeyCode::ArrowRight, text: None, repeat: false, shift: true }); })));
+    shot(add, "replays-export-handle", Pair::Second, Also::Playback);
     add(
         SETTLE,
         Box::new(|ui, app, _| {
@@ -454,12 +457,18 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     );
     shot(add, "replays-export-failed", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, until(|view| !view.get_watching()));
     if lang == "en" && !phone && std::env::var_os("NETTAI_TOUR_EXPORT").is_some() {
         export(add);
         shot(add, "replays-exported", Pair::None, Also::Nothing);
         add(SETTLE, act(Action::Back));
+        add(SETTLE, act(Action::Back));
+        add(SETTLE, until(|view| !view.get_watching()));
         stop_export(add);
         add(SETTLE, Box::new(|ui, app, _| if ui.global::<ReplaysView>().get_exporting() { app.borrow_mut().act(Action::Back) }));
+        add(SETTLE, act(Action::Back));
+        add(SETTLE, until(|view| !view.get_watching()));
     }
 
     // The two cards, then the viewer, held a little way into the second round: the focus a step down; a second
@@ -503,9 +512,21 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     shot(add, "viewer-overlays", Pair::None, Also::Nothing);
     add(SETTLE, key(KeyCode::KeyI, 1));
     add(SETTLE, key(KeyCode::KeyP, 1));
-    // The export, from the viewer: its Range the whole match, NOW taking where the viewer is as the End.
-    add(SETTLE, menu(9));
-    add(SETTLE, activate("export.end-now", 0));
+    // The playback speed: its row in the ⋯ menu (the fifth), its own menu of the four, 2× chosen (the badge by the
+    // buttons), then 1× again.
+    add(SETTLE, activate("more", 0));
+    shot(add, "viewer-menu", Pair::None, Also::Nothing);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, menu(5));
+    shot(add, "viewer-speeds", Pair::None, Also::Nothing);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "speed", 0, 2))));
+    shot(add, "viewer-speed-badge", Pair::None, Also::Nothing);
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "speed", 0, 1))));
+    // The export mode, from the viewer (EXPORT VIDEO, the menu's last): the start set where the viewer is, so the
+    // range is the rest of the match.
+    add(SETTLE, menu(6));
+    add(SETTLE, activate("export.start-here", 0));
     shot(add, "viewer-export", Pair::None, Also::Nothing);
     // Both consoles side by side.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "export.sides", 0, 1))));
@@ -597,12 +618,19 @@ fn export(add: &mut dyn FnMut(u64, Step)) {
             let mut app = app.borrow_mut();
             app.shell.settings.remembered.insert("replays.export-folder".into(), tour.dir.display().to_string());
             app.shell.nav.focus("list", 0);
-            app.with_screen(ScreenId::Replays, |s, shell| {
-                s.key(shell, &KeyPress { code: KeyCode::KeyE, text: None, repeat: false, shift: false });
+            app.with_screen(ScreenId::Replays, |s, shell| { s.key(shell, &KeyPress { code: KeyCode::KeyE, text: None, repeat: false, shift: false }); });
+        }),
+    );
+    // (The viewer in its export mode; then the last of the Range's list, the last round.)
+    add(SETTLE, until(|view| view.get_watching() && view.get_exporting()));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
                 s.step(shell, "export.size", 0, -1);
                 s.choose(shell, "export.part", 0, i32::MAX);
                 s.activate(shell, "export.go", 0);
-            });
+            })
         }),
     );
     // (Each wait is a minute at the most: a round takes a while on a busy machine.)
@@ -648,11 +676,17 @@ fn stop_export(add: &mut dyn FnMut(u64, Step)) {
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.nav.focus("list", 0);
-            app.with_screen(ScreenId::Replays, |s, shell| {
-                s.key(shell, &KeyPress { code: KeyCode::KeyE, text: None, repeat: false, shift: false });
+            app.with_screen(ScreenId::Replays, |s, shell| { s.key(shell, &KeyPress { code: KeyCode::KeyE, text: None, repeat: false, shift: false }); });
+        }),
+    );
+    add(SETTLE, until(|view| view.get_watching() && view.get_exporting()));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| {
                 s.step(shell, "export.size", 0, 1);
                 s.activate(shell, "export.go", 0);
-            });
+            })
         }),
     );
     add(
@@ -670,7 +704,7 @@ fn stop_export(add: &mut dyn FnMut(u64, Step)) {
         Box::new(|ui, app, tour| {
             let view = ui.global::<ReplaysView>();
             say(tour, "export.txt", &format!("a second export, at {:.0}% ({:?}), with these in the folder: {:?}\n", view.get_export_progress() * 100.0, view.get_export_state(), videos(tour)));
-            // (CANCEL: only while it runs. With none running, Back would close the dialog.)
+            // (CANCEL: only while it runs. With none running, Back would leave the export mode.)
             if view.get_export_state() == ExportState::Running {
                 app.borrow_mut().act(Action::Back);
             }

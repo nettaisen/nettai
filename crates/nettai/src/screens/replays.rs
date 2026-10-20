@@ -7,8 +7,10 @@
 //! ([`UserError`]'s sentence), never a failure of the list. No build's name is anywhere: a replay has none.
 //!
 //! The viewer is the library's `Viewer` ([`viewer::Watching`]): the shell makes it ready behind the two cards
-//! and hands it over, and this screen shows its picture, plays its sound and has its transport. The export is
-//! a dialog of its own ([`export::Export`]) over the list or the viewer.
+//! and hands it over, and this screen shows its picture, plays its sound and has its transport. The export is the
+//! viewer's export mode ([`export::Export`], docs/design/app-ui.md §2.96): the transport's bar has the range's two
+//! handles, the transport the range's buttons, EXPORT and CANCEL, and a panel over it the export's options. EXPORT
+//! VIDEO in the list opens the viewer in it.
 //!
 //! The picture fills the window, and the viewer's controls are over it while they are wanted ([`HUD_IDLE`]).
 //! WATCH watches the one replay; the arrow beside it (a split button: `Shell::pick_split`) adds it to the play
@@ -22,11 +24,13 @@
 //!
 //! The transport keeps few buttons (§2.94, §2.95): to the round's start, play or pause, the next round, and ⋯, whose
 //! menu (`Shell::pick_marked`, [`viewer::MenuItem`]) has the side watched from, the builds, the input display, the
-//! other side's picture (each also a key's), the speed and the export. The part of a replay to export is chosen in
-//! the export's dialog alone (its Range, with a Start and an End and NOW, the viewer's time).
+//! other side's picture (each also a key's), the playback speed (its own menu of the four; a badge by the buttons
+//! says a speed other than 1×) and the export. The bar previews the battle under the pointer
+//! ([`thumbnails::Thumbnails`]).
 
 mod export;
 mod queue;
+mod thumbnails;
 mod viewer;
 
 use crate::battle::{BattleEvent, BattleStart, Play};
@@ -42,7 +46,7 @@ use export::Export;
 use queue::Queue;
 use nettai_battle::{BattleResult, Content};
 use nettai_frontend::game::GraphicsMode;
-use nettai_frontend::player::time_of;
+use nettai_frontend::player::{tick_at, time_of};
 use nettai_frontend::replay::{ENGINE, Info, MatchKind, Outcome};
 use nettai_render::Frame;
 use nettai_render::vfont::TextRenderer;
@@ -225,7 +229,10 @@ pub struct Replays {
     /// shown (the match's setups were open).
     opening: Option<PathBuf>,
     sides: Option<Box<[nettai_match::Side; 2]>>,
+    /// The viewer's export mode, while it is in it; and that the replay being made ready opens in it (EXPORT VIDEO
+    /// from the list).
     export: Option<Export>,
+    export_due: bool,
     /// A phone: the selected replay's sheet is open.
     sheet: bool,
     /// `NETTAI_REPLAY` was answered; its game was selected for it.
@@ -576,8 +583,9 @@ impl Replays {
     }
 
     /// Watch the replay at `path` from `side`'s console (none: its recorder's): the two cards while it is made
-    /// ready, then the viewer (`BattleEvent::Watching`).
-    fn watch(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>) {
+    /// ready, then the viewer (`BattleEvent::Watching`); with `export`, in its export mode, paused at its start.
+    fn watch(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, export: bool) {
+        self.export_due = export;
         let Some((game, ready)) = shell.ready() else { return };
         let doing = format!("opening {}", path.display());
         let replay = match crate::replays::read(path) {
@@ -622,6 +630,9 @@ impl Replays {
     /// Leave the viewer for the list.
     fn stop_watching(&mut self, shell: &mut Shell) {
         let Some(w) = self.watching.take() else { return };
+        if let Some(e) = self.export.take() {
+            e.close(shell);
+        }
         self.close_up_next(shell);
         self.overlays = w.overlays();
         shell.lock_game(false);
@@ -641,7 +652,7 @@ impl Replays {
         self.fill_queue(shell);
         self.queued = true;
         self.current = true;
-        self.watch(shell, &path, None);
+        self.watch(shell, &path, None, false);
     }
 
     /// While the queue plays: its entry `from` (counted from its head, the replay watched while it is still there)
@@ -660,7 +671,7 @@ impl Replays {
         self.queue_chosen = 0;
         self.current = true;
         self.stop_watching(shell);
-        self.watch(shell, &path, None);
+        self.watch(shell, &path, None, false);
     }
 
     /// The queue's next (the replay watched skipped, if it is still the head): refused where none plays after it,
@@ -911,16 +922,73 @@ impl Replays {
         }
     }
 
-    /// Open the export's dialog for the replay at `path`, shown from `side` (none: its recorder's); from the viewer,
-    /// with the time it is at (`now`, the tick: NOW's).
-    fn open_export(&mut self, shell: &mut Shell, path: &Path, side: Option<u8>, now: Option<u32>) {
-        let Some(entry) = self.library.entries.iter().find(|e| e.path == *path) else { return };
-        let Ok(summary) = &entry.read else { return };
-        if let Some(w) = &mut self.watching {
-            w.pause();
-            w.hide_builds(shell);
+    /// The viewer into its export mode (docs/design/app-ui.md §2.96): the range the whole match, its options over the
+    /// transport, the focus on the range's start. The replay goes on as it was (the builds are put away: the options
+    /// are where they end).
+    fn enter_export(&mut self, shell: &mut Shell) {
+        let Some(w) = &mut self.watching else { return };
+        if self.export.is_some() {
+            return;
         }
-        self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side), now));
+        let Some(entry) = self.library.entries.iter().find(|e| e.path.as_path() == w.path()) else { return shell.sound.play(Cue::Refused) };
+        let Ok(summary) = &entry.read else { return shell.sound.play(Cue::Refused) };
+        w.hide_builds(shell);
+        let (path, side) = (w.path().to_path_buf(), w.side());
+        self.export = Some(Export::open(shell, &path, summary, side));
+        self.hud = None;
+        shell.nav.focus("export.handle", 0);
+    }
+
+    /// Out of the export mode (an export under way is stopped), the focus back on the bar.
+    fn leave_export(&mut self, shell: &mut Shell) {
+        if let Some(e) = self.export.take() {
+            e.close(shell);
+            shell.nav.focus("seek", 0);
+        }
+    }
+
+    /// The export mode's handles, buttons and settings that the viewer has a part in (their names after `export.`):
+    /// each handle (`index` 0 the start, 1 the end) dragged (`choice` of 10,000 of the replay; `held` false: let go
+    /// there), Enter on one going to it, the range's start or end set where the viewer is, the side shown. True: it
+    /// was one of them.
+    fn export_with_viewer(&mut self, shell: &mut Shell, what: &str, index: i32, place: Option<(i32, bool)>) -> bool {
+        let (Some(w), Some(e)) = (&mut self.watching, &mut self.export) else { return false };
+        let end = index == 1;
+        match (what, place) {
+            ("handle", Some((part, held))) => {
+                let tick = (w.length() as u64 * part.clamp(0, 10_000) as u64 / 10_000) as u32;
+                // (The picture follows the handle, in steps while it is held, exactly where it is let go.)
+                let to = e.drag(shell, end, tick).unwrap_or(e.handle(end));
+                w.pause();
+                w.drag_to(to, !held);
+            }
+            ("handle", None) => w.go_to(e.handle(end)),
+            ("start-here" | "end-here", _) => {
+                if !e.here(shell, what == "end-here", w.shown()) {
+                    shell.sound.play(Cue::Refused);
+                }
+            }
+            ("view", Some((side, _))) => {
+                w.set_view(shell, side);
+                e.set_side(shell, w.side());
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    /// A handle nudged by `by` ticks, the picture going to where it is then.
+    fn nudge(&mut self, shell: &mut Shell, end: bool, by: i32) {
+        let (Some(w), Some(e)) = (&mut self.watching, &mut self.export) else { return };
+        if let Some(to) = e.nudge(shell, end, by) {
+            w.go_to(to);
+        }
+    }
+
+    /// The handle the focus is on, in the export mode: false the start, true the end.
+    fn handle_focused(&self, shell: &Shell) -> Option<bool> {
+        let key = shell.nav.focused().filter(|k| k.id == "export.handle" && self.export.is_some())?;
+        Some(key.index == 1)
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -964,9 +1032,14 @@ impl Replays {
             // (WATCH watches the one replay: the queue is made ahead of time.)
             "watch" => {
                 self.queued = false;
-                self.watch(shell, &path, None);
+                self.watch(shell, &path, None, false);
             }
-            "export" => self.open_export(shell, &path, None, None),
+            // (The viewer, in its export mode, paused at the start.)
+            "export" if self.playable(shell) => {
+                self.queued = false;
+                self.watch(shell, &path, None, true);
+            }
+            "export" => shell.sound.play(Cue::Refused),
             "file" => show_file(&path),
             "delete" => self.ask_delete(shell),
             "watch-more" => self.open_watch_menu(shell, self.sheet),
@@ -1001,7 +1074,7 @@ impl Replays {
             self.started = true;
             shell.go(ScreenId::Replays);
             self.queued = false;
-            self.watch(shell, &path, None);
+            self.watch(shell, &path, None, false);
         }
     }
 }
@@ -1019,8 +1092,15 @@ impl Screen for Replays {
         if let Some(w) = &mut self.watching {
             shell.nav.enter(VIEWER, "seek");
             shell.lock_game(true);
+            // (Opened in its export mode, from the list: paused at its start.)
+            let export = std::mem::take(&mut self.export_due);
+            if export {
+                w.pause();
+            }
             w.show(shell);
-            if let Some(e) = &mut self.export {
+            if export {
+                self.enter_export(shell);
+            } else if let Some(e) = &mut self.export {
                 e.show(shell);
             }
             self.show_queue(shell);
@@ -1035,9 +1115,6 @@ impl Screen for Replays {
         self.library.cache.get_or_insert_with(crate::replays::cache_file);
         self.library.list(&crate::replays::folder());
         self.fill(shell);
-        if let Some(e) = &mut self.export {
-            e.show(shell);
-        }
     }
 
     fn hide(&mut self, shell: &mut Shell) {
@@ -1055,10 +1132,15 @@ impl Screen for Replays {
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         if let Some(what) = id.strip_prefix("export.") {
+            // (View: the viewer's side, which the export follows.)
+            let other = self.watching.as_ref().map_or(0, |w| w.side() as i32 ^ 1);
+            if self.export_with_viewer(shell, what, index, (what == "view").then_some((other, false))) {
+                return;
+            }
             if let Some(e) = &mut self.export
                 && e.activate(shell, what)
             {
-                self.export.take().expect("it is open").close(shell);
+                self.leave_export(shell);
             }
             return;
         }
@@ -1083,7 +1165,7 @@ impl Screen for Replays {
                 "next-round" => w.round(1),
                 "builds.sheet" => w.toggle_builds(shell),
                 "more" => {
-                    let rows = w.menu(&shell.ui().global::<ReplaysView>());
+                    let rows = w.menu(&shell.ui().global::<ReplaysView>(), self.export.is_some());
                     shell.pick_marked("more", 0, &Key::new("more", 0), rows);
                 }
                 _ => {}
@@ -1136,9 +1218,11 @@ impl Screen for Replays {
         }
     }
 
-    fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) {
+    fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) {
         if let Some(what) = id.strip_prefix("export.") {
-            if let Some(e) = &mut self.export {
+            if what == "view" {
+                self.export_with_viewer(shell, what, index, Some(((by > 0) as i32, false)));
+            } else if let Some(e) = &mut self.export {
                 e.step(shell, what, by);
             }
             return;
@@ -1155,6 +1239,18 @@ impl Screen for Replays {
 
     fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         if let Some(what) = id.strip_prefix("export.") {
+            // (A handle held at `choice` of 10,000 of the replay, `index` 0 the start and 1 the end; `handle-done`: let
+            // go there. View: the viewer's side.)
+            let place = match what {
+                "handle" => Some((choice, true)),
+                "handle-done" => Some((choice, false)),
+                "view" => Some((choice, false)),
+                _ => None,
+            };
+            let what = if what == "handle-done" { "handle" } else { what };
+            if place.is_some() && self.export_with_viewer(shell, what, index, place) {
+                return;
+            }
             if let Some(e) = &mut self.export {
                 e.choose(shell, what, choice);
             }
@@ -1163,15 +1259,28 @@ impl Screen for Replays {
         match (&mut self.watching, id) {
             // (The bar: held at `choice` of 10,000, or with `index` 1 let go there.)
             (Some(w), "seek") => w.drag(choice, index == 1),
-            // (The transport's ⋯ menu: `Watching::menu`'s rows; EXPORT VIDEO opens the dialog from where the viewer is.)
+            // (The pointer over the bar, `index` 1, at `choice` of 10,000; 0, off it: the preview.)
+            (Some(w), "seek-hover") => w.hover(shell, (index == 1).then_some(choice)),
+            // (The transport's ⋯ menu: `Watching::menu`'s rows. PLAYBACK SPEED opens the speeds' menu in its place;
+            // EXPORT VIDEO the export mode.)
             (Some(w), "more") => match MENU.get(choice.max(0) as usize) {
-                Some(MenuItem::Export) => {
-                    let (path, side, now) = (w.path().to_path_buf(), w.side(), w.shown());
-                    self.open_export(shell, &path, Some(side), Some(now));
+                Some(MenuItem::Export) => self.enter_export(shell),
+                Some(MenuItem::Speed) => {
+                    let rows = w.speed_menu();
+                    // (The focus is put back on ⋯ first, for the speeds' menu to give it back to.)
+                    shell.nav.focus("more", 0);
+                    shell.pick_marked("speed", 0, &Key::new("more", 0), rows);
                 }
-                Some(&item) => w.choose(shell, item),
+                Some(&item) => {
+                    w.choose(shell, item);
+                    // (In the export mode, the side exported is the one shown.)
+                    if let Some(e) = &mut self.export {
+                        e.set_side(shell, w.side());
+                    }
+                }
                 None => {}
             },
+            (Some(w), "speed") => w.choose_speed(shell, choice),
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);
@@ -1196,13 +1305,7 @@ impl Screen for Replays {
         }
     }
 
-    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, done: bool) {
-        if let Some(what) = id.strip_prefix("export.") {
-            if let Some(e) = &mut self.export {
-                e.edit(shell, what, text, done);
-            }
-            return;
-        }
+    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, _done: bool) {
         if id != "search" {
             return;
         }
@@ -1243,6 +1346,13 @@ impl Screen for Replays {
     /// Right from the list goes to the chosen replay's pane, its first button that can be pressed (the pane's other
     /// controls are far below the row, and the All/Online switch over the list nearer by place).
     fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
+        // (A handle of the export's range, on a pad: Left and Right nudge it a frame. The keys' own are `key`'s.)
+        if let Some(end) = self.handle_focused(shell)
+            && matches!(action, Action::Left | Action::Right)
+        {
+            self.nudge(shell, end, if action == Action::Left { -1 } else { 1 });
+            return true;
+        }
         let list = shell.nav.focused().map(|k| k.id.clone());
         if action != Action::Right || self.watching.is_some() || shell.scale.phone {
             return false;
@@ -1255,8 +1365,16 @@ impl Screen for Replays {
     }
 
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        if self.export.is_some() || self.sheet {
+        if self.sheet {
             return false;
+        }
+        // (On a handle of the export's range, Left and Right nudge it a frame, with Shift a second.)
+        if let Some(end) = self.handle_focused(shell)
+            && matches!(key.code, KeyCode::ArrowLeft | KeyCode::ArrowRight)
+        {
+            let by = if key.shift { tick_at(Duration::from_secs(1)) as i32 } else { 1 };
+            self.nudge(shell, end, if key.code == KeyCode::ArrowLeft { -by } else { by });
+            return true;
         }
         // (N the queue's next replay, while it plays: its popup open or not.)
         if self.watching.is_some() && key.code == KeyCode::KeyN {
@@ -1302,7 +1420,7 @@ impl Screen for Replays {
     fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
         // Select shows both builds, or puts them away.
         match &mut self.watching {
-            Some(w) if self.export.is_none() && !self.up_next && button == gamepad_facade::Button::Back => {
+            Some(w) if !self.up_next && button == gamepad_facade::Button::Back => {
                 w.toggle_builds(shell);
                 true
             }
@@ -1311,11 +1429,16 @@ impl Screen for Replays {
     }
 
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if self.export.is_some() {
-            return true;
-        }
         if self.up_next {
             return false;
+        }
+        // (On a handle of the export's range, the shoulders nudge it a second.)
+        if let Some(end) = self.handle_focused(shell)
+            && matches!(action, Action::Previous | Action::Next)
+        {
+            let by = tick_at(Duration::from_secs(1)) as i32;
+            self.nudge(shell, end, if action == Action::Previous { -by } else { by });
+            return true;
         }
         if let Some(w) = &mut self.watching {
             // The shoulders go a round; the pad's north button plays and pauses.
@@ -1338,12 +1461,6 @@ impl Screen for Replays {
     }
 
     fn back(&mut self, shell: &mut Shell) -> bool {
-        if let Some(e) = &mut self.export {
-            if e.back(shell) {
-                self.export.take().expect("it is open").close(shell);
-            }
-            return true;
-        }
         if self.sheet {
             self.close_sheet(shell);
             return true;
@@ -1355,6 +1472,13 @@ impl Screen for Replays {
         if let Some(w) = &mut self.watching
             && w.hide_builds(shell)
         {
+            return true;
+        }
+        // (The export mode: an export under way is stopped, else the mode is left.)
+        if let Some(e) = &mut self.export {
+            if e.back(shell) {
+                self.leave_export(shell);
+            }
             return true;
         }
         if self.watching.is_some() {

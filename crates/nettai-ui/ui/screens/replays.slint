@@ -1,12 +1,14 @@
 // Replays (docs/design/app-ui.md §6): the selected game's replays, newest first, with the selected one beside
 // them; the viewer, the picture filling the window with its controls over it (and the popup of the play queue's
-// entries up next); and the export's dialog. On a phone the list is the page, the selected replay opens as a sheet from the bottom, and the viewer's
-// controls are stacked under the picture. Its Rust half is src/screens/replays.rs.
+// entries up next), the bar's preview under the pointer, and its export mode (the range's handles on the bar, its
+// buttons in the transport, the export's options over it). On a phone the list is the page, the selected replay opens
+// as a sheet from the bottom, and the viewer's controls are stacked under the picture. Its Rust half is
+// src/screens/replays.rs.
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
-import { Shell, Page, PadButton, Picture, DialogFrame } from "../shell.slint";
-import { Cut, Label, Note, Value, Mono, Message, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
+import { Shell, Page, PadButton, Picture } from "../shell.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
 import { BuildSheet, BuildOverview } from "../build.slint";
 import { InputDisplay } from "../inputs.slint";
@@ -96,6 +98,13 @@ export global ReplaysView {
     in property <int> round: 1;
     in property <int> rounds: 1;
     in property <bool> playing;
+    // The playback speed's badge by the buttons: "2×", or nothing at 1× (docs/design/app-ui.md §2.96).
+    in property <string> speed;
+    // The bar's preview (docs/design/app-ui.md §2.96): the battle at the time under the pointer (or, until it is
+    // drawn, the nearest drawn), whether there is one yet, and the time under the pointer.
+    in property <image> thumb;
+    in property <bool> thumb-shown;
+    in property <string> thumb-time;
     // Both builds may be shown (the match's setups were open), and are: the console shown's player's at the
     // left, the other's at the right.
     in property <bool> builds-open;
@@ -122,20 +131,18 @@ export global ReplaysView {
     // Whether the queue's next replay starts by itself at the end of one (Autoplay next, remembered).
     in property <bool> autoplay: true;
 
-    // ---- The export's dialog ----
+    // ---- The viewer's export mode (docs/design/app-ui.md §2.96) ----
     in property <bool> exporting;
     in property <string> export-size;
     in property <int> export-view;
     // 0 the console of the view alone, 1 both side by side.
     in property <int> export-sides;
+    // The range as the Range's list says it (with its length), and its start and end as times.
     in property <string> export-part;
-    // The range's Start and End, as typed (they say the part chosen until changed); NOW may be pressed (the dialog was
-    // opened from the viewer); which of the two is wrong (-1 neither: 0 Start, 1 End), and why.
-    in property <string> export-start;
-    in property <string> export-end;
-    in property <bool> export-now;
-    in property <int> export-bad: -1;
-    in property <string> export-problem;
+    in property <string> export-range;
+    // The range's handles on the bar, 0 to 1.
+    in property <float> range-start;
+    in property <float> range-end: 1;
     in property <string> export-path;
     in property <ExportState> export-state;
     in property <float> export-progress;
@@ -167,18 +174,13 @@ export global ReplaysView {
     out property <string> remove-word: Caps.of(@tr("Remove"));
     out property <string> clear-title: @tr("Clear the queue?");
     out property <string> clear: Caps.of(@tr("Clear"));
-    // The viewer's ⋯ menu (docs/design/app-ui.md §2.95): the sides (`p1`, `p2`), what may be over the picture, the
-    // speeds (their own signs) and the export (`export-word`).
+    // The viewer's ⋯ menu (docs/design/app-ui.md §2.95, §2.96): the sides (`p1`, `p2`), what may be over the picture,
+    // the playback speed (the speed set at its right; it opens the four, their own signs) and the export
+    // (`export-word`).
     out property <string> builds-word: Caps.of(@tr("Builds"));
     out property <string> inputs-word: Caps.of(@tr("Input display"));
     out property <string> inset-word: Caps.of(@tr("Other side's picture"));
-    // What is wrong with the export's Start or End: not a time; the start not before the end; past the replay's end
-    // (`past-end`, its length).
-    out property <string> time-form: @tr("Type a time as m:ss.");
-    out property <string> time-order: @tr("The start must be before the end.");
-    pure public function past-end(length: string) -> string {
-        return @tr("The replay ends at {}.", length);
-    }
+    out property <string> speed-word: Caps.of(@tr("Playback speed"));
     pure public function replay-count(n: int) -> string {
         return @tr("{n} replay" | "{n} replays" % n);
     }
@@ -226,7 +228,7 @@ export global ReplaysView {
     pure public function round-part(round: int, length: string) -> string {
         return @tr("Round {} · {}", round, length);
     }
-    // The range of the player's own, between the Start and the End they give.
+    // The range of the player's own, between the handles where they put them.
     pure public function custom-part(length: string) -> string {
         return @tr("Custom · {}", length);
     }
@@ -934,18 +936,57 @@ component ListPage inherits Page {
 
 // The bar: where the replay is, with a mark where each later round begins. A click or a drag goes there (the
 // picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right go five seconds.
+// The pointer over it shows a preview of the battle at the time under it, above it (docs/design/app-ui.md §2.96).
+// In the export mode the range is a band in the code color between two handles, brackets taller than the playhead,
+// each a control of its own (`export.handle`, 0 the start, 1 the end: Left and Right nudge it); the pointer pressed
+// within 8 of one drags it (the nearer), anywhere else the bar.
 component SeekBar inherits Rectangle {
     property <length> at: self.width * clamp(ReplaysView.position, 0, 1);
+    property <bool> range: ReplaysView.exporting;
+    property <length> from: self.width * clamp(ReplaysView.range-start, 0, 1);
+    property <length> to: self.width * clamp(ReplaysView.range-end, 0, 1);
+    // What the pointer holds: 0 nothing, 1 the bar, 2 the start's handle, 3 the end's.
+    property <int> held;
     height: 24px;
     Focusable {
         nav: "seek";
         kind: NavKind.stepper;
     }
 
+    // (The handles' places for the focus; the pointer's presses are the bar's, over them.)
+    Focusable {
+        x: root.from - 8px;
+        y: -2px;
+        width: 16px;
+        height: 28px;
+        nav: "export.handle";
+        nav-index: 0;
+        enabled: root.range;
+    }
+
+    Focusable {
+        x: root.to - 8px;
+        y: -2px;
+        width: 16px;
+        height: 28px;
+        nav: "export.handle";
+        nav-index: 1;
+        enabled: root.range;
+    }
+
     Rectangle {
         y: 10px;
         height: 4px;
         background: Theme.raised;
+    }
+
+    Rectangle {
+        x: root.from;
+        y: 8px;
+        width: root.to - root.from;
+        height: 8px;
+        visible: root.range;
+        background: Theme.code.with-alpha(0.35);
     }
 
     // (What is lit keeps its size, and is cut where the replay is: a glow drawn anew each tick would cost.)
@@ -981,22 +1022,114 @@ component SeekBar inherits Rectangle {
         background: Theme.text;
     }
 
+    // (The start's opens to the right, the end's to the left, each its upright on its tick.)
+    Path {
+        x: root.from - 5.5px;
+        y: -2px;
+        width: 10px;
+        height: 28px;
+        visible: root.range;
+        commands: "M 4 0 H 10 V 3 H 7 V 25 H 10 V 28 H 4 Z";
+        fill: Theme.code;
+        viewbox-width: 10;
+        viewbox-height: 28;
+    }
+
+    Path {
+        x: root.to - 4.5px;
+        y: -2px;
+        width: 10px;
+        height: 28px;
+        visible: root.range;
+        commands: "M 0 0 H 6 V 28 H 0 V 25 H 3 V 3 H 0 Z";
+        fill: Theme.code;
+        viewbox-width: 10;
+        viewbox-height: 28;
+    }
+
     drag := TouchArea {
+        // (The handle the pointer is on: within 8 of one, the nearer; two at one place, by the side it is on.)
+        property <length> to-start: abs(self.mouse-x - root.from);
+        property <length> to-end: abs(self.mouse-x - root.to);
+        property <int> grip: !root.range || min(self.to-start, self.to-end) > 8px ? 1 : (self.to-start < self.to-end || (self.to-start == self.to-end && self.mouse-x < root.from)) ? 2 : 3;
+        mouse-cursor: self.grip >= 2 ? MouseCursor.ew-resize : MouseCursor.default;
         function place() -> int {
             return round(clamp(self.mouse-x / self.width, 0, 1) * 10000);
         }
         pointer-event(e) => {
             if e.kind == PointerEventKind.down {
-                Nav.point("seek", 0);
-                Nav.choose("seek", 0, self.place());
-            } else if e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
-                Nav.choose("seek", 1, self.place());
+                root.held = self.grip;
+                if root.held == 1 {
+                    Nav.point("seek", 0);
+                    Nav.choose("seek", 0, self.place());
+                } else {
+                    Nav.point("export.handle", root.held - 2);
+                    Nav.choose("export.handle", root.held - 2, self.place());
+                }
+            } else if (e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel) && root.held > 0 {
+                if root.held == 1 {
+                    Nav.choose("seek", 1, self.place());
+                } else {
+                    Nav.choose("export.handle-done", root.held - 2, self.place());
+                }
+                root.held = 0;
             }
         }
         moved => {
-            if self.pressed {
+            if self.pressed && root.held == 1 {
                 Nav.choose("seek", 0, self.place());
+            } else if self.pressed && root.held >= 2 {
+                Nav.choose("export.handle", root.held - 2, self.place());
             }
+        }
+        changed has-hover => {
+            Nav.choose("seek-hover", self.has-hover ? 1 : 0, self.place());
+        }
+        changed mouse-x => {
+            if self.has-hover {
+                Nav.choose("seek-hover", 1, self.place());
+            }
+        }
+    }
+
+    // The preview, above the bar at the pointer (kept over the bar's length): the battle at the time under it, the
+    // frame itself in size, and that time under it. Until its own is drawn, the nearest drawn shows; until one is,
+    // the box alone. (A phone has no pointer over the bar.)
+    Rectangle {
+        property <length> middle: max(121px, min(drag.mouse-x, root.width - 121px));
+        x: self.middle - 121px;
+        y: -self.height - 12px;
+        width: 242px;
+        height: 188px;
+        visible: drag.has-hover && !Theme.phone;
+        background: Theme.panel;
+        border-width: 1px;
+        border-color: Theme.line;
+        drop-shadow-blur: 12px;
+        drop-shadow-color: #00000080;
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            width: 240px;
+            height: 160px;
+            background: Theme.inset;
+            Image {
+                width: parent.width;
+                height: parent.height;
+                visible: ReplaysView.thumb-shown;
+                source: ReplaysView.thumb;
+                image-fit: fill;
+            }
+        }
+
+        Mono {
+            x: 0;
+            y: 161px;
+            width: parent.width;
+            height: 26px;
+            text: ReplaysView.thumb-time;
+            font-size: 12px;
+            horizontal-alignment: center;
         }
     }
 }
@@ -1024,16 +1157,27 @@ component TransportButtons inherits Rectangle {
     }
 }
 
-// The transport at the foot of the picture (docs/design/app-ui.md §2.94, §2.95): the time, the bar, the length;
-// then the buttons and the round shown, and at the right, while the queue plays, its button with the count up next,
-// and ⋯ (its menu: the side watched from, what is over the picture, the speed, the export). On a phone the bar, then
-// the buttons with the queue's and ⋯ at the right. The times are in boxes of their own width, so the bar keeps its
-// length as the clock runs. (One component for both: what differs is placed by `phone`, docs/app.md §14.)
+// The transport at the foot of the picture (docs/design/app-ui.md §2.94, §2.95, §2.96): the time, the bar, the
+// length; then the buttons, the speed's badge while it isn't 1×, and the round shown, and at the right, while the
+// queue plays, its button with the count up next, and ⋯ (its menu: the side watched from, what is over the picture,
+// the playback speed, the export). In the export mode the round shown gives way to SET START HERE, SET END HERE, the
+// Range's list and the range's times, with CANCEL and EXPORT before the queue's and ⋯. On a phone the bar, then the
+// buttons with the queue's and ⋯ at the right; in the export mode, under them, the two HERE, the Range, then CANCEL
+// and EXPORT, each row across the transport. The times are in boxes of their own width, so the bar keeps its length
+// as the clock runs. (One component for both: what differs is placed by `phone`, docs/app.md §14; the export mode's
+// controls are hidden and passed by outside it.)
 component Transport inherits Rectangle {
     property <bool> phone: Theme.phone;
+    property <bool> exporting: ReplaysView.exporting;
+    property <bool> can-change: root.exporting && ReplaysView.export-state != ExportState.running;
     property <length> edge: root.phone ? 12px : 16px;
     property <length> clock: root.phone ? 44px : 48px;
     property <length> buttons-y: root.phone ? 48px : 52px;
+    // (Where the round shown begins, after the speed's badge; a phone's export rows, each 52 under the last.)
+    property <length> after-buttons: root.edge + 156px + (ReplaysView.speed == "" ? 0px : speed.width + 10px);
+    property <length> phone-row: root.buttons-y + 56px;
+    property <length> half: (root.width - 2 * root.edge - 8px) / 2;
+    property <length> right-end: ReplaysView.queued ? queue.x : more.x;
     PanelBack { }
 
     Mono {
@@ -1072,12 +1216,32 @@ component Transport inherits Rectangle {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
+    // The speed, while it isn't 1×: a small badge in the cursor's color (the ⋯ menu's PLAYBACK SPEED sets it).
+    speed := Rectangle {
+        x: root.edge + 156px;
+        y: root.buttons-y + (root.phone ? 12px : 10px);
+        width: speed-text.preferred-width + 12px;
+        height: 20px;
+        visible: ReplaysView.speed != "";
+        border-width: 1px;
+        border-color: Theme.cursor;
+        speed-text := Text {
+            text: ReplaysView.speed;
+            color: Theme.cursor;
+            font-family: Theme.mono;
+            font-size: 12px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
     Text {
-        x: root.edge + 168px;
+        x: root.after-buttons + 12px;
         y: root.buttons-y;
-        width: max(0px, (ReplaysView.queued ? queue.x : more.x) - 12px - self.x);
+        width: max(0px, root.right-end - 12px - self.x);
         height: 40px;
-        visible: !root.phone;
+        visible: !root.phone && !root.exporting;
         text: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
         color: Theme.muted;
         font-family: Theme.body;
@@ -1107,6 +1271,216 @@ component Transport inherits Rectangle {
         enabled: ReplaysView.queued;
         lit: ReplaysView.up-next-open;
         badge: ReplaysView.queued ? "\{ReplaysView.up-next.length}" : "";
+    }
+
+    // ---- The export mode's (docs/design/app-ui.md §2.96) ----
+
+    // The range's start and end where the replay is shown.
+    start-here := Button {
+        x: root.phone ? root.edge : root.after-buttons + 12px;
+        y: root.phone ? root.phone-row : root.buttons-y;
+        width: root.phone ? root.half : self.natural-width;
+        visible: root.exporting;
+        nav: "export.start-here";
+        text: Caps.of(@tr("Set start here"));
+        enabled: root.can-change;
+    }
+
+    end-here := Button {
+        x: root.phone ? root.edge + root.half + 8px : start-here.x + start-here.width + 12px;
+        y: start-here.y;
+        width: root.phone ? root.half : self.natural-width;
+        visible: root.exporting;
+        nav: "export.end-here";
+        text: Caps.of(@tr("Set end here"));
+        enabled: root.can-change;
+    }
+
+    // The Range's list: the whole match, each round, the last range of the player's own; and the range's times.
+    Select {
+        x: root.phone ? root.edge : end-here.x + end-here.width + 12px;
+        y: root.phone ? root.phone-row + 52px : root.buttons-y;
+        width: root.phone ? root.width - 2 * root.edge : max(120px, times.x - 12px - self.x);
+        visible: root.exporting;
+        nav: "export.part";
+        value: ReplaysView.export-part;
+        enabled: root.can-change;
+    }
+
+    times := Mono {
+        x: cancel.x - 16px - self.width;
+        y: root.buttons-y;
+        width: 100px;
+        height: 40px;
+        visible: root.exporting && !root.phone;
+        text: ReplaysView.export-range;
+        color: Theme.code;
+        font-size: 12px;
+        horizontal-alignment: right;
+    }
+
+    // CANCEL leaves the export mode (stops an export under way; CLOSE once one is saved); EXPORT starts one.
+    cancel := Button {
+        x: root.phone ? root.edge : go.x - 12px - self.width;
+        y: root.phone ? root.phone-row + 104px : root.buttons-y;
+        width: root.phone ? root.half : self.natural-width;
+        visible: root.exporting;
+        nav: "export.cancel";
+        text: ReplaysView.export-state == ExportState.done ? Caps.of(@tr("Close")) : Caps.of(@tr("Cancel"));
+        enabled: root.exporting;
+    }
+
+    go := Button {
+        x: root.phone ? root.edge + root.half + 8px : root.right-end - 12px - self.width;
+        y: cancel.y;
+        width: root.phone ? root.half : self.natural-width;
+        visible: root.exporting;
+        nav: "export.go";
+        text: Caps.of(@tr("verb" => "Export"));
+        kind: ButtonKind.main;
+        enabled: root.can-change;
+    }
+}
+
+// Where the video is saved: Enter asks for another place in the system's dialog.
+component PathBox inherits Rectangle {
+    in property <string> nav;
+    in property <string> value;
+    in property <bool> enabled: true;
+    height: 40px;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: hit.has-hover && root.enabled ? Theme.muted : Theme.line;
+    }
+
+    Value {
+        x: 12px;
+        width: parent.width - 48px;
+        text: root.value;
+        color: root.enabled ? Theme.text : Theme.dim;
+        font-weight: 400;
+    }
+
+    Text {
+        x: parent.width - 32px;
+        width: 20px;
+        text: "…";
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        enabled: root.enabled;
+    }
+}
+
+// The export mode's options (docs/design/app-ui.md §2.96), in a panel over the transport (on a phone under it): Size,
+// View (the viewer's side, which the export follows), Sides and Save as in a row (on a phone, three); under them the
+// bar and its line, which says what to do with the handles, then how far the export is, that it is saved, or what
+// went wrong.
+component ExportOptions inherits Rectangle {
+    property <bool> phone: Theme.phone;
+    property <bool> busy: ReplaysView.export-state == ExportState.running;
+    property <length> edge: root.phone ? 12px : 16px;
+    property <length> label: root.phone ? 84px : size-label.preferred-width;
+    property <length> line-y: root.phone ? 168px : 68px;
+    PanelBack { }
+
+    size-label := Value {
+        x: root.edge;
+        y: root.edge;
+        width: root.label;
+        height: 40px;
+        text: @tr("Size");
+    }
+
+    size := Select {
+        x: size-label.x + size-label.width + 12px;
+        y: root.edge;
+        width: root.phone ? root.width - root.edge - self.x : 220px;
+        nav: "export.size";
+        value: ReplaysView.export-size;
+        enabled: !root.busy;
+    }
+
+    view-label := Value {
+        x: root.phone ? root.edge : size.x + size.width + 24px;
+        y: root.phone ? root.edge + 52px : root.edge;
+        width: root.phone ? root.label : self.preferred-width;
+        height: 40px;
+        text: @tr("View");
+    }
+
+    view := Seg {
+        x: view-label.x + view-label.width + 12px;
+        y: view-label.y + 2px;
+        nav: "export.view";
+        first: ReplaysView.p1;
+        second: ReplaysView.p2;
+        chosen: ReplaysView.export-view;
+        enabled: !root.busy;
+    }
+
+    // (Both: the view's console at the left, heard first, and the other's at the right.)
+    sides-label := Value {
+        x: view.x + view.width + 24px;
+        y: view-label.y;
+        width: self.preferred-width;
+        height: 40px;
+        text: @tr("Sides");
+    }
+
+    sides := Seg {
+        x: sides-label.x + sides-label.width + 12px;
+        y: view.y;
+        nav: "export.sides";
+        first: @tr("sides" => "One");
+        second: @tr("sides" => "Both");
+        chosen: ReplaysView.export-sides;
+        enabled: !root.busy;
+    }
+
+    path-label := Value {
+        x: root.phone ? root.edge : sides.x + sides.width + 24px;
+        y: root.phone ? root.edge + 104px : root.edge;
+        width: root.phone ? root.label : self.preferred-width;
+        height: 40px;
+        text: @tr("Save as");
+    }
+
+    PathBox {
+        x: path-label.x + path-label.width + 12px;
+        y: path-label.y;
+        width: max(80px, root.width - root.edge - self.x);
+        nav: "export.path";
+        value: ReplaysView.export-path;
+        enabled: !root.busy;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Bar {
+        x: root.edge;
+        y: root.line-y;
+        width: root.width - 2 * root.edge;
+        value: ReplaysView.export-state == ExportState.done ? 1 : (root.busy ? ReplaysView.export-progress : 0);
+    }
+
+    Note {
+        x: root.edge;
+        y: root.line-y + 8px;
+        width: root.width - 2 * root.edge;
+        height: 20px;
+        text: root.busy ? @tr("Exporting round {} of {} · {}%", ReplaysView.export-round, ReplaysView.export-rounds, round(ReplaysView.export-progress * 100)) : ReplaysView.export-state == ExportState.done ? @tr("Saved.") : ReplaysView.export-state == ExportState.canceled ? @tr("Export canceled.") : ReplaysView.export-state == ExportState.failed ? ReplaysView.export-error : @tr("Drag the handles on the bar to choose the part to export.");
+        color: ReplaysView.export-state == ExportState.failed ? Theme.bad : ReplaysView.export-state == ExportState.done ? Theme.good : Theme.muted;
+        font-size: 12px;
+        wrap: no-wrap;
+        overflow: elide;
     }
 }
 
@@ -1186,8 +1560,14 @@ component ViewerPage inherits Rectangle {
         title: root.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
         back: Caps.of(@tr("Replays"));
         status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
-        // (B and Select show both builds, where they may be.)
-        hints: ReplaysView.builds-open ? [
+        // (B and Select show both builds, where they may be. In the export mode the arrows move a handle the focus is
+        // on, and Back leaves the mode.)
+        hints: ReplaysView.exporting ? [
+            { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: ",", key2: ".", text: @tr("Step a frame") },
+            { key: "←", key2: "→", pad: PadButton.move, text: @tr("Move a handle") },
+            { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Cancel") },
+        ] : ReplaysView.builds-open ? [
             { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
             { key: ",", key2: ".", text: @tr("Step a frame") },
             { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
@@ -1212,12 +1592,20 @@ component ViewerPage inherits Rectangle {
 
         Arrive {
             order: 1;
+            // (The export mode's options: over the transport, 12 from it; on a phone under it. The mode holds the
+            // page shown.)
+            if ReplaysView.exporting: ExportOptions {
+                x: 0;
+                y: root.phone ? controls.y + controls.height + 12px : controls.y - 12px - self.height;
+                width: page.body-width;
+                height: root.phone ? 208px : 108px;
+            }
             // (A touch under the transport: the pointer resting on it holds the page.)
             controls := TouchArea {
                 x: 0;
                 y: root.phone ? root.phone-transport : page.body-height - self.height;
                 width: page.body-width;
-                height: root.phone ? 104px : 108px;
+                height: root.phone ? (ReplaysView.exporting ? 260px : 104px) : 108px;
                 Transport {
                     width: parent.width;
                     height: parent.height;
@@ -1239,270 +1627,19 @@ export component ReplaysScreen inherits Rectangle {
     }
 }
 
-// ---- The export -----------------------------------------------------------------------------------------
-
-// Where the video is saved: Enter asks for another place in the system's dialog.
-component PathBox inherits Rectangle {
-    in property <string> nav;
-    in property <string> value;
-    in property <bool> enabled: true;
-    height: 40px;
-    Rectangle {
-        background: Theme.inset;
-        border-width: 1px;
-        border-color: hit.has-hover && root.enabled ? Theme.muted : Theme.line;
-    }
-
-    Value {
-        x: 12px;
-        width: parent.width - 48px;
-        text: root.value;
-        color: root.enabled ? Theme.text : Theme.dim;
-        font-weight: 400;
-    }
-
-    Text {
-        x: parent.width - 32px;
-        width: 20px;
-        text: "…";
-        color: Theme.muted;
-        font-family: Theme.body;
-        font-size: 14px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
-
-    hit := Focusable {
-        nav: root.nav;
-        enabled: root.enabled;
-    }
-}
-
-// A time of the export's range (Start, End): its words, the time typed as minutes and seconds (`export.<name>`), its
-// edge red while it is what is wrong, and NOW (`export.<name>-now`), which takes the time the viewer is at (dim
-// where the dialog wasn't opened from it).
-component TimeRow inherits Rectangle {
-    in property <string> label;
-    in property <string> name;
-    in property <string> value;
-    in property <bool> bad;
-    in property <bool> enabled: true;
-    in property <length> label-width;
-    in property <length> control-x;
-    height: 40px;
-    Value {
-        x: 0;
-        y: 0;
-        width: root.label-width;
-        height: 40px;
-        text: root.label;
-    }
-
-    Field {
-        x: root.control-x;
-        y: 0;
-        width: min(140px, root.width - root.control-x - 8px - now.width);
-        nav: "export." + root.name;
-        text: root.value;
-        placeholder: "0:00";
-        error: root.bad;
-        enabled: root.enabled;
-    }
-
-    now := Button {
-        x: root.control-x + min(140px, root.width - root.control-x - 8px - self.width) + 8px;
-        y: 0;
-        nav: "export." + root.name + "-now";
-        text: Caps.of(@tr("range" => "Now"));
-        enabled: root.enabled && ReplaysView.export-now;
-    }
-}
-
-// The export's dialog: one size from its start to its end. The range's Start and End say the part chosen, and a
-// change to either makes it the player's own (docs/design/app-ui.md §2.95); what is wrong with them is said under
-// them. The bar and its line are there before the export starts; the line says how far it is, that it is saved,
-// or what went wrong. Its controls' names begin `export.`.
-component ExportDialog inherits DialogFrame {
-    property <length> label-width: Theme.phone ? 84px : 110px;
-    property <length> control-x: self.label-width + 16px;
-    property <length> control-width: self.inner-width - self.control-x;
-    property <bool> busy: ReplaysView.export-state == ExportState.running;
-    title: @tr("Export video");
-    content-height: 520px;
-    Value {
-        x: 0;
-        y: 0;
-        width: root.label-width;
-        height: 40px;
-        text: @tr("Size");
-    }
-
-    Select {
-        x: root.control-x;
-        y: 0;
-        width: root.control-width;
-        nav: "export.size";
-        value: ReplaysView.export-size;
-        enabled: !root.busy;
-    }
-
-    Value {
-        x: 0;
-        y: 56px;
-        width: root.label-width;
-        height: 40px;
-        text: @tr("View");
-    }
-
-    Seg {
-        x: root.control-x;
-        y: 58px;
-        nav: "export.view";
-        first: ReplaysView.p1;
-        second: ReplaysView.p2;
-        chosen: ReplaysView.export-view;
-        enabled: !root.busy;
-    }
-
-    // (Both: the view's console at the left, heard, and the other's at the right.)
-    Value {
-        x: 0;
-        y: 112px;
-        width: root.label-width;
-        height: 40px;
-        text: @tr("Sides");
-    }
-
-    Seg {
-        x: root.control-x;
-        y: 114px;
-        nav: "export.sides";
-        first: @tr("sides" => "One");
-        second: @tr("sides" => "Both");
-        chosen: ReplaysView.export-sides;
-        enabled: !root.busy;
-    }
-
-    Value {
-        x: 0;
-        y: 168px;
-        width: root.label-width;
-        height: 40px;
-        text: @tr("Range");
-    }
-
-    Select {
-        x: root.control-x;
-        y: 168px;
-        width: root.control-width;
-        nav: "export.part";
-        value: ReplaysView.export-part;
-        enabled: !root.busy;
-    }
-
-    TimeRow {
-        x: 0;
-        y: 224px;
-        width: root.inner-width;
-        label: @tr("range" => "Start");
-        name: "start";
-        value: ReplaysView.export-start;
-        bad: ReplaysView.export-bad == 0;
-        enabled: !root.busy;
-        label-width: root.label-width;
-        control-x: root.control-x;
-    }
-
-    TimeRow {
-        x: 0;
-        y: 280px;
-        width: root.inner-width;
-        label: @tr("range" => "End");
-        name: "end";
-        value: ReplaysView.export-end;
-        bad: ReplaysView.export-bad == 1;
-        enabled: !root.busy;
-        label-width: root.label-width;
-        control-x: root.control-x;
-    }
-
-    Message {
-        x: root.control-x;
-        y: 326px;
-        width: root.control-width;
-        text: ReplaysView.export-problem;
-    }
-
-    Value {
-        x: 0;
-        y: 352px;
-        width: root.label-width;
-        height: 40px;
-        text: @tr("Save as");
-    }
-
-    PathBox {
-        x: root.control-x;
-        y: 352px;
-        width: root.control-width;
-        nav: "export.path";
-        value: ReplaysView.export-path;
-        enabled: !root.busy;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    Bar {
-        x: 0;
-        y: 410px;
-        width: root.inner-width;
-        value: ReplaysView.export-state == ExportState.done ? 1 : (root.busy ? ReplaysView.export-progress : 0);
-    }
-
-    Note {
-        x: 0;
-        y: 422px;
-        width: root.inner-width;
-        height: 36px;
-        text: root.busy ? @tr("Exporting round {} of {} · {}%", ReplaysView.export-round, ReplaysView.export-rounds, round(ReplaysView.export-progress * 100)) : ReplaysView.export-state == ExportState.done ? @tr("Saved.") : ReplaysView.export-state == ExportState.canceled ? @tr("Export canceled.") : ReplaysView.export-state == ExportState.failed ? ReplaysView.export-error : "";
-        color: ReplaysView.export-state == ExportState.failed ? Theme.bad : ReplaysView.export-state == ExportState.done ? Theme.good : Theme.muted;
-        font-size: 12px;
-        vertical-alignment: top;
-    }
-
-    HorizontalLayout {
-        x: 0;
-        y: 480px;
-        width: root.inner-width;
-        height: 40px;
-        spacing: 12px;
-        alignment: end;
-        Button {
-            nav: "export.cancel";
-            text: ReplaysView.export-state == ExportState.done ? Caps.of(@tr("Close")) : Caps.of(@tr("Cancel"));
-        }
-
-        Button {
-            nav: "export.go";
-            text: Caps.of(@tr("verb" => "Export"));
-            kind: ButtonKind.main;
-            enabled: !root.busy;
-        }
-    }
-}
-
 // Both builds over the viewer, while BUILDS is on: the console shown's player's over the picture's left side, the
 // other's over its right, as a match shows them, each the narrow sheet a player's panel in a match is, in the
 // color of its side of the picture (the shown console's is red, at the left). On a phone they are one under the
 // other in a page that scrolls. They end 12 over the transport, which stays uncovered (docs/design/app-ui.md
 // §2.95: its ⋯ is how BUILDS is unchecked), as do the header (Back) and the footer: on a desktop 12 under the
-// header to 12 over the transport (the page's body ends 24 over the footer, the transport 108 tall at its foot); on
+// header to 12 over the transport (the page's body ends 24 over the footer, the transport 108 tall at its foot; in
+// the export mode, 12 over its options, 108 tall and 12 over the transport); on
 // a phone over the picture, from the header to 12 over the transport (under the picture: the body's 16, the
 // picture's 28 over it and 12 under it). They are a scope of their own (`builds.`): each sheet is a control, and a
 // press or a click on them or between them puts them away (as do the ⋯ menu's BUILDS, B, Select and Esc).
 component ViewerBuilds inherits Rectangle {
     property <length> top: Theme.header + (Theme.phone ? 0px : 12px);
-    property <length> foot: Theme.phone ? Theme.header + 44px + self.width * 2 / 3 : self.height - Theme.footer - 24px - 108px - 12px;
+    property <length> foot: Theme.phone ? Theme.header + 44px + self.width * 2 / 3 : self.height - Theme.footer - 24px - 108px - 12px - (ReplaysView.exporting ? 120px : 0px);
     property <length> sheet-width: Theme.phone ? page.view-width : 430px;
     Rectangle {
         y: root.top;
@@ -1682,9 +1819,9 @@ component UpNextPopup inherits Rectangle {
     }
 }
 
-// What opens over Replays: both builds over the viewer and the popup up next, a phone's sheet of the selected
-// replay, and the export's dialog. It covers the whole window, over the screen and under the shell's own dialogs and
-// its menus; empty, it takes no clicks.
+// What opens over Replays: both builds over the viewer and the popup up next, and a phone's sheet of the selected
+// replay. (The export is the viewer's own mode since docs/design/app-ui.md §2.96, not a dialog.) It covers the whole
+// window, over the screen and under the shell's own dialogs and its menus; empty, it takes no clicks.
 export component ReplaysOverlay inherits Rectangle {
     if ReplaysView.watching && ReplaysView.builds-shown: ViewerBuilds {
         Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -1693,9 +1830,6 @@ export component ReplaysOverlay inherits Rectangle {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     if Theme.phone && ReplaysView.detail && !ReplaysView.watching: DetailSheet {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if ReplaysView.exporting: ExportDialog {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }

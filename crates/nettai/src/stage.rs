@@ -180,19 +180,22 @@ impl Surface {
         };
         let image = match written {
             Some(image) => image,
-            None => {
-                let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
-                for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
-                    *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
-                }
-                Some(Image::from_rgb8(pixels))
-            }
+            None => Some(image_of(&self.buffer, w, h)),
         };
         match image {
             Some(image) => Shown::New(image),
             None => Shown::Written,
         }
     }
+}
+
+/// An image of `w` by `h` presented pixels (0x00RRGGBB, as `present` writes them).
+pub fn image_of(buffer: &[u32], w: usize, h: usize) -> Image {
+    let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
+    for (out, &px) in pixels.make_mut_slice().iter_mut().zip(buffer) {
+        *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
+    }
+    Image::from_rgb8(pixels)
 }
 
 /// The window's one picture, which every `Picture` shows: which surface's picture its texture holds, and whether
