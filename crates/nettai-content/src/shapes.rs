@@ -179,7 +179,8 @@ pub fn coverage(d: &Drawing) -> Vec<bool> {
 /// A `text` element's words: `data-words` the string's key, `data-box` the
 /// box its capitals fill (x y width height), `data-color` (and
 /// `data-palette`) the face's color, `data-rim` and `data-shadow` the
-/// outline's and the shadow's, `data-slant` its slant (pixels right for
+/// outline's and the shadow's, `data-rim-width` the outline's width (in
+/// pixels; 1 if not given), `data-slant` its slant (pixels right for
 /// each one up), `data-font` its font (`numbers`, the default, or
 /// `lettering`); its `x`, `y`, size and contents are for viewing only.
 fn words_of(node: roxmltree::Node) -> Result<Words, String> {
@@ -193,12 +194,19 @@ fn words_of(node: roxmltree::Node) -> Result<Words, String> {
         Some(t) => (t.parse::<f64>().map_err(|_| format!("data-slant {t:?} isn't a number"))? * 100.0).round() as i16,
         None => 0,
     };
+    let rim_width = match node.attribute("data-rim-width") {
+        Some(t) => match t.parse::<f64>() {
+            Ok(v) if (0.25..=4.0).contains(&v) => (v * 100.0).round() as u16,
+            _ => return Err(format!("data-rim-width {t:?} isn't a width from 0.25 to 4 pixels")),
+        },
+        None => 100,
+    };
     let lettering = match node.attribute("data-font") {
         None | Some("numbers") => false,
         Some("lettering") => true,
         Some(t) => return Err(format!("data-font {t:?} isn't numbers or lettering")),
     };
-    Ok(Words { key, rect: [x, y, w, h], palette, color, rim: number_of(node, "data-rim")?, shadow: number_of(node, "data-shadow")?, slant, lettering })
+    Ok(Words { key, rect: [x, y, w, h], palette, color, rim: number_of(node, "data-rim")?, rim_width, shadow: number_of(node, "data-shadow")?, slant, lettering })
 }
 
 /// `text` (a drawing's SVG) with each element's `fill` and `stroke` that

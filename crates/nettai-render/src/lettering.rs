@@ -25,7 +25,7 @@ pub fn role(l: &Letters, lettering: fn(u8, u8) -> Lettering) -> crate::vfont::Ro
 
 /// `l`'s paint in `palette`.
 pub fn ink(l: &Letters, palette: &Palette) -> Ink {
-    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]) }
+    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]), rim_width: crate::vfont::RIM }
 }
 
 /// `l`'s face's first color and its shadow's in `palette` (an item's

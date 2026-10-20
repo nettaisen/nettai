@@ -206,7 +206,7 @@ fn raster(d: &Drawing) -> Vec<Label> {
 }
 
 /// Whether pixel `at` (its center) is under words written on `d` (their
-/// box and a pixel round it, for their outline): the picture's letters
+/// box and their outline's width round it, a pixel if they have none): the picture's letters
 /// there aren't the drawing's to match.
 fn under_words(d: &Drawing, at: [f32; 2]) -> bool {
     let u = Drawing::UNIT;
@@ -214,7 +214,8 @@ fn under_words(d: &Drawing, at: [f32; 2]) -> bool {
         let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
         // (Slanted, the box leans right going up: wider by that.)
         let lean = (t.slant as f32 / 100.0 * h).abs();
-        at[0] >= x - 1.0 && at[0] <= x + w + lean + 1.0 && at[1] >= y - 1.0 && at[1] <= y + h + 1.0
+        let m = if t.rim.is_some() { t.rim_width as f32 / 100.0 + 0.5 } else { 1.0 };
+        at[0] >= x - m && at[0] <= x + w + lean + m && at[1] >= y - m && at[1] <= y + h + m
     })
 }
 

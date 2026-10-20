@@ -167,9 +167,11 @@ pub struct Ink {
     /// the rows' middles, so the bands run smoothly at the output's
     /// resolution. One color: a flat face.
     pub fill: Vec<u16>,
-    /// The rim's color (BGR555): an outline a frame pixel wide around the
-    /// face, as the picture's is. None: no rim.
+    /// The rim's color (BGR555): an outline around the face, as the
+    /// picture's is. None: no rim.
     pub rim: Option<u16>,
+    /// The rim's width in frame pixels (the pictures' lettering's: 1).
+    pub rim_width: f32,
 }
 
 /// A drawing in place of a picture ([`TextItem::drawn`]): its pieces,
