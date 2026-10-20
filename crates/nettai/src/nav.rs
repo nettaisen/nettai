@@ -975,6 +975,10 @@ impl Nav {
         self.edit = Some(Edit { key, before: String::new(), text: seed.to_string() });
         self.edit_seq += 1;
         let nav = ui.global::<nettai_ui::Nav>();
+        // (The field is told it is the one focused now, not at the frame's settling: a click's focus and its edit
+        // can come in one frame, and the field begins its edit only if it is focused as the edit begins.)
+        nav.set_id(self.edit.as_ref().expect("set above").key.id.as_str().into());
+        nav.set_index(self.edit.as_ref().expect("set above").key.index);
         nav.set_edit_seed(seed.into());
         nav.set_editing(true);
         nav.set_edit_seq(self.edit_seq);
@@ -997,6 +1001,15 @@ impl Nav {
         let Some(e) = &mut self.edit else { return Did::Nothing };
         e.text = text.to_string();
         Did::Edit { key: e.key.clone(), text: e.text.clone(), done: false }
+    }
+
+    /// The field being edited: where it is, its text as it stands, and whether that is the text the field had (all
+    /// of it selected as the edit begins) rather than a letter typed to begin it.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    pub fn edited_field(&self) -> Option<(Rect, String, bool)> {
+        let e = self.edit.as_ref()?;
+        let rect = self.registry.borrow().rect(&e.key)?;
+        Some((rect, e.text.clone(), e.text == e.before))
     }
 
     /// The edit ends: its text confirmed (`keep`), or the text it had restored.

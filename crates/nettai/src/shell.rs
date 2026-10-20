@@ -19,6 +19,7 @@ use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_frontend::game::GraphicsMode;
 use nettai_platform::dialog::Filter;
+use nettai_platform::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
 use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
@@ -1377,6 +1378,8 @@ impl App {
             NavInput::EditBegan(text) => {
                 let did = self.shell.nav.edit_began(&text);
                 self.did(did);
+                #[cfg(target_arch = "wasm32")]
+                self.lay_entry();
             }
             NavInput::Edited(text) => {
                 let did = self.shell.nav.edited(&text);
@@ -1408,6 +1411,59 @@ impl App {
     pub fn modifiers(&mut self, shift: bool, chord: bool) {
         self.shell.shift = shift;
         self.shell.chord = chord;
+    }
+
+    /// What the field being edited says (its keys that leave it, on the desktop; the browser's input laid over it,
+    /// all it says: `nettai_platform::text_entry`).
+    pub fn entry(&mut self, entry: Entry) {
+        if !self.shell.nav.editing() {
+            return;
+        }
+        let ui = self.shell.ui();
+        match entry {
+            Entry::Changed(text) => {
+                self.input(NavInput::Edited(text));
+                // (The field says what the app kept of it, which the input over it shows: `Nav.edit-kept`.)
+                let nav = ui.global::<nettai_ui::Nav>();
+                nav.set_edit_heard(nav.get_edit_heard() + 1);
+            }
+            Entry::Done(text) => self.input(NavInput::EditDone(text)),
+            Entry::Canceled => {
+                let did = self.shell.nav.end_edit(false);
+                self.did(did);
+            }
+            Entry::Left => {
+                let did = self.shell.nav.end_edit(true);
+                self.did(did);
+            }
+            Entry::Up | Entry::Down => {
+                let did = self.shell.nav.end_edit(true);
+                self.did(did);
+                self.shell.nav.go(&ui, if entry == Entry::Up { Direction::Up } else { Direction::Down });
+            }
+            Entry::Tab { back } => {
+                let did = self.shell.nav.end_edit(true);
+                self.did(did);
+                self.shell.nav.tab(&ui, back);
+            }
+        }
+    }
+
+    /// In the browser, a field's edit just begun gets the input laid over it (the canvas has no input method), in
+    /// the field's place, with its text.
+    #[cfg(target_arch = "wasm32")]
+    fn lay_entry(&mut self) {
+        let Some((rect, text, all)) = self.shell.nav.edited_field() else { return };
+        let ui = self.shell.ui();
+        let window = ui.window();
+        let width = window.size().to_logical(window.scale_factor()).width;
+        let place = nettai_platform::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width };
+        nettai_platform::text_entry::open(place, &text, all, |entry| {
+            crate::with_app(|app| {
+                app.entry(entry);
+                app.settle();
+            })
+        });
     }
 
     /// The input method started or stopped composing.
@@ -1514,24 +1570,14 @@ impl App {
             if self.shell.composing {
                 return false;
             }
-            let ui = self.shell.ui();
-            match code {
-                KeyCode::Escape => {
-                    let did = self.shell.nav.end_edit(false);
-                    self.did(did);
-                }
-                KeyCode::ArrowUp | KeyCode::ArrowDown => {
-                    let did = self.shell.nav.end_edit(true);
-                    self.did(did);
-                    self.shell.nav.go(&ui, if code == KeyCode::ArrowUp { Direction::Up } else { Direction::Down });
-                }
-                KeyCode::Tab => {
-                    let did = self.shell.nav.end_edit(true);
-                    self.did(did);
-                    self.shell.nav.tab(&ui, self.shell.shift);
-                }
+            let entry = match code {
+                KeyCode::Escape => Entry::Canceled,
+                KeyCode::ArrowUp => Entry::Up,
+                KeyCode::ArrowDown => Entry::Down,
+                KeyCode::Tab => Entry::Tab { back: self.shell.shift },
                 _ => return false,
-            }
+            };
+            self.entry(entry);
             self.shell.nav.used_keys(false);
             return true;
         }
@@ -1573,6 +1619,11 @@ impl App {
     /// battle's ticks and its picture, the sound, the focus.
     /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
+        // (The browser's input over a field goes once its edit has ended, however it ended.)
+        #[cfg(target_arch = "wasm32")]
+        if !self.shell.nav.editing() && nettai_platform::text_entry::is_open() {
+            nettai_platform::text_entry::close();
+        }
         let began = Instant::now();
         self.drawn_at = Some(now);
         let first = self.first_frame_after.as_ref().is_some_and(|(at, first)| first.is_none() && now > *at);
