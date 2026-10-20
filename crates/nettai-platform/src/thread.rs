@@ -6,7 +6,8 @@
 //! Every lock the page's main thread shares with a thread is taken through [`lock`].
 //!
 //! Nothing waits for the thread: what it makes goes back by a channel or the event loop. (A browser's page may not
-//! block, so there is no `join`.)
+//! block, so there is no `join`.) A thread a worker starts is started by the page, which the worker asks: a
+//! worker's own workers would start only while its event loop runs.
 
 use std::sync::{LockResult, Mutex, MutexGuard};
 #[cfg(target_arch = "wasm32")]
@@ -60,6 +61,9 @@ const WORKER = `
 self.onmessage = async (event) => {
     const [shim, module, memory, work, waits] = event.data;
     self.nettaiShim = shim;
+    // (A thread this one starts is started by the page: a worker's own workers start only while its event loop
+    // runs, and this one may be busy, or waiting on the thread it starts.)
+    self.nettaiSpawnHere = (name, work, waits) => self.postMessage(["spawn", name, work, waits]);
     const m = await import(shim);
     const wasm = await m.default({ module_or_path: module, memory });
     if (waits) await m.nettai_thread_run_async(work); else m.nettai_thread_run(work);
@@ -69,11 +73,15 @@ self.onmessage = async (event) => {
 `;
 let url = null;
 export function nettai_thread_spawn(name, module, memory, work, waits) {
+    if (typeof self.nettaiSpawnHere === "function") return self.nettaiSpawnHere(name, work, waits);
     const shim = globalThis.nettaiShim;
     if (!shim) throw new Error("the page didn't say where its module is (globalThis.nettaiShim)");
     url ??= URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
     const worker = new Worker(url, { type: "module", name });
     worker.onerror = (e) => console.error(`thread ${name}:`, e.message ?? e);
+    worker.onmessage = (e) => {
+        if (e.data?.[0] === "spawn") nettai_thread_spawn(e.data[1], module, memory, e.data[2], e.data[3]);
+    };
     worker.postMessage([shim, module, memory, work, waits]);
 }
 "#)]
