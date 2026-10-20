@@ -1020,6 +1020,7 @@ impl Window {
                 fill: look.fill.iter().map(|&c| color(c)).collect(),
                 rim: look.rim.map(color),
                 shadow: look.shadow.map(color),
+                face: crate::numbers::Face::Letters,
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));
@@ -1943,20 +1944,17 @@ impl Window {
         }
     }
 
-    /// The damage's digits in the lettering font (the enhanced mode's:
-    /// `damage`), in their glyphs' look, ending where the original's last
-    /// digit does.
+    /// The damage's digits in the numbers' font (the enhanced mode's:
+    /// `damage`), in their glyphs' look, laid as every number is
+    /// (`numbers::laid`), ending where the original's last digit does.
     fn damage_item(&self, v: &View, text: &mut TextSink, place: Placement) {
         let Some(words) = &self.damage else { return };
         let Some(block) = self.block(self.layout.digits..self.layout.digits + 6) else { return };
         let Some((x, clip)) = self.columns_at(block.col, block.w, place) else { return };
         let Some(digits) = v.assets.letters.digits.as_ref() else { return };
-        // (One family with the chip window's code beside it.)
-        let family = v.assets.letters.codes.face.map(|b| vec![(crate::numbers::CODES.to_string(), b[2] as f32)]).unwrap_or_default();
-        let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]).with_family(family);
-        let end = x + 8 * block.w as i32;
-        let at = (end - crate::numbers::CELL * words.chars().count() as i32, 8 * block.row as i32);
-        let Some(items) = crate::numbers::items(text, &[(words.clone(), &set)], at) else { return };
+        let set = crate::numbers::NumberSet::of(digits, &self.palettes[block.palette as usize & 15]);
+        let end = crate::numbers::picture_span(&set, x + 8 * block.w as i32 - crate::numbers::CELL, 1).1;
+        let Some((items, _)) = crate::numbers::laid(text, &[(words.clone(), &set)], 8 * block.row as i32, crate::numbers::Anchor::Right(end)) else { return };
         let past_ranged = block.palette & 15 >= 14;
         for item in items {
             text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });

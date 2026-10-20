@@ -459,8 +459,10 @@ transforms, `use`, clip paths. Its colors are the palette's at the time it
 is drawn: each shape (or a group round it) names its fill's palette index
 as `data-color` and its stroke's as `data-stroke`, and, where the picture
 is laid in several palettes (a window map's), the row as `data-palette` on
-it or round it; every shape outside `defs` and clip paths names its paint
-so (`fill="none"` where it has none). The file's own `fill` and `stroke`
+it or round it; a gradient's stops name theirs as `data-stop-color` (the
+custom gauge's fill), and a shape it paints names none; every other shape
+outside `defs` and clip paths names its paint so (`fill="none"` where it
+has none). The file's own `fill` and `stroke`
 are those colors in the picture's first palette, for viewing only. A
 `text` element with `data-words` is words written on the drawing, drawn
 by the text layer, not as the file's: the string's key in the game's

@@ -1431,9 +1431,10 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 |---|---|---|---|
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
-| **Bungee** (OFL) | every number (§12.4), its '+', the "x" of "x2"; the window's labels (§12.6: "pick bungee"); the chip codes (§12.11) | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+| **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+| **Teko** (OFL) | every number (§12.4), its '+', the "x" of "x2" (from 2026-10-20) | 600 | `crates/nettai-render/fonts/teko` (Google Fonts' `ofl/teko`) |
 
-The three are compiled in (`vfont::LETTERING`, `numbers::FONT`; Bungee is 119 KB, M PLUS 1 Code 3.9 MB, which the
+They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`; Bungee is 119 KB, Teko 292 KB, M PLUS 1 Code 3.9 MB, which the
 UI's Slint bundle also embeds). nettai's build script lists each with its `OFL.txt` in the licenses
 (`crates/nettai/build.rs` `FONTS`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
 height, from the picture), its weight and its width; its glyphs are distance fields as the text font's (§9.10), cached
@@ -1443,7 +1444,7 @@ apart (`GlyphKey::lettering`).
 
 | Picture | EXE6 | EXE5 | EXE4 | Font, look |
 |---|---|---|---|---|
-| Banners (every one with words: the round's and the turn's starts, FINAL TURN!, the results, HIT DAMAGE JUDGE, FLAG DELETED, the liberations', each navi's WIN! and DELETED, and the pack's unnamed ones) | yes | yes | yes | M PLUS 1 Code 78%, two-tone fill and rim, over the bar drawn as a shape (§12.3); the number in Bungee |
+| Banners (every one with words: the round's and the turn's starts, FINAL TURN!, the results, HIT DAMAGE JUDGE, FLAG DELETED, the liberations', each navi's WIN! and DELETED, and the pack's unnamed ones) | yes | yes | yes | M PLUS 1 Code 78%, two-tone fill and rim, over the bar drawn as a shape (§12.3); the number in Teko |
 | Japanese Program Advance (プログラムアドバンス, both pictures) | yes | yes | yes | as the banners, no bar |
 | US Program Advance logos (PrgAdvance, ADVANCE) | picture | picture | picture | (no words in the strings) |
 | PAUSE | yes | yes | yes | M PLUS 1 Code 78%, white, slate rim |
@@ -1453,7 +1454,7 @@ apart (`GlyphKey::lettering`).
 | FINAL TURN (beside the window) | yes | yes | yes | M PLUS 1 Code 78% in its rim and fill |
 | BATTLE CHIP, CHIP SELECT, ▲CROSS SELECT (the tab; its triangle stays), CROSS SELECT (the Cross window's header), B:EXIT | all | BATTLE CHIP, CHIP SELECT | CHIP SELECT | Bungee, each letter fitted to the original letter's box, in the letters' colors, on their frame or strip (the letters taken off) |
 | Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
-| Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Bungee (§12.4) |
+| Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Teko (§12.4) |
 | HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
 | Chip codes (A to Z, `*`: the chip window's, the hand's under the slots) | yes | yes | yes | Bungee, fitted to the code's glyph's box, its colors (§12.11) |
 | The Cross window's names (SPOUT ... CHRG, アクア ... チャージ) | yes | (no Crosses) | (no Crosses) | Murecho 900 in both languages, white or gray with the bar's dark outline, on the bar rebuilt from its colors (§12.11) |
@@ -1494,14 +1495,26 @@ Each set of the game's number glyphs (`numbers::NumberSet`: the HP box's digits,
 damage digits, a telop's, the chip window's, the banners', the '+', the "x2" pair, the emotion window's counts) is
 read off its glyphs as the pack is made: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
 rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
-Each character is drawn in Bungee in its glyph's cell, its ink stretched to that box (the user's audition), its rim a
-frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
-cell, each where the picture's was, right-aligned numbers ending where they did.
+Every number is laid one way (`numbers::laid`; the user: "why can't the hp and the damage number in the custom
+screen and the damage number in the telop all have the same number spacing?", then "why are you not just using the
+font's own metrics for layout?"): in Teko 600 at its face box's height, the whole run shaped as one string by swash
+with the font's own metrics (its advances and kerning, the '+' and the "x" of "x2" too), never squeezed. Teko has no
+tabular figures (`tnum`) and its digits' advances differ, so each digit takes the widest digit's advance, its glyph
+centered in it, as a font's tabular figures are: a number's columns line up and it doesn't shift as it changes. The
+run is placed against the end the picture's number sits against: the HP box's and the chip window's right, the
+damage taken's left, an enemy's HP its middle, the judge's two numbers ending and starting where theirs do, a chip's
+damage one word space of the name's font after its name's measured end, a telop's name and numbers centered where the
+original's are. A numbered banner's words and number are one run: the words in the lettering font, the number in
+Teko, the lettering font's word space between them, centered where the picture's words and number are. The numbers
+were Bungee at first ("i like bungee", 2026-10-19), whose digits are about as wide as they are tall, wider than the
+game's, so most places had them narrowed; the user compared nine fonts in place and switched to Teko ("can you use teko
+600 without squeezing?", 2026-10-20), a condensed face that fits every boxed number at its own width. A chip's damage
+after its name runs past where the original's ended where it is longer ("40+30×2"): nothing follows it in the hand's
+label or a telop. Its rim is a frame pixel's square around it, or its shadow a frame pixel right and down.
 
 - A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
-  a frame pixel right and down as the name's (the original's are both a pixel), and its digits are drawn a pixel
-  narrower than their box, so their strokes are as heavy as the name's (the user: "the damage number and chip names are
-  styled differently in the footer"). The others' rims are a frame pixel all round, as their pictures'.
+  a frame pixel right and down as the name's (the original's are both a pixel). The others' rims are a frame pixel all
+  round, as their pictures'.
 - The emotion window's count: its box is the counts' own with the digits taken off (the box around where the counts
   differ filled with the box's color around it; the HUD's box without a count, `count_box`, is another picture), the
   digit fitted to the box the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a
@@ -1509,7 +1522,7 @@ cell, each where the picture's was, right-aligned numbers ending where they did.
   their strokes: the box showed a blue block and the "3" its inverse, nearly a B.)
 - A numbered banner's words are drawn either side of its number (`BATTLE`, `START!`), each centered on the picture's
   letters on its side; the number is the banner digits' look, in its own color as the original's.
-- The '?' of the chip window's hidden damage is Bungee's '?'.
+- The '?' of the chip window's hidden damage is Teko's '?'.
 
 ### 12.5 Words, languages and strings
 
