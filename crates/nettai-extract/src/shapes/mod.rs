@@ -354,13 +354,29 @@ pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> Stri
             done.push((g, d.clone()));
             d
         };
+        // (A banner with no bar its words stand on, the Program Advance's: the
+        // whole picture, where it has a drawing, a logo.)
+        let logo = |sh: &mut Shaper, name: String, b: &nettai_assets::BannerLayout| -> Option<Drawing> {
+            let file = format!("banners/{name}");
+            if b.glyphs.is_empty() || banner_grid(b).is_some() || sh.file(&file).is_none() {
+                return None;
+            }
+            let picture = nettai_content::letters::Picture::glyphs(&b.glyphs, 0, b.glyphs.len() / 2);
+            let mut c = Canvas::new(picture.w, picture.h, Label::Clear);
+            for (i, &v) in picture.pixels.iter().enumerate() {
+                c.cells[i] = if v != 0 { Label::Color(0, v) } else { Label::Clear };
+            }
+            sh.drawing(&file, c.grid())
+        };
         for (i, b) in bundle.hud.banners.iter_mut().enumerate() {
             b.bar = bar(&mut sh, banner_name(i), b);
+            b.logo = logo(&mut sh, banner_name(i), b);
         }
         for (lang, l) in &mut bundle.hud.languages {
             for (i, b) in l.banners.iter_mut().enumerate() {
                 if let Some(b) = b {
                     b.bar = bar(&mut sh, format!("{}-{lang}", banner_name(i)), b);
+                    b.logo = logo(&mut sh, format!("{}-{lang}", banner_name(i)), b);
                 }
             }
         }

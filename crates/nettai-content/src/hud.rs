@@ -276,6 +276,10 @@ pub struct BannerDoc {
     /// Its bar as shapes (`crate::shapes`: none, it has none).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar: Option<String>,
+    /// The whole picture as shapes, a logo (`crate::shapes`: none, it has
+    /// none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
 }
 
 fn concat(parts: &[&Tiles]) -> Tiles {
@@ -386,6 +390,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             let file = format!("banners/{}.png", names.banner(4 * i as u8));
             let img = (!b.glyphs.is_empty()).then(|| image(&file, &b.glyphs, GLYPHS(20), &[h.banner_palette], 1));
             let bar = b.bar.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(h.banner_palette)));
+            let logo = b.logo.as_ref().map(|d| crate::shapes::write(&mut bars, &format!("banners/{}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(h.banner_palette)));
             BannerDoc {
                 at: [b.x, b.y],
                 kind: b.kind,
@@ -393,6 +398,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
                 number_at: b.number_at.map(|(x, y)| [x, y]),
                 image: img,
                 bar,
+                logo,
             }
         })
         .collect();
@@ -426,6 +432,9 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
                     image: (!b.glyphs.is_empty())
                         .then(|| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), &b.glyphs, GLYPHS(20), &[l.banner_palette], 1)),
                     bar: b.bar.as_ref().map(|d| {
+                        crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(l.banner_palette))
+                    }),
+                    logo: b.logo.as_ref().map(|d| {
                         crate::shapes::write(&mut bars, &format!("banners/{}-{lang}", names.banner(4 * i as u8)), d, &crate::shapes::in_palette(l.banner_palette))
                     }),
                 })
@@ -641,6 +650,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             glyphs: if glyphs.is_empty() { glyphs } else { slice(&glyphs, 0, 2 * b.glyphs) },
             number_at: b.number_at.map(|[x, y]| (x, y)),
             bar: b.bar.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default()),
+            logo: b.logo.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default()),
         })
         .collect();
     let dialogue_font = import_dialogue_font(dir, prefix, &doc.dialogue_font, report)?;
@@ -769,7 +779,8 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, gauge_frame: &[MapEn
                         None => Tiles::default(),
                     };
                     let bar = b.bar.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default());
-                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)), bar })
+                    let logo = b.logo.as_deref().map(|f| crate::shapes::read(dir, prefix, f, report).unwrap_or_default());
+                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)), bar, logo })
                 }
                 None => None,
             });

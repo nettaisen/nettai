@@ -1116,6 +1116,16 @@ pub fn draw<'a>(
             // its palette: `TelopTiles`, EXE4's.)
             let clean = shared.banner.is_empty() && shared.banner_palette.is_none();
             words = clean.then(|| lettered_banner(b, h, layout, number, id, text, problems)).flatten().unwrap_or_default();
+            // (A logo with no words to letter, drawn whole as shapes where
+            // the pack has its drawing: the Program Advance's.)
+            if words.is_empty() && clean && text.draws_shapes()
+                && let Some(logo) = &layout.logo
+            {
+                let (x, y) = (layout.x as i32, layout.y as i32);
+                let d = crate::shapes::drawn(logo, |r| h.banner_palette[r.color as usize & 15], (false, false), None);
+                let item = TextItem { vscale: Some(banner_scale(&b.banner)), ..crate::shapes::item(d, (x, y), (logo.size[0] as i32, logo.size[1] as i32)) };
+                words = vec![TextItem { clip: Rect::new(x, 0, 160, crate::compose::HEIGHT as i32), ..item }];
+            }
             banner_parts(b, h, layout, number, !words.is_empty(), &mut group);
             if words.is_empty() {
                 // (The glyphs and the palette a telop loaded over the
@@ -2488,7 +2498,7 @@ mod tests {
                 }
             }
         }
-        let layout = BannerLayout { x: 52, y: 64, kind: 0, glyphs: Tiles { pixels }, number_at: None, bar: None };
+        let layout = BannerLayout { x: 52, y: 64, kind: 0, glyphs: Tiles { pixels }, number_at: None, bar: None, logo: None };
         let hud = Hud { banner_palette: std::array::from_fn(|i| i as u16 * 0x0421), ..hud() };
         let steps = BannerSteps { slide_in: 9, hold: 30, slide_out: 9, release: BannerRelease::SlidesOut, bounces: false };
         let mut b = battle();

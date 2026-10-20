@@ -793,6 +793,9 @@ pub struct BannerLayout {
     pub number_at: Option<(u8, u8)>,
     /// Its bar as shapes (`shapes`; none: it has none, or none was read).
     pub bar: Option<shapes::Drawing>,
+    /// The whole picture as shapes, a logo with no bar its words stand on
+    /// (the Program Advance's), its letters drawn too: none, it has none.
+    pub logo: Option<shapes::Drawing>,
 }
 
 #[cfg(test)]

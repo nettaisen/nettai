@@ -212,7 +212,7 @@ pub(crate) fn banner(src: Source, id: u32) -> BannerLayout {
         let n = rom.u16(p + 4 + 4 * 20);
         (n as u8, (n >> 8) as u8)
     });
-    BannerLayout { x: place as u8, y: (place >> 8) as u8, kind, glyphs, number_at, bar: None }
+    BannerLayout { x: place as u8, y: (place >> 8) as u8, kind, glyphs, number_at, bar: None, logo: None }
 }
 
 /// The banner font's digits (a pointer a glyph), and the blank as glyph 10.
