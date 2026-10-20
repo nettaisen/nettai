@@ -72,15 +72,17 @@
 <path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 102 A4 4 0 0 1 112 106 L96 106 A4 4 0 0 1 92 102 Z" fill="#4a637b" data-color="5" data-palette="9"/>
 <path d="M95 96 L113 96 L113 103.5 A1.5 1.5 0 0 1 111.5 105 L96.5 105 A1.5 1.5 0 0 1 95 103.5 Z" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The orb's socket, evenly lit: its blue-gray edge -->
-<circle cx="104" cy="11.5" r="10.8" fill="#738ca5" data-color="4" data-palette="9"/>
+<circle cx="104" cy="11.5" r="10.3" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The inner gray ring, unbroken -->
-<circle cx="104" cy="11.5" r="9.9" fill="#4a637b" data-color="5" data-palette="9"/>
+<circle cx="104" cy="11.5" r="9.5" fill="#4a637b" data-color="5" data-palette="9"/>
 <!-- The dark socket's two tabs, at 9 and 3 o'clock, reaching into the gray ring -->
-<path d="M93.6 11.5 A1.5 1.5 0 0 1 95.1 10 L112.9 10 A1.5 1.5 0 0 1 114.4 11.5 L114.4 11.5 A1.5 1.5 0 0 1 112.9 13 L95.1 13 A1.5 1.5 0 0 1 93.6 11.5 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M94.4 11.5 A1.5 1.5 0 0 1 95.9 10 L112.1 10 A1.5 1.5 0 0 1 113.6 11.5 L113.6 11.5 A1.5 1.5 0 0 1 112.1 13 L95.9 13 A1.5 1.5 0 0 1 94.4 11.5 Z" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The dark socket -->
-<circle cx="104" cy="11.5" r="8.8" fill="#292929" data-color="8" data-palette="9"/>
+<circle cx="104" cy="11.5" r="8.6" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The reflection on the housing under the socket: a small wedge pointing up at it, blue-gray flanks fanning out and down, a light core brightest at its base -->
-<path d="M102.427 22.16 A0.6 0.6 0 0 1 102.836 22 L105.164 22 A0.6 0.6 0 0 1 105.573 22.16 L108.2 24.6 L99.8 24.6 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M103.13 22.328 A0.5 0.5 0 0 1 103.6 22 L104.4 22 A0.5 0.5 0 0 1 104.87 22.328 L105.7 24.6 L102.3 24.6 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<path d="M103.338 23.246 A0.5 0.5 0 0 1 103.814 22.9 L104.186 22.9 A0.5 0.5 0 0 1 104.662 23.246 L105.1 24.6 L102.9 24.6 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<path d="M102.64 21.72 A0.6 0.6 0 0 1 103 21.6 L105 21.6 A0.6 0.6 0 0 1 105.36 21.72 L107.6 23.4 L100.4 23.4 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M103.168 21.897 A0.5 0.5 0 0 1 103.625 21.6 L104.375 21.6 A0.5 0.5 0 0 1 104.832 21.897 L105.5 23.4 L102.5 23.4 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M103.323 22.611 A0.5 0.5 0 0 1 103.786 22.3 L104.214 22.3 A0.5 0.5 0 0 1 104.677 22.611 L105 23.4 L103 23.4 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- The black line across the top of the stack's cells, over the housing's inside -->
+<rect x="95" y="23" width="18" height="3" fill="#292929" data-color="8" data-palette="9"/>
 </svg>
