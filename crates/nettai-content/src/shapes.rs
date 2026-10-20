@@ -80,7 +80,10 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         if let Some(c) = number_of(node, "data-stroke")? {
             add(palette, c);
         }
-        if !SHAPES.contains(&name) {
+        // (A clip's or a definition's shapes are drawn only through what
+        // uses them.)
+        let defined = node.ancestors().any(|n| matches!(n.tag_name().name(), "defs" | "clipPath" | "mask" | "symbol"));
+        if !SHAPES.contains(&name) || defined {
             continue;
         }
         // (A shape's paint is a palette entry's or none, never its own.)
@@ -561,5 +564,8 @@ mod tests {
         assert!(from_svg(&svg("<rect width=\"1\" height=\"1\" data-color=\"1\"")).is_err());
         assert!(from_svg("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 8.5 8\"/>").is_err());
         assert!(from_svg(&svg("<rect width=\"1\" height=\"1\" data-color=\"1\"/>")).is_ok());
+        let clipped = "<clipPath id=\"c\"><rect width=\"4\" height=\"4\"/></clipPath><rect width=\"8\" height=\"8\" clip-path=\"url(#c)\" data-color=\"1\"/>";
+        assert!(from_svg(&svg(clipped)).is_ok(), "a clip's shapes have no colors");
+        assert_eq!(labels(&from_svg(&svg(clipped)).unwrap()).iter().filter(|l| l.is_some()).count(), 16);
     }
 }
