@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
+<!-- EXE4's custom window's frame (every cell the screen doesn't lay something in): a white ground with light blue bars and striped bands, a plate along the top right, the name strip, the chip window's gray frame with its dark outlines, the column's housing round the orb (a gold ring on a dark blue cradle, seams running out at its corners) and its rounded bottom with a tab, the right frame widening at the bottom, the bottom bar, the OK button. -->
+<!-- The white ground -->
+<rect x="0" y="0" width="120" height="160" fill="#f7ffff" data-color="1" data-palette="9"/>
+<!-- The stripes along the top -->
+<rect x="0" y="1" width="54" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="0" y="2" width="54" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="0" y="3" width="54" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="0" y="4" width="54" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<!-- The plate along the top right: its edge slanting down at 45 degrees and along under it -->
+<path d="M57 0 L120 0 L120 4 L86 4 L85 3 L60 3 Z" fill-rule="evenodd" fill="#6373c6" data-color="4" data-palette="9"/>
+<path d="M58.4 0 L120 0 L120 3 L60.4 3 L60 2.6 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="58" y="0" width="62" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="58.4,1 59.4,1 61,2.6 60,2.6" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The name strip -->
+<rect x="0" y="7" width="83" height="18" fill="#292929" data-color="9" data-palette="9"/>
+<rect x="0" y="8" width="82" height="16" fill="#dedee7" data-color="8" data-palette="9"/>
+<!-- A line along the top of the chip window's section, a gray shadow under it -->
+<rect x="0" y="27" width="86" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="5" y="28" width="78" height="1" fill="#dedee7" data-color="8" data-palette="9"/>
+<!-- The light blue bars either side, their tops dark -->
+<rect x="0" y="28" width="5" height="68" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="1" y="29" width="3" height="66" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="0" y="28" width="5" height="1" fill="#6373c6" data-color="4" data-palette="9"/>
+<rect x="83" y="28" width="5" height="68" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="84" y="29" width="3" height="66" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="83" y="28" width="5" height="1" fill="#6373c6" data-color="4" data-palette="9"/>
+<rect x="83" y="28" width="5" height="1" fill="#6373c6" data-color="4" data-palette="9"/>
+<rect x="84" y="29" width="4" height="66" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="83" y="95" width="5" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The chip window's frame: a dark outline (light along its top), the gray frame, a dark line inside round the chip's place -->
+<rect x="10" y="28" width="68" height="70" fill="#292929" data-color="9" data-palette="9"/>
+<rect x="11" y="28" width="66" height="1" fill="#c6c6ce" data-color="10" data-palette="9"/>
+<rect x="11" y="29" width="66" height="67" fill="#dedee7" data-color="8" data-palette="9"/>
+<rect x="14" y="31" width="60" height="65" fill="#292929" data-color="9" data-palette="9"/>
+<!-- Striped bands under the chip window -->
+<rect x="1" y="99" width="23" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="80" y="99" width="8" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="1" y="100" width="23" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="80" y="100" width="8" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="1" y="101" width="23" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="80" y="101" width="8" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="1" y="102" width="23" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="80" y="102" width="8" height="1" fill="#cee7ff" data-color="2" data-palette="9"/>
+<!-- The bottom section's left bar, its top cut at 45 degrees -->
+<path d="M0 128 L5 133 L5 160 L0 160 Z" fill-rule="evenodd" fill="#6373c6" data-color="4" data-palette="9"/>
+<path d="M0 129.4 L4 133.4 L4 159 L0 159 Z" fill-rule="evenodd" fill="#7b9cde" data-color="3" data-palette="9"/>
+<path d="M1 131.4 L3 133.4 L3 159 L1 159 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<!-- The bottom bar: two dark lines, a lighter line, the light blue, its outer corner rounded -->
+<path d="M0 153 L120 153 L120 157.5 A2.5 2.5 0 0 1 117.5 160 L0 160 Z" fill-rule="evenodd" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="0" y="153" width="116" height="2" fill="#6373c6" data-color="4" data-palette="9"/>
+<rect x="5" y="155" width="111" height="1" fill="#7b9cde" data-color="3" data-palette="9"/>
+<path d="M4 156 L119 156 L119 157.5 A1.5 1.5 0 0 1 117.5 159 L4 159 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="1" y="153" width="3" height="6" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="0" y="153" width="1" height="6" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="4" y="153" width="1" height="2" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The right frame: a dark line and a lighter one, stepping in at 45 degrees and widening toward the bottom -->
+<path d="M117 104 L120 104 L120 155.5 A2.5 2.5 0 0 1 117.5 158 L114 158 L114 135 L117 132 Z" fill-rule="evenodd" fill="#7b9cde" data-color="3" data-palette="9"/>
+<path d="M117 104 L118 104 L118 131.6 L116 133.6 L116 153 L114 153 L114 134.4 L117 131.4 Z" fill-rule="evenodd" fill="#6373c6" data-color="4" data-palette="9"/>
+<path d="M116 134 L119 134 L119 156 A1 1 0 0 1 118 157 L116 157 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<!-- The column's housing: its outline down its left -->
+<rect x="87" y="4" width="1" height="24" fill="#6373c6" data-color="4" data-palette="9"/>
+<path d="M86 3 L87 4 L87 28 L84 28 L84 27.4 L86 25.4 Z" fill-rule="evenodd" fill="#6373c6" data-color="4" data-palette="9"/>
+<!-- The housing, its top right corner cut at 45 degrees -->
+<path d="M88 0 L113 0 L120 7 L120 28 L88 28 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<rect x="88" y="4" width="1" height="24" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The housing's edges and seams: lines a pixel wide -->
+<polygon points="113,0 114,0 120,6 120,7" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="93,0 94,0 90,4 90,3" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="94,0.8 95,0.8 90.8,5 89.8,5" fill="#f7ffff" data-color="1" data-palette="9"/>
+<polygon points="94.3,17.1 93.6,17.7 87.9,18.7 87.9,17.9" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="93.9,5.9 93.2,6.5 91.5,8.2 92.1,7.6" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="112.7,17.1 113.4,17.7 119.1,18.7 119.1,17.9" fill="#7b9cde" data-color="3" data-palette="9"/>
+<polygon points="113.1,5.9 113.8,6.5 115.5,8.2 114.9,7.6" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The dark blue cradle under the orb -->
+<polygon points="94,18.4 113,18.4 117.6,24 89.4,24" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The gold ring round the orb: a dark orange edge, the yellow ring, a dark line inside it -->
+<circle cx="103.5" cy="11.5" r="11.6" fill="#ce6339" data-color="13" data-palette="9"/>
+<circle cx="103.5" cy="11.5" r="10.6" fill="#ffef29" data-color="6" data-palette="9"/>
+<circle cx="103.5" cy="11.5" r="8.6" fill="#292929" data-color="9" data-palette="9"/>
+<!-- The column's bottom -->
+<path d="M88 102 L120 102 L120 112 L88 112 Z" fill-rule="evenodd" fill="#cee7ff" data-color="2" data-palette="9"/>
+<!-- Its dark blue inside, rounded at the bottom, the dark slot in it -->
+<path d="M92 103 L116 103 L116 104.103 A1.2 1.2 0 0 1 115.649 104.951 L113.6 107 L93.4 107 L92.351 105.951 A1.2 1.2 0 0 1 92 105.103 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<rect x="95" y="103" width="18" height="3" fill="#292929" data-color="9" data-palette="9"/>
+<!-- The housing's bottom edge, rounded into its sides -->
+<path d="M88 107.4 L91.561 110.961 A1.5 1.5 0 0 0 92.621 111.4 L116.379 111.4 A1.5 1.5 0 0 0 117.439 110.961 L120 108.4 L120 112 L88 112 Z" fill-rule="evenodd" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="88" y="111.4" width="29" height="0.6" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="117" y="111" width="1" height="1" fill="#6373c6" data-color="4" data-palette="9"/>
+<!-- A tab in it -->
+<path d="M98.5 106.5 L109.5 106.5 L109.5 109.2 A0.8 0.8 0 0 1 108.7 110 L99.3 110 A0.8 0.8 0 0 1 98.5 109.2 Z M99.5 106.5 L108.5 106.5 L108.5 108.6 A0.4 0.4 0 0 1 108.1 109 L99.9 109 A0.4 0.4 0 0 1 99.5 108.6 Z" fill-rule="evenodd" fill="#7b9cde" data-color="3" data-palette="9"/>
+<rect x="88" y="112" width="1" height="0.1" fill="#f7ffff" data-color="1" data-palette="9"/>
+<rect x="117" y="112" width="1" height="20" fill="#6373c6" data-color="4" data-palette="9"/>
+<rect x="118" y="112" width="2" height="20" fill="#7b9cde" data-color="3" data-palette="9"/>
+<!-- The OK button: its dark outline -->
+<path d="M90 114.4 A0.4 0.4 0 0 1 90.4 114 L111.6 114 A0.4 0.4 0 0 1 112 114.4 L112 133.6 A0.4 0.4 0 0 1 111.6 134 L90.4 134 A0.4 0.4 0 0 1 90 133.6 Z" fill-rule="evenodd" fill="#292929" data-color="9" data-palette="9"/>
+<!-- Its shade along the right and the bottom -->
+<path d="M91 115 L111 115 L111 133 L91 133 Z" fill-rule="evenodd" fill="#a5314a" data-color="15" data-palette="9"/>
+<!-- Its light along the top and the left -->
+<path d="M91 115 L111 115 L110 116 L92 116 L92 132 L91 133 Z" fill-rule="evenodd" fill="#ffad29" data-color="12" data-palette="9"/>
+<!-- The face -->
+<rect x="92" y="116" width="18" height="16" fill="#ff3121" data-color="14" data-palette="9"/>
+<!-- The words, in white -->
+<text data-words="window.ok" data-box="94 119 15 10" fill="#f7ffff" data-color="1" data-palette="9" x="94" y="129" font-size="13.333" textLength="15">OK</text>
+</svg>
