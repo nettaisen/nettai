@@ -221,6 +221,8 @@ pub struct HudShapes {
     /// The chatbox's box for each of its maps (`Chatbox::boxes`: by kind,
     /// its opening steps), as the custom window's.
     pub chatbox: Vec<Option<MapDrawing>>,
+    /// The chatbox's key-wait arrow, its frames (16x16 each).
+    pub chatbox_arrow: Vec<Drawing>,
 }
 
 impl HudShapes {

@@ -21,6 +21,9 @@ use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
 use nettai_battle::custom::Phase;
 use nettai_battle::Battle;
 
+/// Four blank tiles: the arrow's part where it is drawn as shapes.
+static BLANK_ARROW: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 4 * Tiles::TILE] });
+
 /// The box's map on BG0 (`CurTileYBlockPos`): from row 12, 30 columns of
 /// 8 rows.
 const BOX_ROW: i32 = 12;
@@ -282,7 +285,18 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         // (Its place by the box: the pack's, EXE6's `byte_8045DCC`.)
         let (x, y) = assets.hud.layout.chatbox_arrows[shown.kind.min(1)];
         let at = (x as i32, y as i32);
-        list.insert_at(LAYER, FRONT_BUCKET, vec![part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette)]);
+        let arrow = part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette);
+        // (Drawn as shapes in the enhanced mode where the pack has its
+        // frame's drawing, as deep as the part, which stands blank.)
+        match assets.hud.shapes.chatbox_arrow.get(frame as usize).filter(|_| sink.draws_shapes()) {
+            Some(d) => {
+                let tag = sink.tag();
+                let drawn = crate::shapes::drawn(d, |r| g.text_palette[r.color as usize & 15], (false, false), None);
+                sink.push(Plane::Sprite(tag), crate::shapes::item(drawn, at, (16, 16)));
+                list.insert_tagged(LAYER, FRONT_BUCKET, vec![SpritePart { tiles: &BLANK_ARROW, first_tile: 0, ..arrow }], Some(tag));
+            }
+            None => list.insert_at(LAYER, FRONT_BUCKET, vec![arrow]),
+        }
     }
     if let Some((sheet, look)) = shown.portrait {
         list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look));

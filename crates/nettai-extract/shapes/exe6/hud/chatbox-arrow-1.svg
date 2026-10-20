@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- The chatbox's key-wait arrow, frame 2 of 3 (2 pixels down: its bob): a green shield pointing down, a dark outline, a notch in its top's middle, lit along its top, its shadow down and to the right. -->
+<!-- Its shadow -->
+<path d="M4 3.6 A0.6 0.6 0 0 1 4.6 3 L13.4 3 A0.6 0.6 0 0 1 14 3.6 L14 8.834 A0.4 0.4 0 0 1 13.883 9.117 L9.566 13.434 A0.8 0.8 0 0 1 8.434 13.434 L4.117 9.117 A0.4 0.4 0 0 1 4 8.834 Z" fill-rule="evenodd" fill="#313952" data-color="9"/>
+<!-- The outline -->
+<path d="M3 2.6 A0.6 0.6 0 0 1 3.6 2 L12.4 2 A0.6 0.6 0 0 1 13 2.6 L13 7.834 A0.4 0.4 0 0 1 12.883 8.117 L8.566 12.434 A0.8 0.8 0 0 1 7.434 12.434 L3.117 8.117 A0.4 0.4 0 0 1 3 7.834 Z" fill-rule="evenodd" fill="#21a521" data-color="11"/>
+<!-- The green face -->
+<path d="M4 3.3 A0.3 0.3 0 0 1 4.3 3 L11.7 3 A0.3 0.3 0 0 1 12 3.3 L12 7.462 A0.3 0.3 0 0 1 11.912 7.674 L8.354 11.232 A0.5 0.5 0 0 1 7.646 11.232 L4.088 7.674 A0.3 0.3 0 0 1 4 7.462 Z" fill-rule="evenodd" fill="#39ff00" data-color="13"/>
+<!-- Lit along its top, either side of the notch -->
+<path d="M4 3.3 A0.3 0.3 0 0 1 4.3 3 L7 3 L7 4 L4 4 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
+<path d="M9 3 L11.7 3 A0.3 0.3 0 0 1 12 3.3 L12 4 L9 4 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
+<!-- The notch in its top's middle -->
+<path d="M7 2 L9 2 L9 4.5 A0.5 0.5 0 0 1 8.5 5 L7.5 5 A0.5 0.5 0 0 1 7 4.5 Z" fill-rule="evenodd" fill="#21a521" data-color="11"/>
+</svg>

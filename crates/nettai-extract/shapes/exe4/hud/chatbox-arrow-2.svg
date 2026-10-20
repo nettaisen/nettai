@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- The chatbox's key-wait arrow, frame 3 of 3 (1 pixels down: its bob): a capped shield pointing down, a dark outline, each part lit along its top and left, its shadow down and to the right. -->
+<!-- Its shadow -->
+<path d="M4 5.3 A0.3 0.3 0 0 1 4.3 5 L13.7 5 A0.3 0.3 0 0 1 14 5.3 L14 10.834 A0.4 0.4 0 0 1 13.883 11.117 L9.566 15.434 A0.8 0.8 0 0 1 8.434 15.434 L4.117 11.117 A0.4 0.4 0 0 1 4 10.834 Z" fill-rule="evenodd" fill="#4a637b" data-color="12"/>
+<path d="M4 2.6 A0.6 0.6 0 0 1 4.6 2 L13.4 2 A0.6 0.6 0 0 1 14 2.6 L14 5.4 A0.6 0.6 0 0 1 13.4 6 L4.6 6 A0.6 0.6 0 0 1 4 5.4 Z" fill-rule="evenodd" fill="#4a637b" data-color="12"/>
+<!-- The shield: its outline, its face, lit along its top and left -->
+<path d="M3 4.3 A0.3 0.3 0 0 1 3.3 4 L12.7 4 A0.3 0.3 0 0 1 13 4.3 L13 9.834 A0.4 0.4 0 0 1 12.883 10.117 L8.566 14.434 A0.8 0.8 0 0 1 7.434 14.434 L3.117 10.117 A0.4 0.4 0 0 1 3 9.834 Z" fill-rule="evenodd" fill="#21a521" data-color="5"/>
+<path d="M4 5.2 A0.2 0.2 0 0 1 4.2 5 L11.8 5 A0.2 0.2 0 0 1 12 5.2 L12 9.462 A0.3 0.3 0 0 1 11.912 9.674 L8.354 13.232 A0.5 0.5 0 0 1 7.646 13.232 L4.088 9.674 A0.3 0.3 0 0 1 4 9.462 Z" fill-rule="evenodd" fill="#84ff63" data-color="7"/>
+<path d="M4.8 6 A0.2 0.2 0 0 1 5 5.8 L12.2 5.8 A0.2 0.2 0 0 1 12.4 6 L12.4 9.979 A0.3 0.3 0 0 1 12.312 10.191 L8.954 13.549 A0.5 0.5 0 0 1 8.246 13.549 L4.888 10.191 A0.3 0.3 0 0 1 4.8 9.979 Z" fill-rule="evenodd" fill="#39ff00" data-color="6"/>
+<path d="M4 5.3 A0.3 0.3 0 0 1 4.3 5 L5 5 L5 6 L4 6 Z" fill-rule="evenodd" fill="#f7f7f7" data-color="8"/>
+<!-- The cap over it: its outline, a light band, a darker one -->
+<path d="M3 1.6 A0.6 0.6 0 0 1 3.6 1 L12.4 1 A0.6 0.6 0 0 1 13 1.6 L13 4.4 A0.6 0.6 0 0 1 12.4 5 L3.6 5 A0.6 0.6 0 0 1 3 4.4 Z" fill-rule="evenodd" fill="#21a521" data-color="5"/>
+<path d="M4 2.3 A0.3 0.3 0 0 1 4.3 2 L11.7 2 A0.3 0.3 0 0 1 12 2.3 L12 3 L4 3 Z" fill-rule="evenodd" fill="#84ff63" data-color="7"/>
+<rect x="4" y="3" width="8" height="1" fill="#39ff00" data-color="6"/>
+<path d="M4 2.3 A0.3 0.3 0 0 1 4.3 2 L5 2 L5 3 L4 3 Z" fill-rule="evenodd" fill="#f7f7f7" data-color="8"/>
+<rect x="4" y="3" width="1" height="1" fill="#84ff63" data-color="7"/>
+</svg>
