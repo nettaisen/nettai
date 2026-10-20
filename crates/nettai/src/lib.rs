@@ -163,6 +163,13 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let state = app.clone();
     ui.window().on_winit_window_event(move |_, event| {
         use winit::event::WindowEvent;
+        // (The browser starts the page's sound on a click or a key, and on nothing else.)
+        #[cfg(target_arch = "wasm32")]
+        if matches!(event, WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } | WindowEvent::Touch(_))
+            && let Ok(app) = state.try_borrow()
+        {
+            app.shell.sound.resume();
+        }
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
                 // (The app is busy only inside a call of its own that reached the window: the key is Slint's.)

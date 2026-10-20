@@ -36,7 +36,7 @@ static ROOT: Node = Node::Dir;
 static TREE: Mutex<Tree> = Mutex::new(Tree { nodes: BTreeMap::new(), watched: None, changes: Vec::new() });
 
 fn tree() -> MutexGuard<'static, Tree> {
-    TREE.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    nettai_thread::lock(&TREE).unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// `path` from the root, its `.` and `..` resolved.
@@ -150,11 +150,13 @@ pub fn changes() -> Vec<Change> {
 
 pub fn read(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
     let path = key(path.as_ref());
-    match tree().get(&path) {
-        Some(Node::File { data, .. }) => Ok(data.to_vec()),
-        Some(Node::Dir) => Err(error(ErrorKind::IsADirectory, &path)),
-        None => Err(error(ErrorKind::NotFound, &path)),
-    }
+    // (The bytes are copied once the tree is let go.)
+    let data = match tree().get(&path) {
+        Some(Node::File { data, .. }) => data.clone(),
+        Some(Node::Dir) => return Err(error(ErrorKind::IsADirectory, &path)),
+        None => return Err(error(ErrorKind::NotFound, &path)),
+    };
+    Ok(data.to_vec())
 }
 
 pub fn read_to_string(path: impl AsRef<Path>) -> io::Result<String> {

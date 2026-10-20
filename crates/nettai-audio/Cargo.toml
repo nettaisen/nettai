@@ -10,6 +10,10 @@ m4a.workspace = true
 nettai-battle.workspace = true
 cpal = { workspace = true, optional = true }
 
+# The browser's device: an AudioWorklet on the module's shared memory (cpal's, with Wasm's atomics), else WebAudio.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+cpal = { workspace = true, optional = true, features = ["wasm-bindgen", "audioworklet"] }
+
 [features]
 default = ["playback"]
 # Real-time output through the default audio device (AudioOut).

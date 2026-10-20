@@ -95,6 +95,15 @@ impl Sound {
         Sound { out, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0.0, 0.0)), ..Sound::silent() }
     }
 
+    /// The player clicked or pressed a key: a browser starts a page's sound only then, so the device is started
+    /// again (where it runs already, nothing changes).
+    #[cfg(target_arch = "wasm32")]
+    pub fn resume(&self) {
+        if let Some(out) = &self.out {
+            out.resume();
+        }
+    }
+
     /// No device: nothing is heard (the screenshot pass).
     pub fn silent() -> Sound {
         Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 0.0, leaving: None, faded: Vec::new(), last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new(), stats: None }

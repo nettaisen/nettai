@@ -215,7 +215,7 @@ impl Extractor {
     /// Extract each of `jobs` after the games already waiting, starting the extraction's thread if it isn't
     /// running.
     pub fn add(&self, jobs: Vec<Job>) {
-        let Ok(mut queue) = self.queue.lock() else { return };
+        let Ok(mut queue) = nettai_thread::lock(&self.queue) else { return };
         queue.jobs.extend(jobs);
         if queue.running || queue.jobs.is_empty() {
             return;
@@ -229,7 +229,7 @@ impl Extractor {
 
     /// Extract game `id` next, if it is waiting (the player stepped to it).
     pub fn first(&self, id: &str) {
-        let Ok(mut queue) = self.queue.lock() else { return };
+        let Ok(mut queue) = nettai_thread::lock(&self.queue) else { return };
         if let Some(at) = queue.jobs.iter().position(|j| j.id == id) {
             let job = queue.jobs.remove(at).expect("it is there");
             queue.jobs.push_front(job);
@@ -241,7 +241,7 @@ impl Extractor {
 fn work(dir: &Path, queue: &Mutex<Queue>, told: &(dyn Fn(&str, Told) + Send + Sync)) {
     loop {
         let job = {
-            let Ok(mut queue) = queue.lock() else { return };
+            let Ok(mut queue) = nettai_thread::lock(queue) else { return };
             match queue.jobs.pop_front() {
                 Some(job) => job,
                 None => {
