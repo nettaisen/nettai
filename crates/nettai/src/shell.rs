@@ -63,6 +63,8 @@ const PICKER_ROW: f32 = 44.0;
 /// The width of a menu of actions (`Shell::pick_menu`): its longest words in the longest language, with a row's
 /// room at each side.
 const MENU_WIDTH: f32 = 200.0;
+/// A menu with marks' (`Shell::pick_marked`): its words have a check's room besides.
+const MARKED_WIDTH: f32 = 264.0;
 
 /// A grid of pictures' sizes (`Shell::pick_grid`; the UI's `PickerLayer` lays it out by the same): its columns, a
 /// cell's width (on a phone, the sheet's width shared by its three), the gap between cells, the room under a
@@ -85,9 +87,9 @@ const GRID_CELL_KEY: &str = "pick.grid.cell";
 /// some) are set apart in the error color, or a grid of the choices' pictures.
 enum Look {
     Select,
-    /// A menu of actions: by its control's right edge, or (`under`) under a pair of them from the first's left
-    /// edge (a split button's).
-    Menu { apart: Option<usize>, under: bool },
+    /// A menu of actions, `width` wide: by its control's right edge, or (`under`) under its control (a pair of them:
+    /// a split button's) from the first's left edge, as wide as they are where that is more.
+    Menu { apart: Option<usize>, under: bool, width: f32 },
     Grid(ModelRc<slint::Image>),
 }
 
@@ -143,10 +145,12 @@ pub(crate) struct Asked {
     cancel: usize,
 }
 
-/// A select's list open: the control it is of, and its screen.
+/// A select's list open: the control it is of, its screen, and the rows that can't be chosen now (a menu's, dim:
+/// `Shell::pick_marked`).
 struct Picking {
     owner: ScreenId,
     key: Key,
+    dim: Vec<bool>,
 }
 
 /// The screen on screen is leaving: what to show once it has, and when.
@@ -690,7 +694,26 @@ impl Shell {
     /// error color (DELETE). No row is marked; the cursor starts on the first.
     pub fn pick_menu(&mut self, id: &str, index: i32, at: &Key, options: Vec<String>, apart: Option<usize>) {
         let by = self.rect_of(at);
-        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart, under: false }, -1);
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart, under: false, width: MENU_WIDTH }, -1);
+    }
+
+    /// Open a menu whose rows have marks (the replay viewer's VIEW: `nettai_ui::PickMark`), under the control `at`
+    /// from its left edge (over it where there is more room), [`MARKED_WIDTH`] wide: a check by a switch that is on
+    /// or the one chosen of a set, a line over the first of a group, and dim the rows that can't be chosen now, which
+    /// are refused with the menu staying open. Else as [`Shell::pick_menu`].
+    pub fn pick_marked(&mut self, id: &str, index: i32, at: &Key, rows: Vec<(String, nettai_ui::PickMark)>) {
+        let by = self.rect_of(at);
+        let (options, marks): (Vec<String>, Vec<nettai_ui::PickMark>) = rows.into_iter().unzip();
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true, width: MARKED_WIDTH }, -1);
+        if let Some(picking) = &mut self.picking {
+            picking.dim = marks.iter().map(|m| m.dim).collect();
+        }
+        self.ui().global::<nettai_ui::Shell>().set_picker_marks(ModelRc::new(VecModel::from(marks)));
+    }
+
+    /// A list of choices is open over the screen.
+    pub fn picker_open(&self) -> bool {
+        self.picking.is_some()
     }
 
     /// Open a split button's menu (Replays' WATCH and its arrow, `at`): as [`Shell::pick_menu`], under the two
@@ -699,7 +722,7 @@ impl Shell {
         let (first, second) = (self.rect_of(at[0]), self.rect_of(at[1]));
         let right = first.right().max(second.right());
         let by = Rect { x: first.x, y: first.y.min(second.y), w: right - first.x, h: first.h.max(second.h) };
-        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true }, -1);
+        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true, width: MENU_WIDTH }, -1);
     }
 
     /// Where a control is in the window, as it was last laid out (nowhere: the window's corner).
@@ -738,8 +761,8 @@ impl Shell {
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
             Look::Select => (by.w, by.x),
-            Look::Menu { under: true, .. } => (MENU_WIDTH.max(by.w), by.x),
-            Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
+            Look::Menu { under: true, width, .. } => (width.max(by.w), by.x),
+            Look::Menu { width, .. } => (*width, by.right() - width),
             Look::Grid(_) => (grid.map_or(0.0, |g| g.width()), by.x),
         };
         let (columns, cell) = grid.map_or((GRID_COLUMNS, GRID_CELL), |g| (g.columns, g.cell));
@@ -757,6 +780,7 @@ impl Shell {
             Look::Menu { apart: Some(apart), .. } => *apart as i32,
             _ => -1,
         });
+        shell.set_picker_marks(ModelRc::default());
         shell.set_picker_chosen(chosen);
         // (Inside the window, a list wider than what it opens from.)
         shell.set_picker_x(x.min(window.width - width - 8.0).max(0.0));
@@ -768,7 +792,7 @@ impl Shell {
             Some(b) if b.full || key.id.starts_with("menu.") => b.owner,
             _ => self.screen,
         };
-        self.picking = Some(Picking { owner, key });
+        self.picking = Some(Picking { owner, key, dim: Vec::new() });
         let row = chosen.max(0);
         let focus = if grid.is_some() { GRID_CELL_KEY } else { "pick.option" };
         self.nav.open("pick.", Key::new(focus, row));
@@ -1101,8 +1125,11 @@ impl App {
         match did {
             Did::Nothing => {}
             Did::Activate(key) => {
-                self.shell.sound.play(Cue::Pick);
+                // (A menu's row that can't be chosen now is refused, the menu staying open.)
+                let dim = key.id == "pick.option" && self.shell.picking.as_ref().is_some_and(|p| p.dim.get(key.index.max(0) as usize) == Some(&true));
+                self.shell.sound.play(if dim { Cue::Refused } else { Cue::Pick });
                 match key.id.as_str() {
+                    _ if dim => {}
                     "dialog.button" => self.answer(key.index as usize),
                     "pick.option" | GRID_CELL_KEY => self.picked(Some(key.index)),
                     "pick.close" => self.picked(None),

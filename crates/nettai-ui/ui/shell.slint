@@ -50,6 +50,15 @@ export struct Hint {
     text: string,
 }
 
+// A menu row's marks (`Shell.picker-marks`: the replay viewer's VIEW): `check`, a check at its right (a switch that
+// is on, or the one chosen of a set); `dim`, it can't be chosen now (the app refuses it, the menu staying open);
+// `line`, a line over it, the first of a group.
+export struct PickMark {
+    check: bool,
+    dim: bool,
+    line: bool,
+}
+
 export struct DialogButton {
     text: string,
     kind: ButtonKind,
@@ -204,6 +213,8 @@ export global Shell {
     // `picker-apart` on (-1: none) are set apart under a line, in the error color (DELETE).
     in property <bool> picker-menu;
     in property <int> picker-apart: -1;
+    // Each row's marks, where the menu has them (none: no row is marked).
+    in property <[PickMark]> picker-marks;
     in property <int> picker-rows;
     // A grid of pictures (Practice's Arena and Background): each choice its picture over its name, `picker-columns`
     // to a row, each `picker-cell` wide and its picture seven fifteenths of that tall (the battle's field's band,
@@ -1459,6 +1470,7 @@ component PickRow inherits Rectangle {
     in property <bool> menu;
     in property <bool> danger;
     in property <bool> apart;
+    in property <PickMark> mark;
     height: Theme.row;
     RowBack {
         hover: touch.has-hover;
@@ -1471,19 +1483,32 @@ component PickRow inherits Rectangle {
         y: 0;
         width: parent.width;
         height: 1px;
-        visible: root.apart;
+        visible: root.apart || root.mark.line;
         background: Theme.line;
     }
 
     Value {
         x: 12px;
-        width: parent.width - 24px;
+        width: parent.width - (root.mark.check ? 48px : 24px);
         text: root.text;
-        color: root.danger ? Theme.bad : Theme.text;
+        color: root.mark.dim ? Theme.dim : root.danger ? Theme.bad : Theme.text;
         font-family: root.menu ? Theme.display : Theme.body;
         font-size: root.menu ? 13px : 14px;
         font-weight: root.menu ? Theme.display-semibold : 400;
         letter-spacing: root.menu ? Theme.button-tracking : 0px;
+    }
+
+    // (A check: drawn, as no font has to have one.)
+    Path {
+        x: parent.width - 32px;
+        width: 16px;
+        height: 16px;
+        visible: root.mark.check;
+        commands: "M 2.5 8.5 L 6.5 12.5 L 13.5 4.5";
+        stroke: Theme.cursor;
+        stroke-width: 2px;
+        viewbox-width: 16;
+        viewbox-height: 16;
     }
 
     touch := RowTouch {
@@ -1618,6 +1643,7 @@ export component PickerLayer inherits Rectangle {
                 menu: Shell.picker-menu;
                 danger: Shell.picker-menu && Shell.picker-apart >= 0 && self.at >= Shell.picker-apart;
                 apart: Shell.picker-menu && self.at == Shell.picker-apart && self.at > 0;
+                mark: Shell.picker-marks[self.at];
                 nav-index: self.at;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
