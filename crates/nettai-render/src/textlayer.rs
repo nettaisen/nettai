@@ -120,6 +120,9 @@ pub struct TextItem {
     /// A number drawn in the numbers' font in place of the words, each
     /// character fitted to its game glyph's box (`numbers`).
     pub fitted: Option<crate::numbers::Fitted>,
+    /// A lettering's slant, its rows leaning right going up: hundredths of
+    /// a pixel across for each pixel up from its box's bottom (0: upright).
+    pub slant: i16,
 }
 
 impl TextItem {
@@ -141,6 +144,7 @@ impl TextItem {
             drawn: None,
             fine: (0, 0),
             fitted: None,
+            slant: 0,
         }
     }
 

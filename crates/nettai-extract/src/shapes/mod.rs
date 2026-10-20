@@ -218,7 +218,9 @@ fn under_words(d: &Drawing, at: [f32; 2]) -> bool {
     let u = Drawing::UNIT;
     d.words.iter().any(|t| {
         let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
-        at[0] >= x - 1.0 && at[0] <= x + w + 1.0 && at[1] >= y - 1.0 && at[1] <= y + h + 1.0
+        // (Slanted, the box leans right going up: wider by that.)
+        let lean = (t.slant as f32 / 100.0 * h).abs();
+        at[0] >= x - 1.0 && at[0] <= x + w + lean + 1.0 && at[1] >= y - 1.0 && at[1] <= y + h + 1.0
     })
 }
 
