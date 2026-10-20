@@ -901,9 +901,8 @@ pub fn draw<'a>(
         let lettered = set.and_then(|set| {
             let ends = crate::numbers::picture_span(&set, 8 * (13 - left.len() as i32), left.len()).1;
             let starts = crate::numbers::picture_span(&set, 17 * 8, right.len()).0;
-            // (Each in the four cells the original's may take.)
-            let mut items = crate::numbers::laid(text, &[(left.clone(), &set)], 5 * 8, crate::numbers::Anchor::Right(ends), Some((9.0 * 8.0, 13.0 * 8.0)))?.0;
-            items.extend(crate::numbers::laid(text, &[(right.clone(), &set)], 5 * 8, crate::numbers::Anchor::Left(starts), Some((17.0 * 8.0, 21.0 * 8.0)))?.0);
+            let mut items = crate::numbers::laid(text, &[(left.clone(), &set)], 5 * 8, crate::numbers::Anchor::Right(ends))?.0;
+            items.extend(crate::numbers::laid(text, &[(right.clone(), &set)], 5 * 8, crate::numbers::Anchor::Left(starts))?.0);
             Some(items)
         });
         match lettered {
@@ -1052,9 +1051,7 @@ pub fn draw<'a>(
             .and_then(|set| {
                 let (a, b) = crate::numbers::picture_span(&set, x + 8 * first, words.len());
                 let anchor = if number.damage { crate::numbers::Anchor::Left(a) } else { crate::numbers::Anchor::Center((a + b) / 2.0) };
-                // (In the four cells the original's may take.)
-                let room = (x as f32, (x + 32) as f32);
-                crate::numbers::laid(text, &[(words, &set)], y, anchor, Some(room)).map(|l| l.0)
+                crate::numbers::laid(text, &[(words, &set)], y, anchor).map(|l| l.0)
             });
         let mut group = Vec::new();
         for (k, d) in digits4(value).into_iter().enumerate() {
@@ -1347,13 +1344,10 @@ fn draw_chip_name(
     let i = hand.cursor as usize;
     let damage = hand.damage.get(i).copied().unwrap_or(0);
     // In the enhanced mode the numbers in the numbers' font, in their
-    // glyphs' looks, a word's space after the name's words, ending by where
-    // the original's end.
+    // glyphs' looks, a word's space after the name's words.
     if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text) {
-        let glyphs = |v: u16| v.to_string().len() as i32;
-        let original_end = 8 * (cells as i32 + glyphs(damage) + if bonus != 0 { 1 + glyphs(bonus) } else { 0 } + if doubled { 2 } else { 0 });
         let from = words_end.unwrap_or(x as f32);
-        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8), Some(original_end as f32)) {
+        if let Some((items, end)) = looks.items(text, (damage, bonus, doubled), (from, 18 * 8)) {
             for item in items {
                 text.push(Plane::Hud, item);
             }
@@ -1622,7 +1616,7 @@ fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pal
 /// own two): in their colors in `palette`, on the box at (x, y).
 fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette: &Palette, (x, y): (i32, i32), text: &TextSink) -> Option<TextItem> {
     let chars = n.to_string();
-    if !text.draws_numbers() || !crate::numbers::font().covers(&chars) {
+    if !text.draws_numbers() || !crate::numbers::digits_font().covers(&chars) {
         return None;
     }
     let d = counts.counts.get(n)?.as_ref()?;
@@ -1631,7 +1625,7 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
     }
     let color = |c: u8| palette[c as usize & 15];
     let glyphs = chars.chars().zip(&d.glyphs).map(|(c, b)| (c, b.map(|v| v as f32))).collect();
-    let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), family: Vec::new(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color) };
+    let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), family: Vec::new(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color), face: crate::numbers::Face::Digits };
     Some(TextItem::fitted(fitted, Rect::new(x, y, 16, 16)))
 }
 
@@ -1851,7 +1845,7 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
     let set = crate::numbers::NumberSet::of(digits, palette);
     let words = shown.min(9999).to_string();
     let end = crate::numbers::picture_span(&set, x + crate::numbers::CELL * 3, 1).1;
-    crate::numbers::laid(text, &[(words, &set)], y, crate::numbers::Anchor::Right(end), Some((x as f32, (x + 4 * crate::numbers::CELL) as f32))).map(|l| l.0)
+    crate::numbers::laid(text, &[(words, &set)], y, crate::numbers::Anchor::Right(end)).map(|l| l.0)
 }
 
 /// The custom gauge's frame's word in the enhanced mode, if the strings and
@@ -1977,8 +1971,7 @@ fn lettered_banner(
             let set = crate::numbers::NumberSet::of(set, pal);
             let at = if tens.is_some() { nx } else { nx + 8 };
             let (a, b) = crate::numbers::picture_span(&set, at, digits.len());
-            let room = (at as f32, (at + 8 * digits.len() as i32) as f32);
-            let number = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Center((a + b) / 2.0), Some(room))?.0;
+            let number = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Center((a + b) / 2.0))?.0;
             // (Its words either side of where the number's picture is: the
             // pack's columns of the letters there, for one digit or two.)
             let [before_span, after_span] = if tens.is_some() { found.two_digits? } else { found.one_digit? };
@@ -2192,20 +2185,18 @@ fn name_parts<'a>(
     // words, narrower, centered in them, stood apart from the numbers).
     let sets = (!damage.is_empty()).then(|| NumberSets::of(style.letters, &pal, text)).flatten();
     let mut at = after as f32;
-    // (Where the original's numbers end: the name and its numbers no wider.)
-    let limit = Some((after + 8 * (damage.len() + bonus.len()) as i32 + if doubled { 16 } else { 0 }) as f32);
     if let (Some(item), Some(looks)) = (items.first_mut(), sets.as_ref())
         && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
-        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y), None)
+        && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y))
     {
         // (The name and its numbers but the "x2" centered where the
         // original's are; the "x2" after them, as the original's.)
-        let shown = (w + end).min((8 * width) as f32);
+        let shown = w + end;
         let start = item.rect.x + ((8 * width) as f32 - shown) as i32 / 2;
         *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
         at = start as f32 + w;
     }
-    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y), limit));
+    let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y)));
     let lettered = numbers.is_some();
     if let Some((numbers, _)) = numbers {
         items.extend(numbers.into_iter().map(|item| TextItem { vscale, ..item }));
@@ -2249,9 +2240,8 @@ impl NumberSets {
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where
     /// the use doubles it), in the numbers' font laid as every number is
     /// (`numbers::laid`) a word's space after a name's words ending at `x`
-    /// (frame pixels), on cells' rows `y`, narrowed to end by `limit` where
-    /// they would pass it; and where they end.
-    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32), limit: Option<f32>) -> Option<(Vec<TextItem>, f32)> {
+    /// (frame pixels), on cells' rows `y`; and where they end.
+    pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32)) -> Option<(Vec<TextItem>, f32)> {
         let mut parts = vec![(damage.to_string(), &self.digits)];
         if bonus != 0 {
             parts.push(("+".to_string(), &self.plus));
@@ -2261,7 +2251,7 @@ impl NumberSets {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
         let from = x + WORD_SPACE;
-        let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::Left(from), limit.map(|l| (from, l)))?;
+        let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::Left(from))?;
         Some((items, end))
     }
 }
