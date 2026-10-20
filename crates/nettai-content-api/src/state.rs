@@ -507,13 +507,28 @@ impl FieldDef {
 }
 
 /// The fields a kind's state declares, in storage order.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Schema {
     fields: Vec<FieldDef>,
     /// Where each field starts in a state's bytes.
     offsets: Vec<usize>,
     /// The bytes its fields take.
     size: usize,
+}
+
+// (By hand: a slice of usize hashes as its raw bytes, 4 a number on wasm32 and 8 on a 64-bit target, and the
+// content's hash must be the same on every target (nettai_battle::digest): each offset is hashed by itself, which
+// a stable hasher takes as a 64-bit word everywhere.)
+impl std::hash::Hash for Schema {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        let Schema { fields, offsets, size } = self;
+        fields.hash(h);
+        offsets.len().hash(h);
+        for offset in offsets {
+            offset.hash(h);
+        }
+        size.hash(h);
+    }
 }
 
 impl Schema {
@@ -1190,6 +1205,34 @@ mod tests {
         .unwrap()
     }
 
+
+    /// A schema's offsets are hashed one by one, each as a usize (which a stable hasher takes as a 64-bit word on
+    /// every target), never as the slice's raw bytes, whose width is the target's.
+    #[test]
+    fn a_schema_hashes_the_same_on_every_target() {
+        #[derive(Default)]
+        struct Calls {
+            usizes: usize,
+            widest: usize,
+        }
+        impl std::hash::Hasher for Calls {
+            fn finish(&self) -> u64 {
+                0
+            }
+            fn write(&mut self, bytes: &[u8]) {
+                self.widest = self.widest.max(bytes.len());
+            }
+            fn write_usize(&mut self, _: usize) {
+                self.usizes += 1;
+            }
+        }
+        let schema = Schema::new(vec![FieldDef::new("a", FieldType::U8), FieldDef::new("b", FieldType::U16)]).unwrap();
+        let mut calls = Calls::default();
+        std::hash::Hash::hash(&schema, &mut calls);
+        // (The offsets' count and each offset, and the size; the fields' own lengths besides.)
+        assert!(calls.usizes >= 4, "{}", calls.usizes);
+        assert!(calls.widest < 8 * 2, "a slice of offsets written as bytes: {}", calls.widest);
+    }
     #[test]
     fn integer_fields_wrap_to_their_width() {
         let s = schema();

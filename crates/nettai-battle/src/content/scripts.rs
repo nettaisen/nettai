@@ -304,7 +304,9 @@ fn module_identity(source: &str) -> u64 {
     use std::sync::{LazyLock, Mutex};
     static KEPT: LazyLock<Mutex<HashMap<u64, u64>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
     let text = crate::digest::stable_hash(source);
-    if let Some(&id) = KEPT.lock().unwrap_or_else(|e| e.into_inner()).get(&text) {
+    // (Never waited for: a browser's main thread may not wait on a lock a worker holds. Busy, it is passed by.)
+    let kept = |text| KEPT.try_lock().ok().and_then(|kept| kept.get(&text).copied());
+    if let Some(id) = kept(text) {
         return id;
     }
     let id = match nettai_luau::sandbox::identity_compiler().compile(source) {
@@ -314,7 +316,9 @@ fn module_identity(source: &str) -> u64 {
         },
         Err(_) => crate::digest::stable_hash(&("text", source)),
     };
-    KEPT.lock().unwrap_or_else(|e| e.into_inner()).insert(text, id);
+    if let Ok(mut kept) = KEPT.try_lock() {
+        kept.insert(text, id);
+    }
     id
 }
 
