@@ -27,16 +27,16 @@
 <rect x="11" y="91" width="3" height="2" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="75" y="90" width="2" height="1" fill="#cecece" data-color="6" data-palette="9"/>
 <rect x="75" y="91" width="3" height="2" fill="#adada5" data-color="7" data-palette="9"/>
-<!-- The chip window's frame: a light bevel, its corners rounded as the pixels step round them -->
-<path d="M6 8.2 A2.2 2.2 0 0 1 8.2 6 L79.8 6 A2.2 2.2 0 0 1 82 8.2 L82 86.8 A2.2 2.2 0 0 1 79.8 89 L8.2 89 A2.2 2.2 0 0 1 6 86.8 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
+<!-- The chip window's frame: a light bevel, its corners cut a pixel as the pixels are -->
+<path d="M6 7.5 A1.5 1.5 0 0 1 7.5 6 L80.5 6 A1.5 1.5 0 0 1 82 7.5 L82 87.5 A1.5 1.5 0 0 1 80.5 89 L7.5 89 A1.5 1.5 0 0 1 6 87.5 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
 <!-- The chip window -->
-<path d="M7 8.8 A1.8 1.8 0 0 1 8.8 7 L79.2 7 A1.8 1.8 0 0 1 81 8.8 L81 86.2 A1.8 1.8 0 0 1 79.2 88 L8.8 88 A1.8 1.8 0 0 1 7 86.2 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M7 8.2 A1.2 1.2 0 0 1 8.2 7 L79.8 7 A1.2 1.2 0 0 1 81 8.2 L81 86.8 A1.2 1.2 0 0 1 79.8 88 L8.2 88 A1.2 1.2 0 0 1 7 86.8 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The glare: hugging the window's top left corner, tapering to a point along the top and down the side -->
-<path d="M16.5 8 H10.5 A2.5 2.5 0 0 0 8 10.5 V22.5 Q12 9.5 16.5 8 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M16.5 8 H10 A2 2 0 0 0 8 10 V22.5 Q12 9.5 16.5 8 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
 <!-- Its lit edge: a darker band along the outside of the corner, a lighter one in it, lightest in the corner -->
-<path d="M12.8 8 H10.5 A2.5 2.5 0 0 0 8 10.5 V17 L9 15.6 V10.5 A1.5 1.5 0 0 1 10.5 9 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M11.6 8 H10.5 A2.5 2.5 0 0 0 8 10.5 V14.2 L9 13 V10.5 A1.5 1.5 0 0 1 10.5 9 H10.9 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
-<path d="M10.4 8 A2.5 2.5 0 0 0 8 10.5 V11.4 L8.8 10.6 A1.6 1.6 0 0 1 10.4 8.8 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M12.8 8 H10 A2 2 0 0 0 8 10 V17 L9 15.6 V10.5 A1.5 1.5 0 0 1 10.5 9 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M11.6 8 H10 A2 2 0 0 0 8 10 V14.2 L9 13 V10.5 A1.5 1.5 0 0 1 10.5 9 H10.9 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<path d="M10 8 A2 2 0 0 0 8 10 V11.4 L8.8 10.6 A1.6 1.6 0 0 1 10.4 8.8 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The glints down the chip window's sides, lighter toward their middles -->
 <rect x="8" y="32" width="1" height="40" rx="0.5" fill="#524a5a" data-color="10" data-palette="9"/>
 <rect x="8" y="40" width="1" height="24" rx="0.5" fill="#4a637b" data-color="5" data-palette="9"/>
@@ -47,12 +47,12 @@
 <rect x="79" y="48" width="1" height="8" rx="0.5" fill="#6b73ad" data-color="4" data-palette="9"/>
 <rect x="79" y="50" width="1" height="3" rx="0.5" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The glare in the bottom corners, lit nearest the corner, the right one running on up into the glint -->
-<path d="M8 79.6 V84.5 A2.5 2.5 0 0 0 10.5 87 H12.6 L10.5 86 A1.5 1.5 0 0 1 9 84.5 V81 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
-<path d="M8 82.6 V84.5 A2.5 2.5 0 0 0 10.5 87 H11.2 L10.5 86 A1.5 1.5 0 0 1 9 84.5 V83.2 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M8 84 V84.5 A2.5 2.5 0 0 0 9.4 86.7 L9.6 85.9 A1.5 1.5 0 0 1 9 84.5 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
-<path d="M80 71.6 V84.5 A2.5 2.5 0 0 1 77.5 87 H75.4 L77.5 86 A1.5 1.5 0 0 0 79 84.5 V73 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
-<path d="M80 82.6 V84.5 A2.5 2.5 0 0 1 77.5 87 H76.8 L77.5 86 A1.5 1.5 0 0 0 79 84.5 V83.2 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M80 84 V84.5 A2.5 2.5 0 0 1 78.6 86.7 L78.4 85.9 A1.5 1.5 0 0 0 79 84.5 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<path d="M8 79.6 V85 A2 2 0 0 0 10 87 H12.6 L10.5 86 A1.5 1.5 0 0 1 9 84.5 V81 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M8 82.6 V85 A2 2 0 0 0 10 87 H11.2 L10.5 86 A1.5 1.5 0 0 1 9 84.5 V83.2 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M8 84 V85 A2 2 0 0 0 9.4 86.9 L9.6 85.9 A1.5 1.5 0 0 1 9 84.5 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<path d="M80 71.6 V85 A2 2 0 0 1 78 87 H75.4 L77.5 86 A1.5 1.5 0 0 0 79 84.5 V73 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M80 82.6 V85 A2 2 0 0 1 78 87 H76.8 L77.5 86 A1.5 1.5 0 0 0 79 84.5 V83.2 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M80 84 V85 A2 2 0 0 1 78.6 86.9 L78.4 85.9 A1.5 1.5 0 0 0 79 84.5 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The panel -->
 <rect x="0" y="100" width="88" height="54" fill="#f7ffff" data-color="1" data-palette="9"/>
 <rect x="0" y="100" width="4" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
