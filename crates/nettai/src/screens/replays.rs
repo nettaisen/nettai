@@ -1265,6 +1265,11 @@ impl Screen for Replays {
             // EXPORT VIDEO the export mode.)
             (Some(w), "more") => match MENU.get(choice.max(0) as usize) {
                 Some(MenuItem::Export) => self.enter_export(shell),
+                Some(MenuItem::Side) => {
+                    let rows = w.side_menu(&shell.ui().global::<ReplaysView>());
+                    shell.nav.focus("more", 0);
+                    shell.pick_marked("side", 0, &Key::new("more", 0), rows);
+                }
                 Some(MenuItem::Speed) => {
                     let rows = w.speed_menu();
                     // (The focus is put back on ⋯ first, for the speeds' menu to give it back to.)
@@ -1281,6 +1286,13 @@ impl Screen for Replays {
                 None => {}
             },
             (Some(w), "speed") => w.choose_speed(shell, choice),
+            // (The side's menu: the side shown; in the export mode, the side exported with it.)
+            (Some(w), "side") => {
+                w.set_view(shell, choice);
+                if let Some(e) = &mut self.export {
+                    e.set_side(shell, w.side());
+                }
+            }
             (None, "kind") => {
                 self.online_only = choice == 1;
                 self.fill(shell);
