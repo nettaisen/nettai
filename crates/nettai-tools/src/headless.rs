@@ -91,6 +91,55 @@ pub fn render_frames(
 /// (`Player::frame`: what a host shows), the enhanced mode's text items drawn
 /// by its text renderer.
 #[allow(clippy::too_many_arguments)]
+/// Make and present each of `wanted` (the first round's) at `scale` times
+/// the frame's size, writing none, and log how long each took on average
+/// and at most, and the drawings' files read and rasterized (in all, and
+/// from the second frame on: none while it plays).
+pub fn time_frames(player: &mut Player, wanted: &BTreeSet<u32>, scale: usize, keys: &KeyScript, log: &mut dyn FnMut(&str)) {
+    use nettai_render::compose::{HEIGHT, WIDTH};
+    let scale = scale.max(1);
+    let (w, h) = (WIDTH * scale, HEIGHT * scale);
+    let mut out = vec![0u32; w * h];
+    let last = wanted.iter().next_back().copied().unwrap_or(0);
+    let (mut made, mut shown, mut most, mut n) = (0f64, 0f64, 0f64, 0u32);
+    let mut after_first = None;
+    let start = nettai_content::shapes::work_done();
+    while player.tick(keys.held(player.ticks() as u32 + 1)) {
+        let Some(f) = player.session().frame else { continue };
+        if wanted.contains(&f) {
+            let t = std::time::Instant::now();
+            let frame = player.frame();
+            let t1 = t.elapsed().as_secs_f64();
+            nettai_render::present::present(&frame, player.text(), &mut out, w, h);
+            let t2 = t.elapsed().as_secs_f64() - t1;
+            made += t1;
+            shown += t2;
+            most = most.max(t1 + t2);
+            n += 1;
+            if after_first.is_none() {
+                after_first = Some(nettai_content::shapes::work_done());
+            }
+        }
+        if f >= last {
+            break;
+        }
+    }
+    let end = nettai_content::shapes::work_done();
+    let first = after_first.unwrap_or(end);
+    let n = n.max(1) as f64;
+    log(&format!(
+        "{} frames at {scale}x: {:.2} ms a frame made, {:.2} ms presented, {:.2} ms at most; drawings read {} and rasterized {} in all, {} and {} after the first frame",
+        n as u32,
+        1000.0 * made / n,
+        1000.0 * shown / n,
+        1000.0 * most,
+        end.0 - start.0,
+        end.1 - start.1,
+        end.0 - first.0,
+        end.1 - first.1
+    ));
+}
+
 pub fn render_frames_with(
     player: &mut Player,
     rest: Vec<Box<dyn Driver>>,

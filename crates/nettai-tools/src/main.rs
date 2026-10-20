@@ -42,6 +42,8 @@ struct Args {
     lookups: Option<PathBuf>,
     audit_content: bool,
     objects: bool,
+    /// With --headless: time the frames' drawing instead of writing them.
+    time: bool,
     /// With --headless: what to mark where it is drawn (`Problems::marking`).
     marks: Vec<String>,
     out: PathBuf,
@@ -132,6 +134,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    in --out (default .)
   --out DIR        where --headless writes
   --png-scale N    with --headless: each frame N times its size
+  --time           with --headless: draw each of FRAMES at --png-scale and
+                   write none, and say how long making and presenting a
+                   frame took, and the drawings read and rasterized
   --objects        with --headless: list every rendered frame's objects (kind,
                    place, sprite, animation, look) and what its sprite draw
                    took of the frame's budget and left out
@@ -196,6 +201,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         lookups: None,
         audit_content: false,
         objects: false,
+        time: false,
         marks: Vec::new(),
         out: PathBuf::from("."),
         png_scale: 1,
@@ -235,6 +241,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--lookups" => a.lookups = Some(value("--lookups")?.into()),
             "--audit-content" => a.audit_content = true,
             "--objects" => a.objects = true,
+            "--time" => a.time = true,
             "--mark" => a.marks.extend(value("--mark")?.split(',').filter(|m| !m.is_empty()).map(str::to_string)),
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
@@ -302,9 +309,9 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if !a.traces.is_empty() && a.headless.is_none() && !a.audit {
         return Err("a trace is rendered (--headless F) or audited (--audit); no window watches one".into());
     }
-    let headless_only = a.objects || !a.marks.is_empty() || a.png_scale != 1;
+    let headless_only = a.objects || a.time || !a.marks.is_empty() || a.png_scale != 1;
     if headless_only && a.headless.is_none() {
-        return Err("--objects, --mark and --png-scale go with --headless".into());
+        return Err("--objects, --time, --mark and --png-scale go with --headless".into());
     }
     Ok(a)
 }
@@ -728,6 +735,10 @@ fn main() {
     if let Some(r) = recording {
         player.record(r).unwrap_or_else(|e| fail(e));
     }
+    if args.time {
+        headless::time_frames(&mut player, &wanted, args.png_scale, &keys, &mut log);
+        return;
+    }
     match headless::render_frames_with(&mut player, drivers, &wanted, &args.out, args.png_scale, args.objects, &keys, &mut log) {
         Ok(written) => {
             eprintln!("wrote {} frames to {}", written.len(), args.out.display());
@@ -779,7 +790,7 @@ mod tests {
             (vec!["--match", "m.toml", "--keys", "1:a"], "--keys holds buttons in a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),
             (vec!["a.jsonl", "b.jsonl", "--headless", "1"], "one trace at a time (several with --audit)"),
-            (vec!["--match", "m.toml", "--objects"], "--objects, --mark and --png-scale go with --headless"),
+            (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark and --png-scale go with --headless"),
             (vec!["--match", "m.toml", "--nut", "-"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--nut", "-", "--headless", "1"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--nut", "-", "--mp4", "o.mp4"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),

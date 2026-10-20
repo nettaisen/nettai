@@ -90,6 +90,9 @@ pub struct Late {
     /// mode's).
     pub layouts: u64,
     pub glyphs: u64,
+    /// Drawings of the frames rasterized while a frame was drawn, none
+    /// having said they were coming (the enhanced mode's).
+    pub rasters: u64,
 }
 
 /// Whose a step of a match's preloading is.

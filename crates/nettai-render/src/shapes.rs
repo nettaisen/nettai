@@ -26,9 +26,20 @@ pub fn drawn(d: &Drawing, color: impl Fn(u8, u8) -> u16, (hflip, vflip): (bool, 
 
 /// Which of `d`'s frame pixels (row by row, its size) its shapes cover at
 /// their centers: where a picture standing in for it must still be (for
-/// what is drawn in front of or behind it), and nowhere else.
-pub fn coverage(d: &Drawing) -> Vec<bool> {
-    nettai_content::shapes::coverage(d)
+/// what is drawn in front of or behind it), and nowhere else. Made once a
+/// drawing (the chatbox's as its pack's graphics are set).
+pub fn coverage(d: &Drawing) -> std::sync::Arc<Vec<bool>> {
+    use std::sync::{Arc, Mutex, OnceLock};
+    static MADE: OnceLock<Mutex<std::collections::HashMap<u64, Arc<Vec<bool>>>>> = OnceLock::new();
+    let made = MADE.get_or_init(Default::default);
+    if let Some(c) = made.lock().ok().and_then(|m| m.get(&d.hash).cloned()) {
+        return c;
+    }
+    let c = Arc::new(nettai_content::shapes::coverage(d));
+    if let Ok(mut m) = made.lock() {
+        m.insert(d.hash, c.clone());
+    }
+    c
 }
 
 /// Several drawings as one (each moved by its offset in frame pixels),
@@ -43,7 +54,7 @@ fn hash_of(pieces: &[Piece]) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     for p in pieces {
-        p.drawing.source.hash(&mut h);
+        p.drawing.hash.hash(&mut h);
         p.colors.hash(&mut h);
         p.flip.hash(&mut h);
         for v in [p.at.0, p.at.1] {
