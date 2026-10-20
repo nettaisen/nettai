@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The Cross cursor's corner: a band three pixels thick turning down round a rounded corner, a line a pixel wide along its middle. -->
-<path d="M0 7 V3 A3 3 0 0 1 3 0 H8 V3 H4 A1 1 0 0 0 3 4 V7 Z" fill="#39ff00" data-color="13"/>
-<path d="M1 6 V3.5 A2.5 2.5 0 0 1 3.5 1 H8 V2 H3.5 A1.5 1.5 0 0 0 2 3.5 V6 Z" fill="#73ff4a" data-color="14"/>
+<!-- The Cross cursor's corner: a band three pixels thick turning down round a corner as round inside as outside, a line a pixel wide along its middle. -->
+<path d="M0 7 V5 A5 5 0 0 1 5 0 H8 V3 H5 A2 2 0 0 0 3 5 V7 Z" fill="#39ff00" data-color="13"/>
+<path d="M1 6 V5 A4 4 0 0 1 5 1 H8 V2 H5 A3 3 0 0 0 2 5 V6 Z" fill="#73ff4a" data-color="14"/>
 </svg>
