@@ -143,9 +143,10 @@ impl Shaper {
             return None;
         }
         let used: std::collections::BTreeSet<Label> = grid.cells.iter().copied().filter(|l| matches!(l, Label::Color(..))).collect();
-        for r in &d.regions {
-            if r.color == 0 || !used.contains(&Label::Color(r.palette, r.color)) {
-                self.notes.push(format!("{path}: color {}:{} isn't one the picture uses: it stays a picture", r.palette, r.color));
+        let words = d.words.iter().flat_map(|t| [Some(t.color), t.rim, t.shadow].into_iter().flatten().map(move |c| (t.palette, c)));
+        for (p, c) in d.regions.iter().map(|r| (r.palette, r.color)).chain(words) {
+            if c == 0 || !used.contains(&Label::Color(p, c)) {
+                self.notes.push(format!("{path}: color {p}:{c} isn't one the picture uses: it stays a picture"));
                 return None;
             }
         }
@@ -643,6 +644,42 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     s.cursor = all(cursor);
     let tiles: Vec<Option<Drawing>> = (0..c.form_list_cursor.len()).map(|k| sh.tiles(&format!("custom/form-list-cursor-{k}"), &c.form_list_cursor, k, 1, 1)).collect();
     s.form_list_cursor = all(tiles);
+    // The buttons' looks, each set's as its drawing's file has it (as many
+    // cells side by side as its width takes), while the files go on.
+    for (name, b) in &c.buttons {
+        let (w, h) = (b.width as usize, b.height as usize);
+        if w == 0 || h == 0 {
+            continue;
+        }
+        let mut sets = Vec::new();
+        for k in 0.. {
+            let file = format!("custom/button-{name}-{k}");
+            let Some((_, text)) = sh.file(&file) else { break };
+            let cells = nettai_content::shapes::from_svg(text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
+            let mut canvas = Canvas::new(8 * w * cells, 8 * h, Label::Clear);
+            let mut whole = true;
+            for j in 0..cells {
+                for t in 0..w * h {
+                    match b.tiles.get((k * cells + j) * w * h + t) {
+                        Some(tile) => canvas.tile(tile, 8 * (j * w + t % w), 8 * (t / w), false, false, 0),
+                        None => whole = false,
+                    }
+                }
+            }
+            let drawing = if whole { sh.drawing(&file, canvas.grid()) } else { None };
+            match drawing {
+                Some(d) => sets.push(d),
+                None => {
+                    say(format!("{file}: its button's pictures have no such set: its looks stay pictures"));
+                    sets.clear();
+                    break;
+                }
+            }
+        }
+        if !sets.is_empty() {
+            s.buttons.push((name.clone(), sets));
+        }
+    }
     // The enemy names' bar: its end (the bar's cells right of it), its
     // cell (more of them either side).
     if c.name_bar.len() >= 4 {
