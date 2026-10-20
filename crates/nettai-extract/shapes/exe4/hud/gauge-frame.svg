@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1152" height="128" viewBox="0 0 144 16">
+<!-- The custom gauge's frame (its word off, its fill's cells laid over its middle): a bar with rounded ends, a dark outline round a dark ground, each end closed off by a line with a nub pointing in, a light bracket curving round each end, lighter above. -->
+<!-- The outline -->
+<path d="M0 10 A4 4 0 0 1 4 6 L140 6 A4 4 0 0 1 144 10 L144 12 A4 4 0 0 1 140 16 L4 16 A4 4 0 0 1 0 12 Z" fill-rule="evenodd" fill="#39526b" data-color="12"/>
+<!-- The ground -->
+<path d="M1 10 A3 3 0 0 1 4 7 L140 7 A3 3 0 0 1 143 10 L143 12 A3 3 0 0 1 140 15 L4 15 A3 3 0 0 1 1 12 Z" fill-rule="evenodd" fill="#292929" data-color="2"/>
+<!-- Each end closed off by a line, a nub pointing in -->
+<rect x="6" y="7" width="1" height="8" fill="#39526b" data-color="12"/>
+<path d="M4 10.5 A0.5 0.5 0 0 1 4.5 10 L6.5 10 A0.5 0.5 0 0 1 7 10.5 L7 11.5 A0.5 0.5 0 0 1 6.5 12 L4.5 12 A0.5 0.5 0 0 1 4 11.5 Z" fill-rule="evenodd" fill="#39526b" data-color="12"/>
+<!-- The light bracket round the end, lighter above -->
+<path d="M5.305 14.939 A4 4 0 0 1 5.305 7.061 A0.6 0.6 0 0 1 5.514 8.243 A2.8 2.8 0 0 0 5.514 13.757 A0.6 0.6 0 0 1 5.305 14.939 Z" fill-rule="evenodd" fill="#7b9cde" data-color="7"/>
+<path d="M2 11 A4 4 0 0 1 5.305 7.061 A0.6 0.6 0 0 1 5.514 8.243 A2.8 2.8 0 0 0 3.2 11 A0.6 0.6 0 0 1 2 11 Z" fill-rule="evenodd" fill="#6373c6" data-color="8"/>
+<rect x="137" y="7" width="1" height="8" fill="#39526b" data-color="12"/>
+<path d="M137 10.5 A0.5 0.5 0 0 1 137.5 10 L139.5 10 A0.5 0.5 0 0 1 140 10.5 L140 11.5 A0.5 0.5 0 0 1 139.5 12 L137.5 12 A0.5 0.5 0 0 1 137 11.5 Z" fill-rule="evenodd" fill="#39526b" data-color="12"/>
+<path d="M138.695 14.939 A4 4 0 0 0 138.695 7.061 A0.6 0.6 0 0 0 138.486 8.243 A2.8 2.8 0 0 1 138.486 13.757 A0.6 0.6 0 0 0 138.695 14.939 Z" fill-rule="evenodd" fill="#7b9cde" data-color="7"/>
+<path d="M142 11 A4 4 0 0 0 138.695 7.061 A0.6 0.6 0 0 0 138.486 8.243 A2.8 2.8 0 0 1 140.8 11 A0.6 0.6 0 0 0 142 11 Z" fill-rule="evenodd" fill="#6373c6" data-color="8"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="128" viewBox="0 0 24 16">
+<!-- The soul button, its first look: lit orange along its top, a red face, shaded dark red, UNITE in yellow (its words drawn as text): a dark outline. -->
+<!-- The window round it -->
+<rect x="0" y="0" width="24" height="16" fill="#f7ffff" data-color="1"/>
+<!-- The plate's outline -->
+<path d="M2 2.6 A0.6 0.6 0 0 1 2.6 2 L23.4 2 A0.6 0.6 0 0 1 24 2.6 L24 15.4 A0.6 0.6 0 0 1 23.4 16 L2.6 16 A0.6 0.6 0 0 1 2 15.4 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
+<!-- Its shade along the right and the bottom -->
+<path d="M3 3 L23 3 L23 15 L3 15 Z" fill-rule="evenodd" fill="#a5314a" data-color="15"/>
+<!-- Its light along the top -->
+<path d="M3 3 L23 3 L22 4 L3 4 Z" fill-rule="evenodd" fill="#ffad29" data-color="12"/>
+<!-- The face -->
+<rect x="3" y="4" width="19" height="10" fill="#ff3121" data-color="14"/>
+<!-- The words -->
+<text data-words="window.unite" data-box="4 5 17 8" fill="#fff729" data-color="11" x="4" y="13" font-size="10.667" textLength="17">UNITE</text>
+</svg>

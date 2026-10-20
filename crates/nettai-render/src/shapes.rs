@@ -91,8 +91,8 @@ fn clip_x(ring: &[[f32; 2]], x: f32, right: bool) -> Vec<[f32; 2]> {
 
 /// The words written on `d` (`Drawing::words`) as lettering items in the
 /// numbers' font, from the drawing's top left: each the game's string for
-/// its key, its capitals filling its box's height, the run fitted to the
-/// box's width and centered in it, in the colors `color` gives (its palette
+/// its key, its capitals filling its box's height (its lines' share of it,
+/// one under another), each run fitted to the box's width and centered in it, in the colors `color` gives (its palette
 /// row, its index); none for words the strings or the font lack (noted).
 pub fn words(
     d: &Drawing,
@@ -114,17 +114,24 @@ pub fn words(
             continue;
         }
         let [x, y, w, h] = t.rect.map(|v| v as f32 / u);
-        let (top, cap) = (y.round() as i32, (h.round() as i32).clamp(1, 255));
-        let natural = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(0, cap as u8) };
-        let Some((ink0, ink1)) = text.ink_extent(words, Role::Lettering(natural), 10_000) else { continue };
-        let width = (100.0 * w / (ink1 - ink0).max(1.0)).round().clamp(25.0, 255.0) as u8;
-        let lettering = Lettering { width, ..natural };
+        // (Lines one under another, the box's height shared, a pixel apart.)
+        let lines: Vec<&str> = words.lines().collect();
+        let n = lines.len().max(1) as f32;
+        let gap = if n > 1.0 { 1.0 } else { 0.0 };
         let face = color(t.palette, t.color);
         let shadow = t.shadow.map(|c| color(t.palette, c));
-        let rect = Rect::new(x.floor() as i32 - 2, top, w.ceil() as i32 + 4, cap);
-        let item = TextItem::new(words, Role::Lettering(lettering), rect, face, shadow);
-        let ink = crate::textlayer::Ink { fill: vec![face], rim: t.rim.map(|c| color(t.palette, c)) };
-        out.push(TextItem { align: crate::textlayer::Align::Center, ink: Some(ink), ..item });
+        for (k, line) in lines.iter().enumerate() {
+            let line_top = y + k as f32 * (h + gap) / n;
+            let (top, cap) = (line_top.round() as i32, ((h + gap) / n - gap).round().clamp(1.0, 255.0) as i32);
+            let natural = Lettering { font: LetteringFont::Numbers, ..Lettering::wide(0, cap as u8) };
+            let Some((ink0, ink1)) = text.ink_extent(line, Role::Lettering(natural), 10_000) else { continue };
+            let width = (100.0 * w / (ink1 - ink0).max(1.0)).round().clamp(25.0, 255.0) as u8;
+            let lettering = Lettering { width, ..natural };
+            let rect = Rect::new(x.floor() as i32 - 2, top, w.ceil() as i32 + 4, cap);
+            let item = TextItem::new(*line, Role::Lettering(lettering), rect, face, shadow);
+            let ink = crate::textlayer::Ink { fill: vec![face], rim: t.rim.map(|c| color(t.palette, c)) };
+            out.push(TextItem { align: crate::textlayer::Align::Center, ink: Some(ink), ..item });
+        }
     }
     out
 }
