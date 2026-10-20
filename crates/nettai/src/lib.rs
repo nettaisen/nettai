@@ -118,8 +118,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
             ui.window().set_size(slint::LogicalSize::new(width, height));
         }
     });
-    // (The browser's page hears files dropped on it; the desktop's window has its own events for them.)
-    nettai_platform::dialog::take_drops(|paths| {
+    // (The browser's page hears files and folders dropped on it, the Legacy Collection's archives read out of a
+    // folder; the desktop's window has its own events for them.)
+    nettai_platform::dialog::take_drops(&crate::bnlc::ARCHIVES, |paths| {
         for path in paths {
             with_app(|app| app.dropped(&path));
         }

@@ -1949,9 +1949,24 @@ impl App {
         self.settle();
     }
 
-    /// A file was dropped on the window: the screen shown may want it (a save, for a build of it).
+    /// A file or folder was dropped on the window. While a game's pack is wanted and there is no Legacy
+    /// Collection to extract it from, a folder is the collection's, as if chosen in the dialog (its question, if
+    /// open, closes: what comes of it is said as for the dialog's). Else the screen shown may want it (a save,
+    /// for a build of it).
     pub fn dropped(&mut self, path: &std::path::Path) {
-        if self.shell.battle.is_some() || self.shell.dialog.is_some() {
+        if self.shell.battle.is_some() {
+            return;
+        }
+        let asking = self.shell.dialog.as_ref().is_some_and(|d| d.tag == SOURCE);
+        if (asking || self.shell.dialog.is_none()) && self.shell.games.wants_source() && nettai_platform::fs::is_dir(path) {
+            if asking {
+                self.shell.close_dialog();
+            }
+            self.source_chosen(path.to_path_buf());
+            self.settle();
+            return;
+        }
+        if self.shell.dialog.is_some() {
             return;
         }
         let shown = self.shell.screen;

@@ -1164,9 +1164,10 @@ isolated (COOP and COEP), which a page with threads must be.
   before the app starts, and writes back what changes, a few times a second: side by side, a pack's stamp last (a
   page closed partway leaves no pack that looks whole), and nothing in a dot folder (`packs/.new`). The content
   (`/content`) is one archive the page fetches (content.tar).
-- **The Legacy Collection.** CHOOSE FOLDER opens the browser's folder dialog; of the folder chosen (the install's
-  own, its `exe` or its `exe/data`) the per-game archives are read into `/legacy-collection`, and extracted from as
-  on the desktop. The archives are the page's only while it is open, so every game the collection has is
+- **The Legacy Collection.** CHOOSE FOLDER opens the browser's folder dialog (Chromium's alone: Firefox and Safari
+  have none), or the folder is dropped on the page (every browser: the File and Directory Entries API); of the
+  folder (the install's own, its `exe` or its `exe/data`) the per-game archives are read into the app's files, and
+  extracted from as on the desktop. The archives are the page's only while it is open, so every game the collection has is
   extracted at once, not as it is first loaded. Measured in headless Chrome with an install-shaped folder of the
   twelve ROMs (2026-10-20): BN6 2.0 s, BN4 3.0 s, BN5 1.9 s, on a worker, the window live; the three packs (3,414
   files) kept in about 11 s; a reload plays from them without the folder.
@@ -3512,10 +3513,14 @@ show that it's extracting each game" of extracting them all at once, behind a ba
 shown). Stepping to a second while one is extracted waits for the first to land.
 
 **When there is nothing to extract from.** A game with no pack, and no collection found, is
-`UserError::NoLegacyCollection`: "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or
-choose its folder." (in Japanese by the collection's Japanese name, ロックマンエグゼ アドバンスドコレクション
-Vol.2). Where some game can be played, it is a dialog, once, with CHOOSE FOLDER and OK; where none can, the loading
-screen shows the line and CHOOSE FOLDER. Either opens the system's folder dialog: a folder that holds the
+`UserError::NoLegacyCollection`: "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then
+right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window." (in
+a browser the same steps without installing, "onto this page"; in Japanese by the collection's Japanese name,
+ロックマンエグゼ アドバンスドコレクション Vol.2, and Steam's Japanese menu words). The `exe` folder is the first
+thing in the folder Steam opens; the install's own folder, or `exe/data`, is taken as well. Where some game can be played, it is a dialog, once,
+with CHOOSE FOLDER and OK; where none can, the loading screen shows the line and CHOOSE FOLDER. Either opens the
+system's folder dialog; or a folder is dropped on the window, which while a pack is wanted is taken as the one
+chosen (`App::dropped`; the dialog closes), on any screen but a battle's. A folder that holds the
 collection is kept in the settings, and the games it has can be extracted from it, each as it is first loaded; one that doesn't says the error
 again, and nothing is kept. A game whose pack another build made is loaded as it is while there is nothing to
 make it again from; if it doesn't load, that is the same error. A failure while reading the archives or
