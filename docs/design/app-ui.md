@@ -1807,7 +1807,9 @@ the action's amber for the sun and its stripes and the horizon, the field's colu
 and blue over their tints (made solid, so it reads on any background), the seam in the text's white; no tile, no
 gradient, no glow. It is the same mark everywhere: the header, the loading screen and the installers' icons. The
 logotype, 熱帯 in the same amber as tall as the t of nettai beside it (`docs/logo/nettai-logotype.svg`, from Corporate Logo and Chakra Petch
-outlined), is for the README, the installers and a site, not the app's screens.
+outlined), is the README's, the installers', the web page's preload screen's, and the app's own: the header's and the
+loading screen's name is 熱帯 nettai, set in the app's faces, 熱帯 in the look's action color (the user, of the web
+page's: "you should do that for the actual in game ui as well, i like that").
 
 **The footer** holds key hints at the left (key caps or pad buttons, by what was last used) and one short status at
 the right. On a phone there is no footer.

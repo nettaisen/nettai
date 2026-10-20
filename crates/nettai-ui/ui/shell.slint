@@ -939,17 +939,32 @@ export component Header inherits Rectangle {
         opacity: arrive.t;
     }
 
-    Text {
+    // (The logotype: 熱帯 in the action's amber, as tall as nettai's t, then nettai.)
+    HorizontalLayout {
         x: root.pad + (Theme.phone ? 38px : 46px);
+        width: self.preferred-width;
+        height: parent.height;
+        alignment: start;
+        spacing: Theme.phone ? 5px : 6px;
         visible: root.logo;
-        text: "nettai";
-        color: Theme.text;
-        font-family: "Chakra Petch";
-        font-size: Theme.phone ? 22px : 26px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        vertical-alignment: center;
         opacity: arrive.t;
+        Text {
+            text: "熱帯";
+            color: Theme.action;
+            font-family: "Corporate Logo ver3";
+            font-size: Theme.phone ? 18px : 21px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+        Text {
+            text: "nettai";
+            color: Theme.text;
+            font-family: "Chakra Petch";
+            font-size: Theme.phone ? 22px : 26px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+        }
     }
 
     // Back.
