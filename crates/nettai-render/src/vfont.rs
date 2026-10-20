@@ -1152,7 +1152,7 @@ impl TextRenderer {
             let unsquash = |fy: f32| mid + fine_y + (fy - mid - fine_y) / k;
             // (Its box and a margin, and the cap's height more up and down
             // for what stands past the capitals: accents, kana, descenders.)
-            let margin = 2.0 + 2.0 * RIM;
+            let margin = 2.0 + 2.0 * ink.rim_width;
             let (left, right) = (x0.min(item.rect.x as f32) - margin, (x0 + layout.width).max((item.rect.x + item.rect.w) as f32) + margin);
             let (top, bottom) = (baseline - (st.cap * 1.6 + margin) * k, baseline + (st.cap * 0.6 + margin) * k);
             let area = (
@@ -1172,7 +1172,7 @@ impl TextRenderer {
             let rim = match ink.rim {
                 Some(c) => {
                     let mut grown = Mask::new(area);
-                    self.paint_layout_grown(layout, st, at, place, area, RIM * s, &mut grown);
+                    self.paint_layout_grown(layout, st, at, place, area, ink.rim_width * s, &mut grown);
                     Some((color(c), grown))
                 }
                 None => None,
@@ -1433,7 +1433,7 @@ struct Laid {
 
 /// The lettering's rim, in frame pixels: as wide as the picture's, one
 /// pixel, even all round (each glyph's field offset that far).
-const RIM: f32 = 1.0;
+pub(crate) const RIM: f32 = 1.0;
 
 /// How far out the numbers' glyphs' fields hold distances, in texels: a
 /// frame pixel's rim at the smallest boxes the game's numbers fill (a

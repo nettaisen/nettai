@@ -30,6 +30,7 @@ pub struct Drawing {
 /// pixel from the drawing's top left: their top to their baseline, the run
 /// fitted to the width), the face's color, and the outline's and the
 /// shadow's colors where it has them (palette indices, of row `palette`),
+/// the outline's width (hundredths of a frame pixel),
 /// its slant (hundredths of a pixel right for each pixel up: 0, upright),
 /// and whether it is in the lettering font (mixed case, kana) rather than
 /// the numbers' (capitals).
@@ -40,6 +41,7 @@ pub struct Words {
     pub palette: u8,
     pub color: u8,
     pub rim: Option<u8>,
+    pub rim_width: u16,
     pub shadow: Option<u8>,
     pub slant: i16,
     pub lettering: bool,
