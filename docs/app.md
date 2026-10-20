@@ -1177,8 +1177,12 @@ isolated (COOP and COEP), which a page with threads must be.
   again only after a click and the browser's permission prompt, and every game is extracted as the folder is
   chosen, so it would matter only when a new version extracts again.
 - **Not yet:** a replay's video (to be WebCodecs: H.264 and AAC into MP4, downloaded); the picture's texture (the
-  battle's picture is drawn as an image, not into WebGL directly); IME over the canvas; a smaller module (49 MB
-  before wasm-opt and compression).
+  battle's picture is drawn as an image, not into WebGL directly); IME over the canvas.
+- **Size.** A release's module is optimized without its names (binaryen's wasm-opt, if installed: `brew install
+  binaryen`), 49.6 MB to 38.5, and every file is compressed beside it, which serve.py sends: the page is 12.7 MB
+  over the wire (the module 11.3 with brotli, the content 1.4). Of the module's 38 MB, 18 are the UI's embedded
+  data (its fonts above all). A pack the page didn't finish keeping (no stamp) is removed as the app starts, and
+  extracted again once the folder is chosen.
 
 ## 7. Android and iOS
 

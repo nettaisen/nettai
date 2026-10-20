@@ -87,8 +87,22 @@ pub fn kept(dir: &Path, id: &str, game: Game) -> Kept {
 }
 
 /// What an extraction cut short left in the packs folder `dir`: a pack moved aside and not replaced is put
-/// back, and the rest goes.
+/// back, and the rest goes. In the browser so does a pack with no stamp: the page keeps a pack's stamp after the
+/// rest of it, so one without is one the page was closed while keeping (no `nettai-extract` writes there).
 pub fn tidy(dir: &Path) {
+    if cfg!(target_arch = "wasm32")
+        && let Ok(read) = nettai_platform::fs::read_dir(dir)
+    {
+        for entry in read.flatten() {
+            let pack = entry.path();
+            let unfinished = entry.file_type().is_ok_and(|t| t.is_dir())
+                && !entry.file_name().to_string_lossy().starts_with('.')
+                && !nettai_platform::fs::is_file(pack.join(STAMP));
+            if unfinished && let Err(why) = nettai_platform::fs::remove_dir_all(&pack) {
+                crate::errors::log(&format!("removing the unfinished {}", pack.display()), &why);
+            }
+        }
+    }
     let (new, old) = (dir.join(".new"), dir.join(".old"));
     if let Ok(read) = nettai_platform::fs::read_dir(&old) {
         for entry in read.flatten() {

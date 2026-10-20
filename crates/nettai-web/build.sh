@@ -42,4 +42,24 @@ wasm-bindgen --target web --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unk
 cp crates/nettai-web/web/index.html "$out/"
 # The content: content/'s Luau and its tables, without the platform's litter.
 tar --exclude .DS_Store -cf "$out/content.tar" -C content .
+
+# A release's module optimized and without its names and debug information (a dev build keeps its function names,
+# for the console's stack traces): binaryen's wasm-opt, with the features the build has.
+if [ "$profile" = release ]; then
+    if command -v wasm-opt >/dev/null; then
+        wasm-opt -O2 --enable-threads --enable-bulk-memory --enable-mutable-globals --enable-exception-handling \
+            --enable-nontrapping-float-to-int --enable-sign-ext --enable-reference-types --enable-multivalue \
+            --strip-debug --strip-producers -o "$out/nettai_web_bg.wasm" "$out/nettai_web_bg.wasm"
+    else
+        echo "no wasm-opt (binaryen: brew install binaryen): the module is left as it was built" >&2
+    fi
+fi
+
+# Each file compressed beside it, for a server that sends what the browser takes (serve.py does): brotli where
+# there is one, gzip.
+for file in "$out"/*.wasm "$out"/*.js "$out"/content.tar; do
+    rm -f "$file.br" "$file.gz"
+    if command -v brotli >/dev/null; then brotli -q 9 -f -o "$file.br" "$file"; fi
+    gzip -9 -k -f "$file"
+done
 echo "built $out: python3 crates/nettai-web/serve.py $out"
