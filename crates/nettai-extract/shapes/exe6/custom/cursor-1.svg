@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The chip cursor's corner (its second frame): the same L in the other colors. -->
+<!-- The chip cursor's corner (its second frame): the same L in the other colors, the line darker. -->
 <path d="M0 1 A1 1 0 0 1 1 0 H6 V3 H3 V6 H0 Z" fill="#ef4a00" data-color="11"/>
 <path d="M1 1 H5 V2 H2 V5 H1 Z" fill="#f79418" data-color="10"/>
-<path d="M2 2 H6 V3 H3 V6 H2 Z" fill="#ef4a00" data-color="11"/>
+
 </svg>
