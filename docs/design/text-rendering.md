@@ -1757,9 +1757,10 @@ before, byte for byte (§13.6).
 ### 13.1 Drawn by hand, checked as the pack is made
 
 Each frame is an SVG drawn by hand, as the art means it (a round holder, a rounded corner, one clean outline where
-the pixels stack two, a shadow under what casts it), in frame pixels, from simple shapes: rectangles (rounded),
-circles, polygons, paths of lines and arcs. Each shape names its palette entry (`data-color`, `data-palette`), never
-a color: the drawing is filled in the palette the picture is drawn in at that moment, so every palette effect (a
+the pixels stack two, a shadow under what casts it), in frame pixels, in any SVG a drawing needs (shapes, paths
+with curves, strokes of an even width, groups, transforms, `use`, clip paths: usvg reads it, resvg draws it). Each
+shape names its palette entry (`data-color` for its fill, `data-stroke` for its outline, `data-palette` for the row,
+on it or a group round it), never a color: the drawing is filled in the palette the picture is drawn in at that moment, so every palette effect (a
 fade, a dimming, a flash, a version's colors) reaches it as it reaches the picture. The files live in the extractor's
 source, `crates/nettai-extract/shapes/<game>/` (`hud/`, `custom/`, `banners/`), a game's own or a `.same` naming
 another game's where the art is the same (EXE5's and EXE4's HP box, gauge cells, emotion frame, banner bars, help
@@ -1778,21 +1779,25 @@ The pack keeps each drawing as its SVG (`shapes/`, asset-formats.md) and the JSO
 map each drawing stands in for (the custom window's maps, the Cross window's, the gauge's frame, the chatbox's boxes:
 `nettai_assets::shapes::MapDrawing`, each cell drawn by the first drawing, the map's own then the others most like
 it, that draws there and was drawn for the same pixels), and which of a set each is. The renderer (`shapes.rs`) turns a
-drawing into a text-layer item (`textlayer::Drawn`): its regions in painter's order, even-odd, in the palette's colors
-of the moment, flipped as its tiles are laid; the cells it may draw in (the tiles it stands in for aren't drawn); and
+drawing into a text-layer item (`textlayer::Drawn`): its pieces (a drawing each, flipped as its tiles are laid, cut
+where a gauge's fill ends), each drawn by resvg at the output's scale in the palette's colors of the moment (a style
+sheet sets each `data-color`'s fill and `data-stroke`'s stroke, after the fades; painted once for its colors, scale
+and place); the cells it may draw in (the tiles it stands in for aren't drawn); and
 a mask of the pixels it keeps off (`Drawn::off`: the Cross names' portraits stay the picture's, over the vector bar).
 Where something must stay hidden behind a frame (the chatbox's box hides the navi's HP), the tiles are still drawn
 under the shapes, but only where the shapes cover (`shapes::coverage`), so the box keeps its place in front without
 pixel corners showing past its curves. Overlays drawn in front of the window (the spinning emblem) stay in front.
-A drawing may carry words (`Drawing::words`): the game's string for a key in a box, drawn in the numbers' font over
-it, fitted to the box, a line a share of its height (OK, SHUFFLE, UNITE / UNI SON, BLOCK, A R M).
+A drawing may carry words (`Drawing::words`, its `text` elements with `data-words`, left out of what resvg draws): the
+game's string for a key in a box, drawn by the text layer over it in the numbers' font (or the lettering font,
+`data-font`), fitted to the box, a line a share of its height, with an outline of a given width and a slant where the
+art has them (OK, SHUFFLE, UNITE / UNI SON, BLOCK, A R M, CHIP SELECT, the Program Advance logos' words).
 
 What stands in for what:
 
 - **HUD**: the HP box, the gauge's frame (its word as text, §12) and cells (the fill cut where it ends, so it fills
   smoothly), its full shimmer's frames, the L or R cells; the emotion window's frame (its ring a drawing; the faces kept
   without it in the pack, `MugshotFrame`), the count box and the link navi's box; the banners' bars (with their
-  squash); the English Program Advance logos, whole; the chatbox's boxes, open and opening.
+  squash); the Program Advance logos; the chatbox's boxes, open and opening, and its key-wait arrow's three frames.
 - **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
   opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the Regular chip's
   frame, the empty slots' boxes
@@ -1804,15 +1809,17 @@ What stands in for what:
 ### 13.3 Left as pictures
 
 By the user's word: TRASH CHUTE / DUST SHOOT and the Beast Out button (art and words), and the small icons (the
-element icons, the hidden chip's '?', the chatbox's arrow, the gauge's warning arrow). Pictures rather than frames:
+element icons, the hidden chip's '?', the gauge's warning arrow; the chatbox's arrow at first, drawn since at the
+user's word, "the chatbox arrow should also be vectorized"). Pictures rather than frames:
 chip art and chip icons, faces and the emotion window's per-face boxes (EXE5's and EXE4's patterned boxes are each
 face's own art), portraits, the navis' emblems (sprites), EXE4's orb, the sprite at the EXE6 window's bottom right,
-the soul and arm change pictures in the chip window, and the Japanese Program Advance logos (プログラムアドバンス,
-EXE6's and EXE5's and EXE4's: drawn as shapes, their katakana's strokes, slanting every which way, came out ragged,
-worse than the pixels). The English logos are drawn whole as shapes (`BannerLayout::logo`: a banner with no bar its
-words stand on, its drawing the whole picture): PrgAdvance on its arrow (EXE6's and EXE5's), EXE4's ADVANCE between its
-arrowheads. Their letters were set upright (each row moved back by the slant the pixels step, a pixel every two rows),
-read as upright strokes and slanted back as one slant.
+and the soul and arm change pictures in the chip window. The Program Advance logos (`BannerLayout::logo`: a banner
+with no bar its words stand on) are drawings whose words are text, by the user's word ("the program advance logo
+should also be vectorized, but the text should use a font. it should also be italicized"): PrgAdvance on its arrow
+(EXE6's and EXE5's) and EXE4's ADVANCE between its arrowheads, their shapes drawn and their words in italic; the
+Japanese one (プログラムアドバンス, the same picture in the three games) only its words, white, italic, each letter
+outlined two pixels wide in the picture's dark ("the japanese program advance text is actually outlined and not on a
+black box like that").
 
 ### 13.4 The window's cells, audited
 
@@ -1827,6 +1834,13 @@ the custom-screen labs of the three games and the replays finds none (§13.6 lis
 - The Cross names' bar is drawn under the portraits, kept off their pixels, rather than cut to whole cells.
 - EXE4's chatbox, gauge frame, column cells, cursor, empty box and code plate are their own drawings (other indices);
   EXE5's and EXE4's chatboxes have a name tab at the left.
+- The drawings are read and drawn by usvg and resvg 0.48.1, the version Slint builds into the app, not by a parser and
+  filler of our own (the user: "is there no lightweight svg render you could use? it seems crazy to have your own svg
+  parser and renderer"); extraction's check draws a file at its pixels' centers (each pixel whole) to compare.
+- EXE4's custom window is drawn as raised pieces casting drop shadows (the user: "this should be a drop shadow over
+  the header bar thing", "this should really just be a shadow"): the plate and the column's housing one piece, its
+  shadow down its left and under the plate, turning under the rail (gray on the white ground, dark blue on the bars);
+  the white panel's shadow along the bottom section's bars, stepping as its edge does.
 
 ### 13.6 Checked
 
