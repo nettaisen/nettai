@@ -12,7 +12,7 @@
 <!-- The chip window, its top corners rounded -->
 <path d="M7 10.5 A2.5 2.5 0 0 1 9.5 8 L78.5 8 A2.5 2.5 0 0 1 81 10.5 L81 88 L7 88 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The glare: hugging the window's top left corner, tapering to a point along the top and down the side -->
-<path d="M16.5 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V23.5 L8.401 22.229 L8.805 21.015 L9.211 19.859 L9.62 18.76 L10.031 17.719 L10.445 16.735 L10.861 15.809 L11.28 14.94 L11.701 14.129 L12.125 13.375 L12.551 12.679 L12.98 12.04 L13.411 11.459 L13.845 10.935 L14.281 10.469 L14.72 10.06 L15.161 9.709 L15.605 9.415 L16.051 9.179 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M16.5 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V23.5 Q12 10.5 16.5 9 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
 <!-- Its lit edge: a darker band along the outside of the corner, a lighter one in it, lightest in the corner -->
 <path d="M12.8 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V18 L9 16.6 V11.5 A1.5 1.5 0 0 1 10.5 10 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
 <path d="M11.6 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V15.2 L9 14 V11.5 A1.5 1.5 0 0 1 10.5 10 H10.9 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
