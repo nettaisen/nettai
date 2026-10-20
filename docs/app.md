@@ -2175,7 +2175,7 @@ The libraries' errors are typed the same way, a kind for the player and a detail
 `Reason`), `of_stop` (a match's `StopReason`), `of_replay_read` and `of_refusal` (a replay that doesn't read, or
 isn't played here) and `of_export` (nettai-video's) each write the detail and give the kind's sentence; a test
 holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
-last in its export dialog's reserved line (§16); a replay that fails as it is opened or as it plays is a dialog
+last in its export mode's line (§16); a replay that fails as it is opened or as it plays is a dialog
 over the list (§16), with the replay's own still or nothing in its box (§1). What breaks a build's rules is
 nettai-match's `Wrong`, which the builds' words (`builds::words`) say in their own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
 can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1). With the app's own packs (§17),
@@ -2354,10 +2354,12 @@ days and kinds of match (fifteen files), with three that aren't played beside th
 content's, no replay at all). The steps: the list; the actions beside it (a pair: the focus a step along); a
 search; the Online filter; a file that doesn't read, selected as the screen arrives from the main menu (its box
 empty, nothing of the menu's reel in it: §1); the delete question, and then a delete carried out, of a
-file made for it; the export's dialog as it opens (a pair), as an export under way looks and as a failed one
-does (both set on the view: no export runs); the two cards; the viewer held a little way into the second round
-(a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; both
-builds over it; the export from the viewer; the viewer of a match whose setups weren't open (BUILDS unavailable); a replay that
+file made for it; the viewer's export mode from the list (E), as it begins and with its start's handle a second on
+(a pair), as an export under way looks and as a failed one does (both set on the view: no export runs); the two
+cards; the viewer held a little way into the second round (a pair a focus move apart, and a pair a second of
+playback apart); five seconds on; the other console; both builds over it; the ⋯ menu, the playback speed's menu,
+and the speed's badge at 2×; the export mode from the viewer (its start set where the viewer is; both sides); the
+viewer of a match whose setups weren't open (BUILDS unavailable); a replay that
 fails as it is watched (`replays-watch-failed`: a copy of the first, damaged after the list read it, its size
 and time kept so that the list still offers it, watched as the screen arrives from the menu: the error's dialog
 over the list, the replay's box empty; the copy is removed after); and on a phone the selected replay's sheet (a
@@ -3051,7 +3053,8 @@ line beside MENU says "Practice · Round 1" (`Shell.battle-note`, which a battle
 ## 16. Replays
 
 docs/design/app-ui.md §6, "Replays". The screen is `ui/screens/replays.slint` and `src/screens/replays.rs` (with
-`replays/viewer.rs` and `replays/export.rs`); the folder's reading is `src/replays.rs`. The library under all of
+`replays/viewer.rs`, `replays/export.rs`, `replays/thumbnails.rs` and `replays/queue.rs`); the folder's reading is
+`src/replays.rs`. The library under all of
 it is docs/frontend.md §8: the file, the viewer and its seeking, the video. A replay keeps each round's
 background by its game and its name (any game's: §1, "The battle's background"), and a viewer draws it as the
 match did, or its stage's own where the player hasn't that game's pack. The file is of layout 1
@@ -3092,7 +3095,8 @@ only where even that doesn't.
 `P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`, `W 10–9` in a set first to ten,
 which the score's column holds; the rounds alone where the set wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
 between All and Online is there only while the game has replays of both kinds. Enter on a row watches it (a click chooses it
-and no more: WATCH starts it), E exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
+and no more: WATCH starts it), E (and EXPORT VIDEO, the pad's north button, a row's menu's) opens it in the viewer's
+export mode (below), Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
 selected replay as a sheet from the bottom, with its actions one under the other (WATCH and its arrow, EXPORT
 VIDEO, SHOW FILE, DELETE). No build's name is anywhere: a replay has none. WATCH is a split button
 (docs/design/app-ui.md §2.92): its arrow (`watch-more`, an amber `IconButton` 2 from it; the sheet's
@@ -3133,25 +3137,46 @@ the viewer's round steps go by the rounds the file marks, whatever their number.
 (`Play::Watch`: §2) and hands over. The cards say who played and nothing of what they brought. Each frame the
 screen runs the ticks due, presents the picture into the window's texture if one ran, and hands the sound on:
 
-- *The transport* (docs/design/app-ui.md §2.94, §2.95: few buttons): the time, the bar (a click or a drag; a mark
-  where each later round begins), the length; to the round's start, play or pause, the next round
-  (`TransportButtons`), the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button
+- *The transport* (docs/design/app-ui.md §2.94, §2.95, §2.96: few buttons): the time, the bar (a click or a drag; a
+  mark where each later round begins), the length; to the round's start, play or pause, the next round
+  (`TransportButtons`), the speed's badge while it isn't 1× (`ReplaysView.speed`, "2×", in the cursor's color:
+  `Watching::show_speed`), the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button
   (below), and ⋯ (`more`, an `IconButton` of three dots, as Play's build's ⋯). The footer's status counts the
   rounds. The focus starts on the bar, which Enter takes, Left and Right then going five seconds (a setting, as a
   slider is: §11). Space plays and pauses, comma and period step a frame (and pause; no button does), the brackets
   (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list. At its end a replay
-  stops with the transport there; play starts it again. The viewer marks no clip: the part of a replay to export
-  is the export dialog's Range (below).
+  stops with the transport there; play starts it again. The viewer marks no clip outside the export mode (below).
 - *The ⋯ menu* is the app's picker as a menu whose rows have marks (`Shell::pick_marked`; the UI's `PickMark`
-  each row: `check`, drawn at its right; `dim`; `line`, over a group's first), 264 wide with its right edge at the
-  button's, over it where there is more room (as it is at the window's foot), heard as `more`. Its rows are
-  `viewer::MENU`'s, made by `Watching::menu` as it opens and done by `Watching::choose`: P1 and P2 (the side shown
-  checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S PICTURE (each checked while on); ½×, 1×, 2×, 4× (the
-  speed set checked: `set_speed`); and EXPORT VIDEO, which the screen does (`Replays::choose`: the dialog, opened
-  with where the viewer is for its NOW). Ten rows, which the picker shows at once (`PICKER_ROWS`). BUILDS is dim
-  where the setups weren't open: the shell refuses a dim row itself (`Picking::dim`), the menu staying open, so the
-  screen never hears it. While the menu is open the controls stay and Autoplay next waits (`Shell::picker_open`).
-  The menu is the shell's `PickerLayer`, over every screen and its overlay: nothing over the viewer covers it.
+  each row: `check`, drawn at its right; `dim`; `line`, over a group's first; `value`, a choice's value at its right
+  in the muted color), 264 wide with its right edge at the button's, over it where there is more room (as it is at
+  the window's foot), heard as `more`. Its rows are `viewer::MENU`'s, made by `Watching::menu` as it opens and done
+  by `Watching::choose`: P1 and P2 (the side shown checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S
+  PICTURE (each checked while on); PLAYBACK SPEED, the speed set as its value, which opens the speeds' own menu in
+  its place (`Watching::speed_menu`, the same picker by ⋯, ½×, 1×, 2×, 4× with the one set checked, heard as
+  `speed`: `choose_speed`; the focus is put on ⋯ first, for that menu to give it back to); and EXPORT VIDEO, which
+  the screen does (`Replays::enter_export`: the export mode), dim while in it. Seven rows. BUILDS is dim where the
+  setups weren't open: the shell refuses a dim row itself (`Picking::dim`), the menu staying open, so the screen
+  never hears it. While the menu is open the controls stay and Autoplay next waits (`Shell::picker_open`). The
+  menu is the shell's `PickerLayer`, over every screen and its overlay: nothing over the viewer covers it. (Until
+  §2.96 the four speeds were rows of the menu themselves, with nothing saying what they were.)
+- *The preview over the bar* (docs/design/app-ui.md §2.96; `screens/replays/thumbnails.rs`): the bar's
+  `TouchArea` tells its hover (`seek-hover`: index 1 and the place of 10,000 while the pointer is over it, 0 as it
+  leaves; `Watching::hover`), and the UI draws a box above the bar at the pointer, kept over the bar's length, with
+  `ReplaysView.thumb` at 240 by 160 and `thumb-time` under it. The picture is a second `Viewer` of the replay,
+  silent (no sound is made: its `Loaded` has none, `export::game_for_thread`), on a thread of its own
+  (`Thumbnails`), started at the first hover and dropped with the viewer (and anew at `Watching::show`: the language
+  or the graphics may have changed). It is opened as the viewer is, with the window's graphics, mode and language,
+  so Enhanced or Original matches; it indexes the replay ahead a slice of 600 ticks at a time while nothing is
+  asked, and for a preview seeks to its second's first tick and presents that console (`Viewer::present_view`) at
+  the window's density (the scale rounded, at least 1). A preview is asked for one at a time, the latest hovered
+  only (the thread takes the last of what is waiting), at most every 120 ms; drawn ones are kept by their
+  `Bucket` (the second, the console, the density) in a cache of 32 MB at most, the least lately seen going first,
+  and while a second's own isn't drawn the nearest kept of its console shows (none: the box alone). Nothing of the
+  viewer watched is touched, and nothing in the engine is new: the library's seeking on another instance, as the
+  export's thread is. Its cost by docs/frontend.md §8's figures: a silent tick is 17.5 µs, so the thread spends
+  about 0.3 s indexing five minutes, once, and keeps about 77 states of the battle and the HUDs (some 2.5 MB);
+  a preview is a seek of under 240 ticks (about 4 ms) and one picture (153 KB at the frame, 614 KB at twice it).
+  Measured: nothing (the app wasn't run for it).
 - *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
   the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, footer) is
   over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
@@ -3230,7 +3255,8 @@ screen runs the ticks due, presents the picture into the window's texture if one
   away; the replay goes on under them, and its keys still work. They never cover the transport, the header or the
   footer (docs/design/app-ui.md §2.95; until then their page reached the footer, over the transport, whose clicks
   went to it, so the menu that unchecks BUILDS couldn't be opened): on a desktop they end 12 over the transport
-  (`ViewerBuilds::foot`: the page's body ends 24 over the footer, the transport 108 tall at its foot), on a phone
+  (`ViewerBuilds::foot`: the page's body ends 24 over the footer, the transport 108 tall at its foot; in the export
+  mode 12 over its options, 120 higher), on a phone
   they are over the picture alone, down to 12 over the transport. They are under the popup up next in
   `ReplaysOverlay`, so that it opens over them. On a phone they are one under the other in a page that scrolls (each sheet is
   then one column, 1158 tall). The sides of a match whose setups weren't open aren't kept at all
@@ -3260,16 +3286,44 @@ screen runs the ticks due, presents the picture into the window's texture if one
   button, then ⋯ (each 40 by 44). The ⋯ menu is the picker's sheet. One component is both shapes (what differs
   placed by `Theme.phone`), since two under an `if` each cost more (§14).
 
-**The export** (`Export`) is a dialog of one size from its start to its end: Size (2, 4 and 6 times the frame,
-4 chosen), View, Sides (One, or Both: the user, "add support for two sided side by side export"), Range (the
-whole match, chosen at first; a round, where there is more than one; or Custom, a part of the player's own: §2.95),
-Start and End, Save as, the bar and its line, CANCEL and EXPORT. Start and End always say the range chosen (as
-minutes and seconds); typing either (`m:ss`, or seconds alone: `export::parse_time`) or pressing its NOW, which
-takes where the viewer was as the dialog opened (`Export::now`; dim from the list), makes the range Custom from the
-one to the other, and Range then says Custom and its length. What is wrong is said under them in the error color,
-the field's edge red (`Problem`): not a time ("Type a time as m:ss."), past the replay's end ("The replay ends at
-3:12."), or the start not before the end; EXPORT is then refused, the field taken. A Custom export is
-`Part::Ticks` (as the viewer's clip was until §2.95), its file named "part 00.41–00.53". With Both, the video is both
+**The export** (`Export`) is the viewer's export mode (docs/design/app-ui.md §2.96; until then a dialog over the
+list or the viewer). The ⋯ menu's EXPORT VIDEO begins it (`Replays::enter_export`: the builds put away, the focus on
+the range's start); the list's EXPORT VIDEO (and E, the pad's north button, a row's menu, a phone's sheet) watches
+the replay with `export` set (`Replays::watch`, `export_due`), and the viewer, as it is shown, is paused at its
+start and begins it. `ReplaysView.exporting` says it is on; it holds the controls shown (`Replays::follow_viewer`).
+Playing, pausing, stepping and seeking work as they do outside it.
+
+- *The range* is `Export::range`, ticks always whole: its start a tick before its end at least, both within the
+  replay (`export::moved` for a handle dragged or nudged, which stops at the other and at the ends;
+  `export::set_here` for SET START HERE and SET END HERE, which put one at the viewer's tick, `Watching::shown`, the
+  other going to the replay's edge where it would pass it; both tested). The bar draws it as a band in the code
+  color between two handles (`range-start`, `range-end`, 0 to 1), each a `Focusable` of its own
+  (`export.handle`, 0 the start, 1 the end) under the bar's `TouchArea`, which takes the pointer: pressed within 8
+  of a handle it drags the nearer (`export.handle` while held, `export.handle-done` let go, each with the place of
+  10,000), elsewhere it seeks as before. The picture follows a dragged handle (`Watching::drag_to`: the kept states
+  while held, exactly where let go). On a focused handle Left and Right nudge it a tick, with Shift a second
+  (`Screen::key`); a pad's d-pad a tick (`Screen::route`) and its shoulders a second (`Screen::action`); each goes to
+  where it is then, paused (`Watching::go_to`), as Enter on a handle does. A range that is no round and not the
+  whole match is kept as Custom (`Export::custom`), the last such, which the Range's list offers after the whole
+  match and the rounds; the list's value is the range's (`export-part`: "Custom · 0:12"), and its times are said
+  beside it (`export-range`).
+- *The transport in the mode* has, in the round shown's place, SET START HERE and SET END HERE
+  (`export.start-here`, `export.end-here`), the Range's list (`export.part`, a select) and the times; before the
+  queue's and ⋯, CANCEL (`export.cancel`; CLOSE once saved) and EXPORT (`export.go`). On a phone the transport is
+  260 tall: under the buttons the two HERE side by side, the Range across, CANCEL and EXPORT side by side. The
+  controls are there outside the mode too, hidden and not focusable (`enabled` false): one component (§14).
+- *The options* (`ExportOptions`, under an `if`) are a panel 108 tall, 12 over the transport (on a phone 208,
+  under it): Size (2, 4 and 6 times the frame, 4 chosen), View (the viewer's side: `export.view` sets
+  `Watching::set_view` and the export follows, as it does the ⋯ menu's P1 and P2), Sides (One, or Both: the user,
+  "add support for two sided side by side export"), Save as; under them the bar and its line, which while nothing
+  exports says to drag the handles. The footer's hints in the mode: Space, comma and period, the arrows ("Move a
+  handle"), Back as Cancel.
+- *Leaving:* Esc, B or CANCEL stop an export under way and the mode stays (`Export::back`); with none under way they
+  end it (`Replays::leave_export`), the focus back on the bar. Leaving the viewer, the queue's next and the engine
+  stopping end it too, an export under way stopped (`Running` is dropped: told, and waited for).
+
+A range of the player's own is `Part::Ticks` (as the viewer's clip was until §2.95), its file named
+"part 00.41–00.53"; a round's `Part::Round`, the whole match's `Part::Whole`. With Both, the video is both
 consoles side by side, the View's at the left and the other's at the right, twice as wide (the Size says the
 video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's `Sides::Both`,
 docs/frontend.md §8), and the file's name ends "both sides". Its sound is two tracks, not a mix (the user:
@@ -3289,8 +3343,8 @@ docs/frontend.md §8): the MP4 has them both ways players read chapters, as a ch
 and as Nero's `chpl` box. The bundled ffmpeg needed nothing added for either. EXPORT
 runs nettai-video's `export_mp4` on a thread of its own, with a copy of what the window plays from (the game's
 graphics in the language shown, the text as the settings have it, its sound); the thread says how far it is
-and is told to stop through what the two share, which the dialog reads each frame. CANCEL (or Esc) stops an
-export under way and leaves the dialog open; with none under way it closes it. The line says the round and
+and is told to stop through what the two share, which the export mode reads each frame. CANCEL (or Esc, or B) stops an
+export under way and leaves the mode on; with none under way it ends it. The line says the round and
 the percentage, then "Saved.", or what went wrong in the player's words (`UserError::of_export`: ffmpeg not
 found, the file not written, anything else with the log named). The app keeps awake while one runs (§1).
 
@@ -3321,11 +3375,16 @@ left), and Replays' steps with them in the folder listed them first, watched the
 (its recorder played as P2, whose console is shown, so YOU was at the left) and none of the one whose setups weren't open.
 Never run: a real pointer or a pad (the probe's are the window's events, not the system's), SHOW FILE, Save as's
 system dialog, the main menu's reel playing a replay (its order is a unit test), the builds with a real key, and
-anything on a real phone.
+anything on a real phone. The export mode, the bar's preview and the playback speed's menu and badge
+(docs/design/app-ui.md §2.96) have not run at all: the user tests them. The pass's steps were changed to walk them
+(`replays-export` and `replays-export-handle` from the list, `viewer-menu`, `viewer-speeds`, `viewer-speed-badge`,
+`viewer-export` and `viewer-export-both` from the viewer; no step hovers the bar), and the handles' holding
+(`export::moved`, `export::set_here`) and the previews' keying and cache (`thumbnails::Bucket`, `Cache`) are unit
+tests.
 
 The input display and the other console's picture were shot by the pass (`viewer-overlays`, on together over
 the other console, I by its key and P by its button; English at a desktop's size, Japanese and the pseudo-locale at both)
-and looked at: the inset is the other side's console at twice the frame in a picture six times it. The dialog
+and looked at: the inset is the other side's console at twice the frame in a picture six times it. The export mode
 with Both is `viewer-export-both`. Not run: either while a replay plays in a window (the pass holds the viewer
 still), so neither's cost per frame was measured. The two-sided video ran once through `nettai-tool --both-sides`
 on one of the user's EXE4 replays (copied out; 7,237 ticks): 1,800 frames as an MP4 at twice the frame,
