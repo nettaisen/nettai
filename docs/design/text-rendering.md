@@ -1739,3 +1739,108 @@ stretched to its box, then "chip code and chip window damage should probably be 
 - **Not lettered.** A chip window picture is a lettered panel only where its panel's and frame's colors are two thirds
   of it or more: the buttons' art with their names over it (EXE6's TRASH CHUTE / DUST SHOOT and Beast Out, EXE5's soul
   and Arm Change) have no letters and no blank; no strings had words for them.
+
+## 13. The frames as shapes (as built, 2026-10-19)
+
+The user: "can you redraw more of the game ui in vector?", then, in order: "the svg looks a little messy because it's
+not really getting the shapes right, it's tracing the pixels too closely"; "the svgs should be extracted at
+extraction time, they shouldn't be runtime traced"; "maybe instead of extracting these vector assets you should just
+straight up redraw them by hand and include them in the repo"; "when redrawing the custom window/custom bar etc you
+should make the shapes actually look like the shapes instead of like matching the pixels"; "i really want the entire
+HUD in vector so it can be scaled"; "no need to vectorize trash chute and beast out actually"; "small icons should
+also not be vector"; and, of the details, "the whole orb holder is all circular", "there's a lot more rounding of
+corners on the custom screen than you think", "i don't think you should round the corners on anything that needs to
+hold a chip icon", "the chip stack has a shadow under it". The enhanced mode draws the HUD's and the custom screen's
+frames, buttons and panels as filled shapes at the output's resolution; the original mode draws the pictures as
+before, byte for byte (§13.6).
+
+### 13.1 Drawn by hand, checked as the pack is made
+
+Each frame is an SVG drawn by hand, as the art means it (a round holder, a rounded corner, one clean outline where
+the pixels stack two, a shadow under what casts it), in frame pixels, from simple shapes: rectangles (rounded),
+circles, polygons, paths of lines and arcs. Each shape names its palette entry (`data-color`, `data-palette`), never
+a color: the drawing is filled in the palette the picture is drawn in at that moment, so every palette effect (a
+fade, a dimming, a flash, a version's colors) reaches it as it reaches the picture. The files live in the extractor's
+source, `crates/nettai-extract/shapes/<game>/` (`hud/`, `custom/`, `banners/`), a game's own or a `.same` naming
+another game's where the art is the same (EXE5's and EXE4's HP box, gauge cells, emotion frame, banner bars, help
+panel; EXE5's column cells, cursor, code plate, name bar); `build.rs` embeds them. Extraction composes each picture
+from the ROM (a window map's cells, a set of tiles, a banner's bar with its letters off), reads the drawing, checks
+its size and that every color it names is one the picture uses, and notes the share of the picture's pixels it gives
+at their centers (words' boxes aside), calling out any under 85%: it is a check that the drawing is of that picture,
+not a target (the drawings are 91 to 100%, the gauge's full shimmer in EXE6 72 to 78% by design). It is the one input
+of the extractor's that isn't a ROM (asset-formats.md, "Frames as shapes"). `cargo run -p nettai-extract --example
+shapes_check -- <game> <pack> [out] [--recolor]` checks them against a pack without extracting it again, writes each
+picture beside its drawing with `out`, and with `--recolor` sets the files' viewing fills.
+
+### 13.2 What a pack holds and how it is drawn
+
+The pack keeps each drawing as its SVG (`shapes/`, asset-formats.md) and the JSON what SVG can't say: which cells of a
+map each drawing stands in for (the custom window's maps, the Cross window's, the gauge's frame, the chatbox's boxes:
+`nettai_assets::shapes::MapDrawing`, each cell drawn by the first drawing, the map's own then the others most like
+it, that draws there and was drawn for the same pixels), and which of a set each is. The renderer (`shapes.rs`) turns a
+drawing into a text-layer item (`textlayer::Drawn`): its regions in painter's order, even-odd, in the palette's colors
+of the moment, flipped as its tiles are laid; the cells it may draw in (the tiles it stands in for aren't drawn); and
+a mask of the pixels it keeps off (`Drawn::off`: the Cross names' portraits stay the picture's, over the vector bar).
+Where something must stay hidden behind a frame (the chatbox's box hides the navi's HP), the tiles are still drawn
+under the shapes, but only where the shapes cover (`shapes::coverage`), so the box keeps its place in front without
+pixel corners showing past its curves. Overlays drawn in front of the window (the spinning emblem) stay in front.
+A drawing may carry words (`Drawing::words`): the game's string for a key in a box, drawn in the numbers' font over
+it, fitted to the box, a line a share of its height (OK, SHUFFLE, UNITE / UNI SON, BLOCK, A R M).
+
+What stands in for what:
+
+- **HUD**: the HP box, the gauge's frame (its word as text, §12) and cells (the fill cut where it ends, so it fills
+  smoothly), its full shimmer's frames, the L or R cells; the emotion window's frame (its ring a drawing; the faces kept
+  without it in the pack, `MugshotFrame`), the count box and the link navi's box; the banners' bars (with their
+  squash); the chatbox's boxes, open and opening.
+- **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
+  opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the empty slots' boxes
+  (square, as every box a chip's icon goes in) and the slots' code plates (rounded, the empty ones' too), the enemy
+  names' bar, the Cross names' bar, OK (in the window's drawing), the buttons by set (`button-NAME-K`: SHUFFLE in all
+  three games, EXE5's soul and arm change buttons, EXE4's soul button), and the chip window's panel for OK and the
+  buttons (`picture-NAME`, a language's own as `NAME-LANG`).
+
+### 13.3 Left as pictures
+
+By the user's word: TRASH CHUTE / DUST SHOOT and the Beast Out button (art and words), and the small icons (the
+element icons, the hidden chip's '?', the chatbox's arrow, the gauge's warning arrow). Pictures rather than frames:
+chip art and chip icons, faces and the emotion window's per-face boxes (EXE5's and EXE4's patterned boxes are each
+face's own art), portraits, the navis' emblems (sprites), EXE4's orb, the sprite at the EXE6 window's bottom right,
+the soul and arm change pictures in the chip window, and the Japanese Program Advance logos (プログラムアドバンス,
+EXE6's and EXE5's and EXE4's: drawn as shapes, their katakana's strokes, slanting every which way, came out ragged,
+worse than the pixels). The English logos are drawn whole as shapes (`BannerLayout::logo`: a banner with no bar its
+words stand on, its drawing the whole picture): PrgAdvance on its arrow (EXE6's and EXE5's), EXE4's ADVANCE between its
+arrowheads. Their letters were set upright (each row moved back by the slant the pixels step, a pixel every two rows),
+read as upright strokes and slanted back as one slant.
+
+### 13.4 The window's cells, audited
+
+A window drawing stands in for a cell only where the screen lays that cell as the map does; anywhere else the cell
+is drawn as its tiles and the renderer notes a problem. The trace audit (`nettai-tool --audit --draw`, enhanced) over
+the custom-screen labs of the three games and the replays finds none (§13.6 lists what was run).
+
+### 13.5 Decisions
+
+- The window's OK is part of its map and so of its drawing; the extractor no longer leaves its cells out.
+- A help picture's ground is one drawing for all its pictures and both languages (their blanks are the same).
+- The Cross names' bar is drawn under the portraits, kept off their pixels, rather than cut to whole cells.
+- EXE4's chatbox, gauge frame, column cells, cursor, empty box and code plate are their own drawings (other indices);
+  EXE5's and EXE4's chatboxes have a name tab at the left.
+
+### 13.6 Checked
+
+- The original mode, main's frontend against this one (both `--text original`, each on packs its own extractor made
+  from the same ROMs, `tools/frontend-compare/identity.sh`): 33 runs, 140,725 frames, 0 differing (EXE6 machgun,
+  judge-win, pause, cross-window-keys of both versions, take-back-cross, redeal-right-half, run-message,
+  description-keys, soundmod, cannon atk10, and in Japanese machgun, judge-win, cross-window-keys, redeal-right-half,
+  gigacan1's recipe; EXE5 judge-win, picks, arm-change, run-message, ko-win-netbattle, and the first three in Japanese;
+  EXE4 time-up-doubled-side1, pause, ko-cannon, one-code, describe, run-message, and three in Japanese); after the logos
+  and main merged, 14 runs more (the Program Advance recipes of the three games, the buttons, the chatboxes, in both
+  languages), 22,356 frames, 0 differing.
+- The trace audit, enhanced, drawing every frame: the custom-screen and flow labs of the three games and EXE6's
+  replays (371 traces, about 958,000 frames): no problem of the drawings (the window's cells never laid otherwise).
+- Looked at, original beside enhanced, at 3x to 24x: EXE6's custom window (every corner, the housing, the socket, the
+  stack's bottom and shadow, the glare, the tab), the cursors, the slots and plates, the Cross window and its bars,
+  OK and SHUFFLE in their three looks, the help panel, the chatbox (message box, its corners), the Program Advance
+  logo; EXE5's custom window, UNITE, the chatbox; EXE4's custom window and the description chatbox; the gauge's and the
+  emotion window's drawings of EXE5 and EXE4 against their pictures.
