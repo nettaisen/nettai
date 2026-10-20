@@ -51,7 +51,8 @@ mod page {
     }
 
     /// What changed in the data folder since the last call, in order: each `["write", path, bytes]` or
-    /// `["remove", path]` (a file or a folder and all in it), `path` within the data folder.
+    /// `["remove", path]` (a file or a folder and all in it), `path` within the data folder; none in a folder whose
+    /// name starts with a dot.
     #[wasm_bindgen]
     pub fn changes() -> js_sys::Array {
         let out = js_sys::Array::new();
@@ -61,6 +62,11 @@ mod page {
                 nettai_fs::Change::Remove(path) => ("remove", path, None),
             };
             let Ok(path) = path.strip_prefix(super::DATA) else { continue };
+            // (A folder whose name starts with a dot is the app's scratch, as a pack is made in packs/.new and
+            // moved into place: what is kept is the pack, once, as it lands.)
+            if path.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')) {
+                continue;
+            }
             let entry = js_sys::Array::of2(&kind.into(), &path.to_string_lossy().as_ref().into());
             if let Some(data) = data {
                 entry.push(&js_sys::Uint8Array::from(data.as_slice()));

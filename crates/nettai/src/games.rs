@@ -213,6 +213,14 @@ impl Games {
             self.found_source = true;
             self.source = Some(install);
         }
+        // (In the browser the archives are the page's only while it is open: every game is extracted now, not as
+        // it is first loaded.)
+        if cfg!(target_arch = "wasm32") {
+            let ids: Vec<String> = self.list.iter().filter(|e| matches!(e.state, State::Extractable)).map(|e| e.id.clone()).collect();
+            for id in ids {
+                self.extract(&id);
+            }
+        }
         count
     }
 

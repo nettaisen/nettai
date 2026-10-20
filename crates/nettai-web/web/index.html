@@ -56,27 +56,55 @@ async function folder(root, parts, make) {
   return dir;
 }
 
-// What changed, written to the kept files in order.
+async function write(root, path, bytes) {
+  const parts = path.split("/").filter(Boolean);
+  const name = parts.pop();
+  const dir = await folder(root, parts, true);
+  const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+  await writable.write(bytes);
+  await writable.close();
+}
+
+async function remove(root, path) {
+  const parts = path.split("/").filter(Boolean);
+  const name = parts.pop();
+  const dir = await folder(root, parts, false);
+  if (!dir) return;
+  try {
+    await dir.removeEntry(name, { recursive: true });
+  } catch (e) {
+    if (e.name !== "NotFoundError") throw e;
+  }
+}
+
+// What changed, written to the kept files as the app made it: the writes side by side (a pack is thousands of
+// files), a removal or a second write of one file after what came before it, and a pack's stamp (which says the
+// pack is whole: the app extracts one again that has none) after everything else in the batch, so a page closed
+// partway leaves no pack that looks whole.
 async function keep(root, changes) {
+  let running = [];
+  const paths = new Set();
+  const settle = async () => {
+    await Promise.all(running);
+    running = [];
+    paths.clear();
+  };
+  const stamps = [];
   for (const [kind, path, bytes] of changes) {
-    const parts = path.split("/").filter(Boolean);
-    const name = parts.pop();
-    if (kind === "write") {
-      const dir = await folder(root, parts, true);
-      const file = await dir.getFileHandle(name, { create: true });
-      const writable = await file.createWritable();
-      await writable.write(bytes);
-      await writable.close();
+    if (kind === "write" && path.endsWith("/stamp.toml")) {
+      stamps.push([path, bytes]);
+    } else if (kind === "write" && !paths.has(path)) {
+      paths.add(path);
+      running.push(write(root, path, bytes));
+      if (running.length >= 32) await settle();
     } else {
-      const dir = await folder(root, parts, false);
-      if (!dir) continue;
-      try {
-        await dir.removeEntry(name, { recursive: true });
-      } catch (e) {
-        if (e.name !== "NotFoundError") throw e;
-      }
+      await settle();
+      if (kind === "write") await write(root, path, bytes);
+      else await remove(root, path);
     }
   }
+  await settle();
+  for (const [path, bytes] of stamps) await write(root, path, bytes);
 }
 
 async function main() {
