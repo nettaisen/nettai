@@ -39,7 +39,7 @@ cargo +nightly build --locked -Zbuild-std=std,panic_abort --target wasm32-unknow
 
 mkdir -p "$out"
 wasm-bindgen --target web --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unknown/$dir/nettai_web.wasm"
-cp crates/nettai-web/web/index.html "$out/"
+cp crates/nettai-web/web/index.html docs/logo/nettai-icon.svg docs/logo/nettai-logotype.svg "$out/"
 # The content: content/'s Luau and its tables, without the platform's litter.
 tar --exclude .DS_Store -cf "$out/content.tar" -C content .
 
@@ -54,6 +54,9 @@ if [ "$profile" = release ]; then
         echo "no wasm-opt (binaryen: brew install binaryen): the module is left as it was built" >&2
     fi
 fi
+
+# The sizes the page's preload screen counts its downloads against (as decoded: a server may send them compressed).
+printf '{"nettai_web_bg.wasm": %s, "content.tar": %s}\n' "$(wc -c < "$out/nettai_web_bg.wasm" | tr -d ' ')" "$(wc -c < "$out/content.tar" | tr -d ' ')" > "$out/sizes.json"
 
 # Each file compressed beside it, for a server that sends what the browser takes (serve.py does): brotli where
 # there is one, gzip.

@@ -31,18 +31,31 @@ export component LoadingScreen inherits Rectangle {
         source: @image-url("../../../../docs/logo/nettai-icon.svg");
     }
 
-    Text {
+    // The logotype: 熱帯 in the action's amber, as tall as nettai's t, then nettai (the user: "you should do that for
+    // the actual in game ui as well, i like that", of the web page's).
+    HorizontalLayout {
         y: root.top + (1 - arrive.t) * 10px;
         height: 90px;
+        alignment: center;
+        spacing: Theme.phone ? 10px : 14px;
         opacity: arrive.t;
-        text: "nettai";
-        color: Theme.text;
-        font-family: "Chakra Petch";
-        font-size: Theme.phone ? 56px : 72px;
-        font-weight: 700;
-        letter-spacing: 2.9px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+        Text {
+            text: "熱帯";
+            color: Theme.action;
+            font-family: "Corporate Logo ver3";
+            font-size: Theme.phone ? 44px : 57px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+        Text {
+            text: "nettai";
+            color: Theme.text;
+            font-family: "Chakra Petch";
+            font-size: Theme.phone ? 56px : 72px;
+            font-weight: 700;
+            letter-spacing: 2.9px;
+            vertical-alignment: center;
+        }
     }
 
     Bar {
