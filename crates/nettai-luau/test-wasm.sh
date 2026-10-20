@@ -2,7 +2,6 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-: "${WASI_SDK_PATH:?Set WASI_SDK_PATH to an extracted WASI SDK 34}"
 build_profile="${1:-debug}"
 profile_args=()
 case "$build_profile" in

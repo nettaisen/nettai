@@ -1139,7 +1139,9 @@ menu, so no press is timed then.
 The app runs in a browser (Chromium: the folder dialog is `showDirectoryPicker`): crates/nettai-web is the module
 the page loads and the page itself (web/index.html). `bash crates/nettai-web/build.sh` builds it into
 target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wasm-bindgen version, WASI SDK 34 at
-`$WASI_SDK_PATH`), and `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
+`WASI_SDK_PATH`, in the environment or `~/.cargo/config.toml`'s `[env]`): the module is plain cargo,
+`cargo +nightly build --target wasm32-unknown-unknown -p nettai-web` (its atomics' flags and `build-std` are in
+.cargo/config.toml), and the script makes the page of it. And `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
 isolated (COOP and COEP), which a page with threads must be.
 
 - **nettai-platform** is what the app asks of the system, the same calls on both: `fs`, `thread`, `time`,

@@ -2,7 +2,6 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-: "${WASI_SDK_PATH:?Set WASI_SDK_PATH to an extracted WASI SDK 34}"
 if [ "$#" -eq 0 ]; then
     echo "usage: $0 <build|check|test> [cargo options]" >&2
     exit 2
