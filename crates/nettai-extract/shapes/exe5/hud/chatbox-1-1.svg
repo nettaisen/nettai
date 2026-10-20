@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
+<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark outline with rounded corners, a light band inside it, the ground the text is written on. -->
+<!-- The outline -->
+<path d="M2 19 A2 2 0 0 1 4 17 L212 17 A2 2 0 0 1 214 19 L214 45 A2 2 0 0 1 212 47 L4 47 A2 2 0 0 1 2 45 Z" fill-rule="evenodd" fill="#006bbd" data-color="11"/>
+<!-- The band -->
+<path d="M4 20 A1 1 0 0 1 5 19 L211 19 A1 1 0 0 1 212 20 L212 44 A1 1 0 0 1 211 45 L5 45 A1 1 0 0 1 4 44 Z" fill-rule="evenodd" fill="#94cee7" data-color="10"/>
+<!-- The ground -->
+<path d="M5 20.5 A0.5 0.5 0 0 1 5.5 20 L210.5 20 A0.5 0.5 0 0 1 211 20.5 L211 43.5 A0.5 0.5 0 0 1 210.5 44 L5.5 44 A0.5 0.5 0 0 1 5 43.5 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
+</svg>
