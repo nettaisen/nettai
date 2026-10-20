@@ -520,7 +520,7 @@ impl Compat {
     pub fn read(dir: &Path) -> Result<Compat, String> {
         Compat::parse(|file| {
             let path = dir.join(file);
-            nettai_fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))
+            nettai_platform::fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))
         })
     }
 

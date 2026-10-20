@@ -44,7 +44,7 @@ use nettai_ui::{BattleKind, PracticeOption, PracticeRow, PracticeView, VersusCar
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 mod thumbs;
 

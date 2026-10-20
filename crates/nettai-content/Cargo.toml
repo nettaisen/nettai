@@ -6,8 +6,8 @@ license.workspace = true
 description = "Content packs: the battle data, graphics and sound in open, editable formats (TOML, indexed PNG + JSON, MIDI + TOML + WAV), loaded exactly into the engine's data"
 
 [dependencies]
-# Files: std::fs's on the desktop, the page's tree in the browser.
-nettai-fs = { path = "../nettai-fs" }
+# Files, threads, time and dialogs: the desktop's, or the browser's.
+nettai-platform = { path = "../nettai-platform" }
 nettai-assets = { path = "../nettai-assets" }
 # The battle data model the pack's battle files load into.
 nettai-battle.workspace = true

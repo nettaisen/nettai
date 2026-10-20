@@ -52,11 +52,11 @@ impl Timing {
 pub fn load(root: &Path, report: &mut Report) -> Option<Timing> {
     let mut t = Timing::default();
     let dir = root.join("graphics/sprites");
-    let mut entries: Vec<_> = nettai_fs::read_dir(&dir).ok()?.flatten().collect();
+    let mut entries: Vec<_> = nettai_platform::fs::read_dir(&dir).ok()?.flatten().collect();
     entries.sort_by_key(|e| e.file_name());
     for e in entries {
         let path = e.path().join("animations.json");
-        if !nettai_fs::is_file(&path) {
+        if !nettai_platform::fs::is_file(&path) {
             continue;
         }
         let name = format!("graphics/sprites/{}/animations.json", e.file_name().to_string_lossy());
@@ -73,7 +73,7 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Timing> {
         let key = (doc.sprite[0], doc.sprite[1]);
         t.sprites.insert(key, anims);
         let layouts_path = e.path().join("sprite.json");
-        if nettai_fs::is_file(&layouts_path) {
+        if nettai_platform::fs::is_file(&layouts_path) {
             let name = format!("graphics/sprites/{}/sprite.json", e.file_name().to_string_lossy());
             let doc: LayoutsDoc = sprite::read_json(&layouts_path, &name, report)?;
             t.layouts.insert(key, doc.layouts.into_iter().map(|l| l.into_iter().map(|p| p.offset).collect()).collect());

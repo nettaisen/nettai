@@ -1567,7 +1567,7 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
     add(SETTLE, Box::new(move |_, _, _| {
         if let Some(path) = own_file.borrow_mut().take() {
-            let _ = nettai_fs::remove_file(path);
+            let _ = nettai_platform::fs::remove_file(path);
         }
     }));
     // A patch card dragged above the one before it.

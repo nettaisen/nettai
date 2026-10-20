@@ -39,7 +39,7 @@ use nettai_ui::{PickMark, ReplaysView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// How long a frame spends indexing ahead while the replay plays, and while nothing does (it is paused, or a
 /// seek waits for the index).

@@ -57,7 +57,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 use viewer::{MENU, MenuItem, Overlays, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.
@@ -1533,7 +1533,7 @@ impl Screen for Replays {
         }
         let Some(path) = self.selected.clone() else { return };
         self.close_sheet(shell);
-        match nettai_fs::remove_file(&path) {
+        match nettai_platform::fs::remove_file(&path) {
             Ok(()) => {
                 // The row after it takes its place.
                 let at = self.rows.iter().position(|&i| self.library.entries[i].path == path);

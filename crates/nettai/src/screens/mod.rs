@@ -9,7 +9,7 @@
 use crate::battle::BattleEvent;
 use crate::input::{Action, KeyPress};
 use crate::shell::Shell;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 pub mod builds;
 pub mod menu;
@@ -172,6 +172,10 @@ pub trait Screen {
 
     /// A file was dropped on the window while this screen showed.
     fn dropped(&mut self, _shell: &mut Shell, _path: &std::path::Path) {}
+
+    /// Files the player chose for `purpose` in the dialog this screen opened (`Shell::choose_files`), which is
+    /// heard after the call that opened it.
+    fn chosen(&mut self, _shell: &mut Shell, _purpose: &str, _paths: &[std::path::PathBuf]) {}
 
     /// A battle this screen started: it began, it ended; or the replay it asked for is ready to watch.
     fn battle(&mut self, _shell: &mut Shell, _event: BattleEvent) {}

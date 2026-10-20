@@ -83,9 +83,9 @@ pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
 pub fn write_file(root: &Path, path: &str, data: &[u8]) -> std::io::Result<()> {
     let p = root.join(path);
     if let Some(d) = p.parent() {
-        nettai_fs::create_dir_all(d)?;
+        nettai_platform::fs::create_dir_all(d)?;
     }
-    nettai_fs::write(p, data)
+    nettai_platform::fs::write(p, data)
 }
 
 /// The manifest of `game`'s pack.
@@ -106,7 +106,7 @@ pub fn manifest(name: &str, game: &str, graphics: Option<&Bundle>, sound: bool) 
 }
 
 pub fn read_manifest(root: &Path, report: &mut Report) -> Option<Manifest> {
-    let text = match nettai_fs::read_to_string(root.join(MANIFEST)) {
+    let text = match nettai_platform::fs::read_to_string(root.join(MANIFEST)) {
         Ok(t) => t,
         Err(e) => {
             report.error(MANIFEST, format!("can't read: {e} (is this a content pack?)"));
@@ -190,7 +190,7 @@ pub fn export_graphics(b: &Bundle, names: &AssetNames) -> Files {
 
 /// The folders under `dir`, by name.
 fn subdirs(dir: &Path) -> Vec<(String, PathBuf)> {
-    let mut v: Vec<(String, PathBuf)> = nettai_fs::read_dir(dir)
+    let mut v: Vec<(String, PathBuf)> = nettai_platform::fs::read_dir(dir)
         .into_iter()
         .flatten()
         .flatten()
@@ -209,7 +209,7 @@ pub fn import_graphics(root: &Path, report: &mut Report) -> Option<Bundle> {
         return None;
     };
     let dirs: Vec<(String, PathBuf)> =
-        subdirs(&root.join("graphics/sprites")).into_iter().filter(|(_, d)| nettai_fs::is_file(d.join("sprite.json"))).collect();
+        subdirs(&root.join("graphics/sprites")).into_iter().filter(|(_, d)| nettai_platform::fs::is_file(d.join("sprite.json"))).collect();
     let results = parallel(&dirs, |(folder, dir)| {
         let mut r = Report::default();
         let s = sprite::import(dir, &format!("graphics/sprites/{folder}"), &mut r);
@@ -351,7 +351,7 @@ pub struct Found {
 pub fn discover(dir: &Path, report: &mut Report) -> Vec<Found> {
     let mut out: Vec<Found> = Vec::new();
     for (_, path) in subdirs(dir) {
-        if !nettai_fs::is_file(path.join(MANIFEST)) {
+        if !nettai_platform::fs::is_file(path.join(MANIFEST)) {
             continue;
         }
         let Some(m) = read_manifest(&path, report) else { continue };
@@ -525,7 +525,7 @@ pub fn load_backgrounds<'n>(root: &Path, names: impl IntoIterator<Item = &'n str
     let mut out = std::collections::BTreeMap::new();
     for name in names {
         let dir = root.join("graphics/backgrounds").join(name);
-        if !nettai_fs::is_file(dir.join("background.json")) {
+        if !nettai_platform::fs::is_file(dir.join("background.json")) {
             continue;
         }
         let mut r = Report::default();
@@ -556,14 +556,14 @@ mod tests {
     /// each `(folder, game)` (a manifest alone).
     fn packs(test: &str, packs: &[(&str, &str)]) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
-        let _ = nettai_fs::remove_dir_all(&dir);
+        let _ = nettai_platform::fs::remove_dir_all(&dir);
         for (folder, game) in packs {
             let (name, text) = manifest(folder, game, None, false);
-            nettai_fs::create_dir_all(dir.join(folder)).unwrap();
-            nettai_fs::write(dir.join(folder).join(name), text).unwrap();
+            nettai_platform::fs::create_dir_all(dir.join(folder)).unwrap();
+            nettai_platform::fs::write(dir.join(folder).join(name), text).unwrap();
         }
         // (A folder that is no pack is passed over.)
-        nettai_fs::create_dir_all(dir.join("notes")).unwrap();
+        nettai_platform::fs::create_dir_all(dir.join("notes")).unwrap();
         dir
     }
 
@@ -584,7 +584,7 @@ mod tests {
         assert_eq!(exe6.dir, other.join("mine"));
         assert_eq!(found.len(), 2);
         // A manifest that says no game is no pack's.
-        nettai_fs::write(dir.join("five").join(MANIFEST), "format = \"nettai-content\"\nversion = 1\nname = \"x\"\n").unwrap();
+        nettai_platform::fs::write(dir.join("five").join(MANIFEST), "format = \"nettai-content\"\nversion = 1\nname = \"x\"\n").unwrap();
         let mut r = Report::default();
         assert_eq!(discover(&dir, &mut r).len(), 1);
         assert!(r.has_errors(), "{:?}", r.issues);
@@ -596,7 +596,7 @@ mod tests {
         assert_eq!(discover(&two, &mut r).len(), 1);
         assert!(r.has_errors());
         for d in [dir, other, two] {
-            let _ = nettai_fs::remove_dir_all(d);
+            let _ = nettai_platform::fs::remove_dir_all(d);
         }
     }
 }

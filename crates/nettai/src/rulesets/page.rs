@@ -25,6 +25,10 @@ pub const PREFIX: &str = "rules.";
 /// A ruleset file's extensions, as the system's file dialogs ask for them.
 const EXTENSIONS: [&str; 1] = [store::EXTENSION];
 
+/// What ruleset files chosen in the system's dialog are for, as the screen that shows the page hears them
+/// (`Screen::chosen`).
+pub const RULESET_FILES: &str = "rulesets";
+
 /// The tag of the question DELETE asks (`Screen::answered`: 1 deletes).
 pub const DELETE: &str = "rules.delete";
 
@@ -367,9 +371,12 @@ impl Page {
         let Some(path) = shell.choose_save(&Self::files_kind(shell), &EXTENSIONS, &format!("{}.{}", store::stem(&name), store::EXTENSION)) else { return Outcome::Nothing };
         let mut ruleset = self.shown.ruleset.clone();
         ruleset.name = Name::Own(name);
-        if let Err(why) = store::write(&path, self.kit.content(), &self.kit.game, &ruleset) {
-            crate::errors::log("exporting a ruleset", &why);
-            shell.fail(crate::errors::UserError::Other);
+        match store::write(&path, self.kit.content(), &self.kit.game, &ruleset) {
+            Ok(()) => shell.saved(&path),
+            Err(why) => {
+                crate::errors::log("exporting a ruleset", &why);
+                shell.fail(crate::errors::UserError::Other);
+            }
         }
         Outcome::Nothing
     }
@@ -379,15 +386,21 @@ impl Page {
     /// duplicate is. A file that isn't a ruleset of the game (another game's, or naming what it hasn't) doesn't stop
     /// the others: the first such is said once they are in.
     fn import(&mut self, shell: &mut Shell) -> Outcome {
-        let paths = shell.choose_files(&Self::files_kind(shell), &EXTENSIONS);
+        // (The files are heard as `Screen::chosen`, by the screen that shows this page: `import_paths`.)
+        shell.choose_files(&Self::files_kind(shell), &EXTENSIONS, RULESET_FILES);
+        Outcome::Nothing
+    }
+
+    /// IMPORT's files, as [`Page::import`] says.
+    pub fn import_paths(&mut self, shell: &mut Shell, paths: &[std::path::PathBuf]) -> Outcome {
         let graphics = self.kit.ready.graphics(shell.lang);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let mut taken: Vec<String> = store::list(&kit.game).into_iter().map(|l| l.name).collect();
         taken.extend(self.rulesets.presets.iter().map(|p| shown_name(&names, &p.name)));
         let (mut made, mut refused) = (None, None);
-        for path in &paths {
-            let read = nettai_fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|text| store::read(&self.rulesets, kit.content(), &text));
+        for path in paths {
+            let read = nettai_platform::fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|text| store::read(&self.rulesets, kit.content(), &text));
             let mut ruleset = match read {
                 Ok(ruleset) => ruleset,
                 Err(why) => {
@@ -603,7 +616,7 @@ impl Page {
             return Err(self);
         }
         let Some(path) = &self.shown.path else { return Err(self) };
-        if let Err(why) = nettai_fs::remove_file(path) {
+        if let Err(why) = nettai_platform::fs::remove_file(path) {
             crate::errors::log(&format!("deleting the ruleset {}", path.display()), &why);
             shell.fail(crate::errors::UserError::Other);
             return Err(self);

@@ -271,7 +271,7 @@ impl Games {
     /// The extraction of game `id` says how far it is, or that it ended. True if its pack landed (it can be
     /// loaded now). A failure is told the player, and the game's old pack, if it has one, is loaded as it is.
     pub fn extracting(&mut self, id: &str, told: Told) -> bool {
-        let has_pack = nettai_fs::is_file(self.packs.join(id).join(nettai_content::pack::MANIFEST));
+        let has_pack = nettai_platform::fs::is_file(self.packs.join(id).join(nettai_content::pack::MANIFEST));
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return false };
         match told {
             Told::Progress(p) => {
@@ -363,7 +363,7 @@ impl Games {
         let options = game::Options { packs_dir: self.packs.clone(), ..game::Options::default() };
         let told = Arc::new(told);
         let name = format!("loading {id}");
-        let started = nettai_thread::spawn(&name, move || {
+        let started = nettai_platform::thread::spawn(&name, move || {
             let tell = |step: Step| {
                 let (id, told) = (id.clone(), told.clone());
                 let _ = slint::invoke_from_event_loop(move || told(id, step));
@@ -447,7 +447,7 @@ impl Games {
             }
             let (id, lang, game, told) = (entry.id.clone(), lang.to_string(), ready.loaded.game.clone(), told.clone());
             let name = format!("loading {id} in {lang}");
-            let started = nettai_thread::spawn(&name.clone(), move || match game.graphics(&lang) {
+            let started = nettai_platform::thread::spawn(&name.clone(), move || match game.graphics(&lang) {
                 Ok(graphics) => {
                     let _ = slint::invoke_from_event_loop(move || told(id, lang, graphics));
                 }

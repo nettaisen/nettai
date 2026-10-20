@@ -21,7 +21,7 @@
 import init, * as nettai from "./nettai_web.js";
 
 const shim = new URL("./nettai_web.js", import.meta.url).href;
-// (The app's threads load the same module: nettai-thread asks this.)
+// (The app's threads load the same module: nettai-platform's `thread` asks this.)
 globalThis.nettaiShim = shim;
 
 function say(text) {

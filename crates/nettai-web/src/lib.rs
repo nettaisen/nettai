@@ -4,7 +4,7 @@
 //! replays, the packs) in the app's files with [`preload`], and fetches the content's archive for [`start`]. After:
 //! it takes what changed in the data folder ([`changes`]) now and then, and writes it to its storage (the origin
 //! private file system). Built with Wasm's atomics, so the app's threads are Web Workers on its memory
-//! (nettai-thread); build.sh builds it and the page, and serve.py serves them as a page with threads must be.
+//! (nettai-platform's `thread`); build.sh builds it and the page, and serve.py serves them as a page with threads must be.
 
 /// Where the data folder is in the app's files (`nettai::paths::data`, in the browser).
 pub const DATA: &str = "/data";
@@ -35,7 +35,7 @@ mod page {
     /// A file the page keeps, put in the data folder (`path` within it) before the app starts.
     #[wasm_bindgen]
     pub fn preload(path: &str, data: Vec<u8>) {
-        nettai_fs::preload(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')), data);
+        nettai_platform::fs::preload(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')), data);
     }
 
     /// The app started, on the content's archive (`content`). A panic is said on the console. It returns once the
@@ -44,9 +44,9 @@ mod page {
     pub fn start(content: &[u8]) -> Result<(), JsError> {
         console_error_panic_hook::set_once();
         for (path, data) in super::content_files(content).map_err(|e| JsError::new(&format!("the content's archive: {e}")))? {
-            nettai_fs::preload(path, data);
+            nettai_platform::fs::preload(path, data);
         }
-        nettai_fs::watch(super::DATA);
+        nettai_platform::fs::watch(super::DATA);
         nettai::run().map_err(|e| JsError::new(&e.to_string()))
     }
 
@@ -56,10 +56,10 @@ mod page {
     #[wasm_bindgen]
     pub fn changes() -> js_sys::Array {
         let out = js_sys::Array::new();
-        for change in nettai_fs::changes() {
+        for change in nettai_platform::fs::changes() {
             let (kind, path, data) = match change {
-                nettai_fs::Change::Write(path, data) => ("write", path, Some(data)),
-                nettai_fs::Change::Remove(path) => ("remove", path, None),
+                nettai_platform::fs::Change::Write(path, data) => ("write", path, Some(data)),
+                nettai_platform::fs::Change::Remove(path) => ("remove", path, None),
             };
             let Ok(path) = path.strip_prefix(super::DATA) else { continue };
             // (A folder whose name starts with a dot is the app's scratch, as a pack is made in packs/.new and

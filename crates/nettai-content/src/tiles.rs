@@ -515,9 +515,9 @@ mod tests {
         assert_eq!(other_doc.base.as_deref(), Some("x.png"));
         files.extend(more);
         let dir = std::env::temp_dir().join(format!("nettai-lettered-{}", std::process::id()));
-        nettai_fs::create_dir_all(&dir).unwrap();
+        nettai_platform::fs::create_dir_all(&dir).unwrap();
         for (f, bytes) in &files {
-            nettai_fs::write(dir.join(f), bytes).unwrap();
+            nettai_platform::fs::write(dir.join(f), bytes).unwrap();
         }
         let mut report = crate::report::Report::default();
         let (picture, shown, palettes) = import_lettered(&dir, "t", &doc, &mut report).expect("read");
@@ -528,7 +528,7 @@ mod tests {
         // With no letters, the picture alone.
         let (files, doc) = export_layered("y.png", &base, &Layered { base: &base, base_file: None }, layout, &[palette], [0, 1], |_| 0);
         assert_eq!((files.len(), doc.letters), (1, None));
-        let _ = nettai_fs::remove_dir_all(&dir);
+        let _ = nettai_platform::fs::remove_dir_all(&dir);
     }
 
     /// A layer's pixels, and none where it has none, read back as written,
@@ -540,12 +540,12 @@ mod tests {
         let rows: Vec<nettai_assets::Palette> = (0..3).map(|r| std::array::from_fn(|i| (r * 16 + i) as u16 * 0x21)).collect();
         let (png, doc) = export_layer("l.png", &pixels, 3, layout, &rows, [0, 3], |i| i as u8);
         let dir = std::env::temp_dir().join(format!("nettai-layer-{}", std::process::id()));
-        nettai_fs::create_dir_all(&dir).unwrap();
-        nettai_fs::write(dir.join("l.png"), png).unwrap();
+        nettai_platform::fs::create_dir_all(&dir).unwrap();
+        nettai_platform::fs::write(dir.join("l.png"), png).unwrap();
         let mut report = crate::report::Report::default();
         assert_eq!(import_layer(&dir, "t", &doc, &mut report), Some((pixels, rows)));
         assert!(!report.has_errors(), "{report}");
-        let _ = nettai_fs::remove_dir_all(&dir);
+        let _ = nettai_platform::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// A pack's stamp file.
 const STAMP: &str = "stamp.toml";
@@ -51,7 +51,7 @@ impl Stamp {
     }
 
     fn read(pack: &Path) -> Option<Stamp> {
-        toml::from_str(&nettai_fs::read_to_string(pack.join(STAMP)).ok()?).ok()
+        toml::from_str(&nettai_platform::fs::read_to_string(pack.join(STAMP)).ok()?).ok()
     }
 
     fn write(&self, pack: &Path) -> Result<(), String> {
@@ -59,7 +59,7 @@ impl Stamp {
             "# What made this pack: nettai extracts it again when its version, or the names its assets are written under, differ\n# (docs/app.md §17).\n{}",
             toml::to_string(self).map_err(|e| e.to_string())?
         );
-        nettai_fs::write(pack.join(STAMP), text).map_err(|e| format!("{}: {e}", pack.join(STAMP).display()))
+        nettai_platform::fs::write(pack.join(STAMP), text).map_err(|e| format!("{}: {e}", pack.join(STAMP).display()))
     }
 }
 
@@ -77,7 +77,7 @@ pub enum Kept {
 /// What the packs folder `dir` has of game `id` (`game`, as the extractor knows it): its pack is `<dir>/<id>`.
 pub fn kept(dir: &Path, id: &str, game: Game) -> Kept {
     let pack = dir.join(id);
-    if !nettai_fs::is_file(pack.join(nettai_content::pack::MANIFEST)) {
+    if !nettai_platform::fs::is_file(pack.join(nettai_content::pack::MANIFEST)) {
         Kept::None
     } else if Stamp::read(&pack).is_some_and(|s| s == Stamp::of(game)) {
         Kept::Current
@@ -90,19 +90,19 @@ pub fn kept(dir: &Path, id: &str, game: Game) -> Kept {
 /// back, and the rest goes.
 pub fn tidy(dir: &Path) {
     let (new, old) = (dir.join(".new"), dir.join(".old"));
-    if let Ok(read) = nettai_fs::read_dir(&old) {
+    if let Ok(read) = nettai_platform::fs::read_dir(&old) {
         for entry in read.flatten() {
             let place = dir.join(entry.file_name());
-            if !nettai_fs::exists(&place)
-                && let Err(why) = nettai_fs::rename(entry.path(), &place)
+            if !nettai_platform::fs::exists(&place)
+                && let Err(why) = nettai_platform::fs::rename(entry.path(), &place)
             {
                 crate::errors::log(&format!("putting back {}", place.display()), &why);
             }
         }
     }
     for leftover in [new, old] {
-        if nettai_fs::exists(&leftover)
-            && let Err(why) = nettai_fs::remove_dir_all(&leftover)
+        if nettai_platform::fs::exists(&leftover)
+            && let Err(why) = nettai_platform::fs::remove_dir_all(&leftover)
         {
             crate::errors::log(&format!("removing {}", leftover.display()), &why);
         }
@@ -114,32 +114,32 @@ pub fn tidy(dir: &Path) {
 pub fn replace(dir: &Path, id: &str, make: impl FnOnce(&Path) -> Result<(), String>) -> Result<(), String> {
     let (new, old, pack) = (dir.join(".new").join(id), dir.join(".old").join(id), dir.join(id));
     let said = |what: &str, path: &Path, e: std::io::Error| format!("{what} {}: {e}", path.display());
-    if nettai_fs::exists(&new) {
-        nettai_fs::remove_dir_all(&new).map_err(|e| said("removing", &new, e))?;
+    if nettai_platform::fs::exists(&new) {
+        nettai_platform::fs::remove_dir_all(&new).map_err(|e| said("removing", &new, e))?;
     }
-    nettai_fs::create_dir_all(dir.join(".new")).map_err(|e| said("making", dir, e))?;
+    nettai_platform::fs::create_dir_all(dir.join(".new")).map_err(|e| said("making", dir, e))?;
     if let Err(why) = make(&new) {
-        let _ = nettai_fs::remove_dir_all(&new);
+        let _ = nettai_platform::fs::remove_dir_all(&new);
         return Err(why);
     }
-    if nettai_fs::exists(&pack) {
-        if nettai_fs::exists(&old) {
-            nettai_fs::remove_dir_all(&old).map_err(|e| said("removing", &old, e))?;
+    if nettai_platform::fs::exists(&pack) {
+        if nettai_platform::fs::exists(&old) {
+            nettai_platform::fs::remove_dir_all(&old).map_err(|e| said("removing", &old, e))?;
         }
-        nettai_fs::create_dir_all(dir.join(".old")).map_err(|e| said("making", dir, e))?;
-        nettai_fs::rename(&pack, &old).map_err(|e| said("moving aside", &pack, e))?;
+        nettai_platform::fs::create_dir_all(dir.join(".old")).map_err(|e| said("making", dir, e))?;
+        nettai_platform::fs::rename(&pack, &old).map_err(|e| said("moving aside", &pack, e))?;
     }
-    if let Err(e) = nettai_fs::rename(&new, &pack) {
+    if let Err(e) = nettai_platform::fs::rename(&new, &pack) {
         // (The old one back where it was.)
-        let _ = nettai_fs::rename(&old, &pack);
+        let _ = nettai_platform::fs::rename(&old, &pack);
         return Err(said("putting in place", &new, e));
     }
-    if nettai_fs::exists(&old) {
-        let _ = nettai_fs::remove_dir_all(&old);
+    if nettai_platform::fs::exists(&old) {
+        let _ = nettai_platform::fs::remove_dir_all(&old);
     }
     // (The two folders, if nothing else is in them.)
-    let _ = nettai_fs::remove_dir(dir.join(".new"));
-    let _ = nettai_fs::remove_dir(dir.join(".old"));
+    let _ = nettai_platform::fs::remove_dir(dir.join(".new"));
+    let _ = nettai_platform::fs::remove_dir(dir.join(".old"));
     Ok(())
 }
 
@@ -215,21 +215,21 @@ impl Extractor {
     /// Extract each of `jobs` after the games already waiting, starting the extraction's thread if it isn't
     /// running.
     pub fn add(&self, jobs: Vec<Job>) {
-        let Ok(mut queue) = nettai_thread::lock(&self.queue) else { return };
+        let Ok(mut queue) = nettai_platform::thread::lock(&self.queue) else { return };
         queue.jobs.extend(jobs);
         if queue.running || queue.jobs.is_empty() {
             return;
         }
         queue.running = true;
         let (dir, waiting, told) = (self.dir.clone(), self.queue.clone(), self.told.clone());
-        if let Err(why) = nettai_thread::spawn("extracting", move || work(&dir, &waiting, &*told)) {
+        if let Err(why) = nettai_platform::thread::spawn("extracting", move || work(&dir, &waiting, &*told)) {
             crate::errors::log("starting the extraction", &why);
         }
     }
 
     /// Extract game `id` next, if it is waiting (the player stepped to it).
     pub fn first(&self, id: &str) {
-        let Ok(mut queue) = nettai_thread::lock(&self.queue) else { return };
+        let Ok(mut queue) = nettai_platform::thread::lock(&self.queue) else { return };
         if let Some(at) = queue.jobs.iter().position(|j| j.id == id) {
             let job = queue.jobs.remove(at).expect("it is there");
             queue.jobs.push_front(job);
@@ -241,7 +241,7 @@ impl Extractor {
 fn work(dir: &Path, queue: &Mutex<Queue>, told: &(dyn Fn(&str, Told) + Send + Sync)) {
     loop {
         let job = {
-            let Ok(mut queue) = nettai_thread::lock(queue) else { return };
+            let Ok(mut queue) = nettai_platform::thread::lock(queue) else { return };
             match queue.jobs.pop_front() {
                 Some(job) => job,
                 None => {
@@ -281,9 +281,9 @@ mod tests {
         let mut out = Vec::new();
         let mut dirs = vec![root.to_path_buf()];
         while let Some(dir) = dirs.pop() {
-            for entry in nettai_fs::read_dir(&dir).unwrap().flatten() {
+            for entry in nettai_platform::fs::read_dir(&dir).unwrap().flatten() {
                 let path = entry.path();
-                if nettai_fs::is_dir(&path) {
+                if nettai_platform::fs::is_dir(&path) {
                     dirs.push(path);
                 } else {
                     out.push(path.strip_prefix(root).unwrap().to_string_lossy().into_owned());
@@ -300,8 +300,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let pack = dir.path().join("exe6");
         assert_eq!(kept(dir.path(), "exe6", Game::Exe6), Kept::None);
-        nettai_fs::create_dir_all(&pack).unwrap();
-        nettai_fs::write(pack.join(nettai_content::pack::MANIFEST), "").unwrap();
+        nettai_platform::fs::create_dir_all(&pack).unwrap();
+        nettai_platform::fs::write(pack.join(nettai_content::pack::MANIFEST), "").unwrap();
         assert_eq!(kept(dir.path(), "exe6", Game::Exe6), Kept::Stale, "no stamp");
         Stamp::of(Game::Exe6).write(&pack).unwrap();
         assert_eq!(kept(dir.path(), "exe6", Game::Exe6), Kept::Current);
@@ -318,7 +318,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let write = |files: &'static [&'static str]| {
             move |new: &Path| -> Result<(), String> {
-                assert!(!nettai_fs::exists(&new) || nettai_fs::read_dir(new).unwrap().next().is_none(), "a new, empty folder");
+                assert!(!nettai_platform::fs::exists(&new) || nettai_platform::fs::read_dir(new).unwrap().next().is_none(), "a new, empty folder");
                 for f in files {
                     nettai_content::pack::write_file(new, f, b"x").map_err(|e| e.to_string())?;
                 }
@@ -329,14 +329,14 @@ mod tests {
         assert_eq!(files(dir.path()), ["exe6/content.toml", "exe6/graphics/a.png"]);
         replace(dir.path(), "exe6", write(&["content.toml", "sound/b.json"])).unwrap();
         assert_eq!(files(dir.path()), ["exe6/content.toml", "exe6/sound/b.json"], "nothing of the old one is left");
-        assert_eq!(nettai_fs::read_dir(dir.path()).unwrap().count(), 1, "nor the folders it was made and moved in");
+        assert_eq!(nettai_platform::fs::read_dir(dir.path()).unwrap().count(), 1, "nor the folders it was made and moved in");
         let failed = replace(dir.path(), "exe6", |new| {
             nettai_content::pack::write_file(new, "content.toml", b"half").unwrap();
             Err("the disk is full".to_string())
         });
         assert_eq!(failed, Err("the disk is full".to_string()));
         assert_eq!(files(dir.path()), ["exe6/content.toml", "exe6/sound/b.json"], "the old one, as it was");
-        assert_eq!(nettai_fs::read(dir.path().join("exe6/content.toml")).unwrap(), b"x");
+        assert_eq!(nettai_platform::fs::read(dir.path().join("exe6/content.toml")).unwrap(), b"x");
     }
 
     /// What a crash leaves is tidied: a pack moved aside and not replaced is put back, one replaced is gone, and
@@ -372,7 +372,7 @@ mod tests {
         assert!(why.contains("8 MiB"), "{why}");
         assert_eq!(files(packs.path()), ["exe6/content.toml"]);
         // An archive gone since it was looked in.
-        nettai_fs::remove_file(data.join("exe6.dat")).unwrap();
+        nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
         assert!(extract(packs.path(), &job, &mut |_| {}).unwrap_err().contains("exe6_rom_e.srl"));
     }
 

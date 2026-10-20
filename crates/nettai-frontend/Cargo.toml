@@ -6,8 +6,8 @@ license.workspace = true
 description = "Plays nettai battles for a host app to show: loads a game, runs a set live or over the network, and gives its frames and sound. A library with no window, audio device or command line in it (nettai is the app over it, nettai-tools the command line)"
 
 [dependencies]
-# The clock: std's on the desktop, the browser's `performance.now()` there (std's panics).
-web-time = "1"
+# Files, threads, time and dialogs: the desktop's, or the browser's.
+nettai-platform = { path = "../nettai-platform" }
 nettai-battle = { path = "../nettai-battle" }
 # The drawing: a battle into frames.
 nettai-render = { path = "../nettai-render" }

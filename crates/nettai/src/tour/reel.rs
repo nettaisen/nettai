@@ -46,7 +46,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::thread::JoinHandle;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// The frames a second: each frame captured is 1/60 s of the reel's clock.
 const RATE: u64 = 60;
@@ -496,7 +496,7 @@ fn end() {
         Err(why) => said += &format!("FAILED: {why}\n"),
     }
     eprint!("reel: {said}");
-    let _ = nettai_fs::write(reel.dir.join("reel.txt"), &said);
+    let _ = nettai_platform::fs::write(reel.dir.join("reel.txt"), &said);
     super::FAILED.with(|f| f.set(encoded.is_err()));
     super::WALKING.with(|w| *w.borrow_mut() = None);
     let _ = slint::quit_event_loop();
@@ -597,7 +597,7 @@ fn make_builds(app: &App) {
             continue;
         };
         let content = ready.content();
-        let _ = nettai_fs::remove_dir_all(crate::builds::store::folder(&game));
+        let _ = nettai_platform::fs::remove_dir_all(crate::builds::store::folder(&game));
         for b in crate::screens::practice::new_builds(content, &game).unwrap_or_default() {
             let build = crate::builds::store::Build::new(content, &b.name, b.side);
             if let Err(why) = crate::builds::store::write(

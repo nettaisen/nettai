@@ -10,7 +10,7 @@
 
 use std::collections::VecDeque;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 use nettai_frontend::driver::NetStatus;
 use nettai_ui::LinkFigures;

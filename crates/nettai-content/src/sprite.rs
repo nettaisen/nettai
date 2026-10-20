@@ -583,7 +583,7 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
 }
 
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {
-    let text = match nettai_fs::read_to_string(path) {
+    let text = match nettai_platform::fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {
             report.error(name, format!("can't read: {e}"));

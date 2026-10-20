@@ -1,5 +1,5 @@
-//! Files, the same calls everywhere: `nettai_fs::read`, `nettai_fs::write`, `nettai_fs::File` and the rest, named as
-//! `std::fs` names them.
+//! Files, the same calls everywhere: `fs::read`, `fs::write`, `fs::File` and the rest, named as `std::fs` names
+//! them.
 //!
 //! On the desktop they are `std::fs`'s. In the browser there is no file system a program can call without waiting,
 //! so there they are a tree in memory ([`memory`]), one that every thread shares: the page puts the files it keeps in
@@ -16,7 +16,7 @@ pub use std::fs::*;
 
 #[cfg(any(target_arch = "wasm32", test))]
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-mod memory;
+pub(crate) mod memory;
 #[cfg(target_arch = "wasm32")]
 pub use memory::*;
 
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn the_desktop_has_the_system_s_files() {
         use super::*;
-        let dir = std::env::temp_dir().join(format!("nettai-fs-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nettai-platform-fs-{}", std::process::id()));
         create_dir_all(dir.join("a")).unwrap();
         write(dir.join("a/b.txt"), "b").unwrap();
         assert!(is_dir(dir.join("a")) && is_file(dir.join("a/b.txt")) && !exists(dir.join("c")));

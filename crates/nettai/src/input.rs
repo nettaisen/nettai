@@ -18,7 +18,7 @@ use nettai_battle::input::keys;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// The GBA's buttons, in the order the settings list them, each with its name in the settings' file.
 pub const BUTTONS: [(u16, &str); 10] = [

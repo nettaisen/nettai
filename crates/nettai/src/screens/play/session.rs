@@ -22,7 +22,7 @@ use nettai_match::Side;
 use nettai_rtc::{Config, Error, ErrorKind, Link};
 use std::sync::Arc;
 use std::time::Duration;
-use web_time::Instant;
+use nettai_platform::time::Instant;
 
 /// The UDP port a direct host listens on.
 pub const DIRECT_PORT: u16 = 47_474;
