@@ -1336,7 +1336,8 @@ fn draw_chip_name(
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
-        words_end = Some(w);
+        // (Where the name's ink ends: the numbers follow it ink to ink.)
+        words_end = text.ink_extent(words, Role::FittedCell, 8 * cells as i32).map(|(_, end)| end).or(Some(w));
     }
     if !shows_damage(b, chip) {
         return x;
@@ -1625,7 +1626,7 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
     }
     let color = |c: u8| palette[c as usize & 15];
     let glyphs = chars.chars().zip(&d.glyphs).map(|(c, b)| (c, b.map(|v| v as f32))).collect();
-    let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), family: Vec::new(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color), face: crate::numbers::Face::Digits };
+    let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), family: Vec::new(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color), face: crate::numbers::Face::Digits, ids: Vec::new() };
     Some(TextItem::fitted(fitted, Rect::new(x, y, 16, 16)))
 }
 
@@ -1997,7 +1998,7 @@ fn lettered_banner(
                 items.push(word(before, at - b0));
                 at += (b1 - b0) + space;
             }
-            let (number, (_, end)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Left(at))?;
+            let (number, (_, end)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::LeftInk(at))?;
             items.extend(number.into_iter().map(|item| TextItem { vscale, ..item }));
             if !after.is_empty() {
                 items.push(word(after, end + space - a0));
@@ -2210,15 +2211,17 @@ fn name_parts<'a>(
     let sets = (!damage.is_empty()).then(|| NumberSets::of(style.letters, &pal, text)).flatten();
     let mut at = after as f32;
     if let (Some(item), Some(looks)) = (items.first_mut(), sets.as_ref())
-        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
+        && let Some((i0, i1)) = text.ink_extent(words, Role::Cell, 8 * cells as i32)
         && let Some((_, end)) = looks.items(text, (number, bonus_value, false), (0.0, y), Role::Cell)
     {
-        // (The name and its numbers but the "x2" centered where the
+        // (The name's ink and its numbers' but the "x2" centered where the
         // original's are; the "x2" after them, as the original's.)
-        let shown = w + end;
-        let start = item.rect.x + ((8 * width) as f32 - shown) as i32 / 2;
-        *item = TextItem { align: Align::Left, rect: Rect { x: start, ..item.rect }, ..item.clone() };
-        at = start as f32 + w;
+        let shown = (i1 - i0) + end;
+        let ink = item.rect.x as f32 + ((8 * width) as f32 - shown) / 2.0;
+        let pen = ink - i0;
+        let fine = (((pen - pen.floor()) * 65536.0) as i32, item.fine.1);
+        *item = TextItem { align: Align::Left, rect: Rect { x: pen.floor() as i32, ..item.rect }, fine, ..item.clone() };
+        at = ink + (i1 - i0);
     }
     let numbers = sets.and_then(|looks| looks.items(text, (number, bonus_value, doubled), (at, y), Role::Cell));
     let lettered = numbers.is_some();
@@ -2263,9 +2266,9 @@ impl NumberSets {
 
     /// A chip's damage, then "+bonus" (where it has one) and "x2" (where
     /// the use doubles it), in the numbers' font laid as every number is
-    /// (`numbers::laid`) a word space of the name's font (`role`'s) after
-    /// a name's words ending at `x` (frame pixels), on cells' rows `y`; and
-    /// where they end.
+    /// (`numbers::laid`), their ink a set gap after a name's ink ending at
+    /// `x` (frame pixels; `role` the name's), on cells' rows `y`; and where
+    /// their ink ends.
     pub(crate) fn items(&self, text: &TextSink, (damage, bonus, doubled): (u16, u16, bool), (x, y): (f32, i32), role: Role) -> Option<(Vec<TextItem>, f32)> {
         let mut parts = vec![(damage.to_string(), &self.digits)];
         if bonus != 0 {
@@ -2275,13 +2278,16 @@ impl NumberSets {
         if doubled {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
-        // (The name's font's space: what it sets between two words.)
-        let space = text.fitted_width("I I", role, 1000).zip(text.fitted_width("II", role, 1000)).map_or(3.0, |(a, b)| (a - b).max(0.0));
-        let from = x + space;
-        let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::Left(from))?;
+        // (Ink to ink, so neither font's sidebearings add to the gap.)
+        let from = x + NAME_GAP * role.cap();
+        let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::LeftInk(from))?;
         Some((items, end))
     }
 }
+
+/// The gap between a chip's name's ink and its numbers' ink, over the
+/// name's capitals' height.
+const NAME_GAP: f32 = 0.25;
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
 /// (the enhanced mode's), how many of its parts, from the first, are the

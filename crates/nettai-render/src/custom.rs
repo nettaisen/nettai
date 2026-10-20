@@ -1021,6 +1021,7 @@ impl Window {
                 rim: look.rim.map(color),
                 shadow: look.shadow.map(color),
                 face: crate::numbers::Face::Letters,
+                ids: Vec::new(),
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));

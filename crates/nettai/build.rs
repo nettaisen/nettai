@@ -17,7 +17,7 @@ const FONTS: [(&str, &str); 6] = [
     ("Corporate Logo", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
     ("M PLUS 1 Code", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
     ("Murecho", "crates/nettai-render/fonts/murecho/OFL.txt"),
-    ("Teko", "crates/nettai-render/fonts/teko/OFL.txt"),
+    ("Saira", "crates/nettai-render/fonts/saira/OFL.txt"),
 ];
 
 /// A package's license files: by name, in its folder, in a `LICENSES` folder, or in a folder of its own (a
