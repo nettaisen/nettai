@@ -207,7 +207,7 @@ fn polygon_path(tag: &str) -> Result<Vec<Step>, String> {
         .filter(|t| !t.is_empty())
         .map(|t| t.parse::<f64>().map(|v| (v * Drawing::UNIT as f64).round() as i32).map_err(|_| format!("{t:?} isn't a number")))
         .collect::<Result<_, _>>()?;
-    if v.len() < 6 || v.len() % 2 != 0 {
+    if v.len() < 6 || !v.len().is_multiple_of(2) {
         return Err("a polygon needs three points or more".into());
     }
     let mut out = vec![Step::Move([v[0], v[1]])];
