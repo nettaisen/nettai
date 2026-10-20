@@ -146,7 +146,7 @@ pub fn banners(count: usize, records: &[BannerRecord]) -> Vec<BannerLayout> {
     for &(id, kind, (x, y), number_at) in records {
         // (A telop's banner, kind 3, has no glyphs of its own.)
         let glyphs = if kind == 3 { Tiles::default() } else { tiles(40) };
-        out[id] = BannerLayout { x, y, kind, glyphs, number_at, bar: None };
+        out[id] = BannerLayout { x, y, kind, glyphs, number_at, bar: None, logo: None };
     }
     out
 }
