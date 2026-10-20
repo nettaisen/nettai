@@ -102,6 +102,8 @@ graphics/
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
     custom/pictures/NAME-L.png  form-names-V-L.png
+    (the frames as shapes, SVG: hud/shapes/NAME.svg  hud/shapes/banners/NAME.svg
+    custom/shapes/NAME.svg  hud/mugshots/frame.png, the emotion window's ring)
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -436,16 +438,50 @@ width, height in its 8x16 cells) and paint (`fill` down the rows, `rim` or
 `shadow`); a word's letters (`fill`, the outline and whether it is
 `heavier` right and down, else even, the capitals' `top` and `cap`, the
 letters' `span` of columns); a banner's (by banner, as `banners`) with its
-bar as filled shapes (`bar`: polygons, corners in eighths of a frame pixel,
-each a palette index, filled in order: the body, the right end, the bottom
-line, the top line, the left end) and its letters' columns either side of its
-number (`one_digit`, `two_digits`); the gauge's word's cells and how it
+letters' columns either side of its number (`one_digit`, `two_digits`; its
+bar is a drawing, "Frames as shapes" below); the gauge's word's cells and how it
 stands in them (`align`); the emotion window's counts' digit boxes; the chip
 codes (`codes`, `slot_codes`: a glyph's face box and paint, by code); the
 window's labels' letters and rows (as `labels`); the chip window's lettered
 pictures' lines (`ok`, `ok_picked`, `other`, each button's, each version's);
 the form list names' face (by look, as the names' images) and the box all
 of them are centered in (`form_name_box`).
+
+**Frames as shapes** (`shapes` in `hud.json` and `custom.json`, a banner's
+`bar`; text-rendering.md §13): the HUD's and the custom screen's frames as
+filled shapes, which the enhanced graphics draw at the output's resolution
+in place of their pictures. Each is an SVG file under `shapes/` beside the
+pictures: its `viewBox` the picture's size in frame pixels, its shapes
+(`rect`, with `rx` a rounded one; `circle`; `polygon`; `path` of absolute M,
+L, H, V, A and Z) filled one over another in the file's order, each
+even-odd, each naming its color as `data-color` (a palette index) and, where
+the picture is laid in several palettes (a window map's), `data-palette`
+(the row); its `fill` is that color in the picture's first palette, for
+viewing only. A `text` element is words written on the drawing: the
+string's key in the game's strings (`data-words`), the box its capitals
+fill (`data-box`: x y width height; lines one under another share its
+height), its face's color (`data-color`) and its outline's and shadow's
+(`data-rim`, `data-shadow`); its position, size and contents are for
+viewing. The JSON says what SVG can't: which cells of a map a drawing
+stands in for (a window map's, the gauge's frame, the chatbox's boxes:
+`parts`, each a file and its cells, the first drawing whose pixels a cell
+has), and which of a set each file is (the gauge's cells and full frames,
+the cursors, each button's sets by name, the chip window's pictures by
+name, a language's own as `NAME-L`). The emotion window's faces are kept
+without the ring round them (`mugshot_frame`: the ring as a picture, each
+face's ring color; none where a face covers its ring and keeps it); the
+import puts the ring back.
+
+The drawings are drawn by hand, not read off the ROM: they live in the
+extractor's source (`crates/nettai-extract/shapes/<game>/`, a game's file
+or a `.same` naming another game's), and extraction copies each into the
+pack after checking it against the ROM's picture (its size, its colors
+among the picture's, its share of the picture's pixels: noted, and called
+out under 85%). They are the one exception to "the extractor's inputs are
+ROMs only": what they say is how the art is meant (a round holder, a
+rounded corner), which no ROM holds; they are the extractor's, like its
+code, the same in every pack it makes, and a picture with no drawing is
+drawn as it is.
 
 **Lettered pictures** are kept once: the image at the picture's own path
 is its **base**, the picture with every language's letters taken off, and

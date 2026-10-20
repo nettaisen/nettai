@@ -3464,7 +3464,8 @@ pack into a new folder, `packs/.new/<game>` (`Extraction::write_reporting`, whic
 written beside it. Then it is put in place by a rename: the old pack is moved aside to `packs/.old/<game>` the
 moment before, and deleted after. A crash leaves the old pack or none, never half of one; what it leaves is
 tidied as the app starts (a pack moved aside and not replaced is put back, the rest goes). The extractor's rule
-stands: its inputs are ROMs alone, and a pack is whole from whichever of the game's ROMs hold each asset. The pack's
+stands: its inputs are ROMs alone (and its own hand-drawn frames, asset-formats.md "Frames as shapes"), and a pack
+is whole from whichever of the game's ROMs hold each asset. The pack's
 files are the extractor's, as `nettai-extract` writes them from the same ROMs (checked: below); the stamp is the
 one file more. Each game's end goes to the log, with how long each stretch took.
 
