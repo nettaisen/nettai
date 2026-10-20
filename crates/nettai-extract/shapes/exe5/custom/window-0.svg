@@ -97,16 +97,16 @@
 <path d="M87 4.5 A0.5 0.5 0 0 1 87.5 4 L87.5 4 A0.5 0.5 0 0 1 88 4.5 L88 7 L87 7 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="87" y="7" width="1" height="94" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The column's shadow on the panel: the housing's own shape a little lower, under it -->
-<path d="M88 12.75 A16 16 0 0 1 120 12.75 V103.25 A8 8 0 0 1 112 111.25 H96 A8 8 0 0 1 88 103.25 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M88 12.75 A16 16 0 0 1 120 12.75 V105.25 A6 6 0 0 1 114 111.25 H94 A6 6 0 0 1 88 105.25 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The housing: its outline, round over the orb, flowing down into the column's sides -->
-<path d="M88 11.5 A16 16 0 0 1 120 11.5 V102 A8 8 0 0 1 112 110 H96 A8 8 0 0 1 88 102 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<path d="M88 11.5 A16 16 0 0 1 120 11.5 V104 A6 6 0 0 1 114 110 H94 A6 6 0 0 1 88 104 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- Its lighter line -->
-<path d="M89 11.5 A15 15 0 0 1 119 11.5 V102 A7 7 0 0 1 112 109 H96 A7 7 0 0 1 89 102 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M89 11.5 A15 15 0 0 1 119 11.5 V104 A5 5 0 0 1 114 109 H94 A5 5 0 0 1 89 104 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- Its white band -->
-<path d="M90 11.5 A14 14 0 0 1 118 11.5 V102 A6 6 0 0 1 112 108 H96 A6 6 0 0 1 90 102 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
-<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded -->
-<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 102 A4 4 0 0 1 112 106 L96 106 A4 4 0 0 1 92 102 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M95 96 L113 96 L113 103.5 A1.5 1.5 0 0 1 111.5 105 L96.5 105 A1.5 1.5 0 0 1 95 103.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M90 11.5 A14 14 0 0 1 118 11.5 V104 A4 4 0 0 1 114 108 H94 A4 4 0 0 1 90 104 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
+<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded: every band of the bottom round one center, its curves starting where the cells above end, so each runs on from its straight side -->
+<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 104 A2 2 0 0 1 114 106 L94 106 A2 2 0 0 1 92 104 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M95 96 L113 96 L113 104 A1 1 0 0 1 112 105 L96 105 A1 1 0 0 1 95 104 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The orb's socket, as wide as the art's, evenly lit: its blue-gray edge -->
 <circle cx="104" cy="11.5" r="12" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The inner gray ring, unbroken -->
@@ -122,7 +122,7 @@
 <!-- The black line across the top of the stack's cells, over the housing's inside -->
 <rect x="95" y="23" width="18" height="3" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The right frame's inner line running on from the housing's corner -->
-<rect x="114" y="109.6" width="1" height="26" fill="#6b73ad" data-color="4" data-palette="9"/>
+<rect x="114" y="109.4" width="1" height="26" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The OK button: its outline, its corners rounded -->
 <path d="M89 116.5 A2.5 2.5 0 0 1 91.5 114 L109.5 114 A2.5 2.5 0 0 1 112 116.5 L112 131.5 A2.5 2.5 0 0 1 109.5 134 L91.5 134 A2.5 2.5 0 0 1 89 131.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- Its shade along the right and the bottom -->

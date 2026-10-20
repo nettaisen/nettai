@@ -10,13 +10,13 @@
 <rect x="80" y="0" width="8" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
 <rect x="84" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
 <!-- The chip window, its top corners rounded -->
-<path d="M7 10.5 A2.5 2.5 0 0 1 9.5 8 L78.5 8 A2.5 2.5 0 0 1 81 10.5 L81 88 L7 88 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M7 10.5 A2.5 2.5 0 0 1 9.5 8 L78.5 8 A2.5 2.5 0 0 1 81 10.5 L81 88 L7 88 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The glare: hugging the window's top left corner, tapering to a point along the top and down the side -->
-<path d="M16.5 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V23.5 L8.401 22.229 L8.805 21.015 L9.211 19.859 L9.62 18.76 L10.031 17.719 L10.445 16.735 L10.861 15.809 L11.28 14.94 L11.701 14.129 L12.125 13.375 L12.551 12.679 L12.98 12.04 L13.411 11.459 L13.845 10.935 L14.281 10.469 L14.72 10.06 L15.161 9.709 L15.605 9.415 L16.051 9.179 Z" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M16.5 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V23.5 L8.401 22.229 L8.805 21.015 L9.211 19.859 L9.62 18.76 L10.031 17.719 L10.445 16.735 L10.861 15.809 L11.28 14.94 L11.701 14.129 L12.125 13.375 L12.551 12.679 L12.98 12.04 L13.411 11.459 L13.845 10.935 L14.281 10.469 L14.72 10.06 L15.161 9.709 L15.605 9.415 L16.051 9.179 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
 <!-- Its lit edge: a darker band along the outside of the corner, a lighter one in it, lightest in the corner -->
-<path d="M12.8 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V18 L9 16.6 V11.5 A1.5 1.5 0 0 1 10.5 10 H11.6 Z" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M11.6 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V15.2 L9 14 V11.5 A1.5 1.5 0 0 1 10.5 10 H10.9 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M10.4 9 A2.5 2.5 0 0 0 8 11.5 V12.4 L8.8 11.6 A1.6 1.6 0 0 1 10.4 9.8 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M12.8 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V18 L9 16.6 V11.5 A1.5 1.5 0 0 1 10.5 10 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M11.6 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V15.2 L9 14 V11.5 A1.5 1.5 0 0 1 10.5 10 H10.9 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M10.4 9 A2.5 2.5 0 0 0 8 11.5 V12.4 L8.8 11.6 A1.6 1.6 0 0 1 10.4 9.8 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="78" y="33" width="1" height="51" rx="0.5" fill="#524a5a" data-color="10" data-palette="9"/>
 <rect x="78" y="41" width="1" height="32" rx="0.5" fill="#4a637b" data-color="5" data-palette="9"/>
 <rect x="78" y="49" width="1" height="8" rx="0.5" fill="#738ca5" data-color="4" data-palette="9"/>
@@ -24,25 +24,25 @@
 <!-- The panel -->
 <rect x="0" y="88" width="88" height="16" fill="#eff7ff" data-color="1" data-palette="9"/>
 <!-- The Cross tab: its outline, its step down slanting at 45 degrees -->
-<path d="M0 88 L88 88 L88 101 L59.828 101 A2 2 0 0 1 58.414 100.414 L55.293 97.293 A1 1 0 0 0 54.586 97 L0 97 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M1 89 L88 89 L88 100 L60.414 100 A1 1 0 0 1 59.707 99.707 L56.586 96.586 A2 2 0 0 0 55.172 96 L1 96 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<path d="M0 88 L88 88 L88 101 L59.828 101 A2 2 0 0 1 58.414 100.414 L55.293 97.293 A1 1 0 0 0 54.586 97 L0 97 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M1 89 L88 89 L88 100 L60.414 100 A1 1 0 0 1 59.707 99.707 L56.586 96.586 A2 2 0 0 0 55.172 96 L1 96 Z" fill-rule="evenodd" fill="#c6d6de" data-color="2" data-palette="9"/>
 <!-- The groove at the tab's right end, slanting down into its bottom line -->
-<path d="M88 93.6 L88 95 L85.439 97.561 A1.5 1.5 0 0 0 85 98.621 L85 100 L84 100 L84 98.014 A1 1 0 0 1 84.293 97.307 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M88 93.6 L88 95 L85.439 97.561 A1.5 1.5 0 0 0 85 98.621 L85 100 L84 100 L84 98.014 A1 1 0 0 1 84.293 97.307 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- Where it leaves the column's line: a rounded bend -->
-<path d="M88 92.77 A2 2 0 0 1 87.41 94.19 L88 93.6 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M88 92.77 A2 2 0 0 1 87.41 94.19 L88 93.6 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The tab's triangle: an outline on a base, a fill, a highlight along its left side -->
-<path d="M5.934 89.566 A0.8 0.8 0 0 1 7.066 89.566 L11.083 93.583 A0.4 0.4 0 0 1 11.2 93.866 L11.2 94.6 A0.4 0.4 0 0 1 10.8 95 L2.2 95 A0.4 0.4 0 0 1 1.8 94.6 L1.8 93.866 A0.4 0.4 0 0 1 1.917 93.583 Z" fill="#ce6339" data-color="13" data-palette="9"/>
-<path d="M6.07 90.642 A0.6 0.6 0 0 1 6.93 90.642 L9.704 93.491 A0.3 0.3 0 0 1 9.489 94 L3.511 94 A0.3 0.3 0 0 1 3.296 93.491 Z" fill="#ffad29" data-color="12" data-palette="9"/>
-<path d="M6.253 90.453 A0.349 0.349 0 0 1 6.75 90.45 L7 90.7 L3.6 94 L3.2 94 A0.169 0.169 0 0 1 3.079 93.713 Z" fill="#fff729" data-color="11" data-palette="9"/>
+<path d="M5.934 89.566 A0.8 0.8 0 0 1 7.066 89.566 L11.083 93.583 A0.4 0.4 0 0 1 11.2 93.866 L11.2 94.6 A0.4 0.4 0 0 1 10.8 95 L2.2 95 A0.4 0.4 0 0 1 1.8 94.6 L1.8 93.866 A0.4 0.4 0 0 1 1.917 93.583 Z" fill-rule="evenodd" fill="#ce6339" data-color="13" data-palette="9"/>
+<path d="M6.07 90.642 A0.6 0.6 0 0 1 6.93 90.642 L9.704 93.491 A0.3 0.3 0 0 1 9.489 94 L3.511 94 A0.3 0.3 0 0 1 3.296 93.491 Z" fill-rule="evenodd" fill="#ffad29" data-color="12" data-palette="9"/>
+<path d="M6.253 90.453 A0.349 0.349 0 0 1 6.75 90.45 L7 90.7 L3.6 94 L3.2 94 A0.169 0.169 0 0 1 3.079 93.713 Z" fill-rule="evenodd" fill="#fff729" data-color="11" data-palette="9"/>
 <rect x="0" y="104" width="8" height="48" fill="#eff7ff" data-color="1" data-palette="9"/>
 <!-- The slots' side: a bar, a groove down it, two notches -->
 <rect x="0" y="105" width="6" height="2" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="0" y="125" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="0" y="138" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The bottom bar, its outer corner rounded -->
-<path d="M0 152 L120 152 L120 157.5 A2.5 2.5 0 0 1 117.5 160 L0 160 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M0 152 L120 152 L120 157.5 A2.5 2.5 0 0 1 117.5 160 L0 160 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The panel's last rows, rounded into the bar at the right -->
-<path d="M0 148 L117.5 148 L117.5 151.5 A2.5 2.5 0 0 1 115 154 L0 154 Z" fill="#eff7ff" data-color="1" data-palette="9"/>
+<path d="M0 148 L117.5 148 L117.5 151.5 A2.5 2.5 0 0 1 115 154 L0 154 Z" fill-rule="evenodd" fill="#eff7ff" data-color="1" data-palette="9"/>
 <!-- The bar's groove, its right end slanting into the corner -->
 <polygon points="0,156 114.5,156 117.5,159 0,159" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="16" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
@@ -60,46 +60,46 @@
 <!-- The dark corner left of the holder -->
 <rect x="88" y="0" width="8" height="8" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The column's shadow on the panel: the housing's own shape a little lower, under it -->
-<path d="M88 12.75 A16 16 0 0 1 120 12.75 V103.25 A8 8 0 0 1 112 111.25 H96 A8 8 0 0 1 88 103.25 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M88 12.75 A16 16 0 0 1 120 12.75 V105.25 A6 6 0 0 1 114 111.25 H94 A6 6 0 0 1 88 105.25 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The housing: its outline, round over the orb, flowing down into the column's sides -->
-<path d="M88 11.5 A16 16 0 0 1 120 11.5 V102 A8 8 0 0 1 112 110 H96 A8 8 0 0 1 88 102 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M88 11.5 A16 16 0 0 1 120 11.5 V104 A6 6 0 0 1 114 110 H94 A6 6 0 0 1 88 104 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- Its lighter line -->
-<path d="M89 11.5 A15 15 0 0 1 119 11.5 V102 A7 7 0 0 1 112 109 H96 A7 7 0 0 1 89 102 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M89 11.5 A15 15 0 0 1 119 11.5 V104 A5 5 0 0 1 114 109 H94 A5 5 0 0 1 89 104 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- Its white band -->
-<path d="M90 11.5 A14 14 0 0 1 118 11.5 V102 A6 6 0 0 1 112 108 H96 A6 6 0 0 1 90 102 Z" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded -->
-<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 102 A4 4 0 0 1 112 106 L96 106 A4 4 0 0 1 92 102 Z" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M95 96 L113 96 L113 103.5 A1.5 1.5 0 0 1 111.5 105 L96.5 105 A1.5 1.5 0 0 1 95 103.5 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M90 11.5 A14 14 0 0 1 118 11.5 V104 A4 4 0 0 1 114 108 H94 A4 4 0 0 1 90 104 Z" fill-rule="evenodd" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded: every band of the bottom round one center, its curves starting where the cells above end, so each runs on from its straight side -->
+<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 104 A2 2 0 0 1 114 106 L94 106 A2 2 0 0 1 92 104 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M95 96 L113 96 L113 104 A1 1 0 0 1 112 105 L96 105 A1 1 0 0 1 95 104 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The orb's socket, as wide as the art's, evenly lit: its blue-gray edge -->
 <circle cx="104" cy="11.5" r="12" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The inner gray ring, unbroken -->
 <circle cx="104" cy="11.5" r="11" fill="#4a637b" data-color="5" data-palette="9"/>
 <!-- The reflection along the inner ring's bottom, inside its edges: a small wedge pointing up, blue-gray flanks fanning out and down, a light core brightest at its base -->
-<path d="M102.85 20.888 A0.5 0.5 0 0 1 103.24 20.7 L104.76 20.7 A0.5 0.5 0 0 1 105.15 20.888 L105.81 21.713 A0.3 0.3 0 0 1 105.576 22.2 L102.424 22.2 A0.3 0.3 0 0 1 102.19 21.713 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M103.299 20.951 A0.4 0.4 0 0 1 103.671 20.7 L104.329 20.7 A0.4 0.4 0 0 1 104.701 20.951 L105.09 21.926 A0.2 0.2 0 0 1 104.905 22.2 L103.095 22.2 A0.2 0.2 0 0 1 102.91 21.926 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<path d="M103.489 21.621 A0.4 0.4 0 0 1 103.847 21.4 L104.153 21.4 A0.4 0.4 0 0 1 104.511 21.621 L104.655 21.911 A0.2 0.2 0 0 1 104.476 22.2 L103.524 22.2 A0.2 0.2 0 0 1 103.345 21.911 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<path d="M102.85 20.888 A0.5 0.5 0 0 1 103.24 20.7 L104.76 20.7 A0.5 0.5 0 0 1 105.15 20.888 L105.81 21.713 A0.3 0.3 0 0 1 105.576 22.2 L102.424 22.2 A0.3 0.3 0 0 1 102.19 21.713 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M103.299 20.951 A0.4 0.4 0 0 1 103.671 20.7 L104.329 20.7 A0.4 0.4 0 0 1 104.701 20.951 L105.09 21.926 A0.2 0.2 0 0 1 104.905 22.2 L103.095 22.2 A0.2 0.2 0 0 1 102.91 21.926 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M103.489 21.621 A0.4 0.4 0 0 1 103.847 21.4 L104.153 21.4 A0.4 0.4 0 0 1 104.511 21.621 L104.655 21.911 A0.2 0.2 0 0 1 104.476 22.2 L103.524 22.2 A0.2 0.2 0 0 1 103.345 21.911 Z" fill-rule="evenodd" fill="#c6d6de" data-color="2" data-palette="9"/>
 <!-- The dark socket's two tabs, at 9 and 3 o'clock, reaching out through the gray ring to its edge -->
-<path d="M93 11.5 A1.5 1.5 0 0 1 94.5 10 L113.5 10 A1.5 1.5 0 0 1 115 11.5 L115 11.5 A1.5 1.5 0 0 1 113.5 13 L94.5 13 A1.5 1.5 0 0 1 93 11.5 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M93 11.5 A1.5 1.5 0 0 1 94.5 10 L113.5 10 A1.5 1.5 0 0 1 115 11.5 L115 11.5 A1.5 1.5 0 0 1 113.5 13 L94.5 13 A1.5 1.5 0 0 1 93 11.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The dark socket -->
 <circle cx="104" cy="11.5" r="9" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The black line across the top of the stack's cells, over the housing's inside -->
 <rect x="95" y="23" width="18" height="3" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The window's right border going on down from the housing's corner: its outline runs on as the border's dark line (one line from where the corner leaves it), the border's light line beside it starting once the corner's bands have curved away -->
-<rect x="119" y="102" width="1" height="34" fill="#738ca5" data-color="4" data-palette="9"/>
-<rect x="118" y="107.4" width="1" height="28.6" fill="#9cadbd" data-color="3" data-palette="9"/>
+<rect x="119" y="104" width="1" height="32" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="118" y="108.4" width="1" height="27.6" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The panel round the OK button -->
 <rect x="88" y="112" width="30" height="24" fill="#eff7ff" data-color="1" data-palette="9"/>
 <!-- The OK button: its outline, its corners rounded -->
-<path d="M91 114.5 A2.5 2.5 0 0 1 93.5 112 L113.5 112 A2.5 2.5 0 0 1 116 114.5 L116 129.5 A2.5 2.5 0 0 1 113.5 132 L93.5 132 A2.5 2.5 0 0 1 91 129.5 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M91 114.5 A2.5 2.5 0 0 1 93.5 112 L113.5 112 A2.5 2.5 0 0 1 116 114.5 L116 129.5 A2.5 2.5 0 0 1 113.5 132 L93.5 132 A2.5 2.5 0 0 1 91 129.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- Its shade along the right and the bottom -->
-<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L113.5 113 A1.5 1.5 0 0 1 115 114.5 L115 129.5 A1.5 1.5 0 0 1 113.5 131 L93.5 131 A1.5 1.5 0 0 1 92 129.5 Z" fill="#a5314a" data-color="15" data-palette="9"/>
+<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L113.5 113 A1.5 1.5 0 0 1 115 114.5 L115 129.5 A1.5 1.5 0 0 1 113.5 131 L93.5 131 A1.5 1.5 0 0 1 92 129.5 Z" fill-rule="evenodd" fill="#a5314a" data-color="15" data-palette="9"/>
 <!-- Its light along the top and the left -->
-<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L114.6 113 L112.6 115 L94 115 L94 129 L92 130.6 Z" fill="#ffad29" data-color="12" data-palette="9"/>
+<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L114.6 113 L112.6 115 L94 115 L94 129 L92 130.6 Z" fill-rule="evenodd" fill="#ffad29" data-color="12" data-palette="9"/>
 <!-- Brightest in the top left corner -->
-<path d="M92 114.1 A1.1 1.1 0 0 1 93.1 113 L94.2 113 L94.2 114.4 A0.8 0.8 0 0 1 93.4 115.2 L92 115.2 Z" fill="#fff729" data-color="11" data-palette="9"/>
+<path d="M92 114.1 A1.1 1.1 0 0 1 93.1 113 L94.2 113 L94.2 114.4 A0.8 0.8 0 0 1 93.4 115.2 L92 115.2 Z" fill-rule="evenodd" fill="#fff729" data-color="11" data-palette="9"/>
 <!-- A shade halfway down the left, and the outline thicker halfway down the right -->
-<path d="M92 120.5 A0.5 0.5 0 0 1 92.5 120 L92.5 120 A0.5 0.5 0 0 1 93 120.5 L93 123.5 A0.5 0.5 0 0 1 92.5 124 L92.5 124 A0.5 0.5 0 0 1 92 123.5 Z" fill="#a5314a" data-color="15" data-palette="9"/>
-<path d="M114 120.5 A0.5 0.5 0 0 1 114.5 120 L114.7 120 A0.5 0.5 0 0 1 115.2 120.5 L115.2 123.5 A0.5 0.5 0 0 1 114.7 124 L114.5 124 A0.5 0.5 0 0 1 114 123.5 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M92 120.5 A0.5 0.5 0 0 1 92.5 120 L92.5 120 A0.5 0.5 0 0 1 93 120.5 L93 123.5 A0.5 0.5 0 0 1 92.5 124 L92.5 124 A0.5 0.5 0 0 1 92 123.5 Z" fill-rule="evenodd" fill="#a5314a" data-color="15" data-palette="9"/>
+<path d="M114 120.5 A0.5 0.5 0 0 1 114.5 120 L114.7 120 A0.5 0.5 0 0 1 115.2 120.5 L115.2 123.5 A0.5 0.5 0 0 1 114.7 124 L114.5 124 A0.5 0.5 0 0 1 114 123.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The face -->
 <rect x="94" y="115" width="19" height="14" fill="#ff3121" data-color="14" data-palette="9"/>
 <!-- The words, in white -->
