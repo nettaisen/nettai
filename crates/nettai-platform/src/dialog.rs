@@ -375,7 +375,8 @@ export function nettai_sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 export function nettai_download(name, bytes) {
-    const url = URL.createObjectURL(new Blob([bytes]));
+    // (A copy: a Blob takes no view of the shared memory.)
+    const url = URL.createObjectURL(new Blob([bytes.slice()]));
     const a = document.createElement("a");
     a.href = url;
     a.download = name;
