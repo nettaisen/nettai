@@ -111,6 +111,13 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let app = Rc::new(RefCell::new(App::new(&ui, tour.is_some())));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
     wire(&ui, &app);
+    // (In a browser the window is the page's whole, and follows it: the desktop's player sizes theirs.)
+    let window = ui.as_weak();
+    nettai_platform::page::follow(move |width, height| {
+        if let Some(ui) = window.upgrade() {
+            ui.window().set_size(slint::LogicalSize::new(width, height));
+        }
+    });
     // (The browser's page hears files dropped on it; the desktop's window has its own events for them.)
     nettai_platform::dialog::take_drops(|paths| {
         for path in paths {
