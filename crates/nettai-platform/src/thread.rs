@@ -64,7 +64,15 @@ self.onmessage = async (event) => {
     // (A thread this one starts is started by the page: a worker's own workers start only while its event loop
     // runs, and this one may be busy, or waiting on the thread it starts.)
     self.nettaiSpawnHere = (name, work, waits) => self.postMessage(["spawn", name, work, waits]);
-    const m = await import(shim);
+    let m;
+    try {
+        m = await import(shim);
+    } catch (why) {
+        // (Its scripts not fetched: the page starts another in its place, the work not yet taken.)
+        self.postMessage(["failed", String(why)]);
+        self.close();
+        return;
+    }
     const wasm = await m.default({ module_or_path: module, memory });
     if (waits) await m.nettai_thread_run_async(work); else m.nettai_thread_run(work);
     if (wasm.__wbindgen_thread_destroy) wasm.__wbindgen_thread_destroy();
@@ -72,7 +80,9 @@ self.onmessage = async (event) => {
 };
 `;
 let url = null;
-export function nettai_thread_spawn(name, module, memory, work, waits) {
+// (How many times a worker whose scripts weren't fetched is started again.)
+const TRIES = 4;
+export function nettai_thread_spawn(name, module, memory, work, waits, tried = 0) {
     if (typeof self.nettaiSpawnHere === "function") return self.nettaiSpawnHere(name, work, waits);
     const shim = globalThis.nettaiShim;
     if (!shim) throw new Error("the page didn't say where its module is (globalThis.nettaiShim)");
@@ -81,6 +91,12 @@ export function nettai_thread_spawn(name, module, memory, work, waits) {
     worker.onerror = (e) => console.error(`thread ${name}:`, e.message ?? e);
     worker.onmessage = (e) => {
         if (e.data?.[0] === "spawn") nettai_thread_spawn(e.data[1], module, memory, e.data[2], e.data[3]);
+        if (e.data?.[0] === "failed") {
+            if (tried + 1 < TRIES) {
+                console.warn(`thread ${name} didn't start (${e.data[1]}): starting it again`);
+                setTimeout(() => nettai_thread_spawn(name, module, memory, work, waits, tried + 1), 100 * (tried + 1));
+            } else console.error(`thread ${name} didn't start: ${e.data[1]}`);
+        }
     };
     worker.postMessage([shim, module, memory, work, waits]);
 }

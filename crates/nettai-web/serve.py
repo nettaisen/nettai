@@ -10,6 +10,8 @@ import sys
 
 
 class Isolated(http.server.SimpleHTTPRequestHandler):
+    # (Connections kept open: each worker fetches the module's scripts again, all at once.)
+    protocol_version = "HTTP/1.1"
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm", ".js": "text/javascript"}
 
     # The file compressed beside it (build.sh makes them), where the browser takes that encoding.
@@ -53,6 +55,11 @@ class _Body:
 
 folder = sys.argv[1] if len(sys.argv) > 1 else "target/web/site"
 port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-server = http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(Isolated, directory=folder))
+class Server(http.server.ThreadingHTTPServer):
+    # (The default queue is 5 connections: past that the rest are reset, and a worker's scripts fail to load.)
+    request_queue_size = 128
+
+
+server = Server(("127.0.0.1", port), functools.partial(Isolated, directory=folder))
 print(f"serving {folder} at http://localhost:{port}/")
 server.serve_forever()
