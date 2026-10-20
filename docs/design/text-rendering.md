@@ -1494,14 +1494,20 @@ Each set of the game's number glyphs (`numbers::NumberSet`: the HP box's digits,
 damage digits, a telop's, the chip window's, the banners', the '+', the "x2" pair, the emotion window's counts) is
 read off its glyphs as the pack is made: the box its faces fill in their 8-pixel cells (the faces' columns of all the set's cells, their
 rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
-Each character is drawn in Bungee in its glyph's cell, its ink stretched to that box (the user's audition), its rim a
-frame pixel's square around it, or its shadow a frame pixel right and down. So every number is fixed width, a digit a
-cell, each where the picture's was, right-aligned numbers ending where they did.
+Every number is laid one way (`numbers::laid`; the user: "why can't the hp and the damage number in the custom
+screen and the damage number in the telop all have the same number spacing?"): in Bungee at its face box's height,
+each digit the digits' one advance at that height (the widest digit's: tabular, so a number's columns line up and it
+doesn't shift as it changes), a sign ('+', the "x" of "x2") its ink's width and clear space either side so it never
+touches a digit; the run placed against the end the picture's number sits against (the HP box's and the chip
+window's right, the damage taken's left, an enemy's HP and a banner's number their middle, a chip's damage a word's
+space after its name), and narrowed alike, its signs' clear space kept, where it would be wider than the cells the
+picture's may take. Bungee's digits are about as wide as they are tall, wider than the game's, so most places are
+narrowed a little (the HP box's four digits to 0.8 of their width, a chip's "40+10" to 0.75). Its rim is a frame
+pixel's square around it, or its shadow a frame pixel right and down.
 
 - A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
-  a frame pixel right and down as the name's (the original's are both a pixel), and its digits are drawn a pixel
-  narrower than their box, so their strokes are as heavy as the name's (the user: "the damage number and chip names are
-  styled differently in the footer"). The others' rims are a frame pixel all round, as their pictures'.
+  a frame pixel right and down as the name's (the original's are both a pixel). The others' rims are a frame pixel all
+  round, as their pictures'.
 - The emotion window's count: its box is the counts' own with the digits taken off (the box around where the counts
   differ filled with the box's color around it; the HUD's box without a count, `count_box`, is another picture), the
   digit fitted to the box the counts' digits fill; EXE6's last two counts are other boxes and stay pictures, as does a
