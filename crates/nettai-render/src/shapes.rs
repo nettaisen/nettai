@@ -97,6 +97,7 @@ mod tests {
         Drawing {
             size: [8, 8],
             regions: vec![Region { palette: 0, color, path: vec![Step::Move([0, 0]), Step::Line([4 * u, 0]), Step::Line([4 * u, 8 * u]), Step::Line([0, 8 * u]), Step::Close] }],
+            words: Vec::new(),
             source: String::new(),
         }
     }

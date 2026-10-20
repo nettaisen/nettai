@@ -12,13 +12,31 @@
 use crate::Tiles;
 
 /// A picture as shapes: its size in frame pixels, its regions, one color
-/// each, filled one over another in order, and the SVG file it was read
-/// from (kept as drawn, to write into a pack).
+/// each, filled one over another in order, the words written on it (over
+/// its regions), and the SVG file it was read from (kept as drawn, to write
+/// into a pack).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Drawing {
     pub size: [u16; 2],
     pub regions: Vec<Region>,
+    pub words: Vec<Words>,
     pub source: String,
+}
+
+/// Words written on a drawing, as text in a lettering font (the picture's
+/// own letters taken off): the string's key in the game's strings, the box
+/// its capitals fill (x, y, width, height in `Drawing::UNIT`s of a frame
+/// pixel from the drawing's top left: their top to their baseline, the run
+/// fitted to the width), the face's color, and the outline's and the
+/// shadow's colors where it has them (palette indices, of row `palette`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Words {
+    pub key: String,
+    pub rect: [i32; 4],
+    pub palette: u8,
+    pub color: u8,
+    pub rim: Option<u8>,
+    pub shadow: Option<u8>,
 }
 
 impl Drawing {

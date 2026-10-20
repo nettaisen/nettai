@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
 <!-- The chip cursor's corner (its second frame): the same L in the other colors, its inside band the outer one's color. -->
-<path d="M0 6 V5 A5 5 0 0 1 5 0 H6 V3 H5 A2 2 0 0 0 3 5 V6 Z" fill="#ef4a00" data-color="11"/>
-<path d="M1 5 A4 4 0 0 1 5 1 V2 A3 3 0 0 0 2 5 Z" fill="#f79418" data-color="10"/>
+<path d="M0 6 V2 A2 2 0 0 1 2 0 H6 V3 H5 A2 2 0 0 0 3 5 V6 Z" fill="#000" data-color="11"/>
+<path d="M1 5 V3 A2 2 0 0 1 3 1 H5 V2 H4 A2 2 0 0 0 2 4 V5 Z" fill="#000" data-color="10"/>
 </svg>
