@@ -1425,26 +1425,29 @@ Each is settled unless the user changes it.
     The user: "can you make the replay viewer view the replay to take up the full area? and then the hud is shown on
     hover. also add playlist support and a toggle to autoplay next video on play list (defaults to on)". (The
     playlist became the play queue, made ahead of time on the Replays screen: §2.91; its panel in the viewer became a
-    button and a small popup, and a replay watched leaves the queue: §2.92.)
+    button and a small popup, and a replay watched leaves the queue: §2.92; the transport's buttons were cut down,
+    the next and Autoplay next moving into that popup: §2.94.)
     - *The picture fills the window,* as a match's does: the largest whole multiple of the frame that fits it (Picture
       size still its most), the backdrop around it. Nothing is beside it or under it.
     - *Its controls are over it,* the header, the transport and the footer, fading (`brisk`) out once nothing has
       been done for 2.5 seconds while the replay plays, and back in at anything done: a key, a pad's button, the
       pointer moved, a click. They stay while it doesn't play (paused, at its end, a seek waiting), while a setting is
-      taken (the bar), while the builds, the export or the queue's popup (§2.92) are open, and while the pointer rests
+      taken (the bar), while the builds, the export, VIEW's menu (§2.94) or the queue's popup (§2.92) are open, and
+      while the pointer rests
       on the transport; a replay just begun shows them as an input does. The cursor goes and comes back with them,
       where it was. Hidden, a press still does what it does: the first key or button is the replay's, not a wake-up
       only. A click on the picture plays or pauses. A phone keeps its picture over its transport, all of it shown,
-      the queue's controls a row of the transport's own (§2.92).
+      the queue's button in the transport's row of buttons (§2.94).
     - *The queue in the viewer:* WATCH watches the one replay, and the viewer has nothing of a queue. Watched from
-      the queue (§2.91), the transport has the queue's next, its button with the count up next, which opens a small
-      popup of the entries up next, and Autoplay next (§2.92; the 400-wide panel this first had, with "Replay 2 of 7"
-      and a previous, is gone). N is the next. Each replay begins behind the two cards, as the first did, at the last
-      one's speed, the input display and the other console's picture as they were; Back goes to the list with the
-      queue's head chosen in the Queue tab.
-    - *Autoplay next,* the transport's switch while the queue plays, on at first and remembered (the settings'
+      the queue (§2.91), the transport has the queue's button with the count up next, which opens a small popup with
+      NEXT and Autoplay next at its top and the entries up next under them (§2.92, §2.94; the 400-wide panel this
+      first had, with "Replay 2 of 7" and a previous, is gone, and so are the transport's own next and Autoplay next
+      buttons). N is the next, the popup open or not. Each replay begins behind the two cards, as the first did, at
+      the last one's speed, the input display and the other console's picture as they were; Back goes to the list
+      with the queue's head chosen in the Queue tab.
+    - *Autoplay next,* the switch at the top of the queue's popup (§2.94), on at first and remembered (the settings'
       `replays.autoplay`): a replay played to its end starts the next that plays two seconds after (not while the
-      builds, the export or the queue's popup are open); off, or at the queue's end, the viewer stays at the end
+      builds, the export, VIEW's menu or the queue's popup are open); off, or at the queue's end, the viewer stays at the end
       with its controls, as before.
     - *Loose ends,* the user: "fix the loose ends". The pointer hides with the controls, over the picture and
       around it. The input display and the other console's picture are under the controls: the transport is drawn
@@ -1488,17 +1491,19 @@ Each is settled unless the user changes it.
       Shift+N are gone. (The list is where a replay is watched again.)
     - *Missing entries* are still passed by, and one passed by leaves the queue, as a replay played past does (it
       was gone or couldn't play; keeping it would make it come up again at each watch).
-    - *The viewer's queue is small.* The 400-wide panel is gone. While the queue plays, the transport's row has,
-      after the clip, three square buttons: the next (two triangles and a bar; N), the queue's button (lines and a
-      triangle, the count up next in a cyan badge over its corner), and Autoplay next, a switch's sign lit while on.
-      On a phone they are a row of the transport's own, Autoplay next at its right with its words. To make room, the
-      round shown ("Round 2 of 3") is the footer's status in place of the rounds' count.
+    - *The viewer's queue is small.* The 400-wide panel is gone. While the queue plays, the transport has one square
+      button more, the queue's (lines and a triangle, the count up next in a cyan badge over its corner), between
+      VIEW and EXPORT VIDEO; on a phone at the right end of the row of buttons. (This first put three in the
+      transport, the next and Autoplay next beside the queue's, a phone's a row of their own, and moved the round
+      shown to the footer to make room; §2.94 moved those two into the popup and the round back.)
     - *The popup* opens from the queue's button, anchored to it: 360 wide, its right edge at the button's, above it
-      (under it where there is no room; on a phone across the window). UP NEXT and how many, then the entries after
-      the one watched as the Queue tab's rows (the day alone, a missing one in red), five at once and the rest
-      scrolled; with none, "Nothing else is in the queue." The focus goes into it, on its first row, as into a menu:
-      Esc or B closes it, as do a click outside it and the button again. Enter or a click on a row watches that one,
-      the ones before it passed. While it is open the viewer's controls stay and Autoplay next waits.
+      (under it where there is no room; on a phone across the window). At its top NEXT (the replay watched skipped,
+      as N; dim where no entry that plays is up next) and, at the right, Autoplay next with its words, a switch's
+      sign lit while on (§2.94); under a line UP NEXT and how many, then the entries after the one watched as the
+      Queue tab's rows (the day alone, a missing one in red), five at once and the rest scrolled; with none, "Nothing
+      else is in the queue." The focus goes into it, on its first row (none: NEXT, else Autoplay next), as into a
+      menu: Esc or B closes it, as do a click outside it and the button again. Enter or a click on a row watches that
+      one, the ones before it passed. While it is open the viewer's controls stay and Autoplay next waits.
     - *A split WATCH.* The selected replay's ⋯, which restated the panel's buttons, is gone. WATCH has an amber
       arrow at its right, 2 from it, whose menu opens under the two from WATCH's left edge: ADD TO QUEUE (at the
       end) and PLAY NEXT (adding at the start: the start is what plays next, now that played replays
@@ -1514,6 +1519,36 @@ Each is settled unless the user changes it.
     The Queue tab is in the tab bar only while the queue holds a replay; emptied (REMOVE, CLEAR, or played out), the
     Replays tab is chosen. WATCH's right side is square (`Button`'s `square`), its arrow keeps the cut, so the two
     read as one button. ADD TO START OF QUEUE is PLAY NEXT again (次に再生; UP NEXT is このあと再生).
+94. **Fewer buttons in the viewer's transport: VIEW's menu** (2026-10-19). The user: "there's way too many buttons in
+    the play controls now" (twelve square ones: five to play, three views, the clip, and the queue's three), and of
+    the shapes put to them chose
+
+    `|<   >   >|    ====seek====    1x 2x 4x   [View v] [Queue 3]`
+    - *To play:* the round's start, play or pause, the next round. The frame steps' buttons are gone; comma and
+      period still step a frame, and the footer's hint still says so.
+    - *VIEW,* a standard button with a small arrow pointing down (`ArrowDown`, a select's), in the place the side's
+      P1 and P2 had, after the speeds. It opens a menu, the app's (`Shell::pick_marked`: a menu whose rows have
+      marks, under the button from its left edge, over it where there is more room; on a phone the picker's sheet):
+      P1 and P2, the console shown checked; under a line BUILDS, INPUT DISPLAY and OTHER SIDE'S PICTURE, each checked
+      while it is on; under a line the clip, its words what choosing it does next: MARK CLIP START, MARK CLIP END,
+      CLEAR CLIP. A check, not ON and OFF words: drawn at the row's right in the cursor's cyan. BUILDS is dim where
+      the match's setups weren't open, as its button was, and choosing it is refused with the menu staying open.
+      The keys stay: B the builds, I the input display, P the other side's picture, C the clip.
+    - *The side in the menu:* the transport's VIEW label over P1 and P2 and the menu's VIEW would have been two of
+      one word side by side, and the chosen shape has no side's choices: the side became the menu's first two rows
+      (a phone's View stepper went with it). The export's dialog keeps its View (P1, P2).
+    - *The queue's:* while the queue plays, only its button with the count up next stays in the transport, between
+      VIEW and EXPORT VIDEO. The next (NEXT) and Autoplay next are at the top of its popup (§2.92), Autoplay next
+      with its words. N still skips, the popup open or not.
+    - *The round shown* ("Round 2 of 3") is back beside the buttons, where there is room again; the footer counts
+      the replay's rounds again ("3 rounds"), as before §2.92.
+    - *On a phone* the same: the bar; the three buttons, VIEW (104 wide) and the queue's at the right, each a
+      phone's size; Speed's stepper; EXPORT VIDEO. The transport is 208 tall, from 256 (304 while the queue played).
+    - *Kept:* the speeds (½ among them, and their label) and EXPORT VIDEO, which the shape didn't draw and the user
+      didn't ask to lose.
+    - *Japanese:* VIEW 表示 (its own context, `menu`: the export's View stays 視点), OTHER SIDE'S PICTURE 相手側の画面,
+      MARK CLIP START 切り抜きの開始点を設定, MARK CLIP END 切り抜きの終了点を設定, CLEAR CLIP 切り抜きを解除; BUILDS
+      構築, INPUT DISPLAY 入力表示 and NEXT 次へ as the app already has them.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2054,19 +2089,22 @@ DUPLICATE and DELETE.
   WATCH FROM HERE, MOVE UP, MOVE DOWN and, apart, REMOVE. It is what is still to watch: a replay leaves it once
   played to its end or skipped, and missing entries are passed by and leave (§2.92).
 - **The viewer:** the picture fills the window (§2.90), and over it, shown while wanted and fading after 2.5 seconds
-  without input while it plays: the header, the footer (the round shown, "Round 2 of 3"), and at its foot a
-  transport: the time, a bar to click or drag with a mark where each round begins, the length; then to the round's
-  start, a frame back, play or pause, a frame on, the next round; while the queue plays, the next (N), the queue's
-  button with the count up next (its popup of them: §2.92) and Autoplay next (on at first); Speed (½, 1, 2, 4);
-  View (P1, P2); EXPORT VIDEO. Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and
-  period step a frame, the brackets go a round. After BUILDS, two toggles, each off at first (the user: "add
-  support for input view and picture in picture in replay viewer"): the input display (I), Practice's, both
-  players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom
-  right corner of the one shown. Then the clip to export (C, or its button, two brackets; the user: "add the
-  ability to export a clip in the replay viewer"): the first press marks its start where the replay is, the
+  without input while it plays: the header, the footer (the replay's rounds, "3 rounds"), and at its foot a
+  transport (§2.94): the time, a bar to click or drag with a mark where each round begins, the length; then to the
+  round's start, play or pause, the next round, and the round shown ("Round 2 of 3"); at the right Speed (½, 1, 2,
+  4), VIEW and its arrow, while the queue plays the queue's button with the count up next (its popup: NEXT, N, and
+  Autoplay next, on at first, over the entries up next: §2.92), and EXPORT VIDEO. Space plays, the bar taken
+  (Enter) Left and Right seek 5 seconds, comma and period step a frame, the brackets go a round. VIEW's menu has
+  the side shown (P1, P2, the one shown checked); BUILDS (B; dim where the setups weren't open) and two toggles,
+  each off at first and checked while on (the user: "add support for input view and picture in picture in replay
+  viewer"): INPUT DISPLAY (I), Practice's, both players' buttons in the picture's top right corner; and OTHER
+  SIDE'S PICTURE (P), the other console's, small in the bottom right corner of the one shown. Then the clip to
+  export (C, or the menu's last row, MARK CLIP START, MARK CLIP END or CLEAR CLIP by what it does next; the user:
+  "add the ability to export a clip in the replay viewer"): the first marks its start where the replay is, the
   second its end (the two the other way round where it is before the start), the third clears it; the bar shows
   it as a band in the code color with a mark at each end taller than the handle, a start alone running to where
-  the replay is.
+  the replay is. On a phone: the bar; the three buttons with VIEW and the queue's at the right; Speed's stepper;
+  EXPORT VIDEO.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
   first), View, Sides (One, or Both side by side, the View's at the left: the user, "add support for two
   sided side by side export"; with Both a sound track a side, the left's first: "for 2 sided replays, audio track 1
