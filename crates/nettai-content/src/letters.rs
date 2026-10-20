@@ -1852,6 +1852,12 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
     // The form list's names: their portraits over their bar, in every
     // language.
     let own_names: Vec<(String, Tiles)> = names.iter().map(|(v, l)| (v.clone(), l.blank())).collect();
+    let portraits: Vec<(String, Tiles)> = names.iter().map(|(v, l)| (v.clone(), Tiles { pixels: l.portraits.iter().map(|p| matches!(p, Some(v) if *v != 0) as u8).collect() })).collect();
+    let with_portraits = |v: &mut VersionLetters, version: &str| {
+        if let Some((_, p)) = portraits.iter().find(|(n, _)| n == version) {
+            v.form_name_portraits = p.clone();
+        }
+    };
     for (version, blank) in &own_names {
         let v = if *version == c.letters.pictures.versioned.base_version {
             &mut c.letters.pictures.versioned.base
@@ -1862,6 +1868,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
             }
         };
         v.form_names_blank = blank.clone();
+        with_portraits(v, version);
     }
     let own_buttons = c.letters.pictures.buttons.clone();
     for (lang, lettering) in &mut c.languages {
@@ -1891,6 +1898,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
                 }
             };
             v.form_names_blank = own_blank.clone();
+            with_portraits(v, version);
         }
     }
     (notes, problems)
@@ -2256,6 +2264,7 @@ pub fn pictures_from_doc(d: &PictureLettersDoc, b: &PictureBases) -> PictureLett
             buttons: buttons(&v.buttons, own.map_or(&[][..], |o| &o.1[..])),
             form_names: v.form_names.clone(),
             form_names_blank: own.map(|o| o.2.clone()).unwrap_or_default(),
+            form_name_portraits: Tiles::default(),
         };
         (v.version.clone(), letters)
     });

@@ -1102,9 +1102,21 @@ impl TextRenderer {
         // (Only in its cells, where it has them: the frame pixel each output
         // pixel shows, from its box's top left.)
         let in_cells = |x: i32, y: i32| -> bool {
-            let Some(cells) = &d.cells else { return true };
+            if d.cells.is_none() && d.off.is_none() {
+                return true;
+            }
             let (Some(&fx), Some(&fy)) = (frame.columns.get((x - frame.x) as usize), frame.rows.get((y - frame.y) as usize)) else { return false };
-            let (cx, cy) = ((fx - item.rect.x).div_euclid(8), (fy - item.rect.y).div_euclid(8));
+            let (dx, dy) = (fx - item.rect.x, fy - item.rect.y);
+            if let Some((w, off)) = &d.off
+                && dx >= 0
+                && dy >= 0
+                && (dx as usize) < *w
+                && off.get(dy as usize * w + dx as usize) == Some(&true)
+            {
+                return false;
+            }
+            let Some(cells) = &d.cells else { return true };
+            let (cx, cy) = (dx.div_euclid(8), dy.div_euclid(8));
             cx >= 0 && cy >= 0 && cells.iter().any(|c| c[0] as i32 == cx && c[1] as i32 == cy)
         };
         let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };

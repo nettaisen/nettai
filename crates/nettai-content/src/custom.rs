@@ -1047,6 +1047,19 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         l.letters = letters.unwrap_or_default();
     }
     screen.letters = letters;
+    // (Where each name's portrait is over its bar, in every language, as
+    // `letters::settle` finds them.)
+    for (version, (_, portraits, _)) in &name_parts {
+        let mask = Tiles { pixels: portraits.iter().map(|p| matches!(p, Some(v) if *v != 0) as u8).collect() };
+        let all = std::iter::once(&mut screen.letters.pictures.versioned).chain(screen.languages.iter_mut().map(|(_, l)| &mut l.letters.versioned));
+        for v in all {
+            if *version == v.base_version {
+                v.base.form_name_portraits = mask.clone();
+            } else if let Some((_, own)) = v.versions.iter_mut().find(|(n, _)| n == version) {
+                own.form_name_portraits = mask.clone();
+            }
+        }
+    }
     Some(screen)
 }
 
