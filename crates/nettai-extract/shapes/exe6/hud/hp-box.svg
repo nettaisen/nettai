@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="128" viewBox="0 0 48 16">
+<!-- The HP box: a frame two pixels wide at the sides and one at the top and bottom, round a slate plate. -->
+<rect x="2" y="0" width="44" height="16" fill="#f7ffff" data-color="1"/>
+<rect x="4" y="1" width="40" height="14" fill="#39526b" data-color="12"/>
+</svg>

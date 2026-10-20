@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
+<!-- The full gauge shimmering, frame 2 of 4: a capsule sloping 1:2 across the cell, an even rim round a bright core. -->
+<rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
+<rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
+<path d="M-1.4 7.95 L10.6 1.95 A1.342 1.342 0 0 0 9.4 -0.45 L-2.6 5.55 A1.342 1.342 0 0 0 -1.4 7.95 Z" fill="#00a500" data-color="11"/>
+<path d="M-1.8 7.15 L10.2 1.15 A0.447 0.447 0 0 0 9.8 0.35 L-2.2 6.35 A0.447 0.447 0 0 0 -1.8 7.15 Z" fill="#00ff00" data-color="3"/>
+</svg>

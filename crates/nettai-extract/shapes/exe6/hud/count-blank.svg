@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
+<!-- The count box with no digit: a frame a pixel wide round a pale plate, open to the face on its left. -->
+<rect x="0" y="0" width="13" height="16" fill="#2942c6" data-color="1"/>
+<rect x="1" y="1" width="11" height="14" fill="#ffffe7" data-color="15"/>
+</svg>

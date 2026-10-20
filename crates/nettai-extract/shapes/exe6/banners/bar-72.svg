@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
+<!-- A banner's bar, its right end at column 72: its left end upright for three rows then slanting 45 degrees to the bottom left, its right end slanting 45 degrees then upright for its last three rows; a light line a pixel wide along its top and down its left end, a dark one along its bottom and down its right end, the body between. -->
+<polygon points="7,3 72.5,3 65,10.5 65,13 -0.5,13 7,5.5" fill="#7ba5f7" data-color="3"/>
+<polygon points="8,4 71.5,4 65,10.5 65,13 0.5,13 8,5.5" fill="#31397b" data-color="5"/>
+<polygon points="8,4 70.5,4 64,10.5 64,12 1.5,12 8,5.5" fill="#4a5aad" data-color="4"/>
+</svg>

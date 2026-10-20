@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
+<!-- The Cross cursor's edge: the band three pixels thick, a line along its middle. -->
+<rect x="0" y="0" width="8" height="3" fill="#39ff00" data-color="13"/>
+<rect x="0" y="1" width="8" height="1" fill="#73ff4a" data-color="14"/>
+</svg>

@@ -582,7 +582,7 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
     Some(SpriteSheet { category: doc.sprite[0], index: doc.sprite[1], tilesets, palette_sets, part_lists, animations })
 }
 
-pub(crate) fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {
+pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {

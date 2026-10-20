@@ -1,24 +1,50 @@
-//! Reading the battle's frames as shapes as a pack is made
-//! (`nettai_assets::shapes`, docs/design/text-rendering.md §13): the HUD's
-//! HP box, its gauge's frame and cells, the emotion window's boxes and its
-//! frame apart from the faces, the enemy names' bar, and the custom
-//! window's frame (each map's), its column's cells, its slots' boxes and
-//! its cursors, and the banners' bars. Each picture is traced and its
-//! boundaries fitted with the shapes they rasterize ([`trace`], [`fit`]) as the screen
-//! lays it: a map's tiles as its entries place and flip them, with the
-//! cells something else is laid in (a patch, a button, the column, the
-//! names) holes in it, whose edges stay exact; the pictures with letters
-//! off where the enhanced mode draws their words.
+//! The battle's frames as shapes, drawn by hand (`shapes/GAME/` beside this
+//! crate's sources: SVG files in frame pixels, each shape naming its
+//! palette entry) and checked against the ROM's pictures as a pack is made
+//! (`nettai_assets::shapes`, docs/design/text-rendering.md §13): the banners'
+//! bars, the HUD's HP box, its gauge's frame and cells, the emotion window's
+//! boxes and its frame apart from the faces, the enemy names' bar, and the
+//! custom window's frame (each map's), its column's cells, its slots' boxes
+//! and its cursors. They are the one input of extraction that isn't a
+//! ROM's: their shapes are an artist's redrawing of the pictures; their
+//! colors stay the ROM's palettes, at run time.
 //!
-//! Nothing here is a game's: the packs' pictures, maps and layouts say what
-//! is drawn where. What can't be read as every game has it is said.
+//! Each picture is laid here as the screen lays it (a map's tiles as its
+//! entries place and flip them, the cells something else is laid in a hole,
+//! the pictures with letters off where the enhanced mode draws their
+//! words), and its drawing checked: its size is the picture's, its colors
+//! are entries the picture uses, and filled at the picture's pixels'
+//! centers it gives about the picture's colors (each drawing's share of
+//! matching pixels is noted; a drawing far off is a problem). A picture
+//! with no drawing stays a picture, and that is said.
 
-mod fit;
-mod trace;
-
-use trace::{Grid, Label, Region, trace};
 use nettai_assets::shapes::{CustomShapes, Drawing, GaugeCells, HudShapes, MapDrawing, MugshotFrame};
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, PatchList, Tiles};
+
+/// The hand-drawn SVG files (`shapes/`), by path from there.
+mod drawn {
+    include!(concat!(env!("OUT_DIR"), "/drawings.rs"));
+}
+
+/// What a pixel of a picture is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Label {
+    /// Transparent.
+    Clear,
+    /// Not the picture's: something else is drawn there (a chip's picture
+    /// in the window); a drawing may draw there or not.
+    Hole,
+    /// A color: a palette row (for a picture laid in several) and an index.
+    Color(u8, u8),
+}
+
+/// A picture as laid: its labels row by row.
+#[derive(Clone, Debug)]
+pub struct Grid {
+    pub w: usize,
+    pub h: usize,
+    pub cells: Vec<Label>,
+}
 
 /// A picture being laid: each pixel's label.
 struct Canvas {
@@ -32,7 +58,7 @@ impl Canvas {
         Canvas { w, h, cells: vec![fill; w * h] }
     }
 
-    /// An 8x8 tile at (x, y), flipped as `e` says, in palette row `palette`.
+    /// An 8x8 tile at (x, y), flipped, in palette row `palette`.
     fn tile(&mut self, t: &[u8], x: usize, y: usize, hflip: bool, vflip: bool, palette: u8) {
         for (i, &v) in t.iter().enumerate().take(64) {
             let (tx, ty) = (i % 8, i / 8);
@@ -53,175 +79,314 @@ impl Canvas {
         }
     }
 
-    fn grid(self, outside: [Label; 4]) -> Grid {
-        Grid { w: self.w, h: self.h, cells: self.cells, outside }
+    fn grid(self) -> Grid {
+        Grid { w: self.w, h: self.h, cells: self.cells }
     }
 }
 
-const CLEAR: [Label; 4] = [Label::Clear; 4];
-const HOLES: [Label; 4] = [Label::Hole; 4];
+/// A drawing's share of a picture's pixels it must give at their centers,
+/// under which it is a problem.
+const MATCH: f32 = 0.85;
 
-/// A traced picture as a drawing: its regions' paths in the drawing's
-/// unit.
-fn drawing(w: usize, h: usize, regions: Vec<Region>) -> Drawing {
-    use nettai_assets::shapes::Step;
-    let unit = Drawing::UNIT as f64;
-    let at = |p: [f64; 2]| [(p[0] * unit).round() as i32, (p[1] * unit).round() as i32];
-    Drawing {
-        size: [w as u16, h as u16],
-        regions: regions
-            .into_iter()
-            .map(|r| {
-                let mut path = Vec::new();
-                for ring in &r.rings {
-                    path.push(Step::Move(at(ring.start)));
-                    for s in &ring.segs {
-                        path.push(match *s {
-                            fit::Seg::Line(p) => Step::Line(at(p)),
-                            fit::Seg::Arc { to, radius, sweep, large } => Step::Arc { radius: (radius * unit).round() as i32, large, sweep, to: at(to) },
-                        });
-                    }
-                    path.push(Step::Close);
-                }
-                nettai_assets::shapes::Region { palette: r.palette, color: r.color, path }
-            })
-            .collect(),
-    }
+/// The drawings of one game read and checked, and what was found.
+pub struct Shaper {
+    game: String,
+    notes: Vec<String>,
+    /// (With `NETTAI_SHAPES_SOURCES` set to a folder: each picture written
+    /// there as an SVG of its pixels, with its drawing beside where it has
+    /// one, to draw from and look at.)
+    sources: Option<std::path::PathBuf>,
+    kept: Vec<(String, Grid, Option<Drawing>)>,
 }
 
-/// Tiles laid `columns` a row from tile `first`, traced, with `outside`
-/// past its sides; none where it draws nothing.
-fn tiles_drawing(name: &str, tiles: &Tiles, first: usize, columns: usize, rows: usize, outside: [Label; 4]) -> Option<Drawing> {
-    let mut c = Canvas::new(8 * columns, 8 * rows, Label::Clear);
-    for k in 0..columns * rows {
-        let t = tiles.get(first + k)?;
-        c.tile(t, 8 * (k % columns), 8 * (k / columns), false, false, 0);
+impl Shaper {
+    pub fn new(game: &str) -> Shaper {
+        let sources = std::env::var_os("NETTAI_SHAPES_SOURCES").map(std::path::PathBuf::from);
+        Shaper { game: game.to_string(), notes: Vec::new(), sources, kept: Vec::new() }
     }
-    shaped(name, c.grid(outside))
-}
 
-/// A picture traced and fitted ([`trace`]) as a drawing; none where it
-/// draws nothing. (With `NETTAI_SHAPES_DEBUG` set to a folder, each is kept
-/// to be written there beside its pixels: [`write_debug`].)
-fn shaped(name: &str, grid: Grid) -> Option<Drawing> {
-    let regions = trace(&grid);
-    if regions.is_empty() {
-        return None;
+    /// The hand-drawn file of `name` for this game (`GAME/NAME.svg`), else
+    /// one another game's file says is the same (`GAME/NAME.same`, naming
+    /// it).
+    fn file(&self, name: &str) -> Option<(String, &'static str)> {
+        let own = format!("{}/{name}", self.game);
+        let find = |path: &str| drawn::DRAWINGS.iter().find(|(p, _)| *p == path).map(|(_, t)| *t);
+        if let Some(t) = find(&format!("{own}.svg")) {
+            return Some((format!("{own}.svg"), t));
+        }
+        let same = find(&format!("{own}.same"))?.trim().to_string();
+        find(&same).map(|t| (same.clone(), t))
     }
-    let d = drawing(grid.w, grid.h, regions);
-    if std::env::var_os("NETTAI_SHAPES_DEBUG").is_some()
-        && let Ok(mut kept) = DEBUG.lock()
-    {
-        kept.push((name.to_string(), grid, d.clone()));
-    }
-    Some(d)
-}
 
-type Kept = Vec<(String, Grid, Drawing)>;
-static DEBUG: std::sync::Mutex<Kept> = std::sync::Mutex::new(Vec::new());
-
-/// The drawings kept ([`shaped`]) written to `NETTAI_SHAPES_DEBUG`'s folder,
-/// each an SVG of its pixels (holes hatched) beside its shapes, in the
-/// colors `view` gives each drawing by its name.
-fn write_debug(view: &dyn Fn(&str, u8, u8) -> u16) {
-    let Some(dir) = std::env::var_os("NETTAI_SHAPES_DEBUG").map(std::path::PathBuf::from) else { return };
-    let _ = std::fs::create_dir_all(&dir);
-    let Ok(mut kept) = DEBUG.lock() else { return };
-    for (name, g, d) in kept.drain(..) {
-        let color = |p: u8, c: u8| {
-            let [r, g, b] = nettai_content::image::rgb(view(&name, p, c));
-            format!("#{r:02x}{g:02x}{b:02x}")
+    /// `name`'s drawing read, its size and colors checked against its
+    /// picture `grid` (none: it has none, or it isn't the picture's).
+    fn read(&mut self, name: &str, grid: &Grid) -> Option<Drawing> {
+        let (path, text) = match self.file(name) {
+            Some(f) => f,
+            None => {
+                self.notes.push(format!("no hand-drawn {name}: it stays a picture"));
+                return None;
+            }
         };
-        let (w, h) = (g.w, g.h);
-        let mut out = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"-1 -1 {} {}\">\n", (2 * w + 3) * 8, (h + 2) * 8, 2 * w + 3, h + 2);
-        out += &format!("<rect x=\"-1\" y=\"-1\" width=\"{}\" height=\"{}\" fill=\"#808080\"/>\n", 2 * w + 3, h + 2);
-        for y in 0..h {
-            for x in 0..w {
-                let fill = match g.cells[y * w + x] {
-                    Label::Clear => continue,
-                    Label::Hole => "#ff00ff".to_string(),
-                    Label::Color(p, c) => color(p, c),
-                };
-                out += &format!("<rect x=\"{x}\" y=\"{y}\" width=\"1.02\" height=\"1.02\" fill=\"{fill}\"/>\n");
+        let d = match nettai_content::shapes::from_svg(text) {
+            Ok(d) => d,
+            Err(e) => {
+                self.notes.push(format!("{path}: {e}: it stays a picture"));
+                return None;
+            }
+        };
+        if d.size != [grid.w as u16, grid.h as u16] {
+            self.notes.push(format!("{path}: {}x{}, the picture {}x{}: it stays a picture", d.size[0], d.size[1], grid.w, grid.h));
+            return None;
+        }
+        let used: std::collections::BTreeSet<Label> = grid.cells.iter().copied().filter(|l| matches!(l, Label::Color(..))).collect();
+        for r in &d.regions {
+            if r.color == 0 || !used.contains(&Label::Color(r.palette, r.color)) {
+                self.notes.push(format!("{path}: color {}:{} isn't one the picture uses: it stays a picture", r.palette, r.color));
+                return None;
             }
         }
-        let svg = nettai_content::shapes::to_svg(&d, &|p, c| view(&name, p, c));
+        Some(d)
+    }
+
+    /// `name`'s drawing, read and checked against its picture `grid`
+    /// (none: it has none, or it isn't the picture's): how much of the
+    /// picture it gives is noted.
+    fn drawing(&mut self, name: &str, grid: Grid) -> Option<Drawing> {
+        let d = self.read(name, &grid);
+        if let Some(d) = &d {
+            let share = matching(&grid, d);
+            let line = format!("{name}: {:.1}% of its pixels", 100.0 * share);
+            self.notes.push(if share < MATCH { format!("{line}, far from the picture") } else { format!("note: {line}") });
+        }
+        if self.sources.is_some() {
+            self.kept.push((name.to_string(), grid, d.clone()));
+        }
+        d
+    }
+
+    /// What was found, and the pictures and their drawings written where
+    /// asked, each in `view`'s colors by its name.
+    pub fn finish(mut self, view: &dyn Fn(&str, u8, u8) -> u16) -> Vec<String> {
+        if let Some(dir) = &self.sources {
+            let _ = std::fs::create_dir_all(dir);
+            for (name, g, d) in self.kept.drain(..) {
+                let file = name.replace('/', "-");
+                let _ = std::fs::write(dir.join(format!("{file}.svg")), beside(&name, &g, d.as_ref(), view));
+                // (Its pixels as text, a character each: its palette index
+                // in hex, '.' clear, '#' a hole; a row a line.)
+                let text: String = g
+                    .cells
+                    .chunks(g.w)
+                    .map(|row| {
+                        row.iter()
+                            .map(|l| match l {
+                                Label::Clear => '.',
+                                Label::Hole => '#',
+                                Label::Color(_, c) => char::from_digit(*c as u32, 16).unwrap_or('?'),
+                            })
+                            .collect::<String>()
+                            + "\n"
+                    })
+                    .collect();
+                let _ = std::fs::write(dir.join(format!("{file}.txt")), text);
+            }
+        }
+        self.notes
+    }
+}
+
+/// `d` filled one shape over another, at the centers of `w` by `h` pixels.
+fn raster(d: &Drawing, w: usize, h: usize) -> Vec<Label> {
+    let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
+    (0..w * h)
+        .map(|i| {
+            let at = [(i % w) as f32 + 0.5, (i / w) as f32 + 0.5];
+            d.regions.iter().zip(&rings).rev().find(|(_, r)| nettai_assets::shapes::inside(r, at)).map_or(Label::Clear, |(r, _)| Label::Color(r.palette, r.color))
+        })
+        .collect()
+}
+
+/// The share of `grid`'s pixels in `cells` (8x8 each) that `d` gives at
+/// their centers.
+fn matching_in(grid: &Grid, d: &Drawing, cells: &[[u8; 2]]) -> f32 {
+    let got = raster(d, grid.w, grid.h);
+    let (mut total, mut same) = (0usize, 0usize);
+    for &[cx, cy] in cells {
+        for i in 0..64 {
+            let k = (8 * cy as usize + i / 8) * grid.w + 8 * cx as usize + i % 8;
+            total += 1;
+            same += (got[k] == grid.cells[k]) as usize;
+        }
+    }
+    if total == 0 { 1.0 } else { same as f32 / total as f32 }
+}
+
+/// The share of `grid`'s pixels (holes aside) that `d`, filled one shape
+/// over another, gives at their centers.
+pub fn matching(grid: &Grid, d: &Drawing) -> f32 {
+    let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
+    let (mut total, mut same) = (0usize, 0usize);
+    for y in 0..grid.h {
+        for x in 0..grid.w {
+            let want = grid.cells[y * grid.w + x];
+            if want == Label::Hole {
+                continue;
+            }
+            let at = [x as f32 + 0.5, y as f32 + 0.5];
+            let got = d.regions.iter().zip(&rings).rev().find(|(_, r)| nettai_assets::shapes::inside(r, at)).map_or(Label::Clear, |(r, _)| Label::Color(r.palette, r.color));
+            total += 1;
+            same += (got == want) as usize;
+        }
+    }
+    if total == 0 { 1.0 } else { same as f32 / total as f32 }
+}
+
+/// A picture's pixels (holes magenta) and its drawing beside, as an SVG.
+fn beside(name: &str, g: &Grid, d: Option<&Drawing>, view: &dyn Fn(&str, u8, u8) -> u16) -> String {
+    let color = |p: u8, c: u8| {
+        let [r, gg, b] = nettai_content::image::rgb(view(name, p, c));
+        format!("#{r:02x}{gg:02x}{b:02x}")
+    };
+    let (w, h) = (g.w, g.h);
+    let mut out = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"-1 -1 {} {}\">\n<rect x=\"-1\" y=\"-1\" width=\"{}\" height=\"{}\" fill=\"#808080\"/>\n",
+        (2 * w + 3) * 8,
+        (h + 2) * 8,
+        2 * w + 3,
+        h + 2,
+        2 * w + 3,
+        h + 2
+    );
+    for y in 0..h {
+        for x in 0..w {
+            let fill = match g.cells[y * w + x] {
+                Label::Clear => continue,
+                Label::Hole => "#ff00ff".to_string(),
+                Label::Color(p, c) => color(p, c),
+            };
+            out += &format!("<rect x=\"{x}\" y=\"{y}\" width=\"1.02\" height=\"1.02\" fill=\"{fill}\"/>\n");
+        }
+    }
+    if let Some(d) = d {
+        let svg = nettai_content::shapes::to_svg(d, &|p, c| view(name, p, c));
         out += &format!("<g transform=\"translate({} 0)\">\n", w + 1);
         for line in svg.lines().filter(|l| l.starts_with("<path")) {
             out += line;
             out.push('\n');
         }
         out += "</g>\n";
-        out += "</svg>\n";
-        let _ = std::fs::write(dir.join(format!("{}.svg", name.replace('/', "-"))), out);
     }
+    out += "</svg>\n";
+    out
+}
+
+/// Tiles laid `columns` a row from tile `first`, `name`'s picture.
+fn tiles_grid(tiles: &Tiles, first: usize, columns: usize, rows: usize) -> Option<Grid> {
+    let mut c = Canvas::new(8 * columns, 8 * rows, Label::Clear);
+    for k in 0..columns * rows {
+        c.tile(tiles.get(first + k)?, 8 * (k % columns), 8 * (k / columns), false, false, 0);
+    }
+    Some(c.grid())
 }
 
 /// 8x16 glyphs (tile 2k its top, 2k + 1 its bottom), `cells` side by side
 /// from glyph `first`.
-fn glyphs_drawing(name: &str, tiles: &Tiles, first: usize, cells: usize, outside: [Label; 4]) -> Option<Drawing> {
+fn glyphs_grid(tiles: &Tiles, first: usize, cells: usize) -> Option<Grid> {
     let mut c = Canvas::new(8 * cells, 16, Label::Clear);
     for k in 0..cells {
         c.tile(tiles.get(2 * (first + k))?, 8 * k, 0, false, false, 0);
         c.tile(tiles.get(2 * (first + k) + 1)?, 8 * k, 8, false, false, 0);
     }
-    shaped(name, c.grid(outside))
+    Some(c.grid())
 }
 
-/// Read the frames of `bundle` as shapes into its `shapes` (the banners'
-/// bars into their layouts; and the
-/// emotion window's frame apart from its faces: `Hud::mugshot_frame`), and
-/// say what can't be read.
-pub fn read(bundle: &mut Bundle) -> Vec<String> {
+impl Shaper {
+    fn tiles(&mut self, name: &str, tiles: &Tiles, first: usize, columns: usize, rows: usize) -> Option<Drawing> {
+        let g = tiles_grid(tiles, first, columns, rows)?;
+        if g.cells.iter().all(|&l| l == Label::Clear) {
+            return None;
+        }
+        self.drawing(name, g)
+    }
+
+    fn glyphs(&mut self, name: &str, tiles: &Tiles, first: usize, cells: usize) -> Option<Drawing> {
+        let g = glyphs_grid(tiles, first, cells)?;
+        self.drawing(name, g)
+    }
+}
+
+/// Read the frames of `bundle` (of `game`, `exe6`...) as shapes into its
+/// `shapes` (the banners' bars into their layouts, by their names in
+/// `banner_name`; and the emotion window's frame apart from its faces:
+/// `Hud::mugshot_frame`), and say what was found.
+pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> String) -> Vec<String> {
+    let mut sh = Shaper::new(game);
     let mut problems = Vec::new();
     if !bundle.hud.tiles.is_empty() {
-        // The banners' bars, in each language's pictures.
+        // The banners' bars, in each language's pictures (a bar the same as
+        // one drawn already is that one's).
+        let mut done: Vec<(Grid, Option<Drawing>)> = Vec::new();
+        let mut bar = |sh: &mut Shaper, name: String, b: &nettai_assets::BannerLayout| -> Option<Drawing> {
+            let g = banner_grid(b)?;
+            if let Some((_, d)) = done.iter().find(|(o, _)| o.cells == g.cells && o.w == g.w) {
+                return d.clone();
+            }
+            let d = sh.drawing(&format!("banners/{name}"), g.clone());
+            done.push((g, d.clone()));
+            d
+        };
         for (i, b) in bundle.hud.banners.iter_mut().enumerate() {
-            b.bar = banner_bar(&format!("banner-{i}"), b);
+            b.bar = bar(&mut sh, banner_name(i), b);
         }
         for (lang, l) in &mut bundle.hud.languages {
             for (i, b) in l.banners.iter_mut().enumerate() {
                 if let Some(b) = b {
-                    b.bar = banner_bar(&format!("banner-{i}-{lang}"), b);
+                    b.bar = bar(&mut sh, format!("{}-{lang}", banner_name(i)), b);
                 }
             }
         }
-        let (shapes, frame) = hud_shapes(&bundle.hud, &mut |p| problems.push(p));
+        let (shapes, frame) = hud_shapes(&bundle.hud, &mut sh, &mut |p| problems.push(p));
         bundle.hud.shapes = shapes;
         bundle.hud.mugshot_frame = frame;
     }
     if !bundle.custom.is_empty() {
-        bundle.custom.shapes = custom_shapes(&bundle.custom, &mut |p| problems.push(p));
+        bundle.custom.shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
     }
     // (The colors each is looked at in: its picture's first palette.)
-    let (h, c) = (&bundle.hud, &bundle.custom);
-    write_debug(&|name, p, k| {
-        let k = k as usize & 15;
-        let face = h.mugshots.first().map(|m| m.1).unwrap_or_default();
-        let frame = c.frame_palettes.first().copied().unwrap_or_default();
-        match name {
-            n if n.starts_with("banner") => h.banner_palette[k],
-            n if n.starts_with("gauge") => h.gauge_palette[k],
-            "hp-box" | "name-bar-0" | "name-bar-1" => h.hp_palettes[0][k],
-            n if n.starts_with("count") || n.starts_with("mugshot") || n == "navi-box" => face[k],
-            "empty-icon" => c.icon_palette[k],
-            n if n.starts_with("cursor") => c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default()[k],
-            n if n.starts_with("form-list-cursor") => c.form_list_cursor_palette[k],
-            _ => match p {
-                11 => c.icon_palette[k],
-                13 => h.hp_palettes[0][k],
-                14 | 15 => c.other_palette[k],
-                _ => frame[k],
-            },
-        }
-    });
+    problems.extend(sh.finish(&|name, p, k| view(bundle, name, p, k)));
     problems
 }
 
-/// A banner's bar ([`nettai_content::letters::bar_colors`]: none where its
-/// picture has none): its picture with its letters off, each letter pixel
-/// the bar's color nearest it on its row, traced.
-fn banner_bar(name: &str, b: &nettai_assets::BannerLayout) -> Option<Drawing> {
+/// The color drawing `name` (`hud/hp-box`, `banners/battle-start`...) is
+/// looked at in for its palette entry (row `p`, index `k`): its picture's
+/// first palette's.
+pub fn view(bundle: &Bundle, name: &str, p: u8, k: u8) -> u16 {
+    let (h, c) = (&bundle.hud, &bundle.custom);
+    let k = k as usize & 15;
+    let face = h.mugshots.first().map(|m| m.1).unwrap_or_default();
+    let frame = c.frame_palettes.first().copied().unwrap_or_default();
+    match name {
+        n if n.starts_with("banner") => h.banner_palette[k],
+        n if n.starts_with("hud/gauge") => h.gauge_palette[k],
+        "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => h.hp_palettes[0][k],
+        n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") || n == "hud/navi-box" => face[k],
+        "custom/empty-icon" => c.icon_palette[k],
+        n if n.starts_with("custom/cursor") => c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default()[k],
+        n if n.starts_with("custom/form-list-cursor") => c.form_list_cursor_palette[k],
+        _ => match p {
+            11 => c.icon_palette[k],
+            13 => h.hp_palettes[0][k],
+            14 | 15 => c.other_palette[k],
+            _ => frame[k],
+        },
+    }
+}
+
+/// A banner's bar's picture ([`nettai_content::letters::bar_colors`]: none
+/// where its picture has none): its picture with its letters off, each
+/// letter pixel the bar's color nearest it on its row.
+fn banner_grid(b: &nettai_assets::BannerLayout) -> Option<Grid> {
     use nettai_content::letters::{Picture, bar_colors, erased};
     if b.glyphs.is_empty() {
         return None;
@@ -234,12 +399,12 @@ fn banner_bar(name: &str, b: &nettai_assets::BannerLayout) -> Option<Drawing> {
     for (i, &v) in bar.pixels.iter().enumerate() {
         c.cells[i] = if v != 0 && colors.contains(&v) { Label::Color(0, v) } else { Label::Clear };
     }
-    shaped(name, c.grid(CLEAR))
+    Some(c.grid())
 }
 
 /// The HUD's frames ([`HudShapes`]), and the emotion window's frame apart
 /// from its faces.
-pub fn hud_shapes(h: &Hud, say: &mut dyn FnMut(String)) -> (HudShapes, Option<MugshotFrame>) {
+pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (HudShapes, Option<MugshotFrame>) {
     let mut s = HudShapes::default();
     // A HUD layer's tile by its number, the gauge's with its letters off.
     let gauge_base = nettai_content::letters::gauge_base(&h.gauge_tiles, h.gauge_first_tile, &h.gauge_frame, &h.letters.words);
@@ -262,7 +427,7 @@ pub fn hud_shapes(h: &Hud, say: &mut dyn FnMut(String)) -> (HudShapes, Option<Mu
             }
         }
         if ok {
-            s.hp_box = shaped("hp-box", c.grid(CLEAR));
+            s.hp_box = sh.drawing("hud/hp-box", c.grid());
         } else {
             say("the HP box has tiles the HUD layer lacks: it stays a picture".into());
         }
@@ -283,23 +448,20 @@ pub fn hud_shapes(h: &Hud, say: &mut dyn FnMut(String)) -> (HudShapes, Option<Mu
             }
             cells.push([col as u8, row as u8]);
         }
-        s.gauge_frame = shaped("gauge-frame", c.grid(CLEAR)).map(|drawing| MapDrawing { drawing, cells });
+        s.gauge_frame = sh.drawing("hud/gauge-frame", c.grid()).map(|drawing| MapDrawing { parts: vec![nettai_assets::shapes::MapPart { name: "gauge-frame".into(), drawing, cells }] });
     }
-    s.gauge_cells = gauge_cells(h, &gauge_base, say);
-    // The emotion window's boxes (beside the face: their left side meets
-    // it).
-    let beside = [Label::Clear, Label::Clear, Label::Clear, Label::Hole];
-    s.count_blank = tiles_drawing("count-blank", &h.letters.counts.blank, 0, 2, 2, beside);
-    s.count_box = tiles_drawing("count-box", &h.count_box, 0, 2, 2, beside);
-    s.navi_box = tiles_drawing("navi-box", &h.navi_box, 0, 2, 2, beside);
-    s.mugshot_boxes = h.mugshot_boxes.iter().enumerate().map(|(k, b)| tiles_drawing(&format!("mugshot-box-{k}"), b, 0, 2, 2, beside)).collect();
+    s.gauge_cells = gauge_cells(h, &gauge_base, sh, say);
+    // The emotion window's boxes beside the face.
+    s.count_blank = sh.tiles("hud/count-blank", &h.letters.counts.blank, 0, 2, 2);
+    s.count_box = sh.tiles("hud/count-box", &h.count_box, 0, 2, 2);
+    s.navi_box = sh.tiles("hud/navi-box", &h.navi_box, 0, 2, 2);
+    s.mugshot_boxes = h.mugshot_boxes.iter().enumerate().map(|(k, b)| sh.tiles(&format!("hud/mugshot-box-{k}"), b, 0, 2, 2)).collect();
     if s.mugshot_boxes.iter().all(Option::is_none) {
         s.mugshot_boxes.clear();
     }
     let frame = mugshot_frame(h, say);
     if let Some(f) = &frame {
-        // (The ring alone: the faces' pixels holes, so its edges against
-        // them stay exact; the face's right side meets its box.)
+        // (The ring alone, the faces' pixels holes.)
         let mut c = Canvas::new(32, 16, Label::Clear);
         let faces: Vec<&Tiles> = h.mugshots.iter().map(|(t, _)| t).chain(h.navi_mugshots.iter().map(|m| &m.tiles)).collect();
         for k in 0..8 {
@@ -311,39 +473,39 @@ pub fn hud_shapes(h: &Hud, say: &mut dyn FnMut(String)) -> (HudShapes, Option<Mu
                 c.cells[y * 32 + x] = if ring { Label::Color(0, 1) } else if drawn { Label::Hole } else { Label::Clear };
             }
         }
-        s.mugshot_frame = shaped("mugshot-frame", c.grid([Label::Clear, Label::Hole, Label::Clear, Label::Clear]));
+        s.mugshot_frame = sh.drawing("hud/mugshot-frame", c.grid());
     }
     (s, frame)
 }
 
-/// The gauge's cells ([`GaugeCells`]): each traced alone, its sides exact
-/// (its neighbors and the frame meet them).
-fn gauge_cells(h: &Hud, base: &Tiles, say: &mut dyn FnMut(String)) -> Option<GaugeCells> {
-    let cell = |name: String, k: u16| tiles_drawing(&name, base, k as usize, 1, 1, HOLES).unwrap_or_default();
+/// The gauge's cells ([`GaugeCells`]): all of them drawn, or none.
+fn gauge_cells(h: &Hud, base: &Tiles, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> Option<GaugeCells> {
     if base.len() < (Hud::GAUGE_L_OR_R + 8) as usize {
         say("the gauge has fewer tiles than its cells, its full frames and its L or R take: they stay pictures".into());
         return None;
     }
-    let steps: Vec<Drawing> = (0..8).map(|k| cell(format!("gauge-step-{k}"), k)).collect();
-    let filled = cell("gauge-filled".into(), Hud::GAUGE_FILLED);
-    let full = (0..4).map(|k| cell(format!("gauge-full-{k}"), Hud::GAUGE_FULL + k)).collect();
+    let empty = sh.tiles("hud/gauge-empty", base, 0, 1, 1);
+    let filled = sh.tiles("hud/gauge-filled", base, Hud::GAUGE_FILLED as usize, 1, 1);
+    let full: Vec<Option<Drawing>> = (0..4).map(|k| sh.tiles(&format!("hud/gauge-full-{k}"), base, (Hud::GAUGE_FULL + k) as usize, 1, 1)).collect();
     // L or R: its letters off where the pack has them.
-    let l_or_r = (0..2)
+    let l_or_r: Vec<Option<Drawing>> = (0..2)
         .map(|f| {
             let blank = h.letters.words.l_or_r[f].as_ref().map(|w| w.blank.clone());
             let first = (Hud::GAUGE_L_OR_R + 4 * f as u16) as usize;
             let tiles = blank.unwrap_or_else(|| Tiles { pixels: base.pixels[first * Tiles::TILE..(first + 4) * Tiles::TILE].to_vec() });
-            tiles_drawing(&format!("gauge-l-or-r-{f}"), &tiles, 0, 4, 1, HOLES).unwrap_or_default()
+            sh.tiles(&format!("hud/gauge-l-or-r-{f}"), &tiles, 0, 4, 1)
         })
         .collect();
     // Whether each cell filled by eighths is the filled cell to that column
     // and the empty one past it.
-    let (empty, full_cell) = (base.get(0)?, base.get(Hud::GAUGE_FILLED as usize)?);
-    let cut = (1..8usize).all(|k| base.get(k).is_some_and(|t| (0..64).all(|i| t[i] == if i % 8 < k { full_cell[i] } else { empty[i] })));
+    let (empty_tile, full_cell) = (base.get(0)?, base.get(Hud::GAUGE_FILLED as usize)?);
+    let cut = (1..8usize).all(|k| base.get(k).is_some_and(|t| (0..64).all(|i| t[i] == if i % 8 < k { full_cell[i] } else { empty_tile[i] })));
     if !cut {
         say("the gauge's cells filled by eighths aren't its filled cell cut short: its fill ends on whole pixels".into());
     }
-    Some(GaugeCells { steps, filled, full, l_or_r, cut })
+    let full: Option<Vec<Drawing>> = full.into_iter().collect();
+    let l_or_r: Option<Vec<Drawing>> = l_or_r.into_iter().collect();
+    Some(GaugeCells { empty: empty?, filled: filled?, full: full?, l_or_r: l_or_r?, cut })
 }
 
 /// The emotion window's frame apart from its faces: the pixels every face
@@ -404,24 +566,35 @@ fn mugshot_frame(h: &Hud, say: &mut dyn FnMut(String)) -> Option<MugshotFrame> {
 }
 
 /// The custom screen's frames ([`CustomShapes`]).
-pub fn custom_shapes(c: &CustomScreen, say: &mut dyn FnMut(String)) -> CustomShapes {
+pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> CustomShapes {
     let mut s = CustomShapes::default();
     let window = if c.letters.window_blank.len() == c.window_tiles.len() { &c.letters.window_blank } else { &c.window_tiles };
-    s.window_maps = c.window_maps.iter().enumerate().map(|(k, m)| window_drawing(&format!("window-{k}"), c, window, m, &c.window_patches, false, say)).collect();
-    s.form_list_maps = c.form_list_maps.iter().enumerate().map(|(k, m)| window_drawing(&format!("form-list-{k}"), c, window, m, &c.form_list_patches, true, say)).collect();
+    let mut maps: Vec<(String, Option<(Grid, Vec<[u8; 2]>)>)> = Vec::new();
+    for (k, m) in c.window_maps.iter().enumerate() {
+        maps.push((format!("custom/window-{k}"), window_grid(c, window, m, &c.window_patches, false, say)));
+    }
+    for (k, m) in c.form_list_maps.iter().enumerate() {
+        maps.push((format!("custom/form-list-{k}"), window_grid(c, window, m, &c.form_list_patches, true, say)));
+    }
+    let mut drawn = map_drawings(&maps, sh);
+    s.form_list_maps = drawn.split_off(c.window_maps.len());
+    s.window_maps = drawn;
     // The column's cells, both looks; an empty slot's box; a code's plate.
-    s.column_cells = (0..2).filter_map(|k| glyphs_drawing(&format!("column-cell-{k}"), &c.column_cells, k, 1, HOLES)).collect();
-    s.empty_icon = tiles_drawing("empty-icon", &c.empty_icon, 0, 2, 2, HOLES);
-    s.slot_code = slot_code(c, say);
+    let column: Vec<Option<Drawing>> = (0..2).map(|k| sh.glyphs(&format!("custom/column-cell-{k}"), &c.column_cells, k, 1)).collect();
+    s.column_cells = all(column);
+    s.empty_icon = sh.tiles("custom/empty-icon", &c.empty_icon, 0, 2, 2);
+    s.slot_code = slot_code(c, sh, say);
     // The cursors, their corners alone (the chip cursor's) or meeting each
     // other (the form list's).
-    s.cursor = (0..c.cursor.len()).filter_map(|k| tiles_drawing(&format!("cursor-{k}"), &c.cursor, k, 1, 1, CLEAR)).collect();
-    s.form_list_cursor = (0..c.form_list_cursor.len()).filter_map(|k| tiles_drawing(&format!("form-list-cursor-{k}"), &c.form_list_cursor, k, 1, 1, HOLES)).collect();
+    let cursor: Vec<Option<Drawing>> = (0..c.cursor.len()).map(|k| sh.tiles(&format!("custom/cursor-{k}"), &c.cursor, k, 1, 1)).collect();
+    s.cursor = all(cursor);
+    let tiles: Vec<Option<Drawing>> = (0..c.form_list_cursor.len()).map(|k| sh.tiles(&format!("custom/form-list-cursor-{k}"), &c.form_list_cursor, k, 1, 1)).collect();
+    s.form_list_cursor = all(tiles);
     // The enemy names' bar: its end (the bar's cells right of it), its
     // cell (more of them either side).
     if c.name_bar.len() >= 4 {
-        let end = glyphs_drawing("name-bar-0", &c.name_bar, 0, 1, [Label::Clear, Label::Hole, Label::Clear, Label::Clear]);
-        let cell = glyphs_drawing("name-bar-1", &c.name_bar, 1, 1, [Label::Clear, Label::Hole, Label::Clear, Label::Hole]);
+        let end = sh.glyphs("custom/name-bar-0", &c.name_bar, 0, 1);
+        let cell = sh.glyphs("custom/name-bar-1", &c.name_bar, 1, 1);
         if let (Some(end), Some(cell)) = (end, cell) {
             s.name_bar = vec![end, cell];
         }
@@ -429,9 +602,15 @@ pub fn custom_shapes(c: &CustomScreen, say: &mut dyn FnMut(String)) -> CustomSha
     s
 }
 
+/// Every one of a set of drawings, or none (a set is drawn whole or as its
+/// pictures).
+fn all(set: Vec<Option<Drawing>>) -> Vec<Drawing> {
+    set.into_iter().collect::<Option<Vec<_>>>().unwrap_or_default()
+}
+
 /// A slot's code's plate: the blank of every lettered code (A to Z, `*`),
 /// which must be one; none if they differ.
-fn slot_code(c: &CustomScreen, say: &mut dyn FnMut(String)) -> Option<Drawing> {
+fn slot_code(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> Option<Drawing> {
     let set = &c.letters.slot_codes;
     let blanks: Vec<&[u8]> = (0..27).filter(|&k| set.glyphs.get(k).is_some_and(Option::is_some)).filter_map(|k| set.blank.pixels.get(2 * k * Tiles::TILE..(2 * k + 2) * Tiles::TILE)).collect();
     let first = *blanks.first()?;
@@ -439,7 +618,7 @@ fn slot_code(c: &CustomScreen, say: &mut dyn FnMut(String)) -> Option<Drawing> {
         say("the slots' codes' plates differ with their letters off: they stay pictures".into());
         return None;
     }
-    tiles_drawing("slot-code", &Tiles { pixels: first.to_vec() }, 0, 2, 1, HOLES)
+    sh.tiles("custom/slot-code", &Tiles { pixels: first.to_vec() }, 0, 2, 1)
 }
 
 /// A window map's frame: its own tiles (the window's, letters off), each
@@ -447,7 +626,7 @@ fn slot_code(c: &CustomScreen, say: &mut dyn FnMut(String)) -> Option<Drawing> {
 /// the form list's names (`form_list`), a button at its own place, the
 /// screen's emblem, OK (the cells its cursor's corners take half of or
 /// more), and any tile not the window's.
-fn window_drawing(name: &str, c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &PatchList, form_list: bool, say: &mut dyn FnMut(String)) -> Option<MapDrawing> {
+fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &PatchList, form_list: bool, say: &mut dyn FnMut(String)) -> Option<(Grid, Vec<[u8; 2]>)> {
     const COLUMNS: usize = 15;
     const ROWS: usize = 20;
     if map.len() != COLUMNS * ROWS {
@@ -526,5 +705,85 @@ fn window_drawing(name: &str, c: &CustomScreen, window: &Tiles, map: &[MapEntry]
             _ => canvas.hole(x, y),
         }
     }
-    shaped(name, canvas.grid(CLEAR)).map(|drawing| MapDrawing { drawing, cells })
+    Some((canvas.grid(), cells))
+}
+
+/// The maps' frames ([`MapDrawing`]), from the drawings of maps that have
+/// one: each map's cells, each of the first drawing (the map's own, then
+/// the others in order) that draws something there and was drawn for the
+/// same pixels there.
+fn map_drawings(maps: &[(String, Option<(Grid, Vec<[u8; 2]>)>)], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
+    // Each map's own drawing, with its pixels at their centers.
+    let drawn: Vec<Option<(Drawing, Vec<Label>)>> = maps
+        .iter()
+        .map(|(name, m)| {
+            let (grid, _) = m.as_ref()?;
+            // (A map need not have its own: another's may draw all its cells.)
+            sh.file(name)?;
+            let d = sh.read(name, grid)?;
+            let raster = raster(&d, grid.w, grid.h);
+            Some((d, raster))
+        })
+        .collect();
+    maps.iter()
+        .enumerate()
+        .map(|(k, (name, m))| {
+            let (grid, cells) = m.as_ref()?;
+            // (The map's own drawing first, then the others by how many of
+            // their cells are this map's: the window most like it.)
+            let alike = |o: usize| -> usize {
+                let Some((other, other_cells)) = &maps[o].1 else { return 0 };
+                cells.iter().filter(|c| other_cells.contains(c)).filter(|&&[cx, cy]| (0..64).all(|i| {
+                    let at = (8 * cy as usize + i / 8) * grid.w + 8 * cx as usize + i % 8;
+                    other.cells[at] == grid.cells[at]
+                })).count()
+            };
+            let mut others: Vec<usize> = (0..maps.len()).filter(|&o| o != k).collect();
+            others.sort_by_key(|&o| (std::cmp::Reverse(alike(o)), o));
+            let order: Vec<usize> = std::iter::once(k).chain(others).collect();
+            let mut parts: Vec<(usize, Vec<[u8; 2]>)> = Vec::new();
+            let mut missing = 0;
+            let mut missed: Vec<String> = Vec::new();
+            for &[cx, cy] in cells {
+                let cell = |g: &Grid| -> Vec<Label> { (0..64).map(|i| g.cells[(8 * cy as usize + i / 8) * g.w + 8 * cx as usize + i % 8]).collect() };
+                let want = cell(grid);
+                if want.iter().all(|&l| l == Label::Clear) {
+                    continue;
+                }
+                let found = order.iter().copied().find(|&o| {
+                    let (Some((_, raster)), Some((other, _))) = (&drawn[o], &maps[o].1) else { return false };
+                    let draws = (0..64).any(|i| raster[(8 * cy as usize + i / 8) * grid.w + 8 * cx as usize + i % 8] != Label::Clear);
+                    draws && cell(other) == want
+                });
+                match found {
+                    Some(o) => match parts.iter_mut().find(|p| p.0 == o) {
+                        Some(p) => p.1.push([cx, cy]),
+                        None => parts.push((o, vec![[cx, cy]])),
+                    },
+                    None => {
+                        missing += 1;
+                        missed.push(format!("({cx}, {cy})"));
+                    }
+                }
+            }
+            if missing > 0 {
+                sh.notes.push(format!("{name}: {missing} cells no drawing draws stay pictures: {}", missed.join(" ")));
+            }
+            let parts: Vec<nettai_assets::shapes::MapPart> = parts
+                .into_iter()
+                .filter_map(|(o, cells)| {
+                    let (d, _) = drawn[o].as_ref()?;
+                    let share = matching_in(grid, d, &cells);
+                    let line = format!("{name}: {} for {} cells: {:.1}% of their pixels", maps[o].0, cells.len(), 100.0 * share);
+                    sh.notes.push(if share < MATCH { format!("{line}, far from the picture") } else { format!("note: {line}") });
+                    Some(nettai_assets::shapes::MapPart { name: maps[o].0.trim_start_matches("custom/").to_string(), drawing: d.clone(), cells })
+                })
+                .collect();
+            if sh.sources.is_some() {
+                let own = drawn[k].as_ref().map(|(d, _)| d.clone());
+                sh.kept.push((name.clone(), grid.clone(), own));
+            }
+            (!parts.is_empty()).then_some(MapDrawing { parts })
+        })
+        .collect()
 }

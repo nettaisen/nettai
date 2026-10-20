@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
+<!-- The Cross window's frame (what differs from the custom window's; its other cells are that drawing's): a panel with an outline down its left, a line a pixel wide inside each side turning 45 degrees at the top and square at the bottom, and a box round the Crosses' names. -->
+<!-- The panel -->
+<rect x="0" y="0" width="88" height="96" fill="#c6d6de" data-color="2" data-palette="9"/>
+<rect x="0" y="0" width="1" height="96" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The inner lines -->
+<polygon points="0,5.5 4,9.5 4,89 3,89 3,9.5 0,6.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<polygon points="88,5.5 84,9.5 84,89 85,89 85,9.5 88,6.5" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="0" y="88" width="4" height="1" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="84" y="88" width="4" height="1" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The box round the names -->
+<path d="M7 7 H81 V89 H7 Z M8 8 V88 H80 V8 Z" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The tab's end under the window, with no groove -->
+<rect x="80" y="96" width="8" height="4" fill="#c6d6de" data-color="2" data-palette="9"/>
+<rect x="80" y="100" width="8" height="1" fill="#738ca5" data-color="4" data-palette="9"/>
+<rect x="80" y="101" width="8" height="3" fill="#eff7ff" data-color="1" data-palette="9"/>
+</svg>

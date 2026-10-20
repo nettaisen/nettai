@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
+<!-- The Cross cursor's corner: a band three pixels thick turning down, its corner cut at 45 degrees, a line a pixel wide along its middle. -->
+<polygon points="1.586,0 8,0 8,3 4,3 3,4 3,7 0,7 0,1.586" fill="#31ce00" data-color="12"/>
+<polygon points="2,1 8,1 8,2 2.414,2 2,2.414 2,6 1,6 1,2" fill="#39ff00" data-color="13"/>
+</svg>
