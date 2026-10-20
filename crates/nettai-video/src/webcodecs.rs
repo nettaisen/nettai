@@ -22,6 +22,10 @@ use wasm_bindgen_futures::JsFuture;
 /// How many frames may wait for the encoder.
 const QUEUE: usize = 8;
 
+/// How long a frame waits for the encoder before it is taken to have stopped (its thread never started, or the
+/// browser's codec never answered), in seconds.
+const STALLED: u64 = 20;
+
 /// What the encoder's thread is told of the video.
 #[derive(Clone, Copy, Debug)]
 struct Spec {
@@ -123,12 +127,17 @@ impl Backend for Encoder {
         }
         let samples = self.resample.iter_mut().zip(sound).map(|(r, s)| r.push(s)).collect();
         let mut msg = Msg::Frame(rgbx, samples);
+        let waited = nettai_platform::time::Instant::now();
         loop {
             match self.frames.try_send(msg) {
                 Ok(()) => return Ok(()),
                 // (The encoder is behind: this worker waits, as a worker may.)
                 Err(TrySendError::Full(back)) => {
                     msg = back;
+                    // (An encoder that failed lets go of its queue, below; one that never answers, this.)
+                    if waited.elapsed().as_secs() >= STALLED {
+                        return Err(Error::Encoder(format!("the browser's encoder took no frame for {STALLED} seconds")));
+                    }
                     std::thread::sleep(std::time::Duration::from_millis(1));
                 }
                 Err(TrySendError::Disconnected(_)) => return Err(self.heard(true).err().unwrap_or_else(|| Error::Encoder("the encoder stopped".into()))),

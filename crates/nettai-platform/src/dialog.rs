@@ -224,6 +224,35 @@ pub fn saved(path: &Path) {
     let _ = path;
 }
 
+/// A file of the app's shown to the player: on the desktop in the system's file manager; in the browser, whose
+/// files the player can't see, handed over as a download (a copy: the file stays).
+pub fn show_file(path: &Path) {
+    #[cfg(target_arch = "wasm32")]
+    web::send(path);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut command = if cfg!(target_os = "macos") {
+            let mut c = std::process::Command::new("open");
+            c.arg("-R").arg(path);
+            c
+        } else if cfg!(target_os = "windows") {
+            let mut select = std::ffi::OsString::from("/select,");
+            select.push(path);
+            let mut c = std::process::Command::new("explorer");
+            c.arg(select);
+            c
+        } else {
+            // (No one way to point at a file: its folder.)
+            let mut c = std::process::Command::new("xdg-open");
+            c.arg(path.parent().unwrap_or(path));
+            c
+        };
+        if let Err(why) = command.spawn() {
+            log::warn!("showing {}: {why}", path.display());
+        }
+    }
+}
+
 /// Files dropped on the page go to `dropped`, from now on. (On the desktop the window's own events carry them,
 /// winit's `DroppedFile`, and this does nothing.)
 pub fn take_drops(dropped: impl FnMut(Vec<PathBuf>) + 'static) {
@@ -453,11 +482,16 @@ export function nettai_download(name, bytes) {
         lot("/downloads").join(name)
     }
 
-    pub fn download(path: &Path) {
+    /// The file at `path` downloaded, and kept.
+    pub fn send(path: &Path) {
         match crate::fs::read(path) {
             Ok(bytes) => nettai_download(&path.file_name().unwrap_or_default().to_string_lossy(), &bytes),
             Err(why) => log::warn!("downloading {}: {why}", path.display()),
         }
+    }
+
+    pub fn download(path: &Path) {
+        send(path);
         let _ = crate::fs::remove_file(path);
         // (Its folder too, if it was a download's own: `download_path`'s.)
         if let Some(dir) = path.parent() {

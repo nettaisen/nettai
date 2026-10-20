@@ -172,29 +172,6 @@ fn file_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
 }
 
-/// Show a file in the system's file manager.
-fn show_file(path: &Path) {
-    let mut command = if cfg!(target_os = "macos") {
-        let mut c = std::process::Command::new("open");
-        c.arg("-R").arg(path);
-        c
-    } else if cfg!(target_os = "windows") {
-        let mut select = std::ffi::OsString::from("/select,");
-        select.push(path);
-        let mut c = std::process::Command::new("explorer");
-        c.arg(select);
-        c
-    } else {
-        // (No one way to point at a file: its folder.)
-        let mut c = std::process::Command::new("xdg-open");
-        c.arg(path.parent().unwrap_or(path));
-        c
-    };
-    if let Err(why) = command.spawn() {
-        crate::errors::log("showing a file", &why);
-    }
-}
-
 /// The selected replay's still: the frame the thread made, shown in the screen's `Picture`.
 #[derive(Default)]
 struct Still {
@@ -1041,7 +1018,7 @@ impl Replays {
                 self.watch(shell, &path, None, true);
             }
             "export" => shell.sound.play(Cue::Refused),
-            "file" => show_file(&path),
+            "file" => nettai_platform::dialog::show_file(&path),
             "delete" => self.ask_delete(shell),
             "watch-more" => self.open_watch_menu(shell, self.sheet),
             _ => {}
