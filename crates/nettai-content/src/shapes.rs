@@ -173,15 +173,54 @@ pub struct Parsed {
     entries: usize,
 }
 
-/// A drawing rasterized at a scale ([`Parsed::raster`]): its pixels' coverage
-/// (`alpha`) and each palette entry's share of them (premultiplied, out of
-/// 255: a pixel's color is the sum of each entry's color by its share), `w`
-/// by `h` output pixels from the drawing's top left.
+/// A drawing rasterized at a scale ([`Parsed::raster`]), `w` by `h`
+/// output pixels from the drawing's top left: its pixels' coverage
+/// (`alpha`, over the box `area` holds: x, y, width, height, the rest
+/// clear) and each palette entry's share of them (premultiplied, out of
+/// 255, over the entry's own box: a pixel's color is the sum of each
+/// entry's color by its share).
 pub struct Raster {
     pub w: usize,
     pub h: usize,
+    pub area: [usize; 4],
     pub alpha: Vec<u8>,
-    pub shares: Vec<Vec<u8>>,
+    pub shares: Vec<Share>,
+}
+
+/// A palette entry's share of a raster's pixels, over its box (x, y,
+/// width, height, in the raster).
+pub struct Share {
+    pub area: [usize; 4],
+    pub v: Vec<u8>,
+}
+
+impl Share {
+    /// Its share of pixel (x, y) of the raster.
+    pub fn at(&self, x: usize, y: usize) -> u8 {
+        let [x0, y0, w, h] = self.area;
+        if x < x0 || y < y0 || x >= x0 + w || y >= y0 + h {
+            return 0;
+        }
+        self.v[(y - y0) * w + x - x0]
+    }
+}
+
+/// The box of the pixels `v` (`w` a row) isn't 0 in, and those pixels.
+fn cropped(v: &[u8], w: usize, h: usize) -> ([usize; 4], Vec<u8>) {
+    let (mut x0, mut y0, mut x1, mut y1) = (w, h, 0, 0);
+    for (y, row) in v.chunks_exact(w).enumerate().take(h) {
+        let Some(first) = row.iter().position(|&a| a != 0) else { continue };
+        let last = row.iter().rposition(|&a| a != 0).unwrap_or(first);
+        (x0, y0, x1, y1) = (x0.min(first), y0.min(y), x1.max(last + 1), y1.max(y + 1));
+    }
+    if x0 >= x1 {
+        return ([0, 0, 0, 0], Vec::new());
+    }
+    let mut out = Vec::with_capacity((x1 - x0) * (y1 - y0));
+    for y in y0..y1 {
+        out.extend_from_slice(&v[y * w + x0..y * w + x1]);
+    }
+    ([x0, y0, x1 - x0, y1 - y0], out)
 }
 
 impl Parsed {
@@ -208,27 +247,34 @@ impl Parsed {
         let w = (self.size[0] as f32 * sx).ceil().max(1.0) as usize;
         let h = (self.size[1] as f32 * sy).ceil().max(1.0) as usize;
         let mut alpha = vec![0u8; w * h];
-        let mut shares = vec![Vec::new(); self.entries];
+        let mut shares: Vec<Share> = Vec::with_capacity(self.entries);
         for (g, tree) in self.trees.iter().enumerate() {
             let Some(mut pixmap) = tiny_skia::Pixmap::new(w as u32, h as u32) else { break };
             let view = tree.size();
             let t = tiny_skia::Transform::from_scale(sx * self.size[0] as f32 / view.width(), sy * self.size[1] as f32 / view.height());
             resvg::render(tree, t, &mut pixmap.as_mut());
-            let px = pixmap.pixels();
             if g == 0 {
-                for (a, p) in alpha.iter_mut().zip(px) {
-                    *a = p.alpha();
+                for (a, p) in alpha.iter_mut().zip(pixmap.data().chunks_exact(4)) {
+                    *a = p[3];
                 }
             }
             for c in 0..3 {
-                let k = 3 * g + c;
-                if k >= self.entries {
+                if 3 * g + c >= self.entries {
                     break;
                 }
-                shares[k] = px.iter().map(|p| [p.red(), p.green(), p.blue()][c]).collect();
+                let data = pixmap.data();
+                let v: Vec<u8> = data.iter().skip(c).step_by(4).copied().collect();
+                let (area, v) = cropped(&v, w, h);
+                shares.push(Share { area, v });
             }
         }
-        Raster { w, h, alpha, shares }
+        let (area, alpha) = cropped(&alpha, w, h);
+        Raster { w, h, area, alpha, shares }
+    }
+
+    /// The bytes a raster of it takes.
+    pub fn bytes(r: &Raster) -> usize {
+        r.alpha.len() + r.shares.iter().map(|s| s.v.len()).sum::<usize>()
     }
 }
 
