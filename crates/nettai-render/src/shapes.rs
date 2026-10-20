@@ -36,6 +36,15 @@ pub fn drawn(d: &Drawing, color: impl Fn(&Region) -> u16, (hflip, vflip): (bool,
     Drawn { regions, cells: None, off: None, hash }
 }
 
+/// Which of `d`'s frame pixels (row by row, its size) some region of it
+/// covers at their centers: where a picture standing in for it must still
+/// be (for what is drawn in front of or behind it), and nowhere else.
+pub fn coverage(d: &Drawing) -> Vec<bool> {
+    let (w, h) = (d.size[0] as usize, d.size[1] as usize);
+    let rings: Vec<Vec<Vec<[f32; 2]>>> = d.regions.iter().map(|r| r.rings()).collect();
+    (0..w * h).map(|i| rings.iter().any(|r| nettai_assets::shapes::inside(r, [(i % w) as f32 + 0.5, (i / w) as f32 + 0.5]))).collect()
+}
+
 /// Several drawings as one (each moved by its offset in frame pixels),
 /// filled in order.
 pub fn joined(parts: Vec<(Drawn, (f32, f32))>) -> Drawn {

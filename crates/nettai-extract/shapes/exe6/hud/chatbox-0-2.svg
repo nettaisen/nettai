@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
+<!-- The chatbox's box, the message box, its name's tab on its top edge at the right (opening, step 2 of 3): a dark blue outline with rounded corners, a light blue band inside it, the white ground the text is written on. -->
+<!-- The tab on the top edge: its outline, its left side slanting at 45 degrees -->
+<path d="M186.5 12.5 L190.261 8.269 A0.8 0.8 0 0 1 190.859 8 L235.5 8 A3.5 3.5 0 0 1 239 11.5 L239 20 L186.5 20 Z" fill="#086bc6" data-color="11"/>
+<!-- The outline -->
+<path d="M1 16 A4 4 0 0 1 5 12 L235 12 A4 4 0 0 1 239 16 L239 48 A4 4 0 0 1 235 52 L5 52 A4 4 0 0 1 1 48 Z" fill="#086bc6" data-color="11"/>
+<!-- The band inside the tab, the box's top edge running through it -->
+<path d="M188.6 12.5 L191.42 9.21 A0.6 0.6 0 0 1 191.876 9 L235.5 9 A2.5 2.5 0 0 1 238 11.5 L238 20 L188.6 20 Z" fill="#4abdf7" data-color="10"/>
+<!-- The band -->
+<path d="M2 16 A3 3 0 0 1 5 13 L235 13 A3 3 0 0 1 238 16 L238 48 A3 3 0 0 1 235 51 L5 51 A3 3 0 0 1 2 48 Z" fill="#4abdf7" data-color="10"/>
+<path d="M193 11.6 A0.6 0.6 0 0 1 193.6 11 L234.5 11 L234.5 13 L193.6 13 A0.6 0.6 0 0 1 193 12.4 Z" fill="#086bc6" data-color="11"/>
+<!-- The ground -->
+<path d="M4 16.5 A1.5 1.5 0 0 1 5.5 15 L234.5 15 A1.5 1.5 0 0 1 236 16.5 L236 47.5 A1.5 1.5 0 0 1 234.5 49 L5.5 49 A1.5 1.5 0 0 1 4 47.5 Z" fill="#f7fff7" data-color="1"/>
+</svg>
