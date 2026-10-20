@@ -80,6 +80,9 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         if let Some(c) = number_of(node, "data-stroke")? {
             add(palette, c);
         }
+        if let Some(c) = number_of(node, "data-stop-color")? {
+            add(palette, c);
+        }
         // (A clip's or a definition's shapes are drawn only through what
         // uses them.)
         let defined = node.ancestors().any(|n| matches!(n.tag_name().name(), "defs" | "clipPath" | "mask" | "symbol"));
@@ -89,7 +92,9 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         // (A shape's paint is a palette entry's or none, never its own.)
         let paint = |attr: &str, data: &str| -> Result<(), String> {
             let named = inherited(node, data)?.is_some();
-            let none = node.ancestors().filter(|n| n.is_element()).find_map(|n| n.attribute(attr)).is_some_and(|v| v.trim() == "none");
+            // (A gradient's paint is its stops', each a palette entry's:
+            // `data-stop-color`.)
+            let none = node.ancestors().filter(|n| n.is_element()).find_map(|n| n.attribute(attr)).is_some_and(|v| v.trim() == "none" || v.trim().starts_with("url("));
             let painted = node.ancestors().filter(|n| n.is_element()).any(|n| n.has_attribute(attr)) || attr == "fill";
             if painted && !named && !none {
                 return Err(format!("a {name} with no {data} ({attr}=\"none\" for none)"));
@@ -128,7 +133,7 @@ fn style(d: &Drawing, rgb: &dyn Fn(u8, u8) -> [u8; 3], crisp: bool) -> String {
     entries.sort_by_key(|&(p, _)| p != 0);
     for (p, c) in entries {
         let [r, g, b] = rgb(p, c);
-        for (data, paint) in [("data-color", "fill"), ("data-stroke", "stroke")] {
+        for (data, paint) in [("data-color", "fill"), ("data-stroke", "stroke"), ("data-stop-color", "stop-color")] {
             let rule = format!("{{ {paint}: #{r:02x}{g:02x}{b:02x} }}\n");
             if p == 0 {
                 s += &format!("[{data}=\"{c}\"] {rule}");
@@ -356,13 +361,14 @@ pub fn recolor(text: &str, view: &dyn Fn(u8, u8) -> u16) -> String {
         let palette = inherited(node, "data-palette").ok().flatten().unwrap_or(0);
         let fill = number_of(node, "data-color").ok().flatten().map(|c| ("fill", hex(palette, c)));
         let stroke = number_of(node, "data-stroke").ok().flatten().map(|c| ("stroke", hex(palette, c)));
-        if fill.is_none() && stroke.is_none() {
+        let stop = number_of(node, "data-stop-color").ok().flatten().map(|c| ("stop-color", hex(palette, c)));
+        if fill.is_none() && stroke.is_none() && stop.is_none() {
             continue;
         }
         let start = node.range().start;
         let Some(end) = start_tag_end(text, start) else { continue };
         let mut tag = text[start..end].to_string();
-        for (attr, value) in [fill, stroke].into_iter().flatten() {
+        for (attr, value) in [fill, stroke, stop].into_iter().flatten() {
             tag = set_attribute(&tag, attr, &value);
         }
         edits.push((start..end, tag));
