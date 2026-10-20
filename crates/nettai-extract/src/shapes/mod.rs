@@ -409,6 +409,7 @@ pub struct Views {
     picture: nettai_assets::Palette,
     form_name: nettai_assets::Palette,
     chatbox: nettai_assets::Palette,
+    chatbox_text: nettai_assets::Palette,
     frame: nettai_assets::Palette,
     other: nettai_assets::Palette,
 }
@@ -427,6 +428,7 @@ impl Views {
             form_cursor: c.form_list_cursor_palette,
             picture: c.pictures.ok.palette,
             chatbox: h.chatbox.palette,
+            chatbox_text: h.chatbox.text_palette,
             form_name: c.versioned.base.form_name_palettes.first().copied().unwrap_or_default(),
             frame: c.frame_palettes.first().copied().unwrap_or_default(),
             other: c.other_palette,
@@ -443,6 +445,7 @@ impl Views {
             "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => self.hp[k],
             "hud/navi-box" => self.navi[k],
             n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
+            n if n.starts_with("hud/chatbox-arrow") => self.chatbox_text[k],
             n if n.starts_with("hud/chatbox") => self.chatbox[k],
             n if n.starts_with("custom/cursor") || n.starts_with("custom/regular") => self.cursor[k],
             n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
@@ -582,6 +585,9 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
     if maps.iter().any(|(n, _)| sh.file(n).is_some()) {
         s.chatbox = map_drawings(&maps, sh);
     }
+    // Its key-wait arrow, its frames (2x2 tiles each).
+    let arrow: Vec<Option<Drawing>> = (0..g.arrow.len() / 4).map(|k| sh.tiles(&format!("hud/chatbox-arrow-{k}"), &g.arrow, 4 * k, 2, 2)).collect();
+    s.chatbox_arrow = all(arrow);
     (s, frame)
 }
 
