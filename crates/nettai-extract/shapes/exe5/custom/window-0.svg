@@ -1,36 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
-<!-- EXE5's custom window's frame (every cell the screen doesn't lay something in): a gray frame with dark holes down its left edge, a light groove round the chip window's frame, the chip window with rounded corners and its glare in three corners, the panel under it (its outline rounded at the top left, its top stepping down at the right), the bottom bar and the right frame, the column's housing with the orb's socket on top, the OK button. -->
+<!-- EXE5's custom window's frame (every cell the screen doesn't lay something in): a gray frame with dark holes down its left edge, a light groove round the chip window's frame, the chip window with its corners rounded as the pixels step round them and its glare in three corners, the panel under it (its outline cut at 45 degrees at the top left, its top stepping down at the right), the bottom bar and the right frame, the column's housing with the orb's socket on top (its bottom left corner cut at 45 degrees), the OK button. Square where the pixels are square. -->
 <!-- The gray frame -->
 <rect x="0" y="0" width="88" height="100" fill="#cecece" data-color="6" data-palette="9"/>
 <!-- The holes down the left edge: lit along their top and right edges -->
 <rect x="0" y="8" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 9 L1.4 9 A0.6 0.6 0 0 1 2 9.6 L2 14.4 A0.6 0.6 0 0 1 1.4 15 L0 15 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="9" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="9" width="1" height="5" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="0" y="24" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 25 L1.4 25 A0.6 0.6 0 0 1 2 25.6 L2 30.4 A0.6 0.6 0 0 1 1.4 31 L0 31 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="25" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="25" width="1" height="5" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="0" y="40" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 41 L1.4 41 A0.6 0.6 0 0 1 2 41.6 L2 46.4 A0.6 0.6 0 0 1 1.4 47 L0 47 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="41" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="41" width="1" height="5" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="0" y="56" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 57 L1.4 57 A0.6 0.6 0 0 1 2 57.6 L2 62.4 A0.6 0.6 0 0 1 1.4 63 L0 63 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="57" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="57" width="1" height="5" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="0" y="72" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 73 L1.4 73 A0.6 0.6 0 0 1 2 73.6 L2 78.4 A0.6 0.6 0 0 1 1.4 79 L0 79 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="73" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="73" width="1" height="5" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="0" y="88" width="2" height="1" fill="#adada5" data-color="7" data-palette="9"/>
-<path d="M0 89 L1.4 89 A0.6 0.6 0 0 1 2 89.6 L2 94.4 A0.6 0.6 0 0 1 1.4 95 L0 95 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="0" y="89" width="2" height="6" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="2" y="89" width="1" height="7" fill="#adada5" data-color="7" data-palette="9"/>
-<!-- The light groove round the chip window's frame, its corners rounded, two feet stepping down along its bottom -->
-<path d="M4 -1 L85 -1 L85 89 A3 3 0 0 1 82 92 L7 92 A3 3 0 0 1 4 89 Z M5 -1 L83 -1 L83 88.5 A1.5 1.5 0 0 1 81.5 90 L6.5 90 A1.5 1.5 0 0 1 5 88.5 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
+<!-- The light groove round the chip window's frame, its bottom corners cut at 45 degrees, two feet stepping down along its bottom -->
+<path d="M4 -1 L85 -1 L85 89.5 L82.5 92 L6.5 92 L4 89.5 Z M5 -1 L83 -1 L83 89 L82 90 L6 90 L5 89 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="11" y="90" width="2" height="1" fill="#cecece" data-color="6" data-palette="9"/>
-<path d="M11 91 L14 91 L14 92.4 A0.6 0.6 0 0 1 13.4 93 L11.6 93 A0.6 0.6 0 0 1 11 92.4 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
+<rect x="11" y="91" width="3" height="2" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="75" y="90" width="2" height="1" fill="#cecece" data-color="6" data-palette="9"/>
-<path d="M75 91 L78 91 L78 92.4 A0.6 0.6 0 0 1 77.4 93 L75.6 93 A0.6 0.6 0 0 1 75 92.4 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
-<!-- The chip window's frame: a light bevel -->
-<path d="M6 9 A3 3 0 0 1 9 6 L79 6 A3 3 0 0 1 82 9 L82 86 A3 3 0 0 1 79 89 L9 89 A3 3 0 0 1 6 86 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
-<!-- The chip window, its corners rounded -->
-<path d="M7 9 A2 2 0 0 1 9 7 L79 7 A2 2 0 0 1 81 9 L81 86 A2 2 0 0 1 79 88 L9 88 A2 2 0 0 1 7 86 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="75" y="91" width="3" height="2" fill="#adada5" data-color="7" data-palette="9"/>
+<!-- The chip window's frame: a light bevel, its corners rounded as the pixels step round them -->
+<path d="M6 8.2 A2.2 2.2 0 0 1 8.2 6 L79.8 6 A2.2 2.2 0 0 1 82 8.2 L82 86.8 A2.2 2.2 0 0 1 79.8 89 L8.2 89 A2.2 2.2 0 0 1 6 86.8 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
+<!-- The chip window -->
+<path d="M7 8.8 A1.8 1.8 0 0 1 8.8 7 L79.2 7 A1.8 1.8 0 0 1 81 8.8 L81 86.2 A1.8 1.8 0 0 1 79.2 88 L8.8 88 A1.8 1.8 0 0 1 7 86.2 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The glare: hugging the window's top left corner, tapering to a point along the top and down the side -->
 <path d="M16.5 8 H10.5 A2.5 2.5 0 0 0 8 10.5 V22.5 L8.401 21.229 L8.805 20.015 L9.211 18.859 L9.62 17.76 L10.031 16.719 L10.445 15.735 L10.861 14.809 L11.28 13.94 L11.701 13.129 L12.125 12.375 L12.551 11.679 L12.98 11.04 L13.411 10.459 L13.845 9.935 L14.281 9.469 L14.72 9.06 L15.161 8.709 L15.605 8.415 L16.051 8.179 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
 <!-- Its lit edge: a darker band along the outside of the corner, a lighter one in it, lightest in the corner -->
@@ -56,15 +56,15 @@
 <!-- The panel -->
 <rect x="0" y="100" width="88" height="54" fill="#f7ffff" data-color="1" data-palette="9"/>
 <rect x="0" y="100" width="4" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- Its outline -->
-<path d="M4 154 L4 99.5 A3.5 3.5 0 0 1 7.5 96 L63.586 96 A1 1 0 0 1 64.293 96.293 L67.707 99.707 A1 1 0 0 0 68.414 100 L88 100 L88 154 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<!-- Its outline, its top left corner cut at 45 degrees -->
+<path d="M4 154 L4 98.5 L6.5 96 L64 96 L68 100 L88 100 L88 154 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- A light shadow outside the step -->
 <path d="M64 96 L65.351 96 A0.6 0.6 0 0 1 65.776 96.176 L69.6 100 L68.249 100 A0.6 0.6 0 0 1 67.824 99.824 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
 <!-- A light edge along its top and its left, shaded inside the step -->
-<path d="M5 154 L5 99.5 A2.5 2.5 0 0 1 7.5 97 L63.151 97 A0.6 0.6 0 0 1 63.576 97.176 L67.224 100.824 A0.6 0.6 0 0 0 67.649 101 L88 101 L88 154 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
+<path d="M5 154 L5 98.9 L6.9 97 L63.4 97 L67.4 101 L88 101 L88 154 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
 <path d="M62.4 97 L63.234 97 A0.4 0.4 0 0 1 63.517 97.117 L67.4 101 L66.566 101 A0.4 0.4 0 0 1 66.283 100.883 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The light gray inside -->
-<path d="M6 154 L6 99.5 A1.5 1.5 0 0 1 7.5 98 L62.151 98 A0.6 0.6 0 0 1 62.576 98.176 L66.224 101.824 A0.6 0.6 0 0 0 66.649 102 L88 102 L88 154 Z" fill-rule="evenodd" fill="#e7e7ef" data-color="2" data-palette="9"/>
+<path d="M6 154 L6 99.3 L7.3 98 L62.4 98 L66.4 102 L88 102 L88 154 Z" fill-rule="evenodd" fill="#e7e7ef" data-color="2" data-palette="9"/>
 <!-- The groove down the left side, two notches beside it -->
 <rect x="4" y="102" width="1" height="51.4" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="0" y="134" width="4" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
@@ -97,16 +97,16 @@
 <path d="M87 4.5 A0.5 0.5 0 0 1 87.5 4 L87.5 4 A0.5 0.5 0 0 1 88 4.5 L88 7 L87 7 Z" fill-rule="evenodd" fill="#adada5" data-color="7" data-palette="9"/>
 <rect x="87" y="7" width="1" height="94" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The column's shadow on the panel: the housing's own shape a little lower, under it -->
-<path d="M88 12.75 A16 16 0 0 1 120 12.75 V105.25 A6 6 0 0 1 114 111.25 H94 A6 6 0 0 1 88 105.25 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The housing: its outline, round over the orb, flowing down into the column's sides -->
-<path d="M88 11.5 A16 16 0 0 1 120 11.5 V104 A6 6 0 0 1 114 110 H94 A6 6 0 0 1 88 104 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
+<path d="M88 12.75 A16 16 0 0 1 120 12.75 L120 12.75 L120 111.25 L93.4 111.25 L88 105.85 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The housing: its outline, round over the orb, flowing down into the column's sides, its bottom left corner cut at 45 degrees -->
+<path d="M88 11.5 A16 16 0 0 1 120 11.5 L120 11.5 L120 110 L93.4 110 L88 104.6 Z" fill-rule="evenodd" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- Its lighter line -->
-<path d="M89 11.5 A15 15 0 0 1 119 11.5 V104 A5 5 0 0 1 114 109 H94 A5 5 0 0 1 89 104 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M89 11.5 A15 15 0 0 1 119 11.5 L119 11.5 L119 104.186 L114.186 109 L93.814 109 L89 104.186 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- Its white band -->
-<path d="M90 11.5 A14 14 0 0 1 118 11.5 V104 A4 4 0 0 1 114 108 H94 A4 4 0 0 1 90 104 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
-<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded: every band of the bottom round one center, its curves starting where the cells above end, so each runs on from its straight side -->
-<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 104 A2 2 0 0 1 114 106 L94 106 A2 2 0 0 1 92 104 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M95 96 L113 96 L113 104 A1 1 0 0 1 112 105 L96 105 A1 1 0 0 1 95 104 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M90 11.5 A14 14 0 0 1 118 11.5 L118 11.5 L118 103.772 L113.772 108 L94.228 108 L90 103.772 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1" data-palette="9"/>
+<!-- The dark gray inside, its shoulders under the orb rounded, its bottom corners cut at 45 degrees as the housing's are -->
+<path d="M92 22.243 A3 3 0 0 1 92.879 20.121 L94.121 18.879 A3 3 0 0 1 96.243 18 L111.757 18 A3 3 0 0 1 113.879 18.879 L115.121 20.121 A3 3 0 0 1 116 22.243 L116 103 L112 107 L96 107 L92 103 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
+<rect x="95" y="96" width="18" height="9" fill="#292929" data-color="8" data-palette="9"/>
 <!-- The orb's socket, as wide as the art's, evenly lit: its blue-gray edge -->
 <circle cx="104" cy="11.5" r="12" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The inner gray ring, unbroken -->
