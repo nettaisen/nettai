@@ -3,9 +3,6 @@
 <!-- The panel -->
 <rect x="0" y="56" width="88" height="32" fill="#c6d6de" data-color="2" data-palette="9"/>
 <rect x="0" y="56" width="1" height="32" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The inner lines -->
-<polygon points="0,61.5 4,65.5 4,88 3,88 3,65.5 0,62.5" fill="#738ca5" data-color="4" data-palette="9"/>
-<polygon points="88,61.5 84,65.5 84,88 85,88 85,65.5 88,62.5" fill="#738ca5" data-color="4" data-palette="9"/>
 <!-- The box round the names -->
 <path d="M7 63 H81 V88 H7 Z M8 64 V88 H80 V64 Z" fill="#4a637b" data-color="5" data-palette="9"/>
 <!-- The window's bottom under the tab, its lines going on down -->
