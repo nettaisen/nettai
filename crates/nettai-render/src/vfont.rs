@@ -969,7 +969,11 @@ impl TextRenderer {
         let columns: Vec<i32> = (0..place.width).map(|dx| place.frame_pixel(place.x + dx, place.y).map_or(0, |p| p.0)).collect();
         let rows: Vec<i32> = (0..place.height).map(|dy| place.frame_pixel(place.x, place.y + dy).map_or(0, |p| p.1)).collect();
         let frame = FrameMap { x: place.x, y: place.y, columns: &columns, rows: &rows, cover };
-        for item in items {
+        // Back to front by depth, so one item in front of another covers it as the frame's own pixels do (the custom
+        // screen's window drawn as shapes over an HP number under it); items of one depth in the order given.
+        let mut order: Vec<&TextItem> = items.iter().collect();
+        order.sort_by_key(|item| std::cmp::Reverse(item.depth));
+        for item in order {
             self.draw_item(item, depth, place, &frame, out, out_w);
         }
     }
