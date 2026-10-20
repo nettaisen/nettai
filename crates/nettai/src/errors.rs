@@ -229,6 +229,9 @@ static OFFSET: OnceLock<chrono::FixedOffset> = OnceLock::new();
 pub fn log(doing: &str, said: &dyn std::fmt::Display) {
     let offset = OFFSET.get().copied().unwrap_or(chrono::FixedOffset::east_opt(0).expect("UTC"));
     let line = format!("{} {doing}: {said}\n", chrono::Utc::now().with_timezone(&offset).format("%Y-%m-%d %H:%M:%S"));
+    // (The browser's log is the page's console as well: its file is in the page's storage.)
+    #[cfg(target_arch = "wasm32")]
+    ::log::warn!(target: "nettai", "{doing}: {said}");
     let Ok(mut file) = LOG.lock() else { return };
     if file.is_none() {
         let path = crate::paths::log();
@@ -243,8 +246,10 @@ pub fn log(doing: &str, said: &dyn std::fmt::Display) {
 }
 
 /// What the libraries say through the `log` crate (gamepad-facade's warnings), into the same file.
+#[cfg(not(target_arch = "wasm32"))]
 struct Sink;
 
+#[cfg(not(target_arch = "wasm32"))]
 impl ::log::Log for Sink {
     fn enabled(&self, metadata: &::log::Metadata) -> bool {
         metadata.level() <= ::log::Level::Warn
@@ -263,6 +268,10 @@ impl ::log::Log for Sink {
 /// Send the libraries' warnings to the log file.
 pub fn catch_library_logs() {
     let _ = OFFSET.set(*chrono::Local::now().offset());
+    // (In the browser the libraries' go to the page's console, with the app's own: `log`.)
+    #[cfg(target_arch = "wasm32")]
+    let _ = console_log::init_with_level(::log::Level::Warn);
+    #[cfg(not(target_arch = "wasm32"))]
     if ::log::set_logger(&Sink).is_ok() {
         ::log::set_max_level(::log::LevelFilter::Warn);
     }

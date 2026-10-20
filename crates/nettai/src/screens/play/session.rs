@@ -54,6 +54,8 @@ pub enum Way {
 pub struct Net {
     pub server: Option<String>,
     pub config: Config,
+    // (The browser has no direct links: no port.)
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub port: u16,
 }
 

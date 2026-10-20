@@ -812,6 +812,9 @@ impl Shell {
 
     /// Copy `text` to the system's clipboard (an invite's code, an address).
     pub fn copy(&self, text: &str) {
+        // (The browser's clipboard isn't the app's yet.)
+        #[cfg(target_arch = "wasm32")]
+        let _ = text;
         #[cfg(not(target_arch = "wasm32"))]
         match arboard::Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
             Ok(()) => {}
@@ -826,7 +829,10 @@ impl Shell {
         #[cfg(not(target_arch = "wasm32"))]
         return rfd::FileDialog::new().add_filter(kind, extensions).pick_files().unwrap_or_default();
         #[cfg(target_arch = "wasm32")]
-        Vec::new()
+        {
+            let _ = (kind, extensions);
+            Vec::new()
+        }
     }
 
     /// Ask the player where to save a file named `name`, as [`Shell::choose_files`].
@@ -834,7 +840,10 @@ impl Shell {
         #[cfg(not(target_arch = "wasm32"))]
         return rfd::FileDialog::new().add_filter(kind, extensions).set_file_name(name).save_file();
         #[cfg(target_arch = "wasm32")]
-        None
+        {
+            let _ = (kind, extensions, name);
+            None
+        }
     }
 
     // ---- The window's scale ------------------------------------------------------------------------------
@@ -1108,12 +1117,14 @@ impl App {
     }
 
     /// Go to a screen at once (the screenshot pass, and the development variables).
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn go_now(&mut self, to: ScreenId) {
         self.shell.go(to);
         self.settle();
     }
 
     /// Call the screen shown (the screenshot pass sets a screen up through its own module).
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn with_screen(&mut self, id: ScreenId, f: impl FnOnce(&mut dyn Screen, &mut Shell)) {
         self.call(id, f);
         self.settle();
@@ -1181,9 +1192,20 @@ impl App {
     /// from it; one that doesn't is said, and nothing is kept.
     fn choose_source(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
-        let Some(folder) = rfd::FileDialog::new().pick_folder() else { return };
+        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+            self.source_chosen(folder);
+        }
+        // (The browser's folder dialog answers later: its archives are read into the page's files first.)
         #[cfg(target_arch = "wasm32")]
-        let Some(folder) = None::<std::path::PathBuf> else { return };
+        crate::web::choose_collection(|folder| {
+            if let Some(folder) = folder {
+                crate::with_app(|app| app.source_chosen(folder));
+            }
+        });
+    }
+
+    /// The Legacy Collection's folder chosen: kept and extracted from if it holds the collection, else said.
+    fn source_chosen(&mut self, folder: std::path::PathBuf) {
         let extracting = match crate::bnlc::Install::at(&folder) {
             Some(install) => self.shell.games.found(install),
             None => 0,

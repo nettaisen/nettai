@@ -54,6 +54,10 @@ pub const DECLARATIONS: &str = packs::ENGINE;
 /// repository). A packaged build that finds none names the one beside the
 /// program, so that the error says where it looked.
 pub fn content() -> PathBuf {
+    // (In the browser, the content the page put in its files: crates/nettai-web.)
+    if cfg!(target_arch = "wasm32") {
+        return PathBuf::from("/content");
+    }
     if let Some(dir) = std::env::var_os("NETTAI_CONTENT") {
         return PathBuf::from(dir);
     }

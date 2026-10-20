@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nettai</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0b0b12; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  #said { position: fixed; inset: 0; display: none; place-items: center; padding: 16px; font: 16px/1.5 system-ui, sans-serif; color: #e8e6f0; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="said"></div>
+<script type="module">
+// The nettai app in a browser (crates/nettai-web). Before it starts: the files the page keeps (the app's data
+// folder, in the origin private file system) are put in the app's files, and the content's archive is fetched.
+// After: what changed in the data folder is written back, in order, a few times a second.
+import init, * as nettai from "./nettai_web.js";
+
+const shim = new URL("./nettai_web.js", import.meta.url).href;
+// (The app's threads load the same module: nettai-thread asks this.)
+globalThis.nettaiShim = shim;
+
+function say(text) {
+  const said = document.getElementById("said");
+  said.textContent = text;
+  said.style.display = "grid";
+}
+
+// The files kept, each put in the data folder at its path there.
+async function load(dir, prefix) {
+  for await (const [name, handle] of dir.entries()) {
+    const path = prefix + name;
+    if (handle.kind === "directory") {
+      await load(handle, path + "/");
+    } else {
+      nettai.preload(path, new Uint8Array(await (await handle.getFile()).arrayBuffer()));
+    }
+  }
+}
+
+// The folder at `parts` in the kept files (made, if `make`); null if it isn't there.
+async function folder(root, parts, make) {
+  let dir = root;
+  for (const part of parts) {
+    try {
+      dir = await dir.getDirectoryHandle(part, { create: make });
+    } catch (e) {
+      if (e.name === "NotFoundError" || e.name === "TypeMismatchError") return null;
+      throw e;
+    }
+  }
+  return dir;
+}
+
+// What changed, written to the kept files in order.
+async function keep(root, changes) {
+  for (const [kind, path, bytes] of changes) {
+    const parts = path.split("/").filter(Boolean);
+    const name = parts.pop();
+    if (kind === "write") {
+      const dir = await folder(root, parts, true);
+      const file = await dir.getFileHandle(name, { create: true });
+      const writable = await file.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+    } else {
+      const dir = await folder(root, parts, false);
+      if (!dir) continue;
+      try {
+        await dir.removeEntry(name, { recursive: true });
+      } catch (e) {
+        if (e.name !== "NotFoundError") throw e;
+      }
+    }
+  }
+}
+
+async function main() {
+  if (!crossOriginIsolated) {
+    return say("This page must be served cross-origin isolated (COOP and COEP headers) for its threads: crates/nettai-web/serve.py does.");
+  }
+  if (!navigator.storage?.getDirectory) {
+    return say("This browser has no origin private file system, where nettai keeps its files.");
+  }
+  await init({ module_or_path: new URL("./nettai_web_bg.wasm", import.meta.url) });
+  const root = await navigator.storage.getDirectory();
+  // (Kept, not cleared when the browser is short of room, where it allows.)
+  navigator.storage.persist?.();
+  const [content] = await Promise.all([
+    fetch("./content.tar").then((r) => {
+      if (!r.ok) throw new Error(`content.tar: ${r.status}`);
+      return r.arrayBuffer();
+    }),
+    load(root, ""),
+  ]);
+
+  let writing = Promise.resolve();
+  setInterval(() => {
+    const changes = nettai.changes();
+    if (changes.length) {
+      writing = writing.then(() => keep(root, changes)).catch((e) => console.error("nettai: keeping its files:", e));
+    }
+  }, 250);
+
+  try {
+    nettai.start(new Uint8Array(content));
+  } catch (e) {
+    // (winit leaves its start by an exception, its loop then the page's.)
+    if (!String(e?.message ?? e).includes("Using exceptions for control flow")) throw e;
+  }
+}
+
+main().catch((e) => {
+  console.error(e);
+  say(`nettai couldn't start: ${e?.message ?? e}`);
+});
+</script>
+</body>
+</html>

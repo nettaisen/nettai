@@ -28,6 +28,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// Vol. 2's Steam app id (Tango's `Volume::Vol2`).
+#[cfg(not(target_arch = "wasm32"))]
 const STEAM_APP_ID: u32 = 1798020;
 
 /// An install of the collection: the folder its archives are in, and the per-game archives.
@@ -88,6 +89,10 @@ impl Install {
 /// The collection's folder as Steam has it installed, if it is: in the first Steam found that has it. (No Steam
 /// is nothing gone wrong.)
 fn steam() -> Option<PathBuf> {
+    // (The browser can't look for Steam: the player chooses the folder.)
+    #[cfg(target_arch = "wasm32")]
+    return None;
+    #[cfg(not(target_arch = "wasm32"))]
     steamlocate::locate_all().ok()?.into_iter().find_map(|steam| {
         let (app, library) = steam.find_app(STEAM_APP_ID).map_err(|e| crate::errors::log("finding the Legacy Collection in Steam", &e)).ok().flatten()?;
         Some(library.resolve_app_dir(&app))

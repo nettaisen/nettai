@@ -102,7 +102,7 @@ pub enum BattleEvent {
     /// The replay asked for is ready to watch: its viewer, which is the owner's from here.
     Watching(Box<Viewer>),
     /// The set is over: how it went for this player (none: nobody's).
-    Finished(Option<BattleResult>),
+    Finished(#[cfg_attr(not(feature = "tour"), allow(dead_code))] Option<BattleResult>),
     /// It stopped without ending: why, as a player can be told it (`UserError::of_stop`). The detail is in
     /// the log.
     Stopped(StopReason),
@@ -572,6 +572,7 @@ impl Shell {
     /// A recorder of an offline set to a new file in the replays folder, this player on `side`, both players'
     /// names by side. None if the file can't be made (why is in the log). (An online match is recorded from
     /// its agreement: the library's `Recorder::of_agreement`.)
+    #[cfg_attr(not(feature = "tour"), allow(dead_code))]
     pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str, side: u8, names: [String; 2]) -> Option<Recorder> {
         use nettai_frontend::replay::Info;
         let dir = crate::paths::replays();
