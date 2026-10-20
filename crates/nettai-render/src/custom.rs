@@ -362,10 +362,10 @@ impl<'a> View<'a> {
     /// (EXE6's Beast Out button's fourth; EXE5's soul button has none: the
     /// window's fill, as its handler for no special button copies nothing
     /// in, 0x080240D8).
-    fn hidden_special(&self) -> Option<(&'a ButtonPictures, usize)> {
+    fn hidden_special(&self) -> Option<(&'a ButtonPictures, usize, String)> {
         self.b.content.defs.buttons.iter().filter(|d| d.slot == SPECIAL_SLOT).find_map(|d| {
             let pack = crate::lookups::button_of(self.assets, self.buttons, &d.name)?;
-            Some((pack, pack.hidden? as usize))
+            Some((pack, pack.hidden? as usize, d.name.clone()))
         })
     }
 }
@@ -901,7 +901,7 @@ impl Window {
                 for item in crate::shapes::words(&shown, |p, c| palettes[p as usize & 15][c as usize & 15], text, &v.b.content, problems) {
                     self.labels.push((0, 0, COLUMNS, item));
                 }
-                let mut d = crate::shapes::drawn(&part.drawing, |r| palettes[r.palette as usize & 15][r.color as usize & 15], (false, false), None);
+                let mut d = crate::shapes::drawn(&part.drawing, |p, c| palettes[p as usize & 15][c as usize & 15], (false, false), None);
                 d.cells = Some(cells);
                 self.shapes.push((0, 0, COLUMNS, crate::shapes::item(d, (0, 0), (8 * COLUMNS as i32, 8 * ROWS as i32))));
             }
@@ -914,7 +914,7 @@ impl Window {
                     continue;
                 }
                 let palette = self.palettes[self.map[y * COLUMNS + x].palette as usize & 15];
-                let d = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                let d = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
                 self.shapes.push((x, y, 2, crate::shapes::item(d, (0, 0), (16, 16))));
                 for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                     self.drawn_cells[(y + dy) * COLUMNS + x + dx] = true;
@@ -935,7 +935,7 @@ impl Window {
                 item.rect = item.rect.offset(8 * block.col as i32, 8 * block.row as i32);
                 self.labels.push((0, 0, COLUMNS, item));
             }
-            let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+            let drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
             self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
             for c in block.col..block.col + block.w {
                 for r in block.row..block.row + block.h {
@@ -948,7 +948,7 @@ impl Window {
             for first in std::mem::take(&mut self.blank_plates) {
                 let Some(block) = self.block(first..first + 2) else { continue };
                 let palette = self.palettes[block.palette as usize & 15];
-                let d = crate::shapes::drawn(plate, |r| palette[r.color as usize & 15], (false, false), None);
+                let d = crate::shapes::drawn(plate, |_, c| palette[c as usize & 15], (false, false), None);
                 self.shapes.push((block.col, block.row, block.w, crate::shapes::item(d, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
                 for c in block.col..block.col + block.w {
                     for r in block.row..block.row + block.h {
@@ -966,7 +966,7 @@ impl Window {
                     let e = self.map[row * COLUMNS + x];
                     let Some(k) = e.tile.checked_sub(self.layout.column_cells).map(|k| k as usize / 2).filter(|&k| k < 2) else { continue };
                     let palette = self.palettes[e.palette as usize & 15];
-                    let d = crate::shapes::drawn(&a.shapes.column_cells[k], |r| palette[r.color as usize & 15], (e.hflip, e.vflip), None);
+                    let d = crate::shapes::drawn(&a.shapes.column_cells[k], |_, c| palette[c as usize & 15], (e.hflip, e.vflip), None);
                     self.shapes.push((x, row, 1, crate::shapes::item(d, (0, 0), (8, 16))));
                     self.drawn_cells[row * COLUMNS + x] = true;
                     self.drawn_cells[(row + 1) * COLUMNS + x] = true;
@@ -1026,7 +1026,7 @@ impl Window {
             // (A slot's code's plate drawn as shapes, where the pack has
             // its drawing, under the letter.)
             if let Some(plate) = a.shapes.slot_code.as_ref().filter(|_| slot && text.draws_shapes()) {
-                let d = crate::shapes::drawn(plate, |r| palette[r.color as usize & 15], (false, false), None);
+                let d = crate::shapes::drawn(plate, |_, c| palette[c as usize & 15], (false, false), None);
                 self.shapes.push((block.col, block.row, block.w, crate::shapes::item(d, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
                 for c in block.col..block.col + block.w {
                     for r in block.row..block.row + block.h {
@@ -1100,7 +1100,7 @@ impl Window {
                     }
                     (w, off)
                 });
-                let mut drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                let mut drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
                 drawn.off = off;
                 // (Its cells' tiles drawn still, for the portrait.)
                 self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (w as i32, h as i32))));
@@ -1593,13 +1593,19 @@ impl Window {
                 // (The special slot's button's hidden look, if it has one;
                 // else the window's fill, as a hidden slot's.)
                 SlotKind::Hidden if s as u8 == SPECIAL_SLOT => match v.hidden_special() {
-                    Some((b, set)) => match b.place {
-                        Some(p) => self.placed_button(b, p, set),
-                        None => {
-                            let n = b.width as usize * b.height as usize;
-                            self.tiles.put_part(at, &b.tiles, n * set, n)
+                    Some((b, set, name)) => {
+                        let n = b.width as usize * b.height as usize;
+                        match b.place {
+                            Some(p) => {
+                                self.placed_button(b, p, set);
+                                self.buttons_laid.push((p.first_tile, n, name, set));
+                            }
+                            None => {
+                                self.tiles.put_part(at, &b.tiles, n * set, n);
+                                self.buttons_laid.push((at, n, name, set));
+                            }
                         }
-                    },
+                    }
                     None => self.tiles.fill(at, 6, self.layout.slot_blank),
                 },
                 SlotKind::Hidden => {
@@ -1899,7 +1905,7 @@ impl Window {
             let own = format!("{name}-{}", v.hud.language());
             let find = |n: &str| v.assets.shapes.pictures.iter().find(|(k, _)| k == n).map(|(_, d)| d);
             if let Some(d) = find(&own).or_else(|| find(name)).filter(|d| [8 * block.w, 8 * block.h] == [d.size[0] as usize, d.size[1] as usize]) {
-                let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None);
+                let drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
                 self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
                 for c in block.col..block.col + block.w {
                     for r in block.row..block.row + block.h {
@@ -2054,7 +2060,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let mut col = 0x1D - cells as i32;
     let drawn = (text.draws_shapes() && v.assets.shapes.name_bar.len() >= 2).then_some(&v.assets.shapes.name_bar);
     let piece = |text: &mut TextSink, d: &nettai_assets::shapes::Drawing, col: i32| {
-        let item = crate::shapes::item(crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (false, false), None), (layer_x(col, 0), 0), (8, 16));
+        let item = crate::shapes::item(crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None), (layer_x(col, 0), 0), (8, 16));
         text.push(Plane::Hud, item);
     };
     if len < ENEMY_NAME_CELLS {
@@ -2204,7 +2210,7 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
                 let (x, y) = (part.x as i32, part.y as i32);
                 let (x, y) = (if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y });
                 let palette = part.palette;
-                let drawn = crate::shapes::drawn(d, |r| palette[r.color as usize & 15], (part.hflip, part.vflip), None);
+                let drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (part.hflip, part.vflip), None);
                 text.push(Plane::Sprite(tag), crate::shapes::item(drawn, (x, y), (part.width as i32, part.height as i32)));
                 SpritePart { tiles: &BLANK_TILES, first_tile: 0, ..part }
             }

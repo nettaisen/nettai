@@ -667,7 +667,7 @@ pub fn draw<'a>(
         let lettered = hp_box_number(hud, pal, shown, (shift + 8, 0), text, problems);
         let drawn = hud.shapes.hp_box.as_ref().filter(|_| lettered.is_some() && text.draws_shapes());
         match drawn {
-            Some(d) => text.push(Plane::Hud, crate::shapes::item(crate::shapes::drawn(d, |r| pal[r.color as usize & 15], (false, false), None), (shift, 0), (48, 16))),
+            Some(d) => text.push(Plane::Hud, crate::shapes::item(crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (false, false), None), (shift, 0), (48, 16))),
             None => {
                 for (i, &e) in hud.hp_box.iter().enumerate() {
                     put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
@@ -688,7 +688,7 @@ pub fn draw<'a>(
     // Custom gauge, top center.
     if custom_gauge && gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
-        let color = |r: &nettai_assets::shapes::Region| pal[r.color as usize & 15];
+        let color = |_: u8, c: u8| pal[c as usize & 15];
         // In the enhanced mode the frame's word in the lettering font, in
         // its look, its cells with their letters taken off (their plate);
         // and the frame and its cells drawn as shapes where the pack has
@@ -1087,7 +1087,7 @@ pub fn draw<'a>(
                     f.shadow = f.shadow.map(|_| 0);
                 }
                 if let Some(d) = item.drawn.as_mut() {
-                    d.regions.iter_mut().for_each(|r| r.1 = 0);
+                    d.pieces.iter_mut().for_each(|p| p.colors.iter_mut().for_each(|c| *c = 0));
                     d.hash = d.hash.wrapping_add(1);
                 }
             }
@@ -1124,7 +1124,7 @@ pub fn draw<'a>(
                 let (x, y) = (layout.x as i32, layout.y as i32);
                 let vscale = Some(banner_scale(&b.banner));
                 let clip = Rect::new(x, 0, 160, crate::compose::HEIGHT as i32);
-                let d = crate::shapes::drawn(logo, |r| h.banner_palette[r.color as usize & 15], (false, false), None);
+                let d = crate::shapes::drawn(logo, |_, c| h.banner_palette[c as usize & 15], (false, false), None);
                 let item = TextItem { vscale, ..crate::shapes::item(d, (x, y), (logo.size[0] as i32, logo.size[1] as i32)) };
                 words = vec![TextItem { clip, ..item }];
                 // (Its words on it, as text, squashed with it.)
@@ -1577,7 +1577,7 @@ static BLANK_BOX: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles
 fn box_part<'a>(drawing: Option<&nettai_assets::shapes::Drawing>, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> SpritePart<'a> {
     match drawing.filter(|_| text.draws_shapes()) {
         Some(d) => {
-            items.push(crate::shapes::item(crate::shapes::drawn(d, |r| pal[r.color as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
             block(&BLANK_BOX, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y)
         }
         None => block(tiles, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y),
@@ -1593,7 +1593,7 @@ fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pal
     let apart = face_hud.mugshot_frame.as_ref().and_then(|f| f.face(number));
     match (ring, apart) {
         (Some(d), Some((color, face))) => {
-            items.push(crate::shapes::item(crate::shapes::drawn(d, |_| pal[color as usize & 15], (false, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (false, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
             face
         }
         _ => tiles,
@@ -1979,7 +1979,7 @@ fn lettered_banner(
     // has none), squashed with them.
     items.first()?;
     if let Some(bar) = &layout.bar {
-        let d = crate::shapes::drawn(bar, |r| pal[r.color as usize & 15], (false, false), None);
+        let d = crate::shapes::drawn(bar, |_, c| pal[c as usize & 15], (false, false), None);
         items.insert(0, TextItem { vscale, ..crate::shapes::item(d, (x, y), (160, 16)) });
     }
     // Every item cut to the banner's box.

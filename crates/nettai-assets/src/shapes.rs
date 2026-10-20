@@ -11,16 +11,17 @@
 
 use crate::Tiles;
 
-/// A picture as shapes: its size in frame pixels, its regions, one color
-/// each, filled one over another in order, the words written on it (over
-/// its regions), and the SVG file it was read from (kept as drawn, to write
-/// into a pack).
+/// A picture as shapes: its size in frame pixels, the SVG file it is (its
+/// shapes drawn one over another as SVG draws them, each naming its color
+/// as a palette entry: nettai-content's `shapes`), the palette entries its
+/// shapes name (palette row, index; each once, in the file's order), and
+/// the words written on it (over its shapes).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Drawing {
     pub size: [u16; 2],
-    pub regions: Vec<Region>,
+    pub source: std::sync::Arc<str>,
+    pub colors: Vec<(u8, u8)>,
     pub words: Vec<Words>,
-    pub source: String,
 }
 
 /// Words written on a drawing, as text in a lettering font (the picture's
@@ -45,116 +46,9 @@ pub struct Words {
 }
 
 impl Drawing {
-    /// Its points' unit, over a frame pixel (their coordinates are whole
-    /// numbers of it).
+    /// The words' boxes' unit, over a frame pixel (their coordinates are
+    /// whole numbers of it).
     pub const UNIT: f32 = 64.0;
-}
-
-impl Region {
-    /// Its rings as points in frame pixels, its arcs in short lines (a
-    /// tenth of a radian or less each).
-    pub fn rings(&self) -> Vec<Vec<[f32; 2]>> {
-        let u = Drawing::UNIT;
-        let f = |p: [i32; 2]| [p[0] as f32 / u, p[1] as f32 / u];
-        let mut out: Vec<Vec<[f32; 2]>> = Vec::new();
-        let mut at = [0.0f32; 2];
-        for step in &self.path {
-            match *step {
-                Step::Move(p) => {
-                    at = f(p);
-                    out.push(vec![at]);
-                }
-                Step::Line(p) => {
-                    at = f(p);
-                    if let Some(r) = out.last_mut() {
-                        r.push(at);
-                    }
-                }
-                Step::Arc { radius, large, sweep, to } => {
-                    let to = f(to);
-                    let r = radius as f32 / u;
-                    let points = arc_points(at, to, r, large, sweep);
-                    if let Some(ring) = out.last_mut() {
-                        ring.extend(points);
-                    }
-                    at = to;
-                }
-                Step::Close => {}
-            }
-        }
-        out
-    }
-}
-
-/// An SVG arc's points from `a` (left out) to `b` (in): of radius `r` (at
-/// least half the chord), the larger arc or not, turning the way of
-/// increasing angles or not.
-fn arc_points(a: [f32; 2], b: [f32; 2], r: f32, large: bool, sweep: bool) -> Vec<[f32; 2]> {
-    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
-    let h = (dx * dx + dy * dy).sqrt() / 2.0;
-    if h < 1e-6 {
-        return vec![b];
-    }
-    let r = r.max(h);
-    let d = (r * r - h * h).max(0.0).sqrt();
-    let (mx, my) = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0);
-    let (ux, uy) = (-dy / (2.0 * h), dx / (2.0 * h));
-    let sign = if large != sweep { 1.0 } else { -1.0 };
-    let (cx, cy) = (mx + sign * d * ux, my + sign * d * uy);
-    let a0 = (a[1] - cy).atan2(a[0] - cx);
-    let mut a1 = (b[1] - cy).atan2(b[0] - cx);
-    let tau = std::f32::consts::TAU;
-    if sweep && a1 < a0 {
-        a1 += tau;
-    }
-    if !sweep && a1 > a0 {
-        a1 -= tau;
-    }
-    let steps = ((a1 - a0).abs() / 0.1).ceil().max(1.0) as usize;
-    let mut out: Vec<[f32; 2]> = (1..steps).map(|k| a0 + (a1 - a0) * k as f32 / steps as f32).map(|t| [cx + r * t.cos(), cy + r * t.sin()]).collect();
-    out.push(b);
-    out
-}
-
-/// Whether point `p` is inside rings `rings` (even-odd).
-pub fn inside(rings: &[Vec<[f32; 2]>], p: [f32; 2]) -> bool {
-    let mut odd = false;
-    for ring in rings {
-        let n = ring.len();
-        for i in 0..n {
-            let (a, b) = (ring[i], ring[(i + 1) % n]);
-            if (a[1] > p[1]) != (b[1] > p[1]) {
-                let x = a[0] + (p[1] - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
-                if x > p[0] {
-                    odd = !odd;
-                }
-            }
-        }
-    }
-    odd
-}
-
-/// A region of a drawing: its color (a palette index; of the palette row
-/// `palette` where the picture is laid in several, a map's) and its
-/// outline, a path in `Drawing::UNIT`s of a frame pixel from the
-/// drawing's top left, filled even-odd.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Region {
-    pub palette: u8,
-    pub color: u8,
-    pub path: Vec<Step>,
-}
-
-/// A step of a path, as SVG's: to a point, a straight line to it, an arc of
-/// a circle to it (its radius, whether it is the larger of the two arcs,
-/// whether it turns the way of increasing angles: clockwise on the screen),
-/// and closing the ring.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Step {
-    Move([i32; 2]),
-    Line([i32; 2]),
-    Arc { radius: i32, large: bool, sweep: bool, to: [i32; 2] },
-    Close,
 }
 
 /// A map's frame as shapes: drawings (each the map's size, its top left
