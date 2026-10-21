@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1152" height="128" viewBox="0 0 144 16">
-<!-- The custom gauge's frame (its word off, its fill's cells laid over its middle): a bar with pointed ends sloping 2:1, its outline a line a pixel wide along the top and three pixels wide across each end, a light dash in each end's tip. -->
-<polygon points="6,6 138,6 144,9 144,13 138,16 6,16 0,13 0,9" fill="#39526b" data-color="12"/>
-<polygon points="7,7 137,7 143,10 143,12 137,15 7,15 1,12 1,10" fill="#292929" data-color="2"/>
+<!-- The custom gauge's frame (its word off, its fill's cells laid over its middle): a bar with pointed ends sloping 2:1, its outline a line a pixel wide all round (along the top, down each slope, across each tip), a light dash in each end's tip. -->
+<!-- The outline, a pixel wide all round: along the top, down each end's point (sloping 2:1) and across its tip -->
+<path d="M6 6 L138 6 L144 9 L144 13 L138 16 L6 16 L0 13 L0 9 Z" fill="#39526b" data-color="12"/>
+<!-- The dark inside -->
+<path d="M6.236 7 L137.764 7 L143 9.618 L143 12.382 L137.764 15 L6.236 15 L1 12.382 L1 9.618 Z" fill="#292929" data-color="2"/>
+<!-- A light dash in each end's tip -->
 <rect x="2" y="10" width="5" height="2" fill="#7b9cde" data-color="7"/>
 <rect x="137" y="10" width="5" height="2" fill="#7b9cde" data-color="7"/>
 </svg>

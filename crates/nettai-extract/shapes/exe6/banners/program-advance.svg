@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
 <!-- The Program Advance banner's logo (English): a green arrow pointing right, its words over it in italic letters, white with a dark outline, drawn as text. -->
-<!-- The green arrow pointing right: its dark edge, its light face -->
-<path d="M0.785 7.785 A0.8 0.8 0 0 1 0.993 6.504 L6 4 L16 2 L82 2 L90.916 7.35 A0.8 0.8 0 0 1 90.948 8.701 L80 16 L8 16 L2 12.5 L2 9 Z" fill-rule="evenodd" fill="#00b539" data-color="10"/>
-<path d="M2.365 7.494 A0.6 0.6 0 0 1 2.665 6.767 L7 4.6 L16.4 3 L81.6 3 L89.009 7.517 A0.6 0.6 0 0 1 89.036 8.524 L79.6 15 L8.6 15 L3 12 L3 9.4 Z" fill-rule="evenodd" fill="#00ff52" data-color="11"/>
+<!-- The green arrow pointing right: its dark edge a pixel wide all round, its light face; its point and its tail's upper edge sloping 2:1, the tail's lower edge 45 degrees, all as the art -->
+<path d="M9 2 L81 2 L93 8 L77 16 L8.5 16 L0 7.5 L0 6.5 Z" fill="#00b539" data-color="10"/>
+<path d="M9.236 3 L80.764 3 L90.764 8 L76.764 15 L8.914 15 L1 7.086 L1 7.118 Z" fill="#00ff52" data-color="11"/>
 <!-- The words, italic: white, a dark outline -->
 <text data-words="logo.program-advance" data-box="3 1 77 12" fill="#f7ffff" data-color="1" data-rim="6" data-slant="0.5" data-font="lettering" x="3" y="13" font-size="16" textLength="77">PrgAdvance</text>
 </svg>

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 8 16">
-<!-- The picked chips' column's cell (filled): its frame's bands down the left, its strip on the right with two sprocket holes, each a rounded slot lit over its upper part, its lit edge curving, shaded below. (The right cell is this one mirrored.) -->
+<!-- The picked chips' column's cell (filled): its frame's bands down the left, its strip on the right with two sprocket holes, each square, lit over its upper two rows, shaded below. (The right cell is this one mirrored.) -->
 <rect x="0" y="0" width="1" height="16" fill="#738ca5" data-color="4"/>
 <rect x="1" y="0" width="1" height="16" fill="#9cadbd" data-color="3"/>
 <rect x="2" y="0" width="2" height="16" fill="#eff7ff" data-color="1"/>
@@ -7,8 +7,8 @@
 <rect x="5" y="0" width="3" height="16" fill="#292929" data-color="8"/>
 <rect x="5" y="0" width="2" height="2" fill="#4a637b" data-color="5"/>
 <rect x="5" y="14" width="2" height="2" fill="#4a637b" data-color="5"/>
-<rect x="5" y="5" width="2" height="3" rx="0.8" fill="#738ca5" data-color="4"/>
-<path d="M5 5.8 A0.8 0.8 0 0 1 5.8 5 H6.2 A0.8 0.8 0 0 1 7 5.8 V6.6 Q6 7.3 5 6.6 Z" fill="#9cadbd" data-color="3"/>
-<rect x="5" y="8" width="2" height="3" rx="0.8" fill="#738ca5" data-color="4"/>
-<path d="M5 8.8 A0.8 0.8 0 0 1 5.8 8 H6.2 A0.8 0.8 0 0 1 7 8.8 V9.6 Q6 10.3 5 9.6 Z" fill="#9cadbd" data-color="3"/>
+<rect x="5" y="5" width="2" height="3" fill="#738ca5" data-color="4"/>
+<rect x="5" y="5" width="2" height="2" fill="#9cadbd" data-color="3"/>
+<rect x="5" y="8" width="2" height="3" fill="#738ca5" data-color="4"/>
+<rect x="5" y="8" width="2" height="2" fill="#9cadbd" data-color="3"/>
 </svg>

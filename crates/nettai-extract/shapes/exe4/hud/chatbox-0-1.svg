@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box (opening, step 1 of 3): a dark outline with rounded corners, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on. -->
-<!-- The tab for the name: its outline, its right side slanting -->
-<path d="M2 21 L2 14.5 A1.5 1.5 0 0 1 3.5 13 L44.764 13 A1 1 0 0 1 45.211 13.106 L53 17 L53 21 Z" fill-rule="evenodd" fill="#006bbd" data-color="13"/>
-<!-- The outline -->
-<path d="M2 19 A2 2 0 0 1 4 17 L236 17 A2 2 0 0 1 238 19 L238 45 A2 2 0 0 1 236 47 L4 47 A2 2 0 0 1 2 45 Z" fill-rule="evenodd" fill="#006bbd" data-color="13"/>
-<!-- The band inside the tab -->
-<path d="M4 20 L4 15.6 A0.6 0.6 0 0 1 4.6 15 L43.858 15 A0.6 0.6 0 0 1 44.127 15.063 L52 19 L52 20 Z" fill-rule="evenodd" fill="#94cee7" data-color="12"/>
-<!-- The band -->
-<path d="M4 20 A1 1 0 0 1 5 19 L235 19 A1 1 0 0 1 236 20 L236 44 A1 1 0 0 1 235 45 L5 45 A1 1 0 0 1 4 44 Z" fill-rule="evenodd" fill="#94cee7" data-color="12"/>
+<!-- The chatbox's box, the message box (opening, step 1 of 3): a dark outline, its corners cut 45 degrees, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on, each cut parallel to the outline's. -->
+<!-- The tab for the name: its outline two pixels wide, its top left corner cut as the box's, its right side slanting 2:1 -->
+<path d="M2 14.5 L3.5 13 L44 13 L52 17 L52 19 L2 19 Z" fill="#006bbd" data-color="13"/>
+<!-- The outline, two pixels wide, its corners cut 45 degrees (as the art steps them) -->
+<path d="M2 18.5 L3.5 17 L236.5 17 L238 18.5 L238 45.5 L236.5 47 L3.5 47 L2 45.5 Z" fill="#006bbd" data-color="13"/>
+<!-- The band inside the tab: the outline two pixels in, its cuts parallel -->
+<path d="M4 15.328 L4.328 15 L43.528 15 L53.528 20 L4 20 Z" fill="#94cee7" data-color="12"/>
+<!-- The band, a pixel wide -->
+<path d="M4 19.328 L4.328 19 L235.672 19 L236 19.328 L236 44.672 L235.672 45 L4.328 45 L4 44.672 Z" fill="#94cee7" data-color="12"/>
 <!-- The ground -->
-<path d="M5 20.5 A0.5 0.5 0 0 1 5.5 20 L234.5 20 A0.5 0.5 0 0 1 235 20.5 L235 43.5 A0.5 0.5 0 0 1 234.5 44 L5.5 44 A0.5 0.5 0 0 1 5 43.5 Z" fill-rule="evenodd" fill="#f7fff7" data-color="11"/>
+<path d="M5 20 L235 20 L235 44 L5 44 Z" fill="#f7fff7" data-color="11"/>
 </svg>

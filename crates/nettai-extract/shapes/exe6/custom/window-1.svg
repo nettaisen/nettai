@@ -1,108 +1,82 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
-<!-- The custom window's frame, with the Cross tab (every cell the screen doesn't lay something in; another window map uses this drawing where its cells are the same). Drawn as the pixel art means it: straight bands, a chip window with rounded corners and the glare in its corner, the tab with its triangle and its slanted step, the column as one housing (the orb's holder round on top, its bottom rounded, a shadow under it), rounded corners wherever the art rounds them. -->
-<!-- The left border: two light lines on the frame's color -->
-<rect x="0" y="0" width="8" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
+<!-- EXE6's custom window with the Cross tab (every cell the screen doesn't lay something in; other window maps use it where their cells are the same), drawn as one object: its layers nested, each band one width all round, nested bands offset in parallel so their cuts stay parallel, corners cut at 45 degrees where the art cuts them; round only the glossy chip window (radius 3) and the orb's holder; one ground under the lower window so nothing behind shows through. -->
+<!-- The frame round the chip window: its ground, the light lines down the left (x 0 and 3) and beside the column (x 84); BATTLE CHIP is text -->
+<rect x="0" y="0" width="88" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
 <rect x="0" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
 <rect x="3" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
-<!-- The top strip (BATTLE CHIP, its letters drawn as text over it) -->
-<rect x="4" y="0" width="80" height="8" fill="#dedeef" data-color="6" data-palette="9"/>
-<!-- The column's left bands: a light line between -->
-<rect x="80" y="0" width="8" height="88" fill="#dedeef" data-color="6" data-palette="9"/>
 <rect x="84" y="0" width="1" height="88" fill="#a5adbd" data-color="7" data-palette="9"/>
-<!-- The chip window, its top corners rounded -->
-<path d="M7 10.5 A2.5 2.5 0 0 1 9.5 8 L78.5 8 A2.5 2.5 0 0 1 81 10.5 L81 88 L7 88 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The glare: hugging the window's top left corner, tapering to a point along the top and down the side -->
-<path d="M16.5 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V23.5 Q12 10.5 16.5 9 Z" fill-rule="evenodd" fill="#524a5a" data-color="10" data-palette="9"/>
-<!-- Its lit edge: a darker band along the outside of the corner, a lighter one in it, lightest in the corner -->
-<path d="M12.8 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V18 L9 16.6 V11.5 A1.5 1.5 0 0 1 10.5 10 H11.6 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M11.6 9 H10.5 A2.5 2.5 0 0 0 8 11.5 V15.2 L9 14 V11.5 A1.5 1.5 0 0 1 10.5 10 H10.9 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M10.4 9 A2.5 2.5 0 0 0 8 11.5 V12.4 L8.8 11.6 A1.6 1.6 0 0 1 10.4 9.8 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The glint down the chip window's right side: a streak tapering to a point at each end, lighter toward its middle -->
-<polygon points="78.5,33 79,45.75 79,71.25 78.5,84 78,71.25 78,45.75" fill="#524a5a" data-color="10" data-palette="9"/>
-<polygon points="78.5,41 79,49 79,65 78.5,73 78,65 78,49" fill="#4a637b" data-color="5" data-palette="9"/>
-<polygon points="78.5,49 79,51 79,55 78.5,57 78,55 78,51" fill="#738ca5" data-color="4" data-palette="9"/>
-<polygon points="78.5,51 79,52 79,53 78.5,54 78,53 78,52" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The panel -->
-<rect x="0" y="88" width="88" height="16" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The Cross tab: its outline, its step down slanting at 45 degrees -->
-<path d="M0 88 L88 88 L88 101 L59.828 101 A2 2 0 0 1 58.414 100.414 L55.293 97.293 A1 1 0 0 0 54.586 97 L0 97 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M1 89 L88 89 L88 100 L60.414 100 A1 1 0 0 1 59.707 99.707 L56.586 96.586 A2 2 0 0 0 55.172 96 L1 96 Z" fill-rule="evenodd" fill="#c6d6de" data-color="2" data-palette="9"/>
-<!-- The groove at the tab's right end, slanting down into its bottom line -->
-<path d="M88 93.6 L88 95 L85.439 97.561 A1.5 1.5 0 0 0 85 98.621 L85 100 L84 100 L84 98.014 A1 1 0 0 1 84.293 97.307 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- Where it leaves the column's line: a rounded bend -->
-<path d="M88 92.77 A2 2 0 0 1 87.41 94.19 L88 93.6 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The tab's triangle: an outline on a base, a fill, a highlight along its left side -->
-<path d="M5.934 89.566 A0.8 0.8 0 0 1 7.066 89.566 L11.083 93.583 A0.4 0.4 0 0 1 11.2 93.866 L11.2 94.6 A0.4 0.4 0 0 1 10.8 95 L2.2 95 A0.4 0.4 0 0 1 1.8 94.6 L1.8 93.866 A0.4 0.4 0 0 1 1.917 93.583 Z" fill-rule="evenodd" fill="#ce6339" data-color="13" data-palette="9"/>
-<path d="M6.07 90.642 A0.6 0.6 0 0 1 6.93 90.642 L9.704 93.491 A0.3 0.3 0 0 1 9.489 94 L3.511 94 A0.3 0.3 0 0 1 3.296 93.491 Z" fill-rule="evenodd" fill="#ffad29" data-color="12" data-palette="9"/>
-<path d="M6.253 90.453 A0.349 0.349 0 0 1 6.75 90.45 L7 90.7 L3.6 94 L3.2 94 A0.169 0.169 0 0 1 3.079 93.713 Z" fill-rule="evenodd" fill="#fff729" data-color="11" data-palette="9"/>
-<rect x="0" y="104" width="8" height="48" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The slots' side: a bar, a groove down it, two notches -->
+<!-- The chip window, glossy: its top corners round, radius 3 (the most the art allows: radius 4 would take its pixel at 8,8); its bottom runs on under the tab -->
+<path d="M7 11 A3 3 0 0 1 10 8 L78 8 A3 3 0 0 1 81 11 L81 88 L7 88 Z" fill="#292929" data-color="8" data-palette="9"/>
+<!-- Its glare in the top left corner, a pixel in from its edge, round it at radius 2 (concentric), tapering along the top and down the side -->
+<path d="M17 9 L10 9 A2 2 0 0 0 8 11 L8 24 Q12 12 17 9 Z" fill="#524a5a" data-color="10" data-palette="9"/>
+<!-- Its lit edge on that corner: a band a pixel wide (radius 2 to 1, concentric), darkest at its ends, lightest down the corner's side -->
+<path d="M12.5 9 L10 9 A2 2 0 0 0 8 11 L8 18.5 L9 17.5 L9 11 A1 1 0 0 1 10 10 L11.5 10 Z" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M11.5 9 L10 9 A2 2 0 0 0 8 11 L8 15.5 L9 14.5 L9 11 A1 1 0 0 1 10 10 L10.5 10 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M8.586 9.586 A2 2 0 0 0 8 11 L8 12.5 L9 11.5 L9 11 A1 1 0 0 1 9.293 10.293 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The glint down its right side: a streak tapering to a point at each end, lighter toward its middle -->
+<path d="M78.5 33 L79 45.75 L79 71.25 L78.5 84 L78 71.25 L78 45.75 Z" fill="#524a5a" data-color="10" data-palette="9"/>
+<path d="M78.5 41 L79 49 L79 65 L78.5 73 L78 65 L78 49 Z" fill="#4a637b" data-color="5" data-palette="9"/>
+<path d="M78.5 49 L79 51 L79 55 L78.5 57 L78 55 L78 51 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M78.5 51 L79 52 L79 53 L78.5 54 L78 53 L78 52 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The panel: one ground under the whole lower window, reaching under the bar so no seam shows; the bar's cut corner stays open -->
+<path d="M0 88 L120 88 L120 155 L5.5 155 L0 160.5 Z" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The Cross tab: a blue outline a pixel wide all round its light face, its step down one 45-degree cut four rows deep, the outline as wide along it; CROSSSELECT is text -->
+<path d="M0 88 L88 88 L88 101 L58.793 101 L54.793 97 L0 97 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M1 89 L88 89 L88 100 L59.207 100 L55.207 96 L1 96 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- The groove at its right end: a line a pixel wide slanting down from the column, then straight down into its bottom, mitered -->
+<path d="M88 94 L88 95.414 L85 98.414 L85 100 L84 100 L84 98 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The tab's arrow: an orange outline a pixel wide (its tip cut flat a pixel across, its base's ends upright), an amber face, a yellow light along its left side -->
+<path d="M6 89 L7 89 L11 93 L11 95 L2 95 L2 93 Z" fill="#ce6339" data-color="13" data-palette="9"/>
+<path d="M6.414 90 L6.586 90 L10 93.414 L10 94 L3 94 L3 93.414 Z" fill="#ffad29" data-color="12" data-palette="9"/>
+<path d="M6.414 90 L6.586 90 L7.043 90.457 L3.5 94 L3 94 L3 93.414 Z" fill="#fff729" data-color="11" data-palette="9"/>
+<!-- The slots' side: a bar across its top, two notches -->
 <rect x="0" y="105" width="6" height="2" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="0" y="125" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="0" y="138" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The bottom bar, its outer corner rounded -->
-<path d="M0 152 L120 152 L120 157.5 A2.5 2.5 0 0 1 117.5 160 L0 160 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The panel's last rows, rounded into the bar at the right -->
-<path d="M0 148 L117.5 148 L117.5 151.5 A2.5 2.5 0 0 1 115 154 L0 154 Z" fill-rule="evenodd" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The bar's groove, its right end slanting into the corner -->
-<polygon points="0,156 114.5,156 117.5,159 0,159" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The housing's shadow on the panel: its outline a pixel lower -->
+<path d="M88 12.5 A16 16 0 0 1 120 12.5 L120 106.657 L115.657 111 L92.343 111 L88 106.657 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bar and the window's right border, one blue (the border is the housing's outline going on straight down); the bar's bottom right corner cut 2.5. Where a side meets the bar, the frame is mitered: one 45-degree line through the inner corner, every band of the side ending on it and every band of the bar ending on it -->
+<path d="M6.7 154 L118 154 L118 100 L120 100 L120 157.5 L117.5 160 L0.7 160 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The bar's groove, three rows: its left end on the miter (under its light), its right end slanting back -->
+<path d="M4.7 156 L114.5 156 L117.5 159 L1.7 159 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="16" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="29" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="90" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="103" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The bottom left corner: the panel down to the slanted end -->
-<polygon points="0,154 5,154 0,159" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The groove down the side -->
-<rect x="5" y="107" width="1" height="47.2" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- Bending 45 degrees at the bottom into the bar's slanted end, as wide, lighter -->
-<polygon points="5,153.6 6,154 1,159 -0.4,159" fill="#c6d6de" data-color="2" data-palette="9"/>
-<!-- The panel round the column's bottom -->
-<rect x="88" y="104" width="30" height="8" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The dark corner left of the holder -->
-<rect x="88" y="0" width="8" height="8" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The column's shadow on the panel: the housing's own shape a little lower, under it -->
-<path d="M88 12.75 A16 16 0 0 1 120 12.75 V105.25 A6 6 0 0 1 114 111.25 H94 A6 6 0 0 1 88 105.25 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The housing: its outline, round over the orb, flowing down into the column's sides -->
-<path d="M88 11.5 A16 16 0 0 1 120 11.5 V104 A6 6 0 0 1 114 110 H94 A6 6 0 0 1 88 104 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- Its lighter line -->
-<path d="M89 11.5 A15 15 0 0 1 119 11.5 V104 A5 5 0 0 1 114 109 H94 A5 5 0 0 1 89 104 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- Its white band -->
-<path d="M90 11.5 A14 14 0 0 1 118 11.5 V104 A4 4 0 0 1 114 108 H94 A4 4 0 0 1 90 104 Z" fill-rule="evenodd" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The dark gray inside, its shoulders under the orb rounded, its bottom rounded: every band of the bottom round one center, its curves starting where the cells above end, so each runs on from its straight side -->
-<path d="M92 21 A3 3 0 0 1 95 18 L113 18 A3 3 0 0 1 116 21 L116 104 A2 2 0 0 1 114 106 L94 106 A2 2 0 0 1 92 104 Z" fill-rule="evenodd" fill="#4a637b" data-color="5" data-palette="9"/>
-<path d="M95 96 L113 96 L113 104 A1 1 0 0 1 112 105 L96 105 A1 1 0 0 1 95 104 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The orb's socket, as wide as the art's, evenly lit: its blue-gray edge -->
+<!-- The slots' side's line and the border's light line, a pixel wide, straight down to the bar, each ending on its corner's miter (mirror images) -->
+<path d="M5 107 L6 107 L6 154.7 L5 155.7 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M119 100 L118 100 L118 154 L119 155 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bottom left miter: a 45-degree line from the inner corner (where the slots' line meets the bar's top) to the window's bottom left, lit along the bar's side a pixel wide; the side's line and all three of the bar's bands end on it -->
+<path d="M6 154 L7.414 154 L1.414 160 L0 160 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- Left of the housing's arch: the column's line up to the top, the dark corner -->
+<rect x="89" y="0" width="7" height="8" fill="#292929" data-color="8" data-palette="9"/>
+<rect x="88" y="0" width="1" height="12" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The housing, symmetric about x 104: a blue outline a pixel wide, a slate line a pixel, white two, the dark inside; round over the orb (radii 16, 15, 14 about its center), straight down, its bottom corners cut 45 degrees, each band's cut the one inside it offset in parallel (legs 4.34, 3.76, 3.17, 2), so each band keeps its width round the cut -->
+<path d="M88 11.5 A16 16 0 0 1 120 11.5 L120 105.657 L115.657 110.0 L92.343 110.0 L88 105.657 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M89 11.5 A15 15 0 0 1 119 11.5 L119 105.243 L115.243 109.0 L92.757 109.0 L89 105.243 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The slate line lit where it turns under the housing and along its bottom -->
+<path d="M89 105.243 L92.757 109 L115.243 109 L119 105.243 L118 104.828 L114.828 108 L93.172 108 L90 104.828 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<path d="M90 11.5 A14 14 0 0 1 118 11.5 L118 104.828 L114.828 108.0 L93.172 108.0 L90 104.828 Z" fill="#eff7ff" data-color="1" data-palette="9"/>
+<!-- The dark inside: its shoulders under the orb cut 45 degrees (legs 3, as the art steps), its bottom the housing four pixels in -->
+<path d="M92 21 L95 18 L113 18 L116 21 L116 104 L114 106 L94 106 L92 104 Z" fill="#4a637b" data-color="5" data-palette="9"/>
+<!-- The orb's holder, round: its blue edge, the dark ring, the reflection along its bottom, the square tabs at 9 and 3 o'clock, the dark socket -->
 <circle cx="104" cy="11.5" r="12" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The inner gray ring, unbroken -->
 <circle cx="104" cy="11.5" r="11" fill="#4a637b" data-color="5" data-palette="9"/>
-<!-- The reflection along the inner ring's bottom, inside its edges: a small wedge pointing up, blue-gray flanks fanning out and down, a light core brightest at its base -->
-<path d="M102.85 20.888 A0.5 0.5 0 0 1 103.24 20.7 L104.76 20.7 A0.5 0.5 0 0 1 105.15 20.888 L105.81 21.713 A0.3 0.3 0 0 1 105.576 22.2 L102.424 22.2 A0.3 0.3 0 0 1 102.19 21.713 Z" fill-rule="evenodd" fill="#738ca5" data-color="4" data-palette="9"/>
-<path d="M103.299 20.951 A0.4 0.4 0 0 1 103.671 20.7 L104.329 20.7 A0.4 0.4 0 0 1 104.701 20.951 L105.09 21.926 A0.2 0.2 0 0 1 104.905 22.2 L103.095 22.2 A0.2 0.2 0 0 1 102.91 21.926 Z" fill-rule="evenodd" fill="#9cadbd" data-color="3" data-palette="9"/>
-<path d="M103.489 21.621 A0.4 0.4 0 0 1 103.847 21.4 L104.153 21.4 A0.4 0.4 0 0 1 104.511 21.621 L104.655 21.911 A0.2 0.2 0 0 1 104.476 22.2 L103.524 22.2 A0.2 0.2 0 0 1 103.345 21.911 Z" fill-rule="evenodd" fill="#c6d6de" data-color="2" data-palette="9"/>
-<!-- The dark socket's two tabs, at 9 and 3 o'clock, reaching out through the gray ring to its edge -->
-<path d="M93 11.5 A1.5 1.5 0 0 1 94.5 10 L113.5 10 A1.5 1.5 0 0 1 115 11.5 L115 11.5 A1.5 1.5 0 0 1 113.5 13 L94.5 13 A1.5 1.5 0 0 1 93 11.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The dark socket -->
+<path d="M103 20.7 L105 20.7 L106 22.2 L102 22.2 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<path d="M103.4 20.7 L104.6 20.7 L105.2 22.2 L102.8 22.2 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M103.7 21.4 L104.3 21.4 L104.7 22.2 L103.3 22.2 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<rect x="93" y="10" width="22" height="3" fill="#292929" data-color="8" data-palette="9"/>
 <circle cx="104" cy="11.5" r="9" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The black line across the top of the stack's cells, over the housing's inside -->
+<!-- The black lines across the top and the bottom of the stack of picked chips, square -->
 <rect x="95" y="23" width="18" height="3" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The window's right border going on down from the housing's corner: its outline runs on as the border's dark line (one line from where the corner leaves it), the border's light line beside it starting once the corner's bands have curved away -->
-<rect x="119" y="104" width="1" height="32" fill="#738ca5" data-color="4" data-palette="9"/>
-<rect x="118" y="108.4" width="1" height="27.6" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The panel round the OK button -->
-<rect x="88" y="112" width="30" height="24" fill="#eff7ff" data-color="1" data-palette="9"/>
-<!-- The OK button: its outline, its corners rounded -->
-<path d="M91 114.5 A2.5 2.5 0 0 1 93.5 112 L113.5 112 A2.5 2.5 0 0 1 116 114.5 L116 129.5 A2.5 2.5 0 0 1 113.5 132 L93.5 132 A2.5 2.5 0 0 1 91 129.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
-<!-- Its shade along the right and the bottom -->
-<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L113.5 113 A1.5 1.5 0 0 1 115 114.5 L115 129.5 A1.5 1.5 0 0 1 113.5 131 L93.5 131 A1.5 1.5 0 0 1 92 129.5 Z" fill-rule="evenodd" fill="#a5314a" data-color="15" data-palette="9"/>
-<!-- Its light along the top and the left -->
-<path d="M92 114.5 A1.5 1.5 0 0 1 93.5 113 L114.6 113 L112.6 115 L94 115 L94 129 L92 130.6 Z" fill-rule="evenodd" fill="#ffad29" data-color="12" data-palette="9"/>
-<!-- Brightest in the top left corner -->
-<path d="M92 114.1 A1.1 1.1 0 0 1 93.1 113 L94.2 113 L94.2 114.4 A0.8 0.8 0 0 1 93.4 115.2 L92 115.2 Z" fill-rule="evenodd" fill="#fff729" data-color="11" data-palette="9"/>
-<!-- A shade halfway down the left, and the outline thicker halfway down the right -->
-<path d="M92 120.5 A0.5 0.5 0 0 1 92.5 120 L92.5 120 A0.5 0.5 0 0 1 93 120.5 L93 123.5 A0.5 0.5 0 0 1 92.5 124 L92.5 124 A0.5 0.5 0 0 1 92 123.5 Z" fill-rule="evenodd" fill="#a5314a" data-color="15" data-palette="9"/>
-<path d="M114 120.5 A0.5 0.5 0 0 1 114.5 120 L114.7 120 A0.5 0.5 0 0 1 115.2 120.5 L115.2 123.5 A0.5 0.5 0 0 1 114.7 124 L114.5 124 A0.5 0.5 0 0 1 114 123.5 Z" fill-rule="evenodd" fill="#292929" data-color="8" data-palette="9"/>
-<!-- The face -->
-<rect x="94" y="115" width="19" height="14" fill="#ff3121" data-color="14" data-palette="9"/>
-<!-- The words, in white -->
+<rect x="95" y="96" width="18" height="9" fill="#292929" data-color="8" data-palette="9"/>
+<!-- OK: a black outline a pixel wide, its corners cut (legs 2); inside, the red face, its bevel two wide: light along the top and the left, shade along the right and the bottom, each band stopping square at the corners it shares with the other, so those two corners stay the face's red (a triangle each under the outline's cut, as the art); yellow in the top left corner; the art's shade halfway down the left and the outline thicker halfway down the right -->
+<path d="M91 114 L93 112 L114 112 L116 114 L116 130 L114 132 L93 132 L91 130 Z" fill="#292929" data-color="8" data-palette="9"/>
+<path d="M92 114.414 L93.414 113 L113.586 113 L115 114.414 L115 129.586 L113.586 131 L93.414 131 L92 129.586 Z" fill="#ff3121" data-color="14" data-palette="9"/>
+<path d="M92 114.414 L93.414 113 L113 113 L113 115 L94 115 L94 129 L92 129 Z" fill="#ffad29" data-color="12" data-palette="9"/>
+<path d="M113 115 L115 115 L115 129.586 L113.586 131 L94 131 L94 129 L113 129 Z" fill="#a5314a" data-color="15" data-palette="9"/>
+<path d="M92 114.414 L93.414 113 L94 113 L94 115 L92 115 Z" fill="#fff729" data-color="11" data-palette="9"/>
+<rect x="92" y="120" width="1" height="4" fill="#a5314a" data-color="15" data-palette="9"/>
+<rect x="114" y="120" width="1" height="4" fill="#292929" data-color="8" data-palette="9"/>
 <text data-words="window.ok" data-box="96 117 16 10" fill="#eff7ff" data-color="1" data-palette="9" x="96" y="127" font-size="13.333" textLength="16">OK</text>
 </svg>

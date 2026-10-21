@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The full gauge shimmering, frame 4 of 4: an upright capsule, an even rim round a bright core. -->
+<!-- The full gauge shimmering, frame 4 of 4: an upright capsule, its corners cut (legs 1.5, the art's step), an even rim a pixel wide round a bright core cut parallel. -->
 <rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
 <rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
-<rect x="1" y="0" width="6" height="7" rx="2" fill="#00a500" data-color="11"/>
-<rect x="2" y="1" width="4" height="5" rx="1" fill="#00ff00" data-color="3"/>
+<path d="M1 1.5 L2.5 0 L5.5 0 L7 1.5 L7 5.5 L5.5 7 L2.5 7 L1 5.5 Z" fill="#00a500" data-color="11"/>
+<path d="M2 1.914 L2.914 1 L5.086 1 L6 1.914 L6 5.086 L5.086 6 L2.914 6 L2 5.086 Z" fill="#00ff00" data-color="3"/>
 </svg>
