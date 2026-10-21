@@ -368,9 +368,14 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// The sounds of navi `r`'s hit, as the rules' `intake.hit_sound` says: a
 /// player hears their own navi's as `own_hit` and another's as `hit`
 /// (EXE6's, EXE5's); or every console hears `hit`, or `auto_battle_hit` for
-/// a navi in auto battle (EXE4's 0x08013A8C).
+/// a navi in auto battle (EXE4's 0x08013A8C). The side's rules hear of a
+/// player navi's hit first (`navi_hit_shown`).
 fn hit_sounds(b: &mut Battle, r: ObjectRef) {
     use crate::content::{HitSound, SoundRole};
+    if navi_record(b, r).actor_type == ActorType::Player {
+        let side = b.objects.get(r).alliance;
+        b.rules_navi_hit_shown(side, r);
+    }
     match b.game_rules().intake.hit_sound {
         HitSound::ByConsole => {
             let player = navi_record(b, r).actor_type == ActorType::Player;
