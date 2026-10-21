@@ -518,7 +518,17 @@ The rest of the mechanics:
 
   It dims, shows telop chip 0x189, and spawns T4 0x95 (0x022264DC); its effect is open.
 - **ToadMan's rescue** (above) shows telop chip 0x187, "HPRecov".
-- **Meddy** has no support (none found).
+- **Meddy's HealPulse** (0x02003BD8; the user's name for it), from the DS's own fighting state 0x24 (0x0208E1F8,
+  and 0x020A3320 in the other flow): when a custom screen is asked for in the fight (0x0208DEBE: the GBA goes to state
+  0x20, the DS to 0x24 first), each side in turn (side 0, then 1):
+  - the light test; Meddy (navi 6) a member who may support (0x02004E9C) and benched (0x020364E4); the side's navi
+    (0x020987A8) below its maximum HP;
+  - it heals max × 5 / 100 (0x02004FF4); worried (emotion 1), the mood goes to 0x80 (0x02007EFC);
+  - effect 6 (the heal) at the navi, running while paused (flag 4), and sound 0x8A; it lights her button on the bottom
+    screen (0x02036450, 0x020935CC). No dimming, no telop.
+  - If either side healed, state 0x24 holds 50 ticks (0x32); else it goes to 0x20 on its first tick (one tick in 0x24
+    whatever happens: observed in double/d-hero-custom-screen). Every custom screen asked for in the fight, not the
+    round's first.
 
 Seen on the way: the microphone event (0x022261A4) sets event flags 0x2E8/0x2E9 and spawns T4 0x93 (0x0222618C).
 0x93 heals: `object_addHP`, effect 0x34, sounds 0x8B and 0x8A. **It is offline only** (observed): in a party

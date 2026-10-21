@@ -23,6 +23,7 @@ local patch_cards = require("@self/patch_cards")
 local colonel_support = require("./navis/colonel/support")
 local gyroman_support = require("./navis/gyroman/support")
 local meddy_support = require("./navis/meddy/support")
+local megaman_support = require("./navis/megaman/support")
 local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local protoman_support = require("./navis/protoman/support")
@@ -418,6 +419,7 @@ local rules: Rules = {
             napalmman_support.tick(side)
             colonel_support.tick(side)
             tomahawkman_support.tick(side)
+            megaman_support.tick(side)
         end,
         fight_started = party.fight_started,
         -- A custom screen asked for in a party battle's fight: Meddy's HealPulse (navis/meddy/support).
