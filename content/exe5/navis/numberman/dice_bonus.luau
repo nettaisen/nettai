@@ -109,7 +109,8 @@ local function throw_die(me: Object, x: number, y: number, faces: { number }, sl
 end
 
 -- 0x021FFA51: the throw (animation 6, its sound; 12 ticks); then the dice: the first, and the second (with the side's
--- BattleState +0x44 halfword set, the DS's own: 1 in every recording), each landing where he aimed counting its face.
+-- BattleState +0x44 halfword set: a netbattle's console whose save has event 0x2E9, every nettai player's; exe5ds-map.md
+-- §4.7), each landing where he aimed counting its face.
 local function throw(me: Object)
     local s = me.state :: ActorState
     if me.phase_init == 0 then

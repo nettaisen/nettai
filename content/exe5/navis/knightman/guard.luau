@@ -9,23 +9,19 @@
 local knightman = require("../knightman").knightman
 local party = require("../../rules/party")
 local party_support = require("../../lib/party_support")
-local toadman_charge = require("../toadman/charge")
 
 local guard = {}
 
+-- What the guard reads as the side of a panel off the field: the DS's `object_getPanelDataOffset` (0x0208C320) gives
+-- none for one, and the guard reads its record's side unchecked (0x02049794): the byte at address 3, the ARM9's ITCM
+-- (mirrored from 0), whose fourth byte is 0xE9 (its first instruction, a `stmdb`). Never a side.
+local OFF_FIELD_SIDE = 0xE9
 -- The guard's ticks; the swallowed hit's sound on KnightMan.
 local GUARD_TICKS = 0x3C
 local FLASH_SOUND = asset.sound("own-hit")
 
 type ActorState = { member: number, flash: boolean, kept: boolean }
 type ActionState = { timer: number }
-
--- The navi guarded (the DS's AIData +0x48 0x400000, set as the guard starts and cleared as it ends: the guard's action
--- running). (Its 0x01000000, ToadMan's dive, 0x0204A366 to 0x0204A576, is his dive's action running, which no guard
--- runs beside: the guard's own check of it, 0x020497A4, never holds here.)
-local function guarded(navi: Object): boolean
-    return navi:navi_action() == guard.action
-end
 
 -- 0x021FF1C5: he stands; a hit swallowed (0x021FF3D8's flag) shows white for a tick with its sound; once the navi is no
 -- longer guarded, he warps out.
@@ -38,7 +34,7 @@ local function stand(me: Object)
         battle.play_sound(FLASH_SOUND)
     end
     local navi = me.related1
-    if navi == nil or not guarded(navi) then
+    if navi == nil or not navi:navi_state("guarded") then
         party_support.go(me, party_support.WARP)
     end
 end
@@ -63,8 +59,8 @@ guard.actor = party_support.make {
     state = { flash = "bool", kept = "bool" },
 }
 
--- 0x02004604: the navi stands at its area's front edge (the panel ahead the other side's), the light test, KnightMan a
--- member who may support, above a quarter of his maximum HP and not on the field.
+-- 0x02004604: the navi stands at its area's front edge (the panel ahead on the field and the other side's), the light
+-- test, KnightMan a member who may support, above a quarter of his maximum HP and not on the field.
 local function ready(side: number, navi: Object): boolean
     if not party.light(side) then
         return false
@@ -105,22 +101,26 @@ local function bring(side: number, navi: Object)
     (o.state :: ActorState).kept = true
 end
 
--- 0x020497DA: the guard ends.
+-- 0x020497DA: the guard ends (the navi's guarded state with it, 0x020497E2).
 local function finish(me: Object)
     me.related1 = nil
     me.overlay = nil
+    me:set_navi_state("guarded", false)
     me:exit_attack()
 end
 
--- 0x02049784 (the roles' `guard`): while the navi stands at its area's front edge, 61 ticks of the guard (KnightMan
+-- 0x02049784 (the roles' `guard`): while the navi stands at its area's front edge (the panel ahead not its side's; one
+-- off the field never is, `OFF_FIELD_SIDE`) and isn't diving, 61 ticks of the guard (the navi guarded, KnightMan
 -- brought on the first, the navi's animation 0).
 local function update(me: Object, s: ActionState)
     local ahead = field.panel(me.panel_x + me.facing, me.panel_y)
-    if ahead and ahead.alliance == me.alliance then
+    local side = if ahead then ahead.alliance else OFF_FIELD_SIDE
+    if side == me.alliance or me:navi_state("diving") then
         me:set_request("guard", false)
         return finish(me)
     end
     if me.step_init == 0 then
+        me:set_navi_state("guarded", true)
         me:set_request("guard", false)
         bring(me.alliance, me)
         me:set_animation(0)
@@ -139,10 +139,10 @@ guard.action = new.action { id = "knightman/guard/action", state = { timer = "u1
 -- 0x02063B72 (the rules' `hit_guard`): a hit no trap caught is swallowed while the navi is guarded, or asks for the
 -- guard; it then needs the navi ready for it (`ready`), a hit at all (the hit flags' 0xFF800000) and damage in it.
 function guard.hit_guard(side: number, navi: Object): boolean
-    if guarded(navi) then
+    if navi:navi_state("guarded") then
         return true
     end
-    if navi:navi_action() == toadman_charge.action then
+    if navi:navi_state("diving") then
         return false
     end
     if navi:request("guard") then

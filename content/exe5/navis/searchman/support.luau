@@ -5,7 +5,8 @@
 -- other side can't cut in), Serch-S's telop shows, and SearchMan comes behind the navi on the field and fires five
 -- sniper shots at the enemy: offline at the first enemy holding a chip, outside the dimming; in a link battle at the
 -- opponent's navi as it starts a chip, which his coming stops. His last shot takes the enemy's chip away (unless a
--- barrier holds it off, or it is frozen).
+-- barrier holds it off, or it is frozen). (Every nettai battle is a link battle: the offline path is the DS's, ported,
+-- and never reached; exe5ds-map.md §4.7.)
 
 local chips_serch_s = require("../../chips/serch_s")
 local party = require("../../rules/party")
