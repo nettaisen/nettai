@@ -35,7 +35,7 @@ use nettai_platform::time::Instant;
 
 mod hold;
 pub(crate) mod link;
-mod party;
+pub(crate) mod party;
 
 /// How long the two cards show at the least. A match is ready in a few milliseconds once the game is loaded,
 /// and a screen shown for two frames is a flash; the bars say how far the loading is, not this.

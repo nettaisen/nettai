@@ -61,6 +61,15 @@ impl PartyState {
     /// What the window shows of side `side`'s party this frame (none: it has no partners), told to the UI where it
     /// changed. `faces` gives a navi's face; `keys` the two switches' controls as bound.
     pub fn show(&mut self, shell: &nettai_ui::Shell, b: &nettai_battle::Battle, game: &str, side: u8, faces: impl Fn(nettai_content_api::NaviHandle) -> slint::Image, keys: [Hint; 2]) {
+        if let Some(hud) = self.hud(b, game, side, faces, keys) {
+            shell.set_party(hud);
+        }
+    }
+
+    /// What is shown of side `side`'s party in `b` this frame (a default, not shown: it has no partners), where it
+    /// changed since the last frame (none: as it was). `faces` gives a navi's face; `keys` the two switches' controls
+    /// (none shown where they are nobody's: a replay's).
+    pub fn hud(&mut self, b: &nettai_battle::Battle, game: &str, side: u8, faces: impl Fn(nettai_content_api::NaviHandle) -> slint::Image, keys: [Hint; 2]) -> Option<PartyHud> {
         let view = party::view(b, side);
         self.panel.follow(view.as_ref());
         let hud = match &view {
@@ -84,10 +93,10 @@ impl PartyState {
             }
         };
         if self.shown.as_ref().is_some_and(|s| same(s, &hud)) {
-            return;
+            return None;
         }
-        shell.set_party(hud.clone());
-        self.shown = Some(hud);
+        self.shown = Some(hud.clone());
+        Some(hud)
     }
 }
 

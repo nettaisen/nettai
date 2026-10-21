@@ -203,6 +203,10 @@ pub struct Watching {
     ended: Option<Instant>,
     /// The bar's previews, from the first hover over it.
     thumbs: Option<Thumbnails>,
+    /// A party battle's parties, by side, as the picture's strips show them (`crate::battle::party`), and the
+    /// sides the two strips showed last (the console shown's, the other's while its picture is on).
+    parties: [crate::battle::party::PartyState; 2],
+    party_sides: Option<(u8, bool)>,
 }
 
 impl Watching {
@@ -212,7 +216,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -724,6 +728,7 @@ impl Watching {
         }
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
+        self.show_parties(shell, &view);
         self.show_held(&view);
         self.tell(&view);
         if let Some(image) = self.thumbs.as_mut().and_then(|t| t.frame(now)) {
@@ -751,6 +756,33 @@ impl Watching {
         view.set_inset_y(picture.get_picture_y() + picture.get_picture_height() - height - margin);
         view.set_inset_width(width);
         view.set_inset_height(height);
+    }
+
+    /// A party battle's parties over the picture, from the battle shown (as a battle shows its player's: the members,
+    /// who is on the field, the switches left; a replay's have no controls): the console shown's side's, and the other
+    /// side's while its picture is on in the corner. Told where they changed.
+    fn show_parties(&mut self, shell: &Shell, view: &ReplaysView) {
+        let shown = self.viewer.view();
+        let sides = (shown, self.overlays.inset);
+        // (Another side in a strip, or the other's put away: each is told again.)
+        if self.party_sides != Some(sides) {
+            self.party_sides = Some(sides);
+            self.parties = Default::default();
+            view.set_party(Default::default());
+            view.set_other_party(Default::default());
+        }
+        let kit = crate::builds::kit(shell);
+        let game = kit.as_ref().map_or_else(String::new, |k| k.game.clone());
+        let faces = |n| kit.as_ref().map(|k| k.pictures.navi(n)).unwrap_or_default();
+        let battle = self.viewer.battle();
+        if let Some(hud) = self.parties[shown as usize & 1].hud(battle, &game, shown, faces, Default::default()) {
+            view.set_party(hud);
+        }
+        if self.overlays.inset
+            && let Some(hud) = self.parties[(shown ^ 1) as usize & 1].hud(battle, &game, shown ^ 1, faces, Default::default())
+        {
+            view.set_other_party(hud);
+        }
     }
 
     /// The input display's buttons: each side's as the tick shown holds them (the battle's own, as Practice's
