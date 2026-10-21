@@ -896,11 +896,13 @@ exe5_replay on lab-exe5ds/double, the kinds in compat/kinds.toml): M-ZAN and E-S
 C-SCOPE (stopped and not), D-VALCAN every object, the recording console's RNG1 differing from before the launch (the
 party's own draws); the rest first differ where the side-symmetry rule (docs/engine/side-symmetry.md; the canonical
 side 1, the recordings' Double Attacks side 0's) parts from the original: D-HERO's flashes and G-OTOSHI's frogs on a
-list taken in the side's order (§1.5: with the original's order D-HERO matches every object, G-OTOSHI until the DS
-bubbles a ToadMan whom a frog put on sea, the sea's rule, not the Double Attack's), K-THROW's, K-BOMB's and C-BOMB's
-arcs a unit off in the mirror image (§1.6: unmirrored, K-THROW matches every frame and K-BOMB every object), BR-RUSH's
-cape and M-AIR's GyroMan on a panel border (§1.1). The paused path (d-hero-custom-screen) stops before the Double
-Attack, in the custom screen's switch.
+list taken in the side's order (§1.5: with the original's order D-HERO, d-hero-custom-screen's (the paused path)
+and each-round's two match every object, G-OTOSHI every frame, ToadMan's dive into a frog's sea at frame 852 included,
+the switch's tail giving it back to him: his navi's `reset`, 0x080119A0), K-THROW's, K-BOMB's and C-BOMB's arcs a unit
+off in the mirror image (§1.6: unmirrored, K-THROW matches every frame and K-BOMB every object), BR-RUSH's cape and
+M-AIR's GyroMan on a panel border (§1.1; M-AIR's bombs then on a move passing a column's center, §1.2). These are
+verify's known side-symmetry deviations. The dive's frames are the DS's pixel for pixel over the field (the example
+`ds_trace_frames` draws a DS recording as exe5-compat replays it).
 The frames (verify's `double_frames.py`, the engine's example `double_attack_frames`): of what each draws, the
 share the DS's capture shows the same at its tick, with the shake's offset allowed: C-SCOPE 99%, K-THROW 99%,
 B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 92%, D-VALCAN 92%, D-HERO
