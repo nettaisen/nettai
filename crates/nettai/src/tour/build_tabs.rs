@@ -1969,14 +1969,17 @@ fn to_ruleset(name: &Rc<RefCell<String>>) -> Step {
 }
 
 /// The Party tab (EXE5's party battle; a game without one passes these by), its slots' list and the library that
-/// follows it: two partners put in from Empty heads by Enter (an Empty head marked first, its library the navis, the
-/// other version's refused under the one version the ruleset allows: shot), a program slot marked (its library the
+/// follows it: two partners put in from Empty heads by Enter (an Empty head marked first, its library the navis, one in
+/// the party refused: shot), a program slot marked (its library the
 /// programs: shot); then every drag the tab takes, each let go and what it did checked (`report.txt` says what didn't),
 /// the held states shot: a library's program into the first partner's Empty row, onto its head (its top), into the
 /// second's; one the second's gauge has no room for (a gap all the same, the dragged row saying why; let go, nothing
 /// changes); a program moved in its partner's list, onto the library (taken out), onto the other partner's head (its
 /// top); a partner's head onto the other's (they trade places), onto the library (taken out); a library's navi onto the
-/// Empty head that leaves (it goes in). Then, for comparing, the Patch cards library with a card refused, and the
+/// Empty head that leaves (it goes in). Under the ruleset page's copy, a program held back for one partner's navi alone
+/// (refused in its library, and on the row dragged over its list). Under Masters class, a Team Colonel navi put in a
+/// Team ProtoMan build's party (not refused: the mix's partners' heads red, the strip "Mixed versions"; the navis'
+/// library with its slot marked), then the partner put back. Then, for comparing, the Patch cards library with a card refused, and the
 /// NaviCust's list. On a phone, the ruleset's Party page, then the slots and the navis' sheet.
 pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
     use nettai_ui::PartyView;
@@ -2002,8 +2005,8 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
     add(SETTLE, to_slot(PartySpot::Open, false));
     shot(add, "party-empty", Pair::None);
     add(90, on_tab(EditorTab::Party, "Party"));
-    // The first partner by Enter on an Empty head and on a navi; the second Empty head marked (the navis, those of the
-    // other version refused: shot, and one of them under the cursor: the strip says why); the second partner.
+    // The first partner by Enter on an Empty head and on a navi; the second Empty head marked (the navis, the one in the
+    // party refused: shot, and it under the cursor: the strip says why); the second partner.
     add(SETTLE, to_slot(PartySpot::Open, true));
     add(SETTLE, pick_row(|r| r.why.is_empty()));
     add(SETTLE, expect(|ui, _| (party_of(ui).len() != 1).then(|| format!("a navi picked for an Empty head: the party is {:?}", party_of(ui)))));
@@ -2181,6 +2184,38 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
     let was = kept.clone();
     add(SETTLE, expect(move |ui, _| (party_of(ui) != *was.borrow()).then(|| format!("P.Spport let go over Meddy's list: the party changed to {:?}", party_of(ui)))));
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+    // Under Masters class (one version per build), Colonel in Meddy's place: not refused (the user: "it should be marked
+    // red and still addable like it is everywhere else"); every partner of the mix red, Colonel's head under the cursor
+    // and its strip saying "Mixed versions" (shot); its head marked, the navis' library beside it, the cursor on another
+    // of Team Colonel's, which says nothing past its version's mark (shot). Then Meddy back.
+    add(SETTLE, to_slot(PartySpot::Head(1), true));
+    add(SETTLE, pick_row(|r| r.name == "Colonel"));
+    add(SETTLE, to_slot(PartySpot::Head(1), false));
+    add(SETTLE, expect(|ui, _| {
+        let view = ui.global::<PartyView>();
+        let heads: Vec<(String, bool)> = view.get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad)).collect();
+        let fault = view.get_detail().fault.to_string();
+        (heads.len() != 2 || heads[1].0 != "Colonel" || heads.iter().any(|h| !h.1) || !fault.contains("Mixed versions")).then(|| format!("Colonel put in a Team ProtoMan build's party: the heads {heads:?}, the strip says {fault:?}"))
+    }));
+    shot(add, "party-mixed-navi", Pair::None);
+    add(SETTLE, to_slot(PartySpot::Head(1), true));
+    add(SETTLE, Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        match ui.global::<PartyView>().get_rows().iter().position(|r| r.name == "ShadowMan") {
+            Some(at) => app.borrow_mut().shell.nav.focus("lib.rows", at as i32),
+            None => tour.key_wrong("the navis' library has no ShadowMan".to_string()),
+        }
+    }));
+    add(SETTLE, expect(|ui, _| {
+        let rows = ui.global::<PartyView>().get_rows();
+        let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
+        (why("ShadowMan") != Some(String::new()) || why("Colonel").is_none_or(|w| w.is_empty())).then(|| format!("the navis' library by Colonel's head: ShadowMan says {:?}, Colonel {:?}", why("ShadowMan"), why("Colonel")))
+    }));
+    shot(add, "party-mixed-navi-library", Pair::None);
+    add(SETTLE, pick_row(|r| r.name == "Meddy"));
+    add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy put back: the party is {:?}", party_of(ui)))));
     // For comparing: the Patch cards library, three cards in, by MB the most first, one refused; the NaviCust's list.
     add(SETTLE, to_tab(EditorTab::PatchCards));
     add(SETTLE, library());

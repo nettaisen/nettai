@@ -346,6 +346,14 @@ pub fn shown(content: &Content, registry: Registry, item: &Item) -> String {
     }
 }
 
+/// The items `side`'s fact `fact` (a category's, a path's too) names, in the
+/// order they first come, each once (a definition, or the variant chosen): what
+/// of a [`Wrong::Mixed`]'s items that fact holds.
+pub fn held(content: &Content, side: &Side, fact: &str) -> Vec<Item> {
+    let Some((registry, _, field)) = definitions_of(content, fact) else { return Vec::new() };
+    named_by(content, side, fact, field.as_deref(), registry).into_iter().map(|(item, _)| item).collect()
+}
+
 /// The items `side`'s fact `fact` names, each with the entries of its list it
 /// is at, in order (none: the fact is one value), the items in the order they
 /// first come, each once: a definition, or where the record chooses its
@@ -1312,6 +1320,30 @@ mod tests {
         back.set_allowed_for(&category, navi("meddy"), &spport, true);
         back.set_allowed("party.programs", &hp_300, true);
         assert_eq!(back, r.preset("unrestricted").unwrap().clone());
+    }
+
+    /// A partner of the other team in a build of one version is in the mix with every other thing of the versions the
+    /// build holds (its other partner, its souls), and which fact holds each is the build's: Colonel the party's, not the
+    /// navi's, whose category has the team navis too.
+    #[test]
+    fn a_partner_of_the_other_team_is_in_the_mix() {
+        let content = exe5_content();
+        let r = Rulesets::of(&content, "exe5").unwrap();
+        let navi = |n: &str| ids::navi(&content, "exe5", n).unwrap().0;
+        let mut side = Builds::of(&content, "exe5").unwrap().new_build(&content, "protoman").unwrap();
+        let partner = |n: &str| Fact::Record(vec![("navi", Fact::Value(Value::Def(Registry::Navi, navi(n)))), ("programs", Fact::List(vec![]))]);
+        side.set_fact(&content, "party", &[partner("magnetman"), partner("colonel")]).unwrap();
+        let problems = r.preset("masters").unwrap().problems(&r, &content, &side);
+        let [Problem { what: Wrong::Mixed { groups, items }, .. }] = &problems[..] else { panic!("{problems:?}") };
+        assert_eq!(groups, &["protoman", "colonel"]);
+        for n in ["magnetman", "colonel"] {
+            assert!(items.contains(&(Registry::Navi, Item::of(navi(n)))), "{n}: {items:?}");
+        }
+        assert_eq!(items.iter().filter(|(r, _)| *r == Registry::Form).count(), 6, "the build's Team ProtoMan souls");
+        let colonel = Item::of(navi("colonel"));
+        assert!(r.category("navi").unwrap().items.contains(&colonel));
+        assert!(held(&content, &side, "party").contains(&colonel) && !held(&content, &side, "navi").contains(&colonel));
+        assert!(r.preset("unrestricted").unwrap().problems(&r, &content, &side).is_empty());
     }
 
     #[test]
