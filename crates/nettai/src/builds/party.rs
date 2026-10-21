@@ -148,7 +148,7 @@ pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, hp_word
             let b = budgets.get(i).cloned().flatten();
             Some(nettai_ui::SheetPartner {
                 face: kit.pictures.navi(navi),
-                name: names.navi(navi).into(),
+                name: names.navi_long(navi).into(),
                 version: kit.version_tag_of(names, Registry::Navi, &nettai_match::ruleset::Item::of(navi.0)),
                 hp: hp(checked, navi).map(|h| hp_word(h as i32)).unwrap_or_default(),
                 used: b.as_ref().map_or(0, |b| b.count.used as i32),

@@ -325,12 +325,43 @@ function party.spend_dice_bonus(side: number)
     state.dice_bonus = true
 end
 
+-- The damage of a member's own chip (`s` its block) at the side, its formula's (lib/navi_level: in a party the DS's,
+-- 0x0203BF2C, the bonus its PartyCust programs add with it), and that bonus; none for a navi without one.
+local function own_chip_damage(side: number, s: Navi): (number?, number)
+    local own = s.navi.own_chip
+    if own == nil then
+        return nil, 0
+    end
+    local damage = own.chip.damage
+    local value = if type(damage) == "function" then damage(side, own.chip) elseif type(damage) == "number" then damage else nil
+    return value, if party.has_partners(side) then s.chip_attack_bonus else 0
+end
+
+-- `members`' entry for member `m` of the side's party (0 the build's navi, then the partners in the setup's order):
+-- its own chip's damage, where it has one.
+local function member_stats(side: number, m: number, out: SetupOverview)
+    local s = battle.member(side, m) :: Navi?
+    if s == nil then
+        return
+    end
+    local value, bonus = own_chip_damage(side, s)
+    if value == nil then
+        return
+    end
+    local damage: SetupStat = { name = "chip_damage", value = value, added = bonus }
+    local members = out.members or {}
+    table.insert(members, { entry = m, stats = { damage } })
+    out.members = members
+end
+
 -- The rules' `overview`'s part: each partner's PartyCust gauge as a list of its own (the setup's `party` at the
--- partner's entry: its programs' blocks against the gauge, a program in it any number of times), and for MegaMan the
--- switches a round allows (`party.limit`), the party's limit, and with partners a stat of its own (NaviCust's NavChg+1
--- and +2 add to the 3).
+-- partner's entry: its programs' blocks against the gauge, a program in it any number of times); each member's own
+-- chip's damage (`members`: the stats table's `chip_damage`, the build's navi's too); and for MegaMan the switches a
+-- round allows (`party.limit`), the party's limit, and with partners a stat of its own (NaviCust's NavChg+1 and +2 add
+-- to the 3).
 function party.overview(side: number, out: SetupOverview)
     local setup = rules.setup_of(side) :: Setup
+    member_stats(side, 0, out)
     for i, p in setup.party do
         local data = if p.navi then (p.navi :: any).party else nil
         if data then
@@ -343,6 +374,9 @@ function party.overview(side: number, out: SetupOverview)
             local list: SetupList = { field = "party", entry = i, cost = "cost", used = partycust.cost(programs), limit = data.gauge, once = false }
             table.insert(out.lists, list)
         end
+    end
+    for m = 1, battle.party(side).count - 1 do
+        member_stats(side, m, out)
     end
     -- (The limit is MegaMan's, partners or none: the Party tab says it before any is chosen. The stat is a party's.)
     if setup.navi == nil or setup.navi.forms == nil then
