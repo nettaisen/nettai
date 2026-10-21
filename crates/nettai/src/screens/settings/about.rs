@@ -230,7 +230,9 @@ mod tests {
 
     #[test]
     fn the_list_holds_the_fonts_and_slint_with_their_licenses() {
-        assert_eq!(FONTS.len(), 4);
+        // (The UI's and the battle's drawing's: build.rs's list, in its order.)
+        let names: Vec<&str> = FONTS.iter().map(|f| f.name).collect();
+        assert_eq!(names, ["Bungee", "Chakra Petch", "Corporate Logo", "M PLUS 1 Code", "Murecho", "Saira"]);
         assert!(FONTS.iter().all(|f| f.license == "OFL-1.1" && !f.texts.is_empty()));
         let slint = PACKAGES.iter().find(|p| p.name == "slint").expect("Slint is built in");
         assert!(slint.license.contains("LicenseRef-Slint-Royalty-free-2.0"));
