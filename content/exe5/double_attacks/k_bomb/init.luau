@@ -1,11 +1,11 @@
 --!strict
--- K-BOMB (the DS's chip 0x16A; Kokuban-keshi Bomb), the Double Attack of MegaMan and NumberMan (docs/design/exe5ds-map.md
--- §5, §5.2: its director the DS's effect object 0xA1, its actors its T1 0x42, the bombs its attack object 0xCC). Each
--- throws two bombs (./bomb), 31 ticks apart, lobbed at the panel three columns ahead; each bursts into four hits on a
--- quarter of the 3x3 around it (MegaMan's the first and third quarters, NumberMan's the second and fourth), its middle
--- panel in every quarter, confusing. The chip's record and name are the DS's (written by tools/exe5/gen_content.py,
--- bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14, subtype 0: the DS copied
--- Cannon's record), which nothing starts: no folder or hand holds it.
+-- K-BOMB (the DS's chip 0x16A; Kokuban-keshi Bomb), the Double Attack of MegaMan and NumberMan
+-- (docs/design/exe5ds-map.md §5, §5.2: its controller the DS's effect object 0xA1, its navis its T1 0x42, the bombs its
+-- attack object 0xCC). Each throws two bombs (./bomb), 31 ticks apart, lobbed at the panel three columns ahead; each
+-- bursts into four hits on a quarter of the 3x3 around it (MegaMan's the first and third quarters, NumberMan's the
+-- second and fourth), its middle panel in every quarter, confusing. The chip's record and name are the DS's (written by
+-- tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14,
+-- subtype 0: the DS copied Cannon's record), which nothing starts: no folder or hand holds it.
 
 local attachment = require("../objects/attachment")
 local bomb = require("@self/bomb")
@@ -15,7 +15,7 @@ local double_attack = require("../lib/double_attack")
 local megaman = require("../navis/megaman").megaman
 local numberman = require("../navis/numberman").numberman
 
-type State = DoubleAttackActor
+type State = DoubleAttackNavi
 
 local CHARGE_TICKS = 0x3C
 -- The throws: two, 31 ticks each (the bomb out on the tenth); NumberMan waits 15 ticks first. Then 30 ticks.
