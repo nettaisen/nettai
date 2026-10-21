@@ -28,7 +28,9 @@
 //! into a partner's list, in a list to another place or into the other partner's, and onto the library, which takes it
 //! out. Over a partner's section (its head or its programs) that partner is the one marked, its head lit, and a gap opens
 //! in its list where the program would go (over its head, at the top); where it can't go in there, the dragged row says
-//! why ("Needs 3 blocks") and no gap opens, and let go it is refused as Enter is.
+//! why ("Needs 3 blocks") and no gap opens, and let go it is refused as Enter is. **A partner's head is dragged** onto
+//! another's section (or above the first, below the last) to take its place, its programs with it; **a chip in the
+//! party** onto another that is, to trade places.
 
 use crate::builds::overview::{stat_line, stat_name};
 use crate::builds::party::{FIELD, Partner, Shape, partners, tone, write};
@@ -357,9 +359,15 @@ impl Party {
         self.navis = teams.iter().flat_map(|(_, row)| row.iter().copied()).collect();
         let full = partners.len() >= shape.room;
         let (team_rows, panels, rows) = draft.with_words(shell, |words| {
+            let firsts = teams.iter().scan(0, |first, (_, row)| {
+                let at = *first;
+                *first += row.len();
+                Some(at as i32)
+            });
             let team_rows: Vec<PartyTeam> = teams
                 .iter()
-                .map(|(id, row)| {
+                .zip(firsts)
+                .map(|((id, row), first)| {
                     let tag = id.as_ref().and_then(|id| kit.builds.group(id)).map(|_| kit.version_tag_of(words.names, Registry::Navi, &Item::of(row[0].0))).unwrap_or_default();
                     let chips: Vec<PartyChip> = row
                         .iter()
@@ -368,7 +376,7 @@ impl Party {
                             PartyChip { face: kit.pictures.navi(n), name: words.names.navi_long(n).into(), place, full: full && place == 0, held: !draft.allows(FIELD, n.0) }
                         })
                         .collect();
-                    PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)) }
+                    PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)), first }
                 })
                 .collect();
             let table = self.effects_table();
@@ -679,6 +687,45 @@ impl Party {
         landing_in(&sections(shell, counts.len()), &counts, editor::pointer_at(at))
     }
 
+    /// Where a partner's head dragged to `at` would put it: the place of the partner whose section it is over (above
+    /// the first, the first's; below the last, the last's). None: beside them.
+    fn partner_landing(&self, shell: &Shell, draft: &Draft, at: i32) -> Option<usize> {
+        let (x, y) = editor::pointer_at(at);
+        let sections = sections(shell, self.partners(draft).len());
+        let (first, last) = (sections.first()?, sections.last()?);
+        if x < first.x || x > first.right {
+            return None;
+        }
+        Some(if y < first.top { 0 } else if y >= last.bottom { sections.len() - 1 } else { section_at(&sections, (x, y))? })
+    }
+
+    /// Partner `from` moved to place `to` among them, its programs with it, or (`trade`) the two trading places.
+    fn move_partner(&mut self, shell: &mut Shell, draft: &mut Draft, from: usize, to: usize, trade: bool) {
+        if self.change(draft, |ps| {
+            if from == to || from >= ps.len() || to >= ps.len() {
+                return false;
+            }
+            if trade {
+                ps.swap(from, to);
+            } else {
+                let p = ps.remove(from);
+                ps.insert(to, p);
+            }
+            true
+        }) {
+            shell.sound.play(Cue::Pick);
+            self.target = to;
+            self.changed(shell, draft);
+            shell.nav.focus("target", to as i32);
+        }
+    }
+
+    /// The partner chip `k` of the picker is in the party as, if it is.
+    fn partner_of_chip(&self, draft: &Draft, k: usize) -> Option<usize> {
+        let n = *self.navis.get(k)?;
+        self.partners(draft).iter().position(|p| p.navi == Some(n))
+    }
+
     fn close_sheet(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<PartyView>();
@@ -762,6 +809,35 @@ impl Tab for Party {
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         let list = shell.ui().global::<nettai_ui::Drag>().get_list().to_string();
         match (id, list.as_str()) {
+            // A partner's head dragged: over another partner's section (or above the first, below the last), it takes
+            // that one's place; let go there, the partners move, their programs with them.
+            ("drag-over", "target") => match self.partner_landing(shell, draft, choice).filter(|&to| to != index.max(0) as usize) {
+                Some(to) => editor::show_landing(shell, "target", Some(to), true),
+                None => self.show_no_landing(shell),
+            },
+            ("drag-drop", "target") => {
+                self.show_no_landing(shell);
+                if let Some(to) = self.partner_landing(shell, draft, choice) {
+                    self.move_partner(shell, draft, index.max(0) as usize, to, false);
+                }
+            }
+            // A chip of the picker that is in the party dragged onto another that is: the two trade places.
+            ("drag-over", "chip") => {
+                let placed: Vec<usize> = (0..self.navis.len()).filter(|&k| k != index.max(0) as usize && self.partner_of_chip(draft, k).is_some()).collect();
+                match editor::nearest(shell, "chip", placed.into_iter(), editor::pointer_at(choice), None) {
+                    Some(k) => editor::show_landing(shell, "chip", Some(k), true),
+                    None => self.show_no_landing(shell),
+                }
+            }
+            ("drag-drop", "chip") => {
+                self.show_no_landing(shell);
+                let placed: Vec<usize> = (0..self.navis.len()).filter(|&k| k != index.max(0) as usize && self.partner_of_chip(draft, k).is_some()).collect();
+                if let Some(k) = editor::nearest(shell, "chip", placed.into_iter(), editor::pointer_at(choice), None)
+                    && let (Some(from), Some(to)) = (self.partner_of_chip(draft, index.max(0) as usize), self.partner_of_chip(draft, k))
+                {
+                    self.move_partner(shell, draft, from, to, true);
+                }
+            }
             // A partner's program dragged: over the library, taken out if let go; over a partner's section (its head or
             // its list), that partner is the one marked, and where it would go in there (a gap, those from there on
             // shifting), or why it can't (no gap); elsewhere, nowhere (it goes back).

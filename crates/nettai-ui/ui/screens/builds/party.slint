@@ -19,7 +19,8 @@
 //
 // A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
 // and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
-// where it would go in its list (the section a row taller), or the dragged row says why it can't.
+// where it would go in its list (the section a row taller), or the dragged row says why it can't. A partner's head is
+// dragged onto another's to take its place (a gap over the other's head), a chip in the party onto another's to trade.
 //
 // On a phone, which has no strip, the chips wrap three to a row under their team's name, PARTY is the tab's width, and a
 // button under it opens the library as a sheet (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
@@ -47,6 +48,8 @@ export struct PartyTeam {
     name: string,
     tone: color,
     chips: [PartyChip],
+    // The place of its first chip among all the teams' (their focus order).
+    first: int,
 }
 
 // A program in a list: its name, what it does (`effect`) or why it won't go in (`why`, the row greyed), its blocks in
@@ -191,7 +194,10 @@ component Blocks inherits Rectangle {
 component ChipView inherits Rectangle {
     in property <PartyChip> chip;
     in property <int> nav-index;
+    // The copy dragged under the pointer: no control of its own.
+    in property <bool> lifted;
     property <bool> in: root.chip.place > 0;
+    opacity: !root.lifted && Drag.on && Drag.list == "chip" && Drag.from == root.nav-index ? 0.35 : 1;
     Rectangle {
         background: root.in ? Theme.raised : Theme.panel;
         border-width: 1px;
@@ -238,10 +244,20 @@ component ChipView inherits Rectangle {
         }
     }
 
-    Focusable {
+    // (Another chip of the party dragged onto it: they would trade places.)
+    DropGap {
+        visible: !root.lifted && Drag.on && Drag.list == "chip" && Drag.to == root.nav-index;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    if !root.lifted: Focusable {
         nav: "chip";
         nav-index: root.nav-index;
         describes: true;
+        // (One in the party is dragged onto another to trade places with it, and a right click takes it out.)
+        drag: root.in ? "chip" : "";
+        removable: root.in;
     }
 }
 
@@ -398,7 +414,8 @@ component RowsList inherits Rectangle {
     }
 }
 
-// A partner's head in PARTY: its face, its name and HP, its gauge and the blocks used of it.
+// A partner's head in PARTY: its face, its name and HP, its gauge and the blocks used of it (the one dragged, under the
+// pointer, too).
 component PartnerHead inherits Rectangle {
     in property <PartyPanel> panel;
     Image {
@@ -464,12 +481,14 @@ component PartnerHead inherits Rectangle {
 }
 
 // A partner's section of PARTY: its head, a control (the cursor in it makes it the partner the library adds to;
-// `target` marks it as a list's chosen row is), and its programs' list under it.
+// `target` marks it as a list's chosen row is; dragged, it takes another's place), and its programs' list under it.
 component SectionView inherits Rectangle {
     in property <PartyPanel> panel;
     in property <int> place;
     in property <bool> target;
     property <length> head: 34px;
+    // (Its head dragged: faint where it was; another's dragged over it: it would take its place.)
+    opacity: Drag.on && Drag.list == "target" && Drag.from == root.place ? 0.35 : 1;
     Rectangle {
         x: 0;
         y: 0;
@@ -502,6 +521,14 @@ component SectionView inherits Rectangle {
         panel: root.panel;
     }
 
+    DropGap {
+        y: 0;
+        height: root.head;
+        visible: Drag.on && Drag.list == "target" && Drag.to == root.place;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
     Focusable {
         x: 0;
         y: 0;
@@ -509,6 +536,8 @@ component SectionView inherits Rectangle {
         nav: "target";
         nav-index: root.place;
         describes: true;
+        drag: "target";
+        removable: true;
     }
 
     RowsList {
@@ -710,7 +739,6 @@ export component PartyTab inherits Rectangle {
 
         // ---- The navis to pick from: a row a version.
         for team[t] in PartyView.teams: Rectangle {
-            property <int> before: t == 0 ? 0 : PartyView.teams[0].chips.length;
             x: 0;
             y: root.picker-y + t * root.team-height;
             width: root.width;
@@ -736,7 +764,21 @@ export component PartyTab inherits Rectangle {
                 width: root.chip-width;
                 height: root.chip-height;
                 chip: chip;
-                nav-index: parent.before + k;
+                nav-index: team.first + k;
+            }
+
+            // (A chip of this row dragged, under the pointer.)
+            if Drag.on && Drag.list == "chip" && Drag.from >= team.first && Drag.from < team.first + team.chips.length: ChipView {
+                x: Drag.x - parent.absolute-position.x - Drag.grab-x;
+                y: Drag.y - parent.absolute-position.y - Drag.grab-y;
+                width: root.chip-width;
+                height: root.chip-height;
+                chip: team.chips[Drag.from - team.first];
+                nav-index: Drag.from;
+                lifted: true;
+                drop-shadow-blur: 10px;
+                drop-shadow-offset-y: 4px;
+                drop-shadow-color: #00000090;
             }
         }
 
@@ -871,6 +913,23 @@ export component PartyTab inherits Rectangle {
             // (Why it can't go in where it is, in place of what it does.)
             ProgramLine {
                 row-data: { name: parent.held.name, effect: parent.held.effect, why: PartyView.drag-why, blocks: parent.held.blocks, tone: parent.held.tone, bad: parent.held.bad };
+            }
+        }
+
+        // (A partner's head dragged, under the pointer: raised, a line in the cursor's color.)
+        if Drag.on && Drag.list == "target" && Drag.from >= 0 && Drag.from < PartyView.panels.length: Rectangle {
+            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            y: Drag.y - root.absolute-position.y - Drag.grab-y;
+            width: root.pane-width - 2px;
+            height: 34px;
+            background: Theme.raised;
+            border-width: 1px;
+            border-color: Theme.cursor;
+            drop-shadow-blur: 10px;
+            drop-shadow-offset-y: 4px;
+            drop-shadow-color: #00000090;
+            PartnerHead {
+                panel: PartyView.panels[Drag.from];
             }
         }
     }
