@@ -2453,7 +2453,8 @@ down; a click over another piece, then off the board; a right click; a click off
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle; in the probe, a change of game too), `packs` (a pack being extracted, and the Legacy
 Collection not found: the loading screen's line and button, and its dialog), `practice`, `builds`, `build-tabs`,
-`play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass extracts
+`party` (the Party tab, with `NETTAI_TOUR_GAME=exe5`, a desktop's: every drag it takes, each let go and checked, the
+held states shot, and Patch cards' library and the NaviCust's list beside it for comparing), `play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass extracts
 nothing: its packs are `$NETTAI_PACKS`'s, and the extraction's screens are set on the view.)
 
 **A picture's name says what it is of, and the pass doesn't check that**: it checks what moves between a pair

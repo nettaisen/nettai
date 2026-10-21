@@ -1765,6 +1765,232 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     add(SETTLE, end());
 }
 
+/// The partners and their programs as PARTY shows them: each partner's name and its programs' names.
+fn party_of(ui: &nettai_ui::AppWindow) -> Vec<(String, Vec<String>)> {
+    ui.global::<nettai_ui::PartyView>().get_panels().iter().map(|p| (p.name.to_string(), p.rows.iter().map(|r| r.name.to_string()).collect())).collect()
+}
+
+/// The first of the library's rows `which` takes (by its row as the view shows it), kept in `picked`: one off the
+/// list's first two and last two where there is one (a press near its edge would scroll it).
+fn pick_program(picked: &Rc<RefCell<Picked>>, which: fn(&nettai_ui::PartyRow) -> bool) -> Step {
+    pick(picked, move |ui| {
+        let rows = ui.global::<nettai_ui::PartyView>().get_rows();
+        let n = rows.row_count();
+        let found: Vec<usize> = rows.iter().enumerate().filter(|(_, r)| which(r)).map(|(i, _)| i).collect();
+        let i = found.iter().copied().find(|&i| i >= 2 && i + 2 < n).or(found.first().copied())?;
+        Some(Picked { row: i as i32, name: rows.row_data(i).unwrap().name.to_string(), ..Default::default() })
+    })
+}
+
+/// The pointer pressed at `from`, moved off it and on through `through`, and held at the last: `hand(.., Release)` lets
+/// it go.
+fn party_drag(add: &mut dyn FnMut(u64, Step), from: Point, through: &[Point]) {
+    add(SETTLE, hand(from, Ev::Press));
+    let off = match from {
+        Point::Control(id, i) => Point::Below(id, i, 10.0),
+        p => p,
+    };
+    add(60, hand(off, Ev::Move));
+    for &p in through {
+        add(60, hand(p, Ev::Move));
+    }
+    if let Some(&last) = through.last() {
+        add(60, hand(last, Ev::Move));
+    }
+}
+
+/// The Party tab (EXE5's party battle; a game without one passes these by): two partners put in from the picker, and
+/// every drag the tab takes, each let go and what it did checked (`report.txt` says what didn't), the held states shot
+/// (the gap open where the program would go, the partner it is over marked; the refusal on the dragged row): a
+/// library's program into the first partner's empty list, at its top and between its rows; into the second's; one the
+/// second's gauge has no room for (refused, nothing changes); a program moved in its partner's list, onto the library
+/// (taken out: the second's gauge has room again), and into the other partner's (over its head: at its top); a partner's head onto the other's (they trade places, programs with
+/// them); a chip of the party onto the other's (they trade back). Then, for comparing, the Patch cards library with a
+/// card refused, and the NaviCust's list. A desktop's: the phone's library is a sheet, which no drag reaches.
+pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
+    use nettai_ui::PartyView;
+    if size != "desktop" {
+        return;
+    }
+    open_build(add);
+    add(SETTLE, to_tab(EditorTab::Party));
+    add(SETTLE, focus("chip", 0));
+    shot(add, "party-empty", Pair::None);
+    add(90, on_tab(EditorTab::Party, "Party"));
+    add(SETTLE, press("chip", 0));
+    add(SETTLE, press("chip", 1));
+    add(SETTLE, focus("target", 0));
+    add(SETTLE, expect(|ui, _| (party_of(ui).len() != 2).then(|| format!("two chips pressed: the party is {:?}", party_of(ui)))));
+    shot(add, "party-two", Pair::None);
+    let small = |r: &nettai_ui::PartyRow| r.why.is_empty() && r.blocks <= 2;
+    let picked: Rc<RefCell<Picked>> = Rc::default();
+    // A library's program into the first partner's empty list (its Empty row), held there, let go.
+    add(SETTLE, pick_program(&picked, small));
+    drag_in(add, &picked, |_, _| Some(Point::Below("target", 0, 30.0)));
+    shot(add, "party-drag-in-held", Pair::None);
+    add(SETTLE, hand(Point::Below("target", 0, 30.0), Ev::Release));
+    let got = picked.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let party = party_of(ui);
+        let want = vec![got.borrow().name.clone()];
+        (party.first().map(|p| &p.1) != Some(&want)).then(|| format!("a library's program dragged into the first partner's empty list: it holds {:?}, not {want:?}", party.first().map(|p| &p.1)))
+    }));
+    shot(add, "party-dragged-in", Pair::None);
+    // Another at its top (the upper half of its first row): it goes first.
+    add(SETTLE, pick_program(&picked, |r| r.why.is_empty() && r.blocks == 1));
+    drag_in(add, &picked, |_, _| Some(Point::Below("installed0", 0, -8.0)));
+    shot(add, "party-drag-in-top", Pair::None);
+    add(SETTLE, hand(Point::Below("installed0", 0, -8.0), Ev::Release));
+    let got = picked.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let party = party_of(ui);
+        let first = party.first().and_then(|p| p.1.first()).cloned();
+        (first.as_deref() != Some(got.borrow().name.as_str()) || party.first().map(|p| p.1.len()) != Some(2)).then(|| format!("a library's program dragged onto the first partner's top: its programs are {:?}", party.first().map(|p| &p.1)))
+    }));
+    // Another between its two (the line between its rows): it goes second.
+    add(SETTLE, pick_program(&picked, |r| r.why.is_empty() && r.blocks == 1));
+    drag_in(add, &picked, |_, _| Some(Point::Below("installed0", 0, 15.0)));
+    shot(add, "party-drag-in-middle", Pair::None);
+    add(SETTLE, hand(Point::Below("installed0", 0, 15.0), Ev::Release));
+    let got = picked.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let party = party_of(ui);
+        let second = party.first().and_then(|p| p.1.get(1)).cloned();
+        (second.as_deref() != Some(got.borrow().name.as_str()) || party.first().map(|p| p.1.len()) != Some(3)).then(|| format!("a library's program dragged between the first partner's two: its programs are {:?}", party.first().map(|p| &p.1)))
+    }));
+    // Into the second partner's (its Empty row).
+    add(SETTLE, pick_program(&picked, small));
+    drag_in(add, &picked, |_, _| Some(Point::Below("target", 1, 30.0)));
+    shot(add, "party-drag-in-second", Pair::None);
+    add(SETTLE, hand(Point::Below("target", 1, 30.0), Ev::Release));
+    add(SETTLE, expect(|ui, _| {
+        let party = party_of(ui);
+        (party.get(1).map_or(0, |p| p.1.len()) != 1).then(|| format!("a library's program dragged into the second partner's: the party is {party:?}"))
+    }));
+    // The second's gauge filled with the largest, by Enter, until one is refused; one it has no room for dragged over
+    // it: the dragged row says why, no gap opens, and let go nothing changes.
+    add(SETTLE, focus("target", 1));
+    for _ in 0..3 {
+        add(SETTLE, Box::new(|ui, app, tour| {
+            if tour.passing.get() {
+                return;
+            }
+            let rows = ui.global::<PartyView>().get_rows();
+            let Some(at) = rows.iter().enumerate().filter(|(_, r)| r.why.is_empty()).max_by_key(|(_, r)| r.blocks).map(|(i, _)| i) else { return };
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("lib.rows", at as i32);
+            app.act(Action::Confirm);
+        }));
+    }
+    let kept: Rc<RefCell<Vec<(String, Vec<String>)>>> = Rc::default();
+    let keep = |kept: &Rc<RefCell<Vec<(String, Vec<String>)>>>| -> Step {
+        let kept = kept.clone();
+        Box::new(move |ui, _, _| *kept.borrow_mut() = party_of(ui))
+    };
+    add(SETTLE, focus("target", 1));
+    add(SETTLE, pick_program(&picked, |r| !r.why.is_empty()));
+    add(SETTLE, keep(&kept));
+    drag_in(add, &picked, |_, _| Some(Point::Below("target", 1, 30.0)));
+    add(SETTLE, expect(|ui, _| {
+        let (why, to) = (ui.global::<PartyView>().get_drag_why(), ui.global::<nettai_ui::Drag>().get_to());
+        (why.is_empty() || to >= 0).then(|| format!("a program the second partner has no room for, dragged over it: the dragged row says {why:?}, the gap at {to}"))
+    }));
+    shot(add, "party-drag-refused", Pair::None);
+    add(SETTLE, hand(Point::Below("target", 1, 30.0), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| (party_of(ui) != *was.borrow()).then(|| format!("a refused program let go over the second partner: the party changed to {:?}", party_of(ui)))));
+    // The first partner's first program moved to its end, in its list.
+    add(SETTLE, keep(&kept));
+    party_drag(add, Point::Control("installed0", 0), &[Point::Control("installed0", 1), Point::Below("installed0", 2, 10.0)]);
+    shot(add, "party-drag-within", Pair::None);
+    add(SETTLE, hand(Point::Below("installed0", 2, 10.0), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let was = was.borrow();
+        let mut want = was.first().map(|p| p.1.clone()).unwrap_or_default();
+        if !want.is_empty() {
+            let first = want.remove(0);
+            want.push(first);
+        }
+        let got = party_of(ui).first().map(|p| p.1.clone()).unwrap_or_default();
+        (got != want).then(|| format!("the first partner's first program dragged to its end: its programs are {got:?}, not {want:?}"))
+    }));
+    // The second partner's first program onto the library: taken out.
+    add(SETTLE, keep(&kept));
+    onto_library(add, Point::Control("installed1", 0));
+    shot(add, "party-drag-remove", Pair::None);
+    add(SETTLE, drop_on_library());
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let (was, now) = (was.borrow(), party_of(ui));
+        (now.get(1).map(|p| p.1.len() + 1) != was.get(1).map(|p| p.1.len())).then(|| format!("the second partner's first program dragged onto the library: the party is {now:?} (was {was:?})"))
+    }));
+    // The first partner's first program into the second's (over its head).
+    add(SETTLE, keep(&kept));
+    party_drag(add, Point::Control("installed0", 0), &[Point::Control("target", 1)]);
+    shot(add, "party-drag-between", Pair::None);
+    add(SETTLE, hand(Point::Control("target", 1), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let (was, now) = (was.borrow(), party_of(ui));
+        let moved = was.first().and_then(|p| p.1.first().cloned());
+        let ok = now.len() == 2 && was.len() == 2 && now[0].1.len() + 1 == was[0].1.len() && now[1].1.len() == was[1].1.len() + 1 && now[1].1.first() == moved.as_ref();
+        (!ok).then(|| format!("the first partner's first program dragged onto the second's head: the party is {now:?} (was {was:?})"))
+    }));
+    // The second partner's head onto the first's: they trade places, their programs with them.
+    add(SETTLE, keep(&kept));
+    party_drag(add, Point::Control("target", 1), &[Point::Control("target", 0)]);
+    shot(add, "party-drag-head", Pair::None);
+    add(SETTLE, hand(Point::Control("target", 0), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let (was, now) = (was.borrow(), party_of(ui));
+        let want: Vec<(String, Vec<String>)> = was.iter().rev().cloned().collect();
+        (now != want).then(|| format!("the second partner's head dragged onto the first's: the party is {now:?}, not {want:?}"))
+    }));
+    shot(add, "party-dragged-head", Pair::None);
+    // A chip of the party onto the other's: they trade back.
+    add(SETTLE, keep(&kept));
+    let placed = |ui: &nettai_ui::AppWindow, place: i32| -> Option<i32> {
+        ui.global::<PartyView>().get_teams().iter().find_map(|t| t.chips.iter().position(|c| c.place == place).map(|k| t.first + k as i32))
+    };
+    add(SETTLE, hand_at(move |ui, _| placed(ui, 1).map(|k| Point::Control("chip", k)), Ev::Press));
+    add(60, hand_at(move |ui, _| placed(ui, 1).map(|k| Point::Below("chip", k, 10.0)), Ev::Move));
+    add(60, hand_at(move |ui, _| placed(ui, 2).map(|k| Point::Control("chip", k)), Ev::Move));
+    add(60, hand_at(move |ui, _| placed(ui, 2).map(|k| Point::Control("chip", k)), Ev::Move));
+    shot(add, "party-drag-chip", Pair::None);
+    add(SETTLE, hand_at(move |ui, _| placed(ui, 2).map(|k| Point::Control("chip", k)), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let (was, now) = (was.borrow(), party_of(ui));
+        let want: Vec<(String, Vec<String>)> = was.iter().rev().cloned().collect();
+        (now != want).then(|| format!("the first partner's chip dragged onto the second's: the party is {now:?}, not {want:?}"))
+    }));
+    // The library with the cursor on a refused program, and on a partner's program.
+    add(SETTLE, focus("target", 0));
+    add(SETTLE, pick_program(&picked, |r| !r.why.is_empty()));
+    shot(add, "party-library", Pair::None);
+    add(SETTLE, focus("installed0", 0));
+    shot(add, "party-installed", Pair::None);
+    // For comparing: the Patch cards library, three cards in, by MB the most first, one refused; the NaviCust's list.
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, library());
+    for row in 0..3 {
+        add(SETTLE, focus("lib.rows", row));
+        add(SETTLE, act(Action::Confirm));
+    }
+    add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 2)));
+    add(SETTLE, press("lib.direction", 0));
+    add(SETTLE, focus("lib.rows", 0));
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "party-cmp-cards", Pair::None);
+    add(SETTLE, out_of_library());
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, focus("programs", 0));
+    shot(add, "party-cmp-navicust", Pair::None);
+    add(SETTLE, end());
+}
+
 /// The tabs' bursts of the motion probe (`burst` takes one: a name, the milliseconds after its trigger at which a
 /// shot is taken, and the trigger): a piece taken up (it lifts), turned (a quarter turn), put down (a pulse along
 /// its cells), refused (it shakes), and a bug appearing (it pulses purple).
