@@ -60,10 +60,19 @@ pub enum ActionRole {
     /// 0x08010850): the navi's deletion action runs it. Unfilled, the
     /// engine's (EXE6's `sub_80173F4`, EXE5's alike).
     Deletion,
+    /// What the navi's revival request starts (`request::REVIVAL`): the
+    /// rules bring back a navi whose HP reached 0 (EXE5's party battle, the
+    /// DS's ToadMan rescue, action 0x5A). Unfilled where no rules ask for it.
+    Revival,
+    /// What the navi's follow-up request starts (`request::FOLLOW_UP`): an
+    /// action of the rules' after the switch handling (EXE5's party battle,
+    /// the DS's Double Attack after a paused swap, action 0x5C). Unfilled
+    /// where no rules ask for it.
+    FollowUp,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 13] = [
+    pub const ALL: [ActionRole; 15] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -77,6 +86,8 @@ impl ActionRole {
         ActionRole::Glowless,
         ActionRole::Wrapper,
         ActionRole::Deletion,
+        ActionRole::Revival,
+        ActionRole::FollowUp,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -95,6 +106,8 @@ impl ActionRole {
             ActionRole::Glowless => "glowless",
             ActionRole::Wrapper => "wrapper",
             ActionRole::Deletion => "deletion",
+            ActionRole::Revival => "revival",
+            ActionRole::FollowUp => "follow_up",
         }
     }
 
@@ -347,6 +360,9 @@ definition_roles! {
         Confusion = "confusion",
         /// A navi turns invisible (`sub_8010474`).
         Invisible = "invisible",
+        /// A party's navi switch lands (the DS's 0x8D, `cross-change`:
+        /// 0x0202BEB8, 0x0202C690).
+        NaviSwitch = "navi_switch",
         /// A navi shows again: invisibility or a dive ended, a navi
         /// entering.
         Appear = "appear",

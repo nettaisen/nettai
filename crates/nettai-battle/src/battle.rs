@@ -456,6 +456,15 @@ pub struct Battle {
     pub hp_numbers: [[Option<crate::hud::HpNumber>; crate::hud::HpNumber::PLACES]; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
+    /// Each side's input record's switch request (the DS's +8, the panel's
+    /// request after its refusals: 0x020022E8): the party member its player
+    /// asks to switch to this tick, which the side's navi copies
+    /// (`ActorData::switch_input`) and its custom screen reads.
+    pub switch_inputs: [Option<u8>; 2],
+    /// Each side's input record's microphone level (the DS's +9, its
+    /// packet's +5: 0x020022E8), which the side's rules may hear
+    /// (`mic_heard`). Nothing in nettai sets it.
+    pub mic_levels: [u8; 2],
     pub hands: [ChipHand; 2],
     /// Both players' transformation requests from the last custom screen.
     pub transform_requests: [TransformRequest; 2],
@@ -781,6 +790,8 @@ impl Battle {
             hp_numbers: [[None; crate::hud::HpNumber::PLACES]; 2],
             paused: false,
             inputs: [InputRecord::default(); 2],
+            switch_inputs: [None; 2],
+            mic_levels: [0; 2],
             hands,
             transform_requests: [TransformRequest::NONE; 2],
             turn_transforms: [TransformRequest::NONE; 2],
@@ -1090,6 +1101,8 @@ impl Battle {
             let side = &self.custom.sides[p];
             self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
         }
+        self.read_switch_requests(input);
+        self.mic_levels = [input[0].mic_level, input[1].mic_level];
 
         self.run_mode_handler();
         self.run_objects();
@@ -1775,11 +1788,13 @@ impl Battle {
             let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
+            let switch = self.switch_inputs[side as usize];
             let ad = self.actors.get_mut(a);
             if over {
                 ad.pad = Default::default();
                 continue;
             }
+            ad.switch_input = switch;
             if berserk {
                 continue;
             }
@@ -1792,7 +1807,38 @@ impl Battle {
         }
     }
 
+    /// Each side's switch request into its input record (the DS's bottom
+    /// screen panel's request, 0x02036F80, which its packet carries as +7):
+    /// a member of the side's party other than none, which the side's
+    /// rules may refuse (`switch_requested`: the panel's limit and a member
+    /// at 0 HP). Once the battle is over the record keeps what it had.
+    fn read_switch_requests(&mut self, input: &[PlayerTick; 2]) {
+        if self.is_battle_over() {
+            return;
+        }
+        for side in 0..2u8 {
+            let party = &self.party[side as usize];
+            let asked = input[side as usize].switch_to.filter(|&m| party.has_partners() && party.member(m).is_some());
+            self.switch_inputs[side as usize] = match asked {
+                Some(m) if self.rules_switch_requested(side, m) => Some(m),
+                _ => None,
+            };
+        }
+    }
+
+    /// Each side's rules hear its microphone, on a fight tick its level
+    /// isn't 0 (the DS's 0x022261A4, side 0 then side 1, just before the
+    /// navis copy their input: `mic_heard`).
+    fn hear_mics(&mut self) {
+        for side in 0..2u8 {
+            if self.mic_levels[side as usize] != 0 {
+                self.notify_side(side, nettai_content_api::RulesHook::MicHeard);
+            }
+        }
+    }
+
     fn fight_start_banner(&mut self) {
+        self.hear_mics();
         self.apply_actor_inputs();
         if self.fight.init == 0 {
             self.fight.timer = 0x1E;
@@ -1818,6 +1864,7 @@ impl Battle {
     }
 
     fn fight_fighting(&mut self) {
+        self.hear_mics();
         self.apply_actor_inputs();
         self.paused = false;
         self.set_flags(battle_flags::FIGHTING);

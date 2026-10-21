@@ -63,7 +63,16 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     let st = ai(b, r).status;
-    if st & (ai_status::SWITCH_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
+    // (The DS's party battle adds its in-battle switch, the rules'
+    // follow-up and their revival to what runs on: 0x02062174. None of them
+    // is set outside a side with partners, or the rules' asking.)
+    const RUNS_ON: u32 = ai_status::SWITCH_KNOCKOUT
+        | ai_status::SWITCHING_NAVI
+        | ai_status::FOLLOWING_UP
+        | ai_status::VOLLEY
+        | ai_status::REVIVING
+        | ai_status::UNINTERRUPTIBLE;
+    if st & RUNS_ON != 0 {
         return Flow::Dispatch;
     }
     // (A game with no transformation sequencer at a turn's start, EXE4's:
@@ -410,11 +419,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         dead = b.objects.get(r).hp == 0;
     }
     if dead {
-        if switch_protected(b, r) {
-            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
-        } else {
-            set_flag2(b, r, 1);
-        }
+        fall(b, r);
     }
     counter_and_mood(b, r);
 }
@@ -451,11 +456,7 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
         fell = b.objects.get(r).hp == 0;
     }
     if fell {
-        if switch_protected(b, r) {
-            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
-        } else {
-            set_flag2(b, r, 1);
-        }
+        fall(b, r);
     }
     counter_and_mood(b, r);
 }
@@ -499,13 +500,30 @@ fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
         left = o.hp != 0;
     }
     if !left && !super::hp_emptied(b, r) {
-        if switch_protected(b, r) {
-            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
-        } else {
-            set_flag2(b, r, 1);
-        }
+        fall(b, r);
     }
     counter_and_mood(b, r);
+}
+
+/// A navi at 0 HP where the framework would delete it
+/// (`applyDamageToPlayer`'s test; the DS's 0x02062C5A for its order): the
+/// side's rules may keep it (`navi_falling`: the DS's ToadMan rescue,
+/// 0x020048E8); else a switched-in navi falls back (`switch_protected`:
+/// the knockout's request); else, unless the rules' revival is asked for
+/// or runs, it is deleted.
+fn fall(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance;
+    if b.rules_navi_falling(side, r) {
+        return;
+    }
+    if switch_protected(b, r) {
+        ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
+        return;
+    }
+    if ai(b, r).requests & request::REVIVAL != 0 || ai(b, r).status & ai_status::REVIVING != 0 {
+        return;
+    }
+    set_flag2(b, r, 1);
 }
 
 /// `sub_801A200` (EXE5's 0x08016FDC, EXE4's 0x080131F4): what the hits
@@ -545,11 +563,38 @@ fn breaking_form(b: &mut Battle, r: ObjectRef) -> bool {
 /// MegaMan).
 fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
+    // The rules' revival of a navi at 0 HP (the DS's ToadMan rescue: request
+    // 0x100, action 0x5A), before everything.
+    if f & request::REVIVAL != 0 {
+        ai_mut(b, r).requests &= !request::REVIVAL;
+        ai_mut(b, r).status |= ai_status::REVIVING;
+        let revival = super::role_action(b, crate::content::ActionRole::Revival);
+        set_attack(b, r, revival, 0);
+        return Some(Flow::Dispatch);
+    }
     if f & request::SWITCH_KNOCKOUT != 0 {
         ai_mut(b, r).requests &= !request::SWITCH_KNOCKOUT;
         ai_mut(b, r).status |= ai_status::SWITCH_KNOCKOUT;
         let death = super::role_action(b, crate::content::ActionRole::SwitchKnockout);
         set_attack(b, r, death, 0);
+        return Some(Flow::Dispatch);
+    }
+    // A side with partners switches in battle (the DS's action 0x59, from
+    // the navi's own request: `actions::navi_switch::request_in_battle`).
+    let side = b.objects.get(r).alliance as usize & 1;
+    if f & request::NAVI_SWITCH != 0 && b.party[side].has_partners() {
+        ai_mut(b, r).requests &= !request::NAVI_SWITCH;
+        ai_mut(b, r).status |= ai_status::SWITCHING_NAVI;
+        set_attack(b, r, NaviAction::Engine(super::EngineAction::NaviSwitch), 0);
+        return Some(Flow::Dispatch);
+    }
+    // The rules' follow-up (the DS's Double Attack after a paused swap:
+    // request 0x02000000, action 0x5C).
+    if f & request::FOLLOW_UP != 0 {
+        ai_mut(b, r).requests &= !request::FOLLOW_UP;
+        ai_mut(b, r).status |= ai_status::FOLLOWING_UP;
+        let follow_up = super::role_action(b, crate::content::ActionRole::FollowUp);
+        set_attack(b, r, follow_up, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::VOLLEY != 0 {

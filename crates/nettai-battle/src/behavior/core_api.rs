@@ -9,7 +9,7 @@ use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
     FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
-    ScreenFade, Shadow,
+    PartyInfo, ScreenFade, Shadow, StatsOf,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 use nettai_content_api::{
@@ -111,6 +111,8 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::AHeld => request::A_HELD,
         RequestFlag::BHeld => request::B_HELD,
         RequestFlag::StunStrike => request::STUN_STRIKE,
+        RequestFlag::Revival => request::REVIVAL,
+        RequestFlag::FollowUp => request::FOLLOW_UP,
         RequestFlag::SelectSpecial => request::SELECT_SPECIAL,
         RequestFlag::NaviSwitch => request::NAVI_SWITCH,
         RequestFlag::SwitchKnockout => request::SWITCH_KNOCKOUT,
@@ -163,6 +165,8 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::FormBreaking => status::FORM_BREAKING,
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
+        NaviState::Reviving => status::REVIVING,
+        NaviState::FollowingUp => status::FOLLOWING_UP,
         NaviState::Vanished => status::VANISHED,
         NaviState::Dives => status::DIVES,
         NaviState::Hovering => status::HOVERING,
@@ -337,6 +341,25 @@ fn shuffle_order(rng: &mut crate::rng::Rng, n: usize, rounds: usize) -> ApiResul
 
 fn code_number(code: crate::content::ChipCode) -> Option<u8> {
     (code.0 <= 26).then_some(code.0)
+}
+
+impl Battle {
+    /// The stats `of` names: a side's navi's, or a member's block.
+    fn stats_of(&self, of: StatsOf) -> Option<&crate::setup::NaviStats> {
+        match of.member {
+            None => Some(&self.stats[of.side as usize & 1]),
+            Some(m) => self.party[of.side as usize & 1].member(m),
+        }
+    }
+
+    fn stats_of_mut(&mut self, of: StatsOf) -> ApiResult<&mut crate::setup::NaviStats> {
+        match of.member {
+            None => Ok(&mut self.stats[of.side as usize & 1]),
+            Some(m) => self.party[of.side as usize & 1]
+                .member_mut(m)
+                .ok_or_else(|| ApiError::Other(format!("side {}'s party has no member {m}", of.side))),
+        }
+    }
 }
 
 impl CoreApi for Battle {
@@ -553,8 +576,8 @@ impl CoreApi for Battle {
         Battle::hide_hp(self, o);
     }
 
-    fn navi_stat(&self, side: u8, stat: NaviStat) -> Value {
-        let s = &self.stats[side as usize & 1];
+    fn navi_stat(&self, of: StatsOf, stat: NaviStat) -> Value {
+        let Some(s) = self.stats_of(of) else { return Value::Nil };
         let i = |v: i64| Value::Int(v);
         let weapon = |w: Option<WeaponHandle>| w.map_or(Value::Nil, |h| Value::Def(Registry::Weapon, h.0));
         let record = |r: Option<nettai_content_api::RecordHandle>| r.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0));
@@ -636,7 +659,7 @@ impl CoreApi for Battle {
         }
     }
 
-    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
+    fn set_navi_stat(&mut self, of: StatsOf, stat: NaviStat, v: Value) -> ApiResult<()> {
         let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
         let weapon = match stat {
             NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon | NaviStat::BusterWeapon | NaviStat::AChargeWeapon | NaviStat::Mode9AWeapon => {
@@ -649,7 +672,7 @@ impl CoreApi for Battle {
             FieldValue::Ref(Some((Registry::Record, h))) => Some(nettai_content_api::RecordHandle(h)),
             _ => None,
         };
-        let s = &mut self.stats[side as usize & 1];
+        let s = self.stats_of_mut(of)?;
         // A support bit as the original sets it in the byte: none (0xFF,
         // the support bug) stays none when one is set.
         let support = |s: &mut crate::setup::NaviStats, f: fn(&mut crate::setup::Supports) -> &mut bool, on: bool| {
@@ -1726,6 +1749,7 @@ impl CoreApi for Battle {
             A::Engine(E::HandOffChip) => NaviAction::Engine("hand_off_chip"),
             A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
             A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
+            A::Engine(E::NaviSwitch) => NaviAction::Engine("navi_switch"),
             A::Content(h) => NaviAction::Content(h.0),
         })
     }
@@ -1982,13 +2006,42 @@ impl CoreApi for Battle {
             .ok_or_else(|| ApiError::Other(format!("side {side}'s player brings no setup of the rules")))
     }
 
-    fn navi_game_stats_mut(&mut self, side: u8) -> ApiResult<&mut nettai_content_api::SmallBlock> {
+    fn navi_game_stats_mut(&mut self, of: StatsOf) -> ApiResult<&mut nettai_content_api::SmallBlock> {
         let id = self.content.defs.rules().map(|r| r.stats).unwrap_or_default();
-        let game = &mut self.stats[side as usize & 1].game;
+        let game = &mut self.stats_of_mut(of)?.game;
         if game.id() != id {
-            return Err(ApiError::Other(format!("side {side}'s navi's stats aren't of its game's rules' `stats`")));
+            return Err(ApiError::Other(format!("side {}'s navi's stats aren't of its game's rules' `stats`", of.side)));
         }
         Ok(game)
+    }
+
+    fn party(&self, side: u8) -> PartyInfo {
+        let p = &self.party[side as usize & 1];
+        PartyInfo { count: p.count, active: p.active, switches: p.switches }
+    }
+
+    fn mic_level(&self, side: u8) -> u8 {
+        self.mic_levels[side as usize & 1]
+    }
+
+    fn join_party(&mut self, side: u8, navi: u16) -> ApiResult<u8> {
+        if self.round.frames != 0 || self.player_actor(side & 1).is_some() {
+            return Err(ApiError::Other("battle.join_party: a navi joins a party as the round is set up (round_setup)".into()));
+        }
+        let navi = nettai_content_api::NaviHandle(navi);
+        let stats = crate::setup::NaviStats::fresh(navi, &self.content)
+            .ok_or_else(|| ApiError::Other(format!("battle.join_party: navi {} has no fresh stats", self.content.defs.navi(navi).key)))?;
+        self.party[side as usize & 1].join(stats).ok_or_else(|| ApiError::Other(format!("battle.join_party: side {side}'s party is full")))
+    }
+
+    fn party_take_back(&mut self, navi: ObjectRef) -> ApiResult<()> {
+        self.actor_of(navi)?;
+        let side = self.objects.get(navi).alliance as usize & 1;
+        if !self.party[side].has_partners() {
+            return Err(ApiError::Other(format!("navi:take_back: side {side} has no partners to take back from")));
+        }
+        kinds::player::actions::navi_switch::take_back(self, navi);
+        Ok(())
     }
 
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {

@@ -54,15 +54,19 @@ pub enum EngineAction {
     /// (`transform`, `navi_switch`; the original's CurAction is the
     /// instant chips' then).
     FormChange,
+    /// A side's switch to another member of its party in battle (the DS's
+    /// action 0x59: `navi_switch::in_battle`).
+    NaviSwitch,
 }
 
 impl EngineAction {
-    pub const ALL: [EngineAction; 5] = [
+    pub const ALL: [EngineAction; 6] = [
         EngineAction::Move,
         EngineAction::DimmingChip,
         EngineAction::HandOffChip,
         EngineAction::InstantChip,
         EngineAction::FormChange,
+        EngineAction::NaviSwitch,
     ];
 
     /// Its key, by which the validator numbers it.
@@ -73,6 +77,7 @@ impl EngineAction {
             EngineAction::HandOffChip => "engine/hand-off-chip",
             EngineAction::InstantChip => "engine/instant-chip",
             EngineAction::FormChange => "engine/form-change",
+            EngineAction::NaviSwitch => "engine/navi-switch",
         }
     }
 }

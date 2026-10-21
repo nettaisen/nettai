@@ -658,6 +658,7 @@ impl UserData for Object {
             with(|api, _| api.take_status(this.0, status).map_err(api_error))
         });
         methods.add_method("end_anger", |_, this, ()| with(|api, _| api.end_anger(this.0).map_err(api_error)));
+        methods.add_method("take_back", |_, this, ()| with(|api, _| api.party_take_back(this.0).map_err(api_error)));
         methods.add_method("form_change_target", |_, this, ()| {
             let form = with(|api, _| Ok(api.form_change_target(this.0)))?;
             match form {
@@ -1000,8 +1001,9 @@ pub enum StateOf {
     /// A side's player's setup of the rules (`rules.setup()`): read-only.
     Setup(RulesCtx),
     /// A side's navi's stats of its game's own (the rules' `stats`: the
-    /// names `battle.navi(side)` has beside the engine's).
-    Stats(u8),
+    /// names `battle.navi(side)` has beside the engine's), or a member's
+    /// block's.
+    Stats(nettai_content_api::StatsOf),
 }
 
 impl State {
@@ -1283,10 +1285,11 @@ impl UserData for StatePart {
     }
 }
 
-/// A side's navi stats (`battle.navi(side)`): the engine's by their names,
-/// and its game's own (the rules' `stats`) by theirs, as a state's fields.
+/// A side's navi stats (`battle.navi(side)`), or a member's block of its
+/// party (`battle.member(side, m)`): the engine's by their names, and its
+/// game's own (the rules' `stats`) by theirs, as a state's fields.
 #[derive(Clone, Copy)]
-pub struct Navi(u8);
+pub struct Navi(nettai_content_api::StatsOf);
 
 impl UserData for Navi {
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
@@ -1972,7 +1975,34 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Ok(())
         })
     });
-    lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(u8_arg(side, "side")? & 1)));
+    lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(nettai_content_api::StatsOf::side(u8_arg(side, "side")?))));
+    lib_fn!(lua, t, "member", |_, (side, m): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let m = u8_arg(m, "member")?;
+        let count = with(|api, _| Ok(api.party(side).count))?;
+        Ok((m < count).then_some(Navi(nettai_content_api::StatsOf { side, member: Some(m) })))
+    });
+    lib_fn!(lua, t, "mic_level", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.mic_level(side)))
+    });
+    lib_fn!(lua, t, "party", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let p = with(|api, _| Ok(api.party(side)))?;
+        let t = lua.create_table()?;
+        t.raw_set("count", p.count)?;
+        t.raw_set("active", p.active)?;
+        t.raw_set("switches", p.switches)?;
+        Ok(t)
+    });
+    lib_fn!(lua, t, "join_party", |_, (side, navi): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let m = with(|api, b| match b.def(&navi) {
+            Some((Registry::Navi, h)) => api.join_party(side, h).map_err(api_error),
+            _ => Err(mlua::Error::runtime("battle.join_party: expected a navi definition")),
+        })?;
+        Ok(Navi(nettai_content_api::StatsOf { side, member: Some(m) }))
+    });
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side)))
@@ -2942,6 +2972,28 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             LuaValue::Integer(mlua::Integer::from(side)),
             chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
         ],
+        // A party's hooks: the side, the navi where they have one, then the
+        // member and the mood.
+        HookCall::Rules {
+            side,
+            hook: RulesHook::SwitchRequested | RulesHook::MemberBusy | RulesHook::SwitchAsked | RulesHook::NaviSwitched,
+            navi,
+            member,
+            mood,
+            ..
+        } => {
+            let n = |x: Option<u8>| x.map_or(LuaValue::Nil, |x| LuaValue::Integer(mlua::Integer::from(x)));
+            let mut v = vec![LuaValue::Integer(mlua::Integer::from(side))];
+            if let Some(o) = navi {
+                v.push(obj(o)?);
+            }
+            v.push(n(member));
+            v.push(n(mood));
+            while v.len() > 1 && v.last().is_some_and(LuaValue::is_nil) {
+                v.pop();
+            }
+            v
+        }
         HookCall::Rules { side, navi, chip, weapon, .. } => {
             let mut v = vec![
                 LuaValue::Integer(mlua::Integer::from(side)),
@@ -3051,6 +3103,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::CustomTakeBack
                 | RulesHook::BugMark
                 | RulesHook::HpEmptied
+                | RulesHook::NaviFalling
+                | RulesHook::MemberBusy
                 | RulesHook::CutInBarred,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
@@ -3102,6 +3156,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("custom.hand_size returns a count of chips, not {v:?}"))),
+        },
+        // Whether a switch request stands: an answer of false refuses it.
+        HookCall::Rules { hook: RulesHook::SwitchRequested | RulesHook::SwitchAsked, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Boolean(b) => Ok(Value::Bool(*b)),
+            _ => Err(mlua::Error::runtime(format!("a switch's hook returns a boolean or nil, not a {}", v.type_name()))),
         },
         HookCall::Rules { .. } => Ok(Value::Nil),
     }

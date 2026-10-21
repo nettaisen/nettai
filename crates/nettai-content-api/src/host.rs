@@ -169,13 +169,17 @@ pub enum HookCall {
     /// rules-in-luau.md §4.1): while it runs, `rules.state()` is the rules'
     /// state of that side. It is called with the side, then the navi, the
     /// chip and the weapon the hook is about, where it has them (nil in
-    /// between). Its result is the hook's.
+    /// between); a party's hooks with the side, then the navi where they
+    /// have one, then the member of the side's party they are about and a
+    /// mood (`member`, `mood`). Its result is the hook's.
     Rules {
         side: u8,
         hook: RulesHook,
         navi: Option<ObjectRef>,
         chip: Option<crate::ChipHandle>,
         weapon: Option<crate::WeaponHandle>,
+        member: Option<u8>,
+        mood: Option<u8>,
     },
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
@@ -501,6 +505,45 @@ pub enum RulesHook {
     /// `applyDamageToPlayer`, 0x080185A2, by the register the check
     /// leaves). None answering true: it doesn't.
     HpEmptied,
+    /// `navi_falling(side, navi)`: the side's navi is at 0 HP where the
+    /// framework would delete it (each tick it is: `applyDamageToPlayer`'s
+    /// test, after the last stand): true keeps it this tick. The rules
+    /// keep a navi they revive (EXE5's party battle, the DS's ToadMan
+    /// rescue, 0x020048E8: they ask for its `revival`). None answering true:
+    /// a switched-in navi falls back, else it is deleted.
+    NaviFalling,
+    /// `switch_requested(side, member)`: the side's player asks this tick
+    /// to switch to `member` of its party (`PlayerTick::switch_to`, a side
+    /// with partners), before the request goes into the side's input
+    /// record: false refuses it (the DS's bottom screen panel, 0x02036F80:
+    /// its limit, a member at 0 HP, its refusal's sound). None answering:
+    /// it stands.
+    SwitchRequested,
+    /// `switch_asked(side, navi, member)`: the navi's input sees its switch
+    /// request (the DS's input handler's end, 0x0203C5F6, on a tick that
+    /// asks no chip): false takes it no further (the DS's battle mode 6,
+    /// where it calls a partner instead of switching). None answering: the
+    /// framework's switch request follows.
+    SwitchAsked,
+    /// `member_busy(side, member)`: whether `member` can't be switched to
+    /// now (the DS's party block's busy flags, 0x02004B80, which its
+    /// supports set), asked by the in-battle switch and the custom screen's;
+    /// true refuses (the rules play its sound). None answering: not busy.
+    MemberBusy,
+    /// `mic_heard(side)`: each fight tick the side's microphone level isn't 0
+    /// (`CoreApi::mic_level`, the player's `PlayerTick::mic_level`), just
+    /// before the navis copy their input (the DS's 0x022261A4: a loud
+    /// enough shout at a low enough HP starts its heal). Its result is
+    /// unused.
+    MicHeard,
+    /// `navi_switched(side, navi, member, mood)`: a switch of the side's
+    /// party settled, in battle or while paused (the end of the DS's
+    /// settle steps, 0x0202C8F8 and 0x0202C130: where its Double Attack
+    /// launcher and trigger run), before the action ends: `navi` the
+    /// incoming navi, `member` the outgoing member, `mood` the outgoing
+    /// navi's mood as it left (before its anger ended). Its result is
+    /// unused.
+    NaviSwitched,
     /// `obstacle_reaction(side, obstacle)`: an obstacle's reaction (after
     /// the damage and the crushing hits) leaves it standing, outside the
     /// dimming and past its first action, while a side is armed
@@ -654,6 +697,12 @@ impl RulesHook {
             RulesHook::BugMark => "bug_mark",
             RulesHook::NaviFlinched => "navi_flinched",
             RulesHook::HpEmptied => "hp_emptied",
+            RulesHook::NaviFalling => "navi_falling",
+            RulesHook::SwitchRequested => "switch_requested",
+            RulesHook::SwitchAsked => "switch_asked",
+            RulesHook::MemberBusy => "member_busy",
+            RulesHook::NaviSwitched => "navi_switched",
+            RulesHook::MicHeard => "mic_heard",
             RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
@@ -674,7 +723,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 52] = [
+    pub const ALL: [RulesHook; 58] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -707,6 +756,12 @@ impl RulesHook {
         RulesHook::BugMark,
         RulesHook::NaviFlinched,
         RulesHook::HpEmptied,
+        RulesHook::NaviFalling,
+        RulesHook::SwitchRequested,
+        RulesHook::SwitchAsked,
+        RulesHook::MemberBusy,
+        RulesHook::NaviSwitched,
+        RulesHook::MicHeard,
         RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,

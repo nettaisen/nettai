@@ -138,7 +138,11 @@ fn decode(b: &mut Battle, r: ObjectRef) {
     if battle_mode(b) == 9 && ai(b, r).pad.pressed & keys::A != 0 {
         ai_mut(b, r).requests |= request::MODE9_A;
     }
-    decode_chip(b, r, f0);
+    // A tick that asks no chip may ask a party's switch (the DS's
+    // 0x0203C5F6, after its chip block).
+    if !decode_chip(b, r, f0) {
+        super::actions::navi_switch::request_in_battle(b, r);
+    }
 }
 
 /// L/R: turn around where turning is enabled; otherwise, with a full
@@ -266,18 +270,19 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
 }
 
 /// A chip: on A press (A release when A charges). A full A charge makes
-/// it a charged chip.
-fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) {
+/// it a charged chip. Whether it asked one.
+fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) -> bool {
     if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
-        return;
+        return false;
     }
     let edge = if a_chargeable(b, r) { ai(b, r).pad.released } else { ai(b, r).pad.pressed };
     if edge & keys::A == 0 {
-        return;
+        return false;
     }
     let a = ai_mut(b, r);
     let bit = if a.charge_source == 1 && a.charge_level == 2 { request::CHARGED_CHIP } else { request::CHIP };
     a.requests |= bit;
+    true
 }
 
 /// `sub_8012EBC`: count the charge while a hold flag is up: level 1 from

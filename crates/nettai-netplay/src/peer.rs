@@ -381,7 +381,7 @@ mod tests {
     #[test]
     fn inputs_running_past_the_horizon_end_the_match() {
         let mut peer = Peer::new(BattleWorld::new(standin(), 0), PeerConfig::new(0, 8));
-        let mut rogue = InputLink::<u16>::new(protocol::HORIZON);
+        let mut rogue = InputLink::<u32>::new(protocol::HORIZON);
         let mut delivered = Vec::new();
         let mut sent = 0;
         let result = loop {

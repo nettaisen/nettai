@@ -58,6 +58,13 @@ pub mod request {
     /// heard of it (`charge_released`) and take it from idle
     /// (`release_taken`). EXE6 has none.
     pub const RULES_RELEASE: u32 = 0x80;
+    /// The rules hold a navi whose HP reached 0 for an action of theirs
+    /// that brings it back (the role `revival`, with `status::REVIVING`):
+    /// the live request handler starts it first of all its requests. While
+    /// it is asked or runs, the navi isn't deleted at 0 HP. (The DS's
+    /// request 0x100, its ToadMan rescue, action 0x5A: 0x020048E8,
+    /// 0x02062174.)
+    pub const REVIVAL: u32 = 0x100;
     /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
     pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
     /// AntiSwrd (chip 0xBC) caught a sword hit.
@@ -79,6 +86,13 @@ pub mod request {
     /// changes set the *state* bit 0x80000 (`status::FORM_CHANGE_SPRITE_HELD`),
     /// not this request.
     pub const STUN_STRIKE: u32 = 0x80000;
+    /// The rules ask for an action of theirs to follow, which the live
+    /// request handler starts after a navi switch's and before the volley
+    /// (the role `follow_up`, with `status::FOLLOWING_UP`). (The DS's
+    /// request 0x02000000, which its paused swap's settle raises for a
+    /// Double Attack, action 0x5C: 0x02042E74, 0x02062174. Its number is
+    /// the engine's `SELECT_SPECIAL` here.)
+    pub const FOLLOW_UP: u32 = 0x0040_0000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
     /// Change Cross while paused (`sub_802DCDE`, from the transformation
     /// sequencer): pause-time action 0x1C with `status::SWITCHING_NAVI`.
@@ -153,6 +167,14 @@ pub mod status {
     /// swallowed and, if it did other damage, sends another bee
     /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
+    /// The rules' revival runs (`request::REVIVAL`'s action; the DS's
+    /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
+    /// navi isn't deleted at 0 HP while it runs.
+    pub const REVIVING: u32 = 0x0200_0000;
+    /// The rules' follow-up runs (`request::FOLLOW_UP`'s action; the DS's
+    /// 0x800000, a Double Attack after a paused swap). Takes over the action
+    /// dispatch.
+    pub const FOLLOWING_UP: u32 = 0x0400_0000;
 }
 
 /// State of the attack action in progress, shared by whatever action is
@@ -336,6 +358,15 @@ pub struct ActorData {
     /// The controller's state starts over (a form's `berserk` effect,
     /// `sub_802D310`); the controller clears it once it has.
     pub controller_fresh: bool,
+    /// AIData+0x70: the party switch its player asks for this tick, the
+    /// member (the DS's navi input copy, 0x0203C180, from the side's input
+    /// record +8: `Battle::switch_inputs`; it keeps its last once the
+    /// battle is over). (The DS copies its microphone byte to +0x71 beside
+    /// it.)
+    pub switch_input: Option<u8>,
+    /// AIData+0x72: the member an in-battle switch goes to (the DS's input
+    /// handler stores it with the request, 0x0203C5F6; action 0x59 reads it).
+    pub switch_member: Option<u8>,
     /// AIData+0x38: ticks before a road panel can start another slide
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).

@@ -41,12 +41,12 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
 /// switch request), and the events as flags
 /// ([`flags`]).
 impl WireInput for PlayerInput {
-    fn encode(&self) -> (u16, u8) {
+    fn encode(&self) -> (u32, u8) {
         let TickEvents { link_closed } = &self.events;
         (self.tick.word(), if *link_closed { flags::LINK_CLOSED } else { 0 })
     }
 
-    fn decode(word: u16, f: u8) -> io::Result<PlayerInput> {
+    fn decode(word: u32, f: u8) -> io::Result<PlayerInput> {
         if f & !flags::ALL != 0 {
             return Err(crate::protocol::invalid("unknown event flags"));
         }

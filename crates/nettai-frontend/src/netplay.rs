@@ -266,7 +266,7 @@ impl Observer<StandInBattle> for Watch {
         }
     }
 
-    fn confirmed(&mut self, frame: u32, inputs: [&u16; 2], _: Option<&Battle>) {
+    fn confirmed(&mut self, frame: u32, inputs: [&u32; 2], _: Option<&Battle>) {
         self.tracker.confirmed(frame + 1);
         if self.settled_end.is_some() {
             return;
@@ -441,7 +441,7 @@ impl<C: Channel> NetPlayer<C> {
         (self.skew, self.lead) = (session.skew(), session.local_queue_length() as u32);
         let decided = self.over.is_none() && self.peer.wait().is_none();
         if decided {
-            self.peer.decide(keys & TICK_WORD);
+            self.peer.decide(u32::from(keys) & TICK_WORD);
         }
         let datagram = self.peer.datagram(now);
         self.channel.send(&datagram).map_err(lost)?;

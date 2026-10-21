@@ -1396,7 +1396,7 @@ fn a_side_stat_and_the_mood_are_set() {
     CoreApi::set_side_stat(&mut b, 1, 2, 1);
     assert_eq!(CoreApi::side_stat(&b, 1, 2), 1);
     assert_eq!(CoreApi::side_stat(&b, 0, 2), 0);
-    CoreApi::set_navi_stat(&mut b, 0, NaviStat::Mood, Value::Int(0)).unwrap();
+    CoreApi::set_navi_stat(&mut b, nettai_content_api::StatsOf::side(0), NaviStat::Mood, Value::Int(0)).unwrap();
     assert_eq!(b.stats[0].mood, 0);
     let effects = b.setup.settings.effects;
     assert_eq!(CoreApi::battle_info(&b, BattleInfo::Effects), Value::Int(effects as i64));

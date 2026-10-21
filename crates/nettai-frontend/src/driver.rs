@@ -788,7 +788,7 @@ impl Driver for LivePlayer {
         // (Held, the opponent's presses are made as ever, and go nowhere.)
         let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
         // (The buttons are the whole input, as a netplay peer's are.)
-        let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
+        let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons.map(u32::from));
         Some(Step { input: players, events, frame: Some(self.ticks) })
     }
 
@@ -899,7 +899,7 @@ pub mod short_set {
             let ticks = self.live.ticks;
             let winner = self.winners.get(self.live.round as usize - 1).copied().unwrap_or(0);
             let buttons = [0, 1].map(|side| if side == winner { shooter(b, side, ticks) } else { bot_buttons(b, side, ticks) });
-            let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
+            let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons.map(u32::from));
             Some(Step { input: players, events, frame: Some(ticks) })
         }
 
@@ -1142,7 +1142,7 @@ mod tests {
             let mashed = player.buttons();
             let keys = if by_hand.round.mode == mode::CUSTOM { bot_buttons(&by_hand, 0, tick) } else { mashed };
             let them = frozen.buttons(&by_hand);
-            let TickInput { players, events } = nettai_netplay::standin::tick_input(&by_hand, [keys, them]);
+            let TickInput { players, events } = nettai_netplay::standin::tick_input(&by_hand, [keys.into(), them.into()]);
             by_hand.tick(&players, events);
             let went_on = session.step(keys);
             // (A round that ended is the next one's battle at its start, as the session shows it.)

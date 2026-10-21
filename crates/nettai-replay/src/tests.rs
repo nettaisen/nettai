@@ -13,7 +13,7 @@ fn info() -> Info {
 fn ticks() -> Vec<Tick> {
     let mut out: Vec<Tick> = (0..300u32)
         .map(|i| Tick {
-            inputs: [if i % 20 < 5 { 0x001 } else { 0 }, if i % 33 < 3 { 0x220 } else if i % 50 == 7 { 0x600 } else { 0x200 }],
+            inputs: [if i % 20 < 5 { 0x001 } else { 0 }, if i % 33 < 3 { 0x220 } else if i % 50 == 7 { 0x1E600 } else { 0x200 }],
             digest: (i % 60 == 59).then_some(i as u64 * 7),
             ..Tick::default()
         })
@@ -171,8 +171,8 @@ fn a_file_that_doesnt_read_is_refused_as_what_it_is() {
     // The first tick's record: side 0's input, then side 1's, past a tick
     // word's bits.
     let mut held = bytes.clone();
-    held[start + 3..start + 5].copy_from_slice(&0x1000u16.to_le_bytes());
-    assert_eq!(refused(&held), "tick 0: side 1's input 0x1000 is past a tick word's bits");
+    held[start + 5..start + 9].copy_from_slice(&0x10_0000u32.to_le_bytes());
+    assert_eq!(refused(&held), "tick 0: side 1's input 0x100000 is past a tick word's bits");
 }
 
 /// A writer refuses what a reader would.
@@ -182,7 +182,7 @@ fn a_writer_refuses_what_isnt_a_set() {
     let end = Tick { round_ended: true, ..Tick::default() };
     assert!(w.tick(&end).is_err());
     assert!(w.tick(&Tick { set_ended: true, digest: Some(0), ..Tick::default() }).is_err());
-    assert!(w.tick(&Tick { inputs: [0x1000, 0], ..Tick::default() }).is_err());
+    assert!(w.tick(&Tick { inputs: [0x10_0000, 0], ..Tick::default() }).is_err());
     w.tick(&Tick { set_ended: true, digest: Some(9), ..end }).unwrap();
     assert!(w.ended());
     assert!(w.tick(&Tick::default()).is_err());

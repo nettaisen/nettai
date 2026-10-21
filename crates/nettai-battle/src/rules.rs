@@ -439,7 +439,7 @@ impl Battle {
         if !self.has_rules(side) {
             return None;
         }
-        let call = HookCall::Rules { side, hook, navi, chip, weapon };
+        let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None };
         Some(crate::behavior::call_hook(self, f, call))
     }
 
@@ -612,7 +612,7 @@ impl Battle {
             RulesHook::ButtonHandChip => d.hand_chip.expect("a button's hand chip, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
-        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None };
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None };
         crate::behavior::call_hook(self, f, call)
     }
 
@@ -620,7 +620,7 @@ impl Battle {
     pub(crate) fn call_window(&mut self, side: u8, window: crate::content::WindowHandle) -> Value {
         let content = self.content.clone();
         let d = content.defs.window(window);
-        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None };
+        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None, member: None, mood: None };
         crate::behavior::call_hook(self, d.update, call)
     }
 
@@ -702,6 +702,45 @@ impl Battle {
     /// hit shows).
     pub(crate) fn rules_hp_emptied(&mut self, side: u8, navi: ObjectRef) -> bool {
         self.call_rules(side, RulesHook::HpEmptied, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// A party hook of the rules' for side `side`: its answer.
+    fn call_party(&mut self, side: u8, hook: RulesHook, navi: Option<ObjectRef>, member: u8, mood: Option<u8>) -> Option<Value> {
+        let f = self.content.defs.rules()?.hook(hook)?;
+        if !self.has_rules(side) {
+            return None;
+        }
+        let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood };
+        Some(crate::behavior::call_hook(self, f, call))
+    }
+
+    /// The rules' `navi_falling(side, navi)`: whether they keep the navi
+    /// at 0 HP this tick.
+    pub(crate) fn rules_navi_falling(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::NaviFalling, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `switch_requested(side, member)`: whether the request
+    /// stands (it does when they don't answer).
+    pub(crate) fn rules_switch_requested(&mut self, side: u8, member: u8) -> bool {
+        self.call_party(side, RulesHook::SwitchRequested, None, member, None) != Some(Value::Bool(false))
+    }
+
+    /// The rules' `switch_asked(side, navi, member)`: whether the navi's
+    /// switch request goes on (it does when they don't answer).
+    pub(crate) fn rules_switch_asked(&mut self, side: u8, navi: ObjectRef, member: u8) -> bool {
+        self.call_party(side, RulesHook::SwitchAsked, Some(navi), member, None) != Some(Value::Bool(false))
+    }
+
+    /// The rules' `member_busy(side, member)`: whether the member can't be
+    /// switched to now.
+    pub(crate) fn rules_member_busy(&mut self, side: u8, member: u8) -> bool {
+        self.call_party(side, RulesHook::MemberBusy, None, member, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `navi_switched(side, navi, member, mood)`.
+    pub(crate) fn rules_navi_switched(&mut self, side: u8, navi: ObjectRef, from: u8, mood: u8) {
+        self.call_party(side, RulesHook::NaviSwitched, Some(navi), from, Some(mood));
     }
 
     /// The rules' `obstacle_reaction(side, obstacle)`.

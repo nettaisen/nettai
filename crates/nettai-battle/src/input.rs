@@ -129,34 +129,44 @@ pub struct PlayerTick {
     /// without partners has nothing to switch to, and a request of it does
     /// nothing.
     pub switch_to: Option<u8>,
+    /// How loud the player's microphone heard them on this tick, 0 to 255
+    /// (the DS's battle packet's +5: the average of its sampler's last loud
+    /// burst, 0x0215F208 +0x3E, which its input record keeps at +9). A
+    /// game's rules may hear it (`mic_heard`). Nothing in nettai sets it:
+    /// every match and replay has 0.
+    pub mic_level: u8,
 }
 
 /// The bits of a [`PlayerTick`]'s word ([`PlayerTick::word`]).
-pub const TICK_WORD: u16 = 0xFFF;
+pub const TICK_WORD: u32 = 0xF_FFFF;
 
 impl PlayerTick {
     /// A tick of these buttons alone.
     pub const fn buttons(held: u16) -> PlayerTick {
-        PlayerTick { held, switch_to: None }
+        PlayerTick { held, switch_to: None, mic_level: 0 }
     }
 
-    /// The tick as one 16-bit word, for the hosts that carry a tick as a
-    /// number (netplay's wire, replays, a frontend's input): the buttons in
-    /// the low ten bits, the switch request in bits 10 and 11 (the member
-    /// plus one, 0 none).
-    pub const fn word(self) -> u16 {
+    /// The tick as one word, for the hosts that carry a tick as a number
+    /// (netplay's wire, replays, a frontend's input): the buttons in the
+    /// low ten bits, the switch request in bits 10 and 11 (the member plus
+    /// one, 0 none), the microphone's level in bits 12 to 19.
+    pub const fn word(self) -> u32 {
         let switch = match self.switch_to {
-            Some(m) => (m as u16 & 3) + 1,
+            Some(m) => (m as u32 & 3) + 1,
             None => 0,
         };
-        self.held & 0x3FF | (switch & 3) << 10
+        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_level as u32) << 12
     }
 
     /// The tick a word ([`PlayerTick::word`]) holds; the bits above it are
     /// ignored. (A word's switch field of 3 names member 2.)
-    pub const fn from_word(word: u16) -> PlayerTick {
+    pub const fn from_word(word: u32) -> PlayerTick {
         let switch = (word >> 10) & 3;
-        PlayerTick { held: word & 0x3FF, switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) } }
+        PlayerTick {
+            held: (word & 0x3FF) as u16,
+            switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) },
+            mic_level: (word >> 12) as u8,
+        }
     }
 }
 
@@ -185,5 +195,22 @@ mod tests {
         assert_eq!(repeats, [1, 17, 22, 27, 32, 37]);
         j.update(0);
         assert_eq!((j.held, j.pressed, j.repeat), (0, 0, 0));
+    }
+
+    #[test]
+    fn a_tick_word_holds_the_buttons_the_switch_and_the_microphone() {
+        for t in [
+            PlayerTick::buttons(0),
+            PlayerTick::buttons(0x3FF),
+            PlayerTick { held: keys::A, switch_to: Some(0), mic_level: 0 },
+            PlayerTick { held: keys::L, switch_to: Some(2), mic_level: 0xFF },
+            PlayerTick { held: 0, switch_to: None, mic_level: 0x1E },
+        ] {
+            assert_eq!(PlayerTick::from_word(t.word()), t);
+            assert_eq!(t.word() & !TICK_WORD, 0);
+        }
+        // A tick of buttons alone is its buttons: what every match and
+        // replay before the party battle held.
+        assert_eq!(PlayerTick::buttons(keys::A | keys::B).word(), (keys::A | keys::B) as u32);
     }
 }
