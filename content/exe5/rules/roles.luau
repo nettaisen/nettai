@@ -21,6 +21,8 @@ local dive_ripple = require("../objects/dive_ripple/ripple")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
 local invalid = require("../chips/invalid").invalid
+local knockout = require("./party/knockout")
+local toadman_rescue = require("../navis/toadman/rescue")
 local collision = require("./collision")
 local effects = require("../lib/effects")
 local regions = require("@exelib/regions")
@@ -48,6 +50,12 @@ local roles: RolesSpec = {
         -- him to 0 asks for (the rules' `hp_emptied`; ./emotion/dark_survival). EXE6's is a volley no routine asks
         -- for.
         volley = dark_survival.action,
+        -- The request 0x08000000's action as the fight runs (EXE5's 0x4C): a switched-in team navi of a party at 0 HP
+        -- knocked out, MegaMan back in its place (./party/knockout).
+        switch_knockout = knockout.action,
+        -- The request 0x100's (EXE5 DS's action 0x5A): ToadMan's rescue of a party's navi at 0 HP
+        -- (navis/toadman/rescue).
+        revival = toadman_rescue.action,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
@@ -144,6 +152,8 @@ local roles: RolesSpec = {
         obstacle_throw = asset.sound("etomahwk"),
         -- SELECT with too little gauge, and what can't be picked or taken back on the custom screen.
         refused = asset.sound("cant-jack-in"),
+        -- A party's navi switch lands (EXE5 DS's 0x8D: 0x0202BEB8, 0x0202C690).
+        navi_switch = asset.sound("cross-change"),
         -- SearchSoul's Shuffle's shuffles (0x08023512: the framework's re-deal, each of its eight steps).
         custom_redeal_shuffle = asset.sound("hop"),
         -- The custom screen's: the window slides in; the cursor moves; SELECT hides and shows the window; a

@@ -159,3 +159,17 @@ export type Exe5FormFields = {
 -- What a dark chip's use costs its user (rules/light_dark, its chip's
 -- `dark_cost`: lib/dark_costs): the stats it sets.
 export type DarkCost = { apply: (stats: Navi) -> () }
+
+-- A PartyCust program (EXE5 DS's team navis' customizer: content/exe5/partycust/, rules/party/partycust): the blocks of
+-- a team navi's gauge it fills, its kind (ov413 0x021EC97C's third row: 2 chip attack, 3 HP, 4 attack, 5 special, which
+-- the customizer's lists group them by), and its effects in the order its apply case does them.
+export type PartyCustProgram = {
+    cost: number,
+    kind: "hp" | "attack" | "chip_attack" | "special",
+    effects: { PartyCustEffect },
+}
+-- What a PartyCust program adds to its navi's stats (rules/party/partycust's makers).
+export type PartyCustEffect = {
+    kind: "hp" | "attack" | "chip_attack" | "support",
+    amount: number?,
+}

@@ -12,10 +12,16 @@ local charge = {}
 local HIT_PARAM = 0x8A
 -- The damage rows' row 4, by his level: a shot's damage.
 local DAMAGE: { number } = { 10, 10, 10, 10, 10, 10, 15 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 4 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 5, 2 }, { 5, 2 }, { 5, 2 }, { 5, 2 }, { 5, 2 },
+    { 5, 2 }, { 5, 2 }, { 10, 2 }, { 10, 2 }, { 10, 2 },
+}
 
 -- 0x0800FB1A
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0
     return shots.action

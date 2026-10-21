@@ -36,9 +36,15 @@
 --   1000 or more (the weapons not reloaded either); code 0xFD is an HP drain of level 1 (code 0x18, argument 1) on a
 --   dark MegaMan (the value's tier, 0x0800DE5C, 2), code 0xFC the same on a value of 500 or more; else neither is
 --   anything (Django's hits bring both).
+--
+-- In a party battle (EXE5 DS's, ../party) the value read is the navi on the field's (the side's NaviStats +0x44,
+-- exe5_8012882): a team navi's its own. And a side with partners checks the chips by the DS's rule (0x020070FC, which
+-- dropped the GBA's "any navi but MegaMan passes"): a light-only chip any navi of a light value may use, a dark-only
+-- one only a MegaMan of a dark value.
 
 local invalid = require("../chips/invalid").invalid
 local megaman = require("../navis/megaman").megaman
+local party = require("./party")
 local operation_battle = require("../lib/operation_battle")
 
 -- The side statistic a dark chip's use sets.
@@ -49,9 +55,9 @@ local CLEARS_HOLY = 499
 -- A value at or above this is a light MegaMan's for the chips (0x08010118: 0xEB * 2).
 local LIGHT_CHIPS = 470
 
--- The battle effects these rules read: the light/dark value held at 500 (0x08010EDC), and dark chips that fizzle
--- (0x0801003C).
-local VALUE_HELD, DARK_CHIPS_FIZZLE = 0x20000, 0x100000
+-- The battle effect of dark chips that fizzle (0x0801003C). (The one that holds the light/dark value at 500,
+-- 0x08010EDC, ../party reads.)
+local DARK_CHIPS_FIZZLE = 0x100000
 
 local function effect(bit: number): boolean
     return bit32.band(battle.effects(), bit) ~= 0
@@ -68,12 +74,9 @@ local DARK_MEGAMAN = 0x16
 local NAVI_23 = 0x17
 
 -- The side's light/dark value: the save's, or 500 in a battle that holds it (0x08010EDC, at MegaMan's start: nothing
--- reads it before).
-local function value(): number
-    if effect(VALUE_HELD) then
-        return 500
-    end
-    return (rules.setup() :: Setup).karma
+-- reads it before); in a party battle, a team navi's own while it fights (../party).
+local function value(side: number): number
+    return party.karma(side)
 end
 
 -- 0x0801283A: the starting mood by the value (its caller, 0x08010F1A, passes 0 for the Full Synchro it could ask).
@@ -127,9 +130,9 @@ local function palette(side: number, navi: Object): number?
     elseif stats.mood == 0xFF then
         p = 4
     elseif stats.mood == 0 then
-        p = if value() < LIGHT_CHIPS then 2 else 3
+        p = if value(side) < LIGHT_CHIPS then 2 else 3
     else
-        p = tier(value())
+        p = tier(value(side))
     end
     -- Hub Style (NaviStats +0x4C: EXE5's patch card 111, applied at 0x08138214).
     if hub and stats.hub_style ~= 0 then
@@ -143,7 +146,7 @@ local function use_dark_chip(side: number, navi: Object): boolean
     if effect(DARK_CHIPS_FIZZLE) then
         return false
     end
-    if battle.link() and value() >= LIGHT_CHIPS then
+    if battle.link() and value(side) >= LIGHT_CHIPS then
         return false
     end
     -- (EXE5's navi 23 may too; no other navi is in EXE5's content.)
@@ -228,9 +231,9 @@ local DARK_DRAIN, LIGHT_DRAIN = 0xFD, 0xFC
 
 -- 0x0801103E's light and dark part: "spared" (nothing follows, not even the weapons' reload), or nil (the NaviCust's
 -- bugs follow: rules/navicust/bugs).
-local function navi_bug(_side: number, navi: Object): "spared"?
+local function navi_bug(side: number, navi: Object): "spared"?
     local c = navi.collision
-    local v = value()
+    local v = value(side)
     if bit32.btest(c.hit_flags, HIT_FLAG_SPARES_LIGHT) and v >= 1000 then
         return "spared"
     end
@@ -258,8 +261,8 @@ function light_dark.round_setup(side: number)
 end
 
 -- 0x08010EC8: MegaMan's starting mood.
-function light_dark.starting_mood(_side: number): number?
-    return starting_mood(value())
+function light_dark.starting_mood(side: number): number?
+    return starting_mood(value(side))
 end
 
 -- 0x0800DD94: the navi's palette.
@@ -267,8 +270,8 @@ light_dark.navi_palette = palette
 -- 0x0801103E: a hit's bug by the value.
 light_dark.navi_bug = navi_bug
 -- 0x08017136: the holy panel under a dark MegaMan turns Normal.
-function light_dark.navi_intake(_side: number, navi: Object)
-    if value() > CLEARS_HOLY then
+function light_dark.navi_intake(side: number, navi: Object)
+    if value(side) > CLEARS_HOLY then
         return
     end
     local x, y = navi.panel_x, navi.panel_y
@@ -291,19 +294,30 @@ function light_dark.chip_cost(side: number, navi: Object, chip: Chip?): Chip?
     return nil
 end
 
--- 0x08010118: a chip for the other kind of MegaMan becomes the invalid chip.
+-- 0x08010118: a chip for the other kind of MegaMan becomes the invalid chip. A side with partners checks by the DS's
+-- rule (0x020070FC): the value of the navi on the field, and a dark-only chip for MegaMan alone.
 function light_dark.chip_check(side: number, _navi: Object, chip: Chip?): Chip?
     if chip == nil then
         return nil
     end
+    local wants = (chip :: any).megaman
+    if party.has_partners(side) then
+        if wants == nil then
+            return nil
+        end
+        local light = value(side) >= LIGHT_CHIPS
+        if wants == "light" then
+            return if light then nil else invalid
+        end
+        return if not light and battle.navi(side).navi == megaman then nil else invalid
+    end
     if battle.navi(side).navi ~= megaman then
         return nil
     end
-    local wants = (chip :: any).megaman
     if wants == nil then
         return nil
     end
-    local light = value() >= LIGHT_CHIPS
+    local light = value(side) >= LIGHT_CHIPS
     if (wants == "light") == light then
         return nil
     end

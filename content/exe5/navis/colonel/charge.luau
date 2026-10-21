@@ -37,6 +37,12 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 13, by his level.
 local DAMAGE: { number } = { 50, 50, 60, 60, 70, 70, 70 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 13 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 30, 10 }, { 30, 10 }, { 30, 10 }, { 50, 10 }, { 40, 10 },
+    { 50, 10 }, { 50, 10 }, { 50, 10 }, { 50, 10 }, { 50, 10 },
+}
 local ANIM_READY, ANIM_DRAW = 24, 5
 local SOUND = asset.sound("spin")
 local DRAW_TICKS, SOUND_AT, SLASH_AT, RECOVER_TICKS = 21, 17, 12, 5
@@ -171,7 +177,7 @@ charge.action = new.action {
 
 -- 0x0800FC0C (the attack's charged byte, lockout and bonus are left as the last attack had them)
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0
     local s = navi:action_state(charge.action) :: State

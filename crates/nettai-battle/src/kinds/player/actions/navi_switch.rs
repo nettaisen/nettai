@@ -334,7 +334,7 @@ fn party_land(b: &mut Battle, r: ObjectRef, how: Land) {
         b.objects.get_mut(r).slide_state = 0;
         common::set_animation(b, r, 0);
         if let Some(overlay) = b.objects.get(r).related[1] {
-            b.objects.get_mut(overlay).params[2] = 1;
+            form::tell_overlay(b, overlay);
         }
         b.objects.get_mut(r).related[0] = None;
         ai_mut(b, r).overlay = None;
@@ -493,6 +493,10 @@ fn party_change(b: &mut Battle, r: ObjectRef, member: u8, in_battle: bool) {
     o.hp = s.hp;
     o.max_hp = s.max_hp;
     finish_party_change(b, r);
+    // 0x02098804
+    coll_mut(b, r).status_timers[timer::FLASH] = 0;
+    clear_flag1(b, r, f1::INVISIBLE);
+    b.sound(crate::content::SoundRole::Invisible);
     set_step(b, r, 8);
 }
 
@@ -592,10 +596,10 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     clear_invulnerable(b, r);
 }
 
-/// A party's changes' tail: the framework's, with what the DS's adds:
-/// `exe5_802C126` (the no-charge drive over, the auto battle AI's drive
-/// off) before the element, and 0x02098804 after (the navi visible again:
-/// its flash timer 0, the invisible flag off, the sound).
+/// A party's changes' and take-back's tail: the framework's, with
+/// `exe5_802C126` before the element (the no-charge drive over, the auto
+/// battle AI's drive off). (A change then ends the navi's invisibility,
+/// 0x02098804; a take-back doesn't.)
 fn finish_party_change(b: &mut Battle, r: ObjectRef) {
     // exe5_802C126
     let a = ai_mut(b, r);
@@ -603,10 +607,6 @@ fn finish_party_change(b: &mut Battle, r: ObjectRef) {
     a.in_auto_battle = false;
     a.status &= !status::NO_CHARGE;
     finish_change(b, r);
-    // 0x02098804
-    coll_mut(b, r).status_timers[timer::FLASH] = 0;
-    clear_flag1(b, r, f1::INVISIBLE);
-    b.sound(crate::content::SoundRole::Invisible);
 }
 
 /// `init_8013B64`: `navi`'s stats, fresh ([`NaviStats::fresh`]).

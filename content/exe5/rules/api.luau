@@ -3,14 +3,27 @@
 -- libraries ask of EXE5's rules, which keep it in their state and setup. Content outside rules/ asks it here, never
 -- the rules' state or setup itself.
 
+local party = require("./party")
+
 local exe5 = {}
 
 -- The side's level (0 to its team navi's story's last), or nil (MegaMan, who takes none): the rules' `level`
 -- (rules/save), the count of the save's story flags the init exchange sends. The engine knows nothing of it: the team
--- navis' damage rows read it (lib/navi_level).
+-- navis' damage rows read it (lib/navi_level). A side with partners (./party, EXE5 DS's party battle) has the DS's
+-- level, 0 to 9 (0x021B82B0), its highest where its setup states none.
 function exe5.navi_level(side: number): number?
+    local level = party.level(side)
+    if level ~= nil then
+        return level
+    end
     local s = rules.setup_of(side) :: { level: number? }?
     return if s then s.level else nil
+end
+
+-- Whether the side has partners (EXE5 DS's party battle: ./party), whose team navis' damage is the DS's
+-- (lib/navi_level).
+function exe5.in_party(side: number): boolean
+    return party.has_partners(side)
 end
 
 -- The last navi chip used, of either side (0x0203C430): the chip, and the element and the damage word, bonus included,
