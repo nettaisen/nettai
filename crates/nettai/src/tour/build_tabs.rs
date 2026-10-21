@@ -2214,6 +2214,17 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
         (why("ShadowMan") != Some(String::new()) || why("Colonel").is_none_or(|w| w.is_empty())).then(|| format!("the navis' library by Colonel's head: ShadowMan says {:?}, Colonel {:?}", why("ShadowMan"), why("Colonel")))
     }));
     shot(add, "party-mixed-navi-library", Pair::None);
+    // (The same party under Unrestricted, the versions mixed: no head red, each with its version's mark.)
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 2)));
+    add(SETTLE, to_slot(PartySpot::Head(1), false));
+    add(SETTLE, expect(|ui, _| {
+        let heads: Vec<(String, bool, String)> = ui.global::<PartyView>().get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad, s.version.text.to_string())).collect();
+        (heads.iter().any(|h| h.1 || h.2.is_empty())).then(|| format!("MagnetMan and Colonel under Unrestricted: the heads {heads:?}"))
+    }));
+    shot(add, "party-unrestricted-navis", Pair::None);
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+    add(SETTLE, to_slot(PartySpot::Head(1), true));
     add(SETTLE, pick_row(|r| r.name == "Meddy"));
     add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy put back: the party is {:?}", party_of(ui)))));
     // For comparing: the Patch cards library, three cards in, by MB the most first, one refused; the NaviCust's list.
