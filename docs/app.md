@@ -12,8 +12,8 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 (§15), and so are Play, the netplay UI (§4), Builds (§8) and Replays (§16: the list, the viewer with its
 transport, the export): each is one Slint file and one Rust module (§2).
 
-Builds is filled in (§8): the editor with its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
-it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE
+Builds is filled in (§8): the editor with its tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
+them, Auto battle and Party (EXE5's party battle, §8's "The Party tab"). The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE
 and DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
 and a version's tag are components any screen uses.
 
@@ -183,6 +183,7 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 (Settings' Controls, kept in the settings; `input::Bindings`). The defaults:
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
+- C and V are a party battle's two switches, left and right (EXE5 DS's Y and X: below, "A party battle's party");
 - Esc opens nettai's menu;
 - in a practice battle, R (or F5) starts the set over, unless the player bound it to a button;
 - in an online match, Tab held shows both builds (§4): no button can be bound to it.
@@ -191,7 +192,7 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
 player:
 
-- the buttons are bound as the keys are; the defaults are the south button A, the west button B, the shoulders L
+- the buttons are bound as the keys are (the switches: the east button left, the north right); the defaults are the south button A, the west button B, the shoulders L
   and R, Start and Back;
 - in a practice battle, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
@@ -249,6 +250,26 @@ going on and its scenery moving as the game's pause moves it (§15).
   only the difference between the two is turned down in eight bits. At the full level the driver's output is
   unchanged to the sample. Measured in a practice battle of each game: with Music at 0 the stream is silent
   once the opening effects end; at 50 the music's peak is half (0.30 to 0.39 against 0.6 to 0.7).
+
+**A party battle's party** (`battle/party.rs`, nettai-frontend's `party`; EXE5 DS's bottom screen, its party panel:
+docs/design/exe5ds-map.md §4.2). Where the player's side has partners, the window shows the party beside the battle, in
+the app's layer and never in the battle's picture (which shows only what the original's top screen draws): on a
+desktop a strip at the window's bottom left, over the field's foot as the connection's corner is at its right (the
+member on the field framed in the cursor's color, then each switch's control as bound and the member it names, each
+with its face, its HP and a bar of it, then the round's switches as pips, those made dim); on a phone, under MENU, the
+switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field and
+the pips between them. All of it is read from the battle each frame through the frontend (`party::view`: the navi on
+the field's HP its object's, a benched member's its block's; on the custom screen the screen's member), and the
+round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The switches** are two
+controls of the app's own (`input::SWITCH_LEFT`, `SWITCH_RIGHT`: Settings' and the match menu's Controls list them
+after SELECT), never the battle's buttons: a press asks the player to switch to the member the panel's button names
+(`Player::ask_switch`, carried once by the next tick that runs as the tick's switch request, bits 10 and 11 of its
+word), the left the DS's Y and the right its X. The panel follows the DS's (`party::Panel`): member 1 on the left and
+2 on the right as a round starts, a switch putting the member that leaves on the button that named the one that came.
+A button with no member does nothing; what the battle refuses (the round's limit, a member at 0 HP) it refuses with
+its own sound. The DS's touch on a button repeats while held; a phone's button here asks once a press, as a key does.
+Practice's dummy on a second pad has no switches. The microphone the DS hears is wired to nothing (the user). A
+replay's viewer shows no party.
 
 **The battle's music** (`music.rs`; docs/design/app-ui.md §2.29). The user: "you should also allow for
 selectable battle themes (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle,
@@ -1548,6 +1569,26 @@ those the game takes. `editor`'s test names each game's tabs and facts.
 The tab bar is as wide as the page and the tabs may not be: five don't fit a phone in English, nor four in a
 longer language. `TabBar` is then a window on its tabs, moved to keep the chosen one in it, and an end with
 more tabs past it fades.
+
+**The Party tab** (`screens/builds/party.rs`, `ui/screens/builds/party.slint`; EXE5's party battle, docs/design/
+exe5ds-map.md §4, §11): in a game whose setup takes `party`, the navi's partners, each with its PartyCust programs. Its
+form is the setup's schema's: the field is a list of records, each with a field naming a navi and a list of a
+collection's entries (the programs), whose rooms are the most partners and the most programs a partner holds; the tab
+names neither field. The strip describes the partner or the program under the cursor or the pointer (a navi's face, its
+HP as the round starts it, `Checked::members`, and its gauge; a program's blocks and the game's words for it), with what
+the build's problems have against the partner at its top right. Framed under it, the party's lines: each partner (its
+face, name, HP and its gauge of blocks, the blocks its programs fill), its programs under it (each its blocks) and a
+place for one more, then a place for another partner. Beside it the library holds what the line being filled takes: the
+navis a side can play but the build's own (each with its version's mark; "In the party", or "Not allowed" where the
+build's ruleset holds it back) for a partner's line, the game's PartyCust programs (each its blocks, or "Needs n blocks"
+where the gauge hasn't the room) for a program's. Enter on a line goes to the library (a phone's sheet), Enter on a navi
+makes it the partner (on the partner's own navi, takes it out; another partner's is refused), Enter on a program puts it
+at the end of the partner's (one may be in twice: the rules hold them to the gauge alone), Del takes out what a line
+holds, CLEAR (X) every partner, asked first. The gauge and a program's cost are the rules' overview's (a list budget of
+the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's problems in their
+typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A party is the game's
+own navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have no party, and the DS's
+save format isn't read.
 
 **The Folder tab's header** has the folder's counts beside its title where the language's words leave them the
 room, and on a line of their own under it where they don't (the header keeps its height; which it is depends
