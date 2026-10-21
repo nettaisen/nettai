@@ -12,6 +12,8 @@
 "party/knockout" = 0x4C
 # ToadMan's rescue (the DS's action 0x5A, 0x02004938: navis/toadman/rescue).
 "toadman/rescue" = 0x5A
+# A Double Attack's follow-up on the custom screen's switch (the DS's action 0x5C: rules/double_attacks).
+"double-attack-follow-up" = 0x5C
 "engine/hand-off-chip" = 0x41
 # Soul Unison's change (the instant chips' number, as EXE6's form change is).
 "souls/change" = 0x1A
