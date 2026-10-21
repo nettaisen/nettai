@@ -2533,10 +2533,15 @@ export type NaviDef = {
     -- the common one, which doesn't run on a tick it starts an action
     -- (`Navi:set_attack`): GyroMan's take-off and landing. `post_init`: as
     -- a player's init ends and after a navi switch: EXE6's DustMan's
-    -- objects of battle mode 9, EXE5's ToadMan's dive.
+    -- objects of battle mode 9, EXE5's ToadMan's dive. `reset`: its entry
+    -- in a navi switch's tail (the table EXE5's 0x08011902 and the DS's
+    -- 0x0206E928 call by the navi after they clear the dive bit; EXE6's
+    -- `sub_8014216`, `off_801426C`), for a navi that doesn't change form
+    -- (MegaMan's is his status reset): EXE5's ToadMan's dive again.
     tick: ((navi: Object) -> ())?,
     idle: ((navi: Object) -> ())?,
     post_init: ((navi: Object) -> ())?,
+    reset: ((navi: Object) -> ())?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the rules ask whether it has them. The table is its game's,
     -- sets by name, whose `form_list` the engine reads (a frontend numbers

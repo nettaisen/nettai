@@ -188,6 +188,11 @@ pub struct NaviDef {
     /// and after a navi switch: EXE6's DustMan's two objects of battle
     /// mode 9, EXE5's ToadMan's dive.
     pub post_init: Option<FnId>,
+    /// `reset(navi)`: its entry in a navi switch's tail (`sub_8014216`'s
+    /// table by navi, `off_801426C`; EXE5's 0x08011964, the DS's
+    /// 0x0210A71C), after the tail clears the dive bit: MegaMan's is his
+    /// status reset (the engine's), EXE5's ToadMan's his dive again.
+    pub reset: Option<FnId>,
     /// Its functions of its side, which the round's setup asks for the side
     /// it is the navi of (`Battle::given`).
     pub given: NaviGivenFns,
@@ -1585,9 +1590,13 @@ impl Defs {
                     _ => Some(functions.id(slot(d, field)?)),
                 })
             };
-            let (tick, idle, post_init, fire_charge) = (hook("tick")?, hook("idle")?, hook("post_init")?, hook("fire_charge")?);
+            let (tick, idle, post_init, reset, fire_charge) =
+                (hook("tick")?, hook("idle")?, hook("post_init")?, hook("reset")?, hook("fire_charge")?);
             if record.forms.is_some() && tick.is_some() {
                 return Err(what(d, "a navi that changes form has no `tick` of its own: its forms' `tick` run".into()));
+            }
+            if record.forms.is_some() && reset.is_some() {
+                return Err(what(d, "a navi that changes form has no `reset` of its own: its status reset runs".into()));
             }
             let given = NaviGivenFns {
                 chip_bonus: match d.spec.field("chip_bonus").field("damage") {
@@ -1602,7 +1611,7 @@ impl Defs {
                 },
                 fire_charge,
             };
-            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init, given });
+            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init, reset, given });
         }
         // (A round's record of the link navis' chips used is 32 bits.)
         if navis.len() > 32 {

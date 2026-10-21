@@ -12,12 +12,18 @@
 -- navi has no forms. His own chip is S-Melody T (./chip: 0x08025EA0's pair for him).
 --
 -- He dives: his post-init hook (0x080F199C, the one entry of 0x080EB2A8 that isn't empty) sets the navi state that
--- lets a panel that submerges take him under (the sea), as ToadSoul's reset does MegaMan.
+-- lets a panel that submerges take him under (the sea), as ToadSoul's reset does MegaMan; a navi switch's tail
+-- clears it and sets it again for him (0x08011902's table by navi, his entry 0x080119A0; the DS's 0x0206E994).
 
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local charged_chips = require("./megaman/weapons/charged_chip")
 local s_melody = require("@self/chip")["s-melody"]
+
+-- He dives (AIData +0x44's 0x20).
+local function dives(navi: Object)
+    navi:set_navi_state("dives", true)
+end
 
 local navi: NaviDef = {
     sprite = asset.sprite("toadman"),
@@ -44,9 +50,10 @@ local navi: NaviDef = {
     charged_chips = { family = "aqua", damaging = false, plain = true },
     charged_bonus = { damage = 0xFF },
     -- 0x080F199C
-    post_init = function(navi: Object)
-        navi:set_navi_state("dives", true)
-    end,
+    post_init = dives,
+    -- His entry in a navi switch's tail (0x080119A0 in the table 0x08011964 that 0x08011902 calls after it clears the
+    -- bit): the same.
+    reset = dives,
     -- His fresh stats (his stats row): what a side starts him with.
     fresh = { hp = 300, mega_level = 5, giga_level = 1 },
     -- What the story gives him (0x08052E9C: the table 0x0804F960's row for his place in his team, Meddy's and his):

@@ -589,9 +589,15 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     // (`obstacle::Conversion`): EXE6 has none to disarm.
     b.obstacle_conversion[side].armed = false;
     // `off_801426C`, by the navi: MegaMan's (the navi that changes form)
-    // is his status reset; the link navis' are nothing.
+    // is his status reset; the others' are their `reset` (EXE6's link
+    // navis' are nothing; EXE5's ToadMan dives again, 0x080119A0).
     if is_megaman(b, r) {
         reset_status_tail(b, r, false);
+    } else {
+        let navi = stats(b, r).navi;
+        if let Some(f) = b.content.defs.navi(navi).reset {
+            crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        }
     }
     clear_invulnerable(b, r);
 }
