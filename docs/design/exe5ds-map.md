@@ -16,7 +16,8 @@ How sure each fact is:
 - **observed**: seen on a running console;
 - **open**: not settled.
 
-Nothing here is observed yet: §9 lists what a console should confirm.
+The verification workspace's tools/dslab records the party battle on two linked melonDS consoles (§7). What its
+recordings showed is marked **observed** where it is said; §9 lists the console's answers.
 
 ## 0. Summary
 
@@ -167,11 +168,15 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
 | attacks (type 3) | 32 × 0xD8 at 0x0203CA30 | 32 × 0xDC, base at [0x021B828C] |
 | effects (type 4) | 32 × 0xC8 at 0x02036EF0 | 32 × 0xCC, base at [0x021B829C] |
 
-  Each record starts 0x10 into its slot, as on the GBA. The four extra bytes are not located (open; the shared
-  code's fields are at their GBA offsets, the same code reading them). Tango's "unit" records (0x022D6498,
+  Each record starts 0x10 into its slot, as on the GBA. The four extra bytes are the record's last (observed): an
+  actor's +0xC8 (both navis hold 0x000D0222 throughout a battle) and an effect's +0xB8 (0, or 0x140800C1 in some).
+  What they are is open; the shared code's fields are at their GBA offsets, the same code reading them. Tango's "unit" records (0x022D6498,
   stride 0xDC) are the actor pool's first slots, on the heap.
-- **The AI and collision records** are allocated the same way: pointers at 0x021B8288 (AIData) and 0x021B8284
-  (collision).
+- **The AI records** are allocated the same way: the pointer at 0x021B8288 (AIData; a navi's +0x58 points into
+  it, observed).
+- **The collision records are not on the heap** (observed; read at 0x0208FC18, which clears them): 32 × 0xA0 from
+  the toolkit's +0x30, 0x021BE35C (a navi's +0x54 points into them). 0x021B8284 is their allocation mask, bit 31
+  the first record (0xC0000000 with the two navis').
 - **The chip record** (`getChip8021DA8`'s counterpart 0x0200A460) is **0x28 bytes**, at 0x0203E9E8, 0x1A8 chips
   (the GBA's count).
   - +0x00–+0x1F are the GBA's fields, with two moves: the GBA's +0x17 is the DS's +0x0F, and +0x16/+0x17 carry
@@ -234,8 +239,8 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
   - outside mode 6, when used ≥ limit (sound 0x69);
   - an empty button;
   - a member at 0 HP (sound 0x69).
-  - It also needs +2 to equal the local alliance (BattleState +0xD). Init writes 0, so how player 2 of a link
-    battle switches is **open** (a console should show it).
+  - It also needs +2 to equal the local alliance (BattleState +0xD). **+2 is each console's own side**
+    (observed): player 2's panel holds 1, and player 2's switches are taken.
 - **Into the battle:** every frame the request is packed into the battle's input packet (0x0200A328, 0x18 bytes):
   - magic 0x4442;
   - +2 the keys;
@@ -248,7 +253,9 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
 
   The packet lands in each side's input record (0x021B8368, 0xC bytes a side; the GBA's are 8):
   - +2 held, +4 pressed, +6 released;
-  - **+8 the switch slot**, +0xA its newly pressed edge (0x020022E8);
+  - **+8 the switch slot**, +0xA its newly pressed edge (0x020022E8). The slot is the panel's request, **the
+    member + 1** (observed: 2 for slot 1, 3 for slot 2), as AIData +0x70 has it; it reaches both input records
+    about 6 frames after the press (the link's delay);
   - +9 the packet's +5, the mic level. Overlay 423's 0x022261A4 (BRBE 0x080EB1B4's code, the same) sets
     battle flag 4 (dimming) and a side's flag 0x800/0x1000 when it reaches 0x1E: a shout into the microphone
     starts something. Which object it is and what it does is open; on the GBA the same code reads +9 of an 8-byte
@@ -391,6 +398,13 @@ starts action 0x5C, which dims and calls the launcher.
   - It calls the **Double Attack launcher** directly (0x02042DC0: outgoing, incoming, outgoing emotion), resets
     the mugshot and leaves the attack state.
 
+**Observed** (tools/dslab): in the fight, action 0x59's land is 20 frames (0x8D and the voice), the change plays
+0x93, the settle is 21 frames; on the custom screen a switch takes the screen to its sub-state 0x40 (steps 0, 4, 8;
+0x8D), clears the picks and rebuilds the slots for the navi, and the turn's start runs the idle action 0x1A with
+AIData +0x48 0x1000, its land and settle about 20 frames each. A deleted team navi's fall-back sets AIData +0x44
+0x08000000 and runs action 0x4C with +0x48 0x2000, MegaMan coming back at his own HP; the panel shows its box "NO
+CHANGE". The fourth switch over the limit of 3 is refused by the panel (0x69, outside the battle's frame).
+
 **New navi actions:** the DS's action table (0x020E5C08) matches the GBA's through 0x58 and adds:
 - 0x59: 0x0202C67C, the in-battle swap;
 - 0x5A: 0x02004938, the ToadMan rescue;
@@ -409,7 +423,10 @@ it with +0x48 0x2000.)
   is the Double Attack's trigger.
 - **Statuses, anger, invulnerability, the hit in progress and the hand's charge bonuses:** cleared.
 - **The hand and the custom gauge:** the action leaves them; the custom screen cleared the picks (§4.4).
-- **The buster charge:** not read (the attack state is reset).
+- **The buster charge:** lost (observed). Held through a swap, the charge starts again (sound 0x71) once the
+  settle ends, and a release before it fills is an uncharged shot.
+- **A team navi's HP** at its first entry is its max (observed): the save's current HP isn't read. MegaMan's
+  battle HP is the save's base and its NaviCust.
 
 **At 0 HP** (0x02062C5A, in `applyDamageToPlayer`'s counterpart), in order:
 1. The GBA's survive-at-1 check.
@@ -491,7 +508,8 @@ The rest of the mechanics:
   - the hit reaction starts **action 0x5B** (0x02049784): +0x48 0x400000, KnightMan (variant 6) in front of the
     navi for 60 ticks, each blocked hit flashing white with sound 0x6B;
   - it is not once-only;
-  - whether the damage is cancelled and whether KnightMan loses HP is open.
+  - **the navi takes no damage and KnightMan's member block loses it** (observed: two M-Cannons, MegaMan at full
+    HP, KnightMan 800 → 680 → 560).
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
@@ -503,8 +521,9 @@ The rest of the mechanics:
 - **Meddy** has no support (none found).
 
 Seen on the way: the microphone event (0x022261A4) sets event flags 0x2E8/0x2E9 and spawns T4 0x93 (0x0222618C).
-0x93 heals: `object_addHP`, effect 0x34, sounds 0x8B and 0x8A. What the event is, and whether a netbattle allows
-it, is open.
+0x93 heals: `object_addHP`, effect 0x34, sounds 0x8B and 0x8A. **It is offline only** (observed): in a party
+netbattle the microphone's level reaches the input record's +9 every 16 frames (127 at full noise), and nothing
+reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave it unwired in nettai.
 
 **The party block's fields** (0x021B85E8 + side·0x24):
 
@@ -539,8 +558,12 @@ allowed.
 - A side loses when MegaMan is deleted. A team navi's deletion never ends it.
 - At the battle's end (0x02004BB4, unless effect 8) each member's HP goes back to the save, and a team navi left
   at 0 HP leaves the team (event flag 0x254 + navi cleared).
-- A link battle's effects word likely has 8. The DS's netbattle effects list has 0x122E8C at 0x02110378, but
-  which record a party netbattle uses is open.
+- **A party netbattle's effects word** (the settings' +8, observed on Tango's Practice route): **0x00200A8C** in a
+  Single Battle, **0x00200E8C** in a Triple (the settings at 0x0216F860, BattleState +0x3C; their +3, the battle
+  mode, 0). Effect 8 (a link battle) and 0x200000 (Navi Select's partners) are set; 0x400000 (no switch voices)
+  and 0x800000 (no partners) aren't, so the switch voices play (sound effects 0x214–0x22D). The GBA's netbattle
+  word is 0xE8C. The DS's list at 0x02110378 (0x122E8C) is another record's.
+- MegaMan's deletion ends the battle with both team navis alive (observed: BattleState's top state 8).
 
 ### 4.8 The team navis' restrictions
 
@@ -662,8 +685,11 @@ A Double Attack fires when all of these hold:
 - the pair has an entry in the table.
 
 Details of the test:
-- The launcher writes +0x73 = 0xFF after firing, so there is one Double Attack per navi object. Whether that is
-  per round or per battle is **open**.
+- The launcher writes +0x73 = 0xFF after firing, so there is **one Double Attack a round** (observed): a second
+  switch out of Full Synchro to the partner in the same round starts none, and the next round's navi starts at
+  +0x73 = 0 and fires again.
+- After a paused swap (observed): the settle's test sets +0x73 to the partner's navi number (0 for MegaMan) and
+  +0x44 0x02000000; action 0x5C plays 0x8D and launches 40 frames later.
 - The test also means to require a light MegaMan. It loads 470 but compares the meter with MegaMan's slot
   number (0x02042EAC), so as read **the light test does nothing** (a DS bug).
 - No code clears the outgoing navi's Full Synchro. The incoming team navi enters at normal.
@@ -712,8 +738,14 @@ All this code is new DS Thumb in the ARM9, built on the GBA helpers named.
 | 12 | ShadowMan + ToadMan | G-OTOSHI / Gama Otoshi | 30,30,30,30,30,30,40,50,60,60 | T1 0x43, T3 0xA2 (a repointed placeholder) | Sounds 0xD8, 0x105, effect 0x14, a panel change; hit path open | `sub_801155A` |
 
 The table's outline is the first reading. §5.2 has the hit patterns as read since, which correct #1, #2, #5, #7
-and #8. Whether the chip's name shows on screen is open: the director holds the chip at +0x30, and no telop call
-was found.
+and #8. **The chip's name shows** (observed): "D-HERO" where a used chip's name shows, the field dimmed, sound
+0x173 as it starts. D-HERO's seven volleys did 40 each at navi level 9, the row's last.
+
+**Observed** (tools/dslab, every one of the twelve): each fires on a switch out of Full Synchro to the pair's
+partner, a team navi reaching Full Synchro as MegaMan does (a counter). Side 1's HP lost to each at navi level 9:
+D-HERO 280, M-ZAN 240, M-AIR 200, D-VALCAN 360, C-SCOPE 400 (stopped on the enemy; unstopped, the scopes end
+their 8 cycles off it and miss), C-BOMB 300, BR-RUSH 400, B-SHOOT 240, E-SAPPOU 306, K-THROW 450, K-BOMB 400,
+G-OTOSHI 540.
 
 ### 5.2 The hit patterns (read; helper `double_hits.py`)
 
@@ -741,7 +773,7 @@ was found.
 | 2 M-ZAN | MagnetMan first spawns the immobilizer (T3 0x3F, EXE6 `sub_80CC044`, MagnetSoul's B+Back) on every enemy body's panel from his column forward: no damage, status 0x42. ProtoMan then finds the first enemy whose panel behind is free, steps behind it (3+3 ticks) and slashes **once** (tick 10 of 20), region 4 (a vertical 3-panel column). | null; 5/7; modifier 1 | none |
 | 3 M-AIR | GyroMan rises (40 ticks), then flies along the user's row at 2 px a tick. On each **enemy column** he crosses he drops bombs on all three rows (T3 0xA1); each falls 20 ticks and hits its panel once. 3 a column, 9 on a standard field. MagnetMan's T4 0xA3 is visual. | **Elec**; 5/0x0A (thrown); modifier 0; status 0x11 (paralyze) | none |
 | 4 D-VALCAN | Each actor fires 30 Vulcan bullets (T3 0x12, EXE6 `sub_80C6946`, Vulcan1–3's, SuprVulc's, InfVulc's, Spreader's), one every 8–9 ticks; each bursts on the first thing in the row, region 2 (its panel and the one behind). Up to 60 hits. | null (the bullet's); modifier 1 | RNG2: 1 a bullet (its visual height), 60 |
-| 5 C-SCOPE | SearchMan's two scopes (T4 0xA4) start at (+2, −1) and (+4, −1) and walk crossing diagonals (offsets 0, 1, 2, 1), a step every 6 ticks (sound 0x10E), up to 8 cycles, **until the player stops them** (an input bit of AIData +0x2C, presumably A: open). Then each actor fires 5 hits, one every 6 ticks, on its scope's panel. 10 hits. | null; 5/0x19 (curse: reaches invisible targets); region 1; modifier 3 | none |
+| 5 C-SCOPE | SearchMan's two scopes (T4 0xA4) start at (+2, −1) and (+4, −1) and walk crossing diagonals (offsets 0, 1, 2, 1), a step every 6 ticks (sound 0x10E), up to 8 cycles, **until the player stops them** (an input bit of AIData +0x2C: **A**, observed; B and L don't stop them, and the press arrives about 6 frames later). Then each actor fires 5 hits, one every 6 ticks, on its scope's panel. 10 hits. | null; 5/0x19 (curse: reaches invisible targets); region 1; modifier 3 | none |
 | 6 C-BOMB | NapalmMan marks (+4, 0) (effect 0x4C, 30 ticks) and lobs the NapalmMn chip's bomb there (T3 0x3A via `exe5_80CC71A`: fire, spreading to the 3×3 on an empty panel). Meddy puts a capsule (T3 0xCD) on a random empty solid enemy panel; if anything hits it while the bomb lives, it explodes 30 ticks later over the 3×3 (region 0x0F, sound 0x70). Up to 2 hits. | bomb fire; capsule null, 5/4, modifier 0, status 0x11 | RNG2: 1 (the capsule's panel); the napalm fire's RNG1 burn order |
 | 7 BR-RUSH | Colonel picks the first enemy in the user's row whose front panel passes a filter (else both abort), immobilizes it (GBA T3 #2, `exe5_80C4C98`: status 0x42, sprite 10-1E), and both drop onto that front panel. Each lands **4 hits** on the enemy's panel (at 35, 30 and 10 ticks left of a 40-tick combo, then a finisher). 8 hits. Sound 0x2F starts the finisher, with 0xFB. | null; 5/7; region 1; modifier 3 | none |
 | 8 B-SHOOT | MegaMan's buster is visual. KnightMan lands (0xC0, shake) and drops 6 balls (T3 0xCE, sprite 10-0E), one every 20 ticks. Each is kicked (effect 0x3C, sound 0x85) into row −1, 0 or +1 in turn and flies forward 8 px a tick, hitting the first enemy in its row once. 6 hits. | null; 5/6 (breaking); modifier 3; spark 0x0A | none |
@@ -751,7 +783,6 @@ was found.
 | 12 G-OTOSHI | ShadowMan drives 12 frogs (T3 0xA2, 10-46), one every 11 ticks; ToadMan's song (0xD8) is visual. Each frog falls on a random panel: one holding an enemy with 10/16 odds, else another (`object_getPanelsFiltered`; its panel set is open). It hits once below z 20. On a hit, or 20 ticks after landing on a solid panel, **the panel becomes sea** (type 10). On a hole it vanishes. Up to 12 hits. | **Aqua**; 5/0x0A (thrown); modifier 1 | RNG2: 2 a frog, 24 |
 
 Still open:
-- #5's stop key;
 - #9's bug bytes (`sub_801A4D0`) and whether a copy can hit twice;
 - #12's panel set;
 - the immobilizer's parameter 0x178 in #2;
@@ -833,7 +864,7 @@ The user has not chosen to adopt any of these. The recommendation is GBA EXE5 pl
 | toolkit | 0x0200A440 | 0x021701D4 | 0x02168F74 |
 | object list, sentinel | 0x0200A410, 0x0200ABA0 | 0x0216F810, 0x0216F800 | 0x021685B0, 0x021685A0 |
 | object pools | fixed (§3) | heap: [0x021B8280], [0x021B828C], [0x021B829C] | −0x72B0 |
-| AIData, collision | | heap: [0x021B8288], [0x021B8284] | −0x72B0 |
+| AIData; collision | | heap: [0x021B8288]; 32 × 0xA0 from [toolkit+0x30] = 0x021BE35C, mask 0x021B8284 | −0x72B0 |
 | panels (0x24 each) | 0x0203A100 | 0x021BAAFC | 0x021B384C |
 | chip blocks (hands) | 0x02034E20 | 0x021B8AF8 | 0x021B1848 |
 | folder | 0x0203C830 | 0x021B856C | 0x021B12BC |
@@ -852,13 +883,29 @@ The user has not chosen to adopt any of these. The recommendation is GBA EXE5 pl
 | custom screen state, slots | 0x02036B10, 0x02036C10 | 0x021B985C, 0x021B995C | 0x021B25AC, 0x021B26AC |
 | soul and switch marks | 0x02034E10 | 0x021B8300 | 0x021B1050 |
 
-The gauge's and the HUD tasks' places in the HUD block are the GBA's by the block's move; the pause flag's
-fill (the ARM routine) is the live one by its callers. Both are to be confirmed on a console.
+**Observed** (tools/dslab, 2026-10-20): every US address above but the transformation sequencer, the banner and
+the JP column, with these corrections and details:
+- AIData's pool is [0x021B8288]; **the collision records are 32 × 0xA0 from the toolkit's +0x30 (0x021BE35C), and
+  0x021B8284 is their allocation mask** (§3).
+- The gauge is the HUD block's +0x20 (0x021B8650; its rate +0x22, 0x20 a frame), the tasks its +0x40 (0x021B8670).
+- The pause flag 0x02167289 is 1 from a round's start through the custom screen and the turn's start, 0 while the
+  fight runs.
+- The link struct: the frame routine tests its +0 (0x0205F994, DS-only code); its +1, the GBA's status byte by the
+  move, reads 0 at the routine's end.
+- BattleState +0x60 counts the battle's frames from its first; the fighting machine's first byte is 8 with the
+  fight live; the custom screen's blocks have the GBA's shapes (+7 the cursor, location 10 OK).
+- The party block's +1 and +7 (ProtoMan's and Colonel's counters) count every frame from the fight's start.
 
 **Code:**
 - **The battle's frame routine** (`battle_8007800`'s counterpart) is 0x0205F970 (the frame count at BattleState
   +0x60, as on the GBA), past its prologue 0x0205F976.
-- Its one caller is 0x0202A8DA, which returns at 0x0202A8DE.
+- Its one caller is 0x0202A8DA, which returns at 0x0202A8DE (observed: one call a frame).
+- **The oracle watches rather than traps** (observed): Tango's priming walk owns both consoles' trap tables until
+  the battle's 64th frame, and melonDS's data watches are a table of their own. The watched loads are the
+  routine's read of the toolkit's +0x18 (at 0x0205F97E: its entry), its last load, BattleState +0xA (at 0x0205F9B0:
+  its exit), and `PlaySoundEffect`'s literal (at 0x02018F54). A watch reports the next instruction (Thumb +2,
+  ARM +4). The two consoles run on threads of their own, so the recorder pairs the other console's captures with
+  the traced one's lines by battle frame.
 - Sounds are `PlaySoundEffect` 0x02018F4C (ARM, r0 the GBA's id) and the stream calls 0x020193B0 and 0x0201933C
   (channels); there is no GBA queue to read.
 
@@ -882,8 +929,8 @@ so no extractor work is planned beyond content rows.
 | # | Step | Where | Size | Depends on |
 |---|---|---|---|---|
 | 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (ShadowMan's T4 0x96, DiceBons' T4 0x95, KnightMan's guard's damage, Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
-| 2 | **The oracle on melonDS:** a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
-| 3 | **Recordings:** party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
+| 2 | **The oracle on melonDS** (done 2026-10-20, tools/dslab): a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
+| 3 | **Recordings** (done 2026-10-20: switches, the limit and NavChg+1/+2, deletions, the twelve Double Attacks, the supports, the rescue; data/traces/lab-exe5ds): party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
 | 4 | **The party in setup and state:** three member blocks a side (replacing `reserves` for EXE5), the party block (busy flags, count, rescue used), the switch counters; snapshot and digest | nettai-battle, nettai-match | M | — |
 | 5 | **The switch as input:** a switch slot in `PlayerTick` beside the buttons (as the DS's packet +7; not X/Y bits, which the engine's `PRESENT` mask uses); replays and the wire format; a sim minor version bump | nettai-battle, nettai-replay, nettai-netplay | S | 4 |
 | 6 | **The in-battle switch:** the input copy into AIData +0x70, the input handler's request, action 0x59's land, change and settle | nettai-battle (machine), content/exe5 rules (conditions) | M | 4, 5 |
@@ -916,14 +963,16 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 9. **The DS's other changes** (§6) are not adopted.
 10. **The story rule** (a team navi at 0 HP leaving the team) is left out.
 
-**For a console (observed, step 3):**
-- Whether player 2's panel accepts a switch (its side is initialized 0).
-- The DS's netbattle battle-effects word (bits 8, 0x200000, 0x400000).
-- The pause flag and the gauge at the addresses of §7.
-- The four extra bytes of the object records.
-- Whether a Double Attack's name shows.
-- Whether one Double Attack is allowed per round or per battle (AIData +0x73).
-- Whether the buster charge survives a swap.
+**Answered on a console** (tools/dslab's recordings, data/traces/lab-exe5ds in the verification workspace):
+- Player 2's panel accepts a switch: its +2 is its own side, 1 (§4.2).
+- The party netbattle's effects word is 0x00200A8C (Single) or 0x00200E8C (Triple): 8 and 0x200000 set, 0x400000
+  not (§4.7).
+- The pause flag and the gauge are at §7's addresses.
+- The four extra bytes are each record's last; what they hold is open (§3).
+- A Double Attack's name shows (§5).
+- One Double Attack a round (§5).
+- The buster charge doesn't survive a swap (§4.7).
+- The microphone heal is offline only (§4.7).
 
 **In code, not read yet:**
 - what loads overlay 423, and the 0x021DDBE0 overlay the battle's bottom screen runs;
@@ -932,10 +981,9 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 - the game-state byte 0x30–0x3F that refuses a switch to MegaMan offline;
 - the party block's +0x18;
 - NaviStats +0x4C (a color variant?);
-- what the microphone byte starts;
 - battle mode 6;
-- what ShadowMan's T4 0x96 and DiceBons' T4 0x95 do; whether KnightMan's guard cancels the damage;
-- the microphone event (a heal through T4 0x93).
+- what ShadowMan's T4 0x96 (observed: no damage) and DiceBons' T4 0x95 do;
+- the microphone event's trigger offline (a heal through T4 0x93; nothing in a netbattle, §4.7).
 
 ## 10. Reproducing
 
