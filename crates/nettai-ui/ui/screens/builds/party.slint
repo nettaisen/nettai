@@ -11,7 +11,7 @@
 //   where it is in, muted where the party is full, dim where the build's ruleset holds it back. Enter or a click puts
 //   it in (at the party's end) or takes it out;
 // - at the left, framed, PARTY, its counts in its head as the folder's are (Partners, Navi changes) and CLEAR at its
-//   end; in it a section a partner, its head (its face, name and HP, its gauge and the blocks used of it) and its
+//   end; in it a section a partner, its head (its face and name, its gauge and the blocks used of it) and its
 //   programs as a list's rows (none: Empty), and a head saying Empty for each place the party has no partner in, as
 //   the Patch cards tab's empty slots are. The partner the library adds to, the last one the cursor was in, has its
 //   head marked as a list's chosen row is (the bar and the tint);
@@ -35,7 +35,7 @@ import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ListView, RowTouch, ScrollPage, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
 import { Tween, Shake } from "../../motion.slint";
 import { VersionTag, VersionMark, StatLine } from "../../build.slint";
-import { DropGap, RemoveTarget, CountBox } from "folder.slint";
+import { DropGap, RemoveTarget, CountBox, LibraryHead, LibraryRowLook } from "folder.slint";
 
 // A navi to pick, as its chip shows it: its face and name; `place`, its place in the party (1, 2; 0: not in); `full`,
 // the party has no room for it; `held`, the build's ruleset holds it back.
@@ -68,13 +68,12 @@ export struct PartyRow {
     bad: bool,
 }
 
-// A partner's section of PARTY: its face, name and HP (its programs' bonus in); its gauge, each block's color and the
+// A partner's section of PARTY: its face and name; its gauge, each block's color and the
 // run of its program (`runs`: block i is of the run-th program, the empty blocks one run after them); its programs.
 // `bad`: a problem is about it.
 export struct PartyPanel {
     face: image,
     name: string,
-    hp: string,
     used: int,
     gauge: int,
     tones: [color],
@@ -126,6 +125,11 @@ export global PartyView {
     in property <bool> marked;
     in property <int> free;
     in property <[PartyRow]> rows;
+    // The library: its rows as sorted and searched (`rows`), the sort (its place in `sorts`) and its direction.
+    in property <string> search;
+    in property <int> sort;
+    in property <bool> descending;
+    out property <[string]> sorts: [@tr("Library order"), @tr("Name"), @tr("Blocks")];
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
     // The most blocks a program of the collection fills: the blocks' column of a program's row is as wide as that.
@@ -152,7 +156,7 @@ export global PartyView {
     public pure function fits-word(n: int) -> string {
         return @tr("Fits: {n} block free" | "Fits: {n} blocks free" % n);
     }
-    // (A partner's HP as the strip and the build overview's rows say it.)
+    // (A partner's HP as the build overview's rows say it.)
     public pure function hp-word(hp: int) -> string {
         return @tr("HP {}", hp);
     }
@@ -268,61 +272,30 @@ component ChipView inherits Rectangle {
     }
 }
 
-// What a program's row shows (the one dragged, under the pointer, too): its blocks, in a column as wide as the most a
-// program fills (its name at the same place in every row), its name, why it won't go in (or, held back, that it isn't
-// allowed), its cost.
+// What a program's row shows (the one dragged, under the pointer, too), as a library's row looks (`LibraryRowLook`, the
+// Patch cards tab's cards'): its blocks leading it, in a column as wide as the most a program fills (its name at the
+// same place in every row), its name, why it won't go in (or, held back, that it isn't allowed) where a card's note is,
+// its cost where a card's MB is. Its touch is the row's (`RowView`, which stays where the row is while it shifts).
 component ProgramLine inherits Rectangle {
     in property <PartyRow> row-data;
-    Blocks {
-        x: 12px;
-        y: (parent.height - self.height) / 2;
-        count: root.row-data.blocks;
-        filled: root.row-data.blocks;
-        tone: root.row-data.tone;
-        opacity: root.row-data.why != "" ? 0.4 : 1;
-    }
-
-    property <length> name-x: 12px + max(1, PartyView.most-blocks) * 10px + 10px;
-    property <bool> said: root.row-data.note != "" || root.row-data.why != "";
-    Text {
-        x: root.name-x;
-        width: max(0px, (root.said ? 110px : parent.width - root.name-x - 40px));
-        text: root.row-data.name;
-        color: root.row-data.why != "" ? Theme.dim : root.row-data.bad ? Theme.bad : Theme.text;
-        font-family: Theme.body;
-        font-size: Theme.phone ? 15px : 14px;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Text {
-        x: root.name-x + 110px + 10px;
-        width: max(0px, parent.width - self.x - 40px);
-        visible: root.said;
-        text: root.row-data.why != "" ? root.row-data.why : root.row-data.note;
-        color: root.row-data.why != "" || root.row-data.bad ? Theme.bad : Theme.muted;
-        font-family: Theme.body;
-        font-size: 12px;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Text {
-        x: parent.width - 12px - self.width;
-        width: 24px;
-        text: root.row-data.blocks;
-        color: Theme.muted;
-        font-family: Theme.mono;
-        font-size: 13px;
-        font-weight: 600;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-    }
-
-    Rectangle {
-        y: parent.height - 1px;
-        height: 1px;
-        background: Theme.line.with-alpha(0.45);
+    in property <length> dx;
+    LibraryRowLook {
+        inert: true;
+        lead-width: max(1, PartyView.most-blocks) * 10px;
+        name: root.row-data.name;
+        refused: root.row-data.why != "";
+        note: root.row-data.why != "" ? root.row-data.why : root.row-data.note;
+        bad: root.row-data.why != "" || root.row-data.bad;
+        end: root.row-data.blocks;
+        dx: root.dx;
+        Blocks {
+            x: 0;
+            y: (parent.height - self.height) / 2;
+            count: root.row-data.blocks;
+            filled: root.row-data.blocks;
+            tone: root.row-data.tone;
+            opacity: root.row-data.why != "" ? 0.4 : 1;
+        }
     }
 }
 
@@ -348,7 +321,7 @@ component RowView inherits Rectangle {
         }
 
         ProgramLine {
-            x: root.dx;
+            dx: root.dx;
             row-data: root.row-data;
         }
     }
@@ -370,7 +343,7 @@ component RowsList inherits Rectangle {
     in property <bool> removable;
     in property <bool> draggable;
     in property <bool> scrolls;
-    property <length> pitch: Theme.phone ? 44px : 30px;
+    property <length> pitch: Theme.list-row + Theme.list-gap;
     // (A row of this list dragged in it, or one from elsewhere landing in it: where it would land.)
     property <bool> mine: Drag.on && Drag.into == root.nav && Drag.to >= 0;
     property <bool> moving: root.mine && Drag.list == root.nav;
@@ -389,8 +362,8 @@ component RowsList inherits Rectangle {
         height: parent.height;
         nav: root.nav;
         count: root.rows.length;
-        row-height: root.pitch - 2px;
-        gap: 2px;
+        row-height: Theme.list-row;
+        gap: Theme.list-gap;
         chosen: self.focused-row;
         // (A drag on a row moves its program: the wheel scrolls.)
         mouse-pan: !root.draggable;
@@ -415,7 +388,7 @@ component RowsList inherits Rectangle {
         x: 0;
         y: Drag.to * root.pitch - list.scroll;
         width: list.row-width;
-        height: root.pitch - 2px;
+        height: Theme.list-row;
         visible: root.filling;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -425,26 +398,22 @@ component RowsList inherits Rectangle {
     if root.removable && root.rows.length == 0 && !root.filling: Rectangle {
         x: 0;
         y: 0;
-        height: root.pitch - 2px;
+        width: list.row-width;
+        height: Theme.list-row;
         Text {
-            x: 12px + max(1, PartyView.most-blocks) * 10px + 10px;
+            x: 8px + max(1, PartyView.most-blocks) * 10px + 8px;
             text: @tr("Empty");
             color: Theme.dim;
             font-family: Theme.body;
-            font-size: Theme.phone ? 15px : 14px;
+            font-size: Theme.phone ? 14px : 12px;
+            font-weight: 400;
             vertical-alignment: center;
-        }
-
-        Rectangle {
-            y: parent.height - 1px;
-            height: 1px;
-            background: Theme.line.with-alpha(0.45);
         }
     }
 }
 
-// A partner's head in PARTY: its face, its name and HP, its gauge and the blocks used of it (the one dragged, under the
-// pointer, too).
+// A partner's head in PARTY: its face, its name, its gauge and the blocks used of it (the one dragged, under the
+// pointer, too). (Its HP is the strip's: the user, "no need to put HP whatever next to the name of the navi".)
 component PartnerHead inherits Rectangle {
     in property <PartyPanel> panel;
     Image {
@@ -456,30 +425,18 @@ component PartnerHead inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    HorizontalLayout {
+    Text {
         x: 12px + 32px + 12px;
         y: 0;
         width: max(0px, gauge.x - 16px - self.x);
         height: root.height;
-        spacing: 8px;
-        alignment: start;
-        Text {
-            text: root.panel.name;
-            color: root.panel.bad ? Theme.bad : Theme.text;
-            // (A navi's name as the editor's rows have names.)
-            font-family: Theme.body;
-            font-size: Theme.phone ? 15px : 14px;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-
-        Text {
-            text: root.panel.hp;
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 13px;
-            vertical-alignment: center;
-        }
+        text: root.panel.name;
+        color: root.panel.bad ? Theme.bad : Theme.text;
+        // (A navi's name as the editor's rows have names.)
+        font-family: Theme.body;
+        font-size: Theme.phone ? 15px : 14px;
+        vertical-alignment: center;
+        overflow: elide;
     }
 
     // (The gauge in a column of its own, at the same place for each partner whatever its size: as wide as the largest,
@@ -573,10 +530,10 @@ component SectionView inherits Rectangle {
     // section grows over it then. Its height never follows `Drag`: the list's rows would be made anew, and the one held
     // by the pointer let go.)
     RowsList {
-        x: 0;
+        x: 4px;
         y: root.head;
-        width: parent.width;
-        height: (max(1, root.panel.rows.length) + 1) * (Theme.phone ? 44px : 30px);
+        width: parent.width - self.x;
+        height: (max(1, root.panel.rows.length) + 1) * (Theme.list-row + Theme.list-gap);
         rows: root.panel.rows;
         nav: "installed" + root.place;
         removable: true;
@@ -603,7 +560,7 @@ export component PartyTab inherits Rectangle {
     property <length> pane-y: root.picker-y + root.picker-height + 12px;
     property <length> pane-width: root.phone ? root.width : 560px;
     property <length> head: root.phone ? 64px : 44px;
-    property <length> pitch: root.phone ? 44px : 30px;
+    property <length> pitch: Theme.list-row + Theme.list-gap;
     // (A section grows by a row while a program from elsewhere would go into its list: the gap where it would.)
     pure function filling(i: int) -> bool {
         return Drag.on && Drag.to >= 0 && Drag.into == "installed" + i && Drag.list != "installed" + i;
@@ -916,19 +873,22 @@ export component PartyTab inherits Rectangle {
             y: root.pane-y;
             width: root.width - self.x;
             height: max(0px, root.content-height - self.y);
-            Label {
+            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them.)
+            LibraryHead {
                 x: 0;
                 y: 0;
                 width: parent.width;
-                height: 36px;
-                text: Caps.of(@tr("Library"));
-                color: PartyView.in-library ? Theme.cursor : Theme.muted;
+                in-library: PartyView.in-library;
+                search: PartyView.search;
+                placeholder: @tr("Search programs");
+                sort: PartyView.sorts[PartyView.sort];
+                descending: PartyView.descending;
             }
 
             library := RowsList {
-                x: 0;
-                y: 36px;
-                width: parent.width;
+                x: 4px;
+                y: 52px;
+                width: parent.width - self.x;
                 height: parent.height - self.y;
                 rows: PartyView.rows;
                 nav: "lib.rows";
@@ -959,11 +919,13 @@ export component PartyTab inherits Rectangle {
 
         // (The program dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
         // library, where let go it is taken out; a library's one faint until it is over a partner.)
+        // (A library's row held at most half its width from where it was pressed, as the Patch cards tab's: it is the
+        // narrower.)
         Rectangle {
-            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            x: Drag.x - root.absolute-position.x - (Drag.list == "lib.rows" ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
             y: Drag.y - root.absolute-position.y - Drag.grab-y;
             width: root.pane-width;
-            height: root.pitch - 2px;
+            height: Theme.list-row;
             visible: Drag.on && (Drag.list == "lib.rows" || Drag.list == "installed0" || Drag.list == "installed1");
             opacity: Drag.list == "lib.rows" && Drag.to < 0 ? 0.7 : Drag.removing ? 0.6 : 1;
             background: Theme.raised;
@@ -1037,9 +999,21 @@ export component PartyOverlay inherits Rectangle {
             color: Theme.cursor;
         }
 
-        RowsList {
+        // (The search, the sort and its direction, as the other tabs' sheets have them.)
+        LibraryHead {
             x: 16px;
             y: 48px;
+            width: parent.width - 32px;
+            in-library: true;
+            search: PartyView.search;
+            placeholder: @tr("Search programs");
+            sort: PartyView.sorts[PartyView.sort];
+            descending: PartyView.descending;
+        }
+
+        RowsList {
+            x: 16px;
+            y: 48px + 52px;
             width: parent.width - 32px;
             height: parent.height - self.y - 8px;
             rows: PartyView.rows;

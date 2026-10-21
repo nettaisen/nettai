@@ -18,7 +18,7 @@ import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
-import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
+import { LibraryHead, LibraryRowLook, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
 import { EffectLine, EffectRow } from "navicust.slint";
 
@@ -288,87 +288,38 @@ component InstalledRowView inherits Rectangle {
 }
 
 // A card of the library: its number, its name with its version's mark, a note (it is in; or why it can't go in, in the
-// error red, the row greyed), its MB or the slot it belongs in. `dx` shakes it. The pointer over it shows it in the
-// strip.
+// error red, the row greyed), its MB or the slot it belongs in, as a library's row looks (`LibraryRowLook`, the Party
+// tab's programs' too). `dx` shakes it. The pointer over it shows it in the strip.
 component CardLibraryRowView inherits Rectangle {
     in property <CardRow> card;
     in property <int> nav-index;
     in property <length> dx;
-    property <length> end-width: Theme.phone ? 0px : (PatchCardsView.counts.slotted ? 40px : 52px);
-    property <length> end-x: self.width - 8px - root.end-width;
-    property <length> note-width: Theme.phone ? 96px : 104px;
-    property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
-    // (The name's room, up to the note; the version's mark follows the name, a square of its color where the two don't
-    // fit.)
-    property <length> name-room: max(0px, root.note-x - 8px - (8px + 30px + 8px));
-    Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
-    }
-
-    Text {
-        x: 8px + root.dx;
-        width: 30px;
-        text: root.card.number;
-        color: Theme.dim;
-        font-family: Theme.mono;
-        font-size: 11px;
-        font-weight: 500;
-        vertical-alignment: center;
-    }
-
-    name := Text {
-        x: 8px + 30px + 8px + root.dx;
-        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
-        text: root.card.name;
-        color: root.card.refused ? Theme.dim : Theme.text;
-        font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 12px;
-        font-weight: 600;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    version := VersionMark {
-        x: name.x + min(name.width, name.preferred-width) + 6px;
-        y: (parent.height - self.height) / 2;
-        tag: root.card.version;
-        short: name.preferred-width + 6px + self.natural-width > root.name-room;
-        opacity: root.card.refused ? 0.5 : 1;
-    }
-
-    Text {
-        x: root.note-x + root.dx;
-        width: root.note-width;
-        text: root.card.note;
-        color: root.card.bad ? Theme.bad : Theme.muted;
-        font-family: Theme.body;
-        font-size: 12px;
-        font-weight: root.card.bad ? 500 : 400;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Text {
-        x: root.end-x;
-        width: root.end-width;
-        visible: !Theme.phone;
-        text: PatchCardsView.counts.slotted ? root.card.slot : root.card.megabytes;
-        color: Theme.muted;
-        font-family: Theme.mono;
-        font-size: 12px;
-        font-weight: PatchCardsView.counts.slotted ? 700 : 500;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-    }
-
-    // (Dragged into the build's cards beside it, on a desktop: a phone's library is a sheet over them.)
-    touch := RowTouch {
+    LibraryRowLook {
+        lead-width: 30px;
+        name: root.card.name;
+        version: root.card.version;
+        refused: root.card.refused;
+        note: root.card.note;
+        bad: root.card.bad;
+        end: PatchCardsView.counts.slotted ? root.card.slot : root.card.megabytes;
+        end-width: Theme.phone ? 0px : (PatchCardsView.counts.slotted ? 40px : 52px);
+        end-weight: PatchCardsView.counts.slotted ? 700 : 500;
+        dx: root.dx;
         nav: "lib.rows";
         nav-index: root.nav-index;
         removable: true;
+        // (Dragged into the build's cards beside it, on a desktop: a phone's library is a sheet over them.)
         drag: Theme.phone ? "" : "lib.rows";
-        describes: true;
+        Text {
+            x: 0;
+            width: parent.width;
+            text: root.card.number;
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
     }
 }
 

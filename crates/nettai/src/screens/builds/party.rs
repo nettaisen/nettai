@@ -166,6 +166,19 @@ impl NaviFacts {
     }
 }
 
+/// The most letters a search has.
+const SEARCH_LENGTH: usize = 24;
+
+/// The library's sorts, in the order its select lists them (`PartyView.sorts`): the game's order, the name, the
+/// blocks.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Sort {
+    Library,
+    Name,
+    Blocks,
+}
+const SORTS: [Sort; 3] = [Sort::Library, Sort::Name, Sort::Blocks];
+
 /// What the strip describes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Described {
@@ -186,8 +199,12 @@ pub struct Party {
     target: usize,
     /// The navis offered, in the chips' order (the teams' rows, one after the other).
     navis: Vec<NaviHandle>,
-    /// The library's programs, in the game's order.
+    /// The library's programs, in the game's order; and those its rows show, as searched and sorted.
+    library: Vec<EntryHandle>,
     programs: Vec<EntryHandle>,
+    search: String,
+    sort: usize,
+    descending: bool,
     refused: i32,
     /// What the strip describes: the focused thing, and the one under the pointer, which it describes in its place.
     described: Option<Described>,
@@ -212,7 +229,8 @@ impl Party {
             let shape = Shape::of(content)?;
             let mut programs: Vec<((), EntryHandle)> = crate::builds::edit::of_game(content, &draft.kit.game, Registry::Entry, Some(&shape.collection)).into_iter().map(|h| ((), EntryHandle(h))).collect();
             draft.kit.order.entries(content, &shape.collection, &mut programs);
-            self.programs = programs.into_iter().map(|(_, h)| h).collect();
+            self.library = programs.into_iter().map(|(_, h)| h).collect();
+            self.programs = self.library.clone();
             self.shape = Some(shape);
         }
         self.shape.clone()
@@ -284,6 +302,32 @@ impl Party {
             write(&content, &mut side, &shape, &[Partner { navi: Some(n), programs: Vec::new() }]).then_some(())?;
             Checked::of(&content, &draft.kit.game, &side).overview(&content, &side)?.budget_of(FIELD, 0).cloned()
         });
+    }
+
+    /// The library's rows, as searched (a name that holds what was typed) and sorted (the game's order kept among
+    /// equals).
+    fn list(&mut self, shell: &Shell, draft: &Draft) {
+        let content = draft.content();
+        let wanted = self.search.to_lowercase();
+        let costing = self.costing.clone();
+        let programs = draft.with_words(shell, |words| {
+            let mut found: Vec<(String, u32, EntryHandle)> = self
+                .library
+                .iter()
+                .map(|&h| (words.names.entry(h), costing.as_ref().map_or(0, |b| b.cost_of(content, h)), h))
+                .filter(|(name, _, _)| wanted.is_empty() || name.to_lowercase().contains(&wanted))
+                .collect();
+            match SORTS[self.sort.min(SORTS.len() - 1)] {
+                Sort::Library => {}
+                Sort::Name => found.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase())),
+                Sort::Blocks => found.sort_by_key(|f| f.1),
+            }
+            if self.descending {
+                found.reverse();
+            }
+            found.into_iter().map(|f| f.2).collect()
+        });
+        self.programs = programs;
     }
 
     /// The partners' budgets, asked once until the build changes.
@@ -376,7 +420,8 @@ impl Party {
         self.navis = teams.iter().flat_map(|(_, row)| row.iter().copied()).collect();
         let full = partners.len() >= shape.room;
         self.learn_costing(draft, &budgets);
-        let most = self.costing.as_ref().and_then(|b| self.programs.iter().map(|&h| b.cost_of(&content, h)).max()).unwrap_or(1);
+        let most = self.costing.as_ref().and_then(|b| self.library.iter().map(|&h| b.cost_of(&content, h)).max()).unwrap_or(1);
+        self.list(shell, draft);
         let (team_rows, panels, rows) = draft.with_words(shell, |words| {
             let firsts = teams.iter().scan(0, |first, (_, row)| {
                 let at = *first;
@@ -428,7 +473,6 @@ impl Party {
                     Some(PartyPanel {
                         face: kit.pictures.navi(navi),
                         name: words.names.navi_long(navi).into(),
-                        hp: crate::builds::party::hp(&draft.checked, navi).map(|hp| view.invoke_hp_word(hp as i32)).unwrap_or_default(),
                         used: b.as_ref().map_or(0, |b| b.count.used as i32),
                         gauge: gauge as i32,
                         tones: ModelRc::new(VecModel::from(crate::builds::party::tones(&content, p, b.as_ref()))),
@@ -443,6 +487,9 @@ impl Party {
         });
         let target = budget(self.target);
         view.set_most_blocks(most as i32);
+        view.set_search(self.search.as_str().into());
+        view.set_sort(self.sort as i32);
+        view.set_descending(self.descending);
         view.set_partners(partners.len() as i32);
         view.set_room(shape.room as i32);
         view.set_changes(changes.unwrap_or(0) as i32);
@@ -810,6 +857,14 @@ impl Tab for Party {
                 self.close_sheet(shell);
                 shell.nav.focus("programs", 0);
             }
+            "lib.sort" => {
+                let options = shell.ui().global::<PartyView>().get_sorts().iter().map(|s| s.to_string()).collect();
+                shell.pick(id, 0, options, self.sort);
+            }
+            "lib.direction" => {
+                self.descending = !self.descending;
+                self.changed(shell, draft);
+            }
             "clear" => {
                 let question = shell.ui().global::<PartyView>().get_clear_question();
                 editor::ask_clear(shell, question, self.partners(draft).is_empty());
@@ -828,6 +883,10 @@ impl Tab for Party {
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         let list = shell.ui().global::<nettai_ui::Drag>().get_list().to_string();
         match (id, list.as_str()) {
+            ("lib.sort", _) => {
+                self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
+                self.changed(shell, draft);
+            }
             // A partner's head dragged: over another partner's section (or above the first, below the last), it takes
             // that one's place; let go there, the partners move, their programs with them.
             ("drag-over", "target") => match self.partner_landing(shell, draft, choice).filter(|&to| to != index.max(0) as usize) {
@@ -911,6 +970,24 @@ impl Tab for Party {
             }
             _ => {}
         }
+    }
+
+    fn step(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, by: i32) {
+        if id == "lib.sort" {
+            self.sort = (self.sort as i32 + by).rem_euclid(SORTS.len() as i32) as usize;
+            self.changed(shell, draft);
+        }
+    }
+
+    fn edit(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, text: &str, _done: bool) {
+        if id != "lib.search" {
+            return;
+        }
+        self.search = text.chars().filter(|c| !c.is_control()).take(SEARCH_LENGTH).collect();
+        self.changed(shell, draft);
+        // (What the search finds is shown from its top.)
+        let ui = shell.ui();
+        shell.nav.list_to_top(&ui, "lib.rows");
     }
 
     /// The pointer on a chip, a head or a row: the strip describes it.

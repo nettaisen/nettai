@@ -1602,14 +1602,18 @@ is in): raised and outlined in the cursor's color where it is in, muted where th
 ruleset holds it back (its `party` category; refused). Enter or a click puts its navi in, at the party's end, or takes
 it out with its programs. At the left, framed, PARTY: its counts in its head as the folder's are (Partners 2/2, Navi
 changes 3: `Overview::switches`), CLEAR at its end (every partner taken out, asked first), and a section a partner: its
-head (its face, its name, HP with its programs' bonus, `Checked::members`, its gauge and the blocks used of it) and its
-programs as a list's rows (none: an Empty row), and for each place the party has no partner in a head saying Empty, as
+head (its face, its name, its gauge and the blocks used of it; its HP is the strip's: the user, "no need to put HP
+whatever next to the name of the navi") and its programs as a list's rows (none: an Empty row), and for each place the party has no partner in a head saying Empty, as
 the Patch cards tab's empty slots say it (the user). The partner the library adds to is the one the cursor was last in,
-its head marked as a list's chosen row (the bar and the tint). At the right the library, an open list: each program's
-blocks, its name and its cost (what it does is the strip's, under the cursor or the pointer: the user, "no need to show
+its head marked as a list's chosen row (the bar and the tint). At the right the library, under the other tabs' head
+(`LibraryHead`: its title, a search, a sort by the game's order, the name or the blocks, and its direction): each
+program's blocks, its name and its cost (what it does is the strip's, under the cursor or the pointer: the user, "no need to show
 effects in the library column since they get shown on mouseover"; the strip words it by the collection's own text
 table, `partycust_programs_effects`, as a patch card's lines are worded, its kind there too, `kind.`); one that won't go
-in greyed with why in the error red ("Needs 3 blocks", "Not allowed"), as the Patch cards library's are. A program's
+in greyed with why in the error red ("Needs 3 blocks", "Not allowed"), as the Patch cards library's are. Its rows and
+the partners' are a library's row as the Patch cards tab's are (`LibraryRowLook`, factored out of its card rows: a
+lead, the name, the note right before the end, the end; the editor's list row height), a program's blocks its lead
+(the user: "the library styling for party cust pieces looks very different from the other library stylings"). A program's
 blocks are in a column as wide as the most a program of the collection fills (P.Btlpk2's 7; its cost field the rules'
 overview's, learned once), its name after it at the same place in every row; the strip's blocks are as small as that
 many take in the face's box (12 for 7). Enter adds it at the end of the marked partner's (one may be in twice: the rules
