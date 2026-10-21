@@ -32,6 +32,7 @@ language = "en"
 "astroid3" = { name = "Astroid3", description = "Meteors\ncrack\npanels!" }
 "attck-10" = { name = "Attck+10", description = "+10 for\nselected\natk chip" }
 "attck-30" = { name = "Attck+30", description = "+30 for\nselected\natk chip" }
+"b-shoot" = { name = "B-SHOOT", description = "" }
 "barr100" = { name = "Barr100", description = "Nullifies\n100 HP of\ndamage" }
 "barr200" = { name = "Barr200", description = "Nullifies\n200 HP of\ndamage" }
 "barrier" = { name = "Barrier", description = "Nullifies\n10 HP of\ndamage" }
@@ -60,12 +61,15 @@ language = "en"
 "boybomb1" = { name = "BoyBomb1", description = "BoyBomb\n1sq ahead\nPush it!" }
 "boybomb2" = { name = "BoyBomb2", description = "BoyBomb\n1sq ahead\nPush it!" }
 "boybomb3" = { name = "BoyBomb3", description = "BoyBomb\n1sq ahead\nPush it!" }
+"br-rush" = { name = "BR-RUSH", description = "" }
 "bugbomb" = { name = "BugBomb", description = "Throws a\nbug-bomb\n3sq ahead" }
 "bugcharg" = { name = "BugCharg", description = "All your\nbugs will\nattack!" }
 "bugcurse" = { name = "BugCurse", description = "Make\nenemy\nbuggy!" }
 "bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
 "busterup" = { name = "BusterUp", description = "Power\ngoes up\nby 1" }
+"c-bomb" = { name = "C-BOMB", description = "" }
 "c-cannon" = { name = "C-Cannon", description = "3sq blast\nif hits\nend row" }
+"c-scope" = { name = "C-SCOPE", description = "" }
 "cacdanc1" = { name = "CacDanc1", description = "Balls of\ncacti atk\nthe enmy" }
 "cacdanc2" = { name = "CacDanc2", description = "Balls of\ncacti atk\nthe enmy" }
 "cacdanc3" = { name = "CacDanc3", description = "Balls of\ncacti atk\nthe enmy" }
@@ -102,6 +106,8 @@ language = "en"
 "cusvolt1" = { name = "CusVolt1", description = "Consumes\nCustom\nGauge" }
 "cusvolt2" = { name = "CusVolt2", description = "Consumes\nCustom\nGauge" }
 "cusvolt3" = { name = "CusVolt3", description = "Consumes\nCustom\nGauge" }
+"d-hero" = { name = "D-HERO", description = "" }
+"d-valcan" = { name = "D-VALCAN", description = "" }
 "darkcirc" = { name = "DarkCirc", description = "STOP\nCURSR AND\nATTACK" }
 "darkdril" = { name = "DarkDril", description = "LETHAL\nDRILL OF\nDARKNESS" }
 "darkinvs" = { name = "DarkInvs", description = "RELEASE\nYOUR\nDARKNESS" }
@@ -127,6 +133,7 @@ language = "en"
 "drksonic" = { name = "DrkSonic", description = "PARALYZE\nTHE\nENEMY" }
 "drksword" = { name = "DrkSword", description = "USE LARGE\nSWORD AND\nSLICE" }
 "dublcrak" = { name = "DublCrak", description = "Destroys\n2 panels\nin front" }
+"e-sappou" = { name = "E-SAPPOU", description = "" }
 "elcreel1" = { name = "ElcReel1", description = "Elec wire\nshocks\nenemies" }
 "elcreel2" = { name = "ElcReel2", description = "Elec wire\nshocks\nenemies" }
 "elcreel3" = { name = "ElcReel3", description = "Elec wire\nshocks\nenemies" }
@@ -143,6 +150,7 @@ language = "en"
 "fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
 "ftrsword" = { name = "FtrSword", description = "" }
 "fullcust" = { name = "FullCust", description = "CustGauge\ninstantly\nrefills" }
+"g-otoshi" = { name = "G-OTOSHI", description = "" }
 "geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
 "geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
 "geddon3" = { name = "Geddon3", description = "Turns all\npanels to\nswamp" }
@@ -183,6 +191,8 @@ language = "en"
 "invisibl" = { name = "Invisibl", description = "Invisibl\nfor a\nwhile" }
 "jealousy" = { name = "Jealousy", description = "More dmg\nif enemy\nhas chip" }
 "justcone" = { name = "JustcOne", description = "Fist Atk\non center\npanel" }
+"k-bomb" = { name = "K-BOMB", description = "" }
+"k-throw" = { name = "K-THROW", description = "" }
 "katana1" = { name = "Katana1", description = "Cut twice\nonce wide\nonce long" }
 "katana2" = { name = "Katana2", description = "Cut twice\nonce wide\nonce long" }
 "katana3" = { name = "Katana3", description = "Cut twice\nonce wide\nonce long" }
@@ -204,7 +214,9 @@ language = "en"
 "longblde" = { name = "LongBlde", description = "Cuts enmy\nin front!\nRange: 2" }
 "longswrd" = { name = "LongSwrd", description = "Cuts enmy\nin front!\nRange: 2" }
 "lstepswd" = { name = "LStepSwd", description = "ミテイ" }
+"m-air" = { name = "M-AIR", description = "" }
 "m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
+"m-zan" = { name = "M-ZAN", description = "" }
 "magnetmn" = { name = "MagnetMn", description = "NS tackle\nand chrge" }
 "magntmn-ds" = { name = "MagntMn\uE008", description = "NS tackle\nand chrge" }
 "magntmn-sp" = { name = "MagntMn\uE003", description = "NS tackle\nand chrge" }

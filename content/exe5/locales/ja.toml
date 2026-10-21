@@ -32,6 +32,7 @@ language = "ja"
 "astroid3" = { name = "メテオアース3", description = "てきめがけて\nふりそそぐメテオ\nじめんをヒビに!" }
 "attck-10" = { name = "アタック+10", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+10できる" }
 "attck-30" = { name = "アタック+30", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+30できる" }
+"b-shoot" = { name = "Bシュート", description = "" }
 "barr100" = { name = "バリア100", description = "バリアをはり\n100HPぶんの\nダメージをむこうか" }
 "barr200" = { name = "バリア200", description = "バリアをはり\n200HPぶんの\nダメージをむこうか" }
 "barrier" = { name = "バリア", description = "バリアをはり\n10HPぶんの\nダメージをむこうか" }
@@ -60,12 +61,15 @@ language = "ja"
 "boybomb1" = { name = "ボーイズボム1", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
 "boybomb2" = { name = "ボーイズボム2", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
 "boybomb3" = { name = "ボーイズボム3", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
+"br-rush" = { name = "Bレインラッシュ", description = "" }
 "bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
 "bugcharg" = { name = "バグチャージ", description = "はっせいしている\nバグの分だけ、バグ\nもろともはっしゃ!" }
 "bugcurse" = { name = "カースオブバグ", description = "あいてをひどい\nバグじょうたいに\nしてしまう!" }
 "bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
 "busterup" = { name = "バスターアップ", description = "そのバトル中\nバスターの攻撃力を\n1アップさせる!" }
+"c-bomb" = { name = "ケミカルボム", description = "" }
 "c-cannon" = { name = "カーネルキャノン", description = "前方にキャノンほう\n画面はしにとどくと\nたて3マスばくふう" }
+"c-scope" = { name = "クロススコープ", description = "" }
 "cacdanc1" = { name = "サボテンダンス1", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
 "cacdanc2" = { name = "サボテンダンス2", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
 "cacdanc3" = { name = "サボテンダンス3", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
@@ -102,6 +106,8 @@ language = "ja"
 "cusvolt1" = { name = "カスタムボルト1", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
 "cusvolt2" = { name = "カスタムボルト2", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
 "cusvolt3" = { name = "カスタムボルト3", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
+"d-hero" = { name = "ダブルヒーロー", description = "" }
+"d-valcan" = { name = "ダブルバルカン", description = "" }
 "darkcirc" = { name = "ダークサークル", description = "エリアノシュウイヲ\nマワルカーソルヲ\nトメテコウゲキセヨ" }
 "darkdril" = { name = "ダークドリル", description = "オノレノハカイ\nショウドウヲミタス\nヤミノドリルナリ!" }
 "darkinvs" = { name = "ダークインビジ", description = "オノレノナカノヤミ\nヲトキハナチ ミヲ\nユダネルノダ!" }
@@ -127,6 +133,7 @@ language = "ja"
 "drksonic" = { name = "ダークサウンド", description = "ソノサウンドハ\nキクモノノウゴキヲ\nフウジテシマウノダ" }
 "drksword" = { name = "ダークソード", description = "キョダイナソードデ\nゼンポウノアイテヲ\nキリツケルノダ!" }
 "dublcrak" = { name = "ダブルクラック", description = "パネルはかい攻撃!\n前のよこ2マスを\nけしさってしまう" }
+"e-sappou" = { name = "エンゲツサッポウ", description = "" }
 "elcreel1" = { name = "エレキリール1", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
 "elcreel2" = { name = "エレキリール2", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
 "elcreel3" = { name = "エレキリール3", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
@@ -143,6 +150,7 @@ language = "ja"
 "fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
 "ftrsword" = { name = "ファイターソード", description = "" }
 "fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
+"g-otoshi" = { name = "ガマオトシ", description = "" }
 "geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
 "geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
 "geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
@@ -183,6 +191,8 @@ language = "ja"
 "invisibl" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
 "jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
 "justcone" = { name = "ジャスティスワン", description = "左から5れつめ\nまん中のマスに\nせいぎのコブシ!" }
+"k-bomb" = { name = "コクバンケシボム", description = "" }
+"k-throw" = { name = "ナイトスロー", description = "" }
 "katana1" = { name = "サムライソード1", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "katana2" = { name = "サムライソード2", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "katana3" = { name = "サムライソード3", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
@@ -204,7 +214,9 @@ language = "ja"
 "longblde" = { name = "ロングブレード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
 "longswrd" = { name = "ロングソード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
 "lstepswd" = { name = "Lフミコミザン", description = "ミテイ" }
+"m-air" = { name = "マグエアレイド", description = "" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"m-zan" = { name = "マグネットザン", description = "" }
 "magnetmn" = { name = "マグネットマン", description = "前方へNSタックル\nでとっしんする!" }
 "magntmn-ds" = { name = "マグネットマン\uE008", description = "前方へNSタックル\nでとっしんする!" }
 "magntmn-sp" = { name = "マグネットマン\uE003", description = "前方へNSタックル\nでとっしんする!" }
