@@ -679,13 +679,13 @@ export component PartyTab inherits Rectangle {
             y: root.pane-y;
             width: root.width - self.x;
             height: root.pane-height;
-            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them; it says
-            // what it lists.)
+            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them: LIBRARY,
+            // whichever it lists; the user: "instead of the NAVIS heading it should still say LIBRARY in the search
+            // pane". Its search's placeholder says what it lists.)
             LibraryHead {
                 x: 0;
                 y: 0;
                 width: parent.width;
-                title: PartyView.navis-shown ? @tr("Navis") : @tr("Programs");
                 in-library: PartyView.in-library;
                 search: PartyView.search;
                 placeholder: PartyView.navis-shown ? @tr("Search navis") : @tr("Search programs");
@@ -719,7 +719,7 @@ export component PartyTab inherits Rectangle {
             width: root.width;
             visible: root.phone;
             nav: root.phone ? "library" : "";
-            text: Caps.of(PartyView.navis-shown ? @tr("Navis") : @tr("Programs"));
+            text: Caps.of(@tr("Library"));
         }
 
         // (What is dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
@@ -787,7 +787,7 @@ export component PartyOverlay inherits Rectangle {
             y: 12px;
             width: parent.width / 2 - 16px;
             height: 28px;
-            text: Caps.of(PartyView.navis-shown ? @tr("Navis") : @tr("Programs"));
+            text: Caps.of(@tr("Library"));
             color: Theme.cursor;
         }
 
