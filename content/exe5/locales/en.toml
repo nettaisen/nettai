@@ -807,6 +807,7 @@ language = "en"
 # for the lobby and a ruleset's page. Ours.
 [rulesets]
 "category.navi" = "Navis"
+"category.party" = "Party"
 "category.folder" = "Chips"
 "category.navicust_programs" = "NaviCust programs"
 "category.patch_cards" = "Patch cards"
