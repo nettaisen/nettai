@@ -192,6 +192,10 @@ msgstr "コード"
 msgid "MB"
 msgstr "MB"
 
+# The Party tab's library sorted by a PartyCust program's blocks.
+msgid "Blocks"
+msgstr "ブロック"
+
 # The sort by a chip's attack power (the overview's "Attack" is the buster's).
 msgctxt "sort"
 msgid "Attack"

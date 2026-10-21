@@ -517,6 +517,103 @@ export component LibraryHead inherits Rectangle {
     }
 }
 
+// A row of a library beside a build's list, one look for each that has a cost (the Patch cards tab's cards, the Party
+// tab's programs, its partners' programs too): what leads it, `lead-width` wide (its children: a card's number, a
+// program's blocks), its name with its version's mark (dim where `refused`; Empty's look where `empty`), a note right
+// before its end (in the error red where `bad`: why it can't go in), and its end (a cost, a slot; none on a phone).
+// `dx` shakes it. The pointer over it tints it and, through its touch (`nav`, `drag`, `removable`), shows it in the
+// strip and drags it; `inert`: a copy under the pointer, or a row whose touch is its own (one that stays put while it
+// shifts), which takes none of it. (Its children are placed in the lead's box as they say: give them an `x`.)
+export component LibraryRowLook inherits Rectangle {
+    in property <length> lead-width: 30px;
+    in property <string> name;
+    in property <VersionTag> version;
+    in property <bool> refused;
+    in property <bool> empty;
+    in property <string> note;
+    in property <bool> bad;
+    in property <string> end;
+    in property <length> end-width: 52px;
+    in property <int> end-weight: 500;
+    in property <length> dx;
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> drag;
+    in property <bool> removable;
+    in property <bool> inert;
+    property <length> end-x: self.width - 8px - root.end-width;
+    property <length> note-width: Theme.phone ? 96px : 104px;
+    property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
+    property <length> name-x: 8px + root.lead-width + 8px;
+    // (The name's room, up to the note; the version's mark follows the name, a square of its color where the two don't
+    // fit.)
+    property <length> name-room: max(0px, root.note-x - 8px - root.name-x);
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 8px + root.dx;
+        width: root.lead-width;
+        @children
+    }
+
+    name := Text {
+        x: root.name-x + root.dx;
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
+        text: root.name;
+        color: root.refused || root.empty ? Theme.dim : Theme.text;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 12px;
+        font-weight: root.empty ? 400 : 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
+        opacity: root.refused ? 0.5 : 1;
+    }
+
+    Text {
+        x: root.note-x + root.dx;
+        width: root.note-width;
+        text: root.note;
+        color: root.bad ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: root.bad ? 500 : 400;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.end-x;
+        width: root.end-width;
+        visible: !Theme.phone;
+        text: root.end;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: root.end-weight;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    touch := RowTouch {
+        enabled: !root.inert;
+        nav: root.nav;
+        nav-index: root.nav-index;
+        removable: root.removable;
+        drag: root.drag;
+        describes: !root.inert;
+    }
+}
+
 // The library: its title, the search field, the sort and its direction, and under them its rows, fifteen
 // showing. (A phone's sheet has no room for the two titles.)
 component LibraryPane inherits Rectangle {
