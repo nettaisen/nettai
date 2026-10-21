@@ -50,8 +50,9 @@ Nothing here is observed yet: §9 lists what a console should confirm.
     director object that brings both navis on as actors, attacks and warps them out.
   - All of it is new DS Thumb code built on the GBA's helpers: the hitbox spawner, Vulcan's shots, the sword and
     buster attachments.
-  - **Every sprite is a GBA sprite, and every sound but one is a GBA sound.** Sound 0x2F (one Double Attack) is
-    empty on the GBA, and the switch's navi voices are DS-only.
+  - **Every sprite id they use is one the GBA has art for, and every sound but one is a GBA sound.** Sound 0x2F
+    (one Double Attack) is empty on the GBA, and the switch's navi voices are DS-only. That the DS's art at those
+    ids is the GBA's is not yet compared pixel by pixel.
 - **The DS's other battle changes** (§6) are catalogued only. The recommendation: GBA EXE5 plus the DS's party
   rules.
 - **The oracle** (§7): every RAM address oracle-trace reads for EXE5 has a DS counterpart, the battle's frame
@@ -633,11 +634,68 @@ steps follow the rules-in-Luau line (rust-luau-split.md): Rust keeps the machine
 the action steps), and Luau keeps the party rules (who may join, the limit, the programs, the pair table, the
 supports' conditions).
 
-(Filled with §5.)
+What a port needs from the DS is its rules and its new objects. Everything they draw and play is the GBA's (§5.1),
+so no extractor work is planned beyond content rows.
+
+| # | Step | Where | Size | Depends on |
+|---|---|---|---|---|
+| 1 | **Finish the reading:** the supports (the seven handlers' conditions, attacks, sprites and sounds), action 0x59's steps against the paused path's, the ToadMan rescue's objects (ids 3, 6, 0x6C), the Double Attacks' hit patterns, and the open items of §9 that code can settle | verify tools/exe5ds | M | — |
+| 2 | **The oracle on melonDS:** a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
+| 3 | **Recordings:** party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
+| 4 | **The party in setup and state:** three member blocks a side (replacing `reserves` for EXE5), the party block (busy flags, count, rescue used), the switch counters; snapshot and digest | nettai-battle, nettai-match | M | — |
+| 5 | **The switch as input:** a switch slot in `PlayerTick` beside the buttons (as the DS's packet +7; not X/Y bits, which the engine's `PRESENT` mask uses); replays and the wire format; a sim minor version bump | nettai-battle, nettai-replay, nettai-netplay | S | 4 |
+| 6 | **The in-battle switch:** the input copy into AIData +0x70, the input handler's request, action 0x59's land, change and settle | nettai-battle (machine), content/exe5 rules (conditions) | M | 4, 5 |
+| 7 | **The custom screen switch:** state 4's check, state 0x40 (clearing the picks, the HP box, the sound), OK's transform record, and the paused path's rewritten steps (land 20, change, settle 21) | nettai-battle, content/exe5 rules (custom_screen) | M | 4, 5 |
+| 8 | **Deletion and the end:** the fall-back to MegaMan, the knockout's take-back, loss on MegaMan's deletion, the ToadMan rescue (action 0x5A) | nettai-battle, content | S–M | 6 |
+| 9 | **Double Attacks:** the pair table, the trigger and launcher, actions 0x5C, the twelve directors and their actor kinds, the new effect and attachment rows, chips 0x160–0x16B; one at a time against recordings | content/exe5 (objects in Luau, per the content model), small Rust hooks if any | L | 6, 7, 3 |
+| 10 | **Supports** (after step 1's reading) | content/exe5 | M | 1, 4 |
+| 11 | **Restrictions:** the DS's light/dark chip rule for team navis (dark-only chips MegaMan's only) | content/exe5 rules (light_dark) | S | 4 |
+| 12 | **The DS programs** NavChg+1/+2 and Spport, if the user wants them (§9) | content/exe5 navicust | S | 4 |
+| 13 | **The app:** a party picker in the build creator (two of the twelve team navis, with their own builds' stats), a party HUD (the members' faces and HP, the pips; the DS draws it on its bottom screen, so its layout is ours), X/Y bindings and on-screen buttons for touch | nettai, nettai-ui | M | 4, 5 |
+| 14 | **Netplay:** the partners' stats in the match setup both peers agree on (the DS sends them in the battle's init blocks), and the version line | nettai-match, nettai-netplay | S | 4, 5 |
+
+Sizes are rough. In all it is about two months. Steps 2–3 (the oracle) and 9 (the Double Attacks) are the long
+poles. The engine steps 4–8 and 11 can start before the oracle, on the reading, and be checked once recordings
+exist (`tiered-checks`: the quick checks per step, the recordings once).
 
 ## 9. Open, and what a console should show
 
-(Filled with §5.)
+**For the user to decide:**
+1. **The party's makeup:** any two of the twelve team navis with MegaMan (the DS's Navi Select, across both
+   teams), or each version's own? Proposed: any two, as the DS allows.
+2. **Mid-battle switching and the custom screen's:** the DS has both. Proposed: both.
+3. **The DS-only programs** NavChg+1, NavChg+2 and Spport: adopt them as EXE5 NaviCust programs? They have no GBA
+   art. The program's block shape and color are the DS's data; the NaviCust screen's art is the GBA's.
+4. **The supports and the ToadMan rescue** are part of the DS's party battle. Proposed: yes, with the party battle.
+5. **The switch voices:** silence (proposed), since the GBA has none and the switch already plays 0x8D.
+6. **Sound 0x2F** in Brain Rush: drop it (proposed), or a stand-in.
+7. **Text:** the twelve Double Attack names exist only in the DS's text (chipname1.msg), and the ToadMan rescue's
+   telop too. Are DS words allowed in the locales? The user's rule names assets; the words are content.
+8. **The DS's light test bug** (the Double Attack's light check compares the meter with a slot number, so it does
+   nothing): keep the DS's behavior (proposed: as the original runs) or the intent?
+9. **The DS's other changes** (§6): not adopted (proposed), as the brief recommends.
+10. **The team navi leaving the team** at 0 HP after a battle (a story rule; likely off in a netbattle): leave out
+    (proposed).
+
+**For a console (observed, step 3):**
+- Whether player 2's panel accepts a switch (its side is initialized 0).
+- The DS's netbattle battle-effects word (bits 8, 0x200000, 0x400000).
+- The pause flag and the gauge at the addresses of §7.
+- The four extra bytes of the object records.
+- Whether a Double Attack's name shows.
+- Whether one Double Attack is allowed per round or per battle (AIData +0x73).
+- Whether the buster charge survives a swap.
+
+**In code, not read yet:**
+- what loads overlay 423, and the 0x021DDBE0 overlay the battle's bottom screen runs;
+- the switch limit's base 3;
+- Navi Select's write;
+- the game-state byte 0x30–0x3F that refuses a switch to MegaMan offline;
+- the party block's +0x18;
+- NaviStats +0x4C (a color variant?);
+- what the microphone byte starts;
+- battle mode 6;
+- the supports (step 1).
 
 ## 10. Reproducing
 
