@@ -7,7 +7,7 @@
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
-import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint, HintView, PartyMember } from "../shell.slint";
+import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint, HintView, PartyMember, PartyHud } from "../shell.slint";
 import { Cut, Heading, Label, Note, Mono, Bars, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
@@ -506,10 +506,11 @@ component Pips inherits Rectangle {
     }
 }
 
-// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`): a strip at the window's bottom left,
-// over the field's foot as the connection's corner is at its right, where the picture shows nothing of the battle. The
-// member on the field, then each switch's control and the member it names, then the switches left.
-component PartyStrip inherits Rectangle {
+// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture: the
+// member on the field, then each switch's control and the member it names, then the switches left. Where it goes is
+// its user's (`PartyStrip.place-y`: under the picture where there is room, else on the field's foot).
+export component PartyStrip inherits Rectangle {
+    in property <PartyHud> party;
     property <length> cell: 92px;
     width: 8px + root.cell + 12px + left-key.width + 4px + root.cell + 12px + right-key.width + 4px + root.cell + 12px + pips.width + 8px;
     height: 34px;
@@ -524,7 +525,7 @@ component PartyStrip inherits Rectangle {
         y: 4px;
         width: root.cell;
         height: 26px;
-        member: Shell.party.members[Shell.party.active];
+        member: root.party.members[root.party.active];
         active: true;
     }
 
@@ -532,7 +533,7 @@ component PartyStrip inherits Rectangle {
         x: 8px + root.cell + 12px;
         y: 6px;
         height: 22px;
-        hint: Shell.party.left-key;
+        hint: root.party.left-key;
     }
 
     MemberCell {
@@ -540,15 +541,15 @@ component PartyStrip inherits Rectangle {
         y: 4px;
         width: root.cell;
         height: 26px;
-        there: Shell.party.left >= 0;
-        member: Shell.party.members[Shell.party.left];
+        there: root.party.left >= 0;
+        member: root.party.members[root.party.left];
     }
 
     right-key := HintView {
         x: left-key.x + left-key.width + 4px + root.cell + 12px;
         y: 6px;
         height: 22px;
-        hint: Shell.party.right-key;
+        hint: root.party.right-key;
     }
 
     MemberCell {
@@ -556,15 +557,15 @@ component PartyStrip inherits Rectangle {
         y: 4px;
         width: root.cell;
         height: 26px;
-        there: Shell.party.right >= 0;
-        member: Shell.party.members[Shell.party.right];
+        there: root.party.right >= 0;
+        member: root.party.members[root.party.right];
     }
 
     pips := Pips {
         x: parent.width - 8px - self.width;
         y: (parent.height - self.height) / 2;
-        made: Shell.party.switches;
-        limit: Shell.party.limit;
+        made: root.party.switches;
+        limit: root.party.limit;
     }
 }
 
@@ -766,13 +767,16 @@ export component BattleScreen inherits Rectangle {
 
     // (Over the corner, its right edge on the corner's; on a phone, where the picture is short, as near the top
     // as it has to be.)
-    // (The player's party, in a party battle: on a phone its pad's.)
+    // (The player's party, in a party battle: on a phone its pad's. Under the picture where the window leaves room,
+    // else over the field's foot, its last 10 of 160 rows, under the panels' lip: nothing of the battle is there, at
+    // any size of window.)
+    property <length> picture-bottom: Shell.picture-y + Shell.picture-height;
+    property <length> foot: Shell.picture-height * 10 / 160;
     PartyStrip {
-        x: Theme.phone ? 0px : 56px;
-        y: parent.height - self.height - 16px;
+        x: max(16px, Shell.picture-x + 16px);
+        y: root.height - root.picture-bottom >= self.height + 16px || Shell.picture-height <= 0 ? root.height - self.height - 16px : root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
         visible: Shell.party.shown && !Theme.phone;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+        party: Shell.party;
     }
 
     if Shell.connection-shown && Shell.connection-open: LinkPanel {
