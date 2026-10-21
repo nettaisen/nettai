@@ -1,0 +1,533 @@
+// The Party tab of a build's editor, in a game whose setup takes a party (EXE5's party battle, EXE5 DS's: docs/design/
+// exe5ds-map.md §4): the navi's partners, each with the programs filling its PartyCust gauge (§4.10). A strip across the
+// top describes the partner or the program under the cursor (or the pointer). Under it, framed, the party: each partner
+// by its face, name, HP and gauge, its programs under it and a place for one more, then a place for another partner;
+// beside it the library, an open list of what the row being filled holds: the navis for a partner, the programs for a
+// partner's program. Enter on a row goes to the library; Enter on the library's row puts it in; Del takes out.
+//
+// On a phone the party is one column, and the library opens as a sheet from the bottom (`PartyOverlay`). Its Rust half
+// is src/screens/builds/party.rs.
+
+import { Theme, Caps } from "../../theme.slint";
+import { Nav, Focusable } from "../../nav.slint";
+import { Shell, Hint, PadButton } from "../../shell.slint";
+import { PanelBack, Label, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
+import { Tween, Shake } from "../../motion.slint";
+import { VersionTag, VersionMark } from "../../build.slint";
+
+// A line of the party: a partner (`partner`) or one of its programs; `there` off, the place for one more. A partner's
+// `blocks` are those its programs fill of its `gauge`; a program's, what it costs. `note`: a partner's HP. `bad`: a
+// problem is about it.
+export struct PartyLine {
+    partner: bool,
+    there: bool,
+    face: image,
+    name: string,
+    blocks: int,
+    gauge: int,
+    note: string,
+    bad: bool,
+}
+
+// A row of the library: a navi (its face, its version's mark) or a program (its blocks), with a note (it is in, or why
+// it can't go in: `refused` greys the row, `bad` puts the note in the error red).
+export struct PartyRow {
+    face: image,
+    name: string,
+    blocks: int,
+    note: string,
+    refused: bool,
+    bad: bool,
+    version: VersionTag,
+}
+
+// What the strip describes: a navi's face, or a program's blocks; its name, its facts, the game's words for it, why it
+// can't go in (`problem`, a refusal) or what the build's problems have against it (`fault`).
+export struct PartyDetail {
+    there: bool,
+    face: image,
+    name: string,
+    blocks: int,
+    facts: string,
+    text: string,
+    problem: string,
+    fault: string,
+}
+
+// What the tab shows: src/screens/builds/party.rs sets these.
+export global PartyView {
+    out property <[Hint]> hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.in-library ? @tr("Put in") : @tr("Choose") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
+    out property <string> status: @tr("{n} partner" | "{n} partners" % self.partners);
+    in property <int> partners;
+    in property <PartyDetail> detail;
+    // The party's lines, and the one being filled (marked while the focus is on it or in the library).
+    in property <[PartyLine]> lines;
+    in property <int> line;
+    out property <int> marked: (self.in-library || Nav.id == "party.line") ? self.line : -1;
+    // What the game's rules have against the party, a phone's line over it (a desktop's strip says them).
+    in property <string> problems;
+    // The library: the navis (`navis`) or the programs, and its row that was refused, counted: it shakes.
+    in property <[PartyRow]> rows;
+    in property <bool> navis;
+    in property <int> refused: -1;
+    in property <int> refused-seq;
+    in property <bool> in-library;
+    // On a phone: the library's sheet is open.
+    in property <bool> sheet;
+    // ---- Words the app asks for.
+    out property <string> clear-question: @tr("Clear the party?");
+    public pure function blocks-word(n: int) -> string {
+        return @tr("{n} block" | "{n} blocks" % n);
+    }
+    public pure function gauge-word(used: int, gauge: int) -> string {
+        return @tr("Gauge {}/{}", used, gauge);
+    }
+    public pure function hp-word(hp: int) -> string {
+        return @tr("HP {}", hp);
+    }
+    public pure function needs-blocks(n: int) -> string {
+        return @tr("Needs {n} block" | "Needs {n} blocks" % n);
+    }
+    public pure function in-party() -> string {
+        return @tr("In the party");
+    }
+}
+
+// A gauge of `count` blocks, the first `filled` filled (past the count: all, in the error red).
+component Blocks inherits Rectangle {
+    in property <int> count;
+    in property <int> filled;
+    width: root.count * 10px;
+    height: 10px;
+    for i in root.count: Rectangle {
+        x: i * 10px;
+        y: 0;
+        width: 8px;
+        height: root.height;
+        background: root.filled > root.count ? Theme.bad : i < root.filled ? Theme.cursor : Theme.inset;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+}
+
+// A line of the party, a control of its page: a partner (its face, name, HP, gauge) or a program (indented: its name,
+// its blocks), or the place for one more.
+component LineView inherits Rectangle {
+    in property <PartyLine> line;
+    in property <int> nav-index;
+    in property <bool> chosen;
+    in property <length> dx;
+    property <length> lead: root.line.partner ? 8px : 32px;
+    Rectangle {
+        background: root.chosen ? Theme.tint : touch.has-hover ? Theme.tint-hover : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: 2px;
+        height: root.height;
+        visible: root.chosen;
+        background: Theme.cursor;
+    }
+
+    Image {
+        x: root.lead + root.dx;
+        y: (parent.height - 32px) / 2;
+        width: 64px;
+        height: 32px;
+        visible: root.line.partner && root.line.there;
+        source: root.line.face;
+        image-rendering: pixelated;
+    }
+
+    property <length> name-x: root.lead + (root.line.partner && root.line.there ? 72px : 0px);
+    Text {
+        x: root.name-x + root.dx;
+        width: max(0px, gauge.x - 8px - self.x);
+        text: root.line.there ? root.line.name : root.line.partner ? @tr("Add a partner") : @tr("Add a program");
+        color: !root.line.there ? Theme.dim : root.line.bad ? Theme.bad : Theme.text;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 13px;
+        font-weight: root.line.partner ? 700 : 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    gauge := Blocks {
+        x: parent.width - 8px - (root.line.partner ? 44px + 8px : 0px) - self.width;
+        y: root.line.partner && root.line.note != "" ? parent.height / 2 + 2px : (parent.height - self.height) / 2;
+        visible: root.line.there;
+        count: root.line.partner ? root.line.gauge : root.line.blocks;
+        filled: root.line.blocks;
+    }
+
+    // (A partner's HP over its gauge, and the blocks it fills of it at the right.)
+    Text {
+        x: gauge.x;
+        y: 2px;
+        width: parent.width - 8px - self.x;
+        height: parent.height / 2;
+        visible: root.line.partner && root.line.there;
+        text: root.line.note;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: parent.width - 8px - 44px;
+        width: 44px;
+        visible: root.line.partner && root.line.there;
+        text: root.line.blocks + "/" + root.line.gauge;
+        color: root.line.blocks > root.line.gauge ? Theme.bad : Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    touch := Focusable {
+        nav: "party.line";
+        nav-index: root.nav-index;
+        removable: root.line.there;
+        describes: true;
+    }
+}
+
+// A row of the library: a navi's face, the name with its version's mark, the note, a program's blocks.
+component RowView inherits Rectangle {
+    in property <PartyRow> row-data;
+    in property <int> nav-index;
+    in property <length> dx;
+    property <bool> face: PartyView.navis;
+    property <length> name-x: root.face ? 8px + 32px + 8px : 8px;
+    property <length> note-width: Theme.phone ? 110px : 150px;
+    property <length> note-x: blocks.x - 8px - root.note-width;
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+    }
+
+    Image {
+        x: 8px + root.dx;
+        y: (parent.height - 16px) / 2;
+        width: 32px;
+        height: 16px;
+        visible: root.face;
+        source: root.row-data.face;
+        image-rendering: pixelated;
+        opacity: root.row-data.refused ? 0.5 : 1;
+    }
+
+    property <length> name-room: max(0px, root.note-x - 8px - root.name-x);
+    name := Text {
+        x: root.name-x + root.dx;
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
+        text: root.row-data.name;
+        color: root.row-data.refused ? Theme.dim : Theme.text;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.row-data.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
+        opacity: root.row-data.refused ? 0.5 : 1;
+    }
+
+    Text {
+        x: root.note-x + root.dx;
+        width: root.note-width;
+        text: root.row-data.note;
+        color: root.row-data.bad ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    blocks := Blocks {
+        x: parent.width - 8px - 50px;
+        y: (parent.height - self.height) / 2;
+        count: root.face ? 0 : root.row-data.blocks;
+        filled: root.row-data.blocks;
+    }
+
+    touch := RowTouch {
+        nav: "lib.rows";
+        nav-index: root.nav-index;
+        describes: true;
+    }
+}
+
+// The library: its title (what the row being filled holds), and its rows.
+component LibraryPane inherits Rectangle {
+    shake := Shake {
+        seq: PartyView.refused-seq;
+    }
+
+    Label {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: 40px;
+        visible: !Theme.phone;
+        text: PartyView.navis ? Caps.of(@tr("Navis")) : Caps.of(@tr("Programs"));
+        color: PartyView.in-library ? Theme.cursor : Theme.muted;
+    }
+
+    list := ListView {
+        x: Theme.phone ? 0px : 4px;
+        y: Theme.phone ? 0px : 44px;
+        width: parent.width - self.x;
+        height: parent.height - self.y;
+        nav: "lib.rows";
+        count: PartyView.rows.length;
+        row-height: Theme.phone ? 44px : 32px;
+        chosen: self.focused-row;
+        for slot in list.shown: RowView {
+            property <int> at: list.first + slot;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            row-data: PartyView.rows[self.at];
+            nav-index: self.at;
+            dx: self.at == PartyView.refused ? shake.dx : 0px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+}
+
+export component PartyTab inherits Rectangle {
+    property <length> top: -4px;
+    property <length> strip: Theme.phone ? 0px : 104px;
+    property <length> pane-y: Theme.phone ? 0px : root.top + root.strip + 12px;
+    property <length> pane-width: Theme.phone ? self.width : 528px;
+    property <length> pane-height: Theme.phone ? self.height : 482px;
+    property <length> phone-lead: 24px;
+    property <length> pitch: (Theme.phone ? 44px : 40px) + 2px;
+    property <length> content-height: max(self.height, Theme.phone ? self.height : root.pane-y + root.pane-height + 12px);
+
+    tab-page := ScrollPage {
+        x: 0;
+        y: 0;
+        width: root.width + 12px;
+        height: root.height;
+        nav: "party-tab.";
+        mouse-pan: false;
+        content-height: root.content-height;
+        // ---- The strip: the partner or the program under the cursor.
+        PanelBack {
+            x: 0;
+            y: root.top;
+            height: root.strip;
+            visible: !Theme.phone;
+        }
+
+        Image {
+            x: 18px;
+            y: root.top + 20px;
+            width: 64px;
+            height: 32px;
+            visible: !Theme.phone && PartyView.detail.blocks == 0;
+            source: PartyView.detail.face;
+            image-rendering: pixelated;
+        }
+
+        Blocks {
+            x: 18px;
+            y: root.top + 25px;
+            visible: !Theme.phone && PartyView.detail.blocks > 0;
+            count: PartyView.detail.blocks;
+            filled: PartyView.detail.blocks;
+        }
+
+        Text {
+            x: 104px;
+            y: root.top + 19px;
+            width: parent.width / 2 - 104px;
+            height: 20px;
+            visible: !Theme.phone;
+            text: PartyView.detail.name;
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 16px;
+            font-weight: 700;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Refusal {
+            x: parent.width / 2;
+            y: root.top + 19px;
+            width: parent.width / 2 - 16px;
+            visible: !Theme.phone;
+            text: PartyView.detail.problem;
+            problem: PartyView.detail.fault;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        Text {
+            x: 104px;
+            y: root.top + 43px;
+            width: parent.width - 120px;
+            height: 18px;
+            visible: !Theme.phone;
+            text: PartyView.detail.facts;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            x: 104px;
+            y: root.top + 63px;
+            width: parent.width - 120px;
+            height: 34px;
+            visible: !Theme.phone;
+            text: PartyView.detail.text;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 13px;
+            wrap: word-wrap;
+            overflow: elide;
+        }
+
+        // ---- The party, framed.
+        PanelBack {
+            x: 0;
+            y: root.pane-y;
+            width: root.pane-width;
+            height: root.pane-height;
+            visible: !Theme.phone;
+        }
+
+        Label {
+            x: 12px;
+            y: root.pane-y;
+            width: max(0px, clear.x + clear.pad - 12px - self.x);
+            height: 44px;
+            visible: !Theme.phone;
+            text: Caps.of(@tr("Party"));
+            color: PartyView.in-library ? Theme.muted : Theme.cursor;
+        }
+
+        // CLEAR (docs/design/app-ui.md §2.71): every partner taken out, asked first; dim where there is none.
+        clear := WordButton {
+            x: root.pane-width - (Theme.phone ? 0px : 12px) + self.pad - self.width;
+            y: Theme.phone ? 0px : root.pane-y + 14px;
+            nav: "clear";
+            text: Caps.of(@tr("Clear"));
+            enabled: PartyView.partners > 0;
+        }
+
+        ProblemNote {
+            x: 0px;
+            y: 0px;
+            width: max(0px, clear.x + clear.pad - 12px);
+            visible: Theme.phone;
+            text: PartyView.problems;
+        }
+
+        page := ScrollPage {
+            x: Theme.phone ? 0px : 12px;
+            y: root.pane-y + (Theme.phone ? root.phone-lead : 44px);
+            width: root.pane-width - (Theme.phone ? 0px : 24px);
+            height: root.pane-height - (Theme.phone ? root.phone-lead : 44px + 12px);
+            nav: "party.";
+            content-height: PartyView.lines.length * root.pitch;
+            for line[k] in PartyView.lines: LineView {
+                x: 0;
+                y: k * root.pitch;
+                width: page.view-width - 12px;
+                height: root.pitch - 2px;
+                line: line;
+                nav-index: k;
+                chosen: k == PartyView.marked;
+                dx: k == PartyView.refused && !PartyView.in-library ? shake.dx : 0px;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        if !Theme.phone: LibraryPane {
+            x: root.pane-width + 24px;
+            y: root.pane-y;
+            width: parent.width - self.x;
+            height: root.pane-height;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        shake := Shake {
+            seq: PartyView.refused-seq;
+        }
+    }
+}
+
+// What the Party tab opens over the window: on a phone, the library as a sheet from the bottom, for the line tapped,
+// with taking out what it holds. Its controls' names begin with `lib.`: while it is open the keys reach nothing else.
+export component PartyOverlay inherits Rectangle {
+    property <length> sheet-height: min(self.height - 72px, 660px);
+    arrive := Tween { }
+
+    Rectangle {
+        background: Theme.shade;
+        opacity: arrive.t;
+        TouchArea {
+            clicked => {
+                Nav.activate("lib.close", 0);
+            }
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        y: parent.height - root.sheet-height + (1 - arrive.t) * 24px;
+        height: root.sheet-height;
+        opacity: arrive.t;
+        background: Theme.panel;
+        TouchArea { }
+
+        Rectangle {
+            y: 0;
+            height: 1px;
+            background: Theme.line;
+        }
+
+        Button {
+            x: 16px;
+            y: 12px;
+            width: parent.width - 32px;
+            nav: "lib.remove";
+            text: Caps.of(@tr("Remove"));
+            kind: ButtonKind.ghost;
+            danger: true;
+        }
+
+        LibraryPane {
+            x: 16px;
+            y: 12px + 40px + 12px;
+            width: parent.width - 32px;
+            height: parent.height - self.y - 8px;
+        }
+    }
+}
