@@ -1509,9 +1509,11 @@ its middle, the judge's two numbers ending and starting where theirs do; at the 
 original's pixels (the test `a_laid_numbers_faces_are_the_pictures`). A chip's damage follows its name ink to ink (the
 name's last ink to the number's first), a quarter of the name's capitals' height apart (`hud::NAME_GAP`, 2.5 frame
 pixels; the user: "fix the spacing between the chip name and the damage number"), in the hand window's label and both
-telops; a telop's name and numbers are centered, ink to ink, where the original's are. A numbered banner's words and
-number are one run: the words in the lettering font, the number in Nettai Banner Digits, the lettering font's word
-space between their inks, centered where the picture's words and number are. A chip's damage after its name runs past
+telops; a telop's name and numbers are centered, ink to ink, where the original's are. A numbered banner's number is in
+Nettai Banner Digits where the original's is (its faces on the picture's digits: a single digit a half cell on from a
+pair's tens), and each side's words are centered on the picture's letters on that side, so both gaps are the
+original's (the user, 2026-10-21: "gap should match the original"; before, the words and the number were one run with
+the lettering font's word space between their inks, tighter than the original's). A chip's damage after its name runs past
 where the original's ended where it is longer ("40+30×2"): nothing follows it in the hand's label or a telop. Its rim
 is a frame pixel's square around it, or its shadow a frame pixel right and down.
 
@@ -1538,7 +1540,8 @@ EXE6's pack (EXE5's digits are the same), whose README has the tracing rules.
   box with no number. (At first the digits' place took its own most common color, which the digits make the blue of
   their strokes: the box showed a blue block and the "3" its inverse, nearly a B.)
 - A numbered banner's words are drawn either side of its number (`BATTLE`, `START!`), each centered on the picture's
-  letters on its side; the number is the banner digits' look, in its own color as the original's.
+  letters on its side (the pack's columns for one digit and for two); the number is the banner digits' look, in its
+  own color as the original's, on the original's digits.
 - The '?' of the chip window's hidden damage is Nettai Digits' '?' (the HUD layer's own '?', traced); the HUD's "????"
   marks stay Murecho's (§12.1).
 

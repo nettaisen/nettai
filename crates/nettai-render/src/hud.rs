@@ -2007,38 +2007,21 @@ fn lettered_banner(
             }
             let set = crate::lookups::letters(hud.letters.banner_digits.as_ref(), || "the banners' digits".into(), problems)?;
             let set = crate::numbers::NumberSet::of(set, pal).in_font(crate::numbers::Face::BannerDigits);
-            // (The words and the number one run, the lettering's word space
-            // between them, centered where the picture's words and number
-            // are: from the first word's letters to the last's.)
+            // (Where the original's are, the gaps the original's: the number's
+            // faces on the picture's digits' (its tens at `nx`, a single
+            // digit's ones a half cell on, `banner_parts`), each side's words
+            // centered on the picture's letters on that side; the user, "gap
+            // should match the original".)
             let [before_span, after_span] = if tens.is_some() { found.two_digits? } else { found.one_digit? };
-            let role = crate::lettering::role(letters, Lettering::display);
-            let extent = |w: &str| if w.is_empty() { Some((0.0, 0.0)) } else { text.ink_extent(w, role, 10_000) };
-            let ((b0, b1), (a0, a1)) = (extent(before)?, extent(after)?);
-            let space = match (text.ink_extent("I I", role, 10_000), text.ink_extent("II", role, 10_000)) {
-                (Some((_, spaced)), Some((_, tight))) => (spaced - tight).max(0.0),
-                _ => 3.0,
-            };
-            let tight = [!before.is_empty(), !after.is_empty()];
-            // (The number's advances' width: the font's own metrics.)
-            let (_, (n0, n1)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Left(0.0))?;
-            let gaps = space * (tight[0] as u8 + tight[1] as u8) as f32;
-            let total = (b1 - b0) + gaps + (n1 - n0) + (a1 - a0);
-            let from = before_span.map_or(nx, |s| x + s[0] as i32) as f32;
-            let to = after_span.map_or(nx + 16, |s| x + s[1] as i32) as f32;
-            let mut at = (from + to) / 2.0 - total / 2.0;
-            let word = |w: &str, pen: f32| {
-                let item = TextItem::new(w, role, Rect::new(pen.floor() as i32, y, 160, 16), face, shadow);
-                let fine = (((pen - pen.floor()) * 65536.0) as i32, 0);
-                TextItem { align: Align::Left, vscale, fine, ink: Some(crate::lettering::ink(letters, pal)), ..item }
-            };
+            let first_cell = if tens.is_some() { nx } else { nx + crate::numbers::CELL };
+            let faces = crate::numbers::picture_span(&set, first_cell, digits.chars().count());
             if !before.is_empty() {
-                items.push(word(before, at - b0));
-                at += (b1 - b0) + space;
+                items.push(words_in(before, before_span)?);
             }
-            let (number, (_, end)) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::LeftInk(at))?;
+            let (number, _) = crate::numbers::laid(text, &[(digits.clone(), &set)], ny as i32, crate::numbers::Anchor::Left(faces.0))?;
             items.extend(number.into_iter().map(|item| TextItem { vscale, ..item }));
             if !after.is_empty() {
-                items.push(word(after, end + space - a0));
+                items.push(words_in(after, after_span)?);
             }
         }
         _ => {
