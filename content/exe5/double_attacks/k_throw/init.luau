@@ -20,7 +20,7 @@ local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local tomahawkman = require("../navis/tomahawkman").tomahawkman
 
-type State = DoubleAttackActor & { partner: Object? }
+type State = DoubleAttackActor
 
 local CHARGE_TICKS = 0x3C
 -- TomahawkMan's throw: his animation, 15 ticks, the throw's sound.
@@ -44,37 +44,10 @@ local LANDED_TICKS = 0x1E
 -- Both wait 30 ticks before they leave.
 local AFTER_TICKS = 0x1E
 
--- The director's link (0x02093E8C): each actor's partner, the other actor it brought.
-local function link(me: Object)
-    local s = me.state :: State
-    for _, o in battle.objects_of(me.kind) do
-        local t = o.state :: State
-        if o ~= me and t.director == s.director and t.role ~= s.role then
-            s.partner = o
-            return
-        end
-    end
-end
-
-local function partner(me: Object): Object
-    local p = (me.state :: State).partner
-    if not p then
-        error("K-THROW's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
-
--- Appearing (0x02094674, 0x02094820): linked to the other; KnightMan puts on what he wears (`sub_8011420` with Param3
--- 1: his ball and chain).
+-- Appearing (0x02094674, 0x02094820): KnightMan puts on what he wears (`sub_8011420` with Param3 1: his ball and
+-- chain).
 local function appear(me: Object)
-    if me.phase_init == 0 then
-        link(me)
-        local s = me.state :: State
-        if s.role == 1 then
-            me:add_parts(knightman.identity :: Identity, 1)
-        end
-    end
-    double_attack.appear(me, 4, 0x10)
+    double_attack.appear(me, 4, 0x10, (me.state :: State).role == 1)
 end
 
 -- 0x020946BC (TomahawkMan): the charge; then the panel ahead in row 1 his destination.
@@ -91,7 +64,7 @@ end
 local function throw(me: Object)
     local p = me.phase
     if p == 0 then
-        local other = partner(me)
+        local other = double_attack.partner(me)
         if other.action == 8 and other.phase == 4 then
             me.phase, me.phase_init = 4, 0
         end
@@ -106,7 +79,7 @@ local function throw(me: Object)
             me.phase, me.phase_init = 8, 0
         end
     elseif p == 8 then
-        if partner(me).action == 0xC then
+        if double_attack.partner(me).action == 0xC then
             me:set_action(0xC)
         end
     else
@@ -130,7 +103,7 @@ end
 -- 0x02094944: once TomahawkMan throws, 6 ticks; then in the air, aimed three panels ahead of the user's spot.
 local function wind_up(me: Object)
     if me.phase_init == 0 then
-        local other = partner(me)
+        local other = double_attack.partner(me)
         if other.action ~= 8 or other.phase ~= 4 then
             return
         end
@@ -251,7 +224,6 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "k-throw",
         damage = { 180, 180, 180, 180, 220, 270, 350, 400, 450, 450 },
-        state = { partner = "object" },
         roles = {
             -- 0x02094664's table: TomahawkMan, on the user's spot.
             {

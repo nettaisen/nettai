@@ -18,20 +18,15 @@ local protoman = require("../navis/protoman").protoman
 local regions = require("@exelib/regions")
 local status = require("../rules/status")
 
--- The actors' own beside the shared (`DoubleAttackActor`): the other actor (+0x60, which the DS's director links), and
--- ProtoMan's search starting at the top of its column (+0x70; after a slash it goes on below the last enemy).
-type State = DoubleAttackActor & { partner: Object?, from_top: boolean }
+-- The actors' own beside the shared (`DoubleAttackActor`): ProtoMan's search starting at the top of its column (+0x70;
+-- after a slash it goes on below the last enemy).
+type State = DoubleAttackActor & { from_top: boolean }
 
 -- ProtoMan's charge (120 ticks, the charged glow 80 ticks before its end, for those 80), his steps (3 ticks each), his
 -- swing (20 ticks, its hit on the 10th), his wait after (10 ticks).
 local CHARGE_TICKS, CHARGED_AT = 0x78, 0x50
-local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
-local CHARGING_LASTS = 0x28
 local STEP_TICKS, SWING_TICKS, SWING_HITS_AT, AFTER_TICKS = 3, 0x14, 0xA, 0xA
 local ANIM_IDLE, ANIM_STEP, ANIM_SWING, ANIM_MAGNET = 0, 4, 5, 0x10
-local SOUND_CHARGING = asset.sound("buster-charge")
-local SOUND_CHARGED = asset.sound("buster-charged")
 local SOUND_SWING = asset.sound("sword-swing")
 -- His sword (the attachment table's row 3, as his navi chip's) in its animation 1; the slash over the column (the
 -- effect table's row 0x33), 16 pixels up.
@@ -60,43 +55,14 @@ local IMMOBILIZER = immobilizer.make_kind("m-zan/immobilizer", {
     self_type = collision.guard_breaking,
 })
 
--- The other actor of this Double Attack (the DS's director writes each one's +0x60 as it brings them).
-local function partner_of(me: Object): Object
-    local s = me.state :: State
-    if s.partner == nil then
-        for _, o in battle.objects_of(me.kind) do
-            if o ~= me and (o.state :: State).director == s.director then
-                s.partner = o
-            end
-        end
-    end
-    local p = s.partner
-    if p == nil then
-        error("M-ZAN's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
-
--- 0x020A5110, 0x020A53E4: each appears (the shared step), learning its partner as it first runs.
+-- 0x020A5110, 0x020A53E4: each appears (the shared step).
 local function appear(me: Object)
-    partner_of(me)
     double_attack.appear(me, 4, 0x10)
 end
 
 -- 0x020A5158: ProtoMan's charge, 120 ticks; then his search from the column in front, its top row.
 local function charge(me: Object)
-    if me.phase_init == 0 then
-        me.anim = ANIM_IDLE
-        double_attack.at_hand(me, CHARGING, CHARGING_LASTS)
-        battle.play_sound(SOUND_CHARGING)
-        me.timer = CHARGE_TICKS
-        me.phase_init = 4
-    end
-    if me.timer == CHARGED_AT then
-        double_attack.at_hand(me, CHARGED, CHARGED_AT)
-        battle.play_sound(SOUND_CHARGED)
-    end
-    if not double_attack.ran_out(me) then
+    if not double_attack.charge(me, CHARGE_TICKS, CHARGED_AT) then
         return
     end
     me.future_panel_x, me.future_panel_y = me.panel_x + me.facing, 1
@@ -269,7 +235,7 @@ end
 
 -- 0x020A546C: he waits for ProtoMan's action after.
 local function wait_for_protoman(me: Object)
-    if partner_of(me).action == 0xC then
+    if double_attack.partner(me).action == 0xC then
         me:set_action(0xC)
     end
 end
@@ -307,7 +273,7 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "m-zan",
         damage = { 50, 50, 70, 80, 90, 100, 180, 200, 240, 240 },
-        state = { partner = "object", from_top = "bool" },
+        state = { from_top = "bool" },
         roles = {
             -- 0x020A5100's table: ProtoMan, (10, 10) from the user's spot.
             {

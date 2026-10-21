@@ -17,14 +17,12 @@ local gyroman = require("../navis/gyroman").gyroman
 local magnetman = require("../navis/magnetman").magnetman
 local toss = require("@self/toss")
 
--- Its actors' state: the shared fields, the other actor (the director's link, +0x60) and GyroMan's next column's center
--- (+0x74).
-type State = DoubleAttackActor & { partner: Object?, next_center: number }
+-- Its actors' state: the shared fields and GyroMan's next column's center (+0x74).
+type State = DoubleAttackActor & { next_center: number }
 
 local CHARGE_TICKS = 0x3C
-local APPEAR_TICKS, AFTER_TICKS = 0x14, 0xA
-local ANIM_IDLE, ANIM_APPEAR = 0, 3
-local SOUND_APPEAR = asset.sound("appear")
+local AFTER_TICKS = 0xA
+local ANIM_IDLE = 0
 -- GyroMan's rise: taking off (animation 0x12) 40 pixels up, in the air (0x14) from its 20th tick, over 41 ticks.
 local ANIM_TAKE_OFF, ANIM_AIRBORNE = 0x12, 0x14
 local RISEN, AIRBORNE_AT, RISE_TICKS = 0x28_0000, 0x13, 0x28
@@ -42,46 +40,10 @@ local SEND_TICKS = 5
 -- GyroMan's and MagnetMan's actions: appear, charge, attack (by phase), after, leave.
 local APPEAR, CHARGE, ATTACK, AFTER, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 
--- The other actor of the same director (the DS's director writes each into the other's +0x60 as it brings them), as
--- each first runs.
-local function link(me: Object)
-    local s = me.state :: State
-    if s.partner then
-        return
-    end
-    for _, o in battle.objects_of(me.kind) do
-        local t = o.state :: State
-        if o ~= me and t.director == s.director and t.role ~= s.role then
-            s.partner = o
-            return
-        end
-    end
-end
-
-local function partner(me: Object): Object
-    local p = (me.state :: State).partner
-    if not p then
-        error("M-AIR's actor has no partner (its director's link reads through a null pointer)")
-    end
-    return p
-end
-
 -- 0x020A55C0 (GyroMan), 0x020A57F8 (MagnetMan): it appears, 20 ticks, then charges, whatever its panel. GyroMan puts on
 -- what he wears (his NameID's actor record is a player's: `sub_8011420` with Param3 1, his propeller).
 local function appear(me: Object)
-    if me.phase_init == 0 then
-        link(me)
-        me.anim = ANIM_APPEAR
-        me.timer = APPEAR_TICKS
-        battle.play_sound(SOUND_APPEAR)
-        if me.identity == gyroman.identity then
-            me:add_parts(gyroman.identity :: Identity, 1)
-        end
-        me.phase_init = 4
-    end
-    if double_attack.ran_out(me) then
-        me:set_action(CHARGE)
-    end
+    double_attack.appear(me, CHARGE, nil, me.identity == gyroman.identity)
 end
 
 -- 0x020A5610: GyroMan charges; his destination the panel ahead in the top row (the DS also sets its +0x70, which
@@ -147,7 +109,7 @@ local function gyro_attack(me: Object)
             me.phase, me.phase_init = 0x4, 0
         end
     elseif p == 0x4 then
-        local m = partner(me)
+        local m = double_attack.partner(me)
         if m.action == ATTACK and m.phase == 0x8 then
             me.phase, me.phase_init = 0x8, 0
         end
@@ -184,7 +146,7 @@ local function magnet_attack(me: Object)
     local s = me.state :: State
     local p = me.phase
     if p == 0x0 then
-        local g = partner(me)
+        local g = double_attack.partner(me)
         if g.action == ATTACK and g.phase == 0x4 then
             me.phase, me.phase_init = 0x4, 0
         end
@@ -220,7 +182,7 @@ local function magnet_attack(me: Object)
             end
         end
     elseif p == 0x8 then
-        if partner(me).action == AFTER then
+        if double_attack.partner(me).action == AFTER then
             me:set_action(AFTER)
         end
     else
@@ -260,7 +222,7 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "m-air",
         damage = { 60, 60, 60, 70, 80, 90, 150, 180, 200, 200 },
-        state = { partner = "object", next_center = "i32" },
+        state = { next_center = "i32" },
         roles = {
             -- 0x020A55B0's table: GyroMan, (10, 10) from the user's spot.
             {

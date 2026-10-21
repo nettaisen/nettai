@@ -16,7 +16,7 @@ local panels = require("@exelib/panels")
 local shadowman = require("../navis/shadowman").shadowman
 local toadman = require("../navis/toadman").toadman
 
-type State = DoubleAttackActor & { partner: Object? }
+type State = DoubleAttackActor
 
 local CHARGE_TICKS = 0x3C
 -- The song: animation 0xC and its sound; ToadMan's twelve frogs, 11 ticks apart.
@@ -29,30 +29,7 @@ local ENEMY_BODY = { [0] = 0x04000000, [1] = 0x08000000 }
 local ON_ENEMY_UNDER = 0xA
 local AFTER_TICKS = 0x1E
 
--- The director's link (0x020A0B3C): each actor's partner, the other actor it brought.
-local function link(me: Object)
-    local s = me.state :: State
-    for _, o in battle.objects_of(me.kind) do
-        local t = o.state :: State
-        if o ~= me and t.director == s.director and t.role ~= s.role then
-            s.partner = o
-            return
-        end
-    end
-end
-
-local function partner(me: Object): Object
-    local p = (me.state :: State).partner
-    if not p then
-        error("G-OTOSHI's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
-
 local function appear(me: Object)
-    if me.phase_init == 0 then
-        link(me)
-    end
     double_attack.appear(me, 4, 0x10)
 end
 
@@ -118,7 +95,7 @@ local function sing(me: Object)
         battle.play_sound(SOUND_SONG)
         me.phase_init = 4
     end
-    if partner(me).action == 0xC then
+    if double_attack.partner(me).action == 0xC then
         me:set_action(0xC)
     end
 end
@@ -149,7 +126,6 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "g-otoshi",
         damage = { 30, 30, 30, 30, 30, 30, 40, 50, 60, 60 },
-        state = { partner = "object" },
         roles = {
             -- 0x020A1808's table: ToadMan, (10, 10) from the user's spot.
             {

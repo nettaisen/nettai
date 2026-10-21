@@ -5,7 +5,8 @@
 //!     cargo run -p nettai-tools --example double_attack_frames -- PACK OUT KEY PARTNER [PARTNER] [--key-a TICK...]
 //!
 //! A round of MegaMan (side 0, with the partners in his party) against
-//! MegaMan on the first link stage, both pressing through their custom
+//! MegaMan (both light, the value 1000, as the DS lab's saves) on the first
+//! link stage, both pressing through their custom
 //! screens; then side 0 switches: to member 1 out of Full Synchro (a pair
 //! with MegaMan), or to member 1 out of a plain mood and, once that has
 //! settled, to member 2 out of Full Synchro (a pair of two team navis). Every
@@ -61,7 +62,8 @@ fn main() {
             format!("{{ chip = \"{name}\", code = \"{code}\" }}")
         })
         .collect();
-    let side = format!("navi = \"megaman\"\nfolder = [{}]\n", folder.join(", "));
+    // (MegaMan's light/dark value 1000, as the DS lab's saves' light MegaMan has it.)
+    let side = format!("navi = \"megaman\"\nfolder = [{}]\nkarma = 1000\n", folder.join(", "));
     let stage = nettai_match::ids::local(&content.defs.stage(nettai_match::link_battle_stages(&content, "exe5")[0]).key);
     let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{side}\n\n[right]\n{side}\n");
     let m = nettai_match::parse(&content, &text).unwrap_or_else(|p| panic!("{p:?}"));

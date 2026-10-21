@@ -20,8 +20,7 @@ local megaman = require("../navis/megaman").megaman
 local napalmman = require("../navis/napalmman").napalmman
 local regions = require("@exelib/regions")
 
--- Its actors' state: the shared fields and the other actor (the director's link, +0x60).
-type State = DoubleAttackActor & { partner: Object? }
+type State = DoubleAttackActor
 
 local CHARGE_TICKS = 0x3C
 local AFTER_TICKS = 0xA
@@ -59,22 +58,6 @@ local NAPALM_FIRES_AT, NAPALM_FIRE_TICKS, NAPALM_BETWEEN = 1, 2, 5
 -- The actions: appear, charge, attack (by phase), after, leave.
 local APPEAR, CHARGE, ATTACK, AFTER, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 
--- The other actor of the same director (the DS's director writes each into the other's +0x60 as it brings them), as
--- each first runs.
-local function link(me: Object)
-    local s = me.state :: State
-    if s.partner then
-        return
-    end
-    for _, o in battle.objects_of(me.kind) do
-        local t = o.state :: State
-        if o ~= me and t.director == s.director and t.role ~= s.role then
-            s.partner = o
-            return
-        end
-    end
-end
-
 -- `sub_80C6ADA` (0x020A1FCC): a bullet of `variant` from the panel ahead, at a height drawn from RNG2, null, with its
 -- damage word, running while dimmed.
 local function fire(me: Object, variant: BulletVariant)
@@ -87,9 +70,6 @@ local function fire(me: Object, variant: BulletVariant)
 end
 
 local function appear(me: Object)
-    if me.phase_init == 0 then
-        link(me)
-    end
     double_attack.appear(me, CHARGE, LEAVE)
 end
 
@@ -218,11 +198,7 @@ end
 local function megaman_after(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
-        local n = s.partner
-        if not n then
-            error("D-VALCAN's MegaMan has no partner (his director's link reads through a null pointer)")
-        end
-        if n.action ~= AFTER then
+        if double_attack.partner(me).action ~= AFTER then
             return
         end
         me.anim = ANIM_IDLE
@@ -264,7 +240,6 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "d-valcan",
         damage = { 2, 2, 2, 2, 2, 3, 4, 5, 6, 6 },
-        state = { partner = "object" },
         roles = {
             -- 0x020A5B1C's table: MegaMan, (10, 10) from the user's spot.
             {

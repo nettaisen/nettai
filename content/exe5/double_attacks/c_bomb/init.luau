@@ -41,25 +41,10 @@ local PLACE_AT = 0x28
 -- The panels the capsule may go on (0x020D80B0, by side): the other side's, solid, with no one on them.
 local CAPSULE_PANELS = { [0] = { 0x30, 0x0F800000 }, [1] = { 0x10, 0x0F800020 } }
 
--- The other actor (the DS's +0x60, which the director links as it brings both).
-local function partner(me: Object): Object
-    local s = me.state :: State
-    for _, o in battle.objects_of(me.kind) do
-        if o ~= me and (o.state :: State).director == s.director then
-            return o
-        end
-    end
-    error("C-BOMB's actor has no partner (its +0x60 reads through a null pointer)")
-end
-
 -- A team navi appears wearing what it wears (0x02015B0C, 0x02015D58: its NameID's actor record a player's,
 -- `sub_8011420` with Param3 1).
 local function appear_wearing(me: Object)
-    local first = me.phase_init == 0
-    double_attack.appear(me, 4, 0x10)
-    if first then
-        me:add_parts(me.identity :: Identity, 1)
-    end
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 -- Action 0xC of both (0x02015CE0, 0x02015E0C): once the other is at it too, 30 ticks, then they leave. NapalmMan lets
@@ -67,7 +52,7 @@ end
 local function after(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
-        if partner(me).action ~= 0xC then
+        if double_attack.partner(me).action ~= 0xC then
             return
         end
         if s.role == 0 then
@@ -90,7 +75,7 @@ local function napalmman_charge(me: Object)
     if not double_attack.charge(me, CHARGE_TICKS) then
         return
     end
-    me:set_action(if (partner(me).state :: State).capsule then 8 else 0xC)
+    me:set_action(if (double_attack.partner(me).state :: State).capsule then 8 else 0xC)
 end
 
 -- The bomb lies there yet (its thrower's slot, +0x78, which the bomb empties as it ends: 0x0220A196, 0x0220A220,

@@ -39,17 +39,6 @@ local SOUND_LOCK = asset.sound("mark")
 -- A shot's hit (0x02015A48): the scope's panel (region 1), spark 0, hitting navis as a curse, hit modifier 3.
 local HIT_MOD = 3
 
--- The other actor (the DS's +0x60, which the director links as it brings both).
-local function partner(me: Object): Object
-    local s = me.state :: State
-    for _, o in battle.objects_of(me.kind) do
-        if o ~= me and (o.state :: State).director == s.director then
-            return o
-        end
-    end
-    error("C-SCOPE's actor has no partner (its +0x60 reads through a null pointer)")
-end
-
 -- 0x02015A48: a shot on the scope's panel.
 local function shoot_at(me: Object, target: Object?)
     if not target then
@@ -90,7 +79,7 @@ end
 local function after(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
-        if partner(me).action ~= 0xC then
+        if double_attack.partner(me).action ~= 0xC then
             return
         end
         me.anim = ANIM_IDLE
@@ -175,7 +164,7 @@ local function searchman_charge(me: Object)
         s.scope = scope.spawn(me, x - f, y - 1, 0)
         s.scope2 = scope.spawn(me, x + f, y - 1, 1)
     end
-    local t = partner(me).state :: State
+    local t = double_attack.partner(me).state :: State
     t.scope, t.scope2 = s.scope, s.scope2
     s.fire = false
     me:set_action(8)
@@ -200,7 +189,7 @@ local function searchman_shots(me: Object)
                 return
             end
         end
-        ;(partner(me).state :: State).fire = true
+        ;(double_attack.partner(me).state :: State).fire = true
         s.fire = true
         scope.stop(s.scope)
         scope.stop(s.scope2)
@@ -229,11 +218,7 @@ end
 -- SearchMan appears wearing what he wears (0x02015794: his NameID's actor record a player's, `sub_8011420` with
 -- Param3 1).
 local function searchman_appear(me: Object)
-    local first = me.phase_init == 0
-    double_attack.appear(me, 4, 0x10)
-    if first then
-        me:add_parts(searchman.identity :: Identity, 1)
-    end
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 local chip: Chip = {

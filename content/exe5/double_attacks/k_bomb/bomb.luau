@@ -9,7 +9,7 @@ local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
-local trajectory = require("../../lib/trajectory")
+local ds_arc = require("../../lib/ds_arc")
 
 local bomb = {}
 
@@ -143,7 +143,8 @@ bomb.kind = new.kind {
             local corner = CORNERS[s.quarter + 1]
             x = int.i32(x + corner[1] * 0x10000 * f)
             y = int.i32(y + corner[2] * 0x10000)
-            me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT, GRAVITY, me.alliance)
+            -- (The DS's arc, 0x0208DB5C: lib/ds_arc.)
+            me.vel = ds_arc.in_ticks(me.pos, x, y, 0, FLIGHT, GRAVITY, me.alliance)
             me:set_lifecycle("update")
             tick(me)
         elseif l == "update" then

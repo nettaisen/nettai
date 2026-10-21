@@ -10,8 +10,9 @@
 --
 -- Each actor (the DS's role table, by its Param1: 0 the first, 1 the second) stands beside the user's spot and draws
 -- its navi; MegaMan draws as his stats say (his form, Hub Style, his light/dark value), the active navi's stats when
--- he is on the field, else his member block's. The steps most of them share: it appears (20 ticks), charges (60 ticks,
--- the glow at its hand), attacks, waits and leaves (4 ticks). Each Double Attack's own actions are its module's.
+-- he is on the field, else his member block's. The director links the two (each the other's partner, its +0x60), which
+-- most wait on. The steps most of them share: it appears (20 ticks), charges (60 ticks, the glow at its hand), attacks,
+-- waits and leaves (4 ticks). Each Double Attack's own actions are its module's.
 --
 -- Left out: the DS's party block +0x18 (each actor clears its navi's bit as it appears and sets it as it leaves,
 -- 0x02004E7C and 0x02004E68), which only the bottom screen's party panel reads (ARM 0x020361F8: how it draws the
@@ -225,9 +226,10 @@ function double_attack.hit(me: Object, spec: HitboxSpec): Object?
 end
 
 -- An actor appears (each role's first action): its appearing animation, 20 ticks, its NameID (its navi's identity);
--- MegaMan puts on what he wears and takes his palette. Then it charges (`charge`) on a solid panel, else leaves
--- (`leave`).
-function double_attack.appear(me: Object, charge: number, leave: number)
+-- MegaMan puts on what he wears and takes his palette; with `wears`, a team navi puts on its identity's parts
+-- (`sub_8011420` with Param3 1: they step even while paused). Then it charges (`charge`) on a solid panel, else leaves
+-- (`leave`); without `leave`, it charges whatever its panel.
+function double_attack.appear(me: Object, charge: number, leave: number?, wears: boolean?)
     if me.phase_init == 0 then
         me.anim = ANIM_APPEAR
         me.timer = APPEAR_TICKS
@@ -235,18 +237,39 @@ function double_attack.appear(me: Object, charge: number, leave: number)
         if me.identity == megaman.identity then
             megaman_overlay(me)
             me.sprite.palette = megaman_palette(me)
+        elseif wears then
+            -- (sub_8011420 puts on a player's identity's parts alone: its actor record's type 2.)
+            local identity = me.identity :: Identity
+            if identity.actor_type == "player" then
+                me:add_parts(identity, 1)
+            end
         end
         me.phase_init = 4
     end
     if not double_attack.ran_out(me) then
         return
     end
-    me:set_action(if field.solid(me.panel_x, me.panel_y) then charge else leave)
+    if leave == nil or field.solid(me.panel_x, me.panel_y) then
+        me:set_action(charge)
+    else
+        me:set_action(leave)
+    end
 end
 
--- An actor charges for `ticks` ticks: the glow at its hand with its sound, the charged glow and its sound 20 ticks
--- before the end. True on its last tick (the role's own then follows).
-function double_attack.charge(me: Object, ticks: number): boolean
+-- The actor's partner, the other actor its director brought (+0x60).
+function double_attack.partner(me: Object): Object
+    local p = (me.state :: State).partner
+    if p == nil then
+        error("a Double Attack's actor has no partner (the DS reads its +0x60 through a null pointer)")
+    end
+    return p
+end
+
+-- An actor charges for `ticks` ticks: the glow at its hand with its sound (40 ticks), the charged glow and its sound
+-- `charged_at` ticks before the end (20 if none said), lasting as long. True on its last tick (the role's own then
+-- follows).
+function double_attack.charge(me: Object, ticks: number, charged_at: number?): boolean
+    local at = charged_at or CHARGED_AT
     if me.phase_init == 0 then
         me.anim = ANIM_IDLE
         double_attack.at_hand(me, CHARGING, CHARGING_LASTS)
@@ -254,8 +277,8 @@ function double_attack.charge(me: Object, ticks: number): boolean
         me.timer = ticks
         me.phase_init = 4
     end
-    if me.timer == CHARGED_AT then
-        double_attack.at_hand(me, CHARGED, CHARGED_AT)
+    if me.timer == at then
+        double_attack.at_hand(me, CHARGED, at)
         battle.play_sound(SOUND_CHARGED)
     end
     return double_attack.ran_out(me)
@@ -296,7 +319,7 @@ function double_attack.make(spec: Spec): DoubleAttack
         error(string.format("%s: a Double Attack's damage row has ten entries, not %d", spec.id, #spec.damage))
     end
 
-    local state: StateSchema = { director = "object", role = "u8", held = "object", held2 = "object" }
+    local state: StateSchema = { director = "object", role = "u8", partner = "object", held = "object", held2 = "object" }
     for k, v in spec.state or {} do
         state[k] = v
     end
@@ -364,11 +387,11 @@ function double_attack.make(spec: Spec): DoubleAttack
 
     -- The DS's actor spawner (0x020A0FEC and its copies): an actor for `role`, on the director's panel, of its user's
     -- side and facing, with its damage word, reporting to the director.
-    local function bring(me: Object, role: number)
+    local function bring(me: Object, role: number): Object?
         local user = me.related1 :: Object
         local o = battle.spawn(actor)
         if not o then
-            return
+            return nil
         end
         o.panel_x, o.panel_y = me.panel_x, me.panel_y
         o.alliance, o.flip = user.alliance, user.flip
@@ -378,6 +401,7 @@ function double_attack.make(spec: Spec): DoubleAttack
         s.role = role
         s.director = me;
         (me.state :: DirectorState).out[role + 1] = true
+        return o
     end
 
     -- Its course (0x020A4D30's table and its copies), by phase.
@@ -396,8 +420,14 @@ function double_attack.make(spec: Spec): DoubleAttack
         elseif p == ACTORS then
             local s = me.state :: DirectorState
             if me.phase_init == 0 then
-                bring(me, 0)
-                bring(me, 1)
+                -- Each the other's partner (+0x60; D-HERO's director alone doesn't link them, and its actors never
+                -- read the link).
+                local first = bring(me, 0)
+                local second = bring(me, 1)
+                if first and second then
+                    (first.state :: State).partner = second;
+                    (second.state :: State).partner = first
+                end
                 me.phase_init = 4
             end
             if not s.out[1] and not s.out[2] then
