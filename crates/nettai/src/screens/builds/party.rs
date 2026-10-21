@@ -28,6 +28,7 @@
 //! into a partner's list where it is let go, or onto its head (at its end), refused as Enter is; in a partner's list to
 //! another place, or into the other partner's; and onto the library, which takes it out.
 
+use crate::builds::overview::{stat_line, stat_name};
 use crate::builds::party::{FIELD, Partner, Shape, partners, tone, write};
 use crate::input::Action;
 use crate::screens::builds::editor::{self, Draft, Tab};
@@ -35,10 +36,10 @@ use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
 use nettai_content_api::{EntryHandle, NaviHandle, Registry};
-use nettai_match::build::{Budget, EntryRefusal};
+use nettai_match::build::{Budget, Checked, EntryRefusal, NamedStat, Stat};
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
-use nettai_ui::{BuildWords, EditorTab, PartyChip, PartyPanel, PartyRow, PartyTeam, PartyView};
+use nettai_ui::{BuildWords, EditorTab, PartyChip, PartyPanel, PartyRow, PartyTeam, PartyView, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 /// The list of partner `i`'s programs (its panel's).
@@ -51,7 +52,6 @@ fn partner_of_list(id: &str) -> Option<usize> {
     id.strip_prefix("installed")?.parse().ok()
 }
 
-/// What the strip describes.
 /// What program `h` does, on one line: its effects in text table `table`'s words, one after the other.
 fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String {
     let named: crate::builds::cards::Named = &|_, _| None;
@@ -69,6 +69,43 @@ fn described(id: &str, index: i32) -> Option<Described> {
     })
 }
 
+/// What the strip says of a navi as a build would field it: its HP, its buster's attack and charge (as the games show
+/// them, 1 to 5), the stats its game's rules give it (an EXE5 team navi's own chip's damage) and its gauge's blocks.
+#[derive(Clone, Debug, Default)]
+struct NaviFacts {
+    hp: i32,
+    attack: i32,
+    charge: i32,
+    named: Vec<NamedStat>,
+    gauge: Option<u32>,
+}
+
+impl NaviFacts {
+    /// Partner `i` of a checked build (its party's member `i + 1`).
+    fn of(checked: &mut Checked, content: &std::sync::Arc<Content>, side: &nettai_match::Side, i: usize) -> Option<NaviFacts> {
+        let s = *checked.members().get(i + 1)?;
+        let o = checked.overview(content, side);
+        Some(NaviFacts {
+            hp: s.max_hp.into(),
+            attack: i32::from(s.attack) + 1,
+            charge: i32::from(s.charge) + 1,
+            named: o.as_ref().and_then(|o| o.members.iter().find(|(m, _)| *m == i + 1)).map(|(_, s)| s.clone()).unwrap_or_default(),
+            gauge: o.as_ref().and_then(|o| o.budget_of(FIELD, i)).map(|b| b.count.limit),
+        })
+    }
+
+    /// Its stats as the strip says them, by what the navi `alone` (no programs) has: what its programs added in cyan,
+    /// as the overview says it. (Their labels: HP, Attack, Charge the view's; a stat of the rules' own its name.)
+    fn lines(&self, alone: &NaviFacts, words: &crate::builds::words::Words) -> Vec<StatLine> {
+        let line = |with: i32, base: i32| stat_line(String::new(), Stat { base, value: with });
+        [line(self.hp, alone.hp), line(self.attack, alone.attack), line(self.charge, alone.charge)]
+            .into_iter()
+            .chain(self.named.iter().map(|s| stat_line(stat_name(words, s), s.stat)))
+            .collect()
+    }
+}
+
+/// What the strip describes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Described {
     /// A chip of the picker, by its place.
@@ -96,9 +133,9 @@ pub struct Party {
     hovered: Option<Described>,
     /// Why the last thing asked wasn't done, until the cursor moves.
     notice: Option<String>,
-    /// A navi's HP and gauge alone (no programs), as the build would field it: asked once a navi (a check of the build
-    /// with it the one partner), for the strip's description of a navi not in the party.
-    alone: std::collections::HashMap<NaviHandle, (Option<u16>, Option<u32>)>,
+    /// A navi's facts alone (no programs), as the build would field it: asked once a navi (a check of the build with it
+    /// the one partner), for the strip's description of a navi, and what a partner's programs add to it.
+    alone: std::collections::HashMap<NaviHandle, Option<NaviFacts>>,
 }
 
 impl Party {
@@ -277,29 +314,28 @@ impl Party {
         format!("{}_effects", self.shape.as_ref().map_or("", |s| s.collection.as_str()))
     }
 
-    /// A navi's HP and gauge as the build would field it: a partner's own (its programs' bonus in); else, alone, as a
-    /// check of the build with it the one partner says (kept, a navi once).
-    fn navi_facts(&mut self, draft: &mut Draft, n: NaviHandle) -> (Option<u16>, Option<u32>) {
+    /// A navi's facts as the build would field it, and alone (no programs; kept, a navi once): a partner's its own,
+    /// its programs' in; a navi not in the party's as a check of the build with it the one partner says.
+    fn navi_facts(&mut self, draft: &mut Draft, n: NaviHandle) -> Option<(NaviFacts, NaviFacts)> {
+        if !self.alone.contains_key(&n) {
+            let shape = self.shape.clone()?;
+            let content = draft.content().clone();
+            let mut side = draft.side().clone();
+            let facts = write(&content, &mut side, &shape, &[Partner { navi: Some(n), programs: Vec::new() }])
+                .then(|| NaviFacts::of(&mut Checked::of(&content, &draft.kit.game, &side), &content, &side, 0))
+                .flatten();
+            self.alone.insert(n, facts);
+        }
+        let alone = self.alone.get(&n).cloned().flatten()?;
         let partners = self.partners(draft);
-        if let Some(i) = partners.iter().position(|p| p.navi == Some(n)) {
-            let (budgets, _) = Party::budgets(draft);
-            return (crate::builds::party::hp(&draft.checked, n), budgets.get(i).cloned().flatten().map(|b| b.count.limit));
-        }
-        if let Some(&facts) = self.alone.get(&n) {
-            return facts;
-        }
-        let Some(shape) = self.shape.clone() else { return (None, None) };
-        let content = draft.content().clone();
-        let mut side = draft.side().clone();
-        let facts = if write(&content, &mut side, &shape, &[Partner { navi: Some(n), programs: Vec::new() }]) {
-            let mut checked = nettai_match::build::Checked::of(&content, &draft.kit.game, &side);
-            let gauge = checked.overview(&content, &side).and_then(|o| o.budget_of(FIELD, 0).map(|b| b.count.limit));
-            (crate::builds::party::hp(&checked, n), gauge)
-        } else {
-            (None, None)
+        let with = match partners.iter().position(|p| p.navi == Some(n)) {
+            Some(i) => {
+                let (content, side) = (draft.content().clone(), draft.side().clone());
+                NaviFacts::of(&mut draft.checked, &content, &side, i)?
+            }
+            None => alone.clone(),
         };
-        self.alone.insert(n, facts);
-        facts
+        Some((with, alone))
     }
 
     /// The strip: what the cursor is on; while the pointer is on a chip or a row, that one.
@@ -320,19 +356,22 @@ impl Party {
             Some(Described::Partner(i)) => partners.get(i).and_then(|p| p.navi),
             _ => None,
         };
-        let facts = navi.map(|n| self.navi_facts(draft, n));
+        let facts = navi.and_then(|n| self.navi_facts(draft, n));
+        let element = navi.map(|n| kit.pictures.element(super::navi::family(&content, content.navi(n).element)));
         let detail = draft.with_words(shell, |words| {
             let mut d = match (described, navi) {
                 (_, Some(n)) => {
                     let tag = kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0));
-                    let (hp, gauge) = facts.unwrap_or_default();
-                    let facts: Vec<slint::SharedString> = [hp.map(|hp| view.invoke_hp_word(hp as i32)), gauge.map(|g| view.invoke_gauge_word(g as i32))].into_iter().flatten().collect();
+                    let stats = facts.as_ref().map(|(with, alone)| with.lines(alone, words)).unwrap_or_default();
+                    let facts: Vec<slint::SharedString> = facts.as_ref().and_then(|(with, _)| with.gauge).map(|g| view.invoke_gauge_word(g as i32)).into_iter().collect();
                     let i = partners.iter().position(|p| p.navi == Some(n));
                     nettai_ui::PartyDetail {
                         there: true,
                         face: kit.pictures.navi(n),
                         name: words.names.navi_long(n).into(),
                         version: tag,
+                        stats: ModelRc::new(VecModel::from(stats)),
+                        element: element.clone().unwrap_or_default(),
                         facts: ModelRc::new(VecModel::from(facts)),
                         fault: i.map(|i| draft.line(shell, Party::problems(draft, i))).unwrap_or_default().into(),
                         problem: if matches!(described, Some(Described::Chip(_))) && !draft.allows(FIELD, n.0) { say.invoke_not_allowed_here() } else { Default::default() },
@@ -358,7 +397,6 @@ impl Party {
             }
             d
         });
-        let _ = content;
         view.set_detail(detail);
     }
 

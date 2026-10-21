@@ -2943,12 +2943,16 @@ export type SetupBug = {
 }
 export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean, entry: number? }
 export type SetupStat = { name: string, value: number, added: number }
+-- `members`: for a member of the side's party (its `entry`: 0 the build's navi, then its partners in the setup's order),
+-- the stats the game's rules give it beyond the engine's (EXE5's own chip's damage), as `stats` are given.
+export type SetupMember = { entry: number, stats: { SetupStat } }
 export type SetupOverview = {
     abilities: { SetupSource },
     bugs: { SetupBug },
     lists: { SetupList },
     switches: number?,
     stats: { SetupStat }?,
+    members: { SetupMember }?,
 }
 
 -- What an object is taken for (§3.2): the original's NameID record. A

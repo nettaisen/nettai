@@ -866,21 +866,28 @@ impl Checked {
             mega: stat(|s| s.mega_level as i32),
             giga: stat(|s| s.giga_level as i32),
             regular_memory: stat(|s| s.reg_up as i32),
-            stats: items(answer.field("stats"))
-                .iter()
-                .filter_map(|d| {
-                    let Data::Str(key) = d.field("name") else { return None };
-                    let (value, added) = (i32::try_from(d.field("value").int()?).ok()?, i32::try_from(d.field("added").int()?).ok()?);
-                    Some(NamedStat { key: key.clone(), stat: Stat { base: value - added, value } })
-                })
-                .collect(),
+            stats: items(answer.field("stats")).iter().filter_map(named_stat).collect(),
             tag_memory,
             abilities: items(answer.field("abilities")).iter().filter_map(source).collect(),
             bugs,
             lists,
             switches: answer.field("switches").int().and_then(|n| u32::try_from(n).ok()),
+            members: items(answer.field("members"))
+                .iter()
+                .filter_map(|m| {
+                    let entry = usize::try_from(m.field("entry").int()?).ok()?;
+                    Some((entry, items(m.field("stats")).iter().filter_map(named_stat).collect()))
+                })
+                .collect(),
         })
     }
+}
+
+/// A stat of the rules' own as an overview's answer gives it (`SetupStat`: its name, value and what the setup added).
+fn named_stat(d: &Data) -> Option<NamedStat> {
+    let Data::Str(key) = d.field("name") else { return None };
+    let (value, added) = (i32::try_from(d.field("value").int()?).ok()?, i32::try_from(d.field("added").int()?).ok()?);
+    Some(NamedStat { key: key.clone(), stat: Stat { base: value - added, value } })
 }
 
 /// The face the emotion window shows of a navi: its form's for an emotion
@@ -1075,6 +1082,10 @@ pub struct Overview {
     /// The switches a round allows the side's party, where the rules limit
     /// them (`nettai_battle::party::Party::switches` counts those made).
     pub switches: Option<u32>,
+    /// The stats the game's rules give a member of the side's party beyond
+    /// the engine's (EXE5's own chip's damage), by the member: 0 the build's
+    /// navi, then its partners in order ([`Checked::members`]').
+    pub members: Vec<(usize, Vec<NamedStat>)>,
 }
 
 impl Overview {
@@ -1865,6 +1876,19 @@ mod tests {
         assert_eq!(o.budget_of("party", 1).map(|b| b.count), Some(Count { used: 0, limit: 8 }));
         assert_eq!(o.budget("party"), None);
         assert_eq!(o.switches, Some(3));
+        // (ProtoMan's own chip's damage at the highest level, no P.Chp: nothing added.)
+        assert!(matches!(&o.members[..], [(1, a), (2, _)] if a.len() == 1 && a[0].key == "chip_damage" && a[0].stat.added() == 0 && a[0].stat.value > 0), "{:?}", o.members);
+        // (P.Chp+30 adds to it; the build's own navi, ProtoMan, has his at his story's level, member 0's.)
+        let damage = |o: &Overview, m: usize| o.members.iter().find(|(e, _)| *e == m).map(|(_, s)| s[0].stat);
+        let mut chp = side.clone();
+        chp.set_fact(&content, "party", &[partner("protoman", &["p-chp-30"])]).unwrap();
+        let o = Checked::of(&content, "exe5", &chp).overview(&content, &chp).unwrap();
+        assert_eq!(damage(&o, 1).map(|s| s.added()), Some(30), "{:?}", o.members);
+        let mut proto = builds.new_build(&content, "protoman").unwrap();
+        builds.set_navi(&content, &mut proto, ids::navi(&content, "exe5", "protoman").unwrap()).unwrap();
+        let o = Checked::of(&content, "exe5", &proto).overview(&content, &proto).unwrap();
+        assert!(damage(&o, 0).is_some_and(|s| s.value > 0 && s.added() == 0), "{:?}", o.members);
+        let o = checked.overview(&content, &side).unwrap();
         let b = o.budget_of("party", 0).unwrap();
         let hp_300 = ids::entry(&content, "exe5", "partycust_programs", "p-hp-300").unwrap();
         assert_eq!(b.refusal(&content, &side, hp_300), Some(EntryRefusal::Needs { needs: 5, free: 3 }));

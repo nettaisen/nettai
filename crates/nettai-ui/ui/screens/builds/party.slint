@@ -4,8 +4,8 @@
 // as the Folder and Patch cards tabs are:
 //
 // - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its blocks and
-//   whether they fit the marked partner's gauge, what it does, its kind) or a navi of the picker (its HP, its version,
-//   its gauge);
+//   whether they fit the marked partner's gauge, what it does, its kind) or a navi (its version; its HP, buster attack
+//   and charge, its own chip's damage, what its programs add to them; its element and its gauge);
 // - under it the navis to pick from, a row a version (the builds data's groups, each under its name in its color), a
 //   chip each (its face, its name, its place in the party where it is in): raised and outlined in the cursor's color
 //   where it is in, muted where the party is full, dim where the build's ruleset holds it back. Enter or a click puts
@@ -28,7 +28,7 @@ import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ListView, RowTouch, ScrollPage, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
 import { Tween, Shake } from "../../motion.slint";
-import { VersionTag, VersionMark } from "../../build.slint";
+import { VersionTag, VersionMark, StatLine } from "../../build.slint";
 import { DropGap, RemoveTarget, CountBox } from "folder.slint";
 
 // A navi to pick, as its chip shows it: its face and name; `place`, its place in the party (1, 2; 0: not in); `full`,
@@ -75,9 +75,9 @@ export struct PartyPanel {
 }
 
 // What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
-// name (a navi's with its version's mark), a line of what it is (`description`: what a program does, a navi's
-// numbers), its facts; why it can't go in (`problem`, a refusal) or what the build's problems have against it
-// (`fault`).
+// name (a navi's with its version's mark), a line of what it is (`description`: what a program does; a navi's stats in
+// its place), its facts (a navi's element first); why it can't go in (`problem`, a refusal) or what the build's
+// problems have against it (`fault`).
 export struct PartyDetail {
     there: bool,
     face: image,
@@ -86,6 +86,10 @@ export struct PartyDetail {
     blocks: int,
     tone: color,
     description: string,
+    // A navi's stats (HP, Attack, Charge: their labels the strip's; a stat of the rules' own with its own), what its
+    // programs added in cyan, as the Navi tab says them; and its element's icon.
+    stats: [StatLine],
+    element: image,
     facts: [string],
     problem: string,
     fault: string,
@@ -509,6 +513,7 @@ export component PartyTab inherits Rectangle {
     property <bool> phone: Theme.phone;
     property <length> top: -4px;
     property <length> strip: root.phone ? 0px : 104px;
+    property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Charge")];
     // The picker under the strip: a row of chips a version (on a phone, the version's name over its chips, three to a row).
     property <length> picker-y: root.phone ? 0px : root.top + root.strip + 12px;
     property <length> chip-height: 30px;
@@ -613,13 +618,52 @@ export component PartyTab inherits Rectangle {
             y: root.top + 43px;
             width: root.width - 136px;
             height: 18px;
-            visible: !root.phone;
+            visible: !root.phone && PartyView.detail.stats.length == 0;
             text: PartyView.detail.description;
             color: Theme.muted;
             font-family: Theme.body;
             font-size: 13px;
             vertical-alignment: center;
             overflow: elide;
+        }
+
+        // (A navi's stats in the description's place, each its label, its value and what was added.)
+        HorizontalLayout {
+            x: 120px;
+            y: root.top + 43px;
+            width: root.width - 136px;
+            height: 18px;
+            visible: !root.phone;
+            spacing: 18px;
+            alignment: start;
+            for stat[i] in PartyView.detail.stats: HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: stat.label != "" ? stat.label : i < root.stat-labels.length ? root.stat-labels[i] : "";
+                    color: Theme.muted;
+                    font-family: Theme.body;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: stat.value;
+                    color: Theme.text;
+                    font-family: Theme.mono;
+                    font-size: 13px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+
+                if stat.added != "": Text {
+                    text: stat.added;
+                    color: Theme.cursor;
+                    font-family: Theme.mono;
+                    font-size: 11px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                }
+            }
         }
 
         HorizontalLayout {
@@ -630,6 +674,13 @@ export component PartyTab inherits Rectangle {
             visible: !root.phone;
             spacing: 16px;
             alignment: start;
+            if PartyView.detail.element.width > 0: Image {
+                width: 16px;
+                height: 16px;
+                source: PartyView.detail.element;
+                image-rendering: pixelated;
+            }
+
             for fact in PartyView.detail.facts: Text {
                 text: fact;
                 color: Theme.muted;
