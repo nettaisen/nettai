@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1280" viewBox="0 0 120 160">
-<!-- EXE5's custom window's frame (every cell the screen doesn't lay something in), drawn as one object as EXE6's: a gray frame with dark notches down its left edge, a light groove round the chip window's frame, the glossy chip window round (radius 3, its bevel 4), the panel under it (its outline cut 45 degrees at its top left and its step, a light edge inside, each cut parallel), the housing round the orb as EXE6's, a wide right frame, the bar, the frame's corners mitered where a side meets the bar, OK. -->
+<!-- EXE5's custom window's frame (every cell the screen doesn't lay something in), drawn as one object as EXE6's: a gray frame with dark notches down its left edge, a light groove round the chip window's frame, the glossy chip window round (radius 3, its bevel 4), the panel under it (its outline cut 45 degrees at its top left and its step, a light edge inside, each cut parallel), the housing round the orb as EXE6's, a wide right frame, the bar, the bottom corners as the art draws them, OK. -->
 <!-- The gray frame -->
 <rect x="0" y="0" width="88" height="100" fill="#cecece" data-color="6" data-palette="9"/>
 <!-- The notches down the left edge: each a dark opening, its rim along its top and down its right side, the rim's corner cut -->
@@ -62,10 +62,10 @@
 <rect x="0" y="142" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The housing's shadow on the panel: its outline a pixel lower -->
 <path d="M88 12.5 A16 16 0 0 1 120 12.5 L120 106.657 L115.657 111 L92.343 111 L88 106.657 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The bar and the right frame, one blue; the frame six pixels wide (a blue line inside, slate four, blue outside), the bar six (blue two, a slate groove three, blue one); where the left side and the right frame meet the bar, the frame is mitered: one 45-degree line through the inner corner, every band of the side and of the bar ending on it; the bottom right corner cut 2.5 -->
-<path d="M6.7 154 L114 154 L114 100 L120 100 L120 157.5 L117.5 160 L0.7 160 Z" fill="#6b73ad" data-color="4" data-palette="9"/>
-<!-- The bar's groove: its left end on the left miter (under its light), its right end on the right miter's light -->
-<path d="M4.7 156 L114.586 156 L117.586 159 L1.7 159 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bar and the right frame, one blue; the frame six pixels wide (a blue line inside, slate four, blue outside), the bar six (blue two, a slate groove three, blue one); the bottom right corner cut 2.5 -->
+<path d="M5 154 L114 154 L114 100 L120 100 L120 157.5 L117.5 160 L0 160 L0 159 Z" fill="#6b73ad" data-color="4" data-palette="9"/>
+<!-- The bar's groove: its left end under the slanted end's light, its right end under the light along the right corner's 45-degree line -->
+<path d="M3 156 L114.6 156 L117.6 159 L0 159 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="19" y="156" width="1" height="3" fill="#6b73ad" data-color="4" data-palette="9"/>
 <rect x="27" y="156" width="1" height="3" fill="#6b73ad" data-color="4" data-palette="9"/>
 <rect x="91" y="156" width="1" height="3" fill="#6b73ad" data-color="4" data-palette="9"/>
@@ -75,12 +75,12 @@
 <!-- The notches across the right frame -->
 <rect x="114" y="134" width="6" height="1" fill="#6b73ad" data-color="4" data-palette="9"/>
 <rect x="114" y="142" width="6" height="1" fill="#6b73ad" data-color="4" data-palette="9"/>
-<!-- The slots' side's groove, a pixel wide, straight down onto the left miter -->
-<path d="M4 102 L5 102 L5 155.7 L4 156.7 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The left miter: a 45-degree line from the inner corner to the window's bottom left, lit along the bar's side a pixel wide, as EXE6's -->
-<path d="M6 154 L7.414 154 L1.414 160 L0 160 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
-<!-- The right miter: a 45-degree line from the inner corner (where the frame's inner line meets the bar's top) to the cut corner, lit along the bar's side a pixel wide -->
-<path d="M112.586 154 L114 154 L118.25 158.25 L117.543 158.957 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
+<!-- The slots' side's groove, a pixel wide, straight down to the bar's top -->
+<path d="M4 102 L5 102 L5 154 L4 154 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bar's left end slanted 45 degrees from the bottom of the slots' groove down to the window's edge, a light band two pixels across along it, as the art draws it -->
+<path d="M3.5 154 L5.5 154 L0.5 159 L0 159 L0 157.5 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
+<!-- The bottom right corner: a light band along the 45-degree line from the frame's inner line at the bar's top to the cut corner, centered on it, two pixels wide, as the art draws it: it starts square across itself inside the frame, below the bar's top, and the frame's slate and the bar's groove end under it -->
+<path d="M115.2 153.8 L118.95 157.55 L117.55 158.95 L113.8 155.2 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
 <!-- The bottom right corner: the outer line turning along the cut, the corner past it dark -->
 <path d="M120 156.5 L120 157.5 L117.5 160 L116.5 160 Z" fill="#6b73ad" data-color="4" data-palette="9"/>
 <path d="M120 157.5 L120 160 L117.5 160 Z" fill="#292929" data-color="8" data-palette="9"/>
