@@ -2003,11 +2003,12 @@ mod tests {
         other.game = "exe5".into();
         assert!(read(&other).unwrap_err().contains("no stage"));
         // (Open builds, no custom screen time limit, and the ruleset as
-        // written: one per build, nothing held back.)
+        // written: one per build, nothing held back, for all or by key.)
         let ruleset = |w: &mut Writer| {
             w.put(&false);
             w.put(&0u16);
             w.put(&true);
+            w.uvarint(0);
             w.uvarint(0);
         };
         let mut bytes = Vec::new();
@@ -2030,6 +2031,7 @@ mod tests {
         w.put(&"folder".to_string());
         w.uvarint(1);
         w.put(&"no-such-chip".to_string());
+        w.uvarint(0);
         w.put(&false);
         w.put(&1u8);
         w.put(&String::new());
@@ -2038,7 +2040,7 @@ mod tests {
         // (What the set is first to is the byte after the game, open
         // setups, the custom screen time limit, the ruleset and the pool's
         // switch.)
-        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1;
+        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
         for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
             let mut none = blank.to_bytes(&content);
@@ -2070,6 +2072,27 @@ mod tests {
         assert_eq!(read(&foreign).unwrap(), foreign);
         foreign.rounds[1].background = Some("exe4:nowhere".into());
         assert_eq!(read(&foreign).unwrap_err(), "round 2: no background exe4:nowhere in the background pool");
+    }
+
+    /// EXE5's partners' programs held back for one navi's partners go by the navi's name and the program's, and the
+    /// other side holds the same rules.
+    #[test]
+    fn bans_by_navi_go_by_name() {
+        let content = nettai_match::testing::exe5_content();
+        let r = Rulesets::of(&content, "exe5").unwrap();
+        let ids = nettai_match::ids::entry(&content, "exe5", "partycust_programs", "p-btlpk2").unwrap().0;
+        let protoman = nettai_match::ids::navi(&content, "exe5", "protoman").unwrap().0;
+        let mut own = r.preset("unrestricted").unwrap().clone();
+        own.name = RulesetName::Own("Masters".into());
+        own.set_allowed_for(r.category("party.programs").unwrap(), protoman, &nettai_match::ruleset::Item::of(ids), false);
+        let m = nettai_match::pick::live(&content, "exe5", 9, None).unwrap();
+        let owned = Settings { ruleset: own.clone(), ..Settings::of_match(&m, r.presets[0].clone()) };
+        let bytes = owned.to_bytes(&content);
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("protoman") && text.contains("p-btlpk2"), "by name: {text}");
+        let theirs = Settings::from_bytes(&content, &r, &bytes).unwrap();
+        assert!(theirs.ruleset.same_rules(&own) && theirs.hash(&content) == owned.hash(&content));
+        assert!(!theirs.ruleset.allows_for("party.programs", protoman, &nettai_match::ruleset::Item::of(ids)));
     }
 
     /// With the backgrounds from the pool, both peers draw each round's from it alike, by the seed from both

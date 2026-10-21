@@ -183,4 +183,24 @@ mod tests {
         mixed.name = Name::Own("Open".into());
         assert_eq!(read(&r, &content, &super::text(&content, "exe6", &mixed)), Ok(mixed));
     }
+
+    /// EXE5's partners' programs held back for every partner and for one navi's: `[banned]` and `[banned_by]` as the
+    /// module says, read back as they were; a navi the party can't hold (MegaMan) isn't a file's.
+    #[test]
+    fn a_ruleset_reads_back_its_bans_by_navi() {
+        use nettai_match::ids;
+        use nettai_match::ruleset::Item;
+        let content = nettai_match::testing::exe5_content();
+        let r = rulesets("exe5");
+        let mut own = r.preset("unrestricted").unwrap().clone();
+        own.name = Name::Own("Masters".into());
+        let program = |n: &str| Item::of(ids::entry(&content, "exe5", "partycust_programs", n).unwrap().0);
+        own.set_allowed("party.programs", &program("p-hp-300"), false);
+        own.set_allowed_for(r.category("party.programs").unwrap(), ids::navi(&content, "exe5", "protoman").unwrap().0, &program("p-btlpk2"), false);
+        let text = text(&content, "exe5", &own);
+        assert!(text.contains("[banned_by.\"party.programs\"]\nprotoman = [\"p-btlpk2\"]") && text.contains("\"party.programs\" = [\"p-hp-300\"]"), "{text}");
+        assert_eq!(read(&r, &content, &text), Ok(own));
+        assert!(read(&r, &content, &text.replacen("protoman = ", "megaman = ", 1)).is_err());
+        assert!(!super::text(&content, "exe5", r.preset("unrestricted").unwrap()).contains("banned_by"));
+    }
 }

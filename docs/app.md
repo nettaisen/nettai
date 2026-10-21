@@ -1403,7 +1403,21 @@ A category is named by the fact of a build it holds back (the folder's chips, th
 back apart from the folder's; a field of a list's records by its path, EXE5's `party.programs`, the partners' PartyCust
 programs: the user, "the party ruleset should also be able to ban partycust programs"), and its items by their names
 in the game; what a file doesn't name is allowed. A path's banned item is a problem of the list's field at each record
-that holds it (the Party tab's partner, red; its PROGRAMS row greyed with "Not allowed"). Open setups is no ruleset's: it is the lobby's own setting.
+that holds it (the Party tab's partner, red; its PROGRAMS row greyed with "Not allowed"). A path's category may also
+keep bans by a field of its records (the game's rules/rulesets, `by`: EXE5's partners' programs by the partner's
+navi; the user, "allow banning partycust programs by navi"), in the file under the key's name:
+
+    [banned]
+    "party.programs" = ["p-hp-300"]
+
+    [banned_by."party.programs"]
+    protoman = ["p-btlpk2"]
+
+An item is held back where it is banned for every record or for the record's key (allowing it for every one leaves a
+key's own ban), and the problem names the key ("P.Btlpk2 isn't allowed for ProtoMan"). Such a category is shown on
+the page of the one it says (`within`: the Party page, as the mockup the user picked, R2, has it: the navis on the left, All navis first, the chosen one's programs on the right, a ban for every navi dashed there), not a page of its own; a category may list
+only the definitions that state a field (`having`: the party's navis are the twelve whose definitions say `party`, not
+MegaMan). The lobby's settings carry the bans by key with the others. Open setups is no ruleset's: it is the lobby's own setting.
 - **Export and import** (a ruleset's page: `rulesets::page`, EXPORT and IMPORT): EXPORT writes the ruleset shown,
   any (a preset's under its name in the language shown, the host's a joiner views), as such a file where the
   player says; IMPORT reads files chosen, one or more, each the player's own (named as it says, or for its file where
