@@ -9,6 +9,7 @@
 
 local auto_battle = require("@self/auto_battle")
 local dark_survival = require("@self/emotion/dark_survival")
+local double_attacks = require("@self/double_attacks")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
@@ -19,6 +20,9 @@ local navicust_board = require("@self/navicust/board")
 local navicust_bugs = require("@self/navicust/bugs")
 local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
+local napalmman_support = require("./navis/napalmman/support")
+local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
+local protoman_support = require("./navis/protoman/support")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
 local shout = require("@self/shout")
@@ -92,10 +96,34 @@ local state: StateSchema = {
     -- keep a chip of the navi chips' block as its navi comes, in both sides' states (./api); DethPhnx brings its navi
     -- again.
     last_navi_chip = { chip = "chip", element = "u8", damage = "u32" } :: StateSchema,
+    -- The party battle's Double Attack (./double_attacks): AIData +0x73, spent this round (its 0xFF), else on a paused
+    -- switch the member the follow-up launches with.
+    double_attack = { spent = "bool", partner = "u8" } :: StateSchema,
     -- The party battle's (./party): ToadMan's rescue is spent this battle (the DS's party block +0xB).
     rescued = "bool",
     -- EXE5 DS's shout is spent this battle (./shout: its battle flag 0x800 or 0x1000).
     shouted = "bool",
+    -- NumberMan's DiceBons is spent this battle (navis/numberman/dice_bonus: the party block's +0x13).
+    dice_bonus = "bool",
+    -- The party's supports' (./party's `Supports`: the party block's other fields).
+    supports = {
+        protoman_used = "bool",
+        protoman_count = "u8",
+        gyroman_spawned = "bool",
+        napalmman_set = "bool",
+        napalmman_timer = "u16",
+        colonel_used = "bool",
+        colonel_count = "u8",
+        tomahawkman_timer = "u16",
+        tomahawkman_set = "bool",
+        busy = "bool[3]",
+        shadowman_used = "bool",
+        megaman_timer = "u16",
+        megaman_set = "bool",
+        searchman_used = "bool",
+        gyroman_gust = "object",
+        knightman_guard = "object",
+    } :: StateSchema,
 }
 
 local rules: Rules = {
@@ -251,6 +279,8 @@ local rules: Rules = {
             -- 0x08023824: the hand's modifier bits), and a chip past the chip pack's list (./folder: its last chip
             -- 0x13A; the BatCans).
             dark_cost = "record:exe5-dark-cost",
+            -- The Double Attack a chip of the DS's is (lib/double_attack; ./double_attacks fires it).
+            double_attack = "record:exe5-double-attack",
             capsule_mix = "u8",
             past_the_pack = "bool",
             -- A chip a save can collect though its record has no library flag (./folder: the Giga chips Team Colonel's
@@ -372,8 +402,23 @@ local rules: Rules = {
         -- a request isn't a switch.
         switch_requested = party.switch_requested,
         switch_asked = party.switch_asked,
+        member_busy = party.member_busy,
+        -- The party's supports (0x02003764), each fight tick, in a link battle for both sides and offline for side 0
+        -- alone; their turn's flags start over as the fight starts (./party).
+        fight_tick = function(side: number)
+            if not battle.link() and side ~= 0 then
+                return
+            end
+            protoman_support.tick(side)
+            napalmman_support.tick(side)
+        end,
+        fight_started = party.fight_started,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
+        -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).
+        chip_ended = numberman_dice_bonus.chip_ended,
+        -- A hit on the navi shows: MegaMan's hurt voice's draw in a party battle (./party).
+        navi_hit_shown = party.navi_hit_shown,
         -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
         obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
@@ -385,6 +430,9 @@ local rules: Rules = {
             emotion.navi_tick(side, navi)
             auto_battle.navi_tick(side, navi)
         end,
+        -- A party's switch settled: the DS's Double Attack, at once in battle, by the follow-up while paused
+        -- (./double_attacks).
+        navi_switched = double_attacks.navi_switched,
         -- Chaos Unison's charge released, and taken from idle (./souls/chaos_charge).
         charge_released = chaos_charge.charge_released,
         release_taken = chaos_charge.release_taken,

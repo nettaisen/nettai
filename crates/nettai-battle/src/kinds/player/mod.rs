@@ -643,6 +643,11 @@ fn end_attack_with(b: &mut Battle, r: ObjectRef, hands_on: bool) {
             // its status reset already, rules/souls/chaos.)
             _ => {}
         }
+        if kind == 2 {
+            let side = b.objects.get(r).alliance;
+            b.rules_chip_ended(side, r);
+        }
+        let a = ai_mut(b, r);
         a.buffered_move = 0;
         a.requests &= !(request::ATTACKS | clears);
         reset_charge(b, r);

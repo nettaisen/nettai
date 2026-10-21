@@ -493,8 +493,9 @@ export type YoyoThrowSpec = {
     throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
 }
 
--- A game's moon blade (@exelib/moonbld/blade): its sprite, and what it is and hits.
-export type MoonBladeLook = { sprite: SpriteAsset, is: CollisionType, hits: CollisionType }
+-- A game's moon blade (@exelib/moonbld/blade): its sprite, and what it is and hits; `ds`, the DS's (EXE5 DS's, as its
+-- Double Attack E-SAPPOU spawns it): it sweeps on its first tick and its hits resolve while dimmed.
+export type MoonBladeLook = { sprite: SpriteAsset, is: CollisionType, hits: CollisionType, ds: boolean? }
 
 -- A game's thrown seed (@exelib/bombs/seed): its sprite and animation, what it is and hits and its hit modifier, the
 -- spark of its element its hits show (none: no spark), and the splash it leaves in a hole and the puff when the
@@ -554,6 +555,8 @@ export type DarkBall = {
 export type ImmobilizerLook = {
     sprite: SpriteAsset?,
     anim: number?,
+    -- How long it stays after its hit (none: 20 ticks, the GBA's; EXE5 DS's reads its Param1: M-ZAN's 120).
+    lasts: number?,
     sound: Sound,
     status: Status,
     target: CollisionType,
@@ -1118,6 +1121,10 @@ export type BulletVariant = {
     single: boolean?,
     status: Status?,
     sound: Sound?,
+    -- Its burst hits while the battle is dimmed though its game's retype
+    -- leaves that out (the DS's rows 0x14 and 0x15, its Double Attack's:
+    -- 0x020A1FAA).
+    hits_while_dimmed: boolean?,
 }
 
 -- How a bullet (objects/bullet) probes and hits: its self type while it

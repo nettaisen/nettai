@@ -327,6 +327,11 @@ declare extern type Collision with
     counter_timer: number
     -- What the last resolution hit (some kinds clear it).
     hit_flags: number
+    -- Its hits reach while the battle is dimmed (its self flags' 0x10000:
+    -- what a setup while dimmed gives it, and a retype while dimmed but
+    -- EXE5's, which leaves it out; the DS's Double Attacks' bullets set it
+    -- again).
+    hits_while_dimmed: boolean
     -- The damage taken this window (read-only).
     final_damage: number
     -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
@@ -2242,6 +2247,16 @@ export type RulesSpec = {
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
+        -- Each tick of the fight, each side, side 0 first, before `mic_heard` and before the navis copy their input (the
+        -- DS's party supports).
+        fight_tick: ((side: number) -> ())?,
+        -- The start banner is done and the fight starts, each side, side 0 first.
+        fight_started: ((side: number) -> ())?,
+        -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
+        -- are cleared.
+        chip_ended: ((side: number, navi: Object) -> ())?,
+        -- A hit on the side's player navi shows (white, then its sounds), before its sounds.
+        navi_hit_shown: ((side: number, navi: Object) -> ())?,
         -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
         -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
         -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the

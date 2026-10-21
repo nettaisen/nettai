@@ -761,6 +761,16 @@ impl Battle {
         self.call_rules(side, RulesHook::Countered, Some(victim), None, None);
     }
 
+    /// The rules' `chip_ended(side, navi)`.
+    pub(crate) fn rules_chip_ended(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::ChipEnded, Some(navi), None, None);
+    }
+
+    /// The rules' `navi_hit_shown(side, navi)`.
+    pub(crate) fn rules_navi_hit_shown(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::NaviHitShown, Some(navi), None, None);
+    }
+
     /// The rules' `navi_tick(side, navi)`.
     pub(crate) fn rules_navi_tick(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::NaviTick, Some(navi), None, None);

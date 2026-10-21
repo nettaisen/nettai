@@ -1826,10 +1826,16 @@ impl Battle {
         }
     }
 
-    /// Each side's rules hear its microphone, on a fight tick its level
-    /// isn't 0 (the DS's 0x022261A4, side 0 then side 1, just before the
-    /// navis copy their input: `mic_heard`).
-    fn hear_mics(&mut self) {
+    /// Each side's rules' fight tick (`fight_tick`, side 0 then side 1: the
+    /// DS's party supports, 0x02003764), then each side's rules hear its
+    /// microphone, on a fight tick its level isn't 0 (the DS's 0x022261A4,
+    /// side 0 then side 1: `mic_heard`); just before the navis copy their
+    /// input (the DS's 0x0208DDE8, `sub_80080D2`'s counterpart; its start
+    /// banner's, 0x0208DD54, does neither).
+    fn side_ticks(&mut self) {
+        for side in 0..2u8 {
+            self.notify_side(side, nettai_content_api::RulesHook::FightTick);
+        }
         for side in 0..2u8 {
             if self.mic_levels[side as usize] != 0 {
                 self.notify_side(side, nettai_content_api::RulesHook::MicHeard);
@@ -1838,7 +1844,6 @@ impl Battle {
     }
 
     fn fight_start_banner(&mut self) {
-        self.hear_mics();
         self.apply_actor_inputs();
         if self.fight.init == 0 {
             self.fight.timer = 0x1E;
@@ -1851,6 +1856,9 @@ impl Battle {
             }
         }
         if self.banner_status() == BannerStatus::Done {
+            for side in 0..2u8 {
+                self.notify_side(side, RulesHook::FightStarted);
+            }
             self.fight.state = fight::FIGHTING;
             self.fight.sub = 0;
             self.fight.init = 0;
@@ -1864,7 +1872,7 @@ impl Battle {
     }
 
     fn fight_fighting(&mut self) {
-        self.hear_mics();
+        self.side_ticks();
         self.apply_actor_inputs();
         self.paused = false;
         self.set_flags(battle_flags::FIGHTING);
