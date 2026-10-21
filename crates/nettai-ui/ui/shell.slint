@@ -1541,7 +1541,7 @@ component PickRow inherits Rectangle {
 
     Value {
         x: 12px;
-        width: parent.width - (root.mark.check ? 48px : root.mark.value != "" ? 72px : 24px);
+        width: parent.width - (root.mark.check ? 48px : root.mark.value != "" ? 12px + 12px + value.width + 8px : 24px);
         text: root.text;
         color: root.mark.dim ? Theme.dim : root.danger ? Theme.bad : Theme.text;
         font-family: root.menu ? Theme.display : Theme.body;
@@ -1550,9 +1550,11 @@ component PickRow inherits Rectangle {
         letter-spacing: root.menu ? Theme.button-tracking : 0px;
     }
 
-    Text {
+    // (A value as wide as its words, up to half the row, cut with an ellipsis past that: a speed's "1×", a navi's "In
+    // the party".)
+    value := Text {
         x: parent.width - 12px - self.width;
-        width: 56px;
+        width: min(max(56px, self.preferred-width), parent.width / 2);
         visible: root.mark.value != "";
         text: root.mark.value;
         color: Theme.muted;
@@ -1560,6 +1562,7 @@ component PickRow inherits Rectangle {
         font-size: 13px;
         horizontal-alignment: right;
         vertical-alignment: center;
+        overflow: elide;
     }
 
     // (A check: drawn, as no font has to have one.)

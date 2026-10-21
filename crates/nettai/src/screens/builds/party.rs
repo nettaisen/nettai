@@ -289,7 +289,7 @@ impl Party {
             rows.push((view.get_remove_word().into(), PickMark { line: true, ..Default::default() }));
             self.picking.push(None);
         }
-        shell.pick_marked("navi", i as i32, &crate::nav::Key::new("partner", i as i32), rows);
+        shell.pick_marked_under("navi", i as i32, &crate::nav::Key::new("partner", i as i32), rows);
     }
 
     /// The navi picker's row `choice` for card `i`: the navi made the partner (a new partner where the card had none),
