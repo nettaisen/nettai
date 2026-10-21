@@ -37,6 +37,8 @@ export type Spec = {
     palette: ((me: Object) -> number)?,
     -- What it puts on as it comes (0x021FF434: MegaMan's Hub Style shade); else its identity's parts, a player's.
     wears: ((me: Object) -> ())?,
+    -- Its warp out keeps its parts on (MegaMan's, 0x021FF0B5: they come off as it is destroyed).
+    warp_keeps_parts: boolean?,
     -- The appearance's ticks and animation (3 if none said), and what it sets as it has appeared (NapalmMan his shots).
     appear_ticks: number,
     appear_anim: number?,
@@ -96,7 +98,7 @@ end
 -- 0x021FE6F1 and its kin: the warp out, 5 ticks (its first phase its init); then hidden, its panel and its parts given
 -- up. What it held (its first related slot, +0x4C) goes as the slot is cleared (the DS clears it before it passes it on
 -- to be ended, which then ends none).
-local function warp(me: Object)
+local function warp(me: Object, spec: Spec)
     if me.phase == 0 then
         me.related1 = nil
         me.anim, me.anim_loaded = ANIM_WARP, 0
@@ -110,7 +112,9 @@ local function warp(me: Object)
     end
     me.visible = false
     me:unreserve_panel(me.panel_x, me.panel_y)
-    me:remove_parts(me.identity :: Identity)
+    if not spec.warp_keeps_parts then
+        me:remove_parts(me.identity :: Identity)
+    end
     party_support.go(me, party_support.LEAD_OUT)
 end
 
@@ -167,7 +171,7 @@ function party_support.make(spec: Spec): Support
         elseif a == party_support.APPEAR then
             appear(me, spec)
         elseif a == party_support.WARP then
-            warp(me)
+            warp(me, spec)
         elseif a == party_support.LEAD_OUT then
             lead_out(me, spec)
         else
