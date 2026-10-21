@@ -21,7 +21,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Protocol**: rennet (a workspace dependency likewise) carries each player's inputs to the other peer once and in
   order over datagrams that are lost, reordered and duplicated, every frame resending what isn't acknowledged, so a
   lost datagram's inputs come with the next one. nettai's protocol (`protocol`) names what a player's stream holds:
-  a tick's buttons and event flags (one byte for A, B and the directions),
+  a tick's word (its buttons, a party switch request, a microphone level) and event flags (one byte for A, B and the
+  directions),
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc, on datachannel-facade:
@@ -94,8 +95,15 @@ mutability, hash-map iteration or addresses (§7).
 Each player contributes their share. In nettai-netplay that is `PlayerInput { tick: PlayerTick, events: TickEvents }`;
 the frame's record combines both shares (`exe6::tick_input`).
 
+**A player's tick** (`PlayerTick`) is their buttons, the member of their side's party they ask to switch to
+(`switch_to`: the DS's party battle, docs/design/exe5ds-map.md §11; none in a battle without partners), and their
+microphone's level (`mic_level`, 0 to 255: the DS's shout, which nothing in nettai sets). Hosts that carry a tick as a
+number carry its word (`PlayerTick::word`, 20 bits: the buttons in bits 0–9, the switch in 10–11 as the member + 1,
+the level in 12–19): the wire, replays, the frontend's netplay and the stand-in battle. A tick of buttons alone is its
+buttons' word, as before.
+
 **The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
-(engine/custom-screen.md): `PlayerTick` is just the buttons, and what used to be inputs is state:
+(engine/custom-screen.md), and what used to be inputs is state:
 
 | Former input | Now |
 |---|---|
@@ -477,7 +485,7 @@ which says what an element and the meta are. nettai's (`protocol::Netplay`):
 
 | Element | What | Wire form (a LEB128 head; bit 0 tells a tick from the rest) |
 |---|---|---|
-| `Tick { held, flags }` | One tick of a player's input: the buttons (ten), and the game's flags for the tick's events | `(buttons << 1) | flags << 11`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button two, with flags up to three |
+| `Tick { word, flags }` | One tick of a player's input: its word (`PlayerTick::word`: the buttons, the switch request, the microphone level), and the game's flags for the tick's events | `(buttons \| switch << 10 \| level << 12 \| flags << 20) << 1`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button or a switch two, with a level three, with flags up to five |
 | `RoundEnd` | The sender's round is over: what follows is the next round's | `0x01` |
 | `MatchEnd` | The sender left | `0x03` |
 
@@ -486,8 +494,8 @@ LEB128: one byte), which the receiver hands getgud with each input it delivers (
 reordered old frame can't set it back). An ack-only frame (nothing new to send while the peer waits) still carries
 the window, the ack and the meta.
 
-**A game's input on the wire** is `protocol::WireInput`: its buttons and flags. The stand-in battle's input
-is the buttons, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s one event
+**A game's input on the wire** is `protocol::WireInput`: its tick word and flags. The stand-in battle's input
+is the tick word, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s one event
 is a flag: the link closing. The golden-trace replays go through the same
 protocol as live play.
 

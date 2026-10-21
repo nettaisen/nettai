@@ -621,12 +621,14 @@ impl UserData for Object {
             with(|api, _| Ok(api.set_overlay_anim_offset(this.0, offset)))
         });
         methods.add_method("overlay_stepping", |_, this, mode: mlua::LuaString| {
-            let keep = match &*mode.to_str()? {
-                "keep" => true,
-                "normal" => false,
-                other => return Err(mlua::Error::runtime(format!("overlay_stepping: {other:?} is neither \"keep\" nor \"normal\""))),
+            use nettai_content_api::api::OverlayStepping as S;
+            let mode = match &*mode.to_str()? {
+                "keep" => S::Keep,
+                "normal" => S::Normal,
+                "told" => S::Told,
+                other => return Err(mlua::Error::runtime(format!("overlay_stepping: {other:?} is none of \"keep\", \"normal\", \"told\""))),
             };
-            with(|api, _| Ok(api.overlay_stepping(this.0, keep)))
+            with(|api, _| Ok(api.overlay_stepping(this.0, mode)))
         });
         methods.add_method("take_off_form_overlay", |_, this, form: LuaValue| {
             let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "take_off_form_overlay"))?);

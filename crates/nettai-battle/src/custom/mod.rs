@@ -168,6 +168,12 @@ pub struct Context<'a> {
     pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
+    /// The battle mode (the stage's).
+    pub battle_mode: u8,
+    /// The side's party, and the member its player asks to switch to this
+    /// tick (`Battle::switch_inputs`).
+    pub party: crate::party::Party,
+    pub switch_request: Option<u8>,
     /// A netbattle's last turns (`sub_800A97A`; presentation).
     pub late_turns: bool,
     /// L is the screen's run key, as the original's is; not in a round whose
@@ -229,6 +235,10 @@ pub trait Extras {
     /// `custom.take_back(side)`: B with nothing picked: whether the rules
     /// took something back.
     fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
+    /// `member_busy(side, member)`: whether the side's rules keep the screen
+    /// from switching to `member` now (EXE5 DS's 0x02004B80, its supports'
+    /// busy flags; they play the refusal).
+    fn member_busy(&mut self, member: u8) -> bool;
 }
 
 /// No systems: every question unanswered.
@@ -275,6 +285,10 @@ impl Extras for NoExtras {
     fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
     }
+
+    fn member_busy(&mut self, _: u8) -> bool {
+        false
+    }
 }
 
 /// Ticks a result takes to send: the link carries one of its words a tick
@@ -292,6 +306,9 @@ impl Side {
             regular_pending,
             own_gauges: ctx.own_gauges,
             random_battle: ctx.random_battle,
+            battle_mode: ctx.battle_mode,
+            party: &ctx.party,
+            switch_request: ctx.switch_request,
             late_turns: ctx.late_turns,
             run_key: ctx.run_key,
         }
@@ -378,7 +395,8 @@ impl Side {
                 let result = CustomResult { hand, navi_stats: ctx.stats, transform };
                 self.sent = Some(Sent { result, sent_at: ctx.now, arrives: ctx.now + ctx.library.result_words() });
             }
-            None => {}
+            // (The battle counts a switch the screen took.)
+            Some(Request::Switched(_)) | None => {}
         }
         // The slide-out's first tick clears the status bit, or the send does
         // (EXE4's 0x0801E986).
@@ -461,6 +479,13 @@ impl Side {
             transform.turns = screen.form_turns;
             transform.alternate = screen.form_alternate;
         }
+        // EXE5 DS's 0x0200BED8: the screen's navi, where it isn't the one on
+        // the field, is the turn's switch (the transform record's +4).
+        if let Some(stats) = screen.member.and_then(|m| ctx.party.member(m))
+            && stats.navi != ctx.stats.navi
+        {
+            transform.navi_switch = Some(stats.navi);
+        }
         for &slot in screen.selection() {
             // (A button picked in a chip's place takes the chip out of the
             // folder there: EXE5's soul, 0x08025088.)
@@ -513,6 +538,9 @@ impl Battle {
             turn: self.round.turn,
             own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
+            battle_mode: self.round.mode_copy,
+            party: self.party[side as usize],
+            switch_request: self.switch_inputs[side as usize],
             late_turns: self.late_turns(),
             run_key: !self.setup.host_keys.run,
             time_limit: self.setup.custom_screen_limit,
@@ -601,6 +629,21 @@ impl Battle {
             if request == Some(Request::Send) {
                 // sub_8027D78 on the sending tick.
                 self.restart_gauge();
+            }
+            if let Some(Request::Switched(_)) = request {
+                // EXE5 DS's 0x020639DE: the switch counts, and the navi's HP
+                // goes into its stats and its member's block.
+                let party = &mut self.party[side as usize];
+                party.switches = party.switches.wrapping_add(1);
+                if let Some(p) = self.player(side) {
+                    let hp = self.objects.get(p).hp;
+                    self.stats[side as usize].hp = hp;
+                    let party = &mut self.party[side as usize];
+                    let active = party.active;
+                    if let Some(m) = party.member_mut(active) {
+                        m.hp = hp;
+                    }
+                }
             }
         }
         let now = self.round.ticks;
@@ -848,6 +891,10 @@ impl Extras for SideExtras<'_> {
         let side = self.side;
         let mut folder = *folder;
         self.with_screen(screen, Some(&mut folder), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomTakeBack))
+    }
+
+    fn member_busy(&mut self, member: u8) -> bool {
+        self.b.rules_member_busy(self.side, member)
     }
 }
 

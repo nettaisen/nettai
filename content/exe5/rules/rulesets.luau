@@ -15,6 +15,10 @@ return {
         { fact = "navicust_programs" },
         { fact = "patch_cards" },
         { fact = "souls" },
+        -- The team navis of a party battle's party (../init.luau's `party`, ./party): the navis it may hold. Under one
+        -- version per build, its navis are its team's (the groups: each navi's own `version`), as the build's souls
+        -- and Giga chips are; mixed, any of the twelve.
+        { fact = "party" },
         -- The auto battle data's places (./auto_battle/block), a page of their own (the user: "you should instead have a
         -- separate abd rules page"): the chips a folder lists, and the Program Advances besides (`classes`), which the
         -- program advance list holds and no folder does. What the folder's category holds back is allowed here.

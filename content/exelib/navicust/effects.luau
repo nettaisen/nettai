@@ -127,6 +127,17 @@ function effects.soul_time(n: number): Effect
     return effect({ kind = "soul_time", amount = n })
 end
 
+-- EXE5 DS's NavChg+1 and NavChg+2 (0x02013F88, 0x02013FA4): `n` more switches of the party battle, at most 5 in all
+-- (+0x17, the DS's fresh stats' 3: the game's stat `switch_bonus` holds what is over the 3).
+function effects.switches(n: number): Effect
+    return effect({ kind = "switches", amount = n })
+end
+
+-- EXE5 DS's Spport (0x02013FC0): MegaMan may support his party while benched (+0x59 = 1).
+function effects.party_support(): Effect
+    return effect({ kind = "party_support" })
+end
+
 -- HP+50 to HP+500: `n` more HP (the HP the programs add, EXE6's `Unk2004334`, which the maximum adds to the base:
 -- `sub_803CED4`).
 function effects.hp(n: number): Effect

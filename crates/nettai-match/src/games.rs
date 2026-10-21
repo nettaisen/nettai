@@ -957,3 +957,317 @@ fn exe4s_pitfall_crumbles() {
     b.tick_panels();
     assert_eq!(b.field.panels[1][2].timer, 189);
 }
+
+// ---- EXE5's party battle (EXE5 DS's: content/exe5/rules/party) ----------------
+
+/// An EXE5 battle whose left side brings this party (match text of its
+/// `party` fact), its custom screens closing at once, ticked to the fight.
+fn party_battle(party: &str) -> nettai_battle::Battle {
+    let content = exe5_content();
+    let left = exe5(&TANGO_EXE5, &format!("party = [{party}]"));
+    let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let mut setup = m.round(&content, 0x5EED);
+    setup.custom_screen_limit = Some(1);
+    let mut b = nettai_battle::Battle::new(setup, content.clone());
+    fight(&mut b);
+    b
+}
+
+/// Tick with nothing pressed until the battle fights (not paused, no
+/// custom screen, undimmed).
+fn fight(b: &mut nettai_battle::Battle) {
+    for _ in 0..2000 {
+        if b.fight.state == nettai_battle::battle::fight::FIGHTING && !b.paused && !b.is_dimmed() && !b.custom.sides[0].in_custom {
+            return;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    panic!("the battle never fights");
+}
+
+/// A tick of side 0 asking to switch to `member`.
+fn ask_switch(b: &mut nettai_battle::Battle, member: u8) {
+    let ask = nettai_battle::input::PlayerTick { switch_to: Some(member), ..Default::default() };
+    b.tick(&[ask, Default::default()], Default::default());
+}
+
+fn navi_key(b: &nettai_battle::Battle, side: usize) -> String {
+    crate::ids::local(&b.content.defs.navi(b.stats[side].navi).key).to_string()
+}
+
+/// The partners join with their fresh stats and their PartyCust programs:
+/// the base HP at the side's level 9 (the DS's table) and the programs'
+/// bonus, which they enter at; the attack and the chip attack bonus added.
+#[test]
+fn a_partys_partners_join_with_their_programs() {
+    let b = party_battle(r#"{ navi = "protoman", programs = ["p-hp-100", "p-atk-1", "p-chp-30"] }, { navi = "gyroman" }"#);
+    let content = exe5_content();
+    let p = &b.party[0];
+    assert_eq!((p.count, p.active, p.switches), (3, 0, 0));
+    assert_eq!(b.party[1].count, 1, "the other side brings none");
+    let proto = p.member(1).unwrap();
+    assert_eq!(crate::ids::local(&content.defs.navi(proto.navi).key), "protoman");
+    assert_eq!((proto.max_base_hp, proto.max_hp, proto.hp, proto.attack), (700, 800, 800, 1));
+    assert_eq!(proto.game_stat(&content, "chip_attack_bonus"), Some(nettai_content_api::FieldValue::U16(30)));
+    let gyro = p.member(2).unwrap();
+    assert_eq!((gyro.max_hp, gyro.hp, gyro.attack), (600, 600, 0));
+    // Member 0 is the side's stats as the battle started.
+    assert_eq!(p.members[0].navi, b.stats[0].navi);
+}
+
+/// What a party may be: MegaMan's, of team navis, each once, its programs
+/// within its gauge (ProtoMan's 6 blocks).
+#[test]
+fn a_partys_setup_is_held_to_the_rules() {
+    let content = exe5_content();
+    let right = exe5(&TANGO_EXE5, "");
+    let problems = |left: &str| parse(&content, left, &right).err().unwrap_or_default().join("\n");
+    let party = |p: &str| exe5(&TANGO_EXE5, &format!("party = [{p}]"));
+    assert_eq!(problems(&party(r#"{ navi = "protoman", programs = ["p-hp-300", "p-hp-50"] }"#)), "");
+    assert!(problems(&party(r#"{ navi = "protoman", programs = ["p-hp-300", "p-hp-100"] }"#)).contains("fill 7 blocks of its 6"));
+    assert!(problems(&party(r#"{ navi = "protoman" }, { navi = "protoman" }"#)).contains("in the party at 1 too"));
+    assert!(problems(&party(r#"{ navi = "megaman" }"#)).contains("is no team navi"));
+    let team_navi = side("protoman", &TANGO_EXE5, "level = 6\nparty = [{ navi = \"gyroman\" }]");
+    assert!(problems(&team_navi).contains("brings no party"));
+}
+
+/// The in-battle switch (the DS's action 0x59): a request takes the
+/// member's block whole and leaves MegaMan's HP in his, dims the battle
+/// while it lands and settles, and counts the switch.
+#[test]
+fn a_switch_in_battle_takes_the_members_block() {
+    let mut b = party_battle(r#"{ navi = "protoman", programs = ["p-hp-100"] }"#);
+    let p0 = b.player(0).unwrap();
+    b.objects.get_mut(p0).hp = 640;
+    ask_switch(&mut b, 1);
+    let mut dimmed = false;
+    for _ in 0..60 {
+        dimmed |= b.is_dimmed();
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(dimmed, "the switch dims the battle");
+    assert!(!b.is_dimmed(), "and undims as it settles");
+    assert_eq!(navi_key(&b, 0), "protoman");
+    let p = &b.party[0];
+    assert_eq!((p.active, p.switches), (1, 1));
+    assert_eq!(p.members[0].hp, 640, "MegaMan's HP is kept in his block");
+    let o = b.objects.get(b.player(0).unwrap());
+    assert_eq!((o.hp, o.max_hp), (800, 800));
+    assert_eq!(b.stats[0].mood, 0x80, "a team navi enters at the normal mood");
+    // And back: MegaMan with his HP.
+    ask_switch(&mut b, 0);
+    for _ in 0..60 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!((navi_key(&b, 0).as_str(), b.party[0].active, b.party[0].switches), ("megaman", 0, 2));
+    assert_eq!(b.objects.get(b.player(0).unwrap()).hp, 640);
+}
+
+/// The panel's limit (the DS's 3, beside NavChg's): the fourth request is
+/// refused.
+#[test]
+fn the_fourth_switch_is_refused() {
+    let mut b = party_battle(r#"{ navi = "protoman" }"#);
+    for i in 0..4u8 {
+        ask_switch(&mut b, if i % 2 == 0 { 1 } else { 0 });
+        for _ in 0..60 {
+            b.tick(&Default::default(), Default::default());
+        }
+    }
+    assert_eq!((b.party[0].switches, b.party[0].active), (3, 1));
+}
+
+/// A side without partners: a switch request is nothing (its input record
+/// keeps none), and the battle goes as one without it.
+#[test]
+fn a_switch_request_without_partners_is_nothing() {
+    let content = exe5_content();
+    let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let mut a = nettai_battle::Battle::new(m.round(&content, 7), content.clone());
+    let mut b = a.clone();
+    for _ in 0..300 {
+        a.tick(&Default::default(), Default::default());
+        ask_switch(&mut b, 1);
+    }
+    assert_eq!(b.switch_inputs, [None; 2]);
+    assert_eq!(a.digest(), b.digest());
+}
+
+/// A switched-in team navi at 0 HP falls back (EXE5's action 0x4C): its
+/// block keeps HP 0, MegaMan comes back with his, and the battle goes on.
+#[test]
+fn a_team_navi_at_zero_hp_falls_back_to_megaman() {
+    let mut b = party_battle(r#"{ navi = "protoman" }"#);
+    ask_switch(&mut b, 1);
+    for _ in 0..60 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!(navi_key(&b, 0), "protoman");
+    let r = b.player(0).unwrap();
+    b.objects.get_mut(r).hp = 0;
+    for _ in 0..40 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!(navi_key(&b, 0), "megaman");
+    assert_eq!(b.party[0].active, 0);
+    assert_eq!(b.party[0].members[1].hp, 0, "ProtoMan's block is kept at 0 HP");
+    assert!(!b.is_battle_over());
+    assert_eq!(b.objects.get(b.player(0).unwrap()).hp, b.party[0].members[0].hp);
+    // A switch to the member at 0 HP is refused.
+    ask_switch(&mut b, 1);
+    assert_eq!(b.switch_inputs[0], None);
+}
+
+/// ToadMan's rescue (with P.Spport): the navi at 0 HP is healed a quarter of
+/// its maximum, once a battle; the second time it is deleted.
+#[test]
+fn toadman_rescues_once_a_battle() {
+    let mut b = party_battle(r#"{ navi = "toadman", programs = ["p-spport"] }"#);
+    let r = b.player(0).unwrap();
+    let max = b.objects.get(r).max_hp;
+    b.objects.get_mut(r).hp = 0;
+    for _ in 0..400 {
+        b.tick(&Default::default(), Default::default());
+        if b.objects.get(r).hp != 0 {
+            break;
+        }
+    }
+    assert_eq!(b.objects.get(r).hp, max / 4);
+    assert!(!b.is_battle_over());
+    fight(&mut b);
+    b.objects.get_mut(r).hp = 0;
+    for _ in 0..200 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(b.is_battle_over(), "the second time, no rescue");
+}
+
+/// No P.Spport, no rescue.
+#[test]
+fn toadman_without_support_rescues_no_one() {
+    let mut b = party_battle(r#"{ navi = "toadman" }"#);
+    let r = b.player(0).unwrap();
+    b.objects.get_mut(r).hp = 0;
+    for _ in 0..200 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(b.is_battle_over());
+}
+
+/// A team navi's own chip in a party: its navi's base at the level and its
+/// P.Chp (StepSwrd, ProtoMan's: 100 at level 9 and 40); a side without the
+/// navi in its party, 999 (the DS's finder finds none).
+#[test]
+fn a_team_navis_own_chip_in_a_party_takes_its_bonus() {
+    let b = party_battle(r#"{ navi = "protoman", programs = ["p-chp-40"] }"#);
+    let content = exe5_content();
+    let stepswrd = crate::ids::chip(&content, "exe5", "stepswrd").unwrap();
+    let airforce = crate::ids::chip(&content, "exe5", "airforce").unwrap();
+    assert_eq!(b.given.damage(stepswrd, 0), Some(140));
+    assert_eq!(b.given.damage(airforce, 0), Some(999));
+}
+
+/// The custom screen's switch (EXE5 DS's state 0x40): the request takes the
+/// screen to the member (counted, the picks dropped), and OK makes it the
+/// turn's switch, which the turn's start takes while paused (the member's
+/// block whole, 20 ticks landing, 21 settling).
+#[test]
+fn a_switch_on_the_custom_screen_is_the_turns() {
+    use nettai_battle::custom::screen::{OK_SLOT, Phase};
+    use nettai_battle::input::{PlayerTick, keys};
+    let content = exe5_content();
+    let left = exe5(&TANGO_EXE5, r#"party = [{ navi = "protoman" }]"#);
+    let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
+    for _ in 0..400 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(choosing(&b));
+    // A pick, then the switch: the pick is dropped.
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&Default::default(), Default::default());
+    assert_eq!(b.custom.sides[0].screen.unwrap().selected, 1);
+    ask_switch(&mut b, 1);
+    assert!(matches!(b.custom.sides[0].screen.unwrap().phase, Phase::Switching { member: 1, .. }));
+    for _ in 0..100 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    let s = b.custom.sides[0].screen.unwrap();
+    assert_eq!((s.phase, s.member, s.selected), (Phase::Choosing, Some(1), 0));
+    assert_eq!(b.party[0].switches, 1, "the screen counts the switch");
+    assert_eq!(navi_key(&b, 0), "megaman", "the navi on the field is still MegaMan");
+    // A request for the screen's own navi is nothing.
+    ask_switch(&mut b, 1);
+    assert_eq!(b.custom.sides[0].screen.unwrap().phase, Phase::Choosing);
+    // OK: the turn's switch to ProtoMan.
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
+    assert_eq!(transform.navi_switch.map(|n| crate::ids::local(&content.defs.navi(n).key).to_string()), Some("protoman".into()));
+    // The other side's OK; then the turn starts with the paused switch.
+    for _ in 0..600 {
+        if b.custom.sides[1].built.is_none()
+            && let Some(s) = b.custom.sides[1].screen.as_mut()
+            && s.phase == Phase::Choosing
+        {
+            s.cursor = OK_SLOT;
+            b.tick(&[Default::default(), PlayerTick::buttons(keys::A)], Default::default());
+            continue;
+        }
+        b.tick(&Default::default(), Default::default());
+        if b.party[0].active == 1 && !b.paused {
+            break;
+        }
+    }
+    assert_eq!((navi_key(&b, 0).as_str(), b.party[0].active, b.party[0].switches), ("protoman", 1, 1));
+    let o = b.objects.get(b.player(0).unwrap());
+    assert_eq!((o.hp, o.max_hp), (700, 700));
+}
+
+/// EXE5 DS's shout (rules/shout), which nothing in nettai makes: a worried
+/// MegaMan at a quarter of his HP who shouts loudly enough is healed,
+/// charged or barriered once a battle; the strongest shout puts him in Full
+/// Synchro first. A quiet tick, or a second shout, does nothing.
+#[test]
+fn a_shout_helps_once_a_battle() {
+    use nettai_battle::input::PlayerTick;
+    let content = exe5_content();
+    let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let mut setup = m.round(&content, 0x5EED);
+    setup.custom_screen_limit = Some(1);
+    let mut b = nettai_battle::Battle::new(setup, content.clone());
+    fight(&mut b);
+    let r = b.player(0).unwrap();
+    b.objects.get_mut(r).hp = 200;
+    b.stats[0].mood = 0x30;
+    let shout = |b: &mut nettai_battle::Battle, level: u8| {
+        b.tick(&[PlayerTick { mic_level: level, ..Default::default() }, Default::default()], Default::default());
+    };
+    // Too quiet.
+    shout(&mut b, 0x1D);
+    assert!(!b.is_dimmed());
+    let before = (b.stats[0].attack, b.stats[0].charge, b.stats[0].rapid);
+    shout(&mut b, 0x50);
+    assert!(b.is_dimmed(), "the shout dims the battle");
+    for _ in 0..200 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(!b.is_dimmed());
+    assert_eq!(b.stats[0].mood, 0xFF, "the strongest shout: Full Synchro");
+    let helped = b.objects.get(r).hp == 500
+        || (b.stats[0].attack, b.stats[0].charge, b.stats[0].rapid) != before
+        || b.collision.get(b.objects.get(r).collision.unwrap()).barrier != 0;
+    assert!(helped, "healed, charged or barriered");
+    // Once a battle.
+    b.objects.get_mut(r).hp = 200;
+    b.stats[0].mood = 0x30;
+    shout(&mut b, 0x50);
+    assert!(!b.is_dimmed());
+}

@@ -31,6 +31,12 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 14, by his level.
 local DAMAGE: { number } = { 60, 60, 60, 80, 80, 100, 100 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 14 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 40, 10 }, { 40, 10 }, { 40, 10 }, { 40, 10 }, { 60, 10 },
+    { 60, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 },
+}
 local ANIM_APPEAR, ANIM_THROW = 3, 12
 local SOUND_VANISH = asset.sound("trap-vanish")
 local SOUND_THROW = asset.sound("boomerang")
@@ -193,7 +199,7 @@ charge.action = new.action {
 
 -- 0x0800F98E (the count's low byte alone is written: its high byte is what an earlier action left).
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_variant = 1
     navi.attack_count = bit32.bor(bit32.band(navi.attack_count, 0xFF00), 1)

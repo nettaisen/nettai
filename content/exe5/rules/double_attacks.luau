@@ -23,7 +23,8 @@ local chips = require("../double_attacks")
 local effects = require("../lib/effects")
 local element = require("@exelib/element")
 local exe5 = require("./api")
-local lib = require("../lib/double_attack")
+local megaman = require("../navis/megaman").megaman
+local party = require("./party")
 local regions = require("@exelib/regions")
 
 local double_attacks = {}
@@ -55,7 +56,7 @@ end
 
 -- A dark MegaMan in the party (his block's mood, NaviStats +0x0E, 0) stops it.
 local function dark_megaman(side: number): boolean
-    local m = lib.megaman_member(side)
+    local m = party.member_of(side, megaman)
     if m == nil then
         return false
     end
@@ -102,14 +103,14 @@ local function triggers(side: number, partner: NaviDef, mood: number): boolean
     if state(side).spent then
         return false
     end
-    local m = lib.megaman_member(side)
+    local m = party.member_of(side, megaman)
     if m ~= nil then
         local block = battle.member(side, m)
         if block ~= nil and block.mood == 0 then
             return false
         end
         -- (The DS's light test: the value against the member number.)
-        if exe5.light_dark_value(side) < m then
+        if party.megaman_karma(side) < m then
             return false
         end
     end

@@ -77,7 +77,7 @@ export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
 export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box" | "chip_icons"
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).
-export type ScreenFade = "transform_out" | "transform_in"
+export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
 -- A panel type, by name: one of its game's (its rules' `panels.numbers`).
 export type PanelType = string
 -- Status flags of an object with collision data.
@@ -153,6 +153,8 @@ export type Request =
     -- 0x20000000 of his request word).
     | "take_off"
     | "land"
+    -- The flinch request (the collision's flag2 0x4: a hit's).
+    | "flinch"
     -- The slide request (the collision's flag2 0x10).
     | "slide"
     -- The anger request (the collision's flag2 0x200): angry at the next
@@ -787,9 +789,10 @@ declare extern type Object with
     -- timers (not the whole status word, as `clear_statuses`).
     function end_statuses(self): ()
     -- The navi's overlay (related2) keeps stepping through pauses and
-    -- dimming ("keep": its Param3 1, flags 0x14) or steps like any object
-    -- ("normal"). Nothing without an overlay.
-    function overlay_stepping(self, mode: "keep" | "normal"): ()
+    -- dimming ("keep": its Param3 1, flags 0x14), steps like any object
+    -- ("normal"), or is told its Param3 1 alone ("told": the DS's 0x02202064).
+    -- Nothing without an overlay.
+    function overlay_stepping(self, mode: "keep" | "normal" | "told"): ()
     -- EXE5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
     -- its owner's animation (its depth read by the sum). Nothing without
     -- one.
@@ -2244,6 +2247,11 @@ export type RulesSpec = {
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
+        -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
+        -- are cleared.
+        chip_ended: ((side: number, navi: Object) -> ())?,
+        -- A hit on the side's player navi shows (white, then its sounds), before its sounds.
+        navi_hit_shown: ((side: number, navi: Object) -> ())?,
         -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
         -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
         -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the

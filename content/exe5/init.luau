@@ -12,5 +12,6 @@ return {
     stages = require("@self/stages"),
     patch_cards = require("@self/patch_cards"),
     navicust_programs = require("@self/navicust"),
+    partycust_programs = require("@self/partycust"),
     rules = require("@self/rules"),
 }

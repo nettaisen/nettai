@@ -1270,6 +1270,10 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 turn: unhex(&f.bs)[7],
                 own_gauges: false,
                 random_battle: false,
+                // (EXE6's battles have no party.)
+                battle_mode: 0,
+                party: nettai_battle::party::Party::of(stats),
+                switch_request: None,
                 late_turns: false,
                 run_key: true,
                 time_limit: None,

@@ -111,6 +111,7 @@ return merge {
     require("@self/holydrem"),
     require("@self/holypanl"),
     require("@self/hotbody"),
+    require("@self/hprecov"),
     require("@self/iceseed"),
     require("@self/infvulc"),
     require("@self/invalid"),

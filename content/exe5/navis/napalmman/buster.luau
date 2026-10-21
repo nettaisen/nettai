@@ -28,6 +28,12 @@ export type State = {
 local HIT_PARAM = 0x82
 -- The damage rows' row 6, by his level: a bullet's damage.
 local DAMAGE: { number } = { 5, 5, 5, 5, 5, 7, 7 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 6 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 3, 1 }, { 3, 1 }, { 3, 1 }, { 3, 1 }, { 3, 1 },
+    { 3, 1 }, { 5, 1 }, { 5, 1 }, { 5, 1 }, { 5, 1 },
+}
 local ANIM = 14
 -- The tick the bullet flies on, the shot's last tick, and the recovery (AIAttackVars +0x12).
 local SHOT_TICK, SHOT_TICKS, RECOVERY = 1, 4, 3
@@ -126,7 +132,7 @@ buster.action = new.action {
 
 -- 0x0800FBC0
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0
     navi.charged = 0

@@ -3,35 +3,32 @@
 -- libraries ask of EXE5's rules, which keep it in their state and setup. Content outside rules/ asks it here, never
 -- the rules' state or setup itself.
 
+local party = require("./party")
+
 local exe5 = {}
 
 -- The side's level (0 to its team navi's story's last), or nil (MegaMan, who takes none): the rules' `level`
 -- (rules/save), the count of the save's story flags the init exchange sends. The engine knows nothing of it: the team
--- navis' damage rows read it (lib/navi_level).
+-- navis' damage rows read it (lib/navi_level). A side with partners (./party, EXE5 DS's party battle) has the DS's
+-- level, 0 to 9 (0x021B82B0), its highest where its setup states none.
 function exe5.navi_level(side: number): number?
-    local s = rules.setup_of(side) :: { level: number? }?
-    local level = if s then s.level else nil
-    -- (A side with partners, the DS's party battle, has the DS's level, 0 to 9, 0x021B82B0: its highest where its setup
-    -- states none. The party's rules, party-engine's, will say so themselves.)
-    if level == nil and battle.party(side).count > 1 then
-        return 9
+    local level = party.level(side)
+    if level ~= nil then
+        return level
     end
-    return level
+    local s = rules.setup_of(side) :: { level: number? }?
+    return if s then s.level else nil
 end
 
--- The side's light/dark value, MegaMan's karma (NaviStats +0x44): the save's (its setup's `karma`: ./light_dark), or 500
--- in a battle that holds it (battle effect 0x20000, 0x08010EDC at MegaMan's start: nothing reads it before).
-local VALUE_HELD = 0x20000
-
+-- MegaMan's light/dark value (his NaviStats +0x44, a member block's when a team navi fights: ./party): the save's, or
+-- 500 in a battle that holds it. (The DS's Double Attacks draw their MegaMan by it.)
 function exe5.light_dark_value(side: number): number
-    if bit32.btest(battle.effects(), VALUE_HELD) then
-        return 500
-    end
-    local s = rules.setup_of(side) :: { karma: number }?
-    if s == nil then
-        error(string.format("side %d plays by no rules: no light/dark value", side))
-    end
-    return s.karma
+    return party.megaman_karma(side)
+end
+
+-- 0x0200DEE8: the member of the side's party whose block is of `navi`, the first (none offline for side 1: ./party).
+function exe5.member_of(side: number, navi: NaviDef): number?
+    return party.member_of(side, navi)
 end
 
 -- 0x0800DE5C: the palette tier of a light/dark value (MegaMan's palettes, a hit's dark drain: ./light_dark).
@@ -44,6 +41,12 @@ function exe5.light_dark_tier(v: number): number
         return 3
     end
     return 2
+end
+
+-- Whether the side has partners (EXE5 DS's party battle: ./party), whose team navis' damage is the DS's
+-- (lib/navi_level).
+function exe5.in_party(side: number): boolean
+    return party.has_partners(side)
 end
 
 -- The last navi chip used, of either side (0x0203C430): the chip, and the element and the damage word, bonus included,
