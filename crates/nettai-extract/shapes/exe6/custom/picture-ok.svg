@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="448" height="384" viewBox="0 0 56 48">
-<!-- The chip window's picture for OK and the buttons, its letters off (they are drawn as text): a lighter frame round a dark panel, its sides stepping in along its middle at 45 degrees, a slot through the frame at the top and at the bottom. -->
-<!-- The frame -->
+<!-- The chip window's picture for OK and the buttons, its letters off (they are drawn as text): a lighter frame round a dark panel, square, its sides stepping in along its middle at 45 degrees, a slot through the frame at the top and at the bottom. -->
 <rect x="0" y="0" width="56" height="48" fill="#5a5a9c" data-color="14"/>
-<!-- The panel, its sides stepping in along its middle -->
-<path d="M2 5.5 A0.5 0.5 0 0 1 2.5 5 L53.5 5 A0.5 0.5 0 0 1 54 5.5 L54 11.669 A0.8 0.8 0 0 1 53.766 12.234 L52.234 13.766 A0.8 0.8 0 0 0 52 14.331 L52 34.669 A0.8 0.8 0 0 0 52.234 35.234 L53.766 36.766 A0.8 0.8 0 0 1 54 37.331 L54 42.5 A0.5 0.5 0 0 1 53.5 43 L2.5 43 A0.5 0.5 0 0 1 2 42.5 L2 37.331 A0.8 0.8 0 0 1 2.234 36.766 L3.766 35.234 A0.8 0.8 0 0 0 4 34.669 L4 14.331 A0.8 0.8 0 0 0 3.766 13.766 L2.234 12.234 A0.8 0.8 0 0 1 2 11.669 Z" fill="#4a4a8c" data-color="1"/>
-<!-- The slots through the frame at the top and the bottom -->
+<path d="M2 5 L54 5 L54 11.5 L52 13.5 L52 34.5 L54 36.5 L54 43 L2 43 L2 36.5 L4 34.5 L4 13.5 L2 11.5 Z" fill="#4a4a8c" data-color="1"/>
 <rect x="13" y="0" width="30" height="2" fill="#4a4a8c" data-color="1"/>
 <rect x="13" y="46" width="30" height="2" fill="#4a4a8c" data-color="1"/>
 </svg>
