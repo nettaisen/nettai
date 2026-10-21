@@ -1230,3 +1230,44 @@ fn a_switch_on_the_custom_screen_is_the_turns() {
     let o = b.objects.get(b.player(0).unwrap());
     assert_eq!((o.hp, o.max_hp), (700, 700));
 }
+
+/// EXE5 DS's shout (rules/shout), which nothing in nettai makes: a worried
+/// MegaMan at a quarter of his HP who shouts loudly enough is healed,
+/// charged or barriered once a battle; the strongest shout puts him in Full
+/// Synchro first. A quiet tick, or a second shout, does nothing.
+#[test]
+fn a_shout_helps_once_a_battle() {
+    use nettai_battle::input::PlayerTick;
+    let content = exe5_content();
+    let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let mut setup = m.round(&content, 0x5EED);
+    setup.custom_screen_limit = Some(1);
+    let mut b = nettai_battle::Battle::new(setup, content.clone());
+    fight(&mut b);
+    let r = b.player(0).unwrap();
+    b.objects.get_mut(r).hp = 200;
+    b.stats[0].mood = 0x30;
+    let shout = |b: &mut nettai_battle::Battle, level: u8| {
+        b.tick(&[PlayerTick { mic_level: level, ..Default::default() }, Default::default()], Default::default());
+    };
+    // Too quiet.
+    shout(&mut b, 0x1D);
+    assert!(!b.is_dimmed());
+    let before = (b.stats[0].attack, b.stats[0].charge, b.stats[0].rapid);
+    shout(&mut b, 0x50);
+    assert!(b.is_dimmed(), "the shout dims the battle");
+    for _ in 0..200 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(!b.is_dimmed());
+    assert_eq!(b.stats[0].mood, 0xFF, "the strongest shout: Full Synchro");
+    let helped = b.objects.get(r).hp == 500
+        || (b.stats[0].attack, b.stats[0].charge, b.stats[0].rapid) != before
+        || b.collision.get(b.objects.get(r).collision.unwrap()).barrier != 0;
+    assert!(helped, "healed, charged or barriered");
+    // Once a battle.
+    b.objects.get_mut(r).hp = 200;
+    b.stats[0].mood = 0x30;
+    shout(&mut b, 0x50);
+    assert!(!b.is_dimmed());
+}

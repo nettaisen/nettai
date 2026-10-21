@@ -21,6 +21,7 @@ local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
+local shout = require("@self/shout")
 local soldier = require("./objects/soldier")
 local souls = require("@self/souls")
 
@@ -93,6 +94,8 @@ local state: StateSchema = {
     last_navi_chip = { chip = "chip", element = "u8", damage = "u32" } :: StateSchema,
     -- The party battle's (./party): ToadMan's rescue is spent this battle (the DS's party block +0xB).
     rescued = "bool",
+    -- EXE5 DS's shout is spent this battle (./shout: its battle flag 0x800 or 0x1000).
+    shouted = "bool",
 }
 
 local rules: Rules = {
@@ -369,6 +372,8 @@ local rules: Rules = {
         -- a request isn't a switch.
         switch_requested = party.switch_requested,
         switch_asked = party.switch_asked,
+        -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
+        mic_heard = shout.mic_heard,
         -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
         obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
