@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
 <!-- The box beside a link navi's face: a plate under a light frame, two pixels wide on its right, its bottom right corner cut at 45 degrees; a glare in its top left corner. -->
 <!-- The frame -->
-<polygon points="0,0 14,0 14,8.5 6.5,16 0,16" fill="#4a1821" data-color="1"/>
+<path d="M0 0 L14 0 L14 8.5 L6.5 16 L0 16 Z" fill="#4a1821" data-color="1"/>
 <!-- The plate -->
-<polygon points="0,1 12,1 12,9.5 6.5,15 0,15" fill="#7b63d6" data-color="5"/>
+<path d="M0 1 L12 1 L12 9.5 L6.5 15 L0 15 Z" fill="#7b63d6" data-color="5"/>
 <!-- The glare in its top left corner: a darker rim round a light patch -->
-<path d="M0 1 L6.191 1 A0.5 0.5 0 0 1 6.638 1.724 L5.221 4.558 A0.8 0.8 0 0 1 4.506 5 L2.189 5 A0.8 0.8 0 0 0 1.831 5.084 L0 6 Z" fill-rule="evenodd" fill="#7b63d6" data-color="3"/>
-<path d="M1 1 L5.306 1 A0.5 0.5 0 0 1 5.781 1.658 L5.137 3.59 A0.6 0.6 0 0 1 4.568 4 L2.249 4 A0.6 0.6 0 0 1 1.824 3.824 L1.146 3.146 A0.5 0.5 0 0 1 1 2.793 Z" fill-rule="evenodd" fill="#7b63d6" data-color="6"/>
+<path d="M0 1 L7 1 L7 2 L5 5 L2 5 L0 6 Z" fill="#7b63d6" data-color="3"/>
+<path d="M1 1 L6 1 L6 2 L4.667 4 L2 4 L1 3 Z" fill="#7b63d6" data-color="6"/>
 </svg>
