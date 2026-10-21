@@ -18,6 +18,9 @@
 // - at the right the library, an open list: each program's blocks, its name (or why it won't go in, in the error red,
 //   the row greyed), its cost; what it does is the strip's. Enter adds it to the marked partner's.
 //
+// A program's blocks are in a column as wide as the most a program of the collection fills (`most-blocks`), its name
+// after it at the same place in every row; the strip's are as small as that many take in the face's box.
+//
 // A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
 // and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
 // where it would go in its list (the section a row taller), or the dragged row says why it can't. A partner's head is
@@ -125,6 +128,8 @@ export global PartyView {
     in property <[PartyRow]> rows;
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
+    // The most blocks a program of the collection fills: the blocks' column of a program's row is as wide as that.
+    in property <int> most-blocks: 1;
     // Why the program dragged can't go into the list of the partner it is over (empty: it can, or it is over none):
     // said in the dragged row, and no gap opens.
     in property <string> drag-why;
@@ -263,8 +268,9 @@ component ChipView inherits Rectangle {
     }
 }
 
-// What a program's row shows (the one dragged, under the pointer, too): its blocks, its name, why it won't go in (or,
-// held back, that it isn't allowed), its cost.
+// What a program's row shows (the one dragged, under the pointer, too): its blocks, in a column as wide as the most a
+// program fills (its name at the same place in every row), its name, why it won't go in (or, held back, that it isn't
+// allowed), its cost.
 component ProgramLine inherits Rectangle {
     in property <PartyRow> row-data;
     Blocks {
@@ -276,7 +282,7 @@ component ProgramLine inherits Rectangle {
         opacity: root.row-data.why != "" ? 0.4 : 1;
     }
 
-    property <length> name-x: 12px + 56px + 10px;
+    property <length> name-x: 12px + max(1, PartyView.most-blocks) * 10px + 10px;
     property <bool> said: root.row-data.note != "" || root.row-data.why != "";
     Text {
         x: root.name-x;
@@ -421,7 +427,7 @@ component RowsList inherits Rectangle {
         y: 0;
         height: root.pitch - 2px;
         Text {
-            x: 12px + 56px + 10px;
+            x: 12px + max(1, PartyView.most-blocks) * 10px + 10px;
             text: @tr("Empty");
             color: Theme.dim;
             font-family: Theme.body;
@@ -639,6 +645,7 @@ export component PartyTab inherits Rectangle {
             image-rendering: pixelated;
         }
 
+        // (As large as the face's box takes the most a program fills: 14 a block, or less.)
         Blocks {
             x: 18px;
             y: root.top + 22px;
@@ -646,7 +653,7 @@ export component PartyTab inherits Rectangle {
             count: PartyView.detail.blocks;
             filled: PartyView.detail.blocks;
             tone: PartyView.detail.tone;
-            size: 14px;
+            size: min(14px, floor(84px / max(1, PartyView.most-blocks) / 1px) * 1px);
         }
 
         // (The name ends where the strip's top right, the refusal's and the problem's, begins.)
