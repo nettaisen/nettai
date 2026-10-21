@@ -184,6 +184,7 @@ impl ScreenSound {
             ScreenSound::ScrapDone => SoundRole::CustomScrapDone,
             ScreenSound::ProgramAdvancePart => SoundRole::ProgramAdvancePart,
             ScreenSound::ProgramAdvance => SoundRole::ProgramAdvance,
+            ScreenSound::NaviSwitch => SoundRole::NaviSwitch,
             ScreenSound::Rules(_) => return None,
         })
     }
@@ -255,6 +256,9 @@ pub enum ScreenSound {
     /// (`sub_802B80C`), and the Program Advance (`sub_802B920`).
     ProgramAdvancePart,
     ProgramAdvance,
+    /// A switch to another member of the party is taken (EXE5 DS's 0x8D,
+    /// 0x0206391C).
+    NaviSwitch,
     /// A sound of the rules' own (`custom.play_sound`): a window's or a
     /// button's (EXE6's Cross window's, Beast Out's).
     Rules(SoundId),

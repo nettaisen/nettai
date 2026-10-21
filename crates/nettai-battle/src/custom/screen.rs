@@ -190,6 +190,22 @@ pub enum Phase {
     /// The result is on its way to the other player (`sub_8026DC4`);
     /// `started`: its first tick, which sends it, has run.
     Sending { started: bool },
+    /// The player switched to `member` of their party (EXE5 DS's state 0x40,
+    /// 0x020638F0: the GBA's gate's state, with the party's member): the
+    /// screen fades to white, takes the member's navi and lays its slots out
+    /// again, and fades back.
+    Switching { stage: SwitchStage, member: u8 },
+}
+
+/// A switch's steps on the custom screen (EXE5 DS's state 0x40's sub-states).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SwitchStage {
+    /// 0x0206390C: the fade to white starts.
+    Out,
+    /// 0x0206391C: once the fade is done, the switch is taken.
+    Taken,
+    /// 0x02063A24: the fade back runs; then the screen chooses again.
+    In,
 }
 
 impl Phase {
@@ -282,6 +298,10 @@ pub enum ProgramAdvanceStep {
 /// at 0, where every fade before the custom screen left it; a fade in
 /// holds its first frame).
 const FADE_OUT_FRAMES: u8 = 0x40 / 8;
+/// The fades' speed of a switch on the screen (EXE5 DS's state 0x40:
+/// `SetScreenFade(4, 0x20)` and `(0, 0x20)`).
+const SWITCH_FADE_SPEED: u8 = 0x20;
+
 /// The Program Advance's fade's speed (`SetScreenFade(0x14, 8)`).
 const PROGRAM_ADVANCE_FADE_SPEED: u8 = 8;
 const FADE_IN_FRAMES: u8 = 1 + 0x40 / 8;
@@ -301,6 +321,9 @@ pub enum Request {
     Confirm,
     /// Send the result (the first tick of `Sending`).
     Send,
+    /// The screen took a switch to this member of the party (EXE5 DS's
+    /// 0x0206391C): it counts, and the navi's HP is kept in its blocks.
+    Switched(u8),
 }
 
 /// A player's custom screen.
@@ -349,6 +372,10 @@ pub struct Screen {
     /// The chips the side's rules offer as the screen deals (`custom.offer`),
     /// by slot: the slots show them once laid out.
     pub offers: [Option<Offer>; SLOTS],
+    /// The member of the party the screen is for, where the player switched
+    /// to another than the one on the field (EXE5 DS's screen +0x10, the
+    /// screen's navi): OK asks the turn's switch to it.
+    pub member: Option<u8>,
 }
 
 /// A button picked in a chip's place (`custom.trade_last_pick`): the
@@ -398,6 +425,12 @@ pub struct PlayerView<'a> {
     pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
+    /// The battle mode (the stage's).
+    pub battle_mode: u8,
+    /// The side's party, and the member its player asks to switch to this
+    /// tick (its input record's: `Battle::switch_inputs`).
+    pub party: &'a crate::party::Party,
+    pub switch_request: Option<u8>,
     /// A netbattle's last turns (presentation: the window's block).
     pub late_turns: bool,
     /// L is the screen's run key (not in a round whose host took it).
@@ -454,6 +487,7 @@ impl Screen {
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
             offers: [None; SLOTS],
+            member: None,
         };
         // The side's rules as the screen deals, on the folder as the last
         // screen left it and the framework's hand size (EXE5's opening,
@@ -649,6 +683,65 @@ impl Screen {
         (0..SLOTS as u8).filter_map(move |s| self.chip_in(s, folder).map(|c| (s, c)))
     }
 
+    /// EXE5 DS's 0x0200C82C (state 4's check each tick): the member of the
+    /// party the player's switch request names (its input record's,
+    /// 0x0201352C: busy, refused with its sound by the side's rules), unless
+    /// the battle mode is another than 0 and 8 or it is the screen's own
+    /// navi. (It refuses a navi number past 12 too, which no member is, and
+    /// offline a switch to MegaMan in some story states, which no battle of
+    /// the engine's is in.)
+    fn switch_asked(&self, view: &PlayerView, extras: &mut dyn super::Extras) -> Option<u8> {
+        if !matches!(view.battle_mode, 0 | 8) {
+            return None;
+        }
+        let member = view.switch_request?;
+        let asked = view.party.member(member)?;
+        if extras.member_busy(member) {
+            return None;
+        }
+        let own = self.member.and_then(|m| view.party.member(m)).map_or(view.stats.navi, |s| s.navi);
+        (asked.navi != own).then_some(member)
+    }
+
+    /// A tick of EXE5 DS's state 0x40 (0x020638F0): the fade to white
+    /// (0x0206390C, speed 0x20); once it is done, the switch taken
+    /// (0x0206391C): the screen's navi the member's, the picks dropped and
+    /// the slots laid out again for it (`sub_8027E2C`), the chip window, its
+    /// emblem (`sub_802812C`), the fade back and the switch's sound; then,
+    /// the fade done, the choosing again (0x02063A24).
+    fn switch_step(&mut self, stage: SwitchStage, member: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+        match stage {
+            SwitchStage::Out => {
+                self.look.fade.start(FadeMode::EndToWhite, SWITCH_FADE_SPEED);
+                self.phase = Phase::Switching { stage: SwitchStage::Taken, member };
+                None
+            }
+            SwitchStage::Taken => {
+                if self.look.fade.active() {
+                    return None;
+                }
+                self.member = (member != view.party.active).then_some(member);
+                let stats = view.party.member(member).unwrap_or(view.stats);
+                let navi_view = PlayerView { stats, ..*view };
+                self.megaman = navi_view.megaman();
+                self.selected = 0;
+                self.lay_out(&navi_view, extras);
+                self.show_chip_window(folder, &navi_view);
+                self.draw_slots(folder, &navi_view);
+                self.look.fade.start(FadeMode::IntroFromWhite, SWITCH_FADE_SPEED);
+                self.look.play(ScreenSound::NaviSwitch);
+                self.phase = Phase::Switching { stage: SwitchStage::In, member };
+                Some(Request::Switched(member))
+            }
+            SwitchStage::In => {
+                if !self.look.fade.active() {
+                    self.phase = Phase::Choosing;
+                }
+                None
+            }
+        }
+    }
+
     /// The chip a slot shows, if it is a chip slot.
     pub fn chip_in(&self, slot: u8, folder: &BattleFolder) -> Option<FolderChip> {
         match self.slots[slot as usize].kind {
@@ -824,6 +917,14 @@ impl Screen {
                 self.draw_cursor();
                 None
             }
+            // EXE5 DS's 0x02063038: a switch the screen takes leaves the rest
+            // of the choosing's tick undone.
+            Phase::Choosing if !time_up && self.switch_asked(view, extras).is_some() => {
+                let member = self.switch_asked(view, extras).expect("asked");
+                self.phase = Phase::Switching { stage: SwitchStage::Out, member };
+                None
+            }
+            Phase::Switching { stage, member } => self.switch_step(stage, member, view, folder, extras),
             Phase::Choosing => {
                 // sub_8026CCC: the keys, then the cursor, the emblem, the
                 // Regular chip's frame and the last turns' block are drawn,

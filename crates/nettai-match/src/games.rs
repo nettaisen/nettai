@@ -1166,3 +1166,67 @@ fn a_team_navis_own_chip_in_a_party_takes_its_bonus() {
     assert_eq!(b.given.damage(stepswrd, 0), Some(140));
     assert_eq!(b.given.damage(airforce, 0), Some(999));
 }
+
+/// The custom screen's switch (EXE5 DS's state 0x40): the request takes the
+/// screen to the member (counted, the picks dropped), and OK makes it the
+/// turn's switch, which the turn's start takes while paused (the member's
+/// block whole, 20 ticks landing, 21 settling).
+#[test]
+fn a_switch_on_the_custom_screen_is_the_turns() {
+    use nettai_battle::custom::screen::{OK_SLOT, Phase};
+    use nettai_battle::input::{PlayerTick, keys};
+    let content = exe5_content();
+    let left = exe5(&TANGO_EXE5, r#"party = [{ navi = "protoman" }]"#);
+    let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
+    for _ in 0..400 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(choosing(&b));
+    // A pick, then the switch: the pick is dropped.
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&Default::default(), Default::default());
+    assert_eq!(b.custom.sides[0].screen.unwrap().selected, 1);
+    ask_switch(&mut b, 1);
+    assert!(matches!(b.custom.sides[0].screen.unwrap().phase, Phase::Switching { member: 1, .. }));
+    for _ in 0..100 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    let s = b.custom.sides[0].screen.unwrap();
+    assert_eq!((s.phase, s.member, s.selected), (Phase::Choosing, Some(1), 0));
+    assert_eq!(b.party[0].switches, 1, "the screen counts the switch");
+    assert_eq!(navi_key(&b, 0), "megaman", "the navi on the field is still MegaMan");
+    // A request for the screen's own navi is nothing.
+    ask_switch(&mut b, 1);
+    assert_eq!(b.custom.sides[0].screen.unwrap().phase, Phase::Choosing);
+    // OK: the turn's switch to ProtoMan.
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
+    assert_eq!(transform.navi_switch.map(|n| crate::ids::local(&content.defs.navi(n).key).to_string()), Some("protoman".into()));
+    // The other side's OK; then the turn starts with the paused switch.
+    for _ in 0..600 {
+        if b.custom.sides[1].built.is_none()
+            && let Some(s) = b.custom.sides[1].screen.as_mut()
+            && s.phase == Phase::Choosing
+        {
+            s.cursor = OK_SLOT;
+            b.tick(&[Default::default(), PlayerTick::buttons(keys::A)], Default::default());
+            continue;
+        }
+        b.tick(&Default::default(), Default::default());
+        if b.party[0].active == 1 && !b.paused {
+            break;
+        }
+    }
+    assert_eq!((navi_key(&b, 0).as_str(), b.party[0].active, b.party[0].switches), ("protoman", 1, 1));
+    let o = b.objects.get(b.player(0).unwrap());
+    assert_eq!((o.hp, o.max_hp), (700, 700));
+}
