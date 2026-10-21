@@ -255,7 +255,8 @@ going on and its scenery moving as the game's pause moves it (§15).
 **A party battle's party** (`battle/party.rs`, nettai-frontend's `party`; EXE5 DS's bottom screen, its party panel:
 docs/design/exe5ds-map.md §4.2). Where the player's side has partners, the window shows the party beside the battle, in
 the app's layer and never in the battle's picture (which shows only what the original's top screen draws): on a
-desktop a strip at the window's bottom left, over the field's foot as the connection's corner is at its right (the
+desktop a strip at the picture's bottom left: under the picture where the window leaves room, else over the field's
+foot, its last 10 of 160 rows under the panels' lip, where nothing of the battle is drawn, at any shape of window (the
 member on the field framed in the cursor's color, then each switch's control as bound and the member it names, each
 with its face, its HP and a bar of it, then the round's switches as pips, those made dim); on a phone, under MENU, the
 switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field and
