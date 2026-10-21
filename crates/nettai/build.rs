@@ -11,16 +11,18 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 /// The fonts the UI and the battle's drawing bundle, each with its license and its license file (from the
-/// workspace's root). The digit fonts are nettai's own (the game's digits traced: their folders' READMEs), under
-/// the repository's license.
-const FONTS: [(&str, &str, &str); 7] = [
+/// workspace's root). The digit and chip code fonts are nettai's own (the game's digits and codes traced: their
+/// folders' READMEs), under the repository's license.
+const FONTS: [(&str, &str, &str); 9] = [
     ("Bungee", "OFL-1.1", "crates/nettai-render/fonts/bungee/OFL.txt"),
     ("Chakra Petch", "OFL-1.1", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
     ("Corporate Logo", "OFL-1.1", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
     ("M PLUS 1 Code", "OFL-1.1", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
     ("Murecho", "OFL-1.1", "crates/nettai-render/fonts/murecho/OFL.txt"),
     ("Nettai Banner Digits", "MPL-2.0", "LICENSE"),
+    ("Nettai Chip Codes", "MPL-2.0", "LICENSE"),
     ("Nettai Digits", "MPL-2.0", "LICENSE"),
+    ("Nettai Slot Codes", "MPL-2.0", "LICENSE"),
 ];
 
 /// A package's license files: by name, in its folder, in a `LICENSES` folder, or in a folder of its own (a
