@@ -979,12 +979,13 @@ mod tests {
     use super::*;
     use nettai_match::testing::exe5_content;
 
-    /// Two partners laid out as PARTY lays them out (heads 34 tall, rows 30 apart), the first with `a` programs, the
-    /// second with `b`; the first's section a row taller while a program would go into it (`filling`).
+    /// Two partners laid out as PARTY lays them out (heads 34 tall, rows 30 apart, an empty list its Empty row), the
+    /// first with `a` programs, the second with `b`; the first's section a row taller while a program would go into it
+    /// (`filling`).
     fn two(a: usize, b: usize, filling: bool) -> Vec<Section> {
         let section = |top: f32, n: usize, grown: bool| {
             let list = top + 34.0;
-            let end = list + (n + usize::from(grown)) as f32 * 30.0;
+            let end = list + (n + usize::from(grown)).max(1) as f32 * 30.0;
             Section { x: 0.0, right: 560.0, top, list, bottom: end, first: list, pitch: 30.0 }
         };
         let first = section(100.0, a, filling);
