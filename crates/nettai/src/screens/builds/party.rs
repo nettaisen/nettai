@@ -62,15 +62,10 @@ fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String
     crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text).collect::<Vec<_>>().join(", ")
 }
 
-/// A program's row: its name, what it does (`said`: the library's), its blocks of gauge `b`, its color.
-fn program_row(words: &crate::builds::words::Words, content: &Content, table: &str, h: EntryHandle, b: Option<&Budget>, said: bool) -> PartyRow {
-    PartyRow {
-        name: words.names.entry(h).into(),
-        effect: if said { effect_of(words.names, h, table).into() } else { Default::default() },
-        blocks: b.map_or(0, |b| b.cost_of(content, h)) as i32,
-        tone: tone(content, h),
-        ..Default::default()
-    }
+/// A program's row: its name, its blocks as budget `b` costs them, its color. (What it does is the strip's: the user,
+/// "no need to show effects in the library column since they get shown on mouseover".)
+fn program_row(words: &crate::builds::words::Words, content: &Content, h: EntryHandle, b: Option<&Budget>) -> PartyRow {
+    PartyRow { name: words.names.entry(h).into(), blocks: b.map_or(0, |b| b.cost_of(content, h)) as i32, tone: tone(content, h), ..Default::default() }
 }
 
 /// Where a partner's section of PARTY is in the window: across, from its head's top to its end (the next's head's top;
@@ -255,15 +250,14 @@ impl Party {
         draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
     }
 
-    /// The library's rows: each program's blocks of the target partner's gauge (`target`), its name, what it does, and
-    /// why it can't go in there (red, the row greyed), where there are partners.
+    /// The library's rows: each program's blocks of the target partner's gauge (`target`), its name, and why it can't
+    /// go in there (red, the row greyed), where there are partners.
     fn library_rows(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, partnered: bool, target: Option<&Budget>) -> Vec<PartyRow> {
         let content = draft.content();
-        let table = self.effects_table();
         self.programs
             .iter()
             .map(|&h| {
-                let mut r = program_row(words, content, &table, h, target, true);
+                let mut r = program_row(words, content, h, target);
                 if partnered && let Some(why) = self.refusal(shell, draft, target, h) {
                     r.why = why.into();
                 }
@@ -379,8 +373,7 @@ impl Party {
                     PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)), first }
                 })
                 .collect();
-            let table = self.effects_table();
-            let row = |h: EntryHandle, b: Option<&Budget>, said: bool| program_row(words, &content, &table, h, b, said);
+            let row = |h: EntryHandle, b: Option<&Budget>| program_row(words, &content, h, b);
             let panels: Vec<PartyPanel> = partners
                 .iter()
                 .enumerate()
@@ -398,10 +391,10 @@ impl Party {
                         .programs
                         .iter()
                         .map(|&h| {
-                            let mut r = row(h, b.as_ref(), false);
+                            let mut r = row(h, b.as_ref());
                             // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
                             if !draft.allows(&category, h.0) {
-                                r.effect = say.invoke_not_allowed_here();
+                                r.note = say.invoke_not_allowed_here();
                                 r.bad = true;
                             }
                             r
