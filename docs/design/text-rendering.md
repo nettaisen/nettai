@@ -1432,11 +1432,13 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
 | **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
-| **Saira** (OFL) | every number (§12.4), its '+', the "x" of "x2" (from 2026-10-20; Teko 600 for a day before it) | width 75, weight 700 (its variable axes) | `crates/nettai-render/fonts/saira` (Google Fonts' `ofl/saira`) |
+| **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the "x" of "x2", the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | its one cut: the game's HP box digits traced, sharp corners | `crates/nettai-render/fonts/nettai-digits` (built by bn6battle-verify's `tools/digits/build_otf.py`) |
+| **Nettai Banner Digits** (nettai's own, MPL-2.0) | the numbered banners' numbers (§12.4) | its one cut: the game's banner digits traced, another drawing | `crates/nettai-render/fonts/nettai-banner-digits` (the same tool) |
 
-They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`; Bungee is 119 KB, Saira 484 KB, M PLUS 1 Code 3.9 MB, which the
-UI's Slint bundle also embeds). nettai's build script lists each with its `OFL.txt` in the licenses
-(`crates/nettai/build.rs` `FONTS`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
+They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`, `numbers::BANNER_DIGITS_FONT`;
+Bungee is 119 KB, the digit fonts under 3 KB each, M PLUS 1 Code 3.9 MB, which the UI's Slint bundle also embeds).
+nettai's build script lists each with its license in the licenses (`crates/nettai/build.rs` `FONTS`: the OFL's
+`OFL.txt`, the digit fonts the repository's `LICENSE`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
 height, from the picture), its weight and its width; its glyphs are distance fields as the text font's (§9.10), cached
 apart (`GlyphKey::lettering`).
 
@@ -1444,7 +1446,7 @@ apart (`GlyphKey::lettering`).
 
 | Picture | EXE6 | EXE5 | EXE4 | Font, look |
 |---|---|---|---|---|
-| Banners (every one with words: the round's and the turn's starts, FINAL TURN!, the results, HIT DAMAGE JUDGE, FLAG DELETED, the liberations', each navi's WIN! and DELETED, and the pack's unnamed ones) | yes | yes | yes | M PLUS 1 Code 78%, two-tone fill and rim, over the bar drawn as a shape (§12.3); the number in Saira |
+| Banners (every one with words: the round's and the turn's starts, FINAL TURN!, the results, HIT DAMAGE JUDGE, FLAG DELETED, the liberations', each navi's WIN! and DELETED, and the pack's unnamed ones) | yes | yes | yes | M PLUS 1 Code 78%, two-tone fill and rim, over the bar drawn as a shape (§12.3); the number in Nettai Banner Digits |
 | Japanese Program Advance (プログラムアドバンス, both pictures) | yes | yes | yes | as the banners, no bar |
 | US Program Advance logos (PrgAdvance, ADVANCE) | picture | picture | picture | (no words in the strings) |
 | PAUSE | yes | yes | yes | M PLUS 1 Code 78%, white, slate rim |
@@ -1454,7 +1456,7 @@ apart (`GlyphKey::lettering`).
 | FINAL TURN (beside the window) | yes | yes | yes | M PLUS 1 Code 78% in its rim and fill |
 | BATTLE CHIP, CHIP SELECT, ▲CROSS SELECT (the tab; its triangle stays), CROSS SELECT (the Cross window's header), B:EXIT | all | BATTLE CHIP, CHIP SELECT | CHIP SELECT | Bungee, each letter fitted to the original letter's box, in the letters' colors, on their frame or strip (the letters taken off) |
 | Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
-| Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Saira (§12.4) |
+| Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Nettai Digits; the banners' Nettai Banner Digits (§12.4) |
 | HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
 | Chip codes (A to Z, `*`: the chip window's, the hand's under the slots) | yes | yes | yes | Bungee, fitted to the code's glyph's box, its colors (§12.11) |
 | The Cross window's names (SPOUT ... CHRG, アクア ... チャージ) | yes | (no Crosses) | (no Crosses) | Murecho 900 in both languages, white or gray with the bar's dark outline, on the bar rebuilt from its colors (§12.11) |
@@ -1497,24 +1499,35 @@ read off its glyphs as the pack is made: the box its faces fill in their 8-pixel
 rows), the face's colors down those rows (the damage digits' orange and yellow bands stay), and its rim or its shadow.
 Every number is laid one way (`numbers::laid`; the user: "why can't the hp and the damage number in the custom
 screen and the damage number in the telop all have the same number spacing?", then "why are you not just using the
-font's own metrics for layout?"): in Saira at width 75 and weight 700, at its face box's height, the whole run shaped
-as one string by swash with the font's own metrics (its advances and kerning, the '+' and the "x" of "x2" too), with
-its tabular figures (`tnum`) on, never squeezed: every digit has the one advance (the test `digits_are_tabular`), so a
-number's columns line up and it doesn't shift as it changes. The run is placed against the end the picture's number
-sits against: the HP box's and the chip window's right, the damage taken's left, an enemy's HP its middle, the judge's
-two numbers ending and starting where theirs do. A chip's damage follows its name ink to ink (the name's last ink to
-the number's first, so neither font's sidebearings add to it), a quarter of the name's capitals' height apart
-(`hud::NAME_GAP`, 2.5 frame pixels; the user: "fix the spacing between the chip name and the damage number"), in the
-hand window's label and both telops; a telop's name and numbers are centered, ink to ink, where the original's are. A
-numbered banner's words and number are one run: the words in the lettering font, the number in Saira, the lettering
-font's word space between their inks, centered where the picture's words and number are. The numbers were Bungee at
-first ("i like bungee", 2026-10-19), whose digits are about as wide as they are tall, wider than the game's, so most
-places had them narrowed; the user compared nine fonts in place and switched to Teko 600 ("can you use teko 600
-without squeezing?", 2026-10-20), a condensed face that fits every boxed number at its own width, but Teko has no
-tabular figures, and each digit had to take the widest digit's advance, centered in it; the same day the user chose
-Saira at width 75, weight 700 ("use saira 75/700"), condensed too and with its own tabular figures. A chip's damage
-after its name runs past where the original's ended where it is longer ("40+30×2"): nothing follows it in the hand's
-label or a telop. Its rim is a frame pixel's square around it, or its shadow a frame pixel right and down.
+font's own metrics for layout?"), in a font of the game's own digits, with the game's metrics: each glyph a game cell's
+advance (8 frame pixels), its face 6 pixels wide a pixel in from the cell's left, a glyph pixel a frame pixel across;
+down, each set's face box's height (`vfont::paint_fitted` draws a digit font's glyph a frame pixel a glyph pixel
+across and its set's box tall). So every number has the original's spacing and box, never squeezed, and doesn't shift
+as it changes (the test `digits_are_a_cell_apart`). The run is placed where the picture's faces are
+(`numbers::picture_span`): against the HP box's and the chip window's right, the damage taken's left, an enemy's HP
+its middle, the judge's two numbers ending and starting where theirs do; at the output's 1x a number lands on the
+original's pixels (the test `a_laid_numbers_faces_are_the_pictures`). A chip's damage follows its name ink to ink (the
+name's last ink to the number's first), a quarter of the name's capitals' height apart (`hud::NAME_GAP`, 2.5 frame
+pixels; the user: "fix the spacing between the chip name and the damage number"), in the hand window's label and both
+telops; a telop's name and numbers are centered, ink to ink, where the original's are. A numbered banner's words and
+number are one run: the words in the lettering font, the number in Nettai Banner Digits, the lettering font's word
+space between their inks, centered where the picture's words and number are. A chip's damage after its name runs past
+where the original's ended where it is longer ("40+30×2"): nothing follows it in the hand's label or a telop. Its rim
+is a frame pixel's square around it, or its shadow a frame pixel right and down.
+
+The fonts, in the user's words (2026-10-21), after Bungee ("i like bungee", 2026-10-19), Teko 600 ("can you use teko
+600 without squeezing?") and Saira 75/700 ("use saira 75/700", 2026-10-20): "could you trace a vector font of the
+game's numbers?" ("just the numbers though for like damage/hp/chip damage etc"); the traces' shapes, glyph by glyph
+(the 4's diagonal parallel, the 3's and 8's waists a "v notch", the "x" two crossing bars); "you should just create the
+font yourself as an otf and commit it"; "the font should have sharp edges and not rounded"; "can it not just be the
+same base font? and exclude the variants that don't fit" (the HP box's digits: the enemies' 8 pixels tall and the chip
+window's 11 are the same design at other heights, "aren't the fonts just stretched or boldened or condensed or
+whatever?", so the one font stretched to their boxes; the damage digits' 7, a pixel off, the emotion window's counts,
+another drawing, and EXE4's own 7s take its shapes); "the banner i think is actually a different font? maybe those
+should have variants?" (Nettai Banner Digits, a family of its own: "i think "Nettai Digits Condensed" is a misleading
+name because it's a different font"; EXE4's banner digits, a third drawing, take its shapes); then "replace them
+outright" (no setting: Saira is gone). The fonts are built by bn6battle-verify's `tools/digits/build_otf.py` from
+EXE6's pack (EXE5's digits are the same), whose README has the tracing rules.
 
 - A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
   a frame pixel right and down as the name's (the original's are both a pixel). The others' rims are a frame pixel all
@@ -1526,7 +1539,8 @@ label or a telop. Its rim is a frame pixel's square around it, or its shadow a f
   their strokes: the box showed a blue block and the "3" its inverse, nearly a B.)
 - A numbered banner's words are drawn either side of its number (`BATTLE`, `START!`), each centered on the picture's
   letters on its side; the number is the banner digits' look, in its own color as the original's.
-- The '?' of the chip window's hidden damage is Saira's '?'.
+- The '?' of the chip window's hidden damage is Nettai Digits' '?' (the HUD layer's own '?', traced); the HUD's "????"
+  marks stay Murecho's (§12.1).
 
 ### 12.5 Words, languages and strings
 

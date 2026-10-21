@@ -1,33 +1,31 @@
 // The Party tab of a build's editor, in a game whose setup takes a party (EXE5's party battle, EXE5 DS's: docs/design/
-// exe5ds-map.md §4): the navi's partners, each with the programs filling its PartyCust gauge (§4.10). Its layout is the
-// one the user chose (the verification workspace's docs/nettai-ui/party/chosen/party-tab-D9r.png, D9r.body.html), built
-// as the Folder and Patch cards tabs are:
+// exe5ds-map.md §4): the navi's partners, each with the programs filling its PartyCust gauge (§4.10). A two-level list
+// and a library that follows it (the user: "if you have a navi slot selected in the party editor you pick from a navi
+// and if you have a program slot you pick from a program"), built as the Patch cards tab is:
 //
 // - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its blocks and
-//   whether they fit the marked partner's gauge, what it does, its kind) or a navi (its version; its HP, buster attack
-//   and special chip attack, what its programs add to them; its element and its gauge);
-// - under it the navis to pick from, a row a version (the builds data's groups, each under its name in its color), a
-//   chip each (its face, its name, its place in the party where it is in): raised and outlined in the cursor's color
-//   where it is in, muted where the party is full, dim where the build's ruleset holds it back. Enter or a click puts
-//   it in (at the party's end) or takes it out;
+//   whether they fit, what it does, its kind) or a navi (its version; its HP, buster attack and special chip attack,
+//   what its programs add to them; its element and its gauge);
 // - at the left, framed, PARTY, its counts in its head as the folder's are (Partners, Navi changes) and CLEAR at its
-//   end; in it a section a partner, its head (its face and name, its gauge and the blocks used of it) and its
-//   programs as a list's rows (none: Empty), and a head saying Empty for each place the party has no partner in, as
-//   the Patch cards tab's empty slots are. The partner the library adds to, the last one the cursor was in, has its
-//   head marked as a list's chosen row is (the bar and the tint);
-// - at the right the library, an open list: each program's blocks, its name (or why it won't go in, in the error red,
-//   the row greyed), its cost; what it does is the strip's. Enter adds it to the marked partner's.
+//   end; under them its slots, one list (`slots`): a partner's head (its face and name, its gauge and the blocks used
+//   of it), its programs under it a level in, and an Empty row at their end while its list has room; and an Empty head
+//   for each place the party has no partner in. The slot the cursor was last on is marked as a list's chosen row is;
+// - at the right the library of what goes in that slot: for a head (a partner's, or Empty) the navis, in their
+//   versions' order, each its face, name and version's mark; for a program or a partner's Empty row the programs, each
+//   its blocks, name and cost. Why one can't go in is said in its row (the error red, the row greyed), as the Patch
+//   cards tab's library says it. Enter (or a click) on a slot goes into the library; Enter on a library's row puts it
+//   in the slot (a navi in its place, a program in its place or at the list's end); Back goes back to the slot.
 //
 // A program's blocks are in a column as wide as the most a program of the collection fills (`most-blocks`), its name
 // after it at the same place in every row; the strip's are as small as that many take in the face's box.
 //
-// A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
-// and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
-// where it would go in its list (the section a row taller), the dragged row over it whole, and says why where it can't. A partner's head is
-// dragged onto another's to take its place (a gap over the other's head), a chip in the party onto another's to trade.
+// Dragged, as the Patch cards tab's cards are: a program into a partner's list (a gap opening where it would go, the
+// dragged row over it whole, saying why where it can't go in), in it, into the other partner's, onto the library (taken
+// out); a library's program into a partner's list; a library's navi onto a head (it goes in in that place); a partner's
+// head onto another's (they trade places, programs with them), onto the library (taken out).
 //
-// On a phone, which has no strip, the chips wrap three to a row under their team's name, PARTY is the tab's width, and a
-// button under it opens the library as a sheet (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
+// On a phone, which has no strip, PARTY is the tab's width, and a button under it opens the slot's library as a sheet
+// (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
 
 import { Theme, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
@@ -37,28 +35,10 @@ import { Tween, Shake } from "../../motion.slint";
 import { VersionTag, VersionMark, StatLine } from "../../build.slint";
 import { DropGap, RemoveTarget, CountBox, LibraryHead, LibraryRowLook } from "folder.slint";
 
-// A navi to pick, as its chip shows it: its face and name; `place`, its place in the party (1, 2; 0: not in); `full`,
-// the party has no room for it; `held`, the build's ruleset holds it back.
-export struct PartyChip {
-    face: image,
-    name: string,
-    place: int,
-    full: bool,
-    held: bool,
-}
-
-// A version's row of chips: its name in its color (the builds data's group's), and its navis.
-export struct PartyTeam {
-    name: string,
-    tone: color,
-    chips: [PartyChip],
-    // The place of its first chip among all the teams' (their focus order).
-    first: int,
-}
-
-// A program in a list: its name, a note beside it (a partner's held back by the build's ruleset: `bad`, "Not allowed")
-// or why it won't go in (`why`, the row greyed), its blocks in its color, its cost. What it does is the strip's. `bad`:
-// a problem is about it.
+// A row of the library or a program of a partner's: its name, a note beside it (a partner's held back by the build's
+// ruleset: `bad`, "Not allowed") or why it won't go in (`why`, the row greyed), and what leads it: a program's blocks in
+// its color (and its cost at its end), or a navi's face (and its version's mark after its name). What it does is the
+// strip's. `bad`: a problem is about it.
 export struct PartyRow {
     name: string,
     note: string,
@@ -66,20 +46,32 @@ export struct PartyRow {
     blocks: int,
     tone: color,
     bad: bool,
+    face: image,
+    version: VersionTag,
 }
 
-// A partner's section of PARTY: its face and name; its gauge, each block's color and the
-// run of its program (`runs`: block i is of the run-th program, the empty blocks one run after them); its programs.
-// `bad`: a problem is about it.
-export struct PartyPanel {
+// What a slot of PARTY's list is: a partner's head, a program of it, the Empty row at its list's end, an Empty head (a
+// place the party has no partner in).
+export enum PartySlotKind {
+    head,
+    program,
+    end,
+    open,
+}
+
+// A slot of PARTY's list. A head: its face and name (`bad`: a problem is about the partner), its gauge (`gauge` slots,
+// `used` filled, each block's color, `runs`: each block's program, the empty blocks one run after them). A program: its
+// row.
+export struct PartySlot {
+    kind: PartySlotKind,
     face: image,
     name: string,
-    used: int,
+    bad: bool,
     gauge: int,
+    used: int,
     tones: [color],
     runs: [int],
-    bad: bool,
-    rows: [PartyRow],
+    row: PartyRow,
 }
 
 // What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
@@ -107,35 +99,35 @@ export struct PartyDetail {
 export global PartyView {
     out property <[Hint]> hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Add") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.in-library ? @tr("Add") : @tr("Choose") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
-    out property <string> status: self.marked ? self.free-word(self.free) : "";
+    out property <string> status: self.navis-shown ? "" : self.free-word(self.free);
     in property <PartyDetail> detail;
     // PARTY's counts: the partners against the most there may be, the round's navi changes.
     in property <int> partners;
     in property <int> room;
     in property <int> changes;
-    in property <[PartyTeam]> teams;
-    in property <[PartyPanel]> panels;
-    // The partner the library adds to (its place in `panels`; `marked` off: there is none), and its gauge's blocks free.
-    in property <int> target;
-    in property <bool> marked;
+    // PARTY's slots, and the one the library is of (the cursor was last on it: marked).
+    in property <[PartySlot]> slots;
+    in property <int> slot;
+    // The library lists navis (the slot is a head), else programs; and the marked partner's gauge's blocks free.
+    in property <bool> navis-shown;
     in property <int> free;
+    // The library: its rows as sorted and searched, the sort (its place in `sorts`) and its direction.
     in property <[PartyRow]> rows;
-    // The library: its rows as sorted and searched (`rows`), the sort (its place in `sorts`) and its direction.
     in property <string> search;
     in property <int> sort;
     in property <bool> descending;
-    out property <[string]> sorts: [@tr("Library order"), @tr("Name"), @tr("Blocks")];
+    out property <[string]> sorts: self.navis-shown ? [@tr("Library order"), @tr("Name")] : [@tr("Library order"), @tr("Name"), @tr("Blocks")];
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
     // The most blocks a program of the collection fills: the blocks' column of a program's row is as wide as that.
     in property <int> most-blocks: 1;
-    // Why the program dragged can't go into the list of the partner it is over (empty: it can, or it is over none):
-    // said in the dragged row, which is over the gap that opens all the same.
+    // Why what is dragged can't go into the slot it is over (empty: it can, or it is over none): said in the dragged
+    // row, which is over the gap that opens all the same.
     in property <string> drag-why;
     // A library's row that was refused, counted: it shakes.
     in property <int> refused: -1;
@@ -147,6 +139,8 @@ export global PartyView {
     // ---- Words the app asks for.
     // CLEAR's question (docs/design/app-ui.md §2.71).
     out property <string> clear-question: @tr("Clear the party?");
+    // Why a navi can't go into the slot: it is in the party already.
+    out property <string> in-party: @tr("In party");
     public pure function free-word(n: int) -> string {
         return @tr("{n} block free" | "{n} blocks free" % n);
     }
@@ -201,95 +195,35 @@ component Blocks inherits Rectangle {
     }
 }
 
-// A navi's chip, a control: its face, its name, its place in the party (1, 2) where it is in.
-component ChipView inherits Rectangle {
-    in property <PartyChip> chip;
-    in property <int> nav-index;
-    // The copy dragged under the pointer: no control of its own.
-    in property <bool> lifted;
-    property <bool> in: root.chip.place > 0;
-    opacity: !root.lifted && Drag.on && Drag.list == "chip" && Drag.from == root.nav-index ? 0.35 : 1;
-    Rectangle {
-        background: root.in ? Theme.raised : Theme.panel;
-        border-width: 1px;
-        border-color: root.in ? Theme.cursor : Theme.line;
-    }
-
-    Image {
-        x: 6px;
-        y: (parent.height - 16px) / 2;
-        width: 32px;
-        height: 16px;
-        source: root.chip.face;
-        image-rendering: pixelated;
-        opacity: root.chip.held ? 0.35 : 1;
-    }
-
-    Text {
-        x: 46px;
-        width: max(0px, parent.width - self.x - (root.in ? 8px + 16px + 8px : 8px));
-        text: root.chip.name;
-        color: root.chip.held ? Theme.dim : root.chip.full && !root.in ? Theme.muted : Theme.text;
-        // (A navi's name as the program list's rows have their names: the editor's rows' one look.)
-        font-family: Theme.body;
-        font-size: Theme.row-name-size;
-        font-weight: Theme.row-name-weight;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Rectangle {
-        x: parent.width - 8px - self.width;
-        y: (parent.height - self.height) / 2;
-        width: 16px;
-        height: 16px;
-        visible: root.in;
-        background: Theme.cursor;
-        Text {
-            text: root.chip.place;
-            color: Theme.action-ink;
-            font-family: Theme.mono;
-            font-size: 11px;
-            font-weight: 700;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-    }
-
-    // (Another chip of the party dragged onto it: they would trade places.)
-    DropGap {
-        visible: !root.lifted && Drag.on && Drag.list == "chip" && Drag.to == root.nav-index;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    if !root.lifted: Focusable {
-        nav: "chip";
-        nav-index: root.nav-index;
-        describes: true;
-        // (One in the party is dragged onto another to trade places with it, and a right click takes it out.)
-        drag: root.in ? "chip" : "";
-        removable: root.in;
-    }
-}
-
-// What a program's row shows (the one dragged, under the pointer, too), as a library's row looks (`LibraryRowLook`, the
-// Patch cards tab's cards'): its blocks leading it, in a column as wide as the most a program fills (its name at the
-// same place in every row), its name, why it won't go in (or, held back, that it isn't allowed) where a card's note is,
-// its cost where a card's MB is. Its touch is the row's (`RowView`, which stays where the row is while it shifts).
+// What a row of the library or a partner's program shows (the one dragged, under the pointer, too), as a library's row
+// looks (`LibraryRowLook`, the Patch cards tab's cards'): what leads it (a program's blocks, in a column as wide as the
+// most a program fills, its name at the same place in every row; a navi's face), its name (a navi's with its version's
+// mark), why it won't go in (or, held back, that it isn't allowed) where a card's note is, a program's cost where a
+// card's MB is. Its touch is its row's, which stays where the row is while it shifts.
 component ProgramLine inherits Rectangle {
     in property <PartyRow> row-data;
     in property <length> dx;
+    property <bool> navi: root.row-data.face.width > 0;
     LibraryRowLook {
         inert: true;
-        lead-width: max(1, PartyView.most-blocks) * 10px;
+        lead-width: root.navi ? 32px : max(1, PartyView.most-blocks) * 10px;
         name: root.row-data.name;
+        version: root.row-data.version;
         refused: root.row-data.why != "";
         note: root.row-data.why != "" ? root.row-data.why : root.row-data.note;
         bad: root.row-data.why != "" || root.row-data.bad;
-        end: root.row-data.blocks;
+        end: root.navi ? "" : root.row-data.blocks;
         dx: root.dx;
-        Blocks {
+        if root.navi: Image {
+            x: 0;
+            y: (parent.height - 16px) / 2;
+            width: 32px;
+            height: 16px;
+            source: root.row-data.face;
+            image-rendering: pixelated;
+            opacity: root.row-data.why != "" ? 0.4 : 1;
+        }
+        if !root.navi: Blocks {
             x: 0;
             y: (parent.height - self.height) / 2;
             count: root.row-data.blocks;
@@ -300,58 +234,32 @@ component ProgramLine inherits Rectangle {
     }
 }
 
-// A program's row in a list: shifted (`dy`) while another is dragged, gone while it is the one dragged.
+// A row of the library: its touch (dragged into PARTY's slots), its row.
 component RowView inherits Rectangle {
     in property <PartyRow> row-data;
-    in property <string> nav;
     in property <int> nav-index;
-    in property <bool> removable;
     in property <bool> draggable;
     in property <length> dx;
-    in property <length> dy;
-    in property <bool> gone;
     Rectangle {
-        y: root.dy;
-        opacity: root.gone ? 0 : 1;
-        animate y {
-            duration: Drag.on ? Theme.quick : 0ms;
-            easing: ease-out;
-        }
-        Rectangle {
-            background: touch.has-hover && !Drag.on ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
-        }
+        background: touch.has-hover && !Drag.on ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+    }
 
-        ProgramLine {
-            dx: root.dx;
-            row-data: root.row-data;
-        }
+    ProgramLine {
+        dx: root.dx;
+        row-data: root.row-data;
     }
 
     touch := RowTouch {
-        nav: root.nav;
+        nav: "lib.rows";
         nav-index: root.nav-index;
-        removable: root.removable;
-        drag: root.draggable ? root.nav : "";
+        drag: root.draggable ? "lib.rows" : "";
         describes: true;
     }
 }
 
-// A list of programs: a partner's (`removable`, its rows shifting to leave a gap where one dragged would land) or the
-// library's.
+// The library's rows (`lib.rows`): the navis or the programs the slot takes.
 component RowsList inherits Rectangle {
-    in property <[PartyRow]> rows;
-    in property <string> nav;
-    in property <bool> removable;
     in property <bool> draggable;
-    in property <bool> scrolls;
-    property <length> pitch: Theme.list-row + Theme.list-gap;
-    // (A row of this list dragged in it, or one from elsewhere landing in it: where it would land.)
-    property <bool> mine: Drag.on && Drag.into == root.nav && Drag.to >= 0;
-    property <bool> moving: root.mine && Drag.list == root.nav;
-    property <bool> filling: root.mine && Drag.list != root.nav;
-    pure function shown(i: int) -> int {
-        return root.filling ? (i >= Drag.to ? i + 1 : i) : !root.moving ? i : i == Drag.from ? Drag.to : (Drag.from < i && i <= Drag.to) ? i - 1 : (Drag.to <= i && i < Drag.from) ? i + 1 : i;
-    }
     shake := Shake {
         seq: PartyView.refused-seq;
     }
@@ -361,48 +269,123 @@ component RowsList inherits Rectangle {
         y: 0;
         width: parent.width;
         height: parent.height;
-        nav: root.nav;
-        count: root.rows.length;
+        nav: "lib.rows";
+        count: PartyView.rows.length;
         row-height: Theme.list-row;
         gap: Theme.list-gap;
         chosen: self.focused-row;
-        // (A drag on a row moves its program: the wheel scrolls.)
+        // (A drag on a row takes it into PARTY: the wheel scrolls.)
         mouse-pan: !root.draggable;
         for slot in list.shown: RowView {
             property <int> at: list.first + slot;
             y: self.at * list.pitch;
             width: list.row-width;
             height: list.row-height;
-            row-data: root.rows[self.at];
-            nav: root.nav;
+            row-data: PartyView.rows[self.at];
             nav-index: self.at;
-            removable: root.removable;
             draggable: root.draggable;
-            dx: !root.removable && self.at == PartyView.refused ? shake.dx : 0px;
-            dy: (root.shown(self.at) - self.at) * list.pitch;
-            gone: Drag.on && Drag.list == root.nav && self.at == Drag.from && !Drag.removing;
+            dx: self.at == PartyView.refused ? shake.dx : 0px;
         }
     }
+}
 
-    // (Where a program dragged in from elsewhere would go.)
-    DropGap {
-        x: 0;
-        y: Drag.to * root.pitch - list.scroll;
-        width: list.row-width;
-        height: Theme.list-row;
-        visible: root.filling;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+// A partner's head as a slot shows it (the one dragged, under the pointer, too): its face, its name (as the program
+// rows' names are), its gauge in a column of its own (at the same place for each partner whatever its size: ten slots,
+// then its used and total, as wide as "10/10"). (Its HP is the strip's: the user, "no need to put HP whatever next to
+// the name of the navi".)
+component HeadLine inherits Rectangle {
+    in property <PartySlot> slot;
+    Image {
+        x: 8px;
+        y: (root.height - 16px) / 2;
+        width: 32px;
+        height: 16px;
+        source: root.slot.face;
+        image-rendering: pixelated;
     }
 
-    // (A partner's list with no program: Empty, as the Patch cards tab's empty slot says it.)
-    if root.removable && root.rows.length == 0 && !root.filling: Rectangle {
-        x: 0;
-        y: 0;
-        width: list.row-width;
-        height: Theme.list-row;
-        Text {
-            x: 8px + max(1, PartyView.most-blocks) * 10px + 8px;
+    Text {
+        x: 8px + 32px + 8px;
+        width: max(0px, gauge.x - 16px - self.x);
+        text: root.slot.name;
+        color: root.slot.bad ? Theme.bad : Theme.text;
+        font-family: Theme.body;
+        font-size: Theme.row-name-size;
+        font-weight: Theme.row-name-weight;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    gauge := Blocks {
+        x: used.x - 8px - 10 * 12px;
+        y: (root.height - self.height) / 2;
+        count: root.slot.gauge;
+        filled: root.slot.used;
+        tones: root.slot.tones;
+        runs: root.slot.runs;
+        size: 12px;
+    }
+
+    used := Text {
+        x: root.width - 8px - self.width;
+        width: 44px;
+        text: root.slot.used + "/" + root.slot.gauge;
+        color: root.slot.used > root.slot.gauge ? Theme.bad : Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 600;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+}
+
+// A slot of PARTY's list: a head (raised: a level above its programs), a program a level in, an Empty (Patch cards'
+// Empty's look) where a partner's list or a place of the party has none. Marked (`chosen`) as a list's chosen row is;
+// shifted (`dy`) while another is dragged, gone while it is the one dragged. Its touch stays where it is: the cursor
+// comes to it, a drag takes it (a head or a program), a right click takes it out.
+component SlotView inherits Rectangle {
+    in property <PartySlot> slot;
+    in property <int> nav-index;
+    in property <bool> chosen;
+    in property <length> dy;
+    in property <bool> gone;
+    property <bool> head: root.slot.kind == PartySlotKind.head || root.slot.kind == PartySlotKind.open;
+    // (A program's level: in from the heads by this much.)
+    property <length> level: 16px;
+    Rectangle {
+        y: root.dy;
+        opacity: root.gone ? 0 : 1;
+        animate y {
+            duration: Drag.on ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
+        Rectangle {
+            background: root.head ? Theme.raised : transparent;
+        }
+
+        Rectangle {
+            background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover && !Drag.on ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+        }
+
+        Rectangle {
+            x: 0;
+            width: 2px;
+            background: root.chosen ? Theme.cursor : transparent;
+        }
+
+        if root.slot.kind == PartySlotKind.head: HeadLine {
+            slot: root.slot;
+        }
+
+        if root.slot.kind == PartySlotKind.program: ProgramLine {
+            x: root.level;
+            width: parent.width - self.x;
+            row-data: root.slot.row;
+        }
+
+        // (Empty: a place of the party's, at a head's name; a partner list's end, at a program's.)
+        if root.slot.kind == PartySlotKind.open || root.slot.kind == PartySlotKind.end: Text {
+            x: root.slot.kind == PartySlotKind.open ? 8px + 32px + 8px : root.level + 8px + max(1, PartyView.most-blocks) * 10px + 8px;
             text: @tr("Empty");
             color: Theme.dim;
             font-family: Theme.body;
@@ -411,135 +394,13 @@ component RowsList inherits Rectangle {
             vertical-alignment: center;
         }
     }
-}
 
-// A partner's head in PARTY: its face, its name, its gauge and the blocks used of it (the one dragged, under the
-// pointer, too). (Its HP is the strip's: the user, "no need to put HP whatever next to the name of the navi".)
-component PartnerHead inherits Rectangle {
-    in property <PartyPanel> panel;
-    Image {
-        x: 12px;
-        y: (root.height - 16px) / 2;
-        width: 32px;
-        height: 16px;
-        source: root.panel.face;
-        image-rendering: pixelated;
-    }
-
-    Text {
-        x: 12px + 32px + 12px;
-        y: 0;
-        width: max(0px, gauge.x - 16px - self.x);
-        height: root.height;
-        text: root.panel.name;
-        color: root.panel.bad ? Theme.bad : Theme.text;
-        // (A navi's name as the program list's rows have their names: the editor's rows' one look.)
-        font-family: Theme.body;
-        font-size: Theme.row-name-size;
-        font-weight: Theme.row-name-weight;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    // (The gauge in a column of its own, at the same place for each partner whatever its size: as wide as the largest,
-    // ten slots, then its used and total, as wide as "10/10".)
-    gauge := Blocks {
-        x: used.x - 8px - 10 * 12px;
-        y: (root.height - self.height) / 2;
-        count: root.panel.gauge;
-        filled: root.panel.used;
-        tones: root.panel.tones;
-        runs: root.panel.runs;
-        size: 12px;
-    }
-
-    used := Text {
-        x: root.width - 12px - self.width;
-        y: 0;
-        width: 44px;
-        height: root.height;
-        text: root.panel.used + "/" + root.panel.gauge;
-        color: root.panel.used > root.panel.gauge ? Theme.bad : Theme.muted;
-        font-family: Theme.mono;
-        font-size: 13px;
-        font-weight: 600;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-    }
-}
-
-// A partner's section of PARTY: its head, a control (the cursor in it makes it the partner the library adds to;
-// `target` marks it as a list's chosen row is; dragged, it takes another's place), and its programs' list under it.
-component SectionView inherits Rectangle {
-    in property <PartyPanel> panel;
-    in property <int> place;
-    in property <bool> target;
-    property <length> head: 34px;
-    // (Its head dragged: faint where it was; another's dragged over it: it would take its place.)
-    opacity: Drag.on && Drag.list == "target" && Drag.from == root.place ? 0.35 : 1;
-    Rectangle {
-        x: 0;
-        y: 0;
-        height: root.head;
-        background: Theme.raised;
-        Rectangle {
-            y: parent.height - 1px;
-            height: 1px;
-            background: Theme.line;
-        }
-    }
-
-    // (The partner the library adds to: a list's chosen row's tint and bar.)
-    Rectangle {
-        x: 0;
-        y: 0;
-        height: root.head - 1px;
-        visible: root.target;
-        background: @linear-gradient(90deg, Theme.tint 0%, Theme.clear 100%);
-        Rectangle {
-            x: 0;
-            width: 3px;
-            background: Theme.cursor;
-        }
-    }
-
-    PartnerHead {
-        y: 0;
-        height: root.head;
-        panel: root.panel;
-    }
-
-    DropGap {
-        y: 0;
-        height: root.head;
-        visible: Drag.on && Drag.list == "target" && Drag.to == root.place;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    Focusable {
-        x: 0;
-        y: 0;
-        height: root.head;
-        nav: "target";
-        nav-index: root.place;
+    touch := RowTouch {
+        nav: "slots";
+        nav-index: root.nav-index;
+        removable: root.slot.kind == PartySlotKind.head || root.slot.kind == PartySlotKind.program;
+        drag: root.slot.kind == PartySlotKind.head || root.slot.kind == PartySlotKind.program ? "slots" : "";
         describes: true;
-        drag: "target";
-        removable: true;
-    }
-
-    // (Its list a row taller than its rows, the room a gap opens in while a program from elsewhere would go in: the
-    // section grows over it then. Its height never follows `Drag`: the list's rows would be made anew, and the one held
-    // by the pointer let go.)
-    RowsList {
-        x: 4px;
-        y: root.head;
-        width: parent.width - self.x;
-        height: (max(1, root.panel.rows.length) + 1) * (Theme.list-row + Theme.list-gap);
-        rows: root.panel.rows;
-        nav: "installed" + root.place;
-        removable: true;
-        draggable: true;
     }
 }
 
@@ -548,39 +409,24 @@ export component PartyTab inherits Rectangle {
     property <length> top: -4px;
     property <length> strip: root.phone ? 0px : 104px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack")];
-    // The picker under the strip: a row of chips a version (on a phone, the version's name over its chips, three to a row).
-    property <length> picker-y: root.phone ? 0px : root.top + root.strip + 12px;
-    property <length> chip-height: 30px;
-    property <length> team-width: root.phone ? 0px : 120px;
-    property <int> per-row: root.phone ? 3 : 6;
-    // (The version's name in a column of its own, the pane gap after it before the first chip.)
-    property <length> team-gap: root.phone ? 0px : 24px;
-    property <length> chip-width: (root.width - root.team-width - root.team-gap - (root.per-row - 1) * 6px) / root.per-row;
-    property <length> team-height: root.phone ? 16px + 2 * (root.chip-height + 6px) : root.chip-height + 6px;
-    property <length> picker-height: PartyView.teams.length * root.team-height - 6px;
-    // PARTY at the left (on a phone, the tab's width), the library at the right.
-    property <length> pane-y: root.picker-y + root.picker-height + 12px;
+    // PARTY at the left (on a phone, the tab's width), the library at the right: as the Patch cards tab's panes, the
+    // strip and the two panes and their gaps the page's whole height (where the tab is shorter, it scrolls); the slots
+    // a list in PARTY, which scrolls in it.
+    property <length> pane-y: root.phone ? 0px : root.top + root.strip + 12px;
     property <length> pane-width: root.phone ? root.width : 560px;
+    property <length> pane-height: root.phone ? root.height - 12px - 44px : 482px;
     property <length> head: root.phone ? 64px : 44px;
     property <length> pitch: Theme.list-row + Theme.list-gap;
-    // (A section grows by a row while a program from elsewhere would go into its list: the gap where it would.)
-    pure function filling(i: int) -> bool {
-        return Drag.on && Drag.to >= 0 && Drag.into == "installed" + i && Drag.list != "installed" + i;
+    property <length> content-height: max(root.height, root.phone ? root.height : root.pane-y + root.pane-height + 12px);
+    // A drag in PARTY's slots (a slot of its own, `slots-on`; a library's row, `slots-filling`): where it would land
+    // (`Drag.to`); a program among the programs, the slots from there on shifting to leave a gap; a navi or a head onto
+    // a head (`Drag.swap`), that head outlined, none shifting.
+    property <bool> slots-on: Drag.on && Drag.list == "slots";
+    property <bool> slots-filling: Drag.on && Drag.list == "lib.rows";
+    property <int> slots-to: (root.slots-on || root.slots-filling) && Drag.into == "slots" ? Drag.to : -1;
+    pure function shown(i: int) -> int {
+        return root.slots-to < 0 || Drag.swap ? i : root.slots-filling ? (i >= root.slots-to ? i + 1 : i) : i == Drag.from ? root.slots-to : (Drag.from < i && i <= root.slots-to) ? i - 1 : (root.slots-to <= i && i < Drag.from) ? i + 1 : i;
     }
-    // (A list with no program has its Empty row.)
-    pure function section-height(i: int) -> length {
-        return 34px + max(1, PartyView.panels[i].rows.length + (root.filling(i) ? 1 : 0)) * root.pitch;
-    }
-    property <length> partners-height: PartyView.panels.length == 0 ? 0px : root.section-height(0) + (PartyView.panels.length > 1 ? root.section-height(1) : 0px);
-    // (The party's room past its partners: a head each, Empty, as the Patch cards tab's empty slots are.)
-    property <int> empty-slots: max(0, PartyView.room - PartyView.panels.length);
-    property <length> sections-height: root.partners-height + root.empty-slots * 34px;
-    property <length> pane-height: root.head + root.sections-height + (root.sections-height == 0 ? 0px : 12px);
-    // (What the page scrolls, and so the library's height, are as tall as PARTY with a row to spare, whether a drag
-    // has grown a section or not: a list's rows are made anew whenever its height is asked again, and a row held by
-    // the pointer would be let go. Nothing a list's height follows may read `Drag`.)
-    property <length> resting-height: root.head + (PartyView.panels.length == 0 ? 0px : 34px + max(1, PartyView.panels[0].rows.length) * root.pitch) + (PartyView.panels.length > 1 ? 34px + max(1, PartyView.panels[1].rows.length) * root.pitch : 0px) + root.empty-slots * 34px + 12px + root.pitch;
-    property <length> content-height: max(root.height, root.pane-y + root.resting-height + (root.phone ? 12px + 44px : 0px) + 12px);
 
     tab-page := ScrollPage {
         x: 0;
@@ -590,7 +436,7 @@ export component PartyTab inherits Rectangle {
         // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
         bleed: 5px;
         nav: "party-tab.";
-        // (A drag on a program's row moves it: the wheel scrolls.)
+        // (A drag on a slot moves it: the wheel scrolls.)
         mouse-pan: false;
         content-height: root.content-height;
         // ---- The strip: the program or the navi under the cursor, as the Folder tab's lays a chip out.
@@ -737,53 +583,7 @@ export component PartyTab inherits Rectangle {
             }
         }
 
-        // ---- The navis to pick from: a row a version.
-        for team[t] in PartyView.teams: Rectangle {
-            x: 0;
-            y: root.picker-y + t * root.team-height;
-            width: root.width;
-            height: root.team-height;
-            Text {
-                x: 0;
-                y: 0;
-                width: root.phone ? root.width : root.team-width;
-                height: root.phone ? 16px : root.chip-height;
-                text: Caps.of(team.name);
-                color: team.tone;
-                font-family: Theme.display;
-                font-size: 11px;
-                font-weight: Theme.display-bold;
-                letter-spacing: Theme.label-tracking;
-                vertical-alignment: center;
-                overflow: elide;
-            }
-
-            for chip[k] in team.chips: ChipView {
-                x: root.team-width + root.team-gap + mod(k, root.per-row) * (root.chip-width + 6px);
-                y: (root.phone ? 16px : 0px) + floor(k / root.per-row) * (root.chip-height + 6px);
-                width: root.chip-width;
-                height: root.chip-height;
-                chip: chip;
-                nav-index: team.first + k;
-            }
-
-            // (A chip of this row dragged, under the pointer.)
-            if Drag.on && Drag.list == "chip" && Drag.from >= team.first && Drag.from < team.first + team.chips.length: ChipView {
-                x: Drag.x - parent.absolute-position.x - Drag.grab-x;
-                y: Drag.y - parent.absolute-position.y - Drag.grab-y;
-                width: root.chip-width;
-                height: root.chip-height;
-                chip: team.chips[Drag.from - team.first];
-                nav-index: Drag.from;
-                lifted: true;
-                drop-shadow-blur: 10px;
-                drop-shadow-offset-y: 4px;
-                drop-shadow-color: #00000090;
-            }
-        }
-
-        // ---- PARTY, framed: its title, its counts and CLEAR in its head (on a phone, a box of them); its partners'
-        // sections.
+        // ---- PARTY, framed: its title, its counts and CLEAR in its head (on a phone, a box of them); its slots.
         PanelBack {
             x: 0;
             y: root.pane-y;
@@ -836,54 +636,59 @@ export component PartyTab inherits Rectangle {
             text: PartyView.problems;
         }
 
-        for panel[i] in PartyView.panels: SectionView {
-            x: 1px;
-            y: root.pane-y + root.head + (i == 0 ? 0px : root.section-height(0));
-            width: root.pane-width - 2px;
-            height: root.section-height(i);
-            panel: panel;
-            place: i;
-            target: PartyView.marked && i == PartyView.target;
-        }
-
-        for k in root.empty-slots: Rectangle {
-            x: 1px;
-            y: root.pane-y + root.head + root.partners-height + k * 34px;
-            width: root.pane-width - 2px;
-            height: 34px;
-            background: Theme.raised;
-            Rectangle {
-                y: parent.height - 1px;
-                height: 1px;
-                background: Theme.line;
-            }
-
-            Text {
-                x: 12px + 32px + 12px;
-                text: @tr("Empty");
-                color: Theme.dim;
-                font-family: Theme.body;
-                font-size: Theme.row-name-size;
-                font-weight: 400;
-                vertical-alignment: center;
+        slots := ListView {
+            x: 4px;
+            y: root.pane-y + root.head;
+            width: root.pane-width - 8px;
+            height: root.pane-height - root.head - 4px;
+            nav: "slots";
+            count: PartyView.slots.length;
+            row-height: Theme.list-row;
+            gap: Theme.list-gap;
+            // (A drag on a slot moves it: the wheel scrolls.)
+            mouse-pan: false;
+            for at in slots.shown: SlotView {
+                property <int> index: slots.first + at;
+                y: self.index * slots.pitch;
+                width: slots.row-width;
+                height: slots.row-height;
+                slot: PartyView.slots[self.index];
+                nav-index: self.index;
+                chosen: self.index == PartyView.slot;
+                dy: (root.shown(self.index) - self.index) * slots.pitch;
+                gone: root.slots-on && self.index == Drag.from && !Drag.removing;
             }
         }
 
-        // ---- The library, open beside it (a phone's, a sheet a button opens); a partner's program dragged over it is
-        // taken out, let go there.
+        // (Where what is dragged would land: a gap among the programs, the slots from there on shifted; the head it
+        // would go in or trade places with, outlined.)
+        DropGap {
+            x: slots.x;
+            y: slots.y + root.slots-to * slots.pitch - slots.scroll;
+            width: slots.row-width;
+            height: Theme.list-row;
+            visible: root.slots-to >= 0 && (root.slots-filling || Drag.swap);
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        // ---- The library of what the slot takes, open beside it (a phone's, a sheet a button opens); what is dragged
+        // from PARTY over it is taken out, let go there.
         if !root.phone: Rectangle {
             x: root.pane-width + 24px;
             y: root.pane-y;
             width: root.width - self.x;
-            height: max(0px, root.content-height - self.y);
-            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them.)
+            height: root.pane-height;
+            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them: LIBRARY,
+            // whichever it lists; the user: "instead of the NAVIS heading it should still say LIBRARY in the search
+            // pane". Its search's placeholder says what it lists.)
             LibraryHead {
                 x: 0;
                 y: 0;
                 width: parent.width;
                 in-library: PartyView.in-library;
                 search: PartyView.search;
-                placeholder: @tr("Search programs");
+                placeholder: PartyView.navis-shown ? @tr("Search navis") : @tr("Search programs");
                 sort: PartyView.sorts[PartyView.sort];
                 descending: PartyView.descending;
             }
@@ -893,10 +698,7 @@ export component PartyTab inherits Rectangle {
                 y: 52px;
                 width: parent.width - self.x;
                 height: parent.height - self.y;
-                rows: PartyView.rows;
-                nav: "lib.rows";
-                removable: false;
-                draggable: PartyView.marked;
+                draggable: true;
             }
 
             RemoveTarget {
@@ -915,56 +717,43 @@ export component PartyTab inherits Rectangle {
             x: 0;
             y: root.pane-y + root.pane-height + 12px;
             width: root.width;
-            visible: root.phone && PartyView.marked;
-            nav: root.phone && PartyView.marked ? "programs" : "";
+            visible: root.phone;
+            nav: root.phone ? "library" : "";
             text: Caps.of(@tr("Library"));
         }
 
-        // (The program dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
-        // library, where let go it is taken out; a library's one faint until it is over a partner.)
-        // (A library's row held at most half its width from where it was pressed, as the Patch cards tab's: it is the
-        // narrower.)
-        Rectangle {
-            x: Drag.x - root.absolute-position.x - (Drag.list == "lib.rows" ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
+        // (What is dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
+        // library, where let go it is taken out; a library's row faint until it is over PARTY's slots, held at most half
+        // its width from where it was pressed, as the Patch cards tab's.)
+        lifted := Rectangle {
+            property <PartySlot> from: PartyView.slots[max(0, Drag.from)];
+            property <bool> head: root.slots-on && self.from.kind == PartySlotKind.head;
+            property <PartyRow> held: root.slots-filling ? PartyView.rows[max(0, Drag.from)] : self.from.row;
+            x: Drag.x - root.absolute-position.x - (root.slots-filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
             y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: root.pane-width;
+            width: root.pane-width - 8px;
             height: Theme.list-row;
-            visible: Drag.on && (Drag.list == "lib.rows" || Drag.list == "installed0" || Drag.list == "installed1");
-            opacity: Drag.list == "lib.rows" && Drag.to < 0 ? 0.7 : Drag.removing ? 0.6 : 1;
+            visible: root.slots-filling || root.slots-on;
+            opacity: Drag.removing ? 0.6 : root.slots-filling && root.slots-to < 0 ? 0.7 : 1;
             background: Theme.raised;
             border-width: 1px;
             border-color: Drag.removing ? Theme.bad : Theme.cursor;
             drop-shadow-blur: 10px;
             drop-shadow-offset-y: 4px;
             drop-shadow-color: #00000090;
-            property <PartyRow> held: Drag.list == "lib.rows" ? PartyView.rows[Drag.from] : Drag.list == "installed1" ? PartyView.panels[1].rows[Drag.from] : PartyView.panels[0].rows[Drag.from];
-            // (Why it can't go in where it is.)
-            ProgramLine {
-                row-data: { name: parent.held.name, note: parent.held.note, why: PartyView.drag-why, blocks: parent.held.blocks, tone: parent.held.tone, bad: parent.held.bad };
+            if lifted.head: HeadLine {
+                slot: lifted.from;
             }
-        }
-
-        // (A partner's head dragged, under the pointer: raised, a line in the cursor's color.)
-        if Drag.on && Drag.list == "target" && Drag.from >= 0 && Drag.from < PartyView.panels.length: Rectangle {
-            x: Drag.x - root.absolute-position.x - Drag.grab-x;
-            y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: root.pane-width - 2px;
-            height: 34px;
-            background: Theme.raised;
-            border-width: 1px;
-            border-color: Theme.cursor;
-            drop-shadow-blur: 10px;
-            drop-shadow-offset-y: 4px;
-            drop-shadow-color: #00000090;
-            PartnerHead {
-                panel: PartyView.panels[Drag.from];
+            // (Why it can't go in where it is.)
+            if !lifted.head: ProgramLine {
+                row-data: { name: lifted.held.name, note: lifted.held.note, why: PartyView.drag-why, blocks: lifted.held.blocks, tone: lifted.held.tone, bad: lifted.held.bad, face: lifted.held.face, version: lifted.held.version };
             }
         }
     }
 }
 
-// What the Party tab opens over the window: on a phone, the library as a sheet from the bottom. Its controls' names begin
-// with `lib.`: while it is open the keys reach nothing else.
+// What the Party tab opens over the window: on a phone, the slot's library as a sheet from the bottom. Its controls'
+// names begin with `lib.`: while it is open the keys reach nothing else.
 export component PartyOverlay inherits Rectangle {
     property <length> sheet-height: min(self.height - 72px, 660px);
     arrive := Tween { }
@@ -1009,7 +798,7 @@ export component PartyOverlay inherits Rectangle {
             width: parent.width - 32px;
             in-library: true;
             search: PartyView.search;
-            placeholder: @tr("Search programs");
+            placeholder: PartyView.navis-shown ? @tr("Search navis") : @tr("Search programs");
             sort: PartyView.sorts[PartyView.sort];
             descending: PartyView.descending;
         }
@@ -1019,9 +808,6 @@ export component PartyOverlay inherits Rectangle {
             y: 48px + 52px;
             width: parent.width - 32px;
             height: parent.height - self.y - 8px;
-            rows: PartyView.rows;
-            nav: "lib.rows";
-            removable: false;
             draggable: false;
         }
     }
