@@ -335,10 +335,7 @@ handler above). Which handler sees it decides the path:
     the record's +4 isn't 0xFF.
   - The DS resolves the navi object from the side (0x020987A8), where the GBA stored a pointer.
 - **Live** (in battle): the live pause handler starts **action 0x59**, the DS's own copy of the same sequence with
-  its own dimming (battle flag 4). Its steps are 0x0202C690 (land), 0x0202C760 (change; it counts the switch and
-  updates the panel) and 0x0202C8F8 (settle; it clears the dimming and calls the Double Attack launcher at once).
-  Its steps weren't read in the detail of the paused path's below. They are presumably the same: the change step
-  also keeps the outgoing navi and emotion in +0x30/+0x38 (0x0202C788, 0x0202C790).
+  its own dimming. Its steps (table 0x020D9B44) are below, after the paused path's.
 
 The paused path's steps are rewritten from the GBA's. The step tables are 0x020D9B1C (change) and 0x020D9B28
 (knockout); BRBE's are 0x0802CAF0 and 0x0802CD10. Action 0x59's table is 0x020D9B44.
@@ -368,6 +365,31 @@ The paused path's steps are rewritten from the GBA's. The step tables are 0x020D
 **Settle** (0x0202C130, 21 ticks, new): it clears AIData +0x48 0x01409800 and +0x44 0x00100600, and ends in the
 **Double Attack trigger** (0x02042E74, §5). The trigger sets AIData +0x44 bit 0x02000000. The live handler then
 starts action 0x5C, which dims and calls the launcher.
+
+**Action 0x59, the in-battle swap** (read). It is the paused path's sequence with these differences:
+- **Land** (0x0202C690), 20 ticks:
+  - It **sets battle flag 4** (dimming), so the battle stops around the swap.
+  - Then, as the paused land: the white palette, effect 3, sound 0x8D, flags 0x101C41/0x110 cleared,
+    animation 0, the aura call, collision region 1.
+  - It also stops sounds 0x1B–0x1E (0x02018F08) and channels 1 and 2.
+  - It plays the incoming navi's music (0x0200102C: DS music, ignored) and its voice (0x02098ED0) for the member
+    in AIData +0x72. There is none of the paused land's turn and slot conditions on the voice; the voice routine's
+    own checks remain.
+- **Change** (0x0202C760, one tick):
+  - Soul Unison ends (+0x2C = 0), and anger and statuses clear (`sub_801A7F4`). AIData +0x48 gets 0x4000.
+  - The outgoing navi and its emotion go to +0x30/+0x38.
+  - The HP goes to +0x40, and the NaviStats go to the outgoing member's block (its +0x58).
+  - The incoming member is **AIData +0x72** (the slot the request named), not found by navi number. Its block
+    is copied into NaviStats.
+  - The panel's button and pip are updated (0x02036EEC, twice), and **the switch is counted** (0x02036E48).
+  - A team navi gets emotion 0x80. Then come the sprite and the form (`sub_800FC9E` with +0x4C), statuses
+    cleared, HP and max HP from the block, the HUD (`sub_801E0D0`, `sub_801DBD4`), the GBA's resets, 0x02098804
+    and the mugshot.
+  - The incoming navi is kept in +0x34.
+- **Settle** (0x0202C8F8), 21 ticks:
+  - It clears AIData +0x48 0x01409800 (0x1000 included), +0x44 0x00100600, flag2 0x104 and **battle flag 4**.
+  - It calls the **Double Attack launcher** directly (0x02042DC0: outgoing, incoming, outgoing emotion), resets
+    the mugshot and leaves the attack state.
 
 **New navi actions:** the DS's action table (0x020E5C08) matches the GBA's through 0x58 and adds:
 - 0x59: 0x0202C67C, the in-battle swap;
