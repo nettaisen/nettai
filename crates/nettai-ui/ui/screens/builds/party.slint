@@ -15,6 +15,7 @@ import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Shake } from "../../motion.slint";
+import { VersionTag, VersionMark } from "../../build.slint";
 
 // A partner's card: its face, name and HP (its programs' bonus in), the blocks its programs fill of its gauge, each
 // in its program's color (a NaviCust program's colors: `crate::builds::grid::PALETTE`). `there` off: no partner yet.
@@ -29,6 +30,8 @@ export struct PartnerCard {
     tones: [color],
     joins: [bool],
     bad: bool,
+    // The version the navi is one's own (a team navi's team: the builds data's group), marked after its name.
+    version: VersionTag,
 }
 
 // A program in a pane: its name, its blocks in its color, its cost; in PROGRAMS a note (why it can't go in:
@@ -48,6 +51,7 @@ export struct PartyDetail {
     there: bool,
     face: image,
     name: string,
+    version: VersionTag,
     blocks: int,
     tone: color,
     facts: string,
@@ -175,10 +179,11 @@ component CardView inherits Rectangle {
         color: touch.has-hover || touch.focused ? Theme.cursor : Theme.muted;
     }
 
-    Text {
+    property <length> name-room: root.width - (root.card.there ? root.text-x : 12px) - 12px;
+    card-name := Text {
         x: root.card.there ? root.text-x : 12px;
         y: 24px;
-        width: parent.width - self.x - 12px;
+        width: max(0px, root.name-room - (card-version.width > 0 ? card-version.width + 6px : 0px));
         height: 20px;
         text: root.card.there ? root.card.name : @tr("+ Add a partner");
         color: !root.card.there ? (touch.has-hover || touch.focused ? Theme.cursor : Theme.text) : root.card.bad ? Theme.bad : Theme.text;
@@ -187,6 +192,14 @@ component CardView inherits Rectangle {
         font-weight: 700;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    card-version := VersionMark {
+        x: card-name.x + min(card-name.width, card-name.preferred-width) + 6px;
+        y: card-name.y + (card-name.height - self.height) / 2;
+        visible: root.card.there;
+        tag: root.card.version;
+        short: card-name.preferred-width + 6px + self.natural-width > root.name-room;
     }
 
     Text {
@@ -384,10 +397,10 @@ export component PartyTab inherits Rectangle {
             tone: PartyView.detail.tone;
         }
 
-        Text {
+        detail-name := Text {
             x: 104px;
             y: root.top + 19px;
-            width: root.width / 2 - 104px;
+            width: max(0px, root.width / 2 - 104px - (detail-version.width > 0 ? detail-version.width + 6px : 0px));
             height: 20px;
             visible: !Theme.phone;
             text: PartyView.detail.name;
@@ -397,6 +410,13 @@ export component PartyTab inherits Rectangle {
             font-weight: 700;
             vertical-alignment: center;
             overflow: elide;
+        }
+
+        detail-version := VersionMark {
+            x: detail-name.x + min(detail-name.width, detail-name.preferred-width) + 6px;
+            y: detail-name.y + (detail-name.height - self.height) / 2;
+            visible: !Theme.phone;
+            tag: PartyView.detail.version;
         }
 
         Refusal {

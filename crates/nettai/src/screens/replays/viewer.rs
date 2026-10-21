@@ -493,7 +493,7 @@ impl Watching {
                     MenuItem::Side => if self.side() == 0 { view.get_p1() } else { view.get_p2() }.to_string().into(),
                     _ => Default::default(),
                 };
-                (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed | MenuItem::Export), value })
+                (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed | MenuItem::Export), value, ..Default::default() })
             })
             .collect()
     }

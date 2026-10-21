@@ -149,6 +149,7 @@ pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, hp_word
             Some(nettai_ui::SheetPartner {
                 face: kit.pictures.navi(navi),
                 name: names.navi(navi).into(),
+                version: kit.version_tag_of(names, Registry::Navi, &nettai_match::ruleset::Item::of(navi.0)),
                 hp: hp(checked, navi).map(|h| hp_word(h as i32)).unwrap_or_default(),
                 used: b.as_ref().map_or(0, |b| b.count.used as i32),
                 gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),

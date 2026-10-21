@@ -139,6 +139,7 @@ impl Party {
                         hp: p.navi.and_then(|n| Party::hp(draft, n)).map(|hp| view.invoke_hp_word(hp as i32)).unwrap_or_default(),
                         used: b.as_ref().map_or(0, |b| b.count.used as i32),
                         gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),
+                        version: p.navi.map(|n| words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0))).unwrap_or_default(),
                         tones: ModelRc::new(VecModel::from(tones)),
                         joins: ModelRc::new(VecModel::from(crate::builds::party::joins(&content, p, b.as_ref()))),
                         bad: !Party::problems(draft, i).is_empty(),
@@ -223,7 +224,7 @@ impl Party {
                     Some(n) => {
                         let b = budgets.get(i).cloned().flatten();
                         let facts: Vec<String> = [Party::hp(draft, n).map(|hp| view.invoke_hp_word(hp as i32).to_string()), b.map(|b| format!("{}/{}", b.count.used, b.count.limit))].into_iter().flatten().collect();
-                        PartyDetail { there: true, face: draft.kit.pictures.navi(n), name: words.names.navi(n).into(), facts: facts.join(" · ").into(), fault: fault(i).into(), ..Default::default() }
+                        PartyDetail { there: true, face: draft.kit.pictures.navi(n), name: words.names.navi(n).into(), version: words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0)), facts: facts.join(" · ").into(), fault: fault(i).into(), ..Default::default() }
                     }
                     None => PartyDetail::default(),
                 },
@@ -281,7 +282,8 @@ impl Party {
                     let other = mine != Some(n) && partners.iter().any(|p| p.navi == Some(n));
                     let allowed = draft.allows(FIELD, n.0);
                     let value = if !allowed { say.invoke_not_allowed_here() } else if other { view.invoke_in_party() } else { Default::default() };
-                    (words.names.navi(n), PickMark { check: mine == Some(n), dim: !allowed || other, line: false, value })
+                    let tag = words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0));
+                    (words.names.navi(n), PickMark { check: mine == Some(n), dim: !allowed || other, line: false, value, tag })
                 })
                 .collect()
         });

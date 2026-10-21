@@ -127,6 +127,7 @@ export struct SheetPartner {
     gauge: int,
     tones: [color],
     joins: [bool],
+    version: VersionTag,
 }
 
 export struct BuildSheet {
@@ -859,9 +860,10 @@ export component BuildOverview inherits Rectangle {
             image-rendering: pixelated;
         }
 
-        Text {
+        // (Its name, its version's mark after it: a square of its color where the two don't fit.)
+        partner-name := Text {
             x: 38px;
-            width: max(0px, parent.width - 38px - 36px - 4px - partner.gauge * 5px - 4px - 28px);
+            width: max(0px, parent.width - 38px - 36px - 4px - partner.gauge * 5px - 4px - 28px - (partner-version.width > 0 ? partner-version.width + 4px : 0px));
             text: partner.name;
             color: Theme.text;
             font-family: Theme.body;
@@ -869,6 +871,13 @@ export component BuildOverview inherits Rectangle {
             font-weight: 600;
             vertical-alignment: center;
             overflow: elide;
+        }
+
+        partner-version := VersionMark {
+            x: partner-name.x + min(partner-name.width, partner-name.preferred-width) + 4px;
+            y: (parent.height - self.height) / 2;
+            tag: partner.version;
+            short: partner-name.preferred-width + 4px + self.natural-width > max(0px, parent.width - 38px - 36px - 4px - partner.gauge * 5px - 4px - 28px);
         }
 
         Text {
