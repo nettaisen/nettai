@@ -546,6 +546,12 @@ pub enum RulesHook {
     /// its party supports' turn flags start over, 0x02003B98). Its result
     /// is unused.
     FightStarted,
+    /// `custom_hold(side)`: a party battle's custom screen was asked for in
+    /// the fight, each side, side 0 first (EXE5 DS's fighting state 0x24,
+    /// 0x0208E1F8, before the reversions): the rules may act (EXE5 DS's
+    /// Meddy's HealPulse) and answer the ticks they hold the flow; the
+    /// longest answer holds it (none, it goes on at once).
+    CustomHold,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -726,6 +732,7 @@ impl RulesHook {
             RulesHook::MicHeard => "mic_heard",
             RulesHook::FightTick => "fight_tick",
             RulesHook::FightStarted => "fight_started",
+            RulesHook::CustomHold => "custom_hold",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
@@ -748,7 +755,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 62] = [
+    pub const ALL: [RulesHook; 63] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -789,6 +796,7 @@ impl RulesHook {
         RulesHook::MicHeard,
         RulesHook::FightTick,
         RulesHook::FightStarted,
+        RulesHook::CustomHold,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,

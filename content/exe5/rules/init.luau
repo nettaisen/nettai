@@ -22,6 +22,7 @@ local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
 local colonel_support = require("./navis/colonel/support")
 local gyroman_support = require("./navis/gyroman/support")
+local meddy_support = require("./navis/meddy/support")
 local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local protoman_support = require("./navis/protoman/support")
@@ -419,6 +420,8 @@ local rules: Rules = {
             tomahawkman_support.tick(side)
         end,
         fight_started = party.fight_started,
+        -- A custom screen asked for in a party battle's fight: Meddy's HealPulse (navis/meddy/support).
+        custom_hold = meddy_support.custom_hold,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
         -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).

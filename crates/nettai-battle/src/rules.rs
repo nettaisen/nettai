@@ -771,6 +771,15 @@ impl Battle {
         self.call_rules(side, RulesHook::NaviHitShown, Some(navi), None, None);
     }
 
+    /// The rules' `custom_hold(side)`: the ticks they hold the flow before
+    /// the custom screen (0 when they don't answer).
+    pub(crate) fn rules_custom_hold(&mut self, side: u8) -> u16 {
+        match self.call_rules(side, RulesHook::CustomHold, None, None, None) {
+            Some(Value::Int(n)) => n.clamp(0, 0x7FFF) as u16,
+            _ => 0,
+        }
+    }
+
     /// The rules' `navi_tick(side, navi)`.
     pub(crate) fn rules_navi_tick(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::NaviTick, Some(navi), None, None);
