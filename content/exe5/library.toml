@@ -38,8 +38,6 @@ navicust_programs = [
     "rush",
     "beat",
     "tango",
-    "megavirs",
-    "gigavirs",
     "attck-1",
     "speed-1",
     "charge-1",

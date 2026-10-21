@@ -224,7 +224,8 @@ use nettai_content_api::{Registry, Value};
 /// entries (id 0) are left out, the others kept in order: the rules' setup's
 /// `navicust_programs`, `{ program, color, x, y, rotation, compressed }`
 /// each, the color its variant's name. (The board, the save's ExpMemry
-/// [`crate::save::Save::expansions`], is `navicust_expansions`.)
+/// [`crate::save::Save::expansions`], is `navicust_expansions`.) A part of a
+/// program nettai doesn't have is left out ([`navicust_dropped`]).
 pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<Vec<Fact<'c>>, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
@@ -248,6 +249,21 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compress
         ]));
     }
     Ok(parts)
+}
+
+/// The programs nettai doesn't have that a save's NaviCust list holds
+/// (compat's `not_in_nettai`, which [`navicust`] drops), each once, in the
+/// list's order.
+pub fn navicust_dropped<'a>(compat: &'a Compat, list: &[u8]) -> Vec<&'a str> {
+    let mut dropped = Vec::new();
+    for e in list.chunks_exact(8) {
+        if let Some(key) = compat.navicust_dropped(e[0])
+            && !dropped.contains(&key)
+        {
+            dropped.push(key);
+        }
+    }
+    dropped
 }
 
 /// A save's patch cards (each card's number and whether it is switched on,
