@@ -45,6 +45,25 @@
 // a second.
 import init, * as nettai from "./nettai_web.js";
 
+// The canvas's size in device pixels, as winit reads it (`devicePixelContentBoxSize`), agrees with the pointer's
+// place, which winit takes as the CSS place times `devicePixelRatio`: where the browser's size doesn't (its device
+// emulation, DevTools' device toolbar among it, gives the CSS size there), the CSS size times the ratio in its place,
+// so a tap lands where it is drawn. (Elsewhere the browser's own, exact where the ratio isn't whole.)
+const exact = Object.getOwnPropertyDescriptor(ResizeObserverEntry.prototype, "devicePixelContentBoxSize");
+if (exact?.get) {
+  Object.defineProperty(ResizeObserverEntry.prototype, "devicePixelContentBoxSize", {
+    configurable: true,
+    get() {
+      const sizes = exact.get.call(this);
+      const device = sizes?.[0], css = this.contentBoxSize?.[0], ratio = window.devicePixelRatio || 1;
+      if (!device || !css) return sizes;
+      const [inlineSize, blockSize] = [css.inlineSize * ratio, css.blockSize * ratio];
+      if (Math.abs(device.inlineSize - inlineSize) <= 1.5 && Math.abs(device.blockSize - blockSize) <= 1.5) return sizes;
+      return [{ inlineSize: Math.round(inlineSize), blockSize: Math.round(blockSize) }];
+    },
+  });
+}
+
 const shim = new URL("./nettai_web.js", import.meta.url).href;
 // (The app's threads load the same module: nettai-platform's `thread` asks this.)
 globalThis.nettaiShim = shim;
