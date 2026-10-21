@@ -7,11 +7,12 @@
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
-import { Shell, Page, PadButton, Picture } from "../shell.slint";
+import { Shell, Page, PadButton, Picture, PartyHud } from "../shell.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
 import { BuildSheet, BuildOverview } from "../build.slint";
 import { InputDisplay } from "../inputs.slint";
+import { PartyStrip } from "battle.slint";
 
 // A replay's row in the list.
 export struct ReplayRow {
@@ -124,6 +125,10 @@ export global ReplaysView {
     in property <length> inset-y;
     in property <length> inset-width;
     in property <length> inset-height;
+    // A party battle's parties, as a battle shows its player's beside it (`PartyStrip`): the console shown's side's,
+    // and the other side's while its picture is on in the corner (each not shown where its side has no partners).
+    in property <PartyHud> party;
+    in property <PartyHud> other-party;
     // The viewer's controls are shown over the picture (docs/design/app-ui.md §2.90): the app says when (an input
     // lately, paused or at the end, a setting taken, the builds, the export, the ⋯ menu or the popup up next open;
     // always on a phone). The pointer resting on the transport holds them too.
@@ -1561,6 +1566,25 @@ component ViewerPage inherits Rectangle {
             source: ReplaysView.inset;
             image-rendering: pixelated;
         }
+    }
+
+    // (The parties: the console shown's side's on the field's foot at the picture's left, where nothing of the battle
+    // is drawn, as a battle's is; the other side's over its picture in the corner.)
+    property <length> picture-left: Shell.picture-room-x + Shell.picture-x;
+    property <length> picture-bottom: Shell.picture-room-y + Shell.picture-y + Shell.picture-height;
+    property <length> foot: Shell.picture-height * 10 / 160;
+    PartyStrip {
+        x: root.picture-left + 16px;
+        y: root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
+        visible: ReplaysView.party.shown && Shell.picture-shown && !root.phone;
+        party: ReplaysView.party;
+    }
+
+    other-strip := PartyStrip {
+        x: Shell.picture-room-x + ReplaysView.inset-x + ReplaysView.inset-width - self.width;
+        y: Shell.picture-room-y + ReplaysView.inset-y - self.height - 4px;
+        visible: ReplaysView.other-party.shown && ReplaysView.inset-on && Shell.picture-shown && !root.phone;
+        party: ReplaysView.other-party;
     }
 
     InputDisplay {

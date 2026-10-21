@@ -271,7 +271,9 @@ word), the left the DS's Y and the right its X. The panel follows the DS's (`par
 A button with no member does nothing; what the battle refuses (the round's limit, a member at 0 HP) it refuses with
 its own sound. The DS's touch on a button repeats while held; a phone's button here asks once a press, as a key does.
 Practice's dummy on a second pad has no switches. The microphone the DS hears is wired to nothing (the user). A
-replay's viewer shows no party.
+replay's viewer shows the parties too (`screens/replays/viewer.rs`, from the battle it shows; on a desktop): the console
+shown's side's on the field's foot at the picture's left, as a battle's, and the other side's over its picture in the
+corner while that is on; a replay's strips name no controls.
 
 **The battle's music** (`music.rs`; docs/design/app-ui.md §2.29). The user: "you should also allow for
 selectable battle themes (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle,
