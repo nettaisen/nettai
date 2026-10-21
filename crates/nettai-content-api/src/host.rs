@@ -410,6 +410,11 @@ pub enum RulesHook {
     /// EXE6's dark chips worsen the user's HP bug (`sub_800B79A`). Its result
     /// is unused.
     ChipPrepared,
+    /// `chip_ready(side, navi, chip)`: a chip's use, prepared, passed the
+    /// rules' checks (`chip_cost`, `chip_check`), before its action is
+    /// chosen: `chip` the chip it uses (EXE5 DS's MegaMan's chip voice,
+    /// 0x020070D6). Its result is unused.
+    ChipReady,
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
@@ -740,6 +745,7 @@ impl RulesHook {
             RulesHook::FightStarted => "fight_started",
             RulesHook::CustomHold => "custom_hold",
             RulesHook::OpponentChip => "opponent_chip",
+            RulesHook::ChipReady => "chip_ready",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
@@ -762,7 +768,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 64] = [
+    pub const ALL: [RulesHook; 65] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -805,6 +811,7 @@ impl RulesHook {
         RulesHook::FightStarted,
         RulesHook::CustomHold,
         RulesHook::OpponentChip,
+        RulesHook::ChipReady,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,

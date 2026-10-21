@@ -249,6 +249,9 @@ named_fields! {
         AttackElement = "attack_element", U8, rw;
         /// The attack's damage (with its flag bits).
         AttackDamage = "attack_damage", U16, rw;
+        /// The attack's bonus from its hand entry (AIAttackVars+6: the
+        /// Atk+ and charge bonuses), read-only.
+        AttackExtra = "attack_extra", U16, ro;
         /// The attack's hit parameter (its hitbox's counter byte).
         HitParam = "hit_param", U16, rw;
         /// The attack's variant (AIAttackVars+3), as the anti-damage

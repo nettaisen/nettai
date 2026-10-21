@@ -233,4 +233,87 @@ function party_support.send(support: Support, navi: Object, x: number, y: number
     return o
 end
 
+-- A support's dimming controller (EXE5 DS's effect objects 0x91, 0x94 and 0x95: Mag-Barr's, Serch-S's and DiceBons'):
+-- the dim, the telop (its chip the spawn names), the navi brought (`bring`, from the controller: its actor's `done`
+-- clears the controller's word for it), the undim once it is gone.
+export type Controller = {
+    kind: Kind,
+    -- The controller for the side's navi `navi`, on its panel, with the damage word; its dimming started (the other
+    -- side can't cut in), its telop `chip`. Its state is the caller's to fill (`ControllerState` and its own).
+    send: (navi: Object, damage: number, chip: Chip) -> Object?,
+    -- What an actor it brought calls as it goes.
+    done: (controller: Object?) -> (),
+}
+
+type ControllerState = { out: boolean }
+
+function party_support.controller(spec: { id: string, state: StateSchema?, bring: (me: Object) -> Object? }): Controller
+    local state: StateSchema = { out = "bool" }
+    for k, v in spec.state or {} do
+        state[k] = v
+    end
+
+    -- Its third action: the navi comes (the controller's word for it set); once it is gone, the undim.
+    local function bring(me: Object)
+        local s = me.state :: ControllerState
+        if me.phase_init == 0 then
+            if spec.bring(me) then
+                s.out = true
+            end
+            me.phase_init = 4
+        end
+        if not s.out then
+            me:set_action(0xC)
+        end
+    end
+
+    local kind = new.kind {
+        id = spec.id,
+        pool = "effect",
+        state = state,
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                dimming.begin(me)
+            elseif l == "update" then
+                local a = me.action
+                if a == 0 then
+                    dimming.dim_screen(me)
+                elseif a == 4 then
+                    dimming.show_telop(me)
+                elseif a == 8 then
+                    bring(me)
+                elseif a == 0xC then
+                    dimming.undim_screen(me)
+                else
+                    error(string.format("%s: action %#x reads past its table", spec.id, a))
+                end
+            else
+                dimming.finish(me)
+            end
+        end,
+    }
+
+    local function send(navi: Object, damage: number, chip: Chip): Object?
+        local o = battle.spawn(kind)
+        if o then
+            o.panel_x, o.panel_y = navi.panel_x, navi.panel_y
+            o.element = 0
+            o.related1 = navi
+            o.alliance, o.flip = navi.alliance, navi.flip
+            o:set_damage_word(damage)
+        end
+        dimming.start(navi.alliance, true, o, navi, { chip = chip })
+        return o
+    end
+
+    local function done(controller: Object?)
+        if controller then
+            (controller.state :: ControllerState).out = false
+        end
+    end
+
+    return { kind = kind, send = send, done = done }
+end
+
 return party_support

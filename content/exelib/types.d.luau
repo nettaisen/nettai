@@ -2106,7 +2106,7 @@ export type NumberManFace = { kind: Kind, spawn: (owner: Object) -> Object? }
 
 -- A die's throw (@exelib/numbrman/dice): its face (1 to 6, or EXE5's 9), its target panel, whether it is NumberMan's
 -- (an attack at navis running while dimmed: its Param1), its HP, its hits' status and hit modifier, its damage word,
--- and the object waiting on it (its state's `busy`, set until it goes).
+-- and the object waiting on it (its state's `busy`, set until it goes; with `slot`, its `dice[slot + 1]`).
 export type DieThrow = {
     face: number,
     target_x: number,
@@ -2117,6 +2117,11 @@ export type DieThrow = {
     hit_mod: number,
     damage: number,
     holder: Object?,
+    slot: number?,
+    -- Its arc never takes the extra tick (EXE5 DS's division routine leaves no quotient's magnitude).
+    exact: boolean?,
+    -- Its face's end puffs it away, no burst (EXE5's +0x6C; its spec's `quiet_puff`).
+    quiet: boolean?,
 }
 
 -- A game's die (@exelib/numbrman/dice): its kind's key and sprite; the explosion it bursts and blows up in, the puff
@@ -2143,6 +2148,8 @@ export type DiceSpec = {
     marker: ((owner: Object, x: number, y: number, ticks: number, style: number, flip: boolean) -> Object?)?,
     keeps_top_bit: boolean?,
     places_itself: boolean?,
+    -- What a quiet die (`DieThrow.quiet`) puffs away in (EXE5's effect row 0x12).
+    quiet_puff: Effect?,
 }
 
 -- A game's die kind, and its spawn by `owner` at `pos`.
