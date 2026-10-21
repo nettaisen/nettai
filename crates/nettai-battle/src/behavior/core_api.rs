@@ -111,6 +111,7 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::AHeld => request::A_HELD,
         RequestFlag::BHeld => request::B_HELD,
         RequestFlag::StunStrike => request::STUN_STRIKE,
+        RequestFlag::Guard => request::GUARD,
         RequestFlag::Revival => request::REVIVAL,
         RequestFlag::FollowUp => request::FOLLOW_UP,
         RequestFlag::SelectSpecial => request::SELECT_SPECIAL,
@@ -520,6 +521,16 @@ impl CoreApi for Battle {
         } else {
             self.round.flags &= !SHAKE_THROUGH_PAUSE;
         }
+    }
+
+    fn rules_flag(&self, bit: u16) -> bool {
+        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
+        self.round.flags & bit != 0
+    }
+
+    fn set_rules_flag(&mut self, bit: u16) {
+        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
+        self.set_flags(bit);
     }
 
     fn set_chips_enabled(&mut self, side: u8, on: bool) {
@@ -1844,6 +1855,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
+            ObjectField::HasChip => Value::Bool(ob.chip.is_some()),
             ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
@@ -1908,6 +1920,7 @@ impl CoreApi for Battle {
                 ob.identity = Some(nettai_content_api::IdentityHandle(h));
             }
             (ObjectField::PreventAnim, FieldValue::U8(x)) => ob.prevent_anim = x,
+            (ObjectField::ChipsHeld, FieldValue::U8(x)) => ob.chips_held = x,
             (ObjectField::Pos, FieldValue::Vec3(p)) => ob.pos = p,
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
             (ObjectField::Related1, FieldValue::Object(r)) => ob.related[0] = r,
@@ -2187,6 +2200,7 @@ impl CoreApi for Battle {
             ActorField::StepInit => i(at.step_init as i64),
             ActorField::AttackElement => i(at.element as i64),
             ActorField::AttackDamage => i(at.damage as i64),
+            ActorField::AttackExtra => i(at.extra as i64),
             ActorField::HitParam => i(at.hit_param as i64),
             ActorField::AttackVariant => i(at.variant as i64),
             ActorField::Charged => i(at.charged as i64),
@@ -2446,8 +2460,8 @@ impl CoreApi for Battle {
         kinds::player::actions::open_counter_window(self, o, ticks);
     }
 
-    fn check_reactive_abort(&mut self, o: ObjectRef) {
-        kinds::player::actions::check_reactive_abort(self, o);
+    fn check_reactive_abort(&mut self, o: ObjectRef, guard: bool) {
+        kinds::player::actions::check_reactive_abort(self, o, guard);
     }
 
     fn spawn_mode9_objects(&mut self, o: ObjectRef) {
@@ -2932,6 +2946,8 @@ impl CoreApi for Battle {
             },
             CollisionField::BarrierHp => c.barrier_hp as i64,
             CollisionField::BarrierPopHitMod => c.barrier_saved_hmf as i64,
+            CollisionField::Bubble => (c.barrier == 8) as i64,
+            CollisionField::BarrierTimer => c.barrier_timer as i64,
         }))
     }
 
@@ -3006,7 +3022,9 @@ impl CoreApi for Battle {
             | CollisionField::Direction
             | CollisionField::Barrier
             | CollisionField::BarrierHp
-            | CollisionField::BarrierPopHitMod => {
+            | CollisionField::BarrierPopHitMod
+            | CollisionField::Bubble
+            | CollisionField::BarrierTimer => {
                 unreachable!("read-only")
             }
         }

@@ -8,9 +8,9 @@
 -- the other side's navi on its own side's area (side 0: an other-navi panel not of side 1; side 1: one of side 1;
 -- 0x0800FF08), bottom row up.
 --
--- After each phase: requests 0x200 and 0x400 (a trap's counter) take over and the invulnerability ends; request
--- 0x80000 (EXE5's no-charge timer's end, 0x0800DBE0) starts its action (the roles' `stun_strike`, EXE5's action
--- 0x49) and the invulnerability ends.
+-- After each phase: requests 0x200 and 0x400 (a trap's counter; the DS's party battle's guard, 0x100000, too) take over
+-- and the invulnerability ends; request 0x80000 (EXE5's no-charge timer's end, 0x0800DBE0) starts its action (the
+-- roles' `stun_strike`, EXE5's action 0x49) and the invulnerability ends.
 --
 -- Not modeled: at the slash, the other player's console shows Slasher's name again (sub_801EB18's counterpart,
 -- presentation only).
@@ -150,8 +150,9 @@ slasher.action = new.action {
         else
             error(string.format("Slasher phase %#x reads past its phase table", step))
         end
-        if me:request("anti_damage_triggered") or me:request("anti_sword_triggered") then
-            me:check_reactive_abort()
+        -- (The DS's checks the party battle's guard too, 0x02046C3A.)
+        if me:request("anti_damage_triggered") or me:request("anti_sword_triggered") or me:request("guard") then
+            me:check_reactive_abort(true)
             vulnerable(me)
         end
         if me:request("stun_strike") then

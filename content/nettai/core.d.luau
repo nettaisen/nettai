@@ -136,6 +136,8 @@ export type Request =
     | "a_held"
     | "b_held"
     | "stun_strike"
+    -- The rules caught a hit for their guard (their `hit_guard`; the role `guard`).
+    | "guard"
     -- The rules hold a navi at 0 HP for their revival (the role `revival`).
     | "revival"
     -- The rules ask for their follow-up action (the role `follow_up`).
@@ -351,6 +353,9 @@ declare extern type Collision with
     barrier: BarrierState
     barrier_hp: number
     barrier_pop_hit_mod: number
+    -- A bubble is its barrier (BblWrap's), and the barrier's timer (a bubble's 0 while it is down; read-only).
+    bubble: boolean
+    barrier_timer: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -419,9 +424,12 @@ declare extern type Object with
     identity: Identity?
     -- Holds an object's sprite (and more, by kind).
     prevent_anim: number
-    -- BattleObject +0x1A (read-only): a player's chips left in its hand as
-    -- the HUD shows them; another actor's own count (EXE5's Jealousy).
+    -- BattleObject +0x1A: a player's chips left in its hand as the HUD shows
+    -- them; another actor's own count (EXE5's Jealousy).
     chips_held: number
+    -- BattleObject +0x2A holds a chip (a player's: its hand's at the cursor;
+    -- read-only).
+    has_chip: boolean
     pos: Vec3
     vel: Vec3
     related1: Object?
@@ -464,6 +472,8 @@ declare extern type Object with
     attack_chip: Chip?
     attack_element: number
     attack_damage: number
+    -- The attack's bonus from its hand entry (the Atk+ and charge bonuses; read-only).
+    attack_extra: number
     -- The attack's hitboxes' counter byte.
     hit_param: number
     -- The attack's variant (AIAttackVars+3), as the anti-damage counters
@@ -754,8 +764,9 @@ declare extern type Object with
     -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
     -- `ticks` (`object_setCounterTime`).
     function open_counter_window(self, ticks: number?): ()
-    -- `sub_801056A`, after each phase of an attack.
-    function check_reactive_abort(self): ()
+    -- `sub_801056A`, after each phase of an attack; with `guard`, the rules' guard's request too (the role `guard`:
+    -- EXE5 DS's Slasher's).
+    function check_reactive_abort(self, guard: boolean?): ()
     -- `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode 9
     -- (the roles' `mode9_attack` and `mode9_actor`): EXE6's DustMan's
     -- `post_init`.
@@ -1376,6 +1387,10 @@ declare battle: {
     -- icons show over it; a status reset takes it out again).
     show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
+    -- The battle's flags word's bits the engine owns none of (0x80 and up): the rules' own, kept for the battle (EXE5
+    -- DS's Mag-Barr's once-a-battle marks, 0x200 and 0x400). `rules_flag` reads one bit, `set_rules_flag` sets it.
+    rules_flag: (bit: number) -> boolean,
+    set_rules_flag: (bit: number) -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
@@ -2255,6 +2270,18 @@ export type RulesSpec = {
         -- A party battle's custom screen was asked for in the fight, each side, side 0 first: the ticks the rules hold
         -- the flow before the reversions (the longest answer holds it; none, it goes on at once).
         custom_hold: ((side: number) -> number?)?,
+        -- The opponent's navi `navi` starts a chip from idle (after the NaviCust supports' interception): true stops it
+        -- (its attack ends).
+        opponent_chip: ((side: number, navi: Object) -> boolean?)?,
+        -- `sub_8010660`: the navi, idle, is at a quarter of its HP or less and no NaviCust support came: true when the
+        -- rules sent something for it (the navi then does nothing else this tick).
+        low_hp: ((side: number, navi: Object) -> boolean?)?,
+        -- `sub_802CEF4`: no trap caught the hit the navi took: true swallows it as a trap does.
+        hit_guard: ((side: number, navi: Object) -> boolean?)?,
+        -- A trap or the rules swallow the hit, its damage still on the navi's collision.
+        hit_swallowed: ((side: number, navi: Object) -> ())?,
+        -- A chip's use, prepared, passed the rules' checks, before its action is chosen.
+        chip_ready: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
         -- are cleared.
         chip_ended: ((side: number, navi: Object) -> ())?,
@@ -3095,6 +3122,9 @@ export type RolesSpec = {
         -- state), after the in-battle switch and before the volley (EXE5's
         -- party battle, the DS's Double Attack after a paused swap).
         follow_up: Action?,
+        -- What a navi's `guard` request starts, as a trap's counter starts: the rules' guard against a hit their
+        -- `hit_guard` caught (EXE5's party battle, the DS's KnightMan's guard).
+        guard: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,

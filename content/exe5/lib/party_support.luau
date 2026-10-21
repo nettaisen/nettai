@@ -39,12 +39,19 @@ export type Spec = {
     wears: ((me: Object) -> ())?,
     -- Its warp out keeps its parts on (MegaMan's, 0x021FF0B5: they come off as it is destroyed).
     warp_keeps_parts: boolean?,
+    -- What its lead-in sets as it starts (ShadowMan's 0x021FEC85: no panel aimed at).
+    started: ((me: Object) -> ())?,
     -- The appearance's ticks and animation (3 if none said), and what it sets as it has appeared (NapalmMan his shots).
     appear_ticks: number,
     appear_anim: number?,
+    -- What it does as it appears, after the sound (KnightMan's 0x021FF18A: a pixel down the field and up).
+    appearing: ((me: Object) -> ())?,
     appeared: ((me: Object) -> ())?,
     -- What its lead-out does as it ends (NapalmMan's timer starts again).
     gone: ((me: Object) -> ())?,
+    -- What its destruction clears besides its member's busy flag (its +0x6C: KnightMan's guard's slot in the party
+    -- block).
+    released: ((me: Object) -> ())?,
     -- Its attack (action 8 on), by action.
     actions: { [number]: (me: Object) -> () },
     -- Its own state beside the shared.
@@ -74,7 +81,10 @@ function party_support.go(me: Object, action: number)
 end
 
 -- 0x021FE605 and its kin: the lead-in, 4 ticks (the bottom screen's button lit on the local side: presentation).
-local function lead_in(me: Object)
+local function lead_in(me: Object, spec: Spec)
+    if me.phase_init == 0 and spec.started then
+        spec.started(me)
+    end
     if party_support.countdown(me, LEAD_TICKS) then
         party_support.go(me, party_support.APPEAR)
     end
@@ -86,6 +96,9 @@ local function appear(me: Object, spec: Spec)
         me.visible = true
         me.anim = spec.appear_anim or ANIM_APPEAR
         battle.play_sound(SOUND_APPEAR)
+        if spec.appearing then
+            spec.appearing(me)
+        end
     end
     if party_support.countdown(me, spec.appear_ticks) then
         if spec.appeared then
@@ -167,7 +180,7 @@ function party_support.make(spec: Spec): Support
         end
         local a = me.action
         if a == party_support.LEAD_IN then
-            lead_in(me)
+            lead_in(me, spec)
         elseif a == party_support.APPEAR then
             appear(me, spec)
         elseif a == party_support.WARP then
@@ -187,6 +200,9 @@ function party_support.make(spec: Spec): Support
     -- 0x021FE5C5: its member no longer busy, its panel and parts given up, freed.
     local function finish(me: Object)
         party_support.release(me)
+        if spec.released then
+            spec.released(me)
+        end
         me:unreserve_panel(me.panel_x, me.panel_y)
         me:remove_parts(me.identity :: Identity)
         me:free()
@@ -231,6 +247,89 @@ function party_support.send(support: Support, navi: Object, x: number, y: number
     party.supports(navi.alliance).busy[member + 1] = true
     o:reserve_panel(x, y)
     return o
+end
+
+-- A support's dimming controller (EXE5 DS's effect objects 0x91, 0x94 and 0x95: Mag-Barr's, Serch-S's and DiceBons'):
+-- the dim, the telop (its chip the spawn names), the navi brought (`bring`, from the controller: its actor's `done`
+-- clears the controller's word for it), the undim once it is gone.
+export type Controller = {
+    kind: Kind,
+    -- The controller for the side's navi `navi`, on its panel, with the damage word; its dimming started (the other
+    -- side can't cut in), its telop `chip`. Its state is the caller's to fill (`ControllerState` and its own).
+    send: (navi: Object, damage: number, chip: Chip) -> Object?,
+    -- What an actor it brought calls as it goes.
+    done: (controller: Object?) -> (),
+}
+
+type ControllerState = { out: boolean }
+
+function party_support.controller(spec: { id: string, state: StateSchema?, bring: (me: Object) -> Object? }): Controller
+    local state: StateSchema = { out = "bool" }
+    for k, v in spec.state or {} do
+        state[k] = v
+    end
+
+    -- Its third action: the navi comes (the controller's word for it set); once it is gone, the undim.
+    local function bring(me: Object)
+        local s = me.state :: ControllerState
+        if me.phase_init == 0 then
+            if spec.bring(me) then
+                s.out = true
+            end
+            me.phase_init = 4
+        end
+        if not s.out then
+            me:set_action(0xC)
+        end
+    end
+
+    local kind = new.kind {
+        id = spec.id,
+        pool = "effect",
+        state = state,
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                dimming.begin(me)
+            elseif l == "update" then
+                local a = me.action
+                if a == 0 then
+                    dimming.dim_screen(me)
+                elseif a == 4 then
+                    dimming.show_telop(me)
+                elseif a == 8 then
+                    bring(me)
+                elseif a == 0xC then
+                    dimming.undim_screen(me)
+                else
+                    error(string.format("%s: action %#x reads past its table", spec.id, a))
+                end
+            else
+                dimming.finish(me)
+            end
+        end,
+    }
+
+    local function send(navi: Object, damage: number, chip: Chip): Object?
+        local o = battle.spawn(kind)
+        if o then
+            o.panel_x, o.panel_y = navi.panel_x, navi.panel_y
+            o.element = 0
+            o.related1 = navi
+            o.alliance, o.flip = navi.alliance, navi.flip
+            o:set_damage_word(damage)
+        end
+        dimming.start(navi.alliance, true, o, navi, { chip = chip })
+        return o
+    end
+
+    local function done(controller: Object?)
+        if controller then
+            (controller.state :: ControllerState).out = false
+        end
+    end
+
+    return { kind = kind, send = send, done = done }
 end
 
 return party_support

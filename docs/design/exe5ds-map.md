@@ -491,32 +491,55 @@ The rest of the mechanics:
 - **SearchMan in a link battle** (0x020044E8) is the same, but fires **on the opponent's chip use**. It is called
   for the other side from the chip-use path (0x020778F4, after the GBA's anti-chip reactions `sub_80106C0`,
   `sub_8010740`), targets the opponent navi, and shares the once flag +0x14.
-- **MagnetMan's Mag-Barr** (in `sub_8010660`'s counterpart 0x02098A84, the hit path):
-  - when the active navi is just hit to HP ≤ max/4, with collision +6 = 0 and MagnetMan available and benched;
+- **MagnetMan's Mag-Barr** (in `sub_8010660`'s counterpart 0x02098A84, the idle navi's low-HP check, after the
+  NaviCust's Tango):
+  - when the active navi is at HP ≤ max/4 and below its stats' HP (NaviStats +0x40), with no barrier (collision +6 = 0), the light test
+    passed and MagnetMan a member who may support and not on the field;
   - once a battle per side (battle flag 0x200 or 0x400);
-  - it dims, shows telop chip 0x186, and T4 0x91 → T1 0x32 MagnetMan (08-05) gives the navi a barrier
-    (`sub_801A7CC`, type 1 at every level) with the barrier visual (`sub_80E0D98`, attachment 0x3A, 10-3C).
-- **ShadowMan** (0x020040C4), in the same path when Mag-Barr doesn't fire:
-  - HP ≤ 1/4, just hit, ShadowMan available and benched; once (+0xF);
-  - he appears on a random own panel (0x02004D84, RNG2) as variant 4 (animation 0x11, 31 ticks), then spawns
-    T4 0x96 nine times, 8 ticks apart, on alternating rows (variants 0–3 from 0x02227184 by RNG2 bits 3–6,
-    weights 6/2/2/6);
-  - what T4 0x96 does is open (it carries no damage).
+  - it dims, shows telop chip 0x186, and T4 0x91 (Serch-S's controller's shape) brings T1 0x32 MagnetMan (08-05)
+    behind the navi: he raises his magnet arm (attachment 0x3A, 10-3C) for 91 ticks; on its 31st tick the navi gets a
+    barrier (`sub_801A7CC`, type 1 at every level: 0x0222722C) and its visual (the old one ended, `sub_80E0D98`); on
+    its 61st, 0x02007BA8 puts the immobilizer (T3 0x3F, 20 ticks, sound 0xFD, running while dimmed) on every enemy
+    body from his column forward (M-ZAN's loop).
+- **ShadowMan** (0x020040C4), in the same path when Mag-Barr doesn't come:
+  - HP ≤ 1/4 and below the stats' HP, the light test, ShadowMan available and benched; once (+0xF, spent before the
+    panel is looked for);
+  - he appears on a panel of his side's area but the navi's (0x02004D84: filters 0x020CC3A8, RNG2) as variant 4,
+    facing as the navi does (appearance 20 ticks, his parts kept on until he is destroyed), readies (animation 0x11,
+    31 ticks), draws one strike kind for all nine (RNG2 bits 3–6 into 0x02227184: weights 6/2/2/6), then strikes nine
+    times, 8 ticks apart (0x021FF2C0), alternately at an enemy-area panel with an enemy body and one without (the
+    other when the turn's kind has none; a panel holding a navi of his own side free of paralysis, confusion,
+    immobilization and blindness is skipped), the panel picked with RNG2 from the far edge back;
+  - T4 0x96 (0x02226504) highlights its panel every other four ticks for 15 ticks, then shows the effect table's row 0
+    in the kind's palette (4, 1, 2, 3) and hits its panel once (region 1, a plain attack at navis, no damage) with
+    the kind's status: confusion 0x22, immobilization 0x42, blindness 0x32 or paralysis 0x12 (0x0222B41C), sound 0x90.
 - **KnightMan's guard:**
-  - when KnightMan is available, benched and above max/4 HP, the navi stands at its area's front edge, and
-    damage is pending (0x02004604; the request is AIData +0x44 0x100000 from 0x02063B8C);
-  - the hit reaction starts **action 0x5B** (0x02049784): +0x48 0x400000, KnightMan (variant 6) in front of the
-    navi for 60 ticks, each blocked hit flashing white with sound 0x6B;
+  - in the hit intake (`sub_802CEF4`'s counterpart 0x02063B00), where no trap caught the hit (0x02063B72): with the
+    navi guarded (AIData +0x48 0x400000) the hit is swallowed; while ToadMan dives (+0x48 0x01000000, his action 8)
+    it isn't; with the guard asked for (AIData +0x44 0x100000) it is; else when 0x02004604 passes (the panel ahead
+    of the navi the other side's, the light test, KnightMan a member who may support with more than a quarter of his
+    maximum HP, not on the field) and the hit hit (flags 0xFF800000) with damage, the guard is asked for and the hit
+    swallowed;
+  - every swallowed hit, a trap's too (0x02063BC2), adds its damage (halved, rounded up, on a holy panel) to the party
+    block's +0x16 (0x020046D4); with KnightMan's guard out (+0x20) it flashes him, and while KnightMan may support the
+    pending damage comes off his member block's HP (to 1 at least) and +0x16 empties;
+  - the trap catch (`sub_801056A`'s counterpart 0x02098960) starts **action 0x5B** (0x02049784) for request 0x100000
+    from idle (0x0207773A) and from Slasher (0x02046C3A), not showing the trap chip's name: while the panel ahead
+    stays the other side's, +0x48 0x400000 for 61 ticks, the navi's animation 0, and KnightMan (variant 6: appearance
+    4 ticks, a pixel down the field and up; his 20 pixels forward land in X's fraction alone) on the navi's panel, the
+    party block's +0x20 (an earlier one told to go); he flashes white with sound 0x6B for each hit swallowed and goes
+    once the navi isn't guarded;
   - it is not once-only;
-  - **the navi takes no damage and KnightMan's member block loses it** (observed: two M-Cannons, MegaMan at full
-    HP, KnightMan 800 → 680 → 560).
+  - observed: two M-Cannons, MegaMan at full HP, KnightMan 800 → 680 → 560.
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
   - NumberMan available and benched;
   - the used chip without +9 bit 1, and the next chip with +9 bit 2.
 
-  It dims, shows telop chip 0x189, and spawns T4 0x95 (0x022264DC); its effect is open.
+  It dims, shows telop chip 0x189, and spawns T4 0x95 (0x022264DC), which brings T1 0x33 NumberMan behind the navi:
+  he throws two dice at the enemy area (navis/numberman/dice_bonus), and the faces of those that land where he aimed,
+  times ten, are added to the next chip's attack.
 - **ToadMan's rescue** (above) shows telop chip 0x187, "HPRecov".
 - **Meddy's HealPulse** (0x02003BD8; the user's name for it), from the DS's own fighting state 0x24 (0x0208E1F8,
   and 0x020A3320 in the other flow): when a custom screen is asked for in the fight (0x0208DEBE: the GBA goes to state
@@ -535,6 +558,12 @@ Seen on the way: the microphone event (0x022261A4) sets event flags 0x2E8/0x2E9 
 netbattle the microphone's level reaches the input record's +9 every 16 frames (127 at full noise), and nothing
 reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave it unwired in nettai.
 
+**Against the recordings** (tools/dslab `supports/`, replayed through exe5-compat's exe5_replay, 2026-10-21): ProtoMan
+and NapalmMan, Colonel, TomahawkMan, MegaMan's Spport, SearchMan (offline), Meddy's HealPulse, ToadMan's rescue,
+Mag-Barr, ShadowMan's ambush, KnightMan's guard and DiceBons match every frame; GyroMan's gust parts at frame 227 by
+the side-fair choice (verify's side_fair_deviations.rs), so what follows it there is unchecked. SearchMan in a link
+battle (`opponent_chip`) has no recording.
+
 **The party block's fields** (0x021B85E8 + side·0x24):
 
 | Field | What it holds |
@@ -551,6 +580,7 @@ reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave i
 | +0x13 | DiceBons used |
 | +0x14 | SearchMan used |
 | +0x15 | the member count |
+| +0x16 | the damage KnightMan's guard has yet to take |
 | +0x18 | a bitmask (open) |
 | +0x1C | GyroMan's object |
 | +0x20 | KnightMan's object |
@@ -1014,7 +1044,7 @@ so no extractor work is planned beyond content rows.
 
 | # | Step | Where | Size | Depends on |
 |---|---|---|---|---|
-| 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (ShadowMan's T4 0x96, DiceBons' T4 0x95, KnightMan's guard's damage, Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
+| 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
 | 2 | **The oracle on melonDS** (done 2026-10-20, tools/dslab): a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
 | 3 | **Recordings** (done 2026-10-20: switches, the limit and NavChg+1/+2, deletions, the twelve Double Attacks, the supports, the rescue; data/traces/lab-exe5ds): party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
 | 4 | **The party in setup and state:** three member blocks a side (replacing `reserves` for EXE5), the party block (busy flags, count, rescue used), the switch counters; snapshot and digest | nettai-battle, nettai-match | M | — |
@@ -1068,7 +1098,7 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 - the party block's +0x18;
 - NaviStats +0x4C (a color variant?);
 - battle mode 6;
-- what ShadowMan's T4 0x96 (observed: no damage) and DiceBons' T4 0x95 do;
+- what BattleState +0x44 + side·2 holds (1 in every recording; DiceBons' second die needs it);
 - the microphone event's trigger offline (a heal through T4 0x93; nothing in a netbattle, §4.7).
 
 ## 10. Reproducing

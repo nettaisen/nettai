@@ -14,6 +14,8 @@
 "party/knockout" = 0x4C
 # ToadMan's rescue (the DS's action 0x5A, 0x02004938: navis/toadman/rescue).
 "toadman/rescue" = 0x5A
+# KnightMan's guard (the DS's action 0x5B, 0x02049784: navis/knightman/guard).
+"knightman/guard/action" = 0x5B
 # A Double Attack's follow-up on the custom screen's switch (the DS's action 0x5C: rules/double_attacks).
 "double-attack-follow-up" = 0x5C
 "engine/hand-off-chip" = 0x41

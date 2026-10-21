@@ -54,8 +54,8 @@ export type Setup = {
 -- The party block's fields the supports keep (0x021B85E8 + side·0x24, docs/design/exe5ds-map.md §4.7): ProtoMan's and
 -- Colonel's spent flags and counters (+0, +1, +6, +7), GyroMan's gust spawned and its object (+2, +0x1C), NapalmMan's,
 -- TomahawkMan's and MegaMan's timers and whether each is set (+4 and +3, +8 and +0xA, +0x10 and +0x12), each member busy
--- while its support acts (+0xC…+0xE), ShadowMan's and SearchMan's spent flags (+0xF, +0x14) and KnightMan's guard
--- (+0x20).
+-- while its support acts (+0xC…+0xE), ShadowMan's and SearchMan's spent flags (+0xF, +0x14), the damage KnightMan's
+-- guard has yet to take (+0x16) and his guard (+0x20).
 export type Supports = {
     protoman_used: boolean,
     protoman_count: number,
@@ -71,6 +71,7 @@ export type Supports = {
     megaman_timer: number,
     megaman_set: boolean,
     searchman_used: boolean,
+    knightman_pending: number,
     gyroman_gust: Object?,
     knightman_guard: Object?,
 }
@@ -266,11 +267,26 @@ end
 
 -- 0x02098E44, as a hit on the side's navi shows (0x02062C40, applyDamageToPlayer's counterpart, on the navi's own
 -- console): MegaMan's hurt voice, while he is the member on the field (the side's NaviStats +0x58, the member's slot,
--- 0). The console draws its RNG1; with 6 or 7 in its low three bits, one of three voices by the damage (under 70, under
--- 150, more: 0x02132044's pairs). The voice is left out, as the switch's are; the draw stays.
+-- 0). The console draws its RNG1; with 6 or 7 in its low three bits, a voice of the damage's tier (under 70, under 150,
+-- more: 0x02132044's rows, three voices each), one drawn again (0x02001100). The voice is left out, as the switch's
+-- are; the draws stay.
 function party.navi_hit_shown(side: number, _navi: Object)
     if party.has_partners(side) and battle.party(side).active == 0 then
-        battle.console_rng_positive(side)
+        if bit32.band(battle.console_rng_positive(side), 7) >= 6 then
+            battle.console_rng_positive(side)
+        end
+    end
+end
+
+-- 0x02098DA0, as a chip's use goes on (0x020070D6, after the light and dark chip check): MegaMan's chip voice, a chip
+-- that deals damage while he is the member on the field, on his own console: one of three voices of the damage's tier
+-- (the attack's damage and bonus: to 80, 139, 200, more; sounds 0x27F on), drawn from its RNG1 (0x02001100). The voice is
+-- left out; the draw stays.
+function party.chip_ready(side: number, _navi: Object, chip: Chip)
+    if party.has_partners(side) and battle.party(side).active == 0 then
+        if chip.flags ~= nil and table.find(chip.flags, "has_damage") ~= nil then
+            battle.console_rng_positive(side)
+        end
     end
 end
 

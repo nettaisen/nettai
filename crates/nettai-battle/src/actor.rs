@@ -86,6 +86,11 @@ pub mod request {
     /// changes set the *state* bit 0x80000 (`status::FORM_CHANGE_SPRITE_HELD`),
     /// not this request.
     pub const STUN_STRIKE: u32 = 0x80000;
+    /// The rules caught a hit for their guard (their `hit_guard`): the role
+    /// `guard`'s action starts from idle as a trap's counter does (the
+    /// DS's request 0x100000, KnightMan's guard, action 0x5B: 0x02063BBC,
+    /// 0x020989E6).
+    pub const GUARD: u32 = 0x0010_0000;
     /// The rules ask for an action of theirs to follow, which the live
     /// request handler starts after a navi switch's and before the volley
     /// (the role `follow_up`, with `status::FOLLOWING_UP`). (The DS's

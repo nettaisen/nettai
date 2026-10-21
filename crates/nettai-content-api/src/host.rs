@@ -410,6 +410,11 @@ pub enum RulesHook {
     /// EXE6's dark chips worsen the user's HP bug (`sub_800B79A`). Its result
     /// is unused.
     ChipPrepared,
+    /// `chip_ready(side, navi, chip)`: a chip's use, prepared, passed the
+    /// rules' checks (`chip_cost`, `chip_check`), before its action is
+    /// chosen: `chip` the chip it uses (EXE5 DS's MegaMan's chip voice,
+    /// 0x020070D6). Its result is unused.
+    ChipReady,
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
@@ -552,6 +557,26 @@ pub enum RulesHook {
     /// Meddy's HealPulse) and answer the ticks they hold the flow; the
     /// longest answer holds it (none, it goes on at once).
     CustomHold,
+    /// `opponent_chip(side, navi)`: the opponent's navi `navi` starts a
+    /// chip from idle (after the NaviCust supports' interception,
+    /// `loc_80F057C`): true stops it (its attack ends; EXE5 DS's SearchMan's
+    /// support in a link battle, 0x020778F4). None answering true: it goes
+    /// on.
+    OpponentChip,
+    /// `low_hp(side, navi)`: the navi, idle, is at a quarter of its HP or
+    /// less and no NaviCust support came for it (`sub_8010660`, EXE5 DS's
+    /// 0x02098A84 after its Tango): true when the rules sent something for
+    /// it (EXE5 DS's Mag-Barr and ShadowMan's ambush), and the navi does
+    /// nothing else this tick.
+    LowHp,
+    /// `hit_guard(side, navi)`: no trap caught the hit the navi took this
+    /// tick (`sub_802CEF4`, EXE5 DS's 0x02063B72): true and the hit is
+    /// swallowed as a trap swallows it (EXE5 DS's KnightMan's guard).
+    HitGuard,
+    /// `hit_swallowed(side, navi)`: a trap or the rules swallow the hit,
+    /// its damage still on the navi's collision (EXE5 DS's 0x02063BC2: what
+    /// KnightMan's guard takes). Its result is unused.
+    HitSwallowed,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -733,6 +758,11 @@ impl RulesHook {
             RulesHook::FightTick => "fight_tick",
             RulesHook::FightStarted => "fight_started",
             RulesHook::CustomHold => "custom_hold",
+            RulesHook::OpponentChip => "opponent_chip",
+            RulesHook::LowHp => "low_hp",
+            RulesHook::HitGuard => "hit_guard",
+            RulesHook::HitSwallowed => "hit_swallowed",
+            RulesHook::ChipReady => "chip_ready",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
@@ -755,7 +785,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 63] = [
+    pub const ALL: [RulesHook; 68] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -797,6 +827,11 @@ impl RulesHook {
         RulesHook::FightTick,
         RulesHook::FightStarted,
         RulesHook::CustomHold,
+        RulesHook::OpponentChip,
+        RulesHook::LowHp,
+        RulesHook::HitGuard,
+        RulesHook::HitSwallowed,
+        RulesHook::ChipReady,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,
