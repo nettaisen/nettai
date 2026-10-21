@@ -220,9 +220,10 @@ pub struct Bindings {
 
 impl Default for Bindings {
     /// The arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT; C and V switch to the
-    /// party panel's left and right buttons' members (EXE5 DS's Y and X: X is B's here). On a pad: the D-pad, the
-    /// south button A, the west button B, the shoulders, Start and Back; the north and east buttons switch, right and
-    /// left (the DS's X is its north button; its Y, the west, is B's here, so the left switch takes the button left).
+    /// party panel's left and right buttons' members (EXE5 DS's Y and X: X is B's here). On a pad, as a Nintendo
+    /// pad's face buttons lie: the D-pad, the east button A, the south button B, the shoulders, Start and Back; the
+    /// west and north buttons switch, left and right (the DS's Y and X; the user: "A should be gamepad east, B should
+    /// be gamepad south, navi change left should be gamepad west, navi change right be gamepad north").
     fn default() -> Bindings {
         Bindings {
             keys: [
@@ -244,13 +245,13 @@ impl Default for Bindings {
                 Button::DPadDown,
                 Button::DPadLeft,
                 Button::DPadRight,
+                Button::East,
                 Button::South,
-                Button::West,
                 Button::LeftShoulder,
                 Button::RightShoulder,
                 Button::Start,
                 Button::Back,
-                Button::East,
+                Button::West,
                 Button::North,
             ],
         }
@@ -278,14 +279,14 @@ impl Bindings {
     }
 
     /// The pad's button that confirms in the menus: the one bound to A, unless that is a direction of the
-    /// D-pad (the menus' own) or bound twice: then the south button.
+    /// D-pad (the menus' own) or bound twice: then the east button (A's at first).
     pub fn confirm_button(&self) -> Button {
-        self.menu_button(keys::A).unwrap_or(Button::South)
+        self.menu_button(keys::A).unwrap_or(Button::East)
     }
 
-    /// The pad's button that goes back in the menus: the one bound to B, else the east button.
+    /// The pad's button that goes back in the menus: the one bound to B, else the south button (B's at first).
     pub fn back_button(&self) -> Button {
-        self.menu_button(keys::B).unwrap_or(Button::East)
+        self.menu_button(keys::B).unwrap_or(Button::South)
     }
 
     /// The pad's button that deletes in the menus (a build, a chip from its slot): the west or the east face
@@ -826,27 +827,28 @@ mod tests {
         assert_eq!(at(&up, KeyCode::ArrowUp), Some(Action::Up));
     }
 
-    /// The pad's buttons follow the bindings too: A's confirms (south at first), B's goes back (west), the face
-    /// button left of those two deletes (east), north is a screen's second action, the shoulders and Start are
+    /// The pad's buttons follow the bindings too: A's confirms (east at first), B's goes back (south), the face
+    /// button left of those two deletes (west), north is a screen's second action, the shoulders and Start are
     /// previous, next and the menu.
     #[test]
     fn the_pads_buttons_follow_the_bindings() {
         let b = Bindings::default();
         let at = |b: &Bindings, button| b.pad_action(button);
-        assert_eq!(at(&b, Button::South), Some(Action::Confirm));
-        assert_eq!(at(&b, Button::West), Some(Action::Back));
-        assert_eq!(at(&b, Button::East), Some(Action::Delete));
+        assert_eq!(at(&b, Button::East), Some(Action::Confirm));
+        assert_eq!(at(&b, Button::South), Some(Action::Back));
+        assert_eq!(at(&b, Button::West), Some(Action::Delete));
         assert_eq!(at(&b, Button::North), Some(Action::Alternate));
         assert_eq!((at(&b, Button::LeftShoulder), at(&b, Button::RightShoulder)), (Some(Action::Previous), Some(Action::Next)));
         assert_eq!(at(&b, Button::Start), Some(Action::Menu));
         assert_eq!(at(&b, Button::DPadUp), Some(Action::Up));
-        let mut east = Bindings::default();
-        east.bind_pad(button_index(keys::B), Button::East);
-        assert_eq!((at(&east, Button::East), at(&east, Button::West)), (Some(Action::Back), Some(Action::Delete)));
-        // A on the D-pad: it moves, and south confirms.
+        // A and B traded (A south, B east): south confirms, east goes back, west still deletes.
+        let mut south = Bindings::default();
+        south.bind_pad(button_index(keys::A), Button::South);
+        assert_eq!((at(&south, Button::South), at(&south, Button::East), at(&south, Button::West)), (Some(Action::Confirm), Some(Action::Back), Some(Action::Delete)));
+        // A on the D-pad: it moves, and east confirms.
         let mut pad = Bindings::default();
         pad.bind_pad(button_index(keys::A), Button::DPadUp);
-        assert_eq!((at(&pad, Button::DPadUp), pad.confirm_button()), (Some(Action::Up), Button::South));
+        assert_eq!((at(&pad, Button::DPadUp), pad.confirm_button()), (Some(Action::Up), Button::East));
     }
 
     /// A key bound to another button's key swaps the two, so every button keeps a key of its own.
@@ -857,8 +859,8 @@ mod tests {
         assert_eq!(b.key(keys::A), KeyCode::KeyX);
         assert_eq!(b.key(keys::B), KeyCode::KeyZ);
         assert_eq!(b.of_key(KeyCode::KeyX), Some(keys::A));
-        b.bind_pad(button_index(keys::B), Button::South);
-        assert_eq!((b.pad[button_index(keys::B)], b.pad[button_index(keys::A)]), (Button::South, Button::West));
+        b.bind_pad(button_index(keys::B), Button::East);
+        assert_eq!((b.pad[button_index(keys::B)], b.pad[button_index(keys::A)]), (Button::East, Button::South));
     }
 
     /// Every bindable key and pad button reads back from its name in the settings' file.

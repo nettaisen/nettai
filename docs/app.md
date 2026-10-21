@@ -193,8 +193,9 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
 player:
 
-- the buttons are bound as the keys are (the navi changes: the east button left, the north right); the defaults are the south button A, the west button B, the shoulders L
-  and R, Start and Back;
+- the buttons are bound as the keys are; the defaults lie as a Nintendo pad's face buttons do (the user: "A should be gamepad east,
+  B should be gamepad south, navi change left should be gamepad west, navi change right be gamepad north"): the east button A, the
+  south button B, the west and north buttons the navi changes left and right (the DS's Y and X), the shoulders L and R, Start and Back;
 - in a practice battle, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
 - the Guide button opens nettai's menu, and in a practice battle the north button starts over.
@@ -2287,10 +2288,10 @@ buttons' type, the cursor on the first, and those from `Shell.picker-apart` on u
 (DELETE).
 
 **Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
-moves, the button bound to A confirms and B's goes back (the south and west buttons until rebound; south and
-east stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
+moves, the button bound to A confirms and B's goes back (the east and south buttons until rebound; east and
+south stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
 previous and next, Start's is the menu (closing a battle's, nothing elsewhere), the face button that is neither
-A's nor B's on the east or west deletes (east until rebound), and north is a screen's second action. The
+A's nor B's on the east or west deletes (west until rebound), and north is a screen's second action. The
 footer's hints show key caps or the pad's buttons, by which was last used: a face button by its place in the
 four, since its letter depends on the pad's maker. They go through the shell's properties (`Shell.key-a` and
 `key-b`, which are Enter and Esc; `pad-a`, `pad-b`, `pad-delete`, the pad's as bound, which
