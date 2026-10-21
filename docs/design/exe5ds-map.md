@@ -1,0 +1,495 @@
+# EXE5 DS against EXE5: the routine map and the party battle
+
+What of the GBA EXE5's battle code Mega Man Battle Network 5: Double Team DS has, and what the DS adds: its
+**Party Battle System** (the DS's TeamBattle, which we call **party battle**: "Team Battle" is the GBA's Battle Chip
+Gate netbattle, exe5-map.md §8), with its **Double Attacks**. The user, 2026-10-20: bring the party battle into
+nettai's EXE5, Double Attacks included; reuse the GBA EXE5 assets, extract nothing from the DS, ignore its music.
+This is step 1: the map and the reading. It ports nothing.
+
+The map is made by the verification workspace's `tools/exe5ds` (`dsmap.py`, README there) from the ROMs alone.
+There is no DS disassembly. The DS's routines are found by discovery and named by their counterparts in the GBA's
+US Team ProtoMan (BRBE). BRBE's are named by EXE6's names where exe5-map.md's map pairs them; `~` marks a similar
+pair, `exe5_` an EXE5 routine with no EXE6 counterpart. Addresses are the US DS's (A5TE) unless said otherwise.
+
+How sure each fact is:
+- **read**: read in code;
+- **observed**: seen on a running console;
+- **open**: not settled.
+
+Nothing here is observed yet: §9 lists what a console should confirm.
+
+## 0. Summary
+
+- **The DS's battle is the GBA's code, relinked.** It is the same Thumb code, assembled again for the DS: the
+  ARM9 holds the engine (flow, objects, collision, the custom screen, the HUD), and overlay 423 holds the battle
+  objects (chips, navis, viruses).
+  - Of BRBE's 3,577 battle-object routines, the DS has 88.7% the same (modulo relocation), 0.5% with other
+    constants, 9.3% similar, 0.3% differing and 1.1% absent.
+  - Of the engine and flow routines (0x0800–0x0802), 45% are the same, 28% similar and 19% absent.
+  - The menus and the field are mostly the DS's own.
+- **What moved is mechanical** (§2):
+  - The DS keeps no toolkit in r10: about 1,100 places call a getter instead.
+  - Sound, DMA and BIOS calls go to ARM code.
+  - Every structure moved in RAM, and the object pools are on the heap.
+  - The pools are larger: 32 actors (the GBA has 16), and records 4 bytes longer (0xDC and 0xCC).
+  - The chip record is 0x28 bytes (the GBA's is 0x2C).
+- **The party battle** (§4):
+  - Each side brings **MegaMan and up to two team navis**, each with its own 0x60-byte NaviStats block.
+  - The player switches **on the custom screen**, with X or Y or the bottom screen's two buttons, up to MegaMan's
+    switch limit (3, up to 5 with the DS-only programs NavChg+1/+2).
+  - The switch is the GBA's navi switch (action 0x1C), with its steps rewritten.
+  - HP is kept per member. Soul Unison ends on the way out. A team navi enters at the normal emotion.
+  - A deleted team navi gives the field back to MegaMan. The side loses when MegaMan is deleted.
+  - Benched members join in: **supports** (seven per-frame handlers) and ToadMan's rescue at 0 HP.
+- **Double Attacks** (§5): switching out of **Full Synchro** to a partner the pair table names starts that
+  pair's Double Attack.
+  - There are twelve, each with a chip record (0x160–0x16B) and a damage row.
+  - (Filled in §5.)
+- **The DS's other battle changes** (§6) are catalogued only. The recommendation: GBA EXE5 plus the DS's party
+  rules.
+- **The oracle** (§7): every RAM address oracle-trace reads for EXE5 has a DS counterpart, the battle's frame
+  routine is 0x0205F970, and the switch rides the link's input packet as a slot number.
+- **The plan** (§8): about ten steps.
+
+## 1. The cartridge and the method
+
+**The cartridge** (`ds.py`, read). The US and Japanese DS ROMs have the same layout:
+- **ARM9:** 0x160D78 bytes at 0x02000000, uncompressed. Its text ends at 0x0215DEE0, where the SDK's autoload
+  data begins.
+- **Autoloads:** the ITCM (0x01FF8000, 0x620 bytes) and the DTCM (0x027C0000, 0x2860 bytes).
+- **Overlays:** 425 of them, all uncompressed, loading at six addresses:
+
+| Load address | Overlays | What |
+|---|---|---|
+| 0x021CE8A0 | 0–244 | small overlays (scripts, by their size) |
+| 0x021CF740 | 245–266 | |
+| 0x021D0600 | 267–407 | |
+| 0x021D2D00 | 408, 409 | data, 0xAEE0 bytes each, differing in 539 bytes; no code calls into them |
+| 0x021DDBE0 | 410–422 | the menus' and screens' code: 413 holds the comm menu's GBA routines, and the bottom screen's battle callbacks are in this slot |
+| 0x021F6860 | 423, 424 | **423 the battle objects** (0x34BE0 bytes); 424 the field's objects |
+
+**Where the GBA's code went** (`dsmap.py where`): 4,275 BRBE routines are found verbatim in the ARM9, 1,964 in
+overlay 423 (BRBE 0x080B8C18–0x0810F4C4, the battle objects), 710 in 424 (BRBE 0x080AD–0x080B7 and 0x0812, the
+field's objects) and almost none elsewhere. The map's view of the battle is the ARM9 + ov408 + ov423; a battle
+runs with ov423 in its slot (its objects' kind tables are the ARM9's pointers into it), and what loads it is not
+read (the overlay-id tables at 0x0215D600 hold the ids by group; the SDK's FS_LoadOverlay caller is unread).
+
+**The method** (`dsmap.py map`) is exe5-map.md §1's, BRBE as the "from" ROM:
+- BRBE's routines come from gba.discover; BRBE's code ends before 0x08150000.
+- The DS's come from a Thumb discovery: BL targets, code pointers and tables of code pointers anywhere in the
+  view's code.
+- **ARM against Thumb.** The DS's ARM code (the SDK and the port's C) is never a counterpart, and a GBA routine
+  rewritten in ARM shows as absent. The table's `arm calls` column counts each DS routine's calls into ARM.
+
+Before comparing, both sides' idioms are normalized, so that relinked code compares the same:
+- a BLX pair (a call into ARM) is a BL;
+- `mov lr, pc; bx rN` is `blx rN`;
+- a BIOS `swi` is a call (the DS calls its own division, 0x02020818);
+- `movs rN, #a; adds rN, #b` is the literal a+b. The DS loads constants over 0xFF as literals. **Sound ids are
+  the GBA's numbers**: BRBE's `movs r0, #0x46; adds r0, #0xFF` is the DS's `ldr r0, =0x145`.
+
+Two further rules:
+- A `consts` pair whose only differences are branches out of the routine (tail calls) is `same`.
+- Pointer tables that two same routines load, when they agree with the rest of the map, outrank a shape pairing.
+  Without this rule the navi switch's settle step was mis-paired: shape alone took the knockout's.
+
+| Status | Meaning |
+|---|---|
+| same | identical instructions modulo relocation (calls, address literals, tail branches) |
+| consts | identical shapes; some immediates or constant literals differ |
+| similar | a counterpart whose shapes align with difflib's ratio ≥ 0.5 (`toolkit` in the notes: only the toolkit rewrite differs) |
+| differs | a counterpart with a ratio below 0.5 |
+| absent | no counterpart found (or rewritten in ARM) |
+
+`same` and `consts` are exact facts about the code; `similar` and `differs` are pairings, to be read with
+`dsmap.py diff`. The Japanese DS (A5TJ) maps the same: its statuses agree with the US DS's for all but five
+routines (three HUD routines, `sub_801E474`, `sub_801E792`, `sub_801EB18`, are the same code in the Japanese
+DS and similar in the US one: the lettering, presumably). Its battle RAM is the US DS's moved −0x72B0
+(0x021Bxxxx) and −0x7260 (0x0216xxxx).
+
+## 2. The map
+
+BRBE's routines by area (the DS's statuses):
+
+| BRBE area | Routines | same | consts | similar | differs | absent |
+|---|---|---|---|---|---|---|
+| battle objects: chips, navis, viruses (0x080B8–0x080EF) | 3,577 | 3,174 (88.7%) | 18 | 334 | 10 | 41 |
+| battle helpers, link (0x080F–0x0811) | 1,714 | 1,560 (91.0%) | 4 | 117 | 4 | 29 |
+| engine, battle flow, objects (0x0800–0x0802) | 2,567 | 1,150 (44.8%) | 88 | 723 | 114 | 492 |
+| menus, field, text (0x0803–0x0809) | 2,510 | 1,190 | 209 | 479 | 22 | 610 |
+| field objects (0x080A–0x080B7) | 886 | 100 | 45 | 78 | 11 | 652 |
+| menus, comm (0x0812–0x0814) | 2,152 | 192 | 21 | 109 | 18 | 1,812 |
+| IWRAM code | 88 | 16 | 0 | 25 | 2 | 45 |
+
+Of the similar battle objects, 22 differ only by the toolkit rewrite. In the rest, the differences are calls the
+DS adds (`why.py`), the commonest:
+- NaviStats reads by alliance (12 routines): the party's per-navi rules;
+- the battle effects (4);
+- object flags (3);
+- sounds (3);
+- a few panel and collision checks.
+
+The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM routines and the gate.
+
+## 3. What the DS changed mechanically (read)
+
+- **The toolkit.** It is at 0x021701D4 (JP 0x02168F74).
+  - Its first 15 words are copied from 0x020D9A2C by 0x0202B300 (BRBE's `SetPrimaryToolkitPointers` table,
+    0x08006020).
+  - Its +0x3C–+0x94 are written by an ARM routine, 0x020214BC, called from the battle's loop. BRBE adds its
+    offsets to the save block instead; the Thumb copy of that routine, 0x0202B318, has no caller.
+  - No code keeps it in r10. Where the GBA reads `mov rN, r10`, the DS calls 0x0202B350 (the toolkit in r0),
+    0x0202B35C (in r1) or 0x0202B368 (a toolkit word).
+- **ARM callees:**
+  - `PlaySoundEffect` is 0x02018F4C, ARM. Sounds play through NitroComposer: there is no m4a, and no GBA sound
+    queue.
+  - The division routine is 0x02020818.
+  - The copies are `CopyWords` 0x0206C3CC and `CopyHalfwords` 0x0206C398 (Thumb), and the SDK's ARM fills.
+- **Interworking returns:** a leaf's `mov pc, lr` is often `push {lr} ... pop {pc}`.
+- **Objects:** the pool table is at 0x02129438, BRBE's 0x080030F0. The pools are allocated on the heap, through
+  pointers:
+
+| Pool | GBA (BRBE) | DS |
+|---|---|---|
+| actors (type 1) | 16 × 0xD8 at 0x0203B1F0 | 32 × 0xDC, base at [0x021B8280] |
+| attacks (type 3) | 32 × 0xD8 at 0x0203CA30 | 32 × 0xDC, base at [0x021B828C] |
+| effects (type 4) | 32 × 0xC8 at 0x02036EF0 | 32 × 0xCC, base at [0x021B829C] |
+
+  Each record starts 0x10 into its slot, as on the GBA. The four extra bytes are not located (open; the shared
+  code's fields are at their GBA offsets, the same code reading them). Tango's "unit" records (0x022D6498,
+  stride 0xDC) are the actor pool's first slots, on the heap.
+- **The AI and collision records** are allocated the same way: pointers at 0x021B8288 (AIData) and 0x021B8284
+  (collision).
+- **The chip record** (`getChip8021DA8`'s counterpart 0x0200A460) is **0x28 bytes**, at 0x0203E9E8, 0x1A8 chips
+  (the GBA's count).
+  - +0x00–+0x1F are the GBA's fields, with two moves: the GBA's +0x17 is the DS's +0x0F, and +0x16/+0x17 carry
+    DS values for a few chips.
+  - The GBA's three ROM pointers (+0x20 icon, +0x24 image, +0x28 palette) are one RAM pointer and an id.
+  - Per-chip differences are in §6.
+- **NaviStats** is 0x60 bytes, as the GBA's: two at 0x021B8C64.
+
+## 4. The party battle (read)
+
+### 4.1 The party
+
+- **The team words** (Tango's team block) sit in a struct at 0x0216F284:
+  - +0xC and +0x10: the save's own team, index = id − 0x254, 0 empty (ARM 0x02094E4C);
+  - +0x14 and +0x18: Navi Select's picks, index = id − 0x276, 0x276 none (0x02094DB4).
+  - The index is the navi's number, NaviStats +0x29: 1 ProtoMan … 12 ToadMan, exe5-map.md §15.16's order.
+  - Tango's 0x22 is 0x276 − 0x254.
+- **Who joins** (0x02097DD4: a partner count, 0 to 2, and their ids):
+  - battle effect 0x800000: none;
+  - a link battle (effect 8): Navi Select's two, if effect 0x200000 is also set;
+  - offline modes 2–5 and 7: none;
+  - offline mode 6: one scripted partner (0x0216CF08+0x49);
+  - other offline modes: the save's team, unless event flag 0x28D is set.
+  - Team navis are 1–12. MegaMan is member 0, light or dark by the save.
+- **Per-member stats** (0x02097BDC):
+  - each side has three 0x60-byte blocks, at 0x021B9A5C + side·0x120 + member·0x60 (the accessor 0x0206E1BC, the
+    counterpart of BRBE's `GetBattleNaviStats2034A60Addr`, where the GBA kept one reserve);
+  - member 0 is a copy of the side's active NaviStats; members 1 and 2 are the partners' base stats;
+  - +0x58 is the member's slot.
+- **The per-side party block** at 0x021B85E8 + side·0x24 (0x02004880):
+  - +0xB: the ToadMan rescue used (§4.6);
+  - +0xC+slot: a per-member busy flag. Set, it refuses a switch to that member (0x02004B70, 0x02004B80);
+  - +0x15: the member count;
+  - +0x18: a bitmask whose meaning is open (0x02004E68 to 0x02004E90).
+- **Over the link:**
+  - 0x02097B84 builds a send block at 0x021B8F94: magic 0x99887766, the partner count, and each partner's
+    0x60-byte base stats (`sub_801401E`: the base-stats table at toolkit+0x74, by navi).
+  - It goes as one of the 16-byte blocks the battle's input packet carries (§4.2); the received blocks land at
+    0x021B965C and 0x021B975C.
+  - So each console sends its partners' stats, as the GBA's init exchange sends the PET navi's.
+
+### 4.2 The switch input
+
+- **The bottom screen's party panel** is an ARM module, 0x02035B00–0x02037150.
+  - Its controller (0x10F8 bytes, allocated by 0x02036654; the pointer at 0x02167100) has:
+    - +0: active (only with at least one partner);
+    - +1: battle mode 6 (unlimited switches);
+    - +2: the side;
+    - +4: the active member;
+    - +5 and +6: the two buttons' members ((1, none) or (1, 2));
+    - +8–+0xC: five pips (0xFE available up to the limit, 0xFF beyond; a switch logs the navi's id in the next);
+    - +0xD: the switch limit;
+    - +0xE: the switches used;
+    - +0xF: the request, member + 1.
+- **Keys** (the panel's state 0x02083254, on the newly pressed halfword 0x0215F3D6):
+  - **X requests button +6, Y button +5.**
+  - Otherwise a touch on the panel's buttons (hit codes 0x50 and 0x51) requests +5 or +6.
+  - Anything else clears the request. So an X/Y request lasts a frame, and a touch repeats while held.
+- **The panel refuses:**
+  - outside mode 6, when used ≥ limit (sound 0x69);
+  - an empty button;
+  - a member at 0 HP (sound 0x69).
+  - It also needs +2 to equal the local alliance (BattleState +0xD). Init writes 0, so how player 2 of a link
+    battle switches is **open** (a console should show it).
+- **Into the battle:** every frame the request is packed into the battle's input packet (0x0200A328, 0x18 bytes):
+  - magic 0x4442;
+  - +2 the keys;
+  - +4 a block index;
+  - +5 a byte from 0x0215F208+0x3E (open);
+  - +6 copied to BattleState +0x14/+0x15;
+  - **+7 the switch request** (0x020370C8);
+  - +8–+0x17 one 16-byte block.
+
+  The packet lands in each side's input record (0x021B8368, 0xC bytes a side; the GBA's are 8):
+  - +2 held, +4 pressed, +6 released;
+  - **+8 the switch slot**, +0xA its newly pressed edge (0x020022E8);
+  - +9 the packet's +5.
+
+  **So the switch is input**: a slot number in each tick's input, not a key bit.
+
+### 4.3 On the custom screen
+
+- **The request is consumed only in the custom screen's chip picking** (state 4).
+  - 0x02063038 calls 0x0200C82C every tick: the counterpart of BRBE's 0x080259A0, the gate's navi-chip query of
+    the GBA, which the DS replaced with 0x0201352C reading input record +8.
+  - In battle, during dimming and while paused nothing reads it.
+- **0x0200C82C refuses:**
+  - battle modes other than 0 and 8;
+  - a navi number above 12;
+  - the screen's current navi;
+  - offline, a switch to MegaMan while a game-state byte (toolkit+0x3C → +6) is 0x30–0x3F (open).
+
+  There is no "used this battle" test, which the GBA's gate path had.
+- **Accepting** (state 0x40, its sub-state 4, 0x0206391C):
+  - saves the active navi's HP into its member block;
+  - sets the screen's navi and shows the member's HP;
+  - **clears the chips already picked**;
+  - rebuilds the screen for the navi (`sub_802812C`);
+  - swaps the panel's button and member, and counts the switch;
+  - plays sound 0x8D (`cross-change`) and returns to state 4.
+
+  Every accepted press counts against the limit, even a switch back.
+- **OK** (the hand builder, 0x0200BED8): when the screen's navi differs from the active NaviStats +0x29, it writes
+  the transform record's navi (0x0200DEDC: 0x021B82F0+4, the counterpart of `sub_802DCD8`, which has no caller in
+  EXE6). It also marks the navi in 0x021B8300+0xE and counts team navis in 0x021B8300+5.
+- **Over the link** each console consumes its own side's request, and the transform record (the GBA's exchanged
+  record) carries the result.
+
+### 4.4 The switch limit and the DS programs
+
+- **The limit** is MegaMan's base stats +0x17, 3 (where the 3 is written is open), re-read every round (0x02036D2C).
+- **The three DS-only NaviCust programs** are in the program effect table at 0x020D7CB4 (51 entries; the GBA has
+  48), named by prgmname.msg:
+
+| Program | Id | Handler | Effect |
+|---|---|---|---|
+| NavChg+1 | 0x30 | 0x02013F88 | MegaMan's +0x17 += 1, at most 5 |
+| NavChg+2 | 0x31 | 0x02013FA4 | +0x17 += 2, at most 5 |
+| Spport ("MegaMan supports team") | 0x32 | 0x02013FC0 | MegaMan's +0x59 = 1: the partners may support and rescue (§4.6) |
+
+### 4.5 The swap
+
+It is the GBA's navi switch: the pause handler (0x02061B24, `sub_8017BC0`'s counterpart) runs action 0x1C's
+change in state 0x1000 and the knockout in 0x2000, from the turn-start sequencer as on the GBA:
+- `sub_80147E4` (0x0205FFE0, same) copies the exchanged transform records to 0x021B83F0 + side·0x10.
+- `sub_801486C` (0x0206005C) calls `sub_802DCDE` (0x0200DF2C) when +4 isn't 0xFF.
+- The DS resolves the navi object from the side (0x020987A8), where the GBA stored a pointer.
+
+The steps are rewritten. The step tables are 0x020D9B1C (change) and 0x020D9B28 (knockout); BRBE's are 0x0802CAF0
+and 0x0802CD10.
+
+**Land** (0x0202BEB8, BRBE 0x0802CAFC): 20 ticks (the GBA's 4).
+- It forces the white palette every tick.
+- It spawns effect id 3 at the navi (z + 0x10).
+- It stops sound channels 1 and 2, plays sound 0x8D and **a voice** (0x02098ED0).
+  - The voice is one of two per navi at random, from 0x02132050: a stream on channel 2 and a sound effect
+    0x214–0x22D.
+  - It plays only on the local side, without battle effect 0x400000, and not for MegaMan, ProtoMan or Colonel
+    in slot 0 on turn ≤ 1.
+- It sets animation 0 (the GBA's 4) and per-navi music (0x0200102C: DS music, ignored).
+
+**Change** (0x0202BF98, one tick):
+1. It ends Soul Unison: the form's overlay goes off and NaviStats +0x2C becomes 0.
+2. It keeps the outgoing navi and its emotion in the action's vars.
+3. It clears anger and the statuses (0x0206EC40), and sets AIData +0x48 bit 0x4000 ("came in by a switch").
+4. It stores the object's HP in +0x40 and copies the whole NaviStats into the outgoing member's block.
+5. It finds the incoming member (0x0200DEE8) and copies its block into the side's NaviStats.
+6. A team navi gets emotion 0x80 (normal). Then comes the GBA's tail, with these differences:
+   - **HP and max HP always come from the member's block** (the GBA's `switch_hp` table is gone);
+   - animation 0;
+   - `sub_800FC9E` gets NaviStats +0x4C as a third argument (open);
+   - 0x02098804 (collision +0x26 = 0, sound 0x93), and the mugshot on the local side.
+
+**Settle** (0x0202C130, 21 ticks, new): it clears AIData +0x48 0x01409800 and +0x44 0x00100600, and ends in the
+**Double Attack trigger** (§5).
+
+**New navi actions:** the DS's action table (0x020E5C08) matches the GBA's through 0x58 and adds:
+- 0x59: 0x0202C67C, with dimming;
+- 0x5A: 0x02004938, the ToadMan rescue;
+- 0x5B: 0x02049784;
+- 0x5C: 0x02042ED8, the Double Attack.
+
+### 4.6 What a navi keeps, deletion, supports, the end
+
+**What a navi keeps across a swap:**
+- **HP:** its member's own (current and max).
+- **Soul Unison:** ends on the way out.
+- **Emotion:** MegaMan's comes back with him; a team navi enters at normal; the outgoing navi's Full Synchro
+  is the Double Attack's trigger.
+- **Statuses, anger, invulnerability, the hit in progress and the hand's charge bonuses:** cleared.
+- **The hand and the custom gauge:** the action leaves them; the custom screen cleared the picks (§4.3).
+- **The buster charge:** not read (the attack state is reset).
+
+**At 0 HP** (0x02062C5A, in `applyDamageToPlayer`'s counterpart), in order:
+1. The GBA's survive-at-1 check.
+2. **The ToadMan rescue** (0x020048E8), when all of these hold:
+   - ToadMan is a benched member with HP;
+   - it is mode 6, or MegaMan has Spport (+0x59);
+   - the party block's +0xB is 0;
+   - MegaMan's light test passes (0x02004DD8).
+
+   Action 0x5A then:
+   - dims and shows telop 0x187 (sound 0x173);
+   - spawns object 0x6C three times and object 6;
+   - heals a quarter of max HP (sound 0x8A, `heal`), once a battle.
+3. **The fall-back** (`sub_802DD2A`'s counterpart 0x0200DFB0): a team navi that came in by a switch requests
+   the knockout instead of being deleted (unless AIData bit 0x200000; with 0x2000 or no rescue pending).
+4. Otherwise the navi is deleted.
+
+**The knockout's take-back** (0x0202C24C):
+- It saves the deleted member's block at HP 0 and **always brings back MegaMan** (member 0) with his stored stats.
+- It tells the bottom screen and drops the link navis' chips, as the GBA did.
+
+**Supports:** seven handlers run every frame from 0x02003764: 0x020037A8, 0x02003984, 0x02003A14, 0x02003C6C,
+0x02003DB4, 0x02004130 and 0x02004438.
+- In a link battle they run for both sides; otherwise for side 0 only.
+- Each tests the party block, MegaMan's light state, a benched member's availability (0x02004E9C: HP, and mode 6
+  or Spport) and that the member isn't the active navi.
+- Each then targets an enemy (0x02003864) and spawns an ov423 object (0x021FF280) drawn with the member's sprite
+  (0x02036450).
+
+What each support does and when it fires is §5's reading's (filled in there).
+
+**The end:** `battle_isBattleOver` (0x020023DC) is the GBA's.
+- A side loses when MegaMan is deleted. A team navi's deletion never ends it.
+- At the battle's end (0x02004BB4, unless effect 8) each member's HP goes back to the save, and a team navi left
+  at 0 HP leaves the team (event flag 0x254 + navi cleared).
+- A link battle's effects word likely has 8. The DS's netbattle effects list has 0x122E8C at 0x02110378, but
+  which record a party netbattle uses is open.
+
+### 4.7 The team navis' restrictions
+
+- **The light and dark chips** (0x020070FC, BRBE's 0x08010118) dropped the GBA's "any navi but MegaMan passes":
+  - light-only chips (record `megaman` field 1) work for every navi of a light side (meter ≥ 470);
+  - dark-only chips (field 2: the DS navi chips, Static, Muramasa…) also need MegaMan.
+  - On the GBA a team navi could use both.
+- **Dark chips** (flag 0x20) keep the GBA's rule: MegaMan (or navi 0x17) only.
+
+### 4.8 Against the engine's navi switch
+
+`crates/nettai-battle/src/kinds/player/actions/navi_switch.rs` ports the GBA's switch, which only the gate drove
+(exe5-map.md §5, history: the GBA's Team Battle mode, which nettai doesn't implement). The DS keeps its entry and
+its sequencer, and changes the rest:
+
+| | The engine (the GBA's) | The DS |
+|---|---|---|
+| Stats | one reserve (`Battle::reserves`) | three member blocks a side |
+| HP | the `switch_hp` table, or fresh stats | always the member's block |
+| Land | 4 ticks, animation 4 | 20 ticks, white palette, effect 3, sound 0x8D, a voice, animation 0 |
+| Change | animation 3 | animation 0; Soul Unison ends; team navis enter at normal |
+| Settle | — | 21 ticks, then the Double Attack trigger |
+| Knockout | brings back the kept reserve | brings back MegaMan (member 0); a new fall-back condition |
+| Also | — | the ToadMan rescue; actions 0x59–0x5C |
+
+## 5. Double Attacks
+
+(The Double Attack reading: in progress.)
+
+## 6. The DS's other battle changes (catalogued, not adopted)
+
+The user has not chosen to adopt any of these. The recommendation is GBA EXE5 plus the DS's party rules.
+
+- **Chip records** (0x0203E9E8 against BRBE 0x0801E214; chip names from content/exe5):
+  - MrkCan1's codes are listed in another order.
+  - **LavaSeed, Sword, ElemRage, WavePit, RedWave and MudWave gain a fourth code, `*`.**
+  - The +9 flag 0x40 is cleared on Bass, DeltaRay, BugCurse, HolyDrem, BigHook and DethPhnx, and set on LeadRaid
+    and ChaosLrd (what 0x40 is: open).
+  - LeadRaid and ChaosLrd have +0x16 = 1 (and other +0x16/+0x17 values elsewhere).
+  - Chips 0x160–0x16B (no GBA use) have +0x0A set: the Double Attacks' records (§5).
+  - Chip 0x186's +0x0B/+0x0C differ.
+  - Every record's +0x1E is 0 (the GBA's 1 or 3).
+- **Constants in battle objects** (18 `consts` routines, `dsmap.py diff`). Some are reordered stores; others are
+  real changes:
+  - 0x080D15FA: a `cmp #7` is `#0xB`;
+  - 0x080E2620: `#0x78` is `#0x80`;
+  - 0x080EA1E0: `#0x60` is `#0x80`;
+  - and field offsets in 0x080C1484, 0x080CA3B0 and the 0x080C9xxx–0x080D9xxx group.
+- **Calls the DS adds** in 310 similar battle objects: `why.py` lists them by target.
+- **The navis' base stats:** the DS reads them from toolkit+0x74 (`sub_801401E`), where the partners' blocks come
+  from. They are not yet compared with the GBA's.
+
+## 7. The oracle's facts
+
+**RAM** (`dsmap.py ram`, read: the same routines' literals and the toolkit's tables; JP = US − 0x72B0 for
+0x021Bxxxx, − 0x7260 for 0x0216xxxx):
+
+| oracle-trace's field | GBA EXE5 | DS (US) | DS (JP) |
+|---|---|---|---|
+| battle_state (toolkit +0x18) | 0x02034A90 | 0x021B8EA4 | 0x021B1BF4 |
+| rng1 | 0x02001C94 | 0x0216BB1C | 0x021648BC |
+| rng2 | 0x02001D40 | 0x0216F230 | 0x02167FD0 |
+| (a third RNG, the DS's) | — | 0x0216BB20 | 0x021648C0 |
+| toolkit | 0x0200A440 | 0x021701D4 | 0x02168F74 |
+| object list, sentinel | 0x0200A410, 0x0200ABA0 | 0x0216F810, 0x0216F800 | 0x021685B0, 0x021685A0 |
+| object pools | fixed (§3) | heap: [0x021B8280], [0x021B828C], [0x021B829C] | −0x72B0 |
+| AIData, collision | | heap: [0x021B8288], [0x021B8284] | −0x72B0 |
+| panels (0x24 each) | 0x0203A100 | 0x021BAAFC | 0x021B384C |
+| chip blocks (hands) | 0x02034E20 | 0x021B8AF8 | 0x021B1848 |
+| folder | 0x0203C830 | 0x021B856C | 0x021B12BC |
+| NaviStats (0x60 × 2) | 0x0203C880 | 0x021B8C64 | 0x021B19B4 |
+| member blocks (0x60 × 3 × 2) | (one reserve, 0x02034EC0) | 0x021B9A5C | 0x021B27AC |
+| party block (0x24 × 2) | — | 0x021B85E8 | −0x72B0 |
+| joypad (toolkit +4) | 0x0200AF50 | 0x0216F7E4 | |
+| input records (8 / 0xC a side) | 0x02036E90 | 0x021B8368 | 0x021B10B8 |
+| banner | 0x02036ED0 | 0x021B83D0 | 0x021B1120 |
+| transformation sequencer | 0x02036E60 | 0x021B84BC | 0x021B120C |
+| transform records (current) | 0x0203B1D0 | 0x021B83F0 | 0x021B1140 |
+| fighting machine | 0x0203C5D0 | 0x021B82B8 | 0x021B1008 |
+| HUD block (gauge +0x20, tasks +0x40) | 0x020356E0 | 0x021B8630 | 0x021B1380 |
+| link struct | 0x0203F244 | 0x021B8290 | 0x021B0FE0 |
+| pause flag | 0x02002949 | [toolkit+0x3C]+9 = 0x02167289 | |
+| custom screen state, slots | 0x02036B10, 0x02036C10 | 0x021B985C, 0x021B995C | 0x021B25AC, 0x021B26AC |
+| soul and switch marks | 0x02034E10 | 0x021B8300 | 0x021B1050 |
+
+The gauge's and the HUD tasks' places in the HUD block are the GBA's by the block's move; the pause flag's
+fill (the ARM routine) is the live one by its callers. Both are to be confirmed on a console.
+
+**Code:**
+- **The battle's frame routine** (`battle_8007800`'s counterpart) is 0x0205F970 (the frame count at BattleState
+  +0x60, as on the GBA), past its prologue 0x0205F976.
+- Its one caller is 0x0202A8DA, which returns at 0x0202A8DE.
+- Sounds are `PlaySoundEffect` 0x02018F4C (ARM, r0 the GBA's id) and the stream calls 0x020193B0 and 0x0201933C
+  (channels); there is no GBA queue to read.
+
+**Driving a recording:**
+- X and Y are melonDS keys. Tango's `Nds` takes them, and the walk's newly pressed halfword is 0x0215F3D6.
+- A touch is the touch screen's position: the panel's buttons are hit codes 0x50 and 0x51.
+- The switch then rides the packet's +7, so a recording of the inputs replays it.
+- Tango's priming walks into a TeamBattle (the board's code 0x61), which is the party battle's route, and writes
+  the team words.
+
+## 8. The plan
+
+The steps, each sized small (S, a day or less), medium (M, a few days) or large (L, a week or more). The engine
+steps follow the rules-in-Luau line (rust-luau-split.md): Rust keeps the machine (member blocks, the input slot,
+the action steps), and Luau keeps the party rules (who may join, the limit, the programs, the pair table, the
+supports' conditions).
+
+(Filled with §5.)
+
+## 9. Open, and what a console should show
+
+(Filled with §5.)
+
+## 10. Reproducing
+
+In the verification workspace:
+
+    python3 tools/exe5ds/nds.py ~/Documents/Tango/roms/bn5.nds SCRATCH/us     # optional: the files, for text
+    python3 tools/exe5ds/dsmap.py where
+    python3 tools/exe5ds/dsmap.py ram          # the map, the DS-only routines, the RAM map
+    python3 tools/exe5ds/dsmap.py --jp ram
+    python3 tools/exe5ds/dsdis.py t0x0202BEA4  # read a routine
