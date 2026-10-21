@@ -795,6 +795,7 @@ language = "ja"
 # The rulesets' words (en.toml's `[rulesets]` says what they are). Ours.
 [rulesets]
 "category.navi" = "ナビ"
+"category.party" = "パーティ"
 "category.folder" = "チップ"
 "category.navicust_programs" = "ナビカスプログラム"
 "category.patch_cards" = "改造カード"
