@@ -1935,7 +1935,7 @@ fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) -> Rc<Re
         shot(add, "party-rules-party-not-allowed", Pair::None);
         add(SETTLE, focus("rules.pair.keys", gyroman));
         shot(add, "party-rules-party-inherited", Pair::None);
-        add(SETTLE, rules_category("NaviCust programs"));
+        add(SETTLE, rules_category("NaviCust"));
         add(SETTLE, focus("rules.items", 0));
         shot(add, "party-rules-navicust", Pair::None);
         add(SETTLE, rules_category("Patch cards"));

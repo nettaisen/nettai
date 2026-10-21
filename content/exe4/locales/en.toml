@@ -715,7 +715,7 @@ language = "en"
 # for the lobby and a ruleset's page. Ours.
 [rulesets]
 "category.folder" = "Chips"
-"category.navicust_programs" = "NaviCust programs"
+"category.navicust_programs" = "NaviCust"
 "category.patch_cards" = "Patch cards"
 "category.souls" = "Souls"
 "category.auto_battle_places" = "Auto battle"

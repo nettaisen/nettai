@@ -791,7 +791,7 @@ language = "en"
 [rulesets]
 "category.navi" = "Navis"
 "category.folder" = "Chips"
-"category.navicust_programs" = "NaviCust programs"
+"category.navicust_programs" = "NaviCust"
 "category.patch_cards" = "Patch cards"
 "category.cybeast" = "Beast Out"
 "category.crosses" = "Crosses"
