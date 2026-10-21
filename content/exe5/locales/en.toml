@@ -808,6 +808,7 @@ language = "en"
 [rulesets]
 "category.navi" = "Navis"
 "category.party" = "Party"
+"category.party.programs" = "PartyCust programs"
 "category.folder" = "Chips"
 "category.navicust_programs" = "NaviCust programs"
 "category.patch_cards" = "Patch cards"

@@ -205,7 +205,25 @@ fn items(d: &Data) -> &[Data] {
 /// What a fact names definitions by: its registry, the collection an entry
 /// is of, and the field of a record that names one (none: the fact's
 /// values are the definitions). None: the fact names no definitions.
+///
+/// A fact may be a path, `outer.inner`: the field `inner` of each record a
+/// list `outer` holds (EXE5's PartyCust programs, `party.programs`: each
+/// partner's), the category's items those its records' fields name.
 pub fn definitions_of(content: &Content, fact: &str) -> Option<(Registry, Option<String>, Option<String>)> {
+    if let Some((outer, inner)) = fact.split_once('.') {
+        let field = facts::field(content, outer)?;
+        let (FieldType::List(e, _) | FieldType::Array(e, _)) = field.ty else { return None };
+        let FieldType::Record(fields) = &**e else { return None };
+        let inner = fields.field(fields.index_of(inner)?);
+        let element = match &inner.ty {
+            FieldType::List(e, _) | FieldType::Array(e, _) => &**e,
+            ty => ty,
+        };
+        return match element {
+            FieldType::Ref(registry, of) => Some((*registry, of.clone(), None)),
+            _ => None,
+        };
+    }
     let field = facts::field(content, fact)?;
     let element = match field.ty {
         FieldType::List(e, _) | FieldType::Array(e, _) => &**e,
@@ -281,6 +299,27 @@ pub fn shown(content: &Content, registry: Registry, item: &Item) -> String {
 /// first come, each once: a definition, or where the record chooses its
 /// definition's variant and the definition has variants, the variant chosen.
 fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, registry: Registry) -> Vec<(Item, Vec<usize>)> {
+    // (A path, `outer.inner`: the definitions each record of the list names in its field, at that record's entry.)
+    if let Some((outer, inner)) = fact.split_once('.') {
+        let Some(Stated::List(records)) = side.facts.get(content, outer) else { return Vec::new() };
+        let mut out: Vec<(Item, Vec<usize>)> = Vec::new();
+        for (i, record) in records.iter().enumerate() {
+            let Stated::Record(fields) = record else { continue };
+            let Some((_, value)) = fields.iter().find(|(k, _)| k == inner) else { continue };
+            for h in value.defs() {
+                let item = Item::of(h);
+                match out.iter_mut().find(|(x, _)| *x == item) {
+                    Some((_, entries)) => {
+                        if !entries.contains(&i) {
+                            entries.push(i);
+                        }
+                    }
+                    None => out.push((item, vec![i])),
+                }
+            }
+        }
+        return out;
+    }
     let Some(value) = side.facts.get(content, fact) else { return Vec::new() };
     let one = |v: &Stated| -> Option<Item> {
         match (v, field) {
@@ -426,7 +465,9 @@ impl Ruleset {
                 if !self.allows_item(&category.fact, &item) {
                     let text = format!("{} isn't allowed ({})", shown(content, registry, &item), category.fact);
                     let entry = entries.first().copied();
-                    out.push(Problem { side: Some(0), field: Some(category.fact.clone()), entry, what: Wrong::NotAllowed { registry, item, entries }, text });
+                    // (Of a path's category, the problem is the outer field's, at the records that hold it.)
+                    let field = category.fact.split('.').next().unwrap_or(&category.fact).to_string();
+                    out.push(Problem { side: Some(0), field: Some(field), entry, what: Wrong::NotAllowed { registry, item, entries }, text });
                 }
             }
         }
@@ -712,7 +753,7 @@ mod tests {
     fn each_game_has_its_categories_groups_and_presets() {
         for (content, game, facts, forms, groups) in [
             (exe6_content(), "exe6", vec!["navi", "folder", "navicust_programs", "patch_cards", "cybeast", "crosses"], "crosses", ["gregar", "falzar"]),
-            (exe5_content(), "exe5", vec!["navi", "party", "folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["protoman", "colonel"]),
+            (exe5_content(), "exe5", vec!["navi", "party", "party.programs", "folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["protoman", "colonel"]),
             (exe4_content(), "exe4", vec!["folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["redsun", "bluemoon"]),
         ] {
             let r = Rulesets::of(&content, game).unwrap();
@@ -933,6 +974,38 @@ mod tests {
     }
 
     /// The navi a build is is held to the navis' category.
+    /// A category over a field of a list's records, by its path (EXE5's `party.programs`, each partner's PartyCust
+    /// programs): its items are the collection's, and a build holding a banned one on a partner has it as a problem of
+    /// the party at that partner's entry, which a lobby's check (`Checked::under`) has too; by name it goes into a file
+    /// and back.
+    #[test]
+    fn a_ruleset_bans_a_partners_programs() {
+        let content = exe5_content();
+        let r = Rulesets::of(&content, "exe5").unwrap();
+        let category = r.category("party.programs").unwrap().clone();
+        assert_eq!((category.registry, category.of.as_deref(), category.items.len()), (Registry::Entry, Some("partycust_programs"), 13));
+        let builds = Builds::of(&content, "exe5").unwrap();
+        let mut side = builds.new_build(&content, "protoman").unwrap();
+        let navi = |n: &str| Fact::Value(Value::Def(Registry::Navi, ids::navi(&content, "exe5", n).unwrap().0));
+        let program = |n: &str| ids::entry(&content, "exe5", "partycust_programs", n).unwrap();
+        let partner = |n: &str, p: &[&str]| Fact::Record(vec![("navi", navi(n)), ("programs", Fact::List(p.iter().map(|x| Fact::Value(Value::Def(Registry::Entry, program(x).0))).collect()))]);
+        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-50"]), partner("toadman", &["p-spport", "p-hp-50"])]).unwrap();
+        // (Versions mixed: ToadMan is Team Colonel's.)
+        let mut ruleset = r.preset("unrestricted").unwrap().clone();
+        let spport = Item::of(program("p-spport").0);
+        ruleset.set_allowed("party.programs", &spport, false);
+        assert!(!ruleset.allows("party.programs", spport.def));
+        let problems = ruleset.problems(&r, &content, &side);
+        let got: Vec<(Option<&str>, Option<usize>, &Wrong)> = problems.iter().map(|p| (p.field.as_deref(), p.entry, &p.what)).collect();
+        assert_eq!(got, [(Some("party"), Some(1), &Wrong::NotAllowed { registry: Registry::Entry, item: spport.clone(), entries: vec![1] })]);
+        let checked = Checked::under(&content, "exe5", &side, &r, &ruleset);
+        assert!(!checked.ready() && checked.problems.iter().any(|p| p.field.as_deref() == Some("party") && p.at(1)), "{:?}", checked.problems);
+        let names = ruleset.banned_names(&content);
+        assert_eq!(names, [("party.programs".to_string(), vec!["p-spport".to_string()])]);
+        let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names).unwrap();
+        assert!(back.same_rules(&ruleset));
+    }
+
     #[test]
     fn a_navi_held_back_is_a_problem_of_the_navi() {
         let content = exe5_content();

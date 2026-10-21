@@ -17,7 +17,9 @@
 //! with its programs. **Enter in PROGRAMS** installs the program at the end of the partner's (a program may be in twice:
 //! the rules hold them to the gauge alone), refused where the gauge or the list has no room ("Needs 5 blocks");
 //! **Enter or Del in INSTALLED** takes it out; Del on a card takes the partner out; **CLEAR** (or X) takes every partner
-//! out, asked first. Each block is in its program's color, a NaviCust program's (its definition's `color`).
+//! out, asked first. Each block is in its program's color, a NaviCust program's (its definition's `color`). A program
+//! the build's ruleset holds back (its category over the partners' programs, `party.programs`) is greyed in PROGRAMS
+//! with "Not allowed" and refused; one installed all the same says so, red, and can be taken out.
 
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
@@ -188,9 +190,18 @@ impl Party {
         draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
     }
 
-    /// Why program `h` can't go into the chosen partner's now (its gauge, the build's ruleset), if it can't.
+    /// The ruleset category of the partners' programs: the party's field and its records' programs' field, by their
+    /// path (`party.programs`: nettai-match's categories over a field of a list's records).
+    fn programs_category(&self) -> String {
+        format!("{FIELD}.{}", self.shape.as_ref().map_or("", |s| s.programs.as_str()))
+    }
+
+    /// Why program `h` can't go into the chosen partner's now (the build's ruleset, its gauge), if it can't.
     fn refusal(&self, shell: &Shell, draft: &Draft, budget: Option<&Budget>, h: EntryHandle) -> Option<String> {
         let ui = shell.ui();
+        if !draft.allows(&self.programs_category(), h.0) {
+            return Some(ui.global::<BuildWords>().invoke_not_allowed_here().into());
+        }
         if let Some(EntryRefusal::Needs { needs, .. }) = budget.and_then(|b| b.refusal(draft.content(), draft.side(), h)) {
             return Some(ui.global::<PartyView>().invoke_needs_blocks(needs as i32).into());
         }
@@ -233,7 +244,23 @@ impl Party {
         let (title, installed, rows) = draft.with_words(shell, |words| {
             let title = chosen.and_then(|p| p.navi).map(|n| view.invoke_partycust_of(words.names.navi(n).into())).unwrap_or_default();
             let row = |h: EntryHandle| PartyRow { name: words.names.entry(h).into(), blocks: b.as_ref().map_or(0, |b| b.cost_of(&content, h)) as i32, tone: tone(&content, h), ..Default::default() };
-            let installed: Vec<PartyRow> = chosen.map(|p| p.programs.iter().map(|&h| row(h)).collect()).unwrap_or_default();
+            // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
+            let category = self.programs_category();
+            let installed: Vec<PartyRow> = chosen
+                .map(|p| {
+                    p.programs
+                        .iter()
+                        .map(|&h| {
+                            let mut r = row(h);
+                            if !draft.allows(&category, h.0) {
+                                r.note = ui.global::<BuildWords>().invoke_not_allowed_here();
+                                r.bad = true;
+                            }
+                            r
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             let rows: Vec<PartyRow> = self
                 .programs
                 .iter()
