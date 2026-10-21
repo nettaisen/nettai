@@ -126,7 +126,8 @@ impl Party {
         let pictures = &draft.kit.pictures;
         let budget = |i: usize| budgets.get(i).cloned().flatten();
         let cards: Vec<PartnerCard> = draft.with_words(shell, |words| {
-            (0..shape.room)
+            // (The partners' rows, then "Add a partner" while there is room.)
+            (0..(partners.len() + 1).min(shape.room))
                 .map(|i| {
                     let Some(p) = partners.get(i) else { return PartnerCard::default() };
                     let b = budget(i);
@@ -147,7 +148,7 @@ impl Party {
                 })
                 .collect()
         });
-        self.chosen = self.chosen.min(shape.room.saturating_sub(1));
+        self.chosen = self.chosen.min(partners.len().min(shape.room.saturating_sub(1)));
         let chosen = partners.get(self.chosen);
         let b = budget(self.chosen);
         let (title, installed, rows) = draft.with_words(shell, |words| {
@@ -339,6 +340,12 @@ impl Party {
 
     /// Enter on PROGRAMS' row `row`: its program installed at the end of the chosen partner's.
     fn install(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
+        self.install_at(shell, draft, row, usize::MAX);
+    }
+
+    /// PROGRAMS' row `row`'s program installed among the chosen partner's at `at` (past their end: at it), refused as
+    /// Enter's is.
+    fn install_at(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, at: usize) {
         let Some(&h) = self.programs.get(row) else { return };
         let partners = self.partners(draft);
         let i = self.chosen;
@@ -352,7 +359,8 @@ impl Party {
             return self.refuse(shell, draft, row, why);
         }
         if self.change(draft, |ps| {
-            ps[i].programs.push(h);
+            let at = at.min(ps[i].programs.len());
+            ps[i].programs.insert(at, h);
             true
         }) {
             shell.sound.play(Cue::Pick);
@@ -461,8 +469,47 @@ impl Tab for Party {
     }
 
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
-        if id == "navi" {
-            self.picked(shell, draft, index.max(0) as usize, choice.max(0) as usize);
+        let installed = self.partners(draft).get(self.chosen).map_or(0, |p| p.programs.len());
+        let to = |at: i32, rows: usize| editor::list_row(shell, "installed", editor::pointer_at(at), rows);
+        match id {
+            "navi" => self.picked(shell, draft, index.max(0) as usize, choice.max(0) as usize),
+            // An installed program dragged: where it would land; let go there, it moves (over the library, it is taken
+            // out; elsewhere off the list, it goes back), as the Patch cards tab's cards are.
+            "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
+            "drag-over" => editor::show_drop(shell, to(choice, installed), false),
+            "drag-drop" => {
+                editor::show_drop(shell, None, false);
+                if index < 0 {
+                    return;
+                }
+                let from = index as usize;
+                if editor::over_library(shell, choice) {
+                    self.uninstall(shell, draft, from);
+                } else if let Some(to) = to(choice, installed).filter(|&t| t != from) {
+                    let i = self.chosen;
+                    if self.change(draft, |ps| match ps.get_mut(i) {
+                        Some(p) if from < p.programs.len() => {
+                            let h = p.programs.remove(from);
+                            p.programs.insert(to.min(p.programs.len()), h);
+                            true
+                        }
+                        _ => false,
+                    }) {
+                        shell.sound.play(Cue::Pick);
+                        self.changed(shell, draft);
+                    }
+                }
+            }
+            // A library's program dragged: where it would go in among INSTALLED's (a gap, those from there on shifting);
+            // let go there, it goes in, refused as Enter's is; anywhere else, nothing.
+            "drag-in-over" if index >= 0 => editor::show_landing(shell, "installed", to(choice, installed + 1), false),
+            "drag-in-drop" => {
+                editor::show_drop(shell, None, false);
+                if let Some(at) = to(choice, installed + 1).filter(|_| index >= 0) {
+                    self.install_at(shell, draft, index as usize, at);
+                }
+            }
+            _ => {}
         }
     }
 
