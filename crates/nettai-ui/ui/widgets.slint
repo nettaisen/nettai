@@ -1749,6 +1749,9 @@ export component ScrollPage inherits Rectangle {
     in property <length> content-height;
     // A mouse's drag scrolls it (a touch's always does).
     in property <bool> mouse-pan: true;
+    // How far over its top what it shows may draw (a page whose first panel starts above it, or on its edge: the panel's
+    // line, half outside the panel, would be cut).
+    in property <length> bleed: 0px;
     out property <length> view-width: flick.width;
     out property <length> scroll: scroller.scroll;
     scroller := Scroller {
@@ -1763,13 +1766,14 @@ export component ScrollPage inherits Rectangle {
 
     flick := Flickable {
         x: 0;
-        y: 0;
+        y: -root.bleed;
         width: scroller.view-width;
+        height: root.height + root.bleed;
         content-width: self.width;
-        content-height: scroller.content-height;
+        content-height: scroller.content-height + root.bleed;
         mouse-drag-pan-enabled: root.mouse-pan;
         Rectangle {
-            y: scroller.offset;
+            y: scroller.offset + root.bleed;
             @children
         }
     }
