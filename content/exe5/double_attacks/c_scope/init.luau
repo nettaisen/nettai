@@ -1,9 +1,9 @@
 --!strict
 -- C-SCOPE (the DS's chip 0x164; Cross Scope), the Double Attack of MegaMan and SearchMan (docs/design/exe5ds-map.md §5,
--- §5.2: its director the DS's effect object 0x9B, its actors its T1 0x3A, its scopes its effect object 0xA4). As
+-- §5.2: its controller the DS's effect object 0x9B, its navis its T1 0x3A, its scopes its effect object 0xA4). As
 -- SearchMan's charge ends, two scopes (./scope) come three columns ahead and walk crossing diagonals, until the player
 -- stops them with A (the side's navi's A pressed while dimmed: its AIData +0x2C bit 1, 0x02015914) or they have
--- walked eight rounds; then each actor fires five times on its scope's panel, one every six ticks (a hit reaching
+-- walked eight rounds; then each navi fires five times on its scope's panel, one every six ticks (a hit reaching
 -- invisible targets: a curse). MegaMan waits for SearchMan's word. Both wait for the other to be done before they
 -- leave. The chip's record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS
 -- ROMs); its record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing
@@ -20,9 +20,9 @@ local scope = require("@self/scope")
 local searchman = require("../navis/searchman").searchman
 local sparks = require("../lib/sparks")
 
--- What each actor keeps besides the shared fields: SearchMan's word that the shots start (the DS's Param4, +7, which
+-- What each navi keeps besides the shared fields: SearchMan's word that the shots start (the DS's Param4, +7, which
 -- he sets on both), the two scopes (+0x74, +0x78: SearchMan's, copied to MegaMan as they come).
-type State = DoubleAttackActor & {
+type State = DoubleAttackNavi & {
     fire: boolean,
     scope: Object?,
     scope2: Object?,
@@ -74,7 +74,7 @@ local function next_shot(me: Object)
     end
 end
 
--- The actors' action 0xC (0x0201571C, 0x0201599C): once the other is at it too, 30 ticks, then he leaves; MegaMan lets
+-- The navis' action 0xC (0x0201571C, 0x0201599C): once the other is at it too, 30 ticks, then he leaves; MegaMan lets
 -- go of his attachments, SearchMan ends the scopes.
 local function after(me: Object)
     local s = me.state :: State
@@ -119,7 +119,7 @@ local function megaman_shots(me: Object)
         if me.phase_init == 0 then
             me.anim, me.anim_loaded = ANIM_SHOOT, 0xFF
             double_attack.detach(s.held)
-            double_attack.megaman_arm(me, "held")
+            double_attack.raise_arm(me, "held")
             me.phase_init = 4
         end
         if not s.fire then
@@ -136,7 +136,7 @@ local function megaman_shots(me: Object)
         if me.phase_init == 0 then
             me.anim, me.anim_loaded = ANIM_SHOOT, 0xFF
             double_attack.detach(s.held)
-            double_attack.megaman_arm(me, "held")
+            double_attack.raise_arm(me, "held")
             double_attack.detach(s.held2)
             attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
             me.timer = SHOT_TICKS

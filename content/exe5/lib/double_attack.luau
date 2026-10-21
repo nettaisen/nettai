@@ -2,19 +2,19 @@
 -- The DS's Double Attacks (Mega Man Battle Network 5: Double Team DS's party battle: docs/design/exe5ds-map.md §5):
 -- what the twelve share. A Double Attack is one of the DS's chips (0x160 to 0x16B: its record, its name for the
 -- telop) with its attack, the chip's `double_attack` (`double_attack.make`): its damage by the side's level, and its
--- two navis, the actors (an actor kind of its own, the DS's T1 0x35 on: `roles`), whose pair's switch fires it
--- (rules/double_attacks). Its director (an effect kind of its own, the DS's effect object 0x96 + n; each Double
+-- two navis (a navi kind of its own, the DS's T1 0x35 on: `roles`), whose pair's switch fires it
+-- (rules/double_attacks). Its controller (an effect kind of its own, the DS's effect object 0x96 + n; each Double
 -- Attack's is the same code) is a dimming controller: the dim, the chip's telop, the course, the undim. The course: the
--- user warps out (31 ticks), both actors come, it waits for both to leave, 31 ticks, the user warps back in (31
+-- user warps out (31 ticks), both navis come, it waits for both to leave, 31 ticks, the user warps back in (31
 -- ticks).
 --
--- Each actor (the DS's role table, by its Param1: 0 the first, 1 the second) stands beside the user's spot and draws
--- its navi; MegaMan draws as his stats say (his form, Hub Style, his light/dark value), the active navi's stats when
--- he is on the field, else his member block's. The director links the two (each the other's partner, its +0x60), which
--- most wait on. The steps most of them share: it appears (20 ticks), charges (60 ticks, the glow at its hand), attacks,
--- waits and leaves (4 ticks). Each Double Attack's own actions are its module's.
+-- Each navi (the DS's role table, by its Param1: 0 the first, 1 the second) stands beside the user's spot; MegaMan
+-- draws as his stats say (his form, Hub Style, his light/dark value), the active navi's stats when he is on the field,
+-- else his member block's. The controller links the two (each the other's partner, its +0x60), which most wait on. The
+-- steps most of them share: it appears (20 ticks), charges (60 ticks, the glow at its hand), attacks, waits and leaves
+-- (4 ticks). Each Double Attack's own actions are its module's.
 --
--- Left out: the DS's party block +0x18 (each actor clears its navi's bit as it appears and sets it as it leaves,
+-- Left out: the DS's party block +0x18 (each navi clears its own bit as it appears and sets it as it leaves,
 -- 0x02004E7C and 0x02004E68), which only the bottom screen's party panel reads (ARM 0x020361F8: how it draws the
 -- member's face): presentation, the app's party HUD's own.
 
@@ -29,7 +29,7 @@ local panels = require("@exelib/panels")
 
 local double_attack = {}
 
--- An actor of a Double Attack: the navi it draws (its sprite and its identity: the DS's role table's sprite, its NameID
+-- A Double Attack's navi: who it is (its sprite and its identity: the DS's role table's sprite, its NameID
 -- 0x180 + the navi's number, set as it appears), where it stands from the user's spot in pixels (x toward its front),
 -- and its actions by number, the role's own table.
 export type Role = {
@@ -40,30 +40,30 @@ export type Role = {
 }
 
 export type Spec = {
-    -- Its kinds' keys' start: `<id>/director`, `<id>/actor`.
+    -- Its kinds' keys' start: `<id>/controller`, `<id>/navi`.
     id: string,
     -- The damage by the side's level, 0 to 9 (the DS's rows at 0x0203E4FE, ten halfwords).
     damage: { number },
-    -- The two actors, the DS's role 0 and 1.
+    -- The two navis, the DS's role 0 and 1.
     roles: { Role },
-    -- The actors' own state beside the shared fields (`State`).
+    -- The navis' own state beside the shared fields (`State`).
     state: StateSchema?,
 }
 
--- What every actor keeps (types.d.luau's `DoubleAttackActor`).
-type State = DoubleAttackActor
+-- What every navi keeps (types.d.luau's `DoubleAttackNavi`).
+type State = DoubleAttackNavi
 
--- The director's: each actor out (+0x60, +0x64: the words its actors clear as they go).
-type DirectorState = { out: { boolean } }
+-- The controller's: each navi out (+0x60, +0x64: the words its navis clear as they go).
+type ControllerState = { out: { boolean } }
 
--- The director's actions (its table: object_dimScreen, object_drawChipName, its course, object_undimScreen), and the
+-- The controller's actions (its table: object_dimScreen, object_drawChipName, its course, object_undimScreen), and the
 -- course's phases.
 local DIM, NAME, COURSE, UNDIM = 0x0, 0x4, 0x8, 0xC
-local WARP_OUT, ACTORS, AFTER, WARP_IN = 0x0, 0x4, 0x8, 0xC
+local WARP_OUT, NAVIS, AFTER, WARP_IN = 0x0, 0x4, 0x8, 0xC
 -- Each wait of the course (one tick more than it says: counted until it falls below 0).
 local COURSE_WAIT = 0x1E
 
--- The glow at the hand as an actor charges (the DS's new effect rows 0x6D and 0x6E: 14-08 in its animations 0 and 2,
+-- The glow at the hand as a navi charges (the DS's new effect rows 0x6D and 0x6E: 14-08 in its animations 0 and 2,
 -- for 40 and 20 ticks), with the buster's charge sounds.
 local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
 local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
@@ -71,7 +71,7 @@ local CHARGING_LASTS, CHARGED_AT = 0x28, 0x14
 local SOUND_CHARGING = asset.sound("buster-charge")
 local SOUND_CHARGED = asset.sound("buster-charged")
 local SOUND_APPEAR = asset.sound("appear")
--- How long an actor appears, and leaves.
+-- How long a navi appears, and leaves.
 local APPEAR_TICKS, LEAVE_TICKS = 0x14, 4
 local ANIM_IDLE, ANIM_APPEAR, ANIM_LEAVE = 0, 3, 4
 -- MegaMan's buster arm (the attachment table's row 0x23, EXE5's: lib/arm), which he raises in a soul's animation,
@@ -86,7 +86,7 @@ function double_attack.ran_out(me: Object): boolean
 end
 
 -- The same, true once it fell below 0 (`bge`): one tick more.
-local function fell_below(me: Object): boolean
+local function count_down(me: Object): boolean
     local t = me.timer - 1
     me.timer = t
     return t < 0
@@ -99,7 +99,7 @@ function double_attack.detach(a: Object?)
     end
 end
 
--- MegaMan's stats as an actor reads them (0x020A109C and its kin): the side's own while he is on the field (with his
+-- MegaMan's stats as a navi reads them (0x020A109C and its kin): the side's own while he is on the field (with his
 -- Chaos Unison charge armed: AIData +0x12 of the side's navi), else his member block's.
 local function megaman_stats(me: Object): (Navi, boolean)
     local side = me.alliance
@@ -173,7 +173,7 @@ end
 -- animation (its number), in palette 14 with the Chaos Unison charge armed; in Hub Style 1 animation 0x0D, in 2 that in
 -- palette 14, in the DS's 3 animation 0x0E in palette 0x21 (the DS's buster arm, its own 0C-03, has fifteen
 -- animations; the GBA's has fourteen: 0x0D stands in; EXE5's Hub Styles are 1 and 2, so no setup reaches it).
-function double_attack.megaman_arm(me: Object, which: Slot)
+function double_attack.raise_arm(me: Object, which: Slot)
     local stats, armed = megaman_stats(me)
     local anim, palette = 0, 0
     if not stats.form.base then
@@ -193,7 +193,7 @@ function double_attack.megaman_arm(me: Object, which: Slot)
     attachment.attach(me, ARM, which, { anim = anim, while_dimmed = true, palette_add = palette })
 end
 
--- `sub_8018810` by the actor's NameID: `effect` at its attach point 0 for `ticks` ticks.
+-- `sub_8018810` by the navi's NameID: `effect` at its attach point 0 for `ticks` ticks.
 function double_attack.at_hand(me: Object, effect: Effect, ticks: number)
     local ax, az = me:attach_point(0)
     local p = me.pos
@@ -212,7 +212,7 @@ function double_attack.hit(me: Object, spec: HitboxSpec): Object?
     return h
 end
 
--- An actor appears (each role's first action): its appearing animation, 20 ticks, its NameID (its navi's identity);
+-- A navi appears (each role's first action): its appearing animation, 20 ticks, its NameID (its identity);
 -- MegaMan puts on what he wears and takes his palette; with `wears`, a team navi puts on its identity's parts
 -- (`sub_8011420` with Param3 1: they step even while paused). Then it charges (`charge`) on a solid panel, else leaves
 -- (`leave`); without `leave`, it charges whatever its panel.
@@ -243,16 +243,16 @@ function double_attack.appear(me: Object, charge: number, leave: number?, wears:
     end
 end
 
--- The actor's partner, the other actor its director brought (+0x60).
+-- The navi's partner, the other navi its controller brought (+0x60).
 function double_attack.partner(me: Object): Object
     local p = (me.state :: State).partner
     if p == nil then
-        error("a Double Attack's actor has no partner (the DS reads its +0x60 through a null pointer)")
+        error("a Double Attack's navi has no partner (the DS reads its +0x60 through a null pointer)")
     end
     return p
 end
 
--- An actor charges for `ticks` ticks: standing (but with `keeps_anim`: B-SHOOT's KnightMan, 0x02033B44, charges in the
+-- A navi charges for `ticks` ticks: standing (but with `keeps_anim`: B-SHOOT's KnightMan, 0x02033B44, charges in the
 -- animation he appeared in), the glow at its hand with its sound (40 ticks), the charged glow and its sound
 -- `charged_at` ticks before the end (20 if none said), lasting as long. True on its last tick (the role's own then
 -- follows).
@@ -274,7 +274,7 @@ function double_attack.charge(me: Object, ticks: number, charged_at: number?, ke
     return double_attack.ran_out(me)
 end
 
--- An actor leaves: its leaving animation, 4 ticks, then gone; with `takes_off`, what it wore taken off (`sub_800F29C`
+-- A navi leaves: its leaving animation, 4 ticks, then gone; with `takes_off`, what it wore taken off (`sub_800F29C`
 -- by its NameID, `sub_8011044`: MegaMan's).
 function double_attack.leave(me: Object, takes_off: boolean)
     if me.phase_init == 0 then
@@ -291,7 +291,7 @@ function double_attack.leave(me: Object, takes_off: boolean)
     me:set_lifecycle("destroy")
 end
 
--- The panels of the other side's area but the actor's own (`object_getPanelsExceptCurrentFiltered` by its side: flag
+-- The panels of the other side's area but the navi's own (`object_getPanelsExceptCurrentFiltered` by its side: flag
 -- 0x20 for side 0, none of it for side 1), in its side's order, packed (@exelib/panels).
 function double_attack.enemy_panels(me: Object): { number }
     local side = me.alliance
@@ -299,17 +299,17 @@ function double_attack.enemy_panels(me: Object): { number }
     return panels.filtered_except(me, require, forbid, side)
 end
 
--- A Double Attack's director and actors, and what its chip keeps of it (`DoubleAttack`, types.d.luau).
+-- A Double Attack's controller and navis, and what its chip keeps of it (`DoubleAttack`, types.d.luau).
 function double_attack.make(spec: Spec): DoubleAttack
     local roles = spec.roles
     if #roles ~= 2 then
-        error(string.format("%s: a Double Attack has two actors, not %d", spec.id, #roles))
+        error(string.format("%s: a Double Attack has two navis, not %d", spec.id, #roles))
     end
     if #spec.damage ~= 10 then
         error(string.format("%s: a Double Attack's damage row has ten entries, not %d", spec.id, #spec.damage))
     end
 
-    local state: StateSchema = { director = "object", role = "u8", partner = "object", held = "object", held2 = "object" }
+    local state: StateSchema = { controller = "object", role = "u8", partner = "object", held = "object", held2 = "object" }
     for k, v in spec.state or {} do
         state[k] = v
     end
@@ -320,12 +320,12 @@ function double_attack.make(spec: Spec): DoubleAttack
         local role = roles[s.role + 1]
         local f = role.actions[me.action]
         if not f then
-            error(string.format("%s's actor (role %d): action %#x reads past its table", spec.id, s.role, me.action))
+            error(string.format("%s's navi (role %d): action %#x reads past its table", spec.id, s.role, me.action))
         end
         f(me)
     end
 
-    -- The DS's actor init (0x020A0BD8 and its copies): on the user's spot (the panel's center), stepped by the role's
+    -- The DS's navi init (0x020A0BD8 and its copies): on the user's spot (the panel's center), stepped by the role's
     -- offset, on the ground; its navi's sprite (MegaMan's by his stats), a ground shadow, animation 0, shown, facing
     -- its side's way; then its first update at once.
     local function init(me: Object)
@@ -352,8 +352,8 @@ function double_attack.make(spec: Spec): DoubleAttack
         me:update_sprite()
     end
 
-    local actor = new.kind {
-        id = spec.id .. "/actor",
+    local navi_kind = new.kind {
+        id = spec.id .. "/navi",
         pool = "actor",
         state = state,
         update = function(me: Object)
@@ -364,22 +364,22 @@ function double_attack.make(spec: Spec): DoubleAttack
                 run(me)
                 me:update_sprite()
             else
-                -- (Its director's word for it cleared.)
+                -- (Its controller's word for it cleared.)
                 local s = me.state :: State
-                local director = s.director
-                if director then
-                    (director.state :: DirectorState).out[s.role + 1] = false
+                local controller = s.controller
+                if controller then
+                    (controller.state :: ControllerState).out[s.role + 1] = false
                 end
                 me:free()
             end
         end,
     }
 
-    -- The DS's actor spawner (0x020A0FEC and its copies): an actor for `role`, on the director's panel, of its user's
-    -- side and facing, with its damage word, reporting to the director.
+    -- The DS's navi spawner (0x020A0FEC and its copies): a navi for `role`, on the controller's panel, of its user's
+    -- side and facing, with its damage word, reporting to the controller.
     local function bring(me: Object, role: number): Object?
         local user = me.related1 :: Object
-        local o = battle.spawn(actor)
+        local o = battle.spawn(navi_kind)
         if not o then
             return nil
         end
@@ -389,8 +389,8 @@ function double_attack.make(spec: Spec): DoubleAttack
         o.related1 = user
         local s = o.state :: State
         s.role = role
-        s.director = me;
-        (me.state :: DirectorState).out[role + 1] = true
+        s.controller = me;
+        (me.state :: ControllerState).out[role + 1] = true
         return o
     end
 
@@ -404,13 +404,13 @@ function double_attack.make(spec: Spec): DoubleAttack
                 me.phase_init = 4
                 navi_chip.warp(user, true)
             end
-            if fell_below(me) then
-                me.phase, me.phase_init = ACTORS, 0
+            if count_down(me) then
+                me.phase, me.phase_init = NAVIS, 0
             end
-        elseif p == ACTORS then
-            local s = me.state :: DirectorState
+        elseif p == NAVIS then
+            local s = me.state :: ControllerState
             if me.phase_init == 0 then
-                -- Each the other's partner (+0x60; D-HERO's director alone doesn't link them, and its actors never
+                -- Each the other's partner (+0x60; D-HERO's controller alone doesn't link them, and its navis never
                 -- read the link).
                 local first = bring(me, 0)
                 local second = bring(me, 1)
@@ -428,7 +428,7 @@ function double_attack.make(spec: Spec): DoubleAttack
                 me.timer = COURSE_WAIT
                 me.phase_init = 4
             end
-            if fell_below(me) then
+            if count_down(me) then
                 me.phase, me.phase_init = WARP_IN, 0
             end
         elseif p == WARP_IN then
@@ -437,16 +437,16 @@ function double_attack.make(spec: Spec): DoubleAttack
                 me.timer = COURSE_WAIT
                 me.phase_init = 4
             end
-            if fell_below(me) then
+            if count_down(me) then
                 me:set_action(UNDIM)
             end
         else
-            error(string.format("%s's director: phase %#x reads past its table", spec.id, p))
+            error(string.format("%s's controller: phase %#x reads past its table", spec.id, p))
         end
     end
 
-    local director = new.kind {
-        id = spec.id .. "/director",
+    local controller_kind = new.kind {
+        id = spec.id .. "/controller",
         pool = "effect",
         state = { out = "bool[2]" },
         update = function(me: Object)
@@ -464,7 +464,7 @@ function double_attack.make(spec: Spec): DoubleAttack
                 elseif a == UNDIM then
                     dimming.undim_screen(me)
                 else
-                    error(string.format("%s's director: action %#x reads past its table", spec.id, a))
+                    error(string.format("%s's controller: action %#x reads past its table", spec.id, a))
                 end
             else
                 dimming.finish(me)
@@ -472,11 +472,11 @@ function double_attack.make(spec: Spec): DoubleAttack
         end,
     }
 
-    -- The DS's spawner (0x020A4DF8 and its copies): the director on `user`'s panel, of its side and facing, with the
+    -- The DS's spawner (0x020A4DF8 and its copies): the controller on `user`'s panel, of its side and facing, with the
     -- chip's element and the damage word. (Its position is what the launcher's registers held: its course never reads
     -- it.)
     local function spawn(user: Object, element: number, damage: number): Object?
-        local o = battle.spawn(director)
+        local o = battle.spawn(controller_kind)
         if not o then
             return nil
         end

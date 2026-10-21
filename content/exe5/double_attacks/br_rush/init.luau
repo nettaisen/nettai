@@ -1,13 +1,13 @@
 --!strict
 -- BR-RUSH (the DS's chip 0x166; its Japanese name Brain Rush), the Double Attack of MegaMan and Colonel
--- (docs/design/exe5ds-map.md §5, §5.2: its director the DS's effect object 0x9D, its actors its T1 0x3E). Colonel looks
--- down his row for the first enemy body whose panel before it is solid and free (else both leave), throws his cape
--- from that panel, and both leap off the field; once the cape stops on what it caught they drop onto that panel, MegaMan
--- firing three shots and Colonel striking three times over 40 ticks, then a sword's finisher each: eight hits on the
--- enemy's panel. The chip's record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from
--- the DS ROMs); its record's use is the cannon's (action 0x14, subtype 0), which nothing starts: no folder or hand holds
--- it. Sound 0x2F, which the DS plays with 0xFB as the strikes start, is the DS's own: left out (the user's decision of
--- 2026-10-20).
+-- (docs/design/exe5ds-map.md §5, §5.2: its controller the DS's effect object 0x9D, its navis its T1 0x3E). Colonel
+-- looks down his row for the first enemy body whose panel before it is solid and free (else both leave), throws his
+-- cape from that panel, and both leap off the field; once the cape stops on what it caught they drop onto that panel,
+-- MegaMan firing three shots and Colonel striking three times over 40 ticks, then a sword's finisher each: eight hits
+-- on the enemy's panel. The chip's record and name are the DS's (written by tools/exe5/gen_content.py,
+-- bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14, subtype 0), which nothing starts:
+-- no folder or hand holds it. Sound 0x2F, which the DS plays with 0xFB as the strikes start, is the DS's own: left out
+-- (the user's decision of 2026-10-20).
 
 local attachment = require("../objects/attachment")
 local buster = require("../lib/buster")
@@ -18,8 +18,8 @@ local double_attack = require("../lib/double_attack")
 local megaman = require("../navis/megaman").megaman
 local regions = require("@exelib/regions")
 
--- The actors' own beside the shared (`DoubleAttackActor`): Colonel's cape while he holds it (+0x74).
-type State = DoubleAttackActor & { cape: Object? }
+-- The navis' own beside the shared (`DoubleAttackNavi`): Colonel's cape while he holds it (+0x74).
+type State = DoubleAttackNavi & { cape: Object? }
 
 -- The cape's (the GBA's attack object 2, Colonel's cape, 0x080C4AE4; the DS's 0x02203190 with its Param2 variants):
 -- whom it reports to (its +0x60, a pointer to its thrower's +0x74), and whether its thrower let it go (+0x64).
@@ -28,7 +28,7 @@ type CapeState = { owner: Object?, released: boolean }
 local CHARGE_TICKS = 0x3C
 local LOOK_TICKS, WIND_TICKS, LEAP_TICKS, DROP_TICKS, READY_TICKS = 0x1E, 0xF, 4, 4, 0xF
 local RUSH_TICKS, FINISH_WAIT, FINISH_TICKS, AFTER_FINISH, OUT_TICKS, AFTER_TICKS = 0x28, 0x1E, 0x15, 0x14, 4, 0x1E
--- The rush's hits (each actor's three, at these ticks left of its 40), MegaMan's shots (his first as it starts, then
+-- The rush's hits (each navi's three, at these ticks left of its 40), MegaMan's shots (his first as it starts, then
 -- these), the finisher's hit; Colonel's cape leaves this many ticks into his throw.
 local HITS_AT: { number } = { 0x23, 0x1E, 0xA }
 local SHOTS_AT: { number } = { 0x1E, 0xF }
@@ -332,7 +332,7 @@ local function wait(me: Object, ticks: number): boolean
     return double_attack.ran_out(me)
 end
 
--- 0x020334D8: Colonel looks (both actors' future panels the panel found), 30 ticks; nothing found, he leaves.
+-- 0x020334D8: Colonel looks (both navis' future panels the panel found), 30 ticks; nothing found, he leaves.
 local function colonel_look(me: Object)
     if me.phase_init == 0 then
         local x, y = search(me)
@@ -396,8 +396,8 @@ local function leap(anim: number): (me: Object) -> ()
 end
 
 -- 0x0203316C, 0x0203358C: each waits for Colonel's cape: gone, they leave; stopped on its catch, they drop.
-local function await_cape(me: Object, colonel_actor: Object)
-    local held = (colonel_actor.state :: State).cape
+local function await_cape(me: Object, colonel_navi: Object)
+    local held = (colonel_navi.state :: State).cape
     if held == nil then
         me.phase, me.phase_init = 0x24, 0
     elseif cape_stopped(held) then
@@ -458,7 +458,7 @@ local function shoot(me: Object, restarts_overlay: boolean)
         battle.play_sound(SOUND_SHOT)
     end
     double_attack.detach(s.held)
-    double_attack.megaman_arm(me, "held")
+    double_attack.raise_arm(me, "held")
     double_attack.detach(s.held2)
     attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
     if restarts_overlay then

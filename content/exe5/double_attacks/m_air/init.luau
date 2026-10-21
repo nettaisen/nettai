@@ -1,13 +1,12 @@
 --!strict
--- M-AIR (the DS's chip 0x162; Mag Air Raid), the Double Attack of GyroMan and MagnetMan (docs/design/exe5ds-map.md
--- §5, §5.2: its director the DS's effect object 0x99, its actors its T1 0x37, which the director tells of each other).
+-- M-AIR (the DS's chip 0x162; Mag Air Raid), the Double Attack of GyroMan and MagnetMan (docs/design/exe5ds-map.md §5,
+-- §5.2: its controller the DS's effect object 0x99, its navis its T1 0x37, which the controller tells of each other).
 -- Neither checks its panel as it appears. GyroMan rises 40 pixels; MagnetMan, his magnet arm raised, sends a magnet
--- bomb up to him for each panel of the other side's from his column on (./toss: seen only), one every 5 ticks after
--- the first; then GyroMan flies ahead along the user's row, 2 pixels a tick, and over each column's center drops a
--- bomb on each of its panels of the other side's (./bomb: Elec, paralyzing), until he is off the screen. The chip's
--- record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its
--- record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no
--- folder or hand holds it.
+-- bomb up to him for each panel of the other side's from his column on (./toss: seen only), one every 5 ticks after the
+-- first; then GyroMan flies ahead along the user's row, 2 pixels a tick, and over each column's center drops a bomb on
+-- each of its panels of the other side's (./bomb: Elec, paralyzing), until he is off the screen. The chip's record and
+-- name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the
+-- cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no folder or hand holds it.
 
 local attachment = require("../objects/attachment")
 local bomb = require("@self/bomb")
@@ -17,8 +16,8 @@ local gyroman = require("../navis/gyroman").gyroman
 local magnetman = require("../navis/magnetman").magnetman
 local toss = require("@self/toss")
 
--- Its actors' state: the shared fields and GyroMan's next column's center (+0x74).
-type State = DoubleAttackActor & { next_center: number }
+-- Its navis' state: the shared fields and GyroMan's next column's center (+0x74).
+type State = DoubleAttackNavi & { next_center: number }
 
 local CHARGE_TICKS = 0x3C
 local AFTER_TICKS = 0xA

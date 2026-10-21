@@ -1,6 +1,6 @@
 --!strict
 -- M-ZAN (the DS's chip 0x161; Magnet Zan), the Double Attack of ProtoMan and MagnetMan (docs/design/exe5ds-map.md §5,
--- §5.2: its director the DS's effect object 0x98, its actors its T1 0x36). MagnetMan raises his magnet arm and holds
+-- §5.2: its controller the DS's effect object 0x98, its navis its T1 0x36). MagnetMan raises his magnet arm and holds
 -- every enemy body from his column forward in place (MagnetSoul's immobilizer, the DS's with a 120-tick linger and its
 -- other sound); ProtoMan charges for 120 ticks, then goes down the columns ahead and, for each enemy whose panel before
 -- it is free (or the user's), steps there and slashes the column in front of him (a hit on the enemy's panel and the
@@ -18,9 +18,9 @@ local protoman = require("../navis/protoman").protoman
 local regions = require("@exelib/regions")
 local status = require("../rules/status")
 
--- The actors' own beside the shared (`DoubleAttackActor`): ProtoMan's search starting at the top of its column (+0x70;
+-- The navis' own beside the shared (`DoubleAttackNavi`): ProtoMan's search starting at the top of its column (+0x70;
 -- after a slash it goes on below the last enemy).
-type State = DoubleAttackActor & { from_top: boolean }
+type State = DoubleAttackNavi & { from_top: boolean }
 
 -- ProtoMan's charge (120 ticks, the charged glow 80 ticks before its end, for those 80), his steps (3 ticks each), his
 -- swing (20 ticks, its hit on the 10th), his wait after (10 ticks).

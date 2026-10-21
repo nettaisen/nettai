@@ -73,23 +73,23 @@ fn hp(b: &Battle, side: u8) -> u16 {
 }
 
 /// Side 0 asks to switch to `member` on one tick, then `ticks` of nothing;
-/// the most directors of Double Attack `key` seen at once, and of its
-/// actors. (`mood` first: the outgoing navi's, 0xFF Full Synchro.)
+/// the most controllers of Double Attack `key` seen at once, and of its
+/// navis. (`mood` first: the outgoing navi's, 0xFF Full Synchro.)
 fn switch(b: &mut Battle, member: u8, mood: u8, ticks: usize, key: &str) -> (usize, usize) {
     b.stats[0].mood = mood;
     let ask = PlayerTick { switch_to: Some(member), ..Default::default() };
     b.tick(&[ask, Default::default()], Default::default());
-    let (mut directors, mut actors) = (0, 0);
+    let (mut controllers, mut navis) = (0, 0);
     for _ in 0..ticks {
         b.tick(&Default::default(), Default::default());
-        directors = directors.max(count(b, &format!("{key}/director")));
-        actors = actors.max(count(b, &format!("{key}/actor")));
+        controllers = controllers.max(count(b, &format!("{key}/controller")));
+        navis = navis.max(count(b, &format!("{key}/navi")));
     }
-    (directors, actors)
+    (controllers, navis)
 }
 
 /// D-HERO: MegaMan in Full Synchro switching to ProtoMan fires it, its
-/// director bringing both on; MegaMan's seven volleys each hit the other
+/// controller bringing both on; MegaMan's seven volleys each hit the other
 /// side for the row's damage at the side's level (40 at 9, as the DS's
 /// recording dealt), and the user comes back. A second Full Synchro switch
 /// in the round fires nothing.
@@ -98,14 +98,14 @@ fn d_hero_fires_from_full_synchro() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman"]);
     let before = hp(&b, 1);
-    let (directors, actors) = switch(&mut b, 1, 0xFF, 600, "d-hero");
-    assert_eq!((directors, actors), (1, 2), "one director, two actors");
-    assert_eq!(count(&b, "d-hero/director") + count(&b, "d-hero/actor"), 0, "all gone again");
+    let (controllers, navis) = switch(&mut b, 1, 0xFF, 600, "d-hero");
+    assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
+    assert_eq!(count(&b, "d-hero/controller") + count(&b, "d-hero/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 7 * 40, "seven volleys of 40");
     assert!(!b.is_dimmed(), "the dimming is over");
     // Back to MegaMan out of ProtoMan's Full Synchro: spent for the round.
-    let (directors, _) = switch(&mut b, 0, 0xFF, 200, "d-hero");
-    assert_eq!(directors, 0, "once a round");
+    let (controllers, _) = switch(&mut b, 0, 0xFF, 200, "d-hero");
+    assert_eq!(controllers, 0, "once a round");
 }
 
 /// Out of any mood but Full Synchro, nothing.
@@ -113,8 +113,8 @@ fn d_hero_fires_from_full_synchro() {
 fn d_hero_needs_full_synchro() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 200, "d-hero");
-    assert_eq!(directors, 0);
+    let (controllers, _) = switch(&mut b, 1, 0x80, 200, "d-hero");
+    assert_eq!(controllers, 0);
 }
 
 // ---- Each Double Attack's own (in the DS's order) ----------------------------------------
@@ -127,12 +127,12 @@ fn d_hero_needs_full_synchro() {
 fn m_zan_fires_from_protoman_to_magnetman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman", "magnetman"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 100, "m-zan");
-    assert_eq!(directors, 0, "MegaMan and ProtoMan out of no Full Synchro: nothing");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "m-zan");
+    assert_eq!(controllers, 0, "MegaMan and ProtoMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let (directors, actors) = switch(&mut b, 2, 0xFF, 700, "m-zan");
-    assert_eq!((directors, actors), (1, 2), "one director, two actors");
-    assert_eq!(count(&b, "m-zan/director") + count(&b, "m-zan/actor"), 0, "all gone again");
+    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "m-zan");
+    assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
+    assert_eq!(count(&b, "m-zan/controller") + count(&b, "m-zan/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 240, "one slash of 240");
 }
 
@@ -166,13 +166,13 @@ fn switch_counting(b: &mut Battle, member: u8, mood: u8, ticks: usize, keys: &[&
 fn m_air_fires_from_gyroman_to_magnetman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["gyroman", "magnetman"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 100, "m-air");
-    assert_eq!(directors, 0, "MegaMan and GyroMan out of no Full Synchro: nothing");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "m-air");
+    assert_eq!(controllers, 0, "MegaMan and GyroMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["m-air/director", "m-air/actor", "m-air/toss", "m-air/bomb"];
+    let keys = ["m-air/controller", "m-air/navi", "m-air/toss", "m-air/bomb"];
     let counts = switch_counting(&mut b, 2, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 8, 9], "{keys:?}");
-    assert_eq!(count(&b, "m-air/director") + count(&b, "m-air/actor"), 0, "all gone again");
+    assert_eq!(count(&b, "m-air/controller") + count(&b, "m-air/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 200, "one bomb of 200");
 }
 
@@ -184,10 +184,10 @@ fn d_valcan_fires_from_megaman_to_napalmman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["napalmman"]);
     let before = hp(&b, 1);
-    let keys = ["d-valcan/director", "d-valcan/actor", "bullet"];
+    let keys = ["d-valcan/controller", "d-valcan/navi", "bullet"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 60], "{keys:?}");
-    assert_eq!(count(&b, "d-valcan/director") + count(&b, "d-valcan/actor"), 0, "all gone again");
+    assert_eq!(count(&b, "d-valcan/controller") + count(&b, "d-valcan/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 360, "60 bullets of 6");
 }
 
@@ -200,7 +200,7 @@ fn br_rush_fires_from_megaman_to_colonel() {
     let content = exe5_content();
     let mut b = fighting(&content, &["colonel"]);
     let before = hp(&b, 1);
-    let keys = ["br-rush/director", "br-rush/actor", "br-rush/cape"];
+    let keys = ["br-rush/controller", "br-rush/navi", "br-rush/cape"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 1], "{keys:?}");
     for key in keys {
@@ -219,10 +219,10 @@ fn br_rush_fires_from_megaman_to_colonel() {
 fn e_sappou_fires_from_colonel_to_shadowman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["colonel", "shadowman"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 100, "e-sappou");
-    assert_eq!(directors, 0, "MegaMan and Colonel out of no Full Synchro: nothing");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "e-sappou");
+    assert_eq!(controllers, 0, "MegaMan and Colonel out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["e-sappou/director", "e-sappou/actor", "e-sappou/rock", "e-sappou/blade"];
+    let keys = ["e-sappou/controller", "e-sappou/navi", "e-sappou/rock", "e-sappou/blade"];
     let counts = switch_counting(&mut b, 2, 0xFF, 500, &keys);
     assert_eq!(counts, [1, 2, 2, 2], "{keys:?}");
     for key in keys {
@@ -243,12 +243,12 @@ fn e_sappou_fires_from_colonel_to_shadowman() {
 fn k_throw_fires_from_tomahawkman_to_knightman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["tomahawkman", "knightman"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 100, "k-throw");
-    assert_eq!(directors, 0, "MegaMan and TomahawkMan out of no Full Synchro: nothing");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "k-throw");
+    assert_eq!(controllers, 0, "MegaMan and TomahawkMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let (directors, actors) = switch(&mut b, 2, 0xFF, 700, "k-throw");
-    assert_eq!((directors, actors), (1, 2), "one director, two actors");
-    assert_eq!(count(&b, "k-throw/director") + count(&b, "k-throw/actor"), 0, "all gone again");
+    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "k-throw");
+    assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
+    assert_eq!(count(&b, "k-throw/controller") + count(&b, "k-throw/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 450, "one hit of 450");
 }
 
@@ -260,10 +260,10 @@ fn k_throw_fires_from_tomahawkman_to_knightman() {
 fn g_otoshi_fires_from_shadowman_to_toadman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["shadowman", "toadman"]);
-    let (directors, _) = switch(&mut b, 1, 0xFF, 100, "g-otoshi");
-    assert_eq!(directors, 0, "MegaMan and ShadowMan make no Double Attack");
+    let (controllers, _) = switch(&mut b, 1, 0xFF, 100, "g-otoshi");
+    assert_eq!(controllers, 0, "MegaMan and ShadowMan make no Double Attack");
     let before = hp(&b, 1);
-    let keys = ["g-otoshi/director", "g-otoshi/actor", "g-otoshi/frog"];
+    let keys = ["g-otoshi/controller", "g-otoshi/navi", "g-otoshi/frog"];
     let counts = switch_counting(&mut b, 2, 0xFF, 700, &keys);
     assert_eq!(counts, [1, 2, 12], "{keys:?}");
     for key in keys {
@@ -283,7 +283,7 @@ fn b_shoot_fires_from_megaman_to_knightman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["knightman"]);
     let before = hp(&b, 1);
-    let keys = ["b-shoot/director", "b-shoot/actor", "b-shoot/ball"];
+    let keys = ["b-shoot/controller", "b-shoot/navi", "b-shoot/ball"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 6], "{keys:?}");
     for key in keys {
@@ -295,7 +295,7 @@ fn b_shoot_fires_from_megaman_to_knightman() {
 /// C-SCOPE: MegaMan in Full Synchro to SearchMan; the scopes walk their
 /// crossing diagonals, and side 0's player presses A (once, while dimmed)
 /// as one stands on the opponent's panel: they stop where they cross, and
-/// each actor's five shots hit it, ten of 40 at level 9, 400 (the DS's
+/// each navi's five shots hit it, ten of 40 at level 9, 400 (the DS's
 /// recording `c-scope`'s). The scopes come and go.
 #[test]
 fn c_scope_stops_on_a() {
@@ -307,7 +307,7 @@ fn c_scope_stops_on_a() {
     b.tick(&[ask, Default::default()], Default::default());
     let scope = b.content.defs.kind_by_key("c-scope/scope").unwrap();
     let target = b.objects.get(b.player(1).unwrap()).panel;
-    let (mut pressed, mut scopes, mut directors) = (false, 0, 0);
+    let (mut pressed, mut scopes, mut controllers) = (false, 0, 0);
     for _ in 0..900 {
         let on = b.objects.in_order().any(|r| b.objects.get(r).kind == scope && b.objects.get(r).panel == target);
         let a = if on && !pressed {
@@ -318,11 +318,11 @@ fn c_scope_stops_on_a() {
         };
         b.tick(&[PlayerTick::buttons(a), Default::default()], Default::default());
         scopes = scopes.max(count(&b, "c-scope/scope"));
-        directors = directors.max(count(&b, "c-scope/director"));
+        controllers = controllers.max(count(&b, "c-scope/controller"));
     }
     assert!(pressed, "a scope stood on the opponent's panel");
-    assert_eq!((directors, scopes), (1, 2), "one director, two scopes");
-    for key in ["c-scope/director", "c-scope/actor", "c-scope/scope"] {
+    assert_eq!((controllers, scopes), (1, 2), "one controller, two scopes");
+    for key in ["c-scope/controller", "c-scope/navi", "c-scope/scope"] {
         assert_eq!(count(&b, key), 0, "{key}: gone again");
     }
     assert_eq!(before - hp(&b, 1), 400, "ten shots of 40");
@@ -336,9 +336,9 @@ fn c_scope_unstopped_misses() {
     let content = exe5_content();
     let mut b = fighting(&content, &["searchman"]);
     let before = hp(&b, 1);
-    let (directors, actors) = switch(&mut b, 1, 0xFF, 900, "c-scope");
-    assert_eq!((directors, actors), (1, 2), "one director, two actors");
-    assert_eq!(count(&b, "c-scope/director") + count(&b, "c-scope/actor") + count(&b, "c-scope/scope"), 0, "all gone again");
+    let (controllers, navis) = switch(&mut b, 1, 0xFF, 900, "c-scope");
+    assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
+    assert_eq!(count(&b, "c-scope/controller") + count(&b, "c-scope/navi") + count(&b, "c-scope/scope"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 0, "every shot misses");
 }
 
@@ -351,10 +351,10 @@ fn c_scope_unstopped_misses() {
 fn c_bomb_fires_from_napalmman_to_meddy() {
     let content = exe5_content();
     let mut b = fighting(&content, &["napalmman", "meddy"]);
-    let (directors, _) = switch(&mut b, 1, 0x80, 100, "c-bomb");
-    assert_eq!(directors, 0, "MegaMan and NapalmMan out of no Full Synchro: nothing");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "c-bomb");
+    assert_eq!(controllers, 0, "MegaMan and NapalmMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["c-bomb/director", "c-bomb/actor", "c-bomb/capsule", "napalmmn/bomb"];
+    let keys = ["c-bomb/controller", "c-bomb/navi", "c-bomb/capsule", "napalmmn/bomb"];
     let counts = switch_counting(&mut b, 2, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 1, 1], "{keys:?}");
     for key in keys {
@@ -372,7 +372,7 @@ fn k_bomb_fires_from_megaman_to_numberman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["numberman"]);
     let before = hp(&b, 1);
-    let keys = ["k-bomb/director", "k-bomb/actor", "k-bomb/bomb"];
+    let keys = ["k-bomb/controller", "k-bomb/navi", "k-bomb/bomb"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 4], "{keys:?}");
     for key in keys {
@@ -415,7 +415,7 @@ fn d_hero_fires_after_a_paused_switch() {
     b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
     b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
     let before = hp(&b, 1);
-    let (mut directors, mut actors) = (0, 0);
+    let (mut controllers, mut navis) = (0, 0);
     let names = content.assets.names(nettai_content_api::AssetKind::Sound);
     let (mut landed, mut telop) = (None, None);
     for t in 0..1500 {
@@ -437,14 +437,14 @@ fn d_hero_fires_after_a_paused_switch() {
                 }
             }
         }
-        directors = directors.max(count(&b, "d-hero/director"));
-        actors = actors.max(count(&b, "d-hero/actor"));
-        if directors > 0 && count(&b, "d-hero/director") == 0 {
+        controllers = controllers.max(count(&b, "d-hero/controller"));
+        navis = navis.max(count(&b, "d-hero/navi"));
+        if controllers > 0 && count(&b, "d-hero/controller") == 0 {
             break;
         }
     }
     assert_eq!(b.party[0].active, 1, "ProtoMan came in");
     assert_eq!(telop.zip(landed).map(|(a, b)| a - b), Some(58), "the telop after the follow-up's landing");
-    assert_eq!((directors, actors), (1, 2), "one director, two actors");
+    assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
     assert_eq!(before - hp(&b, 1), 7 * 40, "seven volleys of 40");
 }
