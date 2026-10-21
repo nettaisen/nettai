@@ -213,19 +213,7 @@ local function magnet(me: Object)
         me.anim = ANIM_MAGNET
         me.timer = MAGNET_TICKS
         attachment.attach(me, MAGNET_ARM, "held", { anim = 0, while_dimmed = true })
-        local enemy = ENEMY_BODY[me.alliance]
-        for y = 1, 3 do
-            local x = me.panel_x
-            while field.valid(x, y) do
-                if bit32.btest(field.flags(x, y), enemy) then
-                    local o = immobilizer.spawn(IMMOBILIZER, me, x, y)
-                    if o then
-                        o.run_while_dimmed = true
-                    end
-                end
-                x += me.facing
-            end
-        end
+        immobilizer.rows_ahead(IMMOBILIZER, me, me.panel_x)
         me.phase_init = 4
     end
     if double_attack.ran_out(me) then
