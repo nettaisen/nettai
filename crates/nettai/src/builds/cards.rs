@@ -101,6 +101,17 @@ pub fn number(names: &Names, h: EntryHandle, field: &str) -> Option<i64> {
     c.defs.definitions.get(Registry::Entry, &c.defs.entry(h).key).and_then(|d| d.spec.field(field).int())
 }
 
+/// The lines of entry `h`'s effects (its data's `effects`) as text table `table` words them, each effect's line and
+/// those of the effects it holds (a PartyCust program's, by its collection's own table); none where it has no effects.
+pub fn lines_in(names: &Names, h: EntryHandle, table: &str, named: Named) -> Option<Vec<Line>> {
+    let c = names.content;
+    let d = c.defs.definitions.get(Registry::Entry, &c.defs.entry(h).key)?;
+    let Data::List(effects) = d.spec.field(FIELD) else { return None };
+    let mut out = Vec::new();
+    of_effects(effects, &|key| names.text(table, key), named, &mut out);
+    Some(out)
+}
+
 /// The table's key of effect record `r` (`kind`, or `kind.choice`; its `group` and its `version` are no choice).
 pub fn key(r: &Data) -> Option<String> {
     let Data::Map(fields) = r else { return None };

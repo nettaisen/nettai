@@ -123,7 +123,7 @@ export global FolderView {
 
 // One of the folder's counts: its word, and what the folder holds of its limit, which ticks as it changes. In the
 // error red when it is past its limit.
-component CountBox inherits Rectangle {
+export component CountBox inherits Rectangle {
     in property <string> label;
     in property <int> value;
     in property <string> suffix;

@@ -622,24 +622,36 @@ msgstr "パートナー"
 msgid "Navi changes"
 msgstr "ナビチェンジ"
 
-msgid "Enter adds or takes out"
-msgstr "Enterで加える・外す"
 
-msgid "This ruleset: one version per build"
-msgstr "このルール：1ビルド1バージョン"
 
-msgid "This ruleset: versions mixed"
-msgstr "このルール：バージョン混在可"
 
-msgid "Into {}"
-msgstr "{}へ"
 
-msgid "Needs {}"
-msgstr "{}必要"
 
-msgid "Add or take out · Install"
-msgstr "加える・外す · インストール"
 
 msgid "{n} block free"
 msgid_plural "{n} blocks free"
 msgstr[0] "空き{n}ブロック"
+
+msgid "Clear the party?"
+msgstr "パーティを空にしますか？"
+
+msgid "Effect"
+msgstr "効果"
+
+msgid "Kind"
+msgstr "種類"
+
+msgid "Gauge"
+msgstr "ゲージ"
+
+msgid "Fits: {n} block free"
+msgid_plural "Fits: {n} blocks free"
+msgstr[0] "入ります：空き{n}ブロック"
+
+msgid "Needs {n} block"
+msgid_plural "Needs {n} blocks"
+msgstr[0] "{n}ブロック必要"
+
+msgid "{n} block"
+msgid_plural "{n} blocks"
+msgstr[0] "{n}ブロック"
