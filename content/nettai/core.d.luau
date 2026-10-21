@@ -327,6 +327,11 @@ declare extern type Collision with
     counter_timer: number
     -- What the last resolution hit (some kinds clear it).
     hit_flags: number
+    -- Its hits reach while the battle is dimmed (its self flags' 0x10000:
+    -- what a setup while dimmed gives it, and a retype while dimmed but
+    -- EXE5's, which leaves it out; the DS's Double Attacks' bullets set it
+    -- again).
+    hits_while_dimmed: boolean
     -- The damage taken this window (read-only).
     final_damage: number
     -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
