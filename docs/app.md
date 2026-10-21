@@ -1356,7 +1356,13 @@ back by `resolve_side`):
   (`all`, `none`). `activate("forms-all", i)` is `Draft::choose_forms` (`Builds::choose_forms`, one change): the
   group's forms put in in order while the list has room, the rest left out and refused (the refusal's sound; the Pick
   sound where all went in); `forms-none` takes the group's out.
-- **The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
+- **The overview's party** (the user: "the party is also not visible on the build overview screen"): a build with
+partners has a row for each under its forms (`BuildSheet::party`, `builds::party::sheet_rows`, read as the Party tab
+reads them: the setup's schema, the overview's budgets): its face, name, HP with its programs' bonus, and its gauge
+with the blocks used of it in its programs' colors. On the wide sheet the rows are over the stats' column, the
+abilities and bugs a line fewer for each; on the narrow and a phone's sheet the sheet is taller by them.
+
+**The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
   chooses in the setup's order and each in the build's own (the battle's), a face and its version's tag (a bar in
   its color under the face); none for a navi that doesn't change form. The wide sheet's abilities and bugs are a
   line fewer for each row of six (`overview::FORMS_TO_A_ROW`).

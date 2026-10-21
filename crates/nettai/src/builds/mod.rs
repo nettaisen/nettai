@@ -41,6 +41,7 @@ pub mod import;
 #[allow(dead_code)]
 pub mod order;
 pub mod overview;
+pub mod party;
 pub mod pictures;
 pub mod shelf;
 pub mod store;

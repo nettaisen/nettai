@@ -156,9 +156,11 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
             .collect(),
         false => Vec::new(),
     };
-    // The lines under the stats (a line fewer for each stat after the eight, and for each row of forms): the bugs keep
-    // four of them where both lists are long.
-    let room = LINES.saturating_sub(stats.len() - 8).saturating_sub(forms.len().div_ceil(FORMS_TO_A_ROW)).max(2);
+    // Its partners (a party battle's: EXE5's), a row each under the forms.
+    let party = crate::builds::party::sheet_rows(kit, names, |hp| words.ui.global::<nettai_ui::PartyView>().invoke_hp_word(hp), side, checked, overview.as_ref());
+    // The lines under the stats (a line fewer for each stat after the eight, for each row of forms and for each
+    // partner): the bugs keep four of them where both lists are long.
+    let room = LINES.saturating_sub(stats.len() - 8).saturating_sub(forms.len().div_ceil(FORMS_TO_A_ROW)).saturating_sub(party.len()).max(2);
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
     let bug_lines: Vec<SheetLine> = bugs.iter().map(|(name, extent)| SheetLine { kind: SheetLineKind::Bug, text: name.into(), extent: extent.into() }).collect();
     let room_for_bugs = bug_lines.len().clamp(1, 4.min(room - 1));
@@ -176,6 +178,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         navi: names.navi(navi).into(),
         face,
         forms: ModelRc::new(VecModel::from(forms)),
+        party: ModelRc::new(VecModel::from(party)),
         stats: ModelRc::new(VecModel::from(stats)),
         lines: ModelRc::new(VecModel::from(lines)),
         abilities: abilities.join(", ").into(),

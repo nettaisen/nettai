@@ -117,6 +117,17 @@ export struct SheetForm {
 }
 
 // A build, as the overview shows it.
+// One of a build's partners (a party battle's: EXE5's), as the overview's rows of them show it: its face, name and HP
+// (its PartyCust programs' bonus in), and the blocks its programs fill of its gauge, each in its program's color.
+export struct SheetPartner {
+    face: image,
+    name: string,
+    hp: string,
+    used: int,
+    gauge: int,
+    tones: [color],
+}
+
 export struct BuildSheet {
     // Over the name, where the sheet is a player's in a match: YOU, OPPONENT. Else none.
     label: string,
@@ -128,6 +139,8 @@ export struct BuildSheet {
     // The forms it has, in its facts' order and each fact's own (EXE6's Beast form, then its Crosses; EXE4's and
     // EXE5's souls); none for a navi that doesn't change form.
     forms: [SheetForm],
+    // Its partners, a row each under the forms (none: no party).
+    party: [SheetPartner],
     // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory; then any of the game's rules' own
     // (EXE5's Soul time).
     stats: [StatLine],
@@ -735,7 +748,11 @@ export component BuildOverview inherits Rectangle {
     // stats' column's width on the wide sheet), a phone's as many as fit; rows 22 apart, and 4 after the last.
     property <int> form-fit: root.single ? max(1, floor((root.inner + 6px) / 38px)) : 6;
     property <int> form-rows: ceil(root.build.forms.length / root.form-fit);
-    property <length> forms-height: root.form-rows == 0 ? 0px : root.form-rows * 22px + 4px;
+    property <length> forms-rows-height: root.form-rows == 0 ? 0px : root.form-rows * 22px + 4px;
+    // The partners' rows under the forms (a party battle's: EXE5's), 22 apart, and 4 after the last; then the forms and
+    // they take the room the forms took alone.
+    property <length> party-y: root.forms-y + root.forms-rows-height;
+    property <length> forms-height: root.forms-rows-height + (root.build.party.length == 0 ? 0px : root.build.party.length * 22px + 4px);
     out property <length> sheet-height: !root.narrow ? 540px : 16px + 44px + 12px + root.forms-height + root.narrow-stats + 12px + root.column * (Theme.chip-row + 2px) - 2px + 16px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular memory")];
     // (Two columns of stats have a shorter label for the last: its column is 108.)
@@ -823,6 +840,66 @@ export component BuildOverview inherits Rectangle {
             height: 2px;
             visible: form.version.text != "";
             background: form.version.tone;
+        }
+    }
+
+    // The partners: each its face, name and HP, and its gauge with the blocks used of it, in its programs' colors.
+    for partner[i] in root.build.party: Rectangle {
+        x: root.pad;
+        y: root.party-y + i * 22px;
+        width: root.narrow ? root.inner : 240px;
+        height: 20px;
+        Image {
+            x: 0;
+            y: 2px;
+            width: 32px;
+            height: 16px;
+            source: partner.face;
+            image-rendering: pixelated;
+        }
+
+        Text {
+            x: 38px;
+            width: max(0px, parent.width - 38px - 36px - 4px - partner.gauge * 5px - 4px - 28px);
+            text: partner.name;
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 12px;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            x: parent.width - 36px - 4px - partner.gauge * 5px - 4px - 28px;
+            width: 36px;
+            text: partner.hp;
+            color: Theme.muted;
+            font-family: Theme.mono;
+            font-size: 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+
+        for k in partner.gauge: Rectangle {
+            x: parent.width - 28px - 4px - partner.gauge * 5px + k * 5px;
+            y: 6px;
+            width: 4px;
+            height: 8px;
+            border-width: 1px;
+            border-color: Theme.line;
+            background: partner.used > partner.gauge ? Theme.bad : k < partner.used ? (k < partner.tones.length ? partner.tones[k] : Theme.cursor) : Theme.inset;
+        }
+
+        Text {
+            x: parent.width - 28px;
+            width: 28px;
+            text: partner.used + "/" + partner.gauge;
+            color: partner.used > partner.gauge ? Theme.bad : Theme.muted;
+            font-family: Theme.mono;
+            font-size: 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
         }
     }
 
