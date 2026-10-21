@@ -461,6 +461,8 @@ component DirectionButton inherits Rectangle {
 // `in-library` lights the title while the focus is in the library. (A phone's sheet has no room for the two
 // titles; a `compact` one, a library in a column of three, has its title over it and none of its own.)
 export component LibraryHead inherits Rectangle {
+    // Its title: the library's (the Party tab's says what it lists: its navis or its programs).
+    in property <string> title: @tr("Library");
     in property <bool> in-library;
     in property <bool> compact;
     in property <string> search;
@@ -478,7 +480,7 @@ export component LibraryHead inherits Rectangle {
         width: self.preferred-width;
         height: 40px;
         visible: !root.bare;
-        text: Caps.of(@tr("Library"));
+        text: Caps.of(root.title);
         color: root.in-library ? Theme.cursor : Theme.muted;
     }
 

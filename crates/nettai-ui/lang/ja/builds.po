@@ -606,6 +606,17 @@ msgstr "バージョン混在"
 msgid "Party"
 msgstr "パーティ"
 
+# The Party tab's library while a head (a navi's slot) is chosen: the navis to put in it.
+msgid "Navis"
+msgstr "ナビ"
+
+msgid "Search navis"
+msgstr "ナビを検索"
+
+# Why a navi can't go into the party's slot: it is in the party already.
+msgid "In party"
+msgstr "パーティにいます"
+
 msgid "the party"
 msgstr "パーティ"
 
