@@ -136,9 +136,16 @@ pub(crate) fn put_on_navi_overlay(b: &mut Battle, r: ObjectRef, navi: NaviHandle
 /// form changes' first step): it keeps running while paused and dimmed,
 /// and steps its sprite through them.
 pub(crate) fn keep_overlay_stepping(b: &mut Battle, overlay: ObjectRef) {
+    b.objects.get_mut(overlay).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    tell_overlay(b, overlay);
+}
+
+/// Param3 = 1 on an overlay alone (the DS's 0x02202064, in its party
+/// switch's and knockout's landings): it steps its sprite through dimming
+/// when it runs then, without being made to run.
+pub(crate) fn tell_overlay(b: &mut Battle, overlay: ObjectRef) {
     let o = b.objects.get_mut(overlay);
     o.params[2] = 1;
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
     match &mut o.vars {
         crate::kinds::Vars::FormOverlay(v) => v.stepping = form_overlay::Stepping::WhileDimmed,
         crate::kinds::Vars::BodyOverlay(v) => v.always_step = true,

@@ -35,6 +35,8 @@ programs.beat = effects.beat
 programs.tango = effects.tango
 programs.soul_time = effects.soul_time
 programs.hp = effects.hp
+programs.switches = effects.switches
+programs.party_support = effects.party_support
 
 -- The bugs, in the order the bugs' routine runs them (0x08140008, its table 0x08140054 by bug group and level): a
 -- program's `bug` names the one it brings, the colors' count brings `status` or `status-strong`. Each writes the navi's

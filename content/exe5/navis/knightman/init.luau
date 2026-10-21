@@ -49,6 +49,18 @@ local navi: NaviDef = {
     -- What the story gives him (0x08052E9C: the table 0x0804F960's row for his place in his team, MagnetMan's and
     -- his): his HP by the story's progress; his level, which his damage rows are read at, is that count up to 6.
     story = { hp = { 400, 400, 500, 550, 600, 650, 700, 800, 900 }, max_level = 6 },
+    -- In a party (EXE5 DS's party battle, docs/design/exe5ds-map.md §4.10): the blocks of its PartyCust gauge (ov413
+    -- 0x021EC958's entry 11), its base HP by the side's level 0 to 9 (0x0203E21A's row 11, which 0x02004C84 adds the
+    -- programs' bonus to), and its own chip's damage by the level (0x0203E0D7's row 11, through 0x02004E48, which
+    -- 0x0203BF2C adds the programs' bonus to).
+    -- The team whose saves hold it: a ruleset of one version per build holds a party to one team's navis
+    -- (rules/builds' groups; the DS's Navi Select lists either team's).
+    version = "colonel",
+    party = {
+        gauge = 5,
+        hp = { 100, 100, 300, 400, 450, 500, 550, 600, 700, 800 },
+        chip_damage = { 60, 60, 60, 60, 80, 80, 100, 100, 100, 100 },
+    },
     identity = new.identity {
         class = "player",
         version = 0,

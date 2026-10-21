@@ -55,6 +55,9 @@
 //! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
 //! souls = ["protosoul"]              # the souls it has, either version's (default: every soul; none, no soul button)
 //! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
+//! party = [                         # a party battle's team navis (EXE5 DS's: up to two, MegaMan's alone; else
+//!     { navi = "protoman", programs = ["p-hp-100", "p-atk-1"] },   # none), each with its PartyCust programs
+//! ]                                  # (no more than its gauge holds); `level` is then the party's, 0 to 9 (else 9)
 //!
 //! auto_battle_places = [           # EXE5's: what a navi in auto battle plays from the side's save, its block's 42
 //!     {}, {}, {},                    # places to the last that isn't empty: each a chip, a pattern record by number

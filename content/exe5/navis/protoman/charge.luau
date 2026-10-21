@@ -12,11 +12,17 @@ local charge = {}
 local HIT_PARAM = 0x94
 -- The damage rows' row 0, by his level.
 local DAMAGE: { number } = { 60, 60, 70, 70, 80, 80, 80 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 0 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 40, 10 }, { 40, 10 }, { 40, 10 }, { 60, 10 }, { 50, 10 },
+    { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 },
+}
 
 -- 0x0800F8CE
 local function setup(navi: Object): Chip
     navi:load_chip_attack(wideswrd)
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     return wideswrd
 end

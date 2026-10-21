@@ -15,12 +15,18 @@ local back = {}
 local HIT_PARAM, TICKS, LOCKOUT = 0x94, 30, 50
 -- The damage rows' row 14, by his level.
 local DAMAGE: { number } = { 60, 60, 60, 80, 80, 100, 100 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 14 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 40, 10 }, { 40, 10 }, { 40, 10 }, { 40, 10 }, { 60, 10 },
+    { 60, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 },
+}
 
 back.action = anti_damage.stance("shadowman/back/action")
 
 -- 0x0800F704 (AIAttackVars +3 1, which the counter's start, 0x0800E340, carries as its variant).
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.extra = 0
     navi.attack_variant = 1

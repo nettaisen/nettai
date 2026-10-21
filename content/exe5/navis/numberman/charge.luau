@@ -22,6 +22,12 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 16, by his level.
 local DAMAGE: { number } = { 10, 10, 10, 10, 10, 20, 20 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 16 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 5, 5 }, { 5, 5 }, { 5, 5 }, { 5, 5 }, { 5, 5 },
+    { 5, 5 }, { 5, 5 }, { 5, 5 }, { 5, 5 }, { 5, 5 },
+}
 local THROW_ANIM = 6
 local SOUND = asset.sound("minibomb-throw")
 local THROW_TICKS, THROW_AT, WAIT = 22, 16, 30
@@ -95,7 +101,7 @@ charge.action = new.action {
 
 -- 0x0800FAE6
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0
     navi.attack_variant = 0

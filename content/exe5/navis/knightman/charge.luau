@@ -27,6 +27,12 @@ export type State = {
 local HIT_PARAM = 0x9E
 -- The damage rows' row 20, by his level.
 local DAMAGE: { number } = { 80, 80, 80, 100, 100, 120, 120 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 20 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 }, { 80, 10 },
+    { 80, 10 }, { 100, 10 }, { 100, 10 }, { 100, 10 }, { 100, 10 },
+}
 local SWING_ANIM = 18
 local SOUND = asset.sound("knight-swing")
 local SWING_TICKS = 58
@@ -101,7 +107,7 @@ charge.action = new.action {
 
 -- 0x0800F776
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_variant = 1
     local s = navi:action_state(charge.action) :: State

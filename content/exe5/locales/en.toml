@@ -175,6 +175,7 @@ language = "en"
 "hotbody1" = { name = "HotBody1", description = "Burns all\nenemies\naround" }
 "hotbody2" = { name = "HotBody2", description = "Burns all\nenemies\naround" }
 "hotbody3" = { name = "HotBody3", description = "Burns all\nenemies\naround" }
+"hprecov" = { name = "HPRecov", description = "" }
 "iceseed" = { name = "IceSeed", description = "Makes 9sq\nice\n3sq ahead" }
 "infvulc1" = { name = "InfVulc1", description = "20-shot\ndeadly\nmachine!" }
 "infvulc2" = { name = "InfVulc2", description = "24-shot\ndeadly\nmachine!" }
@@ -456,6 +457,8 @@ language = "en"
 "megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
 "megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
 "millions" = { name = "Millions", description = "Gn mstry\ndata =\nZennys" }
+"navchg-1" = { name = "NavChg+1", description = "1 extra\nNaviChng\nchance!" }
+"navchg-2" = { name = "NavChg+2", description = "2 extra\nNaviChng\nchances!" }
 "oilbody" = { name = "OilBody", description = "Attracts\nFire\nViruses!" }
 "reflect" = { name = "Reflect", description = "B+Left=\nReflect\nattacks!" }
 "rush" = { name = "Rush", description = "VS only!\nTracks\nenemys" }
@@ -465,9 +468,25 @@ language = "en"
 "soult-1" = { name = "SoulT+1", description = "DublSoul\neffect\n+1 turn" }
 "speed-1" = { name = "Speed+1", description = "MegaBstr\nSpeed +1" }
 "speedmax" = { name = "SpeedMAX", description = "MegaBstr\nSpeedMAX" }
+"spport" = { name = "Spport", description = "MegaMan\nsupports\nteam" }
 "sprarmr" = { name = "SprArmr", description = "Won't be\npushed!" }
 "tango" = { name = "Tango", description = "VS only!\nHeals\nlow HP" }
 "undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nhard hit" }
+
+[partycust_programs]
+"p-hp-50" = { name = "P.HP+50", description = "Party\nHP Max\n+50" }
+"p-hp-100" = { name = "P.HP+100", description = "Party\nHP Max\n+100" }
+"p-hp-200" = { name = "P.HP+200", description = "Party\nHP Max\n+200" }
+"p-hp-300" = { name = "P.HP+300", description = "Party\nHP Max\n+300" }
+"p-atk-1" = { name = "P.Atk+1", description = "Party\nNavi atk\n+1" }
+"p-atk-2" = { name = "P.Atk+2", description = "Party\nNavi atk\n+2" }
+"p-atk-3" = { name = "P.Atk+3", description = "Party\nNavi atk\n+3" }
+"p-chp-30" = { name = "P.Chp+30", description = "Special\nChip atk\n+30" }
+"p-chp-40" = { name = "P.Chp+40", description = "Special\nChip atk\n+40" }
+"p-chp-50" = { name = "P.Chp+50", description = "Special\nChip atk\n+50" }
+"p-btlpk1" = { name = "P.Btlpk1", description = "Slightly\nincreases\nNavi pow" }
+"p-btlpk2" = { name = "P.Btlpk2", description = "Majorly\nincreases\nNavi pow" }
+"p-spport" = { name = "P.Spport", description = "Party Navi\nsupport\nprogram" }
 
 [patch_cards]
 "alpha" = { name = "Alpha" }

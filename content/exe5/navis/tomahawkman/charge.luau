@@ -19,6 +19,12 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 18, by his level.
 local DAMAGE: { number } = { 60, 60, 60, 60, 60, 80, 80 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 18 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 40, 10 }, { 40, 10 }, { 40, 10 }, { 40, 10 }, { 40, 10 },
+    { 40, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 },
+}
 local THROW_ANIM = 12
 local THROW_TICKS, WAIT = 10, 30
 
@@ -71,7 +77,7 @@ charge.action = new.action {
 
 -- 0x0800FACA
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0
     local s = navi:action_state(charge.action) :: State
