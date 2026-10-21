@@ -201,7 +201,10 @@ named_fields! {
         PreventAnim = "prevent_anim", U8, rw;
         /// BattleObject +0x1A: a player's chips left in its hand as the HUD
         /// shows them; another actor's own count (EXE5's Jealousy reads it).
-        ChipsHeld = "chips_held", U8, ro;
+        ChipsHeld = "chips_held", U8, rw;
+        /// BattleObject +0x2A holds a chip (a player's: its hand's at the
+        /// cursor, which its HUD shows).
+        HasChip = "has_chip", Bool, ro;
         Pos = "pos", Vec3, rw;
         Vel = "vel", Vec3, rw;
         Related1 = "related1", Object, rw;
@@ -470,6 +473,10 @@ named_fields! {
         Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
         BarrierHp = "barrier_hp", U8, ro;
         BarrierPopHitMod = "barrier_pop_hit_mod", U8, ro;
+        /// A bubble is its barrier (BblWrap's, the barrier byte 8), and the
+        /// barrier's timer (+0x1A: a bubble's 0 while it is down).
+        Bubble = "bubble", Bool, ro;
+        BarrierTimer = "barrier_timer", U16, ro;
     }
 }
 

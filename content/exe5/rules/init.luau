@@ -27,6 +27,7 @@ local megaman_support = require("./navis/megaman/support")
 local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local protoman_support = require("./navis/protoman/support")
+local searchman_support = require("./navis/searchman/support")
 local tomahawkman_support = require("./navis/tomahawkman/support")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
@@ -420,10 +421,13 @@ local rules: Rules = {
             colonel_support.tick(side)
             tomahawkman_support.tick(side)
             megaman_support.tick(side)
+            searchman_support.tick(side)
         end,
         fight_started = party.fight_started,
         -- A custom screen asked for in a party battle's fight: Meddy's HealPulse (navis/meddy/support).
         custom_hold = meddy_support.custom_hold,
+        -- The opponent starts a chip: SearchMan's support in a link battle stops it (navis/searchman/support).
+        opponent_chip = searchman_support.opponent_chip,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
         -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).

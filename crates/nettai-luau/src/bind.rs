@@ -3107,6 +3107,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::HpEmptied
                 | RulesHook::NaviFalling
                 | RulesHook::MemberBusy
+                | RulesHook::OpponentChip
                 | RulesHook::CutInBarred,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),

@@ -1844,6 +1844,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
+            ObjectField::HasChip => Value::Bool(ob.chip.is_some()),
             ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
@@ -1908,6 +1909,7 @@ impl CoreApi for Battle {
                 ob.identity = Some(nettai_content_api::IdentityHandle(h));
             }
             (ObjectField::PreventAnim, FieldValue::U8(x)) => ob.prevent_anim = x,
+            (ObjectField::ChipsHeld, FieldValue::U8(x)) => ob.chips_held = x,
             (ObjectField::Pos, FieldValue::Vec3(p)) => ob.pos = p,
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
             (ObjectField::Related1, FieldValue::Object(r)) => ob.related[0] = r,
@@ -2932,6 +2934,8 @@ impl CoreApi for Battle {
             },
             CollisionField::BarrierHp => c.barrier_hp as i64,
             CollisionField::BarrierPopHitMod => c.barrier_saved_hmf as i64,
+            CollisionField::Bubble => (c.barrier == 8) as i64,
+            CollisionField::BarrierTimer => c.barrier_timer as i64,
         }))
     }
 
@@ -3006,7 +3010,9 @@ impl CoreApi for Battle {
             | CollisionField::Direction
             | CollisionField::Barrier
             | CollisionField::BarrierHp
-            | CollisionField::BarrierPopHitMod => {
+            | CollisionField::BarrierPopHitMod
+            | CollisionField::Bubble
+            | CollisionField::BarrierTimer => {
                 unreachable!("read-only")
             }
         }

@@ -780,6 +780,12 @@ impl Battle {
         }
     }
 
+    /// The rules' `opponent_chip(side, navi)`: whether they stop the
+    /// opponent's chip.
+    pub(crate) fn rules_opponent_chip(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::OpponentChip, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
     /// The rules' `navi_tick(side, navi)`.
     pub(crate) fn rules_navi_tick(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::NaviTick, Some(navi), None, None);

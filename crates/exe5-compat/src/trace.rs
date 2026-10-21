@@ -2167,13 +2167,15 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             continue;
         }
         let (input, events) = round.tick_inputs(i, &frames);
+        if frames[i].ds {
+            // (The engine's tick draws the GBA's main loop's one, before the
+            // battle's update, as the DS draws both: what the battle draws
+            // then, MegaMan's hurt voice's test, reads the DS's values.)
+            ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS - 1);
+        }
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
             replay.stopped = Some(Stop::Panic { frame: frames[i].frame, message: panic_message(&*e) });
             return replay;
-        }
-        if frames[i].ds {
-            // (The engine's tick drew the GBA's main loop's one.)
-            ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS - 1);
         }
         let differences = compare_at(&b, round, &frames, i, compat);
         if !differences.is_empty() {
