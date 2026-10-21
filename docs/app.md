@@ -184,7 +184,7 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 (Settings' Controls, kept in the settings; `input::Bindings`). The defaults:
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
-- C and V are a party battle's two switches, left and right (EXE5 DS's Y and X: below, "A party battle's party");
+- C and V are a party battle's two navi changes, left and right (EXE5 DS's Y and X: below, "A party battle's party");
 - Esc opens nettai's menu;
 - in a practice battle, R (or F5) starts the set over, unless the player bound it to a button;
 - in an online match, Tab held shows both builds (§4): no button can be bound to it.
@@ -193,7 +193,7 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
 player:
 
-- the buttons are bound as the keys are (the switches: the east button left, the north right); the defaults are the south button A, the west button B, the shoulders L
+- the buttons are bound as the keys are (the navi changes: the east button left, the north right); the defaults are the south button A, the west button B, the shoulders L
   and R, Start and Back;
 - in a practice battle, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
@@ -262,7 +262,7 @@ with its face, its HP and a bar of it, then the round's switches as pips, those 
 switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field and
 the pips between them. All of it is read from the battle each frame through the frontend (`party::view`: the navi on
 the field's HP its object's, a benched member's its block's; on the custom screen, and after it until the turn's start fields it, the screen's choice: `party::Panel::active`), and the
-round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The switches** are two
+round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The navi changes** (the player's word, "Navi change left" and "right", and the overview's stat "Navi changes": the user's; the code's word is switch) are two
 controls of the app's own (`input::SWITCH_LEFT`, `SWITCH_RIGHT`: Settings' and the match menu's Controls list them
 after SELECT), never the battle's buttons: a press asks the player to switch to the member the panel's button names
 (`Player::ask_switch`, carried once by the next tick that runs as the tick's switch request, bits 10 and 11 of its

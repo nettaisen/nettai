@@ -1195,7 +1195,7 @@ docs/app.md has each part in full (§1, "A party battle's party"; §8, "The Part
   setup's schema (`party`: a list of records, a navi and a list of `partycust_programs`). The gauge and a program's cost
   are the rules' overview's: `rules/party`'s `overview` gives each partner's gauge as a list budget of its entry
   (`SetupList.entry`, nettai-match's `Budget::entry`, `Overview::budget_of`) and the switches a round allows
-  (`SetupOverview.switches`, `Overview::switches`; also a stat, "Switches", which the build overview shows). Problems are
+  (`SetupOverview.switches`, `Overview::switches`; also a stat, "Navi changes" (the user's word), which the build overview shows). Problems are
   the rules' `validate`'s, in the builds' typed words (`BuildPart::Party`; a gauge overfilled says blocks, not MB). The
   ruleset's `party` category greys a navi it holds back. Each program states its color as a NaviCust program does (`color`, one of the NaviCust's
   named colors, which the app draws as the NaviCust's): the customizer's gauge colors a block by its program's kind
