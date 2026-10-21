@@ -1155,7 +1155,12 @@ docs/app.md has each part in full (§1, "A party battle's party"; §8, "The Part
   (`SetupList.entry`, nettai-match's `Budget::entry`, `Overview::budget_of`) and the switches a round allows
   (`SetupOverview.switches`, `Overview::switches`; also a stat, "Switches", which the build overview shows). Problems are
   the rules' `validate`'s, in the builds' typed words (`BuildPart::Party`; a gauge overfilled says blocks, not MB). The
-  ruleset's `party` category greys a navi it holds back. No save import: the GBA's saves have no party, and the DS's save
+  ruleset's `party` category greys a navi it holds back. Each program states its color as a NaviCust program does (`color`, one of the NaviCust's
+  named colors, which the app draws as the NaviCust's): the customizer's gauge colors a block by its program's kind
+  (the table's third row, the block element's cell, 0x021DFF58), and the panel's palette in overlay 413 (0x021ECE80)
+  holds the four: HP red, attack yellow, chip attack blue, special (the battle packs, P.Spport) white (verify's
+  tools/exe5ds/party_colors.py; which cell draws which entry is the panel's as Tango's BN5DS view samples it, the
+  cell bank unread). The list's per-program art (the table's fourth row) isn't compared. No save import: the GBA's saves have no party, and the DS's save
   isn't read.
 - **Controls.** Two switches of the app's own, the panel's left and right buttons (the DS's Y and X: `tools/dslab`'s
   driver), C and V and the pad's east and north by default (the DS's X and Y keys are taken: X is B's on the keyboard and
