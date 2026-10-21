@@ -441,8 +441,10 @@ component MemberCell inherits Rectangle {
     in property <PartyMember> member;
     in property <bool> active;
     in property <bool> there: true;
+    // (Unframed: in a frame of its user's, a switch's, with its control.)
+    in property <bool> framed: true;
     Rectangle {
-        border-width: 1px;
+        border-width: root.framed ? 1px : 0px;
         border-color: root.active ? Theme.cursor : Theme.line;
         background: root.active ? Theme.tint : transparent;
     }
@@ -506,66 +508,116 @@ component Pips inherits Rectangle {
     }
 }
 
-// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture: the
-// member on the field, then each switch's control and the member it names, then the switches left. Where it goes is
-// its user's (`PartyStrip.place-y`: under the picture where there is room, else on the field's foot).
+// A switch, as the strip shows it: its control (a key cap or a pad's button) and the member it switches to, one frame
+// round both.
+component SwitchUnit inherits Rectangle {
+    in property <Hint> hint;
+    in property <PartyMember> member;
+    in property <bool> there;
+    in property <length> cell;
+    width: (key.width > 0 ? 4px + key.width + 2px : 0px) + root.cell;
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    key := HintView {
+        x: 4px;
+        y: 2px;
+        height: 22px;
+        hint: root.hint;
+    }
+
+    MemberCell {
+        x: parent.width - root.cell;
+        y: 0;
+        width: root.cell;
+        height: parent.height;
+        framed: false;
+        there: root.there;
+        member: root.member;
+    }
+}
+
+// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture, in two
+// groups a line apart, each under its word: ON FIELD, the member on the field (framed in the cursor's color) with the
+// switches left beside it; then NAVI CHANGE, the two switches, each one unit: its control (as bound; none in a replay)
+// in the frame of the member it switches to, the two well apart. Where it goes is its user's.
 export component PartyStrip inherits Rectangle {
     in property <PartyHud> party;
     property <length> cell: 92px;
-    width: 8px + root.cell + 12px + left-key.width + 4px + root.cell + 12px + right-key.width + 4px + root.cell + 12px + pips.width + 8px;
-    height: 34px;
+    property <length> group-x: 8px + root.cell + 8px + pips.width + 12px + 1px + 12px;
+    property <length> unit-gap: 20px;
+    width: root.group-x + left.width + root.unit-gap + right.width + 8px;
+    height: 44px;
     Rectangle {
         background: Theme.shade;
         border-width: 1px;
         border-color: Theme.line;
     }
 
+    Label {
+        x: 8px;
+        y: 2px;
+        width: root.cell + 8px + pips.width;
+        height: 12px;
+        font-size: 9px;
+        text: Caps.of(@tr("On field"));
+        color: Theme.cursor;
+    }
+
     MemberCell {
         x: 8px;
-        y: 4px;
+        y: 14px;
         width: root.cell;
         height: 26px;
         member: root.party.members[root.party.active];
         active: true;
     }
 
-    left-key := HintView {
-        x: 8px + root.cell + 12px;
-        y: 6px;
-        height: 22px;
-        hint: root.party.left-key;
+    pips := Pips {
+        x: 8px + root.cell + 8px;
+        y: 14px + (26px - self.height) / 2;
+        made: root.party.switches;
+        limit: root.party.limit;
     }
 
-    MemberCell {
-        x: left-key.x + left-key.width + 4px;
-        y: 4px;
-        width: root.cell;
+    // (The line between the groups.)
+    Rectangle {
+        x: root.group-x - 12px - 1px;
+        y: 8px;
+        width: 1px;
+        height: parent.height - 16px;
+        background: Theme.line;
+    }
+
+    Label {
+        x: root.group-x;
+        y: 2px;
+        width: parent.width - self.x - 8px;
+        height: 12px;
+        font-size: 9px;
+        text: Caps.of(@tr("Navi change"));
+    }
+
+    left := SwitchUnit {
+        x: root.group-x;
+        y: 14px;
         height: 26px;
+        cell: root.cell;
+        hint: root.party.left-key;
         there: root.party.left >= 0;
         member: root.party.members[root.party.left];
     }
 
-    right-key := HintView {
-        x: left-key.x + left-key.width + 4px + root.cell + 12px;
-        y: 6px;
-        height: 22px;
-        hint: root.party.right-key;
-    }
-
-    MemberCell {
-        x: right-key.x + right-key.width + 4px;
-        y: 4px;
-        width: root.cell;
+    right := SwitchUnit {
+        x: left.x + left.width + root.unit-gap;
+        y: 14px;
         height: 26px;
+        cell: root.cell;
+        hint: root.party.right-key;
         there: root.party.right >= 0;
         member: root.party.members[root.party.right];
-    }
-
-    pips := Pips {
-        x: parent.width - 8px - self.width;
-        y: (parent.height - self.height) / 2;
-        made: root.party.switches;
-        limit: root.party.limit;
     }
 }
 
@@ -625,11 +677,23 @@ component TouchPad inherits Rectangle {
             at: Shell.party.left;
         }
 
+        // (The member on the field between the switches, under its word, as a desktop's strip has it.)
+        Label {
+            x: (parent.width - 16px) / 3 + 8px + 6px;
+            y: 0;
+            width: (parent.width - 16px) / 3 - 12px;
+            height: 12px;
+            font-size: 9px;
+            horizontal-alignment: center;
+            text: Caps.of(@tr("On field"));
+            color: Theme.cursor;
+        }
+
         MemberCell {
             x: (parent.width - 16px) / 3 + 8px + 6px;
-            y: 6px;
+            y: 13px;
             width: (parent.width - 16px) / 3 - 12px;
-            height: 30px;
+            height: 28px;
             member: Shell.party.members[Shell.party.active];
             active: true;
         }
