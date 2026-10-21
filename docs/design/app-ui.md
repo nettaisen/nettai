@@ -1044,7 +1044,8 @@ Each is settled unless the user changes it.
       build's own: each has its name red and says the mix where it is described. The sentence names the versions alone,
       "Mixes Gregar and Falzar" (グレイガとファルザーが混在しています), no thing of them as the one at fault. It was
       the things of all versions but the one the build held most of (the first of a tie), "Mixes Gregar and Falzar:
-      FBeast", the Gregar Crosses beside it unmarked.
+      FBeast", the Gregar Crosses beside it unmarked. Since 2026-10-21 the sentence is "Mixed versions" (バージョン混在),
+      naming neither version (the user: "Mixes Team ProtoMan and Team Colonel" is too long and runs off the screen).
     - *The folder's header* is its title and counts on one line where the language leaves them room, as before the
       headers said problems (the English EXE6's does), else the counts under the title.
     - *A problem, and a refusal:* both in the one error red (`Theme.bad`). A problem (the rules or the ruleset have
