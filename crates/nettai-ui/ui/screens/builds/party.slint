@@ -15,8 +15,8 @@
 //   programs as a list's rows (none: Empty), and a head saying Empty for each place the party has no partner in, as
 //   the Patch cards tab's empty slots are. The partner the library adds to, the last one the cursor was in, has its
 //   head marked as a list's chosen row is (the bar and the tint);
-// - at the right the library, an open list: each program's blocks, its name, what it does (or why it won't go in, in
-//   the error red, the row greyed), its cost. Enter adds it to the marked partner's.
+// - at the right the library, an open list: each program's blocks, its name (or why it won't go in, in the error red,
+//   the row greyed), its cost; what it does is the strip's. Enter adds it to the marked partner's.
 //
 // A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
 // and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
@@ -53,11 +53,12 @@ export struct PartyTeam {
     first: int,
 }
 
-// A program in a list: its name, what it does (`effect`) or why it won't go in (`why`, the row greyed), its blocks in
-// its color, its cost. `bad`: a problem is about it.
+// A program in a list: its name, a note beside it (a partner's held back by the build's ruleset: `bad`, "Not allowed")
+// or why it won't go in (`why`, the row greyed), its blocks in its color, its cost. What it does is the strip's. `bad`:
+// a problem is about it.
 export struct PartyRow {
     name: string,
-    effect: string,
+    note: string,
     why: string,
     blocks: int,
     tone: color,
@@ -125,7 +126,7 @@ export global PartyView {
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
     // Why the program dragged can't go into the list of the partner it is over (empty: it can, or it is over none):
-    // said in the dragged row in place of what it does, and no gap opens.
+    // said in the dragged row, and no gap opens.
     in property <string> drag-why;
     // A library's row that was refused, counted: it shakes.
     in property <int> refused: -1;
@@ -262,8 +263,8 @@ component ChipView inherits Rectangle {
     }
 }
 
-// What a program's row shows (the one dragged, under the pointer, too): its blocks, its name, in the library what it does
-// or why it won't go in, its cost.
+// What a program's row shows (the one dragged, under the pointer, too): its blocks, its name, why it won't go in (or,
+// held back, that it isn't allowed), its cost.
 component ProgramLine inherits Rectangle {
     in property <PartyRow> row-data;
     Blocks {
@@ -276,7 +277,7 @@ component ProgramLine inherits Rectangle {
     }
 
     property <length> name-x: 12px + 56px + 10px;
-    property <bool> said: root.row-data.effect != "" || root.row-data.why != "";
+    property <bool> said: root.row-data.note != "" || root.row-data.why != "";
     Text {
         x: root.name-x;
         width: max(0px, (root.said ? 110px : parent.width - root.name-x - 40px));
@@ -292,7 +293,7 @@ component ProgramLine inherits Rectangle {
         x: root.name-x + 110px + 10px;
         width: max(0px, parent.width - self.x - 40px);
         visible: root.said;
-        text: root.row-data.why != "" ? root.row-data.why : root.row-data.effect;
+        text: root.row-data.why != "" ? root.row-data.why : root.row-data.note;
         color: root.row-data.why != "" || root.row-data.bad ? Theme.bad : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
@@ -958,9 +959,9 @@ export component PartyTab inherits Rectangle {
             drop-shadow-offset-y: 4px;
             drop-shadow-color: #00000090;
             property <PartyRow> held: Drag.list == "lib.rows" ? PartyView.rows[Drag.from] : Drag.list == "installed1" ? PartyView.panels[1].rows[Drag.from] : PartyView.panels[0].rows[Drag.from];
-            // (Why it can't go in where it is, in place of what it does.)
+            // (Why it can't go in where it is.)
             ProgramLine {
-                row-data: { name: parent.held.name, effect: parent.held.effect, why: PartyView.drag-why, blocks: parent.held.blocks, tone: parent.held.tone, bad: parent.held.bad };
+                row-data: { name: parent.held.name, note: parent.held.note, why: PartyView.drag-why, blocks: parent.held.blocks, tone: parent.held.tone, bad: parent.held.bad };
             }
         }
 
