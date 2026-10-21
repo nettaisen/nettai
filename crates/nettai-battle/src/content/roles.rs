@@ -69,10 +69,15 @@ pub enum ActionRole {
     /// the DS's Double Attack after a paused swap, action 0x5C). Unfilled
     /// where no rules ask for it.
     FollowUp,
+    /// What the navi's guard request starts (`request::GUARD`), as a trap's
+    /// counter starts: the rules' guard against a hit their `hit_guard`
+    /// caught (EXE5's party battle, the DS's KnightMan's guard, action
+    /// 0x5B). Unfilled where no rules ask for it.
+    Guard,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 15] = [
+    pub const ALL: [ActionRole; 16] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -88,6 +93,7 @@ impl ActionRole {
         ActionRole::Deletion,
         ActionRole::Revival,
         ActionRole::FollowUp,
+        ActionRole::Guard,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -108,6 +114,7 @@ impl ActionRole {
             ActionRole::Deletion => "deletion",
             ActionRole::Revival => "revival",
             ActionRole::FollowUp => "follow_up",
+            ActionRole::Guard => "guard",
         }
     }
 

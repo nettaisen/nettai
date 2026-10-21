@@ -2,10 +2,10 @@
 -- MagnetMan's Mag-Barr (EXE5 DS's party battle: 0x02098AE6, in the navi's low-HP check 0x02098A84 after the NaviCust's
 -- Tango; his controller the DS's effect object 0x91, 0x02225D2C, his actor its actor object 0x32, 0x021FF6E0;
 -- docs/design/exe5ds-map.md §4.7): once a battle for each side (battle flags 0x200 and 0x400), the navi idle at a
--- quarter of its HP or less (and below its maximum) with no barrier, the light test passed and MagnetMan a member who
--- may support (not on the field), the battle dims (the other side can't cut in), Mag-Barr's telop shows, and MagnetMan
--- comes behind the navi, raises his magnet arm, gives the navi a barrier (10 HP, at every level: 0x0222722C) and
--- immobilizes every enemy body from his column forward.
+-- quarter of its HP or less (and below its stats' HP, NaviStats +0x40) with no barrier, the light test passed and
+-- MagnetMan a member who may support (not on the field), the battle dims (the other side can't cut in), Mag-Barr's
+-- telop shows, and MagnetMan comes behind the navi, raises his magnet arm, gives the navi a barrier (10 HP, at every
+-- level: 0x0222722C) and immobilizes every enemy body from his column forward.
 
 local attachment = require("../../objects/attachment")
 local barriers = require("../../lib/barriers")
@@ -207,7 +207,8 @@ function support.low_hp(side: number, navi: Object): boolean
     if not party.light(side) or not party.may_support(side, magnetman) then
         return false
     end
-    if battle.navi(side).navi == magnetman or navi.collision.barrier ~= "none" or navi.hp >= navi.max_hp then
+    local stats = battle.navi(side)
+    if stats.navi == magnetman or navi.collision.barrier ~= "none" or navi.hp >= stats.hp then
         return false
     end
     if battle.rules_flag(USED[side]) then

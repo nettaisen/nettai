@@ -22,6 +22,7 @@ local double_attacks = require("./double_attacks")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
 local invalid = require("../chips/invalid").invalid
+local knightman_guard = require("../navis/knightman/guard")
 local knockout = require("./party/knockout")
 local toadman_rescue = require("../navis/toadman/rescue")
 local collision = require("./collision")
@@ -60,6 +61,9 @@ local roles: RolesSpec = {
         -- The request 0x100's (EXE5 DS's action 0x5A): ToadMan's rescue of a party's navi at 0 HP
         -- (navis/toadman/rescue).
         revival = toadman_rescue.action,
+        -- The request 0x100000's (EXE5 DS's action 0x5B), which the trap catch starts as a counter: KnightMan's guard
+        -- of a party's navi against a hit its `hit_guard` swallowed (navis/knightman/guard).
+        guard = knightman_guard.action,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses

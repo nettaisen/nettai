@@ -1,10 +1,11 @@
 --!strict
 -- ShadowMan's ambush (EXE5 DS's party battle: 0x020040C4, from the navi's low-HP check 0x02098A84 when Mag-Barr doesn't
--- come; his actor the support actor's variant 4, 08-08, 0x021FEC74; his strikes the DS's effect object 0x96, 0x02226504;
--- docs/design/exe5ds-map.md §4.7): once a battle, the navi idle at a quarter of its HP or less (and below its maximum),
--- with the light test passed and ShadowMan a benched member who may support, he appears on a panel of the field drawn
--- with RNG2, readies, and strikes nine times, 8 ticks apart, alternately at an enemy and at an empty enemy panel: each
--- strike marks its panel for 15 ticks, then bursts there (no damage) with one status for all nine, drawn as he readies.
+-- come; his actor the support actor's variant 4, 08-08, 0x021FEC74; his strikes the DS's effect object 0x96,
+-- 0x02226504; docs/design/exe5ds-map.md §4.7): once a battle, the navi idle at a quarter of its HP or less (and below
+-- its stats' HP), with the light test passed and ShadowMan a benched member who may support, he appears on a panel of
+-- the field drawn with RNG2, readies, and strikes nine times, 8 ticks apart, alternately at an enemy and at an empty
+-- enemy panel: each strike marks its panel for 15 ticks, then bursts there (no damage) with one status for all nine,
+-- drawn as he readies.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -47,8 +48,8 @@ local ENEMY_FORBID = { [0] = 0, [1] = 0x20 }
 -- The panel flag of the other side's navi, by side (`sub_80E7486`'s).
 local ENEMY_NAVI = { [0] = 0x00200000, [1] = 0x00400000 }
 
--- A strike: its panel marked every other four ticks, its burst after 15 (the effect table's row 0 in the kind's palette,
--- 0x90's sound) with a hit on the panel: no damage, the kind's status.
+-- A strike: its panel marked every other four ticks, its burst after 15 (the effect table's row 0 in the kind's
+-- palette, 0x90's sound) with a hit on the panel: no damage, the kind's status.
 local MARKED_TICKS = 0xE
 local BURST_SOUND = asset.sound("panel-poison")
 
@@ -106,7 +107,8 @@ support.strike = new.kind {
     end,
 }
 
--- 0x02226594: a strike of the kind (by its index in the draw's table) on (x, y), ShadowMan's side's, with his damage word.
+-- 0x02226594: a strike of the kind (by its index in the draw's table) on (x, y), ShadowMan's side's, with his damage
+-- word.
 local function send_strike(me: Object, x: number, y: number, kind: number)
     local o = battle.spawn(support.strike)
     if o then
@@ -240,7 +242,7 @@ support.actor = party_support.make {
 }
 
 -- 0x020040C4 and 0x02004D84 (the rules' `low_hp`, after Mag-Barr): once a battle (the party block's +0xF, spent even
--- if no panel is free), the light test, ShadowMan a benched member who may support, the navi below its maximum HP; he
+-- if no panel is free), the light test, ShadowMan a benched member who may support, the navi below its stats' HP; he
 -- comes on a panel of the side's area drawn with RNG2 (but the navi's), with no damage, facing as the navi does. True
 -- when he came.
 function support.low_hp(side: number, navi: Object): boolean
@@ -251,7 +253,7 @@ function support.low_hp(side: number, navi: Object): boolean
     if m == nil or not party.may_support(side, shadowman) or not party.benched(side, shadowman) then
         return false
     end
-    if navi.hp >= navi.max_hp then
+    if navi.hp >= battle.navi(side).hp then
         return false
     end
     local s = party.supports(side)

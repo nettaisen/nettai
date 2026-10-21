@@ -493,7 +493,7 @@ The rest of the mechanics:
   `sub_8010740`), targets the opponent navi, and shares the once flag +0x14.
 - **MagnetMan's Mag-Barr** (in `sub_8010660`'s counterpart 0x02098A84, the idle navi's low-HP check, after the
   NaviCust's Tango):
-  - when the active navi is at HP ≤ max/4 and below its maximum, with no barrier (collision +6 = 0), the light test
+  - when the active navi is at HP ≤ max/4 and below its stats' HP (NaviStats +0x40), with no barrier (collision +6 = 0), the light test
     passed and MagnetMan a member who may support and not on the field;
   - once a battle per side (battle flag 0x200 or 0x400);
   - it dims, shows telop chip 0x186, and T4 0x91 (Serch-S's controller's shape) brings T1 0x32 MagnetMan (08-05)
@@ -502,7 +502,7 @@ The rest of the mechanics:
     its 61st, 0x02007BA8 puts the immobilizer (T3 0x3F, 20 ticks, sound 0xFD, running while dimmed) on every enemy
     body from his column forward (M-ZAN's loop).
 - **ShadowMan** (0x020040C4), in the same path when Mag-Barr doesn't come:
-  - HP ≤ 1/4 and below the maximum, the light test, ShadowMan available and benched; once (+0xF, spent before the
+  - HP ≤ 1/4 and below the stats' HP, the light test, ShadowMan available and benched; once (+0xF, spent before the
     panel is looked for);
   - he appears on a panel of his side's area but the navi's (0x02004D84: filters 0x020CC3A8, RNG2) as variant 4,
     facing as the navi does (appearance 20 ticks, his parts kept on until he is destroyed), readies (animation 0x11,
@@ -514,13 +514,23 @@ The rest of the mechanics:
     in the kind's palette (4, 1, 2, 3) and hits its panel once (region 1, a plain attack at navis, no damage) with
     the kind's status: confusion 0x22, immobilization 0x42, blindness 0x32 or paralysis 0x12 (0x0222B41C), sound 0x90.
 - **KnightMan's guard:**
-  - when KnightMan is available, benched and above max/4 HP, the navi stands at its area's front edge, and
-    damage is pending (0x02004604; the request is AIData +0x44 0x100000 from 0x02063B8C);
-  - the hit reaction starts **action 0x5B** (0x02049784): +0x48 0x400000, KnightMan (variant 6) in front of the
-    navi for 60 ticks, each blocked hit flashing white with sound 0x6B;
+  - in the hit intake (`sub_802CEF4`'s counterpart 0x02063B00), where no trap caught the hit (0x02063B72): with the
+    navi guarded (AIData +0x48 0x400000) the hit is swallowed; while ToadMan dives (+0x48 0x01000000, his action 8)
+    it isn't; with the guard asked for (AIData +0x44 0x100000) it is; else when 0x02004604 passes (the panel ahead
+    of the navi the other side's, the light test, KnightMan a member who may support with more than a quarter of his
+    maximum HP, not on the field) and the hit hit (flags 0xFF800000) with damage, the guard is asked for and the hit
+    swallowed;
+  - every swallowed hit, a trap's too (0x02063BC2), adds its damage (halved, rounded up, on a holy panel) to the party
+    block's +0x16 (0x020046D4); with KnightMan's guard out (+0x20) it flashes him, and while KnightMan may support the
+    pending damage comes off his member block's HP (to 1 at least) and +0x16 empties;
+  - the trap catch (`sub_801056A`'s counterpart 0x02098960) starts **action 0x5B** (0x02049784) for request 0x100000
+    from idle (0x0207773A) and from Slasher (0x02046C3A), not showing the trap chip's name: while the panel ahead
+    stays the other side's, +0x48 0x400000 for 61 ticks, the navi's animation 0, and KnightMan (variant 6: appearance
+    4 ticks, a pixel down the field and up; his 20 pixels forward land in X's fraction alone) on the navi's panel, the
+    party block's +0x20 (an earlier one told to go); he flashes white with sound 0x6B for each hit swallowed and goes
+    once the navi isn't guarded;
   - it is not once-only;
-  - **the navi takes no damage and KnightMan's member block loses it** (observed: two M-Cannons, MegaMan at full
-    HP, KnightMan 800 → 680 → 560).
+  - observed: two M-Cannons, MegaMan at full HP, KnightMan 800 → 680 → 560.
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
@@ -564,6 +574,7 @@ reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave i
 | +0x13 | DiceBons used |
 | +0x14 | SearchMan used |
 | +0x15 | the member count |
+| +0x16 | the damage KnightMan's guard has yet to take |
 | +0x18 | a bitmask (open) |
 | +0x1C | GyroMan's object |
 | +0x20 | KnightMan's object |
@@ -1025,7 +1036,7 @@ so no extractor work is planned beyond content rows.
 
 | # | Step | Where | Size | Depends on |
 |---|---|---|---|---|
-| 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (KnightMan's guard's damage, Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
+| 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
 | 2 | **The oracle on melonDS** (done 2026-10-20, tools/dslab): a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
 | 3 | **Recordings** (done 2026-10-20: switches, the limit and NavChg+1/+2, deletions, the twelve Double Attacks, the supports, the rescue; data/traces/lab-exe5ds): party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
 | 4 | **The party in setup and state:** three member blocks a side (replacing `reserves` for EXE5), the party block (busy flags, count, rescue used), the switch counters; snapshot and digest | nettai-battle, nettai-match | M | — |

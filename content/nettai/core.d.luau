@@ -136,6 +136,8 @@ export type Request =
     | "a_held"
     | "b_held"
     | "stun_strike"
+    -- The rules caught a hit for their guard (their `hit_guard`; the role `guard`).
+    | "guard"
     -- The rules hold a navi at 0 HP for their revival (the role `revival`).
     | "revival"
     -- The rules ask for their follow-up action (the role `follow_up`).
@@ -762,8 +764,9 @@ declare extern type Object with
     -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
     -- `ticks` (`object_setCounterTime`).
     function open_counter_window(self, ticks: number?): ()
-    -- `sub_801056A`, after each phase of an attack.
-    function check_reactive_abort(self): ()
+    -- `sub_801056A`, after each phase of an attack; with `guard`, the rules' guard's request too (the role `guard`:
+    -- EXE5 DS's Slasher's).
+    function check_reactive_abort(self, guard: boolean?): ()
     -- `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode 9
     -- (the roles' `mode9_attack` and `mode9_actor`): EXE6's DustMan's
     -- `post_init`.
@@ -2273,6 +2276,10 @@ export type RulesSpec = {
         -- `sub_8010660`: the navi, idle, is at a quarter of its HP or less and no NaviCust support came: true when the
         -- rules sent something for it (the navi then does nothing else this tick).
         low_hp: ((side: number, navi: Object) -> boolean?)?,
+        -- `sub_802CEF4`: no trap caught the hit the navi took: true swallows it as a trap does.
+        hit_guard: ((side: number, navi: Object) -> boolean?)?,
+        -- A trap or the rules swallow the hit, its damage still on the navi's collision.
+        hit_swallowed: ((side: number, navi: Object) -> ())?,
         -- A chip's use, prepared, passed the rules' checks, before its action is chosen.
         chip_ready: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
@@ -3110,6 +3117,9 @@ export type RolesSpec = {
         -- state), after the in-battle switch and before the volley (EXE5's
         -- party battle, the DS's Double Attack after a paused swap).
         follow_up: Action?,
+        -- What a navi's `guard` request starts, as a trap's counter starts: the rules' guard against a hit their
+        -- `hit_guard` caught (EXE5's party battle, the DS's KnightMan's guard).
+        guard: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,

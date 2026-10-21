@@ -569,6 +569,14 @@ pub enum RulesHook {
     /// it (EXE5 DS's Mag-Barr and ShadowMan's ambush), and the navi does
     /// nothing else this tick.
     LowHp,
+    /// `hit_guard(side, navi)`: no trap caught the hit the navi took this
+    /// tick (`sub_802CEF4`, EXE5 DS's 0x02063B72): true and the hit is
+    /// swallowed as a trap swallows it (EXE5 DS's KnightMan's guard).
+    HitGuard,
+    /// `hit_swallowed(side, navi)`: a trap or the rules swallow the hit,
+    /// its damage still on the navi's collision (EXE5 DS's 0x02063BC2: what
+    /// KnightMan's guard takes). Its result is unused.
+    HitSwallowed,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -752,6 +760,8 @@ impl RulesHook {
             RulesHook::CustomHold => "custom_hold",
             RulesHook::OpponentChip => "opponent_chip",
             RulesHook::LowHp => "low_hp",
+            RulesHook::HitGuard => "hit_guard",
+            RulesHook::HitSwallowed => "hit_swallowed",
             RulesHook::ChipReady => "chip_ready",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
@@ -775,7 +785,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 66] = [
+    pub const ALL: [RulesHook; 68] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -819,6 +829,8 @@ impl RulesHook {
         RulesHook::CustomHold,
         RulesHook::OpponentChip,
         RulesHook::LowHp,
+        RulesHook::HitGuard,
+        RulesHook::HitSwallowed,
         RulesHook::ChipReady,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,

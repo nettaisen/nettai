@@ -14,13 +14,18 @@ use crate::content::ActionRole;
 use crate::kinds::player::{NaviAction, ai, ai_mut, clear_flag2, coll_mut, set_attack};
 use crate::object::ObjectRef;
 
-/// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, or
-/// (neither) BodyGrd's.
+/// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, the
+/// rules' guard (EXE5 DS's KnightMan's, 0x020989E6), or (none of them)
+/// BodyGrd's.
 fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAction {
     let roles = b.roles();
     let h = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
         roles.action(ActionRole::AntiDamageCounter)
-    } else if requests & request::ANTI_SWORD_TRIGGERED != 0 || !body_guard {
+    } else if requests & request::ANTI_SWORD_TRIGGERED != 0 {
+        roles.action(ActionRole::AntiSwordCounter)
+    } else if requests & request::GUARD != 0 {
+        roles.action(ActionRole::Guard)
+    } else if !body_guard {
         roles.action(ActionRole::AntiSwordCounter)
     } else {
         roles.action(ActionRole::BodyGuardCounter)
@@ -69,8 +74,11 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.variant = 0;
     let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
-    // The other player's console shows the trap chip's name (sub_801EB18).
-    if let Some(chip) = rec.chip {
+    // The other player's console shows the trap chip's name (sub_801EB18;
+    // not for the rules' guard, EXE5 DS's 0x020989AC).
+    if let Some(chip) = rec.chip
+        && requests & request::GUARD == 0
+    {
         b.show_used_chip(side as u8, chip, rec.damage as u16, rec.bonus);
     }
     if b.game_rules().trap_counter == crate::content::StanceCounter::AtOnce {

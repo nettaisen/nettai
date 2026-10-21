@@ -766,6 +766,9 @@ named_flags! {
         AHeld = "a_held",
         BHeld = "b_held",
         StunStrike = "stun_strike",
+        /// The rules caught a hit for their guard (their `hit_guard`; the
+        /// role `guard`).
+        Guard = "guard",
         /// The rules hold a navi at 0 HP for their revival (the role
         /// `revival`).
         Revival = "revival",
@@ -2044,7 +2047,7 @@ pub trait CoreApi {
     fn open_counter_window(&mut self, o: ObjectRef, ticks: u8);
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
-    fn check_reactive_abort(&mut self, o: ObjectRef);
+    fn check_reactive_abort(&mut self, o: ObjectRef, guard: bool);
     /// `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode
     /// 9 (the roles' `mode9_attack` and `mode9_actor`).
     fn spawn_mode9_objects(&mut self, o: ObjectRef);
