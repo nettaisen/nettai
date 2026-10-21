@@ -1,6 +1,6 @@
 --!strict
 -- C-BOMB (the DS's chip 0x165; Chemical Bomb), the Double Attack of NapalmMan and Meddy (docs/design/exe5ds-map.md §5,
--- §5.2: its director the DS's effect object 0x9C, its actors its T1 0x3B, Meddy's capsule its attack object 0xCD).
+-- §5.2: its controller the DS's effect object 0x9C, its navis its T1 0x3B, Meddy's capsule its attack object 0xCD).
 -- Meddy puts a capsule (./capsule) on a panel of the other side's at random as she winds up; if she did, NapalmMan,
 -- charged, marks the panel four columns ahead and lobs his chip's napalm bomb there (chips/napalmmn/bomb: its fire
 -- spreads over the 3x3 around an empty panel). Anything that touches the capsule while it lies there (the napalm fire
@@ -17,8 +17,8 @@ local napalm_bomb = require("../chips/napalmmn/bomb")
 local napalmman = require("../navis/napalmman").napalmman
 local panels = require("@exelib/panels")
 
--- What each actor keeps besides the shared fields: Meddy's capsule (+0x74), NapalmMan's bomb (+0x78).
-type State = DoubleAttackActor & {
+-- What each navi keeps besides the shared fields: Meddy's capsule (+0x74), NapalmMan's bomb (+0x78).
+type State = DoubleAttackNavi & {
     capsule: Object?,
     bomb: Object?,
 }

@@ -1,14 +1,14 @@
 --!strict
 -- D-VALCAN (the DS's chip 0x163; Double Vulcan), the Double Attack of MegaMan and NapalmMan (docs/design/exe5ds-map.md
--- §5, §5.2: its director the DS's effect object 0x9A, its actors its T1 0x38, which the director tells of each other).
--- Each fires 30 of the Vulcans' bullets (EXE5's attack object 0x12, objects/bullet) down the user's row, each at a
--- height drawn from RNG2: MegaMan from his vulcan, one every 9 ticks, NapalmMan from his arm, one every 9; each
+-- §5, §5.2: its controller the DS's effect object 0x9A, its navis its T1 0x38, which the controller tells of each
+-- other). Each fires 30 of the Vulcans' bullets (EXE5's attack object 0x12, objects/bullet) down the user's row, each
+-- at a height drawn from RNG2: MegaMan from his vulcan, one every 9 ticks, NapalmMan from his arm, one every 9; each
 -- bullet bursts on the first thing in its row, hitting its panel and the one behind (the DS's bullet rows 0x15 and
--- 0x14, its own, as the Vulcans' row 0x0C and NapalmSoul's charged shot's 0x11, but hitting while the battle is
--- dimmed: the DS's burst gives those two rows back the bit EXE5's retype leaves out). MegaMan waits for NapalmMan to be
--- done. The chip's record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS
--- ROMs); its record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing
--- starts: no folder or hand holds it.
+-- 0x14, its own, as the Vulcans' row 0x0C and NapalmSoul's charged shot's 0x11, but hitting while the battle is dimmed:
+-- the DS's burst gives those two rows back the bit EXE5's retype leaves out). MegaMan waits for NapalmMan to be done.
+-- The chip's record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs);
+-- its record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no
+-- folder or hand holds it.
 
 local attachment = require("../objects/attachment")
 local buster = require("../lib/buster")
@@ -20,7 +20,7 @@ local megaman = require("../navis/megaman").megaman
 local napalmman = require("../navis/napalmman").napalmman
 local regions = require("@exelib/regions")
 
-type State = DoubleAttackActor
+type State = DoubleAttackNavi
 
 local CHARGE_TICKS = 0x3C
 local AFTER_TICKS = 0xA

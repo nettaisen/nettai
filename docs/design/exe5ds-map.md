@@ -51,7 +51,7 @@ recordings showed is marked **observed** where it is said; §9 lists the console
   Double Attack, right as the swap ends.
   - There are twelve, one per pair: six with MegaMan, six between team navis.
   - Each has a chip record (0x160–0x16B, unused placeholders on the GBA), a damage row by navi level, and a
-    director object that brings both navis on as actors, attacks and warps them out.
+    controller object that brings both navis on as actors, attacks and warps them out.
   - All of it is new DS Thumb code built on the GBA's helpers: the hitbox spawner, Vulcan's shots, the sword and
     buster attachments.
   - **Every sprite id they use is one the GBA has art for, and every sound but one is a GBA sound.** Sound 0x2F
@@ -708,9 +708,9 @@ Details of the test:
 
 **Launch** (read):
 1. The launcher calls the spawner with the hit flags and damage (r6 = +0x0A << 16 | damage) and the chip (r7).
-2. The spawner starts a director, a new T4 object kind 0x96 + *n*.
-3. `sub_800BF16`(side, 1, director) starts a dimming the other side can't counter.
-4. The director spawns two actors (roles 0 and 1) of a new T1 kind. On BRBE the T1 kinds 0x30–0x44 point at a
+2. The spawner starts a controller, a new T4 object kind 0x96 + *n*.
+3. `sub_800BF16`(side, 1, controller) starts a dimming the other side can't counter.
+4. The controller spawns two actors (roles 0 and 1) of a new T1 kind. On BRBE the T1 kinds 0x30–0x44 point at a
    placeholder; the DS fills them.
 5. Each actor:
    - draws its navi's own sprite (a per-attack role table);
@@ -761,7 +761,7 @@ G-OTOSHI 540.
   multiplier. **Every hit deals the row value at the side's level**: nothing multiplies or adds.
 
 **The shared timing.**
-- The director: the user warps out (30 ticks), both actors spawn, the director waits for both to leave, waits
+- The controller: the user warps out (30 ticks), both actors spawn, the controller waits for both to leave, waits
   30, warps the user back, waits 30, and ends.
 - Each actor: appears for 20 ticks (sound 0x94), charges 60 ticks (#2: 120), with effect 0x6D and sound 0x71 at
   the start and 0x6E and 0x72 20 ticks before the end. Then it attacks, waits 10–30 ticks, leaves over 4 ticks,
@@ -783,7 +783,7 @@ G-OTOSHI 540.
 | 12 G-OTOSHI | ShadowMan drives 12 frogs (T3 0xA2, 10-46), one every 11 ticks; ToadMan's song (0xD8) is visual. Each frog falls on a random panel: one holding an enemy with 10/16 odds, else another (`object_getPanelsFiltered`; its panel set is open). It hits once below z 20. On a hit, or 20 ticks after landing on a solid panel, **the panel becomes sea** (type 10). On a hole it vanishes. Up to 12 hits. | **Aqua**; 5/0x0A (thrown); modifier 1 | RNG2: 2 a frog, 24 |
 
 **Settled by the port** (read, step 9; the port's tests deal what the recordings lost):
-- **#1 D-HERO:** as above; its director alone doesn't link its actors (every other director writes each actor into
+- **#1 D-HERO:** as above; its controller alone doesn't link its actors (every other controller writes each actor into
   the other's +0x60 as it brings them, and most actors wait on their partner).
 - **#2 M-ZAN:** the immobilizer's 0x178 is its Param1 0x78 (the DS's immobilizer is the GBA's code but that it
   lingers Param1 ticks, the GBA's 20) and Param2 1 (it plays 0xFD). ProtoMan's search goes on after each slash: he
@@ -863,12 +863,12 @@ Style the GBA doesn't have (NaviStats +0x4C 3; the GBA's patch card 111 sets 1 o
 **Where it is** (content/exe5):
 - `double_attacks/<name>/`: each Double Attack's module: its chip (the DS's record and names, gen_content.py's DS
   chips; its record's use the cannon's, which nothing starts: no folder or hand holds it), and the chip's
-  `double_attack` (an EXE5 extension, rules/init.luau's `extends.chip`): its damage row and its two actors, each a
+  `double_attack` (an EXE5 extension, rules/init.luau's `extends.chip`): its damage row and its two navis, each a
   role (its navi, its place beside the user's spot, its actions), with the objects it alone spawns beside it.
   `double_attacks/init.luau` lists the twelve in the DS's order: the pair table is each Double Attack's own two
   navis, either way round.
-- `lib/double_attack.luau`, the shared maker: the director (one effect kind a Double Attack, the DS's 0x96 + n: the
-  dimming's begin, dim, the chip's telop, the course, undim, end), the actor kind with its role table and the link
+- `lib/double_attack.luau`, the shared maker: the controller (one effect kind a Double Attack, the DS's 0x96 + n: the
+  dimming's begin, dim, the chip's telop, the course, undim, end), the navi kind with its role table and the link
   between the two, and the steps most share (appear, with or without its panel's check and a team navi's parts;
   the charge and its glows; leave; the glow at the hand; the hit while dimmed), and MegaMan's look by his stats (the
   active navi's, else his member block's: his form's sprite and overlay, Hub Style, his light/dark value's palette,
@@ -896,7 +896,7 @@ share the DS's capture shows the same at its tick, with the shake's offset allow
 B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 92%, D-VALCAN 92%, D-HERO
 79%. The rest is panels drawn from RNG2 (D-HERO's flashes, D-VALCAN's bullet heights, G-OTOSHI's frogs, C-BOMB's
 capsule and its fire's spread), the lab stage's boulders, the DS's camera shake (it moves the picture further than
-the engine's) and the one-tick shifts. The actors, their attachments and effects show the same art, places,
+the engine's) and the one-tick shifts. The navis, their attachments and effects show the same art, places,
 animations and palettes (the DS lab's MegaMan has the light/dark value 1000). The share counts only what the engine
 draws: a part it leaves out shows in the sheets alone (C-SCOPE's scopes and G-OTOSHI's frogs drew half, their first
 part hidden, until each was looked at against the DS's).
@@ -1010,7 +1010,7 @@ so no extractor work is planned beyond content rows.
 | 6 | **The in-battle switch:** the input copy into AIData +0x70, the input handler's request, action 0x59's land, change and settle | nettai-battle (machine), content/exe5 rules (conditions) | M | 4, 5 |
 | 7 | **The custom screen switch:** state 4's check, state 0x40 (clearing the picks, the HP box, the sound), OK's transform record, and the paused path's rewritten steps (land 20, change, settle 21) | nettai-battle, content/exe5 rules (custom_screen) | M | 4, 5 |
 | 8 | **Deletion and the end:** the fall-back to MegaMan, the knockout's take-back, loss on MegaMan's deletion, the ToadMan rescue (action 0x5A) | nettai-battle, content | S–M | 6 |
-| 9 | **Double Attacks:** the pair table, the trigger and launcher, actions 0x5C, the twelve directors and their actor kinds, the new effect and attachment rows, chips 0x160–0x16B; one at a time against recordings | content/exe5 (objects in Luau, per the content model), small Rust hooks if any | L | 6, 7, 3 |
+| 9 | **Double Attacks:** the pair table, the trigger and launcher, actions 0x5C, the twelve controllers and their navi kinds, the new effect and attachment rows, chips 0x160–0x16B; one at a time against recordings | content/exe5 (objects in Luau, per the content model), small Rust hooks if any | L | 6, 7, 3 |
 | 10 | **Supports:** seven per-frame supports, SearchMan's link variant, Mag-Barr, ShadowMan's, KnightMan's guard (action 0x5B), DiceBons; the support actor (T1 0x30, seven variants) | content/exe5 | M–L | 1, 4 |
 | 11 | **Restrictions:** the DS's light/dark chip rule for team navis (dark-only chips MegaMan's only) | content/exe5 rules (light_dark) | S | 4 |
 | 12 | **The DS programs:** NaviCust's NavChg+1/+2 and Spport (three programs in content/exe5's NaviCust); **PartyCust** (§4.10): the thirteen programs and the twelve gauges as content, applying them into a partner's member block at setup, the max HP formula, and the chip attack sum in the team navis' attacks (0x0203BF2C) | content/exe5 navicust, a partycust module, rules | M | 4 |

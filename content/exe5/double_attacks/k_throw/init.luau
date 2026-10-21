@@ -1,13 +1,13 @@
 --!strict
--- K-THROW (the DS's chip 0x169; Knight Throw), the Double Attack of TomahawkMan and KnightMan (docs/design/exe5ds-map.md
--- §5, §5.2: its director the DS's effect object 0xA0, its actors its T1 0x41). TomahawkMan winds up and throws;
--- KnightMan, flashing, flies in an arc three panels ahead of the user's spot and lands on that panel 119 ticks later:
--- one Wood hit there (breaking, thrown). On a solid panel he lands with a shake and cracks the 3x3 around it; on a hole
--- he goes in a puff of smoke. The chip's record and name are the DS's (written by tools/exe5/gen_content.py,
--- bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's
--- record), which nothing starts: no folder or hand holds it.
+-- K-THROW (the DS's chip 0x169; Knight Throw), the Double Attack of TomahawkMan and KnightMan
+-- (docs/design/exe5ds-map.md §5, §5.2: its controller the DS's effect object 0xA0, its navis its T1 0x41). TomahawkMan
+-- winds up and throws; KnightMan, flashing, flies in an arc three panels ahead of the user's spot and lands on that
+-- panel 119 ticks later: one Wood hit there (breaking, thrown). On a solid panel he lands with a shake and cracks the
+-- 3x3 around it; on a hole he goes in a puff of smoke. The chip's record and name are the DS's (written by
+-- tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14,
+-- subtype 0: the DS copied Cannon's record), which nothing starts: no folder or hand holds it.
 --
--- Its director links the two actors (each its partner's, +0x60), which wait on each other.
+-- Its controller links the two navis (each its partner's, +0x60), which wait on each other.
 
 local cannon_chips = require("../chips/cannon")
 local collision = require("../rules/collision")
@@ -20,7 +20,7 @@ local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local tomahawkman = require("../navis/tomahawkman").tomahawkman
 
-type State = DoubleAttackActor
+type State = DoubleAttackNavi
 
 local CHARGE_TICKS = 0x3C
 -- TomahawkMan's throw: his animation, 15 ticks, the throw's sound.
@@ -59,8 +59,8 @@ local function tomahawk_charge(me: Object)
     me:set_action(8)
 end
 
--- 0x02094750 (TomahawkMan's throw, by phase): once KnightMan is up for it, the throw (15 ticks); then until KnightMan is
--- done.
+-- 0x02094750 (TomahawkMan's throw, by phase): once KnightMan is up for it, the throw (15 ticks); then until KnightMan
+-- is done.
 local function throw(me: Object)
     local p = me.phase
     if p == 0 then
