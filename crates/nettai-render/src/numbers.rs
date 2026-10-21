@@ -1,28 +1,36 @@
 //! The game's numbers in the enhanced mode: each digit (and the '+', the
-//! "x" of "x2", the '?' marks) drawn in a bundled font, Saira at width 75
-//! and weight 700 (fonts/saira, SIL Open Font License 1.1), at the output's
-//! resolution, as tall as the box the game's own digit picture fills in its
-//! cell (docs/design/text-rendering.md §12.4). The numbers were Bungee first
-//! (the user, 2026-10-19: "i like bungee"), whose wide digits had to be
-//! squeezed to fit the game's places; the user switched to Teko 600, a
-//! condensed face that fits them as it is, on 2026-10-20 ("can you use
-//! teko 600 without squeezing?"), and the same day to Saira 75/700 ("use
-//! saira 75/700"), condensed too and with tabular figures, which Teko
-//! lacks. Bungee stays the HUD's lettering font ([`font`]: the words on the
-//! buttons, the window's labels, the chip codes).
+//! "x" of "x2", the '?' marks) drawn in a font made of the game's own
+//! digits: Nettai Digits (fonts/nettai-digits: the HP box's digits, the
+//! HUD's '?', '+' and "x", traced from their pixels with sharp corners) and,
+//! for the numbered banners, Nettai Banner Digits (fonts/nettai-banner-digits:
+//! the banners' own drawing), at the output's resolution
+//! (docs/design/text-rendering.md §12.4). The numbers were Bungee first (the
+//! user, 2026-10-19: "i like bungee"), then Teko 600 and Saira 75/700 (the
+//! user, 2026-10-20: "use saira 75/700"); on 2026-10-21 the user asked for
+//! the game's own ("could you trace a vector font of the game's numbers?",
+//! "you should just create the font yourself as an otf and commit it", "the
+//! font should have sharp edges and not rounded", "can it not just be the
+//! same base font? and exclude the variants that don't fit", the banners'
+//! "actually a different font", then "replace them outright"). Bungee stays
+//! the HUD's lettering font ([`font`]: the words on the buttons, the
+//! window's labels, the chip codes).
 //!
-//! A set of the game's number glyphs (the HP box's digits, the enemies' in
-//! each color, the damage digits, the chip window's, a telop's, the
-//! banners') says how its numbers look: the box its faces fill in their
-//! 8x16 cells, the face's colors down its rows, and its outline (a rim all
-//! round, or a shadow right and down), as the pack has read them off the
-//! glyphs (`nettai_assets::letters::Digits`). Each character is drawn in
-//! the face box's height, set as the font sets it (`laid`): one shaped run
-//! with the font's kerning and its tabular figures (each digit the one
-//! advance: a number doesn't move as it changes, and its columns line up),
-//! the run placed against the end the picture's number sits against (its
-//! right, its left, its middle, or its first ink after a chip's name).
-//! Every number has the same spacing for its height.
+//! The digit fonts keep the game's metrics: a glyph pixel is 100 units, each
+//! glyph in the game's 8-pixel cell (its advance), its face 6 pixels wide a
+//! pixel in from the cell's left. A set of the game's number glyphs (the HP
+//! box's digits, the enemies' in each color, the damage digits, the chip
+//! window's, a telop's, the banners') says how its numbers look: the box its
+//! faces fill in their 8x16 cells, the face's colors down its rows, and its
+//! outline (a rim all round, or a shadow right and down), as the pack has
+//! read them off the glyphs (`nettai_assets::letters::Digits`). Each
+//! character is drawn a glyph pixel a frame pixel across and as tall as its
+//! set's face box (the user, of the game's own sets: "aren't the fonts just
+//! stretched or boldened or condensed or whatever?": the enemies' 8 pixels
+//! tall, the chip window's 11, at one width), set as the font sets it
+//! (`laid`: one run, each digit the one advance, a game cell), the run's
+//! faces placed where the picture's are (against its right, its left, its
+//! middle) or its first ink after a chip's name. So a number has the
+//! original's spacing and box.
 
 use crate::textlayer::{Rect, TextItem, TextSink};
 use nettai_assets::Palette;
@@ -38,21 +46,35 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
     &FONT_PARSED
 }
 
-/// Saira: the numbers' font.
-pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/saira/Saira-VariableFont_wdth,wght.ttf");
+/// Nettai Digits: the numbers' font (the game's own digits).
+pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-digits/NettaiDigits-Regular.otf");
 
 /// The numbers' font, parsed once.
 pub fn digits_font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
     static FONT_PARSED: std::sync::LazyLock<std::sync::Arc<crate::vfont::VectorFont>> =
-        std::sync::LazyLock::new(|| std::sync::Arc::new(crate::vfont::VectorFont::from_bytes(DIGITS_FONT, "Saira (bundled)").expect("the bundled numbers font parses")));
+        std::sync::LazyLock::new(|| std::sync::Arc::new(crate::vfont::VectorFont::digits_from_bytes(DIGITS_FONT, "Nettai Digits (bundled)").expect("the bundled numbers font parses")));
     &FONT_PARSED
 }
 
-/// Which font a [`Fitted`] is drawn in: the numbers' (Saira) or the
-/// lettering's (Bungee: the chip codes).
+/// Nettai Banner Digits: the numbered banners' font (the game's banner
+/// digits, another drawing).
+pub const BANNER_DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-banner-digits/NettaiBannerDigits-Regular.otf");
+
+/// The banners' numbers' font, parsed once.
+pub fn banner_digits_font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
+    static FONT_PARSED: std::sync::LazyLock<std::sync::Arc<crate::vfont::VectorFont>> = std::sync::LazyLock::new(|| {
+        std::sync::Arc::new(crate::vfont::VectorFont::digits_from_bytes(BANNER_DIGITS_FONT, "Nettai Banner Digits (bundled)").expect("the bundled banner numbers font parses"))
+    });
+    &FONT_PARSED
+}
+
+/// Which font a [`Fitted`] is drawn in: the numbers' (Nettai Digits), the
+/// banners' numbers' (Nettai Banner Digits), or the lettering's (Bungee:
+/// the chip codes).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Face {
     Digits,
+    BannerDigits,
     Letters,
 }
 
@@ -60,23 +82,45 @@ impl Face {
     pub fn font(self) -> &'static std::sync::Arc<crate::vfont::VectorFont> {
         match self {
             Face::Digits => digits_font(),
+            Face::BannerDigits => banner_digits_font(),
             Face::Letters => font(),
         }
     }
 
-    /// Its variable axes' settings.
-    pub fn axes(self) -> &'static [(&'static str, f32)] {
+    /// A digit font's game metrics (none: the lettering font, fitted to its
+    /// boxes instead).
+    pub fn game(self) -> Option<GameMetrics> {
+        static DIGITS: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::Digits));
+        static BANNER: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::BannerDigits));
         match self {
-            Face::Digits => &[("wdth", 75.0), ("wght", 700.0)],
-            Face::Letters => &[],
+            Face::Digits => Some(*DIGITS),
+            Face::BannerDigits => Some(*BANNER),
+            Face::Letters => None,
         }
     }
 }
 
-/// The numbers' font's normalized coordinates at its axes' settings.
-fn coords() -> Vec<swash::NormalizedCoord> {
-    let f = digits_font().font();
-    f.variations().normalized_coords(Face::Digits.axes().iter().map(|&(t, v)| swash::Setting { tag: swash::tag_from_str_lossy(t), value: v })).collect()
+/// A digit font's metrics as the game's: frame pixels a font unit across
+/// (its digits' advance one game cell), and its digits' faces' insets in
+/// their cell (frame pixels: from the cell's left to the faces' left, from
+/// the faces' right to the cell's right), read off the font.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GameMetrics {
+    pub across: f32,
+    pub inset: (f32, f32),
+}
+
+impl GameMetrics {
+    fn of(face: Face) -> GameMetrics {
+        let f = face.font().font();
+        let cmap = f.charmap();
+        let advance = f.glyph_metrics(&[]).advance_width(cmap.map('0'));
+        let across = CELL as f32 / advance.max(1.0);
+        let inks: Vec<[f32; 4]> = "0123456789".chars().filter_map(|c| ink_box(face, cmap.map(c))).collect();
+        let left = inks.iter().map(|b| b[0]).fold(f32::MAX, f32::min);
+        let right = inks.iter().map(|b| b[2]).fold(f32::MIN, f32::max);
+        GameMetrics { across, inset: (left * across, (advance - right) * across) }
+    }
 }
 
 /// A set of digits' characters (and the chip window's '?').
@@ -89,6 +133,11 @@ impl NumberSet {
     /// The set as the set of `chars` (a sign's: '+', "x2").
     pub fn with_set(self, chars: &str) -> NumberSet {
         NumberSet { set: chars.into(), ..self }
+    }
+
+    /// The set in another digit font (the banners').
+    pub fn in_font(self, font: Face) -> NumberSet {
+        NumberSet { font, ..self }
     }
 
     /// The set as one family with other sets beside it (`Fitted::family`).
@@ -132,6 +181,8 @@ pub struct Fitted {
 pub struct NumberSet {
     /// The box its faces fill in their cells: x, y, width, height.
     pub face: [i32; 4],
+    /// Its font (a digit font: Nettai Digits, or the banners').
+    pub font: Face,
     /// Its characters (`Fitted::set`), and its family's (`Fitted::family`).
     pub set: String,
     pub family: Vec<(String, f32)>,
@@ -146,6 +197,7 @@ impl NumberSet {
         let color = |c: u8| palette[c as usize & 15];
         NumberSet {
             face: d.face.map(|v| v as i32),
+            font: Face::Digits,
             set: DIGITS.into(),
             family: Vec::new(),
             fill: d.fill.iter().map(|&c| color(c)).collect(),
@@ -158,29 +210,29 @@ impl NumberSet {
     pub fn fitted(&self, chars: &str) -> Fitted {
         let [x, y, w, h] = self.face.map(|v| v as f32);
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
-        Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow, face: Face::Digits, ids: Vec::new() }
+        Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow, face: self.font, ids: Vec::new() }
     }
 }
 
-/// A glyph of the numbers' font's ink box, in font units: left, bottom,
-/// right, top (none: no ink).
-fn ink_box(glyph: u16) -> Option<[f32; 4]> {
-    let f = digits_font().font();
+/// A glyph of a digit font's ink box, in font units: left, bottom, right,
+/// top (none: no ink).
+fn ink_box(face: Face, glyph: u16) -> Option<[f32; 4]> {
+    let f = face.font().font();
     let mut ctx = swash::scale::ScaleContext::new();
-    let mut scaler = ctx.builder(f).size(f.metrics(&coords()).units_per_em as f32).variations(Face::Digits.axes().iter().copied()).build();
+    let mut scaler = ctx.builder(f).size(f.metrics(&[]).units_per_em as f32).build();
     scaler.scale_outline(glyph).map(|o| {
         let b = o.bounds();
         [b.min.x, b.min.y, b.max.x, b.max.y]
     })
 }
 
-/// `text` shaped in the numbers' font (kerned, its tabular figures), in font
-/// units: each glyph's character, glyph, offset and advance.
-fn shaped(text: &str) -> Vec<(char, u16, f32, f32)> {
-    let f = digits_font().font();
-    let upem = f.metrics(&coords()).units_per_em as f32;
+/// `text` shaped in a digit font, in font units: each glyph's character,
+/// glyph, offset and advance.
+fn shaped(face: Face, text: &str) -> Vec<(char, u16, f32, f32)> {
+    let f = face.font().font();
+    let upem = f.metrics(&[]).units_per_em as f32;
     let mut ctx = swash::shape::ShapeContext::new();
-    let mut shaper = ctx.builder(f).size(upem).variations(Face::Digits.axes().iter().copied()).features([("kern", 1u16), ("tnum", 1)]).build();
+    let mut shaper = ctx.builder(f).size(upem).build();
     shaper.add_str(text);
     let chars: Vec<char> = text.chars().collect();
     let starts: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -194,8 +246,9 @@ fn shaped(text: &str) -> Vec<(char, u16, f32, f32)> {
     out
 }
 
-/// Where a run of numbers is placed: its advances' left edge, right edge or
-/// middle at this x (frame pixels), or its first glyph's ink's left edge
+/// Where a run of numbers is placed: its first face's left edge, its last
+/// face's right edge or its faces' middle at this x (frame pixels: where the
+/// picture's are, [`picture_span`]), or its first glyph's ink's left edge
 /// (`LeftInk`: after words, ink to ink).
 #[derive(Clone, Copy, Debug)]
 pub enum Anchor {
@@ -212,56 +265,58 @@ pub fn picture_span(set: &NumberSet, x: i32, n: usize) -> (f32, f32) {
     (x as f32 + fx, x as f32 + (CELL * n.saturating_sub(1) as i32) as f32 + fx + fw)
 }
 
-/// Numbers and signs in their sets' looks set as one run of the numbers'
-/// font on cells' rows `y`, with the font's own metrics (shaped, kerned, its
-/// tabular figures: every digit one advance), each part at its set's face
-/// box's height and rows, never squeezed; placed by `anchor`. An item for
-/// each part, and where the run's ink starts and ends. None where the text
-/// layer draws no numbers (the original mode), or the font lacks a
+/// Numbers and signs in their sets' looks set as one run of their digit
+/// font on cells' rows `y`, with the font's own metrics (every glyph its
+/// advance, a game cell), each glyph a glyph pixel a frame pixel across and
+/// its part's set's face box tall, never squeezed; placed by `anchor`. An
+/// item for each part (each glyph's box its face's: where the font's 6-pixel
+/// face is in its cell), and where the run's ink starts and ends. None where
+/// the text layer draws no numbers (the original mode), or a font lacks a
 /// character.
 pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anchor) -> Option<(Vec<TextItem>, (f32, f32))> {
-    if !text.draws_numbers() || parts.iter().any(|(chars, _)| !digits_font().covers(chars)) {
+    if !text.draws_numbers() || parts.iter().any(|(chars, set)| !set.font.font().covers(chars)) {
         return None;
     }
-    let f = digits_font().font();
-    // (Each part's frame pixels a font unit: its set's ink the box's
-    // height, as `Fitted` draws it.)
-    let unit = |set: &NumberSet| {
-        let mut heights: Vec<f32> = set.set.chars().filter_map(|c| ink_box(f.charmap().map(c))).map(|b| b[3] - b[1]).collect();
-        heights.sort_by(f32::total_cmp);
-        set.face[3] as f32 / heights.get(heights.len() / 2).copied().unwrap_or(1.0).max(1e-3)
-    };
-    // (The whole run shaped as one string, each glyph its part's.)
-    let whole: String = parts.iter().map(|(chars, _)| chars.replace(' ', "")).collect();
-    let mut owner = Vec::new();
-    for (k, (chars, set)) in parts.iter().enumerate() {
-        let u = unit(set);
-        owner.extend(chars.chars().filter(|c| *c != ' ').map(|_| (k, u)));
+    // (Each part shaped in its set's font, one after another.)
+    struct Glyph {
+        part: usize,
+        c: char,
+        glyph: u16,
+        // (From the run's start, frame pixels: its face's left, and its ink's
+        // left and width.)
+        face: f32,
+        ink: Option<(f32, f32)>,
     }
-    let glyphs = shaped(&whole);
-    // (Each glyph's ink, from the run's start, and the advances' total.)
-    let mut inks: Vec<(usize, char, u16, f32, f32)> = Vec::new();
+    let mut glyphs: Vec<Glyph> = Vec::new();
     let mut pen = 0.0;
-    for (i, &(c, glyph, dx, a)) in glyphs.iter().enumerate() {
-        let Some(&(k, u)) = owner.get(i) else { break };
-        if let Some([x0, _, x1, _]) = ink_box(glyph) {
-            inks.push((k, c, glyph, pen + (dx + x0) * u, (x1 - x0) * u));
+    for (k, (chars, set)) in parts.iter().enumerate() {
+        let metrics = set.font.game()?;
+        let u = metrics.across;
+        for (c, glyph, dx, a) in shaped(set.font, &chars.replace(' ', "")) {
+            let origin = pen + dx * u;
+            let ink = ink_box(set.font, glyph).map(|[x0, _, x1, _]| (origin + x0 * u, (x1 - x0) * u));
+            glyphs.push(Glyph { part: k, c, glyph, face: origin + metrics.inset.0, ink });
+            pen += a * u;
         }
-        pen += a * u;
     }
-    let first_ink = inks.first().map_or(0.0, |g| g.3);
+    let first = parts.first()?.1.font.game()?;
+    let last = parts.last()?.1.font.game()?;
+    let first_ink = glyphs.iter().find_map(|g| g.ink).map_or(0.0, |i| i.0);
+    let (faces_left, faces_right) = (first.inset.0, pen - last.inset.1);
     let start = match anchor {
-        Anchor::Left(x) => x,
-        Anchor::Right(x) => x - pen,
-        Anchor::Center(x) => x - pen / 2.0,
+        Anchor::Left(x) => x - faces_left,
+        Anchor::Right(x) => x - faces_right,
+        Anchor::Center(x) => x - (faces_left + faces_right) / 2.0,
         Anchor::LeftInk(x) => x - first_ink,
     };
     let mut boxes: Vec<(Vec<(char, [f32; 4])>, Vec<u16>)> = vec![(Vec::new(), Vec::new()); parts.len()];
     let (mut ink_start, mut ink_end) = (f32::MAX, f32::MIN);
-    for &(k, c, glyph, x, w) in &inks {
-        let [_, top, _, h] = parts[k].1.face.map(|v| v as f32);
-        boxes[k].0.push((c, [start + x, top, w, h]));
-        boxes[k].1.push(glyph);
+    for g in &glyphs {
+        let Some((x, w)) = g.ink else { continue };
+        let set = parts[g.part].1;
+        let [_, top, face_w, h] = set.face.map(|v| v as f32);
+        boxes[g.part].0.push((g.c, [start + g.face, top, face_w, h]));
+        boxes[g.part].1.push(g.glyph);
         ink_start = ink_start.min(start + x);
         ink_end = ink_end.max(start + x + w);
     }
@@ -271,7 +326,7 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
         let right = glyphs.iter().map(|g| g.1[0] + g.1[2]).fold(left, f32::max);
         let glyphs = glyphs.into_iter().map(|(c, [x, top, w, h])| (c, [x - left, top, w, h])).collect();
         let rect = Rect::new(left as i32, y, (right - left).ceil() as i32 + 1, 16);
-        let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow, face: Face::Digits, ids };
+        let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow, face: set.font, ids };
         out.push(TextItem::fitted(f, rect));
     }
     Some((out, (ink_start, ink_end)))
@@ -299,22 +354,41 @@ mod tests {
         assert_eq!(f.glyphs, vec![('1', [1.0, 4.0, 6.0, 8.0]), ('0', [9.0, 4.0, 6.0, 8.0])]);
     }
 
-    /// The numbers' font's tabular figures take effect through the run's
-    /// shaping: every digit one advance.
+    /// The digit fonts keep the game's metrics: every digit one advance, a
+    /// game cell, and its face 6 frame pixels wide a pixel in from the
+    /// cell's left.
     #[test]
-    fn digits_are_tabular() {
-        let advances: Vec<f32> = shaped("0123456789").iter().map(|g| g.3).collect();
-        eprintln!("the digits' advances through the shaper (font units): {advances:?}");
-        assert_eq!(advances.len(), 10);
-        assert!(advances.iter().all(|&a| a == advances[0]), "{advances:?}");
-        // (Without the feature they differ: the font's own figures are
-        // proportional.)
-        assert!(digits_font().font().features().any(|f| f.tag() == swash::tag_from_bytes(b"tnum")));
+    fn digits_are_a_cell_apart() {
+        for face in [Face::Digits, Face::BannerDigits] {
+            let shaped = shaped(face, "0123456789");
+            let m = face.game().unwrap();
+            let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
+            assert_eq!(cells, vec![CELL as f32; 10], "{face:?}");
+            assert_eq!(m.inset, (1.0, 1.0), "{face:?}");
+        }
+    }
+
+    /// A number laid where the picture's is lands on its faces: the HP box's
+    /// four digits' faces from a cell's second column, a cell apart.
+    #[test]
+    fn a_laid_numbers_faces_are_the_pictures() {
+        let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
+        let set = NumberSet::of(&Digits { face: [1, 3, 6, 10], fill: vec![1; 10], rim: None, shadow: None }, &palette);
+        let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(font().as_ref()));
+        let (a, b) = picture_span(&set, 16, 4);
+        let (items, _) = laid(&text, &[("1234".to_string(), &set)], 0, Anchor::Right(b)).unwrap();
+        let f = items[0].fitted.as_ref().unwrap();
+        let x0 = items[0].rect.x as f32;
+        let lefts: Vec<f32> = f.glyphs.iter().map(|g| x0 + g.1[0]).collect();
+        assert_eq!(lefts, vec![a, a + 8.0, a + 16.0, a + 24.0]);
+        assert!(f.glyphs.iter().all(|g| g.1[2] == 6.0 && g.1[3] == 10.0));
     }
 
     #[test]
-    fn the_font_has_the_numbers_and_signs() {
+    fn the_fonts_have_the_numbers_and_signs() {
         assert!(font().covers("0123456789+?"));
-        assert!(font().covers(times()));
+        assert!(digits_font().covers("0123456789+?"));
+        assert!(digits_font().covers(times()));
+        assert!(banner_digits_font().covers("0123456789"));
     }
 }

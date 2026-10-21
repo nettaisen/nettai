@@ -10,14 +10,17 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// The fonts the UI and the battle's drawing bundle, each with its license file (from the workspace's root).
-const FONTS: [(&str, &str); 6] = [
-    ("Bungee", "crates/nettai-render/fonts/bungee/OFL.txt"),
-    ("Chakra Petch", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
-    ("Corporate Logo", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
-    ("M PLUS 1 Code", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
-    ("Murecho", "crates/nettai-render/fonts/murecho/OFL.txt"),
-    ("Saira", "crates/nettai-render/fonts/saira/OFL.txt"),
+/// The fonts the UI and the battle's drawing bundle, each with its license and its license file (from the
+/// workspace's root). The digit fonts are nettai's own (the game's digits traced: their folders' READMEs), under
+/// the repository's license.
+const FONTS: [(&str, &str, &str); 7] = [
+    ("Bungee", "OFL-1.1", "crates/nettai-render/fonts/bungee/OFL.txt"),
+    ("Chakra Petch", "OFL-1.1", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
+    ("Corporate Logo", "OFL-1.1", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
+    ("M PLUS 1 Code", "OFL-1.1", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
+    ("Murecho", "OFL-1.1", "crates/nettai-render/fonts/murecho/OFL.txt"),
+    ("Nettai Banner Digits", "MPL-2.0", "LICENSE"),
+    ("Nettai Digits", "MPL-2.0", "LICENSE"),
 ];
 
 /// A package's license files: by name, in its folder, in a `LICENSES` folder, or in a folder of its own (a
@@ -75,7 +78,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", root.join("Cargo.lock").display());
     println!("cargo:rerun-if-changed={}", manifest.join("Cargo.toml").display());
-    for (_, file) in FONTS {
+    for (_, _, file) in FONTS {
         println!("cargo:rerun-if-changed={}", root.join(file).display());
     }
 
@@ -144,9 +147,10 @@ fn main() {
     list.sort_by(|a, b| a.name.to_ascii_lowercase().cmp(&b.name.to_ascii_lowercase()).then_with(|| a.version.cmp(&b.version)));
     let fonts: Vec<Package> = FONTS
         .iter()
-        .map(|(name, file)| {
+        .map(|(name, license, file)| {
             let text = std::fs::read_to_string(root.join(file)).unwrap_or_else(|e| panic!("can't read {file}: {e}"));
-            Package { name: name.to_string(), version: String::new(), license: "OFL-1.1".into(), repository: String::new(), texts: vec![("OFL.txt".into(), text_of(text))] }
+            let shown = Path::new(file).file_name().map_or_else(|| file.to_string(), |n| n.to_string_lossy().into_owned());
+            Package { name: name.to_string(), version: String::new(), license: license.to_string(), repository: String::new(), texts: vec![(shown, text_of(text))] }
         })
         .collect();
 
