@@ -1626,10 +1626,14 @@ in their versions' order, each its face, its name and its version's mark; for a 
 programs, each its blocks, its name and its cost (what it does is the strip's: the user, "no need to show effects in
 the library column since they get shown on mouseover"; the strip words it by the collection's own text table,
 `partycust_programs_effects`, as a patch card's lines are worded, its kind there too, `kind.`). One that can't go into
-the slot is greyed with why in the error red, as the Patch cards library's are: a navi "In party", "Not allowed" (the
-ruleset's `party` category) or "Mixed versions" (a ruleset of one version per build, the build checked with it there:
-`Ruleset::problems`); a program "Needs 3 blocks" (in a program's place with that program's blocks free) or "Not
-allowed". Library rows and program rows are a library's row as the Patch cards tab's are (`LibraryRowLook`, factored
+the slot is greyed with why in the error red, as the Patch cards library's are: a navi "In party" or "Not allowed" (the
+ruleset's `party` category); a program "Needs 3 blocks" (in a program's place with that program's blocks free) or "Not
+allowed". A navi of the other version under one version per build isn't refused (the user: "it should be marked red
+and still addable like it is everywhere else"): it goes in as a Giga chip of the other version goes into the folder,
+its library row saying nothing past its version's mark, and the mix is the build's problem (`Wrong::Mixed`): each
+partner whose navi (or a program) is in it has its head red, and its head's and its programs' strip says "Mixed
+versions"; the Party tab is flagged, not the Navi tab, whose category has the team navis too (`Draft::facts_of` takes
+the facts that hold the mix's items in the build: `ruleset::held`). Library rows and program rows are a library's row as the Patch cards tab's are (`LibraryRowLook`, factored
 out of its card rows: a lead, the name, the note right before the end, the end; the editor's list row height), a
 program's blocks or a navi's face its lead, and a navi's name, a head's and a program's in the rows' one size and weight
 (Theme's `row-name-size`, `row-name-weight`). A program's blocks are in a column as wide as the most a program of the

@@ -189,17 +189,26 @@ impl Draft {
     }
 
     /// The build's facts problem `problem` is about: the one it names; a mix of versions (which names none), each
-    /// fact that holds something of its list (the ruleset categories' whose items have it: the folder's Giga chips,
-    /// the forms' facts, the patch cards). None: it is about no fact (the first tab's, then).
+    /// fact that holds something of its list (the ruleset categories' that the build holds it in: the folder's Giga
+    /// chips, the forms' facts, the patch cards, EXE5's partners' navis, not the build's navi, whose category has them
+    /// too). None: it is about no fact (the first tab's, then).
     pub fn facts_of(&self, problem: &Problem) -> Vec<String> {
         if let Some(field) = &problem.field {
             return vec![field.clone()];
         }
         let (Wrong::Mixed { items, .. }, Some(rulesets)) = (&problem.what, self.kit.rulesets()) else { return Vec::new() };
+        let content = self.content();
         rulesets
             .categories
             .iter()
-            .filter(|c| items.iter().any(|(registry, item)| c.registry == *registry && c.items.contains(item)))
+            .filter(|c| {
+                let of = |(registry, item): &&(nettai_content_api::Registry, nettai_match::ruleset::Item)| c.registry == *registry && c.items.contains(item);
+                let mut mine = items.iter().filter(of).peekable();
+                mine.peek().is_some() && {
+                    let held = nettai_match::ruleset::held(content, self.side(), &c.fact);
+                    mine.any(|(_, item)| held.contains(item))
+                }
+            })
             .map(|c| c.fact.clone())
             .collect()
     }

@@ -18,8 +18,9 @@
 //! comes back. **Enter on a library's row** puts it in the slot: a navi in the head's place (a partner's taken out with
 //! its programs: another navi's gauge isn't its), a program in the program's place, or at the list's end from its Empty
 //! row (a program may be in twice: the rules hold them to the gauge alone). A row that can't go in says why in the error
-//! red, as the Patch cards library's do: a navi "In party", "Not allowed" (the build's ruleset's `party` category), or
-//! "Mixed versions" (a ruleset of one version per build); a program "Needs 3 blocks" or "Not allowed" (its
+//! red, as the Patch cards library's do: a navi "In party" or "Not allowed" (the build's ruleset's `party` category; one
+//! of the other version under one version per build goes in, as a Giga chip of it does in the folder: the mix is the
+//! build's problem, the heads of its partners red, their strip saying "Mixed versions"); a program "Needs 3 blocks" or "Not allowed" (its
 //! `party.programs` category: held back for every partner, or for the marked slot's partner's navi). **Del** takes out what is under the cursor: a program, a partner. **CLEAR** takes every
 //! partner out, asked first.
 //!
@@ -297,9 +298,22 @@ impl Party {
         format!("{FIELD}.{}", self.shape.as_ref().map_or("", |s| s.programs.as_str()))
     }
 
-    /// The build's problems with partner `i` (its own, and the party's about no partner).
-    fn problems(draft: &Draft, i: usize) -> Vec<&Problem> {
-        draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
+    /// The build's problems with partner `i`, `partner` (its own, the party's about no partner, and a mix of versions
+    /// its navi or a program of it is in: a navi of the other version, put in as anything of it is anywhere, is marked,
+    /// with every other thing of the mix, and says so).
+    fn problems<'d>(draft: &'d Draft, i: usize, partner: Option<&Partner>) -> Vec<&'d Problem> {
+        draft
+            .checked
+            .problems
+            .iter()
+            .filter(|p| match &p.what {
+                nettai_match::Wrong::Mixed { items, .. } => partner.is_some_and(|partner| {
+                    let navi = partner.navi.map(|n| (Registry::Navi, Item::of(n.0)));
+                    navi.into_iter().chain(partner.programs.iter().map(|h| (Registry::Entry, Item::of(h.0)))).any(|x| items.contains(&x))
+                }),
+                _ => draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none()),
+            })
+            .collect()
     }
 
     /// Why program `h` can't go into slot `slot` now, if it can't: the build's ruleset holds it back (for every partner,
@@ -335,33 +349,19 @@ impl Party {
         }
     }
 
-    /// Why navi `n` can't go into head `slot` now, if it can't: it is in the party already, the build's ruleset holds it
-    /// back, or (a ruleset of one version per build) the build would mix versions with it there.
-    fn navi_refusal(&self, shell: &Shell, draft: &Draft, slot: Slot, n: NaviHandle) -> Option<String> {
+    /// Why navi `n` can't go into a head now, if it can't: it is in the party already, or the build's ruleset holds it
+    /// back. One of the other version (a ruleset of one version per build) goes in, as anything of it does anywhere (the
+    /// user: "it should be marked red and still addable like it is everywhere else"): the mix is the build's problem,
+    /// its partners' heads red.
+    fn navi_refusal(&self, shell: &Shell, draft: &Draft, n: NaviHandle) -> Option<String> {
         let ui = shell.ui();
-        let partners = self.partners(draft);
-        if partners.iter().any(|p| p.navi == Some(n)) {
+        if self.partners(draft).iter().any(|p| p.navi == Some(n)) {
             return Some(ui.global::<PartyView>().get_in_party().into());
         }
         if !draft.allows(FIELD, n.0) {
             return Some(ui.global::<BuildWords>().invoke_not_allowed_here().into());
         }
-        let (Some(under), Some(rulesets), Some(shape)) = (draft.under(), draft.kit.rulesets(), self.shape.as_ref()) else { return None };
-        if !under.ruleset.one_per_build {
-            return None;
-        }
-        let mut ps = partners;
-        match slot {
-            Slot::Head(i) if i < ps.len() => ps[i] = Partner { navi: Some(n), programs: Vec::new() },
-            _ => ps.push(Partner { navi: Some(n), programs: Vec::new() }),
-        }
-        let content = draft.content();
-        let mut side = draft.side().clone();
-        if !write(content, &mut side, shape, &ps) {
-            return None;
-        }
-        let mixes = under.ruleset.problems(&rulesets, content, &side).iter().any(|p| matches!(&p.what, nettai_match::Wrong::Mixed { items, .. } if items.contains(&(Registry::Navi, Item::of(n.0)))));
-        mixes.then(|| ui.global::<BuildWords>().invoke_mixed().into())
+        None
     }
 
     /// The library's rows for the marked slot: the navis (each its face, name and version's mark) or the programs
@@ -378,7 +378,7 @@ impl Party {
                     name: words.names.navi_long(n).into(),
                     face: kit.pictures.navi(n),
                     version: kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0)),
-                    why: self.navi_refusal(shell, draft, slot, n).unwrap_or_default().into(),
+                    why: self.navi_refusal(shell, draft, n).unwrap_or_default().into(),
                     ..Default::default()
                 })
                 .collect();
@@ -531,7 +531,7 @@ impl Party {
                             kind: PartySlotKind::Head,
                             face: p.navi.map(|n| kit.pictures.navi(n)).unwrap_or_default(),
                             name: p.navi.map(|n| words.names.navi_long(n)).unwrap_or_default().into(),
-                            bad: !Party::problems(draft, i).is_empty(),
+                            bad: !Party::problems(draft, i, Some(p)).is_empty(),
                             gauge: gauge as i32,
                             used: b.as_ref().map_or(0, |b| b.count.used as i32),
                             tones: ModelRc::new(VecModel::from(crate::builds::party::tones(&content, p, b.as_ref()))),
@@ -624,7 +624,7 @@ impl Party {
         let facts = navi.and_then(|n| self.navi_facts(draft, n));
         let element = navi.map(|n| kit.pictures.element(super::navi::family(&content, content.navi(n).element)));
         let library_navi = matches!(described, Some(Described::Row(_)));
-        let refusal = navi.filter(|_| library_navi).and_then(|n| self.navi_refusal(shell, draft, marked, n));
+        let refusal = navi.filter(|_| library_navi).and_then(|n| self.navi_refusal(shell, draft, n));
         let detail = draft.with_words(shell, |words| {
             let mut d = match (described, navi) {
                 (_, Some(n)) => {
@@ -640,7 +640,7 @@ impl Party {
                         stats: ModelRc::new(VecModel::from(stats)),
                         element: element.clone().unwrap_or_default(),
                         facts: ModelRc::new(VecModel::from(facts)),
-                        fault: i.filter(|_| !library_navi).map(|i| draft.line(shell, Party::problems(draft, i))).unwrap_or_default().into(),
+                        fault: i.filter(|_| !library_navi).map(|i| draft.line(shell, Party::problems(draft, i, partners.get(i)))).unwrap_or_default().into(),
                         problem: refusal.clone().unwrap_or_default().into(),
                         ..Default::default()
                     }
@@ -649,7 +649,7 @@ impl Party {
                     Some(&Slot::Program(i, k)) => match partners.get(i).and_then(|p| p.programs.get(k)) {
                         Some(&h) => {
                             let mut d = self.program_detail(shell, draft, words, &table, &budgets, Slot::Program(i, k), h, false);
-                            d.fault = draft.line(shell, Party::problems(draft, i)).into();
+                            d.fault = draft.line(shell, Party::problems(draft, i, partners.get(i))).into();
                             d
                         }
                         None => Default::default(),
@@ -731,7 +731,7 @@ impl Party {
     /// Refused as its row says.
     fn put_navi(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, slot: Slot) {
         let Some(&n) = self.shown_navis.get(row) else { return };
-        if self.navi_refusal(shell, draft, slot, n).is_some() {
+        if self.navi_refusal(shell, draft, n).is_some() {
             return self.refuse(shell, row);
         }
         let mut place = 0;
@@ -1071,7 +1071,7 @@ impl Tab for Party {
                     let target = self.slot_at(shell, editor::pointer_at(choice)).and_then(|(row, _)| head_at(&self.slots, row));
                     match (target, self.shown_navis.get(r).copied()) {
                         (Some(h), Some(n)) => {
-                            let why = self.navi_refusal(shell, draft, self.slots[h], n);
+                            let why = self.navi_refusal(shell, draft, n);
                             self.show_slot_landing(shell, h, true, why);
                         }
                         _ => self.show_no_landing(shell),
