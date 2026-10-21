@@ -2242,6 +2242,11 @@ export type RulesSpec = {
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
+        -- Each tick of the fight, each side, side 0 first, before `mic_heard` and before the navis copy their input (the
+        -- DS's party supports).
+        fight_tick: ((side: number) -> ())?,
+        -- The start banner is done and the fight starts, each side, side 0 first.
+        fight_started: ((side: number) -> ())?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
         -- are cleared.
         chip_ended: ((side: number, navi: Object) -> ())?,

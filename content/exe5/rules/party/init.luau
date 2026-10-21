@@ -51,7 +51,31 @@ export type Setup = {
     level: number?,
 }
 
-type State = { rescued: boolean, dice_bonus: boolean }
+-- The party block's fields the supports keep (0x021B85E8 + side·0x24, docs/design/exe5ds-map.md §4.7): ProtoMan's and
+-- Colonel's spent flags and counters (+0, +1, +6, +7), GyroMan's gust spawned and its object (+2, +0x1C), NapalmMan's,
+-- TomahawkMan's and MegaMan's timers and whether each is set (+4 and +3, +8 and +0xA, +0x10 and +0x12), each member busy
+-- while its support acts (+0xC…+0xE), ShadowMan's and SearchMan's spent flags (+0xF, +0x14) and KnightMan's guard
+-- (+0x20).
+export type Supports = {
+    protoman_used: boolean,
+    protoman_count: number,
+    gyroman_spawned: boolean,
+    napalmman_set: boolean,
+    napalmman_timer: number,
+    colonel_used: boolean,
+    colonel_count: number,
+    tomahawkman_timer: number,
+    tomahawkman_set: boolean,
+    busy: { boolean },
+    shadowman_used: boolean,
+    megaman_timer: number,
+    megaman_set: boolean,
+    searchman_used: boolean,
+    gyroman_gust: Object?,
+    knightman_guard: Object?,
+}
+
+type State = { rescued: boolean, dice_bonus: boolean, supports: Supports }
 
 -- Whether the side has partners.
 function party.has_partners(side: number): boolean
@@ -248,6 +272,31 @@ function party.navi_hit_shown(side: number, _navi: Object)
     if party.has_partners(side) and battle.party(side).active == 0 then
         battle.console_rng_positive(side)
     end
+end
+
+-- The side's supports' fields of its party block.
+function party.supports(side: number): Supports
+    return (rules.state_of(side) :: State).supports
+end
+
+-- 0x02004B80 (the rules' `member_busy`): a member busy while its support acts refuses a switch to it.
+function party.member_busy(side: number, member: number): boolean
+    return party.supports(side).busy[member + 1]
+end
+
+-- 0x02004B90: any member busy.
+function party.any_busy(side: number): boolean
+    local busy = party.supports(side).busy
+    return busy[1] or busy[2] or busy[3]
+end
+
+-- 0x02003B98 (the rules' `fight_started`, from the start banner's end, 0x0208DDD2): the turn's supports start over:
+-- ProtoMan's and Colonel's, and NapalmMan's, TomahawkMan's and MegaMan's timers to set again.
+function party.fight_started(side: number)
+    local s = party.supports(side)
+    s.protoman_used, s.protoman_count = false, 0
+    s.colonel_used, s.colonel_count = false, 0
+    s.napalmman_set, s.tomahawkman_set, s.megaman_set = false, false, false
 end
 
 -- NumberMan's DiceBons is spent this battle (the party block's +0x13), and spending it.

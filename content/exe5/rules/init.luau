@@ -19,7 +19,9 @@ local navicust_board = require("@self/navicust/board")
 local navicust_bugs = require("@self/navicust/bugs")
 local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
+local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
+local protoman_support = require("./navis/protoman/support")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
 local shout = require("@self/shout")
@@ -99,6 +101,25 @@ local state: StateSchema = {
     shouted = "bool",
     -- NumberMan's DiceBons is spent this battle (navis/numberman/dice_bonus: the party block's +0x13).
     dice_bonus = "bool",
+    -- The party's supports' (./party's `Supports`: the party block's other fields).
+    supports = {
+        protoman_used = "bool",
+        protoman_count = "u8",
+        gyroman_spawned = "bool",
+        napalmman_set = "bool",
+        napalmman_timer = "u16",
+        colonel_used = "bool",
+        colonel_count = "u8",
+        tomahawkman_timer = "u16",
+        tomahawkman_set = "bool",
+        busy = "bool[3]",
+        shadowman_used = "bool",
+        megaman_timer = "u16",
+        megaman_set = "bool",
+        searchman_used = "bool",
+        gyroman_gust = "object",
+        knightman_guard = "object",
+    } :: StateSchema,
 }
 
 local rules: Rules = {
@@ -375,6 +396,17 @@ local rules: Rules = {
         -- a request isn't a switch.
         switch_requested = party.switch_requested,
         switch_asked = party.switch_asked,
+        member_busy = party.member_busy,
+        -- The party's supports (0x02003764), each fight tick, in a link battle for both sides and offline for side 0
+        -- alone; their turn's flags start over as the fight starts (./party).
+        fight_tick = function(side: number)
+            if not battle.link() and side ~= 0 then
+                return
+            end
+            protoman_support.tick(side)
+            napalmman_support.tick(side)
+        end,
+        fight_started = party.fight_started,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
         -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).

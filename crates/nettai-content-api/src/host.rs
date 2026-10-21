@@ -536,6 +536,16 @@ pub enum RulesHook {
     /// enough shout at a low enough HP starts its heal). Its result is
     /// unused.
     MicHeard,
+    /// `fight_tick(side)`: each tick of the fight, each side, side 0
+    /// first, before `mic_heard` and before the navis copy their input (the
+    /// DS's 0x0208DDE8: its party supports, 0x02003764). Its result is
+    /// unused.
+    FightTick,
+    /// `fight_started(side)`: the start banner is done and the fight starts
+    /// (`sub_8008064`'s end), each side, side 0 first (the DS's 0x0208DDD2:
+    /// its party supports' turn flags start over, 0x02003B98). Its result
+    /// is unused.
+    FightStarted,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -714,6 +724,8 @@ impl RulesHook {
             RulesHook::MemberBusy => "member_busy",
             RulesHook::NaviSwitched => "navi_switched",
             RulesHook::MicHeard => "mic_heard",
+            RulesHook::FightTick => "fight_tick",
+            RulesHook::FightStarted => "fight_started",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
@@ -736,7 +748,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 60] = [
+    pub const ALL: [RulesHook; 62] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -775,6 +787,8 @@ impl RulesHook {
         RulesHook::MemberBusy,
         RulesHook::NaviSwitched,
         RulesHook::MicHeard,
+        RulesHook::FightTick,
+        RulesHook::FightStarted,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,
