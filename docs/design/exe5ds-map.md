@@ -558,6 +558,12 @@ Seen on the way: the microphone event (0x022261A4) sets event flags 0x2E8/0x2E9 
 netbattle the microphone's level reaches the input record's +9 every 16 frames (127 at full noise), and nothing
 reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave it unwired in nettai.
 
+**Against the recordings** (tools/dslab `supports/`, replayed through exe5-compat's exe5_replay, 2026-10-21): ProtoMan
+and NapalmMan, Colonel, TomahawkMan, MegaMan's Spport, SearchMan (offline), Meddy's HealPulse, ToadMan's rescue,
+Mag-Barr, ShadowMan's ambush, KnightMan's guard and DiceBons match every frame; GyroMan's gust parts at frame 227 by
+the side-fair choice (verify's side_fair_deviations.rs), so what follows it there is unchecked. SearchMan in a link
+battle (`opponent_chip`) has no recording.
+
 **The party block's fields** (0x021B85E8 + side·0x24):
 
 | Field | What it holds |
