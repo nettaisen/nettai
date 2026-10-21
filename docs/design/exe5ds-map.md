@@ -35,21 +35,29 @@ Nothing here is observed yet: §9 lists what a console should confirm.
   - The chip record is 0x28 bytes (the GBA's is 0x2C).
 - **The party battle** (§4):
   - Each side brings **MegaMan and up to two team navis**, each with its own 0x60-byte NaviStats block.
-  - The player switches **on the custom screen**, with X or Y or the bottom screen's two buttons, up to MegaMan's
-    switch limit (3, up to 5 with the DS-only programs NavChg+1/+2).
-  - The switch is the GBA's navi switch (action 0x1C), with its steps rewritten.
+  - The player switches with X or Y or the bottom screen's two buttons, up to MegaMan's switch limit (3, up to 5
+    with the DS-only programs NavChg+1/+2).
+  - A switch is taken two ways. **In battle**, the navi's input handler starts a new action (0x59, with dimming).
+    **On the custom screen**, the pick is made there and done at the turn's start by the GBA's navi switch steps,
+    rewritten.
   - HP is kept per member. Soul Unison ends on the way out. A team navi enters at the normal emotion.
   - A deleted team navi gives the field back to MegaMan. The side loses when MegaMan is deleted.
   - Benched members join in: **supports** (seven per-frame handlers) and ToadMan's rescue at 0 HP.
-- **Double Attacks** (§5): switching out of **Full Synchro** to a partner the pair table names starts that
-  pair's Double Attack.
-  - There are twelve, each with a chip record (0x160–0x16B) and a damage row.
-  - (Filled in §5.)
+- **Double Attacks** (§5): a switch out of **Full Synchro** to the partner a pair table names starts that pair's
+  Double Attack, right as the swap ends.
+  - There are twelve, one per pair: six with MegaMan, six between team navis.
+  - Each has a chip record (0x160–0x16B, unused placeholders on the GBA), a damage row by navi level, and a
+    director object that brings both navis on as actors, attacks and warps them out.
+  - All of it is new DS Thumb code built on the GBA's helpers: the hitbox spawner, Vulcan's shots, the sword and
+    buster attachments.
+  - **Every sprite is a GBA sprite, and every sound but one is a GBA sound.** Sound 0x2F (one Double Attack) is
+    empty on the GBA, and the switch's navi voices are DS-only.
 - **The DS's other battle changes** (§6) are catalogued only. The recommendation: GBA EXE5 plus the DS's party
   rules.
 - **The oracle** (§7): every RAM address oracle-trace reads for EXE5 has a DS counterpart, the battle's frame
   routine is 0x0205F970, and the switch rides the link's input packet as a slot number.
-- **The plan** (§8): about ten steps.
+- **The plan** (§8): fourteen steps, about two months of work in all. The largest pieces are the oracle on
+  melonDS and the twelve Double Attacks.
 
 ## 1. The cartridge and the method
 
@@ -190,7 +198,7 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
   - member 0 is a copy of the side's active NaviStats; members 1 and 2 are the partners' base stats;
   - +0x58 is the member's slot.
 - **The per-side party block** at 0x021B85E8 + side·0x24 (0x02004880):
-  - +0xB: the ToadMan rescue used (§4.6);
+  - +0xB: the ToadMan rescue used (§4.7);
   - +0xC+slot: a per-member busy flag. Set, it refuses a switch to that member (0x02004B70, 0x02004B80);
   - +0x15: the member count;
   - +0x18: a bitmask whose meaning is open (0x02004E68 to 0x02004E90).
@@ -244,12 +252,29 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
 
   **So the switch is input**: a slot number in each tick's input, not a key bit.
 
-### 4.3 On the custom screen
+Two places read it, so a switch is taken in battle or on the custom screen.
 
-- **The request is consumed only in the custom screen's chip picking** (state 4).
+### 4.3 In battle
+
+- **Every frame** the navi's input copy (0x0203C180, BRBE `sub_8012DFC`'s counterpart) copies input record +8
+  into AIData +0x70 and +9 into +0x71, unless the battle is over.
+- **The navi's input handler** (0x0203C3D8, `sub_8012FC8`'s counterpart) runs while the battle isn't dimmed. At
+  its end (0x0203C5F6), outside battle mode 6, it requests a switch when all of these hold:
+  - `sub_802DE5C` (0x0200E064) passes: the navi is on the field, no switch or knockout is pending (AIData +0x44
+    0x0C000000), and AIData +0x48 has neither 0x1000 nor 0x2000;
+  - AIData +0x70 is set, and the slot isn't the active one (+0x58);
+  - the member isn't busy (0x02004B80; refused with sound 0x69).
+
+  It then stores the slot in AIData +0x72 and sets AIData +0x44 bit 0x04000000. In mode 6 the same request calls
+  the partner for a Double Attack without a swap (§5).
+- **The live pause handler** (0x020621A0 onward) turns bit 0x04000000 into AIData +0x48 0x1000 and **action
+  0x59** (0x0202C67C): the in-battle swap (§4.6).
+
+### 4.4 On the custom screen
+
+- **The custom screen's chip picking** (state 4) reads the request too.
   - 0x02063038 calls 0x0200C82C every tick: the counterpart of BRBE's 0x080259A0, the gate's navi-chip query of
     the GBA, which the DS replaced with 0x0201352C reading input record +8.
-  - In battle, during dimming and while paused nothing reads it.
 - **0x0200C82C refuses:**
   - battle modes other than 0 and 8;
   - a navi number above 12;
@@ -272,9 +297,11 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
 - **Over the link** each console consumes its own side's request, and the transform record (the GBA's exchanged
   record) carries the result.
 
-### 4.4 The switch limit and the DS programs
+### 4.5 The switch limit and the DS programs
 
 - **The limit** is MegaMan's base stats +0x17, 3 (where the 3 is written is open), re-read every round (0x02036D2C).
+  A switch is counted where it is accepted: on the custom screen at state 0x40 (0x020639DE), in battle by action
+  0x59's change step (0x0202C7EE).
 - **The three DS-only NaviCust programs** are in the program effect table at 0x020D7CB4 (51 entries; the GBA has
   48), named by prgmname.msg:
 
@@ -282,18 +309,29 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
 |---|---|---|---|
 | NavChg+1 | 0x30 | 0x02013F88 | MegaMan's +0x17 += 1, at most 5 |
 | NavChg+2 | 0x31 | 0x02013FA4 | +0x17 += 2, at most 5 |
-| Spport ("MegaMan supports team") | 0x32 | 0x02013FC0 | MegaMan's +0x59 = 1: the partners may support and rescue (§4.6) |
+| Spport ("MegaMan supports team") | 0x32 | 0x02013FC0 | MegaMan's +0x59 = 1: the partners may support and rescue (§4.7) |
 
-### 4.5 The swap
+### 4.6 The swap
 
-It is the GBA's navi switch: the pause handler (0x02061B24, `sub_8017BC0`'s counterpart) runs action 0x1C's
-change in state 0x1000 and the knockout in 0x2000, from the turn-start sequencer as on the GBA:
-- `sub_80147E4` (0x0205FFE0, same) copies the exchanged transform records to 0x021B83F0 + side·0x10.
-- `sub_801486C` (0x0206005C) calls `sub_802DCDE` (0x0200DF2C) when +4 isn't 0xFF.
-- The DS resolves the navi object from the side (0x020987A8), where the GBA stored a pointer.
+Both paths start from the same request, AIData +0x44 bit 0x04000000 (`sub_802DCDE`, 0x0200DF2C, or the input
+handler above). Which handler sees it decides the path:
 
-The steps are rewritten. The step tables are 0x020D9B1C (change) and 0x020D9B28 (knockout); BRBE's are 0x0802CAF0
-and 0x0802CD10.
+- **Paused** (the turn's start, after the custom screen): the paused handler (0x02061B24, `sub_8017BC0`'s
+  counterpart) sets AIData +0x48 0x1000 and the idle action 0x1A. Its later ticks run **the GBA's navi switch**
+  (0x0202BEA4, `sub_802D714`'s counterpart; on the GBA it is EXE6's action 0x1C) while +0x48 has 0x1000. It runs
+  the knockout (0x0202C1A0, action 0x4D) while +0x48 has 0x2000.
+  - The request comes from the turn-start sequencer, as on the GBA. `sub_80147E4` (0x0205FFE0, same) copies the
+    exchanged transform records to 0x021B83F0 + side·0x10. `sub_801486C` (0x0206005C) calls `sub_802DCDE` when
+    the record's +4 isn't 0xFF.
+  - The DS resolves the navi object from the side (0x020987A8), where the GBA stored a pointer.
+- **Live** (in battle): the live pause handler starts **action 0x59**, the DS's own copy of the same sequence with
+  its own dimming (battle flag 4). Its steps are 0x0202C690 (land), 0x0202C760 (change; it counts the switch and
+  updates the panel) and 0x0202C8F8 (settle; it clears the dimming and calls the Double Attack launcher at once).
+  Its steps weren't read in the detail of the paused path's below. They are presumably the same: the change step
+  also keeps the outgoing navi and emotion in +0x30/+0x38 (0x0202C788, 0x0202C790).
+
+The paused path's steps are rewritten from the GBA's. The step tables are 0x020D9B1C (change) and 0x020D9B28
+(knockout); BRBE's are 0x0802CAF0 and 0x0802CD10. Action 0x59's table is 0x020D9B44.
 
 **Land** (0x0202BEB8, BRBE 0x0802CAFC): 20 ticks (the GBA's 4).
 - It forces the white palette every tick.
@@ -318,15 +356,19 @@ and 0x0802CD10.
    - 0x02098804 (collision +0x26 = 0, sound 0x93), and the mugshot on the local side.
 
 **Settle** (0x0202C130, 21 ticks, new): it clears AIData +0x48 0x01409800 and +0x44 0x00100600, and ends in the
-**Double Attack trigger** (§5).
+**Double Attack trigger** (0x02042E74, §5). The trigger sets AIData +0x44 bit 0x02000000. The live handler then
+starts action 0x5C, which dims and calls the launcher.
 
 **New navi actions:** the DS's action table (0x020E5C08) matches the GBA's through 0x58 and adds:
-- 0x59: 0x0202C67C, with dimming;
+- 0x59: 0x0202C67C, the in-battle swap;
 - 0x5A: 0x02004938, the ToadMan rescue;
 - 0x5B: 0x02049784;
-- 0x5C: 0x02042ED8, the Double Attack.
+- 0x5C: 0x02042ED8, a Double Attack after a paused swap.
 
-### 4.6 What a navi keeps, deletion, supports, the end
+(Action 0x4C, 0x0202C3C4, is `sub_802DAA8`'s counterpart. The fall-back's request, AIData +0x44 0x08000000, starts
+it with +0x48 0x2000.)
+
+### 4.7 What a navi keeps, deletion, supports, the end
 
 **What a navi keeps across a swap:**
 - **HP:** its member's own (current and max).
@@ -334,7 +376,7 @@ and 0x0802CD10.
 - **Emotion:** MegaMan's comes back with him; a team navi enters at normal; the outgoing navi's Full Synchro
   is the Double Attack's trigger.
 - **Statuses, anger, invulnerability, the hit in progress and the hand's charge bonuses:** cleared.
-- **The hand and the custom gauge:** the action leaves them; the custom screen cleared the picks (§4.3).
+- **The hand and the custom gauge:** the action leaves them; the custom screen cleared the picks (§4.4).
 - **The buster charge:** not read (the attack state is reset).
 
 **At 0 HP** (0x02062C5A, in `applyDamageToPlayer`'s counterpart), in order:
@@ -365,7 +407,8 @@ and 0x0802CD10.
 - Each then targets an enemy (0x02003864) and spawns an ov423 object (0x021FF280) drawn with the member's sprite
   (0x02036450).
 
-What each support does and when it fires is §5's reading's (filled in there).
+What each support does, which sprite and sound it uses and when it fires is **open**: it is not read yet, and it
+is the next reading after this step (§8, step 2).
 
 **The end:** `battle_isBattleOver` (0x020023DC) is the GBA's.
 - A side loses when MegaMan is deleted. A team navi's deletion never ends it.
@@ -374,7 +417,7 @@ What each support does and when it fires is §5's reading's (filled in there).
 - A link battle's effects word likely has 8. The DS's netbattle effects list has 0x122E8C at 0x02110378, but
   which record a party netbattle uses is open.
 
-### 4.7 The team navis' restrictions
+### 4.8 The team navis' restrictions
 
 - **The light and dark chips** (0x020070FC, BRBE's 0x08010118) dropped the GBA's "any navi but MegaMan passes":
   - light-only chips (record `megaman` field 1) work for every navi of a light side (meter ≥ 470);
@@ -382,7 +425,7 @@ What each support does and when it fires is §5's reading's (filled in there).
   - On the GBA a team navi could use both.
 - **Dark chips** (flag 0x20) keep the GBA's rule: MegaMan (or navi 0x17) only.
 
-### 4.8 Against the engine's navi switch
+### 4.9 Against the engine's navi switch
 
 `crates/nettai-battle/src/kinds/player/actions/navi_switch.rs` ports the GBA's switch, which only the gate drove
 (exe5-map.md §5, history: the GBA's Team Battle mode, which nettai doesn't implement). The DS keeps its entry and
@@ -400,7 +443,115 @@ its sequencer, and changes the rest:
 
 ## 5. Double Attacks
 
-(The Double Attack reading: in progress.)
+**The trigger** (read):
+- **After a live swap**, action 0x59's settle step (0x0202C8F8) clears the dimming and calls the launcher
+  0x02042DC0 (outgoing navi, incoming navi, outgoing emotion).
+- **After a paused swap**, the settle step's test (0x02042E74) sets AIData +0x73 to the partner and +0x44 bit
+  0x02000000. Action 0x5C (0x02042ED8) then dims, lands with sound 0x8D, waits 2 × 20 ticks and calls the
+  launcher.
+- **In battle mode 6** (open: what mode 6 is; it is the offline mode with one scripted partner and unlimited
+  switches), a switch request calls the partner for a Double Attack without a swap, when the active navi is in
+  Full Synchro.
+
+A Double Attack fires when all of these hold:
+- the **outgoing** navi's emotion is 0xFF, **Full Synchro**;
+- AIData +0x73 isn't 0xFF;
+- MegaMan's stored emotion in the party isn't 0, when he is a member;
+- the pair has an entry in the table.
+
+Details of the test:
+- The launcher writes +0x73 = 0xFF after firing, so there is one Double Attack per navi object. Whether that is
+  per round or per battle is **open**.
+- The test also means to require a light MegaMan. It loads 470 but compares the meter with MegaMan's slot
+  number (0x02042EAC), so as read **the light test does nothing** (a DS bug).
+- No code clears the outgoing navi's Full Synchro. The incoming team navi enters at normal.
+
+**The table** (read; `double_da.py`):
+- The pair table at 0x020E0A94 is 13 × 13 bytes by navi number, symmetric: one Double Attack per pair.
+- Double Attack *n* has:
+  - chip 0x160 + *n* − 1 (0x020E0A7C);
+  - a spawner (0x020E0A4C);
+  - a damage row at 0x0203E4FE (ten halfwords by the side's navi level, 0x021B82B0; the GBA's team-navi rows
+    have seven).
+- The chip records 0x160–0x16B are placeholders on the GBA. On the DS they have:
+  - no element, family 0x0E, MB 5 (Mag Air Raid's 0);
+  - their hit flags in +0x0A (§6).
+- The names are the chip names, chipname1.msg 0x60–0x6B, shown as "US / JP" below.
+
+**Launch** (read):
+1. The launcher calls the spawner with the hit flags and damage (r6 = +0x0A << 16 | damage) and the chip (r7).
+2. The spawner starts a director, a new T4 object kind 0x96 + *n*.
+3. `sub_800BF16`(side, 1, director) starts a dimming the other side can't counter.
+4. The director spawns two actors (roles 0 and 1) of a new T1 kind. On BRBE the T1 kinds 0x30–0x44 point at a
+   placeholder; the DS fills them.
+5. Each actor:
+   - draws its navi's own sprite (a per-attack role table);
+   - appears with effects 0x6D and 0x6E and sounds 0x94, 0x71 and 0x72;
+   - attacks, then warps out (`sub_80E1332`).
+6. The MegaMan role takes his soul, Chaos and light/dark look from his stats (+0x2C, +0x4C, +0x44; 0x020A1124,
+   0x020A11D0, 0x020A1218).
+7. Damage goes through the GBA's hitbox spawner `sub_80C53A6` (0x022034BC), with the r4 words below.
+
+All this code is new DS Thumb in the ARM9, built on the GBA helpers named.
+
+| # | Pair | Name (US / JP) | Damage by level 0…9 | Objects (new) | What it does (outline, read) | GBA code it uses |
+|---|---|---|---|---|---|---|
+| 1 | MegaMan + ProtoMan | D-HERO / Double Hero | 7,10,12,15,18,20,30,35,40,40 | T1 0x35 | Seven volleys of MegaMan's buster (sound 0x6A, muzzle flash) and ProtoMan's sword (0xB0); a hitbox at each actor (r4 0x0705FF81/82 by side); sparks 0x3C/0x16 on random enemy panels (RNG2) | `sub_80B8E30`/`sub_80B8E58` (attachments), `sub_80C53A6`, `sub_80E1332` |
+| 2 | ProtoMan + MagnetMan | M-ZAN / Magnet Zan | 50,50,70,80,90,100,180,200,240,240 | T1 0x36 | A sword swing (0xB0), the panel ahead (r4 0x0705FF04) | attachment kind 0x3A (a new row, sprite 10-3C) |
+| 3 | GyroMan + MagnetMan | M-AIR / Mag Air Raid | 60,60,60,70,80,90,150,180,200,200 | T1 0x37, T3 0xA1, T4 0xA3 (sprite 10-2E) | Sounds 0x14C, 0x104, 0x105, 0xFE; hit path open | `sub_801155A`, collision helpers |
+| 4 | MegaMan + NapalmMan | D-VALCAN / Double Vulcan | 2,2,2,2,2,3,4,5,6,6 a hit | T1 0x38, T3 0xA1 | Vulcan's shots (the GBA's T3 0x12 through `sub_80C6ADA`, the Vulcan chips' kind), the vulcan attachment; sounds 0xB9, 0x105 | Vulcan's attack object |
+| 5 | MegaMan + SearchMan | C-SCOPE / Cross Scope | 15,15,15,15,15,22,30,35,40,40 | T1 0x3A, T4 0xA4 (sprite 10-23, the search scope) | A hitbox (r4 0x19050001); sounds 0xB9, 0xBD, 0x10E | `sub_80C53A6` |
+| 6 | NapalmMan + Meddy | C-BOMB / Chemical Bomb | 75,75,75,75,75,75,110,130,150,150 | T1 0x3B, T3 0xCD | A thrown bomb and an area hit (`sub_801BD3C`, r4 0x0405FF0F); sounds 0xBD, 0x112, 0x70; effects 0x4C, 0x14 | `sub_801BD3C`, `sub_801155A` |
+| 7 | MegaMan + Colonel | BR-RUSH / (Brain Rush, by its JP name) | 10,12,15,15,20,25,35,45,50,50 | T1 0x3E | Buster shots (0x6A), a sword (0xB0), the panel ahead twice (r4 0x0705FF01), the GBA's T3 0x02 through `exe5_80C4C98`, a camera shake; sounds 0xCF, 0xFB, **0x2F**, 0xCE | `exe5_80C4C98`, `sub_80E11E0` |
+| 8 | MegaMan + KnightMan | B-SHOOT / (…Shoot) | 30,30,35,40,45,50,90,100,120,120 | T1 0x3F | The buster (0x6A), a landing (0xC0), a camera shake; hit path open | |
+| 9 | Colonel + ShadowMan | E-SAPPOU / Engetsu Sappou | 45,45,45,50,60,75,110,130,150,150 | T1 0x40, T1 0x44 (sprite 10-02, rock) | Sound 0xC0, effect 0x02; hit path open | |
+| 10 | TomahawkMan + KnightMan | K-THROW / Knight Throw | 180,180,180,180,220,270,350,400,450,450 | T1 0x41 | A falling throw, a **Wood** hit (r4 0x15050A01); sound 0x109 | `sub_8001330` (the arc) |
+| 11 | MegaMan + NumberMan | K-BOMB / Kokuban-keshi Bomb | 40,40,40,40,40,50,70,90,100,100 | T1 0x42, T3 0xCC (sprite 0C-02, bomb) | Two bomb throws (0xB2), a hit at an offset table (r4 0x0405FF01) | |
+| 12 | ShadowMan + ToadMan | G-OTOSHI / Gama Otoshi | 30,30,30,30,30,30,40,50,60,60 | T1 0x43, T3 0xA2 (a repointed placeholder) | Sounds 0xD8, 0x105, effect 0x14, a panel change; hit path open | `sub_801155A` |
+
+The hit patterns are outlined only. **Open:**
+- what the r4 words' panel bytes (0x81, 0x82, 0x04, 0x0F) mean;
+- the hit paths of 3, 8, 9 and 12;
+- whether the chip's name shows on screen. The director holds the chip at +0x30, and no telop call was found.
+
+### 5.1 Art and sound: the GBA counterparts
+
+The DS code names its sprites and sounds by the GBA's ids: the same code with the same constants, and the GBA
+`sprite_load` with GBA category and index. Read in code; not compared pixel by pixel.
+
+- **Sprites, all in the GBA ROMs:**
+  - the team navis 08-01…08-0C;
+  - MegaMan 00-00 and his souls 00-01…00-0C;
+  - the attachments 0C-00 (sword), 0C-02 (bomb), 0C-03 (buster arm), 0C-06 (muzzle flash) and 0C-1D (vulcan);
+  - 10-02 (rock), 10-23 (search scope), 10-2E and 10-3C (unnamed in assets.toml), 10-44 (toad note);
+  - 14-08 (charge glow) animations 0 and 2.
+- **New rows, not new art:**
+  - the effect table (DS 0x02229C14 against BRBE 0x080DFC94) adds rows 0x6C (10-44), 0x6D (14-08, animation 0)
+    and 0x6E (14-08, animation 2);
+  - the attachment table (DS 0x022266A4 against BRBE 0x080B9974) adds kind 0x3A (10-3C);
+  - the GBA's effect row 0x10 changed (14-04 animation 1 → 14-0C animation 0).
+
+  The port adds these rows in content. **No sprite is missing.**
+- **Sounds, all in BRBE's song table:**
+  - 0x14, 0x6A buster shot, 0x70 bomb hit, 0x71/0x72 buster charge, 0x8D cross change, 0x94 appear;
+  - 0xB0 sword swing, 0xB2 bomb throw, 0xB9, 0xBD mark, 0xC0 land, 0xCE big sword swing, 0xCF, 0xD8;
+  - 0xFB, 0xFE, 0x104 gyro takeoff, 0x105 drop, 0x109 tomahawk throw, 0x10E, 0x112 place, 0x14C gyro change.
+
+  Names are from content/exe5/compat/assets.toml; 0x14, 0xCF and 0xFE exist there unnamed.
+- **Missing from the GBA:**
+
+| What | Where | Closest GBA stand-in |
+|---|---|---|
+| sound 0x2F | Double Attack 7 (Brain Rush), with 0xFB | an empty entry of BRBE's table: play 0xFB alone (or nothing) |
+| the navis' switch voices | the swap's land step (0x02098ED0): two per navi, a voice stream and a sound effect 0x214–0x22D, past the GBA's last sound 0x173 | none: the switch already plays 0x8D (`cross-change`). Leave the voice out |
+| the switch music | per-navi music (MegaMan, ProtoMan, Colonel) | DS music: ignored, as the user said |
+
+**Pixels (open):** the ids above are the ones the code passes, and the GBA has art at each of them. That the
+DS draws the same art at the same id is **not checked**. The DS sprite list (0x02104E18) names file-system
+files, not GBA addresses, and its indexing isn't the GBA's: its 00-00 entry names bs01.bin, which is
+byte-identical to the GBA's 08-01 archive (ProtoMan). A comparison in scratch (`double_sprites.py`, unfinished)
+has to settle the mapping before "the same id" can be read as "the same art". The user's rule holds either way:
+the port draws the GBA sprites at the GBA ids the GBA's own code for the same object uses.
 
 ## 6. The DS's other battle changes (catalogued, not adopted)
 
