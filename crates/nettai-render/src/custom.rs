@@ -985,19 +985,22 @@ impl Window {
         }
     }
 
-    /// In the enhanced mode, the chip codes the window shows (`codes`) in
-    /// the numbers' font (the user: "also the chip letters"): each code's
-    /// cell with its letter taken off (the pack's `letters`), and the letter
-    /// drawn fitted to the box the picture's letter fills, in its colors and
-    /// its rim or shadow, where it stood.
+    /// In the enhanced mode, the chip codes the window shows (`codes`) in a
+    /// font of the game's codes (the user: "also the chip letters", then "you
+    /// should trace ABCDEFGHIJKLMNOPQRSTUVWXYZ* for the chip codes font like
+    /// you did digits"): the chip window's in Nettai Chip Codes, the slots'
+    /// in Nettai Slot Codes. Each code's cell with its letter taken off (the
+    /// pack's `letters`), and the letter drawn in the box the picture's
+    /// letters fill, a glyph pixel a frame pixel across and the box's height
+    /// down, in its colors and its rim or shadow, where it stood.
     fn letter_codes(&mut self, v: &View, text: &TextSink, problems: &mut Problems) {
         if !text.draws_numbers() {
             return;
         }
         let a = v.assets;
         for (first, count, code, slot, glyph) in std::mem::take(&mut self.codes) {
-            let words = code.to_string();
-            if !crate::numbers::font().covers(&words) {
+            let face = if slot { crate::numbers::Face::SlotCodes } else { crate::numbers::Face::ChipCodes };
+            if !face.font().covers(&code.to_string()) {
                 continue;
             }
             let set = if slot { &a.letters.slot_codes } else { &a.letters.codes };
@@ -1007,20 +1010,16 @@ impl Window {
             self.tiles.put_part(first, &set.blank, 2 * glyph, 2);
             let palette = self.palettes[block.palette as usize & 15];
             let color = |c: u8| palette[c as usize & 15];
-            // (Each code centered in the box all the set's codes fill, the
-            // pitch the cell's; the chip window's code one family with its
-            // damage: the user, "chip code and chip window damage should
-            // probably be the same size?")
+            // (In the box all the set's codes fill, each where its font has
+            // it in its face.)
             let Some([x, y, w, h]) = set.face.map(|f| f.map(f32::from)) else { continue };
-            let family = if slot { Vec::new() } else { a.letters.digits.iter().map(|d| (crate::numbers::DIGITS.to_string(), d.face[2] as f32)).collect() };
             let fitted = crate::numbers::Fitted {
                 glyphs: vec![(code, [x, y, w, h])],
                 set: crate::numbers::CODES.into(),
-                family,
                 fill: look.fill.iter().map(|&c| color(c)).collect(),
                 rim: look.rim.map(color),
                 shadow: look.shadow.map(color),
-                face: crate::numbers::Face::Letters,
+                face,
                 ids: Vec::new(),
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
