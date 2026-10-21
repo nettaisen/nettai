@@ -199,6 +199,8 @@ pub struct Party {
     alone: std::collections::HashMap<NaviHandle, Option<NaviFacts>>,
     /// The partners' budgets while a drag is under way (the build doesn't change until it is let go): asked once.
     drag_budgets: Option<Vec<Option<Budget>>>,
+    /// A budget the programs are costed by (`learn_costing`).
+    costing: Option<Budget>,
 }
 
 impl Party {
@@ -250,20 +252,37 @@ impl Party {
         draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
     }
 
-    /// The library's rows: each program's blocks of the target partner's gauge (`target`), its name, and why it can't
-    /// go in there (red, the row greyed), where there are partners.
+    /// The library's rows: each program's blocks, its name, and why it can't go into the target partner's list (its
+    /// budget `target`: red, the row greyed), where there are partners.
     fn library_rows(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, partnered: bool, target: Option<&Budget>) -> Vec<PartyRow> {
         let content = draft.content();
         self.programs
             .iter()
             .map(|&h| {
-                let mut r = program_row(words, content, h, target);
+                let mut r = program_row(words, content, h, target.or(self.costing.as_ref()));
                 if partnered && let Some(why) = self.refusal(shell, draft, target, h) {
                     r.why = why.into();
                 }
                 r
             })
             .collect()
+    }
+
+    /// A budget to cost the programs by, learned once (its cost field is the rules' overview's, every partner's the
+    /// same): a partner's, else a check's of the build with the first navi offered its one partner. The library's rows
+    /// have their blocks with no partner too, and the blocks' column is as wide as the most a program fills.
+    fn learn_costing(&mut self, draft: &Draft, budgets: &[Option<Budget>]) {
+        if self.costing.is_some() {
+            return;
+        }
+        self.costing = budgets.iter().flatten().next().cloned().or_else(|| {
+            let shape = self.shape.clone()?;
+            let n = *self.navis.first()?;
+            let content = draft.content().clone();
+            let mut side = draft.side().clone();
+            write(&content, &mut side, &shape, &[Partner { navi: Some(n), programs: Vec::new() }]).then_some(())?;
+            Checked::of(&content, &draft.kit.game, &side).overview(&content, &side)?.budget_of(FIELD, 0).cloned()
+        });
     }
 
     /// The partners' budgets, asked once while a drag is under way.
@@ -352,6 +371,8 @@ impl Party {
         teams.retain(|(_, row)| !row.is_empty());
         self.navis = teams.iter().flat_map(|(_, row)| row.iter().copied()).collect();
         let full = partners.len() >= shape.room;
+        self.learn_costing(draft, &budgets);
+        let most = self.costing.as_ref().and_then(|b| self.programs.iter().map(|&h| b.cost_of(&content, h)).max()).unwrap_or(1);
         let (team_rows, panels, rows) = draft.with_words(shell, |words| {
             let firsts = teams.iter().scan(0, |first, (_, row)| {
                 let at = *first;
@@ -417,6 +438,7 @@ impl Party {
             (team_rows, panels, rows)
         });
         let target = budget(self.target);
+        view.set_most_blocks(most as i32);
         view.set_partners(partners.len() as i32);
         view.set_room(shape.room as i32);
         view.set_changes(changes.unwrap_or(0) as i32);
