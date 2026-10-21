@@ -25,6 +25,8 @@ pub mod folders;
 #[cfg(test)]
 mod double_attacks;
 #[cfg(test)]
+mod switch_in;
+#[cfg(test)]
 mod games;
 pub mod ids;
 #[cfg(test)]
