@@ -27,8 +27,9 @@
 //! **A program is dragged** as the Patch cards tab's cards are (`Drag`, `drag-over` and `drag-in-over`): from the library
 //! into a partner's list, in a list to another place or into the other partner's, and onto the library, which takes it
 //! out. Over a partner's section (its head or its programs) that partner is the one marked, its head lit, and a gap opens
-//! in its list where the program would go (over its head, at the top); where it can't go in there, the dragged row says
-//! why ("Needs 3 blocks") and no gap opens, and let go it is refused as Enter is. **A partner's head is dragged** onto
+//! in its list where the program would go (over its head, at the top), as the Patch cards tab's does over its list
+//! whether the card fits or not; where it can't go in there, the dragged row says why ("Needs 3 blocks"), and let go it
+//! is refused as Enter is. **A partner's head is dragged** onto
 //! another's section (or above the first, below the last) to take its place, its programs with it; **a chip in the
 //! party** onto another that is, to trade places.
 
@@ -374,12 +375,13 @@ impl Party {
         self.refusal(shell, draft, budgets.get(i).and_then(Option::as_ref), h)
     }
 
-    /// Tell the UI where a program dragged over partner `i`'s section would go in (`at`), or, where it can't go in, why
-    /// (in the dragged row's place for what it does) and no gap.
+    /// Tell the UI where a program dragged over partner `i`'s section would go in (`at`: a gap opens there, the dragged
+    /// row over it, whole), and, where it can't go in, why (the dragged row says it; let go, it is refused as Enter is).
+    /// As the Patch cards tab's card over its list: a gap whether it fits or not, the row never faint over another's.
     fn show_program_landing(&self, shell: &Shell, i: usize, at: usize, why: Option<String>) {
         let ui = shell.ui();
-        ui.global::<PartyView>().set_drag_why(why.clone().unwrap_or_default().into());
-        editor::show_landing(shell, &installed_list(i), if why.is_some() { None } else { Some(at) }, false);
+        ui.global::<PartyView>().set_drag_why(why.unwrap_or_default().into());
+        editor::show_landing(shell, &installed_list(i), Some(at), false);
     }
 
     /// Nothing shown of where a drag would land: into no list (the list it came from no longer scrolls near its

@@ -1801,7 +1801,8 @@ fn party_drag(add: &mut dyn FnMut(u64, Step), from: Point, through: &[Point]) {
 
 /// The Party tab (EXE5's party battle; a game without one passes these by): two partners put in from the picker, and
 /// every drag the tab takes, each let go and what it did checked (`report.txt` says what didn't), the held states shot
-/// (the gap open where the program would go, the partner it is over marked; the refusal on the dragged row): a
+/// (the gap open where the program would go, the partner it is over marked; the refusal on the dragged row, over the gap
+/// all the same): a
 /// library's program into the first partner's empty list, at its top and between its rows; into the second's; one the
 /// second's gauge has no room for (refused, nothing changes); a program moved in its partner's list, onto the library
 /// (taken out: the second's gauge has room again), and into the other partner's (over its head: at its top); a partner's head onto the other's (they trade places, programs with
@@ -1893,7 +1894,7 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
     drag_in(add, &picked, |_, _| Some(Point::Below("target", 1, 30.0)));
     add(SETTLE, expect(|ui, _| {
         let (why, to) = (ui.global::<PartyView>().get_drag_why(), ui.global::<nettai_ui::Drag>().get_to());
-        (why.is_empty() || to >= 0).then(|| format!("a program the second partner has no room for, dragged over it: the dragged row says {why:?}, the gap at {to}"))
+        (why.is_empty() || to < 0).then(|| format!("a program the second partner has no room for, dragged over it: the dragged row says {why:?}, the gap at {to}"))
     }));
     shot(add, "party-drag-refused", Pair::None);
     add(SETTLE, hand(Point::Below("target", 1, 30.0), Ev::Release));

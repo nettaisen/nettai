@@ -252,8 +252,8 @@ component InstalledRowView inherits Rectangle {
             text: root.card.there ? root.card.name : @tr("Empty");
             color: !root.card.there ? Theme.dim : root.card.bad ? Theme.bad : Theme.text;
             font-family: Theme.body;
-            font-size: Theme.phone ? 14px : 12px;
-            font-weight: root.card.there ? 600 : 400;
+            font-size: Theme.row-name-size;
+            font-weight: root.card.there ? Theme.row-name-weight : 400;
             vertical-alignment: center;
             overflow: elide;
         }

@@ -23,7 +23,7 @@
 //
 // A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
 // and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
-// where it would go in its list (the section a row taller), or the dragged row says why it can't. A partner's head is
+// where it would go in its list (the section a row taller), the dragged row over it whole, and says why where it can't. A partner's head is
 // dragged onto another's to take its place (a gap over the other's head), a chip in the party onto another's to trade.
 //
 // On a phone, which has no strip, the chips wrap three to a row under their team's name, PARTY is the tab's width, and a
@@ -135,7 +135,7 @@ export global PartyView {
     // The most blocks a program of the collection fills: the blocks' column of a program's row is as wide as that.
     in property <int> most-blocks: 1;
     // Why the program dragged can't go into the list of the partner it is over (empty: it can, or it is over none):
-    // said in the dragged row, and no gap opens.
+    // said in the dragged row, which is over the gap that opens all the same.
     in property <string> drag-why;
     // A library's row that was refused, counted: it shakes.
     in property <int> refused: -1;
@@ -230,9 +230,10 @@ component ChipView inherits Rectangle {
         width: max(0px, parent.width - self.x - (root.in ? 8px + 16px + 8px : 8px));
         text: root.chip.name;
         color: root.chip.held ? Theme.dim : root.chip.full && !root.in ? Theme.muted : Theme.text;
-        // (A navi's name as the editor's rows have names.)
+        // (A navi's name as the program list's rows have their names: the editor's rows' one look.)
         font-family: Theme.body;
-        font-size: Theme.phone ? 15px : 14px;
+        font-size: Theme.row-name-size;
+        font-weight: Theme.row-name-weight;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -405,7 +406,7 @@ component RowsList inherits Rectangle {
             text: @tr("Empty");
             color: Theme.dim;
             font-family: Theme.body;
-            font-size: Theme.phone ? 14px : 12px;
+            font-size: Theme.row-name-size;
             font-weight: 400;
             vertical-alignment: center;
         }
@@ -432,9 +433,10 @@ component PartnerHead inherits Rectangle {
         height: root.height;
         text: root.panel.name;
         color: root.panel.bad ? Theme.bad : Theme.text;
-        // (A navi's name as the editor's rows have names.)
+        // (A navi's name as the program list's rows have their names: the editor's rows' one look.)
         font-family: Theme.body;
-        font-size: Theme.phone ? 15px : 14px;
+        font-size: Theme.row-name-size;
+        font-weight: Theme.row-name-weight;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -861,7 +863,8 @@ export component PartyTab inherits Rectangle {
                 text: @tr("Empty");
                 color: Theme.dim;
                 font-family: Theme.body;
-                font-size: Theme.phone ? 15px : 14px;
+                font-size: Theme.row-name-size;
+                font-weight: 400;
                 vertical-alignment: center;
             }
         }

@@ -349,8 +349,8 @@ component LibraryRowView inherits Rectangle {
         color: root.line.kind == ChipKind.mega ? Theme.mega : root.line.kind == ChipKind.giga ? Theme.giga : (root.line.refused ? Theme.dim : Theme.text);
         opacity: root.line.refused && root.line.kind != ChipKind.standard ? 0.5 : 1;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 12px;
-        font-weight: 600;
+        font-size: Theme.row-name-size;
+        font-weight: Theme.row-name-weight;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -564,8 +564,8 @@ export component LibraryRowLook inherits Rectangle {
         text: root.name;
         color: root.refused || root.empty ? Theme.dim : Theme.text;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 12px;
-        font-weight: root.empty ? 400 : 600;
+        font-size: Theme.row-name-size;
+        font-weight: root.empty ? 400 : Theme.row-name-weight;
         vertical-alignment: center;
         overflow: elide;
     }

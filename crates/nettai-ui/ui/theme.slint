@@ -163,6 +163,11 @@ export global Theme {
     // `ListView`'s own gap).
     out property <length> list-row: phone ? 40px : chip-row;
     out property <length> list-gap: 2px;
+    // A thing's name on such a row, and wherever the editor names one beside them (the Party tab's navis in its picker
+    // and its partners' heads): one size and weight (in `body`), so that none drifts from the others. An Empty is
+    // `row-name-size` at the regular weight.
+    out property <length> row-name-size: phone ? 14px : 12px;
+    out property <int> row-name-weight: 600;
 
     // Motion (docs/design/app-ui.md §4, "Motion"; docs/app.md §10). Everything moves, briefly, and nothing
     // waits on it; motion is offsets, opacity and overlays, never a size. These are the only durations there
