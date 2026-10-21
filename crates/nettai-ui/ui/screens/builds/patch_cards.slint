@@ -16,7 +16,7 @@
 import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
@@ -513,321 +513,335 @@ export component PatchCardsTab inherits Rectangle {
     // A phone: the counts' box over the cards, and what they add up to under them, a line each.
     property <length> counts-height: 44px;
     property <length> lines-height: Theme.phone ? 2 * 22px + 8px : 0px;
-    // ---- The strip: the card under the cursor.
-    PanelBack {
-        x: 0;
-        y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
-    }
-
-    Text {
-        x: 16px;
-        y: root.top + 12px;
-        width: 200px;
-        height: 14px;
-        visible: !Theme.phone;
-        text: PatchCardsView.detail.number == "" ? "" : @tr("No. {}", PatchCardsView.detail.number);
-        color: Theme.dim;
-        font-family: Theme.mono;
-        font-size: 11px;
-        font-weight: 500;
-        vertical-alignment: center;
-    }
-
-    Text {
-        x: 16px;
-        y: root.top + 28px;
-        width: 224px;
-        height: 22px;
-        visible: !Theme.phone;
-        text: PatchCardsView.detail.there ? PatchCardsView.detail.name : "";
-        color: Theme.text;
-        font-family: Theme.body;
-        font-size: 16px;
-        font-weight: 700;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Text {
-        x: 16px;
-        y: root.top + 54px;
-        width: 224px;
-        height: 16px;
-        visible: !Theme.phone;
-        text: PatchCardsView.detail.facts;
-        color: Theme.muted;
-        font-family: Theme.body;
-        font-size: 12px;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-
     // (The strip's right of the card's name: its two groups, and the place at the top right every tab's strip keeps for
     // a refusal or a problem, a third as wide as each, which the groups' lines end before, so neither runs into the
     // other whatever the language or the window's width.)
     property <length> group-width: (root.width - 256px - 16px - 2 * 24px) / 3;
-    GroupColumn {
-        x: 256px;
-        y: root.top + 12px;
-        width: root.group-width;
-        height: 84px;
-        visible: !Theme.phone && PatchCardsView.detail.there;
-        title: Theme.phone ? "" : PatchCardsView.detail.first-title;
-        lines: PatchCardsView.detail.first;
-    }
+    // How tall what the tab shows is: on a desktop the strip and the panes under it (on a phone the tab's height: its list fills it).
+    property <length> content-height: max(self.height, Theme.phone ? self.height : root.pane-y + root.pane-height + 12px);
 
-    GroupColumn {
-        x: 256px + root.group-width + 24px;
-        y: root.top + 12px;
-        width: root.group-width;
-        height: 84px;
-        visible: !Theme.phone && PatchCardsView.detail.there;
-        title: Theme.phone ? "" : PatchCardsView.detail.second-title;
-        lines: PatchCardsView.detail.second;
-    }
-
-    // (Why the card under the cursor can't go in, or why it wasn't put in: the strip's refusal, at its top right as
-    // every tab's strip has it; else what the rules have against it.)
-    Refusal {
-        x: 256px + 2 * (root.group-width + 24px);
-        y: root.top + 19px;
-        width: root.group-width;
-        visible: !Theme.phone;
-        text: PatchCardsView.detail.problem;
-        problem: PatchCardsView.detail.fault;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    // ---- The build's cards, framed: the title and the counts, the cards, what they add up to.
-    PanelBack {
+    // (Where the tab is shorter than what it shows, a short window's, it scrolls: its scroll bar in the body's margin, at
+    // its right, the tab laid out as wide as it is. A mouse's drag moves what it drags: the wheel scrolls.)
+    tab-page := ScrollPage {
         x: 0;
-        y: Theme.phone ? 0px : root.pane-y;
-        width: Theme.phone ? parent.width : root.pane-width;
-        height: Theme.phone ? root.counts-height : root.pane-height;
-        accent: !Theme.phone;
-        fill: Theme.phone ? Theme.inset : Theme.panel;
-    }
-
-    cards-title := Label {
-        x: 12px;
-        y: root.pane-y;
-        width: max(0px, counts.x - 12px - self.x);
-        height: 44px;
-        visible: !Theme.phone;
-        text: Caps.of(@tr("Patch cards"));
-        color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
-    }
-
-    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
-    // card taken out (in a game with slots, every slot emptied), asked first; dim where the build has none. At the
-    // header's right end, after the counts; on a phone at the counts' box's.
-    clear := WordButton {
-        x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
-        y: counts.y;
-        nav: "clear";
-        text: Caps.of(@tr("Clear"));
-        enabled: PatchCardsView.counts.slotted ? PatchCardsView.counts.filled > 0 : PatchCardsView.counts.cards > 0;
-    }
-
-    // (What is wrong with the cards: on a phone's header, after the counts, before CLEAR.)
-    ProblemNote {
-        x: counts.x + counts.width + 16px;
-        y: counts.y;
-        width: max(0px, clear.x + clear.pad - 12px - self.x);
-        visible: Theme.phone;
-        text: PatchCardsView.problems;
-    }
-
-    counts := HorizontalLayout {
-        x: Theme.phone ? 12px : clear.x + clear.pad - 12px - self.width;
-        y: Theme.phone ? 14px : root.pane-y + 14px;
-        width: self.preferred-width;
-        height: 16px;
-        spacing: 12px;
-        CountBox {
-            visible: !PatchCardsView.counts.slotted;
-            label: @tr("Cards");
-            value: PatchCardsView.counts.cards;
-            value-width: 22px;
-        }
-
-        CountBox {
-            visible: PatchCardsView.counts.budget;
-            label: @tr("MB");
-            value: PatchCardsView.counts.megabytes;
-            suffix: "/\{PatchCardsView.counts.limit}";
-            value-width: 46px;
-            over: PatchCardsView.counts.megabytes > PatchCardsView.counts.limit;
-        }
-
-        CountBox {
-            visible: PatchCardsView.counts.slotted;
-            label: @tr("Slots");
-            value: PatchCardsView.counts.filled;
-            suffix: "/\{PatchCardsView.counts.slots}";
-            value-width: 32px;
-        }
-    }
-
-    cards := ListView {
-        x: Theme.phone ? 0px : 4px;
-        y: Theme.phone ? root.counts-height + 12px : root.pane-y + 44px;
-        width: (Theme.phone ? parent.width : root.pane-width - 4px) - (Theme.phone ? 0px : 4px);
-        height: Theme.phone ? parent.height - self.y - root.lines-height : root.pane-height - 44px;
+        y: 0;
+        width: root.width + 12px;
+        height: root.height;
         nav: "card";
-        count: PatchCardsView.installed.length;
-        row-height: Theme.list-row;
-        // (A mouse's drag on a card moves it: the wheel scrolls.)
         mouse-pan: false;
-        for at in cards.shown: InstalledRowView {
-            property <int> index: cards.first + at;
-            y: self.index * cards.pitch;
+        content-height: root.content-height;
+        // ---- The strip: the card under the cursor.
+        PanelBack {
+            x: 0;
+            y: root.top;
+            height: Theme.phone ? 0px : 104px;
+            visible: !Theme.phone;
+        }
+
+        Text {
+            x: 16px;
+            y: root.top + 12px;
+            width: 200px;
+            height: 14px;
+            visible: !Theme.phone;
+            text: PatchCardsView.detail.number == "" ? "" : @tr("No. {}", PatchCardsView.detail.number);
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+
+        Text {
+            x: 16px;
+            y: root.top + 28px;
+            width: 224px;
+            height: 22px;
+            visible: !Theme.phone;
+            text: PatchCardsView.detail.there ? PatchCardsView.detail.name : "";
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 16px;
+            font-weight: 700;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            x: 16px;
+            y: root.top + 54px;
+            width: 224px;
+            height: 16px;
+            visible: !Theme.phone;
+            text: PatchCardsView.detail.facts;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+
+        GroupColumn {
+            x: 256px;
+            y: root.top + 12px;
+            width: root.group-width;
+            height: 84px;
+            visible: !Theme.phone && PatchCardsView.detail.there;
+            title: Theme.phone ? "" : PatchCardsView.detail.first-title;
+            lines: PatchCardsView.detail.first;
+        }
+
+        GroupColumn {
+            x: 256px + root.group-width + 24px;
+            y: root.top + 12px;
+            width: root.group-width;
+            height: 84px;
+            visible: !Theme.phone && PatchCardsView.detail.there;
+            title: Theme.phone ? "" : PatchCardsView.detail.second-title;
+            lines: PatchCardsView.detail.second;
+        }
+
+        // (Why the card under the cursor can't go in, or why it wasn't put in: the strip's refusal, at its top right as
+        // every tab's strip has it; else what the rules have against it.)
+        Refusal {
+            x: 256px + 2 * (root.group-width + 24px);
+            y: root.top + 19px;
+            width: root.group-width;
+            visible: !Theme.phone;
+            text: PatchCardsView.detail.problem;
+            problem: PatchCardsView.detail.fault;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        // ---- The build's cards, framed: the title and the counts, the cards, what they add up to.
+        PanelBack {
+            x: 0;
+            y: Theme.phone ? 0px : root.pane-y;
+            width: Theme.phone ? parent.width : root.pane-width;
+            height: Theme.phone ? root.counts-height : root.pane-height;
+            accent: !Theme.phone;
+            fill: Theme.phone ? Theme.inset : Theme.panel;
+        }
+
+        cards-title := Label {
+            x: 12px;
+            y: root.pane-y;
+            width: max(0px, counts.x - 12px - self.x);
+            height: 44px;
+            visible: !Theme.phone;
+            text: Caps.of(@tr("Patch cards"));
+            color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
+        }
+
+        // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+        // card taken out (in a game with slots, every slot emptied), asked first; dim where the build has none. At the
+        // header's right end, after the counts; on a phone at the counts' box's.
+        clear := WordButton {
+            x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
+            y: counts.y;
+            nav: "clear";
+            text: Caps.of(@tr("Clear"));
+            enabled: PatchCardsView.counts.slotted ? PatchCardsView.counts.filled > 0 : PatchCardsView.counts.cards > 0;
+        }
+
+        // (What is wrong with the cards: on a phone's header, after the counts, before CLEAR.)
+        ProblemNote {
+            x: counts.x + counts.width + 16px;
+            y: counts.y;
+            width: max(0px, clear.x + clear.pad - 12px - self.x);
+            visible: Theme.phone;
+            text: PatchCardsView.problems;
+        }
+
+        counts := HorizontalLayout {
+            x: Theme.phone ? 12px : clear.x + clear.pad - 12px - self.width;
+            y: Theme.phone ? 14px : root.pane-y + 14px;
+            width: self.preferred-width;
+            height: 16px;
+            spacing: 12px;
+            CountBox {
+                visible: !PatchCardsView.counts.slotted;
+                label: @tr("Cards");
+                value: PatchCardsView.counts.cards;
+                value-width: 22px;
+            }
+
+            CountBox {
+                visible: PatchCardsView.counts.budget;
+                label: @tr("MB");
+                value: PatchCardsView.counts.megabytes;
+                suffix: "/\{PatchCardsView.counts.limit}";
+                value-width: 46px;
+                over: PatchCardsView.counts.megabytes > PatchCardsView.counts.limit;
+            }
+
+            CountBox {
+                visible: PatchCardsView.counts.slotted;
+                label: @tr("Slots");
+                value: PatchCardsView.counts.filled;
+                suffix: "/\{PatchCardsView.counts.slots}";
+                value-width: 32px;
+            }
+        }
+
+        cards := ListView {
+            x: Theme.phone ? 0px : 4px;
+            y: Theme.phone ? root.counts-height + 12px : root.pane-y + 44px;
+            width: (Theme.phone ? parent.width : root.pane-width - 4px) - (Theme.phone ? 0px : 4px);
+            height: Theme.phone ? parent.height - self.y - root.lines-height : root.pane-height - 44px;
+            nav: "card";
+            count: PatchCardsView.installed.length;
+            row-height: Theme.list-row;
+            // (A mouse's drag on a card moves it: the wheel scrolls.)
+            mouse-pan: false;
+            for at in cards.shown: InstalledRowView {
+                property <int> index: cards.first + at;
+                y: self.index * cards.pitch;
+                width: cards.row-width;
+                height: cards.row-height;
+                card: PatchCardsView.installed[self.index];
+                nav-index: self.index;
+                slotted: PatchCardsView.counts.slotted;
+                chosen: self.index == PatchCardsView.marked;
+                dy: (CardDrag.shown(self.index) - self.index) * cards.pitch;
+                gone: CardDrag.on && self.index == Drag.from;
+            }
+        }
+
+        // (The row a card went into, and where a card dragged would land, over the list where it is scrolled to.)
+        Rectangle {
+            x: cards.x;
+            y: cards.y;
+            width: cards.row-width;
+            height: cards.height;
+            clip: true;
+            DropGap {
+                x: 0;
+                y: max(0, CardDrag.to) * cards.pitch - cards.scroll;
+                width: parent.width;
+                height: cards.row-height;
+                visible: CardDrag.to >= 0;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
+            Flash {
+                y: PatchCardsView.landed * cards.pitch - cards.scroll;
+                height: cards.row-height;
+                seq: PatchCardsView.landed-seq;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        // ---- What the cards add up to: two panels at the right, or on a phone a line each under the cards.
+        if !Theme.phone: Rectangle {
+            PanelBack {
+                x: root.side-x;
+                y: root.pane-y;
+                width: root.side-width;
+                height: root.effects-height;
+                accent: false;
+            }
+
+            for line[i] in PatchCardsView.effects: EffectRow {
+                x: root.side-x + 16px;
+                y: root.pane-y + 10px + i * 20px;
+                width: root.side-width - 32px;
+                line: line;
+            }
+
+            PanelBack {
+                x: root.side-x;
+                y: root.pane-y + root.effects-height + 12px;
+                width: root.side-width;
+                height: root.effects-height;
+                accent: false;
+            }
+
+            for line[i] in PatchCardsView.bugs: EffectRow {
+                x: root.side-x + 16px;
+                y: root.pane-y + root.effects-height + 12px + 10px + i * 20px;
+                width: root.side-width - 32px;
+                line: line;
+            }
+        }
+
+        if Theme.phone: Rectangle {
+            for line[i] in [{ title: @tr("Effects"), text: PatchCardsView.effects-line, bug: false }, { title: @tr("Bugs"), text: PatchCardsView.bugs-line, bug: true }]: Rectangle {
+                x: 0;
+                y: root.height - root.lines-height + 8px + i * 22px;
+                width: root.width;
+                height: 16px;
+                Text {
+                    x: 0;
+                    width: 96px;
+                    text: line.title;
+                    color: Theme.muted;
+                    font-family: Theme.body;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                Text {
+                    x: 104px;
+                    width: parent.width - self.x;
+                    text: line.text == "" ? @tr("None") : line.text;
+                    color: line.text == "" ? Theme.dim : line.bug ? Theme.bug : Theme.text;
+                    font-family: Theme.body;
+                    font-size: 13px;
+                    font-weight: line.text == "" ? 400 : 600;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+
+        // ---- The library, open; a card dragged over it is taken out, let go there.
+        if !Theme.phone: Rectangle {
+            library := CardsLibraryPane {
+                x: root.library-x;
+                y: root.pane-y;
+                width: root.library-width;
+                height: root.pane-height;
+                titled: true;
+            }
+
+            RemoveTarget {
+                x: library.x - 8px;
+                y: library.y - 8px;
+                width: library.width + 8px;
+                height: library.height + 16px;
+                shown: CardDrag.on && Drag.removing;
+                text: Caps.of(@tr("Drop to remove"));
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        // (The card being dragged, under the pointer, over everything; or a ghost of the library's card, in the shape of
+        // the build's, faint until it is over the list. A library's row is wider: its ghost is held no farther in than its
+        // middle.)
+        InstalledRowView {
+            x: Drag.x - root.absolute-position.x - (CardDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
+            y: Drag.y - root.absolute-position.y - Drag.grab-y;
             width: cards.row-width;
             height: cards.row-height;
-            card: PatchCardsView.installed[self.index];
-            nav-index: self.index;
+            visible: CardDrag.on || CardDrag.filling;
+            card: CardDrag.filling ? PatchCardsView.rows[max(0, Drag.from)] : PatchCardsView.installed[max(0, Drag.from)];
+            nav-index: -1;
             slotted: PatchCardsView.counts.slotted;
-            chosen: self.index == PatchCardsView.marked;
-            dy: (CardDrag.shown(self.index) - self.index) * cards.pitch;
-            gone: CardDrag.on && self.index == Drag.from;
-        }
-    }
-
-    // (The row a card went into, and where a card dragged would land, over the list where it is scrolled to.)
-    Rectangle {
-        x: cards.x;
-        y: cards.y;
-        width: cards.row-width;
-        height: cards.height;
-        clip: true;
-        DropGap {
-            x: 0;
-            y: max(0, CardDrag.to) * cards.pitch - cards.scroll;
-            width: parent.width;
-            height: cards.row-height;
-            visible: CardDrag.to >= 0;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        Flash {
-            y: PatchCardsView.landed * cards.pitch - cards.scroll;
-            height: cards.row-height;
-            seq: PatchCardsView.landed-seq;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-
-    // ---- What the cards add up to: two panels at the right, or on a phone a line each under the cards.
-    if !Theme.phone: Rectangle {
-        PanelBack {
-            x: root.side-x;
-            y: root.pane-y;
-            width: root.side-width;
-            height: root.effects-height;
-            accent: false;
-        }
-
-        for line[i] in PatchCardsView.effects: EffectRow {
-            x: root.side-x + 16px;
-            y: root.pane-y + 10px + i * 20px;
-            width: root.side-width - 32px;
-            line: line;
-        }
-
-        PanelBack {
-            x: root.side-x;
-            y: root.pane-y + root.effects-height + 12px;
-            width: root.side-width;
-            height: root.effects-height;
-            accent: false;
-        }
-
-        for line[i] in PatchCardsView.bugs: EffectRow {
-            x: root.side-x + 16px;
-            y: root.pane-y + root.effects-height + 12px + 10px + i * 20px;
-            width: root.side-width - 32px;
-            line: line;
-        }
-    }
-
-    if Theme.phone: Rectangle {
-        for line[i] in [{ title: @tr("Effects"), text: PatchCardsView.effects-line, bug: false }, { title: @tr("Bugs"), text: PatchCardsView.bugs-line, bug: true }]: Rectangle {
-            x: 0;
-            y: root.height - root.lines-height + 8px + i * 22px;
-            width: root.width;
-            height: 16px;
-            Text {
-                x: 0;
-                width: 96px;
-                text: line.title;
-                color: Theme.muted;
-                font-family: Theme.body;
-                font-size: 13px;
-                vertical-alignment: center;
-                overflow: elide;
+            lifted: true;
+            chosen: !Drag.removing;
+            removing: Drag.removing;
+            opacity: Drag.removing ? 0.6 : CardDrag.filling && CardDrag.to < 0 ? 0.7 : 1;
+            animate opacity {
+                duration: Theme.quick;
+                easing: ease-out;
             }
-
-            Text {
-                x: 104px;
-                width: parent.width - self.x;
-                text: line.text == "" ? @tr("None") : line.text;
-                color: line.text == "" ? Theme.dim : line.bug ? Theme.bug : Theme.text;
-                font-family: Theme.body;
-                font-size: 13px;
-                font-weight: line.text == "" ? 400 : 600;
-                vertical-alignment: center;
-                overflow: elide;
-            }
-        }
-    }
-
-    // ---- The library, open; a card dragged over it is taken out, let go there.
-    if !Theme.phone: Rectangle {
-        library := CardsLibraryPane {
-            x: root.library-x;
-            y: root.pane-y;
-            width: root.library-width;
-            height: root.pane-height;
-            titled: true;
-        }
-
-        RemoveTarget {
-            x: library.x - 8px;
-            y: library.y - 8px;
-            width: library.width + 8px;
-            height: library.height + 16px;
-            shown: CardDrag.on && Drag.removing;
-            text: Caps.of(@tr("Drop to remove"));
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-
-    // (The card being dragged, under the pointer, over everything; or a ghost of the library's card, in the shape of
-    // the build's, faint until it is over the list. A library's row is wider: its ghost is held no farther in than its
-    // middle.)
-    InstalledRowView {
-        x: Drag.x - root.absolute-position.x - (CardDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
-        y: Drag.y - root.absolute-position.y - Drag.grab-y;
-        width: cards.row-width;
-        height: cards.row-height;
-        visible: CardDrag.on || CardDrag.filling;
-        card: CardDrag.filling ? PatchCardsView.rows[max(0, Drag.from)] : PatchCardsView.installed[max(0, Drag.from)];
-        nav-index: -1;
-        slotted: PatchCardsView.counts.slotted;
-        lifted: true;
-        chosen: !Drag.removing;
-        removing: Drag.removing;
-        opacity: Drag.removing ? 0.6 : CardDrag.filling && CardDrag.to < 0 ? 0.7 : 1;
-        animate opacity {
-            duration: Theme.quick;
-            easing: ease-out;
         }
     }
 }
