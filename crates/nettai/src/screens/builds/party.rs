@@ -326,18 +326,14 @@ impl Party {
                 (_, Some(n)) => {
                     let tag = kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0));
                     let (hp, gauge) = facts.unwrap_or_default();
-                    let mut columns = Vec::new();
-                    if let Some(g) = gauge {
-                        columns.push(nettai_ui::PartyColumn { title: view.get_gauge_title(), text: view.invoke_blocks_word(g as i32), tone: ui.global::<nettai_ui::Theme>().get_text(), ..Default::default() });
-                    }
+                    let facts: Vec<slint::SharedString> = [hp.map(|hp| view.invoke_hp_word(hp as i32)), gauge.map(|g| view.invoke_gauge_word(g as i32))].into_iter().flatten().collect();
                     let i = partners.iter().position(|p| p.navi == Some(n));
                     nettai_ui::PartyDetail {
                         there: true,
                         face: kit.pictures.navi(n),
                         name: words.names.navi_long(n).into(),
                         version: tag,
-                        facts: ModelRc::new(VecModel::from(hp.map(|hp| view.invoke_hp_word(hp as i32)).into_iter().collect::<Vec<_>>())),
-                        columns: ModelRc::new(VecModel::from(columns)),
+                        facts: ModelRc::new(VecModel::from(facts)),
                         fault: i.map(|i| draft.line(shell, Party::problems(draft, i))).unwrap_or_default().into(),
                         problem: if matches!(described, Some(Described::Chip(_))) && !draft.allows(FIELD, n.0) { say.invoke_not_allowed_here() } else { Default::default() },
                         ..Default::default()
@@ -366,34 +362,27 @@ impl Party {
         view.set_detail(detail);
     }
 
-    /// A program as the strip describes it: its blocks and name; its blocks, and whether they fit partner `i`'s gauge
-    /// (`fitting`: it is the library's, which adds to it); what it does, and its kind.
+    /// A program as the strip describes it, as the Folder tab's strip a chip: its blocks and name, what it does; its
+    /// blocks, its kind, and whether they fit partner `i`'s gauge (`fitting`: it is the library's, which adds to it).
     #[allow(clippy::too_many_arguments)]
     fn program_detail(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, table: &str, budgets: &[Option<Budget>], i: usize, h: EntryHandle, fitting: bool) -> nettai_ui::PartyDetail {
         let content = draft.content();
         let ui = shell.ui();
         let view = ui.global::<PartyView>();
-        let theme = ui.global::<nettai_ui::Theme>();
         let b = budgets.get(i).cloned().flatten();
         let cost = b.as_ref().map_or(0, |b| b.cost_of(content, h)) as i32;
-        let mut facts = vec![view.invoke_blocks_word(cost)];
-        let why = if fitting { self.refusal(shell, draft, b.as_ref(), h) } else { None };
-        if fitting && why.is_none() {
-            facts.push(view.invoke_fits_word(b.as_ref().map_or(0, |b| b.count.free()) as i32));
-        }
         let kind = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key).and_then(|d| d.spec.field("kind").str().map(str::to_string));
-        let kind = kind.and_then(|k| words.names.text(table, &format!("kind.{k}"))).unwrap_or_default();
-        let columns = vec![
-            nettai_ui::PartyColumn { title: view.get_effect_title(), text: effect_of(words.names, h, table).into(), tone: theme.get_text(), ..Default::default() },
-            nettai_ui::PartyColumn { title: view.get_kind_title(), text: kind.into(), tone: theme.get_text(), swatch: tone(content, h), swatched: true },
-        ];
+        let kind = kind.and_then(|k| words.names.text(table, &format!("kind.{k}")));
+        let why = if fitting { self.refusal(shell, draft, b.as_ref(), h) } else { None };
+        let fits = (fitting && why.is_none()).then(|| view.invoke_fits_word(b.as_ref().map_or(0, |b| b.count.free()) as i32));
+        let facts: Vec<slint::SharedString> = [Some(view.invoke_blocks_word(cost)), kind.map(Into::into), fits].into_iter().flatten().collect();
         nettai_ui::PartyDetail {
             there: true,
             name: words.names.entry(h).into(),
             blocks: cost,
             tone: tone(content, h),
+            description: effect_of(words.names, h, table).into(),
             facts: ModelRc::new(VecModel::from(facts)),
-            columns: ModelRc::new(VecModel::from(columns)),
             problem: why.unwrap_or_default().into(),
             ..Default::default()
         }

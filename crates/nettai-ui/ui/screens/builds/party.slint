@@ -74,18 +74,10 @@ export struct PartyPanel {
     rows: [PartyRow],
 }
 
-// A column of the strip: its title, and what it says (`swatch` a block of a color before it, where `swatched`).
-export struct PartyColumn {
-    title: string,
-    text: string,
-    tone: color,
-    swatch: color,
-    swatched: bool,
-}
-
-// What the strip describes: a navi (its face, its name with its version's mark) or a program (its blocks, its name); its
-// facts under its name; two columns; why it can't go in (`problem`, a refusal) or what the build's problems have against
-// it (`fault`).
+// What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
+// name (a navi's with its version's mark), a line of what it is (`description`: what a program does, a navi's
+// numbers), its facts; why it can't go in (`problem`, a refusal) or what the build's problems have against it
+// (`fault`).
 export struct PartyDetail {
     there: bool,
     face: image,
@@ -93,8 +85,8 @@ export struct PartyDetail {
     version: VersionTag,
     blocks: int,
     tone: color,
+    description: string,
     facts: [string],
-    columns: [PartyColumn],
     problem: string,
     fault: string,
 }
@@ -133,9 +125,6 @@ export global PartyView {
     // ---- Words the app asks for.
     // CLEAR's question (docs/design/app-ui.md §2.71).
     out property <string> clear-question: @tr("Clear the party?");
-    out property <string> effect-title: Caps.of(@tr("Effect"));
-    out property <string> kind-title: Caps.of(@tr("Kind"));
-    out property <string> gauge-title: Caps.of(@tr("Gauge"));
     public pure function free-word(n: int) -> string {
         return @tr("{n} block free" | "{n} blocks free" % n);
     }
@@ -148,6 +137,9 @@ export global PartyView {
     // (A partner's HP as the strip and the build overview's rows say it.)
     public pure function hp-word(hp: int) -> string {
         return @tr("HP {}", hp);
+    }
+    public pure function gauge-word(n: int) -> string {
+        return @tr("Gauge {n} block" | "Gauge {n} blocks" % n);
     }
     public pure function needs-blocks(n: int) -> string {
         return @tr("Needs {n} block" | "Needs {n} blocks" % n);
@@ -550,7 +542,7 @@ export component PartyTab inherits Rectangle {
         // (A drag on a program's row moves it: the wheel scrolls.)
         mouse-pan: false;
         content-height: root.content-height;
-        // ---- The strip: the program or the navi under the cursor.
+        // ---- The strip: the program or the navi under the cursor, as the Folder tab's lays a chip out.
         PanelBack {
             x: 0;
             y: root.top;
@@ -561,18 +553,29 @@ export component PartyTab inherits Rectangle {
         Image {
             x: 18px;
             y: root.top + 20px;
-            width: 64px;
-            height: 32px;
+            width: 84px;
+            height: 42px;
             visible: !root.phone && PartyView.detail.there && PartyView.detail.blocks == 0;
             source: PartyView.detail.face;
             image-rendering: pixelated;
         }
 
+        Blocks {
+            x: 18px;
+            y: root.top + 22px;
+            visible: !root.phone && PartyView.detail.blocks > 0;
+            count: PartyView.detail.blocks;
+            filled: PartyView.detail.blocks;
+            tone: PartyView.detail.tone;
+            size: 14px;
+        }
+
+        // (The name ends where the strip's top right, the refusal's and the problem's, begins.)
         HorizontalLayout {
-            x: PartyView.detail.blocks == 0 && PartyView.detail.there ? 98px : 16px;
-            y: root.top + 16px;
-            width: 240px;
-            height: 22px;
+            x: 120px;
+            y: root.top + 19px;
+            width: max(0px, root.width / 2 - 120px - 8px);
+            height: 20px;
             visible: !root.phone;
             spacing: 6px;
             alignment: start;
@@ -587,15 +590,42 @@ export component PartyTab inherits Rectangle {
             }
 
             VersionMark {
-                y: 3px;
+                y: 2px;
                 tag: PartyView.detail.version;
             }
         }
 
+        // (Why what was asked of what it describes wasn't done: the strip's refusal; else what the rules have against
+        // it.)
+        Refusal {
+            x: root.width / 2;
+            y: root.top + 19px;
+            width: root.width / 2 - 16px;
+            visible: !root.phone;
+            text: PartyView.detail.problem;
+            problem: PartyView.detail.fault;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        Text {
+            x: 120px;
+            y: root.top + 43px;
+            width: root.width - 136px;
+            height: 18px;
+            visible: !root.phone;
+            text: PartyView.detail.description;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 13px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
         HorizontalLayout {
-            x: PartyView.detail.blocks == 0 && PartyView.detail.there ? 98px : 16px;
-            y: root.top + 44px;
-            width: 260px;
+            x: 120px;
+            y: root.top + 69px;
+            width: root.width - 136px;
             height: 16px;
             visible: !root.phone;
             spacing: 16px;
@@ -607,58 +637,6 @@ export component PartyTab inherits Rectangle {
                 font-size: 12px;
                 vertical-alignment: center;
             }
-        }
-
-        // (Its columns, each its title over what it says.)
-        for column[c] in PartyView.detail.columns: Rectangle {
-            x: 280px + c * (root.width - 280px) / 2;
-            y: root.top + 16px;
-            width: (root.width - 280px) / 2 - 24px;
-            height: 48px;
-            visible: !root.phone;
-            Label {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                height: 18px;
-                text: column.title;
-            }
-
-            Rectangle {
-                x: 0;
-                y: 28px;
-                width: 10px;
-                height: 10px;
-                visible: column.swatched;
-                background: column.swatch;
-            }
-
-            Text {
-                x: column.swatched ? 18px : 0px;
-                y: 22px;
-                width: parent.width - self.x;
-                height: 22px;
-                text: column.text;
-                color: column.tone;
-                font-family: Theme.body;
-                font-size: 13px;
-                font-weight: 600;
-                vertical-alignment: center;
-                overflow: elide;
-            }
-        }
-
-        // (Why what was asked of what it describes wasn't done: the strip's refusal; else what the rules have against
-        // it. At the strip's foot, its right: the columns take its top.)
-        Refusal {
-            x: root.width / 2;
-            y: root.top + 72px;
-            width: root.width / 2 - 16px;
-            visible: !root.phone;
-            text: PartyView.detail.problem;
-            problem: PartyView.detail.fault;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // ---- The navis to pick from: a row a version.
