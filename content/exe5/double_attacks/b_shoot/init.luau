@@ -1,9 +1,9 @@
 --!strict
 -- B-SHOOT (the DS's chip 0x167), the Double Attack of MegaMan and KnightMan (docs/design/exe5ds-map.md §5, §5.2: its
--- director the DS's effect object 0x9E, its actors its T1 0x3F, its balls its T3 0xCE). KnightMan leaps and lands (the
+-- controller the DS's effect object 0x9E, its navis its T1 0x3F, its balls its T3 0xCE). KnightMan leaps and lands (the
 -- cameras shake) and drops six balls in front of himself, one every 21 ticks; MegaMan kicks each with a shot of his
--- buster (his shots hit nothing) into the row above KnightMan's, his own, and the one below in turn, and each flies down
--- its row, a breaking hit on the first thing in it. The chip's record and name are the DS's (written by
+-- buster (his shots hit nothing) into the row above KnightMan's, his own, and the one below in turn, and each flies
+-- down its row, a breaking hit on the first thing in it. The chip's record and name are the DS's (written by
 -- tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14,
 -- subtype 0), which nothing starts: no folder or hand holds it.
 
@@ -17,9 +17,9 @@ local megaman = require("../navis/megaman").megaman
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 
--- The actors' own beside the shared (`DoubleAttackActor`): the row KnightMan's next ball goes to (+0x74: 0 the one above
+-- The navis' own beside the shared (`DoubleAttackNavi`): the row KnightMan's next ball goes to (+0x74: 0 the one above
 -- his, 1 his, 2 the one below).
-type State = DoubleAttackActor & { next_row: number }
+type State = DoubleAttackNavi & { next_row: number }
 
 -- A ball's (Param1, its row; the start and the end of its kick, +0x60 to +0x74).
 type BallState = { row: number, from: Vec3, to: Vec3 }
@@ -252,7 +252,7 @@ local function megaman_shoot(me: Object)
     me.anim, me.anim_loaded = ANIM_SHOOT, 0xFF
     battle.play_sound(SOUND_SHOT)
     double_attack.detach(s.held)
-    double_attack.megaman_arm(me, "held")
+    double_attack.raise_arm(me, "held")
     double_attack.detach(s.held2)
     attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
     local overlay = me.related2

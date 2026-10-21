@@ -2,7 +2,7 @@
 -- C-SCOPE's scopes (the DS's effect object 0xA4, 0x020A1C9C): SearchMan's sight (10-23) on a panel of the other side's,
 -- walking a diagonal from where it came: a step every six ticks (with a sound) through the offsets 0, 1, 2, 1 (each
 -- that many columns forward and rows down, the second scope's forward the other way), four steps a round; after eight
--- rounds it rests where it is, for good. Its actor stops it (it stays where it is) and ends it.
+-- rounds it rests where it is, for good. Its navi stops it (it stays where it is) and ends it.
 
 local scope = {}
 
@@ -106,8 +106,8 @@ scope.kind = new.kind {
     end,
 }
 
--- 0x020A1DA0: a scope for `actor` from (x, y), the second (`which` 1) walking the other way; it runs while dimmed.
-function scope.spawn(actor: Object, x: number, y: number, which: number): Object?
+-- 0x020A1DA0: a scope for `navi` from (x, y), the second (`which` 1) walking the other way; it runs while dimmed.
+function scope.spawn(navi: Object, x: number, y: number, which: number): Object?
     local o = battle.spawn(scope.kind)
     if not o then
         return nil
@@ -115,8 +115,8 @@ function scope.spawn(actor: Object, x: number, y: number, which: number): Object
     o.panel_x, o.panel_y = x, y
     local s = o.state :: State
     s.origin_x, s.origin_y = x, y
-    o.alliance = actor.alliance
-    o.flip = bit32.bxor(actor.flip, which)
+    o.alliance = navi.alliance
+    o.flip = bit32.bxor(navi.flip, which)
     o.run_while_dimmed = true
     return o
 end

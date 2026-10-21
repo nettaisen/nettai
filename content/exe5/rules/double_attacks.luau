@@ -9,7 +9,7 @@
 --   waits and calls the launcher once the fight goes on.
 --
 -- The launcher: the outgoing navi in Full Synchro (its mood 0xFF as it left), the side's Double Attack not spent, no
--- dark MegaMan in the party (his block's mood 0), and a Double Attack of the pair; then the chip's director with its
+-- dark MegaMan in the party (his block's mood 0), and a Double Attack of the pair; then the chip's controller with its
 -- damage at the side's level and the chip's hit parameter, a dimming the other side can't cut in on (`sub_800BF16`
 -- with 1), its telop the chip's, and the Double Attack spent. The trigger asks the same but for the spent check's
 -- place, and adds the DS's light test, which compares MegaMan's light/dark value with his member number (0x02042EAC:
@@ -90,8 +90,9 @@ local function launch(side: number, navi: Object, partner: NaviDef, mood: number
     if damage == nil then
         error(string.format("a Double Attack's damage row read at level %d", level))
     end
-    local director = attack.spawn(navi, element.byte(chip.element :: string), damage + (chip.hit_param :: number) * 0x10000)
-    dimming.start(side, true, director, navi, { chip = chip })
+    local word = damage + (chip.hit_param :: number) * 0x10000
+    local controller = attack.spawn(navi, element.byte(chip.element :: string), word)
+    dimming.start(side, true, controller, navi, { chip = chip })
     s.spent = true
 end
 
