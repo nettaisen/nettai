@@ -1602,7 +1602,11 @@ asked first. A card says what a click, a tap or Enter does (CHANGE › at its to
 in the cursor's color), as do the footer's hints (Change partner, Remove partner). The gauge is drawn as the NaviCust
 tab draws its board: a filled block flat in its program's color (a NaviCust program's color, the program's definition's
 `color`: the user, "use the colors you use for navicust"), a program's blocks joined into one piece with a gap between
-programs, an empty block an outlined slot; the overview's small gauge the same. On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a
+programs, an empty block an outlined slot; the overview's small gauge the same. A partner's version (its team: the
+builds data's group its `version` is, Team ProtoMan's or Team Colonel's) is marked after its name wherever a partner is
+shown in the builds' screens, by the editor's `VersionMark` (the user: "it's also unclear which partner is from which
+game"): the cards, the navi picker's rows (`PickMark.tag`), the strip and the build overview's party rows (a square of
+its color where the name leaves no room); not the battle's strip. On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a
 PROGRAMS button that opens the library as a sheet. The gauge and a program's cost are the rules' overview's (a list
 budget of the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's
 problems in their typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A
