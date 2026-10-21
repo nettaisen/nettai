@@ -120,6 +120,8 @@ local function napalmman_attack(me: Object)
                 target_y = me.panel_y,
                 damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)),
                 while_dimmed = true,
+                -- (The DS's bomb flies the DS's arc.)
+                ds_arc = true,
             })
             me.timer = THROW_TICKS
             me.phase_init = 4

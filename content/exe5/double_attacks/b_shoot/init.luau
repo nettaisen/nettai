@@ -220,9 +220,9 @@ local function knightman_appear(me: Object)
     double_attack.appear(me, 4, 0x10, true)
 end
 
--- 0x0203395C, 0x02033B44: the charge, then the action.
+-- 0x0203395C, 0x02033B44: the charge, then the action (KnightMan's in the animation he appeared in).
 local function charge(me: Object)
-    if double_attack.charge(me, CHARGE_TICKS) then
+    if double_attack.charge(me, CHARGE_TICKS, nil, (me.state :: State).role == 1) then
         me:set_action(8)
     end
 end

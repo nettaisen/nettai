@@ -880,9 +880,17 @@ Style the GBA doesn't have (NaviStats +0x4C 3; the GBA's patch card 111 sets 1 o
   bullets, the immobilizer, the moon blade) keep the GBA's arc where they use one.
 
 **Against the recordings** (tools/dslab, `double/`): each deals what the DS's lost at navi level 9 (nettai-match's
-tests), and its sounds fall on the DS's ticks from the telop on, but for hits: the engine resolves a Double Attack's
-hit on side 1's navi a tick before the DS, whose update list runs side 1's navi before side 0's (from the battle's
-start); and two one-tick shifts from the side-symmetric rounding of a panel border (M-AIR's drops, BR-RUSH's cape).
+tests, on a field of the engine's: there a Double Attack's hit on side 1's navi lands a tick before the DS's, whose
+update list runs side 1's navi before side 0's from the battle's start). Replayed through exe5-compat (verify's
+exe5_replay on lab-exe5ds/double, the kinds in compat/kinds.toml): M-ZAN and E-SAPPOU match every frame; B-SHOOT,
+C-SCOPE (stopped and not), D-VALCAN every object, the recording console's RNG1 differing from before the launch (the
+party's own draws); the rest first differ where the side-symmetry rule (docs/engine/side-symmetry.md; the canonical
+side 1, the recordings' Double Attacks side 0's) parts from the original: D-HERO's flashes and G-OTOSHI's frogs on a
+list taken in the side's order (§1.5: with the original's order D-HERO matches every object, G-OTOSHI until the DS
+bubbles a ToadMan whom a frog put on sea, the sea's rule, not the Double Attack's), K-THROW's, K-BOMB's and C-BOMB's
+arcs a unit off in the mirror image (§1.6: unmirrored, K-THROW matches every frame and K-BOMB every object), BR-RUSH's
+cape and M-AIR's GyroMan on a panel border (§1.1). The paused path (d-hero-custom-screen) stops before the Double
+Attack, in the custom screen's switch.
 The frames (verify's `double_frames.py`, the engine's example `double_attack_frames`): of what each draws, the
 share the DS's capture shows the same at its tick, with the shake's offset allowed: C-SCOPE 99%, K-THROW 99%,
 B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 93%, D-VALCAN 92%, D-HERO
