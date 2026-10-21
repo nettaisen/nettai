@@ -25,7 +25,7 @@ pub fn role(l: &Letters, lettering: fn(u8, u8) -> Lettering) -> crate::vfont::Ro
 
 /// `l`'s paint in `palette`.
 pub fn ink(l: &Letters, palette: &Palette) -> Ink {
-    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]), rim_width: crate::vfont::RIM }
+    Ink { fill: l.fill.iter().map(|&c| palette[c as usize & 15]).collect(), rim: l.rim.map(|c| palette[c as usize & 15]), rim_width: crate::vfont::RIM, stepped: false }
 }
 
 /// `l`'s face's first color and its shadow's in `palette` (an item's
@@ -59,6 +59,12 @@ impl Look {
     pub fn item(&self, words: impl Into<String>, rect: crate::textlayer::Rect, align: crate::textlayer::Align) -> crate::textlayer::TextItem {
         let item = crate::textlayer::TextItem::new(words, self.role, rect, self.face, self.shadow);
         crate::textlayer::TextItem { align, ink: Some(self.ink.clone()), ..item }
+    }
+
+    /// The look with its face's colors a band a picture's row, as sharp as
+    /// the picture's (`Ink::stepped`).
+    pub fn stepped(self) -> Look {
+        Look { ink: crate::textlayer::Ink { stepped: true, ..self.ink }, ..self }
     }
 
     /// The words standing where the picture's letters stand, the picture's

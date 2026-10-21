@@ -1081,7 +1081,7 @@ impl Window {
             let lettering = Lettering { weight: CROSS_NAME_WEIGHT, font: CROSS_NAME_FONT, ..Lettering::wide(row0 as u8, cap) };
             let item = TextItem::new(words, Role::Lettering(lettering), Rect::new(box0, 0, box1 + 1 - box0, 8 * block.h as i32), fill[0], None);
             let item = TextItem { align: Align::Center, ..item };
-            let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim, rim_width: crate::vfont::RIM }), ..item };
+            let item = TextItem { ink: Some(crate::textlayer::Ink { fill, rim, rim_width: crate::vfont::RIM, stepped: false }), ..item };
             // (Its tiles with the letters taken off, the bar's own colors
             // where they were.)
             self.tiles.put_part(first, &own.form_names_blank, FORM_NAME_TILES * look, FORM_NAME_TILES);
