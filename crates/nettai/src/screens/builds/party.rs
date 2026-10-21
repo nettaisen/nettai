@@ -8,17 +8,23 @@
 //! of the partner's entry: `Overview::budget_of`), as is a program's cost and the round's navi changes
 //! (`Overview::switches`).
 //!
-//! **The layout is the user's choice** (the verification workspace's docs/nettai-ui/party/chosen/party-tab-D9.png): the
-//! navis to pick from at the top, a row a version (the builds data's groups, in their colors), a chip each; under them a
-//! panel a partner, its head and its programs; PROGRAMS beside them. **Enter (or a click) on a chip** puts its navi in
-//! the party, at its end, or takes it out with its programs; one the build's ruleset holds back (its `party` category) is
-//! dimmed and refused, and none goes in past the party's room. **The partner PROGRAMS installs into** is the one the
-//! cursor was last in (its head, its programs): Enter on a head goes to PROGRAMS (a phone's sheet). **Enter in PROGRAMS**
-//! installs at the end of that partner's (a program may be in twice: the rules hold them to the gauge alone), refused
-//! where the gauge or the list has no room ("Needs 3") or the ruleset holds the program back (its `party.programs`
-//! category: "Not allowed"). **Del** takes out what is under the cursor: an installed program, a chip's partner.
+//! **The layout is the user's choice** (the verification workspace's docs/nettai-ui/party/chosen/party-tab-D9r.png), built
+//! as the Folder and Patch cards tabs are: the strip describes what is under the cursor (or the pointer); the navis to
+//! pick from, a row a version (the builds data's groups, in their colors), a chip each; PARTY framed at the left, its
+//! counts and CLEAR in its head, a section a partner (its head, its programs); the library open at the right. **Enter
+//! (or a click) on a chip** puts its navi in the party, at its end, or takes it out with its programs; one the build's
+//! ruleset holds back (its `party` category) is dimmed and refused, and none goes in past the party's room. **The partner
+//! the library adds to** is the one the cursor was last in (its head, its programs), marked as a list's chosen row is.
+//! **Enter in the library** adds its program at the end of that partner's (a program may be in twice: the rules hold
+//! them to the gauge alone), refused where the gauge or the list has no room ("Needs 3 blocks") or the ruleset holds
+//! the program back (its `party.programs` category: "Not allowed"). **Del** takes out what is under the cursor: a
+//! program, a partner (its head, its chip). **CLEAR** takes every partner out, asked first.
 //!
-//! **A program is dragged** as the Patch cards tab's cards are (`Drag`, `drag-over` and `drag-in-over`): from PROGRAMS
+//! **What a program does** is its effects (its definition's `effects`) in the words of the collection's own text table
+//! (`<collection>_effects`: `partycust_programs_effects`), as the Patch cards tab words a card's lines; its kind is that
+//! table's `kind.` and its definition's `kind`.
+//!
+//! **A program is dragged** as the Patch cards tab's cards are (`Drag`, `drag-over` and `drag-in-over`): from the library
 //! into a partner's list where it is let go, or onto its head (at its end), refused as Enter is; in a partner's list to
 //! another place, or into the other partner's; and onto the library, which takes it out.
 
@@ -45,16 +51,54 @@ fn partner_of_list(id: &str) -> Option<usize> {
     id.strip_prefix("installed")?.parse().ok()
 }
 
+/// What the strip describes.
+/// What program `h` does, on one line: its effects in text table `table`'s words, one after the other.
+fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String {
+    let named: crate::builds::cards::Named = &|_, _| None;
+    crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text).collect::<Vec<_>>().join(", ")
+}
+
+/// What control `id` (at `index`) puts in the strip.
+fn described(id: &str, index: i32) -> Option<Described> {
+    let at = index.max(0) as usize;
+    Some(match id {
+        "chip" => Described::Chip(at),
+        "target" => Described::Partner(at),
+        "lib.rows" => Described::Row(at),
+        id => Described::Installed(partner_of_list(id)?, at),
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Described {
+    /// A chip of the picker, by its place.
+    Chip(usize),
+    /// A partner's section head.
+    Partner(usize),
+    /// A partner's program.
+    Installed(usize, usize),
+    /// A row of the library.
+    Row(usize),
+}
+
 #[derive(Default)]
 pub struct Party {
     shape: Option<Shape>,
-    /// The partner PROGRAMS installs into: the one the cursor was last in.
+    /// The partner the library adds to: the one the cursor was last in.
     target: usize,
     /// The navis offered, in the chips' order (the teams' rows, one after the other).
     navis: Vec<NaviHandle>,
     /// The library's programs, in the game's order.
     programs: Vec<EntryHandle>,
     refused: i32,
+    /// What the strip describes: the focused thing, and the one under the pointer, which it describes in its place.
+    described: Option<Described>,
+    hovered: Option<Described>,
+    /// Why the last thing asked wasn't done, until the cursor moves.
+    notice: Option<String>,
+    /// A navi's HP and gauge alone (no programs), as the build would field it: asked once a navi (a check of the build
+    /// with it the one partner), for the strip's description of a navi not in the party.
+    alone: std::collections::HashMap<NaviHandle, (Option<u16>, Option<u32>)>,
 }
 
 impl Party {
@@ -150,10 +194,11 @@ impl Party {
                     PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)) }
                 })
                 .collect();
-            // A program's row: its name, what it does (the game's words for it, on one line), its blocks.
-            let row = |h: EntryHandle, b: Option<&Budget>| PartyRow {
+            // A program's row: its name, what it does (the library's), its blocks.
+            let table = self.effects_table();
+            let row = |h: EntryHandle, b: Option<&Budget>, said: bool| PartyRow {
                 name: words.names.entry(h).into(),
-                effect: words.names.description(h).map(|d| crate::games::one_line(&d)).unwrap_or_default().into(),
+                effect: if said { effect_of(words.names, h, &table).into() } else { Default::default() },
                 blocks: b.map_or(0, |b| b.cost_of(&content, h)) as i32,
                 tone: tone(&content, h),
                 ..Default::default()
@@ -175,7 +220,7 @@ impl Party {
                         .programs
                         .iter()
                         .map(|&h| {
-                            let mut r = row(h, b.as_ref());
+                            let mut r = row(h, b.as_ref(), false);
                             // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
                             if !draft.allows(&category, h.0) {
                                 r.effect = say.invoke_not_allowed_here();
@@ -187,7 +232,7 @@ impl Party {
                     Some(PartyPanel {
                         face: kit.pictures.navi(navi),
                         name: words.names.navi(navi).into(),
-                        hp: crate::builds::party::hp(&draft.checked, navi).map(|hp| hp.to_string().into()).unwrap_or_default(),
+                        hp: crate::builds::party::hp(&draft.checked, navi).map(|hp| view.invoke_hp_word(hp as i32)).unwrap_or_default(),
                         used: b.as_ref().map_or(0, |b| b.count.used as i32),
                         gauge: gauge as i32,
                         tones: ModelRc::new(VecModel::from(crate::builds::party::tones(&content, p, b.as_ref()))),
@@ -202,7 +247,7 @@ impl Party {
                 .programs
                 .iter()
                 .map(|&h| {
-                    let mut r = row(h, target.as_ref());
+                    let mut r = row(h, target.as_ref(), true);
                     if !partners.is_empty()
                         && let Some(why) = self.refusal(shell, draft, target.as_ref(), h)
                     {
@@ -217,15 +262,145 @@ impl Party {
         view.set_partners(partners.len() as i32);
         view.set_room(shape.room as i32);
         view.set_changes(changes.unwrap_or(0) as i32);
-        view.set_one_version(draft.under().is_some_and(|p| p.ruleset.one_per_build));
         view.set_teams(ModelRc::new(VecModel::from(team_rows)));
         view.set_panels(ModelRc::new(VecModel::from(panels)));
         view.set_target(self.target as i32);
-        let name = partners.get(self.target).and_then(|p| p.navi).map(|n| draft.with_words(shell, |w| w.names.navi(n))).unwrap_or_default();
-        view.set_target_name(name.into());
+        view.set_marked(!partners.is_empty());
         view.set_free(target.map_or(0, |b| b.count.limit.saturating_sub(b.count.used)) as i32);
         view.set_rows(ModelRc::new(VecModel::from(rows)));
         view.set_problems(draft.pane_line(shell, &[FIELD.to_string()], false).into());
+        self.show_detail(shell, draft);
+    }
+
+    /// The collection's own text table of its programs' effects and kinds (`<collection>_effects`).
+    fn effects_table(&self) -> String {
+        format!("{}_effects", self.shape.as_ref().map_or("", |s| s.collection.as_str()))
+    }
+
+    /// A navi's HP and gauge as the build would field it: a partner's own (its programs' bonus in); else, alone, as a
+    /// check of the build with it the one partner says (kept, a navi once).
+    fn navi_facts(&mut self, draft: &mut Draft, n: NaviHandle) -> (Option<u16>, Option<u32>) {
+        let partners = self.partners(draft);
+        if let Some(i) = partners.iter().position(|p| p.navi == Some(n)) {
+            let (budgets, _) = Party::budgets(draft);
+            return (crate::builds::party::hp(&draft.checked, n), budgets.get(i).cloned().flatten().map(|b| b.count.limit));
+        }
+        if let Some(&facts) = self.alone.get(&n) {
+            return facts;
+        }
+        let Some(shape) = self.shape.clone() else { return (None, None) };
+        let content = draft.content().clone();
+        let mut side = draft.side().clone();
+        let facts = if write(&content, &mut side, &shape, &[Partner { navi: Some(n), programs: Vec::new() }]) {
+            let mut checked = nettai_match::build::Checked::of(&content, &draft.kit.game, &side);
+            let gauge = checked.overview(&content, &side).and_then(|o| o.budget_of(FIELD, 0).map(|b| b.count.limit));
+            (crate::builds::party::hp(&checked, n), gauge)
+        } else {
+            (None, None)
+        };
+        self.alone.insert(n, facts);
+        facts
+    }
+
+    /// The strip: what the cursor is on; while the pointer is on a chip or a row, that one.
+    fn show_detail(&mut self, shell: &Shell, draft: &mut Draft) {
+        let content = draft.content().clone();
+        let partners = self.partners(draft);
+        let (budgets, _) = Party::budgets(draft);
+        let ui = shell.ui();
+        let view = ui.global::<PartyView>();
+        let say = ui.global::<BuildWords>();
+        let notice = if self.hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
+        let kit = draft.kit.clone();
+        let table = self.effects_table();
+        let described = self.hovered.or(self.described);
+        // (A navi: its face, its name and version, its HP; its version and its gauge's blocks as its columns.)
+        let navi = match described {
+            Some(Described::Chip(k)) => self.navis.get(k).copied(),
+            Some(Described::Partner(i)) => partners.get(i).and_then(|p| p.navi),
+            _ => None,
+        };
+        let facts = navi.map(|n| self.navi_facts(draft, n));
+        let detail = draft.with_words(shell, |words| {
+            let mut d = match (described, navi) {
+                (_, Some(n)) => {
+                    let tag = kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0));
+                    let (hp, gauge) = facts.unwrap_or_default();
+                    let group = kit.rulesets().and_then(|r| r.group_of(Registry::Navi, &Item::of(n.0)).map(|g| g.id.clone()));
+                    let mut columns = Vec::new();
+                    if let Some(id) = group {
+                        columns.push(nettai_ui::PartyColumn { title: view.get_version_title(), text: kit.version_name(words.names, &id).into(), tone: tag.tone, ..Default::default() });
+                    }
+                    if let Some(g) = gauge {
+                        columns.push(nettai_ui::PartyColumn { title: view.get_gauge_title(), text: view.invoke_blocks_word(g as i32), tone: ui.global::<nettai_ui::Theme>().get_text(), ..Default::default() });
+                    }
+                    let i = partners.iter().position(|p| p.navi == Some(n));
+                    nettai_ui::PartyDetail {
+                        there: true,
+                        face: kit.pictures.navi(n),
+                        name: words.names.navi(n).into(),
+                        version: tag,
+                        facts: ModelRc::new(VecModel::from(hp.map(|hp| view.invoke_hp_word(hp as i32)).into_iter().collect::<Vec<_>>())),
+                        columns: ModelRc::new(VecModel::from(columns)),
+                        fault: i.map(|i| draft.line(shell, Party::problems(draft, i))).unwrap_or_default().into(),
+                        problem: if matches!(described, Some(Described::Chip(_))) && !draft.allows(FIELD, n.0) { say.invoke_not_allowed_here() } else { Default::default() },
+                        ..Default::default()
+                    }
+                }
+                (Some(Described::Installed(i, k)), _) => match partners.get(i).and_then(|p| p.programs.get(k)) {
+                    Some(&h) => {
+                        let mut d = self.program_detail(shell, draft, words, &table, &budgets, i, h, false);
+                        d.fault = draft.line(shell, Party::problems(draft, i)).into();
+                        d
+                    }
+                    None => Default::default(),
+                },
+                (Some(Described::Row(r)), _) => match self.programs.get(r) {
+                    Some(&h) => self.program_detail(shell, draft, words, &table, &budgets, self.target, h, !partners.is_empty()),
+                    None => Default::default(),
+                },
+                _ => Default::default(),
+            };
+            if let Some(n) = &notice {
+                d.problem = n.as_str().into();
+            }
+            d
+        });
+        let _ = content;
+        view.set_detail(detail);
+    }
+
+    /// A program as the strip describes it: its blocks and name; its blocks, and whether they fit partner `i`'s gauge
+    /// (`fitting`: it is the library's, which adds to it); what it does, and its kind.
+    #[allow(clippy::too_many_arguments)]
+    fn program_detail(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, table: &str, budgets: &[Option<Budget>], i: usize, h: EntryHandle, fitting: bool) -> nettai_ui::PartyDetail {
+        let content = draft.content();
+        let ui = shell.ui();
+        let view = ui.global::<PartyView>();
+        let theme = ui.global::<nettai_ui::Theme>();
+        let b = budgets.get(i).cloned().flatten();
+        let cost = b.as_ref().map_or(0, |b| b.cost_of(content, h)) as i32;
+        let mut facts = vec![view.invoke_blocks_word(cost)];
+        let why = if fitting { self.refusal(shell, draft, b.as_ref(), h) } else { None };
+        if fitting && why.is_none() {
+            facts.push(view.invoke_fits_word(b.as_ref().map_or(0, |b| b.count.free()) as i32));
+        }
+        let kind = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key).and_then(|d| d.spec.field("kind").str().map(str::to_string));
+        let kind = kind.and_then(|k| words.names.text(table, &format!("kind.{k}"))).unwrap_or_default();
+        let columns = vec![
+            nettai_ui::PartyColumn { title: view.get_effect_title(), text: effect_of(words.names, h, table).into(), tone: theme.get_text(), ..Default::default() },
+            nettai_ui::PartyColumn { title: view.get_kind_title(), text: kind.into(), tone: theme.get_text(), swatch: tone(content, h), swatched: true },
+        ];
+        nettai_ui::PartyDetail {
+            there: true,
+            name: words.names.entry(h).into(),
+            blocks: cost,
+            tone: tone(content, h),
+            facts: ModelRc::new(VecModel::from(facts)),
+            columns: ModelRc::new(VecModel::from(columns)),
+            problem: why.unwrap_or_default().into(),
+            ..Default::default()
+        }
     }
 
     /// Change the build's partners: whether they changed.
@@ -273,7 +448,7 @@ impl Party {
         }
     }
 
-    /// Refuse PROGRAMS' row `row`: it shakes, with the refusal's sound.
+    /// Refuse the library's row `row`: it shakes, with the refusal's sound.
     fn refuse(&mut self, shell: &mut Shell, row: usize) {
         shell.sound.play(Cue::Refused);
         self.refused += 1;
@@ -409,6 +584,8 @@ impl Tab for Party {
     }
 
     fn hide(&mut self, shell: &mut Shell, _draft: &mut Draft) {
+        self.notice = None;
+        self.hovered = None;
         self.close_sheet(shell);
     }
 
@@ -416,7 +593,7 @@ impl Tab for Party {
         let index = index.max(0) as usize;
         match id {
             "chip" => self.toggle(shell, draft, index),
-            // (Enter on a partner's head: PROGRAMS, which installs into it; a phone's sheet.)
+            // (Enter on a partner's head: the library, which adds to it; a phone's sheet.)
             "target" => {
                 self.target = index;
                 self.changed(shell, draft);
@@ -438,6 +615,10 @@ impl Tab for Party {
             "lib.close" => {
                 self.close_sheet(shell);
                 shell.nav.focus("programs", 0);
+            }
+            "clear" => {
+                let question = shell.ui().global::<PartyView>().get_clear_question();
+                editor::ask_clear(shell, question, self.partners(draft).is_empty());
             }
             id => {
                 if let Some(i) = partner_of_list(id)
@@ -492,19 +673,51 @@ impl Tab for Party {
         }
     }
 
-    /// (The cursor in a partner, its head or its programs, makes it the one PROGRAMS installs into.)
+    /// The pointer on a chip, a head or a row: the strip describes it.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        let Some(what) = described(id, index) else { return };
+        if editor::hover(&mut self.hovered, what, on) {
+            self.show_detail(shell, draft);
+        }
+    }
+
+    /// The strip follows the cursor; the cursor in a partner, its head or its programs, makes it the one the library adds
+    /// to; in the library, its title is lit.
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        self.hovered = None;
+        self.notice = None;
+        let ui = shell.ui();
+        ui.global::<PartyView>().set_in_library(id.starts_with("lib."));
+        if let Some(what) = described(id, index) {
+            self.described = Some(what);
+        }
         let i = match id {
-            "target" => index.max(0) as usize,
-            id => match partner_of_list(id) {
-                Some(i) => i,
-                None => return,
-            },
+            "target" => Some(index.max(0) as usize),
+            id => partner_of_list(id),
         };
-        if self.target != i {
-            self.target = i;
+        match i {
+            Some(i) if self.target != i => {
+                self.target = i;
+                self.changed(shell, draft);
+            }
+            _ => self.show_detail(shell, draft),
+        }
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) && self.change(draft, |ps| !std::mem::take(ps).is_empty()) {
+            self.target = 0;
             self.changed(shell, draft);
         }
+    }
+
+    /// X, CLEAR.
+    fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &crate::input::KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
+        false
     }
 
     /// Delete takes out what is under the cursor: an installed program, a chip's partner.
@@ -516,6 +729,8 @@ impl Tab for Party {
         let at = key.index.max(0) as usize;
         if let Some(i) = partner_of_list(&key.id) {
             self.uninstall(shell, draft, i, at);
+        } else if key.id == "target" {
+            self.remove_partner(shell, draft, at);
         } else if key.id == "chip" {
             match self.navis.get(at).and_then(|&n| self.partners(draft).iter().position(|p| p.navi == Some(n))) {
                 Some(i) => self.remove_partner(shell, draft, i),
