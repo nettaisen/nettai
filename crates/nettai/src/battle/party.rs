@@ -73,7 +73,7 @@ impl PartyState {
                 PartyHud {
                     shown: true,
                     members: ModelRc::new(VecModel::from(members)),
-                    active: v.active as i32,
+                    active: self.panel.active() as i32,
                     left: place(self.panel.member(0)),
                     right: place(self.panel.member(1)),
                     switches: v.switches as i32,

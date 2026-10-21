@@ -4,9 +4,13 @@
 //! is input.
 //!
 //! **The members** ([`view`]): each with its navi and its HP: the navi on the field's its object's, live; a benched
-//! member's its block's (the party's member blocks keep a member's stats while it is benched). The member on the field
-//! is the custom screen's while the player has switched there (the screen's navi, which the turn's start fields), else
-//! the party's.
+//! member's its block's (the party's member blocks keep a member's stats while it is benched); the member on the field,
+//! and the custom screen's while it is open (the member the player switched to there, which the turn's start fields).
+//!
+//! **The member shown on the field** ([`Panel::active`]) is the custom screen's choice from the moment it is made, as
+//! the DS's panel takes it then (state 0x40), and stays so after the screen closes until the turn's start has fielded
+//! it (the party's member on the field is the choice): the screen's choice is a member the battle has no field for
+//! once the screen is gone (its transform record is), so the panel holds it.
 //!
 //! **The panel's two buttons** ([`Panel`]): the DS's party panel has a left and a right button, each naming the member
 //! a press switches to (its +5 and +6), Y the left and X the right (the panel's state 0x02083254), a touch on either
@@ -34,8 +38,10 @@ pub struct Member {
 pub struct PartyView {
     /// The members, in order: the side's own navi first.
     pub members: Vec<Member>,
-    /// The member on the field (the custom screen's, where the player switched there).
+    /// The member on the field.
     pub active: u8,
+    /// While the custom screen is open, the member the player switched to there (none: the one on the field).
+    pub screen: Option<Option<u8>>,
     /// The switches the side made this round.
     pub switches: u8,
 }
@@ -46,17 +52,16 @@ pub fn view(b: &Battle, side: u8) -> Option<PartyView> {
     if !party.has_partners() {
         return None;
     }
-    let screen = b.custom.sides[side as usize & 1].screen.as_ref().and_then(|s| s.member);
-    let active = screen.unwrap_or(party.active);
+    let screen = b.custom.sides[side as usize & 1].screen.as_ref().map(|s| s.member);
     let live = b.player(side).map(|r| b.objects.get(r).hp);
     let members = party
         .members()
         .iter()
         .enumerate()
         .map(|(m, s)| {
-            // (The navi on the field: its object's HP and the side's stats; a benched member: its block. On the custom
-            // screen the screen's member isn't fielded yet: its block too.)
-            if m as u8 == party.active && screen.is_none() {
+            // (The navi on the field: its object's HP and the side's stats, whatever the custom screen chose; a benched
+            // member: its block.)
+            if m as u8 == party.active {
                 let stats = &b.stats[side as usize & 1];
                 Member { navi: s.navi, hp: live.unwrap_or(stats.hp), max_hp: stats.max_hp }
             } else {
@@ -64,7 +69,7 @@ pub fn view(b: &Battle, side: u8) -> Option<PartyView> {
             }
         })
         .collect();
-    Some(PartyView { members, active, switches: party.switches })
+    Some(PartyView { members, active: party.active, screen, switches: party.switches })
 }
 
 /// The party panel's two buttons, left and right, as they follow a side's party.
@@ -72,10 +77,12 @@ pub fn view(b: &Battle, side: u8) -> Option<PartyView> {
 pub struct Panel {
     /// The member each button names, left and right.
     buttons: [Option<u8>; 2],
-    /// The party it followed last: its members, the member on the field, the switches made.
+    /// The party it followed last: its members, the member shown on the field, the switches made.
     count: u8,
     active: u8,
     switches: u8,
+    /// The custom screen's choice, held from the screen's closing until the turn's start fields it.
+    chosen: Option<u8>,
 }
 
 impl Panel {
@@ -94,17 +101,36 @@ impl Panel {
         // (A new party, or a new round: the switches counted from none again. A party that has made no switch is at
         // its start, whatever was shown before: a switch shown and taken back by a rollback too.)
         if count != self.count || (p.switches == 0 && self.switches != 0) {
-            *self = Panel { buttons: Panel::fresh(count), count, active: 0, switches: 0 };
+            *self = Panel { buttons: Panel::fresh(count), count, ..Panel::default() };
         }
-        if p.active != self.active {
+        // (The member shown on the field: the screen's choice while it is open, and after until it is fielded.)
+        let shown = match p.screen {
+            Some(chosen) => {
+                self.chosen = chosen;
+                chosen.unwrap_or(p.active)
+            }
+            None => match self.chosen {
+                Some(m) if m != p.active => m,
+                _ => {
+                    self.chosen = None;
+                    p.active
+                }
+            },
+        };
+        if shown != self.active {
             for b in &mut self.buttons {
-                if *b == Some(p.active) {
+                if *b == Some(shown) {
                     *b = Some(self.active);
                 }
             }
-            self.active = p.active;
+            self.active = shown;
         }
         self.switches = p.switches;
+    }
+
+    /// The member shown on the field.
+    pub fn active(&self) -> u8 {
+        self.active
     }
 
     /// The member button `button` (0 the left, Y; 1 the right, X) names, if any.
@@ -119,7 +145,7 @@ mod tests {
 
     fn party(count: usize, active: u8, switches: u8) -> PartyView {
         let member = Member { navi: NaviHandle(0), hp: 1, max_hp: 1 };
-        PartyView { members: vec![member; count], active, switches }
+        PartyView { members: vec![member; count], active, screen: None, switches }
     }
 
     /// The DS's panel: member 1 on the left (Y) and 2 on the right (X); a switch puts the member leaving on the
@@ -147,6 +173,22 @@ mod tests {
         // The next round.
         panel.follow(Some(&party(3, 0, 0)));
         assert_eq!(at(&panel), [Some(1), Some(2)]);
+        // On the custom screen: Y to 1, shown at once; the screen closes and the turn's start fields 1 later.
+        let mut screen = Panel::default();
+        screen.follow(Some(&party(3, 0, 0)));
+        let on_screen = |chosen: Option<u8>, switches: u8| PartyView { screen: Some(chosen), ..party(3, 0, switches) };
+        screen.follow(Some(&on_screen(Some(1), 1)));
+        assert_eq!((screen.active(), at(&screen)), (1, [Some(0), Some(2)]));
+        screen.follow(Some(&party(3, 0, 1)));
+        assert_eq!((screen.active(), at(&screen)), (1, [Some(0), Some(2)]));
+        screen.follow(Some(&party(3, 1, 1)));
+        screen.follow(Some(&party(3, 1, 1)));
+        assert_eq!((screen.active(), at(&screen)), (1, [Some(0), Some(2)]));
+        // A switch back on the screen: none chosen, the member on the field shown.
+        screen.follow(Some(&PartyView { screen: Some(Some(2)), ..party(3, 1, 2) }));
+        screen.follow(Some(&PartyView { screen: Some(None), ..party(3, 1, 3) }));
+        screen.follow(Some(&party(3, 1, 3)));
+        assert_eq!((screen.active(), at(&screen)), (1, [Some(0), Some(2)]));
         // One partner.
         let mut one = Panel::default();
         one.follow(Some(&party(2, 0, 0)));
