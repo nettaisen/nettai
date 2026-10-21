@@ -174,7 +174,7 @@ return merge {
     require("@self/woodman"),
     require("@self/z-saver"),
     require("@self/zeroed"),
-    -- A navi chip's chips, with its navi.
+    -- Chips defined with what they belong to: a navi chip's, with its navi; a Double Attack's, with its attack.
     require("./navis/megaman/forms/aquasoul/chip"),
     require("./navis/megaman/forms/firesoul/chip"),
     require("./navis/megaman/forms/gutssoul/chip"),

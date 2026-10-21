@@ -51,6 +51,9 @@ local function burst(me: Object, v: BulletVariant, look: BulletLook)
         me.collision.status_base = status
     end
     local c = me.collision
+    if v.hits_while_dimmed then
+        c.hits_while_dimmed = true
+    end
     c:set_region(v.region)
     if v.single then
         -- (EXE4's shows it unturned, `look.single_unturned`: 0x080CF55E passes no flip.)

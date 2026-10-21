@@ -13,12 +13,15 @@ local marker = require("../../lib/navi_chips/marker")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
+local ds_arc = require("../../lib/ds_arc")
 local order = require("@exelib/order")
 
 export type State = {
     -- Its fall (16.16 a tick), and whether it lights its target (its thrower's).
     gravity: number,
     lights: boolean,
+    -- It flies the DS's arc (lib/ds_arc: the DS's relinked bomb, 0x0208DB5C), thrown by a Double Attack (C-BOMB).
+    ds_arc: boolean,
     -- The panel it lands on (its third and fourth parameters).
     target_x: number,
     target_y: number,
@@ -82,7 +85,8 @@ local function fly(me: Object)
     if me.phase_init == 0 then
         me.timer = FLIGHT
         local x, y = field.center(s.target_x, s.target_y)
-        me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT, s.gravity, me.alliance)
+        local arc = if s.ds_arc then ds_arc.in_ticks else trajectory.in_ticks
+        me.vel = arc(me.pos, x, y, 0, FLIGHT, s.gravity, me.alliance)
         me.phase_init = 4
     end
     if me.timer == 0x1E then
@@ -222,6 +226,7 @@ bomb.kind = new.kind {
     state = {
         gravity = "i32",
         lights = "bool",
+        ds_arc = "bool",
         target_x = "u8",
         target_y = "u8",
         burning = "u8[8]",
@@ -257,6 +262,8 @@ export type Lob = {
     damage: number,
     -- It runs while the battle is dimmed (0x080CC71A).
     while_dimmed: boolean?,
+    -- It flies the DS's arc (the DS's C-BOMB lobs the bomb as the DS relinked it).
+    ds_arc: boolean?,
 }
 
 -- 0x080CC6FE: a bomb of `owner`'s side and facing at `pos`, fire, with the damage word, lobbed at its target;
@@ -272,6 +279,7 @@ function bomb.lob(owner: Object, pos: Vec3, lob: Lob): Object?
     local s = o.state :: State
     s.gravity = lob.gravity
     s.lights = lob.lights == true
+    s.ds_arc = lob.ds_arc == true
     s.target_x, s.target_y = lob.target_x, lob.target_y
     o.alliance, o.flip = owner.alliance, owner.flip
     o.element = 1

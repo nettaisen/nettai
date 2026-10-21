@@ -9,6 +9,7 @@
 
 local auto_battle = require("@self/auto_battle")
 local dark_survival = require("@self/emotion/dark_survival")
+local double_attacks = require("@self/double_attacks")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
@@ -95,6 +96,9 @@ local state: StateSchema = {
     -- keep a chip of the navi chips' block as its navi comes, in both sides' states (./api); DethPhnx brings its navi
     -- again.
     last_navi_chip = { chip = "chip", element = "u8", damage = "u32" } :: StateSchema,
+    -- The party battle's Double Attack (./double_attacks): AIData +0x73, spent this round (its 0xFF), else on a paused
+    -- switch the member the follow-up launches with.
+    double_attack = { spent = "bool", partner = "u8" } :: StateSchema,
     -- The party battle's (./party): ToadMan's rescue is spent this battle (the DS's party block +0xB).
     rescued = "bool",
     -- EXE5 DS's shout is spent this battle (./shout: its battle flag 0x800 or 0x1000).
@@ -275,6 +279,8 @@ local rules: Rules = {
             -- 0x08023824: the hand's modifier bits), and a chip past the chip pack's list (./folder: its last chip
             -- 0x13A; the BatCans).
             dark_cost = "record:exe5-dark-cost",
+            -- The Double Attack a chip of the DS's is (lib/double_attack; ./double_attacks fires it).
+            double_attack = "record:exe5-double-attack",
             capsule_mix = "u8",
             past_the_pack = "bool",
             -- A chip a save can collect though its record has no library flag (./folder: the Giga chips Team Colonel's
@@ -424,6 +430,9 @@ local rules: Rules = {
             emotion.navi_tick(side, navi)
             auto_battle.navi_tick(side, navi)
         end,
+        -- A party's switch settled: the DS's Double Attack, at once in battle, by the follow-up while paused
+        -- (./double_attacks).
+        navi_switched = double_attacks.navi_switched,
         -- Chaos Unison's charge released, and taken from idle (./souls/chaos_charge).
         charge_released = chaos_charge.charge_released,
         release_taken = chaos_charge.release_taken,

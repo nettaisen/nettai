@@ -20,6 +20,29 @@ function exe5.navi_level(side: number): number?
     return if s then s.level else nil
 end
 
+-- MegaMan's light/dark value (his NaviStats +0x44, a member block's when a team navi fights: ./party): the save's, or
+-- 500 in a battle that holds it. (The DS's Double Attacks draw their MegaMan by it.)
+function exe5.light_dark_value(side: number): number
+    return party.megaman_karma(side)
+end
+
+-- 0x0200DEE8: the member of the side's party whose block is of `navi`, the first (none offline for side 1: ./party).
+function exe5.member_of(side: number, navi: NaviDef): number?
+    return party.member_of(side, navi)
+end
+
+-- 0x0800DE5C: the palette tier of a light/dark value (MegaMan's palettes, a hit's dark drain: ./light_dark).
+function exe5.light_dark_tier(v: number): number
+    if v >= 1000 then
+        return 4
+    elseif v >= 500 then
+        return 0
+    elseif v >= 470 then
+        return 3
+    end
+    return 2
+end
+
 -- Whether the side has partners (EXE5 DS's party battle: ./party), whose team navis' damage is the DS's
 -- (lib/navi_level).
 function exe5.in_party(side: number): boolean
