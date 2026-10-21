@@ -188,7 +188,7 @@ impl Party {
                         .iter()
                         .map(|&n| {
                             let place = partners.iter().position(|p| p.navi == Some(n)).map_or(0, |at| at as i32 + 1);
-                            PartyChip { face: kit.pictures.navi(n), name: words.names.navi(n).into(), place, full: full && place == 0, held: !draft.allows(FIELD, n.0) }
+                            PartyChip { face: kit.pictures.navi(n), name: words.names.navi_long(n).into(), place, full: full && place == 0, held: !draft.allows(FIELD, n.0) }
                         })
                         .collect();
                     PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)) }
@@ -231,7 +231,7 @@ impl Party {
                         .collect();
                     Some(PartyPanel {
                         face: kit.pictures.navi(navi),
-                        name: words.names.navi(navi).into(),
+                        name: words.names.navi_long(navi).into(),
                         hp: crate::builds::party::hp(&draft.checked, navi).map(|hp| view.invoke_hp_word(hp as i32)).unwrap_or_default(),
                         used: b.as_ref().map_or(0, |b| b.count.used as i32),
                         gauge: gauge as i32,
@@ -326,11 +326,7 @@ impl Party {
                 (_, Some(n)) => {
                     let tag = kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0));
                     let (hp, gauge) = facts.unwrap_or_default();
-                    let group = kit.rulesets().and_then(|r| r.group_of(Registry::Navi, &Item::of(n.0)).map(|g| g.id.clone()));
                     let mut columns = Vec::new();
-                    if let Some(id) = group {
-                        columns.push(nettai_ui::PartyColumn { title: view.get_version_title(), text: kit.version_name(words.names, &id).into(), tone: tag.tone, ..Default::default() });
-                    }
                     if let Some(g) = gauge {
                         columns.push(nettai_ui::PartyColumn { title: view.get_gauge_title(), text: view.invoke_blocks_word(g as i32), tone: ui.global::<nettai_ui::Theme>().get_text(), ..Default::default() });
                     }
@@ -338,7 +334,7 @@ impl Party {
                     nettai_ui::PartyDetail {
                         there: true,
                         face: kit.pictures.navi(n),
-                        name: words.names.navi(n).into(),
+                        name: words.names.navi_long(n).into(),
                         version: tag,
                         facts: ModelRc::new(VecModel::from(hp.map(|hp| view.invoke_hp_word(hp as i32)).into_iter().collect::<Vec<_>>())),
                         columns: ModelRc::new(VecModel::from(columns)),
