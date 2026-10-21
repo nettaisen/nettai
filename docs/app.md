@@ -3650,10 +3650,10 @@ is open (`screens/settings/about.rs`: `About::open`, `close`, and a screen's `sh
 
 **What it shows.** At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
 repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
-and under MADE WITH, a list of the software the app is made of: the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
+and under MADE WITH, a list of the software the app is made of: the six fonts it bundles (Bungee, Chakra Petch, Corporate Logo, M PLUS 1 Code, Murecho, Saira), then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
 and repository, and its license files as its package ships them, each file's name over its text in the monospaced
-face, scrolling. The footer counts them ("394 packages · 4 fonts" today). On a phone the list is the page, and a
+face, scrolling. The footer counts them ("… packages · 6 fonts"). On a phone the list is the page, and a
 tap on a row opens its license as a sheet from the bottom, with CLOSE.
 
 **Why Slint's widget.** Slint is used under its royalty-free license (`LicenseRef-Slint-Royalty-free-2.0`, one
