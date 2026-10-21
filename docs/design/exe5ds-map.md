@@ -902,22 +902,19 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 
 ## 9. Open, and what a console should show
 
-**For the user to decide:**
-1. **The party's makeup:** any two of the twelve team navis with MegaMan (the DS's Navi Select, across both
-   teams), or each version's own? Proposed: any two, as the DS allows.
-2. **Mid-battle switching and the custom screen's:** the DS has both. Proposed: both.
-3. **The DS-only programs** NavChg+1, NavChg+2 and Spport: adopt them as EXE5 NaviCust programs? They have no GBA
-   art. The program's block shape and color are the DS's data; the NaviCust screen's art is the GBA's.
-4. **The supports and the ToadMan rescue** are part of the DS's party battle. Proposed: yes, with the party battle.
-5. **The switch voices:** silence (proposed), since the GBA has none and the switch already plays 0x8D.
-6. **Sound 0x2F** in Brain Rush: drop it (proposed), or a stand-in.
-7. **Text:** the twelve Double Attack names exist only in the DS's text (chipname1.msg), and the ToadMan rescue's
-   telop too. Are DS words allowed in the locales? The user's rule names assets; the words are content.
-8. **The DS's light test bug** (the Double Attack's light check compares the meter with a slot number, so it does
-   nothing): keep the DS's behavior (proposed: as the original runs) or the intent?
-9. **The DS's other changes** (§6): not adopted (proposed), as the brief recommends.
-10. **The team navi leaving the team** at 0 HP after a battle (a story rule; likely off in a netbattle): leave out
-    (proposed).
+**Decided** (the user, 2026-10-20: "yes to all of this"):
+1. **The party's makeup** follows the EXE5 ruleset's team rule: one team's navis normally, any of the twelve under
+   its `mixed` setting (content/exe5/rules/rulesets.luau, builds.luau).
+2. **Both switch paths**, in battle and on the custom screen.
+3. **The DS programs** are adopted: NaviCust's NavChg+1, NavChg+2 and Spport, and PartyCust (§4.10).
+4. **The supports and the ToadMan rescue** are in.
+5. **The switch voices** are left out; the switch plays 0x8D.
+6. **Sound 0x2F** in Brain Rush is dropped (0xFB plays with it).
+7. **DS words** may go in the locales: the Double Attack names, the telops 0x186–0x189, the PartyCust programs'
+   names and descriptions.
+8. **The light-check bug** is kept as the DS runs it.
+9. **The DS's other changes** (§6) are not adopted.
+10. **The story rule** (a team navi at 0 HP leaving the team) is left out.
 
 **For a console (observed, step 3):**
 - Whether player 2's panel accepts a switch (its side is initialized 0).
