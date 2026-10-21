@@ -3,9 +3,9 @@
 // and a library that follows it (the user: "if you have a navi slot selected in the party editor you pick from a navi
 // and if you have a program slot you pick from a program"), built as the Patch cards tab is:
 //
-// - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its blocks and
-//   whether they fit, what it does, its kind) or a navi (its version; its HP, buster attack and special chip attack,
-//   what its programs add to them; its element and its gauge);
+// - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its slots and
+//   whether they fit, what it does, its kind) or a navi (its version; its HP, buster attack, special chip attack and
+//   its gauge's slots, what its programs add to them; its element);
 // - at the left, framed, PARTY, its counts in its head as the folder's are (Partners, Navi changes) and CLEAR at its
 //   end; under them its slots, one list (`slots`): a partner's head (its face and name, its gauge and the blocks used
 //   of it), its programs under it a level in, and an Empty row at their end while its list has room; and an Empty head
@@ -123,7 +123,7 @@ export global PartyView {
     in property <string> search;
     in property <int> sort;
     in property <bool> descending;
-    out property <[string]> sorts: self.navis-shown ? [@tr("Library order"), @tr("Name")] : [@tr("Library order"), @tr("Name"), @tr("Blocks")];
+    out property <[string]> sorts: self.navis-shown ? [@tr("Library order"), @tr("Name")] : [@tr("Library order"), @tr("Name"), @tr("Slots")];
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
     // The most blocks a program of the collection fills: the blocks' column of a program's row is as wide as that.
@@ -144,23 +144,26 @@ export global PartyView {
     // Why a navi can't go into the slot: it is in the party already.
     out property <string> in-party: @tr("In party");
     public pure function free-word(n: int) -> string {
-        return @tr("{n} block free" | "{n} blocks free" % n);
+        return @tr("{n} slot free" | "{n} slots free" % n);
     }
     public pure function blocks-word(n: int) -> string {
-        return @tr("{n} block" | "{n} blocks" % n);
+        return @tr("{n} slot" | "{n} slots" % n);
     }
     public pure function fits-word(n: int) -> string {
-        return @tr("Fits: {n} block free" | "Fits: {n} blocks free" % n);
+        return @tr("Fits: {n} slot free" | "Fits: {n} slots free" % n);
     }
     // (A partner's HP as the build overview's rows say it.)
     public pure function hp-word(hp: int) -> string {
         return @tr("HP {}", hp);
     }
-    public pure function gauge-word(n: int) -> string {
-        return @tr("Gauge {n} block" | "Gauge {n} blocks" % n);
+    // (A navi's gauge as the strip's stats say it: "Slots 8", the slots its PartyCust holds. PartyCust's word for its
+    // capacity and a program's cost is "slots" wherever it is said: the user, "or "slots" i guess instead of blocks. you
+    // should have it be slots everywhere"; NaviCust's pieces stay blocks.)
+    public pure function slots-label() -> string {
+        return @tr("Slots");
     }
     public pure function needs-blocks(n: int) -> string {
-        return @tr("Needs {n} block" | "Needs {n} blocks" % n);
+        return @tr("Needs {n} slot" | "Needs {n} slots" % n);
     }
 }
 

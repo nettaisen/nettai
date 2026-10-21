@@ -20,7 +20,7 @@
 //! row (a program may be in twice: the rules hold them to the gauge alone). A row that can't go in says why in the error
 //! red, as the Patch cards library's do: a navi "In party" or "Not allowed" (the build's ruleset's `party` category; one
 //! of the other version under one version per build goes in, as a Giga chip of it does in the folder: the mix is the
-//! build's problem, the heads of its partners red, their strip saying "Mixed versions"); a program "Needs 3 blocks" or "Not allowed" (its
+//! build's problem, the heads of its partners red, their strip saying "Mixed versions"); a program "Needs 3 slots" or "Not allowed" (its
 //! `party.programs` category: held back for every partner, or for the marked slot's partner's navi). **Del** takes out what is under the cursor: a program, a partner. **CLEAR** takes every
 //! partner out, asked first.
 //!
@@ -135,14 +135,14 @@ fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String
     crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text).collect::<Vec<_>>().join(", ")
 }
 
-/// A program's row: its name, its blocks as budget `b` costs them, its color. (What it does is the strip's: the user,
+/// A program's row: its name, its slots as budget `b` costs them, its color. (What it does is the strip's: the user,
 /// "no need to show effects in the library column since they get shown on mouseover".)
 fn program_row(words: &crate::builds::words::Words, content: &Content, h: EntryHandle, b: Option<&Budget>) -> PartyRow {
     PartyRow { name: words.names.entry(h).into(), blocks: b.map_or(0, |b| b.cost_of(content, h)) as i32, tone: tone(content, h), ..Default::default() }
 }
 
 /// What the strip says of a navi as a build would field it: its HP, its buster's attack (as the games show it, 1 to 5),
-/// the stats its game's rules give it (an EXE5 team navi's own chip's damage) and its gauge's blocks: what its programs
+/// the stats its game's rules give it (an EXE5 team navi's own chip's damage) and its gauge's slots: what its programs
 /// raise. (No charge: none raises it; the user, "remove charge from the party member info as well since nothing
 /// changes it".)
 #[derive(Clone, Debug, Default)]
@@ -167,12 +167,16 @@ impl NaviFacts {
     }
 
     /// Its stats as the strip says them, by what the navi `alone` (no programs) has: what its programs added in cyan,
-    /// as the overview says it. (Their labels: HP and Attack the view's; a stat of the rules' own its name.)
-    fn lines(&self, alone: &NaviFacts, words: &crate::builds::words::Words) -> Vec<StatLine> {
+    /// as the overview says it; its gauge's slots last, labeled `slots` (the user: "why is "gauge 8 blocks" not like a
+    /// stat like everything else in the header in party editor?", then "or "slots" i guess instead of blocks"). (Their
+    /// labels: HP and Attack the view's; a stat of the rules' own its name.)
+    fn lines(&self, alone: &NaviFacts, words: &crate::builds::words::Words, slots: &str) -> Vec<StatLine> {
         let line = |with: i32, base: i32| stat_line(String::new(), Stat { base, value: with });
+        let gauge = self.gauge.map(|g| stat_line(slots.to_string(), Stat { base: alone.gauge.unwrap_or(g) as i32, value: g as i32 }));
         [line(self.hp, alone.hp), line(self.attack, alone.attack)]
             .into_iter()
             .chain(self.named.iter().map(|s| stat_line(stat_name(words, s), s.stat)))
+            .chain(gauge)
             .collect()
     }
 }
@@ -181,7 +185,7 @@ impl NaviFacts {
 const SEARCH_LENGTH: usize = 24;
 
 /// The library's sorts, in the order its select lists them (`PartyView.sorts`): the game's order (the navis' by their
-/// versions), the name, the blocks (the programs' alone).
+/// versions), the name, the slots (the programs' alone).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Sort {
     Library,
@@ -318,7 +322,7 @@ impl Party {
 
     /// Why program `h` can't go into slot `slot` now, if it can't: the build's ruleset holds it back (for every partner,
     /// or for the slot's partner's navi), or the gauge has no room for it (in a program's place, with that program's
-    /// blocks free; at a list's end, as it is; a list full: no words).
+    /// slots free; at a list's end, as it is; a list full: no words).
     fn program_refusal(&self, shell: &Shell, draft: &Draft, budgets: &[Option<Budget>], slot: Slot, h: EntryHandle) -> Option<String> {
         let ui = shell.ui();
         let partners = self.partners(draft);
@@ -365,7 +369,7 @@ impl Party {
     }
 
     /// The library's rows for the marked slot: the navis (each its face, name and version's mark) or the programs
-    /// (each its blocks, name and cost), and why each can't go into the slot (red, the row greyed).
+    /// (each its slots, name and cost), and why each can't go into the slot (red, the row greyed).
     fn library_rows(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, budgets: &[Option<Budget>]) -> Vec<PartyRow> {
         let content = draft.content();
         let kit = &draft.kit;
@@ -398,7 +402,7 @@ impl Party {
 
     /// A budget to cost the programs by, learned once (its cost field is the rules' overview's, every partner's the
     /// same): a partner's, else a check's of the build with the first navi offered its one partner. The library's rows
-    /// have their blocks with no partner too, and the blocks' column is as wide as the most a program fills.
+    /// have their slots with no partner too, and the slots' column is as wide as the most a program fills.
     fn learn_costing(&mut self, draft: &Draft, budgets: &[Option<Budget>]) {
         if self.costing.is_some() {
             return;
@@ -520,7 +524,7 @@ impl Party {
                     Slot::Head(i) => {
                         let p = &partners[i];
                         let b = budget(i);
-                        // (Each block's program, in order; the empty blocks one run after them.)
+                        // (Each slot's program, in order; the empty slots one run after them.)
                         let mut runs: Vec<i32> = p.programs.iter().enumerate().flat_map(|(k, &h)| std::iter::repeat_n(k as i32, b.as_ref().map_or(0, |b| b.cost_of(&content, h)) as usize)).collect();
                         let gauge = b.as_ref().map_or(0, |b| b.count.limit as usize);
                         let last = p.programs.len() as i32;
@@ -630,8 +634,7 @@ impl Party {
             let mut d = match (described, navi) {
                 (_, Some(n)) => {
                     let tag = kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0));
-                    let stats = facts.as_ref().map(|(with, alone)| with.lines(alone, words)).unwrap_or_default();
-                    let facts: Vec<slint::SharedString> = facts.as_ref().and_then(|(with, _)| with.gauge).map(|g| view.invoke_gauge_word(g as i32)).into_iter().collect();
+                    let stats = facts.as_ref().map(|(with, alone)| with.lines(alone, words, &view.invoke_slots_label())).unwrap_or_default();
                     let i = partners.iter().position(|p| p.navi == Some(n));
                     nettai_ui::PartyDetail {
                         there: true,
@@ -640,7 +643,6 @@ impl Party {
                         version: tag,
                         stats: ModelRc::new(VecModel::from(stats)),
                         element: element.clone().unwrap_or_default(),
-                        facts: ModelRc::new(VecModel::from(facts)),
                         fault: i.filter(|_| !library_navi).map(|i| draft.line(shell, Party::problems(draft, i, partners.get(i)))).unwrap_or_default().into(),
                         problem: refusal.clone().unwrap_or_default().into(),
                         ..Default::default()
@@ -671,8 +673,8 @@ impl Party {
         view.set_detail(detail);
     }
 
-    /// A program as the strip describes it, as the Folder tab's strip a chip: its blocks and name, what it does; its
-    /// blocks, its kind, and whether they fit slot `slot` (`fitting`: it is the library's, which puts it there).
+    /// A program as the strip describes it, as the Folder tab's strip a chip: its slots and name, what it does; its
+    /// slots, its kind, and whether they fit slot `slot` (`fitting`: it is the library's, which puts it there).
     #[allow(clippy::too_many_arguments)]
     fn program_detail(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, table: &str, budgets: &[Option<Budget>], slot: Slot, h: EntryHandle, fitting: bool) -> nettai_ui::PartyDetail {
         let content = draft.content();

@@ -1981,12 +1981,16 @@ fn to_ruleset(name: &Rc<RefCell<String>>) -> Step {
 /// Team ProtoMan build's party (not refused: the mix's partners' heads red, the strip "Mixed versions"; the navis'
 /// library with its slot marked), then the partner put back. Then, for comparing, the Patch cards library with a card refused, and the
 /// NaviCust's list. On a phone, the ruleset's Party page, then the slots and the navis' sheet.
-pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
+pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, lang: &'static str, size: &'static str) {
     use nettai_ui::PartyView;
+    // (The steps that find a category, a navi or a program by its English name: in English alone.)
+    let english = lang == "en";
     if size == "phone" {
         open_build(add);
         // (The ruleset's Party page first, its navis' list.)
-        party_rules(add, shot, true);
+        if english {
+            party_rules(add, shot, true);
+        }
         add(SETTLE, to_tab(EditorTab::Party));
         add(SETTLE, to_slot(PartySpot::Open, false));
         shot(add, "party-phone", Pair::None);
@@ -2000,7 +2004,7 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
         return;
     }
     open_build(add);
-    let own = party_rules(add, shot, false);
+    let own = if english { party_rules(add, shot, false) } else { Rc::default() };
     add(SETTLE, to_tab(EditorTab::Party));
     add(SETTLE, to_slot(PartySpot::Open, false));
     shot(add, "party-empty", Pair::None);
@@ -2159,74 +2163,76 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
     }));
     add(SETTLE, to_slot(PartySpot::Head(0), false));
     shot(add, "party-dragged", Pair::None);
-    // Under the ruleset page's copy (P.Spport held back for Meddy's partners alone, as R2 has it), Meddy second: its
-    // Empty row marked, the library refuses P.Spport there, "Not allowed", the strip saying so (shot); dragged over
-    // Meddy's list, the held row says so (shot); let go, nothing changes. Then the build under the game's first
-    // preset again.
-    add(SETTLE, to_ruleset(&own));
-    add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy second, for its own ban: the party is {:?}", party_of(ui)))));
-    add(SETTLE, to_slot(PartySpot::End(1), false));
-    add(SETTLE, pick_program(&picked, |r| r.name == "P.Spport"));
-    add(SETTLE, expect(|ui, _| {
-        let rows = ui.global::<PartyView>().get_rows();
-        let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
-        (why("P.Spport").is_none_or(|w| w.is_empty()) || why("P.Btlpk2").is_none_or(|w| !w.is_empty())).then(|| format!("Meddy's Empty row marked: P.Spport says {:?}, P.Btlpk2 {:?}", why("P.Spport"), why("P.Btlpk2")))
-    }));
-    shot(add, "party-banned-for-navi", Pair::None);
-    add(SETTLE, keep(&kept));
-    drag_in(add, &picked, |ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app));
-    add(SETTLE, expect(|ui, _| {
-        let why = ui.global::<PartyView>().get_drag_why();
-        why.is_empty().then(|| "P.Spport dragged over Meddy's list: the dragged row says nothing".to_string())
-    }));
-    shot(add, "party-drag-banned-for-navi", Pair::None);
-    add(SETTLE, hand_at(|ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app), Ev::Release));
-    let was = kept.clone();
-    add(SETTLE, expect(move |ui, _| (party_of(ui) != *was.borrow()).then(|| format!("P.Spport let go over Meddy's list: the party changed to {:?}", party_of(ui)))));
-    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
-    // Under Masters class (one version per build), Colonel in Meddy's place: not refused (the user: "it should be marked
-    // red and still addable like it is everywhere else"); every partner of the mix red, Colonel's head under the cursor
-    // and its strip saying "Mixed versions" (shot); its head marked, the navis' library beside it, the cursor on another
-    // of Team Colonel's, which says nothing past its version's mark (shot). Then Meddy back.
-    add(SETTLE, to_slot(PartySpot::Head(1), true));
-    add(SETTLE, pick_row(|r| r.name == "Colonel"));
-    add(SETTLE, to_slot(PartySpot::Head(1), false));
-    add(SETTLE, expect(|ui, _| {
-        let view = ui.global::<PartyView>();
-        let heads: Vec<(String, bool)> = view.get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad)).collect();
-        let fault = view.get_detail().fault.to_string();
-        (heads.len() != 2 || heads[1].0 != "Colonel" || heads.iter().any(|h| !h.1) || !fault.contains("Mixed versions")).then(|| format!("Colonel put in a Team ProtoMan build's party: the heads {heads:?}, the strip says {fault:?}"))
-    }));
-    shot(add, "party-mixed-navi", Pair::None);
-    add(SETTLE, to_slot(PartySpot::Head(1), true));
-    add(SETTLE, Box::new(|ui, app, tour| {
-        if tour.passing.get() {
-            return;
-        }
-        match ui.global::<PartyView>().get_rows().iter().position(|r| r.name == "ShadowMan") {
-            Some(at) => app.borrow_mut().shell.nav.focus("lib.rows", at as i32),
-            None => tour.key_wrong("the navis' library has no ShadowMan".to_string()),
-        }
-    }));
-    add(SETTLE, expect(|ui, _| {
-        let rows = ui.global::<PartyView>().get_rows();
-        let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
-        (why("ShadowMan") != Some(String::new()) || why("Colonel").is_none_or(|w| w.is_empty())).then(|| format!("the navis' library by Colonel's head: ShadowMan says {:?}, Colonel {:?}", why("ShadowMan"), why("Colonel")))
-    }));
-    shot(add, "party-mixed-navi-library", Pair::None);
-    // (The same party under Unrestricted, the versions mixed: no head red, each with its version's mark.)
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 2)));
-    add(SETTLE, to_slot(PartySpot::Head(1), false));
-    add(SETTLE, expect(|ui, _| {
-        let heads: Vec<(String, bool, String)> = ui.global::<PartyView>().get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad, s.version.text.to_string())).collect();
-        (heads.iter().any(|h| h.1 || h.2.is_empty())).then(|| format!("MagnetMan and Colonel under Unrestricted: the heads {heads:?}"))
-    }));
-    shot(add, "party-unrestricted-navis", Pair::None);
-    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
-    add(SETTLE, to_slot(PartySpot::Head(1), true));
-    add(SETTLE, pick_row(|r| r.name == "Meddy"));
-    add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy put back: the party is {:?}", party_of(ui)))));
+    if english {
+        // Under the ruleset page's copy (P.Spport held back for Meddy's partners alone, as R2 has it), Meddy second: its
+        // Empty row marked, the library refuses P.Spport there, "Not allowed", the strip saying so (shot); dragged over
+        // Meddy's list, the held row says so (shot); let go, nothing changes. Then the build under the game's first
+        // preset again.
+        add(SETTLE, to_ruleset(&own));
+        add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy second, for its own ban: the party is {:?}", party_of(ui)))));
+        add(SETTLE, to_slot(PartySpot::End(1), false));
+        add(SETTLE, pick_program(&picked, |r| r.name == "P.Spport"));
+        add(SETTLE, expect(|ui, _| {
+            let rows = ui.global::<PartyView>().get_rows();
+            let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
+            (why("P.Spport").is_none_or(|w| w.is_empty()) || why("P.Btlpk2").is_none_or(|w| !w.is_empty())).then(|| format!("Meddy's Empty row marked: P.Spport says {:?}, P.Btlpk2 {:?}", why("P.Spport"), why("P.Btlpk2")))
+        }));
+        shot(add, "party-banned-for-navi", Pair::None);
+        add(SETTLE, keep(&kept));
+        drag_in(add, &picked, |ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app));
+        add(SETTLE, expect(|ui, _| {
+            let why = ui.global::<PartyView>().get_drag_why();
+            why.is_empty().then(|| "P.Spport dragged over Meddy's list: the dragged row says nothing".to_string())
+        }));
+        shot(add, "party-drag-banned-for-navi", Pair::None);
+        add(SETTLE, hand_at(|ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app), Ev::Release));
+        let was = kept.clone();
+        add(SETTLE, expect(move |ui, _| (party_of(ui) != *was.borrow()).then(|| format!("P.Spport let go over Meddy's list: the party changed to {:?}", party_of(ui)))));
+        add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+        // Under Masters class (one version per build), Colonel in Meddy's place: not refused (the user: "it should be marked
+        // red and still addable like it is everywhere else"); every partner of the mix red, Colonel's head under the cursor
+        // and its strip saying "Mixed versions" (shot); its head marked, the navis' library beside it, the cursor on another
+        // of Team Colonel's, which says nothing past its version's mark (shot). Then Meddy back.
+        add(SETTLE, to_slot(PartySpot::Head(1), true));
+        add(SETTLE, pick_row(|r| r.name == "Colonel"));
+        add(SETTLE, to_slot(PartySpot::Head(1), false));
+        add(SETTLE, expect(|ui, _| {
+            let view = ui.global::<PartyView>();
+            let heads: Vec<(String, bool)> = view.get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad)).collect();
+            let fault = view.get_detail().fault.to_string();
+            (heads.len() != 2 || heads[1].0 != "Colonel" || heads.iter().any(|h| !h.1) || !fault.contains("Mixed versions")).then(|| format!("Colonel put in a Team ProtoMan build's party: the heads {heads:?}, the strip says {fault:?}"))
+        }));
+        shot(add, "party-mixed-navi", Pair::None);
+        add(SETTLE, to_slot(PartySpot::Head(1), true));
+        add(SETTLE, Box::new(|ui, app, tour| {
+            if tour.passing.get() {
+                return;
+            }
+            match ui.global::<PartyView>().get_rows().iter().position(|r| r.name == "ShadowMan") {
+                Some(at) => app.borrow_mut().shell.nav.focus("lib.rows", at as i32),
+                None => tour.key_wrong("the navis' library has no ShadowMan".to_string()),
+            }
+        }));
+        add(SETTLE, expect(|ui, _| {
+            let rows = ui.global::<PartyView>().get_rows();
+            let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
+            (why("ShadowMan") != Some(String::new()) || why("Colonel").is_none_or(|w| w.is_empty())).then(|| format!("the navis' library by Colonel's head: ShadowMan says {:?}, Colonel {:?}", why("ShadowMan"), why("Colonel")))
+        }));
+        shot(add, "party-mixed-navi-library", Pair::None);
+        // (The same party under Unrestricted, the versions mixed: no head red, each with its version's mark.)
+        add(SETTLE, act(Action::Back));
+        add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 2)));
+        add(SETTLE, to_slot(PartySpot::Head(1), false));
+        add(SETTLE, expect(|ui, _| {
+            let heads: Vec<(String, bool, String)> = ui.global::<PartyView>().get_slots().iter().filter(|s| s.kind == nettai_ui::PartySlotKind::Head).map(|s| (s.name.to_string(), s.bad, s.version.text.to_string())).collect();
+            (heads.iter().any(|h| h.1 || h.2.is_empty())).then(|| format!("MagnetMan and Colonel under Unrestricted: the heads {heads:?}"))
+        }));
+        shot(add, "party-unrestricted-navis", Pair::None);
+        add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+        add(SETTLE, to_slot(PartySpot::Head(1), true));
+        add(SETTLE, pick_row(|r| r.name == "Meddy"));
+        add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy put back: the party is {:?}", party_of(ui)))));
+    }
     // For comparing: the Patch cards library, three cards in, by MB the most first, one refused; the NaviCust's list.
     add(SETTLE, to_tab(EditorTab::PatchCards));
     add(SETTLE, library());

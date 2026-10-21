@@ -437,7 +437,7 @@ function party.validate(side: number, problem: (p: SetupProblem) -> ())
                     entry = i,
                     used = used,
                     limit = data.gauge,
-                    text = string.format("party %d: %s's programs fill %d blocks of its %d", i, battle.name(navi), used, data.gauge),
+                    text = string.format("party %d: %s's programs fill %d slots of its %d", i, battle.name(navi), used, data.gauge),
                 })
             end
         end
