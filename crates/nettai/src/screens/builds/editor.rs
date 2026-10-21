@@ -472,11 +472,11 @@ pub fn nearest(shell: &Shell, id: &str, indices: impl Iterator<Item = usize>, (x
 fn all() -> Vec<Box<dyn Tab>> {
     vec![
         Box::new(super::navi::Navi::default()),
+        Box::new(super::party::Party::default()),
         Box::new(super::folder::Folder::default()),
         Box::new(super::navicust::Navicust::default()),
         Box::new(super::patch_cards::PatchCards::default()),
         Box::new(super::auto_battle::AutoBattle::default()),
-        Box::new(super::party::Party::default()),
     ]
 }
 
@@ -991,12 +991,12 @@ mod tests {
         let tabs = |content: &Content| -> Vec<EditorTab> { all().iter().filter(|t| has(content, t.as_ref())).map(|t| t.id()).collect() };
         let four = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards];
         let five = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle];
-        let six = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle, EditorTab::Party];
+        let six = [EditorTab::Navi, EditorTab::Party, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle];
         assert_eq!(tabs(&exe6_content()), four);
         assert_eq!(tabs(&exe5_content()), six);
         assert_eq!(tabs(&exe4_content()), five);
         assert_eq!(navi_only_fields(&exe6_content()), ["navicust_programs", "navicust_expansions", "patch_cards"]);
-        assert_eq!(navi_only_fields(&exe5_content()), ["navicust_programs", "navicust_expansions", "patch_cards", "auto_battle_places", "party"]);
+        assert_eq!(navi_only_fields(&exe5_content()), ["party", "navicust_programs", "navicust_expansions", "patch_cards", "auto_battle_places"]);
         assert_eq!(navi_only_fields(&exe4_content()), ["navicust_programs", "patch_cards", "auto_battle_places"]);
     }
 }
