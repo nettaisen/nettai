@@ -435,19 +435,11 @@ component PadKey inherits Rectangle {
     }
 }
 
-// A member of the party, as the party's strip and the phone's switch buttons show it: its face and its HP over a bar
-// of it, dimmed with none left; `active`, the one on the field, framed in the cursor's color.
+// A member of the party, as a phone's switch buttons show it: its face and its HP over a bar of it, dimmed with none
+// left.
 component MemberCell inherits Rectangle {
     in property <PartyMember> member;
-    in property <bool> active;
     in property <bool> there: true;
-    // (Unframed: in a frame of its user's, a switch's, with its control.)
-    in property <bool> framed: true;
-    Rectangle {
-        border-width: root.framed ? 1px : 0px;
-        border-color: root.active ? Theme.cursor : Theme.line;
-        background: root.active ? Theme.tint : transparent;
-    }
 
     Image {
         x: 4px;
@@ -491,133 +483,97 @@ component MemberCell inherits Rectangle {
     }
 }
 
-// The switches a round allows, each a pip: those made filled, those left empty.
+// The navi changes a round allows, each a pip: those made outlined, those left lit.
 component Pips inherits Rectangle {
     in property <int> made;
     in property <int> limit;
-    width: root.limit * 10px;
-    height: 8px;
+    width: max(0px, root.limit * 13px - 4px);
+    height: 9px;
     for i in root.limit: Rectangle {
-        x: i * 10px;
+        x: i * 13px;
         y: 0;
-        width: 8px;
-        height: 8px;
-        border-width: 1px;
-        border-color: Theme.line;
-        background: i < root.made ? Theme.dim : Theme.cursor;
+        width: 9px;
+        height: 9px;
+        // (One made: an outlined slot; one left: lit.)
+        border-width: i < root.made ? 1px : 0px;
+        border-color: Theme.dim;
+        background: i < root.made ? transparent : Theme.cursor;
     }
 }
 
-// A switch, as the strip shows it: its control (a key cap or a pad's button) and the member it switches to, one frame
-// round both.
+// A switch, as the strip shows it: its control as bound (a key cap or a pad's button; none in a replay), the face of the
+// member it switches to, and its HP.
 component SwitchUnit inherits Rectangle {
     in property <Hint> hint;
     in property <PartyMember> member;
-    in property <bool> there;
-    in property <length> cell;
-    width: (key.width > 0 ? 4px + key.width + 2px : 0px) + root.cell;
-    Rectangle {
-        border-width: 1px;
-        border-color: Theme.line;
-    }
-
+    width: (key.width > 0 ? key.width + 6px : 0px) + 48px + 6px + hp.width;
     key := HintView {
-        x: 4px;
-        y: 2px;
+        x: 0;
+        y: (parent.height - 22px) / 2;
         height: 22px;
         hint: root.hint;
     }
 
-    MemberCell {
-        x: parent.width - root.cell;
-        y: 0;
-        width: root.cell;
-        height: parent.height;
-        framed: false;
-        there: root.there;
-        member: root.member;
+    Image {
+        x: key.width > 0 ? key.width + 6px : 0px;
+        y: (parent.height - self.height) / 2;
+        width: 48px;
+        height: 24px;
+        source: root.member.face;
+        image-rendering: pixelated;
+        opacity: root.member.hp > 0 ? 1 : 0.4;
+    }
+
+    hp := Text {
+        x: parent.width - self.width;
+        width: self.preferred-width;
+        text: root.member.hp;
+        color: root.member.hp > 0 ? Theme.text : Theme.bad;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 700;
+        vertical-alignment: center;
     }
 }
 
-// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture, in two
-// groups a line apart, each under its word: ON FIELD, the member on the field (framed in the cursor's color) with the
-// switches left beside it; then NAVI CHANGE, the two switches, each one unit: its control (as bound; none in a replay)
-// in the frame of the member it switches to, the two well apart. Where it goes is its user's.
+// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture: one row
+// (the user's choice, the verification workspace's docs/nettai-ui/party/chosen/battle-strip-2.png): each switch, its
+// control, the face of the member it switches to and its HP, then the round's navi changes as pips, those made
+// outlined, those left lit. The member on the field isn't in it: the battle's own picture shows it. Where it goes is
+// its user's.
 export component PartyStrip inherits Rectangle {
     in property <PartyHud> party;
-    property <length> cell: 92px;
-    property <length> group-x: 8px + root.cell + 8px + pips.width + 12px + 1px + 12px;
-    property <length> unit-gap: 20px;
-    width: root.group-x + left.width + root.unit-gap + right.width + 8px;
-    height: 44px;
+    width: 10px + (left.visible ? left.width + 22px : 0px) + (right.visible ? right.width + 22px : 0px) + pips.width + 10px;
+    height: 34px;
     Rectangle {
         background: Theme.shade;
         border-width: 1px;
         border-color: Theme.line;
     }
 
-    Label {
-        x: 8px;
-        y: 2px;
-        width: root.cell + 8px + pips.width;
-        height: 12px;
-        font-size: 9px;
-        text: Caps.of(@tr("On field"));
-        color: Theme.cursor;
-    }
-
-    MemberCell {
-        x: 8px;
-        y: 14px;
-        width: root.cell;
-        height: 26px;
-        member: root.party.members[root.party.active];
-        active: true;
-    }
-
-    pips := Pips {
-        x: 8px + root.cell + 8px;
-        y: 14px + (26px - self.height) / 2;
-        made: root.party.switches;
-        limit: root.party.limit;
-    }
-
-    // (The line between the groups.)
-    Rectangle {
-        x: root.group-x - 12px - 1px;
-        y: 8px;
-        width: 1px;
-        height: parent.height - 16px;
-        background: Theme.line;
-    }
-
-    Label {
-        x: root.group-x;
-        y: 2px;
-        width: parent.width - self.x - 8px;
-        height: 12px;
-        font-size: 9px;
-        text: Caps.of(@tr("Navi change"));
-    }
-
     left := SwitchUnit {
-        x: root.group-x;
-        y: 14px;
-        height: 26px;
-        cell: root.cell;
+        x: 10px;
+        y: 5px;
+        height: 24px;
+        visible: root.party.left >= 0;
         hint: root.party.left-key;
-        there: root.party.left >= 0;
         member: root.party.members[root.party.left];
     }
 
     right := SwitchUnit {
-        x: left.x + left.width + root.unit-gap;
-        y: 14px;
-        height: 26px;
-        cell: root.cell;
+        x: 10px + (left.visible ? left.width + 22px : 0px);
+        y: 5px;
+        height: 24px;
+        visible: root.party.right >= 0;
         hint: root.party.right-key;
-        there: root.party.right >= 0;
         member: root.party.members[root.party.right];
+    }
+
+    pips := Pips {
+        x: parent.width - 10px - self.width;
+        y: (parent.height - self.height) / 2;
+        made: root.party.switches;
+        limit: root.party.limit;
     }
 }
 
@@ -642,8 +598,8 @@ component SwitchKey inherits Rectangle {
 
 // The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU, with what the battle is
 // beside it (`Shell.battle-note`: its owner's words). In a party battle, under MENU: the switches' two buttons, each
-// with the member it names, and between them the member on the field and the switches left (EXE5 DS's bottom screen's
-// party panel, as its touch screen offers it).
+// with the member it names, and between them the navi changes left (EXE5 DS's bottom screen's party panel, as its touch
+// screen offers it).
 component TouchPad inherits Rectangle {
     menu := Button {
         x: 0;
@@ -677,30 +633,10 @@ component TouchPad inherits Rectangle {
             at: Shell.party.left;
         }
 
-        // (The member on the field between the switches, under its word, as a desktop's strip has it.)
-        Label {
-            x: (parent.width - 16px) / 3 + 8px + 6px;
-            y: 0;
-            width: (parent.width - 16px) / 3 - 12px;
-            height: 12px;
-            font-size: 9px;
-            horizontal-alignment: center;
-            text: Caps.of(@tr("On field"));
-            color: Theme.cursor;
-        }
-
-        MemberCell {
-            x: (parent.width - 16px) / 3 + 8px + 6px;
-            y: 13px;
-            width: (parent.width - 16px) / 3 - 12px;
-            height: 28px;
-            member: Shell.party.members[Shell.party.active];
-            active: true;
-        }
-
+        // (The round's navi changes between the switches, as the desktop's strip has them.)
         Pips {
             x: (parent.width - self.width) / 2;
-            y: 46px;
+            y: (64px - self.height) / 2;
             made: Shell.party.switches;
             limit: Shell.party.limit;
         }
