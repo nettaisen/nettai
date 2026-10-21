@@ -103,16 +103,29 @@ end
 
 -- `sub_8015AA6`'s loop: from (x, y) forward to the field's edge, an
 -- immobilizer of `kind` on every panel with an enemy body (`off_8015AF8`,
--- by the user's side).
+-- by the user's side); each running while the battle is dimmed where
+-- `while_dimmed` (EXE5 DS's spawn, 0x0220AF44).
 local ENEMY_BODY = { [0] = 0x04000000, [1] = 0x08000000 }
-function immobilizer.ahead(kind: Kind, user: Object, x: number, y: number)
+function immobilizer.ahead(kind: Kind, user: Object, x: number, y: number, while_dimmed: boolean?)
     local ahead = user.facing
     local enemy = ENEMY_BODY[user.alliance]
     while field.valid(x, y) do
         if bit32.btest(field.flags(x, y), enemy) then
-            immobilizer.spawn(kind, user, x, y)
+            local o = immobilizer.spawn(kind, user, x, y)
+            if o and while_dimmed then
+                o.run_while_dimmed = true
+            end
         end
         x += ahead
+    end
+end
+
+-- EXE5 DS's 0x02007BA8 (M-ZAN's MagnetMan, Mag-Barr's): from column `x`
+-- forward, row by row (1 to 3), an immobilizer of `kind` on every enemy
+-- body, each running while the battle is dimmed (its spawn, 0x0220AF44).
+function immobilizer.rows_ahead(kind: Kind, user: Object, x: number)
+    for y = 1, 3 do
+        immobilizer.ahead(kind, user, x, y, true)
     end
 end
 
