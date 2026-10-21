@@ -17,9 +17,9 @@ local megaman = require("../navis/megaman").megaman
 local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 
--- The actors' own beside the shared (`DoubleAttackActor`): the other actor (+0x60, which the DS's director links), and
--- the row KnightMan's next ball goes to (+0x74: 0 the one above his, 1 his, 2 the one below).
-type State = DoubleAttackActor & { partner: Object?, next_row: number }
+-- The actors' own beside the shared (`DoubleAttackActor`): the row KnightMan's next ball goes to (+0x74: 0 the one above
+-- his, 1 his, 2 the one below).
+type State = DoubleAttackActor & { next_row: number }
 
 -- A ball's (Param1, its row; the start and the end of its kick, +0x60 to +0x74).
 type BallState = { row: number, from: Vec3, to: Vec3 }
@@ -210,39 +210,14 @@ local function drop_ball(me: Object, row: number)
     (o.state :: BallState).row = row
 end
 
--- The other actor of this Double Attack (the DS's director writes each one's +0x60 as it brings them).
-local function partner_of(me: Object): Object
-    local s = me.state :: State
-    if s.partner == nil then
-        for _, o in battle.objects_of(me.kind) do
-            if o ~= me and (o.state :: State).director == s.director then
-                s.partner = o
-            end
-        end
-    end
-    local p = s.partner
-    if p == nil then
-        error("B-SHOOT's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
-
 local function appear(me: Object)
-    partner_of(me)
     double_attack.appear(me, 4, 0x10)
 end
 
 -- 0x02033AE8: KnightMan appears (the shared step) and puts on what his identity wears (his ball and chain,
 -- `sub_8011420` with Param3 1, a player's identity's: `sub_800F29C`'s actor type 2).
 local function knightman_appear(me: Object)
-    local fresh = me.phase_init == 0
-    appear(me)
-    if fresh then
-        local identity = me.identity :: Identity
-        if identity.actor_type == "player" then
-            me:add_parts(identity, 1)
-        end
-    end
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 -- 0x0203395C, 0x02033B44: the charge, then the action.
@@ -350,7 +325,7 @@ end
 -- then he leaves.
 local function after(me: Object)
     if me.phase_init == 0 then
-        if partner_of(me).action ~= 0xC then
+        if double_attack.partner(me).action ~= 0xC then
             return
         end
         me.anim = ANIM_IDLE
@@ -385,7 +360,7 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "b-shoot",
         damage = { 30, 30, 35, 40, 45, 50, 90, 100, 120, 120 },
-        state = { partner = "object", next_row = "u8" },
+        state = { next_row = "u8" },
         roles = {
             -- 0x020DDE54's table: MegaMan, (-16, 10) from the user's spot.
             {

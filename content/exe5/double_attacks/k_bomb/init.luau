@@ -114,11 +114,7 @@ end
 -- NumberMan appears wearing what he wears (0x020A153C: his NameID's actor record a player's, `sub_8011420` with Param3
 -- 1).
 local function numberman_appear(me: Object)
-    local first = me.phase_init == 0
-    double_attack.appear(me, 4, 0x10)
-    if first then
-        me:add_parts(numberman.identity :: Identity, 1)
-    end
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 local function leave(me: Object)

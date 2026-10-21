@@ -20,7 +20,7 @@ local rock = require("@self/rock")
 local shadowman = require("../navis/shadowman").shadowman
 
 -- Colonel's rocks (Param4, +0x07: how many he dropped) and their flags (+0x78 to +0x7F, a byte a rock).
-type State = DoubleAttackActor & { partner: Object?, rocks: number, out: { boolean } }
+type State = DoubleAttackActor & { rocks: number, out: { boolean } }
 
 local CHARGE_TICKS = 0x3C
 -- Colonel's drop: his animation 0x14, 60 ticks.
@@ -39,34 +39,9 @@ local ANIM_BACK, BACK_TICKS = 3, 0x14
 local SOUND_APPEAR = asset.sound("appear")
 local AFTER_TICKS = 0x1E
 
--- The director's link (0x02032EA8): each actor's partner, the other actor it brought.
-local function link(me: Object)
-    local s = me.state :: State
-    for _, o in battle.objects_of(me.kind) do
-        local t = o.state :: State
-        if o ~= me and t.director == s.director and t.role ~= s.role then
-            s.partner = o
-            return
-        end
-    end
-end
-
-local function partner(me: Object): Object
-    local p = (me.state :: State).partner
-    if not p then
-        error("E-SAPPOU's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
-
--- Appearing (0x020940E4, 0x020942B4): linked to the other; each puts on what its navi wears (`sub_8011420` with Param3
--- 1: Colonel his cape).
+-- Appearing (0x020940E4, 0x020942B4): each puts on what its navi wears (`sub_8011420` with Param3 1: Colonel his cape).
 local function appear(me: Object)
-    if me.phase_init == 0 then
-        link(me)
-        me:add_parts(me.identity :: Identity, 1)
-    end
-    double_attack.appear(me, 4, 0x10)
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 -- 0x02094140 (Colonel): the charge; then the panel ahead in row 1 his destination, and a count of 2 (+0x22, which
@@ -126,7 +101,7 @@ local function colonel_drop(me: Object)
     local p = me.phase
     if p == 0 then
         if me.phase_init == 0 then
-            local other = partner(me)
+            local other = double_attack.partner(me)
             if other.action ~= 8 or other.phase ~= 4 then
                 return
             end
@@ -172,7 +147,7 @@ local function shadow(me: Object)
         end
     elseif p == 4 then
         if me.phase_init == 0 then
-            if partner(me).action ~= 0xC then
+            if double_attack.partner(me).action ~= 0xC then
                 return
             end
             me.visible = true
@@ -192,7 +167,7 @@ end
 -- 0x02094244 (Colonel: once ShadowMan is back), 0x0209441C (ShadowMan): 30 ticks, then he leaves.
 local function after(me: Object, waits: boolean)
     if me.phase_init == 0 then
-        if waits and partner(me).action ~= 0xC then
+        if waits and double_attack.partner(me).action ~= 0xC then
             return
         end
         me.timer = AFTER_TICKS
@@ -222,7 +197,7 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "e-sappou",
         damage = { 45, 45, 45, 50, 60, 75, 110, 130, 150, 150 },
-        state = { partner = "object", rocks = "u8", out = "bool[8]" },
+        state = { rocks = "u8", out = "bool[8]" },
         roles = {
             -- 0x020940D4's table: Colonel, (10, 10) from the user's spot.
             {

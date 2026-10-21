@@ -18,9 +18,8 @@ local double_attack = require("../lib/double_attack")
 local megaman = require("../navis/megaman").megaman
 local regions = require("@exelib/regions")
 
--- The actors' own beside the shared (`DoubleAttackActor`): the other actor (+0x60, which the DS's director links), and
--- Colonel's cape while he holds it (+0x74).
-type State = DoubleAttackActor & { partner: Object?, cape: Object? }
+-- The actors' own beside the shared (`DoubleAttackActor`): Colonel's cape while he holds it (+0x74).
+type State = DoubleAttackActor & { cape: Object? }
 
 -- The cape's (the GBA's attack object 2, Colonel's cape, 0x080C4AE4; the DS's 0x02203190 with its Param2 variants):
 -- whom it reports to (its +0x60, a pointer to its thrower's +0x74), and whether its thrower let it go (+0x64).
@@ -65,23 +64,6 @@ local CAPE_WAIT = 0xA
 local SCREEN_HALF = 0xA0
 -- Its actions.
 local CAPE_WAITS, CAPE_FLIES, CAPE_CAUGHT, CAPE_LET_GO, CAPE_SLIDES = 0x0, 0x4, 0x8, 0xC, 0x10
-
--- The other actor of this Double Attack (the DS's director writes each one's +0x60 as it brings them).
-local function partner_of(me: Object): Object
-    local s = me.state :: State
-    if s.partner == nil then
-        for _, o in battle.objects_of(me.kind) do
-            if o ~= me and (o.state :: State).director == s.director then
-                s.partner = o
-            end
-        end
-    end
-    local p = s.partner
-    if p == nil then
-        error("BR-RUSH's actor has no partner (the DS reads through a null pointer)")
-    end
-    return p
-end
 
 -- The cape's thrower's hold of it ends (the DS writes 0 through the cape's +0x60).
 local function let_go_of(me: Object)
@@ -298,21 +280,13 @@ local function hit(me: Object)
 end
 
 local function appear(me: Object)
-    partner_of(me)
     double_attack.appear(me, 4, 0x10)
 end
 
 -- 0x020333E8: Colonel appears (the shared step) and puts on what his identity wears (his cape, `sub_8011420` with
 -- Param3 1, a player's identity's: `sub_800F29C`'s actor type 2).
 local function colonel_appear(me: Object)
-    local fresh = me.phase_init == 0
-    appear(me)
-    if fresh then
-        local identity = me.identity :: Identity
-        if identity.actor_type == "player" then
-            me:add_parts(identity, 1)
-        end
-    end
+    double_attack.appear(me, 4, 0x10, true)
 end
 
 -- 0x02033040: MegaMan's charge; then his future panel the one in front (Colonel's search overwrites it).
@@ -363,7 +337,7 @@ local function colonel_look(me: Object)
     if me.phase_init == 0 then
         local x, y = search(me)
         me.future_panel_x, me.future_panel_y = x, y
-        local p = partner_of(me)
+        local p = double_attack.partner(me)
         p.future_panel_x, p.future_panel_y = x, y
         me.timer = LOOK_TICKS
         me.phase_init = 4
@@ -435,7 +409,7 @@ end
 local function megaman_drop(me: Object)
     if me.phase_init == 0 then
         me.anim = ANIM_LAND
-        local p = partner_of(me)
+        local p = double_attack.partner(me)
         me.panel_x, me.panel_y = p.future_panel_x, p.future_panel_y
         me:set_coordinates_from_panel()
         local pos = me.pos
@@ -633,7 +607,7 @@ local megaman_phases = phases({
     [0x4] = megaman_wind,
     [0x8] = leap(ANIM_LEAP),
     [0xC] = function(me: Object)
-        await_cape(me, partner_of(me))
+        await_cape(me, double_attack.partner(me))
     end,
     [0x10] = megaman_drop,
     [0x14] = ready,
@@ -684,7 +658,7 @@ local chip: Chip = {
     double_attack = double_attack.make {
         id = "br-rush",
         damage = { 10, 12, 15, 15, 20, 25, 35, 45, 50, 50 },
-        state = { partner = "object", cape = "object" },
+        state = { cape = "object" },
         roles = {
             -- 0x02032FDC's table: MegaMan, (10, 10) from the user's spot.
             {

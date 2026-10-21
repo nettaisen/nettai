@@ -173,11 +173,13 @@ export type DoubleAttack = {
 
 -- What every Double Attack's actor keeps (lib/double_attack): its director
 -- (it reports to as it goes, the DS's +0x64 pointer), its role (Param1: 0
--- the first navi, 1 the second) and the attachments it holds (+0x68,
--- +0x6C). A Double Attack's own fields come beside them.
+-- the first navi, 1 the second), its partner (the other actor, +0x60) and
+-- the attachments it holds (+0x68, +0x6C). A Double Attack's own fields
+-- come beside them.
 export type DoubleAttackActor = {
     director: Object?,
     role: number,
+    partner: Object?,
     held: Object?,
     held2: Object?,
 }
