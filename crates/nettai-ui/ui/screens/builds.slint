@@ -28,11 +28,11 @@ export { NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView, Par
 // party: some games').
 export enum EditorTab {
     navi,
+    party,
     folder,
     navicust,
     patch-cards,
     auto-battle,
-    party,
 }
 
 // What Builds shows: src/screens/builds/mod.rs sets these.
@@ -53,7 +53,7 @@ export global BuildsView {
     in property <EditorTab> shown;
     in property <int> tab-way: 1;
     // ---- Words the app asks for.
-    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle")), Caps.of(@tr("Party"))];
+    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Party")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle"))];
     // A tab's CLEAR's dialog's button (docs/design/app-ui.md §2.71).
     out property <string> clear-word: Caps.of(@tr("Clear"));
 }

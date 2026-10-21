@@ -12,8 +12,9 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 (§15), and so are Play, the netplay UI (§4), Builds (§8) and Replays (§16: the list, the viewer with its
 transport, the export): each is one Slint file and one Rust module (§2).
 
-Builds is filled in (§8): the editor with its tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
-them, Auto battle and Party (EXE5's party battle, §8's "The Party tab"). The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE
+Builds is filled in (§8): the editor with its tabs behind its tab interface: Navi, then in a game whose setup takes a party Party
+(EXE5's party battle, §8's "The Party tab"; next to Navi, as the ruleset's page has its category: the user), Folder, NaviCust, Patch cards and,
+in a game whose setup takes it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE
 and DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
 and a version's tag are components any screen uses.
 
