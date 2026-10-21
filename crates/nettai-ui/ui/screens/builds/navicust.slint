@@ -944,6 +944,8 @@ export component NavicustTab inherits Rectangle {
         y: 0;
         width: root.width + 12px;
         height: root.height;
+        // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
+        bleed: 5px;
         nav: "cell";
         mouse-pan: false;
         content-height: root.content-height;

@@ -372,6 +372,10 @@
 # EXE5 DS's party supports' actor (the DS's actor object 0x30, 0x021FF280: lib/party_support), a kind per navi.
 "protoman/support" = { pool = "actor", index = 0x30 }
 "napalmman/support" = { pool = "actor", index = 0x30 }
+"colonel/support" = { pool = "actor", index = 0x30 }
+"tomahawkman/support" = { pool = "actor", index = 0x30 }
+# GyroMan's party support's wind (the DS's effect object 0x92, 0x02225DA8: navis/gyroman/support).
+"gyroman/support" = { pool = "effect", index = 0x92, scratch_position = true }
 # EXE5 DS's Double Attacks (content/exe5/double_attacks; docs/design/exe5ds-map.md §5): the DS's numbers. Each
 # director's position is what its launcher's registers held (the panel's Y, the element, the spawner's address), which
 # nothing reads.

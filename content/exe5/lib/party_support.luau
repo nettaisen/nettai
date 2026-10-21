@@ -37,8 +37,9 @@ export type Spec = {
     palette: ((me: Object) -> number)?,
     -- What it puts on as it comes (0x021FF434: MegaMan's Hub Style shade); else its identity's parts, a player's.
     wears: ((me: Object) -> ())?,
-    -- The appearance's ticks, and what it sets as it has appeared (NapalmMan his shots).
+    -- The appearance's ticks and animation (3 if none said), and what it sets as it has appeared (NapalmMan his shots).
     appear_ticks: number,
+    appear_anim: number?,
     appeared: ((me: Object) -> ())?,
     -- What its lead-out does as it ends (NapalmMan's timer starts again).
     gone: ((me: Object) -> ())?,
@@ -81,7 +82,7 @@ end
 local function appear(me: Object, spec: Spec)
     if me.phase_init == 0 then
         me.visible = true
-        me.anim = ANIM_APPEAR
+        me.anim = spec.appear_anim or ANIM_APPEAR
         battle.play_sound(SOUND_APPEAR)
     end
     if party_support.countdown(me, spec.appear_ticks) then
