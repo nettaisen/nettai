@@ -376,3 +376,41 @@
 "tomahawkman/support" = { pool = "actor", index = 0x30 }
 # GyroMan's party support's wind (the DS's effect object 0x92, 0x02225DA8: navis/gyroman/support).
 "gyroman/support" = { pool = "effect", index = 0x92, scratch_position = true }
+# EXE5 DS's Double Attacks (content/exe5/double_attacks; docs/design/exe5ds-map.md §5): the DS's numbers. Each
+# director's position is what its launcher's registers held (the panel's Y, the element, the spawner's address), which
+# nothing reads.
+"d-hero/director" = { pool = "effect", index = 0x97, scratch_position = true }
+"m-zan/director" = { pool = "effect", index = 0x98, scratch_position = true }
+"m-air/director" = { pool = "effect", index = 0x99, scratch_position = true }
+"d-valcan/director" = { pool = "effect", index = 0x9A, scratch_position = true }
+"c-scope/director" = { pool = "effect", index = 0x9B, scratch_position = true }
+"c-bomb/director" = { pool = "effect", index = 0x9C, scratch_position = true }
+"br-rush/director" = { pool = "effect", index = 0x9D, scratch_position = true }
+"b-shoot/director" = { pool = "effect", index = 0x9E, scratch_position = true }
+"e-sappou/director" = { pool = "effect", index = 0x9F, scratch_position = true }
+"k-throw/director" = { pool = "effect", index = 0xA0, scratch_position = true }
+"k-bomb/director" = { pool = "effect", index = 0xA1, scratch_position = true }
+"g-otoshi/director" = { pool = "effect", index = 0xA2, scratch_position = true }
+"d-hero/actor" = { pool = "actor", index = 0x35 }
+"m-zan/actor" = { pool = "actor", index = 0x36 }
+"m-air/actor" = { pool = "actor", index = 0x37 }
+"d-valcan/actor" = { pool = "actor", index = 0x38 }
+"c-scope/actor" = { pool = "actor", index = 0x3A }
+"c-bomb/actor" = { pool = "actor", index = 0x3B }
+"br-rush/actor" = { pool = "actor", index = 0x3E }
+"b-shoot/actor" = { pool = "actor", index = 0x3F }
+"e-sappou/actor" = { pool = "actor", index = 0x40 }
+"k-throw/actor" = { pool = "actor", index = 0x41 }
+"k-bomb/actor" = { pool = "actor", index = 0x42 }
+"g-otoshi/actor" = { pool = "actor", index = 0x43 }
+"e-sappou/rock" = { pool = "actor", index = 0x44 }
+"m-zan/immobilizer" = { pool = "attack", index = 0x3F }
+"m-air/bomb" = { pool = "attack", index = 0xA1 }
+"m-air/toss" = { pool = "effect", index = 0xA3 }
+"c-scope/scope" = { pool = "effect", index = 0xA4 }
+"c-bomb/capsule" = { pool = "attack", index = 0xCD }
+"br-rush/cape" = { pool = "attack", index = 0x02 }
+"b-shoot/ball" = { pool = "attack", index = 0xCE }
+"e-sappou/blade" = { pool = "attack", index = 0x69, scratch_position = true }
+"k-bomb/bomb" = { pool = "attack", index = 0xCC }
+"g-otoshi/frog" = { pool = "attack", index = 0xA2 }

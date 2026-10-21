@@ -11,10 +11,10 @@ local regions = require("@exelib/regions")
 
 local immobilizer = {}
 
--- `sub_80CC090`: 20 ticks, then gone (EXE5's hidden first).
+-- `sub_80CC090`: 20 ticks (the look's `lasts`: the DS's reads its Param1), then gone (EXE5's hidden first).
 local function linger(me: Object, look: ImmobilizerLook)
     if me.phase_init == 0 then
-        me.timer = 0x14
+        me.timer = look.lasts or 0x14
         me.phase_init = 4
     end
     local left = me.timer - 1

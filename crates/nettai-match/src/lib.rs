@@ -23,6 +23,8 @@ pub mod facts;
 pub mod file;
 pub mod folders;
 #[cfg(test)]
+mod double_attacks;
+#[cfg(test)]
 mod games;
 pub mod ids;
 #[cfg(test)]

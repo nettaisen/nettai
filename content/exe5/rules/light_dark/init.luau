@@ -42,6 +42,7 @@
 -- dropped the GBA's "any navi but MegaMan passes"): a light-only chip any navi of a light value may use, a dark-only
 -- one only a MegaMan of a dark value.
 
+local exe5 = require("./api")
 local invalid = require("../chips/invalid").invalid
 local megaman = require("../navis/megaman").megaman
 local party = require("./party")
@@ -91,17 +92,8 @@ local function starting_mood(v: number): number
     return v // 20 + 103
 end
 
--- 0x0800DE5C: the palette by the value's tier.
-local function tier(v: number): number
-    if v >= 1000 then
-        return 4
-    elseif v >= 500 then
-        return 0
-    elseif v >= 470 then
-        return 3
-    end
-    return 2
-end
+-- 0x0800DE5C: the palette by the value's tier (./api).
+local tier = exe5.light_dark_tier
 
 -- 0x0800DD94 (EXE6's `sub_801002C`): the palette of a navi of the player's kind.
 local function palette(side: number, navi: Object): number?
