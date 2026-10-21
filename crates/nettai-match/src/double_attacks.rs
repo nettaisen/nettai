@@ -6,7 +6,6 @@ use crate::testing::exe5_content;
 use crate::Match;
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::input::PlayerTick;
-use nettai_battle::setup::NaviStats;
 use nettai_battle::{Battle, Content};
 use std::sync::Arc;
 
@@ -19,9 +18,9 @@ const FOLDER: [&str; 30] = [
     "attck-10 *", "attck-10 *",
 ];
 
-/// An EXE5 MegaMan's side with that folder (at the party's highest level:
-/// a side that states none).
-fn side() -> String {
+/// An EXE5 MegaMan's side with that folder and `partners` in his party (at
+/// the party's highest level: a side that states none).
+fn side(partners: &[&str]) -> String {
     let folder: Vec<String> = FOLDER
         .iter()
         .map(|c| {
@@ -29,15 +28,16 @@ fn side() -> String {
             format!("{{ chip = \"{name}\", code = \"{code}\" }}")
         })
         .collect();
-    format!("navi = \"megaman\"\nfolder = [{}]\n", folder.join(", "))
+    let party: Vec<String> = partners.iter().map(|p| format!("{{ navi = \"{p}\" }}")).collect();
+    format!("navi = \"megaman\"\nfolder = [{}]\nparty = [{}]\n", folder.join(", "), party.join(", "))
 }
 
-fn round_match(content: &Arc<Content>) -> Match {
+fn round_match(content: &Arc<Content>, partners: &[&str]) -> Match {
     let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, "exe5")[0]).key);
     let text = format!(
         "game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{}\n\n[right]\n{}\n",
-        side(),
-        side()
+        side(partners),
+        side(&[])
     );
     crate::parse(content, &text).unwrap_or_else(|p| panic!("{p:?}"))
 }
@@ -46,12 +46,8 @@ fn round_match(content: &Arc<Content>) -> Match {
 /// 2) against MegaMan, both pressing through their custom screens until the
 /// fight runs.
 fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
-    let m = round_match(content);
+    let m = round_match(content, partners);
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
-    for partner in partners {
-        let navi = crate::ids::navi(content, "exe5", partner).unwrap();
-        b.party[0].join(NaviStats::fresh(navi, content).expect("the partner's fresh stats"));
-    }
     let mut last = [0u16; 2];
     for _ in 0..3000 {
         if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
@@ -383,4 +379,72 @@ fn k_bomb_fires_from_megaman_to_numberman() {
         assert_eq!(count(&b, key), 0, "{key}: gone again");
     }
     assert_eq!(before - hp(&b, 1), 400, "four hits of 100");
+}
+
+/// The paused path: a switch on the custom screen out of Full Synchro (EXE5
+/// DS's state 0x40, then the turn's paused change) to the partner keeps it
+/// and asks for the follow-up (action 0x5C), which dims, lands and launches
+/// D-HERO once the fight goes on: the same seven volleys, its telop 58 ticks
+/// after the follow-up's landing sound (the DS's d-hero-custom-screen
+/// recording: 0x8D at tick 875, 0x173 at 933).
+#[test]
+fn d_hero_fires_after_a_paused_switch() {
+    use nettai_battle::custom::screen::{OK_SLOT, Phase};
+    use nettai_battle::input::keys;
+    let content = exe5_content();
+    let m = round_match(&content, &["protoman"]);
+    let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+    let choosing = |b: &Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
+    for _ in 0..400 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(choosing(&b));
+    let ask = PlayerTick { switch_to: Some(1), ..Default::default() };
+    b.tick(&[ask, Default::default()], Default::default());
+    for _ in 0..100 {
+        if choosing(&b) {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    // MegaMan leaves in Full Synchro.
+    b.stats[0].mood = 0xFF;
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    let before = hp(&b, 1);
+    let (mut directors, mut actors) = (0, 0);
+    let names = content.assets.names(nettai_content_api::AssetKind::Sound);
+    let (mut landed, mut telop) = (None, None);
+    for t in 0..1500 {
+        if b.custom.sides[1].built.is_none()
+            && let Some(s) = b.custom.sides[1].screen.as_mut()
+            && s.phase == Phase::Choosing
+        {
+            s.cursor = OK_SLOT;
+            b.tick(&[Default::default(), PlayerTick::buttons(keys::A)], Default::default());
+            continue;
+        }
+        b.tick(&Default::default(), Default::default());
+        for c in b.sound_cues() {
+            if let nettai_battle::sound::SoundCue::Effect(id) = c {
+                match names.get(id.0 as usize).copied() {
+                    Some("cross-change") if telop.is_none() => landed = Some(t),
+                    Some("telop") if telop.is_none() => telop = Some(t),
+                    _ => {}
+                }
+            }
+        }
+        directors = directors.max(count(&b, "d-hero/director"));
+        actors = actors.max(count(&b, "d-hero/actor"));
+        if directors > 0 && count(&b, "d-hero/director") == 0 {
+            break;
+        }
+    }
+    assert_eq!(b.party[0].active, 1, "ProtoMan came in");
+    assert_eq!(telop.zip(landed).map(|(a, b)| a - b), Some(58), "the telop after the follow-up's landing");
+    assert_eq!((directors, actors), (1, 2), "one director, two actors");
+    assert_eq!(before - hp(&b, 1), 7 * 40, "seven volleys of 40");
 }

@@ -21,7 +21,6 @@
 
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::input::{PlayerTick, keys};
-use nettai_battle::setup::NaviStats;
 use nettai_battle::Battle;
 use nettai_frontend::game::{Options, load};
 use nettai_render::GraphicsMode;
@@ -64,14 +63,12 @@ fn main() {
         .collect();
     // (MegaMan's light/dark value 1000, as the DS lab's saves' light MegaMan has it.)
     let side = format!("navi = \"megaman\"\nfolder = [{}]\nkarma = 1000\n", folder.join(", "));
+    let party: Vec<String> = partners.iter().map(|p| format!("{{ navi = \"{p}\" }}")).collect();
+    let left = format!("{side}party = [{}]\n", party.join(", "));
     let stage = nettai_match::ids::local(&content.defs.stage(nettai_match::link_battle_stages(&content, "exe5")[0]).key);
-    let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{side}\n\n[right]\n{side}\n");
+    let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{side}\n");
     let m = nettai_match::parse(&content, &text).unwrap_or_else(|p| panic!("{p:?}"));
     let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
-    for partner in &partners {
-        let navi = nettai_match::ids::navi(&content, "exe5", partner).unwrap();
-        b.party[0].join(NaviStats::fresh(navi, &content).unwrap());
-    }
 
     // Through the custom screens to the fight.
     let mut last = [0u16; 2];
