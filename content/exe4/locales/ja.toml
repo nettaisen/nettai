@@ -702,7 +702,7 @@ language = "ja"
 # The rulesets' words (en.toml's `[rulesets]` says what they are). Ours.
 [rulesets]
 "category.folder" = "チップ"
-"category.navicust_programs" = "ナビカスプログラム"
+"category.navicust_programs" = "ナビカス"
 "category.patch_cards" = "改造カード"
 "category.souls" = "ソウル"
 "category.auto_battle_places" = "オートバトル"

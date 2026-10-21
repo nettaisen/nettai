@@ -782,7 +782,7 @@ language = "ja"
 [rulesets]
 "category.navi" = "ナビ"
 "category.folder" = "チップ"
-"category.navicust_programs" = "ナビカスプログラム"
+"category.navicust_programs" = "ナビカス"
 "category.patch_cards" = "改造カード"
 "category.cybeast" = "獣化"
 "category.crosses" = "クロス"
