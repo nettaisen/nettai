@@ -31,15 +31,19 @@ fn flags(b: &Battle) -> u32 {
     b.collision.get(c).f1
 }
 
-/// Side 0's navi's panel turned to sea, then 10 ticks.
-fn sea_under(b: &mut Battle) {
+/// Side 0's navi's panel turned to `kind`, then 10 ticks.
+fn panel_under(b: &mut Battle, kind: &str) {
     let c = b.objects.get(b.player(0).unwrap()).collision.expect("the navi's collision");
     let p = b.collision.get(c).panel;
-    let sea = b.content.rules().panels.named("sea").expect("EXE5's sea");
-    b.set_panel_type(p.x, p.y, sea);
+    let t = b.content.rules().panels.named(kind).unwrap_or_else(|| panic!("EXE5's {kind}"));
+    b.set_panel_type(p.x, p.y, t);
     for _ in 0..10 {
         b.tick(&Default::default(), Default::default());
     }
+}
+
+fn sea_under(b: &mut Battle) {
+    panel_under(b, "sea");
 }
 
 /// ToadMan dives (his post-init hook; the switch's tail clears the bit and
@@ -55,8 +59,197 @@ fn toadman_switched_in_dives_on_sea() {
     assert_ne!(navi_status(&b) & status::DIVES, 0, "ToadMan dives");
     sea_under(&mut b);
     assert_ne!(flags(&b) & f1::BUBBLED, 0, "under the sea's surface");
+    // (Switched out from under the surface, on the sea.)
     switch_to(&mut b, 0);
     assert_eq!(navi_status(&b) & status::DIVES, 0, "MegaMan doesn't dive");
     sea_under(&mut b);
     assert_eq!(flags(&b) & f1::BUBBLED, 0, "MegaMan stands on the sea");
+    let ripple = b.content.defs.kind_by_key("dive-ripple").expect("EXE5's dive ripple");
+    assert!(b.objects.in_order().all(|q| b.objects.get(q).kind != ripple), "and no ripple is left over him");
+}
+
+/// The navi `navi` starting the battle (side 0's own navi), fighting.
+fn starting_as(content: &std::sync::Arc<nettai_battle::Content>, navi: &str) -> Battle {
+    let megaman = crate::double_attacks::side(&[]);
+    let left = megaman.replacen("navi = \"megaman\"", &format!("navi = \"{navi}\""), 1).replace("party = []\n", "");
+    let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, "exe5")[0]).key);
+    let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{megaman}\n");
+    let m = crate::parse(content, &text).unwrap_or_else(|p| panic!("{p:?}"));
+    let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
+    let mut last = [0u16; 2];
+    for _ in 0..3000 {
+        if b.round.mode == nettai_battle::battle::mode::FIGHTING && b.fight.state == nettai_battle::battle::fight::FIGHTING {
+            return b;
+        }
+        let input = [0, 1].map(|side| {
+            last[side] = nettai_battle::scenario::custom_buttons(&b, side, last[side]);
+            PlayerTick::buttons(last[side])
+        });
+        b.tick(&input, Default::default());
+    }
+    panic!("the fight never started");
+}
+
+/// The navi's state as it stands, beside what a switch leaves on it (its
+/// status bit `SWITCHED`): its identity, sprite look, collision, statuses,
+/// weapons and element, and the objects it owns.
+fn state(b: &Battle) -> Vec<String> {
+    let r = b.player(0).unwrap();
+    let o = b.objects.get(r);
+    let a = b.actors.get(o.actor.unwrap());
+    let owned = b
+        .objects
+        .in_order()
+        .filter(|&q| q != r && b.objects.get(q).related.contains(&Some(r)))
+        .map(|q| b.content.defs.kind(b.objects.get(q).kind).key.to_string())
+        .collect::<Vec<_>>();
+    vec![
+        format!("identity {:?}", o.identity),
+        format!("look {:?}", b.objects.sprite(r).look),
+        format!("collision {:?}", b.collision.get(o.collision.unwrap())),
+        format!("status {:#x}", a.status & !status::SWITCHED),
+        format!("weapons {:?}", (a.buster, a.charge_shot, a.a_charge, a.alt_a_charge, a.back_special, a.ai_index, a.identity)),
+        format!("element {}", b.stats[0].element),
+        format!("owned {owned:?}"),
+    ]
+}
+
+/// The script both battles play from where they are compared: tap B (the
+/// buster), hold B to a full charge and let go (the charge shot), step up
+/// and back, tap A (the hand's first chip): each tick's buttons.
+fn script() -> Vec<u16> {
+    use nettai_battle::input::keys;
+    let mut s = Vec::new();
+    let hold = |key: u16, ticks: usize, s: &mut Vec<u16>| {
+        s.extend(std::iter::repeat_n(key, ticks));
+        s.extend(std::iter::repeat_n(0, 40));
+    };
+    hold(keys::B, 2, &mut s);
+    hold(keys::B, 240, &mut s);
+    s.extend(std::iter::repeat_n(0, 120));
+    hold(keys::UP, 2, &mut s);
+    hold(keys::DOWN, 2, &mut s);
+    hold(keys::A, 2, &mut s);
+    s.extend(std::iter::repeat_n(0, 200));
+    s
+}
+
+/// What a navi did through the script: the kinds it spawned (in order of
+/// first appearance), its sounds and the ticks the opponent was hit on.
+/// (Not the damage: a party's team navi deals the DS's, by its party's
+/// level, lib/navi_level.)
+fn plays(b: &mut Battle) -> (Vec<String>, Vec<String>, Vec<usize>) {
+    let opponent = |b: &Battle| b.objects.get(b.player(1).unwrap()).hp;
+    let mut last = opponent(b);
+    let (mut kinds, mut sounds, mut hits) = (Vec::new(), Vec::new(), Vec::new());
+    for (i, held) in script().into_iter().enumerate() {
+        b.tick(&[PlayerTick::buttons(held), Default::default()], Default::default());
+        for q in b.objects.in_order() {
+            let key = b.content.defs.kind(b.objects.get(q).kind).key.to_string();
+            if !kinds.contains(&key) {
+                kinds.push(key);
+            }
+        }
+        sounds.extend(b.sound_cues_for(0).iter().map(|c| format!("{c:?}")));
+        if opponent(b) != last {
+            hits.push(i);
+            last = opponent(b);
+        }
+    }
+    (kinds, sounds, hits)
+}
+
+const TEAM_NAVIS: [&str; 12] = [
+    "protoman", "gyroman", "knightman", "magnetman", "meddy", "napalmman", "numberman", "searchman", "shadowman", "toadman",
+    "tomahawkman", "colonel",
+];
+
+/// Each team navi switched in mid-fight is the navi it is when it starts
+/// the battle (its look, collision, statuses, weapons and the objects it
+/// wears), plays as it does (the same buster, charge shot, steps and chip:
+/// the same objects, sounds and hits), and takes the sea and a broken
+/// panel under it as it does; switched in from another team navi, too.
+/// MegaMan switched back in is MegaMan as he started.
+#[test]
+fn a_team_navi_switched_in_is_as_at_the_start() {
+    let content = exe5_content();
+    let mut wrong = Vec::new();
+    let mut megaman = fighting(&content, &[]);
+    for _ in 0..162 {
+        megaman.tick(&Default::default(), Default::default());
+    }
+    let mut megaman_on_broken = megaman.clone();
+    panel_under(&mut megaman_on_broken, "broken");
+    for _ in 0..81 {
+        megaman_on_broken.tick(&Default::default(), Default::default());
+    }
+    for navi in TEAM_NAVIS {
+        let mut a = starting_as(&content, navi);
+        for _ in 0..81 {
+            a.tick(&Default::default(), Default::default());
+        }
+        let mut s = fighting(&content, &[navi]);
+        switch_to(&mut s, 1);
+        if state(&a) != state(&s) {
+            wrong.push(format!("{navi}'s state:\n  at the start {:?}\n  switched in  {:?}", state(&a), state(&s)));
+        }
+        let (at_start, switched) = (plays(&mut a), plays(&mut s));
+        if at_start != switched {
+            wrong.push(format!("{navi}'s play:\n  at the start {at_start:?}\n  switched in  {switched:?}"));
+        }
+        // What the panel under it does to it (ToadMan dives in the sea,
+        // GyroMan hovers over a broken panel).
+        for kind in ["sea", "broken", "normal"] {
+            panel_under(&mut a, kind);
+            panel_under(&mut s, kind);
+            if state(&a) != state(&s) {
+                wrong.push(format!("{navi} on {kind}:\n  at the start {:?}\n  switched in  {:?}", state(&a), state(&s)));
+            }
+        }
+        // From another team navi (the next in the list) rather than MegaMan.
+        let other = TEAM_NAVIS[(TEAM_NAVIS.iter().position(|&n| n == navi).unwrap() + 1) % TEAM_NAVIS.len()];
+        let mut from_other = fighting(&content, &[other, navi]);
+        switch_to(&mut from_other, 1);
+        switch_to(&mut from_other, 2);
+        let mut a = starting_as(&content, navi);
+        for _ in 0..161 {
+            a.tick(&Default::default(), Default::default());
+        }
+        if state(&a) != state(&from_other) {
+            wrong.push(format!("{navi} from {other}:\n  at the start {:?}\n  switched in  {:?}", state(&a), state(&from_other)));
+        }
+        let mut back = fighting(&content, &[navi]);
+        switch_to(&mut back, 1);
+        switch_to(&mut back, 0);
+        if state(&back) != state(&megaman) {
+            wrong.push(format!("MegaMan back from {navi}:\n  at the start {:?}\n  back  {:?}", state(&megaman), state(&back)));
+        }
+        // Switched out over a broken panel (GyroMan hovering).
+        let mut back = fighting(&content, &[navi]);
+        switch_to(&mut back, 1);
+        panel_under(&mut back, "broken");
+        switch_to(&mut back, 0);
+        if state(&back) != state(&megaman_on_broken) {
+            wrong.push(format!(
+                "MegaMan back from {navi} on a broken panel:\n  standing there {:?}\n  back  {:?}",
+                state(&megaman_on_broken),
+                state(&back)
+            ));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// GyroMan switched in hovers over a broken panel (his `tick`, 0x080F0A10),
+/// as he does when he starts the battle; MegaMan switched in there doesn't
+/// (the settle clears the bit, 0x0202C8F8).
+#[test]
+fn gyroman_switched_in_hovers_over_a_broken_panel() {
+    let content = exe5_content();
+    let mut b = fighting(&content, &["gyroman"]);
+    switch_to(&mut b, 1);
+    panel_under(&mut b, "broken");
+    assert_ne!(navi_status(&b) & status::HOVERING, 0, "GyroMan hovers");
+    switch_to(&mut b, 0);
+    assert_eq!(navi_status(&b) & status::HOVERING, 0, "MegaMan doesn't");
 }
