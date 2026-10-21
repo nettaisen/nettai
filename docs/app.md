@@ -256,10 +256,12 @@ going on and its scenery moving as the game's pause moves it (§15).
 docs/design/exe5ds-map.md §4.2). Where the player's side has partners, the window shows the party beside the battle, in
 the app's layer and never in the battle's picture (which shows only what the original's top screen draws): on a
 desktop a strip at the picture's bottom left: under the picture where the window leaves room, else over the field's
-foot, its last 10 of 160 rows under the panels' lip, where nothing of the battle is drawn, at any shape of window (the
-member on the field framed in the cursor's color, then each switch's control as bound and the member it names, each
-with its face, its HP and a bar of it, then the round's switches as pips, those made dim); on a phone, under MENU, the
-switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field and
+foot, its last 10 of 160 rows under the panels' lip, where nothing of the battle is drawn, at any shape of window: two
+groups a line apart, each under its word (the user found evenly spaced parts unclear): ON FIELD, the member on the field
+framed in the cursor's color with the round's switches as pips beside it (those made dim); NAVI CHANGE, the two
+switches, each one unit, its control as bound in the frame of the member it switches to (its face, its HP and a bar of
+it), the two well apart; on a phone, under MENU, the
+switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field under ON FIELD and
 the pips between them. All of it is read from the battle each frame through the frontend (`party::view`: the navi on
 the field's HP its object's, a benched member's its block's; on the custom screen, and after it until the turn's start fields it, the screen's choice: `party::Panel::active`), and the
 round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The navi changes** (the player's word, "Navi change left" and "right", and the overview's stat "Navi changes": the user's; the code's word is switch) are two
