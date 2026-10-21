@@ -501,17 +501,6 @@ language = "ja"
 "p-btlpk2" = { name = "P.バトルパック2", description = "パーティーナビの\nすべての せいのうを\nおおきく あげる" }
 "p-spport" = { name = "P.サポート", description = "パーティーナビが\nえんごを行う" }
 
-# PartyCust programs' effects and kinds (en.toml says what this is).
-[partycust_programs_effects]
-"hp" = "最大HP +{amount}"
-"attack" = "バスター攻撃力 +{amount}"
-"chip_attack" = "専用チップ攻撃力 +{amount}"
-"support" = "控えからサポート"
-"kind.hp" = "HP"
-"kind.attack" = "アタック"
-"kind.chip_attack" = "チップ攻撃"
-"kind.special" = "スペシャル"
-
 [patch_cards]
 "alpha" = { name = "プロト" }
 "alphabug" = { name = "プロトバグ" }
@@ -624,6 +613,17 @@ language = "ja"
 "yahoots-bug-repair" = { name = "マハ・ジャラマの\nバグしゅうせい" }
 "yort" = { name = "ヨーヨット" }
 "zomon" = { name = "ザエモン" }
+
+# PartyCust programs' effects and kinds (en.toml says what this is).
+[partycust_programs_effects]
+"hp" = "最大HP +{amount}"
+"attack" = "バスター攻撃力 +{amount}"
+"chip_attack" = "専用チップ攻撃力 +{amount}"
+"support" = "控えからサポート"
+"kind.hp" = "HP"
+"kind.attack" = "アタック"
+"kind.chip_attack" = "チップ攻撃"
+"kind.special" = "スペシャル"
 
 # Each line a patch card's menu shows of an effect, by the effect's kind and its one choice's name (the
 # editor's key), `{amount}` its number: the Japanese ROMs' effect names (0x081373D0, 0x081374B8). Written by bn6battle-verify's

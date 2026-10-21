@@ -501,19 +501,6 @@ language = "en"
 "p-btlpk2" = { name = "P.Btlpk2", description = "Majorly\nincreases\nNavi pow" }
 "p-spport" = { name = "P.Spport", description = "Party Navi\nsupport\nprogram" }
 
-# PartyCust programs' effects as the Party tab's library and strip say them (the program's `effects` by their kind,
-# `{amount}` the effect's number), and a program's kind (`kind.` and its definition's `kind`), by the collection's name
-# with `_effects`. Ours: the DS's own words are the programs' descriptions.
-[partycust_programs_effects]
-"hp" = "Max HP +{amount}"
-"attack" = "Buster attack +{amount}"
-"chip_attack" = "Special chip attack +{amount}"
-"support" = "Supports from the bench"
-"kind.hp" = "HP"
-"kind.attack" = "Attack"
-"kind.chip_attack" = "Chip attack"
-"kind.special" = "Special"
-
 [patch_cards]
 "alpha" = { name = "Alpha" }
 "alphabug" = { name = "AlphaBug" }
@@ -626,6 +613,19 @@ language = "en"
 "yahoots-bug-repair" = { name = "Yahoot's\nBug\nRepair" }
 "yort" = { name = "Yort" }
 "zomon" = { name = "Zomon" }
+
+# PartyCust programs' effects as the Party tab's library and strip say them (the program's `effects` by their kind,
+# `{amount}` the effect's number), and a program's kind (`kind.` and its definition's `kind`), by the collection's name
+# with `_effects`. Ours: the DS's own words are the programs' descriptions.
+[partycust_programs_effects]
+"hp" = "Max HP +{amount}"
+"attack" = "Buster attack +{amount}"
+"chip_attack" = "Special chip attack +{amount}"
+"support" = "Supports from the bench"
+"kind.hp" = "HP"
+"kind.attack" = "Attack"
+"kind.chip_attack" = "Chip attack"
+"kind.special" = "Special"
 
 # Each line a patch card's menu shows of an effect, by the effect's kind and its one choice's name (the
 # editor's key), `{amount}` its number: the US ROMs' effect names (0x08137818, 0x08137900). Written by bn6battle-verify's
