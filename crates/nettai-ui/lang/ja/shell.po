@@ -382,10 +382,3 @@ msgstr "更新の準備ができました。メインメニューで nettai が�
 
 msgid "The update couldn't be downloaded. It's tried again next start."
 msgstr "更新をダウンロードできませんでした。次回の起動時にもう一度試します。"
-
-# A party battle's strip beside the battle: the member on the field, and the two navi changes.
-msgid "On field"
-msgstr "フィールド"
-
-msgid "Navi change"
-msgstr "ナビチェンジ"
