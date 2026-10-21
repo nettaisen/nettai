@@ -153,6 +153,7 @@ export enum BuildPart {
     navicust,
     patch-cards,
     auto-battle,
+    party,
 }
 
 // A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
@@ -344,6 +345,9 @@ export global BuildWords {
         if part == BuildPart.auto-battle {
             return @tr("the auto battle data");
         }
+        if part == BuildPart.party {
+            return @tr("the party");
+        }
         return "";
     }
     public pure function not-taken(part: BuildPart) -> string {
@@ -381,6 +385,10 @@ export global BuildWords {
     }
     public pure function budget(used: int, limit: int) -> string {
         return @tr("{} MB, limit {}", used, limit);
+    }
+    // (A party's partner's PartyCust programs against its gauge.)
+    public pure function gauge-over(used: int, limit: int) -> string {
+        return @tr("Programs fill {} blocks, the gauge has {}", used, limit);
     }
     public pure function off-board() -> string {
         return @tr("A piece is off the board");

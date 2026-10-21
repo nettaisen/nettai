@@ -216,7 +216,7 @@ return merge {
     require("@self/wooddrgn"),
     require("@self/yoyo"),
     require("@self/z-saver"),
-    -- A navi chip's chips, with its navi.
+    -- Chips defined with what they belong to: a navi chip's, with its navi; a Double Attack's, with its attack.
     require("./navis/chargeman/chip"),
     require("./navis/dustman/chip"),
     require("./navis/elecman/chip"),

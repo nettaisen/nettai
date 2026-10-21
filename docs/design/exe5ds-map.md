@@ -782,11 +782,37 @@ G-OTOSHI 540.
 | 11 K-BOMB | Each throws 2 bombs (T3 0xCC: 0C-02, then 10-25 in the air), 31 ticks apart, lobbed 60 ticks to (+3, 0). On a solid panel each bursts into **4 hits** on a 2×2 quadrant: MegaMan's quadrants 0 and 2, NumberMan's 1 and 3, so together the 3×3 with its center hit 4 times. 16 hitboxes. | the chip's (null); 5/4; modifier 3; status 0x20 (confuse) | none |
 | 12 G-OTOSHI | ShadowMan drives 12 frogs (T3 0xA2, 10-46), one every 11 ticks; ToadMan's song (0xD8) is visual. Each frog falls on a random panel: one holding an enemy with 10/16 odds, else another (`object_getPanelsFiltered`; its panel set is open). It hits once below z 20. On a hit, or 20 ticks after landing on a solid panel, **the panel becomes sea** (type 10). On a hole it vanishes. Up to 12 hits. | **Aqua**; 5/0x0A (thrown); modifier 1 | RNG2: 2 a frog, 24 |
 
-Still open:
-- #9's bug bytes (`sub_801A4D0`) and whether a copy can hit twice;
-- #12's panel set;
-- the immobilizer's parameter 0x178 in #2;
-- that EXE5's status durations are EXE6's (0x11, 0x20, 0x42).
+**Settled by the port** (read, step 9; the port's tests deal what the recordings lost):
+- **#1 D-HERO:** as above; its director alone doesn't link its actors (every other director writes each actor into
+  the other's +0x60 as it brings them, and most actors wait on their partner).
+- **#2 M-ZAN:** the immobilizer's 0x178 is its Param1 0x78 (the DS's immobilizer is the GBA's code but that it
+  lingers Param1 ticks, the GBA's 20) and Param2 1 (it plays 0xFD). ProtoMan's search goes on after each slash: he
+  slashes every enemy he can reach, one after another (one against one navi). His charge is 120 ticks, the charged
+  glow 80 before its end.
+- **#3 M-AIR:** each bomb (T3 0xA1, the GBA's never-spawned attack object 0x62) hits at most once, on its own panel;
+  of the nine, the one on the opponent's panel hits. MagnetMan's T4 0xA3 are visual (a bomb sent up to GyroMan, sound
+  0xFE).
+- **#4 D-VALCAN:** the T3 0xA1 the outline lists is unreachable (a copy of M-AIR's drop and count routines follows
+  its spawn stub, and nothing calls it). The DS's bullet burst (0x020A1FAA) sets the collision's self flag 0x10000
+  (hit even while dimmed) for its two new bullet rows, 0x14 and 0x15 (the GBA's 0x11 and 0x0C otherwise).
+- **#5 C-SCOPE:** the stop key is A as the dimmed input record has it (AIData +0x2C bit 1, the actors sharing the
+  user's AIData: EXE6's `sub_80C2EB0` reads the same), observed.
+- **#6 C-BOMB:** the capsule itself has no hit; its burst is the hit of the row (modifier 0, status 0x11). Meddy
+  doesn't charge; NapalmMan attacks only if the capsule is there as his charge ends.
+- **#7 BR-RUSH:** the thrown object is Colonel's cape (the GBA's attack object 2) with Param2 2, which carries no
+  immobilizing status: a 0-damage hit that stops it. Its wait-to-slide test compares the wrong register, so it
+  always flies.
+- **#8 B-SHOOT:** only the balls kicked into the opponent's row hit: two of six.
+- **#9 E-SAPPOU:** the bug bytes are the moon blade's: bug 0x18 argument 1, an HP drain of level 1 (the recording's
+  306 is two hits of 150 and the drain's 1 a 40 ticks after the dimming). A copy hits a given enemy once. The DS
+  changed the blade: its first sweep at once (0x02210694), its hits while dimmed with its third parameter set
+  (0x0221070C).
+- **#10 K-THROW and #11 K-BOMB:** the arc is the DS's rewrite of `sub_8001330` (0x0208DB5C: the SDK's arctangent
+  table, the hardware square root), not the GBA's.
+- **#12 G-OTOSHI:** ToadMan drops the frogs; ShadowMan sings until he is done. The panel set: an RNG2 draw's low four
+  bits under 10, a panel holding an enemy body; else any panel without one, the user's side's included.
+
+Still open: that EXE5's status durations are EXE6's (0x11, 0x20, 0x42).
 
 ### 5.1 Art and sound: the GBA counterparts
 
@@ -820,12 +846,60 @@ The DS code names its sprites and sounds by the GBA's ids: the same code with th
 | the navis' switch voices | the swap's land step (0x02098ED0): two per navi, a voice stream and a sound effect 0x214–0x22D, past the GBA's last sound 0x173 | none: the switch already plays 0x8D (`cross-change`). Leave the voice out |
 | the switch music | per-navi music (MegaMan, ProtoMan, Colonel) | DS music: ignored, as the user said |
 
-**Pixels (open):** the ids above are the ones the code passes, and the GBA has art at each of them. That the
-DS draws the same art at the same id is **not checked**. The DS sprite list (0x02104E18) names file-system
-files, not GBA addresses, and its indexing isn't the GBA's: its 00-00 entry names bs01.bin, which is
-byte-identical to the GBA's 08-01 archive (ProtoMan). A comparison in scratch (`double_sprites.py`, unfinished)
-has to settle the mapping before "the same id" can be read as "the same art". The user's rule holds either way:
-the port draws the GBA sprites at the GBA ids the GBA's own code for the same object uses.
+**Pixels (read, `double_sprites.py`):** the same id is the same art. The DS's `sprite_load` (0x0206CC68) takes
+the GBA's arguments and reads a resource number from its list, [[0x02104E18 + category] + 4 · index] (bit 31: none,
+the placeholder 0x304); 0x02001F68 loads that resource by its path, the word at 0x021588B0 + 4 · number (ARM
+0x02034120). The paths follow the GBA's categories and indices (`\rom\a\pl00.bin` for 00-00, `bs01.bin` for 08-01,
+`pshl00.bin` for 0C-00, `shl23.bin` for 10-23, `efc08.bin` for 14-08). (The earlier reading took 00-00's number
+0x215 for a file-system id, which named ProtoMan's bs01.bin.) Compared byte for byte with BRBE's archives (decompressed
+where they are), every sprite the Double Attacks load is the GBA's at the same id but two, both reached only in a Hub
+Style the GBA doesn't have (NaviStats +0x4C 3; the GBA's patch card 111 sets 1 or 2):
+- 00-0D, the DS's own MegaMan (pl0d.bin; the GBA's list has another archive there): his base sprite stands in;
+- 0C-03, the buster arm: the DS's has a fifteenth animation (0x0E, the arm in that style); the GBA's fourteen. The
+  arm's animation 0x0D stands in.
+
+### 5.3 The port (step 9)
+
+**Where it is** (content/exe5):
+- `double_attacks/<name>/`: each Double Attack's module: its chip (the DS's record and names, gen_content.py's DS
+  chips; its record's use the cannon's, which nothing starts: no folder or hand holds it), and the chip's
+  `double_attack` (an EXE5 extension, rules/init.luau's `extends.chip`): its damage row and its two actors, each a
+  role (its navi, its place beside the user's spot, its actions), with the objects it alone spawns beside it.
+  `double_attacks/init.luau` lists the twelve in the DS's order: the pair table is each Double Attack's own two
+  navis, either way round.
+- `lib/double_attack.luau`, the shared maker: the director (one effect kind a Double Attack, the DS's 0x96 + n: the
+  dimming's begin, dim, the chip's telop, the course, undim, end), the actor kind with its role table and the link
+  between the two, and the steps most share (appear, with or without its panel's check and a team navi's parts;
+  the charge and its glows; leave; the glow at the hand; the hit while dimmed), and MegaMan's look by his stats (the
+  active navi's, else his member block's: his form's sprite and overlay, Hub Style, his light/dark value's palette,
+  his buster arm).
+- `rules/double_attacks.luau`: the launcher (0x02042DC0) on the rules' `navi_switched` in battle; the trigger
+  (0x02042E74) on the paused path, which keeps the partner and raises `follow_up`, whose action (0x5C) is the role
+  `follow_up`; once a round (the side's state `double_attack`, AIData +0x73).
+- `lib/ds_arc.luau`: the DS's arc (K-THROW, K-BOMB). The GBA's objects a Double Attack reuses (the napalm bomb, the
+  bullets, the immobilizer, the moon blade) keep the GBA's arc where they use one.
+
+**Against the recordings** (tools/dslab, `double/`): each deals what the DS's lost at navi level 9 (nettai-match's
+tests, on a field of the engine's: there a Double Attack's hit on side 1's navi lands a tick before the DS's, whose
+update list runs side 1's navi before side 0's from the battle's start). Replayed through exe5-compat (verify's
+exe5_replay on lab-exe5ds/double, the kinds in compat/kinds.toml): M-ZAN and E-SAPPOU match every frame; B-SHOOT,
+C-SCOPE (stopped and not), D-VALCAN every object, the recording console's RNG1 differing from before the launch (the
+party's own draws); the rest first differ where the side-symmetry rule (docs/engine/side-symmetry.md; the canonical
+side 1, the recordings' Double Attacks side 0's) parts from the original: D-HERO's flashes and G-OTOSHI's frogs on a
+list taken in the side's order (§1.5: with the original's order D-HERO matches every object, G-OTOSHI until the DS
+bubbles a ToadMan whom a frog put on sea, the sea's rule, not the Double Attack's), K-THROW's, K-BOMB's and C-BOMB's
+arcs a unit off in the mirror image (§1.6: unmirrored, K-THROW matches every frame and K-BOMB every object), BR-RUSH's
+cape and M-AIR's GyroMan on a panel border (§1.1). The paused path (d-hero-custom-screen) stops before the Double
+Attack, in the custom screen's switch.
+The frames (verify's `double_frames.py`, the engine's example `double_attack_frames`): of what each draws, the
+share the DS's capture shows the same at its tick, with the shake's offset allowed: C-SCOPE 99%, K-THROW 99%,
+B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 92%, D-VALCAN 92%, D-HERO
+79%. The rest is panels drawn from RNG2 (D-HERO's flashes, D-VALCAN's bullet heights, G-OTOSHI's frogs, C-BOMB's
+capsule and its fire's spread), the lab stage's boulders, the DS's camera shake (it moves the picture further than
+the engine's) and the one-tick shifts. The actors, their attachments and effects show the same art, places,
+animations and palettes (the DS lab's MegaMan has the light/dark value 1000). The share counts only what the engine
+draws: a part it leaves out shows in the sheets alone (C-SCOPE's scopes and G-OTOSHI's frogs drew half, their first
+part hidden, until each was looked at against the DS's).
 
 ## 6. The DS's other battle changes (catalogued, not adopted)
 

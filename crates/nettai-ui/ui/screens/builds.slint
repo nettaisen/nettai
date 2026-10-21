@@ -19,18 +19,20 @@ import { FolderView, FolderTab, FolderOverlay } from "builds/folder.slint";
 import { NavicustView, NavicustTab } from "builds/navicust.slint";
 import { PatchCardsView, PatchCardsTab, PatchCardsOverlay } from "builds/patch_cards.slint";
 import { AutoBattleView, AutoBattleTab, AutoBattleOverlay } from "builds/auto_battle.slint";
+import { PartyView, PartyTab, PartyOverlay } from "builds/party.slint";
 
 // Each tab's view reaches the app through here (app.slint exports what this file does).
-export { NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView }
+export { NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView, PartyView }
 
-// The editor's tabs, in the bar's order. A game has those its builds have something for (auto battle data:
-// some games').
+// The editor's tabs, in the bar's order. A game has those its builds have something for (auto battle data and a
+// party: some games').
 export enum EditorTab {
     navi,
     folder,
     navicust,
     patch-cards,
     auto-battle,
+    party,
 }
 
 // What Builds shows: src/screens/builds/mod.rs sets these.
@@ -51,7 +53,7 @@ export global BuildsView {
     in property <EditorTab> shown;
     in property <int> tab-way: 1;
     // ---- Words the app asks for.
-    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle"))];
+    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle")), Caps.of(@tr("Party"))];
     // A tab's CLEAR's dialog's button (docs/design/app-ui.md §2.71).
     out property <string> clear-word: Caps.of(@tr("Clear"));
 }
@@ -87,6 +89,9 @@ component EditorBody inherits Rectangle {
         if BuildsView.shown == EditorTab.auto-battle: AutoBattleTab {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+        if BuildsView.shown == EditorTab.party: PartyTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
 }
 
@@ -100,8 +105,8 @@ export component BuildsScreen inherits Page {
     back: BuildsView.to-practice ? Caps.of(@tr("Practice")) : Caps.of(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
-    hints: BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : AutoBattleView.hints;
-    status: BuildsView.shown == EditorTab.navi ? NaviView.status : BuildsView.shown == EditorTab.folder ? FolderView.status : BuildsView.shown == EditorTab.navicust ? NavicustView.status : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.status : AutoBattleView.status;
+    hints: BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : BuildsView.shown == EditorTab.party ? PartyView.hints : AutoBattleView.hints;
+    status: BuildsView.shown == EditorTab.navi ? NaviView.status : BuildsView.shown == EditorTab.folder ? FolderView.status : BuildsView.shown == EditorTab.navicust ? NavicustView.status : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.status : BuildsView.shown == EditorTab.party ? PartyView.status : AutoBattleView.status;
 
     // The tab bar, flush under the header, and the tab chosen.
     Rule {
@@ -193,7 +198,7 @@ export component BuildsScreen inherits Page {
     }
 }
 
-// What opens over the editor: on a phone the Folder's, the Patch cards' and the Auto battle tab's sheets. It covers
+// What opens over the editor: on a phone the Folder's, the Patch cards', the Auto battle and the Party tab's sheets. It covers
 // the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
 export component BuildsOverlay inherits Rectangle {
     if BuildsView.shown == EditorTab.folder && FolderView.sheet: FolderOverlay {
@@ -203,6 +208,9 @@ export component BuildsOverlay inherits Rectangle {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     if BuildsView.shown == EditorTab.auto-battle && AutoBattleView.sheet: AutoBattleOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if BuildsView.shown == EditorTab.party && PartyView.sheet: PartyOverlay {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }

@@ -54,6 +54,7 @@ pub fn part_of(content: &nettai_battle::Content, _builds: &nettai_match::build::
         Some(EditorTab::Navicust) => BuildPart::Navicust,
         Some(EditorTab::PatchCards) => BuildPart::PatchCards,
         Some(EditorTab::AutoBattle) => BuildPart::AutoBattle,
+        Some(EditorTab::Party) => BuildPart::Party,
         Some(EditorTab::Folder) => BuildPart::Folder,
         Some(EditorTab::Navi) => BuildPart::Navi,
         None => BuildPart::None,
@@ -134,6 +135,8 @@ impl Words<'_> {
             Wrong::Range { value, least, most } => say.invoke_range(*value as i32, *least as i32, *most as i32),
             Wrong::NotTaken => say.invoke_not_taken(part),
             Wrong::Twice => say.invoke_twice(part),
+            // (A partner's programs fill blocks of its gauge, not MB.)
+            Wrong::Budget(c) if part == BuildPart::Party => say.invoke_gauge_over(n(c.used), n(c.limit)),
             Wrong::Budget(c) => say.invoke_budget(n(c.used), n(c.limit)),
             Wrong::OffBoard => say.invoke_off_board(),
             Wrong::Overlap { .. } => say.invoke_overlap(),
