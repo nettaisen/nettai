@@ -843,8 +843,9 @@ impl Shell {
     // ---- The window's scale ------------------------------------------------------------------------------
 
     /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever
-    /// is less (upright, a 390th of its width), and the window's scale is set to that. True if the layout
-    /// turned between the desktop's and the phone's.
+    /// is less (upright, a 390th of its width), and the window's scale is set to that. (A screen whose body
+    /// scrolls takes a shorter layout first: [`ScreenId::least_height`].) True if the layout turned between the
+    /// desktop's and the phone's.
     fn fit_window(&mut self) -> bool {
         let ui = self.ui();
         let window = ui.window();
@@ -855,7 +856,7 @@ impl Shell {
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
         let (width, height) = (size.width as f32 / os, size.height as f32 / os);
         let phone = width < 0.8 * height;
-        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / 800.0) }.max(0.2);
+        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / self.screen.least_height()) }.max(0.2);
         let factor = os * unit;
         let turned = phone != self.scale.phone;
         let resized = (size.width, size.height) != self.scale.size || (window.scale_factor() - factor).abs() > 0.0005;
@@ -1091,6 +1092,8 @@ impl App {
         // (What was shown this frame is the screen before's.)
         self.shell.showing.reset();
         self.shell.screen = to;
+        // (Its layout's least height may be another's: the window's scale with it.)
+        self.shell.fit_window();
         self.shell.lock_game(false);
         let ui = self.shell.ui();
         // Back's way: its screens leave and arrive the other way.

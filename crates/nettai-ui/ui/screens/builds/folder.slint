@@ -11,7 +11,7 @@
 import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
@@ -589,324 +589,338 @@ export component FolderTab inherits Rectangle {
     pure function slot-y(i: int) -> length {
         return root.pane-y + 52px + mod(i, 15) * (Theme.chip-row + 2px);
     }
-    // ---- The strip: the chip under the cursor.
-    PanelBack {
-        x: 0;
-        y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
-    }
-
-    Image {
-        x: 18px;
-        y: root.top + 16px;
-        width: 84px;
-        height: 72px;
-        visible: !Theme.phone;
-        source: FolderView.detail.art;
-        image-rendering: pixelated;
-    }
-
-    // (The name and code end where the strip's top right, the refusal's and the problem's, begins.)
-    HorizontalLayout {
-        x: 120px;
-        y: root.top + 19px;
-        width: max(0px, parent.width / 2 - 120px - 8px);
-        height: 20px;
-        visible: !Theme.phone;
-        spacing: 6px;
-        alignment: start;
-        Text {
-            text: FolderView.detail.name;
-            color: FolderView.detail.kind == ChipKind.mega ? Theme.mega : FolderView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
-            font-family: Theme.body;
-            font-size: 16px;
-            font-weight: 700;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-
-        Text {
-            text: FolderView.detail.code;
-            color: Theme.code;
-            font-family: Theme.mono;
-            font-size: 16px;
-            font-weight: 700;
-            vertical-alignment: center;
-        }
-    }
-
-    // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal; else what the rules have
-    // against it.)
-    Refusal {
-        x: parent.width / 2;
-        y: root.top + 19px;
-        width: parent.width / 2 - 16px;
-        visible: !Theme.phone;
-        text: FolderView.detail.problem;
-        problem: FolderView.detail.fault;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    Text {
-        x: 120px;
-        y: root.top + 43px;
-        width: parent.width - 136px;
-        height: 18px;
-        visible: !Theme.phone;
-        text: FolderView.detail.description;
-        color: Theme.muted;
-        font-family: Theme.body;
-        font-size: 13px;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    HorizontalLayout {
-        x: 120px;
-        y: root.top + 69px;
-        width: parent.width - 136px;
-        height: 16px;
-        visible: !Theme.phone;
-        spacing: 16px;
-        alignment: start;
-        Image {
-            width: FolderView.detail.there ? 16px : 0px;
-            height: 16px;
-            source: FolderView.detail.element;
-            image-rendering: pixelated;
-        }
-
-        for fact in FolderView.detail.facts: Text {
-            text: fact;
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 12px;
-            vertical-alignment: center;
-        }
-    }
-
-    // ---- The folder, framed: its title and its counts, then its entries.
-    PanelBack {
-        x: 0;
-        y: Theme.phone ? 0px : root.pane-y;
-        width: Theme.phone ? parent.width : root.pane-width;
-        height: Theme.phone ? root.counts-height : 482px;
-        accent: !Theme.phone;
-        fill: Theme.phone ? Theme.inset : Theme.panel;
-    }
-
-    folder-title := Label {
-        x: 12px;
-        y: root.pane-y + (root.two-lines ? 5px : 0px);
-        width: root.pane-width - 24px;
-        height: root.two-lines ? 14px : 44px;
-        visible: !Theme.phone;
-        text: Caps.of(@tr("Folder"));
-        color: FolderView.in-library ? Theme.muted : Theme.cursor;
-    }
-
-    // (On a phone the counts are two columns in their own box.)
-    chips := CountBox {
-        x: Theme.phone ? 12px : mega.x - 12px - self.width;
-        y: Theme.phone ? 12px : root.counts-y;
-        label: @tr("Chips");
-        value: FolderView.counts.chips;
-        suffix: "/\{FolderView.counts.size}";
-        value-width: 32px;
-        over: FolderView.counts.chips != FolderView.counts.size;
-    }
-
-    mega := CountBox {
-        x: Theme.phone ? parent.width / 2 : giga.x - 12px - self.width;
-        y: chips.y;
-        label: @tr("Mega");
-        value: FolderView.counts.mega;
-        suffix: "/\{FolderView.counts.mega-limit}";
-        value-width: 32px;
-        over: FolderView.counts.mega > FolderView.counts.mega-limit;
-    }
-
-    giga := CountBox {
-        x: Theme.phone ? 12px : regular.x - 12px - self.width;
-        y: Theme.phone ? 34px : chips.y;
-        label: @tr("Giga");
-        value: FolderView.counts.giga;
-        suffix: "/\{FolderView.counts.giga-limit}";
-        value-width: 32px;
-        over: FolderView.counts.giga > FolderView.counts.giga-limit;
-    }
-
-    regular := CountBox {
-        x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x - 12px : root.counts-right) - self.width;
-        y: giga.y;
-        label: Theme.phone ? @tr("Regular") : @tr("Reg");
-        value: FolderView.counts.regular;
-        suffix: "/\{FolderView.counts.regular-limit} MB";
-        value-width: 52px;
-        over: FolderView.counts.regular > FolderView.counts.regular-limit;
-    }
-
-    tag := CountBox {
-        x: Theme.phone ? 12px : root.counts-right - self.width;
-        y: Theme.phone ? 56px : chips.y;
-        visible: FolderView.counts.tags;
-        label: @tr("Tag");
-        value: FolderView.counts.tag;
-        suffix: "/\{FolderView.counts.tag-limit} MB";
-        value-width: 52px;
-        over: FolderView.counts.tag > FolderView.counts.tag-limit;
-    }
-
-    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
-    // entry emptied, its marks with it, asked first; dim where the folder holds nothing. At the header's right end, its
-    // word where a count's would end; on a phone at the right of the counts' box's first line.
-    clear := WordButton {
-        x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
-        y: Theme.phone ? 12px : root.two-lines ? root.pane-y + 4px : root.counts-y;
-        nav: "clear";
-        text: Caps.of(@tr("Clear"));
-        enabled: FolderView.counts.chips > 0;
-    }
-
-    // (What is wrong with the folder: a phone's last line of its counts' box.)
-    ProblemNote {
-        x: 12px;
-        y: root.counts-height - 12px - self.height;
-        width: parent.width - 24px;
-        visible: Theme.phone;
-        text: FolderView.problems;
-    }
-
     changed counts-over => {
         if root.counts-over {
             Audit.clipped("the folder's counts");
         }
     }
+    // How tall what the tab shows is: on a desktop the strip and the panes under it (on a phone the tab's height: its list fills it).
+    property <length> content-height: max(self.height, Theme.phone ? self.height : root.pane-y + max(482px, 52px + 15 * (Theme.chip-row + 2px) - 2px + 16px) + 12px);
 
-    if !Theme.phone: Rectangle {
-        // (Where an entry would land while one is dragged.)
-        DropGap {
-            x: root.slot-x(max(0, FolderDrag.to));
-            y: root.slot-y(max(0, FolderDrag.to));
-            width: root.slot-width;
-            height: Theme.chip-row;
-            visible: FolderDrag.to >= 0;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        for chip[i] in FolderView.slots: SlotView {
-            x: root.slot-x(i);
-            y: root.slot-y(i);
-            width: root.slot-width;
-            chip: chip;
-            index: i;
-            chosen: i == FolderView.marked;
-            dx: root.slot-x(FolderDrag.shown(i)) - self.x;
-            dy: root.slot-y(FolderDrag.shown(i)) - self.y;
-            gone: FolderDrag.on && i == Drag.from;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-        // (The entry a chip landed in.)
-        Flash {
-            x: 12px + floor(FolderView.landed / 15) * (root.slot-width + 12px);
-            y: root.pane-y + 52px + mod(FolderView.landed, 15) * (Theme.chip-row + 2px);
-            width: root.slot-width;
-            height: Theme.chip-row;
-            seq: FolderView.landed-seq;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        // ---- The library, open.
-        library := LibraryPane {
-            x: root.pane-width + 24px;
-            y: root.pane-y;
-            width: parent.width - self.x;
-            height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
-        }
-
-        // (An entry dragged over the library is taken out, let go there.)
-        RemoveTarget {
-            x: library.x - 8px;
-            y: library.y - 8px;
-            width: library.width + 8px;
-            height: library.height + 16px;
-            shown: FolderDrag.on && Drag.removing;
-            text: Caps.of(@tr("Drop to remove"));
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        // (The entry being dragged, under the pointer, over everything; or a ghost of the library's chip, in an
-        // entry's shape, faint until it is over the entry it would go in.)
-        LiftedRow {
-            // (A library's row is wider than an entry: its ghost is held no farther in than its middle.)
-            x: Drag.x - root.absolute-position.x - (FolderDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
-            y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: root.slot-width;
-            height: Theme.chip-row;
-            visible: FolderDrag.on || FolderDrag.filling;
-            opacity: FolderDrag.filling && FolderDrag.to < 0 ? 0.7 : 1;
-            chip: FolderDrag.filling ? FolderView.ghost : FolderView.slots[max(0, Drag.from)];
-            number: FolderDrag.filling ? 0 : FolderDrag.shown(max(0, Drag.from)) + 1;
-            removing: Drag.removing;
-        }
-    }
-
-    if Theme.phone: Rectangle {
-        folder := ListView {
+    // (Where the tab is shorter than what it shows, a short window's, it scrolls: its scroll bar in the body's margin, at
+    // its right, the tab laid out as wide as it is. A mouse's drag moves what it drags: the wheel scrolls.)
+    tab-page := ScrollPage {
+        x: 0;
+        y: 0;
+        width: root.width + 12px;
+        height: root.height;
+        nav: "slot";
+        mouse-pan: false;
+        content-height: root.content-height;
+        // ---- The strip: the chip under the cursor.
+        PanelBack {
             x: 0;
-            y: root.counts-height + 12px;
-            height: parent.height - self.y;
-            nav: "slot";
-            count: FolderView.slots.length;
-            row-height: 40px;
-            // (While an entry is dragged, the gap is where it is: no row is marked.)
-            chosen: FolderDrag.on ? -1 : FolderView.marked;
-            // (A mouse's drag on an entry moves it: the wheel scrolls.)
-            mouse-pan: false;
-            for at in folder.shown: SlotRow {
-                y: self.index * folder.pitch;
-                width: folder.row-width;
-                index: folder.first + at;
-                dy: (FolderDrag.shown(self.index) - self.index) * folder.pitch;
-                gone: FolderDrag.on && self.index == Drag.from;
+            y: root.top;
+            height: Theme.phone ? 0px : 104px;
+            visible: !Theme.phone;
+        }
 
-                Rectangle { }  // (Copied in: docs/app.md §14.)
+        Image {
+            x: 18px;
+            y: root.top + 16px;
+            width: 84px;
+            height: 72px;
+            visible: !Theme.phone;
+            source: FolderView.detail.art;
+            image-rendering: pixelated;
+        }
+
+        // (The name and code end where the strip's top right, the refusal's and the problem's, begins.)
+        HorizontalLayout {
+            x: 120px;
+            y: root.top + 19px;
+            width: max(0px, parent.width / 2 - 120px - 8px);
+            height: 20px;
+            visible: !Theme.phone;
+            spacing: 6px;
+            alignment: start;
+            Text {
+                text: FolderView.detail.name;
+                color: FolderView.detail.kind == ChipKind.mega ? Theme.mega : FolderView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
+                font-family: Theme.body;
+                font-size: 16px;
+                font-weight: 700;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            Text {
+                text: FolderView.detail.code;
+                color: Theme.code;
+                font-family: Theme.mono;
+                font-size: 16px;
+                font-weight: 700;
+                vertical-alignment: center;
             }
         }
 
-        // (Where the entry dragged would land, over the list where it is scrolled to.)
-        Rectangle {
-            x: folder.x;
-            y: folder.y;
-            width: folder.row-width;
-            height: folder.height;
-            visible: FolderDrag.to >= 0;
-            clip: true;
+        // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal; else what the rules have
+        // against it.)
+        Refusal {
+            x: parent.width / 2;
+            y: root.top + 19px;
+            width: parent.width / 2 - 16px;
+            visible: !Theme.phone;
+            text: FolderView.detail.problem;
+            problem: FolderView.detail.fault;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        Text {
+            x: 120px;
+            y: root.top + 43px;
+            width: parent.width - 136px;
+            height: 18px;
+            visible: !Theme.phone;
+            text: FolderView.detail.description;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 13px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        HorizontalLayout {
+            x: 120px;
+            y: root.top + 69px;
+            width: parent.width - 136px;
+            height: 16px;
+            visible: !Theme.phone;
+            spacing: 16px;
+            alignment: start;
+            Image {
+                width: FolderView.detail.there ? 16px : 0px;
+                height: 16px;
+                source: FolderView.detail.element;
+                image-rendering: pixelated;
+            }
+
+            for fact in FolderView.detail.facts: Text {
+                text: fact;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---- The folder, framed: its title and its counts, then its entries.
+        PanelBack {
+            x: 0;
+            y: Theme.phone ? 0px : root.pane-y;
+            width: Theme.phone ? parent.width : root.pane-width;
+            height: Theme.phone ? root.counts-height : 482px;
+            accent: !Theme.phone;
+            fill: Theme.phone ? Theme.inset : Theme.panel;
+        }
+
+        folder-title := Label {
+            x: 12px;
+            y: root.pane-y + (root.two-lines ? 5px : 0px);
+            width: root.pane-width - 24px;
+            height: root.two-lines ? 14px : 44px;
+            visible: !Theme.phone;
+            text: Caps.of(@tr("Folder"));
+            color: FolderView.in-library ? Theme.muted : Theme.cursor;
+        }
+
+        // (On a phone the counts are two columns in their own box.)
+        chips := CountBox {
+            x: Theme.phone ? 12px : mega.x - 12px - self.width;
+            y: Theme.phone ? 12px : root.counts-y;
+            label: @tr("Chips");
+            value: FolderView.counts.chips;
+            suffix: "/\{FolderView.counts.size}";
+            value-width: 32px;
+            over: FolderView.counts.chips != FolderView.counts.size;
+        }
+
+        mega := CountBox {
+            x: Theme.phone ? parent.width / 2 : giga.x - 12px - self.width;
+            y: chips.y;
+            label: @tr("Mega");
+            value: FolderView.counts.mega;
+            suffix: "/\{FolderView.counts.mega-limit}";
+            value-width: 32px;
+            over: FolderView.counts.mega > FolderView.counts.mega-limit;
+        }
+
+        giga := CountBox {
+            x: Theme.phone ? 12px : regular.x - 12px - self.width;
+            y: Theme.phone ? 34px : chips.y;
+            label: @tr("Giga");
+            value: FolderView.counts.giga;
+            suffix: "/\{FolderView.counts.giga-limit}";
+            value-width: 32px;
+            over: FolderView.counts.giga > FolderView.counts.giga-limit;
+        }
+
+        regular := CountBox {
+            x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x - 12px : root.counts-right) - self.width;
+            y: giga.y;
+            label: Theme.phone ? @tr("Regular") : @tr("Reg");
+            value: FolderView.counts.regular;
+            suffix: "/\{FolderView.counts.regular-limit} MB";
+            value-width: 52px;
+            over: FolderView.counts.regular > FolderView.counts.regular-limit;
+        }
+
+        tag := CountBox {
+            x: Theme.phone ? 12px : root.counts-right - self.width;
+            y: Theme.phone ? 56px : chips.y;
+            visible: FolderView.counts.tags;
+            label: @tr("Tag");
+            value: FolderView.counts.tag;
+            suffix: "/\{FolderView.counts.tag-limit} MB";
+            value-width: 52px;
+            over: FolderView.counts.tag > FolderView.counts.tag-limit;
+        }
+
+        // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+        // entry emptied, its marks with it, asked first; dim where the folder holds nothing. At the header's right end, its
+        // word where a count's would end; on a phone at the right of the counts' box's first line.
+        clear := WordButton {
+            x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
+            y: Theme.phone ? 12px : root.two-lines ? root.pane-y + 4px : root.counts-y;
+            nav: "clear";
+            text: Caps.of(@tr("Clear"));
+            enabled: FolderView.counts.chips > 0;
+        }
+
+        // (What is wrong with the folder: a phone's last line of its counts' box.)
+        ProblemNote {
+            x: 12px;
+            y: root.counts-height - 12px - self.height;
+            width: parent.width - 24px;
+            visible: Theme.phone;
+            text: FolderView.problems;
+        }
+
+
+        if !Theme.phone: Rectangle {
+            // (Where an entry would land while one is dragged.)
             DropGap {
-                x: 0;
-                y: max(0, FolderDrag.to) * folder.pitch - folder.scroll;
-                width: parent.width;
-                height: 40px;
+                x: root.slot-x(max(0, FolderDrag.to));
+                y: root.slot-y(max(0, FolderDrag.to));
+                width: root.slot-width;
+                height: Theme.chip-row;
+                visible: FolderDrag.to >= 0;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
+
+            for chip[i] in FolderView.slots: SlotView {
+                x: root.slot-x(i);
+                y: root.slot-y(i);
+                width: root.slot-width;
+                chip: chip;
+                index: i;
+                chosen: i == FolderView.marked;
+                dx: root.slot-x(FolderDrag.shown(i)) - self.x;
+                dy: root.slot-y(FolderDrag.shown(i)) - self.y;
+                gone: FolderDrag.on && i == Drag.from;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+            // (The entry a chip landed in.)
+            Flash {
+                x: 12px + floor(FolderView.landed / 15) * (root.slot-width + 12px);
+                y: root.pane-y + 52px + mod(FolderView.landed, 15) * (Theme.chip-row + 2px);
+                width: root.slot-width;
+                height: Theme.chip-row;
+                seq: FolderView.landed-seq;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
+            // ---- The library, open.
+            library := LibraryPane {
+                x: root.pane-width + 24px;
+                y: root.pane-y;
+                width: parent.width - self.x;
+                height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+            }
+
+            // (An entry dragged over the library is taken out, let go there.)
+            RemoveTarget {
+                x: library.x - 8px;
+                y: library.y - 8px;
+                width: library.width + 8px;
+                height: library.height + 16px;
+                shown: FolderDrag.on && Drag.removing;
+                text: Caps.of(@tr("Drop to remove"));
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
+            // (The entry being dragged, under the pointer, over everything; or a ghost of the library's chip, in an
+            // entry's shape, faint until it is over the entry it would go in.)
+            LiftedRow {
+                // (A library's row is wider than an entry: its ghost is held no farther in than its middle.)
+                x: Drag.x - root.absolute-position.x - (FolderDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
+                y: Drag.y - root.absolute-position.y - Drag.grab-y;
+                width: root.slot-width;
+                height: Theme.chip-row;
+                visible: FolderDrag.on || FolderDrag.filling;
+                opacity: FolderDrag.filling && FolderDrag.to < 0 ? 0.7 : 1;
+                chip: FolderDrag.filling ? FolderView.ghost : FolderView.slots[max(0, Drag.from)];
+                number: FolderDrag.filling ? 0 : FolderDrag.shown(max(0, Drag.from)) + 1;
+                removing: Drag.removing;
+            }
         }
 
-        LiftedRow {
-            x: Drag.x - root.absolute-position.x - Drag.grab-x;
-            y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: folder.row-width;
-            height: 40px;
-            visible: FolderDrag.on;
-            big: true;
-            chip: FolderView.slots[max(0, Drag.from)];
-            number: FolderDrag.shown(max(0, Drag.from)) + 1;
+        if Theme.phone: Rectangle {
+            folder := ListView {
+                x: 0;
+                y: root.counts-height + 12px;
+                height: parent.height - self.y;
+                nav: "slot";
+                count: FolderView.slots.length;
+                row-height: 40px;
+                // (While an entry is dragged, the gap is where it is: no row is marked.)
+                chosen: FolderDrag.on ? -1 : FolderView.marked;
+                // (A mouse's drag on an entry moves it: the wheel scrolls.)
+                mouse-pan: false;
+                for at in folder.shown: SlotRow {
+                    y: self.index * folder.pitch;
+                    width: folder.row-width;
+                    index: folder.first + at;
+                    dy: (FolderDrag.shown(self.index) - self.index) * folder.pitch;
+                    gone: FolderDrag.on && self.index == Drag.from;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
+                }
+            }
+
+            // (Where the entry dragged would land, over the list where it is scrolled to.)
+            Rectangle {
+                x: folder.x;
+                y: folder.y;
+                width: folder.row-width;
+                height: folder.height;
+                visible: FolderDrag.to >= 0;
+                clip: true;
+                DropGap {
+                    x: 0;
+                    y: max(0, FolderDrag.to) * folder.pitch - folder.scroll;
+                    width: parent.width;
+                    height: 40px;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
+                }
+            }
+
+            LiftedRow {
+                x: Drag.x - root.absolute-position.x - Drag.grab-x;
+                y: Drag.y - root.absolute-position.y - Drag.grab-y;
+                width: folder.row-width;
+                height: 40px;
+                visible: FolderDrag.on;
+                big: true;
+                chip: FolderView.slots[max(0, Drag.from)];
+                number: FolderDrag.shown(max(0, Drag.from)) + 1;
+            }
         }
     }
 }
