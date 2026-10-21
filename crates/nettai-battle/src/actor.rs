@@ -172,6 +172,18 @@ pub mod status {
     /// swallowed and, if it did other damage, sends another bee
     /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
+    /// A guard of the rules' holds the navi (EXE5 DS's 0x400000: KnightMan's
+    /// guard, action 0x5B, sets it as it starts and clears it as it ends,
+    /// 0x020497B6, 0x020497E4): the rules' `hit_guard` swallows its hits.
+    /// A form's reversion and break, a soul change and the rules' revival
+    /// clear it too.
+    pub const GUARDED: u32 = 0x40_0000;
+    /// The navi's dive runs (EXE5 DS's 0x01000000: ToadMan's action 8 sets it
+    /// as it starts and clears it as it ends, 0x0204A364, 0x0204A574; his
+    /// flinch, drag and paralysis hooks clear it too, 0x02077B18; the GBA's
+    /// has none): no guard of the rules' swallows its hits. A form's
+    /// reversion and break and a soul change clear it.
+    pub const DIVING: u32 = 0x0100_0000;
     /// The rules' revival runs (`request::REVIVAL`'s action; the DS's
     /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
     /// navi isn't deleted at 0 HP while it runs.

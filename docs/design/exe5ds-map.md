@@ -531,6 +531,17 @@ The rest of the mechanics:
     once the navi isn't guarded;
   - it is not once-only;
   - observed: two M-Cannons, MegaMan at full HP, KnightMan 800 → 680 → 560.
+  - The two states it reads are the engine's by the DS's numbers (navi states `guarded`, 0x400000, and `diving`,
+    0x01000000), set and cleared where the DS does: the guard's start and end (0x020497B6, 0x020497E2), the dive's
+    (ToadMan's action 8: 0x0204A364, 0x0204A574; the GBA's sets neither), ToadMan's entry in the flinch, drag and
+    paralysis hook tables (0x02077B18: the navi's `interrupted`), and the clears that take both: a soul change
+    (0x02060356), a form's reversion and break (0x020605A0, 0x020606AA), and the rescue's start the guard's
+    (0x0200496C). exe5-compat compares them (AIData +0x48's two bits); supports/toadman-dive-guard records the dive's
+    state cut short by a Cannon's flinch, then a guard.
+  - The panel ahead off the field: the DS's `object_getPanelDataOffset` (0x0208C320) gives none for it, and the guard
+    action reads its side unchecked (0x02049794): address 3, in the ITCM (mirrored from 0), whose fourth byte is 0xE9,
+    never a side, so the guard holds. No battle reaches it: the gate (0x02004604) needs the panel ahead on the field,
+    and a guarded navi neither moves nor turns (its hits are swallowed, pushes with them).
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
@@ -561,8 +572,23 @@ reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave i
 **Against the recordings** (tools/dslab `supports/`, replayed through exe5-compat's exe5_replay, 2026-10-21): ProtoMan
 and NapalmMan, Colonel, TomahawkMan, MegaMan's Spport, SearchMan (offline), Meddy's HealPulse, ToadMan's rescue,
 Mag-Barr, ShadowMan's ambush, KnightMan's guard and DiceBons match every frame; GyroMan's gust parts at frame 227 by
-the side-fair choice (verify's side_fair_deviations.rs), so what follows it there is unchecked. SearchMan in a link
-battle (`opponent_chip`) has no recording.
+the side-fair choice (verify's side_fair_deviations.rs: the panel under a position on a column line). With that one
+rule switched back to the original's for a run (`PanelPos::under` dividing every X as it is), supports/gyroman
+matches all 1961 frames (2026-10-21). supports/searchman is
+the link path (`opponent_chip`: side 1's chip use, the DS's 0x020044E8). His offline path (0x02004438, and every
+support's "offline, side 0 alone") is ported but unreachable in nettai: a match's stages are the link battle stages
+(their effects carry 8, `link_pick.match_stages`), so every nettai battle is a link battle.
+
+**DiceBons' second die** (BattleState +0x44 + side·2, a halfword, read by 0x020976E4): written once a battle by the
+struct copy at the battle's start (`battle_copyStructsIncludingBattleStats`' counterpart, 0x020978E8; the trace's frame
+24 in every recording), 1 for a side whose setup record (0x021B9660 + side·0x100, from each console's own at 0x021B8F98,
+exchanged) has +0xF4 set; the DS's `strh r0, [r1, r0]` with r0 = 1 is unaligned, so it lands on the halfword itself.
+Each console fills its own record's +0xF4 as the battle is set up (0x020977E6): 1 when its link session is of kind 1 or
+4 (the PET-connect layer's state, the pointer at 0x021C2F6C, its +8: 0x020A29F0 → 0x021F12A8, overlay 416's) and its
+save has event flag 0x2E9 (which the DS's shout, 0x022261A4, sets). (Found with dslab's scouting watches: the field
+was set between two reads of the toolkit getter's literal, and the RAM dumps put the copy's source at 0x021B9084.)
+Every nettai battle is a netbattle and every player brings the fullest save (everyone at max), so it is 1 for both
+sides, and DiceBons' second die always comes.
 
 **The party block's fields** (0x021B85E8 + side·0x24):
 
@@ -1098,7 +1124,6 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 - the party block's +0x18;
 - NaviStats +0x4C (a color variant?);
 - battle mode 6;
-- what BattleState +0x44 + side·2 holds (1 in every recording; DiceBons' second die needs it);
 - the microphone event's trigger offline (a heal through T4 0x93; nothing in a netbattle, §4.7).
 
 ## 10. Reproducing
