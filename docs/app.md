@@ -1603,8 +1603,9 @@ ruleset holds it back (its `party` category; refused). Enter or a click puts its
 it out with its programs. At the left, framed, PARTY: its counts in its head as the folder's are (Partners 2/2, Navi
 changes 3: `Overview::switches`), CLEAR at its end (every partner taken out, asked first), and a section a partner: its
 head (its face, its name, HP with its programs' bonus, `Checked::members`, its gauge and the blocks used of it) and its
-programs as a list's rows. The partner the library adds to is the one the cursor was last in, its head marked as a
-list's chosen row (the bar and the tint). At the right the library, an open list: each program's blocks, its name, what
+programs as a list's rows (none: an Empty row), and for each place the party has no partner in a head saying Empty, as
+the Patch cards tab's empty slots say it (the user). The partner the library adds to is the one the cursor was last in,
+its head marked as a list's chosen row (the bar and the tint). At the right the library, an open list: each program's blocks, its name, what
 it does (its definition's `effects` in the words of the collection's own text table, `partycust_programs_effects`, as a
 patch card's lines are worded; its kind there too, `kind.`), its cost; one that won't go in greyed with why in the error
 red ("Needs 3 blocks", "Not allowed"); Enter adds it at the end of the marked partner's (one may be in twice: the rules

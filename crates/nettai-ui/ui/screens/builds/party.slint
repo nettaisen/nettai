@@ -12,8 +12,9 @@
 //   it in (at the party's end) or takes it out;
 // - at the left, framed, PARTY, its counts in its head as the folder's are (Partners, Navi changes) and CLEAR at its
 //   end; in it a section a partner, its head (its face, name and HP, its gauge and the blocks used of it) and its
-//   programs as a list's rows. The partner the library adds to, the last one the cursor was in, has its head marked as
-//   a list's chosen row is (the bar and the tint);
+//   programs as a list's rows (none: Empty), and a head saying Empty for each place the party has no partner in, as
+//   the Patch cards tab's empty slots are. The partner the library adds to, the last one the cursor was in, has its
+//   head marked as a list's chosen row is (the bar and the tint);
 // - at the right the library, an open list: each program's blocks, its name, what it does (or why it won't go in, in
 //   the error red, the row greyed), its cost. Enter adds it to the marked partner's.
 //
@@ -412,6 +413,27 @@ component RowsList inherits Rectangle {
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
+
+    // (A partner's list with no program: Empty, as the Patch cards tab's empty slot says it.)
+    if root.removable && root.rows.length == 0 && !root.filling: Rectangle {
+        x: 0;
+        y: 0;
+        height: root.pitch - 2px;
+        Text {
+            x: 12px + 56px + 10px;
+            text: @tr("Empty");
+            color: Theme.dim;
+            font-family: Theme.body;
+            font-size: Theme.phone ? 15px : 14px;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.line.with-alpha(0.45);
+        }
+    }
 }
 
 // A partner's head in PARTY: its face, its name and HP, its gauge and the blocks used of it (the one dragged, under the
@@ -576,11 +598,15 @@ export component PartyTab inherits Rectangle {
     pure function filling(i: int) -> bool {
         return Drag.on && Drag.to >= 0 && Drag.into == "installed" + i && Drag.list != "installed" + i;
     }
+    // (A list with no program has its Empty row.)
     pure function section-height(i: int) -> length {
-        return 34px + (PartyView.panels[i].rows.length + (root.filling(i) ? 1 : 0)) * root.pitch;
+        return 34px + max(1, PartyView.panels[i].rows.length + (root.filling(i) ? 1 : 0)) * root.pitch;
     }
-    property <length> sections-height: PartyView.panels.length == 0 ? 0px : root.section-height(0) + (PartyView.panels.length > 1 ? root.section-height(1) : 0px);
-    property <length> pane-height: root.head + root.sections-height + (PartyView.panels.length == 0 ? 0px : 12px);
+    property <length> partners-height: PartyView.panels.length == 0 ? 0px : root.section-height(0) + (PartyView.panels.length > 1 ? root.section-height(1) : 0px);
+    // (The party's room past its partners: a head each, Empty, as the Patch cards tab's empty slots are.)
+    property <int> empty-slots: max(0, PartyView.room - PartyView.panels.length);
+    property <length> sections-height: root.partners-height + root.empty-slots * 34px;
+    property <length> pane-height: root.head + root.sections-height + (root.sections-height == 0 ? 0px : 12px);
     property <length> content-height: max(root.height, root.pane-y + root.pane-height + (root.phone ? 12px + 44px : 0px) + 12px);
 
     tab-page := ScrollPage {
@@ -844,6 +870,28 @@ export component PartyTab inherits Rectangle {
             panel: panel;
             place: i;
             target: PartyView.marked && i == PartyView.target;
+        }
+
+        for k in root.empty-slots: Rectangle {
+            x: 1px;
+            y: root.pane-y + root.head + root.partners-height + k * 34px;
+            width: root.pane-width - 2px;
+            height: 34px;
+            background: Theme.raised;
+            Rectangle {
+                y: parent.height - 1px;
+                height: 1px;
+                background: Theme.line;
+            }
+
+            Text {
+                x: 12px + 32px + 12px;
+                text: @tr("Empty");
+                color: Theme.dim;
+                font-family: Theme.body;
+                font-size: Theme.phone ? 15px : 14px;
+                vertical-alignment: center;
+            }
         }
 
         // ---- The library, open beside it (a phone's, a sheet a button opens); a partner's program dragged over it is
