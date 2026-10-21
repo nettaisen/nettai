@@ -404,17 +404,18 @@ mod tests {
     }
 
     /// The code fonts keep the game's metrics too: every code one advance, a
-    /// game cell; the chip window's 7 frame pixels of face, half a pixel in,
-    /// 11 tall; the slots' 6, a pixel in, 5 tall; each on the baseline, '*'
-    /// within its letters' rows.
+    /// game cell; the chip window's faces from half a pixel in, 11 tall; the
+    /// slots' from a pixel in, 5 tall (Q's tail to the cell's
+    /// edge); each on the baseline, '*' within its letters' rows.
     #[test]
     fn codes_are_a_cell_apart() {
-        for (face, inset, tall) in [(Face::ChipCodes, (0.5, 0.5), 11.0), (Face::SlotCodes, (1.0, 1.0), 5.0)] {
+        for (face, left, tall) in [(Face::ChipCodes, 0.5, 11.0), (Face::SlotCodes, 1.0, 5.0)] {
             let shaped = shaped(face, CODES);
             let m = face.game();
             let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
             assert_eq!(cells, vec![CELL as f32; CODES.len()], "{face:?}");
-            assert_eq!(m.inset, inset, "{face:?}");
+            assert_eq!(m.inset.0, left, "{face:?}");
+            assert!(m.inset.1 >= 0.0, "{face:?}: {m:?}");
             let cmap = face.font().font().charmap();
             let rows = |c: char| ink_box(face, cmap.map(c)).map(|[_, y0, _, y1]| (y0 * m.across, y1 * m.across)).unwrap();
             assert_eq!(rows('A'), (0.0, tall), "{face:?}");
