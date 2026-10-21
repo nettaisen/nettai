@@ -1323,7 +1323,7 @@ impl Screen for Practice {
         if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice && (apart || b.stage.player.live().is_some_and(|l| l.opponent().in_fight == InFight::SecondPad))) {
             let playing = b.playing();
             if let Some(live) = b.stage.player.live_mut() {
-                live.set_second_pad(held.map(|h| if playing { h } else { 0 }));
+                live.set_second_pad(held.map(|h| if playing { h & !crate::input::SWITCHES } else { 0 }));
             }
         }
         // Its menu opens on RESUME, every time (the user: "when opening the pause menu in training, focus should

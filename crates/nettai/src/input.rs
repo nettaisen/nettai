@@ -20,8 +20,18 @@ use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use std::time::Duration;
 use nettai_platform::time::Instant;
 
-/// The GBA's buttons, in the order the settings list them, each with its name in the settings' file.
-pub const BUTTONS: [(u16, &str); 10] = [
+/// A party battle's switch to the member the left of the party panel's two buttons names (EXE5 DS's Y, docs/design/
+/// exe5ds-map.md §4.2): a button of the app's own, past the GBA's ten bits, which the battle never sees as a button
+/// (`crate::battle`'s frame asks the switch of the player: `Player::ask_switch`).
+pub const SWITCH_LEFT: u16 = 1 << 14;
+/// The switch to the member the right button names (EXE5 DS's X).
+pub const SWITCH_RIGHT: u16 = 1 << 15;
+/// Both switches.
+pub const SWITCHES: u16 = SWITCH_LEFT | SWITCH_RIGHT;
+
+/// The battle's buttons, in the order the settings list them, each with its name in the settings' file: the GBA's,
+/// then the party battle's two switches (the app's own bits: [`SWITCH_LEFT`], [`SWITCH_RIGHT`]).
+pub const BUTTONS: [(u16, &str); 12] = [
     (keys::UP, "up"),
     (keys::DOWN, "down"),
     (keys::LEFT, "left"),
@@ -32,6 +42,8 @@ pub const BUTTONS: [(u16, &str); 10] = [
     (keys::R, "r"),
     (keys::START, "start"),
     (keys::SELECT, "select"),
+    (SWITCH_LEFT, "switch-left"),
+    (SWITCH_RIGHT, "switch-right"),
 ];
 
 /// A GBA button's place in [`BUTTONS`].
@@ -199,16 +211,18 @@ pub fn pad_cap(button: Button) -> &'static str {
     PAD_BUTTONS.iter().find(|(b, _, _)| *b == button).map_or("?", |(_, _, c)| *c)
 }
 
-/// The battle's buttons: the key and the pad button of each GBA button, in [`BUTTONS`]' order.
+/// The battle's buttons: the key and the pad button of each of [`BUTTONS`], in its order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bindings {
-    pub keys: [KeyCode; 10],
-    pub pad: [Button; 10],
+    pub keys: [KeyCode; 12],
+    pub pad: [Button; 12],
 }
 
 impl Default for Bindings {
-    /// The arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT. On a pad: the
-    /// D-pad, the south button A, the west button B, the shoulders, Start and Back.
+    /// The arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT; C and V switch to the
+    /// party panel's left and right buttons' members (EXE5 DS's Y and X: X is B's here). On a pad: the D-pad, the
+    /// south button A, the west button B, the shoulders, Start and Back; the north and east buttons switch, right and
+    /// left (the DS's X is its north button; its Y, the west, is B's here, so the left switch takes the button left).
     fn default() -> Bindings {
         Bindings {
             keys: [
@@ -222,6 +236,8 @@ impl Default for Bindings {
                 KeyCode::KeyS,
                 KeyCode::Enter,
                 KeyCode::Backspace,
+                KeyCode::KeyC,
+                KeyCode::KeyV,
             ],
             pad: [
                 Button::DPadUp,
@@ -234,6 +250,8 @@ impl Default for Bindings {
                 Button::RightShoulder,
                 Button::Start,
                 Button::Back,
+                Button::East,
+                Button::North,
             ],
         }
     }
@@ -696,9 +714,9 @@ impl TouchPad {
         self.fingers.clear();
     }
 
-    /// The buttons held, as the GBA's bits.
+    /// The buttons held, as the GBA's bits (the party battle's switches as theirs: [`SWITCHES`]).
     pub fn held(&self) -> u16 {
-        self.fingers.iter().filter_map(|(_, b)| *b).fold(0, |held, b| held | 1 << b.min(9))
+        self.fingers.iter().filter_map(|(_, b)| *b).filter(|b| *b < 16).fold(0, |held, b| held | 1 << b)
     }
 }
 
