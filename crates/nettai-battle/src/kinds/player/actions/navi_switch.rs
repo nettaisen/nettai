@@ -3,7 +3,8 @@
 //! navi to change to (+4); at the turn's start the transformation
 //! sequencer asks the navi (`sub_802DCDE`), and the pause handler runs the
 //! change as action 0x1C (`sub_802D714`): the navi lands, becomes the other
-//! navi (its stats kept or fresh, `Battle::reserves`), and after 21
+//! navi (its stats kept or fresh: the party's member 0, `Battle::party`),
+//! and after 21
 //! ticks goes on as it. A navi changed so falls back to the one it was
 //! instead of being deleted (`sub_802DD2A`): the switch knockout
 //! (`sub_802D926`) brings the kept navi back. See docs/engine/battle-flow.md
@@ -183,16 +184,16 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     form::navi_death_hook(b, r, identity);
     navi_status::end_anger(b, r);
     // The navi it leaves is kept when it is the kept one (with its HP).
-    if b.reserves[side].navi == b.stats[side].navi {
+    if b.party[side].members[0].navi == b.stats[side].navi {
         b.stats[side].hp = b.objects.get(r).hp;
-        b.reserves[side] = b.stats[side];
+        b.party[side].members[0] = b.stats[side];
     }
     // sub_802DCCC: the record's navi.
     let Some(target) = b.turn_transforms[side].navi_switch else {
         panic!("a navi switch without a navi reads 0xFF as one (sub_802DCCC)");
     };
-    let kept = b.reserves[side].navi == target;
-    b.stats[side] = if kept { b.reserves[side] } else { fresh_stats(target, &b.content) };
+    let kept = b.party[side].members[0].navi == target;
+    b.stats[side] = if kept { b.party[side].members[0] } else { fresh_stats(target, &b.content) };
     super::super::refresh_abilities(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
@@ -218,7 +219,7 @@ fn take_back(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     let identity = b.objects.get(r).identity;
     form::navi_death_hook(b, r, identity);
-    b.stats[side] = b.reserves[side];
+    b.stats[side] = b.party[side].members[0];
     take_identity(b, r);
     form::navi_init_hook(b, r, b.objects.get(r).identity);
     let s = *stats(b, r);

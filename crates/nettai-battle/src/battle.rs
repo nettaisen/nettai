@@ -415,12 +415,14 @@ pub struct Battle {
     pub content: Arc<Content>,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
-    /// Each side's other navi's stats for a navi switch
-    /// (`eBattleNaviStats2034A60`): a copy of the side's stats at the
-    /// battle's start; a change keeps the navi it leaves here when it is
-    /// this one, and takes the navi it goes to from here when it is that
-    /// one (`sub_802D7A0`); a switch knockout takes it back (`sub_802D9B0`).
-    pub reserves: [NaviStats; 2],
+    /// Each side's party (`crate::party`): its members' stats blocks, the
+    /// member on the field and the switches made. Member 0 is a copy of the
+    /// side's stats at the battle's start (`eBattleNaviStats2034A60`, the
+    /// framework's one reserve): without partners, a navi switch keeps the
+    /// navi it leaves there when it is that one, and takes the navi it goes
+    /// to from there when it is that one (`sub_802D7A0`), and a switch
+    /// knockout takes it back (`sub_802D9B0`).
+    pub party: [crate::party::Party; 2],
     pub rng: Rng,
     /// Each player's console: its own RNG (RNG1), which ChpShufl's re-deal
     /// draws from, and what advances it (`console`).
@@ -751,7 +753,7 @@ impl Battle {
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
-            reserves: setup.navi_stats,
+            party: setup.navi_stats.map(crate::party::Party::of),
             rng: Rng::new(setup.rng),
             consoles: [Console::new(&setup.players[0].console), Console::new(&setup.players[1].console)],
             round: RoundState {
@@ -841,10 +843,12 @@ impl Battle {
         // Each side's rules set the round up before anything reads the
         // side's stats (EXE6's rules/save builds them from what the save
         // brings, its NaviCust compiles into them and its patch cards change
-        // them); the battle-start copy of the stats (`reserves`) is of the
-        // stats after them.
+        // them, and may add partners to its party); the battle-start copy of
+        // the stats (the party's member 0) is of the stats after them.
         b.notify_rules(nettai_content_api::RulesHook::RoundSetup);
-        b.reserves = b.stats;
+        for side in 0..2 {
+            b.party[side].members[0] = b.stats[side];
+        }
         // Then what the content gives each side for the round (its navi's
         // and the chips' functions of the side: what its level gives it).
         b.given = crate::given::Given::ask(&mut b);
@@ -2581,7 +2585,7 @@ mod tests {
             }
             let input = [0, 1].map(|side| {
                 last[side] = crate::scenario::custom_buttons(&b, side, last[side]);
-                PlayerTick { held: last[side] }
+                PlayerTick::buttons(last[side])
             });
             b.tick(&input, TickEvents::default());
         }
@@ -2590,7 +2594,7 @@ mod tests {
 
     /// One tick with these buttons held, by side.
     fn held(b: &mut Battle, buttons: [u16; 2]) {
-        b.tick(&buttons.map(|held| PlayerTick { held }), TickEvents::default());
+        b.tick(&buttons.map(|held| PlayerTick::buttons(held)), TickEvents::default());
     }
 
     /// A console's battle pauses itself (`sub_800A046`, state 0x1C

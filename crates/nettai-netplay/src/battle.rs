@@ -37,19 +37,20 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
     TickInput { players: [inputs[0].tick, inputs[1].tick], events }
 }
 
-/// A player's input on the wire: the buttons, and the events as flags
+/// A player's input on the wire: the tick's word (the buttons and the
+/// switch request), and the events as flags
 /// ([`flags`]).
 impl WireInput for PlayerInput {
     fn encode(&self) -> (u16, u8) {
         let TickEvents { link_closed } = &self.events;
-        (self.tick.held, if *link_closed { flags::LINK_CLOSED } else { 0 })
+        (self.tick.word(), if *link_closed { flags::LINK_CLOSED } else { 0 })
     }
 
-    fn decode(held: u16, f: u8) -> io::Result<PlayerInput> {
+    fn decode(word: u16, f: u8) -> io::Result<PlayerInput> {
         if f & !flags::ALL != 0 {
             return Err(crate::protocol::invalid("unknown event flags"));
         }
-        Ok(PlayerInput { tick: PlayerTick { held }, events: TickEvents { link_closed: f & flags::LINK_CLOSED != 0 } })
+        Ok(PlayerInput { tick: PlayerTick::from_word(word), events: TickEvents { link_closed: f & flags::LINK_CLOSED != 0 } })
     }
 }
 
@@ -157,9 +158,9 @@ mod tests {
     #[test]
     fn a_player_input_crosses_the_link() {
         let inputs = [
-            PlayerInput { tick: PlayerTick { held: keys::A | keys::LEFT }, events: TickEvents::default() },
-            PlayerInput { tick: PlayerTick { held: 0 }, events: TickEvents { link_closed: true } },
-            PlayerInput { tick: PlayerTick { held: keys::L }, events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(keys::A | keys::LEFT), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(0), events: TickEvents { link_closed: true } },
+            PlayerInput { tick: PlayerTick::buttons(keys::L), events: TickEvents::default() },
         ];
         let (mut a, mut b) = (InputLink::<PlayerInput>::new(64), InputLink::<PlayerInput>::new(64));
         for (i, input) in inputs.iter().enumerate() {

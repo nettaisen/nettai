@@ -1809,7 +1809,7 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
             } else {
                 0
             };
-            input[side] = PlayerTick { held };
+            input[side] = PlayerTick::buttons(held);
             last[side] = held;
         }
         n += fighting as u32;

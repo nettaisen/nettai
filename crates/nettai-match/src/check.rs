@@ -361,7 +361,7 @@ mod tests {
                 assert!(dealt.custom.sides.iter().all(|s| s.folder.count() == 30), "{game}");
                 assert!(checks.custom.sides.iter().all(|s| s.folder.count() == 0), "{game}");
                 assert_eq!(dealt.stats, checks.stats, "{game} {seed}");
-                assert_eq!(dealt.reserves, checks.reserves, "{game} {seed}");
+                assert_eq!(dealt.party, checks.party, "{game} {seed}");
                 assert_eq!(dealt.given, checks.given, "{game} {seed}");
                 assert_eq!(dealt.rules, checks.rules, "{game} {seed}");
                 for side in 0..2 {

@@ -5,7 +5,7 @@
 //!
 //! A replay holds one set, all its rounds: the match it is played from
 //! (nettai-match's binary, against the content the head names), and each
-//! tick's buttons, both players' by side. The simulation is a function of
+//! tick's input, both players' by side. The simulation is a function of
 //! those alone, so playing them back makes the set again, round by round
 //! (the next round is made from the round before and the match). Nothing
 //! it makes is kept (who won a round or the set, the score), but for two
@@ -27,7 +27,7 @@
 //! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
-//!           bit 0: side 0's buttons (u16) follow, bit 1: side 1's,
+//!           bit 0: side 0's input (u16) follows, bit 1: side 1's,
 //!           bit 2: the battle's digest after the tick (u64) follows,
 //!           bit 3: a round ended on the tick (a digest always comes with it),
 //!           bit 4: the set ended on it (a round did too; nothing comes after);
@@ -35,9 +35,11 @@
 //! string := length (LEB128), UTF-8
 //! ```
 //!
-//! Numbers are little-endian. Buttons are the GBA's (the low ten bits), and
-//! a side's are written when they change: before the first tick nothing is
-//! held, and they carry across a round's end. A writer flushes each record
+//! Numbers are little-endian. A side's input is its tick's word
+//! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
+//! bits, the party switch request in bits 10 and 11 (the member + 1, 0
+//! none). It is written when it changes: before the first tick nothing is
+//! held, and it carries across a round's end. A writer flushes each record
 //! as it is written, so a file cut short (a crash) holds every tick before
 //! the cut, and a reader says it was cut ([`End::Cut`]).
 //!
@@ -209,11 +211,12 @@ impl Info {
     }
 }
 
-/// One tick: both players' buttons by side, and what a recording marks of
+/// One tick: both players' input by side (each a tick word: the buttons
+/// and the switch request, [`INPUT_MASK`]), and what a recording marks of
 /// it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
-    pub buttons: [u16; 2],
+    pub inputs: [u16; 2],
     /// The battle's digest after the tick, where it was taken.
     pub digest: Option<u64>,
     /// A round of the set ended on this tick (its digest is taken).
@@ -246,15 +249,16 @@ pub struct Replay {
     pub end: End,
 }
 
-const BUTTONS_0: u8 = 1 << 0;
-const BUTTONS_1: u8 = 1 << 1;
+const INPUT_0: u8 = 1 << 0;
+const INPUT_1: u8 = 1 << 1;
 const DIGEST: u8 = 1 << 2;
 const ROUND_ENDED: u8 = 1 << 3;
 const SET_ENDED: u8 = 1 << 4;
-const KNOWN: u8 = BUTTONS_0 | BUTTONS_1 | DIGEST | ROUND_ENDED | SET_ENDED;
+const KNOWN: u8 = INPUT_0 | INPUT_1 | DIGEST | ROUND_ENDED | SET_ENDED;
 
-/// The buttons a tick may hold: the GBA's ten.
-pub const BUTTON_MASK: u16 = 0x3FF;
+/// The bits a side's input may hold: the GBA's ten buttons and the switch
+/// request (`nettai_battle::input::TICK_WORD`).
+pub const INPUT_MASK: u16 = 0xFFF;
 
 // ---- Writing ------------------------------------------------------------------
 
@@ -262,8 +266,8 @@ pub const BUTTON_MASK: u16 = 0x3FF;
 /// at once, then a record a tick, each flushed as it is written.
 pub struct Writer<W: Write> {
     out: W,
-    /// The buttons held after the last tick written, by side.
-    buttons: [u16; 2],
+    /// The input after the last tick written, by side.
+    inputs: [u16; 2],
     /// The set's end was written: nothing comes after it.
     ended: bool,
 }
@@ -292,12 +296,12 @@ impl<W: Write> Writer<W> {
         b.extend_from_slice(b"TICK");
         out.write_all(&b)?;
         out.flush()?;
-        Ok(Writer { out, buttons: [0; 2], ended: false })
+        Ok(Writer { out, inputs: [0; 2], ended: false })
     }
 
     /// The next tick, written and flushed. Refused (nothing written): a
     /// tick after the set's end, a round's end without its digest, the
-    /// set's end without a round's, buttons past the GBA's ten.
+    /// set's end without a round's, input past a tick word's bits.
     pub fn tick(&mut self, t: &Tick) -> io::Result<()> {
         let invalid = |why: &str| Err(io::Error::new(io::ErrorKind::InvalidInput, why.to_string()));
         if self.ended {
@@ -309,15 +313,15 @@ impl<W: Write> Writer<W> {
         if t.set_ended && !t.round_ended {
             return invalid("the set's end without a round's");
         }
-        if t.buttons.iter().any(|&b| b & !BUTTON_MASK != 0) {
-            return invalid("buttons past the GBA's ten");
+        if t.inputs.iter().any(|&b| b & !INPUT_MASK != 0) {
+            return invalid("input past a tick word's bits");
         }
         let mut control = 0;
         let mut rest = Vec::with_capacity(12);
         for side in 0..2 {
-            if t.buttons[side] != self.buttons[side] {
-                control |= [BUTTONS_0, BUTTONS_1][side];
-                rest.extend_from_slice(&t.buttons[side].to_le_bytes());
+            if t.inputs[side] != self.inputs[side] {
+                control |= [INPUT_0, INPUT_1][side];
+                rest.extend_from_slice(&t.inputs[side].to_le_bytes());
             }
         }
         if let Some(d) = t.digest {
@@ -329,7 +333,7 @@ impl<W: Write> Writer<W> {
         record.extend_from_slice(&rest);
         self.out.write_all(&record)?;
         self.out.flush()?;
-        self.buttons = t.buttons;
+        self.inputs = t.inputs;
         self.ended = t.set_ended;
         Ok(())
     }
@@ -467,7 +471,7 @@ impl Replay {
     /// of this layout that is damaged: a head, info or match cut short or
     /// running on, and a tick's record no writer writes (unknown bits, a
     /// round's end without its digest, the set's end without a round's,
-    /// buttons past the GBA's, anything after the set's end). A record cut
+    /// input past a tick word's bits, anything after the set's end). A record cut
     /// short ends the input there ([`End::Cut`]).
     pub fn read(bytes: &[u8]) -> Result<Replay, ReadError> {
         if bytes.get(..4) != Some(MAGIC.as_slice()) {
@@ -508,7 +512,7 @@ impl Replay {
             return Err("no input where it goes".into());
         }
         let mut ticks = Vec::new();
-        let mut buttons = [0u16; 2];
+        let mut inputs = [0u16; 2];
         let end = loop {
             if b.rest.is_empty() {
                 break End::Open;
@@ -519,14 +523,14 @@ impl Replay {
                 return Err(format!("tick {n}: its record's bits {control:#04x} are none a writer writes"));
             }
             let record = |b: &mut Bytes| -> Result<Option<Tick>, String> {
-                let mut t = Tick { buttons, ..Tick::default() };
+                let mut t = Tick { inputs, ..Tick::default() };
                 for side in 0..2 {
-                    if control & [BUTTONS_0, BUTTONS_1][side] != 0 {
-                        let Ok(held) = b.u16() else { return Ok(None) };
-                        if held & !BUTTON_MASK != 0 {
-                            return Err(format!("tick {n}: side {side}'s buttons {held:#06x} are past the GBA's"));
+                    if control & [INPUT_0, INPUT_1][side] != 0 {
+                        let Ok(word) = b.u16() else { return Ok(None) };
+                        if word & !INPUT_MASK != 0 {
+                            return Err(format!("tick {n}: side {side}'s input {word:#06x} is past a tick word's bits"));
                         }
-                        t.buttons[side] = held;
+                        t.inputs[side] = word;
                     }
                 }
                 if control & DIGEST != 0 {
@@ -544,7 +548,7 @@ impl Replay {
                 Ok(Some(t))
             };
             let Some(t) = record(&mut b)? else { break End::Cut };
-            buttons = t.buttons;
+            inputs = t.inputs;
             ticks.push(t);
             if t.set_ended {
                 if !b.rest.is_empty() {

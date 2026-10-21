@@ -543,7 +543,7 @@ fn an_unowned_soul_cant_be_chosen() {
             }
             let a = if screen.is_some() && last == 0 { nettai_battle::input::keys::A } else { 0 };
             last = a;
-            b.tick(&[nettai_battle::input::PlayerTick { held: a }, Default::default()], Default::default());
+            b.tick(&[nettai_battle::input::PlayerTick::buttons(a), Default::default()], Default::default());
         }
         panic!("no chip picked");
     };
@@ -572,9 +572,9 @@ fn the_soul_takes_the_chips_place() {
     // A tick with `key` pressed, then ticks without until the screen is
     // back to choosing.
     let press = |b: &mut nettai_battle::Battle, key: u16| {
-        b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
+        b.tick(&[PlayerTick::buttons(key), Default::default()], Default::default());
         for _ in 0..200 {
-            b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+            b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
             if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
                 return;
             }
@@ -585,7 +585,7 @@ fn the_soul_takes_the_chips_place() {
         if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
             break;
         }
-        b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+        b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
     }
     // The first Sword picked: the soul is on offer.
     press(&mut b, keys::A);
@@ -607,7 +607,7 @@ fn the_soul_takes_the_chips_place() {
     // Given again, and OK: the turn's form, its turns, the Sword gone.
     press(&mut b, keys::A);
     b.custom.sides[0].screen.as_mut().unwrap().cursor = nettai_battle::custom::screen::OK_SLOT;
-    b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
     let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
     assert_eq!((transform.form, transform.turns, transform.alternate), (Some(proto), 3, false));
     assert!(hand.is_some(), "the soul is a pick");
@@ -650,7 +650,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         let s = &b.custom.sides[side];
         s.in_custom && s.screen.is_some_and(|s| s.phase == Phase::Choosing)
     };
-    let tick = |b: &mut Battle, left: u16, right: u16| b.tick(&[PlayerTick { held: left }, PlayerTick { held: right }], Default::default());
+    let tick = |b: &mut Battle, left: u16, right: u16| b.tick(&[PlayerTick::buttons(left), PlayerTick::buttons(right)], Default::default());
     // A tick with `key` pressed by the left side, then ticks without until
     // its screen is back to choosing.
     let press = |b: &mut Battle, key: u16| {

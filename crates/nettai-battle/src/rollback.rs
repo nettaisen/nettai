@@ -114,7 +114,7 @@ mod tests {
         // Walk about: a direction every few frames.
         let dirs = [keys::UP, keys::RIGHT, keys::DOWN, keys::LEFT, 0];
         let held = |p: u32| dirs[((frame / 7 + p * 3) % 5) as usize];
-        TickInput { players: [PlayerTick { held: held(0) }, PlayerTick { held: held(1) }], events: TickEvents::default() }
+        TickInput { players: [PlayerTick::buttons(held(0)), PlayerTick::buttons(held(1))], events: TickEvents::default() }
     }
 
     #[test]

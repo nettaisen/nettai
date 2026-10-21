@@ -1,4 +1,5 @@
-//! A battle whose buttons are the whole input (the engine simulates both
+//! A battle whose tick words (`PlayerTick::word`: the buttons and a party
+//! switch request) are the whole input (the engine simulates both
 //! custom screens), with the one event left from outside the simulation,
 //! the link session closing at the end of the round, derived inside the
 //! game: what live netplay plays (a frontend's), and synthetic matches;
@@ -25,22 +26,23 @@ impl StandInBattle {
         StandInBattle { battle }
     }
 
-    /// The engine input for this tick, from the buttons and the battle as
-    /// it stands before the tick.
-    pub fn tick_input(&mut self, buttons: [u16; 2]) -> TickInput {
-        tick_input(&self.battle, buttons)
+    /// The engine input for this tick, from the tick words and the battle
+    /// as it stands before the tick.
+    pub fn tick_input(&mut self, words: [u16; 2]) -> TickInput {
+        tick_input(&self.battle, words)
     }
 }
 
-/// The engine input for `battle`'s next tick from the two players' buttons
-/// (by side) and the battle as it stands before the tick: the one place
-/// that derives it, for whoever steps a battle on buttons alone (a netplay
-/// peer, offline play).
-pub fn tick_input(battle: &Battle, buttons: [u16; 2]) -> TickInput {
+/// The engine input for `battle`'s next tick from the two players' tick
+/// words (by side: `PlayerTick::word`, their buttons and switch request)
+/// and the battle as it stands before the tick: the one place that derives
+/// it, for whoever steps a battle on tick words alone (a netplay peer,
+/// offline play).
+pub fn tick_input(battle: &Battle, words: [u16; 2]) -> TickInput {
     let r = &battle.round;
     // The end state asks the link session to close; it closes at once.
     let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
-    let player = |side: usize| PlayerTick { held: buttons[side] & 0x3FF };
+    let player = |side: usize| PlayerTick::from_word(words[side]);
     TickInput { players: [player(0), player(1)], events }
 }
 

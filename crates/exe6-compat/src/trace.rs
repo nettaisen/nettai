@@ -745,7 +745,7 @@ impl Round {
     /// screens run from them, on the folders the setup records).
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let input = std::array::from_fn(|p| PlayerTick { held: self.fed(i, frames, p) });
+        let input = std::array::from_fn(|p| PlayerTick::buttons(self.fed(i, frames, p)));
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {

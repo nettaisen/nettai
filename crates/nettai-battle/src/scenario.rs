@@ -200,7 +200,7 @@ pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize,
             }
             hold_for[side] -= 1;
             let buttons = if in_custom { custom_buttons(&b, side, last[side]) } else { held[side] };
-            input[side] = PlayerTick { held: buttons };
+            input[side] = PlayerTick::buttons(buttons);
             last[side] = buttons;
         }
         b.tick(&input, events.clone());

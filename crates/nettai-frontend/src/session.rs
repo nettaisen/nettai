@@ -189,7 +189,7 @@ impl Session {
                 _ => (false, false),
             };
             let digest = (round_ended || r.digest_due()).then(|| self.battle.digest());
-            r.tick(&nettai_replay::Tick { buttons: step.input.map(|p| p.held), digest, round_ended, set_ended });
+            r.tick(&nettai_replay::Tick { inputs: step.input.map(|p| p.word()), digest, round_ended, set_ended });
         }
         match after {
             None => {}
