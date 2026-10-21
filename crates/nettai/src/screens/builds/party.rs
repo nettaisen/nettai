@@ -131,13 +131,14 @@ fn described(id: &str, index: i32) -> Option<Described> {
     })
 }
 
-/// What the strip says of a navi as a build would field it: its HP, its buster's attack and charge (as the games show
-/// them, 1 to 5), the stats its game's rules give it (an EXE5 team navi's own chip's damage) and its gauge's blocks.
+/// What the strip says of a navi as a build would field it: its HP, its buster's attack (as the games show it, 1 to 5),
+/// the stats its game's rules give it (an EXE5 team navi's own chip's damage) and its gauge's blocks: what its programs
+/// raise. (No charge: none raises it; the user, "remove charge from the party member info as well since nothing
+/// changes it".)
 #[derive(Clone, Debug, Default)]
 struct NaviFacts {
     hp: i32,
     attack: i32,
-    charge: i32,
     named: Vec<NamedStat>,
     gauge: Option<u32>,
 }
@@ -150,17 +151,16 @@ impl NaviFacts {
         Some(NaviFacts {
             hp: s.max_hp.into(),
             attack: i32::from(s.attack) + 1,
-            charge: i32::from(s.charge) + 1,
             named: o.as_ref().and_then(|o| o.members.iter().find(|(m, _)| *m == i + 1)).map(|(_, s)| s.clone()).unwrap_or_default(),
             gauge: o.as_ref().and_then(|o| o.budget_of(FIELD, i)).map(|b| b.count.limit),
         })
     }
 
     /// Its stats as the strip says them, by what the navi `alone` (no programs) has: what its programs added in cyan,
-    /// as the overview says it. (Their labels: HP, Attack, Charge the view's; a stat of the rules' own its name.)
+    /// as the overview says it. (Their labels: HP and Attack the view's; a stat of the rules' own its name.)
     fn lines(&self, alone: &NaviFacts, words: &crate::builds::words::Words) -> Vec<StatLine> {
         let line = |with: i32, base: i32| stat_line(String::new(), Stat { base, value: with });
-        [line(self.hp, alone.hp), line(self.attack, alone.attack), line(self.charge, alone.charge)]
+        [line(self.hp, alone.hp), line(self.attack, alone.attack)]
             .into_iter()
             .chain(self.named.iter().map(|s| stat_line(stat_name(words, s), s.stat)))
             .collect()

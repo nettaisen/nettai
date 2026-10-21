@@ -5,7 +5,7 @@
 //
 // - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its blocks and
 //   whether they fit the marked partner's gauge, what it does, its kind) or a navi (its version; its HP, buster attack
-//   and charge, its own chip's damage, what its programs add to them; its element and its gauge);
+//   and special chip attack, what its programs add to them; its element and its gauge);
 // - under it the navis to pick from, a row a version (the builds data's groups, each under its name in its color), a
 //   chip each (its face, its name, its place in the party where it is in): raised and outlined in the cursor's color
 //   where it is in, muted where the party is full, dim where the build's ruleset holds it back. Enter or a click puts
@@ -94,7 +94,7 @@ export struct PartyDetail {
     blocks: int,
     tone: color,
     description: string,
-    // A navi's stats (HP, Attack, Charge: their labels the strip's; a stat of the rules' own with its own), what its
+    // A navi's stats (HP, Attack: their labels the strip's; a stat of the rules' own with its own), what its
     // programs added in cyan, as the Navi tab says them; and its element's icon.
     stats: [StatLine],
     element: image,
@@ -547,7 +547,7 @@ export component PartyTab inherits Rectangle {
     property <bool> phone: Theme.phone;
     property <length> top: -4px;
     property <length> strip: root.phone ? 0px : 104px;
-    property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Charge")];
+    property <[string]> stat-labels: [@tr("HP"), @tr("Attack")];
     // The picker under the strip: a row of chips a version (on a phone, the version's name over its chips, three to a row).
     property <length> picker-y: root.phone ? 0px : root.top + root.strip + 12px;
     property <length> chip-height: 30px;

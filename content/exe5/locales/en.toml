@@ -857,11 +857,11 @@ language = "en"
 # each a row after Regular memory. `soul_time`: the turns a Soul Unison lasts, the NaviCust's SoulT+1 and the patch
 # cards' SoulTm+ and SoulTm- together (the cards' "SoulTm"). `switches` (rules/party's `overview`): the navi changes
 # (switches) a party battle's round allows, the NaviCust's NavChg+1 and +2 added to the 3; `chip_damage` (its `members`):
-# a partner's own chip's damage, its programs' P.Chp added. Ours.
+# a partner's own chip's damage, its programs' P.Chp added (named as P.Chp's own line names it: the user). Ours.
 [stats]
 "soul_time" = "Soul time"
 "switches" = "Navi changes"
-"chip_damage" = "Chip damage"
+"chip_damage" = "Special chip attack"
 
 # The words of the battle's lettered pictures, by picture (docs/design/text-rendering.md §12): the enhanced graphics
 # draw them in the lettering font in the picture's place, in its look; the original graphics draw the pictures. A

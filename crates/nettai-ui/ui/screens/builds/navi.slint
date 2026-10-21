@@ -1,6 +1,6 @@
 // The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
-// beside it the build's navi: the face its round starts with, its stats then (its HP, its buster's attack and charge,
-// those its game's rules give it: an EXE5 team navi's own chip's damage) and its element; under them the build's other
+// beside it the build's navi: the face its round starts with, its stats then (its HP, and those its game's rules give
+// it: an EXE5 team navi's own chip's damage) and its element; under them the build's other
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head, a list's ALL
@@ -91,9 +91,9 @@ export global NaviView {
     ];
     out property <string> status: @tr("{n} navi" | "{n} navis" % self.navis.length);
     in property <[NaviCard]> navis;
-    // The build's navi: its name, the face its round starts with, its stats then (HP, Attack, Charge: their labels the
-    // tab's, a stat of the rules' own with its own; what the build's installed parts added in cyan, as the overview
-    // says it), and its element's icon.
+    // The build's navi: its name, the face its round starts with, its stats then (HP: its label the tab's; a stat of the
+    // rules' own with its own; what the build's installed parts added in cyan, as the overview says it), and its
+    // element's icon. (No Attack or Charge: the user, "remove attack and charge from the navi sidebar".)
     in property <string> name;
     in property <image> face;
     in property <[StatLine]> stats;
@@ -340,7 +340,7 @@ export component NaviTab inherits Rectangle {
     property <length> fault-y: root.element-y + root.stat-pitch + 4px;
     property <length> body-y: root.fault-y + 28px;
     property <length> label-width: Theme.phone ? 84px : 110px;
-    property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Charge")];
+    property <[string]> stat-labels: [@tr("HP")];
     // Between the choices, the facts of forms and the note: room enough that each reads as its own.
     property <length> fact-gap: 20px;
     // The selector: each fact's name and count over its forms' rows, the editor's lists' rows: one column on a
