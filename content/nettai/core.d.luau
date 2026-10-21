@@ -194,6 +194,12 @@ export type NaviStateFlag =
     -- In the air (EXE5's GyroMan over a panel that isn't solid): a step it
     -- takes sets no animation and leaves the one it has.
     | "hovering"
+    -- A guard of the rules' holds it (EXE5 DS's KnightMan's); a form's
+    -- reversion and break clear it.
+    | "guarded"
+    -- Its dive runs (EXE5's ToadMan's); a form's reversion and break clear
+    -- it.
+    | "diving"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
@@ -2565,10 +2571,13 @@ export type NaviDef = {
     -- 0x0206E928 call by the navi after they clear the dive bit; EXE6's
     -- `sub_8014216`, `off_801426C`), for a navi that doesn't change form
     -- (MegaMan's is his status reset): EXE5's ToadMan's dive again.
+    -- `interrupted`: its entry in the flinch, drag and paralysis hook tables
+    -- (as each starts): EXE5 DS's ToadMan's ends his dive's state.
     tick: ((navi: Object) -> ())?,
     idle: ((navi: Object) -> ())?,
     post_init: ((navi: Object) -> ())?,
     reset: ((navi: Object) -> ())?,
+    interrupted: ((navi: Object) -> ())?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the rules ask whether it has them. The table is its game's,
     -- sets by name, whose `form_list` the engine reads (a frontend numbers
