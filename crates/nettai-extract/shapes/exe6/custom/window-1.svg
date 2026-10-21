@@ -35,19 +35,19 @@
 <rect x="0" y="138" width="5" height="1" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The housing's shadow on the panel: its outline a pixel lower -->
 <path d="M88 12.5 A16 16 0 0 1 120 12.5 L120 106.657 L115.657 111 L92.343 111 L88 106.657 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The bar and the window's right border, one blue: the border (the housing's outline going on straight down) turning into the bar's top through a 45-degree bend two rows deep, as the slots' side does on the left; the bar's left end slanted 45 degrees, its bottom right corner cut 2.5 -->
-<path d="M5 151.707 L7.293 154 L116.707 154 L119 151.707 L119 100 L120 100 L120 157.5 L117.5 160 L0 160 L0 159 L5 154 Z" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The bar's groove, three rows: its left end under the slant's light, its right end slanting back -->
-<path d="M4 156 L114.5 156 L117.5 159 L1 159 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<!-- The bar's left end cut 45 degrees from under the slots' side's line down to its bottom row, a light band two pixels across along the cut -->
-<path d="M5 154 L7 154 L2 159 L0 159 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
+<!-- The bar and the window's right border, one blue (the border is the housing's outline going on straight down); the bar's bottom right corner cut 2.5. Where a side meets the bar, the frame is mitered: one 45-degree line through the inner corner, every band of the side ending on it and every band of the bar ending on it -->
+<path d="M6.7 154 L118 154 L118 100 L120 100 L120 157.5 L117.5 160 L0.7 160 Z" fill="#738ca5" data-color="4" data-palette="9"/>
+<!-- The bar's groove, three rows: its left end on the miter (under its light), its right end slanting back -->
+<path d="M4.7 156 L114.5 156 L117.5 159 L1.7 159 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
 <rect x="16" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="29" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="90" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
 <rect x="103" y="156" width="1" height="3" fill="#738ca5" data-color="4" data-palette="9"/>
-<!-- The slots' side's groove and the border's light line, each a pixel wide, bending 45 degrees into the bar's top (mirror images) -->
-<path d="M5 107 L6 107 L6 152 L8 154 L6.586 154 L5 152.414 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
-<path d="M119 100 L118 100 L118 152 L116 154 L117.414 154 L119 152.414 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The slots' side's line and the border's light line, a pixel wide, straight down to the bar, each ending on its corner's miter (mirror images) -->
+<path d="M5 107 L6 107 L6 154.7 L5 155.7 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<path d="M119 100 L118 100 L118 154 L119 155 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
+<!-- The bottom left miter: a 45-degree line from the inner corner (where the slots' line meets the bar's top) to the window's bottom left, lit along the bar's side a pixel wide; the side's line and all three of the bar's bands end on it -->
+<path d="M6 154 L7.414 154 L1.414 160 L0 160 Z" fill="#c6d6de" data-color="2" data-palette="9"/>
 <!-- Left of the housing's arch: the column's line up to the top, the dark corner -->
 <rect x="89" y="0" width="7" height="8" fill="#292929" data-color="8" data-palette="9"/>
 <rect x="88" y="0" width="1" height="12" fill="#738ca5" data-color="4" data-palette="9"/>
