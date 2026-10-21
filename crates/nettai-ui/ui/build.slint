@@ -126,6 +126,7 @@ export struct SheetPartner {
     used: int,
     gauge: int,
     tones: [color],
+    joins: [bool],
 }
 
 export struct BuildSheet {
@@ -881,14 +882,15 @@ export component BuildOverview inherits Rectangle {
             vertical-alignment: center;
         }
 
+        // (As the Party tab's gauge: a program's blocks one piece in its color, an empty block an outlined slot.)
         for k in partner.gauge: Rectangle {
             x: parent.width - 28px - 4px - partner.gauge * 5px + k * 5px;
             y: 6px;
-            width: 4px;
+            width: k + 1 < partner.used && k < partner.joins.length && partner.joins[k] ? 5px : 4px;
             height: 8px;
-            border-width: 1px;
+            border-width: k < partner.used ? 0px : 1px;
             border-color: Theme.line;
-            background: partner.used > partner.gauge ? Theme.bad : k < partner.used ? (k < partner.tones.length ? partner.tones[k] : Theme.cursor) : Theme.inset;
+            background: k < partner.used ? (k < partner.tones.length ? partner.tones[k] : Theme.cursor) : Theme.inset;
         }
 
         Text {

@@ -27,6 +27,7 @@ export struct PartnerCard {
     used: int,
     gauge: int,
     tones: [color],
+    joins: [bool],
     bad: bool,
 }
 
@@ -59,8 +60,8 @@ export struct PartyDetail {
 export global PartyView {
     out property <[Hint]> hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: Nav.id == "lib.rows" ? @tr("Put in") : Nav.id == "installed" ? @tr("Remove") : @tr("Choose") },
-        { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: Nav.id == "lib.rows" ? @tr("Put in") : Nav.id == "installed" ? @tr("Remove") : Nav.id == "partner" ? @tr("Change partner") : @tr("Choose") },
+        { key: "Del", pad: Shell.pad-delete, text: Nav.id == "partner" ? @tr("Remove partner") : @tr("Remove") },
         { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
@@ -84,7 +85,7 @@ export global PartyView {
     // On a phone: the library's sheet is open.
     in property <bool> sheet;
     // ---- Words the app asks for.
-    out property <string> clear-question: @tr("Clear the party?");
+    out property <string> clear-question: @tr("Take out all of the partner's programs?");
     out property <string> remove-word: Caps.of(@tr("Remove"));
     public pure function blocks-word(n: int) -> string {
         return @tr("{n} block" | "{n} blocks" % n);
@@ -103,23 +104,33 @@ export global PartyView {
     }
 }
 
-// A gauge of `count` blocks, the first `filled` filled, each in its program's color (`tones`, else `tone`; past the
-// count: all in the error red), each block `size` wide.
+// A gauge of `count` blocks, as the NaviCust tab draws its board (`CellView`): a filled block flat in its program's
+// color (`tones`, else `tone`), the blocks of one program joined into one piece (`joins`: block i runs on into the
+// next), a gap between programs; an empty block an outlined slot, as an empty cell of the board is. Each `size` wide.
 component Blocks inherits Rectangle {
     in property <int> count;
     in property <int> filled;
     in property <[color]> tones;
+    in property <[bool]> joins;
     in property <color> tone: Theme.cursor;
     in property <length> size: 8px;
-    width: root.count * (root.size + 2px);
-    for i in root.count: Rectangle {
-        x: i * (root.size + 2px);
+    property <length> gap: 2px;
+    width: max(root.count, root.filled) * (root.size + root.gap) - root.gap;
+    for i in max(root.count, root.filled): Rectangle {
+        x: i * (root.size + root.gap);
         y: 0;
         width: root.size;
         height: root.height;
-        background: root.filled > root.count ? Theme.bad : i < root.filled ? (i < root.tones.length ? root.tones[i] : root.tone) : Theme.inset;
-        border-width: 1px;
+        background: i < root.filled ? (i < root.tones.length ? root.tones[i] : root.tone) : Theme.inset;
+        border-width: i < root.filled ? 0px : 1px;
         border-color: Theme.line;
+        // (Into the next block of its program: the gap between them its color.)
+        Rectangle {
+            x: parent.width;
+            width: root.gap;
+            visible: i + 1 < root.filled && (root.joins.length == 0 || (i < root.joins.length && root.joins[i]));
+            background: parent.background;
+        }
     }
 }
 
@@ -153,13 +164,24 @@ component CardView inherits Rectangle {
     }
 
     property <length> text-x: Theme.phone ? 52px : 88px;
+    // (What a click, a tap or Enter does to it, at its top right: CHANGE, or on an empty card its words are the action.)
+    Label {
+        x: parent.width - 12px - self.width;
+        y: 4px;
+        width: self.preferred-width;
+        height: 18px;
+        visible: root.card.there;
+        text: Caps.of(@tr("Change ›"));
+        color: touch.has-hover || touch.focused ? Theme.cursor : Theme.muted;
+    }
+
     Text {
         x: root.card.there ? root.text-x : 12px;
         y: 24px;
         width: parent.width - self.x - 12px;
         height: 20px;
-        text: root.card.there ? root.card.name : @tr("Add a partner");
-        color: !root.card.there ? Theme.dim : root.card.bad ? Theme.bad : Theme.text;
+        text: root.card.there ? root.card.name : @tr("+ Add a partner");
+        color: !root.card.there ? (touch.has-hover || touch.focused ? Theme.cursor : Theme.text) : root.card.bad ? Theme.bad : Theme.text;
         font-family: Theme.body;
         font-size: Theme.phone ? 13px : 15px;
         font-weight: 700;
@@ -188,6 +210,7 @@ component CardView inherits Rectangle {
         count: root.card.gauge;
         filled: root.card.used;
         tones: root.card.tones;
+        joins: root.card.joins;
         size: Theme.phone ? 6px : 8px;
     }
 
@@ -205,7 +228,7 @@ component CardView inherits Rectangle {
         vertical-alignment: center;
     }
 
-    Focusable {
+    touch := Focusable {
         nav: "partner";
         nav-index: root.nav-index;
         describes: true;
@@ -415,11 +438,11 @@ export component PartyTab inherits Rectangle {
             overflow: elide;
         }
 
-        // (What the game's rules have against the party: a phone's line over the cards, before CLEAR.)
+        // (What the game's rules have against the party: a phone's line over the cards.)
         ProblemNote {
             x: 0px;
             y: 0px;
-            width: max(0px, clear.x + clear.pad - 12px);
+            width: root.width;
             visible: Theme.phone;
             text: PartyView.problems;
         }
@@ -435,24 +458,25 @@ export component PartyTab inherits Rectangle {
             chosen: i == PartyView.chosen;
         }
 
-        // ---- The chosen partner's PartyCust: its title, its gauge large, CLEAR (every partner taken out, asked first).
-        Label {
+        // ---- The chosen partner's PartyCust: its title, and its gauge large right after it.
+        head-title := Label {
             x: 0;
             y: root.head-y;
-            width: max(0px, head-gauge.x - 12px);
+            width: min(self.preferred-width, root.width / 2);
             height: 28px;
             text: root.partner ? Caps.of(PartyView.title) : "";
             color: Theme.cursor;
         }
 
         head-gauge := Blocks {
-            x: clear.x + clear.pad - 16px - self.width - 48px;
+            x: head-title.width + 16px;
             y: root.head-y + 6px;
             height: 16px;
             visible: root.partner;
             count: PartyView.cards[PartyView.chosen].gauge;
             filled: PartyView.cards[PartyView.chosen].used;
             tones: PartyView.cards[PartyView.chosen].tones;
+            joins: PartyView.cards[PartyView.chosen].joins;
             size: Theme.phone ? 10px : 14px;
         }
 
@@ -469,14 +493,6 @@ export component PartyTab inherits Rectangle {
             vertical-alignment: center;
         }
 
-        clear := WordButton {
-            x: root.width + self.pad - self.width;
-            y: Theme.phone ? 0px : root.head-y + 2px;
-            nav: "clear";
-            text: Caps.of(@tr("Clear"));
-            enabled: PartyView.partners > 0;
-        }
-
         // INSTALLED, framed; PROGRAMS, open beside it (on a phone, a sheet a button opens).
         PanelBack {
             x: 0;
@@ -489,11 +505,22 @@ export component PartyTab inherits Rectangle {
         Label {
             x: 12px;
             y: root.panes-y;
-            width: root.pane-width - 24px;
+            width: max(0px, clear.x + clear.pad - 12px - self.x);
             height: 36px;
             visible: root.partner;
             text: Caps.of(@tr("Installed"));
             color: Nav.id == "installed" ? Theme.cursor : Theme.muted;
+        }
+
+        // CLEAR (docs/design/app-ui.md §2.71): the partner's programs all taken out, asked first; at the right end of
+        // INSTALLED's header, as each tab has it at its pane's; dim where there is none.
+        clear := WordButton {
+            x: root.pane-width - 12px + self.pad - self.width;
+            y: root.panes-y + 10px;
+            visible: root.partner;
+            nav: root.partner ? "clear" : "";
+            text: Caps.of(@tr("Clear"));
+            enabled: PartyView.installed.length > 0;
         }
 
         RowsPane {

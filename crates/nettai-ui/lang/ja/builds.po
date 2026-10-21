@@ -605,11 +605,11 @@ msgstr "パーティ"
 msgid "the party"
 msgstr "パーティ"
 
-msgid "Add a partner"
-msgstr "パートナーを追加"
+msgid "+ Add a partner"
+msgstr "+ パートナーを追加"
 
-msgid "Clear the party?"
-msgstr "パーティを空にしますか？"
+msgid "Take out all of the partner's programs?"
+msgstr "パートナーのプログラムをすべて外しますか？"
 
 msgid "{n} partner"
 msgid_plural "{n} partners"
@@ -634,3 +634,12 @@ msgstr "パートナー {}"
 
 msgid "{}'s PartyCust"
 msgstr "{}のパーティカスタム"
+
+msgid "Change ›"
+msgstr "変更 ›"
+
+msgid "Change partner"
+msgstr "パートナーを変更"
+
+msgid "Remove partner"
+msgstr "パートナーを外す"

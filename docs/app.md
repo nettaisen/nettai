@@ -1595,9 +1595,12 @@ won't fit greyed with "Needs n blocks"). The strip across the top describes what
 Enter on a card opens the navis to pick from (`Shell::pick_marked`, a phone's sheet: the partner's own checked, the
 other partner's and one the build's ruleset holds back dimmed with why, REMOVE under them); Enter in PROGRAMS installs
 at the end of the partner's (one may be in twice: the rules hold them to the gauge alone); Enter or Del in INSTALLED
-takes out; Del on a card takes the partner out; CLEAR (X) every partner, asked first. Each block is in its program's
-color, a NaviCust program's color as the NaviCust tab draws it (the program's definition's `color`: the user, "use the
-colors you use for navicust"). On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a
+takes out; Del on a card takes the partner out; CLEAR (X), at INSTALLED's header's right end, the partner's programs,
+asked first. A card says what a click, a tap or Enter does (CHANGE › at its top right; an empty one's "+ Add a partner"
+in the cursor's color), as do the footer's hints (Change partner, Remove partner). The gauge is drawn as the NaviCust
+tab draws its board: a filled block flat in its program's color (a NaviCust program's color, the program's definition's
+`color`: the user, "use the colors you use for navicust"), a program's blocks joined into one piece with a gap between
+programs, an empty block an outlined slot; the overview's small gauge the same. On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a
 PROGRAMS button that opens the library as a sheet. The gauge and a program's cost are the rules' overview's (a list
 budget of the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's
 problems in their typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A

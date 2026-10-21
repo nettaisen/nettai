@@ -16,8 +16,8 @@
 //! holds back (its `party` category) or the other partner's dimmed and refused, and REMOVE, which takes the partner out
 //! with its programs. **Enter in PROGRAMS** installs the program at the end of the partner's (a program may be in twice:
 //! the rules hold them to the gauge alone), refused where the gauge or the list has no room ("Needs 5 blocks");
-//! **Enter or Del in INSTALLED** takes it out; Del on a card takes the partner out; **CLEAR** (or X) takes every partner
-//! out, asked first. Each block is in its program's color, a NaviCust program's (its definition's `color`). A program
+//! **Enter or Del in INSTALLED** takes it out; Del on a card takes the partner out; **CLEAR** (or X), at INSTALLED's
+//! header's right end, takes the partner's programs out, asked first. Each block is in its program's color, a NaviCust program's (its definition's `color`). A program
 //! the build's ruleset holds back (its category over the partners' programs, `party.programs`) is greyed in PROGRAMS
 //! with "Not allowed" and refused; one installed all the same says so, red, and can be taken out.
 
@@ -140,6 +140,7 @@ impl Party {
                         used: b.as_ref().map_or(0, |b| b.count.used as i32),
                         gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),
                         tones: ModelRc::new(VecModel::from(tones)),
+                        joins: ModelRc::new(VecModel::from(crate::builds::party::joins(&content, p, b.as_ref()))),
                         bad: !Party::problems(draft, i).is_empty(),
                     }
                 })
@@ -447,9 +448,11 @@ impl Tab for Party {
                 self.close_sheet(shell);
                 shell.nav.focus("programs", 0);
             }
+            // (CLEAR, INSTALLED's: the chosen partner's programs.)
             "clear" => {
                 let question = shell.ui().global::<PartyView>().get_clear_question();
-                editor::ask_clear(shell, question, self.partners(draft).is_empty());
+                let empty = self.partners(draft).get(self.chosen).is_none_or(|p| p.programs.is_empty());
+                editor::ask_clear(shell, question, empty);
             }
             _ => {}
         }
@@ -529,8 +532,8 @@ impl Tab for Party {
     }
 
     fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
-        if editor::cleared(tag, choice) && self.change(draft, |ps| !std::mem::take(ps).is_empty()) {
-            self.chosen = 0;
+        let i = self.chosen;
+        if editor::cleared(tag, choice) && self.change(draft, |ps| ps.get_mut(i).is_some_and(|p| !std::mem::take(&mut p.programs).is_empty())) {
             self.changed(shell, draft);
         }
     }
