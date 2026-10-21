@@ -1847,9 +1847,9 @@ mod tests {
             let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
             let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
             let press = |b: &mut nettai_battle::Battle, key: u16| {
-                b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
+                b.tick(&[PlayerTick::buttons(key), Default::default()], Default::default());
                 for _ in 0..200 {
-                    b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+                    b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
                     if choosing(b) {
                         return;
                     }
@@ -1860,13 +1860,13 @@ mod tests {
                 if choosing(&b) {
                     break;
                 }
-                b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+                b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
             }
             press(&mut b, keys::A);
             b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
             press(&mut b, keys::A);
             b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
-            b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
+            b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
             let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
             assert_eq!(transform.form, ids::form(&content, "exe5", "protosoul"));
             transform.turns as i64

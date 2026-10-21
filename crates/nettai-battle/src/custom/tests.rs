@@ -1142,7 +1142,7 @@ fn the_clock_is_part_of_the_battles_state() {
     use crate::{Battle, PlayerTick, TickEvents};
     let limit = 300;
     let mut b = Battle::new(crate::RoundSetup { custom_screen_limit: Some(limit), ..crate::scenario::setup() }, crate::scenario::content());
-    let idle = [PlayerTick { held: 0 }; 2];
+    let idle = [PlayerTick::buttons(0); 2];
     let choosing = |b: &Battle| b.custom.sides.iter().all(|s| s.screen.is_some_and(|s| s.phase == Phase::Choosing));
     for _ in 0..2000 {
         if choosing(&b) {

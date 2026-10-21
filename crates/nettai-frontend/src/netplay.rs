@@ -60,7 +60,7 @@ use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::{Battle, BattleResult};
 use nettai_match::{After, Match, Set, Side};
-use nettai_netplay::protocol::BUTTONS;
+use nettai_netplay::protocol::TICK_WORD;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
@@ -275,8 +275,8 @@ impl Observer<StandInBattle> for Watch {
         if let Some(r) = &mut self.record {
             let due = ended || crate::replay::digest_due(r.before + frame as u64);
             let digest = r.digests.remove(&frame).filter(|_| due);
-            let buttons = inputs.map(|&b| b & nettai_replay::BUTTON_MASK);
-            r.settled.push(nettai_replay::Tick { buttons, digest, round_ended: ended, set_ended: false });
+            let inputs = inputs.map(|&b| b & nettai_replay::INPUT_MASK);
+            r.settled.push(nettai_replay::Tick { inputs, digest, round_ended: ended, set_ended: false });
         }
         if ended {
             self.settled_end = self.end.take();
@@ -441,7 +441,7 @@ impl<C: Channel> NetPlayer<C> {
         (self.skew, self.lead) = (session.skew(), session.local_queue_length() as u32);
         let decided = self.over.is_none() && self.peer.wait().is_none();
         if decided {
-            self.peer.decide(keys & BUTTONS);
+            self.peer.decide(keys & TICK_WORD);
         }
         let datagram = self.peer.datagram(now);
         self.channel.send(&datagram).map_err(lost)?;

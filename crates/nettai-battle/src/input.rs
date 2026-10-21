@@ -121,6 +121,43 @@ pub struct PlayerTick {
     /// The buttons the player holds on this tick (GBA bits, 0..=0x3FF),
     /// which their custom screen and the fight both read.
     pub held: u16,
+    /// The member of their side's party the player asks to switch to on
+    /// this tick, if any (0 is the side's own navi, 1 and 2 its partners:
+    /// `Battle::party`). A request is input, as the buttons are: the DS's
+    /// battle packet carries it beside the keys (its +7, the member + 1,
+    /// 0x020370C8), and the side's input record keeps it (+8). A side
+    /// without partners has nothing to switch to, and a request of it does
+    /// nothing.
+    pub switch_to: Option<u8>,
+}
+
+/// The bits of a [`PlayerTick`]'s word ([`PlayerTick::word`]).
+pub const TICK_WORD: u16 = 0xFFF;
+
+impl PlayerTick {
+    /// A tick of these buttons alone.
+    pub const fn buttons(held: u16) -> PlayerTick {
+        PlayerTick { held, switch_to: None }
+    }
+
+    /// The tick as one 16-bit word, for the hosts that carry a tick as a
+    /// number (netplay's wire, replays, a frontend's input): the buttons in
+    /// the low ten bits, the switch request in bits 10 and 11 (the member
+    /// plus one, 0 none).
+    pub const fn word(self) -> u16 {
+        let switch = match self.switch_to {
+            Some(m) => (m as u16 & 3) + 1,
+            None => 0,
+        };
+        self.held & 0x3FF | (switch & 3) << 10
+    }
+
+    /// The tick a word ([`PlayerTick::word`]) holds; the bits above it are
+    /// ignored. (A word's switch field of 3 names member 2.)
+    pub const fn from_word(word: u16) -> PlayerTick {
+        let switch = (word >> 10) & 3;
+        PlayerTick { held: word & 0x3FF, switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) } }
+    }
 }
 
 #[cfg(test)]

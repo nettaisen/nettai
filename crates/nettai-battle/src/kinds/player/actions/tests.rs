@@ -2163,7 +2163,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     tick(&mut b, p0, p1, 0);
     assert_eq!(ai_mut(&mut b, p0).attack.step, 8);
     // The kept stats carry the HP the navi had.
-    assert_eq!((b.reserves[0].hp, b.objects.get(p0).hp), (700, 700));
+    assert_eq!((b.party[0].members[0].hp, b.objects.get(p0).hp), (700, 700));
     for _ in 0..20 {
         tick(&mut b, p0, p1, 0);
     }

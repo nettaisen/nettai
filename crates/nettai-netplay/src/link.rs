@@ -142,8 +142,8 @@ impl<I: WireInput> InputLink<I> {
 
     /// This player's next tick, which carries the tick advantage.
     pub fn push(&mut self, input: &I, tick_advantage: i16) {
-        let (held, flags) = input.encode();
-        self.out.push_with_meta(Element::Tick { held, flags }, Meta { tick_advantage });
+        let (word, flags) = input.encode();
+        self.out.push_with_meta(Element::Tick { word, flags }, Meta { tick_advantage });
     }
 
     /// This player's round is over.
@@ -207,8 +207,8 @@ impl<I: WireInput> InputLink<I> {
         self.stats.delivered += window.entries.len() as u64;
         for e in window.entries {
             match e {
-                Element::Tick { held, flags } => {
-                    let input = I::decode(held, flags).map_err(LinkError::Malformed)?;
+                Element::Tick { word, flags } => {
+                    let input = I::decode(word, flags).map_err(LinkError::Malformed)?;
                     delivered.push(Delivery::Input { input, tick_advantage: window.meta.tick_advantage });
                 }
                 Element::RoundEnd => delivered.push(Delivery::RoundEnd),

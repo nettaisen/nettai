@@ -240,7 +240,7 @@ impl Driver for ReplayPlayer {
         let t = *self.ticks.get(self.at)?;
         self.at += 1;
         // (The buttons are the whole input, as a netplay peer's are.)
-        let TickInput { players, events } = nettai_netplay::standin::tick_input(b, t.buttons);
+        let TickInput { players, events } = nettai_netplay::standin::tick_input(b, t.inputs);
         Some(Step { input: players, events, frame: Some(self.at as u32) })
     }
 
@@ -520,7 +520,7 @@ mod tests {
             let mut b = set.start();
             let mut ends = Vec::new();
             for (i, t) in replay.ticks.iter().enumerate() {
-                let TickInput { players, events } = nettai_netplay::standin::tick_input(&b, t.buttons);
+                let TickInput { players, events } = nettai_netplay::standin::tick_input(&b, t.inputs);
                 b.tick(&players, events);
                 assert_eq!(t.round_ended, b.round_end().is_some(), "{game}: tick {i}");
                 if let Some(d) = t.digest {
@@ -603,9 +603,9 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let (replay, _) = recorded(&content, "exe6");
         let mut other = replay.clone();
-        let fight = other.ticks.iter().position(|t| t.buttons[0] != 0).unwrap() + 200;
+        let fight = other.ticks.iter().position(|t| t.inputs[0] != 0).unwrap() + 200;
         for t in &mut other.ticks[fight..] {
-            t.buttons[0] = 0;
+            t.inputs[0] = 0;
         }
         let out = play_out(&content, &other).unwrap();
         let diverged = out.diverged.unwrap();
