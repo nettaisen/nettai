@@ -745,10 +745,13 @@ impl Round {
     /// Whether the `i`th of `frames` is a DS link stall: a frame whose
     /// battle update didn't run (BattleState +0x64, the running state's tick
     /// count, held from the frame before), the DS's wait for the link's
-    /// packet, which its frame routine makes as the GBA's cable never did.
+    /// packet, which its frame routine makes as the GBA's cable never did;
+    /// in the fight and in the battle's end (state 8, whose frames count
+    /// too).
     pub fn stalled(&self, i: usize, frames: &[&Frame]) -> bool {
         let f = frames[i];
-        f.ds && i > 0 && f.ticks == frames[i - 1].ticks && f.state[0] == 4 && frames[i - 1].state[0] == 4
+        let counted = |g: &Frame| matches!(g.state[0], 4 | 8);
+        f.ds && i > 0 && f.ticks == frames[i - 1].ticks && counted(f) && counted(frames[i - 1])
     }
 
     /// A DS recording's custom screen: the direction its player presses on

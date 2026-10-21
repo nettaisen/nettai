@@ -19,6 +19,7 @@ local navicust_board = require("@self/navicust/board")
 local navicust_bugs = require("@self/navicust/bugs")
 local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
+local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
 local shout = require("@self/shout")
@@ -96,6 +97,8 @@ local state: StateSchema = {
     rescued = "bool",
     -- EXE5 DS's shout is spent this battle (./shout: its battle flag 0x800 or 0x1000).
     shouted = "bool",
+    -- NumberMan's DiceBons is spent this battle (navis/numberman/dice_bonus: the party block's +0x13).
+    dice_bonus = "bool",
 }
 
 local rules: Rules = {
@@ -374,6 +377,10 @@ local rules: Rules = {
         switch_asked = party.switch_asked,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
+        -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).
+        chip_ended = numberman_dice_bonus.chip_ended,
+        -- A hit on the navi shows: MegaMan's hurt voice's draw in a party battle (./party).
+        navi_hit_shown = party.navi_hit_shown,
         -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
         obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).

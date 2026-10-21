@@ -2242,6 +2242,11 @@ export type RulesSpec = {
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
+        -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
+        -- are cleared.
+        chip_ended: ((side: number, navi: Object) -> ())?,
+        -- A hit on the side's player navi shows (white, then its sounds), before its sounds.
+        navi_hit_shown: ((side: number, navi: Object) -> ())?,
         -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
         -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
         -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the

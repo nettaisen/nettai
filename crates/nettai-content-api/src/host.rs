@@ -536,6 +536,17 @@ pub enum RulesHook {
     /// enough shout at a low enough HP starts its heal). Its result is
     /// unused.
     MicHeard,
+    /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
+    /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
+    /// is handed on and before its requests and charge are cleared (the
+    /// DS's 0x0200634C, where NumberMan's DiceBons may follow). Its result
+    /// is unused.
+    ChipEnded,
+    /// `navi_hit_shown(side, navi)`: a hit on the side's player navi shows
+    /// (white, then its sounds: EXE5's `applyDamageToPlayer`, 0x080185A2),
+    /// before its sounds (where the DS's 0x02062C40 picks MegaMan's hurt
+    /// voice on his own console's RNG1). Its result is unused.
+    NaviHitShown,
     /// `navi_switched(side, navi, member, mood)`: a switch of the side's
     /// party settled, in battle or while paused (the end of the DS's
     /// settle steps, 0x0202C8F8 and 0x0202C130: where its Double Attack
@@ -703,6 +714,8 @@ impl RulesHook {
             RulesHook::MemberBusy => "member_busy",
             RulesHook::NaviSwitched => "navi_switched",
             RulesHook::MicHeard => "mic_heard",
+            RulesHook::ChipEnded => "chip_ended",
+            RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
@@ -723,7 +736,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 58] = [
+    pub const ALL: [RulesHook; 60] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -762,6 +775,8 @@ impl RulesHook {
         RulesHook::MemberBusy,
         RulesHook::NaviSwitched,
         RulesHook::MicHeard,
+        RulesHook::ChipEnded,
+        RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,

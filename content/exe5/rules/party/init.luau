@@ -51,7 +51,7 @@ export type Setup = {
     level: number?,
 }
 
-type State = { rescued: boolean }
+type State = { rescued: boolean, dice_bonus: boolean }
 
 -- Whether the side has partners.
 function party.has_partners(side: number): boolean
@@ -238,6 +238,26 @@ end
 function party.spend_rescue(side: number)
     local state = rules.state_of(side) :: State
     state.rescued = true
+end
+
+-- 0x02098E44, as a hit on the side's navi shows (0x02062C40, applyDamageToPlayer's counterpart, on the navi's own
+-- console): MegaMan's hurt voice, while he is the member on the field (the side's NaviStats +0x58, the member's slot,
+-- 0). The console draws its RNG1; with 6 or 7 in its low three bits, one of three voices by the damage (under 70, under
+-- 150, more: 0x02132044's pairs). The voice is left out, as the switch's are; the draw stays.
+function party.navi_hit_shown(side: number, _navi: Object)
+    if party.has_partners(side) and battle.party(side).active == 0 then
+        battle.console_rng_positive(side)
+    end
+end
+
+-- NumberMan's DiceBons is spent this battle (the party block's +0x13), and spending it.
+function party.dice_bonus_spent(side: number): boolean
+    return (rules.state_of(side) :: State).dice_bonus
+end
+
+function party.spend_dice_bonus(side: number)
+    local state = rules.state_of(side) :: State
+    state.dice_bonus = true
 end
 
 -- `validate`'s part: a party is MegaMan's (the navi that changes form, member 0: the DS's); its partners are team navis
