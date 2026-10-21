@@ -201,7 +201,10 @@ named_fields! {
         PreventAnim = "prevent_anim", U8, rw;
         /// BattleObject +0x1A: a player's chips left in its hand as the HUD
         /// shows them; another actor's own count (EXE5's Jealousy reads it).
-        ChipsHeld = "chips_held", U8, ro;
+        ChipsHeld = "chips_held", U8, rw;
+        /// BattleObject +0x2A holds a chip (a player's: its hand's at the
+        /// cursor, which its HUD shows).
+        HasChip = "has_chip", Bool, ro;
         Pos = "pos", Vec3, rw;
         Vel = "vel", Vec3, rw;
         Related1 = "related1", Object, rw;
@@ -246,6 +249,9 @@ named_fields! {
         AttackElement = "attack_element", U8, rw;
         /// The attack's damage (with its flag bits).
         AttackDamage = "attack_damage", U16, rw;
+        /// The attack's bonus from its hand entry (AIAttackVars+6: the
+        /// Atk+ and charge bonuses), read-only.
+        AttackExtra = "attack_extra", U16, ro;
         /// The attack's hit parameter (its hitbox's counter byte).
         HitParam = "hit_param", U16, rw;
         /// The attack's variant (AIAttackVars+3), as the anti-damage
@@ -470,6 +476,10 @@ named_fields! {
         Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
         BarrierHp = "barrier_hp", U8, ro;
         BarrierPopHitMod = "barrier_pop_hit_mod", U8, ro;
+        /// A bubble is its barrier (BblWrap's, the barrier byte 8), and the
+        /// barrier's timer (+0x1A: a bubble's 0 while it is down).
+        Bubble = "bubble", Bool, ro;
+        BarrierTimer = "barrier_timer", U16, ro;
     }
 }
 
@@ -756,6 +766,9 @@ named_flags! {
         AHeld = "a_held",
         BHeld = "b_held",
         StunStrike = "stun_strike",
+        /// The rules caught a hit for their guard (their `hit_guard`; the
+        /// role `guard`).
+        Guard = "guard",
         /// The rules hold a navi at 0 HP for their revival (the role
         /// `revival`).
         Revival = "revival",
@@ -1367,6 +1380,11 @@ pub trait CoreApi {
     /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
+    /// The battle's flags word's bits the engine owns none of (0x80 and
+    /// up): the rules' own, kept for the battle (EXE5 DS's Mag-Barr's
+    /// once-a-battle marks, battle flags 0x200 and 0x400).
+    fn rules_flag(&self, bit: u16) -> bool;
+    fn set_rules_flag(&mut self, bit: u16);
     /// `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (the
     /// intro bits' 0x04 for side 0, 0x08 for side 1, which a round starts
     /// with set; `sub_800A772` reads them): the side's navi may use chips,
@@ -2029,7 +2047,7 @@ pub trait CoreApi {
     fn open_counter_window(&mut self, o: ObjectRef, ticks: u8);
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
-    fn check_reactive_abort(&mut self, o: ObjectRef);
+    fn check_reactive_abort(&mut self, o: ObjectRef, guard: bool);
     /// `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode
     /// 9 (the roles' `mode9_attack` and `mode9_actor`).
     fn spawn_mode9_objects(&mut self, o: ObjectRef);

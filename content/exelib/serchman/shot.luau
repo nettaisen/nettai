@@ -10,6 +10,8 @@ local shot = {}
 export type State = {
     -- The powered shot (its Param1 29, not 25).
     powered: boolean,
+    -- Its hit modifier (its Param2: the chips' 3; EXE5 DS's SearchMan's support's 0).
+    hit_mod: number,
 }
 
 export type Spec = {
@@ -29,7 +31,7 @@ export type Spec = {
 
 export type Shot = {
     kind: Kind,
-    spawn: (searchman: Object, x: number, y: number, powered: boolean) -> Object?,
+    spawn: (searchman: Object, x: number, y: number, powered: boolean, hit_mod: number?) -> Object?,
 }
 
 function shot.make(spec: Spec): Shot
@@ -47,7 +49,7 @@ function shot.make(spec: Spec): Shot
             return
         end
         local s = me.state :: State
-        me:setup_collision(if s.powered then spec.powered_type else spec.plain_type, spec.target, 3)
+        me:setup_collision(if s.powered then spec.powered_type else spec.plain_type, spec.target, s.hit_mod)
         me.collision:set_hit_effect(if s.powered then spec.powered_spark else spec.plain_spark)
         me.collision:present()
         me:set_lifecycle("update")
@@ -70,7 +72,7 @@ function shot.make(spec: Spec): Shot
     local kind = new.kind {
         id = spec.id,
         pool = "attack",
-        state = { powered = "bool" },
+        state = { powered = "bool", hit_mod = "u8" },
         -- 0x080D0D78.
         update = function(me: Object)
             local l = me.lifecycle
@@ -84,15 +86,18 @@ function shot.make(spec: Spec): Shot
         end,
     }
 
-    -- 0x080D0E1E (EXE4's 0x080D8854): a shot of `searchman` on (x, y) with his damage word.
-    local function spawn(searchman: Object, x: number, y: number, powered: boolean): Object?
+    -- 0x080D0E1E (EXE4's 0x080D8854): a shot of `searchman` on (x, y) with his damage word, its hit modifier 3 unless
+    -- said.
+    local function spawn(searchman: Object, x: number, y: number, powered: boolean, hit_mod: number?): Object?
         local o = battle.spawn(kind, Vec3.zero)
         if o then
             o.panel_x, o.panel_y = x, y
             o:set_damage_word(bit32.bor(searchman.damage, bit32.lshift(searchman.stamina, 16)))
             o.alliance, o.flip = searchman.alliance, searchman.flip
             o.run_while_dimmed = true
-            ;(o.state :: State).powered = powered
+            local s = o.state :: State
+            s.powered = powered
+            s.hit_mod = hit_mod or 3
         end
         return o
     end

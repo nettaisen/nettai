@@ -780,6 +780,34 @@ impl Battle {
         }
     }
 
+    /// The rules' `opponent_chip(side, navi)`: whether they stop the
+    /// opponent's chip.
+    pub(crate) fn rules_opponent_chip(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::OpponentChip, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `low_hp(side, navi)`: whether they sent something for
+    /// the navi at a quarter of its HP.
+    pub(crate) fn rules_low_hp(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::LowHp, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `hit_guard(side, navi)`: whether they swallow the hit no
+    /// trap caught.
+    pub(crate) fn rules_hit_guard(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::HitGuard, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
+    /// The rules' `hit_swallowed(side, navi)`.
+    pub(crate) fn rules_hit_swallowed(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::HitSwallowed, Some(navi), None, None);
+    }
+
+    /// The rules' `chip_ready(side, navi, chip)`.
+    pub(crate) fn rules_chip_ready(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) {
+        self.call_rules(side, RulesHook::ChipReady, Some(navi), Some(chip), None);
+    }
+
     /// The rules' `navi_tick(side, navi)`.
     pub(crate) fn rules_navi_tick(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::NaviTick, Some(navi), None, None);

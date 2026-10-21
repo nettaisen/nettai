@@ -73,10 +73,12 @@ pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef, ticks: u8) {
 }
 
 /// The reactive-defense abort some chip actions check after each phase
-/// (requests 0x200, 0x400, 0x8000): a trap's counter takes over
+/// (requests 0x200, 0x400, 0x8000; with `guard`, the rules' guard's too:
+/// EXE5 DS's Slasher, 0x02046C3A): a trap's counter takes over
 /// (`sub_801056A`).
-pub(crate) fn check_reactive_abort(b: &mut Battle, r: ObjectRef) {
-    if super::ai(b, r).requests & reactive::TRIGGERS != 0 {
+pub(crate) fn check_reactive_abort(b: &mut Battle, r: ObjectRef, guard: bool) {
+    let triggers = if guard { reactive::TRIGGERS | crate::actor::request::GUARD } else { reactive::TRIGGERS };
+    if super::ai(b, r).requests & triggers != 0 {
         reactive::counter(b, r);
     }
 }
