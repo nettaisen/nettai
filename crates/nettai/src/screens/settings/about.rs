@@ -232,8 +232,9 @@ mod tests {
     fn the_list_holds_the_fonts_and_slint_with_their_licenses() {
         // (The UI's and the battle's drawing's: build.rs's list, in its order.)
         let names: Vec<&str> = FONTS.iter().map(|f| f.name).collect();
-        assert_eq!(names, ["Bungee", "Chakra Petch", "Corporate Logo", "M PLUS 1 Code", "Murecho", "Saira"]);
-        assert!(FONTS.iter().all(|f| f.license == "OFL-1.1" && !f.texts.is_empty()));
+        assert_eq!(names, ["Bungee", "Chakra Petch", "Corporate Logo", "M PLUS 1 Code", "Murecho", "Nettai Banner Digits", "Nettai Digits"]);
+        // (The bought-in fonts under the OFL; the digit fonts nettai's own, under its license.)
+        assert!(FONTS.iter().all(|f| !f.texts.is_empty() && f.license == if f.name.starts_with("Nettai") { "MPL-2.0" } else { "OFL-1.1" }));
         let slint = PACKAGES.iter().find(|p| p.name == "slint").expect("Slint is built in");
         assert!(slint.license.contains("LicenseRef-Slint-Royalty-free-2.0"));
         assert!(slint.texts.iter().any(|(file, _)| file.contains("Royalty-free")));
