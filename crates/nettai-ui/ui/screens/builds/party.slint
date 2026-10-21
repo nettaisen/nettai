@@ -569,11 +569,14 @@ component SectionView inherits Rectangle {
         removable: true;
     }
 
+    // (Its list a row taller than its rows, the room a gap opens in while a program from elsewhere would go in: the
+    // section grows over it then. Its height never follows `Drag`: the list's rows would be made anew, and the one held
+    // by the pointer let go.)
     RowsList {
         x: 0;
         y: root.head;
         width: parent.width;
-        height: parent.height - root.head;
+        height: (max(1, root.panel.rows.length) + 1) * (Theme.phone ? 44px : 30px);
         rows: root.panel.rows;
         nav: "installed" + root.place;
         removable: true;
@@ -614,7 +617,11 @@ export component PartyTab inherits Rectangle {
     property <int> empty-slots: max(0, PartyView.room - PartyView.panels.length);
     property <length> sections-height: root.partners-height + root.empty-slots * 34px;
     property <length> pane-height: root.head + root.sections-height + (root.sections-height == 0 ? 0px : 12px);
-    property <length> content-height: max(root.height, root.pane-y + root.pane-height + (root.phone ? 12px + 44px : 0px) + 12px);
+    // (What the page scrolls, and so the library's height, are as tall as PARTY with a row to spare, whether a drag
+    // has grown a section or not: a list's rows are made anew whenever its height is asked again, and a row held by
+    // the pointer would be let go. Nothing a list's height follows may read `Drag`.)
+    property <length> resting-height: root.head + (PartyView.panels.length == 0 ? 0px : 34px + max(1, PartyView.panels[0].rows.length) * root.pitch) + (PartyView.panels.length > 1 ? 34px + max(1, PartyView.panels[1].rows.length) * root.pitch : 0px) + root.empty-slots * 34px + 12px + root.pitch;
+    property <length> content-height: max(root.height, root.pane-y + root.resting-height + (root.phone ? 12px + 44px : 0px) + 12px);
 
     tab-page := ScrollPage {
         x: 0;

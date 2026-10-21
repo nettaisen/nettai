@@ -61,7 +61,7 @@ mod replays;
 pub mod reel;
 
 /// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`,
-/// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
+/// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `party`, `play`, `replays`), for looking at one screen
 /// without the whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
 fn walks(part: &str) -> bool {
     std::env::var("NETTAI_TOUR_ONLY")
@@ -475,6 +475,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     builds::steps(&mut add, &shot, lang, size);
     taking.set(walks("build-tabs"));
     build_tabs::steps(&mut add, &shot, lang, size);
+    // (The Party tab, `party`: a game without one passes it by.)
+    taking.set(walks("party"));
+    build_tabs::party_steps(&mut add, &shot, lang, size);
 
     // Play, with a second player (its own steps: `screens/play/tour.rs`).
     taking.set(walks("play"));

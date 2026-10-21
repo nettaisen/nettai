@@ -197,8 +197,9 @@ pub struct Party {
     /// A navi's facts alone (no programs), as the build would field it: asked once a navi (a check of the build with it
     /// the one partner), for the strip's description of a navi, and what a partner's programs add to it.
     alone: std::collections::HashMap<NaviHandle, Option<NaviFacts>>,
-    /// The partners' budgets while a drag is under way (the build doesn't change until it is let go): asked once.
-    drag_budgets: Option<Vec<Option<Budget>>>,
+    /// The partners' budgets, asked once until the build changes (`changed` forgets them): a drag asks them at every
+    /// move.
+    kept_budgets: Option<Vec<Option<Budget>>>,
     /// A budget the programs are costed by (`learn_costing`).
     costing: Option<Budget>,
 }
@@ -285,22 +286,24 @@ impl Party {
         });
     }
 
-    /// The partners' budgets, asked once while a drag is under way.
-    fn drag_budgets(&mut self, draft: &mut Draft) -> Vec<Option<Budget>> {
-        if self.drag_budgets.is_none() {
-            self.drag_budgets = Some(Party::budgets(draft).0);
+    /// The partners' budgets, asked once until the build changes.
+    fn kept_budgets(&mut self, draft: &mut Draft) -> Vec<Option<Budget>> {
+        if self.kept_budgets.is_none() {
+            self.kept_budgets = Some(Party::budgets(draft).0);
         }
-        self.drag_budgets.clone().unwrap_or_default()
+        self.kept_budgets.clone().unwrap_or_default()
     }
 
-    /// While a program is dragged, the partner it is over is the one the library adds to: its head lit, the library's
-    /// rows saying why they can't go into its list. (The rows change in place: a row held by the pointer stays.)
+    /// Partner `i` is the one the library adds to (the cursor came into it, or a program dragged is over it): its head
+    /// lit, the library's rows saying why they can't go into its list. The rows change in place and nothing is made
+    /// anew: a row the pointer pressed or holds stays the one it holds (a model set anew would make every row anew,
+    /// and the pointer let go of it).
     fn retarget(&mut self, shell: &Shell, draft: &mut Draft, i: usize) {
         if i == self.target {
             return;
         }
         self.target = i;
-        let budgets = self.drag_budgets(draft);
+        let budgets = self.kept_budgets(draft);
         let target = budgets.get(i).cloned().flatten();
         let rows = draft.with_words(shell, |words| self.library_rows(shell, draft, words, true, target.as_ref()));
         let ui = shell.ui();
@@ -335,15 +338,16 @@ impl Party {
         editor::show_landing(shell, &installed_list(i), if why.is_some() { None } else { Some(at) }, false);
     }
 
-    /// Nothing shown of where a drag would land.
+    /// Nothing shown of where a drag would land: into no list (the list it came from no longer scrolls near its
+    /// edges for it).
     fn show_no_landing(&self, shell: &Shell) {
         shell.ui().global::<PartyView>().set_drag_why(Default::default());
-        editor::show_drop(shell, None, false);
+        editor::show_landing(shell, "", None, false);
     }
 
     /// Everything shown anew.
     fn changed(&mut self, shell: &Shell, draft: &mut Draft) {
-        self.drag_budgets = None;
+        self.kept_budgets = None;
         let Some(shape) = self.read(draft) else { return };
         let content = draft.content().clone();
         let partners = partners(&content, draft.side(), &shape);
@@ -869,7 +873,7 @@ impl Tab for Party {
                             // (In its own list a program moves to a row there is: past those before the place, less itself.)
                             self.show_program_landing(shell, i, if at > k { at - 1 } else { at }, None);
                         } else {
-                            let budgets = self.drag_budgets(draft);
+                            let budgets = self.kept_budgets(draft);
                             let why = self.partners(draft).get(from).and_then(|p| p.programs.get(k)).and_then(|&h| self.why_not(shell, draft, &budgets, i, h));
                             self.show_program_landing(shell, i, at, why);
                         }
@@ -893,7 +897,7 @@ impl Tab for Party {
             ("drag-in-over", _) if index >= 0 => match self.landing(shell, draft, choice) {
                 Some((i, at)) => {
                     self.retarget(shell, draft, i);
-                    let budgets = self.drag_budgets(draft);
+                    let budgets = self.kept_budgets(draft);
                     let why = self.programs.get(index as usize).and_then(|&h| self.why_not(shell, draft, &budgets, i, h));
                     self.show_program_landing(shell, i, at, why);
                 }
@@ -932,10 +936,7 @@ impl Tab for Party {
             id => partner_of_list(id),
         };
         match i {
-            Some(i) if self.target != i => {
-                self.target = i;
-                self.changed(shell, draft);
-            }
+            Some(i) if self.target != i => self.retarget(shell, draft, i),
             _ => self.show_detail(shell, draft),
         }
     }
