@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The full gauge shimmering, frame 1 of 4: a capsule at 45 degrees, an even rim round a bright core. -->
+<!-- The full gauge shimmering, frame 1 of 4: a band at 45 degrees from the trough's bottom left corner to its top right, cut square by the trough's edges at its ends, an even rim a pixel wide round a bright core. -->
 <rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
 <rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
-<path d="M3.399 6.599 L7.099 2.899 A2.12 2.12 0 0 0 4.101 -0.099 L0.401 3.601 A2.12 2.12 0 0 0 3.399 6.599 Z" fill="#00a500" data-color="11"/>
-<path d="M2.897 6.097 L6.597 2.397 A1.41 1.41 0 0 0 4.603 0.403 L0.903 4.103 A1.41 1.41 0 0 0 2.897 6.097 Z" fill="#00ff00" data-color="3"/>
+<path d="M4.5 0 L8 0 L8 2.5 L3.5 7 L0 7 L0 4.5 Z" fill="#00a500" data-color="11"/>
+<path d="M4.914 1 L7 1 L7 2.086 L3.086 6 L1 6 L1 4.914 Z" fill="#00ff00" data-color="3"/>
 </svg>

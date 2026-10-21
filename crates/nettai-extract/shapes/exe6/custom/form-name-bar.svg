@@ -4,13 +4,13 @@
 <rect x="0" y="0" width="72" height="16" fill="#313939" data-color="13"/>
 <!-- The bar -->
 <rect x="1" y="0" width="70" height="15" fill="#d68400" data-color="12"/>
-<!-- The light bands toward the right, stepping in from the left, above and below the dashes -->
-<path d="M29.683 1.683 A0.4 0.4 0 0 1 29.966 1 L71 1 L71 6 L44.6 6 A0.6 0.6 0 0 1 44 5.4 L44 4.8 A0.6 0.6 0 0 0 43.76 4.32 L42.16 3.12 A0.6 0.6 0 0 0 41.8 3 L31.249 3 A0.6 0.6 0 0 1 30.824 2.824 Z" fill="#ffbd10" data-color="11"/>
-<path d="M30.824 13.176 A0.6 0.6 0 0 1 31.249 13 L41.8 13 A0.6 0.6 0 0 0 42.16 12.88 L43.76 11.68 A0.6 0.6 0 0 0 44 11.2 L44 10.6 A0.6 0.6 0 0 1 44.6 10 L71 10 L71 15 L29.966 15 A0.4 0.4 0 0 1 29.683 14.317 Z" fill="#ffbd10" data-color="11"/>
-<!-- The dashes along the middle -->
-<path d="M43 7.6 A0.6 0.6 0 0 1 43.6 7 L45.9 7 A0.6 0.6 0 0 1 46.5 7.6 L46.5 8.4 A0.6 0.6 0 0 1 45.9 9 L43.6 9 A0.6 0.6 0 0 1 43 8.4 Z" fill="#ffbd10" data-color="11"/>
-<path d="M49 7.6 A0.6 0.6 0 0 1 49.6 7 L52.4 7 A0.6 0.6 0 0 1 53 7.6 L53 8.4 A0.6 0.6 0 0 1 52.4 9 L49.6 9 A0.6 0.6 0 0 1 49 8.4 Z" fill="#ffbd10" data-color="11"/>
-<path d="M55.5 7.6 A0.6 0.6 0 0 1 56.1 7 L58.4 7 A0.6 0.6 0 0 1 59 7.6 L59 8.4 A0.6 0.6 0 0 1 58.4 9 L56.1 9 A0.6 0.6 0 0 1 55.5 8.4 Z" fill="#ffbd10" data-color="11"/>
-<path d="M62 7.6 A0.6 0.6 0 0 1 62.6 7 L64.4 7 A0.6 0.6 0 0 1 65 7.6 L65 8.4 A0.6 0.6 0 0 1 64.4 9 L62.6 9 A0.6 0.6 0 0 1 62 8.4 Z" fill="#ffbd10" data-color="11"/>
-<path d="M67 7.6 A0.6 0.6 0 0 1 67.6 7 L70.4 7 A0.6 0.6 0 0 1 71 7.6 L71 8.4 A0.6 0.6 0 0 1 70.4 9 L67.6 9 A0.6 0.6 0 0 1 67 8.4 Z" fill="#ffbd10" data-color="11"/>
+<!-- The light bands toward the right, above and below the dashes (mirror images): each stepping in from the left, its tip cut 45 degrees, a slant down to its deeper part -->
+<path d="M28.5 1 L71 1 L71 6 L44 6 L44 4.5 L41 3 L30.5 3 Z" fill="#ffbd10" data-color="11"/>
+<path d="M28.5 15 L71 15 L71 10 L44 10 L44 11.5 L41 13 L30.5 13 Z" fill="#ffbd10" data-color="11"/>
+<!-- The dashes along the middle, the first two's facing ends slanting as the art's -->
+<path d="M43 7 L46 7 L47 9 L43 9 Z" fill="#ffbd10" data-color="11"/>
+<rect x="49" y="7" width="4" height="2" fill="#ffbd10" data-color="11"/>
+<path d="M56 7 L59 7 L59 9 L55 9 Z" fill="#ffbd10" data-color="11"/>
+<rect x="62" y="7" width="3" height="2" fill="#ffbd10" data-color="11"/>
+<rect x="67" y="7" width="4" height="2" fill="#ffbd10" data-color="11"/>
 </svg>

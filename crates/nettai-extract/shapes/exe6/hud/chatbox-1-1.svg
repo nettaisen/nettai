@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline with rounded corners, a light blue band inside it, the white ground the text is written on. -->
-<!-- The outline -->
-<path d="M1 24 A4 4 0 0 1 5 20 L211 20 A4 4 0 0 1 215 24 L215 40 A4 4 0 0 1 211 44 L5 44 A4 4 0 0 1 1 40 Z" fill="#086bc6" data-color="11"/>
-<!-- The band -->
-<path d="M2 24 A3 3 0 0 1 5 21 L211 21 A3 3 0 0 1 214 24 L214 40 A3 3 0 0 1 211 43 L5 43 A3 3 0 0 1 2 40 Z" fill="#4abdf7" data-color="10"/>
-<!-- The ground -->
-<path d="M4 24.5 A1.5 1.5 0 0 1 5.5 23 L210.5 23 A1.5 1.5 0 0 1 212 24.5 L212 39.5 A1.5 1.5 0 0 1 210.5 41 L5.5 41 A1.5 1.5 0 0 1 4 39.5 Z" fill="#f7fff7" data-color="1"/>
+<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on, each cut parallel to the outline's. -->
+<!-- The outline, a pixel wide, its corners cut 45 degrees (as the art steps them) -->
+<path d="M1 22.5 L3.5 20 L212.5 20 L215 22.5 L215 41.5 L212.5 44 L3.5 44 L1 41.5 Z" fill="#086bc6" data-color="11"/>
+<!-- The band, two pixels wide, its cuts parallel to the outline's -->
+<path d="M2 22.914 L3.914 21 L212.086 21 L214 22.914 L214 41.086 L212.086 43 L3.914 43 L2 41.086 Z" fill="#4abdf7" data-color="10"/>
+<!-- The ground, its corners cut parallel (where the cut has any length left) -->
+<path d="M4 23.743 L4.743 23 L211.257 23 L212 23.743 L212 40.257 L211.257 41 L4.743 41 L4 40.257 Z" fill="#f7fff7" data-color="1"/>
 </svg>

@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
-<!-- The Program Advance banner's logo (EXE4, English): a blue plate with rounded corners, its words on it in white, drawn as text, a green arrowhead either side pointing out. -->
-<!-- The green arrowheads either side, pointing out: a bright edge, darker bands inside, a white core -->
-<path d="M17 12.095 A0.6 0.6 0 0 1 16.166 12.647 L5.741 8.237 A0.8 0.8 0 0 1 5.741 6.763 L16.166 2.353 A0.6 0.6 0 0 1 17 2.905 Z" fill-rule="evenodd" fill="#00ff00" data-color="12"/>
-<path d="M15.4 9.68 A0.6 0.6 0 0 1 14.566 10.233 L9.848 8.237 A0.8 0.8 0 0 1 9.848 6.763 L14.566 4.767 A0.6 0.6 0 0 1 15.4 5.32 Z" fill-rule="evenodd" fill="#00ff00" data-color="11"/>
-<path d="M14.4 8.172 A0.6 0.6 0 0 1 13.566 8.724 L12.414 8.237 A0.8 0.8 0 0 1 12.414 6.763 L13.566 6.276 A0.6 0.6 0 0 1 14.4 6.828 Z" fill-rule="evenodd" fill="#00ff00" data-color="10"/>
-<path d="M13.4 7.5 A0.045 0.045 0 0 1 13.337 7.541 L13.32 7.534 A0.037 0.037 0 0 1 13.32 7.466 L13.337 7.459 A0.045 0.045 0 0 1 13.4 7.5 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1"/>
-<path d="M78 2.905 A0.6 0.6 0 0 1 78.834 2.353 L89.259 6.763 A0.8 0.8 0 0 1 89.259 8.237 L78.834 12.647 A0.6 0.6 0 0 1 78 12.095 Z" fill-rule="evenodd" fill="#00ff00" data-color="12"/>
-<path d="M79.6 5.32 A0.6 0.6 0 0 1 80.434 4.767 L85.152 6.763 A0.8 0.8 0 0 1 85.152 8.237 L80.434 10.233 A0.6 0.6 0 0 1 79.6 9.68 Z" fill-rule="evenodd" fill="#00ff00" data-color="11"/>
-<path d="M80.6 6.828 A0.6 0.6 0 0 1 81.434 6.276 L82.586 6.763 A0.8 0.8 0 0 1 82.586 8.237 L81.434 8.724 A0.6 0.6 0 0 1 80.6 8.172 Z" fill-rule="evenodd" fill="#00ff00" data-color="10"/>
-<path d="M81.6 7.5 A0.045 0.045 0 0 1 81.663 7.459 L81.68 7.466 A0.037 0.037 0 0 1 81.68 7.534 L81.663 7.541 A0.045 0.045 0 0 1 81.6 7.5 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1"/>
-<!-- The blue plate, its corners rounded -->
-<path d="M19 2 A2 2 0 0 1 21 0 L76 0 A2 2 0 0 1 78 2 L78 13 A2 2 0 0 1 76 15 L21 15 A2 2 0 0 1 19 13 Z" fill-rule="evenodd" fill="#4a5aad" data-color="4"/>
+<!-- The Program Advance banner's logo (EXE4, English): a blue plate, square, its words on it in white, drawn as text, a green arrowhead either side pointing out; symmetric about the plate's middle. -->
+<!-- The green arrowheads either side, pointing out: nested, a bright edge, darker bands inside, a white core, each band's edges sloping 2:1 and parallel, cut upright where the head meets the plate; the right one the left one mirrored -->
+<path d="M15 2 L17 2 L17 13 L15 13 L4 7.5 Z" fill="#00ff00" data-color="12"/>
+<path d="M17 3.5 L17 11.5 L9 7.5 Z" fill="#00ff00" data-color="11"/>
+<path d="M17 4.5 L17 10.5 L11 7.5 Z" fill="#00ff00" data-color="10"/>
+<path d="M17 6 L17 9 L14 7.5 Z" fill="#f7ffff" data-color="1"/>
+<path d="M79 2 L77 2 L77 13 L79 13 L90 7.5 Z" fill="#00ff00" data-color="12"/>
+<path d="M77 3.5 L77 11.5 L85 7.5 Z" fill="#00ff00" data-color="11"/>
+<path d="M77 4.5 L77 10.5 L83 7.5 Z" fill="#00ff00" data-color="10"/>
+<path d="M77 6 L77 9 L80 7.5 Z" fill="#f7ffff" data-color="1"/>
+<!-- The blue plate, square -->
+<rect x="19" y="0" width="56" height="15" fill="#4a5aad" data-color="4"/>
 <!-- The words, white -->
-<text data-words="logo.program-advance" data-box="21 2 55 11" fill="#f7ffff" data-color="1" x="21" y="13" font-size="14.667" textLength="55">ADVANCE</text>
+<text data-words="logo.program-advance" data-box="20 2 54 11" fill="#f7ffff" data-color="1" x="20" y="13" font-size="14.667" textLength="54">ADVANCE</text>
 </svg>

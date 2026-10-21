@@ -172,6 +172,10 @@ pub struct Ink {
     pub rim: Option<u16>,
     /// The rim's width in frame pixels (the pictures' lettering's: 1).
     pub rim_width: f32,
+    /// Each of the picture's rows its own color, the bands as sharp as the
+    /// picture's rather than blended (the custom gauge's words: the user,
+    /// "remove the gradient on the custom bar in enhanced mode").
+    pub stepped: bool,
 }
 
 /// A drawing in place of a picture ([`TextItem::drawn`]): its pieces,

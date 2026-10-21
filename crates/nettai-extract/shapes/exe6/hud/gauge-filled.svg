@@ -1,14 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- A cell of the custom gauge, filled: the fill a smooth gradient from its blue edges at the top and the bottom to its light middle, in the two colors the picture's bands are; the frame's lines under it. -->
-<defs>
-<linearGradient id="fill" x1="0" y1="0" x2="0" y2="6" gradientUnits="userSpaceOnUse">
-<stop offset="0" stop-color="#7b9cde" data-stop-color="7"/>
-<stop offset="0.5" stop-color="#e7efff" data-stop-color="5"/>
-<stop offset="1" stop-color="#7b9cde" data-stop-color="7"/>
-</linearGradient>
-</defs>
-<!-- The fill -->
-<rect x="0" y="0" width="8" height="6" fill="url(#fill)"/>
+<!-- A cell of the custom gauge, filled: the fill in the picture's rows of color, a blue row at its top and its bottom round four light rows (no smooth ramp: the user, "remove the gradient on the custom bar in enhanced mode"); the frame's lines under it. -->
+<rect x="0" y="0" width="8" height="1" fill="#7b9cde" data-color="7"/>
+<rect x="0" y="1" width="8" height="4" fill="#e7efff" data-color="5"/>
+<rect x="0" y="5" width="8" height="1" fill="#7b9cde" data-color="7"/>
 <!-- The frame's lines under it -->
 <rect x="0" y="6" width="8" height="1" fill="#292929" data-color="2"/>
 <rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
