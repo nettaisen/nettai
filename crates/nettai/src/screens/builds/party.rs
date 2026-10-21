@@ -20,7 +20,7 @@
 //! row (a program may be in twice: the rules hold them to the gauge alone). A row that can't go in says why in the error
 //! red, as the Patch cards library's do: a navi "In party", "Not allowed" (the build's ruleset's `party` category), or
 //! "Mixed versions" (a ruleset of one version per build); a program "Needs 3 blocks" or "Not allowed" (its
-//! `party.programs` category). **Del** takes out what is under the cursor: a program, a partner. **CLEAR** takes every
+//! `party.programs` category: held back for every partner, or for the marked slot's partner's navi). **Del** takes out what is under the cursor: a program, a partner. **CLEAR** takes every
 //! partner out, asked first.
 //!
 //! **What a program does** is its effects (its definition's `effects`) in the words of the collection's own text table
@@ -302,12 +302,14 @@ impl Party {
         draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
     }
 
-    /// Why program `h` can't go into slot `slot` now, if it can't: the build's ruleset holds it back, or the gauge has
-    /// no room for it (in a program's place, with that program's blocks free; at a list's end, as it is; a list full:
-    /// no words).
+    /// Why program `h` can't go into slot `slot` now, if it can't: the build's ruleset holds it back (for every partner,
+    /// or for the slot's partner's navi), or the gauge has no room for it (in a program's place, with that program's
+    /// blocks free; at a list's end, as it is; a list full: no words).
     fn program_refusal(&self, shell: &Shell, draft: &Draft, budgets: &[Option<Budget>], slot: Slot, h: EntryHandle) -> Option<String> {
         let ui = shell.ui();
-        if !draft.allows(&self.programs_category(), h.0) {
+        let partners = self.partners(draft);
+        let partner = slot.partner().and_then(|i| partners.get(i));
+        if !draft.allows_for(&self.programs_category(), partner.and_then(|p| p.navi).map(|n| n.0), h.0) {
             return Some(ui.global::<BuildWords>().invoke_not_allowed_here().into());
         }
         let needs = |needs: u32| Some(ui.global::<PartyView>().invoke_needs_blocks(needs as i32).into());
@@ -315,7 +317,7 @@ impl Party {
         match slot {
             Slot::End(i) => {
                 let room = self.shape.as_ref().map_or(0, |s| s.program_room);
-                if self.partners(draft).get(i).is_none_or(|p| p.programs.len() >= room) {
+                if partners.get(i).is_none_or(|p| p.programs.len() >= room) {
                     return Some(String::new());
                 }
                 match budgets.get(i).and_then(Option::as_ref).and_then(|b| b.refusal(content, draft.side(), h)) {
@@ -325,7 +327,7 @@ impl Party {
             }
             Slot::Program(i, k) => {
                 let b = budgets.get(i).cloned().flatten()?;
-                let old = self.partners(draft).get(i).and_then(|p| p.programs.get(k).copied())?;
+                let old = partners.get(i).and_then(|p| p.programs.get(k).copied())?;
                 let (cost, free) = (b.cost_of(content, h), b.count.free() + b.cost_of(content, old));
                 if cost > free { needs(cost) } else { None }
             }
@@ -540,8 +542,9 @@ impl Party {
                     Slot::Program(i, k) => {
                         let h = partners[i].programs[k];
                         let mut row = program_row(words, &content, h, budget(i).as_ref());
-                        // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
-                        if !draft.allows(&category, h.0) {
+                        // (One the build's ruleset holds back all the same, for every partner or for this one's navi,
+                        // says so, red: it can be taken out.)
+                        if !draft.allows_for(&category, partners[i].navi.map(|n| n.0), h.0) {
                             row.note = say.invoke_not_allowed_here();
                             row.bad = true;
                         }

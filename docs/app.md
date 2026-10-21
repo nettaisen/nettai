@@ -1414,7 +1414,9 @@ navi; the user, "allow banning partycust programs by navi"), in the file under t
     protoman = ["p-btlpk2"]
 
 An item is held back where it is banned for every record or for the record's key (allowing it for every one leaves a
-key's own ban), and the problem names the key ("P.Btlpk2 isn't allowed for ProtoMan"). Such a category is shown on
+key's own ban), and the problem names the key ("P.Btlpk2 isn't allowed for ProtoMan"). The Party tab asks it with
+the partner's navi (`Draft::allows_for`): a program held back for that navi alone is "Not allowed" in the library of
+that partner's slots, on its row in the partner's list, and on the row dragged over that list, as one held back for all. Such a category is shown on
 the page of the one it says (`within`: the Party page, as the mockup the user picked, R2, has it: the navis on the left, All navis first, the chosen one's programs on the right, a ban for every navi dashed there), not a page of its own; a category may list
 only the definitions that state a field (`having`: the party's navis are the twelve whose definitions say `party`, not
 MegaMan). The lobby's settings carry the bans by key with the others. Open setups is no ruleset's: it is the lobby's own setting.
