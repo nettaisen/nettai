@@ -126,26 +126,26 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, check(|app| (app.shell.nav.editing() || app.shell.settings.name != "qx").then(|| format!("Esc didn't leave the name as it was: {:?}", app.shell.settings.name))));
     let back = name.clone();
     add(SETTLE, step(move |app| app.shell.set_name(&back.borrow())));
-    // The pad: its A (south) answers a dialog and its B (west) goes back; A rebound to east, east answers and
-    // south doesn't.
+    // The pad: its A (east) answers a dialog and its B (south) goes back; A rebound to west (the left navi change
+    // taking east), west answers and east doesn't.
     add(SETTLE, step(|app| app.shell.nav.focus("set.picture", 0)));
     add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
+    add(SETTLE, pad(Button::East));
+    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "the pad's A (east) didn't answer the dialog".into())));
     add(SETTLE, pad(Button::South));
-    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "the pad's A (south) didn't answer the dialog".into())));
-    add(SETTLE, pad(Button::West));
-    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Menu).then(|| format!("the pad's B (west) didn't go back from Settings: {:?}", app.shell.screen()))));
+    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Menu).then(|| format!("the pad's B (south) didn't go back from Settings: {:?}", app.shell.screen()))));
     add(
         SETTLE,
         step(|app| {
             let mut bindings = Bindings::default();
-            bindings.bind_pad(button_index(keys::A), Button::East);
+            bindings.bind_pad(button_index(keys::A), Button::West);
             app.shell.set_bindings(bindings);
         }),
     );
     add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
-    add(SETTLE, pad(Button::South));
-    add(SETTLE, check(|app| app.shell.dialog.is_none().then(|| "south answered the dialog with the pad's A on east".into())));
     add(SETTLE, pad(Button::East));
-    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "east (the pad's A, rebound) didn't answer the dialog".into())));
+    add(SETTLE, check(|app| app.shell.dialog.is_none().then(|| "east answered the dialog with the pad's A on west".into())));
+    add(SETTLE, pad(Button::West));
+    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "west (the pad's A, rebound) didn't answer the dialog".into())));
     add(SETTLE, step(|app| app.shell.set_bindings(Bindings::default())));
 }
