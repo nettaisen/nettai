@@ -598,3 +598,45 @@ msgstr "{}が混在しています"
 
 msgid "{} and {}"
 msgstr "{}と{}"
+
+# ---- The Party tab (a game whose builds have a party: EXE5's party battle, EXE5 DS's パーティバトル). A partner's
+# programs fill blocks of its gauge (PartyCust: パーティカスタマイザー).
+
+msgid "Party"
+msgstr "パーティ"
+
+msgid "the party"
+msgstr "パーティ"
+
+msgid "Navis"
+msgstr "ナビ"
+
+msgid "Add a partner"
+msgstr "パートナーを追加"
+
+msgid "Add a program"
+msgstr "プログラムを追加"
+
+msgid "Clear the party?"
+msgstr "パーティを空にしますか？"
+
+msgid "{n} partner"
+msgid_plural "{n} partners"
+msgstr[0] "パートナー {n}体"
+
+msgid "{n} block"
+msgid_plural "{n} blocks"
+msgstr[0] "{n}ブロック"
+
+msgid "Needs {n} block"
+msgid_plural "Needs {n} blocks"
+msgstr[0] "{n}ブロック必要"
+
+msgid "Gauge {}/{}"
+msgstr "ゲージ {}/{}"
+
+msgid "In the party"
+msgstr "パーティにいます"
+
+msgid "Programs fill {} blocks, the gauge has {}"
+msgstr "プログラム {}ブロック、ゲージは{}"
