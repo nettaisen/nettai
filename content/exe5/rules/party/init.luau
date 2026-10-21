@@ -325,10 +325,10 @@ function party.spend_dice_bonus(side: number)
     state.dice_bonus = true
 end
 
--- The rules' `overview`'s part, for a side with partners: each partner's PartyCust gauge as a list of its own (the
--- setup's `party` at the partner's entry: its programs' blocks against the gauge, a program in it any number of times),
--- and the switches a round allows (`party.limit`), the party's limit and a stat of its own (NaviCust's NavChg+1 and +2
--- add to the 3).
+-- The rules' `overview`'s part: each partner's PartyCust gauge as a list of its own (the setup's `party` at the
+-- partner's entry: its programs' blocks against the gauge, a program in it any number of times), and for MegaMan the
+-- switches a round allows (`party.limit`), the party's limit, and with partners a stat of its own (NaviCust's NavChg+1
+-- and +2 add to the 3).
 function party.overview(side: number, out: SetupOverview)
     local setup = rules.setup_of(side) :: Setup
     for i, p in setup.party do
@@ -344,11 +344,15 @@ function party.overview(side: number, out: SetupOverview)
             table.insert(out.lists, list)
         end
     end
-    if not party.has_partners(side) then
+    -- (The limit is MegaMan's, partners or none: the Party tab says it before any is chosen. The stat is a party's.)
+    if setup.navi == nil or setup.navi.forms == nil then
         return
     end
     local limit = party.limit(side)
     out.switches = limit
+    if not party.has_partners(side) then
+        return
+    end
     local stat: SetupStat = { name = "switches", value = limit, added = limit - party.SWITCHES }
     local stats = out.stats or {}
     table.insert(stats, stat)

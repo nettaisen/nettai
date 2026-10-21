@@ -1588,28 +1588,29 @@ more tabs past it fades.
 exe5ds-map.md §4, §11): in a game whose setup takes `party`, the navi's partners, each with its PartyCust programs. Its
 form is the setup's schema's: the field is a list of records, each with a field naming a navi and a list of a
 collection's entries (the programs), whose rooms are the most partners and the most programs a partner holds; the tab
-names neither field. It is built of what the other tabs are (the user: "nothing in the ui looks like that"): the strip
-across the top describes what is under the cursor or the pointer (a navi's face, name, version's mark, HP and gauge; a
-program's blocks and the game's words for it); framed under it (what the build holds, rule 11), PARTY: the partners as a
-`ListView`'s rows (each its face, its name with its version's `VersionMark`, its HP with its programs' bonus,
-`Checked::members`, and its gauge; then "Add a partner" while there is room), the chosen one marked as a list marks its
-chosen row (`ListView.chosen`: the bar and the tint, as a library marks the row being filled), whose PartyCust is under
-it: its title ("ProtoMan's PartyCust", a section head) with its gauge, CLEAR at the head's right end (its programs, asked
-first), and INSTALLED, its programs as a list's rows; beside the panel the library, PROGRAMS, an open list (one that
-won't fit greyed with "Needs n blocks", one the ruleset holds back with "Not allowed"). Enter on a partner's row opens
-the navis to pick from (`Shell::pick_marked_under`, the replay viewer's marked list, a phone's sheet: the partner's own
-checked, each with its version's mark, the other partner's and one the ruleset holds back dimmed with why, REMOVE under
-them); Enter in PROGRAMS installs at the end of the partner's (one may be in twice: the rules hold them to the gauge
-alone); Enter or Del in INSTALLED takes out; Del on a partner's row takes the partner out. A program is dragged as the
-Patch cards tab's cards are (`Drag`, `drag-over`/`drag-in-over`, `DropGap`, `RemoveTarget`): from PROGRAMS into
-INSTALLED where it is let go (refused as Enter is), in INSTALLED to another place, and onto the library to take it out
-(on a phone, in INSTALLED alone). The gauge is drawn as the NaviCust tab draws its board: a filled block flat in its
-program's color (a NaviCust program's color, the program's definition's `color`: the user, "use the colors you use for
-navicust"), a program's blocks joined into one piece with a gap between programs, an empty block an outlined slot; the
-overview's small gauge the same. On a phone the panel is the tab, and a PROGRAMS button opens the library as a sheet. A partner's version (its team: the
-builds data's group its `version` is) is marked after its name wherever a partner is shown in the builds' screens (the
-user: "it's also unclear which partner is from which game"): the rows, the picker's (`PickMark.tag`), the strip and the
-build overview's party rows (there as a form's is in its forms' row: a bar in its color under its face, the user's); not the battle's strip. The gauge and a program's cost are the rules' overview's (a list
+names neither field. Its layout is the one the user chose from mockups (the verification workspace's
+docs/nettai-ui/party/chosen/party-tab-D9.png; earlier ones were "still extremely confusing"): one screen, no steps and
+nothing opened over it. At the top, PARTNERS (how many, the round's navi changes, `Overview::switches`; at the right
+what the ruleset says of the versions), then the navis to pick from, a row a version (the builds data's groups, each
+row under its name in its color), a chip each (its face, its name, its place in the party, 1 or 2, where it is in):
+raised and outlined in the cursor's color where it is in, muted where the party is full, dim where the build's ruleset
+holds it back (its `party` category; refused). Enter or a click puts its navi in, at the party's end, or takes it out
+with its programs; Del takes it out. Under them at the left, a framed panel a partner: its head (its face, its place
+and name, HP with its programs' bonus, `Checked::members`, its gauge and the blocks used of it) and its programs as a
+list's rows; the partner PROGRAMS installs into is the one the cursor was last in, its head lit as a list's chosen row
+(the bar and the tint), its name in the cursor's color; Enter on a head goes to PROGRAMS, Del in a list takes a program
+out. At the right PROGRAMS, the library, an open list (each program's blocks, its name and the game's words for what it
+does, its cost; one that won't go in greyed with why in the error red, "Needs 3" or "Not allowed"), INTO and the
+partner's name at its head's right; Enter installs at the end of that partner's (one may be in twice: the rules hold
+them to the gauge alone). A program is dragged as the Patch cards tab's cards are (`Drag`, `drag-over`/`drag-in-over`,
+`DropGap`, `RemoveTarget`): from PROGRAMS into a partner's list where it is let go or onto its head, refused as Enter
+is; in a list to another place, or into the other partner's; onto the library to take it out. The gauges are drawn as
+the NaviCust tab draws its board: a block flat in its program's color (a NaviCust program's color, the program's
+definition's `color`: the user, "use the colors you use for navicust"), a program's blocks touching as one piece, a gap
+between programs, the empty blocks outlined slots. The footer's status is the target partner's blocks free. On a phone
+the chips wrap three to a row under their team's name, the partners stack under them, and a PROGRAMS button opens the
+library as a sheet. A partner's version is marked on the build overview's party rows as a form's is in its forms' row,
+a bar in its color under its face (the user's). The gauge and a program's cost are the rules' overview's (a list
 budget of the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's
 problems in their typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A
 party is the game's own navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have

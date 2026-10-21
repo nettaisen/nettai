@@ -719,19 +719,6 @@ impl Shell {
         self.ui().global::<nettai_ui::Shell>().set_picker_marks(ModelRc::new(VecModel::from(marks)));
     }
 
-    /// [`Shell::pick_marked`], opened under the control `at` from its left edge and as wide as it (or
-    /// [`MARKED_WIDTH`], whichever is more): a choice of what the control holds, as a select's list is (the Party tab's
-    /// partner card's navis).
-    pub fn pick_marked_under(&mut self, id: &str, index: i32, at: &Key, rows: Vec<(String, nettai_ui::PickMark)>) {
-        let by = self.rect_of(at);
-        let (options, marks): (Vec<String>, Vec<nettai_ui::PickMark>) = rows.into_iter().unzip();
-        self.open_picker(Key::new(id, index), by, options, Look::Menu { apart: None, under: true, width: MARKED_WIDTH }, -1);
-        if let Some(picking) = &mut self.picking {
-            picking.dim = marks.iter().map(|m| m.dim).collect();
-        }
-        self.ui().global::<nettai_ui::Shell>().set_picker_marks(ModelRc::new(VecModel::from(marks)));
-    }
-
     /// A list of choices is open over the screen.
     pub fn picker_open(&self) -> bool {
         self.picking.is_some()
