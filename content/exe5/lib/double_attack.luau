@@ -178,7 +178,7 @@ local function megaman_palette(me: Object): number
     elseif hub == 2 then
         p = 0x1E
     end
-    return p + exe5.light_dark_tier(me.alliance)
+    return p + exe5.light_dark_tier(exe5.light_dark_value(me.alliance))
 end
 
 -- 0x020A1124: MegaMan raises his buster arm (row 0x23), held in `which`, animating while dimmed: in a soul its
