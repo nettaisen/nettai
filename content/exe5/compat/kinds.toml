@@ -419,3 +419,6 @@
 # actor (actor object 0x34).
 "searchman/support-controller" = { pool = "effect", index = 0x94, scratch_position = true }
 "searchman/support" = { pool = "actor", index = 0x34 }
+# NumberMan's DiceBons: his controller (the DS's effect object 0x95) and his actor (actor object 0x33).
+"numberman/dice-bonus-controller" = { pool = "effect", index = 0x95, scratch_position = true }
+"numberman/dice-bonus" = { pool = "actor", index = 0x33 }

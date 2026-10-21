@@ -26,4 +26,6 @@ return require("@exelib/numbrman/dice").make {
     hit_by = collision.hit_by_other_side,
     marker = marker.spawn,
     keeps_top_bit = true,
+    -- The puff a quiet die goes in (row 0x12: EXE5 DS's DiceBons' dice).
+    quiet_puff = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 },
 }

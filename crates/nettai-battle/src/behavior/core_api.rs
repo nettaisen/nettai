@@ -2189,6 +2189,7 @@ impl CoreApi for Battle {
             ActorField::StepInit => i(at.step_init as i64),
             ActorField::AttackElement => i(at.element as i64),
             ActorField::AttackDamage => i(at.damage as i64),
+            ActorField::AttackExtra => i(at.extra as i64),
             ActorField::HitParam => i(at.hit_param as i64),
             ActorField::AttackVariant => i(at.variant as i64),
             ActorField::Charged => i(at.charged as i64),

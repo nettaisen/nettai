@@ -318,6 +318,9 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if let Some(instead) = b.rules_chip_check(side, r, e.chip) {
         return refuse(b, instead);
     }
+    // The side's rules hear the chip's use go on (EXE5 DS's MegaMan's chip
+    // voice, 0x020070D6).
+    b.rules_chip_ready(side, r, used);
     front_guard(b, r, cd);
     charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, e.chip))
 }

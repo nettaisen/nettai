@@ -428,6 +428,8 @@ local rules: Rules = {
         custom_hold = meddy_support.custom_hold,
         -- The opponent starts a chip: SearchMan's support in a link battle stops it (navis/searchman/support).
         opponent_chip = searchman_support.opponent_chip,
+        -- A chip's use goes on: MegaMan's chip voice's draw in a party battle (./party).
+        chip_ready = party.chip_ready,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
         mic_heard = shout.mic_heard,
         -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).

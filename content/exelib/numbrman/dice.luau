@@ -26,8 +26,15 @@ type State = {
     -- Its hits' status and hit modifier (EXE5's +0x64, +0x68).
     status: Status?,
     hit_mod: number,
-    -- The object waiting on it (+0x60, the flag its spawner gave it): its `busy`, cleared when it goes.
+    -- The object waiting on it (+0x60, the flag its spawner gave it): its `busy`, cleared when it goes; or, with
+    -- `slot`, its `dice[slot + 1]` (EXE5 DS's DiceBons' NumberMan's two flags).
     holder: Object?,
+    slot: number,
+    -- Its arc never takes the extra tick (EXE5 DS's: its division routine, the hardware divider's, leaves an address
+    -- where the BIOS left the quotient's magnitude).
+    exact: boolean,
+    -- Its face's end puffs it away, no burst (EXE5's +0x6C: EXE5 DS's DiceBons' dice; the game's own spawners pass 0).
+    quiet: boolean,
 }
 
 -- What blows it up (EXE5's 0x080C507C, EXE4's 0x080CDB24): the other side's bodies and objects, by its side.
@@ -40,9 +47,14 @@ function dice.make(spec: DiceSpec): Dice
     local nine = spec.nine
 
     local function done(me: Object)
-        local h = (me.state :: State).holder
+        local s = me.state :: State
+        local h = s.holder
         if h then
-            (h.state :: any).busy = false
+            if s.slot ~= 0 then
+                (h.state :: any).dice[s.slot] = false
+            else
+                (h.state :: any).busy = false
+            end
         end
     end
 
@@ -74,7 +86,7 @@ function dice.make(spec: DiceSpec): Dice
     local function arc(me: Object, x: number, y: number, vz: number, gravity: number): (number, number, number)
         local dx, dy = int.i32(x - me.pos.x), int.i32(y - me.pos.y)
         local ticks, rem, magnitude = trajectory.div(vz * 2, -gravity)
-        if int.i32(rem - bit32.rshift(magnitude, 1)) >= 0 then
+        if not (me.state :: State).exact and int.i32(rem - bit32.rshift(magnitude, 1)) >= 0 then
             ticks += 1
         end
         local vy = trajectory.div(dy, ticks)
@@ -165,6 +177,15 @@ function dice.make(spec: DiceSpec): Dice
         me.timer = int.u16(left)
         me.sprite.white = false
         if left < 0 then
+            if s.quiet and spec.quiet_puff then
+                -- (EXE5's 0x080C519E: the puff 10 pixels up, its holder freed.)
+                me.collision:set_region(nil)
+                local p = me.pos
+                battle.effect(Vec3.new(p.x, p.y, p.z + 0xA_0000), spec.quiet_puff)
+                done(me)
+                me:set_lifecycle("destroy")
+                return
+            end
             me:set_action(0xC)
             return
         end
@@ -290,6 +311,9 @@ function dice.make(spec: DiceSpec): Dice
             status = "status",
             hit_mod = "u8",
             holder = "object",
+            slot = "u8",
+            exact = "bool",
+            quiet = "bool",
         },
         -- EXE5's 0x080C4F2C, EXE4's 0x080CD9E8.
         update = function(me: Object)
@@ -326,8 +350,15 @@ function dice.make(spec: DiceSpec): Dice
         o:set_damage_word(throw.damage)
         o.run_while_dimmed = true
         s.holder = throw.holder
+        s.slot = if throw.slot then throw.slot + 1 else 0
+        s.exact = throw.exact == true
+        s.quiet = throw.quiet == true
         if throw.holder then
-            ((throw.holder :: Object).state :: any).busy = true
+            if throw.slot then
+                ((throw.holder :: Object).state :: any).dice[throw.slot + 1] = true
+            else
+                ((throw.holder :: Object).state :: any).busy = true
+            end
         end
         return o
     end

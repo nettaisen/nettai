@@ -470,6 +470,8 @@ declare extern type Object with
     attack_chip: Chip?
     attack_element: number
     attack_damage: number
+    -- The attack's bonus from its hand entry (the Atk+ and charge bonuses; read-only).
+    attack_extra: number
     -- The attack's hitboxes' counter byte.
     hit_param: number
     -- The attack's variant (AIAttackVars+3), as the anti-damage counters
@@ -2264,6 +2266,8 @@ export type RulesSpec = {
         -- The opponent's navi `navi` starts a chip from idle (after the NaviCust supports' interception): true stops it
         -- (its attack ends).
         opponent_chip: ((side: number, navi: Object) -> boolean?)?,
+        -- A chip's use, prepared, passed the rules' checks, before its action is chosen.
+        chip_ready: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
         -- are cleared.
         chip_ended: ((side: number, navi: Object) -> ())?,

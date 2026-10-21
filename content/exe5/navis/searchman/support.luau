@@ -9,6 +9,7 @@
 
 local chips_serch_s = require("../../chips/serch_s")
 local party = require("../../rules/party")
+local party_support = require("../../lib/party_support")
 local searchman = require("../searchman").searchman
 local shot = require("../../chips/serchman/shot")
 
@@ -34,7 +35,7 @@ local SHOT_SOUND = asset.sound("col-army-2")
 local APPEAR_SOUND = asset.sound("appear")
 
 type ActorState = { tx: number, ty: number, shots: number, fired: boolean, controller: Object? }
-type ControllerState = { tx: number, ty: number, out: boolean }
+type ControllerState = { tx: number, ty: number }
 
 local support = {}
 
@@ -227,19 +228,19 @@ support.actor = new.kind {
             update(me)
         else
             -- 0x0220001C: his controller's word for him cleared.
-            local c = (me.state :: ActorState).controller
-            if c then
-                (c.state :: ControllerState).out = false
-            end
+            support.controller.done((me.state :: ActorState).controller)
             me:free()
         end
     end,
 }
 
--- 0x02226424: SearchMan comes; once he is gone, the undim.
-local function bring(me: Object)
-    local s = me.state :: ControllerState
-    if me.phase_init == 0 then
+-- His controller (the DS's effect object 0x94, 0x02226404): the dim, Serch-S's telop, SearchMan (0x02226424), the
+-- undim.
+support.controller = party_support.controller {
+    id = "searchman/support-controller",
+    state = { tx = "u8", ty = "u8" },
+    bring = function(me: Object): Object?
+        local s = me.state :: ControllerState
         local navi = me.related1 :: Object
         local o = battle.spawn(support.actor)
         if o then
@@ -250,39 +251,8 @@ local function bring(me: Object)
             o.related1 = navi
             local a = o.state :: ActorState
             a.tx, a.ty, a.controller = s.tx, s.ty, me
-            s.out = true
         end
-        me.phase_init = 4
-    end
-    if not s.out then
-        me:set_action(0xC)
-    end
-end
-
-support.controller = new.kind {
-    id = "searchman/support-controller",
-    pool = "effect",
-    state = { tx = "u8", ty = "u8", out = "bool" },
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            dimming.begin(me)
-        elseif l == "update" then
-            local a = me.action
-            if a == 0 then
-                dimming.dim_screen(me)
-            elseif a == 4 then
-                dimming.show_telop(me)
-            elseif a == 8 then
-                bring(me)
-            elseif a == 0xC then
-                dimming.undim_screen(me)
-            else
-                error(string.format("SearchMan's support's controller: action %#x reads past its table (0x0222B3F0)", a))
-            end
-        else
-            dimming.finish(me)
-        end
+        return o
     end,
 }
 
@@ -325,17 +295,11 @@ local function call(side: number, link: boolean): boolean
     party.supports(side).searchman_used = true
     local damage = bit32.bor(DAMAGE[(party.level(side) or party.LEVEL) + 1], bit32.lshift(FLAGS, 16))
     -- (0x0222645C.)
-    local o = battle.spawn(support.controller)
+    local o = support.controller.send(navi, damage, SERCH_S)
     if o then
-        o.panel_x, o.panel_y = navi.panel_x, navi.panel_y
-        o.element = 0
-        o.related1 = navi
-        o.alliance, o.flip = navi.alliance, navi.flip
-        o:set_damage_word(damage)
         local s = o.state :: ControllerState
         s.tx, s.ty = tx, ty
     end
-    dimming.start(side, true, o, navi, { chip = SERCH_S })
     return true
 end
 

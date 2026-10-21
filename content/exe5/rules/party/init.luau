@@ -277,6 +277,18 @@ function party.navi_hit_shown(side: number, _navi: Object)
     end
 end
 
+-- 0x02098DA0, as a chip's use goes on (0x020070D6, after the light and dark chip check): MegaMan's chip voice, a chip
+-- that deals damage while he is the member on the field, on his own console: one of three voices of the damage's tier
+-- (the attack's damage and bonus: to 80, 139, 200, more; sounds 0x27F on), drawn from its RNG1 (0x02001100). The voice is
+-- left out; the draw stays.
+function party.chip_ready(side: number, _navi: Object, chip: Chip)
+    if party.has_partners(side) and battle.party(side).active == 0 then
+        if chip.flags ~= nil and table.find(chip.flags, "has_damage") ~= nil then
+            battle.console_rng_positive(side)
+        end
+    end
+end
+
 -- The side's supports' fields of its party block.
 function party.supports(side: number): Supports
     return (rules.state_of(side) :: State).supports
