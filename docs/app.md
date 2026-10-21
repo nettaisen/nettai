@@ -261,7 +261,7 @@ member on the field framed in the cursor's color, then each switch's control as 
 with its face, its HP and a bar of it, then the round's switches as pips, those made dim); on a phone, under MENU, the
 switches' two buttons of the pad (its bits 14 and 15), each with the member it names, and the member on the field and
 the pips between them. All of it is read from the battle each frame through the frontend (`party::view`: the navi on
-the field's HP its object's, a benched member's its block's; on the custom screen the screen's member), and the
+the field's HP its object's, a benched member's its block's; on the custom screen, and after it until the turn's start fields it, the screen's choice: `party::Panel::active`), and the
 round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The switches** are two
 controls of the app's own (`input::SWITCH_LEFT`, `SWITCH_RIGHT`: Settings' and the match menu's Controls list them
 after SELECT), never the battle's buttons: a press asks the player to switch to the member the panel's button names
