@@ -2113,6 +2113,13 @@ pub enum Stop {
 /// Replay a round on `content`: its setup, then each battle frame ticked
 /// and compared, up to the first difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
+    run_round_seeing(round, content, compat, &mut |_, _| {})
+}
+
+/// [`run_round`], showing `see` the battle after each battle frame (its
+/// frame number), before the frame's comparison: what a frame dump draws
+/// (a DS recording, which the frontend's trace player doesn't play).
+pub fn run_round_seeing(round: &Round, content: &Arc<Content>, compat: &Compat, see: &mut dyn FnMut(u32, &Battle)) -> Replay {
     // (A DS recording's link carries a custom screen's result in fewer
     // ticks than the GBA's words: the replay's content says the DS's.)
     let ds_content;
@@ -2163,6 +2170,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         // packet. The engine has no link: it has no such frame.)
         if round.stalled(i, &frames) {
             ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS);
+            see(frames[i].frame, &b);
             replay.matched += 1;
             continue;
         }
@@ -2175,6 +2183,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             // (The engine's tick drew the GBA's main loop's one.)
             ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS - 1);
         }
+        see(frames[i].frame, &b);
         let differences = compare_at(&b, round, &frames, i, compat);
         if !differences.is_empty() {
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });
