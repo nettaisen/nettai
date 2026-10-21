@@ -1589,11 +1589,14 @@ form is the setup's schema's: the field is a list of records, each with a field 
 collection's entries (the programs), whose rooms are the most partners and the most programs a partner holds; the tab
 names neither field. Its layout is the one the user chose from mockups (the verification workspace's
 docs/nettai-ui/party/chosen/party-tab-D9r.png; earlier ones were "still extremely confusing"), built as the Folder and
-Patch cards tabs are. The strip across the top describes what is under the cursor or the pointer: a program (its blocks
-and name; its blocks and whether they fit the marked partner's gauge, "Fits: 2 blocks free", or why not at its top
-right; EFFECT, what it does; KIND, its kind with a block of its color) or a navi (its face, its name with its version's
-mark, its HP; VERSION; GAUGE, its blocks: a navi not in the party as the build would field it alone, a check of the
-build with it the one partner, asked once a navi). Under it the navis to pick from, a row a version (the builds data's
+Patch cards tabs are. The strip across the top describes what is under the cursor or the pointer, laid out as the
+Folder tab's: a program (its blocks and name; what it does; its blocks, its kind and whether they fit the marked
+partner's gauge, "Fits: 2 blocks free", or why not at its top right) or a navi (its face, its full name, "MagnetMan",
+with its version's mark; its stats, HP, Attack, Charge and its own chip's damage, what its programs add to them in cyan
+as the overview says it, the chip's damage the rules' overview's `members`; its element and its gauge: a navi not in
+the party as the build would field it alone, a check of the build with it the one partner, asked once a navi). The
+Navi tab's panel says the build's navi's stats in the same words (HP, Attack, Charge, a team navi's own chip's
+damage). Under it the navis to pick from, a row a version (the builds data's
 groups, each under its name in its color), a chip each (its face, its name, its place in the party, 1 or 2, where it
 is in): raised and outlined in the cursor's color where it is in, muted where the party is full, dim where the build's
 ruleset holds it back (its `party` category; refused). Enter or a click puts its navi in, at the party's end, or takes
@@ -1607,11 +1610,15 @@ patch card's lines are worded; its kind there too, `kind.`), its cost; one that 
 red ("Needs 3 blocks", "Not allowed"); Enter adds it at the end of the marked partner's (one may be in twice: the rules
 hold them to the gauge alone). Del takes out what is under the cursor: a program, a partner (its head, its chip). A
 program is dragged as the Patch cards tab's cards are (`Drag`, `drag-over`/`drag-in-over`, `DropGap`, `RemoveTarget`):
-from the library into a partner's list where it is let go or onto its head, refused as Enter is; in a list to another
-place, or into the other partner's; onto the library to take it out. The gauges are drawn as the NaviCust tab draws its
-board: a block flat in its program's color (a NaviCust program's color, the program's definition's `color`: the user,
-"use the colors you use for navicust"), a program's blocks touching as one piece, a gap between programs, the empty
-blocks outlined slots. The footer's status is the marked partner's blocks free. On a phone, which has no strip, the
+from the library into a partner's list, in a list to another place or into the other partner's, onto the library to
+take it out. Over a partner's section (its head or its rows) that partner is the marked one, its head lit, and a gap
+opens at the place in its list nearest the pointer (over its head, the top), the section a row taller; where the
+program can't go in there, the dragged row says why in the error red ("Needs 3 blocks") and no gap opens, and let go it
+is refused as Enter is. The
+gauges are drawn as the NaviCust tab draws its board: a block flat in its program's color (a NaviCust program's color,
+the program's definition's `color`: the user, "use the colors you use for navicust"), a line between programs, the
+empty blocks outlined slots, the gauge in a column of its own (ten slots wide, its used and total as wide as "10/10")
+so that no gauge shifts with its size. The footer's status is the marked partner's blocks free. On a phone, which has no strip, the
 chips wrap three to a row under their version's name, PARTY is the tab's width (its problems' line under its counts),
 and a LIBRARY button opens the library as a sheet. A partner's version is marked on the build overview's party rows as
 a form's is in its forms' row, a bar in its color under its face (the user's). The gauge and a program's cost are the rules' overview's (a list
