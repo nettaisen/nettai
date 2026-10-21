@@ -155,9 +155,10 @@ export global PartyView {
     }
 }
 
-// Program blocks, as the NaviCust tab draws its board's cells: flat in their colors (`tones`, else `tone`), the blocks of
-// one program touching as one piece (a faint line between them), a gap between programs (`runs`: each block's
-// program); the empty blocks after them outlined slots. Each block `size` square.
+// A gauge (or a program's blocks): a fixed run of `count` equal slots, `size` square, its width the count's alone. The
+// first `filled` are filled, each in its program's color (`tones`, else `tone`), a program's slots touching as one
+// piece and a line inside the run between two programs (`runs`: each slot's program); the rest outlined slots. (Past the
+// count nothing more is drawn: the used and total beside it say so, in the error red.)
 component Blocks inherits Rectangle {
     in property <int> count;
     in property <int> filled;
@@ -165,26 +166,24 @@ component Blocks inherits Rectangle {
     in property <[int]> runs;
     in property <color> tone: Theme.cursor;
     in property <length> size: 10px;
-    property <length> gap: 3px;
-    property <int> shown: max(root.count, root.filled);
-    width: root.shown * root.size + (root.shown == 0 ? 0 : (root.runs.length >= root.shown ? root.runs[root.shown - 1] : 0)) * root.gap;
+    width: root.count * root.size;
     height: root.size;
-    for i in root.shown: Rectangle {
-        property <int> run: i < root.runs.length ? root.runs[i] : 0;
-        property <bool> first: i == 0 || i >= root.runs.length || root.runs[i - 1] != self.run;
-        x: i * root.size + self.run * root.gap;
+    for i in root.count: Rectangle {
+        property <bool> full: i < root.filled;
+        // (The first slot of a program after another: a line at its left edge.)
+        property <bool> starts: i > 0 && i < root.runs.length && root.runs[i - 1] != root.runs[i];
+        x: i * root.size;
         y: 0;
         width: root.size;
         height: root.size;
-        background: i < root.filled ? (i < root.tones.length ? root.tones[i] : root.tone) : transparent;
-        border-width: i < root.filled ? 0px : 1px;
+        background: self.full ? (i < root.tones.length ? root.tones[i] : root.tone) : transparent;
+        border-width: self.full ? 0px : 1px;
         border-color: Theme.dim;
-        // (Between two blocks of a program: a faint line.)
         Rectangle {
             x: 0;
             width: 1px;
-            visible: i < root.filled && !parent.first;
-            background: #00000059;
+            visible: parent.full && parent.starts;
+            background: Theme.piece-edge;
         }
     }
 }
@@ -445,7 +444,7 @@ component SectionView inherits Rectangle {
     HorizontalLayout {
         x: 12px + 32px + 12px;
         y: 0;
-        width: max(0px, gauge.x - 12px - self.x);
+        width: max(0px, gauge.x - 16px - self.x);
         height: root.head;
         spacing: 8px;
         alignment: start;
@@ -468,8 +467,10 @@ component SectionView inherits Rectangle {
         }
     }
 
+    // (The gauge in a column of its own, at the same place for each partner whatever its size: as wide as the largest,
+    // ten slots, then its used and total, as wide as "10/10".)
     gauge := Blocks {
-        x: used.x - 8px - self.width;
+        x: used.x - 8px - 10 * 12px;
         y: (root.head - self.height) / 2;
         count: root.panel.gauge;
         filled: root.panel.used;
@@ -481,7 +482,7 @@ component SectionView inherits Rectangle {
     used := Text {
         x: parent.width - 12px - self.width;
         y: 0;
-        width: 36px;
+        width: 44px;
         height: root.head;
         text: root.panel.used + "/" + root.panel.gauge;
         color: root.panel.used > root.panel.gauge ? Theme.bad : Theme.muted;

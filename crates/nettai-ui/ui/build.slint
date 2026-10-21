@@ -872,7 +872,7 @@ export component BuildOverview inherits Rectangle {
 
         partner-name := Text {
             x: 38px;
-            width: max(0px, parent.width - 38px - 52px - 6px - partner.gauge * 5px - 4px - 28px);
+            width: max(0px, parent.width - 38px - 52px - 6px - 10 * 5px - 4px - 34px);
             text: partner.name;
             color: Theme.text;
             font-family: Theme.body;
@@ -883,7 +883,7 @@ export component BuildOverview inherits Rectangle {
         }
 
         Text {
-            x: parent.width - 52px - 6px - partner.gauge * 5px - 4px - 28px;
+            x: parent.width - 52px - 6px - 10 * 5px - 4px - 34px;
             // (As wide as "HP 1100" takes, its bonus in, then a gap before the gauge.)
             width: 52px;
             text: partner.hp;
@@ -894,20 +894,29 @@ export component BuildOverview inherits Rectangle {
             vertical-alignment: center;
         }
 
-        // (As the Party tab's gauge: a program's blocks one piece in its color, an empty block an outlined slot.)
+        // (As the Party tab's gauge: a fixed run of its slots, at the same place whatever its size (as wide as ten), a
+        // program's slots one piece in its color with a line between programs, the empty ones outlined slots.)
         for k in partner.gauge: Rectangle {
-            x: parent.width - 28px - 4px - partner.gauge * 5px + k * 5px;
+            property <bool> full: k < partner.used;
+            x: parent.width - 34px - 4px - 10 * 5px + k * 5px;
             y: 6px;
-            width: k + 1 < partner.used && k < partner.joins.length && partner.joins[k] ? 5px : 4px;
+            width: 5px;
             height: 8px;
-            border-width: k < partner.used ? 0px : 1px;
+            border-width: self.full ? 0px : 1px;
             border-color: Theme.line;
-            background: k < partner.used ? (k < partner.tones.length ? partner.tones[k] : Theme.cursor) : Theme.inset;
+            background: self.full ? (k < partner.tones.length ? partner.tones[k] : Theme.cursor) : Theme.inset;
+            Rectangle {
+                x: 0;
+                width: 1px;
+                visible: parent.full && k > 0 && k - 1 < partner.joins.length && !partner.joins[k - 1];
+                background: Theme.piece-edge;
+            }
         }
 
+        // (Its used and total, as wide as "10/10".)
         Text {
-            x: parent.width - 28px;
-            width: 28px;
+            x: parent.width - 34px;
+            width: 34px;
             text: partner.used + "/" + partner.gauge;
             color: partner.used > partner.gauge ? Theme.bad : Theme.muted;
             font-family: Theme.mono;
