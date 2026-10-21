@@ -447,6 +447,10 @@ named_fields! {
         CounterTimer = "counter_timer", U8, ro;
         /// What the last resolution hit (writable: some kinds clear it).
         HitFlags = "hit_flags", U32, rw;
+        /// Its hits reach while the battle is dimmed (its self flags'
+        /// 0x10000: what a setup while dimmed gives it, and a retype while
+        /// dimmed but EXE5's, 0x08016B9E, which leaves it out).
+        HitsWhileDimmed = "hits_while_dimmed", Bool, rw;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
         /// Which way the region's anchor last moved (0 none, 1 up, 2 down,
