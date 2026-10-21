@@ -48,6 +48,8 @@ pub mod battle_flags {
     ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
     ///   never has it.
     pub const OWN_GAUGES: u16 = 0x40;
+    /// The bits the engine owns; the rest are the rules' (`rules_flag`).
+    pub const ENGINE: u16 = 0x7F;
 }
 
 /// Top-level battle states (the game's jump-table offsets).

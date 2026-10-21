@@ -39,6 +39,8 @@ export type Spec = {
     wears: ((me: Object) -> ())?,
     -- Its warp out keeps its parts on (MegaMan's, 0x021FF0B5: they come off as it is destroyed).
     warp_keeps_parts: boolean?,
+    -- What its lead-in sets as it starts (ShadowMan's 0x021FEC85: no panel aimed at).
+    started: ((me: Object) -> ())?,
     -- The appearance's ticks and animation (3 if none said), and what it sets as it has appeared (NapalmMan his shots).
     appear_ticks: number,
     appear_anim: number?,
@@ -74,7 +76,10 @@ function party_support.go(me: Object, action: number)
 end
 
 -- 0x021FE605 and its kin: the lead-in, 4 ticks (the bottom screen's button lit on the local side: presentation).
-local function lead_in(me: Object)
+local function lead_in(me: Object, spec: Spec)
+    if me.phase_init == 0 and spec.started then
+        spec.started(me)
+    end
     if party_support.countdown(me, LEAD_TICKS) then
         party_support.go(me, party_support.APPEAR)
     end
@@ -167,7 +172,7 @@ function party_support.make(spec: Spec): Support
         end
         local a = me.action
         if a == party_support.LEAD_IN then
-            lead_in(me)
+            lead_in(me, spec)
         elseif a == party_support.APPEAR then
             appear(me, spec)
         elseif a == party_support.WARP then

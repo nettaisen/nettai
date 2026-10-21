@@ -563,6 +563,12 @@ pub enum RulesHook {
     /// support in a link battle, 0x020778F4). None answering true: it goes
     /// on.
     OpponentChip,
+    /// `low_hp(side, navi)`: the navi, idle, is at a quarter of its HP or
+    /// less and no NaviCust support came for it (`sub_8010660`, EXE5 DS's
+    /// 0x02098A84 after its Tango): true when the rules sent something for
+    /// it (EXE5 DS's Mag-Barr and ShadowMan's ambush), and the navi does
+    /// nothing else this tick.
+    LowHp,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -745,6 +751,7 @@ impl RulesHook {
             RulesHook::FightStarted => "fight_started",
             RulesHook::CustomHold => "custom_hold",
             RulesHook::OpponentChip => "opponent_chip",
+            RulesHook::LowHp => "low_hp",
             RulesHook::ChipReady => "chip_ready",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
@@ -768,7 +775,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 65] = [
+    pub const ALL: [RulesHook; 66] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -811,6 +818,7 @@ impl RulesHook {
         RulesHook::FightStarted,
         RulesHook::CustomHold,
         RulesHook::OpponentChip,
+        RulesHook::LowHp,
         RulesHook::ChipReady,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
