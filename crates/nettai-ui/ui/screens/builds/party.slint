@@ -66,6 +66,8 @@ export struct PartySlot {
     kind: PartySlotKind,
     face: image,
     name: string,
+    // A head's navi's version, marked after its name (as a Giga chip's in the folder, a card's in the patch cards).
+    version: VersionTag,
     bad: bool,
     gauge: int,
     used: int,
@@ -290,7 +292,9 @@ component RowsList inherits Rectangle {
 }
 
 // A partner's head as a slot shows it (the one dragged, under the pointer, too): its face, its name (as the program
-// rows' names are), its gauge in a column of its own (at the same place for each partner whatever its size: ten slots,
+// rows' names are) with its version's mark after it (the user: "you should also show team colonel or team protoman in
+// the party view in the installed navi, like you do for chips and patch cards"; a square of its color where the two
+// don't fit), its gauge in a column of its own (at the same place for each partner whatever its size: ten slots,
 // then its used and total, as wide as "10/10"). (Its HP is the strip's: the user, "no need to put HP whatever next to
 // the name of the navi".)
 component HeadLine inherits Rectangle {
@@ -304,9 +308,10 @@ component HeadLine inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    Text {
+    property <length> name-room: max(0px, gauge.x - 16px - name.x);
+    name := Text {
         x: 8px + 32px + 8px;
-        width: max(0px, gauge.x - 16px - self.x);
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
         text: root.slot.name;
         color: root.slot.bad ? Theme.bad : Theme.text;
         font-family: Theme.body;
@@ -314,6 +319,13 @@ component HeadLine inherits Rectangle {
         font-weight: Theme.row-name-weight;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (root.height - self.height) / 2;
+        tag: root.slot.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
     }
 
     gauge := Blocks {

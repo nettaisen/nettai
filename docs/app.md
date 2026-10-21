@@ -1616,8 +1616,10 @@ navi's HP and a team navi's Special chip attack in the same words (no Attack or 
 charge from the navi sidebar"). At the left, framed, PARTY, the pane's whole height as Patch cards' cards are: its
 counts in its head as the folder's are (Partners 2/2, Navi changes 3: `Overview::switches`), CLEAR at its end (every
 partner taken out, asked first), and under them its slots, one list that scrolls in it: each partner's head (raised: its
-face, its name, its gauge and the blocks used of it; its HP is the strip's: the user, "no need to put HP whatever next
-to the name of the navi"), its programs under it a level in, and an Empty row at their end while its list has room;
+face, its name with its version's mark after it as a Giga chip's in the folder and a card's in the patch cards (the
+user: "you should also show team colonel or team protoman in the party view in the installed navi, like you do for
+chips and patch cards"; a square of its color where the two don't fit, as on a phone), its gauge and the blocks used
+of it; its HP is the strip's: the user, "no need to put HP whatever next to the name of the navi"), its programs under it a level in, and an Empty row at their end while its list has room;
 and for each place the party has no partner in an Empty head, as the Patch cards tab's empty slots say it. The slot the
 cursor was last on is marked as a list's chosen row is (the tint and the bar), and the library at the right is of what
 it takes, under the other tabs' head (`LibraryHead`, its title saying which: NAVIS or PROGRAMS; a search, a sort by the

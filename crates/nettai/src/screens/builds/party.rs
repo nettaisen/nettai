@@ -531,6 +531,7 @@ impl Party {
                             kind: PartySlotKind::Head,
                             face: p.navi.map(|n| kit.pictures.navi(n)).unwrap_or_default(),
                             name: p.navi.map(|n| words.names.navi_long(n)).unwrap_or_default().into(),
+                            version: p.navi.map(|n| kit.version_tag_of(words.names, Registry::Navi, &Item::of(n.0))).unwrap_or_default(),
                             bad: !Party::problems(draft, i, Some(p)).is_empty(),
                             gauge: gauge as i32,
                             used: b.as_ref().map_or(0, |b| b.count.used as i32),
