@@ -12,14 +12,17 @@ return {
     categories = {
         { fact = "navi" },
         -- The team navis of a party battle's party (../init.luau's `party`, ./party): the navis it may hold, after the
-        -- navi (the user: "party tab should be next to navi tab, in ruleset editor as well"). Under one version per
+        -- navi (the user: "party tab should be next to navi tab, in ruleset editor as well"); those whose definition
+        -- states its `party` (`having`: the twelve team navis, not MegaMan, a build's own navi). Under one version per
         -- build, its navis are its team's (the groups: each navi's own `version`), as the build's souls and Giga chips
         -- are; mixed, any of the twelve.
-        { fact = "party" },
+        { fact = "party", having = "party" },
         -- The partners' PartyCust programs (each `party` record's `programs`: a category over a field of a list's
-        -- records, by its path), after the party (the user: "the party ruleset should also be able to ban partycust
-        -- programs").
-        { fact = "party.programs" },
+        -- records, by its path; the user: "the party ruleset should also be able to ban partycust programs"), held
+        -- back for every partner or for a navi's alone (`by` the record's `navi`: the user, "allow banning partycust
+        -- programs by navi"), and shown on the party's page (`within`: "combine partycust program editor into party
+        -- editor in the ruleset editor").
+        { fact = "party.programs", by = "navi", within = "party" },
         { fact = "folder" },
         { fact = "navicust_programs" },
         { fact = "patch_cards" },

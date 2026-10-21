@@ -516,7 +516,9 @@ impl Settings {
     /// The settings as the lobby carries them: the game; whether setups are
     /// open; the custom screen's time limit (seconds, 0 for none); the ruleset (not its name, which stays with the player: one
     /// version per build; then each category it holds anything back of, by its fact's name, with the names of what it
-    /// doesn't allow); whether a background left to the seed is the pool's;
+    /// doesn't allow; then each category it holds anything back of per record, by its fact's name, with each key's
+    /// name and the names of what it doesn't allow for that key's records); whether a background left to the seed is
+    /// the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
     /// `2n − 1` rounds' stage and background by name (empty: from the seed;
     /// another game's background with its game, `exe4:acdc-area`).
@@ -534,6 +536,19 @@ impl Settings {
             w.uvarint(names.len() as u64);
             for n in names {
                 w.put(n);
+            }
+        }
+        let banned_by = self.ruleset.banned_by_names(content);
+        w.uvarint(banned_by.len() as u64);
+        for (fact, keys) in &banned_by {
+            w.put(fact);
+            w.uvarint(keys.len() as u64);
+            for (key, names) in keys {
+                w.put(key);
+                w.uvarint(names.len() as u64);
+                for n in names {
+                    w.put(n);
+                }
             }
         }
         w.put(&(self.backgrounds as u8));
@@ -569,6 +584,20 @@ impl Settings {
             let names = (0..n.min(4096)).map(|_| r.get::<String>().map_err(bad)).collect::<Result<Vec<_>, _>>()?;
             banned.push((fact, names));
         }
+        let count = r.uvarint().map_err(bad)?;
+        let mut banned_by = Vec::new();
+        for _ in 0..count.min(256) {
+            let fact: String = r.get().map_err(bad)?;
+            let keys = r.uvarint().map_err(bad)?;
+            let mut of = Vec::new();
+            for _ in 0..keys.min(4096) {
+                let key: String = r.get().map_err(bad)?;
+                let n = r.uvarint().map_err(bad)?;
+                let names = (0..n.min(4096)).map(|_| r.get::<String>().map_err(bad)).collect::<Result<Vec<_>, _>>()?;
+                of.push((key, names));
+            }
+            banned_by.push((fact, of));
+        }
         let backgrounds = match r.get::<u8>().map_err(bad)? {
             0 => BackgroundPick::Game,
             1 => BackgroundPick::Pool,
@@ -603,7 +632,7 @@ impl Settings {
             return Err(format!("a match of {game}, and this side has {}'s content", content.game()));
         }
         // (Named as this side names its rules: a preset's, else the other player's.)
-        let ruleset = rulesets.named_here(Ruleset::of_names(rulesets, content, RulesetName::Theirs, one_per_build, &banned)?);
+        let ruleset = rulesets.named_here(Ruleset::of_names(rulesets, content, RulesetName::Theirs, one_per_build, &banned, &banned_by)?);
         // (The rounds as a match's checks hold them: a stage stated is a
         // link battle's, and one left is the rules' to pick.)
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {

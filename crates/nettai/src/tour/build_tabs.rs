@@ -1815,32 +1815,46 @@ fn rules_category(name: &'static str) -> Step {
 }
 
 /// The EXE5 ruleset page (for the mockups of the party's pages): EDIT by the build's ruleset, DUPLICATE (the player's
-/// own, every page editable), its Party page and its PartyCust programs page, each as it is and with two items held
-/// back, its NaviCust programs and Patch cards pages; then Back, the build made for the game's first preset again.
-fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+/// own, every page editable), its Party page (paired: the navis, and their programs) as R2's example has it (KnightMan
+/// not allowed, P.HP+300 held back for every navi, P.Btlpk2 for ProtoMan and Colonel, P.Spport for Meddy): ProtoMan
+/// chosen, All navis chosen, KnightMan (not allowed) chosen, GyroMan (every navi's ban alone) chosen; its NaviCust
+/// programs and Patch cards pages; then Back, the build made for the game's first preset again. On a phone, the Party
+/// page with ProtoMan chosen alone.
+fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, press("tab", 0));
     add(SETTLE, press("ruleset-edit", 0));
     add(SETTLE, press("rules.duplicate", 0));
     add(SETTLE, rules_category("Party"));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-party", Pair::None);
-    add(SETTLE, press("rules.items", 1));
-    add(SETTLE, press("rules.items", 3));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-party-banned", Pair::None);
-    add(SETTLE, rules_category("PartyCust programs"));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-programs", Pair::None);
-    add(SETTLE, press("rules.items", 2));
-    add(SETTLE, press("rules.items", 5));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-programs-banned", Pair::None);
-    add(SETTLE, rules_category("NaviCust programs"));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-navicust", Pair::None);
-    add(SETTLE, rules_category("Patch cards"));
-    add(SETTLE, focus("rules.items", 0));
-    shot(add, "party-rules-cards", Pair::None);
+    // (The keys: All navis, Team ProtoMan's six, Team Colonel's six; the programs in the library's order.)
+    let (all, protoman, gyroman, meddy, colonel, knightman) = (0, 1, 2, 6, 7, 11);
+    let (hp_300, btlpk_2, spport) = (3, 11, 12);
+    add(SETTLE, focus("rules.pair.keys", all));
+    add(SETTLE, press("rules.pair.programs", hp_300));
+    add(SETTLE, press("rules.pair.keys", knightman));
+    for (navi, program) in [(protoman, btlpk_2), (colonel, btlpk_2), (meddy, spport)] {
+        add(SETTLE, focus("rules.pair.keys", navi));
+        add(SETTLE, press("rules.pair.programs", program));
+    }
+    // (All navis first: the page back at its top, which a phone's KnightMan scrolled away from.)
+    add(SETTLE, focus("rules.pair.keys", all));
+    add(SETTLE, focus("rules.pair.keys", protoman));
+    if phone {
+        shot(add, "party-rules-party", Pair::None);
+    } else {
+        shot(add, "party-rules-party", Pair::None);
+        add(SETTLE, focus("rules.pair.keys", all));
+        shot(add, "party-rules-party-all", Pair::None);
+        add(SETTLE, focus("rules.pair.keys", knightman));
+        shot(add, "party-rules-party-not-allowed", Pair::None);
+        add(SETTLE, focus("rules.pair.keys", gyroman));
+        shot(add, "party-rules-party-inherited", Pair::None);
+        add(SETTLE, rules_category("NaviCust programs"));
+        add(SETTLE, focus("rules.items", 0));
+        shot(add, "party-rules-navicust", Pair::None);
+        add(SETTLE, rules_category("Patch cards"));
+        add(SETTLE, focus("rules.items", 0));
+        shot(add, "party-rules-cards", Pair::None);
+    }
     add(SETTLE, act(Action::Back));
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
 }
@@ -1857,10 +1871,15 @@ fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
     use nettai_ui::PartyView;
     if size != "desktop" {
+        // (A phone's: the ruleset's Party page alone.)
+        if size == "phone" {
+            open_build(add);
+            party_rules(add, shot, true);
+        }
         return;
     }
     open_build(add);
-    party_rules(add, shot);
+    party_rules(add, shot, false);
     add(SETTLE, to_tab(EditorTab::Party));
     add(SETTLE, focus("chip", 0));
     shot(add, "party-empty", Pair::None);

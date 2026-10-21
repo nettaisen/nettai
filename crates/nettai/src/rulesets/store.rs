@@ -13,6 +13,18 @@
 //! patch_cards = ["starman"]
 //! ```
 //!
+//! A category kept per record by a field of its records (`nettai_match::ruleset::Category::by`: EXE5's partners'
+//! programs, by each partner's navi) has what it holds back for one key's records alone in `[banned_by]`, by the
+//! category's fact, then the key's name, besides what `[banned]` holds back for every record:
+//!
+//! ```toml
+//! [banned]
+//! "party.programs" = ["p-hp-300"]
+//!
+//! [banned_by."party.programs"]
+//! protoman = ["p-btlpk2"]
+//! ```
+//!
 //! What it doesn't name is allowed. The presets are the game's (its rules/rulesets) and have no file.
 
 use nettai_battle::Content;
@@ -37,6 +49,8 @@ struct RulesetFile {
     versions: String,
     #[serde(default)]
     banned: BTreeMap<String, Vec<String>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    banned_by: BTreeMap<String, BTreeMap<String, Vec<String>>>,
 }
 
 /// A ruleset's file, as it is listed: its path, its name, and its text (read against its game's rulesets once
@@ -84,7 +98,8 @@ pub fn read(rulesets: &Rulesets, content: &Content, text: &str) -> Result<Rulese
         other => return Err(format!("versions {other:?}: \"{ONE_PER_BUILD}\" or \"{MIXED}\"")),
     };
     let banned: Vec<(String, Vec<String>)> = f.banned.into_iter().collect();
-    Ruleset::of_names(rulesets, content, Name::Own(f.name), one_per_build, &banned)
+    let banned_by: Vec<(String, Vec<(String, Vec<String>)>)> = f.banned_by.into_iter().map(|(fact, keys)| (fact, keys.into_iter().collect())).collect();
+    Ruleset::of_names(rulesets, content, Name::Own(f.name), one_per_build, &banned, &banned_by)
 }
 
 /// A ruleset as its file's text: the player's own, named as it is (a preset's id where it is one).
@@ -99,6 +114,7 @@ pub fn text(content: &Content, game: &str, ruleset: &Ruleset) -> String {
         name,
         versions: if ruleset.one_per_build { ONE_PER_BUILD } else { MIXED }.to_string(),
         banned: ruleset.banned_names(content).into_iter().collect(),
+        banned_by: ruleset.banned_by_names(content).into_iter().map(|(fact, keys)| (fact, keys.into_iter().collect())).collect(),
     };
     toml::to_string(&f).expect("a ruleset serializes")
 }
