@@ -35,6 +35,7 @@ use nettai_platform::time::Instant;
 
 mod hold;
 pub(crate) mod link;
+mod party;
 
 /// How long the two cards show at the least. A match is ready in a few milliseconds once the game is loaded,
 /// and a screen shown for two frames is a flash; the bars say how far the loading is, not this.
@@ -133,6 +134,8 @@ pub struct Battle {
     hold: hold::Hold,
     /// Online: the round trip's recent past, for the link panel (`battle/link.rs`).
     link: link::LinkHistory,
+    /// A party battle's party beside it: the switches asked, and what the window shows (`battle/party.rs`).
+    party: party::PartyState,
 }
 
 impl Battle {
@@ -305,7 +308,7 @@ impl Shell {
         shell.set_connection_shown(false);
         shell.set_connection_open(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() });
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() });
         Some((start.owner, BattleEvent::Started))
     }
 
@@ -418,6 +421,7 @@ impl Shell {
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
         shell.set_connection_open(false);
+        shell.set_party(Default::default());
         self.keys.release();
     }
 
@@ -427,7 +431,9 @@ impl Shell {
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
         b.hold.before(b.menu, &mut b.stage.player);
-        let buttons = if b.playing() && !b.kept && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
+        let held = if b.playing() && !b.kept && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
+        // (A party battle's switches are asked of the player; the battle's buttons alone go on.)
+        let buttons = b.party.take_switches(&mut b.stage.player, b.viewer, held);
         let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
         let ticks = Some(ran);
         // START in the fight: the game's pause is nettai's menu (asked of the host: the game's own never runs).
@@ -439,9 +445,17 @@ impl Shell {
         if let Some(s) = b.stage.stats.as_mut() {
             s.audio_queued = s.audio_queued.max(self.sound.queued());
         }
-        // The connection's corner.
+        // The connection's corner, and the party beside the battle.
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        let kit = self.games.ready(&b.game).and_then(|ready| crate::builds::kit_of(&b.game, &ready));
+        let keys = [crate::input::SWITCH_LEFT, crate::input::SWITCH_RIGHT].map(|bit| nettai_ui::Hint {
+            key: crate::input::key_cap(self.bindings.key(bit)).into(),
+            pad: crate::input::pad_face(self.bindings.pad_button(bit)),
+            ..Default::default()
+        });
+        let faces = |n| kit.as_ref().map(|k| k.pictures.navi(n)).unwrap_or_default();
+        b.party.show(&shell, b.stage.player.battle(), &b.game, b.viewer, faces, keys);
         if let Some(net) = b.stage.player.net_status() {
             // (The bars are the library's quality, from the round trip and how steady it is; while the link
             // is down, the seconds until it gives up, or those it has been down where it never does.)
@@ -606,7 +620,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -850,7 +864,7 @@ mod tests {
         nettai_frontend::testing::scrolling_background(&mut graphics);
         let audio = nettai_frontend::testing::audio(content);
         let player = Player::with(graphics.renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default() }
+        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() }
     }
 
     /// A practice session of Practice's own, as the editor's PRACTICE starts one: the menu open before the battle's

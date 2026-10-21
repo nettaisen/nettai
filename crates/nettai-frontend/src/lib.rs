@@ -19,6 +19,10 @@
 //!   samples. The library draws no text of its own over the picture: where
 //!   playback is, why it stopped, a result and a connection's figures are
 //!   values the host shows as it likes. Under it, the [`session`];
+//! - **a party** ([`party`]): a side's party as a host shows it beside
+//!   the battle (EXE5 DS's bottom-screen panel: the members, their HP,
+//!   the switches made, which member each of the panel's two buttons
+//!   names), read from the battle each frame;
 //! - **a replay's viewer** ([`viewer::Viewer`]): a replay played back
 //!   with a transport, which seeks to any tick, steps a frame either way,
 //!   goes a round back or on, plays at four speeds and shows either
@@ -32,6 +36,7 @@ pub mod driver;
 pub mod game;
 pub mod lobby;
 pub mod netplay;
+pub mod party;
 pub mod player;
 pub mod preload;
 pub mod replay;

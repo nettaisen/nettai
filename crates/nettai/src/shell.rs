@@ -530,7 +530,7 @@ impl Shell {
         let held = self.touch.held();
         if held != self.pad_shown {
             self.pad_shown = held;
-            let buttons: Vec<bool> = (0..10).map(|bit| held & 1 << bit != 0).collect();
+            let buttons: Vec<bool> = (0..16).map(|bit| held & 1 << bit != 0).collect();
             self.ui().global::<nettai_ui::Shell>().set_pad_held(ModelRc::new(VecModel::from(buttons)));
         }
     }
