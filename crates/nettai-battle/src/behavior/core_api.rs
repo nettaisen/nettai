@@ -522,6 +522,16 @@ impl CoreApi for Battle {
         }
     }
 
+    fn rules_flag(&self, bit: u16) -> bool {
+        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
+        self.round.flags & bit != 0
+    }
+
+    fn set_rules_flag(&mut self, bit: u16) {
+        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
+        self.set_flags(bit);
+    }
+
     fn set_chips_enabled(&mut self, side: u8, on: bool) {
         let bit = 0x04 << (side & 1);
         if on {

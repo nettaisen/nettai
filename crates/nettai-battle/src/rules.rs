@@ -786,6 +786,12 @@ impl Battle {
         self.call_rules(side, RulesHook::OpponentChip, Some(navi), None, None) == Some(Value::Bool(true))
     }
 
+    /// The rules' `low_hp(side, navi)`: whether they sent something for
+    /// the navi at a quarter of its HP.
+    pub(crate) fn rules_low_hp(&mut self, side: u8, navi: ObjectRef) -> bool {
+        self.call_rules(side, RulesHook::LowHp, Some(navi), None, None) == Some(Value::Bool(true))
+    }
+
     /// The rules' `chip_ready(side, navi, chip)`.
     pub(crate) fn rules_chip_ready(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) {
         self.call_rules(side, RulesHook::ChipReady, Some(navi), Some(chip), None);

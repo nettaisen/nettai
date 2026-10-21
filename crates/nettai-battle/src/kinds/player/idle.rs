@@ -332,18 +332,26 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
 }
 
-/// `sub_8010660`: in link battles the NaviCust support Tango (stat 0x0D
-/// bit 2) comes once when the navi's HP drops to a quarter; the navi does
-/// nothing else this tick.
+/// `sub_8010660`: at a quarter of its HP or less, in link battles the
+/// NaviCust support Tango (stat 0x0D bit 2) comes once; else the rules may
+/// send something (`low_hp`: EXE5 DS's 0x02098A84 goes on to Mag-Barr and
+/// ShadowMan's ambush). When something came the navi does nothing else
+/// this tick.
 fn low_hp_support(b: &mut Battle, r: ObjectRef) -> bool {
-    let Some(support) = stats(b, r).support else { return false };
     let o = b.objects.get(r);
-    if !is_link(b) || !support.tango || o.max_hp / 4 < o.hp {
+    if o.max_hp / 4 < o.hp {
         return false;
     }
-    stats_mut(b, r).support = Some(crate::setup::Supports { tango: false, ..support });
-    summon_support(b, r, Support::Tango, None);
-    true
+    if let Some(support) = stats(b, r).support
+        && is_link(b)
+        && support.tango
+    {
+        stats_mut(b, r).support = Some(crate::setup::Supports { tango: false, ..support });
+        summon_support(b, r, Support::Tango, None);
+        return true;
+    }
+    let side = b.objects.get(r).alliance;
+    b.rules_low_hp(side, r)
 }
 
 /// The buster's weapon routine.

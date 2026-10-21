@@ -1377,6 +1377,11 @@ pub trait CoreApi {
     /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
+    /// The battle's flags word's bits the engine owns none of (0x80 and
+    /// up): the rules' own, kept for the battle (EXE5 DS's Mag-Barr's
+    /// once-a-battle marks, battle flags 0x200 and 0x400).
+    fn rules_flag(&self, bit: u16) -> bool;
+    fn set_rules_flag(&mut self, bit: u16);
     /// `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (the
     /// intro bits' 0x04 for side 0, 0x08 for side 1, which a round starts
     /// with set; `sub_800A772` reads them): the side's navi may use chips,

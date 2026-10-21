@@ -422,3 +422,12 @@
 # NumberMan's DiceBons: his controller (the DS's effect object 0x95) and his actor (actor object 0x33).
 "numberman/dice-bonus-controller" = { pool = "effect", index = 0x95, scratch_position = true }
 "numberman/dice-bonus" = { pool = "actor", index = 0x33 }
+# MagnetMan's Mag-Barr: his controller (the DS's effect object 0x91), his actor (actor object 0x32) and his immobilizer
+# (T3 0x3F).
+"magnetman/support-controller" = { pool = "effect", index = 0x91, scratch_position = true }
+"magnetman/support" = { pool = "actor", index = 0x32 }
+"magnetman/immobilizer" = { pool = "attack", index = 0x3F }
+# ShadowMan's ambush: his actor (the support actor 0x30's variant 4) and his strikes (the DS's effect object 0x96, its
+# position the spawner's registers).
+"shadowman/support" = { pool = "actor", index = 0x30 }
+"shadowman/ambush-strike" = { pool = "effect", index = 0x96, scratch_position = true }

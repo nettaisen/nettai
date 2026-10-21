@@ -22,12 +22,14 @@ local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
 local colonel_support = require("./navis/colonel/support")
 local gyroman_support = require("./navis/gyroman/support")
+local magnetman_support = require("./navis/magnetman/support")
 local meddy_support = require("./navis/meddy/support")
 local megaman_support = require("./navis/megaman/support")
 local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local protoman_support = require("./navis/protoman/support")
 local searchman_support = require("./navis/searchman/support")
+local shadowman_support = require("./navis/shadowman/support")
 local tomahawkman_support = require("./navis/tomahawkman/support")
 local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
@@ -428,6 +430,11 @@ local rules: Rules = {
         custom_hold = meddy_support.custom_hold,
         -- The opponent starts a chip: SearchMan's support in a link battle stops it (navis/searchman/support).
         opponent_chip = searchman_support.opponent_chip,
+        -- The navi idle at a quarter of its HP: MagnetMan's Mag-Barr, else ShadowMan's ambush, in a party battle
+        -- (navis/magnetman/support, navis/shadowman/support).
+        low_hp = function(side: number, navi: Object): boolean
+            return magnetman_support.low_hp(side, navi) or shadowman_support.low_hp(side, navi)
+        end,
         -- A chip's use goes on: MegaMan's chip voice's draw in a party battle (./party).
         chip_ready = party.chip_ready,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.

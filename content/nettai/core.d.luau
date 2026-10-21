@@ -1384,6 +1384,10 @@ declare battle: {
     -- icons show over it; a status reset takes it out again).
     show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
+    -- The battle's flags word's bits the engine owns none of (0x80 and up): the rules' own, kept for the battle (EXE5
+    -- DS's Mag-Barr's once-a-battle marks, 0x200 and 0x400). `rules_flag` reads one bit, `set_rules_flag` sets it.
+    rules_flag: (bit: number) -> boolean,
+    set_rules_flag: (bit: number) -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
@@ -2266,6 +2270,9 @@ export type RulesSpec = {
         -- The opponent's navi `navi` starts a chip from idle (after the NaviCust supports' interception): true stops it
         -- (its attack ends).
         opponent_chip: ((side: number, navi: Object) -> boolean?)?,
+        -- `sub_8010660`: the navi, idle, is at a quarter of its HP or less and no NaviCust support came: true when the
+        -- rules sent something for it (the navi then does nothing else this tick).
+        low_hp: ((side: number, navi: Object) -> boolean?)?,
         -- A chip's use, prepared, passed the rules' checks, before its action is chosen.
         chip_ready: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge

@@ -1953,6 +1953,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.shake_camera_secondary(magnitude, ticks)))
     });
     lib_fn!(lua, t, "set_shake_through_pause", |_, on: bool| with(|api, _| Ok(api.set_shake_through_pause(on))));
+    lib_fn!(lua, t, "rules_flag", |_, bit: u16| with(|api, _| Ok(api.rules_flag(bit))));
+    lib_fn!(lua, t, "set_rules_flag", |_, bit: u16| with(|api, _| Ok(api.set_rules_flag(bit))));
     lib_fn!(lua, t, "set_chips_enabled", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_chips_enabled(side, on)))
@@ -3108,6 +3110,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::NaviFalling
                 | RulesHook::MemberBusy
                 | RulesHook::OpponentChip
+                | RulesHook::LowHp
                 | RulesHook::CutInBarred,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
