@@ -833,6 +833,10 @@ named_flags! {
         /// In the air (EXE5's GyroMan over a panel that isn't solid): a
         /// step it takes sets no animation.
         Hovering = "hovering",
+        /// A guard of the rules' holds it (EXE5 DS's KnightMan's).
+        Guarded = "guarded",
+        /// Its dive runs (EXE5's ToadMan's action 8).
+        Diving = "diving",
     }
 }
 

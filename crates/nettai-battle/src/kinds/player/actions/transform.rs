@@ -174,7 +174,8 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests &= !0x1000_863D;
-    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED | status::REVERTING_FORM);
+    // (EXE5 DS's the guard and the dive too, 0x020605A0.)
+    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED | status::REVERTING_FORM | status::GUARDED | status::DIVING);
     if ai(b, r).attack.step_init != 2 {
         return exit_attack_state(b, r);
     }
@@ -295,7 +296,8 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         return true;
     }
     if any_form {
-        ai_mut(b, r).status &= !status::FORM_BREAKING;
+        // (EXE5 DS's the guard and the dive too, 0x020606AA.)
+        ai_mut(b, r).status &= !(status::FORM_BREAKING | status::GUARDED | status::DIVING);
         b.clear_flags(battle_flags::DIMMED);
         let a = &mut ai_mut(b, r).attack;
         a.step = 0;
