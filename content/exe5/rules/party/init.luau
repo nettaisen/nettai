@@ -236,7 +236,8 @@ end
 
 -- The rescue is spent (its action's start sets the party block's +0xB).
 function party.spend_rescue(side: number)
-    (rules.state_of(side) :: State).rescued = true
+    local state = rules.state_of(side) :: State
+    state.rescued = true
 end
 
 -- `validate`'s part: a party is MegaMan's (the navi that changes form, member 0: the DS's); its partners are team navis
