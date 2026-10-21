@@ -1024,7 +1024,7 @@ fn a_partys_setup_is_held_to_the_rules() {
     let problems = |left: &str| parse(&content, left, &right).err().unwrap_or_default().join("\n");
     let party = |p: &str| exe5(&TANGO_EXE5, &format!("party = [{p}]"));
     assert_eq!(problems(&party(r#"{ navi = "protoman", programs = ["p-hp-300", "p-hp-50"] }"#)), "");
-    assert!(problems(&party(r#"{ navi = "protoman", programs = ["p-hp-300", "p-hp-100"] }"#)).contains("fill 7 blocks of its 6"));
+    assert!(problems(&party(r#"{ navi = "protoman", programs = ["p-hp-300", "p-hp-100"] }"#)).contains("fill 7 slots of its 6"));
     assert!(problems(&party(r#"{ navi = "protoman" }, { navi = "protoman" }"#)).contains("in the party at 1 too"));
     assert!(problems(&party(r#"{ navi = "megaman" }"#)).contains("is no team navi"));
     let team_navi = side("protoman", &TANGO_EXE5, "level = 6\nparty = [{ navi = \"gyroman\" }]");

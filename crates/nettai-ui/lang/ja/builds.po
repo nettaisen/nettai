@@ -192,9 +192,10 @@ msgstr "コード"
 msgid "MB"
 msgstr "MB"
 
-# The Party tab's library sorted by a PartyCust program's blocks.
-msgid "Blocks"
-msgstr "ブロック"
+# The Party tab's library sorted by a PartyCust program's slots; the strip's stat of a navi's gauge, the slots its
+# PartyCust holds (PartyCust's word for its capacity and a program's cost, スロット; NaviCust's pieces stay blocks).
+msgid "Slots"
+msgstr "スロット"
 
 # The sort by a chip's attack power (the overview's "Attack" is the buster's).
 msgctxt "sort"
@@ -601,7 +602,7 @@ msgid "Mixed versions"
 msgstr "バージョン混在"
 
 # ---- The Party tab (a game whose builds have a party: EXE5's party battle, EXE5 DS's パーティバトル). A partner's
-# programs fill blocks of its gauge (PartyCust: パーティカスタマイザー).
+# programs fill slots of its gauge (PartyCust: パーティカスタマイザー).
 
 msgid "Party"
 msgstr "パーティ"
@@ -622,8 +623,8 @@ msgstr "パーティ"
 
 
 
-msgid "Programs fill {} blocks, the gauge has {}"
-msgstr "プログラム {}ブロック、ゲージは{}"
+msgid "Programs fill {} slots, the gauge has {}"
+msgstr "プログラム {}スロット、ゲージは{}"
 
 
 # The Party tab as the user chose it (D9): the navis to pick from, the partners, PROGRAMS.
@@ -639,9 +640,9 @@ msgstr "ナビチェンジ"
 
 
 
-msgid "{n} block free"
-msgid_plural "{n} blocks free"
-msgstr[0] "空き{n}ブロック"
+msgid "{n} slot free"
+msgid_plural "{n} slots free"
+msgstr[0] "空き{n}スロット"
 
 msgid "Clear the party?"
 msgstr "パーティを空にしますか？"
@@ -649,18 +650,15 @@ msgstr "パーティを空にしますか？"
 
 
 
-msgid "Fits: {n} block free"
-msgid_plural "Fits: {n} blocks free"
-msgstr[0] "入ります：空き{n}ブロック"
+msgid "Fits: {n} slot free"
+msgid_plural "Fits: {n} slots free"
+msgstr[0] "入ります：空き{n}スロット"
 
-msgid "Needs {n} block"
-msgid_plural "Needs {n} blocks"
-msgstr[0] "{n}ブロック必要"
+msgid "Needs {n} slot"
+msgid_plural "Needs {n} slots"
+msgstr[0] "{n}スロット必要"
 
-msgid "{n} block"
-msgid_plural "{n} blocks"
-msgstr[0] "{n}ブロック"
+msgid "{n} slot"
+msgid_plural "{n} slots"
+msgstr[0] "{n}スロット"
 
-msgid "Gauge {n} block"
-msgid_plural "Gauge {n} blocks"
-msgstr[0] "ゲージ {n}ブロック"

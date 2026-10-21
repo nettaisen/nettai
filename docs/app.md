@@ -1361,7 +1361,7 @@ back by `resolve_side`):
 - **The overview's party** (the user: "the party is also not visible on the build overview screen"): a build with
 partners has a row for each under its forms (`BuildSheet::party`, `builds::party::sheet_rows`, read as the Party tab
 reads them: the setup's schema, the overview's budgets): its face, name, HP with its programs' bonus, and its gauge
-with the blocks used of it in its programs' colors. On the wide sheet the rows are over the stats' column, the
+with the slots used of it in its programs' colors. On the wide sheet the rows are over the stats' column, the
 abilities and bugs a line fewer for each; on the narrow and a phone's sheet the sheet is taller by them.
 
 **The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
@@ -1607,11 +1607,14 @@ collection's entries (the programs), whose rooms are the most partners and the m
 names neither field. It is a two-level list and a library that follows it (the user: "if you have a navi slot selected
 in the party editor you pick from a navi and if you have a program slot you pick from a program"), laid out as the
 Patch cards tab is. The strip across the top describes what is under the cursor or the pointer, laid out as the Folder
-tab's: a program (its blocks and name; what it does; its blocks, its kind and whether they fit the marked slot,
-"Fits: 2 blocks free", or why not at its top right) or a navi (its face, its full name, "MagnetMan", with its version's
+tab's: a program (its slots drawn and its name; what it does; its slots, "3 slots", its kind and whether they fit the marked
+slot, "Fits: 2 slots free", or why not at its top right; PartyCust's word for its capacity and a program's cost is
+"slots" wherever it is said, スロット: the user, "or "slots" i guess instead of blocks. you should have it be slots
+everywhere"; NaviCust's pieces stay blocks) or a navi (its face, its full name, "MagnetMan", with its version's
 mark; its stats, HP, Attack and Special chip attack (its own chip's damage; no Charge, which nothing raises), what its
-programs add to them in cyan as the overview says it, the chip's damage the rules' overview's `members`; its element
-and its gauge: a navi not in the party as the build would field it alone, a check of the build with it the one partner,
+programs add to them in cyan as the overview says it, the chip's damage the rules' overview's `members`, then Slots,
+its gauge's, a stat as they are (the user: "why is "gauge 8 blocks" not like a stat like everything else in the header
+in party editor?"); its element alone on the line under them: a navi not in the party as the build would field it alone, a check of the build with it the one partner,
 asked once a navi; a library's navi that can't go in, why at its top right). The Navi tab's panel says the build's
 navi's HP and a team navi's Special chip attack in the same words (no Attack or Charge: the user, "remove attack and
 charge from the navi sidebar"). At the left, framed, PARTY, the pane's whole height as Patch cards' cards are: its
@@ -1619,18 +1622,18 @@ counts in its head as the folder's are (Partners 2/2, Navi changes 3: `Overview:
 partner taken out, asked first), and under them its slots, one list that scrolls in it: each partner's head (raised: its
 face, its name with its version's mark after it as a Giga chip's in the folder and a card's in the patch cards (the
 user: "you should also show team colonel or team protoman in the party view in the installed navi, like you do for
-chips and patch cards"; a square of its color where the two don't fit, as on a phone), its gauge and the blocks used
+chips and patch cards"; a square of its color where the two don't fit, as on a phone), its gauge and the slots used
 of it; its HP is the strip's: the user, "no need to put HP whatever next to the name of the navi"), its programs under it a level in, and an Empty row at their end while its list has room;
 and for each place the party has no partner in an Empty head, as the Patch cards tab's empty slots say it. The slot the
 cursor was last on is marked as a list's chosen row is (the tint and the bar), and the library at the right is of what
 it takes, under the other tabs' head (`LibraryHead`, its title saying which: NAVIS or PROGRAMS; a search, a sort by the
-game's order or the name, or the blocks, and its direction, each its own): for a head (a partner's, or Empty) the navis,
+game's order or the name, or the slots, and its direction, each its own): for a head (a partner's, or Empty) the navis,
 in their versions' order, each its face, its name and its version's mark; for a program or a partner's Empty row the
-programs, each its blocks, its name and its cost (what it does is the strip's: the user, "no need to show effects in
+programs, each its slots drawn, its name and its cost (what it does is the strip's: the user, "no need to show effects in
 the library column since they get shown on mouseover"; the strip words it by the collection's own text table,
 `partycust_programs_effects`, as a patch card's lines are worded, its kind there too, `kind.`). One that can't go into
 the slot is greyed with why in the error red, as the Patch cards library's are: a navi "In party" or "Not allowed" (the
-ruleset's `party` category); a program "Needs 3 blocks" (in a program's place with that program's blocks free) or "Not
+ruleset's `party` category); a program "Needs 3 slots" (in a program's place with that program's slots free) or "Not
 allowed". A navi of the other version under one version per build isn't refused (the user: "it should be marked red
 and still addable like it is everywhere else"): it goes in as a Giga chip of the other version goes into the folder,
 its library row saying nothing past its version's mark, and the mix is the build's problem (`Wrong::Mixed`): each
@@ -1638,10 +1641,10 @@ partner whose navi (or a program) is in it has its head red, and its head's and 
 versions"; the Party tab is flagged, not the Navi tab, whose category has the team navis too (`Draft::facts_of` takes
 the facts that hold the mix's items in the build: `ruleset::held`). Library rows and program rows are a library's row as the Patch cards tab's are (`LibraryRowLook`, factored
 out of its card rows: a lead, the name, the note right before the end, the end; the editor's list row height), a
-program's blocks or a navi's face its lead, and a navi's name, a head's and a program's in the rows' one size and weight
-(Theme's `row-name-size`, `row-name-weight`). A program's blocks are in a column as wide as the most a program of the
+program's slots or a navi's face its lead, and a navi's name, a head's and a program's in the rows' one size and weight
+(Theme's `row-name-size`, `row-name-weight`). A program's slots are in a column as wide as the most a program of the
 collection fills (P.Btlpk2's 7; its cost field the rules' overview's, learned once), its name after it at the same place
-in every row; the strip's blocks are as small as that many take in the face's box (12 for 7). Enter (or a click) on a
+in every row; the strip's slots are as small as that many take in the face's box (12 for 7). Enter (or a click) on a
 slot goes into the library, Back comes back to it; Enter on a library's row puts it in the slot: a navi in a head's
 place (a partner's taken out with its programs: another navi's gauge isn't its; an Empty head's, a partner of its
 own), a program in a program's place or, from an Empty row, at the list's end (one may be in twice: the rules hold them
@@ -1654,16 +1657,16 @@ Enter is), and onto the library (taken out); a library's program among them; a l
 it goes in that place); a partner's head onto another's (outlined: they trade places, their programs with them), onto
 the library (taken out). No list's height follows `Drag` (a list's rows are made anew whenever its height is asked
 again, and a row held by the pointer would be let go), and the cursor coming to a slot changes the library's rows in
-place where their kind stays. The gauges are drawn as the NaviCust tab draws its board: a block flat in its program's
+place where their kind stays. The gauges are drawn as the NaviCust tab draws its board: a slot flat in its program's
 color (a NaviCust program's color, the program's definition's `color`: the user, "use the colors you use for
-navicust"), a line between programs, the empty blocks outlined slots, the gauge in a column of its own (ten slots
+navicust"), a line between programs, the empty slots outlined, the gauge in a column of its own (ten slots
 wide, its used and total as wide as "10/10") so that no gauge shifts with its size. The footer's status is the marked
-partner's blocks free. On a phone, which has no strip, PARTY is the tab's width (its problems' line under its counts),
+partner's slots free ("8 slots free"). On a phone, which has no strip, PARTY is the tab's width (its problems' line under its counts),
 and a button under it (NAVIS or PROGRAMS, as the slot takes) opens the library as a sheet. A partner's version is
 marked on the build overview's party rows as a form's is in its forms' row, a bar in its color under its face (the
 user's). The gauge and a program's cost are the rules' overview's (a list budget of the partner's entry,
 `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's problems in their typed words
-("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A party is the game's own
+("Programs fill 10 slots, the gauge has 6"; "Something in the party is there twice"). A party is the game's own
 navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have no party, and the DS's
 save format isn't read.
 

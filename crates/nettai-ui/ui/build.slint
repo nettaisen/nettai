@@ -401,7 +401,7 @@ export global BuildWords {
     }
     // (A party's partner's PartyCust programs against its gauge.)
     public pure function gauge-over(used: int, limit: int) -> string {
-        return @tr("Programs fill {} blocks, the gauge has {}", used, limit);
+        return @tr("Programs fill {} slots, the gauge has {}", used, limit);
     }
     public pure function off-board() -> string {
         return @tr("A piece is off the board");
