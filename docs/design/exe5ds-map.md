@@ -1063,6 +1063,9 @@ EXE5 content on its hooks below) and the supports (step 10).
    parts are generated from the DS ROMs by the verification workspace's gen_content (gen_ds.py): data and text only.
    HPRecov is chip 0x187, the GBA's placeholder record with the DS's name, which the rescue's telop names.
 
+**The version.** The tick's input, the battle's state and the digest changed: the next release must be a minor one
+(docs/design/rollback.md's version lines), which the user makes.
+
 **Unverified:** everything above against a console. The DS recordings (verify's data/traces/lab-exe5ds) are the next
 step, once the trace reader learns the `exe5ds` lines. Open as read: the overlay's third parameter on the switch's
 land (what it tells it), the busy flags (the supports'), the custom screen's refusal of MegaMan offline in some story
