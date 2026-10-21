@@ -43,6 +43,9 @@ Nothing here is observed yet: §9 lists what a console should confirm.
   - HP is kept per member. Soul Unison ends on the way out. A team navi enters at the normal emotion.
   - A deleted team navi gives the field back to MegaMan. The side loses when MegaMan is deleted.
   - Benched members join in: **supports** (seven per-frame handlers) and ToadMan's rescue at 0 HP.
+  - **PartyCust** (§4.10), the team navis' own customizer, is a gauge of thirteen programs. The programs add max HP,
+    buster attack, a bonus to the navi's own attacks, and the support flag to that navi's stats record. That
+    record crosses the link inside the partner stats.
 - **Double Attacks** (§5): a switch out of **Full Synchro** to the partner a pair table names starts that pair's
   Double Attack, right as the swap ends.
   - There are twelve, one per pair: six with MegaMan, six between team navis.
@@ -310,7 +313,13 @@ Two places read it, so a switch is taken in battle or on the custom screen.
 |---|---|---|---|
 | NavChg+1 | 0x30 | 0x02013F88 | MegaMan's +0x17 += 1, at most 5 |
 | NavChg+2 | 0x31 | 0x02013FA4 | +0x17 += 2, at most 5 |
-| Spport ("MegaMan supports team") | 0x32 | 0x02013FC0 | MegaMan's +0x59 = 1: the partners may support and rescue (§4.7) |
+| Spport ("MegaMan supports team") | 0x32 | 0x02013FC0 | MegaMan's +0x59 = 1: MegaMan may support while benched (§4.7) |
+
+These three are NaviCust programs: the GBA's NaviCust compile (0x02013A94, BRBE `sub_813C684`'s counterpart, the
+same code) dispatches them by program id, and they are in prgmname.msg with the GBA's programs. The team navis'
+own programs are a separate system, PartyCust (§4.10). Both systems set the same flag: a member may support
+when its own NaviStats +0x59 is set (0x02004E9C). NaviCust's Spport sets it in MegaMan's block; PartyCust's
+P.Spport sets it in a team navi's.
 
 ### 4.6 The swap
 
@@ -384,7 +393,7 @@ it with +0x48 0x2000.)
 1. The GBA's survive-at-1 check.
 2. **The ToadMan rescue** (0x020048E8), when all of these hold:
    - ToadMan is a benched member with HP;
-   - it is mode 6, or MegaMan has Spport (+0x59);
+   - it is mode 6, or ToadMan's own +0x59 is set (PartyCust's P.Spport, §4.10; the test is 0x02004E9C's);
    - the party block's +0xB is 0;
    - MegaMan's light test passes (0x02004DD8).
 
@@ -404,7 +413,8 @@ it with +0x48 0x2000.)
 0x02003DB4, 0x02004130 and 0x02004438.
 - In a link battle they run for both sides; otherwise for side 0 only.
 - Each tests the party block, MegaMan's light state, a benched member's availability (0x02004E9C: HP, and mode 6
-  or Spport) and that the member isn't the active navi.
+  or the member's own +0x59: Spport for MegaMan, P.Spport for a team navi) and that the member isn't the active
+  navi.
 - Each then targets an enemy (0x02003864) and spawns an ov423 object (0x021FF280) drawn with the member's sprite
   (0x02036450).
 
@@ -441,6 +451,83 @@ its sequencer, and changes the rest:
 | Settle | — | 21 ticks, then the Double Attack trigger |
 | Knockout | brings back the kept reserve | brings back MegaMan (member 0); a new fall-back condition |
 | Also | — | the ToadMan rescue; actions 0x59–0x5C |
+
+### 4.10 PartyCust (the Party Customizer)
+
+All read in code. The layout and the effects agree with Tango's BN5DS save view
+(tango-gamesupport-bn5ds-dataview `save.rs`, `rom/mod.rs`), which found them by driving the customizer.
+
+**What it is.** The DS's equivalent of the NaviCust for the team navis: each team navi has a gauge of blocks, and
+programs bought as items fill it. It is a gauge, not a grid: there are no shapes, colors or compression. It runs from
+overlay 413 (the 0x021DDBE0 slot, ARM code). Its program names and descriptions are p_prgmname and p_prgminf
+(`\rom_usa\a\p_prgm*_LZ.bin`). The programs are items 0xB0–0xBC (item counts at save +0x144C).
+
+**The programs** (ov413's tables at 0x021EC97C, four 16-byte rows: item id, cost, kind, art; the apply jump
+table at 0x021E0560 by item − 0xB0, the take-off mirror at 0x021E02D0):
+
+| Item | Program | Cost | Kind | What it adds to the navi's record |
+|---|---|---|---|---|
+| 0xB0 | P.HP+50 | 1 | 3 (HP) | +0x5A += 50 |
+| 0xB1 | P.HP+100 | 2 | 3 | +0x5A += 100 |
+| 0xB2 | P.HP+200 | 3 | 3 | +0x5A += 200 |
+| 0xB3 | P.HP+300 | 5 | 3 | +0x5A += 300 |
+| 0xB4 | P.Atk+1 | 1 | 4 (attack) | +0x01 += 1 |
+| 0xB5 | P.Atk+2 | 2 | 4 | +0x01 += 2 |
+| 0xB6 | P.Atk+3 | 3 | 4 | +0x01 += 3 |
+| 0xB7 | P.Chp+30 | 3 | 2 (chip attack) | +0x56 += 30 |
+| 0xB8 | P.Chp+40 | 4 | 2 | +0x56 += 40 |
+| 0xB9 | P.Chp+50 | 5 | 2 | +0x56 += 50 |
+| 0xBA | P.Btlpk1 | 4 | 5 (special) | +0x5A += 50, +0x01 += 1, +0x56 += 30 |
+| 0xBB | P.Btlpk2 | 7 | 5 | +0x5A += 200, +0x01 += 2, +0x56 += 40 |
+| 0xBC | P.Spport | 1 | 5 | +0x59 = 1 |
+
+**The gauges** by navi, ProtoMan to ToadMan (0x021EC958; MegaMan has none): 6, 8, 6, 8, 5, 10, 8, 6, 10, 6, 5,
+8 blocks.
+
+**Whose stats.** Each team navi's own record: the 0x60-byte NaviStats block the save keeps per navi
+(`sub_801401E`(navi) = toolkit+0x74 + navi·0x60, RAM 0x0216A0EC + navi·0x60, save +0x2E6C + navi·0x60). It is not
+MegaMan's and not the party's: a program stays with its navi, whichever slot fields it. The fields:
+- **+0x01**: the buster attack level (the GBA's field). The battle's shared buster code reads it when the navi is
+  active.
+- **+0x56** (u16): the chip attack bonus.
+- **+0x59**: support. The member may support and be rescued with (§4.7).
+- **+0x5A** (u16): the max HP bonus.
+
+**What the battle reads, and where:**
+- **Max HP:** 0x02004C84 and 0x02004CA4 (the second also fills HP) write +0x42 = the base HP + the bonus +0x5A.
+  The base HP is 0x0203E21A[navi][rank], ten halfwords a navi. They run for all twelve navis (0x02004C5C and
+  0x02004C70), from the battle's setup (0x0202A500, 0x0202A696) and the customizer (0x021E0880).
+- **Chip attack:** 0x0203BF2C (BRBE `exe5_800EAF8`, in the chip damage table at 0x020DF0B8) gives the damage of the
+  team navis' own attacks, chips 0x190–0x1A7 (two per navi: StepSwrd ProtoMan's, C-Cannon Colonel's, KCrusher
+  KnightMan's, S-Melody ToadMan's…).
+  - In a link battle, and offline outside mode 6, the damage is the base 0x0203E0D7[navi][rank] (ten bytes a
+    navi, through 0x02004E48) plus the member's +0x56, when that navi is in the party.
+  - Otherwise it is the chip record's power, the GBA's path (`exe5_800EBC4`).
+  - "Special chip atk" in the program text means these attacks. It doesn't mean the Double Attacks: their damage
+    is the row of §5 alone (the launcher adds nothing).
+- **Support:** 0x02004E9C (the supports, the ToadMan rescue).
+- **Attack:** wherever the shared code reads NaviStats +0x01.
+
+`rank` is the story rank (0x0203C10C: how many of event flags 0x300–0x308 are set, 0–9). The engine's max-power
+rule means rank 9.
+
+**Where the result lives.**
+- In the save: the four fields of each navi's record.
+- The customizer's loadouts are at save +0x8424, 2 × 0xE: the navi, ten program item ids, and the attack and chip
+  attack totals. The panel redraws its gauge from these, and they are not read in battle.
+- In battle: the partners' 0x60-byte member blocks (§4.1), copied whole from those records.
+
+**How it crosses the link.** Inside the partner stats: 0x02097B84 copies each partner's whole record
+(`sub_801401E`) into the send block (0x021B8F94), so +0x01, +0x40/+0x42, +0x56, +0x59 and +0x5A arrive as part of
+the member blocks. Nothing else is exchanged for it.
+
+**For the engine:**
+- PartyCust is no new battle state. It is what a partner's member block holds: the bonus fields and the computed
+  max HP.
+- A build's partners carry their programs, and the setup applies them as the customizer does.
+- The new rules:
+  - the chip attack sum in the team navis' attacks' damage;
+  - the support flag in §4.7's tests.
 
 ## 5. Double Attacks
 
@@ -650,8 +737,8 @@ so no extractor work is planned beyond content rows.
 | 9 | **Double Attacks:** the pair table, the trigger and launcher, actions 0x5C, the twelve directors and their actor kinds, the new effect and attachment rows, chips 0x160–0x16B; one at a time against recordings | content/exe5 (objects in Luau, per the content model), small Rust hooks if any | L | 6, 7, 3 |
 | 10 | **Supports** (after step 1's reading) | content/exe5 | M | 1, 4 |
 | 11 | **Restrictions:** the DS's light/dark chip rule for team navis (dark-only chips MegaMan's only) | content/exe5 rules (light_dark) | S | 4 |
-| 12 | **The DS programs** NavChg+1/+2 and Spport, if the user wants them (§9) | content/exe5 navicust | S | 4 |
-| 13 | **The app:** a party picker in the build creator (two of the twelve team navis, with their own builds' stats), a party HUD (the members' faces and HP, the pips; the DS draws it on its bottom screen, so its layout is ours), X/Y bindings and on-screen buttons for touch | nettai, nettai-ui | M | 4, 5 |
+| 12 | **The DS programs:** NaviCust's NavChg+1/+2 and Spport (three programs in content/exe5's NaviCust); **PartyCust** (§4.10): the thirteen programs and the twelve gauges as content, applying them into a partner's member block at setup, the max HP formula, and the chip attack sum in the team navis' attacks (0x0203BF2C) | content/exe5 navicust, a partycust module, rules | M | 4 |
+| 13 | **The app:** a party picker in the build creator (two team navis, under the ruleset's team rule: one team's, or any twelve under `mixed`) with a PartyCust editor per partner (its gauge and the program list), a party HUD (the members' faces and HP, the pips; the DS draws it on its bottom screen, so its layout is ours), X/Y bindings and on-screen buttons for touch | nettai, nettai-ui | M–L | 4, 5, 12 |
 | 14 | **Netplay:** the partners' stats in the match setup both peers agree on (the DS sends them in the battle's init blocks), and the version line | nettai-match, nettai-netplay | S | 4, 5 |
 
 Sizes are rough. In all it is about two months. Steps 2–3 (the oracle) and 9 (the Double Attacks) are the long
