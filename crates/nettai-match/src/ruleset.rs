@@ -712,7 +712,7 @@ mod tests {
     fn each_game_has_its_categories_groups_and_presets() {
         for (content, game, facts, forms, groups) in [
             (exe6_content(), "exe6", vec!["navi", "folder", "navicust_programs", "patch_cards", "cybeast", "crosses"], "crosses", ["gregar", "falzar"]),
-            (exe5_content(), "exe5", vec!["navi", "folder", "navicust_programs", "patch_cards", "souls", "party", "auto_battle_places"], "souls", ["protoman", "colonel"]),
+            (exe5_content(), "exe5", vec!["navi", "party", "folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["protoman", "colonel"]),
             (exe4_content(), "exe4", vec!["folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["redsun", "bluemoon"]),
         ] {
             let r = Rulesets::of(&content, game).unwrap();
