@@ -869,7 +869,7 @@ pub(crate) fn read_navi(
     let d = &d;
     let own = [
         "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick", "idle",
-        "post_init", "reset", "fire_charge",
+        "post_init", "reset", "interrupted", "fire_charge",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let mut o = super::reader::fields(d, r, &skip)?;

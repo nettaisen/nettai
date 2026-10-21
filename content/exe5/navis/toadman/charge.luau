@@ -80,6 +80,9 @@ end
 -- step home.
 local function dive(me: Object, s: State)
     if me.step_init == 0 then
+        -- (EXE5 DS's 0x0204A364, the GBA's has none: the dive's state, until he stands again, 0x0204A574, or a flinch,
+        -- a drag or a paralysis cuts it short, ../toadman's `interrupted`. KnightMan's guard reads it.)
+        me:set_navi_state("diving", true)
         if not me:can_move() then
             me.step, me.step_init = HOME, 0
             return
@@ -222,6 +225,7 @@ local function stand(me: Object, s: State)
         me.step_init = 4
     end
     if over(s) then
+        me:set_navi_state("diving", false)
         me:exit_attack()
     end
 end

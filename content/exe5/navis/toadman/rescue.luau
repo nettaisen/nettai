@@ -60,7 +60,8 @@ local function start(me: Object)
             me:set_request(r, false)
         end
         me:set_navi_state("reviving", true)
-        for _, state in { "hovering", "trap_armed" } :: { NaviStateFlag } do
+        -- (0x0200496C: 0x408800.)
+        for _, state in { "hovering", "trap_armed", "guarded" } :: { NaviStateFlag } do
             me:set_navi_state(state, false)
         end
         me.collision:set_region(nil)

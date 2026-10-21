@@ -27,8 +27,6 @@ local APPEAR_SOUND = asset.sound("appear")
 -- and when the enemies are held.
 local MAGNET_ARM = attachment.look { sprite = asset.sprite("magnet-arm"), palette = 0 }
 local ANIM_MAGNET, MAGNET_ENDS, BARRIER_AT, HOLD_AT = 0x10, 0x5A, 0x1E, 0x3C
--- The enemies' bodies' panel flag, by side (0x020CC7D4).
-local ENEMY_BODY = { [0] = 0x04000000, [1] = 0x08000000 }
 -- The DS's immobilizer (T3 0x3F, the GBA's code but that its linger is its Param1, 20 here, and its Param2 1 plays
 -- 0xFD): MagnetSoul's mark, its guard-breaking hit against navis that immobilizes (status 0x42).
 local IMMOBILIZER = immobilizer.make_kind("magnetman/immobilizer", {
@@ -59,24 +57,6 @@ local function go(me: Object, action: number)
     me.action, me.phase, me.phase_init = action, 0, 0
 end
 
--- 0x02007BA8: an immobilizer (running while dimmed, 0x0220AF44) on every enemy body from his column forward, row by
--- row.
-local function hold_enemies(me: Object)
-    local enemy = ENEMY_BODY[me.alliance]
-    for y = 1, 3 do
-        local x = me.panel_x
-        while field.valid(x, y) do
-            if bit32.btest(field.flags(x, y), enemy) then
-                local o = immobilizer.spawn(IMMOBILIZER, me, x, y)
-                if o then
-                    o.run_while_dimmed = true
-                end
-            end
-            x += me.facing
-        end
-    end
-end
-
 -- 0x021FF7ED: the magnet arm up (animation 0x10); on its 31st tick the navi's barrier (its old barrier's visual ending,
 -- a new one coming), on its 61st the enemies held; 91 ticks.
 local function magnet(me: Object)
@@ -90,7 +70,8 @@ local function magnet(me: Object)
         barriers.raise(me.related1 :: Object, barriers.barrier_10)
     end
     if me.timer == HOLD_AT then
-        hold_enemies(me)
+        -- (0x02007BA8.)
+        immobilizer.rows_ahead(IMMOBILIZER, me, me.panel_x)
     end
     me.timer += 1
     if me.timer > MAGNET_ENDS then

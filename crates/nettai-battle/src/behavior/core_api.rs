@@ -174,6 +174,8 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::Vanished => status::VANISHED,
         NaviState::Dives => status::DIVES,
         NaviState::Hovering => status::HOVERING,
+        NaviState::Guarded => status::GUARDED,
+        NaviState::Diving => status::DIVING,
     }
 }
 
