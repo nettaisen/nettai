@@ -44,16 +44,6 @@ impl ScreenId {
         }
     }
 
-    /// How short its layout may be, in units, before the whole of it is made smaller to fit a short window
-    /// (`Shell::fit_window`): the reference's 800, or less for a screen whose body scrolls, which keeps a readable
-    /// scale on a short window (a phone on its side, a short browser window) and scrolls instead: the build editor's.
-    pub fn least_height(self) -> f32 {
-        match self {
-            ScreenId::Builds => 560.0,
-            _ => 800.0,
-        }
-    }
-
     /// Its name in the screenshot pass's files and in the focus's memory.
     pub fn name(self) -> &'static str {
         match self {

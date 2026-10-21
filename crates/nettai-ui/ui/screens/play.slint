@@ -827,7 +827,10 @@ export component PlayScreen inherits Page {
     property <length> side-width: self.body-width - root.side-x;
     // The row (the controls' height) and the reserved line under it at the body's foot; the list and the
     // overview grow down to 16 over the row (564 at the reference window: the wide sheet's 540 at least).
-    property <length> message-y: Theme.phone ? 356px : self.body-height - 18px;
+    // The height the parts are laid out in: the body's, or on a desktop the reference window's (1216 by 644) where the
+    // window is shorter, the part then scrolling (a short window: one scale for every screen, docs/app.md).
+    property <length> layout-height: Theme.phone ? self.body-height : max(self.body-height, 644px);
+    property <length> message-y: Theme.phone ? 356px : root.layout-height - 18px;
     property <length> row-y: Theme.phone ? 188px : root.message-y - 6px - 40px;
     property <length> sheet-height: max(540px, root.row-y - 16px);
     property <length> more-width: 40px;
@@ -838,7 +841,7 @@ export component PlayScreen inherits Page {
     // apart (VS between them); a phone's are cards, one over the other.
     property <length> place-width: Theme.phone ? self.body-width : 480px;
     property <length> place-height: Theme.phone ? 126px : 320px;
-    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 548px) / 2;
+    property <length> lobby-top: Theme.phone ? 0px : (root.layout-height - 548px) / 2;
     property <length> lobby-left: (self.body-width - 2 * self.place-width - 80px) / 2;
     property <length> their-x: Theme.phone ? 0px : self.lobby-left + self.place-width + 80px;
     property <length> their-y: Theme.phone ? self.place-height + 8px : self.lobby-top;
@@ -854,11 +857,15 @@ export component PlayScreen inherits Page {
     // (One conditional a part, and what differs on a phone by its place and by `visible`: each conditional is a
     // component of its own in what Slint generates. A control that isn't shown is unavailable, so the focus
     // passes it by.)
-    if PlayView.part == PlayPart.builds: Rectangle {
+    if PlayView.part == PlayPart.builds: ScrollPage {
         x: 0;
         y: 0;
-        width: root.body-width;
+        // (Its scroll bar in the body's margin, at its right.)
+        width: root.body-width + 12px;
         height: root.body-height;
+        nav: "play-builds.";
+        mouse-pan: false;
+        content-height: root.layout-height;
         // The builds: + NEW BUILD (the main action while there is none), and the builds as a list (a right click
         // on a row opens its menu); on a phone the chosen one in a box, which opens them as a sheet.
         Arrive {
@@ -1060,11 +1067,15 @@ export component PlayScreen inherits Page {
     // invite's code (`WaitCard`), the player's own the practice battle (on a phone their card, the battle asked for
     // with PRACTICE, filling the window), and the buttons are the way out alone; the match's settings are the
     // host's to set already (the user: "the host should be able to change settings before the joiner joins").
-    if PlayView.part == PlayPart.lobby: Rectangle {
+    if PlayView.part == PlayPart.lobby: ScrollPage {
         x: 0;
         y: 0;
-        width: root.body-width;
+        // (Its scroll bar in the body's margin, at its right.)
+        width: root.body-width + 12px;
         height: root.body-height;
+        nav: "play-lobby.";
+        mouse-pan: false;
+        content-height: root.layout-height;
         // The other player's card slides in as they join.
         joined := Tween {
             held: !PlayView.their-present;
