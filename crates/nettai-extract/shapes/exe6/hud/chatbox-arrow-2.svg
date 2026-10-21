@@ -1,14 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
-<!-- The chatbox's key-wait arrow, frame 3 of 3 (1 pixels down: its bob): a green shield pointing down, a dark outline, a notch in its top's middle, lit along its top, its shadow down and to the right. -->
-<!-- Its shadow -->
-<path d="M4 2.6 A0.6 0.6 0 0 1 4.6 2 L13.4 2 A0.6 0.6 0 0 1 14 2.6 L14 7.834 A0.4 0.4 0 0 1 13.883 8.117 L9.566 12.434 A0.8 0.8 0 0 1 8.434 12.434 L4.117 8.117 A0.4 0.4 0 0 1 4 7.834 Z" fill-rule="evenodd" fill="#313952" data-color="9"/>
-<!-- The outline -->
-<path d="M3 1.6 A0.6 0.6 0 0 1 3.6 1 L12.4 1 A0.6 0.6 0 0 1 13 1.6 L13 6.834 A0.4 0.4 0 0 1 12.883 7.117 L8.566 11.434 A0.8 0.8 0 0 1 7.434 11.434 L3.117 7.117 A0.4 0.4 0 0 1 3 6.834 Z" fill-rule="evenodd" fill="#21a521" data-color="11"/>
-<!-- The green face -->
-<path d="M4 2.3 A0.3 0.3 0 0 1 4.3 2 L11.7 2 A0.3 0.3 0 0 1 12 2.3 L12 6.462 A0.3 0.3 0 0 1 11.912 6.674 L8.354 10.232 A0.5 0.5 0 0 1 7.646 10.232 L4.088 6.674 A0.3 0.3 0 0 1 4 6.462 Z" fill-rule="evenodd" fill="#39ff00" data-color="13"/>
+<!-- The chatbox's key-wait arrow, frame 3 of 3 (1 pixel down: its bob): a green shield pointing down, a dark outline a pixel wide, its sides meeting at the point at 45 degrees, a square notch in its top's middle, lit along its top, its shadow down and to the right. -->
+<g transform="translate(0 1)">
+<!-- Its shadow: the arrow's shape a pixel right and a pixel down -->
+<path d="M4 1 L14 1 L14 6.5 L9.5 11 L8.5 11 L4 6.5 Z" fill="#313952" data-color="9"/>
+<!-- The outline, its sides meeting at the point at 45 degrees -->
+<path d="M3 0 L13 0 L13 5.5 L8.5 10 L7.5 10 L3 5.5 Z" fill="#21a521" data-color="11"/>
+<!-- The green face, a pixel in, its sides parallel -->
+<path d="M4 1 L12 1 L12 5.086 L8.086 9 L7.914 9 L4 5.086 Z" fill="#39ff00" data-color="13"/>
 <!-- Lit along its top, either side of the notch -->
-<path d="M4 2.3 A0.3 0.3 0 0 1 4.3 2 L7 2 L7 3 L4 3 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
-<path d="M9 2 L11.7 2 A0.3 0.3 0 0 1 12 2.3 L12 3 L9 3 Z" fill-rule="evenodd" fill="#f7fff7" data-color="15"/>
-<!-- The notch in its top's middle -->
-<path d="M7 1 L9 1 L9 3.5 A0.5 0.5 0 0 1 8.5 4 L7.5 4 A0.5 0.5 0 0 1 7 3.5 Z" fill-rule="evenodd" fill="#21a521" data-color="11"/>
+<rect x="4" y="1" width="3" height="1" fill="#f7fff7" data-color="15"/>
+<rect x="9" y="1" width="3" height="1" fill="#f7fff7" data-color="15"/>
+<!-- The notch in its top's middle, square -->
+<rect x="7" y="0" width="2" height="3" fill="#21a521" data-color="11"/>
+</g>
 </svg>
