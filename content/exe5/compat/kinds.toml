@@ -374,3 +374,5 @@
 "napalmman/support" = { pool = "actor", index = 0x30 }
 "colonel/support" = { pool = "actor", index = 0x30 }
 "tomahawkman/support" = { pool = "actor", index = 0x30 }
+# GyroMan's party support's wind (the DS's effect object 0x92, 0x02225DA8: navis/gyroman/support).
+"gyroman/support" = { pool = "effect", index = 0x92, scratch_position = true }

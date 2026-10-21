@@ -20,6 +20,7 @@ local navicust_bugs = require("@self/navicust/bugs")
 local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
 local colonel_support = require("./navis/colonel/support")
+local gyroman_support = require("./navis/gyroman/support")
 local napalmman_support = require("./navis/napalmman/support")
 local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
 local protoman_support = require("./navis/protoman/support")
@@ -406,6 +407,7 @@ local rules: Rules = {
                 return
             end
             protoman_support.tick(side)
+            gyroman_support.tick(side)
             napalmman_support.tick(side)
             colonel_support.tick(side)
             tomahawkman_support.tick(side)
