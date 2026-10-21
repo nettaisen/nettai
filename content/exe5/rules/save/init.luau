@@ -81,7 +81,9 @@ local function validate(side: number, problem: (p: SetupProblem) -> ())
     local name = battle.name(navi)
     local level: number? = setup.level
     local story = navi.story
-    if level ~= nil then
+    -- (A party battle's level is MegaMan's side's: ../party's validate holds it to its range.)
+    local in_party = #((setup :: any).party or {}) > 0
+    if level ~= nil and not in_party then
         if story == nil then
             problem({ kind = "not_taken", field = "level", text = string.format("level %d: %s takes no level", level, name) })
         elseif level > story.max_level then

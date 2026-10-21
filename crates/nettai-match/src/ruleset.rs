@@ -53,7 +53,7 @@ use crate::{Side, Wrong, ids};
 use nettai_battle::content::{ChipClass, Content, PlayerFact};
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
-use nettai_content_api::{ChipHandle, Data, DataKey, FieldType, FormHandle, Registry};
+use nettai_content_api::{ChipHandle, Data, DataKey, FieldType, FormHandle, NaviHandle, Registry};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -629,8 +629,9 @@ impl Rulesets {
 }
 
 /// The game's groups (docs/design/versions.md §2.2): each group of its
-/// builds data, with the chips and forms whose own `version` names it (a
-/// variant of its name is its too: [`Group::has`]).
+/// builds data, with the chips, forms and navis whose own `version` names
+/// it (a variant of its name is its too: [`Group::has`]). (EXE5's team
+/// navis are each a team's, which a party holds to one team's.)
 fn groups(content: &Content, game: &str, builds: &Builds) -> Vec<Group> {
     let mut groups: Vec<Group> = builds.groups.iter().map(|g| Group { id: g.id.clone(), color: g.color, members: BTreeSet::new() }).collect();
     let own = |registry: Registry, key: &str| content.defs.extension(registry, key, "version").and_then(Data::str).map(str::to_string);
@@ -640,6 +641,14 @@ fn groups(content: &Content, game: &str, builds: &Builds) -> Vec<Group> {
             && let Some(g) = groups.iter_mut().find(|g| g.id == v)
         {
             g.members.insert((Registry::Chip, h));
+        }
+    }
+    for h in 0..content.defs.navis.len() as u16 {
+        let key = &content.defs.navi(NaviHandle(h)).key;
+        if let Some(v) = own(Registry::Navi, key).filter(|_| ids::in_game(content, game, key))
+            && let Some(g) = groups.iter_mut().find(|g| g.id == v)
+        {
+            g.members.insert((Registry::Navi, h));
         }
     }
     for h in 0..content.defs.forms.len() as u16 {
@@ -703,7 +712,7 @@ mod tests {
     fn each_game_has_its_categories_groups_and_presets() {
         for (content, game, facts, forms, groups) in [
             (exe6_content(), "exe6", vec!["navi", "folder", "navicust_programs", "patch_cards", "cybeast", "crosses"], "crosses", ["gregar", "falzar"]),
-            (exe5_content(), "exe5", vec!["navi", "folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["protoman", "colonel"]),
+            (exe5_content(), "exe5", vec!["navi", "folder", "navicust_programs", "patch_cards", "souls", "party", "auto_battle_places"], "souls", ["protoman", "colonel"]),
             (exe4_content(), "exe4", vec!["folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["redsun", "bluemoon"]),
         ] {
             let r = Rulesets::of(&content, game).unwrap();
@@ -719,6 +728,13 @@ mod tests {
                 let own = r.group_items(category, g).len();
                 assert_eq!(own, if game == "exe6" { 5 } else { 6 }, "{game} {}", g.id);
                 assert!(r.group_items(chips, g).len() >= 5, "{game} {}", g.id);
+            }
+            // EXE5's party: each team's six navis are its group's.
+            if game == "exe5" {
+                let party = r.category("party").unwrap();
+                for g in &r.groups {
+                    assert_eq!(r.group_items(party, g).len(), 6, "{game} {}", g.id);
+                }
             }
             // (A chip both versions hold is none's: EXE5's ChaosLrd, EXE4's Duo.)
             let both = match game {

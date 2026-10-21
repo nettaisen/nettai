@@ -13,12 +13,18 @@ local charge = {}
 local HIT_PARAM = 0x94
 -- The damage rows' row 10, by her level.
 local DAMAGE: { number } = { 80, 80, 80, 80, 80, 80, 100 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 10 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 }, { 60, 10 },
+    { 60, 10 }, { 60, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 },
+}
 
 charge.action = throw.action({ variant = capsule.plain, line = capsule.column, while_dimmed = false }, "meddy/charge/action")
 
 -- 0x0800FAA2
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.extra = 0
     navi.hit_param = HIT_PARAM
     navi.attack_element = 0

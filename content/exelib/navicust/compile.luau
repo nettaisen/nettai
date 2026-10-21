@@ -266,6 +266,11 @@ local function apply(stats: Navi, e: NaviCustEffect, work: Work)
         stats.tango = true
     elseif k == "soul_time" then
         stats.soul_turn_bonus = clamp_add(stats.soul_turn_bonus, n, 6)
+    elseif k == "switches" then
+        -- (The bonus over the DS's base 3, at most 5 in all.)
+        stats.switch_bonus = clamp_add(stats.switch_bonus, n, 2)
+    elseif k == "party_support" then
+        stats.supports_party = true
     elseif k == "hp" then
         work.hp += n
     elseif k == "outside" then
@@ -570,6 +575,7 @@ local NUMBERS: { [string]: boolean } = {
     mega_folder = true,
     giga_folder = true,
     soul_time = true,
+    switches = true,
     outside = true,
 }
 

@@ -27,6 +27,12 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 22, by his level.
 local DAMAGE: { number } = { 100, 100, 100, 100, 100, 100, 100 }
+-- In a party (EXE5 DS's party battle), the DS's link table's row 22 (0x0203E31E): a base and a step for each attack
+-- level and one, by the side's level 0 to 9 (0x0203C044).
+local PARTY: { { number } } = {
+    { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 },
+    { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 }, { 80, 10 },
+}
 local SPLASH = new.effect { sprite = asset.sprite("dive-splash"), anim = 0, palette = 0 }
 local SOUND_DIVE = asset.sound("toad-dive")
 local SOUND_SURFACE = asset.sound("sand-worm")
@@ -250,7 +256,7 @@ charge.action = new.action {
 
 -- 0x0800FA1C
 local function setup(navi: Object): Action
-    navi.attack_damage = navi_level.damage(navi, DAMAGE)
+    navi.attack_damage = navi_level.damage(navi, DAMAGE, PARTY)
     navi.hit_param = HIT_PARAM
     navi.attack_variant = 0
     return charge.action

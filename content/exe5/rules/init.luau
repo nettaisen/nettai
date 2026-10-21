@@ -18,8 +18,12 @@ local light_dark = require("@self/light_dark")
 local navicust = require("@self/navicust")
 local navicust_board = require("@self/navicust/board")
 local navicust_bugs = require("@self/navicust/bugs")
+local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
+local numberman_dice_bonus = require("./navis/numberman/dice_bonus")
+local toadman_rescue = require("./navis/toadman/rescue")
 local save = require("@self/save")
+local shout = require("@self/shout")
 local soldier = require("./objects/soldier")
 local souls = require("@self/souls")
 
@@ -93,6 +97,12 @@ local state: StateSchema = {
     -- The party battle's Double Attack (./double_attacks): AIData +0x73, spent this round (its 0xFF), else on a paused
     -- switch the member the follow-up launches with.
     double_attack = { spent = "bool", partner = "u8" } :: StateSchema,
+    -- The party battle's (./party): ToadMan's rescue is spent this battle (the DS's party block +0xB).
+    rescued = "bool",
+    -- EXE5 DS's shout is spent this battle (./shout: its battle flag 0x800 or 0x1000).
+    shouted = "bool",
+    -- NumberMan's DiceBons is spent this battle (navis/numberman/dice_bonus: the party block's +0x13).
+    dice_bonus = "bool",
 }
 
 local rules: Rules = {
@@ -110,6 +120,14 @@ local rules: Rules = {
         encounters = "u8",
         hub_style = "u8",
         soul_turn_bonus = "i8",
+        -- The party battle's (EXE5 DS: ./party): the switches the side may make beside the DS's 3 (+0x17 less 3, which
+        -- its fresh stats write and the GBA's don't: NaviCust's NavChg+1 and NavChg+2 raise it, to 5 in all), the
+        -- bonus of a team navi's own chip's damage (+0x56: PartyCust's P.Chp, 0x0203BF2C adds it), and whether the
+        -- navi may support its party while benched (+0x59: NaviCust's Spport for MegaMan, PartyCust's P.Spport for a
+        -- team navi; 0x02004E9C reads it).
+        switch_bonus = "u8",
+        chip_attack_bonus = "u16",
+        supports_party = "bool",
     },
     -- What a player brings (nettai-match from a match's side, exe5-compat from a recording): a side's facts.
     setup = {
@@ -162,6 +180,10 @@ local rules: Rules = {
         -- How long the save took to delete each SP navi (./sp_chips: the save's 0x02002670, a battle's copy
         -- 0x0203E560), by its SP chip, in frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
+        -- The team navis MegaMan brings to a party battle (./party, EXE5 DS's: the save's team, or Navi Select's two in a
+        -- link battle), in order, each with its PartyCust programs (./party/partycust: no more than its gauge holds,
+        -- ten blocks at most). None: no party.
+        party = schema.list({ navi = "navi", programs = schema.list("partycust_programs", 10) }, 2),
     },
     -- A setup that says nothing: what every save brings at its highest, the base HP 1000, the Regular memory 50 and
     -- the sun, no level (MegaMan's); a fresh save's light/dark value (0x08010C00 writes 500: light for the chips, no
@@ -277,6 +299,13 @@ local rules: Rules = {
                 element_trap = "bool",
             },
         },
+        navi = {
+            -- The team whose saves hold a team navi (./builds' groups: a ruleset of one version per build holds a
+            -- party to one team's), and what it is in a party (./party, EXE5 DS's party battle): its PartyCust gauge's
+            -- blocks, its base HP and its own chip's damage by the side's level, 0 to 9.
+            version = { "protoman", "colonel" },
+            party = { gauge = "u8", hp = "u16[10]", chip_damage = "u16[10]" },
+        },
         form = {
             -- A soul (./souls): the family of the chips given up for it (0x08024BE0's table). A soul is named by its
             -- form's key; the original's number for it (NaviStats +0x2C) is compat's.
@@ -323,6 +352,8 @@ local rules: Rules = {
             navicust.round_setup(side)
             patch_cards.apply(side)
             light_dark.round_setup(side)
+            -- The party's partners join (./party).
+            party.round_setup(side)
             -- The auto battle data both consoles send, shuffled alike, once for the round (./auto_battle/block.luau).
             if side == 0 then
                 auto_battle.block.send()
@@ -344,6 +375,18 @@ local rules: Rules = {
         cut_in_barred = light_dark.cut_in_barred,
         -- A loss of HP to 0: a dark MegaMan's last stand (./emotion/dark_survival).
         hp_emptied = dark_survival.hp_emptied,
+        -- At 0 HP where the navi would be deleted: ToadMan's rescue in a party battle (navis/toadman/rescue).
+        navi_falling = toadman_rescue.navi_falling,
+        -- A party battle's switch requests (./party): the bottom screen's panel's refusals, and the battle mode where
+        -- a request isn't a switch.
+        switch_requested = party.switch_requested,
+        switch_asked = party.switch_asked,
+        -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.
+        mic_heard = shout.mic_heard,
+        -- A chip attack's end: NumberMan's DiceBons in a party battle (navis/numberman/dice_bonus).
+        chip_ended = numberman_dice_bonus.chip_ended,
+        -- A hit on the navi shows: MegaMan's hurt voice's draw in a party battle (./party).
+        navi_hit_shown = party.navi_hit_shown,
         -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).
         obstacle_reaction = soldier.obstacle_reaction,
         -- Full Synchro on a counter, and the NaviCust's swing bug (./emotion).
@@ -393,6 +436,7 @@ local rules: Rules = {
             navicust.validate(side, problem)
             folder.validate(side, problem)
             auto_battle.block.validate(side, problem)
+            party.validate(side, problem)
             return out
         end,
     },

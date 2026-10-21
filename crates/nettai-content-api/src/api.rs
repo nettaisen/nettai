@@ -774,6 +774,8 @@ named_flags! {
         /// 0x20000000 of his request word; EXE6 has neither).
         TakeOff = "take_off",
         Land = "land",
+        /// The flinch request (the collision's flag2 0x4: a hit's).
+        Flinch = "flinch",
         /// The slide request (the collision's flag2 0x10, not an action
         /// request).
         Slide = "slide",
@@ -893,6 +895,11 @@ named_flags! {
         TransformOut = "transform_out",
         /// 0x40: ... and its fade back in, to clear.
         TransformIn = "transform_in",
+        /// 0x3C: a dimming's fade (`object_dimScreen`), a quarter of the
+        /// way (the DS's ToadMan rescue and shout heal).
+        Dim = "dim",
+        /// 0x38: a dimming's end (`object_undimScreen`).
+        Undim = "undim",
     }
 }
 
@@ -980,6 +987,17 @@ named_flags! {
 /// `object_updateSprite` (and not while dimmed), `object_updateSpriteTimestop`,
 /// or `sub_801BCD0` (paused or not).
 pub const OVERLAY_STEPPINGS: [&str; 3] = ["normal", "while_dimmed", "always"];
+
+/// How a navi's overlay is to step (`navi:overlay_stepping`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OverlayStepping {
+    /// Through pauses and dimming: its Param3 1, flags 0x14.
+    Keep,
+    /// Like any object: its Param3 0.
+    Normal,
+    /// Its Param3 1 alone (the DS's 0x02202064).
+    Told,
+}
 
 named_flags! {
     /// A shared entry of an obstacle's action table (the obstacle
@@ -2047,7 +2065,7 @@ pub trait CoreApi {
     /// The navi's overlay (`related2`) keeps stepping through pauses and
     /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
     /// object again (its Param3 0). Nothing without an overlay.
-    fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
+    fn overlay_stepping(&mut self, o: ObjectRef, mode: OverlayStepping);
     /// EXE5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
     /// to its owner's animation. Nothing without one.
     fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8);

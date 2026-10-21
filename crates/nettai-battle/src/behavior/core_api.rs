@@ -92,7 +92,7 @@ fn request_bit(f: RequestFlag) -> u32 {
     match f {
         // (Not action requests: `request` and `set_request` read flag2,
         // or the navi's own requests.)
-        RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag | RequestFlag::TakeOff | RequestFlag::Land => 0,
+        RequestFlag::Flinch | RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag | RequestFlag::TakeOff | RequestFlag::Land => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -123,8 +123,10 @@ fn request_bit(f: RequestFlag) -> u32 {
     }
 }
 
-/// The collision's flag2 bits of the slide, drag and anger requests
-/// (`RequestFlag::Slide`, `RequestFlag::Drag`, `RequestFlag::Anger`).
+/// The collision's flag2 bits of the flinch, slide, drag and anger requests
+/// (`RequestFlag::Flinch`, `RequestFlag::Slide`, `RequestFlag::Drag`,
+/// `RequestFlag::Anger`).
+const FLINCH_REQUEST: u32 = 0x4;
 const SLIDE_REQUEST: u32 = 0x10;
 const DRAG_REQUEST: u32 = 0x100;
 const ANGER_REQUEST: u32 = 0x200;
@@ -132,6 +134,7 @@ const ANGER_REQUEST: u32 = 0x200;
 /// The flag2 bit a request that isn't an action request reads.
 fn flag2_request(f: RequestFlag) -> Option<u32> {
     match f {
+        RequestFlag::Flinch => Some(FLINCH_REQUEST),
         RequestFlag::Slide => Some(SLIDE_REQUEST),
         RequestFlag::Drag => Some(DRAG_REQUEST),
         RequestFlag::Anger => Some(ANGER_REQUEST),
@@ -556,6 +559,8 @@ impl CoreApi for Battle {
         let mode = match fade {
             ScreenFade::TransformOut => crate::battle::FadeMode::TransformOut,
             ScreenFade::TransformIn => crate::battle::FadeMode::TransformIn,
+            ScreenFade::Dim => crate::battle::FadeMode::Dim,
+            ScreenFade::Undim => crate::battle::FadeMode::Undim,
         };
         self.fade.start(mode, speed);
     }
@@ -2500,12 +2505,13 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn overlay_stepping(&mut self, o: ObjectRef, keep: bool) {
+    fn overlay_stepping(&mut self, o: ObjectRef, mode: nettai_content_api::api::OverlayStepping) {
+        use nettai_content_api::api::OverlayStepping as S;
         if let Some(overlay) = self.objects.get(o).related[1] {
-            if keep {
-                kinds::player::form::keep_overlay_stepping(self, overlay);
-            } else {
-                kinds::player::form::normal_overlay_stepping(self, overlay);
+            match mode {
+                S::Keep => kinds::player::form::keep_overlay_stepping(self, overlay),
+                S::Normal => kinds::player::form::normal_overlay_stepping(self, overlay),
+                S::Told => kinds::player::form::tell_overlay(self, overlay),
             }
         }
     }

@@ -99,20 +99,6 @@ function double_attack.detach(a: Object?)
     end
 end
 
--- The member of `side`'s party whose block is MegaMan's (0x0200DEE8 with navi 0: none offline for side 1).
-function double_attack.megaman_member(side: number): number?
-    if not battle.link() and side ~= 0 then
-        return nil
-    end
-    for m = 0, battle.party(side).count - 1 do
-        local stats = battle.member(side, m)
-        if stats and stats.navi.id == "megaman" then
-            return m
-        end
-    end
-    return nil
-end
-
 -- MegaMan's stats as an actor reads them (0x020A109C and its kin): the side's own while he is on the field (with his
 -- Chaos Unison charge armed: AIData +0x12 of the side's navi), else his member block's.
 local function megaman_stats(me: Object): (Navi, boolean)
@@ -125,7 +111,8 @@ local function megaman_stats(me: Object): (Navi, boolean)
             return stats, navi.b_charge_time ~= nil
         end
     end
-    local m = double_attack.megaman_member(side)
+    -- (0x0200DEE8 with navi 0.)
+    local m = exe5.member_of(side, megaman)
     local block = if m then battle.member(side, m) else nil
     if not block then
         error("a Double Attack's MegaMan on a side whose party has no block of his (0x0200DEE8 finds none)")

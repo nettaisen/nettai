@@ -183,6 +183,7 @@ language = "ja"
 "hotbody1" = { name = "ヒートボディ1", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
 "hotbody2" = { name = "ヒートボディ2", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
 "hotbody3" = { name = "ヒートボディ3", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
+"hprecov" = { name = "ゲンキリカバリー", description = "" }
 "iceseed" = { name = "アイスシード", description = "3マス前にタネ!\n9マス分のパネルを\nこおりにする!" }
 "infvulc1" = { name = "ムゲンバルカン1", description = "前方のてきに\n20れんしゃの\nひっさつバルカン!" }
 "infvulc2" = { name = "ムゲンバルカン2", description = "前方のてきに\n24れんしゃの\nひっさつバルカン!" }
@@ -468,6 +469,8 @@ language = "ja"
 "megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
 "megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
 "millions" = { name = "ミリオネア", description = "ランダムミステリー\nデータからゼニー\nばかりが手に入る!" }
+"navchg-1" = { name = "ナビチェンジ+1", description = "ナビチェンジの\nかいすうが\n1かいふえる!" }
+"navchg-2" = { name = "ナビチェンジ+2", description = "ナビチェンジの\nかいすうが\n2かいふえる!" }
 "oilbody" = { name = "オイルボディ", description = "炎属性ウイルスが\n大スキなオイルをぬり\nねらわれやすくなる!" }
 "reflect" = { name = "リフレクト", description = "B+左のコマンドで\n攻撃をはねかえす\nリフレクト!" }
 "rush" = { name = "ラッシュサポート", description = "たいせんせんよう!\nきえたあいてのニオイ\nをかぎつけとびかかる" }
@@ -477,9 +480,25 @@ language = "ja"
 "soult-1" = { name = "ソウルタイム+1", description = "ソウルユニゾンして\nいられるターン数が\n+1される" }
 "speed-1" = { name = "ラピッド+1", description = "ロックバスターの\n連射力が1アップ!" }
 "speedmax" = { name = "ラピッドMAX", description = "ロックバスターの\n連射力がMAXに!" }
+"spport" = { name = "サポート", description = "ロックマンが\nバトル中、えんごを\n行えるようになる" }
 "sprarmr" = { name = "スーパーアーマー", description = "攻撃をくらっても\nのけぞらなくなる!" }
 "tango" = { name = "タンゴサポート", description = "たいせんせんよう!\nひんしになったときに\nてあてをしてくれる!" }
 "undersht" = { name = "アンダーシャツ", description = "ちしりょうのダメージ\nをうけてもHP1で\nとりあえずたえる!" }
+
+[partycust_programs]
+"p-hp-50" = { name = "P.HP+50", description = "パーティーナビの\nHPの マックスを\n+50させる" }
+"p-hp-100" = { name = "P.HP+100", description = "パーティーナビの\nHPの マックスを\n+100させる" }
+"p-hp-200" = { name = "P.HP+200", description = "パーティーナビの\nHPの マックスを\n+200させる" }
+"p-hp-300" = { name = "P.HP+300", description = "パーティーナビの\nHPの マックスを\n+300させる" }
+"p-atk-1" = { name = "P.アタック+1", description = "パーティーナビの\nこうげきりょくを\n+1させる" }
+"p-atk-2" = { name = "P.アタック+2", description = "パーティーナビの\nこうげきりょくを\n+2させる" }
+"p-atk-3" = { name = "P.アタック+3", description = "パーティーナビの\nこうげきりょくを\n+3させる" }
+"p-chp-30" = { name = "P.チップ+30", description = "こゆうチップの\nこうげきりょくを\n+30させる" }
+"p-chp-40" = { name = "P.チップ+40", description = "こゆうチップの\nこうげきりょくを\n+40させる" }
+"p-chp-50" = { name = "P.チップ+50", description = "こゆうチップの\nこうげきりょくを\n+50させる" }
+"p-btlpk1" = { name = "P.バトルパック1", description = "パーティーナビの\nすべての せいのうを\nすこしだけ あげる" }
+"p-btlpk2" = { name = "P.バトルパック2", description = "パーティーナビの\nすべての せいのうを\nおおきく あげる" }
+"p-spport" = { name = "P.サポート", description = "パーティーナビが\nえんごを行う" }
 
 [patch_cards]
 "alpha" = { name = "プロト" }

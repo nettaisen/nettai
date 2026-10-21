@@ -53,6 +53,9 @@ navicust_programs = [
     "hp-300",
     "hp-400",
     "hp-500",
+    "navchg-1",
+    "navchg-2",
+    "spport",
 ]
 patch_cards = [
     "mettaur",
@@ -166,6 +169,21 @@ patch_cards = [
     "dads-repair-program",
     "hub-hikari",
     "bass-cross-megaman",
+]
+partycust_programs = [
+    "p-hp-50",
+    "p-hp-100",
+    "p-hp-200",
+    "p-hp-300",
+    "p-atk-1",
+    "p-atk-2",
+    "p-atk-3",
+    "p-chp-30",
+    "p-chp-40",
+    "p-chp-50",
+    "p-btlpk1",
+    "p-btlpk2",
+    "p-spport",
 ]
 
 [chips]

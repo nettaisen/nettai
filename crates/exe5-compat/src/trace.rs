@@ -5,6 +5,15 @@
 //! replay: a round's setup, then each battle frame ticked and compared
 //! ([`run_round`]), as far as the engine gets (docs/design/exe5-map.md
 //! §15.5: the setup stops at what EXE5's content doesn't define yet).
+//!
+//! The DS's party battle (EXE5 DS, the engine's docs/design/exe5ds-map.md)
+//! records the same lines over the DS's RAM (`"game":"exe5ds"`: the
+//! verification workspace's oracle-trace `ds` module), with the party's own
+//! on top: the setup's member blocks, party blocks and panels, `party` lines
+//! when they change, and each frame's party blocks, switch inputs and the
+//! navis' switch state. A DS round replays as a GBA one, its party from its
+//! member blocks and each tick's switch request and microphone level from
+//! the side's input record.
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
 use crate::{Compat, pool_of_type, pool_slots};
@@ -97,7 +106,26 @@ pub struct Setup {
     /// Older recordings have none (MegaMan reads no level).
     #[serde(default)]
     pub navi_levels: Option<[u32; 2]>,
+    /// The DS's party battle (`"game":"exe5ds"`): its third RNG; each side's
+    /// member blocks (0x120 bytes: three NaviStats, MegaMan's then the two
+    /// team navis'), party block (0x24 bytes: +0xB the rescue spent, +0x15
+    /// the member count) and bottom-screen party panel (0x10 bytes: +4 the
+    /// active member, +0xD the limit, +0xE the switches used), hex; the
+    /// team words (0x1C bytes), hex.
+    #[serde(default)]
+    pub rng3: Option<u32>,
+    #[serde(default)]
+    pub members: Option<[String; 2]>,
+    #[serde(default)]
+    pub party: Option<[String; 2]>,
+    #[serde(default)]
+    pub panels: Option<[String; 2]>,
+    #[serde(default)]
+    pub team: Option<String>,
 }
+
+/// The game a DS recording's setup names.
+pub const DS_GAME: &str = "exe5ds";
 
 /// A console's NaviCust in a setup line.
 #[derive(Clone, Debug, Deserialize)]
@@ -196,10 +224,26 @@ pub struct Frame {
     pub objects: Vec<Object>,
     pub panels: Vec<[u8; 2]>,
     pub chip_blocks: [String; 2],
+    /// The DS's party battle: the third RNG, both party blocks (hex), each
+    /// side's switch input (its input record's +8, the member + 1 or 0;
+    /// +0xA, its new edge; +9, the microphone's level) and each side's
+    /// navi's switch state (AIData +0x44, +0x48 and +0x70..+0x73 as hex;
+    /// null without a navi).
+    #[serde(default)]
+    pub rng3: Option<u32>,
+    #[serde(default)]
+    pub party: Option<[String; 2]>,
+    #[serde(default)]
+    pub switch: Option<[[u8; 3]; 2]>,
+    #[serde(default)]
+    pub party_ai: Option<[Option<(u32, u32, String)>; 2]>,
     /// The traced console's ROM (its version, and whether it is Japanese):
     /// `rounds` gives it its round's setup's; none, Team ProtoMan US's.
     #[serde(skip)]
     pub console: Option<(Version, bool)>,
+    /// A DS recording's frame (its round's setup is `"game":"exe5ds"`).
+    #[serde(skip)]
+    pub ds: bool,
 }
 
 /// A custom-screen exchange: both sides' NaviStats and transform records.
@@ -211,11 +255,29 @@ pub struct Exchange {
     pub transform: [String; 2],
 }
 
+/// The DS's party, written when it changes: both sides' member blocks, the
+/// soul and switch marks, both consoles' party panels (hex; a panel empty
+/// where its console has none).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PartyRecord {
+    pub frame: u32,
+    pub members: [String; 2],
+    pub marks: String,
+    pub panels: [String; 2],
+}
+
 #[derive(Clone, Debug)]
 pub enum Line {
     Setup(Box<Setup>),
     Exchange(Exchange),
+    Party(Box<PartyRecord>),
     Frame(Box<Frame>),
+}
+
+#[derive(Deserialize)]
+struct PartyLine {
+    party: PartyRecord,
 }
 
 #[derive(Deserialize)]
@@ -234,6 +296,8 @@ pub fn parse_line(l: &str) -> Result<Line, String> {
         Ok(Line::Setup(Box::new(serde_json::from_str::<SetupLine>(l).map_err(|e| format!("setup: {e}"))?.setup)))
     } else if l.starts_with("{\"exchange\"") {
         Ok(Line::Exchange(serde_json::from_str::<ExchangeLine>(l).map_err(|e| format!("exchange: {e}"))?.exchange))
+    } else if l.starts_with("{\"party\"") {
+        Ok(Line::Party(Box::new(serde_json::from_str::<PartyLine>(l).map_err(|e| format!("party: {e}"))?.party)))
     } else {
         Ok(Line::Frame(Box::new(serde_json::from_str(l).map_err(|e| format!("frame: {e}"))?)))
     }
@@ -279,6 +343,17 @@ pub struct DecodedSetup {
     /// yet).
     pub settings: [u8; 0x10],
     pub battle_state: Vec<u8>,
+    /// A DS recording's (the party battle's): its member blocks by side
+    /// (MegaMan's, then the two team navis'), and its members by side (the
+    /// party blocks' +0x15).
+    pub ds: Option<DsSetup>,
+}
+
+/// What a DS recording's setup adds.
+#[derive(Clone, Debug)]
+pub struct DsSetup {
+    pub members: [[NaviStats; 3]; 2],
+    pub counts: [u8; 2],
 }
 
 impl DecodedSetup {
@@ -292,12 +367,16 @@ impl DecodedSetup {
 }
 
 pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
-    if s.game != crate::ROOT {
+    let ds = s.game == DS_GAME;
+    if s.game != crate::ROOT && !ds {
         return Err(format!("an {} recording", s.game));
     }
+    // (The DS is both teams' game: its stages and addresses are its own,
+    // and its compat lookups go by Team ProtoMan's US ROM's.)
     let version = |v: &str| match v {
         "protoman" => Ok(Version::Protoman),
         "colonel" => Ok(Version::Colonel),
+        DS_GAME if ds => Ok(Version::Protoman),
         v => Err(format!("version {v:?}")),
     };
     let region = |r: &str| match r {
@@ -321,7 +400,36 @@ pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
         japanese: regions,
         settings: unhex(&s.settings)?.try_into().map_err(|_| "a settings record that isn't 0x10 bytes".to_string())?,
         battle_state,
+        ds: if ds { Some(decode_ds_setup(s)?) } else { None },
     })
+}
+
+/// A side's member blocks (0x120 bytes, hex): three NaviStats.
+fn member_blocks(hex: &str) -> Result<[NaviStats; 3], String> {
+    let b = unhex(hex)?;
+    if b.len() != 3 * NAVI_STATS {
+        return Err(format!("member blocks of {:#x} bytes", b.len()));
+    }
+    let block = |m: usize| codec::navi_stats(b[m * NAVI_STATS..(m + 1) * NAVI_STATS].try_into().expect("a block"));
+    Ok([block(0)?, block(1)?, block(2)?])
+}
+
+/// The party's part of a DS setup: the member blocks and the members'
+/// count (each party block's +0x15).
+fn decode_ds_setup(s: &Setup) -> Result<DsSetup, String> {
+    let (Some(members), Some(party)) = (&s.members, &s.party) else {
+        return Err("a DS recording's setup without its member and party blocks".into());
+    };
+    let count = |hex: &str| -> Result<u8, String> {
+        let b = unhex(hex)?;
+        b.get(0x15).copied().ok_or_else(|| format!("a party block of {:#x} bytes", b.len()))
+    };
+    Ok(DsSetup { members: [member_blocks(&members[0])?, member_blocks(&members[1])?], counts: [count(&party[0])?, count(&party[1])?] })
+}
+
+/// A DS party line, decoded: both sides' member blocks and both panels.
+pub fn decode_party(p: &PartyRecord) -> Result<([[NaviStats; 3]; 2], [Vec<u8>; 2]), String> {
+    Ok(([member_blocks(&p.members[0])?, member_blocks(&p.members[1])?], [unhex(&p.panels[0])?, unhex(&p.panels[1])?]))
 }
 
 /// An object, in the engine's terms: its pool, and EXE5's kind number in it
@@ -388,6 +496,7 @@ pub fn decode_all(compat: &Compat, path: impl AsRef<std::path::Path>) -> Result<
         let r = match line {
             Line::Setup(s) => decode_setup(s).map(|_| ()),
             Line::Exchange(e) => decode_exchange(e).map(|_| ()),
+            Line::Party(p) => decode_party(p).map(|_| ()),
             Line::Frame(f) => {
                 frames += 1;
                 decode_frame(compat, f).map(|_| ())
@@ -406,6 +515,9 @@ pub struct Round {
     pub setup: Setup,
     pub exchanges: Vec<Exchange>,
     pub frames: Vec<Frame>,
+    /// A DS recording's party lines (before the first setup: the first
+    /// round's).
+    pub parties: Vec<PartyRecord>,
 }
 
 /// A recording's rounds: a setup line starts one; exchanges before the
@@ -414,21 +526,34 @@ pub struct Round {
 pub fn rounds(path: impl AsRef<std::path::Path>) -> Result<Vec<Round>, String> {
     let mut rounds: Vec<Round> = Vec::new();
     let mut pending = Vec::new();
+    let mut pending_parties = Vec::new();
     // (Each frame the traced console's ROM, by its round's setup.)
     let mut console = None;
+    let mut ds = false;
     for line in read(path)? {
         match line {
             Line::Setup(s) => {
                 console = decode_setup(&s).ok().map(|d| d.traced_rom());
-                rounds.push(Round { setup: *s, exchanges: std::mem::take(&mut pending), frames: Vec::new() })
+                ds = s.game == DS_GAME;
+                rounds.push(Round {
+                    setup: *s,
+                    exchanges: std::mem::take(&mut pending),
+                    frames: Vec::new(),
+                    parties: std::mem::take(&mut pending_parties),
+                })
             }
             Line::Exchange(e) => match rounds.last_mut() {
                 Some(r) => r.exchanges.push(e),
                 None => pending.push(e),
             },
+            Line::Party(p) => match rounds.last_mut() {
+                Some(r) => r.parties.push(*p),
+                None => pending_parties.push(*p),
+            },
             Line::Frame(mut f) => {
                 if let Some(r) = rounds.last_mut() {
                     f.console = console;
+                    f.ds = ds;
                     r.frames.push(*f);
                 }
             }
@@ -456,7 +581,9 @@ impl Round {
     /// each console's packet 4 ticks after it went out (EXE5's recordings
     /// carry none of their own).
     pub fn link_delay(&self) -> u8 {
-        4
+        // (The DS's link delivers a console's packet 5 ticks after it goes
+        // out, as its recordings show: the keys its custom screen read.)
+        if self.setup.game == DS_GAME { DS_LINK_DELAY } else { 4 }
     }
 
     fn frame(&self, number: u32) -> Option<&Frame> {
@@ -615,10 +742,54 @@ impl Round {
         cleared.frame.checked_sub(2 + self.link_delay() as u32)
     }
 
+    /// Whether the `i`th of `frames` is a DS link stall: a frame whose
+    /// battle update didn't run (BattleState +0x64, the running state's tick
+    /// count, held from the frame before), the DS's wait for the link's
+    /// packet, which its frame routine makes as the GBA's cable never did;
+    /// in the fight and in the battle's end (state 8, whose frames count
+    /// too).
+    pub fn stalled(&self, i: usize, frames: &[&Frame]) -> bool {
+        let f = frames[i];
+        let counted = |g: &Frame| matches!(g.state[0], 4 | 8);
+        f.ds && i > 0 && f.ticks == frames[i - 1].ticks && counted(f) && counted(frames[i - 1])
+    }
+
+    /// A DS recording's custom screen: the direction its player presses on
+    /// the next frame, fed a frame early. The DS's joypad (its ARM input
+    /// code, not the battle's) repeats a direction on its first frame, where
+    /// the GBA's repeats it on the second, which the engine's screen reads
+    /// (`Joypad::repeat`): fed a frame early, the engine's cursor moves on
+    /// the frame the DS's did. Only while a custom screen takes the side's
+    /// keys before its OK.
+    fn ds_early_direction(&self, i: usize, frames: &[&Frame], side: usize) -> u16 {
+        const DIRECTIONS: u16 = 0xF0;
+        let f = frames[i];
+        if !f.ds || i + 1 >= frames.len() {
+            return 0;
+        }
+        let Some(opened) = self.screen_opened(f.frame) else { return 0 };
+        if self.screen_ok(opened, side).is_some_and(|ok| f.frame + 1 >= ok) {
+            return 0;
+        }
+        let now = self.fed(i, frames, side);
+        let next = self.fed(i + 1, frames, side);
+        next & !now & DIRECTIONS
+    }
+
     /// Inputs and events for the `i`th of `frames`.
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let input = std::array::from_fn(|p| PlayerTick::buttons(self.fed(i, frames, p)));
+        // (A DS recording's switch request and microphone level are its
+        // input record's on the frame, +8 the member + 1 and +9, which both
+        // its fight and its custom screen read.)
+        let input = std::array::from_fn(|p| {
+            let mut t = PlayerTick::buttons(self.fed(i, frames, p) | self.ds_early_direction(i, frames, p));
+            if let Some(sw) = f.switch {
+                t.switch_to = sw[p][0].checked_sub(1);
+                t.mic_level = sw[p][2];
+            }
+            t
+        });
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
@@ -718,9 +889,7 @@ impl Round {
             }
         }
         let st = &d.settings;
-        let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
-        let (version, japanese) = d.traced_rom();
-        match compat.stage(st[0], actor_list, version, japanese) {
+        match self.stage_key(content, compat, &d) {
             Some(k) if content.defs.stage_by_key(&k).is_some() => {}
             Some(k) => out.push(format!("the stage {k} (settings {})", stage_bytes(st))),
             None => out.push(format!("the stage (settings {}: no EXE5 netbattle stage)", stage_bytes(st))),
@@ -746,9 +915,7 @@ impl Round {
         let d = decode_setup(&self.setup)?;
         let bs = &d.battle_state;
         let st = &d.settings;
-        let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
-        let (version, japanese) = d.traced_rom();
-        let stage = compat.stage(st[0], actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
+        let stage = self.stage_key(content, compat, &d).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
         // (The background by its name in compat: a liberation's map's number
         // is its area's background, which the pack has under the area's
         // first number.)
@@ -758,7 +925,14 @@ impl Round {
                 .and_then(|name| content.assets.handle(nettai_content_api::AssetKind::Background, name))
                 .ok_or_else(|| format!("EXE5's pack has no background {:#04x}", st[4]))?,
         );
-        let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
+        let mut effects = u32::from_le_bytes([st[8], st[9], st[10], st[11]]);
+        if d.ds.is_some() {
+            // (The DS's 0x200000 says Navi Select's partners join, where the
+            // GBA's says a random battle: a party battle's are its
+            // members.)
+            effects &= !DS_NAVI_SELECT;
+        }
+        let settings = nettai_battle::BattleSettings { stage, background, effects };
         if content.defs.rules().is_none() {
             return Err("the content has no rules (EXE5's)".into());
         }
@@ -812,6 +986,8 @@ impl Round {
             // attacks go by it. (Nothing reads MegaMan's side's: an older
             // recording, which has none, replays.)
             let level = match self.setup.navi_levels.map(|l| l[side as usize]) {
+                // (A DS side without partners reads no level.)
+                Some(_) if d.ds.as_ref().is_some_and(|ds| ds.counts[side as usize] <= 1) && d.navi_stats[side as usize].navi == 0 => None,
                 None if d.navi_stats[side as usize].navi == 0 => None,
                 None => {
                     return Err(format!(
@@ -856,6 +1032,19 @@ impl Round {
                 }
             }
             player.set_fact(content, "patch_cards", &cards_of(side as usize)?)?;
+            // A DS side's party: its member blocks' team navis (members 1 and
+            // 2, to the count), with no programs (their blocks, PartyCust's
+            // made, go in as recorded: [`Round::start`]).
+            if let Some(ds) = &d.ds {
+                let mut partners = Vec::new();
+                for m in 1..ds.counts[side as usize].min(3) as usize {
+                    let n = ds.members[side as usize][m].navi;
+                    let key = compat.navi_key(n).ok_or_else(|| format!("side {side}'s member {m}: navi {n:#04x} has no key"))?;
+                    let navi = content.defs.navi_by_key(key).ok_or_else(|| format!("side {side}'s member {m}: the content has no navi {key}"))?;
+                    partners.push(Fact::Record(vec![("navi", Fact::Value(Value::Def(Registry::Navi, navi.0))), ("programs", Fact::List(Vec::new()))]));
+                }
+                player.set_fact(content, "party", &partners)?;
+            }
             // The auto battle data as the save holds it (the rules'
             // `auto_battle_places` and `auto_battle_records`), which the
             // rules' send shuffles as the console's did; none recorded,
@@ -915,7 +1104,10 @@ impl Round {
         // rules/save: its story's HP), from its fresh stats with what the
         // save keeps, which the replay then compares with the recorded block.
         let stats = |side: usize| -> Result<EngineNaviStats, String> {
-            let recorded = navi_stats(content, compat, &d.navi_stats[side])?;
+            let mut recorded = navi_stats(content, compat, &d.navi_stats[side])?;
+            if d.ds.is_some() {
+                ds_stats(content, &d.navi_stats[side], &mut recorded)?;
+            }
             if compiled(side) {
                 reset(content, &recorded)
             } else if content.navi(recorded.navi).story.is_some() {
@@ -930,10 +1122,17 @@ impl Round {
             navi_stats: [stats(0)?, stats(1)?],
             // (The RNG2 the send starts from: the rules' send draws from it
             // and leaves the recorded `rng2`.)
-            rng: self.setup.send_rng2.ok_or(
-                "an EXE5 recording without send_rng2 and auto_battle (the RNG2 and the saves' auto battle data before \
-                 the send): convert it with the verification workspace's tools/exe5/convert_send.py",
-            )?,
+            rng: match self.setup.send_rng2 {
+                Some(r) => r,
+                // (A DS recording carries no send's: its RNG2 before the
+                // send's draws, which leave the recorded one.)
+                None if d.ds.is_some() => rng2_before(self.setup.rng2, SEND_DRAWS),
+                None => {
+                    return Err("an EXE5 recording without send_rng2 and auto_battle (the RNG2 and the saves' auto battle data \
+                                before the send): convert it with the verification workspace's tools/exe5/convert_send.py"
+                        .into());
+                }
+            },
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             // (A triple battle's: two rounds after the first.)
@@ -969,8 +1168,116 @@ impl Round {
         }
         b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
         b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+        // A DS side's partners: their blocks as recorded (the save's
+        // records, PartyCust's programs in them, 0x02097BDC's copies), at
+        // their maximum HP.
+        if let Some(ds) = &d.ds {
+            for side in 0..2 {
+                for m in 1..b.party[side].count {
+                    let mut stats = navi_stats(&b.content, compat, &ds.members[side][m as usize])?;
+                    ds_stats(&b.content, &ds.members[side][m as usize], &mut stats)?;
+                    // (A team navi enters at its maximum HP, whatever its
+                    // save's: the round's first frame fills its block's, after
+                    // the setup line's read.)
+                    stats.hp = stats.max_hp;
+                    *b.party[side].member_mut(m).expect("a member") = stats;
+                }
+            }
+        }
         Ok(b)
     }
+
+    /// The round's stage's key: the settings record's (by its layout and its
+    /// actor list's address, a ROM's); a DS recording's by its layout and
+    /// what its first battle frame has standing (the DS's actor lists are
+    /// its own: the content stage of that layout whose navis stand where the
+    /// recording's do, with as many other actors).
+    fn stage_key(&self, content: &Content, compat: &Compat, d: &DecodedSetup) -> Option<String> {
+        let st = &d.settings;
+        if d.ds.is_none() {
+            let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
+            let (version, japanese) = d.traced_rom();
+            return compat.stage(st[0], actor_list, version, japanese);
+        }
+        let first = self.battle_frames().next()?;
+        // (Its navis, in the object list's order, which is the actor list's;
+        // and the field objects it placed, the attack pool's at the round's
+        // start: rocks, boulders.)
+        let navis: Vec<(u8, u8, u8)> =
+            first.objects.iter().filter(|o| o.kind == 1 && o.index == 0).map(|o| (o.alliance, o.panel[0], o.panel[1])).collect();
+        let mut placed: Vec<(u8, u8)> = first.objects.iter().filter(|o| o.kind == 3).map(|o| (o.panel[0], o.panel[1])).collect();
+        placed.sort();
+        compat.stages.iter().filter(|(_, e)| e.layout == st[0]).map(|(k, _)| k.clone()).find(|k| {
+            let Some(h) = content.defs.stage_by_key(k) else { return false };
+            let stage = content.stage(h);
+            let theirs: Vec<(u8, u8, u8)> =
+                stage.actors.iter().filter(|a| a.place == nettai_battle::content::Place::Navi).map(|a| (a.side, a.x, a.y)).collect();
+            let mut others: Vec<(u8, u8)> =
+                stage.actors.iter().filter(|a| a.place != nettai_battle::content::Place::Navi).map(|a| (a.x, a.y)).collect();
+            others.sort();
+            theirs == navis && others == placed
+        })
+    }
+}
+
+/// The DS's stats of a block beyond the GBA's, into EXE5's own (its rules'
+/// `stats`): the party battle's switches beside the 3 its fresh stats write
+/// (+0x17, which NaviCust's NavChg programs raise), a team navi's own
+/// chip's bonus (+0x56, PartyCust's P.Chp) and its support flag (+0x59:
+/// NaviCust's Spport, PartyCust's P.Spport).
+fn ds_stats(content: &Content, s: &NaviStats, stats: &mut EngineNaviStats) -> Result<(), String> {
+    let r = &s.raw;
+    for (name, v) in [
+        ("switch_bonus", Value::Int(r[0x17].saturating_sub(DS_SWITCHES) as i64)),
+        ("chip_attack_bonus", Value::Int(u16::from_le_bytes([r[0x56], r[0x57]]) as i64)),
+        ("supports_party", Value::Bool(r[0x59] != 0)),
+    ] {
+        stats.set_game_stat(content, name, v).map_err(|e| format!("EXE5's stat {name}: {e}"))?;
+    }
+    Ok(())
+}
+
+/// The DS's fresh stats' switches (+0x17, 0x0206E108).
+const DS_SWITCHES: u8 = 3;
+
+/// Each DS console's main loop draws its RNG1 twice a frame (the GBA's
+/// once: `Rules::effects.rng1_per_frame`), whether or not the battle's
+/// update ran.
+const DS_MAIN_LOOP_DRAWS: u32 = 2;
+
+/// `n` draws of each console's RNG1, the DS's main loop's beyond the
+/// battle's.
+pub fn ds_main_loop(b: &mut Battle, n: u32) {
+    for c in &mut b.consoles {
+        for _ in 0..n {
+            c.rng.next();
+        }
+    }
+}
+
+/// The DS's link's delay, in ticks.
+const DS_LINK_DELAY: u8 = 5;
+
+/// The ticks the DS's link takes to carry a custom screen's result (its
+/// packets carry a 16-byte block a tick: its recordings' fight resumes
+/// with the engine's at 13, against the GBA's 49 words).
+const DS_RESULT_WORDS: u8 = 13;
+
+/// The DS's battle effect for Navi Select's partners (0x02097DD4), which
+/// is the GBA's random battle's bit.
+const DS_NAVI_SELECT: u32 = 0x20_0000;
+
+/// The auto battle data's send draws RNG2 this many times (0x0802C7BE),
+/// both consoles alike.
+const SEND_DRAWS: u32 = 84;
+
+/// The RNG2 `n` draws before `r` (the generator's step undone:
+/// `rotate_left(1) + 1 ^ 0x873CA9E5`).
+fn rng2_before(mut r: u32, n: u32) -> u32 {
+    for _ in 0..n {
+        r = (r ^ 0x873C_A9E5).wrapping_sub(1).rotate_right(1);
+    }
+    r
 }
 
 /// A player's auto battle data from the block a recording carries as the
@@ -1218,7 +1525,47 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
     let exchange = round.exchanges.iter().rfind(|e| e.frame <= f.frame);
-    compare_with(b, f, banner, round.local_screen_frame(i, frames), exchange, compat)
+    let mut d = compare_with(b, f, banner, round.local_screen_frame(i, frames), exchange, compat);
+    if let Some(p) = round.parties.iter().rfind(|p| p.frame == f.frame) {
+        d.extend(compare_party(b, p));
+    }
+    d
+}
+
+/// A DS party line against the engine's parties: each console's panel (its
+/// own side's: +0xE the switches used; +4 the member on the field, outside
+/// the pause alone, as the custom screen's switch shows its member on the
+/// panel at once, where the navi comes as the fight resumes) and the benched
+/// members' blocks' HP (the member on the field's block holds what it came
+/// in with, the DS's as the engine's, its HP its object's).
+fn compare_party(b: &Battle, p: &PartyRecord) -> Vec<String> {
+    let mut d = Vec::new();
+    let (members, panels) = match decode_party(p) {
+        Ok(x) => x,
+        Err(e) => return vec![format!("party line {}: {e}", p.frame)],
+    };
+    for side in 0..2 {
+        let party = &b.party[side];
+        if let (Some(&active), Some(&switches)) = (panels[side].get(4), panels[side].get(0xE)) {
+            if party.switches != switches {
+                d.push(format!("side {side}'s party's switches: ours {} theirs {switches}", party.switches));
+            }
+            if !b.paused && party.active != active {
+                d.push(format!("side {side}'s party's member on the field: ours {} theirs {active}", party.active));
+            }
+        }
+        for m in 0..party.count {
+            if m == party.active {
+                continue;
+            }
+            let ours = party.member(m).map_or(0, |s| s.hp);
+            let theirs = members[side][m as usize].hp;
+            if ours != theirs {
+                d.push(format!("side {side}'s member {m}'s HP: ours {ours} theirs {theirs}"));
+            }
+        }
+    }
+    d
 }
 
 /// Side `side`'s auto battle data as the rules' send left it (their state's
@@ -1516,13 +1863,36 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
         for p in 0..2 {
             let ours = &b.stats[p];
             let our_form = compat.form_number(nettai_match::ids::local(&b.content.defs.form(ours.form).key));
-            match navi_stats_hex(&e.navi_stats[p]).and_then(|raw| navi_stats(&b.content, compat, &raw).map(|s| (raw.form, s))) {
+            let decoded = navi_stats_hex(&e.navi_stats[p]).and_then(|raw| {
+                let mut s = navi_stats(&b.content, compat, &raw)?;
+                if f.ds {
+                    ds_stats(&b.content, &raw, &mut s)?;
+                }
+                Ok((raw.form, s))
+            });
+            match decoded {
                 Ok((form, theirs)) => {
                     for ((name, x), (_, y)) in stats_fields(ours, our_form).into_iter().zip(stats_fields(&theirs, Some(form))) {
                         check(&format!("side {p}'s stats: {name}"), x, y);
                     }
                 }
                 Err(err) => check(&format!("side {p}'s stats"), "a NaviStats block".to_string(), err),
+            }
+        }
+    }
+    // A DS side's navi's switch state: AIData +0x70, the switch its player
+    // asks this tick (the member + 1, 0 none); +0x71, the microphone's
+    // level the navi copied; +0x72, the member its in-battle switch goes to
+    // (kept after).
+    if let Some(ai) = &f.party_ai {
+        for side in 0..2 {
+            let Some((_, _, hex)) = &ai[side] else { continue };
+            let Some(a) = b.player(side as u8).and_then(|r| b.objects.get(r).actor) else { continue };
+            let a = b.actors.get(a);
+            let ours = [a.switch_input.map_or(0, |m| m + 1), b.mic_levels[side], a.switch_member.unwrap_or(0)];
+            match unhex(hex) {
+                Ok(raw) if raw.len() >= 3 => check(&format!("side {side}'s navi's switch (+0x70..+0x72)"), format!("{ours:?}"), format!("{:?}", &raw[..3])),
+                _ => check(&format!("side {side}'s navi's switch"), "AIData +0x70..+0x73".to_string(), hex.clone()),
             }
         }
     }
@@ -1558,15 +1928,24 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
             Some(Some(k)) if spawn_tick && alliance & 1 != r.local_side & 1 => k.round_start_open_bus_flags,
             _ => 0,
         };
-        format!("{:#04x}", flags & !skipped)
+        // (The DS's records have their header byte's bit 0 set, where the
+        // GBA's have it clear: its heap pools' mark, which no battle code
+        // reads.)
+        let ds_mark = if f.ds { 0x01 } else { 0 };
+        format!("{:#04x}", flags & !skipped & !ds_mark)
     };
     // The traced console's ROM: an object keeping a code address its
     // spawner left (the content's Team ProtoMan US's) has that ROM's
     // (games.toml).
     let rom = f.console.unwrap_or((Version::Protoman, false));
+    // (A DS object without collision keeps whatever its heap slot held at
+    // +0x54, which the recorder reads through as a collision.)
+    let order_for_status: Vec<_> = b.objects.in_order().collect();
     let status_field = |i: usize, s: String| -> String {
+        let no_collision = order_for_status.get(i).is_some_and(|&r| b.objects.get(r).collision.is_none());
         match entries.get(i) {
             Some(Some(k)) if k.scratch_status => "-".to_string(),
+            _ if f.ds && no_collision => "-".to_string(),
             _ => s,
         }
     };
@@ -1734,6 +2113,17 @@ pub enum Stop {
 /// Replay a round on `content`: its setup, then each battle frame ticked
 /// and compared, up to the first difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
+    // (A DS recording's link carries a custom screen's result in fewer
+    // ticks than the GBA's words: the replay's content says the DS's.)
+    let ds_content;
+    let content = if round.setup.game == DS_GAME {
+        let mut c = (**content).clone();
+        c.rules_mut().flow.result_words = DS_RESULT_WORDS;
+        ds_content = Arc::new(c);
+        &ds_content
+    } else {
+        content
+    };
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None };
     let mut b = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| round.start(content.clone(), compat))) {
@@ -1768,10 +2158,22 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
+        // (A DS link stall: the frame routine ran without the battle's
+        // update, its tick count held, waiting on the other console's
+        // packet. The engine has no link: it has no such frame.)
+        if round.stalled(i, &frames) {
+            ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS);
+            replay.matched += 1;
+            continue;
+        }
         let (input, events) = round.tick_inputs(i, &frames);
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
             replay.stopped = Some(Stop::Panic { frame: frames[i].frame, message: panic_message(&*e) });
             return replay;
+        }
+        if frames[i].ds {
+            // (The engine's tick drew the GBA's main loop's one.)
+            ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS - 1);
         }
         let differences = compare_at(&b, round, &frames, i, compat);
         if !differences.is_empty() {

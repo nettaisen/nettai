@@ -101,6 +101,10 @@ impl Extras for TestButtons {
         false
     }
 
+    fn member_busy(&mut self, _: u8) -> bool {
+        false
+    }
+
     fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, _: &mut Console, b: ButtonHandle) {
         let slot = screen.cursor_button_slot().expect("a button under the cursor");
         if screen.slots[slot as usize].state != SlotState::Selectable {
@@ -143,6 +147,9 @@ impl Player {
             turn: 1,
             own_gauges: false,
             random_battle: false,
+            battle_mode: 0,
+            party: crate::party::Party::of(self.stats),
+            switch_request: None,
             late_turns: false,
             run_key: self.run_key,
             time_limit: self.time_limit,
