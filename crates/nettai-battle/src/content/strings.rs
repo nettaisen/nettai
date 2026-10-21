@@ -37,12 +37,17 @@ pub struct ChipStrings {
 /// A navi's strings: its name (the custom screen's enemy name), the name
 /// the enemy names show instead when its side's rules ask
 /// (`battle.set_name_variant`: EXE5's Hub Style, "BCMegaMn"), and its
-/// no-running message (L), its lines apart by `\n`.
+/// no-running message (L), its lines apart by `\n`; and its whole name
+/// (`long_name`) where the game's own is cut short to fit its 8 letters
+/// ("MagnetMn": "MagnetMan"), which the app's menus show (the battle shows
+/// the game's).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
