@@ -49,6 +49,15 @@ pub fn keep(text: &str) {
     let _ = text;
 }
 
+/// The field is at `place` now (the window was resized): the open input is laid over it there, holding what it
+/// holds. Nothing if none is open, or on the desktop.
+pub fn place(place: Place) {
+    #[cfg(target_arch = "wasm32")]
+    web::place(place);
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = place;
+}
+
 /// Take the input away (the edit ended), if it is there.
 pub fn close() {
     #[cfg(target_arch = "wasm32")]
@@ -74,6 +83,21 @@ let entry = null;
 function canvas() {
     return document.querySelector("canvas");
 }
+// The input over the field at (x, y), width by height in the window's units (`windowWidth` of them across the canvas).
+function lay(input, x, y, width, height, windowWidth) {
+    const area = canvas().getBoundingClientRect();
+    const scale = area.width / windowWidth;
+    Object.assign(input.style, {
+        left: `${area.left + (x + 12) * scale}px`,
+        top: `${area.top + y * scale}px`,
+        width: `${(width - 24) * scale}px`,
+        height: `${height * scale}px`,
+        font: `${Math.round(14 * scale)}px system-ui, sans-serif`,
+    });
+}
+export function nettai_entry_place(x, y, width, height, windowWidth) {
+    if (entry) lay(entry, x, y, width, height, windowWidth);
+}
 export function nettai_entry_open(x, y, width, height, windowWidth, text, selectAll, heard) {
     nettai_entry_close();
     const area = canvas().getBoundingClientRect();
@@ -85,14 +109,10 @@ export function nettai_entry_open(x, y, width, height, windowWidth, text, select
     input.autocomplete = "off";
     Object.assign(input.style, {
         position: "fixed",
-        left: `${area.left + (x + 12) * scale}px`,
-        top: `${area.top + y * scale}px`,
-        width: `${(width - 24) * scale}px`,
-        height: `${height * scale}px`,
         margin: "0", padding: "0", border: "none", outline: "none", background: "transparent",
         color: "#e8e6f0", caretColor: "#e8e6f0",
-        font: `${Math.round(14 * scale)}px system-ui, sans-serif`,
     });
+    lay(input, x, y, width, height, windowWidth);
     let ended = false;
     const end = (said) => {
         if (ended) return;
@@ -138,6 +158,7 @@ export function nettai_entry_open_now() {
     extern "C" {
         fn nettai_entry_open(x: f32, y: f32, width: f32, height: f32, window_width: f32, text: &str, select_all: bool, heard: &Closure<dyn FnMut(js_sys::Array)>);
         fn nettai_entry_close();
+        fn nettai_entry_place(x: f32, y: f32, width: f32, height: f32, window_width: f32);
         fn nettai_entry_keep(text: &str);
         fn nettai_entry_open_now() -> bool;
     }
@@ -165,6 +186,10 @@ export function nettai_entry_open_now() {
         });
         nettai_entry_open(place.x, place.y, place.width, place.height, place.window_width, text, select_all, &listener);
         HEARD.with(|h| *h.borrow_mut() = Some(listener));
+    }
+
+    pub fn place(place: Place) {
+        nettai_entry_place(place.x, place.y, place.width, place.height, place.window_width);
     }
 
     pub fn close() {

@@ -180,6 +180,11 @@ enum Ask {
     Quit,
 }
 
+/// How short the layout may be, in units, before the whole of it is made smaller to fit a short window (a phone
+/// on its side, a short browser window): the reference's 800 at most, the rest of a shorter window's height taken by
+/// each screen's body, which scrolls where what it shows doesn't fit (docs/design/app-ui.md, "Units").
+const LEAST_HEIGHT: f32 = 560.0;
+
 /// How the window's layout is scaled (docs/design/app-ui.md §4, "Units"): the UI's lengths are units of a
 /// 1280 by 800 window, or of a phone 390 wide when the window is upright, and the window's scale is set so
 /// that one of Slint's `px` is one unit.
@@ -842,10 +847,9 @@ impl Shell {
 
     // ---- The window's scale ------------------------------------------------------------------------------
 
-    /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever
-    /// is less (upright, a 390th of its width), and the window's scale is set to that. (A screen whose body
-    /// scrolls takes a shorter layout first: [`ScreenId::least_height`].) True if the layout turned between the
-    /// desktop's and the phone's.
+    /// Fit the layout to the window: one unit is a 1280th of its width or a [`LEAST_HEIGHT`]th of its height,
+    /// whichever is less (upright, a 390th of its width), and the window's scale is set to that: one scale for
+    /// every screen. True if the layout turned between the desktop's and the phone's.
     fn fit_window(&mut self) -> bool {
         let ui = self.ui();
         let window = ui.window();
@@ -856,7 +860,7 @@ impl Shell {
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
         let (width, height) = (size.width as f32 / os, size.height as f32 / os);
         let phone = width < 0.8 * height;
-        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / self.screen.least_height()) }.max(0.2);
+        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / LEAST_HEIGHT) }.max(0.2);
         let factor = os * unit;
         let turned = phone != self.scale.phone;
         let resized = (size.width, size.height) != self.scale.size || (window.scale_factor() - factor).abs() > 0.0005;
@@ -1092,8 +1096,6 @@ impl App {
         // (What was shown this frame is the screen before's.)
         self.shell.showing.reset();
         self.shell.screen = to;
-        // (Its layout's least height may be another's: the window's scale with it.)
-        self.shell.fit_window();
         self.shell.lock_game(false);
         let ui = self.shell.ui();
         // Back's way: its screens leave and arrive the other way.
@@ -1456,17 +1458,23 @@ impl App {
     /// the field's place, with its text.
     #[cfg(target_arch = "wasm32")]
     fn lay_entry(&mut self) {
-        let Some((rect, text, all)) = self.shell.nav.edited_field() else { return };
-        let ui = self.shell.ui();
-        let window = ui.window();
-        let width = window.size().to_logical(window.scale_factor()).width;
-        let place = nettai_platform::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width };
+        let Some((place, text, all)) = self.entry_place() else { return };
         nettai_platform::text_entry::open(place, &text, all, |entry| {
             crate::with_app(|app| {
                 app.entry(entry);
                 app.settle();
             })
         });
+    }
+
+    /// Where the field being edited is, in the window's units, with its text and whether all of it is selected.
+    #[cfg(target_arch = "wasm32")]
+    fn entry_place(&self) -> Option<(nettai_platform::text_entry::Place, String, bool)> {
+        let (rect, text, all) = self.shell.nav.edited_field()?;
+        let ui = self.shell.ui();
+        let window = ui.window();
+        let width = window.size().to_logical(window.scale_factor()).width;
+        Some((nettai_platform::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width }, text, all))
     }
 
     /// The input method started or stopped composing.
@@ -1479,6 +1487,17 @@ impl App {
         if self.shell.fit_window() {
             self.shell.refresh();
             self.settle();
+        }
+        // (In the browser, an edit's input goes where its field is laid out now: after the layout has placed it.)
+        #[cfg(target_arch = "wasm32")]
+        if nettai_platform::text_entry::is_open() {
+            slint::Timer::single_shot(std::time::Duration::from_millis(100), || {
+                crate::with_app(|app| {
+                    if let Some((place, _, _)) = app.entry_place() {
+                        nettai_platform::text_entry::place(place);
+                    }
+                })
+            });
         }
     }
 
