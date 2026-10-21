@@ -135,7 +135,7 @@ impl Tab for Navi {
         let ui = shell.ui();
         let view = ui.global::<NaviView>();
         let face = draft.checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(chosen));
-        // (Its stats as the overview says them: HP, Attack and Charge, then those of its game's rules' own it has.)
+        // (Its stats as the overview says them: HP, then those of its game's rules' own it has.)
         let side = draft.side().clone();
         let overview = draft.checked.overview(&content, &side);
         let offered = kit.builds.choices_of(&content, draft.side());
@@ -148,12 +148,10 @@ impl Tab for Navi {
             view.set_navis(ModelRc::new(VecModel::from(cards)));
             view.set_name(names.navi(chosen).into());
             let stats: Vec<StatLine> = match &overview {
-                Some(o) => [o.hp, o.attack, o.charge]
-                    .map(|s| stat_line(String::new(), s))
-                    .into_iter()
+                Some(o) => std::iter::once(stat_line(String::new(), o.hp))
                     .chain(o.members.iter().filter(|(m, _)| *m == 0).flat_map(|(_, s)| s).map(|s| stat_line(stat_name(words, s), s.stat)))
                     .collect(),
-                None => vec![StatLine::default(); 3],
+                None => vec![StatLine::default()],
             };
             view.set_stats(ModelRc::new(VecModel::from(stats)));
             // Each of the game's choices the build's navi has (a navi with none of one has nothing in its place): its

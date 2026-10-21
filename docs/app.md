@@ -1592,11 +1592,12 @@ docs/nettai-ui/party/chosen/party-tab-D9r.png; earlier ones were "still extremel
 Patch cards tabs are. The strip across the top describes what is under the cursor or the pointer, laid out as the
 Folder tab's: a program (its blocks and name; what it does; its blocks, its kind and whether they fit the marked
 partner's gauge, "Fits: 2 blocks free", or why not at its top right) or a navi (its face, its full name, "MagnetMan",
-with its version's mark; its stats, HP, Attack, Charge and its own chip's damage, what its programs add to them in cyan
-as the overview says it, the chip's damage the rules' overview's `members`; its element and its gauge: a navi not in
+with its version's mark; its stats, HP, Attack and Special chip attack (its own chip's damage; no Charge, which nothing
+raises), what its programs add to them in cyan as the overview says it, the chip's damage the rules' overview's
+`members`; its element and its gauge: a navi not in
 the party as the build would field it alone, a check of the build with it the one partner, asked once a navi). The
-Navi tab's panel says the build's navi's stats in the same words (HP, Attack, Charge, a team navi's own chip's
-damage). Under it the navis to pick from, a row a version (the builds data's
+Navi tab's panel says the build's navi's HP and a team navi's Special chip attack in the same words (no Attack or
+Charge: the user, "remove attack and charge from the navi sidebar"). Under it the navis to pick from, a row a version (the builds data's
 groups, each under its name in its color), a chip each (its face, its name, its place in the party, 1 or 2, where it
 is in): raised and outlined in the cursor's color where it is in, muted where the party is full, dim where the build's
 ruleset holds it back (its `party` category; refused). Enter or a click puts its navi in, at the party's end, or takes
