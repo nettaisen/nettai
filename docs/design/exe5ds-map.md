@@ -994,3 +994,76 @@ In the verification workspace:
     python3 tools/exe5ds/dsmap.py ram          # the map, the DS-only routines, the RAM map
     python3 tools/exe5ds/dsmap.py --jp ram
     python3 tools/exe5ds/dsdis.py t0x0202BEA4  # read a routine
+
+## 11. As built: the engine's party battle (branch party-engine, 2026-10-20)
+
+Plan steps 4–8, 11 and PartyCust's and NavChg's part of 12, and the shout (§4.2's microphone), by the readings of
+§4 and the engine port's own (each routine is cited where it is ported). Not built here: the Double Attacks (step 9,
+EXE5 content on its hooks below) and the supports (step 10).
+
+**The machine (Rust, neutral names).**
+- **The input.** `PlayerTick` gains `switch_to` (the member asked for: the DS's packet +7, the member + 1) and
+  `mic_level` (packet +5). A host carries a tick as a 20-bit word (`PlayerTick::word`: buttons 0–9, switch 10–11,
+  level 12–19): the wire's tick element, replays (a u32 a side where it changes) and the frontend's netplay. Nothing in
+  nettai sets either yet: the app's X/Y bindings are step 13, and the microphone is wired to nothing (the user).
+- **The state.** `Battle::party: [Party; 2]` in place of `reserves`: the members' stats blocks (member 0 the side's
+  own navi, a copy of its stats as the battle starts: the GBA's one reserve, which a side without partners still is),
+  the count, the member on the field and the switches made. `Battle::switch_inputs` (the input record's +8, after the
+  rules' refusals) and `mic_levels` (+9); `ActorData::switch_input` (AIData +0x70) and `switch_member` (+0x72). All
+  in the digest.
+- **The switch.** The navi's input asks it on a tick with no chip request (0x0203C5F6); the live request handler
+  starts `EngineAction::NaviSwitch` (action 0x59: dimmed land of 20 ticks, the change from the member blocks, the
+  count, the settle of 21 that undims); the paused path and the knockout take the party's steps where the side has
+  partners (land 20, change, settle; the take-back to member 0), the GBA's otherwise. The land draws the side's
+  console RNG once where the DS picks its switch voice (the voice itself is left out). The fall-back is the DS's for a
+  side with partners (the active member, not the navi).
+- **The custom screen.** `Phase::Switching` is state 0x40: the request in the choosing (0x0200C82C), the fade to white,
+  the screen's navi the member's (`Screen::member`), the picks dropped and the slots laid out for it, the battle's
+  count; OK writes the transform record's navi, which the turn's start switches to while paused.
+- **Request routes** (each a request bit, a state bit, a role and its place in the live handler's order, the DS's):
+  `revival` / `reviving` / role `revival` first; then the switch knockout, the in-battle switch, `follow_up` /
+  `following_up` / role `follow_up`, the volley. A navi whose revival is asked for or runs isn't deleted at 0 HP.
+- **Rules hooks:** `switch_requested(side, member)` (the panel's refusals, as a request enters the input record),
+  `switch_asked(side, navi, member)` (whether the navi's request is a switch), `member_busy(side, member)` (asked by the
+  in-battle and the custom screen's switch), `navi_switched(side, navi, member, mood)` (the end of a switch's settle),
+  `navi_falling(side, navi)` (at 0 HP, before the fall-back), `mic_heard(side)` (a fight tick with a level).
+- **Luau API:** `battle.party(side)`, `battle.member(side, m)` (a member's block, by the same proxy as
+  `battle.navi`), `battle.join_party(side, navi)` (round_setup only), `battle.mic_level(side)`, `navi:take_back()`;
+  the `flinch` request; the `dim` and `undim` screen fades; `overlay_stepping("told")` (the DS's 0x02202064).
+
+**The game (EXE5's Luau).**
+- `rules/party`: who joins (the setup's `party`: up to two team navis with their PartyCust programs; MegaMan's alone),
+  the panel's refusals (the limit, 3 and the NaviCust's `switch_bonus`; a member at 0 HP), battle mode 6, the light
+  test, the support test, the rescue's test, validation; `rules/party/partycust` (the makers and their application),
+  `rules/party/knockout` (EXE5's action 0x4C, the role `switch_knockout`), `navis/toadman/rescue` (action 0x5A, the
+  role `revival`), `rules/shout` (the shout and its T4 0x93).
+- PartyCust's 13 programs are the collection `partycust_programs`; each team navi states its gauge, its base HP and
+  its own chip's damage by the side's level (its `party`) and its team (`version`, which the ruleset's team rule reads
+  through a `party` category). NaviCust's NavChg+1/+2 and Spport are programs 48–50.
+- Stats of EXE5's own: `switch_bonus` (+0x17 less the DS's 3, so the GBA's blocks read alike), `chip_attack_bonus`
+  (+0x56), `supports_party` (+0x59).
+- The team navis' damage in a party (lib/navi_level): the DS's link rows by the attack level (0x0203C044) and the own
+  chip's base and P.Chp (0x0203BF2C), 999 without that navi. The light/dark rule of a side with partners is the DS's
+  (0x020070FC), on the value of the navi on the field.
+
+**Decisions** (for review):
+1. **The party is inert without partners.** Every DS rule here applies only to a side with partners: the switch
+   steps, the fall-back, the light/dark rule, the damage rows. Existing EXE5 and EXE6 battles are unchanged but for the
+   state's layout (the digest).
+2. **A party is MegaMan's** (member 0, as on the DS); a team navi played as a side's own brings none.
+3. **The DS's base HP and damage tables apply in a party** (the partners' HP, their attacks): they are what PartyCust's
+   programs add to. A side's level in a party battle is the setup's `level`, else 9 (the DS's highest, max power).
+4. **A partner enters at its maximum HP** (observed), its light/dark value is 500 (a fresh record's: every value Tango's
+   saves hold reads alike).
+5. **The switch's panel is the sim's refusal, its buttons the frontend's.** The input names the member, as the DS's
+   packet does; which member X and Y name is the app's (step 13).
+6. **The shout** is ported as read and wired to nothing. A netbattle recording shows its level arriving and no heal;
+   which of its conditions held it back is open.
+7. **The DS words** (the three NaviCust programs, PartyCust's names and descriptions, HPRecov) and the three programs'
+   parts are generated from the DS ROMs by the verification workspace's gen_content (gen_ds.py): data and text only.
+   HPRecov is chip 0x187, the GBA's placeholder record with the DS's name, which the rescue's telop names.
+
+**Unverified:** everything above against a console. The DS recordings (verify's data/traces/lab-exe5ds) are the next
+step, once the trace reader learns the `exe5ds` lines. Open as read: the overlay's third parameter on the switch's
+land (what it tells it), the busy flags (the supports'), the custom screen's refusal of MegaMan offline in some story
+states, battle mode 6.
