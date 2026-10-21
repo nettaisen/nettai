@@ -104,6 +104,7 @@ fn bundle() -> Bundle {
         letters: Default::default(),
         shapes: Default::default(),
         mugshot_frame: None,
+        mugshot_box_frame: None,
         tiles: tiles(6, 7),
         first_tile: 0x1A0,
         gauge_tiles: tiles(3, 8),

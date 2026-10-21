@@ -1568,6 +1568,10 @@ fn mugshot_parts<'a>(
         (Some(_), Some(_)) => (Some(&shared.count_blank), count.and_then(|(h, _)| h.shapes.count_blank.as_ref())),
         (_, Some(t)) if std::ptr::eq(t, &hud.count_box) => (Some(t), hud.shapes.count_box.as_ref()),
         (_, Some(t)) if own_drawing.is_some() && picture.and_then(|m| face_hud.mugshot_box(m.id)).is_some_and(|own| std::ptr::eq(own, t)) => (Some(t), own_drawing),
+        // (A face's own box with no drawing of its own: its frame drawn apart where the pack has it.)
+        (_, Some(t)) if let Some(m) = picture.filter(|m| face_hud.mugshot_box(m.id).is_some_and(|own| std::ptr::eq(own, t))) => {
+            (Some(box_with_ring(face_hud, m.id, t, &pal, x, text, &mut items)), None)
+        }
         (_, tiles) => (tiles, None),
     };
     if let Some(tiles) = tiles {
@@ -1606,6 +1610,21 @@ fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pal
         (Some(d), Some((color, face))) => {
             items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (false, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
             face
+        }
+        _ => tiles,
+    }
+}
+
+/// Box `number` of `face_hud`'s, a face's own, for beside the face: where its pack has the boxes' frame apart from
+/// them and draws it as shapes, the box without its frame and the frame drawn in its color (an item in `items`); else
+/// the box as it is.
+fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
+    let ring = face_hud.shapes.mugshot_box_frame.as_ref().filter(|_| text.draws_shapes());
+    let apart = face_hud.mugshot_box_frame.as_ref().and_then(|f| f.of(number));
+    match (ring, apart) {
+        (Some(d), Some((color, b))) => {
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
+            b
         }
         _ => tiles,
     }

@@ -517,6 +517,8 @@ pub struct HudShapesDoc {
     pub mugshot_boxes: Vec<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mugshot_frame: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mugshot_box_frame: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub chatbox: Vec<Option<MapShapeDoc>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -584,6 +586,7 @@ pub fn write_hud(files: &mut Files, s: &HudShapes) -> HudShapesDoc {
         navi_box: s.navi_box.as_ref().map(|d| w("navi-box", d)),
         mugshot_boxes: s.mugshot_boxes.iter().enumerate().map(|(k, d)| d.as_ref().map(|d| w(&format!("mugshot-box-{k}"), d))).collect(),
         mugshot_frame: s.mugshot_frame.as_ref().map(|d| w("mugshot-frame", d)),
+        mugshot_box_frame: s.mugshot_box_frame.as_ref().map(|d| w("mugshot-box-frame", d)),
         chatbox,
         chatbox_arrow: s.chatbox_arrow.iter().enumerate().map(|(k, d)| w(&format!("chatbox-arrow-{k}"), d)).collect(),
     }
@@ -610,6 +613,7 @@ pub fn read_hud(dir: &Path, prefix: &str, d: &HudShapesDoc, report: &mut Report)
         navi_box: d.navi_box.as_deref().map(&mut r),
         mugshot_boxes: d.mugshot_boxes.iter().map(|f| f.as_deref().map(&mut r)).collect(),
         mugshot_frame: d.mugshot_frame.as_deref().map(&mut r),
+        mugshot_box_frame: d.mugshot_box_frame.as_deref().map(&mut r),
         chatbox_arrow: d.chatbox_arrow.iter().map(|f| r(f)).collect(),
     }
 }

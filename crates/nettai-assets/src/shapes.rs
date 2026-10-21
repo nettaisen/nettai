@@ -116,6 +116,9 @@ pub struct HudShapes {
     /// The emotion window's frame around the face (4x2 tiles), color 1 its
     /// ring's (each face's own color: `MugshotFrame`).
     pub mugshot_frame: Option<Drawing>,
+    /// The frame of the boxes the faces bring (2x2 tiles), color 1 its ring's (each box's own color:
+    /// `MugshotBoxFrame`).
+    pub mugshot_box_frame: Option<Drawing>,
     /// The chatbox's box for each of its maps (`Chatbox::boxes`: by kind,
     /// its opening steps), as the custom window's.
     pub chatbox: Vec<Option<MapDrawing>>,
@@ -132,7 +135,7 @@ impl HudShapes {
     pub fn drawings(&self) -> Vec<&Drawing> {
         let maps = self.gauge_frame.iter().chain(self.chatbox.iter().flatten()).flat_map(|m| m.parts.iter().map(|p| &p.drawing));
         let cells = self.gauge_cells.iter().flat_map(|g| [&g.empty, &g.filled].into_iter().chain(&g.full).chain(&g.l_or_r));
-        let one = [&self.hp_box, &self.count_blank, &self.count_box, &self.navi_box, &self.mugshot_frame].into_iter().flatten();
+        let one = [&self.hp_box, &self.count_blank, &self.count_box, &self.navi_box, &self.mugshot_frame, &self.mugshot_box_frame].into_iter().flatten();
         maps.chain(cells).chain(one).chain(self.mugshot_boxes.iter().flatten()).chain(&self.chatbox_arrow).collect()
     }
 }
@@ -161,34 +164,70 @@ impl MugshotFrame {
 
     /// `face` with the ring in color `color` over it.
     pub fn with_ring(&self, face: &Tiles, color: u8) -> Tiles {
-        let mut out = face.clone();
-        for (p, &r) in out.pixels.iter_mut().zip(&self.ring.pixels) {
-            if r != 0 {
-                *p = color;
-            }
-        }
-        out
+        ring_laid(&self.ring, face, color)
     }
 
     /// `face` without the ring, and the ring's color, if every pixel of
     /// the ring is one color in it (none: the face covers it in places).
     pub fn split(&self, face: &Tiles) -> Option<(u8, Tiles)> {
-        if face.pixels.len() != self.ring.pixels.len() {
-            return None;
-        }
-        let mut colors = face.pixels.iter().zip(&self.ring.pixels).filter(|(_, r)| **r != 0).map(|(p, _)| *p);
-        let color = colors.next()?;
-        if color == 0 || colors.any(|c| c != color) {
-            return None;
-        }
-        let mut out = face.clone();
-        for (p, &r) in out.pixels.iter_mut().zip(&self.ring.pixels) {
-            if r != 0 {
-                *p = 0;
-            }
-        }
-        Some((color, out))
+        ring_split(&self.ring, face)
     }
+}
+
+/// The frame of the boxes the faces bring beside them (EXE4's and EXE5's), apart from what each box shows inside it:
+/// its ring (index 1 where it is, 2x2 tiles as a box), and each box's ring's color with the box without it, by
+/// mugshot; none: no box, or one that covers the ring in places and keeps it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MugshotBoxFrame {
+    pub ring: Tiles,
+    pub boxes: Vec<Option<(u8, Tiles)>>,
+}
+
+impl MugshotBoxFrame {
+    /// Mugshot `number`'s box without its ring, and the ring's color, where it is apart.
+    pub fn of(&self, number: u8) -> Option<(u8, &Tiles)> {
+        self.boxes.get(number as usize).and_then(|b| b.as_ref()).map(|(c, t)| (*c, t))
+    }
+
+    /// `b` with the ring in color `color` over it.
+    pub fn with_ring(&self, b: &Tiles, color: u8) -> Tiles {
+        ring_laid(&self.ring, b, color)
+    }
+
+    /// `b` without the ring, and the ring's color, if every pixel of the ring is one color in it.
+    pub fn split(&self, b: &Tiles) -> Option<(u8, Tiles)> {
+        ring_split(&self.ring, b)
+    }
+}
+
+/// `picture` with `ring`'s pixels in color `color`.
+fn ring_laid(ring: &Tiles, picture: &Tiles, color: u8) -> Tiles {
+    let mut out = picture.clone();
+    for (p, &r) in out.pixels.iter_mut().zip(&ring.pixels) {
+        if r != 0 {
+            *p = color;
+        }
+    }
+    out
+}
+
+/// `picture` without `ring`'s pixels, and their color, if they are all one color in it.
+fn ring_split(ring: &Tiles, picture: &Tiles) -> Option<(u8, Tiles)> {
+    if picture.pixels.len() != ring.pixels.len() {
+        return None;
+    }
+    let mut colors = picture.pixels.iter().zip(&ring.pixels).filter(|(_, r)| **r != 0).map(|(p, _)| *p);
+    let color = colors.next()?;
+    if color == 0 || colors.any(|c| c != color) {
+        return None;
+    }
+    let mut out = picture.clone();
+    for (p, &r) in out.pixels.iter_mut().zip(&ring.pixels) {
+        if r != 0 {
+            *p = 0;
+        }
+    }
+    Some((color, out))
 }
 
 /// The custom screen's frames as shapes (none: drawn as pictures).
