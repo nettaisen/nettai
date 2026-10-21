@@ -24,7 +24,6 @@
 "fish" = 16
 "flotshoe" = 11
 "fstbarr" = 7
-"gigavirs" = 34
 "gigfldr1" = 6
 "hp-100" = 43
 "hp-200" = 44
@@ -35,7 +34,6 @@
 "hubbatc" = 27
 "humor" = 21
 "jungle" = 18
-"megavirs" = 33
 "megfldr1" = 4
 "megfldr2" = 5
 "millions" = 20
@@ -78,7 +76,6 @@
 "fish" = [1]
 "flotshoe" = [3]
 "fstbarr" = [0, 1, 2, 3]
-"gigavirs" = [1]
 "gigfldr1" = [0]
 "hp-100" = [0, 1, 2]
 "hp-200" = [0, 1, 2]
@@ -89,7 +86,6 @@
 "hubbatc" = [0]
 "humor" = [1]
 "jungle" = [0]
-"megavirs" = [1]
 "megfldr1" = [1, 3]
 "megfldr2" = [3]
 "millions" = [1]
@@ -108,3 +104,10 @@
 "sprarmr" = [3]
 "tango" = [1]
 "undersht" = [0]
+
+# The programs nettai doesn't have, by their numbers: their effects are all outside battle (MegaVirs and GigaVirs:
+# NaviStats +0x37, +0x38 and the encounter bug). A save's or a recording's part of one is dropped (the importer says so;
+# no lab recording holds one).
+[not_in_nettai]
+"gigavirs" = 34
+"megavirs" = 33

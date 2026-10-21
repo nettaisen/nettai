@@ -353,6 +353,11 @@ pub struct NaviCustNumbers {
     pub programs: BTreeMap<String, u8>,
     #[serde(default)]
     pub variants: BTreeMap<String, Vec<u8>>,
+    /// The programs nettai doesn't have, by their numbers (MegaVirs and
+    /// GigaVirs: their effects are all outside battle): a part of one is
+    /// dropped.
+    #[serde(default)]
+    pub not_in_nettai: BTreeMap<String, u8>,
 }
 
 
@@ -584,6 +589,9 @@ impl Compat {
             if !navicust.variants.contains_key(k) {
                 return Err(format!("navicust.toml: program {k} ({n}) has no variants"));
             }
+            if navicust.not_in_nettai.values().any(|d| d == n) {
+                return Err(format!("navicust.toml: program {k}'s number {n} is one nettai doesn't have too"));
+            }
         }
         let patch_cards: BTreeMap<String, u8> = toml::from_str(&text("patch-cards.toml")?).map_err(|e| format!("patch-cards.toml: {e}"))?;
         let mut card_numbers = BTreeMap::new();
@@ -599,9 +607,10 @@ impl Compat {
 
     /// The NaviCust program a part id names (its number, `id >> 2`) and its
     /// color (the variant, `id & 3`, as its place among the program's
-    /// colored variants: its definition's color there); none for 0, no part.
+    /// colored variants: its definition's color there); none for 0, no part,
+    /// and for a program nettai doesn't have ([`Compat::navicust_dropped`]).
     pub fn navicust_part(&self, id: u8) -> Result<Option<(&str, u8)>, String> {
-        if id == 0 {
+        if id == 0 || self.navicust_dropped(id).is_some() {
             return Ok(None);
         }
         let number = id >> 2;
@@ -617,6 +626,14 @@ impl Compat {
             .position(|&v| v == id & 3)
             .ok_or_else(|| format!("{key} has no color in variant {} (part id {id:#04x})", id & 3))?;
         Ok(Some((key, color as u8)))
+    }
+
+    /// The program nettai doesn't have that a part id names (compat's
+    /// `not_in_nettai`): its key.
+    pub fn navicust_dropped(&self, id: u8) -> Option<&str> {
+        let number = id >> 2;
+        (id != 0).then_some(())?;
+        self.navicust.not_in_nettai.iter().find(|(_, n)| **n == number).map(|(k, _)| k.as_str())
     }
 
     /// The patch card of a save's card number: its key.
