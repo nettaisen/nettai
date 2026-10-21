@@ -1525,7 +1525,47 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
     let exchange = round.exchanges.iter().rfind(|e| e.frame <= f.frame);
-    compare_with(b, f, banner, round.local_screen_frame(i, frames), exchange, compat)
+    let mut d = compare_with(b, f, banner, round.local_screen_frame(i, frames), exchange, compat);
+    if let Some(p) = round.parties.iter().rfind(|p| p.frame == f.frame) {
+        d.extend(compare_party(b, p));
+    }
+    d
+}
+
+/// A DS party line against the engine's parties: each console's panel (its
+/// own side's: +0xE the switches used; +4 the member on the field, outside
+/// the pause alone, as the custom screen's switch shows its member on the
+/// panel at once, where the navi comes as the fight resumes) and the benched
+/// members' blocks' HP (the member on the field's block holds what it came
+/// in with, the DS's as the engine's, its HP its object's).
+fn compare_party(b: &Battle, p: &PartyRecord) -> Vec<String> {
+    let mut d = Vec::new();
+    let (members, panels) = match decode_party(p) {
+        Ok(x) => x,
+        Err(e) => return vec![format!("party line {}: {e}", p.frame)],
+    };
+    for side in 0..2 {
+        let party = &b.party[side];
+        if let (Some(&active), Some(&switches)) = (panels[side].get(4), panels[side].get(0xE)) {
+            if party.switches != switches {
+                d.push(format!("side {side}'s party's switches: ours {} theirs {switches}", party.switches));
+            }
+            if !b.paused && party.active != active {
+                d.push(format!("side {side}'s party's member on the field: ours {} theirs {active}", party.active));
+            }
+        }
+        for m in 0..party.count {
+            if m == party.active {
+                continue;
+            }
+            let ours = party.member(m).map_or(0, |s| s.hp);
+            let theirs = members[side][m as usize].hp;
+            if ours != theirs {
+                d.push(format!("side {side}'s member {m}'s HP: ours {ours} theirs {theirs}"));
+            }
+        }
+    }
+    d
 }
 
 /// Side `side`'s auto battle data as the rules' send left it (their state's
@@ -1837,6 +1877,22 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
                     }
                 }
                 Err(err) => check(&format!("side {p}'s stats"), "a NaviStats block".to_string(), err),
+            }
+        }
+    }
+    // A DS side's navi's switch state: AIData +0x70, the switch its player
+    // asks this tick (the member + 1, 0 none); +0x71, the microphone's
+    // level the navi copied; +0x72, the member its in-battle switch goes to
+    // (kept after).
+    if let Some(ai) = &f.party_ai {
+        for side in 0..2 {
+            let Some((_, _, hex)) = &ai[side] else { continue };
+            let Some(a) = b.player(side as u8).and_then(|r| b.objects.get(r).actor) else { continue };
+            let a = b.actors.get(a);
+            let ours = [a.switch_input.map_or(0, |m| m + 1), b.mic_levels[side], a.switch_member.unwrap_or(0)];
+            match unhex(hex) {
+                Ok(raw) if raw.len() >= 3 => check(&format!("side {side}'s navi's switch (+0x70..+0x72)"), format!("{ours:?}"), format!("{:?}", &raw[..3])),
+                _ => check(&format!("side {side}'s navi's switch"), "AIData +0x70..+0x73".to_string(), hex.clone()),
             }
         }
     }
