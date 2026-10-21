@@ -79,8 +79,12 @@
 <path d="M4 102 L5 102 L5 154 L4 154 Z" fill="#9cadbd" data-color="3" data-palette="9"/>
 <!-- The bar's left end slanted 45 degrees from the bottom of the slots' groove down to the window's edge, a light band two pixels across along it, as the art draws it -->
 <path d="M3.5 154 L5.5 154 L0.5 159 L0 159 L0 157.5 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
-<!-- The bottom right corner: a light band along the 45-degree line from the frame's inner line at the bar's top to the cut corner, centered on it, two pixels wide, as the art draws it: it starts square across itself inside the frame, below the bar's top, and the frame's slate and the bar's groove end under it -->
-<path d="M115.2 153.8 L118.95 157.55 L117.55 158.95 L113.8 155.2 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
+<!-- The bottom right corner: a light band along the 45-degree line from the frame's inner line at the bar's top to the cut corner, centered on it, two pixels wide, as the art draws it: it lies under the blue lines (the frame's inner line and the bar's top edge, the outer line, the bottom), so it shows only between them, and the frame's slate and the bar's groove end under it -->
+<path d="M114.7 153.3 L118.95 157.55 L117.55 158.95 L113.3 154.7 Z" fill="#e7e7ef" data-color="2" data-palette="9"/>
+<!-- The blue lines over the light, unbroken through the corner as the art's: the frame's inner line turning into the bar's top edge, the frame's outer line, the bar's bottom -->
+<path d="M114 109 L115 109 L115 155 L100 155 L100 154 L114 154 Z" fill="#6b73ad" data-color="4" data-palette="9"/>
+<rect x="119" y="109" width="1" height="49" fill="#6b73ad" data-color="4" data-palette="9"/>
+<rect x="100" y="159" width="18.5" height="1" fill="#6b73ad" data-color="4" data-palette="9"/>
 <!-- The bottom right corner: the outer line turning along the cut, the corner past it dark -->
 <path d="M120 156.5 L120 157.5 L117.5 160 L116.5 160 Z" fill="#6b73ad" data-color="4" data-palette="9"/>
 <path d="M120 157.5 L120 160 L117.5 160 Z" fill="#292929" data-color="8" data-palette="9"/>
