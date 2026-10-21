@@ -4,7 +4,7 @@
 //!
 //! **The editor** (`editor`): the header's name, the tab bar with the ruleset's select, and the tab shown, which
 //! says the build's problems where they are (docs/design/app-ui.md §2.66). Each tab is a module here and a file in
-//! the UI's `screens/builds/`: [`navi`], [`folder`], [`navicust`], [`patch_cards`] and [`auto_battle`].
+//! the UI's `screens/builds/`: [`navi`], [`folder`], [`navicust`], [`patch_cards`], [`auto_battle`] and [`party`].
 //!
 //! **Opened by another screen** ([`open`]: Play's EDIT and Practice's): Back goes straight back to that screen,
 //! the build kept, and the header says where (‹ PLAY or ‹ PRACTICE). Opened from Play, the tab bar ends in PRACTICE,
@@ -25,6 +25,7 @@ pub mod editor;
 pub mod folder;
 pub mod navi;
 pub mod navicust;
+pub mod party;
 pub mod patch_cards;
 
 #[derive(Default)]

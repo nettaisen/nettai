@@ -824,6 +824,7 @@ language = "ja"
 # The stats the rules' overview gives beyond the eight every game's have (en.toml's `[stats]` says what they are). Ours.
 [stats]
 "soul_time" = "ソウルタイム"
+"switches" = "ナビチェンジ"
 
 # The words of the battle's lettered pictures, by picture (en.toml says what this is): the Japanese ROMs' words. Those
 # the four ROMs of the game show alike are the English words in both languages (BATTLE START!, PAUSE, CUSTOM); the

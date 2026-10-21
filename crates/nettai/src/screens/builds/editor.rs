@@ -476,6 +476,7 @@ fn all() -> Vec<Box<dyn Tab>> {
         Box::new(super::navicust::Navicust::default()),
         Box::new(super::patch_cards::PatchCards::default()),
         Box::new(super::auto_battle::AutoBattle::default()),
+        Box::new(super::party::Party::default()),
     ]
 }
 
@@ -511,6 +512,7 @@ fn name(tab: EditorTab) -> &'static str {
         EditorTab::Navicust => "builds.navicust",
         EditorTab::PatchCards => "builds.patch-cards",
         EditorTab::AutoBattle => "builds.auto-battle",
+        EditorTab::Party => "builds.party",
     }
 }
 
@@ -982,18 +984,19 @@ mod tests {
 
     /// Each game has the tabs its setup has something for: a NaviCust and patch cards in all three (EXE4's
     /// NaviCust has its programs and no board to expand: a tab is there for any of the facts it names), auto
-    /// battle data in EXE4 and EXE5. What is the game's own navi's alone, and kept aside for another, is those
-    /// tabs' facts that the game takes.
+    /// battle data in EXE4 and EXE5, a party in EXE5 (EXE5 DS's party battle). What is the game's own navi's alone,
+    /// and kept aside for another, is those tabs' facts that the game takes.
     #[test]
     fn each_game_has_its_tabs() {
         let tabs = |content: &Content| -> Vec<EditorTab> { all().iter().filter(|t| has(content, t.as_ref())).map(|t| t.id()).collect() };
         let four = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards];
         let five = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle];
+        let six = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle, EditorTab::Party];
         assert_eq!(tabs(&exe6_content()), four);
-        assert_eq!(tabs(&exe5_content()), five);
+        assert_eq!(tabs(&exe5_content()), six);
         assert_eq!(tabs(&exe4_content()), five);
         assert_eq!(navi_only_fields(&exe6_content()), ["navicust_programs", "navicust_expansions", "patch_cards"]);
-        assert_eq!(navi_only_fields(&exe5_content()), ["navicust_programs", "navicust_expansions", "patch_cards", "auto_battle_places"]);
+        assert_eq!(navi_only_fields(&exe5_content()), ["navicust_programs", "navicust_expansions", "patch_cards", "auto_battle_places", "party"]);
         assert_eq!(navi_only_fields(&exe4_content()), ["navicust_programs", "patch_cards", "auto_battle_places"]);
     }
 }
