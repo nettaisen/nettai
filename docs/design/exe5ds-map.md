@@ -542,6 +542,13 @@ The rest of the mechanics:
     action reads its side unchecked (0x02049794): address 3, in the ITCM (mirrored from 0), whose fourth byte is 0xE9,
     never a side, so the guard holds. No battle reaches it: the gate (0x02004604) needs the panel ahead on the field,
     and a guarded navi neither moves nor turns (its hits are swallowed, pushes with them).
+  - The known glitch (a damaging dimming chip cut in on an area chip of the guarded side's: no damage to the navi,
+    none to KnightMan), as the code reads (not recorded; nettai keeps the DS's behavior, the user's choice): the cut-in's
+    hit lands while the panel ahead is still the other side's, so the intake swallows it and asks for the guard
+    (AIData +0x44 0x100000); the damage waits in the party block's +0x16, which only comes off KnightMan while his
+    guard is out (0x020046D4). The navi is still in its chip's action, so the guard can only start from idle, after the
+    area chip has taken the column: its first tick finds the panel ahead the navi's own (0x02049794) and ends it before
+    KnightMan comes. The damage stays in +0x16 until a later guard brings him out.
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
