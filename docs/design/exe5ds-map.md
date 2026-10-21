@@ -893,11 +893,13 @@ cape and M-AIR's GyroMan on a panel border (§1.1). The paused path (d-hero-cust
 Attack, in the custom screen's switch.
 The frames (verify's `double_frames.py`, the engine's example `double_attack_frames`): of what each draws, the
 share the DS's capture shows the same at its tick, with the shake's offset allowed: C-SCOPE 99%, K-THROW 99%,
-B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 93%, D-VALCAN 92%, D-HERO
+B-SHOOT 99%, E-SAPPOU 98%, M-ZAN 96%, BR-RUSH 96%, C-BOMB 95%, K-BOMB 95%, M-AIR 93%, G-OTOSHI 92%, D-VALCAN 92%, D-HERO
 79%. The rest is panels drawn from RNG2 (D-HERO's flashes, D-VALCAN's bullet heights, G-OTOSHI's frogs, C-BOMB's
 capsule and its fire's spread), the lab stage's boulders, the DS's camera shake (it moves the picture further than
 the engine's) and the one-tick shifts. The actors, their attachments and effects show the same art, places,
-animations and palettes (the DS lab's MegaMan has the light/dark value 1000).
+animations and palettes (the DS lab's MegaMan has the light/dark value 1000). The share counts only what the engine
+draws: a part it leaves out shows in the sheets alone (C-SCOPE's scopes and G-OTOSHI's frogs drew half, their first
+part hidden, until each was looked at against the DS's).
 
 ## 6. The DS's other battle changes (catalogued, not adopted)
 
