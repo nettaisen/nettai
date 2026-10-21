@@ -2,7 +2,7 @@
 -- C-SCOPE's scopes (the DS's effect object 0xA4, 0x020A1C9C): SearchMan's sight (10-23) on a panel of the other side's,
 -- walking a diagonal from where it came: a step every six ticks (with a sound) through the offsets 0, 1, 2, 1 (each
 -- that many columns forward and rows down, the second scope's forward the other way), four steps a round; after eight
--- rounds it rests 30 ticks, and walks on. Its actor stops it (it stays where it is) and ends it.
+-- rounds it rests where it is, for good. Its actor stops it (it stays where it is) and ends it.
 
 local scope = {}
 
@@ -18,9 +18,9 @@ type State = {
 
 local SPRITE = asset.sprite("search-scope")
 local SOUND_STEP = asset.sound("erase-man")
--- Its offsets by step (0x02135BA8), a step's ticks, its rounds before it rests, the rest.
+-- Its offsets by step (0x02135BA8), a step's ticks, its rounds before it rests.
 local OFFSETS = { 0, 1, 2, 1 }
-local STEP_TICKS, ROUNDS, REST = 6, 8, 0x1E
+local STEP_TICKS, ROUNDS = 6, 8
 local WALK, PAUSE = 0x0, 0x4
 
 -- 0x020A1DD8: on its offset's panel, on the ground.
@@ -34,7 +34,7 @@ local function place(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
 end
 
--- Action 0 (0x020A1D54): unless stopped, a step every six ticks; its rounds counted, from eight on a rest after each.
+-- Action 0 (0x020A1D54): unless stopped, a step every six ticks; its rounds counted, after the eighth its rest.
 local function walk(me: Object)
     local s = me.state :: State
     if s.stopped then
@@ -62,19 +62,9 @@ local function walk(me: Object)
     me.phase, me.phase_init = 0, 0
 end
 
--- Action 4 (0x020A1D30): 30 ticks' rest, then it walks on.
-local function pause(me: Object)
-    if me.phase_init == 0 then
-        me.timer = 0
-        me.timer2 = REST
-        me.phase_init = 4
-    end
-    local t = me.timer2 - 1
-    me.timer2 = t
-    if t <= 0 then
-        me:set_action(WALK)
-    end
-end
+-- Action 4 (0x020A1D2C): it rests where it is, for good: the routine returns at once. (The 30 ticks' rest and the
+-- walk on after it, 0x020A1D30, follow it unreached.)
+local function pause(_me: Object) end
 
 local function tick(me: Object)
     local a = me.action
@@ -99,7 +89,7 @@ scope.kind = new.kind {
             -- rounds yet.
             local sprite = me.sprite
             sprite:load(SPRITE)
-            sprite.shadow = "hidden"
+            sprite.shadow = "with_sprite"
             me.anim, me.anim_loaded = 0, 0xFF
             me.visible = true
             me.future_panel_x, me.future_panel_y = me.panel_x + 2 * me.facing, me.panel_y + 2

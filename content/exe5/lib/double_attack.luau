@@ -252,13 +252,16 @@ function double_attack.partner(me: Object): Object
     return p
 end
 
--- An actor charges for `ticks` ticks: the glow at its hand with its sound (40 ticks), the charged glow and its sound
+-- An actor charges for `ticks` ticks: standing (but with `keeps_anim`: B-SHOOT's KnightMan, 0x02033B44, charges in the
+-- animation he appeared in), the glow at its hand with its sound (40 ticks), the charged glow and its sound
 -- `charged_at` ticks before the end (20 if none said), lasting as long. True on its last tick (the role's own then
 -- follows).
-function double_attack.charge(me: Object, ticks: number, charged_at: number?): boolean
+function double_attack.charge(me: Object, ticks: number, charged_at: number?, keeps_anim: boolean?): boolean
     local at = charged_at or CHARGED_AT
     if me.phase_init == 0 then
-        me.anim = ANIM_IDLE
+        if not keeps_anim then
+            me.anim = ANIM_IDLE
+        end
         double_attack.at_hand(me, CHARGING, CHARGING_LASTS)
         battle.play_sound(SOUND_CHARGING)
         me.timer = ticks

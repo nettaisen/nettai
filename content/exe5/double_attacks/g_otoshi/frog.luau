@@ -92,7 +92,7 @@ local function init(me: Object)
     me.vel = Vec3.new(v.x, v.y, 0)
     local sprite = me.sprite
     sprite:load(FROG)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     if not me:create_collision() then
         -- (The DS goes on through the missing record.)
