@@ -120,6 +120,7 @@ language = "en"
 "dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
 "deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
 "dethphnx" = { name = "DethPhnx", description = "Fire Atk!\nRecycle\nNavi too" }
+"dicebons" = { name = "DiceBons", description = "" }
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "django" = { name = "Django", description = "Burns\nwith\nsunlight" }
 "django-ds" = { name = "Django\uE008", description = "Burns\nwith\nsunlight" }
@@ -218,6 +219,7 @@ language = "en"
 "m-air" = { name = "M-AIR", description = "" }
 "m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
 "m-zan" = { name = "M-ZAN", description = "" }
+"mag-barr" = { name = "Mag-Barr", description = "" }
 "magnetmn" = { name = "MagnetMn", description = "NS tackle\nand chrge" }
 "magntmn-ds" = { name = "MagntMn\uE008", description = "NS tackle\nand chrge" }
 "magntmn-sp" = { name = "MagntMn\uE003", description = "NS tackle\nand chrge" }
@@ -297,6 +299,7 @@ language = "en"
 "s-melody" = { name = "S-Melody", description = "Sing and\nparalyze\nthe enemy" }
 "satelity" = { name = "Satelity", description = "Stp cursr\nfor laser\nattack" }
 "seaseed" = { name = "SeaSeed", description = "Makes 9sq\nwtr zone\n3sq ahead" }
+"serch-s" = { name = "Serch-S", description = "" }
 "serchman" = { name = "SerchMan", description = "Aim\nand fire\n5 shots" }
 "serchmn-ds" = { name = "SerchMn\uE008", description = "Aim\nand fire\n5 shots" }
 "serchmn-sp" = { name = "SerchMn\uE003", description = "Aim\nand fire\n5 shots" }

@@ -2252,6 +2252,9 @@ export type RulesSpec = {
         fight_tick: ((side: number) -> ())?,
         -- The start banner is done and the fight starts, each side, side 0 first.
         fight_started: ((side: number) -> ())?,
+        -- A party battle's custom screen was asked for in the fight, each side, side 0 first: the ticks the rules hold
+        -- the flow before the reversions (the longest answer holds it; none, it goes on at once).
+        custom_hold: ((side: number) -> number?)?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
         -- are cleared.
         chip_ended: ((side: number, navi: Object) -> ())?,

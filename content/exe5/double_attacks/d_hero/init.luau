@@ -1,6 +1,6 @@
 --!strict
 -- D-HERO (the DS's chip 0x160; Double Hero), the Double Attack of MegaMan and ProtoMan (docs/design/exe5ds-map.md §5,
--- §5.2: its director the DS's effect object 0x97, its actors its T1 0x35). MegaMan fires seven volleys of his buster,
+-- §5.2: its controller the DS's effect object 0x97, its navis its T1 0x35). MegaMan fires seven volleys of his buster,
 -- each a hit over the whole of the other side's area; ProtoMan swings his sword with each (his swings hit nothing);
 -- both scatter flashes over the other side's panels. The chip's record and name are the DS's (written by
 -- tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14,
@@ -16,7 +16,7 @@ local panels = require("@exelib/panels")
 local protoman = require("../navis/protoman").protoman
 local regions = require("@exelib/regions")
 
-type State = DoubleAttackActor
+type State = DoubleAttackNavi
 
 -- The volleys (and swings): seven, 20 ticks apart; then 10 ticks.
 local VOLLEYS, VOLLEY_TICKS, AFTER_TICKS = 7, 0x14, 0xA
@@ -112,7 +112,7 @@ local function volley(me: Object)
         me.timer = VOLLEY_TICKS
         battle.play_sound(SOUND_SHOT)
         double_attack.detach(s.held)
-        double_attack.megaman_arm(me, "held")
+        double_attack.raise_arm(me, "held")
         double_attack.detach(s.held2)
         attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
         local overlay = me.related2

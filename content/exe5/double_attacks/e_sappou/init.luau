@@ -1,16 +1,16 @@
 --!strict
 -- E-SAPPOU (the DS's chip 0x168; Engetsu Sappou), the Double Attack of Colonel and ShadowMan (docs/design/exe5ds-map.md
--- §5, §5.2: its director the DS's effect object 0x9F, its actors its T1 0x40, its rocks its T1 0x44). ShadowMan vanishes
--- in a puff of dust; Colonel raises his arm and drops a rock (./rock) on the panel in front of each enemy and on the one
--- behind it, where the panel is the other side's, solid and empty; each rock lands, waits its turn (30 ticks, 16 more
--- for each rock before it) and becomes a copy of ShadowMan whose moon blade (MoonBld's: a slash of the damage word with
--- hit modifier 3 and bug 0x18, argument 1, an HP drain of level 1) sweeps the eight panels around it. The enemy beside
--- a copy is hit once by it: two hits an enemy, the drain going on after. Once the rocks are gone ShadowMan comes back.
--- The chip's record and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its
--- record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no folder
--- or hand holds it.
+-- §5, §5.2: its controller the DS's effect object 0x9F, its navis its T1 0x40, its rocks its T1 0x44). ShadowMan
+-- vanishes in a puff of dust; Colonel raises his arm and drops a rock (./rock) on the panel in front of each enemy and
+-- on the one behind it, where the panel is the other side's, solid and empty; each rock lands, waits its turn (30
+-- ticks, 16 more for each rock before it) and becomes a copy of ShadowMan whose moon blade (MoonBld's: a slash of the
+-- damage word with hit modifier 3 and bug 0x18, argument 1, an HP drain of level 1) sweeps the eight panels around it.
+-- The enemy beside a copy is hit once by it: two hits an enemy, the drain going on after. Once the rocks are gone
+-- ShadowMan comes back. The chip's record and name are the DS's (written by tools/exe5/gen_content.py,
+-- bn6battle-verify, from the DS ROMs); its record's use is the cannon's (action 0x14, subtype 0: the DS copied Cannon's
+-- record), which nothing starts: no folder or hand holds it.
 --
--- Its director links the two actors (each its partner's, +0x60), which wait on each other.
+-- Its controller links the two navis (each its partner's, +0x60), which wait on each other.
 
 local cannon_chips = require("../chips/cannon")
 local colonel = require("../navis/colonel").colonel
@@ -20,7 +20,7 @@ local rock = require("@self/rock")
 local shadowman = require("../navis/shadowman").shadowman
 
 -- Colonel's rocks (Param4, +0x07: how many he dropped) and their flags (+0x78 to +0x7F, a byte a rock).
-type State = DoubleAttackActor & { rocks: number, out: { boolean } }
+type State = DoubleAttackNavi & { rocks: number, out: { boolean } }
 
 local CHARGE_TICKS = 0x3C
 -- Colonel's drop: his animation 0x14, 60 ticks.

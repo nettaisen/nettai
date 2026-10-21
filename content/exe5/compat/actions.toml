@@ -8,10 +8,14 @@
 "engine/form-change" = 0x1A
 # A party's switch in battle (the DS's action 0x59, past the GBA's table: docs/design/exe5ds-map.md §4.6).
 "engine/navi-switch" = 0x59
+# A party's switched-in member on the field as the battle ends runs the knockout (the DS's action 0x4D, 0x0202C1A0).
+"engine/switch-knockout" = 0x4D
 # A team navi at 0 HP falls back to MegaMan (the DS's action 0x4C, 0x0202C3C4: rules/party/knockout).
 "party/knockout" = 0x4C
 # ToadMan's rescue (the DS's action 0x5A, 0x02004938: navis/toadman/rescue).
 "toadman/rescue" = 0x5A
+# A Double Attack's follow-up on the custom screen's switch (the DS's action 0x5C: rules/double_attacks).
+"double-attack-follow-up" = 0x5C
 "engine/hand-off-chip" = 0x41
 # Soul Unison's change (the instant chips' number, as EXE6's form change is).
 "souls/change" = 0x1A

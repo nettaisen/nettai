@@ -10,7 +10,7 @@
 //! screens; then side 0 switches: to member 1 out of Full Synchro (a pair
 //! with MegaMan), or to member 1 out of a plain mood and, once that has
 //! settled, to member 2 out of Full Synchro (a pair of two team navis). Every
-//! tick from the switch that fires the Double Attack until its director has
+//! tick from the switch that fires the Double Attack until its controller has
 //! gone is drawn (original graphics, 1x) as `OUT/nettai_NNNN.png`, NNNN the
 //! ticks since the tick its telop's sound (0x173) played, and again without
 //! the Double Attack's own drawings as `OUT/bare_NNNN.png` (what a comparison
@@ -90,11 +90,11 @@ fn main() {
             b.tick(&Default::default(), Default::default());
         }
     }
-    let director = content.defs.kind_by_key(&format!("{key}/director")).expect("the Double Attack's director");
+    let controller = content.defs.kind_by_key(&format!("{key}/controller")).expect("the Double Attack's controller");
     let telop = content.assets.handle(nettai_content_api::AssetKind::Sound, "telop").unwrap();
     let names = content.assets.names(nettai_content_api::AssetKind::Sound);
 
-    // The switch that fires it, then each tick until its director has gone.
+    // The switch that fires it, then each tick until its controller has gone.
     switch(&mut b, partners.len() as u8, 0xFF);
     let mut ticks: Vec<(Battle, String)> = Vec::new();
     let mut telop_at = None;
@@ -114,7 +114,7 @@ fn main() {
                 sounds.push(names.get(id.0 as usize).copied().unwrap_or("?").to_string());
             }
         }
-        let here = b.objects.in_order().any(|r| b.objects.get(r).kind == director);
+        let here = b.objects.in_order().any(|r| b.objects.get(r).kind == controller);
         seen |= here;
         // Each of its objects: its kind, panel, animation and palette.
         let mut objects = Vec::new();
