@@ -214,9 +214,9 @@ component ChipView inherits Rectangle {
         width: max(0px, parent.width - self.x - (root.in ? 8px + 16px + 8px : 8px));
         text: root.chip.name;
         color: root.chip.held ? Theme.dim : root.chip.full && !root.in ? Theme.muted : Theme.text;
-        font-family: Theme.display;
-        font-size: 13px;
-        font-weight: Theme.display-semibold;
+        // (A navi's name as the editor's rows have names.)
+        font-family: Theme.body;
+        font-size: Theme.phone ? 15px : 14px;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -451,9 +451,9 @@ component SectionView inherits Rectangle {
         Text {
             text: root.panel.name;
             color: root.panel.bad ? Theme.bad : Theme.text;
-            font-family: Theme.display;
-            font-size: 14px;
-            font-weight: Theme.display-bold;
+            // (A navi's name as the editor's rows have names.)
+            font-family: Theme.body;
+            font-size: Theme.phone ? 15px : 14px;
             vertical-alignment: center;
             overflow: elide;
         }
