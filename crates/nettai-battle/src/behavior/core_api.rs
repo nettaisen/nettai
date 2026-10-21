@@ -273,6 +273,10 @@ fn store(name: &'static str, writable: bool, ty: FieldType, v: Value) -> ApiResu
     ty.store(v).map_err(|error| ApiError::Type { field: name, error })
 }
 
+/// A collision's self flags' bit its hits reach while dimmed by
+/// (`sub_3007218`'s test; setups while dimmed set it).
+const DIMMED_HITTER: u32 = 0x1_0000;
+
 fn int(v: FieldValue) -> i64 {
     match v.load() {
         Value::Int(i) => i,
@@ -2887,10 +2891,15 @@ impl CoreApi for Battle {
             CollisionField::StatusFinal => return def(Registry::Status, c.status_final.map(|h| h.0)),
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
+            CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & DIMMED_HITTER != 0)),
             _ => {}
         }
         Ok(Value::Int(match f {
-            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase | CollisionField::StatusFinal => unreachable!("handled above"),
+            CollisionField::Region
+            | CollisionField::HitEffect
+            | CollisionField::StatusBase
+            | CollisionField::StatusFinal
+            | CollisionField::HitsWhileDimmed => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::Element => c.element as i64,
@@ -2960,9 +2969,17 @@ impl CoreApi for Battle {
             return Ok(());
         }
         let c = self.collision_of_mut(o)?;
+        if let (CollisionField::HitsWhileDimmed, FieldValue::Bool(on)) = (f, v) {
+            c.self_flags = if on { c.self_flags | DIMMED_HITTER } else { c.self_flags & !DIMMED_HITTER };
+            return Ok(());
+        }
         let x = int(v);
         match f {
-            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase | CollisionField::StatusFinal => unreachable!("handled above"),
+            CollisionField::Region
+            | CollisionField::HitEffect
+            | CollisionField::StatusBase
+            | CollisionField::StatusFinal
+            | CollisionField::HitsWhileDimmed => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::Element => c.element = x as u8,

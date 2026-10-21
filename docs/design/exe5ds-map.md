@@ -820,12 +820,17 @@ The DS code names its sprites and sounds by the GBA's ids: the same code with th
 | the navis' switch voices | the swap's land step (0x02098ED0): two per navi, a voice stream and a sound effect 0x214–0x22D, past the GBA's last sound 0x173 | none: the switch already plays 0x8D (`cross-change`). Leave the voice out |
 | the switch music | per-navi music (MegaMan, ProtoMan, Colonel) | DS music: ignored, as the user said |
 
-**Pixels (open):** the ids above are the ones the code passes, and the GBA has art at each of them. That the
-DS draws the same art at the same id is **not checked**. The DS sprite list (0x02104E18) names file-system
-files, not GBA addresses, and its indexing isn't the GBA's: its 00-00 entry names bs01.bin, which is
-byte-identical to the GBA's 08-01 archive (ProtoMan). A comparison in scratch (`double_sprites.py`, unfinished)
-has to settle the mapping before "the same id" can be read as "the same art". The user's rule holds either way:
-the port draws the GBA sprites at the GBA ids the GBA's own code for the same object uses.
+**Pixels (read, `double_sprites.py`):** the same id is the same art. The DS's `sprite_load` (0x0206CC68) takes
+the GBA's arguments and reads a resource number from its list, [[0x02104E18 + category] + 4 · index] (bit 31: none,
+the placeholder 0x304); 0x02001F68 loads that resource by its path, the word at 0x021588B0 + 4 · number (ARM
+0x02034120). The paths follow the GBA's categories and indices (`\rom\a\pl00.bin` for 00-00, `bs01.bin` for 08-01,
+`pshl00.bin` for 0C-00, `shl23.bin` for 10-23, `efc08.bin` for 14-08). (The earlier reading took 00-00's number
+0x215 for a file-system id, which named ProtoMan's bs01.bin.) Compared byte for byte with BRBE's archives (decompressed
+where they are), every sprite the Double Attacks load is the GBA's at the same id but two, both reached only in a Hub
+Style the GBA doesn't have (NaviStats +0x4C 3; the GBA's patch card 111 sets 1 or 2):
+- 00-0D, the DS's own MegaMan (pl0d.bin; the GBA's list has another archive there): his base sprite stands in;
+- 0C-03, the buster arm: the DS's has a fifteenth animation (0x0E, the arm in that style); the GBA's fourteen. The
+  arm's animation 0x0D stands in.
 
 ## 6. The DS's other battle changes (catalogued, not adopted)
 

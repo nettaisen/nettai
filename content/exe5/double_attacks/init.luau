@@ -5,4 +5,15 @@
 
 return {
     require("@self/d_hero")["d-hero"],
+    require("@self/m_zan")["m-zan"],
+    require("@self/m_air")["m-air"],
+    require("@self/d_valcan")["d-valcan"],
+    require("@self/c_scope")["c-scope"],
+    require("@self/c_bomb")["c-bomb"],
+    require("@self/br_rush")["br-rush"],
+    require("@self/b_shoot")["b-shoot"],
+    require("@self/e_sappou")["e-sappou"],
+    require("@self/k_throw")["k-throw"],
+    require("@self/k_bomb")["k-bomb"],
+    require("@self/g_otoshi")["g-otoshi"],
 }
