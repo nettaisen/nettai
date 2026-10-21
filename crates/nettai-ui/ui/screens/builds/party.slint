@@ -523,7 +523,9 @@ export component PartyTab inherits Rectangle {
     property <length> chip-height: 30px;
     property <length> team-width: root.phone ? 0px : 120px;
     property <int> per-row: root.phone ? 3 : 6;
-    property <length> chip-width: (root.width - root.team-width - root.per-row * 6px) / root.per-row;
+    // (The version's name in a column of its own, the pane gap after it before the first chip.)
+    property <length> team-gap: root.phone ? 0px : 24px;
+    property <length> chip-width: (root.width - root.team-width - root.team-gap - (root.per-row - 1) * 6px) / root.per-row;
     property <length> team-height: root.phone ? 16px + 2 * (root.chip-height + 6px) : root.chip-height + 6px;
     property <length> picker-height: PartyView.teams.length * root.team-height - 6px;
     // PARTY at the left (on a phone, the tab's width), the library at the right.
@@ -683,7 +685,7 @@ export component PartyTab inherits Rectangle {
             }
 
             for chip[k] in team.chips: ChipView {
-                x: root.team-width + mod(k, root.per-row) * (root.chip-width + 6px);
+                x: root.team-width + root.team-gap + mod(k, root.per-row) * (root.chip-width + 6px);
                 y: (root.phone ? 16px : 0px) + floor(k / root.per-row) * (root.chip-height + 6px);
                 width: root.chip-width;
                 height: root.chip-height;
