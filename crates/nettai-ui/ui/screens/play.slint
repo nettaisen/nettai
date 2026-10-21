@@ -1293,7 +1293,7 @@ export component PlayScreen inherits Page {
 // "the menu footer should show in-game controls"), and Tab (Select on a pad) shows both builds over it as in the
 // match.
 export component MatchMenu inherits MenuOverlay {
-    property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT", @tr("Switch left"), @tr("Switch right")];
+    property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT", @tr("Navi change left"), @tr("Navi change right")];
     title: PlayView.page == MatchPage.controls ? Caps.of(@tr("Controls")) : PlayView.page == MatchPage.settings ? Caps.of(@tr("Settings")) : Caps.of(@tr("Menu"));
     note: PlayView.page == MatchPage.menu ? @tr("The match keeps running") : "";
     side: PlayView.page != MatchPage.menu;
