@@ -78,6 +78,10 @@ pub mod fight {
     pub const PAUSE: u8 = 0x1C;
     pub const CUSTOM_REVERT: u8 = 0x20;
     pub const CUSTOM_SEQUENCE: u8 = 0x24;
+    /// A party battle's (EXE5 DS's 0x0208E1F8, a flow without the
+    /// sequencer before the screen): the rules may hold the flow before
+    /// the custom screen's reversions.
+    pub const CUSTOM_HOLD: u8 = 0x24;
 }
 
 /// Round-level state (the game's BattleState).
@@ -1543,7 +1547,8 @@ impl Battle {
             fight::JUDGE => self.fight_judge(),
             fight::PAUSE => self.fight_pause(),
             fight::CUSTOM_REVERT => self.fight_custom_revert(),
-            fight::CUSTOM_SEQUENCE => self.fight_custom_sequence(),
+            fight::CUSTOM_SEQUENCE if self.game_rules().flow.sequencer_before_custom => self.fight_custom_sequence(),
+            fight::CUSTOM_HOLD => self.fight_custom_hold(),
             s => panic!("fighting state {s:#x} reads past its table (sub_80080D2)"),
         }
     }
@@ -1956,6 +1961,28 @@ impl Battle {
         };
         if open {
             self.paused = true;
+            // A party battle goes through the DS's hold first (0x0208DEBE).
+            let party = self.party.iter().any(|p| p.has_partners()) && !self.game_rules().flow.sequencer_before_custom;
+            self.set_fight_state(if party { fight::CUSTOM_HOLD } else { fight::CUSTOM_REVERT });
+        }
+    }
+
+    /// Fighting state 0x24 of a party battle (EXE5 DS's 0x0208E1F8): as it
+    /// starts, each side's rules may act and hold the flow
+    /// (`custom_hold`: EXE5 DS's Meddy's HealPulse, 0x02003BD8, and its 50
+    /// ticks), the longest hold; then the reversions (state 0x20).
+    fn fight_custom_hold(&mut self) {
+        if self.fight.init == 0 {
+            let ticks = (0..2u8).map(|side| self.rules_custom_hold(side)).max().unwrap_or(0);
+            if ticks == 0 {
+                self.set_fight_state(fight::CUSTOM_REVERT);
+                return;
+            }
+            self.fight.timer = ticks as i16;
+            self.fight.init = 4;
+        }
+        self.fight.timer -= 1;
+        if self.fight.timer <= 0 {
             self.set_fight_state(fight::CUSTOM_REVERT);
         }
     }

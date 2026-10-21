@@ -62,8 +62,12 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     b.chip_hud = Default::default();
     if switch_protected(b, r) {
         // (The original stores 1 in the attack's variant byte first; the
-        // action it starts doesn't use it.)
-        let protect = super::role_action(b, crate::content::ActionRole::SwitchProtect);
+        // action it starts doesn't use it.) The rules' role, else the
+        // switch knockout (EXE5 DS's 0x02045108: action 0x4D).
+        let protect = match b.roles().try_action(crate::content::ActionRole::SwitchProtect) {
+            Some(h) => super::NaviAction::Content(h),
+            None => super::NaviAction::Engine(super::EngineAction::SwitchKnockout),
+        };
         return set_attack(b, r, protect, 0);
     }
     b.objects.get_mut(r).anim = 0;

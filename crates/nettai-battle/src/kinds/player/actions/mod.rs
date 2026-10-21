@@ -57,6 +57,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
         // (Unpaused, the form change's CurAction is the instant chips'.)
         A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
         A::Engine(E::NaviSwitch) => navi_switch::in_battle(b, r),
+        A::Engine(E::SwitchKnockout) => navi_switch::knock_out(b, r),
         state => unreachable!("{state:?} is not an attack"),
     }
 }

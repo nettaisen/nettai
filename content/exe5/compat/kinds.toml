@@ -414,3 +414,4 @@
 "e-sappou/blade" = { pool = "attack", index = 0x69, scratch_position = true }
 "k-bomb/bomb" = { pool = "attack", index = 0xCC }
 "g-otoshi/frog" = { pool = "attack", index = 0xA2 }
+"megaman/support" = { pool = "actor", index = 0x30 }
