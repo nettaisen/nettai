@@ -11,9 +11,12 @@
 //! "you should just create the font yourself as an otf and commit it", "the
 //! font should have sharp edges and not rounded", "can it not just be the
 //! same base font? and exclude the variants that don't fit", the banners'
-//! "actually a different font", then "replace them outright"). Bungee stays
-//! the HUD's lettering font ([`font`]: the words on the buttons, the
-//! window's labels, the chip codes).
+//! "actually a different font", then "replace them outright"). The chip
+//! codes are fonts of the game's codes the same way, Nettai Chip Codes (the
+//! chip window's) and Nettai Slot Codes (the slots'; the user: "you should
+//! trace ABCDEFGHIJKLMNOPQRSTUVWXYZ* for the chip codes font like you did
+//! digits", §12.11). Bungee stays the HUD's lettering font ([`font`]: the
+//! words on the buttons, the window's labels).
 //!
 //! The digit fonts keep the game's metrics: a glyph pixel is 100 units, each
 //! glyph in the game's 8-pixel cell (its advance), its face 6 pixels wide a
@@ -36,7 +39,8 @@ use crate::textlayer::{Rect, TextItem, TextSink};
 use nettai_assets::Palette;
 use nettai_assets::letters::Digits;
 
-/// Bungee: the HUD's lettering font (its words in capitals, the chip codes).
+/// Bungee: the HUD's lettering font (its words in capitals: the window's
+/// labels).
 pub const FONT: &[u8] = include_bytes!("../fonts/bungee/Bungee-Regular.ttf");
 
 /// The HUD's lettering font, parsed once.
@@ -68,14 +72,38 @@ pub fn banner_digits_font() -> &'static std::sync::Arc<crate::vfont::VectorFont>
     &FONT_PARSED
 }
 
-/// Which font a [`Fitted`] is drawn in: the numbers' (Nettai Digits), the
-/// banners' numbers' (Nettai Banner Digits), or the lettering's (Bungee:
-/// the chip codes).
+/// Nettai Chip Codes: the chip window's codes' font (the game's big chip
+/// codes, A to Z and '*', 7 by 11 pixels).
+pub const CHIP_CODES_FONT: &[u8] = include_bytes!("../fonts/nettai-chip-codes/NettaiChipCodes-Regular.otf");
+
+/// The chip window's codes' font, parsed once.
+pub fn chip_codes_font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
+    static FONT_PARSED: std::sync::LazyLock<std::sync::Arc<crate::vfont::VectorFont>> =
+        std::sync::LazyLock::new(|| std::sync::Arc::new(crate::vfont::VectorFont::from_bytes(CHIP_CODES_FONT, "Nettai Chip Codes (bundled)").expect("the bundled chip codes font parses")));
+    &FONT_PARSED
+}
+
+/// Nettai Slot Codes: the slots' codes' font (the game's small chip codes
+/// under the slots' icons, 6 by 5 pixels).
+pub const SLOT_CODES_FONT: &[u8] = include_bytes!("../fonts/nettai-slot-codes/NettaiSlotCodes-Regular.otf");
+
+/// The slots' codes' font, parsed once.
+pub fn slot_codes_font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
+    static FONT_PARSED: std::sync::LazyLock<std::sync::Arc<crate::vfont::VectorFont>> =
+        std::sync::LazyLock::new(|| std::sync::Arc::new(crate::vfont::VectorFont::from_bytes(SLOT_CODES_FONT, "Nettai Slot Codes (bundled)").expect("the bundled slot codes font parses")));
+    &FONT_PARSED
+}
+
+/// Which font a [`Fitted`] is drawn in, each a font of the game's own
+/// glyphs: the numbers' (Nettai Digits), the banners' numbers' (Nettai
+/// Banner Digits), the chip window's codes' (Nettai Chip Codes) or the
+/// slots' (Nettai Slot Codes).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Face {
     Digits,
     BannerDigits,
-    Letters,
+    ChipCodes,
+    SlotCodes,
 }
 
 impl Face {
@@ -83,27 +111,46 @@ impl Face {
         match self {
             Face::Digits => digits_font(),
             Face::BannerDigits => banner_digits_font(),
-            Face::Letters => font(),
+            Face::ChipCodes => chip_codes_font(),
+            Face::SlotCodes => slot_codes_font(),
         }
     }
 
-    /// A digit font's game metrics (none: the lettering font, fitted to its
-    /// boxes instead).
-    pub fn game(self) -> Option<GameMetrics> {
+    /// The characters its metrics are read off (its digits, or its codes).
+    fn chars(self) -> &'static str {
+        match self {
+            Face::Digits | Face::BannerDigits => "0123456789",
+            Face::ChipCodes | Face::SlotCodes => CODES,
+        }
+    }
+
+    /// Whether its glyphs stand where the game's stand down their face box
+    /// (a code font: its face's top to the baseline the box's height, '*'
+    /// at its own rows), rather than each centered down it (the digits, all
+    /// one height but the signs).
+    pub fn rows_as_drawn(self) -> bool {
+        matches!(self, Face::ChipCodes | Face::SlotCodes)
+    }
+
+    /// Its game metrics.
+    pub fn game(self) -> GameMetrics {
         static DIGITS: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::Digits));
         static BANNER: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::BannerDigits));
+        static CHIP: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::ChipCodes));
+        static SLOT: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::SlotCodes));
         match self {
-            Face::Digits => Some(*DIGITS),
-            Face::BannerDigits => Some(*BANNER),
-            Face::Letters => None,
+            Face::Digits => *DIGITS,
+            Face::BannerDigits => *BANNER,
+            Face::ChipCodes => *CHIP,
+            Face::SlotCodes => *SLOT,
         }
     }
 }
 
-/// A digit font's metrics as the game's: frame pixels a font unit across
-/// (its digits' advance one game cell), and its digits' faces' insets in
-/// their cell (frame pixels: from the cell's left to the faces' left, from
-/// the faces' right to the cell's right), read off the font.
+/// A font's metrics as the game's: frame pixels a font unit across (its
+/// glyphs' advance one game cell), and its glyphs' faces' insets in their
+/// cell (frame pixels: from the cell's left to the faces' left, from the
+/// faces' right to the cell's right), read off the font.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GameMetrics {
     pub across: f32,
@@ -114,9 +161,9 @@ impl GameMetrics {
     fn of(face: Face) -> GameMetrics {
         let f = face.font().font();
         let cmap = f.charmap();
-        let advance = f.glyph_metrics(&[]).advance_width(cmap.map('0'));
+        let advance = f.glyph_metrics(&[]).advance_width(cmap.map(face.chars().chars().next().unwrap_or('0')));
         let across = CELL as f32 / advance.max(1.0);
-        let inks: Vec<[f32; 4]> = "0123456789".chars().filter_map(|c| ink_box(face, cmap.map(c))).collect();
+        let inks: Vec<[f32; 4]> = face.chars().chars().filter_map(|c| ink_box(face, cmap.map(c))).collect();
         let left = inks.iter().map(|b| b[0]).fold(f32::MAX, f32::min);
         let right = inks.iter().map(|b| b[2]).fold(f32::MIN, f32::max);
         GameMetrics { across, inset: (left * across, (advance - right) * across) }
@@ -139,31 +186,21 @@ impl NumberSet {
     pub fn in_font(self, font: Face) -> NumberSet {
         NumberSet { font, ..self }
     }
-
-    /// The set as one family with other sets beside it (`Fitted::family`).
-    pub fn with_family(self, family: Vec<(String, f32)>) -> NumberSet {
-        NumberSet { family, ..self }
-    }
 }
 
 /// A game cell's width: a character a cell.
 pub const CELL: i32 = 8;
 
-/// Characters of a number drawn in the numbers' font
-/// ([`TextItem::fitted`]): each one's face box (x, y, width, height in
-/// frame pixels from the item's box's top left), the characters of its set
-/// (`set`: the glyphs are drawn at one scale, the set's tallest ink the
-/// boxes' height, at their own widths, narrowed alike where the set's
-/// widest would be wider than its box, each centered in its box), and the
-/// paint.
+/// Characters of a number (or a chip code) drawn in a font of the game's
+/// glyphs ([`TextItem::fitted`]): each one's face box (x, y, width, height
+/// in frame pixels from the item's box's top left), the characters of its
+/// set (`set`: the glyphs are drawn a glyph pixel a frame pixel across, at
+/// their places in their faces, and down at one scale, the set's ink the
+/// boxes' height), and the paint.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fitted {
     pub glyphs: Vec<(char, [f32; 4])>,
     pub set: String,
-    /// Other sets drawn beside it as one family (the chip window's code and
-    /// its damage), each with its boxes' width: the family is narrowed alike,
-    /// by the least any of its sets needs.
-    pub family: Vec<(String, f32)>,
     /// The face's colors down the boxes' rows (BGR555), its rim's and its
     /// shadow's.
     pub fill: Vec<u16>,
@@ -183,9 +220,8 @@ pub struct NumberSet {
     pub face: [i32; 4],
     /// Its font (a digit font: Nettai Digits, or the banners').
     pub font: Face,
-    /// Its characters (`Fitted::set`), and its family's (`Fitted::family`).
+    /// Its characters (`Fitted::set`).
     pub set: String,
-    pub family: Vec<(String, f32)>,
     pub fill: Vec<u16>,
     pub rim: Option<u16>,
     pub shadow: Option<u16>,
@@ -199,7 +235,6 @@ impl NumberSet {
             face: d.face.map(|v| v as i32),
             font: Face::Digits,
             set: DIGITS.into(),
-            family: Vec::new(),
             fill: d.fill.iter().map(|&c| color(c)).collect(),
             rim: d.rim.map(color),
             shadow: d.shadow.map(color),
@@ -210,7 +245,7 @@ impl NumberSet {
     pub fn fitted(&self, chars: &str) -> Fitted {
         let [x, y, w, h] = self.face.map(|v| v as f32);
         let glyphs = chars.chars().enumerate().filter(|(_, c)| *c != ' ').map(|(i, c)| (c, [(CELL * i as i32) as f32 + x, y, w, h])).collect();
-        Fitted { glyphs, set: self.set.clone(), family: self.family.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow, face: self.font, ids: Vec::new() }
+        Fitted { glyphs, set: self.set.clone(), fill: self.fill.clone(), rim: self.rim, shadow: self.shadow, face: self.font, ids: Vec::new() }
     }
 }
 
@@ -290,7 +325,7 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
     let mut glyphs: Vec<Glyph> = Vec::new();
     let mut pen = 0.0;
     for (k, (chars, set)) in parts.iter().enumerate() {
-        let metrics = set.font.game()?;
+        let metrics = set.font.game();
         let u = metrics.across;
         for (c, glyph, dx, a) in shaped(set.font, &chars.replace(' ', "")) {
             let origin = pen + dx * u;
@@ -299,8 +334,8 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
             pen += a * u;
         }
     }
-    let first = parts.first()?.1.font.game()?;
-    let last = parts.last()?.1.font.game()?;
+    let first = parts.first()?.1.font.game();
+    let last = parts.last()?.1.font.game();
     let first_ink = glyphs.iter().find_map(|g| g.ink).map_or(0.0, |i| i.0);
     let (faces_left, faces_right) = (first.inset.0, pen - last.inset.1);
     let start = match anchor {
@@ -326,7 +361,7 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
         let right = glyphs.iter().map(|g| g.1[0] + g.1[2]).fold(left, f32::max);
         let glyphs = glyphs.into_iter().map(|(c, [x, top, w, h])| (c, [x - left, top, w, h])).collect();
         let rect = Rect::new(left as i32, y, (right - left).ceil() as i32 + 1, 16);
-        let f = Fitted { glyphs, set: set.set.clone(), family: Vec::new(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow, face: set.font, ids };
+        let f = Fitted { glyphs, set: set.set.clone(), fill: set.fill.clone(), rim: set.rim, shadow: set.shadow, face: set.font, ids };
         out.push(TextItem::fitted(f, rect));
     }
     Some((out, (ink_start, ink_end)))
@@ -361,10 +396,30 @@ mod tests {
     fn digits_are_a_cell_apart() {
         for face in [Face::Digits, Face::BannerDigits] {
             let shaped = shaped(face, "0123456789");
-            let m = face.game().unwrap();
+            let m = face.game();
             let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
             assert_eq!(cells, vec![CELL as f32; 10], "{face:?}");
             assert_eq!(m.inset, (1.0, 1.0), "{face:?}");
+        }
+    }
+
+    /// The code fonts keep the game's metrics too: every code one advance, a
+    /// game cell; the chip window's 7 frame pixels of face, half a pixel in,
+    /// 11 tall; the slots' 6, a pixel in, 5 tall; each on the baseline, '*'
+    /// within its letters' rows.
+    #[test]
+    fn codes_are_a_cell_apart() {
+        for (face, inset, tall) in [(Face::ChipCodes, (0.5, 0.5), 11.0), (Face::SlotCodes, (1.0, 1.0), 5.0)] {
+            let shaped = shaped(face, CODES);
+            let m = face.game();
+            let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
+            assert_eq!(cells, vec![CELL as f32; CODES.len()], "{face:?}");
+            assert_eq!(m.inset, inset, "{face:?}");
+            let cmap = face.font().font().charmap();
+            let rows = |c: char| ink_box(face, cmap.map(c)).map(|[_, y0, _, y1]| (y0 * m.across, y1 * m.across)).unwrap();
+            assert_eq!(rows('A'), (0.0, tall), "{face:?}");
+            let star = rows('*');
+            assert!(star.0 >= 0.0 && star.1 <= tall, "{face:?}: {star:?}");
         }
     }
 
