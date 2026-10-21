@@ -172,6 +172,17 @@ impl Draft {
         self.under().is_none_or(|p| p.ruleset.allows_item(fact, item))
     }
 
+    /// Whether it allows definition `h` of the build's fact `fact` in a record of key `key` (a category kept by a
+    /// field of its records: EXE5's partners' programs, by the partner's navi): neither held back for every record nor
+    /// for that key's. With no key (a partner without its navi yet), what it holds back for every record alone.
+    pub fn allows_for(&self, fact: &str, key: Option<u16>, h: u16) -> bool {
+        let item = nettai_match::ruleset::Item::of(h);
+        self.under().is_none_or(|p| match key {
+            Some(key) => p.ruleset.allows_for(fact, key, &item),
+            None => p.ruleset.allows_item(fact, &item),
+        })
+    }
+
     /// The build's ruleset found again among those the player can pick (one may have gone: it is missing).
     fn find_ruleset(&mut self) {
         self.ruleset = rulesets::made_for(&rulesets::pickable(&self.kit), self.build.ruleset.as_ref());

@@ -466,7 +466,10 @@ export component RulesetPage inherits Page {
     // Each panel's header line, as the build editor's panes have theirs: its title, what it holds, its small words
     // at its right end. Under the category's, the search; under that, the items.
     property <length> line-y: Theme.phone ? root.panel-y : root.panel-y + 14px;
-    property <length> search-y: root.line-y + 30px;
+    // (On a phone the line's small words are a line of their own under it: beside them, what the line says had no
+    // room, "11 of 12 allowed, 4 program bans" cut to "1…".)
+    property <length> picks-y: Theme.phone ? root.line-y + 24px : root.line-y;
+    property <length> search-y: root.picks-y + 30px;
     property <length> items-y: root.search-y + 52px;
     // (Where the header line's words begin: what the line says ends before them.)
     property <length> words-x: RulesetView.choices.length > 0 ? version-picks.x : category-picks.x;
@@ -635,7 +638,7 @@ export component RulesetPage inherits Page {
         category-title := Label {
             x: root.inner-x;
             y: root.line-y;
-            width: min(self.preferred-width, root.words-x - 16px - self.x);
+            width: Theme.phone ? self.preferred-width : min(self.preferred-width, root.words-x - 16px - self.x);
             height: 16px;
             visible: !Theme.phone;
             text: Caps.of(RulesetView.categories[RulesetView.category].name);
@@ -645,7 +648,7 @@ export component RulesetPage inherits Page {
         Text {
             x: Theme.phone ? root.inner-x : category-title.x + category-title.width + 12px;
             y: root.line-y;
-            width: max(0px, root.words-x - 12px - self.x);
+            width: Theme.phone ? root.inner-width : max(0px, root.words-x - 12px - self.x);
             height: 16px;
             text: RulesetView.paired ? RulesetView.head-note : RulesetView.categories[RulesetView.category].note;
             color: Theme.muted;
@@ -657,7 +660,7 @@ export component RulesetPage inherits Page {
 
         category-picks := AllNone {
             x: root.inner-x + root.inner-width - self.width + 6px;
-            y: root.line-y;
+            y: root.picks-y;
             all-nav: "rules.all";
             none-nav: "rules.none";
             set: RulesetView.editable ? 0 : -1;
@@ -667,7 +670,7 @@ export component RulesetPage inherits Page {
 
         version-picks := VersionPicks {
             x: category-picks.x - 12px - self.width;
-            y: root.line-y;
+            y: root.picks-y;
             visible: RulesetView.choices.length > 0;
         }
 

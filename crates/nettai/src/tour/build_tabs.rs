@@ -1905,8 +1905,9 @@ fn rules_category(name: &'static str) -> Step {
 /// not allowed, P.HP+300 held back for every navi, P.Btlpk2 for ProtoMan and Colonel, P.Spport for Meddy): ProtoMan
 /// chosen, All navis chosen, KnightMan (not allowed) chosen, GyroMan (every navi's ban alone) chosen; its NaviCust
 /// programs and Patch cards pages; then Back, the build made for the game's first preset again. On a phone, the Party
-/// page with ProtoMan chosen alone.
-fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
+/// page with ProtoMan chosen alone. Returns the name the build's ruleset was shown by while the page's copy was the
+/// build's (filled as the steps run), for [`to_ruleset`] to make the build its again.
+fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) -> Rc<RefCell<String>> {
     add(SETTLE, press("tab", 0));
     add(SETTLE, press("ruleset-edit", 0));
     add(SETTLE, press("rules.duplicate", 0));
@@ -1942,7 +1943,29 @@ fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         shot(add, "party-rules-cards", Pair::None);
     }
     add(SETTLE, act(Action::Back));
+    let own: Rc<RefCell<String>> = Rc::default();
+    let kept = own.clone();
+    add(SETTLE, Box::new(move |ui, _, _| *kept.borrow_mut() = ui.global::<nettai_ui::BuildsView>().get_ruleset().to_string()));
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+    own
+}
+
+/// The build made for the ruleset shown by `name` again, the select stepped through until it is (never: the report says
+/// so).
+fn to_ruleset(name: &Rc<RefCell<String>>) -> Step {
+    let name = name.clone();
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        for _ in 0..64 {
+            if ui.global::<nettai_ui::BuildsView>().get_ruleset().as_str() == name.borrow().as_str() {
+                return;
+            }
+            app.borrow_mut().with_screen(ScreenId::Builds, |s, shell| s.step(shell, "ruleset", 0, 1));
+        }
+        tour.key_wrong(format!("the build's ruleset never became {:?}", name.borrow()));
+    })
 }
 
 /// The Party tab (EXE5's party battle; a game without one passes these by), its slots' list and the library that
@@ -1974,7 +1997,7 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
         return;
     }
     open_build(add);
-    party_rules(add, shot, false);
+    let own = party_rules(add, shot, false);
     add(SETTLE, to_tab(EditorTab::Party));
     add(SETTLE, to_slot(PartySpot::Open, false));
     shot(add, "party-empty", Pair::None);
@@ -2133,6 +2156,31 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
     }));
     add(SETTLE, to_slot(PartySpot::Head(0), false));
     shot(add, "party-dragged", Pair::None);
+    // Under the ruleset page's copy (P.Spport held back for Meddy's partners alone, as R2 has it), Meddy second: its
+    // Empty row marked, the library refuses P.Spport there, "Not allowed", the strip saying so (shot); dragged over
+    // Meddy's list, the held row says so (shot); let go, nothing changes. Then the build under the game's first
+    // preset again.
+    add(SETTLE, to_ruleset(&own));
+    add(SETTLE, expect(|ui, _| (party_of(ui).get(1).map(|p| p.0.as_str()) != Some("Meddy")).then(|| format!("Meddy second, for its own ban: the party is {:?}", party_of(ui)))));
+    add(SETTLE, to_slot(PartySpot::End(1), false));
+    add(SETTLE, pick_program(&picked, |r| r.name == "P.Spport"));
+    add(SETTLE, expect(|ui, _| {
+        let rows = ui.global::<PartyView>().get_rows();
+        let why = |name: &str| rows.iter().find(|r| r.name == name).map(|r| r.why.to_string());
+        (why("P.Spport").is_none_or(|w| w.is_empty()) || why("P.Btlpk2").is_none_or(|w| !w.is_empty())).then(|| format!("Meddy's Empty row marked: P.Spport says {:?}, P.Btlpk2 {:?}", why("P.Spport"), why("P.Btlpk2")))
+    }));
+    shot(add, "party-banned-for-navi", Pair::None);
+    add(SETTLE, keep(&kept));
+    drag_in(add, &picked, |ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app));
+    add(SETTLE, expect(|ui, _| {
+        let why = ui.global::<PartyView>().get_drag_why();
+        why.is_empty().then(|| "P.Spport dragged over Meddy's list: the dragged row says nothing".to_string())
+    }));
+    shot(add, "party-drag-banned-for-navi", Pair::None);
+    add(SETTLE, hand_at(|ui, app| slot_point(PartySpot::End(1), 0.0)(ui, app), Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| (party_of(ui) != *was.borrow()).then(|| format!("P.Spport let go over Meddy's list: the party changed to {:?}", party_of(ui)))));
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
     // For comparing: the Patch cards library, three cards in, by MB the most first, one refused; the NaviCust's list.
     add(SETTLE, to_tab(EditorTab::PatchCards));
     add(SETTLE, library());
