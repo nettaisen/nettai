@@ -1799,6 +1799,52 @@ fn party_drag(add: &mut dyn FnMut(u64, Step), from: Point, through: &[Point]) {
     }
 }
 
+/// The ruleset page's category named `name` (as the page lists it, in English), by the choice its select makes; none,
+/// the report says so.
+fn rules_category(name: &'static str) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(at) = ui.global::<nettai_ui::RulesetView>().get_categories().iter().position(|c| c.name == name) else {
+            tour.key_wrong(format!("the ruleset's page has no category {name:?}"));
+            return;
+        };
+        app.borrow_mut().with_screen(ScreenId::Builds, |s, shell| s.choose(shell, "rules.category", 0, at as i32));
+    })
+}
+
+/// The EXE5 ruleset page (for the mockups of the party's pages): EDIT by the build's ruleset, DUPLICATE (the player's
+/// own, every page editable), its Party page and its PartyCust programs page, each as it is and with two items held
+/// back, its NaviCust programs and Patch cards pages; then Back, the build made for the game's first preset again.
+fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, press("tab", 0));
+    add(SETTLE, press("ruleset-edit", 0));
+    add(SETTLE, press("rules.duplicate", 0));
+    add(SETTLE, rules_category("Party"));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-party", Pair::None);
+    add(SETTLE, press("rules.items", 1));
+    add(SETTLE, press("rules.items", 3));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-party-banned", Pair::None);
+    add(SETTLE, rules_category("PartyCust programs"));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-programs", Pair::None);
+    add(SETTLE, press("rules.items", 2));
+    add(SETTLE, press("rules.items", 5));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-programs-banned", Pair::None);
+    add(SETTLE, rules_category("NaviCust programs"));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-navicust", Pair::None);
+    add(SETTLE, rules_category("Patch cards"));
+    add(SETTLE, focus("rules.items", 0));
+    shot(add, "party-rules-cards", Pair::None);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+}
+
 /// The Party tab (EXE5's party battle; a game without one passes these by): two partners put in from the picker, and
 /// every drag the tab takes, each let go and what it did checked (`report.txt` says what didn't), the held states shot
 /// (the gap open where the program would go, the partner it is over marked; the refusal on the dragged row, over the gap
@@ -1814,6 +1860,7 @@ pub(super) fn party_steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'s
         return;
     }
     open_build(add);
+    party_rules(add, shot);
     add(SETTLE, to_tab(EditorTab::Party));
     add(SETTLE, focus("chip", 0));
     shot(add, "party-empty", Pair::None);
