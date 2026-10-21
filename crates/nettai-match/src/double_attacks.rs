@@ -20,7 +20,7 @@ const FOLDER: [&str; 30] = [
 
 /// An EXE5 MegaMan's side with that folder and `partners` in his party (at
 /// the party's highest level: a side that states none).
-fn side(partners: &[&str]) -> String {
+pub(crate) fn side(partners: &[&str]) -> String {
     let folder: Vec<String> = FOLDER
         .iter()
         .map(|c| {
@@ -32,7 +32,7 @@ fn side(partners: &[&str]) -> String {
     format!("navi = \"megaman\"\nfolder = [{}]\nparty = [{}]\n", folder.join(", "), party.join(", "))
 }
 
-fn round_match(content: &Arc<Content>, partners: &[&str]) -> Match {
+pub(crate) fn round_match(content: &Arc<Content>, partners: &[&str]) -> Match {
     let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, "exe5")[0]).key);
     let text = format!(
         "game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{}\n\n[right]\n{}\n",
@@ -45,7 +45,7 @@ fn round_match(content: &Arc<Content>, partners: &[&str]) -> Match {
 /// A round of MegaMan (side 0, with `partners` in his party, members 1 and
 /// 2) against MegaMan, both pressing through their custom screens until the
 /// fight runs.
-fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
+pub(crate) fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
     let m = round_match(content, partners);
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
     let mut last = [0u16; 2];
