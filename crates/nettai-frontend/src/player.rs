@@ -141,6 +141,9 @@ pub struct Player {
     paused: bool,
     /// Held where it stands, its sound and its scenery going on ([`Player::set_held`]).
     held: bool,
+    /// The member of the local side's party the player asked to switch to ([`Player::ask_switch`]), until a tick
+    /// carries it.
+    switch: Option<u8>,
     speed: usize,
     clock: Clock,
     /// What had been made before the player was: this thread's runtimes
@@ -191,6 +194,7 @@ impl Player {
             samples: Vec::new(),
             paused: false,
             held: false,
+            switch: None,
             speed: NORMAL,
             clock: Clock::new(),
             before,
@@ -271,6 +275,18 @@ impl Player {
         (0..due).take_while(|_| self.tick(buttons)).count() as u32
     }
 
+    /// Ask to switch to member `member` of the local side's party (0 its own
+    /// navi, 1 and 2 its partners: `nettai_battle::party`): the next tick
+    /// that runs carries it, once, as the tick's switch request
+    /// (`PlayerTick::switch_to`, the DS's input packet +7), whichever the
+    /// buttons; a later ask before it runs replaces it. Whether the switch
+    /// is made is the battle's (its rules refuse one past the round's limit,
+    /// or to a member at 0 HP). A host maps its own controls to a member
+    /// (EXE5 DS's X and Y, its panel's two buttons: [`crate::party::Panel`]).
+    pub fn ask_switch(&mut self, member: u8) {
+        self.switch = Some(member);
+    }
+
     /// Run one tick with `buttons` held, whatever the clock or the pause
     /// say: a host that paces itself, or a frame's step while paused. (A
     /// driver that runs the battle itself, netplay's, runs one wall-clock
@@ -289,8 +305,14 @@ impl Player {
             }
             return true;
         }
-        if !self.session.step(buttons) {
+        // (The tick's word: the buttons, and the switch asked for until a tick that ran carried it. A driver that
+        // runs the battle itself may wait this frame: the ask waits with it.)
+        let switch = nettai_battle::PlayerTick { held: 0, switch_to: self.switch, mic_level: 0 }.word() as u16;
+        if !self.session.step((buttons & 0x3FF) | switch) {
             return false;
+        }
+        if self.session.fresh {
+            self.switch = None;
         }
         if self.session.new_round {
             self.renderer.reset();
@@ -476,6 +498,7 @@ impl Player {
         self.session.restart();
         self.renderer.reset();
         self.clock.rest();
+        self.switch = None;
         true
     }
 

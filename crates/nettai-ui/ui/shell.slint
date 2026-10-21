@@ -103,6 +103,29 @@ export struct LinkFigures {
     graph-top: int,
 }
 
+// A party battle's party, as the original shows it on its other screen (EXE5 DS's bottom screen, its party panel:
+// docs/design/exe5ds-map.md §4.2), shown beside the battle where the player's side has partners: each member's face and
+// HP (`down`: none left), the member on the field (`active`, its place in `members`), the members the switches' two
+// buttons name (`left`, `right`: their places, -1 none: EXE5 DS's Y and X), the switches made this round and the
+// round's limit, and the two switches' controls as bound (as the footer's hints show a control).
+export struct PartyMember {
+    face: image,
+    hp: int,
+    max-hp: int,
+}
+
+export struct PartyHud {
+    shown: bool,
+    members: [PartyMember],
+    active: int,
+    left: int,
+    right: int,
+    switches: int,
+    limit: int,
+    left-key: Hint,
+    right-key: Hint,
+}
+
 // A ground behind the menus (`Backdrop`): a game's look, and the side it sweeps in from over the grounds before it
 // (-1 the left, 1 the right; 0 it is there at once).
 export struct Ground {
@@ -252,6 +275,9 @@ export global Shell {
     callback touch(int, bool);
     callback pad-key(int, length, length, length, length);
     in property <[bool]> pad-held;
+    // The player's party beside the battle, in a party battle (`PartyHud`): read from the battle each frame. On a
+    // phone the pad has the switches' two buttons (bits 14 and 15), each with the member it names.
+    in property <PartyHud> party;
 }
 
 // What can go wrong, as the player reads it (docs/design/app-ui.md §7; the app's `UserError`). The code's own
@@ -1174,7 +1200,7 @@ component Dpad inherits Rectangle {
 
 // One hint: the key's caps or the pad's button, by what was last used, and what it does. (Its parts are all
 // there and sized to nothing where they don't show: an `if` each would be a component each.)
-component HintView inherits Rectangle {
+export component HintView inherits Rectangle {
     in property <Hint> hint;
     property <bool> face: root.hint.pad == PadButton.south || root.hint.pad == PadButton.east || root.hint.pad == PadButton.west || root.hint.pad == PadButton.north;
     property <string> pad-cap: root.hint.pad == PadButton.start ? "START" : (root.hint.pad == PadButton.select ? "SELECT" : (root.hint.pad == PadButton.shoulders ? "L" : ""));
