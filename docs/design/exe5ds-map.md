@@ -561,7 +561,9 @@ reacts to it in 120 frames of noise. The user (2026-10-20): port it, and leave i
 **Against the recordings** (tools/dslab `supports/`, replayed through exe5-compat's exe5_replay, 2026-10-21): ProtoMan
 and NapalmMan, Colonel, TomahawkMan, MegaMan's Spport, SearchMan (offline), Meddy's HealPulse, ToadMan's rescue,
 Mag-Barr, ShadowMan's ambush, KnightMan's guard and DiceBons match every frame; GyroMan's gust parts at frame 227 by
-the side-fair choice (verify's side_fair_deviations.rs), so what follows it there is unchecked. supports/searchman is
+the side-fair choice (verify's side_fair_deviations.rs: the panel under a position on a column line). With that one
+rule switched back to the original's for a run (`PanelPos::under` dividing every X as it is), supports/gyroman
+matches all 1961 frames (2026-10-21). supports/searchman is
 the link path (`opponent_chip`: side 1's chip use, the DS's 0x020044E8). His offline path (0x02004438, and every
 support's "offline, side 0 alone") is ported but unreachable in nettai: a match's stages are the link battle stages
 (their effects carry 8, `link_pick.match_stages`), so every nettai battle is a link battle.
