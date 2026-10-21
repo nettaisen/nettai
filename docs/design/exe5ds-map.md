@@ -508,7 +508,8 @@ The rest of the mechanics:
   - the hit reaction starts **action 0x5B** (0x02049784): +0x48 0x400000, KnightMan (variant 6) in front of the
     navi for 60 ticks, each blocked hit flashing white with sound 0x6B;
   - it is not once-only;
-  - whether the damage is cancelled and whether KnightMan loses HP is open.
+  - **the navi takes no damage and KnightMan's member block loses it** (observed: two M-Cannons, MegaMan at full
+    HP, KnightMan 800 → 680 → 560).
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;
@@ -740,6 +741,12 @@ The table's outline is the first reading. §5.2 has the hit patterns as read sin
 and #8. **The chip's name shows** (observed): "D-HERO" where a used chip's name shows, the field dimmed, sound
 0x173 as it starts. D-HERO's seven volleys did 40 each at navi level 9, the row's last.
 
+**Observed** (tools/dslab, every one of the twelve): each fires on a switch out of Full Synchro to the pair's
+partner, a team navi reaching Full Synchro as MegaMan does (a counter). Side 1's HP lost to each at navi level 9:
+D-HERO 280, M-ZAN 240, M-AIR 200, D-VALCAN 360, C-SCOPE 400 (stopped on the enemy; unstopped, the scopes end
+their 8 cycles off it and miss), C-BOMB 300, BR-RUSH 400, B-SHOOT 240, E-SAPPOU 306, K-THROW 450, K-BOMB 400,
+G-OTOSHI 540.
+
 ### 5.2 The hit patterns (read; helper `double_hits.py`)
 
 **The hitbox spawner's arguments.** The spawner is `sub_80C53A6` (0x022034BC, the same code as BRBE's):
@@ -766,7 +773,7 @@ and #8. **The chip's name shows** (observed): "D-HERO" where a used chip's name 
 | 2 M-ZAN | MagnetMan first spawns the immobilizer (T3 0x3F, EXE6 `sub_80CC044`, MagnetSoul's B+Back) on every enemy body's panel from his column forward: no damage, status 0x42. ProtoMan then finds the first enemy whose panel behind is free, steps behind it (3+3 ticks) and slashes **once** (tick 10 of 20), region 4 (a vertical 3-panel column). | null; 5/7; modifier 1 | none |
 | 3 M-AIR | GyroMan rises (40 ticks), then flies along the user's row at 2 px a tick. On each **enemy column** he crosses he drops bombs on all three rows (T3 0xA1); each falls 20 ticks and hits its panel once. 3 a column, 9 on a standard field. MagnetMan's T4 0xA3 is visual. | **Elec**; 5/0x0A (thrown); modifier 0; status 0x11 (paralyze) | none |
 | 4 D-VALCAN | Each actor fires 30 Vulcan bullets (T3 0x12, EXE6 `sub_80C6946`, Vulcan1–3's, SuprVulc's, InfVulc's, Spreader's), one every 8–9 ticks; each bursts on the first thing in the row, region 2 (its panel and the one behind). Up to 60 hits. | null (the bullet's); modifier 1 | RNG2: 1 a bullet (its visual height), 60 |
-| 5 C-SCOPE | SearchMan's two scopes (T4 0xA4) start at (+2, −1) and (+4, −1) and walk crossing diagonals (offsets 0, 1, 2, 1), a step every 6 ticks (sound 0x10E), up to 8 cycles, **until the player stops them** (an input bit of AIData +0x2C, presumably A: open). Then each actor fires 5 hits, one every 6 ticks, on its scope's panel. 10 hits. | null; 5/0x19 (curse: reaches invisible targets); region 1; modifier 3 | none |
+| 5 C-SCOPE | SearchMan's two scopes (T4 0xA4) start at (+2, −1) and (+4, −1) and walk crossing diagonals (offsets 0, 1, 2, 1), a step every 6 ticks (sound 0x10E), up to 8 cycles, **until the player stops them** (an input bit of AIData +0x2C: **A**, observed; B and L don't stop them, and the press arrives about 6 frames later). Then each actor fires 5 hits, one every 6 ticks, on its scope's panel. 10 hits. | null; 5/0x19 (curse: reaches invisible targets); region 1; modifier 3 | none |
 | 6 C-BOMB | NapalmMan marks (+4, 0) (effect 0x4C, 30 ticks) and lobs the NapalmMn chip's bomb there (T3 0x3A via `exe5_80CC71A`: fire, spreading to the 3×3 on an empty panel). Meddy puts a capsule (T3 0xCD) on a random empty solid enemy panel; if anything hits it while the bomb lives, it explodes 30 ticks later over the 3×3 (region 0x0F, sound 0x70). Up to 2 hits. | bomb fire; capsule null, 5/4, modifier 0, status 0x11 | RNG2: 1 (the capsule's panel); the napalm fire's RNG1 burn order |
 | 7 BR-RUSH | Colonel picks the first enemy in the user's row whose front panel passes a filter (else both abort), immobilizes it (GBA T3 #2, `exe5_80C4C98`: status 0x42, sprite 10-1E), and both drop onto that front panel. Each lands **4 hits** on the enemy's panel (at 35, 30 and 10 ticks left of a 40-tick combo, then a finisher). 8 hits. Sound 0x2F starts the finisher, with 0xFB. | null; 5/7; region 1; modifier 3 | none |
 | 8 B-SHOOT | MegaMan's buster is visual. KnightMan lands (0xC0, shake) and drops 6 balls (T3 0xCE, sprite 10-0E), one every 20 ticks. Each is kicked (effect 0x3C, sound 0x85) into row −1, 0 or +1 in turn and flies forward 8 px a tick, hitting the first enemy in its row once. 6 hits. | null; 5/6 (breaking); modifier 3; spark 0x0A | none |
@@ -776,7 +783,6 @@ and #8. **The chip's name shows** (observed): "D-HERO" where a used chip's name 
 | 12 G-OTOSHI | ShadowMan drives 12 frogs (T3 0xA2, 10-46), one every 11 ticks; ToadMan's song (0xD8) is visual. Each frog falls on a random panel: one holding an enemy with 10/16 odds, else another (`object_getPanelsFiltered`; its panel set is open). It hits once below z 20. On a hit, or 20 ticks after landing on a solid panel, **the panel becomes sea** (type 10). On a hole it vanishes. Up to 12 hits. | **Aqua**; 5/0x0A (thrown); modifier 1 | RNG2: 2 a frog, 24 |
 
 Still open:
-- #5's stop key;
 - #9's bug bytes (`sub_801A4D0`) and whether a copy can hit twice;
 - #12's panel set;
 - the immobilizer's parameter 0x178 in #2;
@@ -924,7 +930,7 @@ so no extractor work is planned beyond content rows.
 |---|---|---|---|---|
 | 1 | **Finish the reading** (mostly done 2026-10-20: the supports, action 0x59, the Double Attacks' hit patterns): the open items left (ShadowMan's T4 0x96, DiceBons' T4 0x95, KnightMan's guard's damage, Colonel's `sub_80CB8DE`, the rescue's objects, the microphone event) | verify tools/exe5ds | S | — |
 | 2 | **The oracle on melonDS** (done 2026-10-20, tools/dslab): a DS `Layout` (§7), the battle frame trap (0x0205F970) on melonds-rs, heap-pool reads, a recorder driven by Tango's TeamBattle priming, X/Y and touch input; US first | verify (oracle-trace or a sibling crate), melonds-rs | L | 1 |
-| 3 | **Recordings** (started 2026-10-20: switches, the limit, deletions, D-HERO, two supports, the rescue): party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
+| 3 | **Recordings** (done 2026-10-20: switches, the limit and NavChg+1/+2, deletions, the twelve Double Attacks, the supports, the rescue; data/traces/lab-exe5ds): party battles with switches in battle and on the custom screen, each Double Attack, the rescue, the supports, a deleted team navi, the limit; a lab-style scenario set | verify | M | 2 |
 | 4 | **The party in setup and state:** three member blocks a side (replacing `reserves` for EXE5), the party block (busy flags, count, rescue used), the switch counters; snapshot and digest | nettai-battle, nettai-match | M | — |
 | 5 | **The switch as input:** a switch slot in `PlayerTick` beside the buttons (as the DS's packet +7; not X/Y bits, which the engine's `PRESENT` mask uses); replays and the wire format; a sim minor version bump | nettai-battle, nettai-replay, nettai-netplay | S | 4 |
 | 6 | **The in-battle switch:** the input copy into AIData +0x70, the input handler's request, action 0x59's land, change and settle | nettai-battle (machine), content/exe5 rules (conditions) | M | 4, 5 |
@@ -976,7 +982,7 @@ exist (`tiered-checks`: the quick checks per step, the recordings once).
 - the party block's +0x18;
 - NaviStats +0x4C (a color variant?);
 - battle mode 6;
-- what ShadowMan's T4 0x96 and DiceBons' T4 0x95 do; whether KnightMan's guard cancels the damage;
+- what ShadowMan's T4 0x96 (observed: no damage) and DiceBons' T4 0x95 do;
 - the microphone event's trigger offline (a heal through T4 0x93; nothing in a netbattle, §4.7).
 
 ## 10. Reproducing
