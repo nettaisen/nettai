@@ -17,8 +17,9 @@
 // - at the right the library, an open list: each program's blocks, its name, what it does (or why it won't go in, in
 //   the error red, the row greyed), its cost. Enter adds it to the marked partner's.
 //
-// A program is dragged from the library into a partner's list or onto its head, in a list to another place or into the
-// other partner's, and onto the library to take it out, as the Patch cards tab's cards are.
+// A program is dragged from the library into a partner's list, in a list to another place or into the other partner's,
+// and onto the library to take it out, as the Patch cards tab's cards are: the partner it is over is marked, a gap opens
+// where it would go in its list (the section a row taller), or the dragged row says why it can't.
 //
 // On a phone, which has no strip, the chips wrap three to a row under their team's name, PARTY is the tab's width, and a
 // button under it opens the library as a sheet (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
@@ -119,6 +120,9 @@ export global PartyView {
     in property <[PartyRow]> rows;
     // What the game's rules have against the party: a phone's line in PARTY's head.
     in property <string> problems;
+    // Why the program dragged can't go into the list of the partner it is over (empty: it can, or it is over none):
+    // said in the dragged row in place of what it does, and no gap opens.
+    in property <string> drag-why;
     // A library's row that was refused, counted: it shakes.
     in property <int> refused: -1;
     in property <int> refused-seq;
@@ -394,6 +398,71 @@ component RowsList inherits Rectangle {
     }
 }
 
+// A partner's head in PARTY: its face, its name and HP, its gauge and the blocks used of it.
+component PartnerHead inherits Rectangle {
+    in property <PartyPanel> panel;
+    Image {
+        x: 12px;
+        y: (root.height - 16px) / 2;
+        width: 32px;
+        height: 16px;
+        source: root.panel.face;
+        image-rendering: pixelated;
+    }
+
+    HorizontalLayout {
+        x: 12px + 32px + 12px;
+        y: 0;
+        width: max(0px, gauge.x - 16px - self.x);
+        height: root.height;
+        spacing: 8px;
+        alignment: start;
+        Text {
+            text: root.panel.name;
+            color: root.panel.bad ? Theme.bad : Theme.text;
+            // (A navi's name as the editor's rows have names.)
+            font-family: Theme.body;
+            font-size: Theme.phone ? 15px : 14px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.panel.hp;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+    }
+
+    // (The gauge in a column of its own, at the same place for each partner whatever its size: as wide as the largest,
+    // ten slots, then its used and total, as wide as "10/10".)
+    gauge := Blocks {
+        x: used.x - 8px - 10 * 12px;
+        y: (root.height - self.height) / 2;
+        count: root.panel.gauge;
+        filled: root.panel.used;
+        tones: root.panel.tones;
+        runs: root.panel.runs;
+        size: 12px;
+    }
+
+    used := Text {
+        x: root.width - 12px - self.width;
+        y: 0;
+        width: 44px;
+        height: root.height;
+        text: root.panel.used + "/" + root.panel.gauge;
+        color: root.panel.used > root.panel.gauge ? Theme.bad : Theme.muted;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 600;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+}
+
 // A partner's section of PARTY: its head, a control (the cursor in it makes it the partner the library adds to;
 // `target` marks it as a list's chosen row is), and its programs' list under it.
 component SectionView inherits Rectangle {
@@ -427,65 +496,10 @@ component SectionView inherits Rectangle {
         }
     }
 
-    Image {
-        x: 12px;
-        y: (root.head - 16px) / 2;
-        width: 32px;
-        height: 16px;
-        source: root.panel.face;
-        image-rendering: pixelated;
-    }
-
-    HorizontalLayout {
-        x: 12px + 32px + 12px;
+    PartnerHead {
         y: 0;
-        width: max(0px, gauge.x - 16px - self.x);
         height: root.head;
-        spacing: 8px;
-        alignment: start;
-        Text {
-            text: root.panel.name;
-            color: root.panel.bad ? Theme.bad : Theme.text;
-            // (A navi's name as the editor's rows have names.)
-            font-family: Theme.body;
-            font-size: Theme.phone ? 15px : 14px;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-
-        Text {
-            text: root.panel.hp;
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 13px;
-            vertical-alignment: center;
-        }
-    }
-
-    // (The gauge in a column of its own, at the same place for each partner whatever its size: as wide as the largest,
-    // ten slots, then its used and total, as wide as "10/10".)
-    gauge := Blocks {
-        x: used.x - 8px - 10 * 12px;
-        y: (root.head - self.height) / 2;
-        count: root.panel.gauge;
-        filled: root.panel.used;
-        tones: root.panel.tones;
-        runs: root.panel.runs;
-        size: 12px;
-    }
-
-    used := Text {
-        x: parent.width - 12px - self.width;
-        y: 0;
-        width: 44px;
-        height: root.head;
-        text: root.panel.used + "/" + root.panel.gauge;
-        color: root.panel.used > root.panel.gauge ? Theme.bad : Theme.muted;
-        font-family: Theme.mono;
-        font-size: 13px;
-        font-weight: 600;
-        horizontal-alignment: right;
-        vertical-alignment: center;
+        panel: root.panel;
     }
 
     Focusable {
@@ -501,7 +515,7 @@ component SectionView inherits Rectangle {
         x: 0;
         y: root.head;
         width: parent.width;
-        height: root.panel.rows.length * (Theme.phone ? 44px : 30px);
+        height: parent.height - root.head;
         rows: root.panel.rows;
         nav: "installed" + root.place;
         removable: true;
@@ -529,8 +543,12 @@ export component PartyTab inherits Rectangle {
     property <length> pane-width: root.phone ? root.width : 560px;
     property <length> head: root.phone ? 64px : 44px;
     property <length> pitch: root.phone ? 44px : 30px;
+    // (A section grows by a row while a program from elsewhere would go into its list: the gap where it would.)
+    pure function filling(i: int) -> bool {
+        return Drag.on && Drag.to >= 0 && Drag.into == "installed" + i && Drag.list != "installed" + i;
+    }
     pure function section-height(i: int) -> length {
-        return 34px + PartyView.panels[i].rows.length * root.pitch;
+        return 34px + (PartyView.panels[i].rows.length + (root.filling(i) ? 1 : 0)) * root.pitch;
     }
     property <length> sections-height: PartyView.panels.length == 0 ? 0px : root.section-height(0) + (PartyView.panels.length > 1 ? root.section-height(1) : 0px);
     property <length> pane-height: root.head + root.sections-height + (PartyView.panels.length == 0 ? 0px : 12px);
@@ -849,8 +867,10 @@ export component PartyTab inherits Rectangle {
             drop-shadow-blur: 10px;
             drop-shadow-offset-y: 4px;
             drop-shadow-color: #00000090;
+            property <PartyRow> held: Drag.list == "lib.rows" ? PartyView.rows[Drag.from] : Drag.list == "installed1" ? PartyView.panels[1].rows[Drag.from] : PartyView.panels[0].rows[Drag.from];
+            // (Why it can't go in where it is, in place of what it does.)
             ProgramLine {
-                row-data: Drag.list == "lib.rows" ? PartyView.rows[Drag.from] : Drag.list == "installed1" ? PartyView.panels[1].rows[Drag.from] : PartyView.panels[0].rows[Drag.from];
+                row-data: { name: parent.held.name, effect: parent.held.effect, why: PartyView.drag-why, blocks: parent.held.blocks, tone: parent.held.tone, bad: parent.held.bad };
             }
         }
     }

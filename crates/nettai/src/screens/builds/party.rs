@@ -25,8 +25,10 @@
 //! table's `kind.` and its definition's `kind`.
 //!
 //! **A program is dragged** as the Patch cards tab's cards are (`Drag`, `drag-over` and `drag-in-over`): from the library
-//! into a partner's list where it is let go, or onto its head (at its end), refused as Enter is; in a partner's list to
-//! another place, or into the other partner's; and onto the library, which takes it out.
+//! into a partner's list, in a list to another place or into the other partner's, and onto the library, which takes it
+//! out. Over a partner's section (its head or its programs) that partner is the one marked, its head lit, and a gap opens
+//! in its list where the program would go (over its head, at the top); where it can't go in there, the dragged row says
+//! why ("Needs 3 blocks") and no gap opens, and let go it is refused as Enter is.
 
 use crate::builds::overview::{stat_line, stat_name};
 use crate::builds::party::{FIELD, Partner, Shape, partners, tone, write};
@@ -40,7 +42,7 @@ use nettai_match::build::{Budget, Checked, EntryRefusal, NamedStat, Stat};
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
 use nettai_ui::{BuildWords, EditorTab, PartyChip, PartyPanel, PartyRow, PartyTeam, PartyView, StatLine};
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 /// The list of partner `i`'s programs (its panel's).
 fn installed_list(i: usize) -> String {
@@ -56,6 +58,68 @@ fn partner_of_list(id: &str) -> Option<usize> {
 fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String {
     let named: crate::builds::cards::Named = &|_, _| None;
     crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text).collect::<Vec<_>>().join(", ")
+}
+
+/// A program's row: its name, what it does (`said`: the library's), its blocks of gauge `b`, its color.
+fn program_row(words: &crate::builds::words::Words, content: &Content, table: &str, h: EntryHandle, b: Option<&Budget>, said: bool) -> PartyRow {
+    PartyRow {
+        name: words.names.entry(h).into(),
+        effect: if said { effect_of(words.names, h, table).into() } else { Default::default() },
+        blocks: b.map_or(0, |b| b.cost_of(content, h)) as i32,
+        tone: tone(content, h),
+        ..Default::default()
+    }
+}
+
+/// Where a partner's section of PARTY is in the window: across, from its head's top to its end (the next's head's top;
+/// the last's, a little past its list's), where its list begins, and its list's first row (as it is scrolled) and
+/// pitch.
+#[derive(Clone, Copy, Debug)]
+struct Section {
+    x: f32,
+    right: f32,
+    top: f32,
+    list: f32,
+    bottom: f32,
+    first: f32,
+    pitch: f32,
+}
+
+/// The sections of the first `n` partners, as the registry has their heads and lists (none it doesn't have).
+fn sections(shell: &Shell, n: usize) -> Vec<Section> {
+    let registry = shell.nav.registry();
+    let registry = registry.borrow();
+    let mut out: Vec<Section> = Vec::new();
+    for i in 0..n {
+        let Some(head) = registry.rect(&crate::nav::Key::new("target", i as i32)).filter(|r| r.w > 0.0) else { break };
+        let list = registry.view(&installed_list(i));
+        if let Some(last) = out.last_mut() {
+            last.bottom = head.y;
+        }
+        let end = list.map_or(head.bottom(), |l| l.bottom().max(head.bottom()));
+        let list_y = list.map_or(head.bottom(), |l| l.y);
+        let (first, pitch) = registry.first_row(&installed_list(i)).unwrap_or((list_y, 0.0));
+        out.push(Section { x: head.x, right: head.right(), top: head.y, list: list_y, bottom: end + 16.0, first, pitch });
+    }
+    out
+}
+
+/// The section of `sections` window point `(x, y)` is in, if it is in one.
+fn section_at(sections: &[Section], (x, y): (f32, f32)) -> Option<usize> {
+    sections.iter().position(|s| x >= s.x && x <= s.right && y >= s.top && y < s.bottom)
+}
+
+/// Where a program let go at window point `(x, y)` goes in, among partners laid out as `sections` with `counts`
+/// programs: the partner whose section it is in, and the place between its programs nearest the pointer (over its
+/// head, the first; past the last row, after it). None: in no section.
+fn landing_in(sections: &[Section], counts: &[usize], (x, y): (f32, f32)) -> Option<(usize, usize)> {
+    let i = section_at(sections, (x, y))?;
+    let s = sections[i];
+    let n = counts.get(i).copied().unwrap_or(0);
+    if y < s.list || s.pitch <= 0.0 {
+        return Some((i, 0));
+    }
+    Some((i, (((y - s.first) / s.pitch).round().max(0.0) as usize).min(n)))
 }
 
 /// What control `id` (at `index`) puts in the strip.
@@ -136,6 +200,8 @@ pub struct Party {
     /// A navi's facts alone (no programs), as the build would field it: asked once a navi (a check of the build with it
     /// the one partner), for the strip's description of a navi, and what a partner's programs add to it.
     alone: std::collections::HashMap<NaviHandle, Option<NaviFacts>>,
+    /// The partners' budgets while a drag is under way (the build doesn't change until it is let go): asked once.
+    drag_budgets: Option<Vec<Option<Budget>>>,
 }
 
 impl Party {
@@ -187,8 +253,82 @@ impl Party {
         draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
     }
 
+    /// The library's rows: each program's blocks of the target partner's gauge (`target`), its name, what it does, and
+    /// why it can't go in there (red, the row greyed), where there are partners.
+    fn library_rows(&self, shell: &Shell, draft: &Draft, words: &crate::builds::words::Words, partnered: bool, target: Option<&Budget>) -> Vec<PartyRow> {
+        let content = draft.content();
+        let table = self.effects_table();
+        self.programs
+            .iter()
+            .map(|&h| {
+                let mut r = program_row(words, content, &table, h, target, true);
+                if partnered && let Some(why) = self.refusal(shell, draft, target, h) {
+                    r.why = why.into();
+                }
+                r
+            })
+            .collect()
+    }
+
+    /// The partners' budgets, asked once while a drag is under way.
+    fn drag_budgets(&mut self, draft: &mut Draft) -> Vec<Option<Budget>> {
+        if self.drag_budgets.is_none() {
+            self.drag_budgets = Some(Party::budgets(draft).0);
+        }
+        self.drag_budgets.clone().unwrap_or_default()
+    }
+
+    /// While a program is dragged, the partner it is over is the one the library adds to: its head lit, the library's
+    /// rows saying why they can't go into its list. (The rows change in place: a row held by the pointer stays.)
+    fn retarget(&mut self, shell: &Shell, draft: &mut Draft, i: usize) {
+        if i == self.target {
+            return;
+        }
+        self.target = i;
+        let budgets = self.drag_budgets(draft);
+        let target = budgets.get(i).cloned().flatten();
+        let rows = draft.with_words(shell, |words| self.library_rows(shell, draft, words, true, target.as_ref()));
+        let ui = shell.ui();
+        let view = ui.global::<PartyView>();
+        let model = view.get_rows();
+        if model.row_count() == rows.len() {
+            for (k, r) in rows.into_iter().enumerate() {
+                model.set_row_data(k, r);
+            }
+        } else {
+            view.set_rows(ModelRc::new(VecModel::from(rows)));
+        }
+        view.set_target(i as i32);
+        view.set_free(target.map_or(0, |b| b.count.limit.saturating_sub(b.count.used)) as i32);
+        self.show_detail(shell, draft);
+    }
+
+    /// Why program `h` can't go into partner `i`'s list now (its list full: no words), if it can't.
+    fn why_not(&self, shell: &Shell, draft: &Draft, budgets: &[Option<Budget>], i: usize, h: EntryHandle) -> Option<String> {
+        let room = self.shape.as_ref().map_or(0, |s| s.program_room);
+        if self.partners(draft).get(i).is_none_or(|p| p.programs.len() >= room) {
+            return Some(String::new());
+        }
+        self.refusal(shell, draft, budgets.get(i).and_then(Option::as_ref), h)
+    }
+
+    /// Tell the UI where a program dragged over partner `i`'s section would go in (`at`), or, where it can't go in, why
+    /// (in the dragged row's place for what it does) and no gap.
+    fn show_program_landing(&self, shell: &Shell, i: usize, at: usize, why: Option<String>) {
+        let ui = shell.ui();
+        ui.global::<PartyView>().set_drag_why(why.clone().unwrap_or_default().into());
+        editor::show_landing(shell, &installed_list(i), if why.is_some() { None } else { Some(at) }, false);
+    }
+
+    /// Nothing shown of where a drag would land.
+    fn show_no_landing(&self, shell: &Shell) {
+        shell.ui().global::<PartyView>().set_drag_why(Default::default());
+        editor::show_drop(shell, None, false);
+    }
+
     /// Everything shown anew.
     fn changed(&mut self, shell: &Shell, draft: &mut Draft) {
+        self.drag_budgets = None;
         let Some(shape) = self.read(draft) else { return };
         let content = draft.content().clone();
         let partners = partners(&content, draft.side(), &shape);
@@ -231,15 +371,8 @@ impl Party {
                     PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)) }
                 })
                 .collect();
-            // A program's row: its name, what it does (the library's), its blocks.
             let table = self.effects_table();
-            let row = |h: EntryHandle, b: Option<&Budget>, said: bool| PartyRow {
-                name: words.names.entry(h).into(),
-                effect: if said { effect_of(words.names, h, &table).into() } else { Default::default() },
-                blocks: b.map_or(0, |b| b.cost_of(&content, h)) as i32,
-                tone: tone(&content, h),
-                ..Default::default()
-            };
+            let row = |h: EntryHandle, b: Option<&Budget>, said: bool| program_row(words, &content, &table, h, b, said);
             let panels: Vec<PartyPanel> = partners
                 .iter()
                 .enumerate()
@@ -279,20 +412,7 @@ impl Party {
                     })
                 })
                 .collect();
-            let target = budget(self.target);
-            let rows: Vec<PartyRow> = self
-                .programs
-                .iter()
-                .map(|&h| {
-                    let mut r = row(h, target.as_ref(), true);
-                    if !partners.is_empty()
-                        && let Some(why) = self.refusal(shell, draft, target.as_ref(), h)
-                    {
-                        r.why = why.into();
-                    }
-                    r
-                })
-                .collect();
+            let rows = self.library_rows(shell, draft, words, !partners.is_empty(), budget(self.target).as_ref());
             (team_rows, panels, rows)
         });
         let target = budget(self.target);
@@ -551,27 +671,12 @@ impl Party {
         }
     }
 
-    /// Where a program dragged to `at` (the UI's `Drag` place) would go: a partner and a place among its programs (over
-    /// its list, before the row under the pointer, or past the last; over its head, at the end). None: over no partner.
+    /// Where a program dragged to `at` (the UI's `Drag` place) would go: the partner whose section it is over (its head
+    /// or its list), and the place among its programs nearest the pointer (over its head, the first). None: over no
+    /// partner.
     fn landing(&self, shell: &Shell, draft: &Draft, at: i32) -> Option<(usize, usize)> {
-        let (x, y) = editor::pointer_at(at);
-        let partners = self.partners(draft);
-        for (i, p) in partners.iter().enumerate() {
-            let n = p.programs.len();
-            if editor::nearest(shell, "target", std::iter::once(i), (x, y), None).is_some() {
-                return Some((i, n));
-            }
-            let registry = shell.nav.registry();
-            let registry = registry.borrow();
-            let Some(view) = registry.view(&installed_list(i)).filter(|v| v.h > 0.0) else { continue };
-            if x < view.x || x > view.right() || y < view.y || y > view.bottom() + 8.0 {
-                continue;
-            }
-            let pitch = view.h / n.max(1) as f32;
-            let row = ((y - view.y + pitch / 2.0) / pitch).floor().max(0.0) as usize;
-            return Some((i, row.min(n)));
-        }
-        None
+        let counts: Vec<usize> = self.partners(draft).iter().map(|p| p.programs.len()).collect();
+        landing_in(&sections(shell, counts.len()), &counts, editor::pointer_at(at))
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -656,38 +761,55 @@ impl Tab for Party {
 
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         let list = shell.ui().global::<nettai_ui::Drag>().get_list().to_string();
-        match id {
-            // A partner's program dragged: over the library, taken out if let go; over a partner (its list or its head),
-            // where it would land; elsewhere, nowhere (it goes back).
-            "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
-            "drag-over" => match self.landing(shell, draft, choice) {
-                Some((i, at)) => {
-                    // (In its own list a program moves to a row there is: its place, not one past the end.)
-                    let n = self.partners(draft).get(i).map_or(0, |p| p.programs.len());
-                    let at = if Some(i) == partner_of_list(&list) { at.min(n.saturating_sub(1)) } else { at };
-                    editor::show_landing(shell, &installed_list(i), Some(at), false);
+        match (id, list.as_str()) {
+            // A partner's program dragged: over the library, taken out if let go; over a partner's section (its head or
+            // its list), that partner is the one marked, and where it would go in there (a gap, those from there on
+            // shifting), or why it can't (no gap); elsewhere, nowhere (it goes back).
+            ("drag-over", _) if editor::over_library(shell, choice) => {
+                shell.ui().global::<PartyView>().set_drag_why(Default::default());
+                editor::show_remove(shell);
+            }
+            ("drag-over", _) => {
+                let (Some(from), Ok(k)) = (partner_of_list(&list), usize::try_from(index)) else { return };
+                match self.landing(shell, draft, choice) {
+                    Some((i, at)) => {
+                        self.retarget(shell, draft, i);
+                        if i == from {
+                            // (In its own list a program moves to a row there is: past those before the place, less itself.)
+                            self.show_program_landing(shell, i, if at > k { at - 1 } else { at }, None);
+                        } else {
+                            let budgets = self.drag_budgets(draft);
+                            let why = self.partners(draft).get(from).and_then(|p| p.programs.get(k)).and_then(|&h| self.why_not(shell, draft, &budgets, i, h));
+                            self.show_program_landing(shell, i, at, why);
+                        }
+                    }
+                    None => self.show_no_landing(shell),
                 }
-                None => editor::show_drop(shell, None, false),
-            },
-            "drag-drop" => {
-                editor::show_drop(shell, None, false);
+            }
+            ("drag-drop", _) => {
+                self.show_no_landing(shell);
                 let (Some(from), Ok(k)) = (partner_of_list(&list), usize::try_from(index)) else { return };
                 if editor::over_library(shell, choice) {
                     self.uninstall(shell, draft, from, k);
                 } else if let Some((into, at)) = self.landing(shell, draft, choice) {
-                    let n = self.partners(draft).get(into).map_or(0, |p| p.programs.len());
-                    let to = if into == from { at.min(n.saturating_sub(1)) } else { at };
+                    let to = if into == from && at > k { at - 1 } else { at };
                     self.shift(shell, draft, from, k, into, to);
                 }
             }
-            // A library's program dragged: where it would go in among a partner's (a gap, those from there on
-            // shifting); let go there, it goes in, refused as Enter's is; anywhere else, nothing.
-            "drag-in-over" if index >= 0 => match self.landing(shell, draft, choice) {
-                Some((i, at)) => editor::show_landing(shell, &installed_list(i), Some(at), false),
-                None => editor::show_drop(shell, None, false),
+            // A library's program dragged: over a partner's section, that partner is the one marked, and where it would
+            // go in among its programs (a gap, those from there on shifting), or why it can't (no gap); let go there, it
+            // goes in, refused as Enter's is; anywhere else, nothing.
+            ("drag-in-over", _) if index >= 0 => match self.landing(shell, draft, choice) {
+                Some((i, at)) => {
+                    self.retarget(shell, draft, i);
+                    let budgets = self.drag_budgets(draft);
+                    let why = self.programs.get(index as usize).and_then(|&h| self.why_not(shell, draft, &budgets, i, h));
+                    self.show_program_landing(shell, i, at, why);
+                }
+                None => self.show_no_landing(shell),
             },
-            "drag-in-drop" => {
-                editor::show_drop(shell, None, false);
+            ("drag-in-drop", _) => {
+                self.show_no_landing(shell);
                 if let (Some((i, at)), Ok(row)) = (self.landing(shell, draft, choice), usize::try_from(index)) {
                     self.install(shell, draft, row, i, at);
                 }
@@ -780,6 +902,49 @@ impl Tab for Party {
 mod tests {
     use super::*;
     use nettai_match::testing::exe5_content;
+
+    /// Two partners laid out as PARTY lays them out (heads 34 tall, rows 30 apart), the first with `a` programs, the
+    /// second with `b`; the first's section a row taller while a program would go into it (`filling`).
+    fn two(a: usize, b: usize, filling: bool) -> Vec<Section> {
+        let section = |top: f32, n: usize, grown: bool| {
+            let list = top + 34.0;
+            let end = list + (n + usize::from(grown)) as f32 * 30.0;
+            Section { x: 0.0, right: 560.0, top, list, bottom: end, first: list, pitch: 30.0 }
+        };
+        let first = section(100.0, a, filling);
+        let mut second = section(first.bottom, b, false);
+        second.bottom += 16.0;
+        vec![first, second]
+    }
+
+    /// A program dragged over the first partner while the second is there lands in the first's list where the pointer
+    /// is (its top, between its rows, its end), never in the other's; over the second's head, at the second's top.
+    #[test]
+    fn a_program_lands_where_the_pointer_is() {
+        let counts = [3, 2];
+        let s = two(3, 2, false);
+        // (Its head: the top; its first row's upper half: before it; between rows 1 and 2: there; its last row's lower
+        // half and past it, up to the second's head: the end.)
+        assert_eq!(landing_in(&s, &counts, (200.0, 110.0)), Some((0, 0)));
+        assert_eq!(landing_in(&s, &counts, (200.0, 134.0 + 10.0)), Some((0, 0)));
+        assert_eq!(landing_in(&s, &counts, (200.0, 134.0 + 58.0)), Some((0, 2)));
+        assert_eq!(landing_in(&s, &counts, (200.0, 134.0 + 80.0)), Some((0, 3)));
+        assert_eq!(landing_in(&s, &counts, (200.0, s[1].top - 1.0)), Some((0, 3)));
+        // (The second's head, and below its last row a little.)
+        assert_eq!(landing_in(&s, &counts, (200.0, s[1].top + 1.0)), Some((1, 0)));
+        assert_eq!(landing_in(&s, &counts, (200.0, s[1].bottom - 1.0)), Some((1, 2)));
+        assert_eq!(landing_in(&s, &counts, (200.0, s[1].bottom + 1.0)), None);
+        assert_eq!(landing_in(&s, &counts, (600.0, 150.0)), None);
+        // (The first grown by the gap at its end: the pointer in the gap is still its end; the second, moved down,
+        // still its own.)
+        let grown = two(3, 2, true);
+        assert_eq!(landing_in(&grown, &counts, (200.0, 134.0 + 3.0 * 30.0 + 20.0)), Some((0, 3)));
+        assert_eq!(landing_in(&grown, &counts, (200.0, grown[1].top + 1.0)), Some((1, 0)));
+        // (An empty first: anywhere in it, the top.)
+        let empty = two(0, 2, false);
+        assert_eq!(landing_in(&empty, &[0, 2], (200.0, 120.0)), Some((0, 0)));
+        assert_eq!(landing_in(&empty, &[0, 2], (200.0, empty[0].bottom - 1.0)), Some((0, 0)));
+    }
 
     /// EXE5's party read from its schema (two partners, each a navi and ten programs of PartyCust's), and a party
     /// written and read back; a partner's list by its name.

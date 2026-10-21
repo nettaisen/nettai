@@ -250,6 +250,13 @@ impl Registry {
         Some(((y - l.view.y + l.scroll) / l.pitch).floor() as i32)
     }
 
+    /// Where list `id`'s first row is in the window, as it is scrolled (above its view where it is scrolled down), and
+    /// its rows' pitch.
+    pub fn first_row(&self, id: &str) -> Option<(f32, f32)> {
+        let l = self.lists.get(id).filter(|l| l.pitch > 0.0)?;
+        Some((l.view.y - l.scroll, l.pitch))
+    }
+
     /// The list's row or the control at `(x, y)` in the window, if there is one there.
     pub fn at(&self, (x, y): (f32, f32)) -> Option<Key> {
         let inside = |r: &Rect| x >= r.x && x < r.right() && y >= r.y && y < r.bottom();
