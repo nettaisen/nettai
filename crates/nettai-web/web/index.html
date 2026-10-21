@@ -8,7 +8,9 @@
 <style>
   :root { color-scheme: dark; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #050916; }
-  canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  /* (touch-action: the app's own: the browser takes no touch on it for its scrolling or zoom, which would cancel the
+     finger's pointer partway through a drag, so a list followed it a little way and stopped.) */
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
   /* The preload screen: the app's own loading screen (loading.slint), laid out as it is, so the app's takes its place
      without a move: the mark 160 high, the name's line 90 high under it, the bar 122 below that line's top, the line
      of words 20 below the bar; the whole centered as the app centers it. */
