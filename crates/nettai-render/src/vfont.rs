@@ -317,7 +317,17 @@ impl VectorFont {
         VectorFont::from_data(Cow::Borrowed(data), name.into())
     }
 
+    /// A font of digits alone (the numbers' fonts: `numbers`), which has no
+    /// letters.
+    pub fn digits_from_bytes(data: &'static [u8], name: &str) -> Result<VectorFont, String> {
+        VectorFont::from_data_having(Cow::Borrowed(data), name.into(), '0', "digits")
+    }
+
     fn from_data(data: Cow<'static, [u8]>, name: String) -> Result<VectorFont, String> {
+        VectorFont::from_data_having(data, name, 'A', "Latin letters")
+    }
+
+    fn from_data_having(data: Cow<'static, [u8]>, name: String, probe: char, what: &str) -> Result<VectorFont, String> {
         let f = FontRef::from_index(&data, 0).ok_or_else(|| format!("{name} is not a TrueType or OpenType font"))?;
         let (offset, key) = (f.offset, f.key);
         let axis = |tag: &[u8; 4]| {
@@ -329,8 +339,8 @@ impl VectorFont {
         let (width, weight) = (axis(b"wdth"), axis(b"wght"));
         let m = f.metrics(&[]);
         let cap = if m.cap_height > 0.0 { m.cap_height / m.units_per_em as f32 } else { 0.7 };
-        if f.charmap().map('A') == 0 {
-            return Err(format!("{name} has no Latin letters"));
+        if f.charmap().map(probe) == 0 {
+            return Err(format!("{name} has no {what}"));
         }
         Ok(VectorFont { data, offset, key, width, weight, cap, name })
     }
@@ -1325,22 +1335,37 @@ impl TextRenderer {
         let widest = f.set.chars().chain(f.glyphs.iter().map(|g| g.0)).filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
         for (&(_, [bx, by, bw, bh]), g) in f.glyphs.iter().zip(&ids) {
             let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&(face, *g)] else { continue };
-            // (One scale for the set: its glyphs' ink the box's height; its
-            // widest no wider than the box, all narrowed alike where it
-            // would be; each centered in its box: a fixed pitch, each glyph
-            // its own shape.)
+            // (One scale down for the set: its glyphs' ink the box's height;
+            // each centered down its box.)
             let scale = bh / tallest.max(1e-3);
-            // (The numbers' run, `numbers::laid`, gives each glyph a box at
-            // least its own ink's width: narrowed by its own ink, never.)
-            let own = if face == crate::numbers::Face::Digits { x1 - x0 } else { widest };
-            let mut narrow = (bw / (own * scale).max(1e-3)).min(1.0);
-            // (A family's sets narrowed alike: the least any needs.)
-            for (chars, width) in &f.family {
-                let widest = chars.chars().filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
-                narrow = narrow.min(width / (widest * scale).max(1e-3));
-            }
-            let (w, h) = ((x1 - x0) * scale * narrow, (y1 - y0) * scale);
-            let (gx, gy) = (bx + (bw - w) / 2.0, by + (bh - h) / 2.0);
+            let h = (y1 - y0) * scale;
+            let gy = by + (bh - h) / 2.0;
+            let (w, gx) = match face.game() {
+                // (A digit font, the game's metrics: a glyph pixel a frame
+                // pixel across, at its place in its face, the box being its
+                // face's; the set's height down: the game's own sets are its
+                // digits stretched, 8 pixels tall or 14 at one width.)
+                Some(m) => {
+                    // (Its ink in texels, made at `RES` to the em: a texel
+                    // is upem / RES font units.)
+                    let across = m.across * face.font().font().metrics(&[]).units_per_em as f32 / RES;
+                    ((x1 - x0) * across, bx - m.inset.0 + x0 * across)
+                }
+                // (The lettering font: across, the same scale, its widest no
+                // wider than the box, all narrowed alike where it would be,
+                // and a family's sets alike (the least any needs); each
+                // centered in its box: a fixed pitch, each glyph its own
+                // shape.)
+                None => {
+                    let mut narrow = (bw / (widest * scale).max(1e-3)).min(1.0);
+                    for (chars, width) in &f.family {
+                        let widest = chars.chars().filter_map(|c| ink(c).map(|i| i.0)).fold(0.0f32, f32::max);
+                        narrow = narrow.min(width / (widest * scale).max(1e-3));
+                    }
+                    let w = (x1 - x0) * scale * narrow;
+                    (w, bx + (bw - w) / 2.0)
+                }
+            };
             let out_left = place.x as f32 + (left + gx) * s;
             let (out_top, out_bottom) = (place.y as f32 + squash(top + gy) * s, place.y as f32 + squash(top + gy + h) * s);
             let sx = w * s / (x1 - x0).max(1e-3);
@@ -1388,7 +1413,7 @@ impl TextRenderer {
     fn number_glyph_ink(&mut self, face: crate::numbers::Face, id: u16) -> Option<(f32, f32)> {
         if !self.number_glyphs.contains_key(&(face, id)) {
             let font = face.font().font();
-            let mut scaler = self.scaler.builder(font).size(RES).variations(face.axes().iter().copied()).build();
+            let mut scaler = self.scaler.builder(font).size(RES).build();
             let glyph = scaler.scale_outline(id).and_then(|o| {
                 let b = o.bounds();
                 Some((Sdf::of_spread(o.points(), o.verbs(), NUMBER_SPREAD)?, [b.min.x, b.min.y, b.max.x, b.max.y]))
