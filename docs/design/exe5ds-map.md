@@ -531,6 +531,17 @@ The rest of the mechanics:
     once the navi isn't guarded;
   - it is not once-only;
   - observed: two M-Cannons, MegaMan at full HP, KnightMan 800 → 680 → 560.
+  - The two states it reads are the engine's by the DS's numbers (navi states `guarded`, 0x400000, and `diving`,
+    0x01000000), set and cleared where the DS does: the guard's start and end (0x020497B6, 0x020497E2), the dive's
+    (ToadMan's action 8: 0x0204A364, 0x0204A574; the GBA's sets neither), ToadMan's entry in the flinch, drag and
+    paralysis hook tables (0x02077B18: the navi's `interrupted`), and the clears that take both: a soul change
+    (0x02060356), a form's reversion and break (0x020605A0, 0x020606AA), and the rescue's start the guard's
+    (0x0200496C). exe5-compat compares them (AIData +0x48's two bits); supports/toadman-dive-guard records the dive's
+    state cut short by a Cannon's flinch, then a guard.
+  - The panel ahead off the field: the DS's `object_getPanelDataOffset` (0x0208C320) gives none for it, and the guard
+    action reads its side unchecked (0x02049794): address 3, in the ITCM (mirrored from 0), whose fourth byte is 0xE9,
+    never a side, so the guard holds. No battle reaches it: the gate (0x02004604) needs the panel ahead on the field,
+    and a guarded navi neither moves nor turns (its hits are swallowed, pushes with them).
 - **NumberMan's DiceBons** (in `sub_801171C`'s counterpart 0x0200634C), when a chip is used:
   - the light test; RNG2 bits 10–13 ≤ 6 (7 in 16);
   - once (+0x13); a link battle or side 0;

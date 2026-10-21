@@ -232,6 +232,7 @@ fn player_hooks(b: &Battle, r: ObjectRef, table: &str) -> (crate::content::Overl
 /// restarts his form overlay (`sub_80F06CE`), HeatMan's his body overlay
 /// (`sub_80F0700`, `sub_80C44D2`).
 fn flinch_hook(b: &mut Battle, r: ObjectRef) {
+    interrupted_hook(b, r);
     let (hooks, own_parts) = player_hooks(b, r, "flinch hook (sub_800F3E8)");
     if hooks.lets_go {
         let_go_overlay(b, r);
@@ -250,6 +251,7 @@ fn flinch_hook(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F404`: the per-form drag hook (`off_80EABF8`: MegaMan's only).
 fn drag_hook(b: &mut Battle, r: ObjectRef) {
+    interrupted_hook(b, r);
     let hooks = player_hooks(b, r, "drag hook (sub_800F404)").0;
     if hooks.lets_go {
         let_go_overlay(b, r);
@@ -262,8 +264,22 @@ fn drag_hook(b: &mut Battle, r: ObjectRef) {
 /// `sub_800F394`: the per-form paralysis hook. EXE6's table has none;
 /// EXE5's (0x080EB308) has KnightMan's.
 fn paralysis_hook(b: &mut Battle, r: ObjectRef) {
+    interrupted_hook(b, r);
     if player_hooks(b, r, "paralysis hook (sub_800F394)").0.lets_go {
         let_go_overlay(b, r);
+    }
+}
+
+/// The navi's own entry in the flinch, drag and paralysis hook tables (by
+/// AI index, as the overlay's by actor record: a navi has one or the
+/// other), its `interrupted`: EXE5 DS's ToadMan's, 0x02077B18.
+fn interrupted_hook(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).actor_type != crate::actor::ActorType::Player {
+        return;
+    }
+    let navi = super::stats(b, r).navi;
+    if let Some(f) = b.content.defs.navi(navi).interrupted {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
 }
 

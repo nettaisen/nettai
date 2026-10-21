@@ -91,6 +91,9 @@ local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
     me.sprite.white = true
     if me.step_init == 0 then
         me:set_navi_state("form_change_sprite_held", false)
+        -- (EXE5 DS's the guard's and the dive's states too, 0x02060356.)
+        me:set_navi_state("guarded", false)
+        me:set_navi_state("diving", false)
         me.related1 = nil
         me.overlay = nil
         local stats = battle.navi(me.alliance)

@@ -193,6 +193,10 @@ pub struct NaviDef {
     /// 0x0210A71C), after the tail clears the dive bit: MegaMan's is his
     /// status reset (the engine's), EXE5's ToadMan's his dive again.
     pub reset: Option<FnId>,
+    /// `interrupted(navi)`: its entry in the flinch, drag and paralysis
+    /// hook tables (`sub_800F3E8`, `sub_800F404`, `sub_800F394` by AI
+    /// index): EXE5 DS's ToadMan's (0x02077B18) ends his dive's state.
+    pub interrupted: Option<FnId>,
     /// Its functions of its side, which the round's setup asks for the side
     /// it is the navi of (`Battle::given`).
     pub given: NaviGivenFns,
@@ -1592,6 +1596,7 @@ impl Defs {
             };
             let (tick, idle, post_init, reset, fire_charge) =
                 (hook("tick")?, hook("idle")?, hook("post_init")?, hook("reset")?, hook("fire_charge")?);
+            let interrupted = hook("interrupted")?;
             if record.forms.is_some() && tick.is_some() {
                 return Err(what(d, "a navi that changes form has no `tick` of its own: its forms' `tick` run".into()));
             }
@@ -1611,7 +1616,7 @@ impl Defs {
                 },
                 fire_charge,
             };
-            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init, reset, given });
+            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init, reset, interrupted, given });
         }
         // (A round's record of the link navis' chips used is 32 bits.)
         if navis.len() > 32 {
