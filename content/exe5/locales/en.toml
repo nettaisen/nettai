@@ -457,7 +457,6 @@ language = "en"
 "fish" = { name = "Fish", description = "Attracts\nAqua\nViruses!" }
 "flotshoe" = { name = "FlotShoe", description = "No effct\nfrom\npnl type" }
 "fstbarr" = { name = "FstBarr", description = "Start\nwith\nBarrier" }
-"gigavirs" = { name = "GigaVirs", description = "GigaVirs" }
 "gigfldr1" = { name = "GigFldr1", description = "GigaChip\n+1" }
 "hp-100" = { name = "HP+100", description = "Max HP\n+100!" }
 "hp-200" = { name = "HP+200", description = "Max HP\n+200!" }
@@ -468,7 +467,6 @@ language = "en"
 "hubbatc" = { name = "HubBatc", description = "Maximize\nyour\nability" }
 "humor" = { name = "Humor", description = "Install\nand try\nL Btn" }
 "jungle" = { name = "Jungle", description = "Attracts\nWood\nViruses!" }
-"megavirs" = { name = "MegaVirs", description = "MegaVirs" }
 "megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
 "megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
 "millions" = { name = "Millions", description = "Gn mstry\ndata =\nZennys" }

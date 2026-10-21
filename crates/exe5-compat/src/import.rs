@@ -187,6 +187,9 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
             Ok(programs) => state(side, "navicust_programs", &programs),
             Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
         }
+        for key in crate::codec::navicust_dropped(compat, save.navicust_list()) {
+            notes.push(format!("the save's NaviCust holds {key}, which {game} hasn't (its effects are all outside battle): it is left out"));
+        }
         match crate::codec::patch_cards(content, compat, &save.patch_cards(), save.version()) {
             Ok(cards) => state(side, "patch_cards", &cards),
             Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
@@ -281,6 +284,33 @@ fn team_navi(content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
 mod tests {
     use super::*;
     use nettai_match::testing::exe5_content;
+
+    /// A save's NaviCust with MegaVirs (a program nettai doesn't have,
+    /// compat's `not_in_nettai`) beside Rush: the import keeps Rush, leaves
+    /// MegaVirs out, and says so.
+    #[test]
+    fn a_saves_program_nettai_lacks_is_left_out_and_said() {
+        let content = exe5_content();
+        let compat = crate::Compat::exe5();
+        let mut list = vec![0u8; crate::save::NAVICUST_PARTS * 8];
+        // (MegaVirs green, part id 33 x 4 + 1; Rush yellow, 30 x 4 + 2.)
+        list[..8].copy_from_slice(&[0x85, 0, 1, 2, 0, 0, 0, 0]);
+        list[8..16].copy_from_slice(&[0x7A, 0, 3, 2, 0, 0, 0, 0]);
+        assert_eq!(compat.navicust_part(0x85).unwrap(), None);
+        assert_eq!(compat.navicust_dropped(0x85), Some("megavirs"));
+        assert_eq!(crate::codec::navicust_dropped(compat, &list), vec!["megavirs"]);
+        assert_eq!(crate::codec::navicust(&content, compat, &list, |_| false).unwrap().len(), 1);
+        let mut image = vec![0u8; crate::save::IMAGE_SIZE];
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
+        image[0x554C..0x554C + 0xE0].fill(0xFF);
+        image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
+        image[0x3DB0 + 0x61] = 2;
+        image[0x4D6C..0x4D6C + list.len()].copy_from_slice(&list);
+        let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
+        let notes = import_file(&content, &mut m, 0, &image).unwrap();
+        assert!(notes.iter().any(|n| n.contains("megavirs") && n.contains("left out")), "{notes:?}");
+        assert!(!notes.iter().any(|n| n.contains("NaviCust is left out")), "{notes:?}");
+    }
 
     /// A Team ProtoMan save, dark, with every soul flag set and one
     /// ExpMemry: its karma, its version's souls EXE5 has (ProtoSoul among

@@ -73,8 +73,8 @@ end
 -- What the program does outside battle, to a stat no netbattle reads (the engine doesn't keep it): SneakRun (+0x1E =
 -- 1), OilBody, Fish, Battery, Jungle (+0x27 = 2, 4, 8, 0x10), Millions (+0x33 = 1), Humor (+0x25 = 1); EXE6's Poem
 -- (+0x5F = 1), SlipRunr (+0x35 = 1), AutoHeal (+0x36 = 1); EXE5's Chivalry (+0x34 = 1), AutoRun (+0x35 = 1), AutoHeal
--- (+0x36 = 1), SoulClen (+0x20 = 1, which the light/dark value's change after a battle reads), MegaVirs and GigaVirs
--- (+0x37, +0x38 = 1), HubBatc's own part (event flag 0x10B1).
+-- (+0x36 = 1), SoulClen (+0x20 = 1, which the light/dark value's change after a battle reads), HubBatc's own part
+-- (event flag 0x10B1). (EXE5's MegaVirs and GigaVirs, +0x37 and +0x38, nettai doesn't have.)
 function effects.outside(what: string): Effect
     return effect({ kind = "outside", what = what })
 end
