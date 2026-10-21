@@ -189,6 +189,9 @@ export type DoubleAttackActor = {
 -- the customizer's lists group them by), and its effects in the order its apply case does them.
 export type PartyCustProgram = {
     cost: number,
+    -- Its color, a NaviCust program's (the customizer's gauge colors a program's blocks by its kind: HP red, attack
+    -- yellow, chip attack blue, the rest white; the verification workspace's tools/exe5ds/party_colors.py).
+    color: "white" | "pink" | "yellow" | "red" | "blue" | "green",
     kind: "hp" | "attack" | "chip_attack" | "special",
     effects: { PartyCustEffect },
 }

@@ -34,6 +34,9 @@ use slint::{ComponentHandle, ModelRc, VecModel};
 /// The setup field of the party.
 pub const FIELD: &str = "party";
 
+/// The field of a program's definition that names its color.
+const COLOR: &str = "color";
+
 /// The party's shape, as the setup's schema says it.
 #[derive(Clone)]
 struct Shape {
@@ -69,6 +72,15 @@ impl Shape {
 struct Partner {
     navi: Option<NaviHandle>,
     programs: Vec<EntryHandle>,
+}
+
+/// Program `h`'s color as a NaviCust program's is drawn (its definition's `color`, a name of the NaviCust's colors:
+/// `crate::builds::grid::PALETTE`).
+fn tone(content: &Content, h: EntryHandle) -> slint::Color {
+    let key = &content.defs.entry(h).key;
+    let name = content.defs.definitions.get(Registry::Entry, key).and_then(|d| d.spec.field(COLOR).str().map(str::to_string));
+    let c = crate::builds::grid::rgb(name.as_deref());
+    slint::Color::from_rgb_u8((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
 
 /// The build's partners, in order.
@@ -244,9 +256,16 @@ impl Party {
                     Line::Partner(i) => {
                         let p = &partners[i];
                         let budget = budgets.get(i).cloned().flatten();
+                        // (Each block its program's color, the programs in their order.)
+                        let tones: Vec<slint::Color> = p
+                            .programs
+                            .iter()
+                            .flat_map(|&h| std::iter::repeat_n(tone(&content, h), budget.as_ref().map_or(0, |b| b.cost_of(&content, h)) as usize))
+                            .collect();
                         PartyLine {
                             partner: true,
                             there: true,
+                            tones: ModelRc::new(VecModel::from(tones)),
                             face: p.navi.map(|n| pictures.navi(n)).unwrap_or_default(),
                             name: p.navi.map(|n| words.names.navi(n)).unwrap_or_default().into(),
                             blocks: budget.as_ref().map_or(0, |b| b.count.used as i32),
@@ -258,7 +277,7 @@ impl Party {
                     Line::Program(i, k) => {
                         let h = partners[i].programs[k];
                         let cost = budgets.get(i).cloned().flatten().map_or(0, |b| b.cost_of(&content, h));
-                        PartyLine { there: true, name: words.names.entry(h).into(), blocks: cost as i32, ..Default::default() }
+                        PartyLine { there: true, name: words.names.entry(h).into(), blocks: cost as i32, tones: ModelRc::new(VecModel::from(vec![tone(&content, h); cost as usize])), ..Default::default() }
                     }
                     Line::AddProgram(_) => PartyLine::default(),
                     Line::AddPartner => PartyLine { partner: true, ..Default::default() },
@@ -309,7 +328,7 @@ impl Party {
                 self.programs
                     .iter()
                     .map(|&h| {
-                        let mut row = PartyRow { name: words.names.entry(h).into(), ..Default::default() };
+                        let mut row = PartyRow { name: words.names.entry(h).into(), tone: tone(content, h), ..Default::default() };
                         if let Some(b) = &budget {
                             row.blocks = b.cost_of(content, h) as i32;
                             if let Some(EntryRefusal::Needs { needs, .. }) = b.refusal(content, draft.side(), h) {
@@ -363,6 +382,7 @@ impl Party {
                 there: true,
                 name: words.names.entry(h).into(),
                 blocks: cost as i32,
+                tone: tone(&content, h),
                 facts: if budget.is_some() { view.invoke_blocks_word(cost as i32) } else { Default::default() },
                 text: words.names.description(h).map(|d| crate::games::one_line(&d)).unwrap_or_default().into(),
                 ..Default::default()

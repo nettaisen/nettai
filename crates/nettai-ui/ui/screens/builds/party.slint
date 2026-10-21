@@ -24,6 +24,8 @@ export struct PartyLine {
     face: image,
     name: string,
     blocks: int,
+    // Each filled block's color, its program's (a NaviCust program's colors: `crate::builds::grid::PALETTE`).
+    tones: [color],
     gauge: int,
     note: string,
     bad: bool,
@@ -35,6 +37,7 @@ export struct PartyRow {
     face: image,
     name: string,
     blocks: int,
+    tone: color,
     note: string,
     refused: bool,
     bad: bool,
@@ -48,6 +51,7 @@ export struct PartyDetail {
     face: image,
     name: string,
     blocks: int,
+    tone: color,
     facts: string,
     text: string,
     problem: string,
@@ -100,10 +104,13 @@ export global PartyView {
     }
 }
 
-// A gauge of `count` blocks, the first `filled` filled (past the count: all, in the error red).
+// A gauge of `count` blocks, the first `filled` filled, each in its program's color (`tones`, else `tone`; past the
+// count: all in the error red).
 component Blocks inherits Rectangle {
     in property <int> count;
     in property <int> filled;
+    in property <[color]> tones;
+    in property <color> tone: Theme.cursor;
     width: root.count * 10px;
     height: 10px;
     for i in root.count: Rectangle {
@@ -111,7 +118,7 @@ component Blocks inherits Rectangle {
         y: 0;
         width: 8px;
         height: root.height;
-        background: root.filled > root.count ? Theme.bad : i < root.filled ? Theme.cursor : Theme.inset;
+        background: root.filled > root.count ? Theme.bad : i < root.filled ? (i < root.tones.length ? root.tones[i] : root.tone) : Theme.inset;
         border-width: 1px;
         border-color: Theme.line;
     }
@@ -167,6 +174,7 @@ component LineView inherits Rectangle {
         visible: root.line.there;
         count: root.line.partner ? root.line.gauge : root.line.blocks;
         filled: root.line.blocks;
+        tones: root.line.tones;
     }
 
     // (A partner's HP over its gauge, and the blocks it fills of it at the right.)
@@ -265,6 +273,7 @@ component RowView inherits Rectangle {
         y: (parent.height - self.height) / 2;
         count: root.face ? 0 : root.row-data.blocks;
         filled: root.row-data.blocks;
+        tone: root.row-data.tone;
     }
 
     touch := RowTouch {
@@ -357,6 +366,7 @@ export component PartyTab inherits Rectangle {
             visible: !Theme.phone && PartyView.detail.blocks > 0;
             count: PartyView.detail.blocks;
             filled: PartyView.detail.blocks;
+            tone: PartyView.detail.tone;
         }
 
         Text {

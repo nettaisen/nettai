@@ -1579,7 +1579,7 @@ names neither field. The strip describes the partner or the program under the cu
 HP as the round starts it, `Checked::members`, and its gauge; a program's blocks and the game's words for it), with what
 the build's problems have against the partner at its top right. Framed under it, the party's lines: each partner (its
 face, name, HP and its gauge of blocks, the blocks its programs fill), its programs under it (each its blocks) and a
-place for one more, then a place for another partner. Beside it the library holds what the line being filled takes: the
+place for one more; each block in its program's color, a NaviCust program's color as the NaviCust tab draws it (the program's definition's `color`: the user, "use the colors you use for navicust"), then a place for another partner. Beside it the library holds what the line being filled takes: the
 navis a side can play but the build's own (each with its version's mark; "In the party", or "Not allowed" where the
 build's ruleset holds it back) for a partner's line, the game's PartyCust programs (each its blocks, or "Needs n blocks"
 where the gauge hasn't the room) for a program's. Enter on a line goes to the library (a phone's sheet), Enter on a navi
