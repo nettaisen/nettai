@@ -2006,7 +2006,7 @@ fn lettered_banner(
                 return None;
             }
             let set = crate::lookups::letters(hud.letters.banner_digits.as_ref(), || "the banners' digits".into(), problems)?;
-            let set = crate::numbers::NumberSet::of(set, pal);
+            let set = crate::numbers::NumberSet::of(set, pal).in_font(crate::numbers::Face::BannerDigits);
             // (The words and the number one run, the lettering's word space
             // between them, centered where the picture's words and number
             // are: from the first word's letters to the last's.)
