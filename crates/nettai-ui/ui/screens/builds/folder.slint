@@ -631,7 +631,7 @@ export component FolderTab inherits Rectangle {
         HorizontalLayout {
             x: 120px;
             y: root.top + 19px;
-            width: max(0px, parent.width / 2 - 120px - 8px);
+            width: max(0px, root.width / 2 - 120px - 8px);
             height: 20px;
             visible: !Theme.phone;
             spacing: 6px;
@@ -659,9 +659,9 @@ export component FolderTab inherits Rectangle {
         // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal; else what the rules have
         // against it.)
         Refusal {
-            x: parent.width / 2;
+            x: root.width / 2;
             y: root.top + 19px;
-            width: parent.width / 2 - 16px;
+            width: root.width / 2 - 16px;
             visible: !Theme.phone;
             text: FolderView.detail.problem;
             problem: FolderView.detail.fault;

@@ -349,7 +349,7 @@ export component AutoBattleTab inherits Rectangle {
         Text {
             x: 120px;
             y: root.top + 19px;
-            width: parent.width / 2 - 120px;
+            width: root.width / 2 - 120px;
             height: 20px;
             visible: !Theme.phone;
             text: AutoBattleView.detail.name;
@@ -364,9 +364,9 @@ export component AutoBattleTab inherits Rectangle {
         // (Why what was asked of the place under the cursor wasn't done: the strip's refusal; else what the rules have
         // against it.)
         Refusal {
-            x: parent.width / 2;
+            x: root.width / 2;
             y: root.top + 19px;
-            width: parent.width / 2 - 16px;
+            width: root.width / 2 - 16px;
             visible: !Theme.phone;
             text: AutoBattleView.detail.problem;
             problem: AutoBattleView.detail.fault;

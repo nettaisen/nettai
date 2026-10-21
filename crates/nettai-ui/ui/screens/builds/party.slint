@@ -364,7 +364,7 @@ export component PartyTab inherits Rectangle {
         Text {
             x: 104px;
             y: root.top + 19px;
-            width: parent.width / 2 - 104px;
+            width: root.width / 2 - 104px;
             height: 20px;
             visible: !Theme.phone;
             text: PartyView.detail.name;
@@ -377,9 +377,9 @@ export component PartyTab inherits Rectangle {
         }
 
         Refusal {
-            x: parent.width / 2;
+            x: root.width / 2;
             y: root.top + 19px;
-            width: parent.width / 2 - 16px;
+            width: root.width / 2 - 16px;
             visible: !Theme.phone;
             text: PartyView.detail.problem;
             problem: PartyView.detail.fault;
