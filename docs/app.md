@@ -1578,21 +1578,23 @@ more tabs past it fades.
 exe5ds-map.md §4, §11): in a game whose setup takes `party`, the navi's partners, each with its PartyCust programs. Its
 form is the setup's schema's: the field is a list of records, each with a field naming a navi and a list of a
 collection's entries (the programs), whose rooms are the most partners and the most programs a partner holds; the tab
-names neither field. The strip describes the partner or the program under the cursor or the pointer (a navi's face, its
-HP as the round starts it, `Checked::members`, and its gauge; a program's blocks and the game's words for it), with what
-the build's problems have against the partner at its top right. Framed under it, the party's lines: each partner (its
-face, name, HP and its gauge of blocks, the blocks its programs fill), its programs under it (each its blocks) and a
-place for one more; each block in its program's color, a NaviCust program's color as the NaviCust tab draws it (the program's definition's `color`: the user, "use the colors you use for navicust"), then a place for another partner. Beside it the library holds what the line being filled takes: the
-navis a side can play but the build's own (each with its version's mark; "In the party", or "Not allowed" where the
-build's ruleset holds it back) for a partner's line, the game's PartyCust programs (each its blocks, or "Needs n blocks"
-where the gauge hasn't the room) for a program's. Enter on a line goes to the library (a phone's sheet), Enter on a navi
-makes it the partner (on the partner's own navi, takes it out; another partner's is refused), Enter on a program puts it
-at the end of the partner's (one may be in twice: the rules hold them to the gauge alone), Del takes out what a line
-holds, CLEAR (X) every partner, asked first. The gauge and a program's cost are the rules' overview's (a list budget of
-the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's problems in their
-typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A party is the game's
-own navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have no party, and the DS's
-save format isn't read.
+names neither field. The layout is the user's (a tree of partners and programs with one library for both was
+"confusing"): two partner cards across the top, always there (each its face, name, HP with its programs' bonus,
+`Checked::members`, and its gauge with the blocks used of it; an empty one "Add a partner"); the card focused is the
+partner whose PartyCust is below it: a header with its name and its gauge drawn large, then INSTALLED (framed: its
+programs, each with its blocks) and PROGRAMS beside it (the library, open: each with its blocks and its cost, one that
+won't fit greyed with "Needs n blocks"). The strip across the top describes what is under the cursor or the pointer.
+Enter on a card opens the navis to pick from (`Shell::pick_marked`, a phone's sheet: the partner's own checked, the
+other partner's and one the build's ruleset holds back dimmed with why, REMOVE under them); Enter in PROGRAMS installs
+at the end of the partner's (one may be in twice: the rules hold them to the gauge alone); Enter or Del in INSTALLED
+takes out; Del on a card takes the partner out; CLEAR (X) every partner, asked first. Each block is in its program's
+color, a NaviCust program's color as the NaviCust tab draws it (the program's definition's `color`: the user, "use the
+colors you use for navicust"). On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a
+PROGRAMS button that opens the library as a sheet. The gauge and a program's cost are the rules' overview's (a list
+budget of the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's
+problems in their typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A
+party is the game's own navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have
+no party, and the DS's save format isn't read.
 
 **The Folder tab's header** has the folder's counts beside its title where the language's words leave them the
 room, and on a line of their own under it where they don't (the header keeps its height; which it is depends
