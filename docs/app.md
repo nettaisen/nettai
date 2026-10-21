@@ -1614,7 +1614,8 @@ from the library into a partner's list, in a list to another place or into the o
 take it out. Over a partner's section (its head or its rows) that partner is the marked one, its head lit, and a gap
 opens at the place in its list nearest the pointer (over its head, the top), the section a row taller; where the
 program can't go in there, the dragged row says why in the error red ("Needs 3 blocks") and no gap opens, and let go it
-is refused as Enter is. The
+is refused as Enter is. A partner's head is dragged onto another's section (or above the first, below the last) to take
+its place, its programs with it, a gap over the other's head; a chip in the party onto another's to trade places. The
 gauges are drawn as the NaviCust tab draws its board: a block flat in its program's color (a NaviCust program's color,
 the program's definition's `color`: the user, "use the colors you use for navicust"), a line between programs, the
 empty blocks outlined slots, the gauge in a column of its own (ten slots wide, its used and total as wide as "10/10")
