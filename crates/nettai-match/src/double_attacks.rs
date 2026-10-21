@@ -42,13 +42,16 @@ fn round_match(content: &Arc<Content>) -> Match {
     crate::parse(content, &text).unwrap_or_else(|p| panic!("{p:?}"))
 }
 
-/// A round of MegaMan (side 0, with `partner` in his party) against MegaMan,
-/// both pressing through their custom screens until the fight runs.
-fn fighting(content: &Arc<Content>, partner: &str) -> Battle {
+/// A round of MegaMan (side 0, with `partners` in his party, members 1 and
+/// 2) against MegaMan, both pressing through their custom screens until the
+/// fight runs.
+fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
     let m = round_match(content);
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
-    let navi = crate::ids::navi(content, "exe5", partner).unwrap();
-    b.party[0].join(NaviStats::fresh(navi, content).expect("the partner's fresh stats"));
+    for partner in partners {
+        let navi = crate::ids::navi(content, "exe5", partner).unwrap();
+        b.party[0].join(NaviStats::fresh(navi, content).expect("the partner's fresh stats"));
+    }
     let mut last = [0u16; 2];
     for _ in 0..3000 {
         if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
@@ -74,8 +77,10 @@ fn hp(b: &Battle, side: u8) -> u16 {
 }
 
 /// Side 0 asks to switch to `member` on one tick, then `ticks` of nothing;
-/// the most directors of `key` seen at once, and of its actors.
-fn switch(b: &mut Battle, member: u8, ticks: usize, key: &str) -> (usize, usize) {
+/// the most directors of Double Attack `key` seen at once, and of its
+/// actors. (`mood` first: the outgoing navi's, 0xFF Full Synchro.)
+fn switch(b: &mut Battle, member: u8, mood: u8, ticks: usize, key: &str) -> (usize, usize) {
+    b.stats[0].mood = mood;
     let ask = PlayerTick { switch_to: Some(member), ..Default::default() };
     b.tick(&[ask, Default::default()], Default::default());
     let (mut directors, mut actors) = (0, 0);
@@ -95,17 +100,15 @@ fn switch(b: &mut Battle, member: u8, ticks: usize, key: &str) -> (usize, usize)
 #[test]
 fn d_hero_fires_from_full_synchro() {
     let content = exe5_content();
-    let mut b = fighting(&content, "protoman");
-    b.stats[0].mood = 0xFF;
+    let mut b = fighting(&content, &["protoman"]);
     let before = hp(&b, 1);
-    let (directors, actors) = switch(&mut b, 1, 600, "d-hero");
+    let (directors, actors) = switch(&mut b, 1, 0xFF, 600, "d-hero");
     assert_eq!((directors, actors), (1, 2), "one director, two actors");
     assert_eq!(count(&b, "d-hero/director") + count(&b, "d-hero/actor"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 7 * 40, "seven volleys of 40");
     assert!(!b.is_dimmed(), "the dimming is over");
     // Back to MegaMan out of ProtoMan's Full Synchro: spent for the round.
-    b.stats[0].mood = 0xFF;
-    let (directors, _) = switch(&mut b, 0, 200, "d-hero");
+    let (directors, _) = switch(&mut b, 0, 0xFF, 200, "d-hero");
     assert_eq!(directors, 0, "once a round");
 }
 
@@ -113,8 +116,9 @@ fn d_hero_fires_from_full_synchro() {
 #[test]
 fn d_hero_needs_full_synchro() {
     let content = exe5_content();
-    let mut b = fighting(&content, "protoman");
-    b.stats[0].mood = 0x80;
-    let (directors, _) = switch(&mut b, 1, 200, "d-hero");
+    let mut b = fighting(&content, &["protoman"]);
+    let (directors, _) = switch(&mut b, 1, 0x80, 200, "d-hero");
     assert_eq!(directors, 0);
 }
+
+// ---- Each Double Attack's own (in the DS's order) ----------------------------------------
