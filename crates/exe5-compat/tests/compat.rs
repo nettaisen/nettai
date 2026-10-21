@@ -131,7 +131,7 @@ fn a_rounds_setup_names_what_the_content_lacks() {
         "00".repeat(0xF0)
     );
     let Line::Setup(setup) = trace::parse_line(&line).unwrap() else { panic!("a setup line") };
-    let round = trace::Round { setup: *setup, exchanges: Vec::new(), frames: Vec::new() };
+    let round = trace::Round { setup: *setup, exchanges: Vec::new(), frames: Vec::new(), parties: Vec::new() };
     assert_eq!(round.chip_ids().unwrap(), [0x001]);
     let content = std::sync::Arc::new(nettai_battle::content::testing::build());
     let needs = round.needs(&content, Compat::exe5()).unwrap();

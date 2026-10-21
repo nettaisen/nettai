@@ -7,7 +7,10 @@
 --
 -- Its spawner leaves registers in its panel and position (see `spawn`); its first update after its init overwrites
 -- both, and its Z isn't modeled, so its position is declared scratch. Each game makes its kind with
--- `blade.make_kind(id, look)` (EXE6's chips/moonbld/blade, EXE5's chips/moonbld).
+-- `blade.make_kind(id, look)` (EXE6's chips/moonbld/blade, EXE5's chips/moonbld). The DS's (EXE5 DS's #0x69, 0x02210680,
+-- as its Double Attack E-SAPPOU spawns it: a look's `ds`) sweeps on its first tick too (its init, 0x02210694, ends in
+-- its tick) and its hits resolve while dimmed (its sweep, 0x0221070C, by its third parameter, which E-SAPPOU's
+-- spawner sets).
 
 local regions = require("../regions")
 
@@ -49,7 +52,7 @@ local function sweep(me: Object, look: MoonBladeLook, i: number)
     local x, y = me.panel_x + d[1] * me.facing, me.panel_y + d[2]
     field.highlight(x, y)
     local plain = (me.state :: State).plain
-    battle.hitbox(me, {
+    local h = battle.hitbox(me, {
         panel_x = x,
         panel_y = y,
         element = me.element,
@@ -64,6 +67,9 @@ local function sweep(me: Object, look: MoonBladeLook, i: number)
         bug = if plain then 0 else BUG,
         bug_arg = if plain then 0 else BUG_ARG,
     })
+    if h and look.ds then
+        h.run_while_dimmed = true
+    end
 end
 
 -- `sub_80D5C9A`: on the owner; a panel a tick for 8 ticks; gone after 10.
@@ -94,6 +100,9 @@ local function init(me: Object, look: MoonBladeLook)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
     me:set_lifecycle("update")
+    if look.ds then
+        tick(me, look)
+    end
 end
 
 -- A game's blade kind `id`, of `look`.
