@@ -71,3 +71,34 @@ msgstr "読み込む"
 # What the system's file dialogs ask for.
 msgid "Ruleset files"
 msgstr "ルールファイル"
+
+# A paired category's page (the Party page: its navis, and their programs, every navi's and each one's own): how much
+# it allows and how many programs it holds back (in the categories' list, and in its head); a navi's own bans; the row
+# of every navi; the programs' title; a program every navi's ban holds back.
+msgid "{} of {} navis"
+msgstr "ナビ {}/{} 使用可"
+
+msgid "{} of {} navis, {n} program ban"
+msgid_plural "{} of {} navis, {n} program bans"
+msgstr[0] "ナビ {}/{} 使用可、プログラム使用不可 {n}"
+msgstr[1] "ナビ {}/{} 使用可、プログラム使用不可 {n}"
+
+msgid "{} of {} allowed, {n} program ban"
+msgid_plural "{} of {} allowed, {n} program bans"
+msgstr[0] "{}/{} 使用可、プログラム使用不可 {n}"
+msgstr[1] "{}/{} 使用可、プログラム使用不可 {n}"
+
+msgid "{} banned"
+msgstr "{} 使用不可"
+
+msgid "All navis"
+msgstr "すべてのナビ"
+
+msgid "Programs for all navis"
+msgstr "すべてのナビのプログラム"
+
+msgid "{}'s programs"
+msgstr "{}のプログラム"
+
+msgid "Banned for all navis"
+msgstr "すべてのナビで使用不可"

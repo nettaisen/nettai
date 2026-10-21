@@ -28,7 +28,12 @@
 //!   ruleset of one version per build holds every build to one group.
 //! - **A ruleset** ([`Ruleset`]): what it doesn't name is allowed, so a
 //!   definition the game gains later is allowed by every ruleset until one
-//!   holds it back. As text (a file, the lobby's wire) it names its items by
+//!   holds it back. A category over a field of a list's records may be held
+//!   back per record too, by a field of the record ([`Category::by`]: EXE5's
+//!   partners' PartyCust programs, by each partner's navi): an item is then
+//!   refused where it is held back for every record or for the record's own
+//!   key (a union), and allowing it for every record leaves a record's own
+//!   ban standing. As text (a file, the lobby's wire) it names its items by
 //!   their names in the game, a variant after its definition's
 //!   (`bass-cross-megaman/gregar`: [`Ruleset::banned_names`],
 //!   [`Ruleset::of_names`]).
@@ -105,9 +110,28 @@ pub struct Category {
     /// chips a folder lists (and the game's chips of the classes the category
     /// names besides: the Program Advances EXE4's and EXE5's auto battle data
     /// holds, which no folder does), the forms the fact offers, else the registry's
-    /// definitions of the game; a definition with variants, where the fact's
-    /// record chooses one, each of its variants in its place.
+    /// definitions of the game (those whose data states the field the
+    /// category names in `having`: EXE5's team navis' `party`, the navis a
+    /// party can hold); a definition with variants, where the fact's record
+    /// chooses one, each of its variants in its place.
     pub items: Vec<Item>,
+    /// Of a category over a field of a list's records (a path, `outer.inner`):
+    /// the field of the outer list's records that keys its bans per record
+    /// (EXE5's `party.programs`, by each partner's `navi`), as a ruleset holds
+    /// them back for one record's key besides for every record.
+    pub by: Option<By>,
+    /// The category whose page shows this one's (EXE5's party's): a page
+    /// lists no row of its own for it.
+    pub within: Option<String>,
+}
+
+/// The field a category's bans are kept by per record ([`Category::by`]):
+/// its name, and the definitions it names (a navi).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct By {
+    pub field: String,
+    pub registry: Registry,
+    pub of: Option<String>,
 }
 
 impl Category {
@@ -178,6 +202,20 @@ pub struct Ruleset {
     /// may be played.
     pub one_per_build: bool,
     banned: BTreeMap<String, BTreeSet<Item>>,
+    /// Of a category kept by a record's field ([`Category::by`]), what it
+    /// holds back for the records of each key besides what it holds back for
+    /// all. None empty.
+    banned_by: BTreeMap<String, KeyedBans>,
+}
+
+/// What a ruleset holds back of a category per record's key
+/// ([`Category::by`]): the registries of its keys and of its items, and each
+/// key's items.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct KeyedBans {
+    keys: Registry,
+    items: Registry,
+    of: BTreeMap<u16, BTreeSet<Item>>,
 }
 
 /// What a game says of its rulesets (its rules/rulesets module's data) and
@@ -239,6 +277,20 @@ pub fn definitions_of(content: &Content, fact: &str) -> Option<(Registry, Option
             let one = named.next()?;
             named.next().is_none().then_some(one)
         }
+        _ => None,
+    }
+}
+
+/// The field `field` of the records of the list a path category `fact`
+/// (`outer.inner`) is over, where it names definitions: what keeps the
+/// category's bans per record ([`Category::by`]).
+fn by_field(content: &Content, fact: &str, field: &str) -> Option<By> {
+    let (outer, _) = fact.split_once('.')?;
+    let list = facts::field(content, outer)?;
+    let (FieldType::List(e, _) | FieldType::Array(e, _)) = list.ty else { return None };
+    let FieldType::Record(fields) = &**e else { return None };
+    match &fields.field(fields.index_of(field)?).ty {
+        FieldType::Ref(registry, of) => Some(By { field: field.to_string(), registry: *registry, of: of.clone() }),
         _ => None,
     }
 }
@@ -357,13 +409,13 @@ fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, reg
 impl Ruleset {
     /// A ruleset that allows everything, named `name`, versions mixed.
     pub fn open(name: Name) -> Ruleset {
-        Ruleset { name, one_per_build: false, banned: BTreeMap::new() }
+        Ruleset { name, one_per_build: false, banned: BTreeMap::new(), banned_by: BTreeMap::new() }
     }
 
     /// Whether it allows what `other` does: the same Versions and the same
     /// items held back, whatever either is named.
     pub fn same_rules(&self, other: &Ruleset) -> bool {
-        self.one_per_build == other.one_per_build && self.banned == other.banned
+        self.one_per_build == other.one_per_build && self.banned == other.banned && self.banned_by == other.banned_by
     }
 
     /// Whether it allows item `item` of category `fact`.
@@ -384,7 +436,50 @@ impl Ruleset {
 
     /// Whether it holds anything back.
     pub fn bans_anything(&self) -> bool {
-        !self.banned.is_empty()
+        !self.banned.is_empty() || !self.banned_by.is_empty()
+    }
+
+    /// Whether it allows item `item` of category `fact` in a record of key
+    /// `key` (a [`Category::by`] category's: a partner's navi): neither held
+    /// back for every record nor for that key's.
+    pub fn allows_for(&self, fact: &str, key: u16, item: &Item) -> bool {
+        self.allows_item(fact, item) && !self.banned_for(fact, key).any(|i| i == item)
+    }
+
+    /// The items of category `fact` it holds back for the records of key
+    /// `key` alone (besides what it holds back for all), in order.
+    pub fn banned_for(&self, fact: &str, key: u16) -> impl Iterator<Item = &Item> + '_ {
+        self.banned_by.get(fact).and_then(|b| b.of.get(&key)).into_iter().flatten()
+    }
+
+    /// Allow item `item` of `category` (one kept by a record's field:
+    /// [`Category::by`]; of another, nothing changes) in the records of key
+    /// `key`, or not; what it holds back for all is left as it is.
+    pub fn set_allowed_for(&mut self, category: &Category, key: u16, item: &Item, allowed: bool) {
+        let Some(by) = &category.by else { return };
+        let fact = &category.fact;
+        if allowed {
+            if let Some(bans) = self.banned_by.get_mut(fact) {
+                if let Some(b) = bans.of.get_mut(&key) {
+                    b.remove(item);
+                    if b.is_empty() {
+                        bans.of.remove(&key);
+                    }
+                }
+                if bans.of.is_empty() {
+                    self.banned_by.remove(fact);
+                }
+            }
+        } else {
+            let bans = self.banned_by.entry(fact.clone()).or_insert_with(|| KeyedBans { keys: by.registry, items: category.registry, of: BTreeMap::new() });
+            bans.of.entry(key).or_default().insert(item.clone());
+        }
+    }
+
+    /// How many bans it holds of category `fact`: for every record, and for
+    /// each key's records.
+    pub fn ban_count(&self, fact: &str) -> usize {
+        self.banned(fact).count() + self.banned_by.get(fact).map_or(0, |b| b.of.values().map(BTreeSet::len).sum())
     }
 
     /// Allow item `item` of category `fact`, or not.
@@ -460,6 +555,13 @@ impl Ruleset {
         let mut held: Vec<(Registry, Item)> = Vec::new();
         for category in &rulesets.categories {
             let Some((registry, _, field)) = definitions_of(content, &category.fact) else { continue };
+            if let Some(by) = &category.by {
+                out.extend(self.problems_by(content, side, category, by, registry));
+                for (item, _) in named_by(content, side, &category.fact, field.as_deref(), registry) {
+                    held.push((registry, item));
+                }
+                continue;
+            }
             for (item, entries) in named_by(content, side, &category.fact, field.as_deref(), registry) {
                 held.push((registry, item.clone()));
                 if !self.allows_item(&category.fact, &item) {
@@ -492,6 +594,88 @@ impl Ruleset {
         out
     }
 
+    /// The problems of `side` with category `category`, kept by its records'
+    /// field `by` ([`Category::by`]): for each item a record holds that is held
+    /// back for every record or for the record's key, one about every record
+    /// that holds it so, at the first (said for those keys where it is held
+    /// back for some alone).
+    fn problems_by(&self, content: &Content, side: &Side, category: &Category, by: &By, registry: Registry) -> Vec<Problem> {
+        let Some((outer, inner)) = category.fact.split_once('.') else { return Vec::new() };
+        let Some(Stated::List(records)) = side.facts.get(content, outer) else { return Vec::new() };
+        // (Each item refused, with the records it is refused at and their keys where it is refused for them alone.)
+        let mut refused: Vec<(Item, Vec<usize>, Vec<u16>)> = Vec::new();
+        for (i, record) in records.iter().enumerate() {
+            let Stated::Record(fields) = record else { continue };
+            let get = |n: &str| fields.iter().find(|(k, _)| k == n).map(|(_, v)| v);
+            let key = match get(&by.field) {
+                Some(Stated::Def(_, Some(h))) => Some(*h),
+                _ => None,
+            };
+            let Some(value) = get(inner) else { continue };
+            for h in value.defs() {
+                let item = Item::of(h);
+                let all = !self.allows_item(&category.fact, &item);
+                let own = key.is_some_and(|k| self.banned_for(&category.fact, k).any(|i| *i == item));
+                if !all && !own {
+                    continue;
+                }
+                let at = match refused.iter().position(|(x, _, _)| *x == item) {
+                    Some(at) => at,
+                    None => {
+                        refused.push((item, Vec::new(), Vec::new()));
+                        refused.len() - 1
+                    }
+                };
+                let (_, entries, keys) = &mut refused[at];
+                if !entries.contains(&i) {
+                    entries.push(i);
+                }
+                if let Some(k) = key.filter(|_| !all)
+                    && !keys.contains(&k)
+                {
+                    keys.push(k);
+                }
+            }
+        }
+        refused
+            .into_iter()
+            .map(|(item, entries, keys)| {
+                let shown_item = shown(content, registry, &item);
+                let text = if keys.is_empty() {
+                    format!("{shown_item} isn't allowed ({})", category.fact)
+                } else {
+                    let whose: Vec<String> = keys.iter().map(|&k| ids::shown(content, by.registry, k)).collect();
+                    format!("{shown_item} isn't allowed for {} ({})", whose.join(", "), category.fact)
+                };
+                let entry = entries.first().copied();
+                Problem { side: Some(0), field: Some(outer.to_string()), entry, what: Wrong::NotAllowed { registry, item, entries }, text }
+            })
+            .collect()
+    }
+
+    /// What it holds back per record, by name: each category kept by a
+    /// record's field with anything held back for some key, by its fact's
+    /// name, with each key's name (a navi's in the game) and the names of what
+    /// it holds back for that key's records, in order. What a file and the
+    /// lobby's wire state beside [`Ruleset::banned_names`].
+    pub fn banned_by_names(&self, content: &Content) -> Vec<(String, Vec<(String, Vec<String>)>)> {
+        self.banned_by
+            .iter()
+            .map(|(fact, bans)| {
+                let keys = bans
+                    .of
+                    .iter()
+                    .filter_map(|(&k, banned)| {
+                        let key = ids::name_of(content, bans.keys, k)?.to_string();
+                        let names = banned.iter().filter_map(|i| ids::name_of(content, bans.items, i.def).map(str::to_string)).collect();
+                        Some((key, names))
+                    })
+                    .collect();
+                (fact.clone(), keys)
+            })
+            .collect()
+    }
+
     /// What it doesn't allow, by name: each category with anything held
     /// back, by its fact's name, with the names of its items in the game (a
     /// chip's `cannon`, an entry's in its collection; a variant after its
@@ -517,8 +701,16 @@ impl Ruleset {
     /// A ruleset of the game of `rulesets` from its names
     /// ([`Ruleset::banned_names`]'s): an error names a fact that is no
     /// category of the game's or a name its registry hasn't.
-    pub fn of_names(rulesets: &Rulesets, content: &Content, name: Name, one_per_build: bool, banned: &[(String, Vec<String>)]) -> Result<Ruleset, String> {
-        let mut out = Ruleset { name, one_per_build, banned: BTreeMap::new() };
+    pub fn of_names(
+        rulesets: &Rulesets,
+        content: &Content,
+        name: Name,
+        one_per_build: bool,
+        banned: &[(String, Vec<String>)],
+        banned_by: &[(String, Vec<(String, Vec<String>)>)],
+    ) -> Result<Ruleset, String> {
+        let mut out = Ruleset::open(name);
+        out.one_per_build = one_per_build;
         for (fact, names) in banned {
             let category = rulesets.category(fact).ok_or_else(|| format!("{} has no ruleset category {fact:?}", rulesets.game))?;
             for name in names {
@@ -535,6 +727,26 @@ impl Ruleset {
                     return Err(format!("{fact}: {name:?} is none of its items"));
                 }
                 out.set_allowed(fact, &item, false);
+            }
+        }
+        // (A key is one of the category's records' field's: a navi of the category it is shown within, where there
+        // is one; an item, one of the category's own.)
+        for (fact, keys) in banned_by {
+            let category = rulesets.category(fact).ok_or_else(|| format!("{} has no ruleset category {fact:?}", rulesets.game))?;
+            let by = category.by.as_ref().ok_or_else(|| format!("{fact}: its bans aren't kept by a record's field"))?;
+            let keys_of = category.within.as_deref().and_then(|w| rulesets.category(w)).filter(|w| w.registry == by.registry);
+            for (key, names) in keys {
+                let k = ids::handle_of(content, &rulesets.game, by.registry, by.of.as_deref(), key).ok_or_else(|| format!("{fact}: {} has no {key:?}", rulesets.game))?;
+                if keys_of.is_some_and(|w| !w.items.contains(&Item::of(k))) {
+                    return Err(format!("{fact}: {key:?} is none of {}'s items", category.within.as_deref().unwrap_or_default()));
+                }
+                for name in names {
+                    let h = ids::handle_of(content, &rulesets.game, category.registry, category.of.as_deref(), name).ok_or_else(|| format!("{fact}: {} has no {name:?}", rulesets.game))?;
+                    if !category.items.contains(&Item::of(h)) {
+                        return Err(format!("{fact}: {name:?} is none of its items"));
+                    }
+                    out.set_allowed_for(category, k, &Item::of(h), false);
+                }
             }
         }
         Ok(out)
@@ -558,7 +770,12 @@ impl Rulesets {
                 .iter()
                 .map(|n| n.str().and_then(|n| ChipClass::deserialize(IntoDeserializer::<serde::de::value::Error>::into_deserializer(n)).ok()).ok_or_else(|| format!("{module}: {fact}: {n:?} is no chip class")))
                 .collect::<Result<_, String>>()?;
-            let defs = category_items(content, game, &builds, fact, registry, of.as_deref(), &classes)?;
+            let having = match c.field("having") {
+                Data::Str(h) => Some(h.as_str()),
+                Data::Nil => None,
+                _ => return Err(format!("{module}: {fact}: its `having` names a field")),
+            };
+            let defs = category_items(content, game, &builds, fact, registry, of.as_deref(), &classes, having)?;
             let variants = chooses_variants(content, fact);
             let items = defs
                 .into_iter()
@@ -567,7 +784,19 @@ impl Rulesets {
                     if of.is_empty() { vec![Item::of(h)] } else { of.into_iter().map(|v| Item { def: h, variant: Some(v) }).collect() }
                 })
                 .collect();
-            categories.push(Category { fact: fact.clone(), registry, of, items });
+            // (Kept per record by the outer list's records' field `by`, which names definitions.)
+            let by = match c.field("by") {
+                Data::Str(field) => Some(by_field(content, fact, field).ok_or_else(|| format!("{module}: {fact}: `by` {field:?} is no field of its list's records that names definitions"))?),
+                Data::Nil => None,
+                _ => return Err(format!("{module}: {fact}: its `by` names a field")),
+            };
+            let within = match c.field("within") {
+                Data::Str(w) if categories.iter().any(|o: &Category| o.fact == *w) => Some(w.clone()),
+                Data::Str(w) => return Err(format!("{module}: {fact}: `within` {w:?} is no category before it")),
+                Data::Nil => None,
+                _ => return Err(format!("{module}: {fact}: its `within` names a category")),
+            };
+            categories.push(Category { fact: fact.clone(), registry, of, items, by, within });
         }
         let groups = groups(content, game, &builds);
         let mut out = Rulesets { game: game.to_string(), categories, groups, presets: Vec::new() };
@@ -705,9 +934,20 @@ fn groups(content: &Content, game: &str, builds: &Builds) -> Vec<Group> {
 
 /// A category's definitions: those of `registry` a build of `game` can
 /// hold in fact `fact` (of chips, the game's of `classes` too).
-fn category_items(content: &Arc<Content>, game: &str, builds: &Builds, fact: &str, registry: Registry, of: Option<&str>, classes: &[ChipClass]) -> Result<Vec<u16>, String> {
+fn category_items(
+    content: &Arc<Content>,
+    game: &str,
+    builds: &Builds,
+    fact: &str,
+    registry: Registry,
+    of: Option<&str>,
+    classes: &[ChipClass],
+    having: Option<&str>,
+) -> Result<Vec<u16>, String> {
+    // (Those whose data states the field `having` names, where the category names one.)
+    let has = |h: u16| having.is_none_or(|field| ids::key_of(content, registry, h).is_some_and(|key| content.defs.extension(registry, key, field).is_some()));
     Ok(match registry {
-        Registry::Navi => crate::navis(content, game).into_iter().map(|n| n.0).collect(),
+        Registry::Navi => crate::navis(content, game).into_iter().map(|n| n.0).filter(|&h| has(h)).collect(),
         // (The chips a folder lists: every chip of the game but those no
         // folder holds, as the folder rules' view of a new build says; and
         // the game's chips of the classes the category names besides.)
@@ -876,9 +1116,9 @@ mod tests {
         // As names, and back.
         let names = no_cannon.banned_names(&content);
         assert_eq!(names, vec![("folder".to_string(), vec!["cannon".to_string()])]);
-        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &names).unwrap(), no_cannon);
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("hp".into(), vec![])]).is_err());
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("folder".into(), vec!["nothing".into()])]).is_err());
+        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &names, &[]).unwrap(), no_cannon);
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("hp".into(), vec![])], &[]).is_err());
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("folder".into(), vec!["nothing".into()])], &[]).is_err());
         // Allowed again, it holds nothing back, and equals an open one.
         no_cannon.set_allowed("folder", &Item::of(cannon.0), true);
         assert_eq!(no_cannon, Ruleset::open(Name::Own("No Cannon".into())));
@@ -906,7 +1146,7 @@ mod tests {
         assert!(r.allows_def(&ruleset, "patch_cards", card) && r.allowed_variants(&ruleset, "patch_cards", card) == ["falzar"]);
         let names = ruleset.banned_names(&content);
         assert_eq!(names, vec![("patch_cards".to_string(), vec!["bass-cross-megaman/gregar".to_string()])]);
-        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names).unwrap(), ruleset);
+        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[]).unwrap(), ruleset);
         let mut side = builds.new_build(&content, "gregar").unwrap();
         side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
         let problems = ruleset.problems(&r, &content, &side);
@@ -1002,8 +1242,76 @@ mod tests {
         assert!(!checked.ready() && checked.problems.iter().any(|p| p.field.as_deref() == Some("party") && p.at(1)), "{:?}", checked.problems);
         let names = ruleset.banned_names(&content);
         assert_eq!(names, [("party.programs".to_string(), vec!["p-spport".to_string()])]);
-        let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names).unwrap();
+        let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names, &[]).unwrap();
         assert!(back.same_rules(&ruleset));
+    }
+
+    /// EXE5's partners' programs are kept per partner's navi too (`by`), on the party's page (`within`), and the party
+    /// lists the twelve team navis, not MegaMan: a program is refused where it is held back for every partner or for
+    /// the partner's navi (a union), allowing it for every partner leaves a navi's own ban standing, the count is both's,
+    /// and by name the bans go into a file and back; a name the category can't hold is refused.
+    #[test]
+    fn a_ruleset_bans_a_partners_programs_by_navi() {
+        let content = exe5_content();
+        let r = Rulesets::of(&content, "exe5").unwrap();
+        let navi = |n: &str| ids::navi(&content, "exe5", n).unwrap().0;
+        let party = r.category("party").unwrap().clone();
+        assert_eq!(party.items.len(), 12);
+        assert!(!party.items.contains(&Item::of(navi("megaman"))));
+        let category = r.category("party.programs").unwrap().clone();
+        assert_eq!(category.by.as_ref().map(|b| (b.field.as_str(), b.registry)), Some(("navi", Registry::Navi)));
+        assert_eq!(category.within.as_deref(), Some("party"));
+        let program = |n: &str| Item::of(ids::entry(&content, "exe5", "partycust_programs", n).unwrap().0);
+        let (hp_300, btlpk_2, spport) = (program("p-hp-300"), program("p-btlpk2"), program("p-spport"));
+        let mut ruleset = r.preset("unrestricted").unwrap().clone();
+        ruleset.set_allowed("party.programs", &hp_300, false);
+        ruleset.set_allowed_for(&category, navi("protoman"), &btlpk_2, false);
+        ruleset.set_allowed_for(&category, navi("meddy"), &spport, false);
+        // The union: every partner's ban, and each navi's own.
+        assert!(!ruleset.allows_for("party.programs", navi("gyroman"), &hp_300));
+        assert!(!ruleset.allows_for("party.programs", navi("protoman"), &btlpk_2) && ruleset.allows_for("party.programs", navi("colonel"), &btlpk_2));
+        assert!(ruleset.allows_item("party.programs", &btlpk_2), "a navi's own ban isn't every partner's");
+        assert_eq!(ruleset.ban_count("party.programs"), 3);
+        // A build: ProtoMan with P.Btlpk2, Meddy with P.Spport and P.HP+300.
+        let mut side = Builds::of(&content, "exe5").unwrap().new_build(&content, "protoman").unwrap();
+        let def = |n: &str| Fact::Value(Value::Def(Registry::Navi, navi(n)));
+        let partner = |n: &str, p: &[&Item]| Fact::Record(vec![("navi", def(n)), ("programs", Fact::List(p.iter().map(|i| Fact::Value(Value::Def(Registry::Entry, i.def))).collect()))]);
+        side.set_fact(&content, "party", &[partner("protoman", &[&btlpk_2]), partner("meddy", &[&spport, &hp_300])]).unwrap();
+        let problems = ruleset.problems(&r, &content, &side);
+        let got: Vec<(Option<usize>, &Wrong)> = problems.iter().map(|p| (p.entry, &p.what)).collect();
+        assert_eq!(
+            got,
+            [
+                (Some(0), &Wrong::NotAllowed { registry: Registry::Entry, item: btlpk_2.clone(), entries: vec![0] }),
+                (Some(1), &Wrong::NotAllowed { registry: Registry::Entry, item: spport.clone(), entries: vec![1] }),
+                (Some(1), &Wrong::NotAllowed { registry: Registry::Entry, item: hp_300.clone(), entries: vec![1] }),
+            ]
+        );
+        assert!(problems[0].text.contains("for ProtoMan") && !problems[2].text.contains(" for "), "{problems:?}");
+        assert!(problems.iter().all(|p| p.field.as_deref() == Some("party")));
+        let checked = crate::build::Checked::under(&content, "exe5", &side, &r, &ruleset);
+        assert!(!checked.ready());
+        // Allowed for every partner again, ProtoMan's own ban stands.
+        let mut every = ruleset.clone();
+        every.set_allowed("party.programs", &btlpk_2, false);
+        every.set_allowed("party.programs", &btlpk_2, true);
+        assert!(!every.allows_for("party.programs", navi("protoman"), &btlpk_2));
+        assert_eq!(every, ruleset);
+        // By name, and back.
+        let (names, by) = (ruleset.banned_names(&content), ruleset.banned_by_names(&content));
+        assert_eq!(by, [("party.programs".to_string(), vec![("meddy".to_string(), vec!["p-spport".to_string()]), ("protoman".to_string(), vec!["p-btlpk2".to_string()])])]);
+        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &by).unwrap(), ruleset);
+        // What the categories can't hold: MegaMan in the party, as a key, a program's ban by a field it isn't kept by.
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[("party".into(), vec!["megaman".into()])], &[]).is_err());
+        let megaman = [("party.programs".to_string(), vec![("megaman".to_string(), vec!["p-spport".to_string()])])];
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &megaman).is_err());
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &[("party".into(), vec![("protoman".into(), vec![])])]).is_err());
+        // Allowed again for its navi, it holds nothing back of it.
+        let mut back = ruleset.clone();
+        back.set_allowed_for(&category, navi("protoman"), &btlpk_2, true);
+        back.set_allowed_for(&category, navi("meddy"), &spport, true);
+        back.set_allowed("party.programs", &hp_300, true);
+        assert_eq!(back, r.preset("unrestricted").unwrap().clone());
     }
 
     #[test]
@@ -1053,7 +1361,7 @@ mod tests {
             assert_eq!((problems[0].field.as_deref(), problems[0].entry), (Some("auto_battle_places"), Some(0)), "{game}");
             assert!(problems[0].at(0) && problems[0].at(3) && !problems[0].at(1), "{game}");
             let names = ruleset.banned_names(&content);
-            assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names).unwrap(), ruleset, "{game}");
+            assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[]).unwrap(), ruleset, "{game}");
             // Held back in the folder alone: the places' Cannon is let be.
             let mut in_folder = Ruleset::open(Name::Own("No Cannon".into()));
             in_folder.set_allowed("folder", &Item::of(cannon.0), false);

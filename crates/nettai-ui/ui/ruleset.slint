@@ -50,6 +50,30 @@ export struct RulesetSection {
     none: bool,
 }
 
+// A row of a paired category's list of keys (the Party page's navis, whose programs a ruleset holds back for each
+// alone: `RulesetView.paired`): All (`all`: what is held back for every key), or a key's: its picture, its whole name,
+// whether its category allows it, what it holds back for it alone or that it isn't allowed (`note`, in the error red);
+// a version's head over it (its name and color; none), and how many heads come before it and over it (`heads`).
+export struct RulesetKey {
+    all: bool,
+    picture: image,
+    name: string,
+    allowed: bool,
+    note: string,
+    head: string,
+    tone: color,
+    heads: int,
+}
+
+// An item of the key chosen (a program of the navi chosen, or of every navi): its name, whether it is allowed there,
+// and whether every key's ban holds it back (`inherited`: its box dashed, `note` saying so).
+export struct RulesetProgram {
+    name: string,
+    allowed: bool,
+    inherited: bool,
+    note: string,
+}
+
 // A quick choice of the category's version-own items: a version's (its name and color: `version`), or All.
 export struct RulesetChoice {
     text: string,
@@ -82,6 +106,17 @@ export global RulesetView {
     // Whether the category's ALL and NONE would change anything.
     in property <bool> category-all;
     in property <bool> category-none;
+    // A category with another kept per its items within it (the Party page: its navis, and their programs, every
+    // navi's and each one's own): its keys at the left in place of the grid (`keys`, the one chosen `key`), the chosen
+    // one's items beside them (`programs`, under `programs-title` and `programs-note`).
+    in property <bool> paired;
+    in property <[RulesetKey]> keys;
+    in property <int> key;
+    in property <[RulesetProgram]> programs;
+    in property <string> programs-title;
+    in property <string> programs-note;
+    // (The head's note of a paired category: its own count, and its inner category's bans.)
+    in property <string> head-note;
     // The reserved line: why something can't be changed here, in the error red; or quietly, a note.
     in property <string> message;
     in property <bool> message-quiet;
@@ -101,6 +136,37 @@ export global RulesetView {
             return @tr("None allowed");
         }
         return @tr("{} of {} allowed", n, of);
+    }
+    // A paired category's words: how much it allows and how many of its inner category's items it holds back, in the
+    // categories' list (`navis`) and in its head; a key's own bans, one not allowed, the row of every key, its items'
+    // title, an item every key's ban holds back; the page's count.
+    public pure function paired-note(n: int, of: int, bans: int) -> string {
+        if n == of && bans == 0 {
+            return @tr("All allowed");
+        }
+        if bans == 0 {
+            return @tr("{} of {} navis", n, of);
+        }
+        return @tr("{} of {} navis, {n} program ban" | "{} of {} navis, {n} program bans" % bans, n, of);
+    }
+    public pure function paired-head(n: int, of: int, bans: int) -> string {
+        if bans == 0 {
+            return root.allowed(n, of);
+        }
+        return @tr("{} of {} allowed, {n} program ban" | "{} of {} allowed, {n} program bans" % bans, n, of);
+    }
+    public pure function banned-count(n: int) -> string {
+        return n == 0 ? "" : @tr("{} banned", n);
+    }
+    out property <string> not-allowed-word: @tr("Not allowed");
+    out property <string> all-keys-word: @tr("All navis");
+    out property <string> all-keys-title: @tr("Programs for all navis");
+    public pure function key-title(name: string) -> string {
+        return @tr("{}'s programs", name);
+    }
+    out property <string> inherited-note: @tr("Banned for all navis");
+    public pure function paired-status(keys: int, items: int) -> string {
+        return @tr("{n} navi" | "{n} navis" % keys) + ", " + @tr("{n} program" | "{n} programs" % items);
     }
     // What the system's file dialogs say they ask for.
     out property <string> ruleset-files: @tr("Ruleset files");
@@ -149,6 +215,36 @@ component CategoryRow inherits Rectangle {
     }
 }
 
+// An allow box: checked (allowed), or empty; dashed where something else holds the item back (`inherited`).
+component Check inherits Rectangle {
+    in property <bool> on;
+    in property <bool> inherited;
+    width: 16px;
+    height: 16px;
+    background: root.on ? Theme.cursor : root.inherited ? transparent : Theme.inset;
+    border-width: root.inherited ? 0px : 1px;
+    border-color: root.on ? Theme.cursor : Theme.line;
+    Path {
+        width: 10px;
+        height: 8px;
+        visible: root.on;
+        stroke: Theme.action-ink;
+        stroke-width: 2px;
+        commands: "M 1 4 L 3.75 6.75 L 9 1.25";
+    }
+
+    // (The dashes: three along each side.)
+    for d in (root.inherited ? 12 : 0): Rectangle {
+        property <int> side: floor(d / 3);
+        property <length> along: Math.mod(d, 3) * 6px;
+        x: self.side == 0 ? self.along : self.side == 1 ? self.along : self.side == 2 ? 0px : root.width - 1px;
+        y: self.side == 0 ? 0px : self.side == 1 ? root.height - 1px : self.along;
+        width: self.side < 2 ? 4px : 1px;
+        height: self.side < 2 ? 1px : 4px;
+        background: Theme.dim;
+    }
+}
+
 // An item's cell, as tall as the build editor's lists' rows (`Theme.list-row`) and laid out as the Navi tab's forms'
 // rows: a check mark (allowed or not), its picture at its own size (a chip's icon, a navi's or a form's face), its
 // name, the version it is one's own. Each is focused itself (a grid's cell: Up and Down a row, Left and Right a
@@ -161,22 +257,10 @@ component ItemRow inherits Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
-    Rectangle {
+    Check {
         x: 8px;
         y: (parent.height - 16px) / 2;
-        width: 16px;
-        height: 16px;
-        background: root.line.allowed ? Theme.cursor : Theme.inset;
-        border-width: 1px;
-        border-color: root.line.allowed ? Theme.cursor : Theme.line;
-        Path {
-            width: 10px;
-            height: 8px;
-            visible: root.line.allowed;
-            stroke: Theme.action-ink;
-            stroke-width: 2px;
-            commands: "M 1 4 L 3.75 6.75 L 9 1.25";
-        }
+        on: root.line.allowed;
     }
 
     picture := Image {
@@ -211,6 +295,108 @@ component ItemRow inherits Rectangle {
 
     touch := Focusable {
         nav: "rules.items";
+        nav-index: root.nav-index;
+    }
+}
+
+// A row of the keys' list (the Party page's navis): its version's head over it where it is the first of the version's,
+// then, as the item cells are, its allow box (none on the row of every key), its face, its whole name and its note at
+// the right (its own bans' count, or Not allowed). The row chosen is tinted with its bar, as a chosen category's.
+component KeyRow inherits Rectangle {
+    in property <RulesetKey> line;
+    in property <int> nav-index;
+    in property <bool> chosen;
+    property <length> picture-height: Theme.phone ? 32px : 16px;
+    RowBack {
+        chosen: root.chosen;
+        hover: touch.has-hover;
+    }
+
+    if !root.line.all: Check {
+        x: 8px;
+        y: (parent.height - 16px) / 2;
+        on: root.line.allowed;
+    }
+
+    picture := Image {
+        x: 32px;
+        y: (parent.height - self.height) / 2;
+        width: root.line.all ? 0px : 2 * root.picture-height;
+        height: root.picture-height;
+        source: root.line.picture;
+        image-rendering: pixelated;
+        image-fit: contain;
+        opacity: root.line.allowed ? 1 : 0.45;
+    }
+
+    Text {
+        x: root.line.all ? 8px : picture.x + picture.width + 8px;
+        width: max(0px, parent.width - self.x - note.width - 16px);
+        text: root.line.name;
+        color: root.line.allowed ? Theme.text : Theme.dim;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    note := Text {
+        x: parent.width - self.width - 12px;
+        width: self.preferred-width;
+        text: root.line.note;
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+
+    touch := Focusable {
+        nav: "rules.pair.keys";
+        nav-index: root.nav-index;
+    }
+}
+
+// An item of the key chosen: its allow box (dashed where every key's ban holds it back), its name, why it is held back
+// where that isn't its own.
+component ProgramRow inherits Rectangle {
+    in property <RulesetProgram> line;
+    in property <int> nav-index;
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+    }
+
+    Check {
+        x: 0px;
+        y: (parent.height - 16px) / 2;
+        on: root.line.allowed;
+        inherited: root.line.inherited;
+    }
+
+    Text {
+        x: 42px;
+        width: max(0px, parent.width - self.x - note.width - 12px);
+        text: root.line.name;
+        color: root.line.allowed ? Theme.text : Theme.dim;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    note := Text {
+        x: parent.width - self.width;
+        width: self.preferred-width;
+        text: root.line.note;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+
+    touch := Focusable {
+        nav: "rules.pair.programs";
         nav-index: root.nav-index;
     }
 }
@@ -295,6 +481,17 @@ export component RulesetPage inherits Page {
     property <bool> sectioned: RulesetView.sections.length > 0;
     property <length> section-head: 28px;
     property <length> section-width: (items.view-width - (RulesetView.sections.length - 1) * root.gap) / max(1, RulesetView.sections.length);
+    // Paired (the Party page): the keys' list at the left (`key-width`, a version's head `head` over its first), a rule,
+    // the chosen key's items beside it in two columns (`program-width` apart); on a phone the keys, then the items in
+    // one column under them.
+    property <length> key-width: 300px;
+    property <length> head: 22px;
+    property <int> key-heads: RulesetView.keys.length > 0 ? RulesetView.keys[RulesetView.keys.length - 1].heads : 0;
+    property <length> keys-height: RulesetView.keys.length * root.pitch + root.key-heads * root.head;
+    property <length> programs-x: Theme.phone ? 0px : root.key-width + 40px;
+    property <length> programs-y: Theme.phone ? root.keys-height + 16px : 0px;
+    property <length> program-width: Theme.phone ? pair.view-width : 255px;
+    property <int> program-columns: Theme.phone ? 1 : 2;
     // (The ruleset's name, a field where it can be renamed: the user, "you should just be able to edit the build
     // name/ruleset name from the edit screen in the header". The game, locked, as the build editor shows it.)
     title: RulesetView.name;
@@ -303,7 +500,7 @@ export component RulesetPage inherits Page {
     game: !Theme.phone;
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
     hints: root.page-hints;
-    status: @tr("{n} item" | "{n} items" % RulesetView.items.length);
+    status: RulesetView.paired ? RulesetView.paired-status(RulesetView.keys.length - 1, RulesetView.programs.length) : @tr("{n} item" | "{n} items" % RulesetView.items.length);
 
     // (The page's parts arrive as a screen's do, one after another: the row, the categories, the category's head,
     // its items.)
@@ -450,7 +647,7 @@ export component RulesetPage inherits Page {
             y: root.line-y;
             width: max(0px, root.words-x - 12px - self.x);
             height: 16px;
-            text: RulesetView.categories[RulesetView.category].note;
+            text: RulesetView.paired ? RulesetView.head-note : RulesetView.categories[RulesetView.category].note;
             color: Theme.muted;
             font-family: Theme.body;
             font-size: 12px;
@@ -492,6 +689,7 @@ export component RulesetPage inherits Page {
             y: root.items-y;
             width: root.inner-width;
             height: root.items-bottom - root.items-y;
+            visible: !RulesetView.paired;
             nav: "rules.items";
             content-height: !root.sectioned ? max(0px, ceil(RulesetView.items.length / root.columns) * root.pitch - Theme.list-gap)
                 : Theme.phone ? RulesetView.sections.length * root.section-head + RulesetView.items.length * root.pitch
@@ -537,6 +735,84 @@ export component RulesetPage inherits Page {
                 nav-index: i;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        // ---- Paired (the Party page): the keys, a rule, the chosen key's items.
+        pair := ScrollPage {
+            x: root.inner-x;
+            y: root.items-y;
+            width: root.inner-width;
+            height: root.items-bottom - root.items-y;
+            visible: RulesetView.paired;
+            nav: "rules.pair";
+            content-height: Theme.phone ? root.programs-y + 30px + RulesetView.programs.length * root.pitch : max(root.keys-height, 30px + ceil(RulesetView.programs.length / 2) * root.pitch);
+            for line[i] in RulesetView.keys: Rectangle {
+                x: 0;
+                y: i * root.pitch + line.heads * root.head;
+                width: Theme.phone ? pair.view-width : root.key-width;
+                height: Theme.list-row;
+                if line.head != "": Text {
+                    x: 8px;
+                    y: -root.head + 6px;
+                    height: 14px;
+                    text: Caps.of(line.head);
+                    color: line.tone;
+                    font-family: Theme.display;
+                    font-size: 10px;
+                    font-weight: Theme.display-bold;
+                    letter-spacing: 0.8px;
+                    vertical-alignment: center;
+                }
+
+                KeyRow {
+                    line: line;
+                    nav-index: i;
+                    chosen: i == RulesetView.key;
+                }
+            }
+
+            if !Theme.phone: Rectangle {
+                x: root.key-width + 16px;
+                y: 0px;
+                width: 1px;
+                height: pair.height - 10px;
+                background: Theme.line;
+            }
+
+            programs-title := Text {
+                x: root.programs-x;
+                y: root.programs-y + 6px;
+                width: self.preferred-width;
+                height: 14px;
+                text: Caps.of(RulesetView.programs-title);
+                color: Theme.muted;
+                font-family: Theme.display;
+                font-size: 10px;
+                font-weight: Theme.display-bold;
+                letter-spacing: 1.6px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                x: programs-title.x + programs-title.width + 12px;
+                y: programs-title.y;
+                width: self.preferred-width;
+                height: programs-title.height;
+                text: RulesetView.programs-note;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
+
+            for line[i] in RulesetView.programs: ProgramRow {
+                x: root.programs-x + Math.mod(i, root.program-columns) * root.program-width;
+                y: root.programs-y + 30px + floor(i / root.program-columns) * root.pitch;
+                width: root.program-width - 16px;
+                height: Theme.list-row;
+                line: line;
+                nav-index: i;
             }
         }
 

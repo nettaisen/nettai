@@ -4,6 +4,11 @@
 //! and hand it the controls whose names begin [`PREFIX`] and the answer to its question ([`DELETE`]); what it did
 //! that the screen must hear of it says ([`Outcome`]): the ruleset it shows is another, or changed, or gone.
 //!
+//! A category another is kept within (`nettai_match::ruleset::Category::within`: EXE5's party, its partners' programs
+//! kept per navi) is one page, paired: its items (the navis) at the left, All first, each with its allow box and what
+//! the inner category holds back for it alone; the one chosen's inner items beside them (the programs, every navi's ban
+//! dashed). The inner category has no row of its own in the list.
+//!
 //! The UI is ui/ruleset.slint (`RulesetPage`, `RulesetView`).
 
 use crate::builds::Kit;
@@ -14,7 +19,7 @@ use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle, Registry};
 use nettai_match::ruleset::{Category, Item, Name, Rulesets};
-use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetSection, RulesetView};
+use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetKey, RulesetProgram, RulesetSection, RulesetView};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -53,7 +58,8 @@ pub struct Page {
     shown: Pickable,
     /// The host's ruleset, viewed by a joiner: read alone, whatever it is.
     viewed: bool,
-    /// The category shown, by its place, and what its items are filtered by.
+    /// The category shown, by its place in the list (the categories but those within another), and what its items
+    /// are filtered by.
     category: usize,
     search: String,
     /// The items listed of the category shown, by handle, in its list's order.
@@ -63,6 +69,11 @@ pub struct Page {
     /// The quick choices' rows, changed in place where their count stays (their controls made again would drop the
     /// focus a press on one left there).
     choices: Rc<VecModel<RulesetChoice>>,
+    /// Paired: the keys' rows shown (None the row of every key, first), the key chosen (None: every key's), the inner
+    /// category's items shown, in order.
+    keys: Vec<Option<u16>>,
+    key: Option<u16>,
+    programs: Vec<Item>,
 }
 
 /// A name as it is typed: one line, no room at its start, [`NAME_LENGTH`] letters at most.
@@ -78,7 +89,20 @@ impl Page {
     pub fn open(shell: &mut Shell, kit: Rc<Kit>, shown: Pickable, viewed: bool, back: &str) -> Option<Page> {
         let rulesets = kit.rulesets()?;
         let choices = Rc::new(VecModel::default());
-        let mut page = Page { kit, rulesets, shown, viewed, category: 0, search: String::new(), rows: Vec::new(), row_sections: Vec::new(), choices: choices.clone() };
+        let mut page = Page {
+            kit,
+            rulesets,
+            shown,
+            viewed,
+            category: 0,
+            search: String::new(),
+            rows: Vec::new(),
+            row_sections: Vec::new(),
+            choices: choices.clone(),
+            keys: Vec::new(),
+            key: None,
+            programs: Vec::new(),
+        };
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
         view.set_choices(ModelRc::from(choices));
@@ -119,8 +143,20 @@ impl Page {
         !self.viewed && self.shown.path.is_some()
     }
 
+    /// The categories the list shows (those within another are shown on its page), by their places among the
+    /// game's.
+    fn listed(&self) -> Vec<usize> {
+        (0..self.rulesets.categories.len()).filter(|&i| self.rulesets.categories[i].within.is_none()).collect()
+    }
+
     fn category(&self) -> &Category {
-        &self.rulesets.categories[self.category.min(self.rulesets.categories.len().saturating_sub(1))]
+        let listed = self.listed();
+        &self.rulesets.categories[listed[self.category.min(listed.len().saturating_sub(1))]]
+    }
+
+    /// The category kept within category `outer` (its page's inner one), if there is one.
+    fn inner_of(&self, outer: &Category) -> Option<&Category> {
+        self.rulesets.categories.iter().find(|c| c.within.as_deref() == Some(outer.fact.as_str()) && c.by.is_some())
     }
 
     /// Everything the page shows, from the ruleset as it stands.
@@ -137,12 +173,17 @@ impl Page {
         view.set_deletable(self.editable());
         view.set_versions(if ruleset.one_per_build { 0 } else { 1 });
         let categories: Vec<RulesetCategory> = self
-            .rulesets
-            .categories
-            .iter()
-            .map(|c| {
+            .listed()
+            .into_iter()
+            .map(|i| {
+                let c = &self.rulesets.categories[i];
                 let name = names.text(nettai_match::ruleset::TEXT_TABLE, &c.text_key()).unwrap_or_else(|| c.fact.clone());
-                RulesetCategory { name: name.into(), note: view.invoke_allowed(ruleset.allowed_count(c) as i32, c.items.len() as i32) }
+                let (n, of) = (ruleset.allowed_count(c) as i32, c.items.len() as i32);
+                let note = match self.inner_of(c) {
+                    Some(inner) => view.invoke_paired_note(n, of, ruleset.ban_count(&inner.fact) as i32),
+                    None => view.invoke_allowed(n, of),
+                };
+                RulesetCategory { name: name.into(), note }
             })
             .collect();
         view.set_categories(ModelRc::new(VecModel::from(categories)));
@@ -192,6 +233,15 @@ impl Page {
         } else {
             self.choices.set_vec(choices);
         }
+        if let Some(inner) = self.inner_of(&category).cloned() {
+            self.show_paired(shell, names, &category, &inner);
+            return;
+        }
+        view.set_paired(false);
+        view.set_keys(Default::default());
+        view.set_programs(Default::default());
+        self.keys.clear();
+        self.programs.clear();
         // The items in their lists' order: the chips the library's, the entries their collection's (a card's variants
         // together, in their order).
         let content = kit.content();
@@ -297,6 +347,129 @@ impl Page {
         view.set_category_all(allowed < category.items.len());
         view.set_category_none(allowed > 0);
         view.set_section_rows(section_rows);
+    }
+
+    /// A paired category's page: its items (the navis) at the left, the row of every key first, each a version's
+    /// under its head, filtered by the search; the chosen key's inner items (its programs) beside them.
+    fn show_paired(&mut self, shell: &Shell, names: &Names, outer: &Category, inner: &Category) {
+        let ui = shell.ui();
+        let view = ui.global::<RulesetView>();
+        let kit = self.kit.clone();
+        let rulesets = self.rulesets.clone();
+        let ruleset = &self.shown.ruleset;
+        let tone = |color: u32| {
+            let [_, r, g, b] = color.to_be_bytes();
+            slint::Color::from_rgb_u8(r, g, b)
+        };
+        let key_name = |h: u16| match outer.registry {
+            Registry::Navi => names.navi_long(NaviHandle(h)),
+            r => names.def(r, h),
+        };
+        // (The keys a version's, by the versions' order; those of none last; navis each in the game's order, by their
+        // actor records' numbers.)
+        let search = self.search.to_lowercase();
+        let groups = &rulesets.groups;
+        let content = kit.content();
+        let group_of = |i: &Item| rulesets.group_of(outer.registry, i).and_then(|g| groups.iter().position(|o| o.id == g.id)).unwrap_or(groups.len());
+        let number = |i: &Item| match outer.registry {
+            Registry::Navi => content.identity(content.navi(NaviHandle(i.def)).identity).record.ai_index,
+            _ => 0,
+        };
+        let mut items: Vec<&Item> = outer.items.iter().filter(|i| search.is_empty() || key_name(i.def).to_lowercase().contains(&search)).collect();
+        items.sort_by_key(|i| (group_of(i), number(i)));
+        let own_bans = |k: u16| ruleset.banned_for(&inner.fact, k).count() as i32;
+        let mut rows = vec![RulesetKey {
+            all: true,
+            name: view.get_all_keys_word(),
+            allowed: true,
+            note: view.invoke_banned_count(ruleset.banned(&inner.fact).count() as i32),
+            ..Default::default()
+        }];
+        self.keys = vec![None];
+        let (mut heads, mut last) = (0, None);
+        for item in items {
+            let g = group_of(item);
+            let head = (last != Some(g)).then(|| groups.get(g)).flatten();
+            if last != Some(g) {
+                last = Some(g);
+                heads += i32::from(head.is_some());
+            }
+            let allowed = ruleset.allows_item(&outer.fact, item);
+            rows.push(RulesetKey {
+                all: false,
+                picture: if outer.registry == Registry::Navi { kit.pictures.navi(NaviHandle(item.def)) } else { Default::default() },
+                name: key_name(item.def).into(),
+                allowed,
+                note: if allowed { view.invoke_banned_count(own_bans(item.def)) } else { view.get_not_allowed_word() },
+                head: head.map(|g| kit.version_name(names, &g.id)).unwrap_or_default().into(),
+                tone: head.map(|g| tone(g.color)).unwrap_or_default(),
+                heads,
+            });
+            self.keys.push(Some(item.def));
+        }
+        // (The key chosen stays where the search leaves it; else every key's.)
+        if self.key.is_some_and(|k| !self.keys.contains(&Some(k))) {
+            self.key = None;
+        }
+        let chosen = self.keys.iter().position(|k| *k == self.key).unwrap_or(0);
+        // The chosen key's items, in their collection's order.
+        let mut programs: Vec<Item> = inner.items.clone();
+        if let (Registry::Entry, Some(of)) = (inner.registry, &inner.of) {
+            let mut sorted: Vec<((), EntryHandle)> = programs.iter().map(|i| ((), EntryHandle(i.def))).collect();
+            sorted.dedup();
+            kit.order.entries(content, of, &mut sorted);
+            let sorted: Vec<u16> = sorted.into_iter().map(|(_, h)| h.0).collect();
+            programs.sort_by_key(|i| sorted.iter().position(|&h| h == i.def).unwrap_or(usize::MAX));
+        }
+        let lines: Vec<RulesetProgram> = programs
+            .iter()
+            .map(|item| {
+                let all = ruleset.allows_item(&inner.fact, item);
+                match self.key {
+                    None => RulesetProgram { name: names.def(inner.registry, item.def).into(), allowed: all, inherited: false, note: Default::default() },
+                    Some(k) => RulesetProgram {
+                        name: names.def(inner.registry, item.def).into(),
+                        allowed: all && ruleset.allows_for(&inner.fact, k, item),
+                        inherited: !all,
+                        note: if all { Default::default() } else { view.get_inherited_note() },
+                    },
+                }
+            })
+            .collect();
+        let allowed = lines.iter().filter(|l| l.allowed).count() as i32;
+        view.set_programs_title(match self.key {
+            None => view.get_all_keys_title(),
+            Some(k) => view.invoke_key_title(key_name(k).into()),
+        });
+        view.set_programs_note(view.invoke_allowed(allowed, lines.len() as i32));
+        self.programs = programs;
+        view.set_keys(ModelRc::new(VecModel::from(rows)));
+        view.set_key(chosen as i32);
+        view.set_programs(ModelRc::new(VecModel::from(lines)));
+        view.set_paired(true);
+        view.set_items(Default::default());
+        view.set_sections(Default::default());
+        view.set_section_rows(0);
+        self.rows.clear();
+        self.row_sections.clear();
+        let n = ruleset.allowed_count(outer);
+        view.set_category_all(n < outer.items.len());
+        view.set_category_none(n > 0);
+        // (The head's note: the navis allowed, and the inner category's bans.)
+        view.set_head_note(view.invoke_paired_head(n as i32, outer.items.len() as i32, ruleset.ban_count(&inner.fact) as i32));
+    }
+
+    /// Paired: show key row `index`'s items (the row of every key's, or a navi's).
+    fn choose_key(&mut self, shell: &Shell, index: i32) {
+        let Some(&key) = self.keys.get(index.max(0) as usize) else { return };
+        if key == self.key {
+            return;
+        }
+        self.key = key;
+        let graphics = self.kit.ready.graphics(shell.lang);
+        let kit = self.kit.clone();
+        let names = Names::of(kit.content(), &graphics);
+        self.show_items(shell, &names);
     }
 
     /// Refused: the ruleset can't be changed here, which the reserved line says, in the error red.
@@ -447,7 +620,9 @@ impl Page {
         match id {
             "rules.categories" => {
                 self.choose_category(shell, index);
-                if !self.rows.is_empty() {
+                if !self.keys.is_empty() {
+                    shell.nav.focus("rules.pair.keys", 0);
+                } else if !self.rows.is_empty() {
                     shell.nav.focus("rules.items", 0);
                 }
                 Outcome::Nothing
@@ -457,6 +632,36 @@ impl Page {
                 let names: Vec<String> = ui.global::<RulesetView>().get_categories().iter().map(|c| c.name.to_string()).collect();
                 shell.pick("rules.category", 0, names, self.category);
                 Outcome::Nothing
+            }
+            // Paired: a key's allow box (the row of every key has none: it is chosen), and an item of the key chosen,
+            // held back for it alone or for every key (one every key's ban holds back can't be changed for one).
+            "rules.pair.keys" => {
+                self.choose_key(shell, index);
+                let Some(Some(key)) = self.keys.get(index.max(0) as usize).copied() else { return Outcome::Nothing };
+                let fact = self.category().fact.clone();
+                let item = Item::of(key);
+                self.change(shell, |r, _| {
+                    let allowed = r.allows_item(&fact, &item);
+                    r.set_allowed(&fact, &item, !allowed);
+                })
+            }
+            "rules.pair.programs" => {
+                let Some(item) = self.programs.get(index.max(0) as usize).cloned() else { return Outcome::Nothing };
+                let Some(inner) = self.inner_of(self.category()).cloned() else { return Outcome::Nothing };
+                match self.key {
+                    None => self.change(shell, |r, _| {
+                        let allowed = r.allows_item(&inner.fact, &item);
+                        r.set_allowed(&inner.fact, &item, !allowed);
+                    }),
+                    Some(_) if !self.shown.ruleset.allows_item(&inner.fact, &item) && self.editable() => {
+                        shell.sound.play(Cue::Refused);
+                        Outcome::Nothing
+                    }
+                    Some(key) => self.change(shell, |r, _| {
+                        let allowed = r.allows_for(&inner.fact, key, &item);
+                        r.set_allowed_for(&inner, key, &item, !allowed);
+                    }),
+                }
             }
             "rules.items" => {
                 let Some(item) = self.rows.get(index.max(0) as usize).cloned() else { return Outcome::Nothing };
@@ -522,7 +727,7 @@ impl Page {
         match id {
             "rules.versions" => self.change(shell, |r, _| r.one_per_build = by < 0),
             "rules.category" => {
-                let count = self.rulesets.categories.len() as i32;
+                let count = self.listed().len() as i32;
                 if count > 0 {
                     self.choose_category(shell, (self.category as i32 + by).rem_euclid(count));
                 }
@@ -593,15 +798,20 @@ impl Page {
         if id == "rules.categories" && index as usize != self.category {
             self.choose_category(shell, index);
         }
+        // (Paired: along the keys, the key under the focus is chosen.)
+        if id == "rules.pair.keys" {
+            self.choose_key(shell, index);
+        }
     }
 
     /// Show category `index`.
     fn choose_category(&mut self, shell: &mut Shell, index: i32) {
-        let index = (index.max(0) as usize).min(self.rulesets.categories.len().saturating_sub(1));
+        let index = (index.max(0) as usize).min(self.listed().len().saturating_sub(1));
         if index == self.category {
             return;
         }
         self.category = index;
+        self.key = None;
         let ui = shell.ui();
         ui.global::<RulesetView>().set_category(index as i32);
         let graphics = self.kit.ready.graphics(shell.lang);
