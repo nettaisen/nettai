@@ -1431,14 +1431,16 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 |---|---|---|---|
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
-| **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
+| **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes until 2026-10-21 (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
 | **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the "x" of "x2", the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | its one cut: the game's HP box digits traced, sharp corners | `crates/nettai-render/fonts/nettai-digits` (built by bn6battle-verify's `tools/digits/build_otf.py`) |
 | **Nettai Banner Digits** (nettai's own, MPL-2.0) | the numbered banners' numbers (§12.4) | its one cut: the game's banner digits traced, another drawing | `crates/nettai-render/fonts/nettai-banner-digits` (the same tool) |
+| **Nettai Chip Codes** (nettai's own, MPL-2.0) | the chip window's code, the big one beside the chip's picture (§12.11, from 2026-10-21) | its one cut: the game's codes A to Z and `*`, 7 by 11 pixels, traced | `crates/nettai-render/fonts/nettai-chip-codes` (bn6battle-verify's `tools/digits/build_codes_otf.py`) |
+| **Nettai Slot Codes** (nettai's own, MPL-2.0) | the codes under the slots' icons (§12.11, from 2026-10-21) | its one cut: the game's small codes, 6 by 5 pixels, traced | `crates/nettai-render/fonts/nettai-slot-codes` (the same tool) |
 
-They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`, `numbers::BANNER_DIGITS_FONT`;
-Bungee is 119 KB, the digit fonts under 3 KB each, M PLUS 1 Code 3.9 MB, which the UI's Slint bundle also embeds).
+They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`, `numbers::BANNER_DIGITS_FONT`,
+`numbers::CHIP_CODES_FONT`, `numbers::SLOT_CODES_FONT`; Bungee is 119 KB, the digit and code fonts under 4 KB each, M PLUS 1 Code 3.9 MB, which the UI's Slint bundle also embeds).
 nettai's build script lists each with its license in the licenses (`crates/nettai/build.rs` `FONTS`: the OFL's
-`OFL.txt`, the digit fonts the repository's `LICENSE`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
+`OFL.txt`, the digit and code fonts the repository's `LICENSE`). The lettering font is `vfont::Role::Lettering`: its capitals' rows (top and
 height, from the picture), its weight and its width; its glyphs are distance fields as the text font's (§9.10), cached
 apart (`GlyphKey::lettering`).
 
@@ -1458,7 +1460,7 @@ apart (`GlyphKey::lettering`).
 | Help pictures (NO DATA SELECTED / Choose a chip!, CHIP DATA TRANSMISSION / Sending chip data..., SHUFFLE! / Shuffle Folder) | yes | yes | yes | title bold, words 500, each line where the picture's stands, on the panel (the letters taken off) |
 | Numbers: HP box, enemies' and objects' HP (all colors) and damage taken, the hand window's damage +bonus x2, a telop's, the chip window's, the judge's, the banners', the emotion window's count | yes | yes | yes | Nettai Digits; the banners' Nettai Banner Digits (§12.4) |
 | HUD "????" | yes | yes | yes | Murecho, the telop's cell role and colors |
-| Chip codes (A to Z, `*`: the chip window's, the hand's under the slots) | yes | yes | yes | Bungee, fitted to the code's glyph's box, its colors (§12.11) |
+| Chip codes (A to Z, `*`: the chip window's, the hand's under the slots) | yes | yes | yes | Nettai Chip Codes (the chip window's) and Nettai Slot Codes (the slots'), a glyph pixel a frame pixel across in the codes' face box, its colors (§12.11) |
 | The Cross window's names (SPOUT ... CHRG, アクア ... チャージ) | yes | (no Crosses) | (no Crosses) | Murecho 900 in both languages, white or gray with the bar's dark outline, on the bar rebuilt from its colors (§12.11) |
 
 Left pixel art, as agreed: the buttons (SHUFFLE, UNITE / uni son, ARM, BLOCK), OK, the Cross window's plates and faces,
@@ -1632,8 +1634,16 @@ and "yes do that use murecho".
 
 - **Chip codes.** Wherever the window puts a code's glyph (`custom/codes.png` in the chip window, `custom/slot-codes.png`
   under the hand's slots; A to Z and `*`, not the special codes past them), its letter is taken off the cell and drawn in
-  Bungee fitted to the box the glyph's face fills, in its colors (row by row) and its rim or shadow, where it stood, in
-  every palette the window gives it. The cell's ground is its most common color and any color filling a whole side of
+  a font of the game's own codes (the user, 2026-10-21: "you should trace ABCDEFGHIJKLMNOPQRSTUVWXYZ* for the chip codes
+  font like you did digits: you should make a font for both the big chip code displayed in the chip window and the little
+  chip code displayed under the chip icon"; Bungee before): the chip window's in Nettai Chip Codes (7 by 11 pixels),
+  the slots' in Nettai Slot Codes (6 by 5). They keep the game's metrics as the digit fonts do (§12.4: a glyph pixel 100
+  units, an 8-pixel cell's advance; the chip window's ink from 50, the slots' from 100, on the baseline): the code is
+  drawn in the box all the set's glyphs' faces fill, a glyph pixel a frame pixel across, at its place in the cell, and
+  down, its face's top to the baseline the box's height, each glyph at its own rows (a `*` where the game's stands;
+  `numbers::Face::rows_as_drawn`, `vfont::paint_fitted`), in its colors (row by row) and its rim or shadow, where it
+  stood, in every palette the window gives it. A color two of a row's pixels differ in (EXE4's small Q's orange tail)
+  is the row's one fill. EXE4's own drawings of a few codes (its A, R, S, V and W) take the fonts' shapes. The cell's ground is its most common color and any color filling a whole side of
   it (the slots' frame: `letters::ground_of`); the chip window's letters touch their cell's sides, so a color merely
   on the edge is no ground. The same in every language and game (EXE4's, EXE5's and EXE6's windows).
 - **The Cross names.** EXE6's Cross window shows each Cross's face and name on an orange bar (`form-names-falzar`,
@@ -1650,7 +1660,11 @@ and "yes do that use murecho".
   picture's.
 - Looked at: the chip window's A and `*` and the hand's codes (EXE6 chips/0x001-cannon/atk10, EXE4
   custom/one-code), the Cross window under the cursor and not, in English and Japanese, Falzar
-  (custom/cross-window-keys) and Gregar (gregar-console/custom/cross-window-keys).
+  (custom/cross-window-keys) and Gregar (gregar-console/custom/cross-window-keys). In the code fonts, original and
+  enhanced side by side at 4x, the chip window's code and the slots' (each on the original's pixels, the same box):
+  EXE6's `*` (chips/0x001-cannon/atk10, frame 232), A and Q (gregar-console/chips/0x130-colforce/hit, 2312 and 2320);
+  EXE5's Q (chips/0x070-recov150/miss, 289) and `*` (chips/0x05c-dublcrak/miss, 289); EXE4's Q
+  (chips/0x099-rollaro3/miss, 267) and `*` (chips/0x094-copydmg/miss, 267).
 
 ### 12.12 Read as the pack is made
 
