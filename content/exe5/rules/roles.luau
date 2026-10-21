@@ -18,6 +18,7 @@ local beat = require("../chips/beat").beat
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive_ripple/ripple")
+local double_attacks = require("./double_attacks")
 local drive_end = require("../chips/darkinvs/drive_end")
 local dark_survival = require("./emotion/dark_survival")
 local invalid = require("../chips/invalid").invalid
@@ -48,6 +49,9 @@ local roles: RolesSpec = {
         -- him to 0 asks for (the rules' `hp_emptied`; ./emotion/dark_survival). EXE6's is a volley no routine asks
         -- for.
         volley = dark_survival.action,
+        -- The request 0x400000's action (the DS's 0x5C, its AIData +0x44 0x02000000): a Double Attack after a paused
+        -- switch (./double_attacks).
+        follow_up = double_attacks.follow_up,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
@@ -110,6 +114,9 @@ local roles: RolesSpec = {
     sounds = {
         -- A panel cracks or breaks; a panel turns to poison.
         panel_crack = asset.sound("panel-crack"),
+        -- A party's navi switch lands (the DS's 0x8D: EXE5's soul change's, which the switch plays for the voices the
+        -- user left out).
+        navi_switch = asset.sound("cross-change"),
         -- A navi hit, as its own player hears it and as the other does; an object taking damage; a
         -- blocked hit; a counter hit; a navi deleted.
         own_hit = asset.sound("own-hit"),

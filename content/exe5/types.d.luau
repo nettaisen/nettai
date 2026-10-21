@@ -159,3 +159,25 @@ export type Exe5FormFields = {
 -- What a dark chip's use costs its user (rules/light_dark, its chip's
 -- `dark_cost`: lib/dark_costs): the stats it sets.
 export type DarkCost = { apply: (stats: Navi) -> () }
+
+-- A Double Attack of the DS's party battle (lib/double_attack, its chip's
+-- `double_attack`): its two navis, whose switch fires it either way round
+-- (rules/double_attacks); its damage by the side's level (0 to 9); and its
+-- director's spawner, for the navi that came in, with the chip's element and
+-- the damage word (nil when the effect pool is full).
+export type DoubleAttack = {
+    navis: { NaviDef },
+    damage: { number },
+    spawn: (user: Object, element: number, damage: number) -> Object?,
+}
+
+-- What every Double Attack's actor keeps (lib/double_attack): its director
+-- (it reports to as it goes, the DS's +0x64 pointer), its role (Param1: 0
+-- the first navi, 1 the second) and the attachments it holds (+0x68,
+-- +0x6C). A Double Attack's own fields come beside them.
+export type DoubleAttackActor = {
+    director: Object?,
+    role: number,
+    held: Object?,
+    held2: Object?,
+}
