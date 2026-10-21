@@ -240,6 +240,36 @@ function party.spend_rescue(side: number)
     state.rescued = true
 end
 
+-- The rules' `overview`'s part, for a side with partners: each partner's PartyCust gauge as a list of its own (the
+-- setup's `party` at the partner's entry: its programs' blocks against the gauge, a program in it any number of times),
+-- and the switches a round allows (`party.limit`), the party's limit and a stat of its own (NaviCust's NavChg+1 and +2
+-- add to the 3).
+function party.overview(side: number, out: SetupOverview)
+    local setup = rules.setup_of(side) :: Setup
+    for i, p in setup.party do
+        local data = if p.navi then (p.navi :: any).party else nil
+        if data then
+            local programs: { PartyCustProgram } = {}
+            for _, program in p.programs do
+                if program then
+                    table.insert(programs, program)
+                end
+            end
+            local list: SetupList = { field = "party", entry = i, cost = "cost", used = partycust.cost(programs), limit = data.gauge, once = false }
+            table.insert(out.lists, list)
+        end
+    end
+    if not party.has_partners(side) then
+        return
+    end
+    local limit = party.limit(side)
+    out.switches = limit
+    local stat: SetupStat = { name = "switches", value = limit, added = limit - party.SWITCHES }
+    local stats = out.stats or {}
+    table.insert(stats, stat)
+    out.stats = stats
+end
+
 -- `validate`'s part: a party is MegaMan's (the navi that changes form, member 0: the DS's); its partners are team navis
 -- (a navi with party data), none twice and none the side's own; each partner's programs fit its gauge; the level a
 -- party battle reads is 0 to the DS's highest.

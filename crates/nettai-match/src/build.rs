@@ -763,6 +763,14 @@ impl Checked {
         self.battle.as_ref().map(|b| &b.stats[0])
     }
 
+    /// The stats each member of the build's party starts its round with,
+    /// in order: its own navi first (as [`Checked::stats`]), then the
+    /// partners its rules let join (EXE5's party battle). Empty: the round
+    /// doesn't start.
+    pub fn members(&self) -> &[NaviStats] {
+        self.battle.as_ref().map_or(&[], |b| b.party[0].members())
+    }
+
     /// The folder rules' view of `folder` on the build's limits
     /// ([`View::of`]): asked once for a folder as it stands, then read for
     /// every row of a list: the game's rules' alone (a chip a ruleset
@@ -840,7 +848,12 @@ impl Checked {
             .filter_map(|d| {
                 let (Data::Str(field), Data::Str(cost)) = (d.field("field"), d.field("cost")) else { return None };
                 let count = Count { used: d.field("used").int()?.try_into().ok()?, limit: d.field("limit").int()?.try_into().ok()? };
-                Some(Budget { field: field.clone(), cost: cost.clone(), count, once: matches!(d.field("once"), Data::Bool(true)) })
+                // (A list's entry is the rules' place, from 1.)
+                let entry = match d.field("entry").int() {
+                    Some(n) => Some(usize::try_from(n).ok()?.checked_sub(1)?),
+                    None => None,
+                };
+                Some(Budget { field: field.clone(), entry, cost: cost.clone(), count, once: matches!(d.field("once"), Data::Bool(true)) })
             })
             .collect();
         let tag_memory = self.folder_view(content, &side.folder(content)).and_then(|v| v.tag_memory);
@@ -865,6 +878,7 @@ impl Checked {
             abilities: items(answer.field("abilities")).iter().filter_map(source).collect(),
             bugs,
             lists,
+            switches: answer.field("switches").int().and_then(|n| u32::try_from(n).ok()),
         })
     }
 }
@@ -972,10 +986,14 @@ pub const BUGS_TABLE: &str = "bugs";
 /// A list of a build whose entries cost against a budget (the patch cards'
 /// MB): the setup field, the field of an entry's data that is its cost,
 /// what the list's entries cost together against the most they may, and
-/// whether an entry goes into it once.
+/// whether an entry goes into it once. With `entry`, the list is what the
+/// field's element at that place (from 0) holds: a list of records each
+/// with a list of its own (EXE5's party battle's partners, each with its
+/// PartyCust programs against its gauge).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Budget {
     pub field: String,
+    pub entry: Option<usize>,
     pub cost: String,
     pub count: Count,
     pub once: bool,
@@ -1000,7 +1018,13 @@ impl Budget {
 
     /// Why `entry` can't go into `side`'s list now; none: it can.
     pub fn refusal(&self, content: &Content, side: &Side, entry: EntryHandle) -> Option<EntryRefusal> {
-        let held = side.facts.get(content, &self.field).map(|v| named(&v)).unwrap_or_default();
+        let value = side.facts.get(content, &self.field);
+        let value = match (self.entry, value) {
+            (Some(at), Some(Stated::List(mut items))) => (at < items.len()).then(|| items.swap_remove(at)),
+            (Some(_), _) => None,
+            (None, value) => value,
+        };
+        let held = value.map(|v| named(&v)).unwrap_or_default();
         if self.once && held.contains(&entry.0) {
             return Some(EntryRefusal::Installed);
         }
@@ -1045,14 +1069,24 @@ pub struct Overview {
     /// The navi's bugs, as the NaviCust and the patch cards together leave
     /// them: a bug that both bring is there once.
     pub bugs: Vec<Bug>,
-    /// The budgets of the build's lists (the patch cards' MB).
+    /// The budgets of the build's lists (the patch cards' MB; a party's
+    /// partners' PartyCust gauges, each of its entry).
     pub lists: Vec<Budget>,
+    /// The switches a round allows the side's party, where the rules limit
+    /// them (`nettai_battle::party::Party::switches` counts those made).
+    pub switches: Option<u32>,
 }
 
 impl Overview {
     /// The budget of the build's list `field`, if it has one.
     pub fn budget(&self, field: &str) -> Option<&Budget> {
-        self.lists.iter().find(|b| b.field == field)
+        self.lists.iter().find(|b| b.field == field && b.entry.is_none())
+    }
+
+    /// The budget of the list held at entry `entry` (from 0) of the build's
+    /// field `field`, if it has one (a party's partner's programs).
+    pub fn budget_of(&self, field: &str, entry: usize) -> Option<&Budget> {
+        self.lists.iter().find(|b| b.field == field && b.entry == Some(entry))
     }
 }
 
@@ -1800,6 +1834,51 @@ mod tests {
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
         let checked = Checked::of(&content, "exe5", &side);
         assert!(checked.problems.iter().any(|p| (&p.what, p.field.as_deref(), p.entry) == (&Wrong::OffBoard, Some("navicust_programs"), Some(0))), "{:?}", checked.problems);
+    }
+
+    /// An EXE5 side with a party (EXE5 DS's party battle): its partners join
+    /// the round with their PartyCust programs applied, the overview has each
+    /// partner's gauge as a list of its entry and the switches a round
+    /// allows; the side rides a lobby's bytes and a build's file whole; and a
+    /// party the rules refuse is the build's problems, typed and of the field.
+    #[test]
+    fn exe5s_party() {
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::{Registry, Value};
+        let content = exe5_content();
+        let builds = Builds::of(&content, "exe5").unwrap();
+        let mut side = builds.new_build(&content, "protoman").unwrap();
+        let navi = |name: &str| Fact::Value(Value::Def(Registry::Navi, ids::navi(&content, "exe5", name).unwrap().0));
+        let program = |name: &str| Fact::Value(Value::Def(Registry::Entry, ids::entry(&content, "exe5", "partycust_programs", name).unwrap().0));
+        let partner = |name: &str, programs: &[&str]| Fact::Record(vec![("navi", navi(name)), ("programs", Fact::List(programs.iter().map(|p| program(p)).collect()))]);
+        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-100", "p-spport"]), partner("toadman", &[])]).unwrap();
+        let mut checked = Checked::of(&content, "exe5", &side);
+        assert_eq!(checked.problems, Vec::new());
+        assert_eq!(checked.members().len(), 3);
+        // (P.HP+100 on ProtoMan's own maximum, which he enters at.)
+        let mut bare = side.clone();
+        bare.set_fact(&content, "party", &[partner("protoman", &[])]).unwrap();
+        let base = Checked::of(&content, "exe5", &bare).members()[1].max_hp;
+        assert_eq!((checked.members()[1].max_hp, checked.members()[1].hp), (base + 100, base + 100));
+        let o = checked.overview(&content, &side).unwrap();
+        assert_eq!(o.budget_of("party", 0).map(|b| b.count), Some(Count { used: 3, limit: 6 }));
+        assert_eq!(o.budget_of("party", 1).map(|b| b.count), Some(Count { used: 0, limit: 8 }));
+        assert_eq!(o.budget("party"), None);
+        assert_eq!(o.switches, Some(3));
+        let b = o.budget_of("party", 0).unwrap();
+        let hp_300 = ids::entry(&content, "exe5", "partycust_programs", "p-hp-300").unwrap();
+        assert_eq!(b.refusal(&content, &side, hp_300), Some(EntryRefusal::Needs { needs: 5, free: 3 }));
+        // Over the wire and in a build's file, whole.
+        let bytes = crate::binary::side_bytes(&content, &side);
+        assert_eq!(crate::binary::read_side(&content, &bytes).unwrap(), side);
+        let toml = crate::file::side_toml(&content, "side", &side);
+        assert!(toml.contains("party"), "{toml}");
+        // A party the rules refuse: a navi twice, programs past the gauge.
+        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-300", "p-hp-300"]), partner("protoman", &[])]).unwrap();
+        let checked = Checked::of(&content, "exe5", &side);
+        let got: Vec<(Wrong, Option<&str>, Option<usize>)> = checked.problems.iter().map(|p| (p.what.clone(), p.field.as_deref(), p.entry)).collect();
+        assert!(got.contains(&(Wrong::Budget(Count { used: 10, limit: 6 }), Some("party"), Some(0))), "{got:?}");
+        assert!(got.iter().any(|(w, f, e)| *w == Wrong::Twice && *f == Some("party") && *e == Some(1)), "{got:?}");
     }
 
     /// EXE5's Soul Unison lasts 3 turns and the bonus the NaviCust's SoulT+1
