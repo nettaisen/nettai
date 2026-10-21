@@ -427,6 +427,13 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
         exit_attack_state(b, r);
         return;
     }
+    // The other side's rules may stop it (EXE5 DS's SearchMan's support in
+    // a link battle, 0x020778F4: `opponent_chip`).
+    let other = b.objects.get(r).alliance ^ 1;
+    if b.rules_opponent_chip(other, r) {
+        exit_attack_state(b, r);
+        return;
+    }
     let a = ai_mut(b, r);
     a.status &= !status::CONTROLLABLE;
     a.status |= status::CHIP_IN_PROGRESS;

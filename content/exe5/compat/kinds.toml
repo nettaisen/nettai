@@ -415,3 +415,7 @@
 "k-bomb/bomb" = { pool = "attack", index = 0xCC }
 "g-otoshi/frog" = { pool = "attack", index = 0xA2 }
 "megaman/support" = { pool = "actor", index = 0x30 }
+# SearchMan's party support: his controller (the DS's effect object 0x94, its position the spawner's registers) and his
+# actor (actor object 0x34).
+"searchman/support-controller" = { pool = "effect", index = 0x94, scratch_position = true }
+"searchman/support" = { pool = "actor", index = 0x34 }

@@ -552,6 +552,12 @@ pub enum RulesHook {
     /// Meddy's HealPulse) and answer the ticks they hold the flow; the
     /// longest answer holds it (none, it goes on at once).
     CustomHold,
+    /// `opponent_chip(side, navi)`: the opponent's navi `navi` starts a
+    /// chip from idle (after the NaviCust supports' interception,
+    /// `loc_80F057C`): true stops it (its attack ends; EXE5 DS's SearchMan's
+    /// support in a link battle, 0x020778F4). None answering true: it goes
+    /// on.
+    OpponentChip,
     /// `chip_ended(side, navi)`: the navi's chip attack (its `set_attack`
     /// slot 2) ends for the idle action (`sub_801171C`), after its lockout
     /// is handed on and before its requests and charge are cleared (the
@@ -733,6 +739,7 @@ impl RulesHook {
             RulesHook::FightTick => "fight_tick",
             RulesHook::FightStarted => "fight_started",
             RulesHook::CustomHold => "custom_hold",
+            RulesHook::OpponentChip => "opponent_chip",
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
@@ -755,7 +762,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 63] = [
+    pub const ALL: [RulesHook; 64] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -797,6 +804,7 @@ impl RulesHook {
         RulesHook::FightTick,
         RulesHook::FightStarted,
         RulesHook::CustomHold,
+        RulesHook::OpponentChip,
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,

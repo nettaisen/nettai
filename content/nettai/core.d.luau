@@ -351,6 +351,9 @@ declare extern type Collision with
     barrier: BarrierState
     barrier_hp: number
     barrier_pop_hit_mod: number
+    -- A bubble is its barrier (BblWrap's), and the barrier's timer (a bubble's 0 while it is down; read-only).
+    bubble: boolean
+    barrier_timer: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -419,9 +422,12 @@ declare extern type Object with
     identity: Identity?
     -- Holds an object's sprite (and more, by kind).
     prevent_anim: number
-    -- BattleObject +0x1A (read-only): a player's chips left in its hand as
-    -- the HUD shows them; another actor's own count (EXE5's Jealousy).
+    -- BattleObject +0x1A: a player's chips left in its hand as the HUD shows
+    -- them; another actor's own count (EXE5's Jealousy).
     chips_held: number
+    -- BattleObject +0x2A holds a chip (a player's: its hand's at the cursor;
+    -- read-only).
+    has_chip: boolean
     pos: Vec3
     vel: Vec3
     related1: Object?
@@ -2255,6 +2261,9 @@ export type RulesSpec = {
         -- A party battle's custom screen was asked for in the fight, each side, side 0 first: the ticks the rules hold
         -- the flow before the reversions (the longest answer holds it; none, it goes on at once).
         custom_hold: ((side: number) -> number?)?,
+        -- The opponent's navi `navi` starts a chip from idle (after the NaviCust supports' interception): true stops it
+        -- (its attack ends).
+        opponent_chip: ((side: number, navi: Object) -> boolean?)?,
         -- `sub_801171C`: the navi's chip attack ends, after its lockout is handed on, before its requests and charge
         -- are cleared.
         chip_ended: ((side: number, navi: Object) -> ())?,

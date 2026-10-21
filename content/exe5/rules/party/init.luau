@@ -266,11 +266,14 @@ end
 
 -- 0x02098E44, as a hit on the side's navi shows (0x02062C40, applyDamageToPlayer's counterpart, on the navi's own
 -- console): MegaMan's hurt voice, while he is the member on the field (the side's NaviStats +0x58, the member's slot,
--- 0). The console draws its RNG1; with 6 or 7 in its low three bits, one of three voices by the damage (under 70, under
--- 150, more: 0x02132044's pairs). The voice is left out, as the switch's are; the draw stays.
+-- 0). The console draws its RNG1; with 6 or 7 in its low three bits, a voice of the damage's tier (under 70, under 150,
+-- more: 0x02132044's rows, three voices each), one drawn again (0x02001100). The voice is left out, as the switch's
+-- are; the draws stay.
 function party.navi_hit_shown(side: number, _navi: Object)
     if party.has_partners(side) and battle.party(side).active == 0 then
-        battle.console_rng_positive(side)
+        if bit32.band(battle.console_rng_positive(side), 7) >= 6 then
+            battle.console_rng_positive(side)
+        end
     end
 end
 
