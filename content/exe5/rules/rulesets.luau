@@ -16,6 +16,10 @@ return {
         -- build, its navis are its team's (the groups: each navi's own `version`), as the build's souls and Giga chips
         -- are; mixed, any of the twelve.
         { fact = "party" },
+        -- The partners' PartyCust programs (each `party` record's `programs`: a category over a field of a list's
+        -- records, by its path), after the party (the user: "the party ruleset should also be able to ban partycust
+        -- programs").
+        { fact = "party.programs" },
         { fact = "folder" },
         { fact = "navicust_programs" },
         { fact = "patch_cards" },

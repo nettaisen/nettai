@@ -796,6 +796,7 @@ language = "ja"
 [rulesets]
 "category.navi" = "ナビ"
 "category.party" = "パーティ"
+"category.party.programs" = "パーティカスタムプログラム"
 "category.folder" = "チップ"
 "category.navicust_programs" = "ナビカスプログラム"
 "category.patch_cards" = "改造カード"
