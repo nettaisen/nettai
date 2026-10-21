@@ -1759,6 +1759,7 @@ impl CoreApi for Battle {
             A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
             A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
             A::Engine(E::NaviSwitch) => NaviAction::Engine("navi_switch"),
+            A::Engine(E::SwitchKnockout) => NaviAction::Engine("switch_knockout"),
             A::Content(h) => NaviAction::Content(h.0),
         })
     }

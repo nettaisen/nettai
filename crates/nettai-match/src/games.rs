@@ -1118,6 +1118,35 @@ fn a_team_navi_at_zero_hp_falls_back_to_megaman() {
     assert_eq!(b.switch_inputs[0], None);
 }
 
+/// A battle that ends with a switched-in team navi on the field: the navi
+/// runs the switch knockout (EXE5 DS's action 0x4D, from the battle's end in
+/// its idle, 0x02045108): MegaMan comes back with his HP.
+#[test]
+fn a_battle_ending_with_a_team_navi_on_the_field_brings_megaman_back() {
+    let mut b = party_battle(r#"{ navi = "protoman" }"#);
+    let r = b.player(0).unwrap();
+    b.objects.get_mut(r).hp = 640;
+    ask_switch(&mut b, 1);
+    for _ in 0..60 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!(navi_key(&b, 0), "protoman");
+    let enemy = b.player(1).unwrap();
+    b.objects.get_mut(enemy).hp = 0;
+    let mut knocked_out = false;
+    for _ in 0..120 {
+        b.tick(&Default::default(), Default::default());
+        if let Some(r) = b.player(0) {
+            knocked_out |= nettai_battle::kinds::player::navi_action(&b, r)
+                == nettai_battle::kinds::player::NaviAction::Engine(nettai_battle::kinds::player::EngineAction::SwitchKnockout);
+        }
+    }
+    assert!(b.is_battle_over());
+    assert!(knocked_out, "the team navi runs the switch knockout");
+    assert_eq!((navi_key(&b, 0).as_str(), b.party[0].active), ("megaman", 0));
+    assert_eq!(b.objects.get(b.player(0).unwrap()).hp, 640);
+}
+
 /// ToadMan's rescue (with P.Spport): the navi at 0 HP is healed a quarter of
 /// its maximum, once a battle; the second time it is deleted.
 #[test]
