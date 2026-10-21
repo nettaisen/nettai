@@ -108,7 +108,7 @@ pub fn words(
             let lettering = Lettering { width, ..natural };
             let rect = Rect::new(x.floor() as i32 - 2, top, w.ceil() as i32 + 4, cap);
             let item = TextItem::new(*line, Role::Lettering(lettering), rect, face, shadow);
-            let ink = crate::textlayer::Ink { fill: vec![face], rim: t.rim.map(|c| color(t.palette, c)), rim_width: t.rim_width as f32 / 100.0 };
+            let ink = crate::textlayer::Ink { fill: vec![face], rim: t.rim.map(|c| color(t.palette, c)), rim_width: t.rim_width as f32 / 100.0, stepped: false };
             out.push(TextItem { align: crate::textlayer::Align::Center, ink: Some(ink), slant: t.slant, ..item });
         }
     }

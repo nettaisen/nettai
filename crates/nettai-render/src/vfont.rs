@@ -1256,9 +1256,10 @@ impl TextRenderer {
             let shadow = item.shadow.map(color);
             for y in area.1..area.3 {
                 // The face's color on this output row: the picture's row
-                // its middle falls on, blended between rows' middles.
+                // its middle falls on, blended between rows' middles (or
+                // that row's alone, `Ink::stepped`).
                 let row = unsquash((y as f32 + 0.5 - place.y as f32) / s) - cap_top - 0.5;
-                let face = fill_color(&fill, row);
+                let face = if ink.stepped { row_color(&fill, row) } else { fill_color(&fill, row) };
                 for x in area.0..area.2 {
                     if let Some((rgb, rim)) = &rim {
                         let a = rim.at(x, y);
@@ -1527,6 +1528,13 @@ const NUMBER_SPREAD: f32 = 40.0;
 /// The fill's color at `row` (the capitals' rows from the first's middle,
 /// continuous): blended between the two rows it falls between, the first's
 /// or the last's past them.
+/// The face's color of the picture's row that `row` (from the first row's
+/// middle, as [`fill_color`] takes it) falls in: a band a row, no blend.
+fn row_color(fill: &[u32], row: f32) -> u32 {
+    let last = fill.len() - 1;
+    fill[((row + 0.5).floor().max(0.0) as usize).min(last)]
+}
+
 fn fill_color(fill: &[u32], row: f32) -> u32 {
     let last = fill.len() - 1;
     let r = row.clamp(0.0, last as f32);
