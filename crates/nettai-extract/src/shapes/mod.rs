@@ -18,7 +18,7 @@
 //! matching pixels is noted; a drawing far off is a problem). A picture
 //! with no drawing stays a picture, and that is said.
 
-use nettai_assets::shapes::{CustomShapes, Drawing, GaugeCells, HudShapes, MapDrawing, MugshotFrame};
+use nettai_assets::shapes::{CustomShapes, Drawing, GaugeCells, HudShapes, MapDrawing, MugshotBoxFrame, MugshotFrame};
 use nettai_assets::{Bundle, Chatbox, CustomScreen, Hud, MapEntry, PatchList, Tiles};
 
 /// The hand-drawn SVG files (`shapes/`), by path from there.
@@ -330,7 +330,8 @@ impl Shaper {
 /// Read the frames of `bundle` (of `game`, `exe6`...) as shapes into its
 /// `shapes` (the banners' bars into their layouts, by their names in
 /// `banner_name`; and the emotion window's frame apart from its faces:
-/// `Hud::mugshot_frame`), and say what was found.
+/// `Hud::mugshot_frame`, and the faces' boxes' apart from the boxes:
+/// `Hud::mugshot_box_frame`), and say what was found.
 pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> String) -> Vec<String> {
     let mut sh = Shaper::new(game, Views::of(bundle));
     let mut problems = Vec::new();
@@ -373,9 +374,10 @@ pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> Stri
                 }
             }
         }
-        let (shapes, frame) = hud_shapes(&bundle.hud, &mut sh, &mut |p| problems.push(p));
+        let (shapes, frame, box_frame) = hud_shapes(&bundle.hud, &mut sh, &mut |p| problems.push(p));
         bundle.hud.shapes = shapes;
         bundle.hud.mugshot_frame = frame;
+        bundle.hud.mugshot_box_frame = box_frame;
     }
     if !bundle.custom.is_empty() {
         bundle.custom.shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
@@ -479,7 +481,7 @@ fn banner_grid(b: &nettai_assets::BannerLayout) -> Option<Grid> {
 
 /// The HUD's frames ([`HudShapes`]), and the emotion window's frame apart
 /// from its faces.
-pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (HudShapes, Option<MugshotFrame>) {
+pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (HudShapes, Option<MugshotFrame>, Option<MugshotBoxFrame>) {
     let mut s = HudShapes::default();
     // A HUD layer's tile by its number, the gauge's with its letters off.
     let gauge_base = nettai_content::letters::gauge_base(&h.gauge_tiles, h.gauge_first_tile, &h.gauge_frame, &h.letters.words);
@@ -550,6 +552,21 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
         }
         s.mugshot_frame = sh.drawing("hud/mugshot-frame", c.grid());
     }
+    let box_frame = mugshot_box_frame(h, say);
+    if let Some(f) = &box_frame {
+        // (The ring alone, the boxes' pixels holes.)
+        let mut c = Canvas::new(16, 16, Label::Clear);
+        for k in 0..4 {
+            let (x0, y0) = (8 * (k % 2), 8 * (k / 2));
+            for i in 0..64 {
+                let (x, y) = (x0 + i % 8, y0 + i / 8);
+                let ring = f.ring.pixels[k * 64 + i] != 0;
+                let drawn = h.mugshot_boxes.iter().any(|t| t.pixels.get(k * 64 + i).is_some_and(|&v| v != 0));
+                c.cells[y * 16 + x] = if ring { Label::Color(0, 1) } else if drawn { Label::Hole } else { Label::Clear };
+            }
+        }
+        s.mugshot_box_frame = sh.drawing("hud/mugshot-box-frame", c.grid());
+    }
     // The chatbox's box, each of its maps: its kinds' (the message box,
     // the description box), each at its opening steps.
     let g = &h.chatbox;
@@ -579,7 +596,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
     // Its key-wait arrow, its frames (2x2 tiles each).
     let arrow: Vec<Option<Drawing>> = (0..g.arrow.len() / 4).map(|k| sh.tiles(&format!("hud/chatbox-arrow-{k}"), &g.arrow, 4 * k, 2, 2)).collect();
     s.chatbox_arrow = all(arrow);
-    (s, frame)
+    (s, frame, box_frame)
 }
 
 /// The gauge's cells ([`GaugeCells`]): all of them drawn, or none.
@@ -665,6 +682,63 @@ fn mugshot_frame(h: &Hud, say: &mut dyn FnMut(String)) -> Option<MugshotFrame> {
     })).collect();
     if !kept.is_empty() {
         say(format!("note: the emotion window's faces {} cover its frame in places and keep it (drawn as their pictures)", kept.join(", ")));
+    }
+    Some(frame)
+}
+
+/// The frame of the boxes the faces bring beside them (EXE4's and EXE5's), apart from what each shows: the pixels
+/// every box shows in its frame's color (the color most of its edge pixels are), where nearly all of them do; each box
+/// apart from it where all its ring is that color. What a box keeps is said.
+fn mugshot_box_frame(h: &Hud, say: &mut dyn FnMut(String)) -> Option<MugshotBoxFrame> {
+    let boxes: Vec<&Tiles> = h.mugshot_boxes.iter().filter(|t| t.len() == 4).collect();
+    if boxes.len() < 2 {
+        return None;
+    }
+    // (A box's pixel at (x, y) of its 16x16, tiles row by row.)
+    let at = |t: &Tiles, x: usize, y: usize| t.pixels[((y / 8) * 2 + x / 8) * 64 + (y % 8) * 8 + x % 8];
+    let frame_color = |t: &Tiles| -> Option<u8> {
+        let mut count = [0usize; 16];
+        for i in 0..16 {
+            for (x, y) in [(i, 0), (i, 15), (0, i), (15, i)] {
+                count[at(t, x, y) as usize & 15] += 1;
+            }
+        }
+        (1..16).max_by_key(|&c| (count[c], c)).filter(|&c| count[c] > 0).map(|c| c as u8)
+    };
+    let colors: Vec<Option<u8>> = boxes.iter().map(|t| frame_color(t)).collect();
+    let mut ring = Tiles { pixels: vec![0; 4 * Tiles::TILE] };
+    let mut any = false;
+    for y in 0..16 {
+        for x in 0..16 {
+            let n = boxes.iter().zip(&colors).filter(|(t, c)| c.is_some_and(|c| at(t, x, y) == c)).count();
+            if n * 10 >= boxes.len() * 9 {
+                ring.pixels[((y / 8) * 2 + x / 8) * 64 + (y % 8) * 8 + x % 8] = 1;
+                any = true;
+            }
+        }
+    }
+    if !any {
+        say("the faces' boxes share no frame: it stays in each box".into());
+        return None;
+    }
+    let mut frame = MugshotBoxFrame { ring, ..MugshotBoxFrame::default() };
+    let mut kept = Vec::new();
+    frame.boxes = h
+        .mugshot_boxes
+        .iter()
+        .enumerate()
+        .map(|(i, t)| {
+            if t.is_empty() {
+                return None;
+            }
+            frame.split(t).or_else(|| {
+                kept.push(format!("{i:#04x}"));
+                None
+            })
+        })
+        .collect();
+    if !kept.is_empty() {
+        say(format!("note: the faces' boxes {} cover their frame in places and keep it (drawn as their pictures)", kept.join(", ")));
     }
     Some(frame)
 }

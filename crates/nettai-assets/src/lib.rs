@@ -463,9 +463,11 @@ pub struct Hud {
     /// in the language the lettering above is in.
     pub letters: letters::HudLetters,
     /// Its frames as shapes (`shapes`), and the emotion window's frame apart
-    /// from its faces.
+    /// from its faces, and the frame of the boxes the faces bring apart from
+    /// the boxes.
     pub shapes: shapes::HudShapes,
     pub mugshot_frame: Option<shapes::MugshotFrame>,
+    pub mugshot_box_frame: Option<shapes::MugshotBoxFrame>,
 }
 
 /// Where the HUD's code puts its pieces, where games differ (the default:
