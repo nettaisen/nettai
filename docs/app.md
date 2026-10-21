@@ -1609,7 +1609,7 @@ navicust"), a program's blocks joined into one piece with a gap between programs
 overview's small gauge the same. On a phone the panel is the tab, and a PROGRAMS button opens the library as a sheet. A partner's version (its team: the
 builds data's group its `version` is) is marked after its name wherever a partner is shown in the builds' screens (the
 user: "it's also unclear which partner is from which game"): the rows, the picker's (`PickMark.tag`), the strip and the
-build overview's party rows (a square of its color where the name leaves no room); not the battle's strip. The gauge and a program's cost are the rules' overview's (a list
+build overview's party rows (there as a form's is in its forms' row: a bar in its color under its face, the user's); not the battle's strip. The gauge and a program's cost are the rules' overview's (a list
 budget of the partner's entry, `Overview::budget_of`; `Budget::refusal` by it), and what is wrong is the build's
 problems in their typed words ("Programs fill 10 blocks, the gauge has 6"; "Something in the party is there twice"). A
 party is the game's own navi's: kept aside while the build's navi is another. A save gives none: the GBA's saves have

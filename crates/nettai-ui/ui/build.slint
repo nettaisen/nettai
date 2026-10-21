@@ -851,19 +851,28 @@ export component BuildOverview inherits Rectangle {
         y: root.party-y + i * 22px;
         width: root.narrow ? root.inner : 240px;
         height: 20px;
+        // (Its face, its version's mark under it, a bar in its color, as a form's is in the forms' row.)
         Image {
             x: 0;
-            y: 2px;
+            y: 0;
             width: 32px;
             height: 16px;
             source: partner.face;
             image-rendering: pixelated;
         }
 
-        // (Its name, its version's mark after it: a square of its color where the two don't fit.)
+        Rectangle {
+            x: 0;
+            y: 18px;
+            width: 32px;
+            height: 2px;
+            visible: partner.version.text != "";
+            background: partner.version.tone;
+        }
+
         partner-name := Text {
             x: 38px;
-            width: max(0px, parent.width - 38px - 52px - 6px - partner.gauge * 5px - 4px - 28px - (partner-version.width > 0 ? partner-version.width + 4px : 0px));
+            width: max(0px, parent.width - 38px - 52px - 6px - partner.gauge * 5px - 4px - 28px);
             text: partner.name;
             color: Theme.text;
             font-family: Theme.body;
@@ -871,13 +880,6 @@ export component BuildOverview inherits Rectangle {
             font-weight: 600;
             vertical-alignment: center;
             overflow: elide;
-        }
-
-        partner-version := VersionMark {
-            x: partner-name.x + min(partner-name.width, partner-name.preferred-width) + 4px;
-            y: (parent.height - self.height) / 2;
-            tag: partner.version;
-            short: partner-name.preferred-width + 4px + self.natural-width > max(0px, parent.width - 38px - 52px - 6px - partner.gauge * 5px - 4px - 28px);
         }
 
         Text {
