@@ -39,7 +39,8 @@ use nettai_match::Wrong;
 use nettai_match::build::TEXT_TABLE;
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
-use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
+use crate::builds::overview::{stat_line, stat_name};
+use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 #[derive(Default)]
@@ -58,7 +59,7 @@ pub struct Navi {
 
 /// The chip family whose icon the game shows for `element`: the family of the element's name, a navi of no
 /// element's the family of the chips of none.
-fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFamily {
+pub(super) fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFamily {
     let families = &content.rules().chip_families;
     let named = match element {
         Element::Null => None,
@@ -134,7 +135,9 @@ impl Tab for Navi {
         let ui = shell.ui();
         let view = ui.global::<NaviView>();
         let face = draft.checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(chosen));
-        let hp = draft.checked.stats().map(|s| s.max_hp.to_string()).unwrap_or_default();
+        // (Its stats as the overview says them: HP, Attack and Charge, then those of its game's rules' own it has.)
+        let side = draft.side().clone();
+        let overview = draft.checked.overview(&content, &side);
         let offered = kit.builds.choices_of(&content, draft.side());
         draft.with_words(shell, |words| {
             let names = words.names;
@@ -144,6 +147,15 @@ impl Tab for Navi {
                 self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen, banned: !draft.allows(navi_fact, n.0) }).collect();
             view.set_navis(ModelRc::new(VecModel::from(cards)));
             view.set_name(names.navi(chosen).into());
+            let stats: Vec<StatLine> = match &overview {
+                Some(o) => [o.hp, o.attack, o.charge]
+                    .map(|s| stat_line(String::new(), s))
+                    .into_iter()
+                    .chain(o.members.iter().filter(|(m, _)| *m == 0).flat_map(|(_, s)| s).map(|s| stat_line(stat_name(words, s), s.stat)))
+                    .collect(),
+                None => vec![StatLine::default(); 3],
+            };
+            view.set_stats(ModelRc::new(VecModel::from(stats)));
             // Each of the game's choices the build's navi has (a navi with none of one has nothing in its place): its
             // presets by their names in the game's strings, in capitals, a segment each, and the one the build is on.
             let choices: Vec<NaviChoice> = kit
@@ -272,7 +284,6 @@ impl Tab for Navi {
         view.set_ruleset(ruleset.into());
         view.set_ruleset_missing(missing);
         view.set_face(face);
-        view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
         // (The focus starts on the build's navi's card.)
         if shell.nav.focused().is_none_or(|k| !["navi", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit", "practice"].contains(&k.id.as_str()))

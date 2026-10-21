@@ -386,17 +386,17 @@ language = "en"
 [navis]
 "colonel" = { name = "Colonel", run_message = "This is not the time\nto run away!" }
 "gyroman" = { name = "GyroMan", run_message = "Hey,this ain't the\ntime to run away!" }
-"knightman" = { name = "KnightMn", run_message = "Master,surely this\nis no time to\nretreat!" }
-"magnetman" = { name = "MagnetMn", run_message = "This is no time to\nrun away!" }
+"knightman" = { name = "KnightMn", long_name = "KnightMan", run_message = "Master,surely this\nis no time to\nretreat!" }
+"magnetman" = { name = "MagnetMn", long_name = "MagnetMan", run_message = "This is no time to\nrun away!" }
 "meddy" = { name = "Meddy", run_message = "Hey,this isn't the\ntime to run away!" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn", run_message = "Lan,this is no time\nto run away!" }
-"napalmman" = { name = "NapalmMn", run_message = "I ain't runnin' from\nthis fight! Let me\nat 'em!" }
-"numberman" = { name = "NumbrMan", run_message = "I'm scared,too,but\nWe can't run away\nfrom this one!" }
+"napalmman" = { name = "NapalmMn", long_name = "NapalmMan", run_message = "I ain't runnin' from\nthis fight! Let me\nat 'em!" }
+"numberman" = { name = "NumbrMan", long_name = "NumberMan", run_message = "I'm scared,too,but\nWe can't run away\nfrom this one!" }
 "protoman" = { name = "ProtoMan", run_message = "This is no time to\nrun away!" }
-"searchman" = { name = "SerchMan", run_message = "We'd be wise to not\nrun away here! We\nmust fight!" }
-"shadowman" = { name = "ShadoMan", run_message = "This isn't the time\nto be running away⋯" }
+"searchman" = { name = "SerchMan", long_name = "SearchMan", run_message = "We'd be wise to not\nrun away here! We\nmust fight!" }
+"shadowman" = { name = "ShadoMan", long_name = "ShadowMan", run_message = "This isn't the time\nto be running away⋯" }
 "toadman" = { name = "ToadMan", run_message = "*Ribbit!!!* We can't\nrun from this one!" }
-"tomahawkman" = { name = "TmhkMan", run_message = "This isn't the time\nto run away!" }
+"tomahawkman" = { name = "TmhkMan", long_name = "TomahawkMan", run_message = "This isn't the time\nto run away!" }
 
 [forms]
 "colonelsoul" = { name = "ColSoul" }
@@ -856,10 +856,12 @@ language = "en"
 # The stats the rules' overview gives beyond the eight every game's have, by name (rules/souls/custom's `overview`),
 # each a row after Regular memory. `soul_time`: the turns a Soul Unison lasts, the NaviCust's SoulT+1 and the patch
 # cards' SoulTm+ and SoulTm- together (the cards' "SoulTm"). `switches` (rules/party's `overview`): the navi changes
-# (switches) a party battle's round allows, the NaviCust's NavChg+1 and +2 added to the 3. Ours.
+# (switches) a party battle's round allows, the NaviCust's NavChg+1 and +2 added to the 3; `chip_damage` (its `members`):
+# a partner's own chip's damage, its programs' P.Chp added. Ours.
 [stats]
 "soul_time" = "Soul time"
 "switches" = "Navi changes"
+"chip_damage" = "Chip damage"
 
 # The words of the battle's lettered pictures, by picture (docs/design/text-rendering.md §12): the enhanced graphics
 # draw them in the lettering font in the picture's place, in its look; the original graphics draw the pictures. A

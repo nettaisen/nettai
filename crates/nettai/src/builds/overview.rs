@@ -82,6 +82,12 @@ pub fn stat_name(words: &Words, stat: &NamedStat) -> String {
     words.names.text(build::STATS_TABLE, &stat.key).unwrap_or_else(|| stat.key.clone())
 }
 
+/// A stat as the overview says it: its value, and what the build's installed parts added (nothing: none said). An
+/// empty `label`: the one the view gives it by its place (HP, Attack, ...).
+pub fn stat_line(label: String, stat: Stat) -> StatLine {
+    StatLine { label: label.into(), value: stat.value.to_string().into(), added: if stat.added() == 0 { Default::default() } else { format!("{:+}", stat.added()).into() } }
+}
+
 /// A bug, by its full name in the game's strings and its level or amount (a card's drawback that is no bug of its
 /// own kind: its line, and no level).
 pub fn bug(words: &Words, bug: &Bug) -> (String, String) {
@@ -128,11 +134,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
     let say = words.ui.global::<nettai_ui::BuildWords>();
     let stats: Vec<StatLine> = match &overview {
         Some(o) => {
-            let line = |stat: Stat, megabytes: bool| StatLine {
-                value: if megabytes { say.invoke_megabytes(stat.value) } else { stat.value.to_string().into() },
-                added: if stat.added() == 0 { Default::default() } else { format!("{:+}", stat.added()).into() },
-                ..Default::default()
-            };
+            let line = |stat: Stat, megabytes: bool| StatLine { value: if megabytes { say.invoke_megabytes(stat.value) } else { stat.value.to_string().into() }, ..stat_line(String::new(), stat) };
             let Overview { hp, attack, rapid, charge, custom, mega, giga, regular_memory, .. } = *o;
             let named = o.stats.iter().map(|s| StatLine { label: stat_name(words, s).into(), ..line(s.stat, false) });
             [hp, attack, rapid, charge, custom, mega, giga].map(|s| line(s, false)).into_iter().chain([line(regular_memory, true)]).chain(named).collect()
