@@ -7,7 +7,7 @@
 
 import { Theme, Caps } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
-import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint } from "../shell.slint";
+import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint, HintView, PartyMember } from "../shell.slint";
 import { Cut, Heading, Label, Note, Mono, Bars, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
@@ -435,8 +435,162 @@ component PadKey inherits Rectangle {
     }
 }
 
+// A member of the party, as the party's strip and the phone's switch buttons show it: its face and its HP over a bar
+// of it, dimmed with none left; `active`, the one on the field, framed in the cursor's color.
+component MemberCell inherits Rectangle {
+    in property <PartyMember> member;
+    in property <bool> active;
+    in property <bool> there: true;
+    Rectangle {
+        border-width: 1px;
+        border-color: root.active ? Theme.cursor : Theme.line;
+        background: root.active ? Theme.tint : transparent;
+    }
+
+    Image {
+        x: 4px;
+        y: (parent.height - 16px) / 2 - 2px;
+        width: 32px;
+        height: 16px;
+        visible: root.there;
+        source: root.member.face;
+        image-rendering: pixelated;
+        opacity: root.member.hp > 0 ? 1 : 0.4;
+    }
+
+    Text {
+        x: 40px;
+        y: 0;
+        width: parent.width - 44px;
+        height: parent.height - 4px;
+        visible: root.there;
+        text: root.member.hp;
+        color: root.member.hp > 0 ? Theme.text : Theme.bad;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    // (Its HP against its most, under it.)
+    Rectangle {
+        x: 4px;
+        y: parent.height - 4px;
+        width: parent.width - 8px;
+        height: 2px;
+        visible: root.there;
+        background: Theme.inset;
+        Rectangle {
+            x: 0;
+            width: root.member.max-hp > 0 ? parent.width * min(1, root.member.hp / root.member.max-hp) : 0px;
+            background: root.member.hp * 4 > root.member.max-hp ? Theme.good : Theme.bad;
+        }
+    }
+}
+
+// The switches a round allows, each a pip: those made filled, those left empty.
+component Pips inherits Rectangle {
+    in property <int> made;
+    in property <int> limit;
+    width: root.limit * 10px;
+    height: 8px;
+    for i in root.limit: Rectangle {
+        x: i * 10px;
+        y: 0;
+        width: 8px;
+        height: 8px;
+        border-width: 1px;
+        border-color: Theme.line;
+        background: i < root.made ? Theme.dim : Theme.cursor;
+    }
+}
+
+// The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`): a strip at the window's bottom left,
+// over the field's foot as the connection's corner is at its right, where the picture shows nothing of the battle. The
+// member on the field, then each switch's control and the member it names, then the switches left.
+component PartyStrip inherits Rectangle {
+    property <length> cell: 92px;
+    width: 8px + root.cell + 12px + left-key.width + 4px + root.cell + 12px + right-key.width + 4px + root.cell + 12px + pips.width + 8px;
+    height: 34px;
+    Rectangle {
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    MemberCell {
+        x: 8px;
+        y: 4px;
+        width: root.cell;
+        height: 26px;
+        member: Shell.party.members[Shell.party.active];
+        active: true;
+    }
+
+    left-key := HintView {
+        x: 8px + root.cell + 12px;
+        y: 6px;
+        height: 22px;
+        hint: Shell.party.left-key;
+    }
+
+    MemberCell {
+        x: left-key.x + left-key.width + 4px;
+        y: 4px;
+        width: root.cell;
+        height: 26px;
+        there: Shell.party.left >= 0;
+        member: Shell.party.members[Shell.party.left];
+    }
+
+    right-key := HintView {
+        x: left-key.x + left-key.width + 4px + root.cell + 12px;
+        y: 6px;
+        height: 22px;
+        hint: Shell.party.right-key;
+    }
+
+    MemberCell {
+        x: right-key.x + right-key.width + 4px;
+        y: 4px;
+        width: root.cell;
+        height: 26px;
+        there: Shell.party.right >= 0;
+        member: Shell.party.members[Shell.party.right];
+    }
+
+    pips := Pips {
+        x: parent.width - 8px - self.width;
+        y: (parent.height - self.height) / 2;
+        made: Shell.party.switches;
+        limit: Shell.party.limit;
+    }
+}
+
+// One of a phone's two switch buttons: a button of the pad (its bit, 14 the left, 15 the right) with the member it
+// names; held, drawn so.
+component SwitchKey inherits Rectangle {
+    in property <int> button;
+    in property <int> at;
+    PadKey {
+        button: root.button;
+    }
+
+    MemberCell {
+        x: 6px;
+        y: 6px;
+        width: parent.width - 12px;
+        height: parent.height - 12px;
+        there: root.at >= 0;
+        member: Shell.party.members[root.at];
+    }
+}
+
 // The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU, with what the battle is
-// beside it (`Shell.battle-note`: its owner's words).
+// beside it (`Shell.battle-note`: its owner's words). In a party battle, under MENU: the switches' two buttons, each
+// with the member it names, and between them the member on the field and the switches left (EXE5 DS's bottom screen's
+// party panel, as its touch screen offers it).
 component TouchPad inherits Rectangle {
     menu := Button {
         x: 0;
@@ -456,6 +610,42 @@ component TouchPad inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    // (The party's: shown in a party battle; a button with no member does nothing.)
+    Rectangle {
+        y: menu.height + 12px;
+        height: 64px;
+        visible: Shell.party.shown;
+        SwitchKey {
+            x: 0;
+            width: (parent.width - 16px) / 3;
+            button: 14;
+            at: Shell.party.left;
+        }
+
+        MemberCell {
+            x: (parent.width - 16px) / 3 + 8px + 6px;
+            y: 6px;
+            width: (parent.width - 16px) / 3 - 12px;
+            height: 30px;
+            member: Shell.party.members[Shell.party.active];
+            active: true;
+        }
+
+        Pips {
+            x: (parent.width - self.width) / 2;
+            y: 46px;
+            made: Shell.party.switches;
+            limit: Shell.party.limit;
+        }
+
+        SwitchKey {
+            x: parent.width - self.width;
+            width: (parent.width - 16px) / 3;
+            button: 15;
+            at: Shell.party.right;
+        }
     }
 
     PadKey {
@@ -576,6 +766,15 @@ export component BattleScreen inherits Rectangle {
 
     // (Over the corner, its right edge on the corner's; on a phone, where the picture is short, as near the top
     // as it has to be.)
+    // (The player's party, in a party battle: on a phone its pad's.)
+    PartyStrip {
+        x: Theme.phone ? 0px : 56px;
+        y: parent.height - self.height - 16px;
+        visible: Shell.party.shown && !Theme.phone;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
     if Shell.connection-shown && Shell.connection-open: LinkPanel {
         width: min(340px, parent.width - 2 * Theme.margin);
         x: corner.x + corner.width - self.width;
