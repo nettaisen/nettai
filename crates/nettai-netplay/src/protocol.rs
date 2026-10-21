@@ -9,10 +9,11 @@
 //! [`Meta`], and packs them byte-minimally:
 //!
 //! - [`Element::Tick`]: one tick of the player's input, its word
-//!   (`nettai_battle::PlayerTick::word`: their held buttons and a party
-//!   switch request) and a few flags for the tick's events. A tick with no
-//!   flags or switch and only A, B and the directions held is one byte; any
-//!   other buttons or a switch, two; flags, up to three.
+//!   (`nettai_battle::PlayerTick::word`: their held buttons, a party switch
+//!   request and a microphone level) and a few flags for the tick's events.
+//!   A tick with no flags, switch or level and only A, B and the directions
+//!   held is one byte; any other buttons or a switch, two; a level, three;
+//!   flags, up to five.
 //! - [`Element::RoundEnd`] and [`Element::MatchEnd`]: the in-band markers.
 //!   The sender's round is over, and what follows is the next round's
 //!   input; the sender left the match.
@@ -26,7 +27,7 @@
 //!
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | switch << 10 (2 bits: the member
-//!                 + 1, 0 none) | flags << 12
+//!                 + 1, 0 none) | microphone level << 12 (8 bits) | flags << 20
 //! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end
 //! ```
 
@@ -40,7 +41,7 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// on that the content's hash doesn't say:
 ///
 /// - the stream's elements and their wire form (this module): a tick is its
-///   buttons, its switch request and its flags (`battle::flags`: the link closing), and the
+///   buttons, its switch request, its microphone level and its flags (`battle::flags`: the link closing), and the
 ///   round's and the match's end are markers;
 /// - the lobby and the handshake (nettai-frontend's `lobby`): the lobby's
 ///   messages (the compatibility fields, the match's settings with their
@@ -102,10 +103,10 @@ pub type Frame = rennet::Frame<Netplay>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
     /// One tick of the player's input: its word (`PlayerTick::word`: the
-    /// buttons they hold, the GBA's bits, `nettai_battle::input::keys`, and
-    /// their switch request) and the game's flags for the tick's events
-    /// ([`WireInput`]).
-    Tick { word: u16, flags: u8 },
+    /// buttons they hold, the GBA's bits, `nettai_battle::input::keys`,
+    /// their switch request and their microphone's level) and the game's
+    /// flags for the tick's events ([`WireInput`]).
+    Tick { word: u32, flags: u8 },
     /// The sender's round is over: the elements after it are the next
     /// round's.
     RoundEnd,
@@ -132,9 +133,9 @@ pub fn buttons_from_wire(wire: u16) -> u16 {
 /// The buttons a tick carries (the GBA's ten).
 pub const BUTTONS: u16 = 0x3FF;
 
-/// A tick's word: the buttons and the switch request
+/// A tick's word: the buttons, the switch request and the microphone level
 /// (`nettai_battle::input::TICK_WORD`).
-pub const TICK_WORD: u16 = nettai_battle::input::TICK_WORD;
+pub const TICK_WORD: u32 = nettai_battle::input::TICK_WORD;
 
 const ROUND_END: u64 = 0;
 const MATCH_END: u64 = 1;
@@ -143,8 +144,8 @@ impl rennet::Codec for Element {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
         match *self {
             Element::Tick { word, flags } => {
-                assert_eq!(word & !TICK_WORD, 0, "a tick carries the ten buttons and the switch only: {word:#06x}");
-                let value = buttons_to_wire(word & BUTTONS) as u64 | ((word & !BUTTONS) as u64) | (flags as u64) << 12;
+                assert_eq!(word & !TICK_WORD, 0, "a tick carries the ten buttons, the switch and the level only: {word:#07x}");
+                let value = buttons_to_wire(word as u16 & BUTTONS) as u64 | ((word & !(BUTTONS as u32)) as u64) | (flags as u64) << 20;
                 write_uvarint(w, value << 1)
             }
             Element::RoundEnd => write_uvarint(w, ROUND_END << 1 | 1),
@@ -170,8 +171,8 @@ impl rennet::Codec for Element {
         }
         let kind = head >> 1;
         let element = if head & 1 == 0 {
-            let flags = u8::try_from(kind >> 12).map_err(|_| invalid("tick flags out of range"))?;
-            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS) | (kind as u16 & TICK_WORD & !BUTTONS), flags }
+            let flags = u8::try_from(kind >> 20).map_err(|_| invalid("tick flags out of range"))?;
+            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS) as u32 | (kind as u32 & TICK_WORD & !(BUTTONS as u32)), flags }
         } else {
             match kind {
                 ROUND_END => Element::RoundEnd,
@@ -207,20 +208,20 @@ impl rennet::Codec for Meta {
 /// for the tick's events. `decode` must give back the input `encode` wrote.
 pub trait WireInput: Sized {
     /// The input's tick word and flags.
-    fn encode(&self) -> (u16, u8);
+    fn encode(&self) -> (u32, u8);
 
     /// The input from its tick word and flags.
-    fn decode(word: u16, flags: u8) -> io::Result<Self>;
+    fn decode(word: u32, flags: u8) -> io::Result<Self>;
 }
 
-/// A tick word alone (the stand-in battle's input: buttons and the switch
-/// request).
-impl WireInput for u16 {
-    fn encode(&self) -> (u16, u8) {
+/// A tick word alone (the stand-in battle's input: buttons, the switch
+/// request and the microphone level).
+impl WireInput for u32 {
+    fn encode(&self) -> (u32, u8) {
         (*self & TICK_WORD, 0)
     }
 
-    fn decode(word: u16, flags: u8) -> io::Result<u16> {
+    fn decode(word: u32, flags: u8) -> io::Result<u32> {
         if flags != 0 {
             return Err(invalid("a tick word carries no flags"));
         }
@@ -258,16 +259,17 @@ mod tests {
         assert_eq!(buttons_to_wire(keys::A | keys::B | keys::RIGHT | keys::LEFT | keys::UP | keys::DOWN), 0x3F);
     }
 
-    /// Ticks with A, B and the directions are a byte, other buttons two,
-    /// flags up to three; markers one.
+    /// Ticks with A, B and the directions are a byte, other buttons or a
+    /// switch two, a level three, flags up to five; markers one.
     #[test]
     fn element_sizes() {
         assert_eq!(bytes(Element::Tick { word: 0, flags: 0 }), [0x00]);
-        assert_eq!(bytes(Element::Tick { word: keys::A, flags: 0 }), [0x02]);
-        assert_eq!(bytes(Element::Tick { word: keys::DOWN | keys::LEFT | keys::B, flags: 0 }).len(), 1);
-        assert_eq!(bytes(Element::Tick { word: keys::L, flags: 0 }).len(), 2);
-        assert_eq!(bytes(Element::Tick { word: BUTTONS, flags: 1 }).len(), 2);
-        assert_eq!(bytes(Element::Tick { word: BUTTONS, flags: 0xFF }).len(), 3);
+        assert_eq!(bytes(Element::Tick { word: (keys::A) as u32, flags: 0 }), [0x02]);
+        assert_eq!(bytes(Element::Tick { word: (keys::DOWN | keys::LEFT | keys::B) as u32, flags: 0 }).len(), 1);
+        assert_eq!(bytes(Element::Tick { word: (keys::L) as u32, flags: 0 }).len(), 2);
+        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 1 }).len(), 4);
+        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: 0x1E << 12, flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: 1 << 10, flags: 0 }).len(), 2);
         assert_eq!(bytes(Element::RoundEnd), [0x01]);
         assert_eq!(bytes(Element::MatchEnd), [0x03]);
@@ -275,7 +277,7 @@ mod tests {
 
     #[test]
     fn elements_roundtrip() {
-        for word in [0, keys::A, keys::START | keys::L, BUTTONS, TICK_WORD, keys::A | 1 << 10] {
+        for word in [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, TICK_WORD, keys::A as u32 | 1 << 10, 0xFF << 12] {
             for flags in [0, 1, 0x7F, 0xFF] {
                 roundtrip(Element::Tick { word, flags });
             }
@@ -291,7 +293,7 @@ mod tests {
             300,
             298,
             Meta { tick_advantage: -2 },
-            vec![Element::Tick { word: keys::A, flags: 0 }, Element::RoundEnd, Element::Tick { word: 0, flags: 0 }],
+            vec![Element::Tick { word: (keys::A) as u32, flags: 0 }, Element::RoundEnd, Element::Tick { word: 0, flags: 0 }],
         );
         let b = f.to_vec();
         // base 300 (two bytes), ack -2 from it, advantage -2, three one-byte elements.
@@ -307,7 +309,7 @@ mod tests {
         }
         // Flags past a byte.
         let mut b = Vec::new();
-        write_uvarint(&mut b, (0x100 << 12) << 1).unwrap();
+        write_uvarint(&mut b, (0x100 << 20) << 1).unwrap();
         assert!(Element::decode(&mut &b[..]).is_err());
     }
 }

@@ -28,7 +28,7 @@ impl StandInBattle {
 
     /// The engine input for this tick, from the tick words and the battle
     /// as it stands before the tick.
-    pub fn tick_input(&mut self, words: [u16; 2]) -> TickInput {
+    pub fn tick_input(&mut self, words: [u32; 2]) -> TickInput {
         tick_input(&self.battle, words)
     }
 }
@@ -38,7 +38,7 @@ impl StandInBattle {
 /// and the battle as it stands before the tick: the one place that derives
 /// it, for whoever steps a battle on tick words alone (a netplay peer,
 /// offline play).
-pub fn tick_input(battle: &Battle, words: [u16; 2]) -> TickInput {
+pub fn tick_input(battle: &Battle, words: [u32; 2]) -> TickInput {
     let r = &battle.round;
     // The end state asks the link session to close; it closes at once.
     let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
@@ -47,9 +47,9 @@ pub fn tick_input(battle: &Battle, words: [u16; 2]) -> TickInput {
 }
 
 impl Game for StandInBattle {
-    type Input = u16;
+    type Input = u32;
 
-    fn step(&mut self, inputs: [&u16; 2]) {
+    fn step(&mut self, inputs: [&u32; 2]) {
         let input = self.tick_input([*inputs[0], *inputs[1]]);
         self.battle.step(&input);
     }

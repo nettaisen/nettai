@@ -136,6 +136,10 @@ export type Request =
     | "a_held"
     | "b_held"
     | "stun_strike"
+    -- The rules hold a navi at 0 HP for their revival (the role `revival`).
+    | "revival"
+    -- The rules ask for their follow-up action (the role `follow_up`).
+    | "follow_up"
     | "select_special"
     | "navi_switch"
     | "switch_knockout"
@@ -173,6 +177,11 @@ export type NaviStateFlag =
     | "form_breaking"
     | "form_change_sprite_held"
     | "heat_trap"
+    -- The rules' revival runs (the role `revival`'s action); the navi isn't
+    -- deleted at 0 HP meanwhile.
+    | "reviving"
+    -- The rules' follow-up runs (the role `follow_up`'s action).
+    | "following_up"
     -- Gone from the field while its navi chip's navi acts.
     | "vanished"
     -- It dives: a panel that submerges (EXE5's sea) submerges it and doesn't
@@ -806,6 +815,9 @@ declare extern type Object with
     function take_status(self, status: Status): ()
     -- Anger ends; the mood is back to 0x80 (EXE5's: a mood of 0 stays).
     function end_anger(self): ()
+    -- A party's switch knockout's take-back (a side with partners; the in-battle knockout's step): the fallen
+    -- member's block keeps the navi's stats at its HP, and member 0, the side's own navi, comes back.
+    function take_back(self): ()
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
@@ -1259,6 +1271,17 @@ declare battle: {
     -- tasks: every console shows or hides them (drawn only).
     show_hud: (parts: { HudPart }, shown: boolean) -> (),
     navi: (side: number) -> Navi,
+    -- A member's block of the side's party (0 the side's own navi, then its partners; nil for one it hasn't), as the
+    -- party keeps it: the member on the field's is as it was when it came in (its live stats are `battle.navi`'s).
+    member: (side: number, member: number) -> Navi?,
+    -- The side's party: its members (1, the side's own navi alone, to 3), the member on the field, and the switches
+    -- the side made this round.
+    party: (side: number) -> { count: number, active: number, switches: number },
+    -- While the round is set up (the rules' `round_setup`): `navi` joins the side's party with its fresh stats, its
+    -- block returned to fill in.
+    join_party: (side: number, navi: NaviDef) -> Navi,
+    -- The side's microphone level this tick, 0 to 255 (its player's input: nothing in nettai sets it).
+    mic_level: (side: number) -> number,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
@@ -2196,6 +2219,26 @@ export type RulesSpec = {
         -- object_subtractHP, 0x0800C6E0, calling 0x0802C16C): the rules may hold it (EXE5's last stand), and answer
         -- true: the hit shows (white, its sounds: EXE5's applyDamageToPlayer, 0x080185A2); none, it doesn't.
         hp_emptied: ((side: number, navi: Object) -> boolean?)?,
+        -- The side's navi is at 0 HP where the framework would delete it (each tick it is, after the last stand):
+        -- true keeps it this tick (a navi the rules revive: they ask for its `revival`). None answering true: a
+        -- switched-in navi falls back, else it is deleted.
+        navi_falling: ((side: number, navi: Object) -> boolean?)?,
+        -- A side's party (`battle.party`): its player asks this tick to switch to `member`, before the request goes
+        -- into the side's input record: false refuses it (the rules play the refusal's sound). None: it stands.
+        switch_requested: ((side: number, member: number) -> boolean?)?,
+        -- The navi's input sees its switch request (on a tick that asks no chip): false takes it no further. None:
+        -- the framework's in-battle switch request follows.
+        switch_asked: ((side: number, navi: Object, member: number) -> boolean?)?,
+        -- Whether `member` can't be switched to now (asked by the in-battle switch and the custom screen's): true
+        -- refuses (the rules play the refusal's sound). None: not busy.
+        member_busy: ((side: number, member: number) -> boolean?)?,
+        -- A switch of the side's party settled, in battle or while paused (`battle.paused()` tells them apart),
+        -- before the switch's action ends: `navi` the incoming navi, `member` the outgoing member, `mood` the
+        -- outgoing navi's mood as it left (before its anger ended: 0xFF, Full Synchro).
+        navi_switched: ((side: number, navi: Object, member: number, mood: number) -> ())?,
+        -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
+        -- input (the DS's shout heal).
+        mic_heard: ((side: number) -> ())?,
         -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
         -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
         -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the
@@ -3014,6 +3057,14 @@ export type RolesSpec = {
         -- the navi's deletion action runs it (its phase, timer and
         -- animation the object's); unfilled, the engine's.
         deletion: Action?,
+        -- What a navi's `revival` request starts (with its `reviving` state):
+        -- the rules bring back a navi at 0 HP (EXE5's party battle, the DS's
+        -- ToadMan rescue). The navi isn't deleted while it is asked or runs.
+        revival: Action?,
+        -- What a navi's `follow_up` request starts (with its `following_up`
+        -- state), after the in-battle switch and before the volley (EXE5's
+        -- party battle, the DS's Double Attack after a paused swap).
+        follow_up: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,
@@ -3113,6 +3164,8 @@ export type RolesSpec = {
         bubble_pop: Sound?,
         confusion: Sound?,
         invisible: Sound?,
+        -- A party's navi switch lands (the DS's 0x8D).
+        navi_switch: Sound?,
         appear: Sound?,
         arrive: Sound?,
         fade: Sound?,

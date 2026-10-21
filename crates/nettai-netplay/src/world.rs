@@ -290,7 +290,7 @@ mod tests {
         let mut b = BattleWorld::new(standin(), 1);
         let mut side_by_side = standin();
         for f in 0..120u16 {
-            let (p0, p1) = (if f % 9 < 4 { keys::A } else { keys::LEFT }, if f % 7 < 2 { keys::UP } else { 0 });
+            let (p0, p1) = (u32::from(if f % 9 < 4 { keys::A } else { keys::LEFT }), u32::from(if f % 7 < 2 { keys::UP } else { 0 }));
             a.step(&p0, &[p1]).unwrap();
             b.step(&p1, &[p0]).unwrap();
             side_by_side.step([&p0, &p1]);
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn the_observer_hears_everything_from_the_world() {
         let mut s = BattleWorld::with_observer(standin(), 0, Seen::default()).session(0);
-        let remote = |t: u32| if t % 6 < 3 { 0 } else { nettai_battle::input::keys::UP };
+        let remote = |t: u32| u32::from(if t % 6 < 3 { 0 } else { nettai_battle::input::keys::UP });
         for t in 0..12u32 {
             if t >= 2 {
                 s.add_remote_input(0, remote(t - 2), 0);
@@ -347,8 +347,8 @@ mod tests {
         #[derive(Clone)]
         struct Brittle(StandInBattle);
         impl Game for Brittle {
-            type Input = u16;
-            fn step(&mut self, inputs: [&u16; 2]) {
+            type Input = u32;
+            fn step(&mut self, inputs: [&u32; 2]) {
                 self.0.step(inputs);
                 assert!(*inputs[0] != 0xBAD, "a bad input");
             }

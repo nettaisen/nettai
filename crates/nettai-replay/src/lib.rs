@@ -27,7 +27,7 @@
 //! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
-//!           bit 0: side 0's input (u16) follows, bit 1: side 1's,
+//!           bit 0: side 0's input (u32) follows, bit 1: side 1's,
 //!           bit 2: the battle's digest after the tick (u64) follows,
 //!           bit 3: a round ended on the tick (a digest always comes with it),
 //!           bit 4: the set ended on it (a round did too; nothing comes after);
@@ -38,7 +38,8 @@
 //! Numbers are little-endian. A side's input is its tick's word
 //! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
-//! none). It is written when it changes: before the first tick nothing is
+//! none), the microphone's level in bits 12 to 19. It is written when it
+//! changes: before the first tick nothing is
 //! held, and it carries across a round's end. A writer flushes each record
 //! as it is written, so a file cut short (a crash) holds every tick before
 //! the cut, and a reader says it was cut ([`End::Cut`]).
@@ -216,7 +217,7 @@ impl Info {
 /// it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
-    pub inputs: [u16; 2],
+    pub inputs: [u32; 2],
     /// The battle's digest after the tick, where it was taken.
     pub digest: Option<u64>,
     /// A round of the set ended on this tick (its digest is taken).
@@ -256,9 +257,9 @@ const ROUND_ENDED: u8 = 1 << 3;
 const SET_ENDED: u8 = 1 << 4;
 const KNOWN: u8 = INPUT_0 | INPUT_1 | DIGEST | ROUND_ENDED | SET_ENDED;
 
-/// The bits a side's input may hold: the GBA's ten buttons and the switch
-/// request (`nettai_battle::input::TICK_WORD`).
-pub const INPUT_MASK: u16 = 0xFFF;
+/// The bits a side's input may hold: the GBA's ten buttons, the switch
+/// request and the microphone level (`nettai_battle::input::TICK_WORD`).
+pub const INPUT_MASK: u32 = 0xF_FFFF;
 
 // ---- Writing ------------------------------------------------------------------
 
@@ -267,7 +268,7 @@ pub const INPUT_MASK: u16 = 0xFFF;
 pub struct Writer<W: Write> {
     out: W,
     /// The input after the last tick written, by side.
-    inputs: [u16; 2],
+    inputs: [u32; 2],
     /// The set's end was written: nothing comes after it.
     ended: bool,
 }
@@ -317,7 +318,7 @@ impl<W: Write> Writer<W> {
             return invalid("input past a tick word's bits");
         }
         let mut control = 0;
-        let mut rest = Vec::with_capacity(12);
+        let mut rest = Vec::with_capacity(16);
         for side in 0..2 {
             if t.inputs[side] != self.inputs[side] {
                 control |= [INPUT_0, INPUT_1][side];
@@ -389,10 +390,6 @@ impl<'a> Bytes<'a> {
 
     fn u8(&mut self) -> Result<u8, String> {
         Ok(self.take(1)?[0])
-    }
-
-    fn u16(&mut self) -> Result<u16, String> {
-        Ok(u16::from_le_bytes(self.take(2)?.try_into().expect("two bytes")))
     }
 
     fn u32(&mut self) -> Result<u32, String> {
@@ -512,7 +509,7 @@ impl Replay {
             return Err("no input where it goes".into());
         }
         let mut ticks = Vec::new();
-        let mut inputs = [0u16; 2];
+        let mut inputs = [0u32; 2];
         let end = loop {
             if b.rest.is_empty() {
                 break End::Open;
@@ -526,7 +523,7 @@ impl Replay {
                 let mut t = Tick { inputs, ..Tick::default() };
                 for side in 0..2 {
                     if control & [INPUT_0, INPUT_1][side] != 0 {
-                        let Ok(word) = b.u16() else { return Ok(None) };
+                        let Ok(word) = b.u32() else { return Ok(None) };
                         if word & !INPUT_MASK != 0 {
                             return Err(format!("tick {n}: side {side}'s input {word:#06x} is past a tick word's bits"));
                         }

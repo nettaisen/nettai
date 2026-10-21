@@ -464,7 +464,7 @@ fn a_recorded_start_asks_a_viewer_for_nothing() {
         keys::START
     });
     let length = ticks as u32;
-    assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].inputs[0] & keys::START != 0), "{pressed:?}");
+    assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].inputs[0] & u32::from(keys::START) != 0), "{pressed:?}");
     // A player playing it straight is asked again, once a press.
     let driver = ReplayPlayer::new(&content, &replay, Some(0)).unwrap();
     let mut p = Player::with(graphics(&content, 0x001F).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));

@@ -47,6 +47,11 @@ pub mod effects {
     pub const SET: u32 = 0x400;
     /// Random battle.
     pub const RANDOM: u32 = 0x20_0000;
+    /// The DS's party battle plays no switch voice (0x02098ED0), and no
+    /// such draw of the console's RNG; its other readers (the rescue's HP
+    /// number, the microphone's story flag) are presentation or the save's.
+    /// No stage of the engine's sets it.
+    pub const NO_SWITCH_VOICE: u32 = 0x40_0000;
 }
 
 /// Custom gauge speed (NaviStats+0x08).

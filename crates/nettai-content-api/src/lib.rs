@@ -42,7 +42,7 @@ pub use api::{
     OVERLAY_STEPPINGS,
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, ScreenFade,
     Shadow, SpriteField, StatusFlag, StatusTimer,
-    SideSpecial,
+    SideSpecial, StatsOf, PartyInfo,
 };
 pub use api::AfterimageSpec;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.

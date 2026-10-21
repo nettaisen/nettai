@@ -469,6 +469,35 @@ named_fields! {
     }
 }
 
+/// Whose stats a navi's stats proxy reads (`battle.navi(side)`,
+/// `battle.member(side, m)`): a side's navi's, the one on the field, or a
+/// member's block of the side's party as the party keeps it (the member on
+/// the field's is as it was when it came in: its live stats are the
+/// side's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StatsOf {
+    pub side: u8,
+    pub member: Option<u8>,
+}
+
+impl StatsOf {
+    /// The side's navi's.
+    pub fn side(side: u8) -> StatsOf {
+        StatsOf { side: side & 1, member: None }
+    }
+}
+
+/// A side's party, as content reads it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PartyInfo {
+    /// Its members, 1 (the side's own navi alone) to 3.
+    pub count: u8,
+    /// The member on the field.
+    pub active: u8,
+    /// The switches the side made this round.
+    pub switches: u8,
+}
+
 named_fields! {
     /// A side's navi stats that content reads (and the few it changes): the
     /// engine's. (A game's own, its rules' `stats`, are read and written by
@@ -723,6 +752,11 @@ named_flags! {
         AHeld = "a_held",
         BHeld = "b_held",
         StunStrike = "stun_strike",
+        /// The rules hold a navi at 0 HP for their revival (the role
+        /// `revival`).
+        Revival = "revival",
+        /// The rules ask for their follow-up action (the role `follow_up`).
+        FollowUp = "follow_up",
         SelectSpecial = "select_special",
         NaviSwitch = "navi_switch",
         SwitchKnockout = "switch_knockout",
@@ -766,6 +800,10 @@ named_flags! {
         FormBreaking = "form_breaking",
         FormChangeSpriteHeld = "form_change_sprite_held",
         HeatTrap = "heat_trap",
+        /// The rules' revival runs (the role `revival`'s action).
+        Reviving = "reviving",
+        /// The rules' follow-up runs (the role `follow_up`'s action).
+        FollowingUp = "following_up",
         /// Gone from the field while its navi chip's navi acts
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
@@ -1320,9 +1358,27 @@ pub trait CoreApi {
     fn show_hud(&mut self, part: HudPart, shown: bool);
     /// `SetScreenFade(mode, speed)`: the screen fades from where it is.
     fn screen_fade(&mut self, fade: ScreenFade, speed: u8);
-    fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
-    /// Change one of a side's navi stats (the writable ones).
-    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
+    /// One of a side's navi stats, or of a member's block of its party
+    /// (nil for a member it hasn't).
+    fn navi_stat(&self, of: StatsOf, stat: NaviStat) -> Value;
+    /// Change one of a side's navi stats (the writable ones), or a
+    /// member's block's.
+    fn set_navi_stat(&mut self, of: StatsOf, stat: NaviStat, v: Value) -> ApiResult<()>;
+    /// Side `side`'s party (`Battle::party`): its members, the one on the
+    /// field and the switches made.
+    fn party(&self, side: u8) -> PartyInfo;
+    /// Side `side`'s microphone level this tick, 0 to 255 (its input
+    /// record's: `PlayerTick::mic_level`).
+    fn mic_level(&self, side: u8) -> u8;
+    /// While the round is set up (the rules' `round_setup`): a navi joins
+    /// side `side`'s party, with its fresh stats; its member number, which
+    /// `StatsOf` names its block by. Refused once the round has started,
+    /// for a full party, or a navi without fresh stats.
+    fn join_party(&mut self, side: u8, navi: u16) -> ApiResult<u8>;
+    /// A party's switch knockout's take-back (`take_back`: the in-battle
+    /// knockout, EXE5's action 0x4C, asks it at its step): the fallen
+    /// member's block keeps its stats, and member 0 comes back.
+    fn party_take_back(&mut self, navi: ObjectRef) -> ApiResult<()>;
     /// A side's emotion (`sub_8015B54`).
     fn emotion(&self, side: u8) -> String;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
@@ -1857,7 +1913,7 @@ pub trait CoreApi {
     fn rules_setup(&self, side: u8) -> ApiResult<&Block>;
     /// Side `side`'s navi's stats of its game's own (the rules' `stats`):
     /// one block in the navi's stats, by the rules' schema.
-    fn navi_game_stats_mut(&mut self, side: u8) -> ApiResult<&mut crate::SmallBlock>;
+    fn navi_game_stats_mut(&mut self, of: StatsOf) -> ApiResult<&mut crate::SmallBlock>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `SpawnT4BattleObjectWithId0` called again straight after a spawn, at

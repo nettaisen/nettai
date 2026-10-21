@@ -184,6 +184,8 @@ impl Hash for Battle {
             hp_numbers: _,
             paused,
             inputs,
+            switch_inputs,
+            mic_levels,
             hands,
             transform_requests,
             turn_transforms,
@@ -228,6 +230,8 @@ impl Hash for Battle {
         used_chips.each_ref().map(|u| u.map(|u| u.ticks)).hash(h);
         paused.hash(h);
         inputs.hash(h);
+        switch_inputs.hash(h);
+        mic_levels.hash(h);
         hands.hash(h);
         transform_requests.hash(h);
         turn_transforms.hash(h);

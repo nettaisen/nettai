@@ -540,9 +540,21 @@ pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRo
 }
 
 /// `sub_802DD2A`: a switched-in navi (the navi switch) that falls back
-/// instead of dying.
+/// instead of dying. A side with partners asks the DS's (0x0200DFB0): a
+/// member other than the side's own navi that came in by a switch, unless
+/// the rules' revival runs, or is asked for outside the knockout.
 fn switch_protected(b: &Battle, r: ObjectRef) -> bool {
-    !is_megaman(b, r) && ai(b, r).status & crate::actor::status::SWITCHED != 0
+    use crate::actor::status;
+    let side = b.objects.get(r).alliance as usize & 1;
+    let party = &b.party[side];
+    let a = ai(b, r);
+    if party.has_partners() {
+        return party.active != 0
+            && a.status & status::SWITCHED != 0
+            && a.status & status::REVIVING == 0
+            && (a.status & status::SWITCH_KNOCKOUT != 0 || a.requests & request::REVIVAL == 0);
+    }
+    !is_megaman(b, r) && a.status & status::SWITCHED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
