@@ -3159,6 +3159,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("custom.hand_size returns a count of chips, not {v:?}"))),
         },
+        // The ticks a party battle's custom screen is held (none: 0).
+        HookCall::Rules { hook: RulesHook::CustomHold, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Integer(n) if (0..=0x7FFF).contains(n) => Ok(Value::Int(i64::from(*n))),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=32767.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("custom_hold returns ticks or nil, not {v:?}"))),
+        },
         // Whether a switch request stands: an answer of false refuses it.
         HookCall::Rules { hook: RulesHook::SwitchRequested | RulesHook::SwitchAsked, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),

@@ -57,16 +57,21 @@ pub enum EngineAction {
     /// A side's switch to another member of its party in battle (the DS's
     /// action 0x59: `navi_switch::in_battle`).
     NaviSwitch,
+    /// The switch knockout run as an action (a party's switched-in member
+    /// on the field as the battle ends: the DS's action 0x4D, 0x0202C1A0,
+    /// `sub_802D926`'s counterpart: `navi_switch::knock_out`).
+    SwitchKnockout,
 }
 
 impl EngineAction {
-    pub const ALL: [EngineAction; 6] = [
+    pub const ALL: [EngineAction; 7] = [
         EngineAction::Move,
         EngineAction::DimmingChip,
         EngineAction::HandOffChip,
         EngineAction::InstantChip,
         EngineAction::FormChange,
         EngineAction::NaviSwitch,
+        EngineAction::SwitchKnockout,
     ];
 
     /// Its key, by which the validator numbers it.
@@ -78,6 +83,7 @@ impl EngineAction {
             EngineAction::InstantChip => "engine/instant-chip",
             EngineAction::FormChange => "engine/form-change",
             EngineAction::NaviSwitch => "engine/navi-switch",
+            EngineAction::SwitchKnockout => "engine/switch-knockout",
         }
     }
 }

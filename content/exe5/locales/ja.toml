@@ -120,6 +120,7 @@ language = "ja"
 "dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
 "deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
 "dethphnx" = { name = "デスフェニックス", description = "フィールド中に\nヤミの炎、さらに\nナビをリサイクル!" }
+"dicebons" = { name = "サイコロプラス", description = "" }
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "django" = { name = "ジャンゴ", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
 "django-ds" = { name = "ジャンゴ\uE008", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
@@ -218,6 +219,7 @@ language = "ja"
 "m-air" = { name = "マグエアレイド", description = "" }
 "m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "m-zan" = { name = "マグネットザン", description = "" }
+"mag-barr" = { name = "マグネットバリア", description = "" }
 "magnetmn" = { name = "マグネットマン", description = "前方へNSタックル\nでとっしんする!" }
 "magntmn-ds" = { name = "マグネットマン\uE008", description = "前方へNSタックル\nでとっしんする!" }
 "magntmn-sp" = { name = "マグネットマン\uE003", description = "前方へNSタックル\nでとっしんする!" }
@@ -297,6 +299,7 @@ language = "ja"
 "s-melody" = { name = "Sメロディー", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
 "satelity" = { name = "サテライトレイ", description = "カーソルをとめて\nそのマスにクロスに\nひろがるレーザー!" }
 "seaseed" = { name = "オーシャンシード", description = "3マス前にタネ!\n9マス分のパネルを\n水パネルにする!" }
+"serch-s" = { name = "サーチスナイプ", description = "" }
 "serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "serchmn-ds" = { name = "サーチマン\uE008", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "serchmn-sp" = { name = "サーチマン\uE003", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }

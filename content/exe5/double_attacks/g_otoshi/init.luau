@@ -1,13 +1,14 @@
 --!strict
--- G-OTOSHI (the DS's chip 0x16B; Gama Otoshi), the Double Attack of ShadowMan and ToadMan (docs/design/exe5ds-map.md §5,
--- §5.2: its director the DS's effect object 0xA2, its actors its T1 0x43, its frogs its attack object 0xA2). Both sing
--- (sound 0xD8); ToadMan drops twelve frogs (./frog), one every 11 ticks, each on a panel picked at random: with 10
+-- G-OTOSHI (the DS's chip 0x16B; Gama Otoshi), the Double Attack of ShadowMan and ToadMan (docs/design/exe5ds-map.md
+-- §5, §5.2: its controller the DS's effect object 0xA2, its navis its T1 0x43, its frogs its attack object 0xA2). Both
+-- sing (sound 0xD8); ToadMan drops twelve frogs (./frog), one every 11 ticks, each on a panel picked at random: with 10
 -- chances in 16 one an enemy's body stands on, else any panel none does (the whole field: the user's side's too). A
--- frog hits once (Aqua) and turns its panel to sea, or turns it to sea as it lands on a solid one. The chip's record and
--- name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is the
--- cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no folder or hand holds it.
+-- frog hits once (Aqua) and turns its panel to sea, or turns it to sea as it lands on a solid one. The chip's record
+-- and name are the DS's (written by tools/exe5/gen_content.py, bn6battle-verify, from the DS ROMs); its record's use is
+-- the cannon's (action 0x14, subtype 0: the DS copied Cannon's record), which nothing starts: no folder or hand holds
+-- it.
 --
--- Its director links the two actors (each its partner's, +0x60): ShadowMan sings until ToadMan is done.
+-- Its controller links the two navis (each its partner's, +0x60): ShadowMan sings until ToadMan is done.
 
 local cannon_chips = require("../chips/cannon")
 local double_attack = require("../lib/double_attack")
@@ -16,7 +17,7 @@ local panels = require("@exelib/panels")
 local shadowman = require("../navis/shadowman").shadowman
 local toadman = require("../navis/toadman").toadman
 
-type State = DoubleAttackActor
+type State = DoubleAttackNavi
 
 local CHARGE_TICKS = 0x3C
 -- The song: animation 0xC and its sound; ToadMan's twelve frogs, 11 ticks apart.
