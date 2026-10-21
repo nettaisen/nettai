@@ -372,3 +372,5 @@
 # EXE5 DS's party supports' actor (the DS's actor object 0x30, 0x021FF280: lib/party_support), a kind per navi.
 "protoman/support" = { pool = "actor", index = 0x30 }
 "napalmman/support" = { pool = "actor", index = 0x30 }
+"colonel/support" = { pool = "actor", index = 0x30 }
+"tomahawkman/support" = { pool = "actor", index = 0x30 }
