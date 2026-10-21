@@ -2865,7 +2865,10 @@ export type FolderView = {
 -- a tool reads nothing of;
 -- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
 -- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
--- whether an entry goes into it once; and the stats the game's setups have beyond the eight every game's do (HP,
+-- whether an entry goes into it once (`entry`: the list is the one entry of the field holds, from 1, a list of
+-- records each with a list of its own: a party battle's partner's PartyCust programs against its gauge); the
+-- switches a round allows the side's party (the engine's party counts those made), where the rules limit them; and
+-- the stats the game's setups have beyond the eight every game's do (HP,
 -- the buster's three, the custom screen's chips, the Mega and Giga limits, the Regular memory), which a tool shows
 -- after them (none: those eight alone): each by its name in the game's locales' `stats` table, its `value` as the
 -- setup leaves it and what the setup `added` to it (EXE5's Soul Unison's turns).
@@ -2879,12 +2882,13 @@ export type SetupBug = {
     effect: number?,
     card: string?,
 }
-export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean }
+export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean, entry: number? }
 export type SetupStat = { name: string, value: number, added: number }
 export type SetupOverview = {
     abilities: { SetupSource },
     bugs: { SetupBug },
     lists: { SetupList },
+    switches: number?,
     stats: { SetupStat }?,
 }
 
