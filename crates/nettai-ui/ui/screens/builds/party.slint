@@ -1,20 +1,24 @@
 // The Party tab of a build's editor, in a game whose setup takes a party (EXE5's party battle, EXE5 DS's: docs/design/
-// exe5ds-map.md §4): the navi's partners, each with the programs filling its PartyCust gauge (§4.10). The layout is the
-// user's: two partner cards across the top (each its face, name, HP with its programs' bonus, and its gauge), always
-// there, an empty one "Add a partner"; the card focused is the partner whose PartyCust is below it: a header with its
-// name and its gauge drawn large in its programs' colors, then two panes, INSTALLED (framed: the partner's programs,
-// each with its blocks) and PROGRAMS (the library, open: each with its blocks and its cost; one that won't fit greyed,
-// with why). Enter on a card opens the navis to pick from (the shell's list, a phone's sheet); Enter in PROGRAMS
-// installs; Enter or Del in INSTALLED removes. The strip across the top describes what is under the cursor.
+// exe5ds-map.md §4): the navi's partners, each with the programs filling its PartyCust gauge (§4.10). It is built of
+// what the other tabs are (the user: "nothing in the ui looks like that"): the strip across the top describes what is
+// under the cursor; under it, framed (what the build holds, rule 11), PARTY: the partners as a list's rows (each its
+// face, name and version's mark, HP and gauge; then "Add a partner" while there is room), the chosen one marked as a
+// list marks its chosen row, the bar and the tint, whose PartyCust is under it: INSTALLED, its gauge, and its
+// programs as a list's rows, CLEAR at the head's right end; beside it the library, PROGRAMS, an open list. Enter on a
+// partner's row opens the navis to pick from (the shell's marked list, as the replay viewer's ⋯ is); Enter in PROGRAMS
+// installs, Enter or Del in INSTALLED takes out. A program is dragged from PROGRAMS into INSTALLED, in INSTALLED to
+// another place, and out onto the library, as the Patch cards tab's cards are.
 //
-// On a phone the cards sit side by side small at the top, then the gauge, INSTALLED, and a button that opens PROGRAMS
-// as a sheet (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
+// On a phone the panel is the tab, and a button under it opens PROGRAMS as a sheet (`PartyOverlay`). Its Rust half is
+// src/screens/builds/party.rs.
 
 import { Theme, Caps } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
-import { Tween, Shake } from "../../motion.slint";
+import { Tween, Shake, Flash } from "../../motion.slint";
+import { Drag } from "../../nav.slint";
+import { DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
 
 // A partner's card: its face, name and HP (its programs' bonus in), the blocks its programs fill of its gauge, each
@@ -64,7 +68,7 @@ export struct PartyDetail {
 export global PartyView {
     out property <[Hint]> hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: Nav.id == "lib.rows" ? @tr("Put in") : Nav.id == "installed" ? @tr("Remove") : Nav.id == "partner" ? @tr("Change partner") : @tr("Choose") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: Nav.id == "lib.rows" ? @tr("Put in") : Nav.id == "installed" ? @tr("Remove") : Nav.id == "partner" ? @tr("Choose") : @tr("Choose") },
         { key: "Del", pad: Shell.pad-delete, text: Nav.id == "partner" ? @tr("Remove partner") : @tr("Remove") },
         { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
@@ -73,7 +77,8 @@ export global PartyView {
     out property <string> status: @tr("{n} partner" | "{n} partners" % self.partners);
     in property <int> partners;
     in property <PartyDetail> detail;
-    // The two cards, and the one chosen: the partner whose PartyCust is shown.
+    // The partners' rows (and "Add a partner" while there is room), and the one chosen: the partner whose PartyCust is
+    // shown.
     in property <[PartnerCard]> cards;
     in property <int> chosen;
     // The chosen partner's PartyCust: its title ("ProtoMan's PartyCust"; empty: no partner), its gauge, its programs
@@ -138,100 +143,87 @@ component Blocks inherits Rectangle {
     }
 }
 
-// A partner's card, a control: its face, name and HP, its gauge and the blocks used of it; empty, "Add a partner".
-// `chosen` lights its line and its label (the partner whose PartyCust is below).
-component CardView inherits Rectangle {
+// Where installed program `i` is drawn while one is dragged: at the place it shifts to (the dragged one where it would
+// land). A library's program dragged in goes in at `to`, those from there on shifting down to leave it a gap.
+global ProgramDrag {
+    out property <bool> on: Drag.on && Drag.list == "installed";
+    out property <bool> filling: Drag.on && Drag.list == "lib.rows";
+    out property <int> to: self.on || self.filling ? Drag.to : -1;
+    public pure function shown(i: int) -> int {
+        return self.to < 0 ? i : self.filling ? (i >= self.to ? i + 1 : i) : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
+    }
+}
+
+// A partner's row of PARTY: its face, its name with its version's mark, its HP (its programs' bonus in) and its gauge
+// with the blocks used of it; empty, "Add a partner" (dim, as an empty row is).
+component PartnerRow inherits Rectangle {
     in property <PartnerCard> card;
     in property <int> nav-index;
-    in property <bool> chosen;
-    PanelBack {
-        accent: root.chosen;
-    }
-
-    Label {
-        x: 12px;
-        y: 4px;
-        width: parent.width - 24px;
-        height: 18px;
-        text: Caps.of(@tr("Partner {}", root.nav-index + 1));
-        color: root.chosen ? Theme.cursor : Theme.muted;
+    property <length> gauge-room: 10 * 10px + 8px + 36px;
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Image {
-        x: 12px;
-        y: 26px;
-        width: Theme.phone ? 32px : 64px;
-        height: Theme.phone ? 16px : 32px;
+        x: 8px;
+        y: (parent.height - 16px) / 2;
+        width: 32px;
+        height: 16px;
         visible: root.card.there;
         source: root.card.face;
         image-rendering: pixelated;
     }
 
-    property <length> text-x: Theme.phone ? 52px : 88px;
-    // (What a click, a tap or Enter does to it, at its top right: CHANGE, or on an empty card its words are the action.)
-    Label {
-        x: parent.width - 12px - self.width;
-        y: 4px;
-        width: self.preferred-width;
-        height: 18px;
-        visible: root.card.there;
-        text: Caps.of(@tr("Change ›"));
-        color: touch.has-hover || touch.focused ? Theme.cursor : Theme.muted;
-    }
-
-    property <length> name-room: root.width - (root.card.there ? root.text-x : 12px) - 12px;
-    card-name := Text {
-        x: root.card.there ? root.text-x : 12px;
-        y: 24px;
-        width: max(0px, root.name-room - (card-version.width > 0 ? card-version.width + 6px : 0px));
-        height: 20px;
-        text: root.card.there ? root.card.name : @tr("+ Add a partner");
-        color: !root.card.there ? (touch.has-hover || touch.focused ? Theme.cursor : Theme.text) : root.card.bad ? Theme.bad : Theme.text;
+    property <length> name-x: root.card.there ? 48px : 8px;
+    property <length> name-room: max(0px, root.width - root.name-x - 8px - 72px - 8px - root.gauge-room - 8px);
+    name := Text {
+        x: root.name-x;
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
+        text: root.card.there ? root.card.name : @tr("Add a partner");
+        color: !root.card.there ? Theme.dim : root.card.bad ? Theme.bad : Theme.text;
         font-family: Theme.body;
-        font-size: Theme.phone ? 13px : 15px;
-        font-weight: 700;
+        font-size: Theme.phone ? 14px : 13px;
+        font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
     }
 
-    card-version := VersionMark {
-        x: card-name.x + min(card-name.width, card-name.preferred-width) + 6px;
-        y: card-name.y + (card-name.height - self.height) / 2;
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
         visible: root.card.there;
         tag: root.card.version;
-        short: card-name.preferred-width + 6px + self.natural-width > root.name-room;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
     }
 
+    // (Its HP, as wide as four digits and a bonus take, then the gauge after a gap.)
     Text {
-        x: root.text-x;
-        y: 46px;
-        width: 64px;
-        height: 16px;
-        visible: root.card.there && !Theme.phone;
+        x: root.width - 8px - root.gauge-room - 8px - self.width;
+        width: 72px;
+        visible: root.card.there;
         text: root.card.hp;
         color: Theme.muted;
         font-family: Theme.mono;
         font-size: 12px;
+        horizontal-alignment: right;
         vertical-alignment: center;
+        overflow: elide;
     }
 
-    gauge := Blocks {
-        x: Theme.phone ? 12px : root.text-x + 72px;
-        y: Theme.phone ? 48px : 49px;
+    Blocks {
+        x: root.width - 8px - root.gauge-room;
+        y: (parent.height - self.height) / 2;
         height: 10px;
         visible: root.card.there;
         count: root.card.gauge;
         filled: root.card.used;
         tones: root.card.tones;
         joins: root.card.joins;
-        size: Theme.phone ? 6px : 8px;
     }
 
     Text {
-        x: parent.width - 12px - self.width;
-        y: Theme.phone ? 44px : 46px;
-        width: 40px;
-        height: 16px;
+        x: root.width - 8px - 36px;
+        width: 36px;
         visible: root.card.there;
         text: root.card.used + "/" + root.card.gauge;
         color: root.card.used > root.card.gauge ? Theme.bad : Theme.muted;
@@ -241,26 +233,20 @@ component CardView inherits Rectangle {
         vertical-alignment: center;
     }
 
-    touch := Focusable {
+    touch := RowTouch {
         nav: "partner";
         nav-index: root.nav-index;
+        removable: root.card.there;
         describes: true;
     }
 }
 
-// A program in a pane: its blocks in its color, its name, a note, its cost.
-component RowView inherits Rectangle {
+// What a program's row shows (the dragged one under the pointer too).
+component ProgramLine inherits Rectangle {
     in property <PartyRow> row-data;
-    in property <string> nav;
-    in property <int> nav-index;
     in property <bool> removable;
-    in property <length> dx;
-    Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
-    }
-
-    blocks := Blocks {
-        x: 8px + root.dx;
+    Blocks {
+        x: 8px;
         y: (parent.height - self.height) / 2;
         height: 10px;
         count: root.row-data.blocks;
@@ -272,7 +258,7 @@ component RowView inherits Rectangle {
     property <length> name-x: 8px + 7 * 10px + 8px;
     property <length> note-width: Theme.phone ? 110px : 140px;
     Text {
-        x: root.name-x + root.dx;
+        x: root.name-x;
         width: max(0px, parent.width - root.name-x - root.note-width - 40px);
         text: root.row-data.name;
         color: root.row-data.refused ? Theme.dim : Theme.text;
@@ -284,7 +270,7 @@ component RowView inherits Rectangle {
     }
 
     Text {
-        x: parent.width - 40px - root.note-width + root.dx;
+        x: parent.width - 40px - root.note-width;
         width: root.note-width;
         text: root.row-data.note;
         color: root.row-data.bad ? Theme.bad : Theme.muted;
@@ -306,20 +292,52 @@ component RowView inherits Rectangle {
         horizontal-alignment: right;
         vertical-alignment: center;
     }
+}
+
+// A program in a pane: its blocks in its color, its name, a note, its cost. `dy`: where it is shifted to while another
+// is dragged; `gone`: it is the one dragged, drawn under the pointer.
+component RowView inherits Rectangle {
+    in property <PartyRow> row-data;
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <bool> removable;
+    in property <length> dx;
+    in property <length> dy;
+    in property <bool> gone;
+    in property <bool> draggable;
+    Rectangle {
+        y: root.dy;
+        opacity: root.gone ? 0 : 1;
+        animate y {
+            duration: ProgramDrag.on || ProgramDrag.filling ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
+        Rectangle {
+            background: touch.has-hover && !ProgramDrag.on && !ProgramDrag.filling ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+        }
+
+        ProgramLine {
+            x: root.dx;
+            row-data: root.row-data;
+            removable: root.removable;
+        }
+    }
 
     touch := RowTouch {
         nav: root.nav;
         nav-index: root.nav-index;
         removable: root.removable;
+        drag: root.draggable ? root.nav : "";
         describes: true;
     }
 }
 
-// A pane's list: INSTALLED (`installed`) or PROGRAMS (the library, `lib.rows`).
+// A pane's list: INSTALLED (`installed`) or PROGRAMS (the library, `lib.rows`), as the other tabs' lists are.
 component RowsPane inherits Rectangle {
     in property <[PartyRow]> rows;
     in property <string> nav;
     in property <bool> removable;
+    in property <bool> draggable;
     shake := Shake {
         seq: PartyView.refused-seq;
     }
@@ -333,6 +351,8 @@ component RowsPane inherits Rectangle {
         count: root.rows.length;
         row-height: Theme.phone ? 44px : 30px;
         chosen: self.focused-row;
+        // (A drag on a row moves its program: the wheel scrolls.)
+        mouse-pan: !root.draggable;
         for slot in list.shown: RowView {
             property <int> at: list.first + slot;
             y: self.at * list.pitch;
@@ -342,21 +362,38 @@ component RowsPane inherits Rectangle {
             nav: root.nav;
             nav-index: self.at;
             removable: root.removable;
+            draggable: root.draggable;
             dx: !root.removable && self.at == PartyView.refused ? shake.dx : 0px;
+            dy: root.removable ? (ProgramDrag.shown(self.at) - self.at) * list.pitch : 0px;
+            gone: root.removable && ProgramDrag.on && self.at == Drag.from;
         }
+
+    }
+
+    // (Where a library's program dragged in would go.)
+    DropGap {
+        x: 0;
+        y: ProgramDrag.to * list.pitch - list.scroll;
+        width: list.row-width;
+        height: list.row-height;
+        visible: root.removable && ProgramDrag.filling && ProgramDrag.to >= 0;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
 export component PartyTab inherits Rectangle {
     property <length> top: -4px;
     property <length> strip: Theme.phone ? 0px : 104px;
-    property <length> cards-y: Theme.phone ? 24px : root.top + root.strip + 12px;
-    property <length> card-height: Theme.phone ? 68px : 84px;
-    property <length> card-width: (self.width - 12px) / 2;
-    property <length> head-y: root.cards-y + root.card-height + 16px;
-    property <length> panes-y: root.head-y + 40px;
-    property <length> pane-width: Theme.phone ? self.width : (self.width - 24px) / 2;
-    property <length> panes-height: max(160px, self.height - root.panes-y - (Theme.phone ? 52px : 0px));
+    property <length> pane-y: Theme.phone ? 0px : root.top + root.strip + 12px;
+    property <length> pane-width: Theme.phone ? self.width : 528px;
+    property <length> pane-height: max(320px, self.height - root.pane-y - (Theme.phone ? 52px : 0px));
+    property <length> pad: Theme.phone ? 0px : 12px;
+    property <length> partner-row: Theme.phone ? 44px : 40px;
+    property <length> partners-y: root.pane-y + (Theme.phone ? 24px : 44px);
+    property <length> partners-height: PartyView.cards.length * (root.partner-row + 2px);
+    property <length> head-y: root.partners-y + root.partners-height + 8px;
+    property <length> installed-y: root.head-y + 36px;
     property <bool> partner: PartyView.title != "";
 
     tab-page := ScrollPage {
@@ -367,8 +404,9 @@ export component PartyTab inherits Rectangle {
         // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
         bleed: 5px;
         nav: "party-tab.";
+        // (A drag on a program's row moves it: the wheel scrolls.)
         mouse-pan: false;
-        content-height: max(root.height, root.panes-y + 160px);
+        content-height: max(root.height, root.pane-y + root.pane-height);
         // ---- The strip: the partner or the program under the cursor.
         PanelBack {
             x: 0;
@@ -433,7 +471,7 @@ export component PartyTab inherits Rectangle {
         Text {
             x: 104px;
             y: root.top + 43px;
-            width: parent.width - 120px;
+            width: root.width - 120px;
             height: 18px;
             visible: !Theme.phone;
             text: PartyView.detail.facts;
@@ -447,7 +485,7 @@ export component PartyTab inherits Rectangle {
         Text {
             x: 104px;
             y: root.top + 63px;
-            width: parent.width - 120px;
+            width: root.width - 120px;
             height: 34px;
             visible: !Theme.phone;
             text: PartyView.detail.text;
@@ -458,46 +496,76 @@ export component PartyTab inherits Rectangle {
             overflow: elide;
         }
 
-        // (What the game's rules have against the party: a phone's line over the cards.)
+        // ---- PARTY, framed: the partners, then the chosen one's PartyCust.
+        PanelBack {
+            x: 0;
+            y: root.pane-y;
+            width: root.pane-width;
+            height: root.pane-height;
+            visible: !Theme.phone;
+        }
+
+        Label {
+            x: root.pad;
+            y: root.pane-y;
+            width: root.pane-width - 2 * root.pad;
+            height: Theme.phone ? 20px : 44px;
+            text: Caps.of(@tr("Party"));
+            color: Nav.id == "partner" ? Theme.cursor : Theme.muted;
+        }
+
+        // (What the game's rules have against the party: a phone's line in the panel's head.)
         ProblemNote {
-            x: 0px;
-            y: 0px;
-            width: root.width;
+            x: 64px;
+            y: 2px;
+            width: root.width - 64px;
             visible: Theme.phone;
             text: PartyView.problems;
         }
 
-        // ---- The two partners' cards.
-        for card[i] in PartyView.cards: CardView {
-            x: i * (root.card-width + 12px);
-            y: root.cards-y;
-            width: root.card-width;
-            height: root.card-height;
-            card: card;
-            nav-index: i;
-            chosen: i == PartyView.chosen;
+        partners := ListView {
+            x: root.pad;
+            y: root.partners-y;
+            width: root.pane-width - 2 * root.pad;
+            height: root.partners-height;
+            nav: "partner";
+            count: PartyView.cards.length;
+            row-height: root.partner-row;
+            // (The partner whose PartyCust is shown under it: the list's chosen row, as a library marks the row
+            // being filled.)
+            chosen: PartyView.chosen;
+            for slot in partners.shown: PartnerRow {
+                property <int> at: partners.first + slot;
+                y: self.at * partners.pitch;
+                width: partners.row-width;
+                height: partners.row-height;
+                card: PartyView.cards[self.at];
+                nav-index: self.at;
+            }
         }
 
-        // ---- The chosen partner's PartyCust: its title, and its gauge large right after it.
-        head-title := Label {
-            x: 0;
+        // INSTALLED: the chosen partner's programs under its gauge; CLEAR at the head's right end (its programs all
+        // taken out, asked first: docs/design/app-ui.md §2.71).
+        installed-title := Label {
+            x: root.pad;
             y: root.head-y;
-            width: min(self.preferred-width, root.width / 2);
+            width: min(self.preferred-width, root.pane-width / 2);
             height: 28px;
-            text: root.partner ? Caps.of(PartyView.title) : "";
-            color: Theme.cursor;
+            visible: root.partner;
+            text: Caps.of(PartyView.title);
+            color: Nav.id == "installed" ? Theme.cursor : Theme.muted;
         }
 
         head-gauge := Blocks {
-            x: head-title.width + 16px;
-            y: root.head-y + 6px;
-            height: 16px;
+            x: installed-title.x + installed-title.width + 12px;
+            y: root.head-y + 7px;
+            height: 14px;
             visible: root.partner;
             count: PartyView.cards[PartyView.chosen].gauge;
             filled: PartyView.cards[PartyView.chosen].used;
             tones: PartyView.cards[PartyView.chosen].tones;
             joins: PartyView.cards[PartyView.chosen].joins;
-            size: Theme.phone ? 10px : 14px;
+            size: 12px;
         }
 
         Text {
@@ -509,34 +577,13 @@ export component PartyTab inherits Rectangle {
             text: PartyView.cards[PartyView.chosen].used + "/" + PartyView.cards[PartyView.chosen].gauge;
             color: PartyView.cards[PartyView.chosen].used > PartyView.cards[PartyView.chosen].gauge ? Theme.bad : Theme.muted;
             font-family: Theme.mono;
-            font-size: 13px;
+            font-size: 12px;
             vertical-alignment: center;
         }
 
-        // INSTALLED, framed; PROGRAMS, open beside it (on a phone, a sheet a button opens).
-        PanelBack {
-            x: 0;
-            y: root.panes-y;
-            width: root.pane-width;
-            height: root.panes-height;
-            visible: root.partner;
-        }
-
-        Label {
-            x: 12px;
-            y: root.panes-y;
-            width: max(0px, clear.x + clear.pad - 12px - self.x);
-            height: 36px;
-            visible: root.partner;
-            text: Caps.of(@tr("Installed"));
-            color: Nav.id == "installed" ? Theme.cursor : Theme.muted;
-        }
-
-        // CLEAR (docs/design/app-ui.md §2.71): the partner's programs all taken out, asked first; at the right end of
-        // INSTALLED's header, as each tab has it at its pane's; dim where there is none.
         clear := WordButton {
-            x: root.pane-width - 12px + self.pad - self.width;
-            y: root.panes-y + 10px;
+            x: root.pane-width - root.pad + self.pad - self.width;
+            y: root.head-y + 2px;
             visible: root.partner;
             nav: root.partner ? "clear" : "";
             text: Caps.of(@tr("Clear"));
@@ -544,44 +591,82 @@ export component PartyTab inherits Rectangle {
         }
 
         RowsPane {
-            x: 4px;
-            y: root.panes-y + 36px;
-            width: root.pane-width - 8px;
-            height: root.panes-height - 44px;
+            x: root.pad;
+            y: root.installed-y;
+            width: root.pane-width - 2 * root.pad;
+            height: max(0px, root.pane-y + root.pane-height - root.installed-y - root.pad);
             visible: root.partner;
             rows: PartyView.installed;
             nav: root.partner ? "installed" : "";
             removable: true;
+            // (A phone's too, to put in another order: its library is a sheet, shut while a row is dragged.)
+            draggable: true;
         }
 
+        // ---- PROGRAMS, the library, open beside it (a phone's, a sheet a button opens); a program of INSTALLED dragged
+        // over it is taken out, let go there.
         Label {
             x: root.pane-width + 24px;
-            y: root.panes-y;
-            width: root.pane-width;
-            height: 36px;
-            visible: root.partner && !Theme.phone;
+            y: root.pane-y;
+            width: root.width - self.x;
+            height: 44px;
+            visible: !Theme.phone;
             text: Caps.of(@tr("Programs"));
             color: Nav.id == "lib.rows" ? Theme.cursor : Theme.muted;
         }
 
-        RowsPane {
+        library := RowsPane {
             x: root.pane-width + 24px;
-            y: root.panes-y + 36px;
-            width: root.pane-width;
-            height: root.panes-height - 44px;
-            visible: root.partner && !Theme.phone;
+            y: root.pane-y + 44px;
+            width: root.width - self.x;
+            height: root.pane-height - 44px;
+            visible: !Theme.phone;
             rows: PartyView.rows;
-            nav: root.partner && !Theme.phone ? "lib.rows" : "";
+            nav: !Theme.phone && root.partner ? "lib.rows" : "";
             removable: false;
+            draggable: root.partner;
+        }
+
+        RemoveTarget {
+            x: library.x - 8px;
+            y: library.y - 8px;
+            width: library.width + 8px;
+            height: library.height + 16px;
+            visible: !Theme.phone;
+            shown: ProgramDrag.on && Drag.removing;
+            text: Caps.of(@tr("Drop to remove"));
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         Button {
             x: 0;
-            y: root.panes-y + root.panes-height + 8px;
+            y: root.pane-y + root.pane-height + 8px;
             width: root.width;
             visible: root.partner && Theme.phone;
             nav: root.partner && Theme.phone ? "programs" : "";
             text: Caps.of(@tr("Programs"));
+        }
+
+        // (The program dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
+        // library, where let go it is taken out; a library's one faint until it is over INSTALLED.)
+        Rectangle {
+            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            y: Drag.y - root.absolute-position.y - Drag.grab-y;
+            width: root.pane-width - 2 * root.pad;
+            height: 30px;
+            visible: ProgramDrag.on || ProgramDrag.filling;
+            opacity: ProgramDrag.filling && ProgramDrag.to < 0 ? 0.7 : Drag.removing ? 0.6 : 1;
+            background: Theme.raised;
+            border-width: 1px;
+            border-color: Drag.removing ? Theme.bad : Theme.cursor;
+            drop-shadow-blur: 10px;
+            drop-shadow-offset-y: 4px;
+            drop-shadow-color: #00000090;
+            ProgramLine {
+                row-data: ProgramDrag.on ? PartyView.installed[Drag.from] : PartyView.rows[Drag.from];
+                removable: ProgramDrag.on;
+            }
         }
     }
 }
@@ -633,6 +718,7 @@ export component PartyOverlay inherits Rectangle {
             rows: PartyView.rows;
             nav: "lib.rows";
             removable: false;
+            draggable: false;
         }
     }
 }
