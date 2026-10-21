@@ -122,6 +122,18 @@ pub fn tones(content: &Content, p: &Partner, budget: Option<&Budget>) -> Vec<sli
     p.programs.iter().flat_map(|&h| std::iter::repeat_n(tone(content, h), budget.map_or(0, |b| b.cost_of(content, h)) as usize)).collect()
 }
 
+/// Whether each block of partner `p`'s gauge runs on into the next as one program's (the blocks a program fills are
+/// one piece: [`tones`]' blocks, in order).
+pub fn joins(content: &Content, p: &Partner, budget: Option<&Budget>) -> Vec<bool> {
+    p.programs
+        .iter()
+        .flat_map(|&h| {
+            let n = budget.map_or(0, |b| b.cost_of(content, h)) as usize;
+            (0..n).map(move |k| k + 1 < n)
+        })
+        .collect()
+}
+
 /// The build overview's rows of `side`'s partners (none: no party, or a game whose setup takes none): each its face,
 /// name, HP and gauge.
 pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, hp_word: impl Fn(i32) -> slint::SharedString, side: &nettai_match::Side, checked: &Checked, overview: Option<&Overview>) -> Vec<nettai_ui::SheetPartner> {
@@ -141,6 +153,7 @@ pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, hp_word
                 used: b.as_ref().map_or(0, |b| b.count.used as i32),
                 gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),
                 tones: slint::ModelRc::new(slint::VecModel::from(tones(content, p, b.as_ref()))),
+                joins: slint::ModelRc::new(slint::VecModel::from(joins(content, p, b.as_ref()))),
             })
         })
         .collect()
