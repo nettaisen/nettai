@@ -961,7 +961,7 @@ pub fn draw<'a>(
     // `RoundSetup::custom_screen_limit`): the seconds left on the local
     // player's screen, the whole time it counts (`time_left`).
     if let Some(left) = b.custom_time_left(local) {
-        time_left(layer, text, hud, left);
+        time_left(layer, text, hud, left, problems);
     }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
     // the pack's place).
@@ -1408,13 +1408,31 @@ const EMOTION_WINDOW_Y: i32 = 18;
 /// font, in the HP box's plain colors, set as the custom screen's enemy name
 /// is (`custom::draw_names`: its cells ending at the screen's right edge, the
 /// text layer's words from their left), on the emotion window's row: under
-/// the opponent's name, level with the local player's emotion window.
-fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16) {
+/// the opponent's name, level with the local player's emotion window. In
+/// the enhanced mode, where the numbers' font draws it (the user: "for the
+/// custom timer you should use the number font"), in that font in the
+/// place of the HP box's digits, a cell a digit, the last ending at the
+/// screen's right edge, in the plain text's colors.
+fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, problems: &mut Problems) {
     let seconds = left.div_ceil(60).to_string();
+    let pal = &hud.hp_palettes[0];
+    let lettered = text
+        .draws_numbers()
+        .then(|| crate::lookups::letters(hud.letters.hp_digits.as_ref(), || "the HP box's digits".into(), problems))
+        .flatten()
+        .and_then(|digits| {
+            // (In the plain text's colors, the HP box palette's 1 with its 2 a shadow: no box is under it.)
+            let set = crate::numbers::NumberSet { fill: vec![pal[1]], rim: None, shadow: Some(pal[2]), ..crate::numbers::NumberSet::of(digits, pal) };
+            let end = crate::numbers::picture_span(&set, crate::compose::WIDTH as i32 - crate::numbers::CELL, 1).1;
+            crate::numbers::laid(text, &[(seconds.clone(), &set)], EMOTION_WINDOW_Y, crate::numbers::Anchor::Right(end)).map(|l| l.0)
+        });
+    if let Some(items) = lettered {
+        items.into_iter().for_each(|item| text.push(Plane::Hud, item));
+        return;
+    }
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
     let cells = if text.takes(&seconds) { fonts::box_cells(hud, &seconds, glyphs.len(), 4) } else { glyphs.len() };
     let x = crate::compose::WIDTH as i32 - 8 * cells as i32;
-    let pal = &hud.hp_palettes[0];
     fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, cells, pal, (x, EMOTION_WINDOW_Y), (Role::FittedCell, Align::Left));
 }
 
