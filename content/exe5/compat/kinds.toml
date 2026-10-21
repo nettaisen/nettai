@@ -431,3 +431,5 @@
 # position the spawner's registers).
 "shadowman/support" = { pool = "actor", index = 0x30 }
 "shadowman/ambush-strike" = { pool = "effect", index = 0x96, scratch_position = true }
+# KnightMan's guard: his actor (the support actor 0x30's variant 6).
+"knightman/guard" = { pool = "actor", index = 0x30 }

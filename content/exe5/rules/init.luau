@@ -22,6 +22,7 @@ local party = require("@self/party")
 local patch_cards = require("@self/patch_cards")
 local colonel_support = require("./navis/colonel/support")
 local gyroman_support = require("./navis/gyroman/support")
+local knightman_guard = require("./navis/knightman/guard")
 local magnetman_support = require("./navis/magnetman/support")
 local meddy_support = require("./navis/meddy/support")
 local megaman_support = require("./navis/megaman/support")
@@ -129,6 +130,7 @@ local state: StateSchema = {
         megaman_timer = "u16",
         megaman_set = "bool",
         searchman_used = "bool",
+        knightman_pending = "u16",
         gyroman_gust = "object",
         knightman_guard = "object",
     } :: StateSchema,
@@ -435,6 +437,9 @@ local rules: Rules = {
         low_hp = function(side: number, navi: Object): boolean
             return magnetman_support.low_hp(side, navi) or shadowman_support.low_hp(side, navi)
         end,
+        -- A hit no trap caught, and every hit swallowed: KnightMan's guard in a party battle (navis/knightman/guard).
+        hit_guard = knightman_guard.hit_guard,
+        hit_swallowed = knightman_guard.hit_swallowed,
         -- A chip's use goes on: MegaMan's chip voice's draw in a party battle (./party).
         chip_ready = party.chip_ready,
         -- EXE5 DS's shout into the microphone (./shout), which nothing in nettai makes.

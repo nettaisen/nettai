@@ -385,7 +385,8 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_802CEF4`: anti-damage traps (and the heat trap) swallow the hit
 /// and raise a trap request (§4.3), as the game's rules say what each
-/// catches (`intake.anti_traps`).
+/// catches (`intake.anti_traps`); where none caught it, the side's rules
+/// may swallow it (`hit_guard`: EXE5 DS's 0x02063B72, KnightMan's guard).
 fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     if ai(b, r).status & crate::actor::status::HEAT_TRAP != 0 && coll(b, r).acc.element_damage[1] == 0 {
@@ -416,7 +417,11 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
             if ffc & 0x2000 != 0 && ffc & rules.sword_spares == 0 {
                 ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
                 zero_trapped_hit(b, r);
+                return;
             }
+        }
+        if b.rules_hit_guard(side as u8, r) {
+            zero_trapped_hit(b, r);
         }
         return;
     };
@@ -439,10 +444,13 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     zero_trapped_hit(b, r);
 }
 
-/// The trap's ZERO path: the hit and any running paralysis, freeze and
-/// bubble are dropped, and the pending requests the rules' `drops_requests`
-/// name.
+/// The trap's ZERO path: the side's rules see the hit swallowed
+/// (`hit_swallowed`: EXE5 DS's 0x02063BC2), then the hit and any running
+/// paralysis, freeze and bubble are dropped, and the pending requests the
+/// rules' `drops_requests` name.
 fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance;
+    b.rules_hit_swallowed(side, r);
     let drops = b.game_rules().intake.anti_traps.drops_requests;
     let c = coll_mut(b, r);
     absorb_hit(c);

@@ -54,8 +54,8 @@ export type Setup = {
 -- The party block's fields the supports keep (0x021B85E8 + side·0x24, docs/design/exe5ds-map.md §4.7): ProtoMan's and
 -- Colonel's spent flags and counters (+0, +1, +6, +7), GyroMan's gust spawned and its object (+2, +0x1C), NapalmMan's,
 -- TomahawkMan's and MegaMan's timers and whether each is set (+4 and +3, +8 and +0xA, +0x10 and +0x12), each member busy
--- while its support acts (+0xC…+0xE), ShadowMan's and SearchMan's spent flags (+0xF, +0x14) and KnightMan's guard
--- (+0x20).
+-- while its support acts (+0xC…+0xE), ShadowMan's and SearchMan's spent flags (+0xF, +0x14), the damage KnightMan's
+-- guard has yet to take (+0x16) and his guard (+0x20).
 export type Supports = {
     protoman_used: boolean,
     protoman_count: number,
@@ -71,6 +71,7 @@ export type Supports = {
     megaman_timer: number,
     megaman_set: boolean,
     searchman_used: boolean,
+    knightman_pending: number,
     gyroman_gust: Object?,
     knightman_guard: Object?,
 }

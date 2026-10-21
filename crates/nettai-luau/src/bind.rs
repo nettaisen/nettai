@@ -601,7 +601,9 @@ impl UserData for Object {
         methods.add_method("open_counter_window", |_, this, ticks: Option<u8>| {
             with(|api, _| Ok(api.open_counter_window(this.0, ticks.unwrap_or(0x10))))
         });
-        methods.add_method("check_reactive_abort", |_, this, ()| with(|api, _| Ok(api.check_reactive_abort(this.0))));
+        methods.add_method("check_reactive_abort", |_, this, guard: Option<bool>| {
+            with(|api, _| Ok(api.check_reactive_abort(this.0, guard.unwrap_or(false))))
+        });
         methods.add_method("spawn_mode9_objects", |_, this, ()| with(|api, _| Ok(api.spawn_mode9_objects(this.0))));
         methods.add_method("start_stance_counter", |_, this, ()| with(|api, _| Ok(api.start_stance_counter(this.0))));
         methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
@@ -3111,6 +3113,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::MemberBusy
                 | RulesHook::OpponentChip
                 | RulesHook::LowHp
+                | RulesHook::HitGuard
                 | RulesHook::CutInBarred,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),

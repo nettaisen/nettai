@@ -111,6 +111,7 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::AHeld => request::A_HELD,
         RequestFlag::BHeld => request::B_HELD,
         RequestFlag::StunStrike => request::STUN_STRIKE,
+        RequestFlag::Guard => request::GUARD,
         RequestFlag::Revival => request::REVIVAL,
         RequestFlag::FollowUp => request::FOLLOW_UP,
         RequestFlag::SelectSpecial => request::SELECT_SPECIAL,
@@ -2459,8 +2460,8 @@ impl CoreApi for Battle {
         kinds::player::actions::open_counter_window(self, o, ticks);
     }
 
-    fn check_reactive_abort(&mut self, o: ObjectRef) {
-        kinds::player::actions::check_reactive_abort(self, o);
+    fn check_reactive_abort(&mut self, o: ObjectRef, guard: bool) {
+        kinds::player::actions::check_reactive_abort(self, o, guard);
     }
 
     fn spawn_mode9_objects(&mut self, o: ObjectRef) {

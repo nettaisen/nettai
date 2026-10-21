@@ -44,9 +44,14 @@ export type Spec = {
     -- The appearance's ticks and animation (3 if none said), and what it sets as it has appeared (NapalmMan his shots).
     appear_ticks: number,
     appear_anim: number?,
+    -- What it does as it appears, after the sound (KnightMan's 0x021FF18A: a pixel down the field and up).
+    appearing: ((me: Object) -> ())?,
     appeared: ((me: Object) -> ())?,
     -- What its lead-out does as it ends (NapalmMan's timer starts again).
     gone: ((me: Object) -> ())?,
+    -- What its destruction clears besides its member's busy flag (its +0x6C: KnightMan's guard's slot in the party
+    -- block).
+    released: ((me: Object) -> ())?,
     -- Its attack (action 8 on), by action.
     actions: { [number]: (me: Object) -> () },
     -- Its own state beside the shared.
@@ -91,6 +96,9 @@ local function appear(me: Object, spec: Spec)
         me.visible = true
         me.anim = spec.appear_anim or ANIM_APPEAR
         battle.play_sound(SOUND_APPEAR)
+        if spec.appearing then
+            spec.appearing(me)
+        end
     end
     if party_support.countdown(me, spec.appear_ticks) then
         if spec.appeared then
@@ -192,6 +200,9 @@ function party_support.make(spec: Spec): Support
     -- 0x021FE5C5: its member no longer busy, its panel and parts given up, freed.
     local function finish(me: Object)
         party_support.release(me)
+        if spec.released then
+            spec.released(me)
+        end
         me:unreserve_panel(me.panel_x, me.panel_y)
         me:remove_parts(me.identity :: Identity)
         me:free()

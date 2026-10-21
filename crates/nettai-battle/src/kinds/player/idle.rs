@@ -156,7 +156,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
-    if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {
+    // (The rules' guard too: EXE5 DS's 0x0207773A.)
+    if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::GUARD) != 0 {
         return reactive_chip(b, r);
     }
     if low_hp_support(b, r) {
