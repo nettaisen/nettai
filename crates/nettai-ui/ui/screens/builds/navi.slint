@@ -1,5 +1,6 @@
 // The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
-// beside it the build's navi: the face its round starts with, its HP and its element; under them the build's other
+// beside it the build's navi: the face its round starts with, its stats then (its HP, its buster's attack and charge,
+// those its game's rules give it: an EXE5 team navi's own chip's damage) and its element; under them the build's other
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head, a list's ALL
@@ -14,7 +15,7 @@ import { Theme, Caps } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Select, Button, ProblemNote, AllNone, ScrollPage } from "../../widgets.slint";
-import { VersionTag } from "../../build.slint";
+import { VersionTag, StatLine } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
 // by doesn't allow it (docs/design/app-ui.md §2.59).
@@ -90,10 +91,12 @@ export global NaviView {
     ];
     out property <string> status: @tr("{n} navi" | "{n} navis" % self.navis.length);
     in property <[NaviCard]> navis;
-    // The build's navi: its name, the face its round starts with, its HP then, and its element's icon.
+    // The build's navi: its name, the face its round starts with, its stats then (HP, Attack, Charge: their labels the
+    // tab's, a stat of the rules' own with its own; what the build's installed parts added in cyan, as the overview
+    // says it), and its element's icon.
     in property <string> name;
     in property <image> face;
-    in property <string> hp;
+    in property <[StatLine]> stats;
     in property <image> element;
     // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
     in property <[NaviFormGroup]> form-groups;
@@ -332,8 +335,12 @@ export component NaviTab inherits Rectangle {
     // Under the facts, a line kept for what the build's problems have against the form under the cursor or the
     // pointer, else against the navi: in the same place whatever the selector holds (the user, of it in the note's
     // place: "the error message placement on the navi tab is janky as hell").
-    property <length> fault-y: Theme.phone ? 68px : 90px;
-    property <length> body-y: Theme.phone ? 96px : 118px;
+    property <length> stat-pitch: Theme.phone ? 20px : 22px;
+    property <length> element-y: root.facts-y + 28px + NaviView.stats.length * root.stat-pitch;
+    property <length> fault-y: root.element-y + root.stat-pitch + 4px;
+    property <length> body-y: root.fault-y + 28px;
+    property <length> label-width: Theme.phone ? 84px : 110px;
+    property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Charge")];
     // Between the choices, the facts of forms and the note: room enough that each reads as its own.
     property <length> fact-gap: 20px;
     // The selector: each fact's name and count over its forms' rows, the editor's lists' rows: one column on a
@@ -400,35 +407,48 @@ export component NaviTab inherits Rectangle {
             overflow: elide;
         }
 
-        Text {
+        for stat[i] in NaviView.stats: Rectangle {
             x: root.facts-x;
-            y: root.facts-y + 28px;
-            width: Theme.phone ? self.preferred-width : 110px;
+            y: root.facts-y + 28px + i * root.stat-pitch;
+            width: root.panel-x + root.panel-width - root.pad - self.x;
             height: 16px;
-            text: @tr("HP");
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 13px;
-            vertical-alignment: center;
-        }
+            Text {
+                x: 0;
+                width: root.label-width;
+                text: stat.label != "" ? stat.label : i < root.stat-labels.length ? root.stat-labels[i] : "";
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
 
-        Text {
-            x: root.facts-x + (Theme.phone ? 32px : 110px);
-            y: root.facts-y + 28px;
-            width: 64px;
-            height: 16px;
-            text: NaviView.hp;
-            color: Theme.text;
-            font-family: Theme.mono;
-            font-size: 13px;
-            font-weight: 700;
-            vertical-alignment: center;
+            value := Text {
+                x: root.label-width;
+                width: self.preferred-width;
+                text: stat.value;
+                color: Theme.text;
+                font-family: Theme.mono;
+                font-size: 13px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+
+            Text {
+                x: value.x + value.width + 8px;
+                text: stat.added;
+                color: Theme.cursor;
+                font-family: Theme.mono;
+                font-size: 11px;
+                font-weight: 500;
+                vertical-alignment: center;
+            }
         }
 
         element-label := Text {
-            x: root.facts-x + (Theme.phone ? 104px : 0px);
-            y: root.facts-y + (Theme.phone ? 28px : 52px);
-            width: Theme.phone ? self.preferred-width : 110px;
+            x: root.facts-x;
+            y: root.element-y;
+            width: root.label-width;
             height: 16px;
             text: @tr("Element");
             color: Theme.muted;
@@ -438,7 +458,7 @@ export component NaviTab inherits Rectangle {
         }
 
         Image {
-            x: element-label.x + (Theme.phone ? element-label.width + 8px : 110px);
+            x: element-label.x + root.label-width;
             y: element-label.y;
             width: 16px;
             height: 16px;

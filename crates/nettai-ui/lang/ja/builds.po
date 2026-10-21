@@ -635,14 +635,8 @@ msgstr[0] "空き{n}ブロック"
 msgid "Clear the party?"
 msgstr "パーティを空にしますか？"
 
-msgid "Effect"
-msgstr "効果"
 
-msgid "Kind"
-msgstr "種類"
 
-msgid "Gauge"
-msgstr "ゲージ"
 
 msgid "Fits: {n} block free"
 msgid_plural "Fits: {n} blocks free"
@@ -655,3 +649,7 @@ msgstr[0] "{n}ブロック必要"
 msgid "{n} block"
 msgid_plural "{n} blocks"
 msgstr[0] "{n}ブロック"
+
+msgid "Gauge {n} block"
+msgid_plural "Gauge {n} blocks"
+msgstr[0] "ゲージ {n}ブロック"

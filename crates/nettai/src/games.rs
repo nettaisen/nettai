@@ -516,6 +516,12 @@ impl<'a> Names<'a> {
         self.pick(&self.content.defs.navi(navi).key, |s, k| s.navi(k).and_then(|n| n.name.clone()))
     }
 
+    /// A navi's whole name, where the game's is cut short to its 8 letters ("MagnetMan" for "MagnetMn"): the
+    /// language's table's (its whole name, else its name), else the content's.
+    pub fn navi_long(&self, navi: nettai_content_api::NaviHandle) -> String {
+        self.pick(&self.content.defs.navi(navi).key, |s, k| s.navi(k).and_then(|n| n.long_name.clone().or_else(|| n.name.clone())))
+    }
+
     pub fn chip(&self, chip: nettai_content_api::ChipHandle) -> String {
         self.pick(&self.content.defs.chip(chip).key, |s, k| s.chip(k).and_then(|n| n.name.clone()))
     }

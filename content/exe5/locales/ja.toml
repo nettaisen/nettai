@@ -839,6 +839,7 @@ language = "ja"
 [stats]
 "soul_time" = "ソウルタイム"
 "switches" = "ナビチェンジ"
+"chip_damage" = "Chip damage"
 
 # The words of the battle's lettered pictures, by picture (en.toml says what this is): the Japanese ROMs' words. Those
 # the four ROMs of the game show alike are the English words in both languages (BATTLE START!, PAUSE, CUSTOM); the
