@@ -228,7 +228,8 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
   - magic 0x4442;
   - +2 the keys;
   - +4 a block index;
-  - +5 a byte from 0x0215F208+0x3E (open);
+  - +5 **the microphone's level**: 0x0215F208 is the mic sampler's state (0x02019228 starts sampling into a
+    0x800-byte buffer, 0x02019180 averages it into +0x3E);
   - +6 copied to BattleState +0x14/+0x15;
   - **+7 the switch request** (0x020370C8);
   - +8–+0x17 one 16-byte block.
@@ -236,7 +237,10 @@ The absent ones in the engine's range are mostly the GBA's link layer, its IWRAM
   The packet lands in each side's input record (0x021B8368, 0xC bytes a side; the GBA's are 8):
   - +2 held, +4 pressed, +6 released;
   - **+8 the switch slot**, +0xA its newly pressed edge (0x020022E8);
-  - +9 the packet's +5.
+  - +9 the packet's +5, the mic level. Overlay 423's 0x022261A4 (BRBE 0x080EB1B4's code, the same) sets
+    battle flag 4 (dimming) and a side's flag 0x800/0x1000 when it reaches 0x1E: a shout into the microphone
+    starts something. Which object it is and what it does is open; on the GBA the same code reads +9 of an 8-byte
+    record, the next record's +1 (what fed it there is not read).
 
   **So the switch is input**: a slot number in each tick's input, not a key bit.
 
@@ -442,7 +446,7 @@ The user has not chosen to adopt any of these. The recommendation is GBA EXE5 pl
 | NaviStats (0x60 × 2) | 0x0203C880 | 0x021B8C64 | 0x021B19B4 |
 | member blocks (0x60 × 3 × 2) | (one reserve, 0x02034EC0) | 0x021B9A5C | 0x021B27AC |
 | party block (0x24 × 2) | — | 0x021B85E8 | −0x72B0 |
-| joypad (toolkit +4) | 0x0200AF50 | 0x0216F7E4 | |
+| joypad (toolkit +4) | 0x0200AF50 | 0x0216F7E4 | 0x02168584 |
 | input records (8 / 0xC a side) | 0x02036E90 | 0x021B8368 | 0x021B10B8 |
 | banner | 0x02036ED0 | 0x021B83D0 | 0x021B1120 |
 | transformation sequencer | 0x02036E60 | 0x021B84BC | 0x021B120C |
@@ -450,7 +454,7 @@ The user has not chosen to adopt any of these. The recommendation is GBA EXE5 pl
 | fighting machine | 0x0203C5D0 | 0x021B82B8 | 0x021B1008 |
 | HUD block (gauge +0x20, tasks +0x40) | 0x020356E0 | 0x021B8630 | 0x021B1380 |
 | link struct | 0x0203F244 | 0x021B8290 | 0x021B0FE0 |
-| pause flag | 0x02002949 | [toolkit+0x3C]+9 = 0x02167289 | |
+| pause flag | 0x02002949 | [toolkit+0x3C]+9 = 0x02167289 | 0x02160029 |
 | custom screen state, slots | 0x02036B10, 0x02036C10 | 0x021B985C, 0x021B995C | 0x021B25AC, 0x021B26AC |
 | soul and switch marks | 0x02034E10 | 0x021B8300 | 0x021B1050 |
 
