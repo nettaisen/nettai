@@ -1144,3 +1144,29 @@ EXE5 content on its hooks below) and the supports (step 10).
 step, once the trace reader learns the `exe5ds` lines. Open as read: the overlay's third parameter on the switch's
 land (what it tells it), the busy flags (the supports'), the custom screen's refusal of MegaMan offline in some story
 states, battle mode 6.
+
+## 12. As built: the app's party battle (steps 13 and 14, branch party-app, 2026-10-21)
+
+docs/app.md has each part in full (§1, "A party battle's party"; §8, "The Party tab").
+
+- **Builds.** EXE5's editor has a Party tab: the partners and each one's PartyCust programs, its form read from the
+  setup's schema (`party`: a list of records, a navi and a list of `partycust_programs`). The gauge and a program's cost
+  are the rules' overview's: `rules/party`'s `overview` gives each partner's gauge as a list budget of its entry
+  (`SetupList.entry`, nettai-match's `Budget::entry`, `Overview::budget_of`) and the switches a round allows
+  (`SetupOverview.switches`, `Overview::switches`; also a stat, "Switches", which the build overview shows). Problems are
+  the rules' `validate`'s, in the builds' typed words (`BuildPart::Party`; a gauge overfilled says blocks, not MB). The
+  ruleset's `party` category greys a navi it holds back. No save import: the GBA's saves have no party, and the DS's save
+  isn't read.
+- **Controls.** Two switches of the app's own, the panel's left and right buttons (the DS's Y and X: `tools/dslab`'s
+  driver), C and V and the pad's east and north by default (the DS's X and Y keys are taken: X is B's on the keyboard and
+  the pad's west is B's), and on a phone two pad buttons under MENU. A press is `Player::ask_switch`: the member the
+  button names, carried by the next tick as `switch_to`. Which member a button names follows the DS's panel
+  (nettai-frontend's `party::Panel`: 1 left and 2 right as a round starts, the member leaving on the button of the one
+  coming). The microphone is wired to nothing.
+- **The party beside the battle**: the members' faces and HP, the member on the field, each switch's member and control,
+  the switches left as pips; a strip at the desktop window's bottom left, a phone's pad's. Read each frame from the
+  battle (`party::view`); no simulation state is added.
+- **Netplay and replays.** The party and its programs are the side's setup block, which the lobby's side bytes, a match
+  and a build file carry whole (nettai-match's `exe5s_party` test); the lobby's checks are the build's (`Checked::under`:
+  the rules' `validate` and the ruleset's `party` category). The switch rides the tick word (§11). Practice plays a
+  build's party as any match does.
