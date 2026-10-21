@@ -1,64 +1,64 @@
 //! The Party tab of a build's editor, in a game whose setup takes a party (EXE5's party battle, EXE5 DS's:
 //! docs/design/exe5ds-map.md §4, §11): the navi's partners, each with its PartyCust programs filling its gauge (§4.10).
 //!
-//! **Its form is the setup's schema's**: the field is a list of records (its room the most partners), each with a field
-//! naming a navi and a list of entries of a collection (the programs; its room the most a partner holds). The tab reads
-//! those from the schema and names neither. What may be a partner and what fits a gauge are the game's rules': the
-//! navis a side can play but its own are offered, the build's problems say what the rules refuse (a navi twice, one
-//! that is no team navi, programs past the gauge), and the gauge itself is the rules' overview's (a list budget of the
-//! partner's entry: `Overview::budget_of`), as is a program's cost (the field the budget names). A partner's HP is the
-//! round's as the build's check sets it up (`Checked::members`), its programs' bonus in.
+//! **Its form is the setup's schema's** (`crate::builds::party::Shape`): the field is a list of records (its room the most
+//! partners), each with a field naming a navi and a list of a collection's entries (the programs; its room the most a
+//! partner holds). What may be a partner and what fits a gauge are the game's rules': the navis a side can play but its
+//! own are offered, the build's problems say what the rules refuse, and the gauge is the rules' overview's (a list budget
+//! of the partner's entry: `Overview::budget_of`), as is a program's cost and the round's navi changes
+//! (`Overview::switches`).
 //!
-//! **The layout is the user's** (who found a tree of partners and programs with one library for both "confusing"):
-//! two partner cards across the top, always there (an empty one "Add a partner"), the focused one the partner whose
-//! PartyCust is below: its gauge, INSTALLED (its programs) and PROGRAMS (the library). **Enter on a card** opens the
-//! navis to pick from (the shell's marked list, a phone's sheet): the partner's own checked, one the build's ruleset
-//! holds back (its `party` category) or the other partner's dimmed and refused, and REMOVE, which takes the partner out
-//! with its programs. **Enter in PROGRAMS** installs the program at the end of the partner's (a program may be in twice:
-//! the rules hold them to the gauge alone), refused where the gauge or the list has no room ("Needs 5 blocks");
-//! **Enter or Del in INSTALLED** takes it out; Del on a card takes the partner out; **CLEAR** (or X), at INSTALLED's
-//! header's right end, takes the partner's programs out, asked first. Each block is in its program's color, a NaviCust program's (its definition's `color`). A program
-//! the build's ruleset holds back (its category over the partners' programs, `party.programs`) is greyed in PROGRAMS
-//! with "Not allowed" and refused; one installed all the same says so, red, and can be taken out.
+//! **The layout is the user's choice** (the verification workspace's docs/nettai-ui/party/chosen/party-tab-D9.png): the
+//! navis to pick from at the top, a row a version (the builds data's groups, in their colors), a chip each; under them a
+//! panel a partner, its head and its programs; PROGRAMS beside them. **Enter (or a click) on a chip** puts its navi in
+//! the party, at its end, or takes it out with its programs; one the build's ruleset holds back (its `party` category) is
+//! dimmed and refused, and none goes in past the party's room. **The partner PROGRAMS installs into** is the one the
+//! cursor was last in (its head, its programs): Enter on a head goes to PROGRAMS (a phone's sheet). **Enter in PROGRAMS**
+//! installs at the end of that partner's (a program may be in twice: the rules hold them to the gauge alone), refused
+//! where the gauge or the list has no room ("Needs 3") or the ruleset holds the program back (its `party.programs`
+//! category: "Not allowed"). **Del** takes out what is under the cursor: an installed program, a chip's partner.
+//!
+//! **A program is dragged** as the Patch cards tab's cards are (`Drag`, `drag-over` and `drag-in-over`): from PROGRAMS
+//! into a partner's list where it is let go, or onto its head (at its end), refused as Enter is; in a partner's list to
+//! another place, or into the other partner's; and onto the library, which takes it out.
 
-use crate::input::{Action, KeyPress};
+use crate::builds::party::{FIELD, Partner, Shape, partners, tone, write};
+use crate::input::Action;
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
-use crate::builds::party::{FIELD, Partner, Shape, partners, tone, write};
 use nettai_content_api::{EntryHandle, NaviHandle, Registry};
 use nettai_match::build::{Budget, EntryRefusal};
 use nettai_match::check::Problem;
-use nettai_ui::{BuildWords, EditorTab, PartnerCard, PartyDetail, PartyRow, PartyView, PickMark};
+use nettai_match::ruleset::Item;
+use nettai_ui::{BuildWords, EditorTab, PartyChip, PartyPanel, PartyRow, PartyTeam, PartyView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Described {
-    Card(usize),
-    Installed(usize),
-    Row(usize),
+/// The list of partner `i`'s programs (its panel's).
+fn installed_list(i: usize) -> String {
+    format!("installed{i}")
+}
+
+/// The partner whose list `id` is, if it is one.
+fn partner_of_list(id: &str) -> Option<usize> {
+    id.strip_prefix("installed")?.parse().ok()
 }
 
 #[derive(Default)]
 pub struct Party {
     shape: Option<Shape>,
-    /// The card chosen: the partner whose PartyCust is shown.
-    chosen: usize,
-    /// The navis offered, and what the navi picker's rows are (none: REMOVE).
+    /// The partner PROGRAMS installs into: the one the cursor was last in.
+    target: usize,
+    /// The navis offered, in the chips' order (the teams' rows, one after the other).
     navis: Vec<NaviHandle>,
-    picking: Vec<Option<NaviHandle>>,
     /// The library's programs, in the game's order.
     programs: Vec<EntryHandle>,
-    described: Option<Described>,
-    hovered: Option<Described>,
     refused: i32,
-    /// Why the last thing asked wasn't done, until the cursor moves.
-    notice: Option<String>,
 }
 
 impl Party {
-    /// The party's shape and the library's programs, read the first time; the navis offered.
+    /// The party's shape and the library's programs, read the first time.
     fn read(&mut self, draft: &Draft) -> Option<Shape> {
         if self.shape.is_none() {
             let content = draft.content();
@@ -68,10 +68,6 @@ impl Party {
             self.programs = programs.into_iter().map(|(_, h)| h).collect();
             self.shape = Some(shape);
         }
-        // (The navis a side can play but the build's own, in the game's order.)
-        let content = draft.content();
-        let own = draft.side().navi(content);
-        self.navis = nettai_match::navis(content, &draft.kit.game).into_iter().filter(|&n| n != own).collect();
         self.shape.clone()
     }
 
@@ -79,22 +75,12 @@ impl Party {
         self.shape.as_ref().map(|s| partners(draft.content(), draft.side(), s)).unwrap_or_default()
     }
 
-    /// Each partner's gauge, by its entry: the rules' overview's budget of it.
-    fn budgets(draft: &mut Draft) -> Vec<Option<Budget>> {
+    /// Each partner's gauge, by its entry: the rules' overview's budget of it; and the round's navi changes.
+    fn budgets(draft: &mut Draft) -> (Vec<Option<Budget>>, Option<u32>) {
         let content = draft.content().clone();
         let side = draft.side().clone();
         let overview = draft.checked.overview(&content, &side);
-        crate::builds::party::budgets(&content, &side, overview.as_ref())
-    }
-
-    /// A partner's HP as its round starts: its member's, as the build's check sets the round up.
-    fn hp(draft: &Draft, navi: NaviHandle) -> Option<u16> {
-        crate::builds::party::hp(&draft.checked, navi)
-    }
-
-    /// The build's problems with partner `i` (its own, and the party's about no partner).
-    fn problems(draft: &Draft, i: usize) -> Vec<&Problem> {
-        draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
+        (crate::builds::party::budgets(&content, &side, overview.as_ref()), overview.and_then(|o| o.switches))
     }
 
     /// The ruleset category of the partners' programs: the party's field and its records' programs' field, by their
@@ -103,7 +89,7 @@ impl Party {
         format!("{FIELD}.{}", self.shape.as_ref().map_or("", |s| s.programs.as_str()))
     }
 
-    /// Why program `h` can't go into the chosen partner's now (the build's ruleset, its gauge), if it can't.
+    /// Why program `h` can't go into the target partner's now (the build's ruleset, its gauge), if it can't.
     fn refusal(&self, shell: &Shell, draft: &Draft, budget: Option<&Budget>, h: EntryHandle) -> Option<String> {
         let ui = shell.ui();
         if !draft.allows(&self.programs_category(), h.0) {
@@ -115,136 +101,131 @@ impl Party {
         None
     }
 
+    /// The build's problems with partner `i` (its own, and the party's about no partner).
+    fn problems(draft: &Draft, i: usize) -> Vec<&Problem> {
+        draft.checked.problems.iter().filter(|p| draft.facts_of(p).iter().any(|f| f == FIELD) && (p.at(i) || p.entry.is_none())).collect()
+    }
+
     /// Everything shown anew.
     fn changed(&mut self, shell: &Shell, draft: &mut Draft) {
         let Some(shape) = self.read(draft) else { return };
         let content = draft.content().clone();
         let partners = partners(&content, draft.side(), &shape);
-        let budgets = Party::budgets(draft);
+        let (budgets, changes) = Party::budgets(draft);
+        self.target = self.target.min(partners.len().saturating_sub(1));
         let ui = shell.ui();
         let view = ui.global::<PartyView>();
-        let pictures = &draft.kit.pictures;
+        let say = ui.global::<BuildWords>();
+        let kit = draft.kit.clone();
         let budget = |i: usize| budgets.get(i).cloned().flatten();
-        let cards: Vec<PartnerCard> = draft.with_words(shell, |words| {
-            // (The partners' rows, then "Add a partner" while there is room.)
-            (0..(partners.len() + 1).min(shape.room))
-                .map(|i| {
-                    let Some(p) = partners.get(i) else { return PartnerCard::default() };
-                    let b = budget(i);
-                    // (Each block its program's color, the programs in their order.)
-                    let tones = crate::builds::party::tones(&content, p, b.as_ref());
-                    PartnerCard {
-                        there: true,
-                        face: p.navi.map(|n| pictures.navi(n)).unwrap_or_default(),
-                        name: p.navi.map(|n| words.names.navi(n)).unwrap_or_default().into(),
-                        hp: p.navi.and_then(|n| Party::hp(draft, n)).map(|hp| view.invoke_hp_word(hp as i32)).unwrap_or_default(),
-                        used: b.as_ref().map_or(0, |b| b.count.used as i32),
-                        gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),
-                        version: p.navi.map(|n| words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0))).unwrap_or_default(),
-                        tones: ModelRc::new(VecModel::from(tones)),
-                        joins: ModelRc::new(VecModel::from(crate::builds::party::joins(&content, p, b.as_ref()))),
-                        bad: !Party::problems(draft, i).is_empty(),
-                    }
+        let category = self.programs_category();
+        // The navis offered, a row a version (the builds data's groups, in their order); those of none in a row last.
+        let own = draft.side().navi(&content);
+        let offered: Vec<NaviHandle> = nettai_match::navis(&content, &kit.game).into_iter().filter(|&n| n != own).collect();
+        let rulesets = kit.rulesets();
+        let group_of = |n: NaviHandle| rulesets.as_ref().and_then(|r| r.group_of(Registry::Navi, &Item::of(n.0))).map(|g| g.id.clone());
+        let mut teams: Vec<(Option<String>, Vec<NaviHandle>)> = kit.builds.groups.iter().map(|g| (Some(g.id.clone()), Vec::new())).collect();
+        for &n in &offered {
+            let id = group_of(n);
+            match teams.iter_mut().find(|(g, _)| *g == id) {
+                Some((_, row)) => row.push(n),
+                None => teams.push((id, vec![n])),
+            }
+        }
+        teams.retain(|(_, row)| !row.is_empty());
+        self.navis = teams.iter().flat_map(|(_, row)| row.iter().copied()).collect();
+        let full = partners.len() >= shape.room;
+        let (team_rows, panels, rows) = draft.with_words(shell, |words| {
+            let team_rows: Vec<PartyTeam> = teams
+                .iter()
+                .map(|(id, row)| {
+                    let tag = id.as_ref().and_then(|id| kit.builds.group(id)).map(|_| kit.version_tag_of(words.names, Registry::Navi, &Item::of(row[0].0))).unwrap_or_default();
+                    let chips: Vec<PartyChip> = row
+                        .iter()
+                        .map(|&n| {
+                            let place = partners.iter().position(|p| p.navi == Some(n)).map_or(0, |at| at as i32 + 1);
+                            PartyChip { face: kit.pictures.navi(n), name: words.names.navi(n).into(), place, full: full && place == 0, held: !draft.allows(FIELD, n.0) }
+                        })
+                        .collect();
+                    PartyTeam { name: id.as_ref().map(|id| kit.version_name(words.names, id)).unwrap_or_default().into(), tone: tag.tone, chips: ModelRc::new(VecModel::from(chips)) }
                 })
-                .collect()
-        });
-        self.chosen = self.chosen.min(partners.len().min(shape.room.saturating_sub(1)));
-        let chosen = partners.get(self.chosen);
-        let b = budget(self.chosen);
-        let (title, installed, rows) = draft.with_words(shell, |words| {
-            let title = chosen.and_then(|p| p.navi).map(|n| view.invoke_partycust_of(words.names.navi(n).into())).unwrap_or_default();
-            let row = |h: EntryHandle| PartyRow { name: words.names.entry(h).into(), blocks: b.as_ref().map_or(0, |b| b.cost_of(&content, h)) as i32, tone: tone(&content, h), ..Default::default() };
-            // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
-            let category = self.programs_category();
-            let installed: Vec<PartyRow> = chosen
-                .map(|p| {
-                    p.programs
+                .collect();
+            // A program's row: its name, what it does (the game's words for it, on one line), its blocks.
+            let row = |h: EntryHandle, b: Option<&Budget>| PartyRow {
+                name: words.names.entry(h).into(),
+                effect: words.names.description(h).map(|d| crate::games::one_line(&d)).unwrap_or_default().into(),
+                blocks: b.map_or(0, |b| b.cost_of(&content, h)) as i32,
+                tone: tone(&content, h),
+                ..Default::default()
+            };
+            let panels: Vec<PartyPanel> = partners
+                .iter()
+                .enumerate()
+                .filter_map(|(i, p)| {
+                    let navi = p.navi?;
+                    let b = budget(i);
+                    // (Each block's program, in order; the empty blocks one run after them.)
+                    let mut runs: Vec<i32> = p.programs.iter().enumerate().flat_map(|(k, &h)| std::iter::repeat_n(k as i32, b.as_ref().map_or(0, |b| b.cost_of(&content, h)) as usize)).collect();
+                    let gauge = b.as_ref().map_or(0, |b| b.count.limit as usize);
+                    let last = if p.programs.is_empty() { 0 } else { p.programs.len() as i32 };
+                    while runs.len() < gauge {
+                        runs.push(last);
+                    }
+                    let rows: Vec<PartyRow> = p
+                        .programs
                         .iter()
                         .map(|&h| {
-                            let mut r = row(h);
+                            let mut r = row(h, b.as_ref());
+                            // (One the build's ruleset holds back all the same says so, red: it can be taken out.)
                             if !draft.allows(&category, h.0) {
-                                r.note = ui.global::<BuildWords>().invoke_not_allowed_here();
+                                r.effect = say.invoke_not_allowed_here();
                                 r.bad = true;
                             }
                             r
                         })
-                        .collect()
+                        .collect();
+                    Some(PartyPanel {
+                        face: kit.pictures.navi(navi),
+                        name: words.names.navi(navi).into(),
+                        hp: crate::builds::party::hp(&draft.checked, navi).map(|hp| hp.to_string().into()).unwrap_or_default(),
+                        used: b.as_ref().map_or(0, |b| b.count.used as i32),
+                        gauge: gauge as i32,
+                        tones: ModelRc::new(VecModel::from(crate::builds::party::tones(&content, p, b.as_ref()))),
+                        runs: ModelRc::new(VecModel::from(runs)),
+                        bad: !Party::problems(draft, i).is_empty(),
+                        rows: ModelRc::new(VecModel::from(rows)),
+                    })
                 })
-                .unwrap_or_default();
+                .collect();
+            let target = budget(self.target);
             let rows: Vec<PartyRow> = self
                 .programs
                 .iter()
                 .map(|&h| {
-                    let mut r = row(h);
-                    if let Some(why) = self.refusal(shell, draft, b.as_ref(), h) {
-                        r.note = why.into();
-                        r.refused = true;
-                        r.bad = true;
+                    let mut r = row(h, target.as_ref());
+                    if !partners.is_empty()
+                        && let Some(why) = self.refusal(shell, draft, target.as_ref(), h)
+                    {
+                        r.why = why.into();
                     }
                     r
                 })
                 .collect();
-            (title, installed, rows)
+            (team_rows, panels, rows)
         });
+        let target = budget(self.target);
         view.set_partners(partners.len() as i32);
-        view.set_cards(ModelRc::new(VecModel::from(cards)));
-        view.set_chosen(self.chosen as i32);
-        view.set_title(title);
-        view.set_installed(ModelRc::new(VecModel::from(installed)));
+        view.set_room(shape.room as i32);
+        view.set_changes(changes.unwrap_or(0) as i32);
+        view.set_one_version(draft.under().is_some_and(|p| p.ruleset.one_per_build));
+        view.set_teams(ModelRc::new(VecModel::from(team_rows)));
+        view.set_panels(ModelRc::new(VecModel::from(panels)));
+        view.set_target(self.target as i32);
+        let name = partners.get(self.target).and_then(|p| p.navi).map(|n| draft.with_words(shell, |w| w.names.navi(n))).unwrap_or_default();
+        view.set_target_name(name.into());
+        view.set_free(target.map_or(0, |b| b.count.limit.saturating_sub(b.count.used)) as i32);
         view.set_rows(ModelRc::new(VecModel::from(rows)));
         view.set_problems(draft.pane_line(shell, &[FIELD.to_string()], false).into());
-        self.show_detail(shell, draft);
-    }
-
-    /// The strip: what is under the cursor (or the pointer): a partner's navi, or a program.
-    fn show_detail(&self, shell: &Shell, draft: &mut Draft) {
-        let content = draft.content().clone();
-        let partners = self.partners(draft);
-        let budgets = Party::budgets(draft);
-        let ui = shell.ui();
-        let view = ui.global::<PartyView>();
-        let chosen = partners.get(self.chosen);
-        let b = budgets.get(self.chosen).cloned().flatten();
-        let notice = if self.hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
-        let fault = |i: usize| draft.line(shell, Party::problems(draft, i));
-        let detail = draft.with_words(shell, |words| {
-            let program = |h: EntryHandle| {
-                let cost = b.as_ref().map_or(0, |b| b.cost_of(&content, h));
-                PartyDetail {
-                    there: true,
-                    name: words.names.entry(h).into(),
-                    blocks: cost as i32,
-                    tone: tone(&content, h),
-                    facts: view.invoke_blocks_word(cost as i32),
-                    text: words.names.description(h).map(|d| crate::games::one_line(&d)).unwrap_or_default().into(),
-                    ..Default::default()
-                }
-            };
-            let mut detail = match self.hovered.or(self.described) {
-                Some(Described::Card(i)) => match partners.get(i).and_then(|p| p.navi) {
-                    Some(n) => {
-                        let b = budgets.get(i).cloned().flatten();
-                        let facts: Vec<String> = [Party::hp(draft, n).map(|hp| view.invoke_hp_word(hp as i32).to_string()), b.map(|b| format!("{}/{}", b.count.used, b.count.limit))].into_iter().flatten().collect();
-                        PartyDetail { there: true, face: draft.kit.pictures.navi(n), name: words.names.navi(n).into(), version: words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0)), facts: facts.join(" · ").into(), fault: fault(i).into(), ..Default::default() }
-                    }
-                    None => PartyDetail::default(),
-                },
-                Some(Described::Installed(k)) => match chosen.and_then(|p| p.programs.get(k)) {
-                    Some(&h) => PartyDetail { fault: fault(self.chosen).into(), ..program(h) },
-                    None => PartyDetail::default(),
-                },
-                Some(Described::Row(r)) => match self.programs.get(r) {
-                    Some(&h) => PartyDetail { problem: self.refusal(shell, draft, b.as_ref(), h).unwrap_or_default().into(), ..program(h) },
-                    None => PartyDetail::default(),
-                },
-                None => PartyDetail::default(),
-            };
-            if let Some(n) = &notice {
-                detail.problem = n.as_str().into();
-            }
-            detail
-        });
-        view.set_detail(detail);
     }
 
     /// Change the build's partners: whether they changed.
@@ -256,69 +237,24 @@ impl Party {
         })
     }
 
-    /// Refuse what was asked of library row `row`, saying `why`: the row shakes.
-    fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, why: String) {
-        shell.sound.play(Cue::Refused);
-        self.refused += 1;
-        let ui = shell.ui();
-        let view = ui.global::<PartyView>();
-        view.set_refused(row as i32);
-        view.set_refused_seq(self.refused);
-        self.notice = Some(why);
-        self.show_detail(shell, draft);
-    }
-
-    /// Open the navis to pick from for card `i`: the partner's own checked, those that can't be it dimmed with why, and
-    /// REMOVE where there is a partner.
-    fn pick_navi(&mut self, shell: &mut Shell, draft: &Draft, i: usize) {
+    /// Enter on chip `k`: its navi put in the party, at its end, or taken out with its programs.
+    fn toggle(&mut self, shell: &mut Shell, draft: &mut Draft, k: usize) {
+        let Some(&n) = self.navis.get(k) else { return };
+        let room = self.shape.as_ref().map_or(0, |s| s.room);
         let partners = self.partners(draft);
-        let mine = partners.get(i).and_then(|p| p.navi);
-        let ui = shell.ui();
-        let view = ui.global::<PartyView>();
-        let say = ui.global::<BuildWords>();
-        let mut rows: Vec<(String, PickMark)> = draft.with_words(shell, |words| {
-            self.navis
-                .iter()
-                .map(|&n| {
-                    let other = mine != Some(n) && partners.iter().any(|p| p.navi == Some(n));
-                    let allowed = draft.allows(FIELD, n.0);
-                    let value = if !allowed { say.invoke_not_allowed_here() } else if other { view.invoke_in_party() } else { Default::default() };
-                    let tag = words.kit.version_tag_of(words.names, Registry::Navi, &nettai_match::ruleset::Item::of(n.0));
-                    (words.names.navi(n), PickMark { check: mine == Some(n), dim: !allowed || other, line: false, value, tag })
-                })
-                .collect()
-        });
-        self.picking = self.navis.iter().map(|&n| Some(n)).collect();
-        if mine.is_some() {
-            rows.push((view.get_remove_word().into(), PickMark { line: true, ..Default::default() }));
-            self.picking.push(None);
+        if let Some(at) = partners.iter().position(|p| p.navi == Some(n)) {
+            return self.remove_partner(shell, draft, at);
         }
-        shell.pick_marked_under("navi", i as i32, &crate::nav::Key::new("partner", i as i32), rows);
-    }
-
-    /// The navi picker's row `choice` for card `i`: the navi made the partner (a new partner where the card had none),
-    /// or (REMOVE) the partner taken out.
-    fn picked(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize, choice: usize) {
-        let Some(&pick) = self.picking.get(choice) else { return };
-        let partners = self.partners(draft);
-        let Some(n) = pick else { return self.remove_partner(shell, draft, i) };
-        if !draft.allows(FIELD, n.0) || partners.iter().enumerate().any(|(at, p)| at != i && p.navi == Some(n)) {
+        if partners.len() >= room || !draft.allows(FIELD, n.0) {
             return shell.sound.play(Cue::Refused);
         }
-        let at = i.min(partners.len());
         if self.change(draft, |ps| {
-            match ps.get_mut(at) {
-                Some(p) => p.navi = Some(n),
-                None => ps.push(Partner { navi: Some(n), programs: Vec::new() }),
-            }
+            ps.push(Partner { navi: Some(n), programs: Vec::new() });
             true
         }) {
             shell.sound.play(Cue::Pick);
-            self.chosen = at;
-            self.described = Some(Described::Card(at));
-            self.notice = None;
+            self.target = partners.len();
             self.changed(shell, draft);
-            shell.nav.focus("partner", at as i32);
         }
     }
 
@@ -331,32 +267,32 @@ impl Party {
             true
         }) {
             shell.sound.play(Cue::Back);
-            self.notice = None;
             self.changed(shell, draft);
         } else {
             shell.sound.play(Cue::Refused);
         }
     }
 
-    /// Enter on PROGRAMS' row `row`: its program installed at the end of the chosen partner's.
-    fn install(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
-        self.install_at(shell, draft, row, usize::MAX);
+    /// Refuse PROGRAMS' row `row`: it shakes, with the refusal's sound.
+    fn refuse(&mut self, shell: &mut Shell, row: usize) {
+        shell.sound.play(Cue::Refused);
+        self.refused += 1;
+        let ui = shell.ui();
+        let view = ui.global::<PartyView>();
+        view.set_refused(row as i32);
+        view.set_refused_seq(self.refused);
     }
 
-    /// PROGRAMS' row `row`'s program installed among the chosen partner's at `at` (past their end: at it), refused as
-    /// Enter's is.
-    fn install_at(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, at: usize) {
+    /// PROGRAMS' row `row`'s program installed among partner `i`'s at `at` (past their end: at it), refused where the
+    /// list or the gauge has no room or the ruleset holds it back.
+    fn install(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, i: usize, at: usize) {
         let Some(&h) = self.programs.get(row) else { return };
         let partners = self.partners(draft);
-        let i = self.chosen;
         let Some(p) = partners.get(i) else { return shell.sound.play(Cue::Refused) };
         let room = self.shape.as_ref().map_or(0, |s| s.program_room);
-        if p.programs.len() >= room {
-            return shell.sound.play(Cue::Refused);
-        }
-        let budgets = Party::budgets(draft);
-        if let Some(why) = self.refusal(shell, draft, budgets.get(i).and_then(Option::as_ref), h) {
-            return self.refuse(shell, draft, row, why);
+        let (budgets, _) = Party::budgets(draft);
+        if p.programs.len() >= room || self.refusal(shell, draft, budgets.get(i).and_then(Option::as_ref), h).is_some() {
+            return self.refuse(shell, row);
         }
         if self.change(draft, |ps| {
             let at = at.min(ps[i].programs.len());
@@ -364,14 +300,13 @@ impl Party {
             true
         }) {
             shell.sound.play(Cue::Pick);
-            self.notice = None;
+            self.target = i;
             self.changed(shell, draft);
         }
     }
 
-    /// Program `k` of the chosen partner's taken out.
-    fn uninstall(&mut self, shell: &mut Shell, draft: &mut Draft, k: usize) {
-        let i = self.chosen;
+    /// Program `k` of partner `i`'s taken out.
+    fn uninstall(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize, k: usize) {
         if self.change(draft, |ps| match ps.get_mut(i) {
             Some(p) if k < p.programs.len() => {
                 p.programs.remove(k);
@@ -380,18 +315,65 @@ impl Party {
             _ => false,
         }) {
             shell.sound.play(Cue::Back);
-            self.notice = None;
             self.changed(shell, draft);
-            // (The focus stays in the list, on the program now there, or the last.)
+            // (The focus stays in the list, on the program now there, or the last; else on the partner's head.)
             let left = self.partners(draft).get(i).map_or(0, |p| p.programs.len());
             if left > 0 {
-                shell.nav.focus("installed", k.min(left - 1) as i32);
+                shell.nav.focus(&installed_list(i), k.min(left - 1) as i32);
             } else {
-                shell.nav.focus("partner", i as i32);
+                shell.nav.focus("target", i as i32);
             }
         } else {
             shell.sound.play(Cue::Refused);
         }
+    }
+
+    /// Program `k` of partner `from`'s moved to place `to` of partner `into`'s (the same or the other); into the other,
+    /// refused as an install is.
+    fn shift(&mut self, shell: &mut Shell, draft: &mut Draft, from: usize, k: usize, into: usize, to: usize) {
+        let partners = self.partners(draft);
+        let Some(&h) = partners.get(from).and_then(|p| p.programs.get(k)) else { return };
+        if into != from {
+            let room = self.shape.as_ref().map_or(0, |s| s.program_room);
+            let (budgets, _) = Party::budgets(draft);
+            let fits = partners.get(into).is_some_and(|p| p.programs.len() < room) && self.refusal(shell, draft, budgets.get(into).and_then(Option::as_ref), h).is_none();
+            if !fits {
+                return shell.sound.play(Cue::Refused);
+            }
+        }
+        if self.change(draft, |ps| {
+            let h = ps[from].programs.remove(k);
+            let at = to.min(ps[into].programs.len());
+            ps[into].programs.insert(at, h);
+            from != into || at != k
+        }) {
+            shell.sound.play(Cue::Pick);
+            self.target = into;
+            self.changed(shell, draft);
+        }
+    }
+
+    /// Where a program dragged to `at` (the UI's `Drag` place) would go: a partner and a place among its programs (over
+    /// its list, before the row under the pointer, or past the last; over its head, at the end). None: over no partner.
+    fn landing(&self, shell: &Shell, draft: &Draft, at: i32) -> Option<(usize, usize)> {
+        let (x, y) = editor::pointer_at(at);
+        let partners = self.partners(draft);
+        for (i, p) in partners.iter().enumerate() {
+            let n = p.programs.len();
+            if editor::nearest(shell, "target", std::iter::once(i), (x, y), None).is_some() {
+                return Some((i, n));
+            }
+            let registry = shell.nav.registry();
+            let registry = registry.borrow();
+            let Some(view) = registry.view(&installed_list(i)).filter(|v| v.h > 0.0) else { continue };
+            if x < view.x || x > view.right() || y < view.y || y > view.bottom() + 8.0 {
+                continue;
+            }
+            let pitch = view.h / n.max(1) as f32;
+            let row = ((y - view.y + pitch / 2.0) / pitch).floor().max(0.0) as usize;
+            return Some((i, row.min(n)));
+        }
+        None
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -401,10 +383,6 @@ impl Party {
             view.set_sheet(false);
             shell.nav.close("lib.");
         }
-    }
-
-    fn focused_at(shell: &Shell, id: &str) -> Option<usize> {
-        shell.nav.focused().filter(|k| k.id == id).map(|k| k.index.max(0) as usize)
     }
 }
 
@@ -423,147 +401,126 @@ impl Tab for Party {
     }
 
     fn main(&self) -> &'static str {
-        "partner"
+        "chip"
     }
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
-        if self.described.is_none() {
-            self.described = Some(Described::Card(self.chosen));
-        }
         self.changed(shell, draft);
     }
 
     fn hide(&mut self, shell: &mut Shell, _draft: &mut Draft) {
-        self.notice = None;
-        self.hovered = None;
         self.close_sheet(shell);
     }
 
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         let index = index.max(0) as usize;
         match id {
-            "partner" => {
-                self.chosen = index;
+            "chip" => self.toggle(shell, draft, index),
+            // (Enter on a partner's head: PROGRAMS, which installs into it; a phone's sheet.)
+            "target" => {
+                self.target = index;
                 self.changed(shell, draft);
-                self.pick_navi(shell, draft, index);
+                if shell.scale.phone {
+                    shell.ui().global::<PartyView>().set_sheet(true);
+                    shell.nav.open("lib.", crate::nav::Key::new("lib.rows", 0));
+                } else {
+                    shell.nav.focus("lib.rows", 0);
+                }
             }
-            "installed" => self.uninstall(shell, draft, index),
-            "lib.rows" => self.install(shell, draft, index),
+            "lib.rows" => {
+                let at = usize::MAX;
+                self.install(shell, draft, index, self.target, at);
+            }
             "programs" => {
-                let ui = shell.ui();
-                ui.global::<PartyView>().set_sheet(true);
+                shell.ui().global::<PartyView>().set_sheet(true);
                 shell.nav.open("lib.", crate::nav::Key::new("lib.rows", 0));
             }
             "lib.close" => {
                 self.close_sheet(shell);
                 shell.nav.focus("programs", 0);
             }
-            // (CLEAR, INSTALLED's: the chosen partner's programs.)
-            "clear" => {
-                let question = shell.ui().global::<PartyView>().get_clear_question();
-                let empty = self.partners(draft).get(self.chosen).is_none_or(|p| p.programs.is_empty());
-                editor::ask_clear(shell, question, empty);
+            id => {
+                if let Some(i) = partner_of_list(id)
+                    && self.target != i
+                {
+                    self.target = i;
+                    self.changed(shell, draft);
+                }
             }
-            _ => {}
         }
     }
 
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
-        let installed = self.partners(draft).get(self.chosen).map_or(0, |p| p.programs.len());
-        let to = |at: i32, rows: usize| editor::list_row(shell, "installed", editor::pointer_at(at), rows);
+        let list = shell.ui().global::<nettai_ui::Drag>().get_list().to_string();
         match id {
-            "navi" => self.picked(shell, draft, index.max(0) as usize, choice.max(0) as usize),
-            // An installed program dragged: where it would land; let go there, it moves (over the library, it is taken
-            // out; elsewhere off the list, it goes back), as the Patch cards tab's cards are.
+            // A partner's program dragged: over the library, taken out if let go; over a partner (its list or its head),
+            // where it would land; elsewhere, nowhere (it goes back).
             "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
-            "drag-over" => editor::show_drop(shell, to(choice, installed), false),
+            "drag-over" => match self.landing(shell, draft, choice) {
+                Some((i, at)) => {
+                    // (In its own list a program moves to a row there is: its place, not one past the end.)
+                    let n = self.partners(draft).get(i).map_or(0, |p| p.programs.len());
+                    let at = if Some(i) == partner_of_list(&list) { at.min(n.saturating_sub(1)) } else { at };
+                    editor::show_landing(shell, &installed_list(i), Some(at), false);
+                }
+                None => editor::show_drop(shell, None, false),
+            },
             "drag-drop" => {
                 editor::show_drop(shell, None, false);
-                if index < 0 {
-                    return;
-                }
-                let from = index as usize;
+                let (Some(from), Ok(k)) = (partner_of_list(&list), usize::try_from(index)) else { return };
                 if editor::over_library(shell, choice) {
-                    self.uninstall(shell, draft, from);
-                } else if let Some(to) = to(choice, installed).filter(|&t| t != from) {
-                    let i = self.chosen;
-                    if self.change(draft, |ps| match ps.get_mut(i) {
-                        Some(p) if from < p.programs.len() => {
-                            let h = p.programs.remove(from);
-                            p.programs.insert(to.min(p.programs.len()), h);
-                            true
-                        }
-                        _ => false,
-                    }) {
-                        shell.sound.play(Cue::Pick);
-                        self.changed(shell, draft);
-                    }
+                    self.uninstall(shell, draft, from, k);
+                } else if let Some((into, at)) = self.landing(shell, draft, choice) {
+                    let n = self.partners(draft).get(into).map_or(0, |p| p.programs.len());
+                    let to = if into == from { at.min(n.saturating_sub(1)) } else { at };
+                    self.shift(shell, draft, from, k, into, to);
                 }
             }
-            // A library's program dragged: where it would go in among INSTALLED's (a gap, those from there on shifting);
-            // let go there, it goes in, refused as Enter's is; anywhere else, nothing.
-            "drag-in-over" if index >= 0 => editor::show_landing(shell, "installed", to(choice, installed + 1), false),
+            // A library's program dragged: where it would go in among a partner's (a gap, those from there on
+            // shifting); let go there, it goes in, refused as Enter's is; anywhere else, nothing.
+            "drag-in-over" if index >= 0 => match self.landing(shell, draft, choice) {
+                Some((i, at)) => editor::show_landing(shell, &installed_list(i), Some(at), false),
+                None => editor::show_drop(shell, None, false),
+            },
             "drag-in-drop" => {
                 editor::show_drop(shell, None, false);
-                if let Some(at) = to(choice, installed + 1).filter(|_| index >= 0) {
-                    self.install_at(shell, draft, index as usize, at);
+                if let (Some((i, at)), Ok(row)) = (self.landing(shell, draft, choice), usize::try_from(index)) {
+                    self.install(shell, draft, row, i, at);
                 }
             }
             _ => {}
         }
     }
 
-    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
-        let index = index.max(0) as usize;
-        let what = match id {
-            "partner" => Described::Card(index),
-            "installed" => Described::Installed(index),
-            "lib.rows" => Described::Row(index),
-            _ => return,
-        };
-        if editor::hover(&mut self.hovered, what, on) {
-            self.show_detail(shell, draft);
-        }
-    }
-
+    /// (The cursor in a partner, its head or its programs, makes it the one PROGRAMS installs into.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
-        let index = index.max(0) as usize;
-        self.hovered = None;
-        self.notice = None;
-        match id {
-            // (The card focused is the partner whose PartyCust is shown.)
-            "partner" => {
-                self.described = Some(Described::Card(index));
-                if self.chosen != index {
-                    self.chosen = index;
-                    return self.changed(shell, draft);
-                }
-            }
-            "installed" => self.described = Some(Described::Installed(index)),
-            "lib.rows" => self.described = Some(Described::Row(index)),
-            _ => {}
+        let i = match id {
+            "target" => index.max(0) as usize,
+            id => match partner_of_list(id) {
+                Some(i) => i,
+                None => return,
+            },
+        };
+        if self.target != i {
+            self.target = i;
+            self.changed(shell, draft);
         }
-        self.show_detail(shell, draft);
     }
 
-    /// X, CLEAR.
-    fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
-        if editor::clear_key(shell, key) {
-            self.activate(shell, draft, "clear", 0);
-            return true;
-        }
-        false
-    }
-
-    /// Delete takes out what is under the cursor: a program installed, a partner.
+    /// Delete takes out what is under the cursor: an installed program, a chip's partner.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
         if action != Action::Delete {
             return false;
         }
-        if let Some(k) = Party::focused_at(shell, "installed") {
-            self.uninstall(shell, draft, k);
-        } else if let Some(i) = Party::focused_at(shell, "partner") {
-            self.remove_partner(shell, draft, i);
+        let Some(key) = shell.nav.focused() else { return false };
+        let at = key.index.max(0) as usize;
+        if let Some(i) = partner_of_list(&key.id) {
+            self.uninstall(shell, draft, i, at);
+        } else if key.id == "chip" {
+            match self.navis.get(at).and_then(|&n| self.partners(draft).iter().position(|p| p.navi == Some(n))) {
+                Some(i) => self.remove_partner(shell, draft, i),
+                None => shell.sound.play(Cue::Refused),
+            }
         } else {
             shell.sound.play(Cue::Refused);
         }
@@ -579,13 +536,6 @@ impl Tab for Party {
         }
         false
     }
-
-    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
-        let i = self.chosen;
-        if editor::cleared(tag, choice) && self.change(draft, |ps| ps.get_mut(i).is_some_and(|p| !std::mem::take(&mut p.programs).is_empty())) {
-            self.changed(shell, draft);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -594,7 +544,7 @@ mod tests {
     use nettai_match::testing::exe5_content;
 
     /// EXE5's party read from its schema (two partners, each a navi and ten programs of PartyCust's), and a party
-    /// written and read back.
+    /// written and read back; a partner's list by its name.
     #[test]
     fn the_party_is_the_schemas() {
         let content = exe5_content();
@@ -609,5 +559,6 @@ mod tests {
         assert!(write(&content, &mut side, &shape, &party));
         assert_eq!(partners(&content, &side, &shape), party);
         assert_eq!(tone(&content, program("p-spport")), slint::Color::from_rgb_u8(0xEA, 0xF3, 0xFF));
+        assert_eq!((partner_of_list(&installed_list(1)), partner_of_list("lib.rows")), (Some(1), None));
     }
 }

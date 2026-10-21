@@ -605,32 +605,41 @@ msgstr "パーティ"
 msgid "the party"
 msgstr "パーティ"
 
-msgid "Add a partner"
-msgstr "パートナーを追加"
 
-msgid "Take out all of the partner's programs?"
-msgstr "パートナーのプログラムをすべて外しますか？"
 
-msgid "{n} partner"
-msgid_plural "{n} partners"
-msgstr[0] "パートナー {n}体"
 
-msgid "{n} block"
-msgid_plural "{n} blocks"
-msgstr[0] "{n}ブロック"
 
-msgid "Needs {n} block"
-msgid_plural "Needs {n} blocks"
-msgstr[0] "{n}ブロック必要"
 
-msgid "In the party"
-msgstr "パーティにいます"
 
 msgid "Programs fill {} blocks, the gauge has {}"
 msgstr "プログラム {}ブロック、ゲージは{}"
 
-msgid "{}'s PartyCust"
-msgstr "{}のパーティカスタム"
 
-msgid "Remove partner"
-msgstr "パートナーを外す"
+# The Party tab as the user chose it (D9): the navis to pick from, the partners, PROGRAMS.
+msgid "Partners"
+msgstr "パートナー"
+
+msgid "Navi changes"
+msgstr "ナビチェンジ"
+
+msgid "Enter adds or takes out"
+msgstr "Enterで加える・外す"
+
+msgid "This ruleset: one version per build"
+msgstr "このルール：1ビルド1バージョン"
+
+msgid "This ruleset: versions mixed"
+msgstr "このルール：バージョン混在可"
+
+msgid "Into {}"
+msgstr "{}へ"
+
+msgid "Needs {}"
+msgstr "{}必要"
+
+msgid "Add or take out · Install"
+msgstr "加える・外す · インストール"
+
+msgid "{n} block free"
+msgid_plural "{n} blocks free"
+msgstr[0] "空き{n}ブロック"
