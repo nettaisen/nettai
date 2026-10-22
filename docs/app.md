@@ -2032,14 +2032,23 @@ page's place (§18).
 **Scaling.** Every length in the UI is in units of the 1280 by 800 reference window, and the app sets the
 window's scale so that one of Slint's `px` is one unit (`Shell::fit_window`): a unit is a 1280th of the window's
 width or an 800th of its height, whichever is less. So a .slint file multiplies by no scale, text is drawn at the
-display's resolution at any size, and only the battle's picture is counted in the display's own pixels (§1).
+display's resolution at any size, and only the battle's picture is counted in the display's own pixels (§1). A
+short window makes the whole UI smaller, and the layout is never shorter than 800 units: no screen is laid out
+shorter and scrolled as a whole (the user: "i don't like having the whole thing in a scroll pane like that, it
+makes some screens awkward just for the phone layout that isn't really used"; design §2.98). Each screen lays out
+in the room its body has: the build editor's panes run down to 18 over the tab's foot (482 tall at the reference
+window, taller in a taller one), and its lists scroll inside themselves (`ListView`; a `ScrollPage` for a list of other
+shapes, such as the Navi tab's grid and the Auto battle tab's places). A `ScrollPage` holds a page that is a list or
+is longer than any window: Settings, About, the practice menu's rows, the ruleset's items, the shell's picture grid,
+the viewer's two builds.
 
 **The phone.** A window less than four fifths as wide as it is tall is an upright phone's: a unit is a 390th of
 its width, and `Theme.phone` is set, which the theme's metrics and the screens read (the margins 16, the header
 56 with a smaller title, no footer and no key hints; the main menu in one column under the reel; Settings without
 its list, a label on two lines where it needs them and each note under its control; a select's choices as a sheet
 from the bottom; a menu's buttons one over the other; the battle's pad under the picture). Held sideways, a phone
-has the desktop's layout.
+has the desktop's layout. A screen isn't scrolled to fit a short phone either: where it doesn't fit, its lists take
+the height that is left (the NaviCust's programs, the Navi tab's grid), cramped on the smallest.
 
 On a phone the battle's picture has the window's whole width, at its top, with no gutter (`BattleScreen`), and
 so has Practice's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the

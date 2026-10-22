@@ -30,7 +30,7 @@
 import { Theme, Caps } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, Button, ListView, RowTouch, ScrollPage, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
+import { PanelBack, Label, Button, ListView, RowTouch, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
 import { Tween, Shake } from "../../motion.slint";
 import { VersionTag, VersionMark, StatLine } from "../../build.slint";
 import { DropGap, RemoveTarget, CountBox, LibraryHead, LibraryRowLook } from "folder.slint";
@@ -425,14 +425,13 @@ export component PartyTab inherits Rectangle {
     property <length> strip: root.phone ? 0px : 104px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack")];
     // PARTY at the left (on a phone, the tab's width), the library at the right: as the Patch cards tab's panes, the
-    // strip and the two panes and their gaps the page's whole height (where the tab is shorter, it scrolls); the slots
-    // a list in PARTY, which scrolls in it.
+    // strip and the two panes and their gaps the page's whole height (on a desktop down to 18 over the tab's foot);
+    // the slots a list in PARTY, which scrolls in it.
     property <length> pane-y: root.phone ? 0px : root.top + root.strip + 12px;
     property <length> pane-width: root.phone ? root.width : 560px;
-    property <length> pane-height: root.phone ? root.height - 12px - 44px : 482px;
+    property <length> pane-height: root.phone ? root.height - 12px - 44px : root.height - root.pane-y - 18px;
     property <length> head: root.phone ? 64px : 44px;
     property <length> pitch: Theme.list-row + Theme.list-gap;
-    property <length> content-height: max(root.height, root.phone ? root.height : root.pane-y + root.pane-height + 12px);
     // A drag in PARTY's slots (a slot of its own, `slots-on`; a library's row, `slots-filling`): where it would land
     // (`Drag.to`); a program among the programs, the slots from there on shifting to leave a gap; a navi or a head onto
     // a head (`Drag.swap`), that head outlined, none shifting.
@@ -443,343 +442,331 @@ export component PartyTab inherits Rectangle {
         return root.slots-to < 0 || Drag.swap ? i : root.slots-filling ? (i >= root.slots-to ? i + 1 : i) : i == Drag.from ? root.slots-to : (Drag.from < i && i <= root.slots-to) ? i - 1 : (root.slots-to <= i && i < Drag.from) ? i + 1 : i;
     }
 
-    tab-page := ScrollPage {
+    // ---- The strip: the program or the navi under the cursor, as the Folder tab's lays a chip out.
+    PanelBack {
         x: 0;
-        y: 0;
-        width: root.width + 12px;
-        height: root.height;
-        // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
-        bleed: 5px;
-        nav: "party-tab.";
-        // (A drag on a slot moves it: the wheel scrolls.)
-        mouse-pan: false;
-        content-height: root.content-height;
-        // ---- The strip: the program or the navi under the cursor, as the Folder tab's lays a chip out.
-        PanelBack {
-            x: 0;
-            y: root.top;
-            height: root.strip;
-            visible: !root.phone;
-        }
+        y: root.top;
+        height: root.strip;
+        visible: !root.phone;
+    }
 
-        Image {
-            x: 18px;
-            y: root.top + 20px;
-            width: 84px;
-            height: 42px;
-            visible: !root.phone && PartyView.detail.there && PartyView.detail.blocks == 0;
-            source: PartyView.detail.face;
-            image-rendering: pixelated;
-        }
+    Image {
+        x: 18px;
+        y: root.top + 20px;
+        width: 84px;
+        height: 42px;
+        visible: !root.phone && PartyView.detail.there && PartyView.detail.blocks == 0;
+        source: PartyView.detail.face;
+        image-rendering: pixelated;
+    }
 
-        // (As large as the face's box takes the most a program fills: 14 a block, or less.)
-        Blocks {
-            x: 18px;
-            y: root.top + 22px;
-            visible: !root.phone && PartyView.detail.blocks > 0;
-            count: PartyView.detail.blocks;
-            filled: PartyView.detail.blocks;
-            tone: PartyView.detail.tone;
-            size: min(14px, floor(84px / max(1, PartyView.most-blocks) / 1px) * 1px);
-        }
+    // (As large as the face's box takes the most a program fills: 14 a block, or less.)
+    Blocks {
+        x: 18px;
+        y: root.top + 22px;
+        visible: !root.phone && PartyView.detail.blocks > 0;
+        count: PartyView.detail.blocks;
+        filled: PartyView.detail.blocks;
+        tone: PartyView.detail.tone;
+        size: min(14px, floor(84px / max(1, PartyView.most-blocks) / 1px) * 1px);
+    }
 
-        // (The name ends where the strip's top right, the refusal's and the problem's, begins.)
-        HorizontalLayout {
-            x: 120px;
-            y: root.top + 19px;
-            width: max(0px, root.width / 2 - 120px - 8px);
-            height: 20px;
-            visible: !root.phone;
-            spacing: 6px;
-            alignment: start;
-            Text {
-                text: PartyView.detail.name;
-                color: Theme.text;
-                font-family: Theme.body;
-                font-size: 16px;
-                font-weight: 700;
-                vertical-alignment: center;
-                overflow: elide;
-            }
-
-            VersionMark {
-                y: 2px;
-                tag: PartyView.detail.version;
-            }
-        }
-
-        // (Why what was asked of what it describes wasn't done: the strip's refusal; else what the rules have against
-        // it.)
-        Refusal {
-            x: root.width / 2;
-            y: root.top + 19px;
-            width: root.width / 2 - 16px;
-            visible: !root.phone;
-            text: PartyView.detail.problem;
-            problem: PartyView.detail.fault;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
+    // (The name ends where the strip's top right, the refusal's and the problem's, begins.)
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 19px;
+        width: max(0px, root.width / 2 - 120px - 8px);
+        height: 20px;
+        visible: !root.phone;
+        spacing: 6px;
+        alignment: start;
         Text {
-            x: 120px;
-            y: root.top + 43px;
-            width: root.width - 136px;
-            height: 18px;
-            visible: !root.phone && PartyView.detail.stats.length == 0;
-            text: PartyView.detail.description;
-            color: Theme.muted;
+            text: PartyView.detail.name;
+            color: Theme.text;
             font-family: Theme.body;
-            font-size: 13px;
+            font-size: 16px;
+            font-weight: 700;
             vertical-alignment: center;
             overflow: elide;
         }
 
-        // (A navi's stats in the description's place, each its label, its value and what was added; its element last,
-        // its icon the value (the user, of the icon alone on the line under them: yes, a stat).)
-        HorizontalLayout {
-            x: 120px;
-            y: root.top + 43px;
-            width: root.width - 136px;
-            height: 18px;
-            visible: !root.phone;
-            spacing: 18px;
-            alignment: start;
-            for stat[i] in PartyView.detail.stats: HorizontalLayout {
-                spacing: 6px;
-                Text {
-                    text: stat.label != "" ? stat.label : i < root.stat-labels.length ? root.stat-labels[i] : "";
-                    color: Theme.muted;
-                    font-family: Theme.body;
-                    font-size: 13px;
-                    vertical-alignment: center;
-                }
-
-                Text {
-                    text: stat.value;
-                    color: Theme.text;
-                    font-family: Theme.mono;
-                    font-size: 13px;
-                    font-weight: 700;
-                    vertical-alignment: center;
-                }
-
-                if stat.added != "": Text {
-                    text: stat.added;
-                    color: Theme.cursor;
-                    font-family: Theme.mono;
-                    font-size: 11px;
-                    font-weight: 500;
-                    vertical-alignment: center;
-                }
-            }
-
-            if PartyView.detail.element.width > 0: HorizontalLayout {
-                spacing: 6px;
-                Text {
-                    text: @tr("Element");
-                    color: Theme.muted;
-                    font-family: Theme.body;
-                    font-size: 13px;
-                    vertical-alignment: center;
-                }
-
-                Rectangle {
-                    width: 16px;
-                    Image {
-                        y: (parent.height - self.height) / 2;
-                        width: 16px;
-                        height: 16px;
-                        source: PartyView.detail.element;
-                        image-rendering: pixelated;
-                    }
-                }
-            }
+        VersionMark {
+            y: 2px;
+            tag: PartyView.detail.version;
         }
+    }
 
-        // (A program's facts: its slots, its kind, whether it fits.)
-        HorizontalLayout {
-            x: 120px;
-            y: root.top + 69px;
-            width: root.width - 136px;
-            height: 16px;
-            visible: !root.phone;
-            spacing: 16px;
-            alignment: start;
-            for fact in PartyView.detail.facts: Text {
-                text: fact;
+    // (Why what was asked of what it describes wasn't done: the strip's refusal; else what the rules have against
+    // it.)
+    Refusal {
+        x: root.width / 2;
+        y: root.top + 19px;
+        width: root.width / 2 - 16px;
+        visible: !root.phone;
+        text: PartyView.detail.problem;
+        problem: PartyView.detail.fault;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Text {
+        x: 120px;
+        y: root.top + 43px;
+        width: root.width - 136px;
+        height: 18px;
+        visible: !root.phone && PartyView.detail.stats.length == 0;
+        text: PartyView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // (A navi's stats in the description's place, each its label, its value and what was added; its element last,
+    // its icon the value (the user, of the icon alone on the line under them: yes, a stat).)
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 43px;
+        width: root.width - 136px;
+        height: 18px;
+        visible: !root.phone;
+        spacing: 18px;
+        alignment: start;
+        for stat[i] in PartyView.detail.stats: HorizontalLayout {
+            spacing: 6px;
+            Text {
+                text: stat.label != "" ? stat.label : i < root.stat-labels.length ? root.stat-labels[i] : "";
                 color: Theme.muted;
                 font-family: Theme.body;
-                font-size: 12px;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: stat.value;
+                color: Theme.text;
+                font-family: Theme.mono;
+                font-size: 13px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+
+            if stat.added != "": Text {
+                text: stat.added;
+                color: Theme.cursor;
+                font-family: Theme.mono;
+                font-size: 11px;
+                font-weight: 500;
                 vertical-alignment: center;
             }
         }
 
-        // ---- PARTY, framed: its title, its counts and CLEAR in its head (on a phone, a box of them); its slots.
-        PanelBack {
-            x: 0;
-            y: root.pane-y;
-            width: root.pane-width;
-            height: root.pane-height;
-        }
+        if PartyView.detail.element.width > 0: HorizontalLayout {
+            spacing: 6px;
+            Text {
+                text: @tr("Element");
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
 
-        Label {
-            x: 12px;
-            y: root.pane-y;
-            width: max(0px, partners-count.x - 12px - self.x);
-            height: root.phone ? 32px : root.head;
-            text: Caps.of(@tr("Party"));
-            color: PartyView.in-library ? Theme.muted : Theme.cursor;
-        }
-
-        partners-count := CountBox {
-            x: changes-count.x - 16px - self.width;
-            y: root.pane-y + (root.phone ? 8px : 14px);
-            label: @tr("Partners");
-            value: PartyView.partners;
-            suffix: "/\{PartyView.room}";
-            value-width: 32px;
-        }
-
-        changes-count := CountBox {
-            x: clear.x + clear.pad - 12px - self.width;
-            y: partners-count.y;
-            label: @tr("Navi changes");
-            value: PartyView.changes;
-            value-width: 16px;
-        }
-
-        // CLEAR (docs/design/app-ui.md §2.71): every partner taken out, its programs with it, asked first; dim where
-        // there is none. At the head's right end, after the counts.
-        clear := WordButton {
-            x: root.pane-width - 12px + self.pad - self.width;
-            y: partners-count.y - 2px;
-            nav: "clear";
-            text: Caps.of(@tr("Clear"));
-            enabled: PartyView.partners > 0;
-        }
-
-        // (What the game's rules have against the party: a phone's line under its counts.)
-        ProblemNote {
-            x: 12px;
-            y: root.pane-y + 36px;
-            width: root.pane-width - 24px;
-            visible: root.phone;
-            text: PartyView.problems;
-        }
-
-        slots := ListView {
-            x: 4px;
-            y: root.pane-y + root.head;
-            width: root.pane-width - 8px;
-            height: root.pane-height - root.head - 4px;
-            nav: "slots";
-            count: PartyView.slots.length;
-            row-height: Theme.list-row;
-            gap: Theme.list-gap;
-            // (A drag on a slot moves it: the wheel scrolls.)
-            mouse-pan: false;
-            for at in slots.shown: SlotView {
-                property <int> index: slots.first + at;
-                y: self.index * slots.pitch;
-                width: slots.row-width;
-                height: slots.row-height;
-                slot: PartyView.slots[self.index];
-                nav-index: self.index;
-                chosen: self.index == PartyView.slot;
-                dy: (root.shown(self.index) - self.index) * slots.pitch;
-                gone: root.slots-on && self.index == Drag.from && !Drag.removing;
+            Rectangle {
+                width: 16px;
+                Image {
+                    y: (parent.height - self.height) / 2;
+                    width: 16px;
+                    height: 16px;
+                    source: PartyView.detail.element;
+                    image-rendering: pixelated;
+                }
             }
         }
+    }
 
-        // (Where what is dragged would land: a gap among the programs, the slots from there on shifted; the head it
-        // would go in or trade places with, outlined.)
-        DropGap {
-            x: slots.x;
-            y: slots.y + root.slots-to * slots.pitch - slots.scroll;
+    // (A program's facts: its slots, its kind, whether it fits.)
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 69px;
+        width: root.width - 136px;
+        height: 16px;
+        visible: !root.phone;
+        spacing: 16px;
+        alignment: start;
+        for fact in PartyView.detail.facts: Text {
+            text: fact;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+    }
+
+    // ---- PARTY, framed: its title, its counts and CLEAR in its head (on a phone, a box of them); its slots.
+    PanelBack {
+        x: 0;
+        y: root.pane-y;
+        width: root.pane-width;
+        height: root.pane-height;
+    }
+
+    Label {
+        x: 12px;
+        y: root.pane-y;
+        width: max(0px, partners-count.x - 12px - self.x);
+        height: root.phone ? 32px : root.head;
+        text: Caps.of(@tr("Party"));
+        color: PartyView.in-library ? Theme.muted : Theme.cursor;
+    }
+
+    partners-count := CountBox {
+        x: changes-count.x - 16px - self.width;
+        y: root.pane-y + (root.phone ? 8px : 14px);
+        label: @tr("Partners");
+        value: PartyView.partners;
+        suffix: "/\{PartyView.room}";
+        value-width: 32px;
+    }
+
+    changes-count := CountBox {
+        x: clear.x + clear.pad - 12px - self.width;
+        y: partners-count.y;
+        label: @tr("Navi changes");
+        value: PartyView.changes;
+        value-width: 16px;
+    }
+
+    // CLEAR (docs/design/app-ui.md §2.71): every partner taken out, its programs with it, asked first; dim where
+    // there is none. At the head's right end, after the counts.
+    clear := WordButton {
+        x: root.pane-width - 12px + self.pad - self.width;
+        y: partners-count.y - 2px;
+        nav: "clear";
+        text: Caps.of(@tr("Clear"));
+        enabled: PartyView.partners > 0;
+    }
+
+    // (What the game's rules have against the party: a phone's line under its counts.)
+    ProblemNote {
+        x: 12px;
+        y: root.pane-y + 36px;
+        width: root.pane-width - 24px;
+        visible: root.phone;
+        text: PartyView.problems;
+    }
+
+    slots := ListView {
+        x: 4px;
+        y: root.pane-y + root.head;
+        width: root.pane-width - 8px;
+        height: root.pane-height - root.head - 4px;
+        nav: "slots";
+        count: PartyView.slots.length;
+        row-height: Theme.list-row;
+        gap: Theme.list-gap;
+        // (A drag on a slot moves it: the wheel scrolls.)
+        mouse-pan: false;
+        for at in slots.shown: SlotView {
+            property <int> index: slots.first + at;
+            y: self.index * slots.pitch;
             width: slots.row-width;
-            height: Theme.list-row;
-            visible: root.slots-to >= 0 && (root.slots-filling || Drag.swap);
+            height: slots.row-height;
+            slot: PartyView.slots[self.index];
+            nav-index: self.index;
+            chosen: self.index == PartyView.slot;
+            dy: (root.shown(self.index) - self.index) * slots.pitch;
+            gone: root.slots-on && self.index == Drag.from && !Drag.removing;
+        }
+    }
+
+    // (Where what is dragged would land: a gap among the programs, the slots from there on shifted; the head it
+    // would go in or trade places with, outlined.)
+    DropGap {
+        x: slots.x;
+        y: slots.y + root.slots-to * slots.pitch - slots.scroll;
+        width: slots.row-width;
+        height: Theme.list-row;
+        visible: root.slots-to >= 0 && (root.slots-filling || Drag.swap);
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    // ---- The library of what the slot takes, open beside it (a phone's, a sheet a button opens); what is dragged
+    // from PARTY over it is taken out, let go there.
+    if !root.phone: Rectangle {
+        x: root.pane-width + 24px;
+        y: root.pane-y;
+        width: root.width - self.x;
+        height: root.pane-height;
+        // (Its title, the search, the sort and its direction, as the other tabs' libraries have them: LIBRARY,
+        // whichever it lists; the user: "instead of the NAVIS heading it should still say LIBRARY in the search
+        // pane". Its search's placeholder says what it lists.)
+        LibraryHead {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            in-library: PartyView.in-library;
+            search: PartyView.search;
+            placeholder: PartyView.navis-shown ? @tr("Search navis") : @tr("Search programs");
+            sort: PartyView.sorts[PartyView.sort];
+            descending: PartyView.descending;
+        }
+
+        library := RowsList {
+            x: 4px;
+            y: 52px;
+            width: parent.width - self.x;
+            height: parent.height - self.y;
+            draggable: true;
+        }
+
+        RemoveTarget {
+            x: -8px;
+            y: library.y - 8px;
+            width: parent.width + 8px;
+            height: library.height + 16px;
+            shown: Drag.on && Drag.removing;
+            text: Caps.of(@tr("Drop to remove"));
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+    }
 
-        // ---- The library of what the slot takes, open beside it (a phone's, a sheet a button opens); what is dragged
-        // from PARTY over it is taken out, let go there.
-        if !root.phone: Rectangle {
-            x: root.pane-width + 24px;
-            y: root.pane-y;
-            width: root.width - self.x;
-            height: root.pane-height;
-            // (Its title, the search, the sort and its direction, as the other tabs' libraries have them: LIBRARY,
-            // whichever it lists; the user: "instead of the NAVIS heading it should still say LIBRARY in the search
-            // pane". Its search's placeholder says what it lists.)
-            LibraryHead {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                in-library: PartyView.in-library;
-                search: PartyView.search;
-                placeholder: PartyView.navis-shown ? @tr("Search navis") : @tr("Search programs");
-                sort: PartyView.sorts[PartyView.sort];
-                descending: PartyView.descending;
-            }
+    Button {
+        x: 0;
+        y: root.pane-y + root.pane-height + 12px;
+        width: root.width;
+        visible: root.phone;
+        nav: root.phone ? "library" : "";
+        text: Caps.of(@tr("Library"));
+    }
 
-            library := RowsList {
-                x: 4px;
-                y: 52px;
-                width: parent.width - self.x;
-                height: parent.height - self.y;
-                draggable: true;
-            }
-
-            RemoveTarget {
-                x: -8px;
-                y: library.y - 8px;
-                width: parent.width + 8px;
-                height: library.height + 16px;
-                shown: Drag.on && Drag.removing;
-                text: Caps.of(@tr("Drop to remove"));
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
+    // (What is dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
+    // library, where let go it is taken out; a library's row faint until it is over PARTY's slots, held at most half
+    // its width from where it was pressed, as the Patch cards tab's.)
+    lifted := Rectangle {
+        property <PartySlot> from: PartyView.slots[max(0, Drag.from)];
+        property <bool> head: root.slots-on && self.from.kind == PartySlotKind.head;
+        property <PartyRow> held: root.slots-filling ? PartyView.rows[max(0, Drag.from)] : self.from.row;
+        x: Drag.x - root.absolute-position.x - (root.slots-filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
+        y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        width: root.pane-width - 8px;
+        height: Theme.list-row;
+        visible: root.slots-filling || root.slots-on;
+        opacity: Drag.removing ? 0.6 : root.slots-filling && root.slots-to < 0 ? 0.7 : 1;
+        background: Theme.raised;
+        border-width: 1px;
+        border-color: Drag.removing ? Theme.bad : Theme.cursor;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: #00000090;
+        if lifted.head: HeadLine {
+            slot: lifted.from;
         }
-
-        Button {
-            x: 0;
-            y: root.pane-y + root.pane-height + 12px;
-            width: root.width;
-            visible: root.phone;
-            nav: root.phone ? "library" : "";
-            text: Caps.of(@tr("Library"));
-        }
-
-        // (What is dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
-        // library, where let go it is taken out; a library's row faint until it is over PARTY's slots, held at most half
-        // its width from where it was pressed, as the Patch cards tab's.)
-        lifted := Rectangle {
-            property <PartySlot> from: PartyView.slots[max(0, Drag.from)];
-            property <bool> head: root.slots-on && self.from.kind == PartySlotKind.head;
-            property <PartyRow> held: root.slots-filling ? PartyView.rows[max(0, Drag.from)] : self.from.row;
-            x: Drag.x - root.absolute-position.x - (root.slots-filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
-            y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: root.pane-width - 8px;
-            height: Theme.list-row;
-            visible: root.slots-filling || root.slots-on;
-            opacity: Drag.removing ? 0.6 : root.slots-filling && root.slots-to < 0 ? 0.7 : 1;
-            background: Theme.raised;
-            border-width: 1px;
-            border-color: Drag.removing ? Theme.bad : Theme.cursor;
-            drop-shadow-blur: 10px;
-            drop-shadow-offset-y: 4px;
-            drop-shadow-color: #00000090;
-            if lifted.head: HeadLine {
-                slot: lifted.from;
-            }
-            // (Why it can't go in where it is.)
-            if !lifted.head: ProgramLine {
-                row-data: { name: lifted.held.name, note: lifted.held.note, why: PartyView.drag-why, blocks: lifted.held.blocks, tone: lifted.held.tone, bad: lifted.held.bad, face: lifted.held.face, version: lifted.held.version };
-            }
+        // (Why it can't go in where it is.)
+        if !lifted.head: ProgramLine {
+            row-data: { name: lifted.held.name, note: lifted.held.note, why: PartyView.drag-why, blocks: lifted.held.blocks, tone: lifted.held.tone, bad: lifted.held.bad, face: lifted.held.face, version: lifted.held.version };
         }
     }
 }
