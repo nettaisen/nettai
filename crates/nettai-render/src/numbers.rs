@@ -450,6 +450,36 @@ mod tests {
         }
     }
 
+    /// Nettai Digits' weight per place keeps its bars the game's 2 pixels:
+    /// the enemies' 8-pixel box at the axis's bold end, the HP box's 10 and
+    /// the chip window's 11 at its regular (the axis's least); the other
+    /// fonts have no axis. At the bold end a digit keeps its cell and its
+    /// ink box, and its bars are half a pixel thicker (the 0's counter).
+    #[test]
+    fn the_weight_keeps_the_bars() {
+        let d = Face::Digits;
+        assert_eq!([8.0, 10.0, 11.0, 14.0].map(|h| d.weight(h)), [Some(700.0), Some(400.0), Some(400.0), Some(400.0)]);
+        assert!((d.weight(9.0).unwrap() - (400.0 + 600.0 * (2.0 / 0.9 - 2.0))).abs() < 1e-3);
+        for face in [Face::BannerDigits, Face::ChipCodes, Face::SlotCodes] {
+            assert_eq!(face.weight(8.0), None, "{face:?}");
+        }
+        let m = d.game();
+        assert_eq!(m.tall, 10.0);
+        let cells: Vec<f32> = shaped(d, "0123456789", Some(700.0)).iter().map(|g| g.3 * m.across).collect();
+        assert_eq!(cells, vec![CELL as f32; 10]);
+        let zero = d.font().font().charmap().map('0');
+        assert_eq!(ink_box(d, zero, Some(700.0)), ink_box(d, zero, None));
+        // (The counter's top: the 0's inner edge 2 pixels under its top at 400, 2.5 at 700.)
+        let counter_top = |w: f32| {
+            let f = d.font().font();
+            let mut ctx = swash::scale::ScaleContext::new();
+            let mut scaler = ctx.builder(f).size(1000.0).variations(axes(Some(w))).build();
+            let o = scaler.scale_outline(zero).unwrap();
+            o.points().iter().filter(|p| p.x > 260.0 && p.x < 540.0 && p.y > 500.0 && p.y < 990.0).map(|p| p.y.round()).fold(0.0f32, f32::max)
+        };
+        assert_eq!((counter_top(400.0), counter_top(700.0)), (800.0, 750.0));
+    }
+
     /// The code fonts keep the game's metrics too: every code one advance, a
     /// game cell; the chip window's faces from half a pixel in, 11 tall; the
     /// slots' from a pixel in, 5 tall (Q's tail to the cell's
