@@ -152,10 +152,6 @@ export global PartyView {
     public pure function fits-word(n: int) -> string {
         return @tr("Fits: {n} slot free" | "Fits: {n} slots free" % n);
     }
-    // (A partner's HP as the build overview's rows say it.)
-    public pure function hp-word(hp: int) -> string {
-        return @tr("HP {}", hp);
-    }
     // (A navi's gauge as the strip's stats say it: "Slots 8", the slots its PartyCust holds. PartyCust's word for its
     // capacity and a program's cost is "slots" wherever it is said: the user, "or "slots" i guess instead of blocks. you
     // should have it be slots everywhere"; NaviCust's pieces stay blocks.)

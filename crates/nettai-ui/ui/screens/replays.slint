@@ -1686,7 +1686,7 @@ component ViewerBuilds inherits Rectangle {
         width: parent.width - 2 * Theme.margin + (Theme.phone ? 0px : 12px);
         height: max(0px, root.foot - self.y);
         nav: "builds.";
-        // (Each as tall as its abilities and bugs make it: the page the taller.)
+        // (Each as tall as the parts of its build make it: the page the taller.)
         content-height: Theme.phone ? left.sheet-height + 16px + right.sheet-height : max(left.sheet-height, right.sheet-height);
         // (A click between them puts them away too.)
         TouchArea {

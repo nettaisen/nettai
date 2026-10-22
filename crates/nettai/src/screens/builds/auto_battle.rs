@@ -134,7 +134,7 @@ impl AutoBattle {
             for list in layout.lists.iter().filter(|l| l.holds != Holds::Patterns) {
                 // (A list with no name in a game of one list has no title.)
                 if !list.name.is_empty() {
-                    let title = words.names.text(auto::LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
+                    let title = auto::list_name(words.names, list);
                     lines.push(PlaceLine { title: true, text: title.into(), row, ..Default::default() });
                     row += 1;
                 }

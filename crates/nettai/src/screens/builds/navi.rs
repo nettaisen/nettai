@@ -36,7 +36,6 @@ use nettai_battle::Content;
 use nettai_battle::content::{Element, PlayerFact};
 use nettai_content_api::{FormHandle, NaviHandle, Registry};
 use nettai_match::Wrong;
-use nettai_match::build::TEXT_TABLE;
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
 use crate::builds::overview::{stat_line, stat_name};
@@ -164,8 +163,7 @@ impl Tab for Navi {
                 .filter(|(_, c)| offered.iter().any(|o| o.id == c.id))
                 .filter_map(|(i, c)| {
                     let now = kit.builds.preset_of(&content, draft.side(), &c.id)?;
-                    let presets: Vec<slint::SharedString> =
-                        c.presets.iter().map(|p| names.text(TEXT_TABLE, &c.text_key(p)).unwrap_or_else(|| p.id.clone()).into()).collect();
+                    let presets: Vec<slint::SharedString> = c.presets.iter().map(|p| crate::builds::preset_name(names, c, p).into()).collect();
                     let chosen = c.presets.iter().position(|p| p.id == now.id).unwrap_or(0) as i32;
                     Some(NaviChoice { presets: ModelRc::new(VecModel::from(presets)), chosen, index: i as i32 })
                 })

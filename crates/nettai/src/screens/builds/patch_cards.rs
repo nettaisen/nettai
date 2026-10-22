@@ -36,7 +36,7 @@
 //! variant's (the group's), its lines that variant's. Putting one in chooses it for the card; the card is in the
 //! build once, so putting the other in while one is chooses the other in its place.
 
-use crate::builds::cards::{self, Line};
+use crate::builds::cards::{self, Card, Line};
 use crate::builds::edit::{self, ListEdit};
 use crate::builds::grid;
 use crate::input::{Action, KeyPress};
@@ -70,9 +70,6 @@ enum Sort {
     Cost,
 }
 const SORTS: [Sort; 3] = [Sort::Number, Sort::Name, Sort::Cost];
-
-/// A card as a row shows it: the card, and its variant where it has them (a version's id).
-type Card = (EntryHandle, Option<String>);
 
 /// Choose `variant` for card `h` in the side's list (none: it has none to choose): whether it took.
 fn with_variant(content: &Content, side: &mut nettai_match::Side, h: EntryHandle, variant: Option<&str>) -> bool {
@@ -167,18 +164,8 @@ impl PatchCards {
     /// after them; in a game with slots, what each slot holds.
     fn installed(draft: &Draft) -> Vec<Option<Card>> {
         let content = draft.content();
-        if let Some(slots) = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD) {
-            return slots.held(content, draft.side()).into_iter().map(|h| h.map(|h| (h, None))).collect();
-        }
-        let variant = |i: &Stated| match i {
-            Stated::Record(fields) => fields.iter().find(|(n, _)| n == nettai_match::ruleset::VARIANT).and_then(|(_, v)| if let Stated::Variant(v) = v { v.clone() } else { None }),
-            _ => None,
-        };
-        let mut out: Vec<Option<Card>> = match draft.side().facts.get(content, FIELD) {
-            Some(Stated::List(items)) => items.iter().filter_map(|i| i.defs().first().map(|&h| Some((EntryHandle(h), variant(i))))).collect(),
-            _ => Vec::new(),
-        };
-        if out.len() < room_of(content, FIELD) {
+        let mut out = cards::held(&draft.kit.builds, content, draft.side(), FIELD);
+        if !PatchCards::slotted(draft) && out.len() < room_of(content, FIELD) {
             out.push(None);
         }
         out
