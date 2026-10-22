@@ -609,6 +609,7 @@ impl Replays {
     /// Leave the viewer for the list.
     fn stop_watching(&mut self, shell: &mut Shell) {
         let Some(w) = self.watching.take() else { return };
+        let played = w.path().to_path_buf();
         if let Some(e) = self.export.take() {
             e.close(shell);
         }
@@ -618,8 +619,19 @@ impl Replays {
         shell.ui().global::<ReplaysView>().set_watching(false);
         shell.ui().global::<ReplaysView>().set_builds_shown(false);
         shell.nav.enter(ScreenId::Replays.name(), self.main());
+        // (The replay played is the one selected, the cursor on its row, where it is listed: the user, "when exiting
+        // a replay, it should highlight the replay that was played instead of moving the cursor to the start". The
+        // Queue tab keeps its own.)
+        if !self.queue_tab {
+            self.selected = Some(played);
+        }
         self.still.surface.refresh();
         self.fill(shell);
+        if !self.queue_tab
+            && let Some(at) = self.selected.as_ref().and_then(|path| self.rows.iter().position(|&i| self.library.entries[i].path == *path))
+        {
+            shell.nav.focus("list", at as i32);
+        }
     }
 
     /// Watch the queue from its entry `from` on: the first of them that plays (none: refused), the ones before it

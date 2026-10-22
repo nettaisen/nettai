@@ -325,7 +325,9 @@ component ReplayRowView inherits Rectangle {
 }
 
 // A square button with a drawn sign in place of a word (`icon`: a path in a box of 16): the transport's, WATCH's
-// arrow, a queue entry's MOVE UP and MOVE DOWN. It presses as a `Button` does.
+// arrow, a queue entry's MOVE UP and MOVE DOWN. It presses as a `Button` does, and unavailable it is drawn as one is:
+// no fill, its edge and its sign dim, the main action's amber too (the user: "the yellow arrow button isn't correctly
+// disabled on replays that cannot be played").
 component IconButton inherits Rectangle {
     in property <string> nav;
     in property <string> icon;
@@ -349,8 +351,8 @@ component IconButton inherits Rectangle {
     Cut {
         y: root.dip;
         cut: 7px;
-        background: root.main ? (hit.has-hover ? Theme.action.brighter(12%) : Theme.action) : (hit.has-hover && root.enabled ? Theme.raised-hover : Theme.raised);
-        line: root.main ? Theme.action : (root.lit ? Theme.cursor : Theme.line);
+        background: !root.enabled ? transparent : root.main ? (hit.has-hover ? Theme.action.brighter(12%) : Theme.action) : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+        line: !root.enabled ? Theme.dim : root.main ? Theme.action : (root.lit ? Theme.cursor : Theme.line);
     }
 
     Cut {
@@ -366,7 +368,7 @@ component IconButton inherits Rectangle {
         width: 16px;
         height: 16px;
         commands: root.icon;
-        fill: root.main ? Theme.action-ink : (root.enabled ? Theme.text : Theme.dim);
+        fill: !root.enabled ? Theme.dim : root.main ? Theme.action-ink : Theme.text;
         viewbox-width: 16;
         viewbox-height: 16;
     }
