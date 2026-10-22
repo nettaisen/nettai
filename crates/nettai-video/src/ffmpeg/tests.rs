@@ -115,7 +115,7 @@ mod with_a_stand_in {
         let (video, audio, info) = small();
         let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(program, video, audio, &info, &Encoding::default()).unwrap());
         let sound = [[0.25f32, -0.25]; 548];
-        let written = (0..frames).try_for_each(|_| ffmpeg.frame(&[7u8; 12], &[&sound[..]]));
+        let written = (0..frames).try_for_each(|_| ffmpeg.frame(vec![7u8; 12], &[&sound[..]]).map(drop));
         (ffmpeg, written)
     }
 
