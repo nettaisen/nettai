@@ -707,6 +707,10 @@ struct Window {
     /// first tile, how many, its name and the set it shows, for the
     /// enhanced mode to draw as shapes.
     buttons_laid: Vec<(u16, usize, String, usize)>,
+    /// The element whose symbol was laid without its frame (its first
+    /// tile in `element_symbols`), for the enhanced mode to draw the frame
+    /// under it as a shape.
+    element_framed: Option<usize>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -794,6 +798,7 @@ impl Window {
             empty_icons: Vec::new(),
             blank_plates: Vec::new(),
             buttons_laid: Vec::new(),
+            element_framed: None,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
         // Cross tab) or without; or the form list window's.
@@ -942,6 +947,17 @@ impl Window {
                     self.drawn_cells[r * COLUMNS + c] = true;
                 }
             }
+        }
+        // The element's icon's frame under its symbol, as `chip_details`
+        // laid it: kept off the symbol's pixels, which stay the tiles'.
+        if let (Some(d), Some(first)) = (&a.shapes.element_frame, self.element_framed.take())
+            && let Some(block) = self.block(self.layout.element..self.layout.element + 4)
+            && [8 * block.w, 8 * block.h] == [d.size[0] as usize, d.size[1] as usize]
+        {
+            let palette = self.palettes[block.palette as usize & 15];
+            let mut drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
+            drawn.off = symbol_off(&a.element_symbols, first, block.w, block.h);
+            self.shapes.push((block.col, block.row, block.w, crate::shapes::item(drawn, (0, 0), (8 * block.w as i32, 8 * block.h as i32))));
         }
         // The empty slots' code plates, as the others' (`letter_codes`).
         if let Some(plate) = &a.shapes.slot_code {
@@ -1432,7 +1448,11 @@ impl Window {
         }
         let family = data.family.0 as usize;
         if family < a.element_colors.len() {
-            self.tiles.put_part(self.layout.element, &a.elements, 4 * family, 4);
+            // (In the enhanced mode, where the pack draws the icons' frame,
+            // the symbol alone: the frame is drawn under it, `shape_frames`.)
+            let framed = text.draws_shapes() && a.shapes.element_frame.is_some() && a.element_symbols.len() >= 4 * (family + 1);
+            self.tiles.put_part(self.layout.element, if framed { &a.element_symbols } else { &a.elements }, 4 * family, 4);
+            self.element_framed = framed.then_some(4 * family);
         }
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
@@ -2263,6 +2283,19 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     }
 }
 
+/// The pixels of a picture `w` by `h` tiles (from tile `first` of `tiles`,
+/// row by row) that aren't clear: those a shape over it is kept off.
+fn symbol_off(tiles: &Tiles, first: usize, w: usize, h: usize) -> Option<(usize, Vec<bool>)> {
+    let t = tiles.pixels.get(first * Tiles::TILE..(first + w * h) * Tiles::TILE)?;
+    let mut off = vec![false; 64 * w * h];
+    for (i, &p) in t.iter().enumerate() {
+        let (k, j) = (i / 64, i % 64);
+        let (x, y) = (8 * (k % w) + j % 8, 8 * (k / w) + j / 8);
+        off[y * 8 * w + x] = p != 0;
+    }
+    Some((8 * w, off))
+}
+
 /// The chip window's element icon as a sprite (EXE4's, 0x0801EECC: 16x16
 /// in its own palette, at the window's left edge less its scroll while the
 /// scroll is 40 or less), on the ticks the screen's states draw it (the
@@ -2296,6 +2329,28 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         vscale: None,
         affine: None,
     })
+}
+
+/// In the enhanced mode, where the pack draws the icons' frame: the element
+/// sprite's symbol alone, the frame drawn under it as a shape as deep as
+/// it, kept off the symbol's pixels (`tags`, as `drawn_parts`).
+fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> SpritePart<'a> {
+    tags.resize(at, None);
+    let first = part.first_tile;
+    let frame = a.shapes.element_frame.as_ref().filter(|d| text.draws_shapes() && d.size == [16, 16] && a.element_symbols.len() >= first + 4);
+    let Some(d) = frame else {
+        tags.push(None);
+        return part;
+    };
+    let tag = text.tag();
+    tags.push(Some(tag));
+    let (x, y) = (part.x as i32, part.y as i32);
+    let (x, y) = (if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y });
+    let palette = part.palette;
+    let mut drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
+    drawn.off = symbol_off(&a.element_symbols, first, 2, 2);
+    text.push(Plane::Sprite(tag), crate::shapes::item(drawn, (x, y), (16, 16)));
+    SpritePart { tiles: &a.element_symbols, ..part }
 }
 
 /// The window's scroll past which the element sprite isn't drawn
@@ -2493,7 +2548,10 @@ pub fn draw<'a>(
         let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, 1, text, &mut tags, queue.len());
         queue.extend(parts);
     }
-    queue.extend(element_part(&v, a, place));
+    if let Some(part) = element_part(&v, a, place) {
+        let part = framed_element(part, a, text, &mut tags, queue.len());
+        queue.push(part);
+    }
     // (A screen with an emblem of its own draws it on the window's map.)
     if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
