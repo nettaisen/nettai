@@ -50,6 +50,47 @@ pub fn joined(parts: Vec<(Drawn, (f32, f32))>) -> Drawn {
     Drawn { hash: hash_of(&pieces), pieces, cells: None, off: None }
 }
 
+/// `d` mirrored in its item's box `width` frame pixels wide: each piece
+/// flipped at its mirrored place (its cut the mirror of its columns), the
+/// cells it draws in and the pixels it keeps off mirrored.
+pub fn mirrored(d: &Drawn, width: i32) -> Drawn {
+    let pieces: Vec<Piece> = d
+        .pieces
+        .iter()
+        .map(|p| {
+            let pw = p.drawing.size[0] as f32;
+            Piece {
+                flip: (!p.flip.0, p.flip.1),
+                at: (width as f32 - p.at.0 - pw, p.at.1),
+                cut: p.cut.map(|(from, to)| (pw - to, pw - from)),
+                ..p.clone()
+            }
+        })
+        .collect();
+    let columns = (width.max(0) as usize).div_ceil(8);
+    let cells = d.cells.as_ref().map(|cells| cells.iter().map(|&[c, r]| [(columns - 1 - (c as usize).min(columns - 1)) as u8, r]).collect());
+    let off = d.off.as_ref().map(|(w, flags)| {
+        let to = width.max(0) as usize;
+        let rows = flags.len() / (*w).max(1);
+        let mut out = vec![false; to * rows];
+        for y in 0..rows {
+            for x in 0..(*w).min(to) {
+                out[y * to + to - 1 - x] = flags[y * w + x];
+            }
+        }
+        (to, out)
+    });
+    let mut out = Drawn { hash: 0, pieces, cells, off };
+    out.hash = rehash(&out);
+    out
+}
+
+/// A drawing's hash again, after its pieces changed (`Drawn::hash`: of its
+/// pieces, as `drawn` and `joined` make it).
+fn rehash(d: &Drawn) -> u64 {
+    hash_of(&d.pieces)
+}
+
 fn hash_of(pieces: &[Piece]) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();

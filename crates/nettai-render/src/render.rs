@@ -7,7 +7,7 @@ use crate::smooth::{Lift, Nudge, Overlay, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
-use crate::seat::{Consoles, Seat};
+use crate::seat::{Consoles, Seat, Shows};
 use crate::stage::{Stage, StageClock};
 use crate::textlayer::{Plane, TextItem, TextSink};
 use crate::vfont::VectorFont;
@@ -105,6 +105,11 @@ pub struct Renderer {
     hud: Layer,
     /// BG0, in front of everything: the custom screen's enemy names.
     names: Layer,
+    /// On a screen of both, the right player's console's HUD layer and BG0
+    /// (`Consoles::Both`): its pieces, shaken and faded as its console
+    /// shakes and fades them.
+    hud_right: Layer,
+    names_right: Layer,
     /// BG0's chatbox, apart for its palette (background palette 15: the
     /// custom screen's fades of the window's palettes leave it be).
     dialogue: Layer,
@@ -117,9 +122,10 @@ pub struct Renderer {
     /// Which consoles a frame shows: the local side's screen (the default),
     /// or both players' on one screen, the local side's on the left.
     pub consoles: Consoles,
-    /// A layer a piece of the HUD is laid out in before it is put in its
-    /// place (`hud::draw`'s).
+    /// Layers a piece is laid out in before it is put in its place (the
+    /// right seat's chip name, its custom screen's window and names).
     scratch: Layer,
+    scratch_names: Layer,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
     /// What the last frame's sprite draw took of its budget and left out
@@ -190,11 +196,14 @@ impl Renderer {
             field: Layer::new(2, 2),
             hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
+            hud_right: Layer { palettes: Palettes::OtherHud, ..Layer::new(1, 3) },
+            names_right: Layer { palettes: Palettes::OtherHud, ..Layer::new(0, 0) },
             dialogue: Layer { palettes: Palettes::Dialogue, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             other_hud: HudState::default(),
             consoles: Consoles::One,
             scratch: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
+            scratch_names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
@@ -315,18 +324,29 @@ impl Renderer {
     /// camera a shake moves this tick (`camera_doShakeEffect_80301e8`) and
     /// the custom screen's window moves down while it is in.
     pub fn view(b: &Battle) -> View {
-        let local = b.setup.local_side;
-        let (x, y) = b.consoles[local as usize & 1].camera.jitter;
-        let fade = crate::custom::object_fade(b).unwrap_or_default();
-        View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
+        Self::view_for(b, Consoles::One)
+    }
+
+    /// The view a frame showing `consoles` sees the battle from: the local
+    /// console's, mirrored as it mirrors the field; its camera that of the
+    /// console the field is seen through (`seat::field_side`: on a screen
+    /// of both where the other player alone chooses, the other's, its
+    /// shake the other way, as the mirror shows it).
+    pub fn view_for(b: &Battle, consoles: Consoles) -> View {
+        let local = b.setup.local_side & 1;
+        let field = crate::seat::field_side(consoles, b);
+        let (x, y) = b.consoles[field as usize].camera.jitter;
+        let x = if field == local { x } else { -x };
+        let fade = crate::custom::object_fade(b, field).unwrap_or_default();
+        View { camera: (x, y + crate::custom::camera_y(b, field), 0), mirror: local == 1, fade }
     }
 
     /// The part of a pixel (16.16) the camera's Y is past its whole
     /// pixels: what the projection leaves of the custom screen's slide,
     /// 1.5 pixels a tick (`custom::camera_y`). (A shake's jitter is whole
     /// pixels, and the camera's X has no part of a pixel.)
-    pub fn camera_sub(b: &Battle) -> i32 {
-        Self::view(b).camera.1 & 0xFFFF
+    pub fn camera_sub(&self, b: &Battle) -> i32 {
+        Self::view_for(b, self.consoles).camera.1 & 0xFFFF
     }
 
     /// Draw a battle as a 240x160 frame with its text items.
@@ -342,7 +362,7 @@ impl Renderer {
             return frame;
         }
         let (problems, drawn) = (self.problems.clone(), self.sprite_drawn.clone());
-        let camera = Self::camera_sub(b);
+        let camera = self.camera_sub(b);
         if camera != 0 {
             let again = self.draw(b, Smooth { on, lifted: true, ..Smooth::default() });
             frame.lift = Some(Lift { pixels: again.pixels, depth: again.depth, sub: camera });
@@ -368,7 +388,7 @@ impl Renderer {
         // renderer's own fields, written while these are read.)
         let mut packs = self.graphics.packs();
         packs.set_version(self.console_version);
-        let view = Self::view(b);
+        let view = Self::view_for(b, self.consoles);
         // (The background is its own pack's, another game's too (the
         // background pool's), or where that pack isn't here, the stage's own;
         // the field, the game's pack's: `FieldArt`.)
@@ -412,13 +432,17 @@ impl Renderer {
             }
             None => crate::stage::field_lookups(b, &packs, b.setup.local_side, &mut self.problems),
         }
-        self.hud.drawn = draw;
-        self.scratch.drawn = draw;
-        self.names.drawn = draw;
-        self.dialogue.drawn = draw;
+        let both = self.consoles == Consoles::Both;
+        for layer in [&mut self.hud, &mut self.names, &mut self.dialogue, &mut self.scratch, &mut self.scratch_names, &mut self.hud_right, &mut self.names_right] {
+            layer.drawn = draw;
+        }
         self.hud.clear();
         self.names.clear();
         self.dialogue.clear();
+        if both {
+            self.hud_right.clear();
+            self.names_right.clear();
+        }
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = packs.game(&b.content);
@@ -443,12 +467,20 @@ impl Renderer {
         // mode draws its pictures whatever draws its strings.)
         let lettering = self.mode == GraphicsMode::Enhanced;
         let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref()).with_lettering(lettering);
-        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
-        let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
-        let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
         // (The consoles whose pieces the frame draws, each with its HUD's
         // state: the local one's, and on a screen of both the other's.)
-        let seats = Seat::of(self.consoles, b.setup.local_side);
+        let seats = Seat::of(self.consoles, b);
+        // (Each one's emblem, for its custom screen.)
+        let emblems: Vec<(nettai_assets::Tiles, nettai_assets::Palette)> = seats
+            .iter()
+            .map(|seat| {
+                let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[seat.side as usize].navi, &mut self.problems);
+                (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette))
+            })
+            .collect();
+        // (A chatbox the custom screen runs: the left player's, else the
+        // right's, as its console draws it: it spans the screen.)
+        let chatbox = seats.iter().filter(|s| s.shows != Shows::Nothing).find_map(|s| crate::chatbox::prepare(b, s.side, own_game, &packs, &text, &mut self.problems));
         let huds = (&self.hud_state, &self.other_hud);
         let hud_of = |seat: Seat| if seat.side == local as u8 { huds.0 } else { huds.1 };
         // (The glyphs the banners' and the telops' loads made of each
@@ -458,34 +490,50 @@ impl Renderer {
         // (On a screen of both, what either player sees.)
         let viewers: Vec<u8> = seats.iter().map(|s| s.side).collect();
         self.sprite_drawn = objects::queue_objects(b, &packs, &view, &viewers, &mut list, &mut self.problems, !draw);
-        crate::custom::draw(
-            b,
-            own_game,
-            &packs,
-            &emblem,
-            emblem_palette,
-            &mut self.hud,
-            &mut self.names,
-            &mut list,
-            &mut text,
-            &mut self.problems,
-        );
+        for (k, &seat) in seats.iter().enumerate() {
+            if seat.shows == Shows::Nothing {
+                continue;
+            }
+            let mark = text.mark();
+            let (hud, names) = if seat.mirrored() { (&mut self.hud_right, &mut self.names_right) } else { (&mut self.hud, &mut self.names) };
+            let (emblem, emblem_palette) = &emblems[k];
+            let scratch = (&mut self.scratch, &mut self.scratch_names);
+            // (The sprites' fade of its console: on the right of a screen of
+            // both its own, the frame's being the field's console's.)
+            let sprite_fade = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b, seat.side).unwrap_or_default() };
+            crate::custom::draw(b, own_game, &packs, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
+            crate::hud::draw(b, own_game, &packs, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
+            // (The right one's own HUD layer and BG0.)
+            if seat.mirrored() {
+                for (plane, _) in text.since(mark) {
+                    *plane = match *plane {
+                        Plane::Hud => Plane::OtherHud,
+                        Plane::Bg0 => Plane::OtherBg0,
+                        p => p,
+                    };
+                }
+            }
+        }
+        if seats.iter().any(|s| s.shows == Shows::Window) {
+            crate::hud::time_between(b, own_game, &mut self.hud, &mut text, &mut self.problems);
+        }
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
-        }
-        for (&seat, shared) in seats.iter().zip(&shared) {
-            let layers = (&mut self.hud, &mut self.scratch);
-            crate::hud::draw(b, own_game, &packs, hud_of(seat), shared, seat, self.custom_gauge, smooth, layers, &mut list, &mut text, &mut self.problems);
         }
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
         };
-        let (jx, jy) = crate::custom::hud_jitter(b);
+        // (Each console's HUD layer shaken as its console shakes it: the
+        // right one's the other way, as the mirror shows it.)
+        let (jx, jy) = crate::custom::hud_jitter(b, local as u8);
         self.hud.shift(-jx, -jy);
+        let (rx, ry) = if both { crate::custom::hud_jitter(b, local as u8 ^ 1) } else { (0, 0) };
+        self.hud_right.shift(rx, -ry);
         // (The HUD's BG3 is the game's priority: EXE4's 0 covers the HP
         // numbers' priority 1 where the custom screen is.)
         self.hud.priority = own_game.hud.layout.hud_priority;
+        self.hud_right.priority = own_game.hud.layout.hud_priority;
         let (parts, tags, fines) = list.into_placed_parts();
         let backdrop = stage.palettes[0][0];
         let scene = &stage;
@@ -494,8 +542,13 @@ impl Renderer {
         // and the HUD's, its other fades the stage's (a dark chip's second
         // the HUD's).
         let transform = layer_fade(b);
-        let custom = crate::custom::fade(b).unwrap_or_default();
-        let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
+        // (The custom screen's fades of the field and the sprites the
+        // console's the field is seen through, each HUD layer's its own
+        // console's.)
+        let field = crate::seat::field_side(self.consoles, b);
+        let custom = crate::custom::fade(b, field).unwrap_or_default();
+        let custom_hud = crate::custom::hud_fade(b, local as u8).unwrap_or_default();
+        let other_custom_hud = crate::custom::hud_fade(b, local as u8 ^ 1).unwrap_or_default();
         let stage = if flashed {
             // (The fade system's first record, a transformation's or a
             // dimming's: its slots come after the flash's.)
@@ -514,27 +567,32 @@ impl Renderer {
         // leaves them be in variant 0: as the transformation's fade left
         // them, black through a form change. A Japanese console's chip
         // window shows there, drawn black over the white stage.)
-        let hud = match flash {
+        let hud_fade_of = |custom_hud: Fade| match flash {
             Some(1) => Fade::White(16),
             _ if transform != Fade::None => transform,
             _ => custom_hud,
         };
+        let (hud, other_hud) = (hud_fade_of(custom_hud), hud_fade_of(other_custom_hud));
         // (The custom screen's fades of palettes 0-13 and 9-13 leave the
         // HUD's 14 and 15: the flash's, the transformation's and the custom
         // screen's white, which takes every palette, reach them.)
-        let hud_past_ranged = match flash {
+        let past_ranged_of = |side: u8| match flash {
             Some(1) => Fade::White(16),
             _ if transform != Fade::None => transform,
-            _ => crate::custom::sprite_fade(b).unwrap_or_default(),
+            _ => crate::custom::sprite_fade(b, side).unwrap_or_default(),
         };
-        let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
+        let (hud_past_ranged, other_hud_past_ranged) = (past_ranged_of(local as u8), past_ranged_of(local as u8 ^ 1));
+        let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b, field).unwrap_or_default() };
         // (The chatbox's palette is past every ranged fade's palettes: a
         // dimming's 0-8, the custom screen's 0-13 and 9-13, the two-layer
         // flash's 0-14. The fades of every palette reach it: the
         // transformation's, and the custom screen's white.)
-        let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b).unwrap_or_default() };
-        let fades = Fades { stage, hud, hud_past_ranged, dialogue, sprites, screen: screen_fade(b) };
-        let layers = [&self.dialogue, &self.names, &self.hud, &self.field, &self.background];
+        let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b, field).unwrap_or_default() };
+        let fades = Fades { stage, hud, hud_past_ranged, other_hud, other_hud_past_ranged, dialogue, sprites, screen: screen_fade(b) };
+        let layers: Vec<&Layer> = match both {
+            true => vec![&self.dialogue, &self.names, &self.names_right, &self.hud, &self.hud_right, &self.field, &self.background],
+            false => vec![&self.dialogue, &self.names, &self.hud, &self.field, &self.background],
+        };
         // (The squashed and turned sprites, and those whose true places
         // are between the frame's pixels, at the output's resolution, in
         // the enhanced mode's motion: left out of the frame, their places
@@ -543,7 +601,7 @@ impl Renderer {
             true => parts
                 .iter()
                 .enumerate()
-                .filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [fades.sprites, fades.screen], fines[i])?)))
+                .filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [p.fade.unwrap_or(fades.sprites), fades.screen], fines[i])?)))
                 .collect(),
             false => Vec::new(),
         };
@@ -571,10 +629,16 @@ impl Renderer {
                         item.clip = item.clip.offset(-jx, -jy);
                         (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud })
                     }
+                    Plane::OtherHud => {
+                        item.rect = item.rect.offset(rx, -ry);
+                        item.clip = item.clip.offset(rx, -ry);
+                        (compose::layer_depth(&self.hud_right), if item.past_ranged { fades.other_hud_past_ranged } else { fades.other_hud })
+                    }
                     Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud),
+                    Plane::OtherBg0 => (compose::layer_depth(&self.names_right), fades.other_hud),
                     Plane::Sprite(tag) => {
                         let i = tags.iter().position(|&t| t == Some(tag))?;
-                        (compose::sprite_depth(parts[i].priority, i), fades.sprites)
+                        (compose::sprite_depth(parts[i].priority, i), parts[i].fade.unwrap_or(fades.sprites))
                     }
                 };
                 item.depth = depth;
