@@ -380,7 +380,13 @@ pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> Stri
         bundle.hud.mugshot_box_frame = box_frame;
     }
     if !bundle.custom.is_empty() {
-        bundle.custom.shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
+        let mut shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
+        // The element icons' frame, their symbols apart from it.
+        if let Some((frame, symbols)) = element_frame(&bundle.custom, &mut sh) {
+            shapes.element_frame = Some(frame);
+            bundle.custom.element_symbols = symbols;
+        }
+        bundle.custom.shapes = shapes;
     }
     // (The colors each is looked at in: its picture's first palette.)
     let views = Views::of(bundle);
@@ -397,6 +403,7 @@ pub struct Views {
     face: nettai_assets::Palette,
     navi: nettai_assets::Palette,
     icon: nettai_assets::Palette,
+    element: nettai_assets::Palette,
     cursor: nettai_assets::Palette,
     form_cursor: nettai_assets::Palette,
     picture: nettai_assets::Palette,
@@ -417,6 +424,14 @@ impl Views {
             face: h.mugshots.first().map(|m| m.1).unwrap_or_default(),
             navi: h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or_default(),
             icon: c.icon_palette,
+            // (The first element's colors, or its sprite's.)
+            element: c.element_sprite.map(|e| e.palette).unwrap_or_else(|| {
+                let mut p = c.icon_palette;
+                if let Some(e) = c.element_colors.first() {
+                    p[10..].copy_from_slice(e);
+                }
+                p
+            }),
             cursor: c.cursor_palette.or_else(|| c.emblems.first().map(|e| e.palette)).unwrap_or_default(),
             form_cursor: c.form_list_cursor_palette,
             picture: c.pictures.ok.palette,
@@ -444,6 +459,7 @@ impl Views {
             n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
             n if n.starts_with("custom/picture") => self.picture[k],
             "custom/form-name-bar" => self.form_name[k],
+            "custom/element-frame" => self.element[k],
             _ => match p {
                 11 => self.icon[k],
                 13 => self.hp[k],
@@ -845,6 +861,35 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         }
     }
     s
+}
+
+/// The element icons' frame as its drawing, and each icon's symbol apart
+/// from it (`CustomScreen::element_symbols`): the frame each pixel's index
+/// most of the icons with any share, the rest of it the ground (its most
+/// common index); a symbol its icon's pixels on the ground that aren't the
+/// ground's, index 0 elsewhere (the frame's pixels an icon has otherwise go
+/// with it). None: the frame has no drawing, or there are no icons.
+fn element_frame(c: &CustomScreen, sh: &mut Shaper) -> Option<(Drawing, Tiles)> {
+    const ICON: usize = 4 * Tiles::TILE;
+    let icons = c.elements.pixels.as_chunks::<ICON>().0;
+    let live: Vec<&[u8; ICON]> = icons.iter().filter(|i| i.iter().any(|&p| p != 0)).collect();
+    if live.is_empty() {
+        return None;
+    }
+    let most = |values: &mut dyn Iterator<Item = u8>| -> (u8, usize) {
+        let mut n = [0usize; 16];
+        for v in values {
+            n[v as usize & 15] += 1;
+        }
+        let k = (0..16).max_by_key(|&k| (n[k], std::cmp::Reverse(k))).unwrap_or(0);
+        (k as u8, n[k])
+    };
+    let shared: Vec<(u8, usize)> = (0..ICON).map(|i| most(&mut live.iter().map(|icon| icon[i]))).collect();
+    let ground = most(&mut shared.iter().map(|s| s.0)).0;
+    let frame: Vec<u8> = shared.iter().map(|&(v, n)| if 2 * n > live.len() { v } else { ground }).collect();
+    let drawing = sh.tiles("custom/element-frame", &Tiles { pixels: frame.clone() }, 0, 2, 2)?;
+    let symbols = icons.iter().flat_map(|icon| icon.iter().zip(&frame).map(|(&p, &f)| if f == ground && p != ground { p } else { 0 })).collect();
+    Some((drawing, Tiles { pixels: symbols }))
 }
 
 /// Every one of a set of drawings, or none (a set is drawn whole or as its
