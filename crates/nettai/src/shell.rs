@@ -247,13 +247,11 @@ pub struct Shell {
     pub practice: screens::practice::Shared,
     /// The screenshot pass holds things still: the two cards stay up whatever is ready, the loading bar is
     /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`). Its motion probe
-    /// lets things move all the same (`probe_motion`), and its showreel lets the battles play too, the menu's reel
-    /// and a replay's viewer (`reel`: `tour/reel.rs`).
+    /// lets things move all the same (`probe_motion`).
     pub hold_cards: bool,
     pub hold_loading: Option<f32>,
     pub still: bool,
     pub probe_motion: bool,
-    pub reel: bool,
     /// A screen has something running that must keep its time whatever covers the window (a link to another
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
     /// battle runs (`awake.rs`).
@@ -625,7 +623,7 @@ impl Shell {
         if leave > 0 {
             ui.global::<nettai_ui::Shell>().set_leaving(true);
             self.nav.hold(true);
-            self.swap = Some(Swap { to: Swapped::Page(open), at: crate::clock::now() + std::time::Duration::from_millis(leave as u64) });
+            self.swap = Some(Swap { to: Swapped::Page(open), at: Instant::now() + std::time::Duration::from_millis(leave as u64) });
         } else {
             ui.global::<nettai_ui::RulesetView>().set_open(open);
         }
@@ -963,7 +961,6 @@ impl App {
             hold_loading: None,
             still,
             probe_motion: false,
-            reel: false,
             stay_awake: false,
             updates: Default::default(),
             awake: None,
@@ -1101,7 +1098,7 @@ impl App {
         if leave > 0 {
             ui.global::<nettai_ui::Shell>().set_leaving(true);
             self.shell.nav.hold(true);
-            self.shell.swap = Some(Swap { to: Swapped::Screen(to), at: crate::clock::now() + std::time::Duration::from_millis(leave as u64) });
+            self.shell.swap = Some(Swap { to: Swapped::Screen(to), at: Instant::now() + std::time::Duration::from_millis(leave as u64) });
         } else {
             ui.global::<nettai_ui::Shell>().set_screen(to.view());
         }
@@ -1501,7 +1498,7 @@ impl App {
             return false;
         }
         self.shell.nav.used_pointer();
-        self.shell.last_input = Some(crate::clock::now());
+        self.shell.last_input = Some(Instant::now());
         true
     }
 
@@ -1531,7 +1528,7 @@ impl App {
         };
         // (A button newly held is a press, timed as a key's is.)
         if self.shell.touch.held() & !before != 0 {
-            self.shell.keys.pressed.push(crate::clock::now());
+            self.shell.keys.pressed.push(Instant::now());
             self.shell.nav.used_pointer();
         }
         self.shell.show_pad();
@@ -1548,7 +1545,7 @@ impl App {
     /// [`App::key`], of a key's parts: what it is, whether it went down, the text it types, whether it is a
     /// held key's repeat. (The screenshot pass presses keys through here, as the window does.)
     pub fn key_of(&mut self, code: KeyCode, pressed: bool, text: Option<String>, repeat: bool) -> bool {
-        let now = crate::clock::now();
+        let now = Instant::now();
         // The battle's buttons follow the keys whatever has them, so none sticks.
         self.shell.keys.key(&self.shell.bindings, code, pressed, repeat, now);
         let editing = self.shell.nav.editing();
@@ -1946,7 +1943,7 @@ impl App {
         }
         if down {
             if self.shell.keys.held & keys::RIGHT == 0 {
-                self.shell.keys.pressed.push(crate::clock::now());
+                self.shell.keys.pressed.push(Instant::now());
             }
             self.shell.keys.held |= keys::RIGHT;
         } else {

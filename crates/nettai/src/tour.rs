@@ -26,10 +26,6 @@
 //! - **A press acts at once.** A move pressed in the same instant as a screen change lands on the new screen's
 //!   controls, and a direction held through a scrolling page moves the focus at every repeat, whatever is
 //!   still sliding.
-//!
-//! **The showreel** (`NETTAI_REEL=<out.mp4>`, with the same folder: `tour/reel.rs`) walks a scripted demo of the
-//! app with everything moving and sounding, and writes every frame and the sound to an MP4, a frame at a time on a
-//! clock of its own.
 
 use crate::errors::UserError;
 use crate::input::Action;
@@ -55,10 +51,6 @@ mod builds;
 mod confirm_keys;
 mod practice;
 mod replays;
-// The showreel (`NETTAI_REEL`): the pass's walk made a video, a frame at a time (its own dependencies are the
-// feature's alone: the tests don't compile it).
-#[cfg(feature = "tour")]
-pub mod reel;
 
 /// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`,
 /// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `party`, `play`, `replays`), for looking at one screen
@@ -244,7 +236,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
 }
 
-/// The pass's start, the walk's or the showreel's: its folder (the builds it makes and lists its own), what it
+/// The pass's start: its folder (the builds it makes and lists its own), what it
 /// keeps as it goes, the texts' check, and the game asked for.
 fn begin(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) -> Rc<Tour> {
     let _ = nettai_platform::fs::create_dir_all(&dir);

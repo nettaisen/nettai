@@ -3200,8 +3200,6 @@ dependencies = [
  "exe6-compat",
  "gamepad-facade",
  "glow 0.16.0",
- "i-slint-backend-winit",
- "i-slint-core",
  "icu_casemap",
  "icu_list",
  "icu_locale_core",

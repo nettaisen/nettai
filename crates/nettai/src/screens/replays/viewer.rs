@@ -292,18 +292,14 @@ impl Watching {
         let (music, effects) = shell.sound.battle_levels();
         self.viewer.set_sound_levels(music, effects);
         if shell.still && self.told.is_none() {
-            // (The screenshot pass: one picture, the same each time. Its showreel plays from the start, and a seek
-            // lands where it is asked for, at once: the replay indexed whole first, as here.)
-            if !shell.reel {
-                self.viewer.set_paused(true);
-            }
+            // (The screenshot pass: one picture, the same each time. A seek lands where it is asked for, at once:
+            // the replay indexed whole first, as here.)
+            self.viewer.set_paused(true);
             while !self.viewer.index(u32::MAX) {}
             self.whole = true;
-            if !shell.reel {
-                let rounds = self.viewer.rounds();
-                let at = rounds.get(1).map_or(self.viewer.length() / 2, |start| start + 420);
-                self.viewer.seek(at);
-            }
+            let rounds = self.viewer.rounds();
+            let at = rounds.get(1).map_or(self.viewer.length() / 2, |start| start + 420);
+            self.viewer.seek(at);
         }
         self.surface.refresh();
         self.inset.refresh();

@@ -271,9 +271,6 @@ impl Sound {
                 (*since, *tune, *stream) = (now, 0.0, 0.0);
             }
         }
-        // (The showreel hears what the device would, at its volume: `tour/reel.rs`.)
-        #[cfg(feature = "tour")]
-        crate::tour::reel::hear(battle, FULL);
         if let Some(out) = &self.out
             && !battle.is_empty()
         {

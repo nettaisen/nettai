@@ -1563,7 +1563,7 @@ impl Screen for Replays {
             watching.set_speed(speed);
         }
         self.watching = Some(watching);
-        self.woke = Some(crate::clock::now());
+        self.woke = Some(Instant::now());
         // (`show` sets the viewer's view.)
         shell.refresh();
     }

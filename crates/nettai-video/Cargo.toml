@@ -3,7 +3,7 @@ name = "nettai-video"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "A replay as video: played frame by frame, its sound made 48 kHz, encoded by the platform's encoder (ffmpeg run as a child on the desktop, WebCodecs in a browser) and written as an MP4 as it is made, its index put first once whole"
+description = "A replay as video: played frame by frame, its sound made 48 kHz, encoded by the platform's encoder (ffmpeg run as a child a track on the desktop, WebCodecs in a browser) and written as an MP4 as it is made, its index put first once whole"
 
 [dependencies]
 # The replay's viewer: the picture and the sound of each tick.

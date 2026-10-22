@@ -2605,52 +2605,6 @@ the other's link brought, the longest it brought none for, the frames in which i
 match's ticks. The joiner's lines say whether the other side saw the host stall; with `NETTAI_NO_TIMER_CLOCK`
 on the host they show what a stall looks like. No shot is taken.
 
-**The showreel** (`tour/reel.rs`): `NETTAI_REEL=<out.mp4>` with the pass's folder, in a build with the `tour`
-feature, walks a scripted demo of the app with everything moving and sounding and writes it to an MP4 (H.264 and
-AAC through `ffmpeg`, `$NETTAI_FFMPEG` else the one on the path), so that the reel can be made again as the app
-changes:
-
-```
-cargo build -p nettai --release --features tour
-NETTAI_PACKS=data NETTAI_TOUR=/tmp/reel NETTAI_REEL=/tmp/reel/nettai-showreel.mp4 target/release/nettai
-```
-
-It shows, in about 90 seconds: the main menu with its demo battle and the title music, a change of game to EXE5,
-EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); the editor's PRACTICE, the cards,
-the practice menu open as the battle starts, the arena stepped there and its Music stepped to a battle theme,
-which plays, the dummy set to Moves around, and a fight in which the player's side
-presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
-custom screen opened once the gauge is full); Play's builds, the editor's Folder tab (a chip put in from the
-library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
-and the Auto battle tab (three places filled); Play, an invite with a practice session beside it, the second
-player joining by its code (`screens/play/tour.rs`'s `reel`), both ready, the cards and a few seconds of their
-match; Replays, the list, a replay watched, a seek further on and twice the speed; About, from Settings.
-
-- **Time is the reel's.** The app runs a frame at a time: each frame captured moves its clock on by exactly
-  1/60 s whatever the capture costs, so the video plays smoothly at 60 frames a second however slowly it was
-  made (a release build makes it in a few minutes). Slint's clock (its animations and timers, among them the
-  walk's steps) is the reel's through the window's backend, wrapped (the winit backend, built as `main.rs`'s
-  selection builds it, its `duration_since_start` the reel's); the app's (a frame's time, a screen's change, a
-  change of game's sweep, the cards' time up, a pick's delay) through `crate::clock::now`, which is the system's
-  but in the reel. Only the frames the reel captures run the app's frame: the window's own draws show them, and
-  the timer that runs frames for a window that isn't drawn is off.
-- **The sound is what the device would play**: `Sound::frame` hands the reel the samples it queues, at the
-  device's volume (the menus' sounds and music, a battle's, a replay's), and each video frame is written with
-  1/60 s of them. The sound is written 640 samples (20 ms) behind the picture, a battle tick's and a little, so
-  that a frame in which no tick ran doesn't leave a gap.
-- **What is only waited for is cut out.** The walk is off the air while the games load, its builds and replays
-  are made and the Replays screen plays them out, and while the other player's link is undone and the editor
-  is left: the clock runs, nothing is written, and the video cuts from before to after.
-- **The size.** The window is 1280 by 800 units at the display's pixels (2560 by 1600 at a scale of two),
-  scaled to 1920 by 1200 (Lanczos) and encoded at CRF 21: some 35 MB for the reel.
-
-The reel is the pass, held still as it is but for motion (on, as the probe's) and the battles (the menu's demo
-battle plays, and a replay's viewer: `Shell::reel`): the settings are the defaults and never written, the builds
-and replays are the pass's own (`<folder>/builds`, `<folder>/replays`), the demo battles' seeds are fixed, and
-the pointer is ignored. `reel.txt` in the folder says what was written: the frames and their size, the samples,
-how many were silence for want of any heard, the frames run off the air. The process ends with status 1 if
-ffmpeg failed.
-
 ## 14. Build time
 
 The user: "you should also try not make the slint build really expensive, because the current nettai binary takes
@@ -3609,7 +3563,7 @@ export under way and leaves the mode on; with none under way it ends it. The lin
 the percentage, then "Saved.", or what went wrong in the player's words (`UserError::of_export`: ffmpeg not
 found, the file not written, anything else with the log named). The app keeps awake while one runs (§1).
 
-- *The file* is an MP4 and nothing else: the NUT stream is how the pictures reach ffmpeg, never a file. It is
+- *The file* is an MP4 and nothing else: the frames and samples go to ffmpeg's children raw, on their pipes. It is
   named for the day, the opponent and the part, in the folder last exported to (at first the system's videos
   folder's `nettai`), with a number after it where that name is taken; Save as asks for another place in the
   system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left
@@ -3898,11 +3852,12 @@ https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with 
 nettai needs and nothing more so the build is minimal", then "make sure to bundle it with the binary", then "i want
 you to build it with a separate workflow in https://github.com/nettaisen/ffmpeg-build so you don't have to
 build ffmpeg everty time". That repository's workflow, run by hand, builds a static `ffmpeg` per platform from
-`--disable-everything` with only what the export's command runs (the NUT demuxer, the raw video and float PCM
-decoders, the pipe and file protocols, swscale's `scale` and `format`, `setparams`, swresample's `aresample` with
+`--disable-everything` with only what the export's commands run (the raw video and float PCM demuxers and
+decoders, the pipe protocol, swscale's `scale` and `format`, `setparams`, swresample's `aresample` with
 `aformat`, `null` and `anull`, libx264 and the native AAC encoder, the MP4 muxer: its README traces each to the
-command), smoke-tests it with that command on streams nettai-video's own NUT writer makes, decodes the MP4s with a
-full ffmpeg, and publishes a release `ffmpeg-<version>-<revision>`. `packaging/ffmpeg.sha256` pins the release a
+commands), smoke-tests it with those commands on the raw bytes nettai writes, decodes the MP4s with a full
+ffmpeg, and publishes a release `ffmpeg-<version>-<revision>` (ffmpeg-9.0.2-2 since the export stopped writing
+NUT: the user, "can we avoid emitting nut entirely?"). `packaging/ffmpeg.sha256` pins the release a
 package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in

@@ -35,10 +35,6 @@ icu_list = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The screenshot pass's pictures (the `tour` feature's).
 png = { version = "0.17", optional = true }
-# The showreel (the `tour` feature's `NETTAI_REEL`): the window's backend, built here and wrapped so that its clock
-# is the reel's, a frame at a time. (Both are in the tree already, under slint, at this version.)
-i-slint-core = { version = "=1.18.1", default-features = false, optional = true }
-i-slint-backend-winit = { version = "=1.18.1", default-features = false, optional = true }
 # A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
 nettai-video = { path = "../nettai-video" }
 # A replay's file: what its head names (the Replays screen's list) and its writer (the screenshot pass's replays).
@@ -83,12 +79,11 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [features]
-# The screenshot pass, the motion probe and the showreel (docs/app.md §13: `NETTAI_TOUR`, `NETTAI_REEL`), with what
-# they need: the pictures' encoder, the link library's signaling server in the process, which Play's second player
-# meets the first through (`screens/play/tour.rs`), and the window's backend, whose clock the reel drives. A
-# player's build has none of it: `cargo run -p nettai --features tour`. The tests compile the pass whatever the
-# features (the same two dependencies are the tests' below), the reel only with it.
-tour = ["dep:png", "nettai-rtc/testing", "dep:i-slint-core", "dep:i-slint-backend-winit"]
+# The screenshot pass and the motion probe (docs/app.md §13: `NETTAI_TOUR`), with what they need: the pictures'
+# encoder, and the link library's signaling server in the process, which Play's second player meets the first
+# through (`screens/play/tour.rs`). A player's build has none of it: `cargo run -p nettai --features tour`. The tests
+# compile the pass whatever the features (the same two dependencies are the tests' below).
+tour = ["dep:png", "nettai-rtc/testing"]
 
 [build-dependencies]
 # What the app is built from, for its About screen (build.rs: `cargo metadata`'s JSON).
