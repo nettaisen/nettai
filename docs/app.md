@@ -1614,7 +1614,8 @@ everywhere"; NaviCust's pieces stay blocks) or a navi (its face, its full name, 
 mark; its stats, HP, Attack and Special chip attack (its own chip's damage; no Charge, which nothing raises), what its
 programs add to them in cyan as the overview says it, the chip's damage the rules' overview's `members`, then Slots,
 its gauge's, a stat as they are (the user: "why is "gauge 8 blocks" not like a stat like everything else in the header
-in party editor?"); its element alone on the line under them: a navi not in the party as the build would field it alone, a check of the build with it the one partner,
+in party editor?"), and Element, its element's icon the value (the no-element icon where it has none; the user said yes
+to it as a stat, the icon having stood alone on a line under them), nothing under the row: a navi not in the party as the build would field it alone, a check of the build with it the one partner,
 asked once a navi; a library's navi that can't go in, why at its top right). The Navi tab's panel says the build's
 navi's HP and a team navi's Special chip attack in the same words (no Attack or Charge: the user, "remove attack and
 charge from the navi sidebar"). At the left, framed, PARTY, the pane's whole height as Patch cards' cards are: its

@@ -5,7 +5,7 @@
 //
 // - the strip across the top describes what is under the cursor (or the pointer): a program (its name, its slots and
 //   whether they fit, what it does, its kind) or a navi (its version; its HP, buster attack, special chip attack and
-//   its gauge's slots, what its programs add to them; its element);
+//   its gauge's slots, what its programs add to them, and its element, its icon a stat's value);
 // - at the left, framed, PARTY, its counts in its head as the folder's are (Partners, Navi changes) and CLEAR at its
 //   end; under them its slots, one list (`slots`): a partner's head (its face and name, its gauge and the blocks used
 //   of it), its programs under it a level in, and an Empty row at their end while its list has room; and an Empty head
@@ -78,7 +78,7 @@ export struct PartySlot {
 
 // What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
 // name (a navi's with its version's mark), a line of what it is (`description`: what a program does; a navi's stats in
-// its place), its facts (a navi's element first); why it can't go in (`problem`, a refusal) or what the build's
+// its place, its element's icon the last's value), a program's facts; why it can't go in (`problem`, a refusal) or what the build's
 // problems have against it (`fault`).
 export struct PartyDetail {
     there: bool,
@@ -89,7 +89,7 @@ export struct PartyDetail {
     tone: color,
     description: string,
     // A navi's stats (HP, Attack: their labels the strip's; a stat of the rules' own with its own), what its
-    // programs added in cyan, as the Navi tab says them; and its element's icon.
+    // programs added in cyan, as the Navi tab says them; and its element's icon, a stat after them (Element).
     stats: [StatLine],
     element: image,
     facts: [string],
@@ -535,7 +535,8 @@ export component PartyTab inherits Rectangle {
             overflow: elide;
         }
 
-        // (A navi's stats in the description's place, each its label, its value and what was added.)
+        // (A navi's stats in the description's place, each its label, its value and what was added; its element last,
+        // its icon the value (the user, of the icon alone on the line under them: yes, a stat).)
         HorizontalLayout {
             x: 120px;
             y: root.top + 43px;
@@ -572,8 +573,31 @@ export component PartyTab inherits Rectangle {
                     vertical-alignment: center;
                 }
             }
+
+            if PartyView.detail.element.width > 0: HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Element");
+                    color: Theme.muted;
+                    font-family: Theme.body;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+
+                Rectangle {
+                    width: 16px;
+                    Image {
+                        y: (parent.height - self.height) / 2;
+                        width: 16px;
+                        height: 16px;
+                        source: PartyView.detail.element;
+                        image-rendering: pixelated;
+                    }
+                }
+            }
         }
 
+        // (A program's facts: its slots, its kind, whether it fits.)
         HorizontalLayout {
             x: 120px;
             y: root.top + 69px;
@@ -582,13 +606,6 @@ export component PartyTab inherits Rectangle {
             visible: !root.phone;
             spacing: 16px;
             alignment: start;
-            if PartyView.detail.element.width > 0: Image {
-                width: 16px;
-                height: 16px;
-                source: PartyView.detail.element;
-                image-rendering: pixelated;
-            }
-
             for fact in PartyView.detail.facts: Text {
                 text: fact;
                 color: Theme.muted;
