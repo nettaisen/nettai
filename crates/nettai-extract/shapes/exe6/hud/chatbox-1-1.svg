@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
-<!-- The outline, a pixel wide, its corners cut 45 degrees -->
-<path d="M1 24 L5 20 L211 20 L215 24 L215 40 L211 44 L5 44 L1 40 Z" fill="#086bc6" data-color="11"/>
-<!-- The band, two pixels wide, a pixel in, its cuts parallel to the outline's -->
-<path d="M2 24.414 L5.414 21 L210.586 21 L214 24.414 L214 39.586 L210.586 43 L5.414 43 L2 39.586 Z" fill="#4abdf7" data-color="10"/>
-<!-- The ground, three pixels in, its cuts parallel to the outline's -->
-<path d="M4 25.243 L6.243 23 L209.757 23 L212 25.243 L212 38.757 L209.757 41 L6.243 41 L4 38.757 Z" fill="#f7fff7" data-color="1"/>
+<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on; the outline's cuts as light as the art's, every layer's cuts parallel to them, each band as thick through a cut as along its edges. -->
+<!-- The outline, a pixel wide, its corners cut 45 degrees, as lightly as the art's -->
+<path d="M1 22.5 L3.5 20 L212.5 20 L215 22.5 L215 41.5 L212.5 44 L3.5 44 L1 41.5 Z" fill="#086bc6" data-color="11"/>
+<!-- The band, two pixels wide, a pixel in, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
+<path d="M2 22.914 L3.914 21 L212.086 21 L214 22.914 L214 41.086 L212.086 43 L3.914 43 L2 41.086 Z" fill="#4abdf7" data-color="10"/>
+<!-- The ground, three pixels in, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
+<path d="M4 23.743 L4.743 23 L211.257 23 L212 23.743 L212 40.257 L211.257 41 L4.743 41 L4 40.257 Z" fill="#f7fff7" data-color="1"/>
 </svg>

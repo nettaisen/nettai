@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box (opening, step 2 of 3): a dark outline, its corners cut 45 degrees, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
+<!-- The chatbox's box, the message box (opening, step 2 of 3): a dark outline, its corners cut 45 degrees, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on; the outline's cuts as light as the art's, every layer's cuts parallel to them, each band as thick through a cut as along its edges. -->
 <!-- The tab for the name: its outline two pixels wide, its top left corner cut 45 degrees as the box's, its right side slanting 2:1 -->
-<path d="M2 9 L6 5 L44 5 L52 9 L52 11 L2 11 Z" fill="#006bbd" data-color="13"/>
-<!-- The outline, two pixels wide, its corners cut 45 degrees (its top left square under the tab) -->
-<path d="M2 9 L234 9 L238 13 L238 51 L234 55 L6 55 L2 51 Z" fill="#006bbd" data-color="13"/>
+<path d="M2 6.5 L3.5 5 L44 5 L52 9 L52 11 L2 11 Z" fill="#006bbd" data-color="13"/>
+<!-- The outline, two pixels wide, its corners cut 45 degrees, as lightly as the art's (its top left square under the tab) -->
+<path d="M2 9 L236.5 9 L238 10.5 L238 53.5 L236.5 55 L3.5 55 L2 53.5 Z" fill="#006bbd" data-color="13"/>
 <!-- The band inside the tab: the outline two pixels in, its cut and its slant parallel -->
-<path d="M4 9.828 L6.828 7 L43.528 7 L53.528 12 L4 12 Z" fill="#94cee7" data-color="12"/>
-<!-- The band, a pixel wide, its cuts parallel to the outline's -->
-<path d="M4 11 L233.172 11 L236 13.828 L236 50.172 L233.172 53 L6.828 53 L4 50.172 Z" fill="#94cee7" data-color="12"/>
-<!-- The ground, its cuts parallel to the outline's -->
-<path d="M5 14.243 L7.243 12 L232.757 12 L235 14.243 L235 49.757 L232.757 52 L7.243 52 L5 49.757 Z" fill="#f7fff7" data-color="11"/>
+<path d="M4 7.328 L4.328 7 L43.528 7 L53.528 12 L4 12 Z" fill="#94cee7" data-color="12"/>
+<!-- The band, a pixel wide, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
+<path d="M4 11 L235.672 11 L236 11.328 L236 52.672 L235.672 53 L4.328 53 L4 52.672 Z" fill="#94cee7" data-color="12"/>
+<!-- The ground, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
+<path d="M5 12 L235 12 L235 52 L5 52 Z" fill="#f7fff7" data-color="11"/>
 </svg>
