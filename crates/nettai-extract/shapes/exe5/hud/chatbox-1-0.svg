@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the description box (opening, step 0 of 3): a dark outline, its corners cut 45 degrees, a light band inside it, the ground the text is written on, each cut parallel to the outline's. -->
-<!-- The outline, a pixel wide, its corners cut 45 degrees (as the art steps them) -->
-<path d="M2 30.5 L3.5 29 L212.5 29 L214 30.5 L214 33.5 L212.5 35 L3.5 35 L2 33.5 Z" fill="#006bbd" data-color="11"/>
-<!-- The band, a pixel wide -->
-<path d="M3 30.914 L3.914 30 L212.086 30 L213 30.914 L213 33.086 L212.086 34 L3.914 34 L3 33.086 Z" fill="#94cee7" data-color="10"/>
-<!-- The ground -->
-<path d="M4 31.328 L4.328 31 L211.672 31 L212 31.328 L212 32.672 L211.672 33 L4.328 33 L4 32.672 Z" fill="#f7fff7" data-color="15"/>
+<!-- The chatbox's box, the description box (opening, step 0 of 3): a dark outline, its corners cut 45 degrees, a light band inside it, the ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
+<!-- The outline, a pixel wide, its corners cut 45 degrees -->
+<path d="M2 31 L4 29 L212 29 L214 31 L214 33 L212 35 L4 35 L2 33 Z" fill="#006bbd" data-color="11"/>
+<!-- The band, a pixel wide, its cuts parallel to the outline's -->
+<path d="M3 31.414 L4.414 30 L211.586 30 L213 31.414 L213 32.586 L211.586 34 L4.414 34 L3 32.586 Z" fill="#94cee7" data-color="10"/>
+<!-- The ground, its cuts parallel to the outline's -->
+<path d="M4 31.828 L4.828 31 L211.172 31 L212 31.828 L212 32.172 L211.172 33 L4.828 33 L4 32.172 Z" fill="#f7fff7" data-color="15"/>
 </svg>
