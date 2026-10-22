@@ -129,7 +129,7 @@ fn head_at(slots: &[Slot], row: usize) -> Option<usize> {
     }
 }
 
-/// What program `h` does: its effects in text table `table`'s words, for a line that lists them (`Lists.of`).
+/// What program `h` does: its effects in text table `table`'s words, for a line that lists them (`I18n.join`).
 fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> ModelRc<slint::SharedString> {
     let named: crate::builds::cards::Named = &|_, _| None;
     crate::builds::overview::items(crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text))

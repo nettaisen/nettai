@@ -6,7 +6,7 @@
 // Rust half is src/screens/settings/about.rs.
 
 import { AboutSlint, Palette } from "std-widgets.slint";
-import { Theme, Caps } from "../../theme.slint";
+import { Theme, I18n } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Page, PadButton } from "../../shell.slint";
 import { Label, Note, Value, Mono, Heading, Button, ListView, RowBack, RowTouch, PanelBack, GroupTitle } from "../../widgets.slint";
@@ -202,8 +202,8 @@ component SoftwareHead inherits Rectangle {
 export component AboutPage inherits Page {
     property <length> list-width: Theme.phone ? self.body-width : 440px;
     property <length> list-top: 236px;
-    title: Caps.of(@tr("About"));
-    back: Caps.of(@tr("Settings"));
+    title: I18n.upper(@tr("About"));
+    back: I18n.upper(@tr("Settings"));
     game: false;
     status: @tr("{n} package" | "{n} packages" % (AboutView.rows.length - AboutView.fonts)) + " · " + @tr("{n} font" | "{n} fonts" % AboutView.fonts);
     hints: [
@@ -250,7 +250,7 @@ export component AboutPage inherits Page {
             x: 0;
             y: root.list-top - 36px;
             width: root.list-width;
-            text: Caps.of(@tr("heading" => "Made with"));
+            text: I18n.upper(@tr("heading" => "Made with"));
         }
 
         list := ListView {
@@ -348,7 +348,7 @@ component LicenseSheet inherits Rectangle {
             y: parent.height - 56px;
             width: parent.width - 32px;
             nav: "sheet.close";
-            text: Caps.of(@tr("Close"));
+            text: I18n.upper(@tr("Close"));
         }
     }
 }

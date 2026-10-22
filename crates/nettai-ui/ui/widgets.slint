@@ -15,7 +15,7 @@
 // Motion (docs/app.md §10): each control moves by itself (a press flashes, a value slides in its box, a chosen
 // row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
 
-import { Theme, Audit, Caps } from "theme.slint";
+import { Theme, Audit, I18n } from "theme.slint";
 import { Nav, NavKind, Focusable, Drag } from "nav.slint";
 import { Tween, Pulse } from "motion.slint";
 
@@ -97,7 +97,7 @@ export component Chevron inherits Path {
 
 // ---- Text -----------------------------------------------------------------------------------------------
 
-// A label: 11, capitals (its text is set so: `Caps.of`), tracked.
+// A label: 11, capitals (its text is set so: `I18n.upper`), tracked.
 export component Label inherits Text {
     property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
     color: Theme.muted;
@@ -422,7 +422,7 @@ export component AllNone inherits Rectangle {
     all-word := Text {
         x: root.pad;
         width: self.preferred-width;
-        text: Caps.of(@tr("All"));
+        text: I18n.upper(@tr("All"));
         color: all-hit.has-hover ? Theme.cursor : root.all ? Theme.muted : Theme.dim;
         font-family: Theme.display;
         font-size: 10px;
@@ -442,7 +442,7 @@ export component AllNone inherits Rectangle {
     none-word := Text {
         x: all-word.preferred-width + 3 * root.pad + 1px;
         width: self.preferred-width;
-        text: Caps.of(@tr("None"));
+        text: I18n.upper(@tr("None"));
         color: none-hit.has-hover ? Theme.cursor : root.none ? Theme.muted : Theme.dim;
         font-family: Theme.display;
         font-size: 10px;

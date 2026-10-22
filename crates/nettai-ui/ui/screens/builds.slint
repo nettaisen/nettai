@@ -8,7 +8,7 @@
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
 // how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
-import { Theme, Caps } from "../theme.slint";
+import { Theme, I18n } from "../theme.slint";
 import { Nav } from "../nav.slint";
 import { Shell, Page, PadButton, Hint } from "../shell.slint";
 import { TabBar, Tab, Rule, Label, Select, Button } from "../widgets.slint";
@@ -53,9 +53,9 @@ export global BuildsView {
     in property <EditorTab> shown;
     in property <int> tab-way: 1;
     // ---- Words the app asks for.
-    out property <[string]> tab-names: [Caps.of(@tr("Navi")), Caps.of(@tr("Party")), Caps.of(@tr("Folder")), Caps.of(@tr("NaviCust")), Caps.of(@tr("Patch cards")), Caps.of(@tr("Auto battle"))];
+    out property <[string]> tab-names: [I18n.upper(@tr("Navi")), I18n.upper(@tr("Party")), I18n.upper(@tr("Folder")), I18n.upper(@tr("NaviCust")), I18n.upper(@tr("Patch cards")), I18n.upper(@tr("Auto battle"))];
     // A tab's CLEAR's dialog's button (docs/design/app-ui.md §2.71).
-    out property <string> clear-word: Caps.of(@tr("Clear"));
+    out property <string> clear-word: I18n.upper(@tr("Clear"));
 }
 
 // The editor's body: the tab chosen, arriving from the way it was reached each time it changes. A tab is here by
@@ -102,7 +102,7 @@ export component BuildsScreen inherits Page {
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.name;
     title-nav: "name";
-    back: BuildsView.to-practice ? Caps.of(@tr("Practice")) : Caps.of(@tr("Play"));
+    back: BuildsView.to-practice ? I18n.upper(@tr("Practice")) : I18n.upper(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
     hints: BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : BuildsView.shown == EditorTab.party ? PartyView.hints : AutoBattleView.hints;
@@ -140,7 +140,7 @@ export component BuildsScreen inherits Page {
         width: self.preferred-width;
         height: 36px;
         visible: !Theme.phone;
-        text: Caps.of(@tr("Ruleset"));
+        text: I18n.upper(@tr("Ruleset"));
     }
 
     Select {
@@ -164,7 +164,7 @@ export component BuildsScreen inherits Page {
         compact: true;
         visible: !Theme.phone;
         nav: Theme.phone ? "" : "ruleset-edit";
-        text: Caps.of(@tr("Edit"));
+        text: I18n.upper(@tr("Edit"));
     }
 
     Rectangle {
@@ -185,7 +185,7 @@ export component BuildsScreen inherits Page {
         compact: true;
         visible: !Theme.phone && root.practice;
         nav: !Theme.phone && root.practice ? "practice" : "";
-        text: Caps.of(@tr("Practice"));
+        text: I18n.upper(@tr("Practice"));
     }
 
     EditorBody {

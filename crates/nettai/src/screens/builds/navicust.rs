@@ -168,7 +168,7 @@ fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut C
 }
 
 /// The EFFECTS and BUGS panels' lines (NaviCust's, and Patch cards' of the cards: `effect_panels`), each under its
-/// title, and on a phone a line each (their items, which the line lists: `Lists.of`).
+/// title, and on a phone a line each (their items, which the line lists: `I18n.join`).
 pub(super) struct Panels {
     pub effects: Vec<EffectLine>,
     pub bugs: Vec<EffectLine>,

@@ -197,28 +197,25 @@ export global Theme {
     in property <bool> audit;
 }
 
-// Words in capitals (a button's, a heading's, a label's): the catalogs hold them as they are written in a sentence,
-// and `Caps.of(@tr("Export"))` sets them in capitals by the language shown's own rules (a Turkish i is İ). The app
-// does it (`upper`: `lang::I18n`, the language shown's rules). No caller passes a language: `of` reads `language`,
-// which the app counts up each time a language is chosen (after giving its new rules here), so everything set in
-// capitals is set again by the new rules, the app's own words as well as the `@tr` ones (the user: "fix the turkish
-// issue": a name the app gave, never given again, kept the old language's capitals).
-export global Caps {
+// The language shown's own rules, which the app answers (`lang::I18n`). Words in capitals (a button's, a heading's, a
+// label's): the catalogs hold them as they are written in a sentence, and `I18n.upper(@tr("Export"))` sets them in
+// capitals by the language's rules (a Turkish i is İ). Things listed on a line: `I18n.join([a, b])` puts them one after
+// the other by the language's own separator ("A, B, C"; Japanese's "A、B、C"; the user: "you should also join items by
+// locale-aware separator in the ui"). No caller passes a language: both read `language`, which the app counts up each
+// time a language is chosen (after giving its new rules here), so everything set in capitals or listed is set again by
+// the new rules, the app's own words as well as the `@tr` ones (the user: "fix the turkish issue": a name the app gave,
+// never given again, kept the old language's capitals; then "instead of Caps.language and List reading it maybe you
+// should have I18n.upper and I18n.join").
+export global I18n {
     in property <int> language;
-    pure callback upper(string) -> string;
-    public pure function of(text: string) -> string {
-        // (Read, so that a language chosen sets this again.)
-        return root.language >= 0 ? root.upper(text) : text;
+    pure callback uppercased(string) -> string;
+    pure callback joined([string]) -> string;
+    // (Each reads `language`, so that a language chosen sets what it made again.)
+    public pure function upper(text: string) -> string {
+        return root.language >= 0 ? root.uppercased(text) : text;
     }
-}
-
-// Things listed on a line: `Lists.of([a, b])` puts them one after the other by the language shown's own separator
-// ("A, B, C"; Japanese's "A、B、C"), as `Caps` sets capitals, set again whenever a language is chosen by the same
-// count (the user: "you should also join items by locale-aware separator in the ui").
-export global Lists {
-    pure callback join([string]) -> string;
-    public pure function of(items: [string]) -> string {
-        return Caps.language >= 0 ? root.join(items) : "";
+    public pure function join(items: [string]) -> string {
+        return root.language >= 0 ? root.joined(items) : "";
     }
 }
 

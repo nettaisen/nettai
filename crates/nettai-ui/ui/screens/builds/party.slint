@@ -27,7 +27,7 @@
 // On a phone, which has no strip, PARTY is the tab's width, and a button under it opens the slot's library as a sheet
 // (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
 
-import { Theme, Caps, Lists } from "../../theme.slint";
+import { Theme, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ListView, RowTouch, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
@@ -78,7 +78,7 @@ export struct PartySlot {
 
 // What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
 // name (a navi's with its version's mark), a line of what it is (`description`: what a program does, its effects listed
-// by `Lists.of`; a navi's stats in its place, its element's icon the last's value), a program's facts; why it can't go
+// by `I18n.join`; a navi's stats in its place, its element's icon the last's value), a program's facts; why it can't go
 // in (`problem`, a refusal) or what the build's problems have against it (`fault`).
 export struct PartyDetail {
     there: bool,
@@ -511,7 +511,7 @@ export component PartyTab inherits Rectangle {
         width: root.width - 136px;
         height: 18px;
         visible: !root.phone && PartyView.detail.stats.length == 0;
-        text: Lists.of(PartyView.detail.description);
+        text: I18n.join(PartyView.detail.description);
         color: Theme.muted;
         font-family: Theme.body;
         font-size: 13px;
@@ -612,7 +612,7 @@ export component PartyTab inherits Rectangle {
         y: root.pane-y;
         width: max(0px, partners-count.x - 12px - self.x);
         height: root.phone ? 32px : root.head;
-        text: Caps.of(@tr("Party"));
+        text: I18n.upper(@tr("Party"));
         color: PartyView.in-library ? Theme.muted : Theme.cursor;
     }
 
@@ -639,7 +639,7 @@ export component PartyTab inherits Rectangle {
         x: root.pane-width - 12px + self.pad - self.width;
         y: partners-count.y - 2px;
         nav: "clear";
-        text: Caps.of(@tr("Clear"));
+        text: I18n.upper(@tr("Clear"));
         enabled: PartyView.partners > 0;
     }
 
@@ -723,7 +723,7 @@ export component PartyTab inherits Rectangle {
             width: parent.width + 8px;
             height: library.height + 16px;
             shown: Drag.on && Drag.removing;
-            text: Caps.of(@tr("Drop to remove"));
+            text: I18n.upper(@tr("Drop to remove"));
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -735,7 +735,7 @@ export component PartyTab inherits Rectangle {
         width: root.width;
         visible: root.phone;
         nav: root.phone ? "library" : "";
-        text: Caps.of(@tr("Library"));
+        text: I18n.upper(@tr("Library"));
     }
 
     // (What is dragged, under the pointer: raised, a line in the cursor's color, in the error color over the
@@ -802,7 +802,7 @@ export component PartyOverlay inherits Rectangle {
             y: 12px;
             width: parent.width / 2 - 16px;
             height: 28px;
-            text: Caps.of(@tr("Library"));
+            text: I18n.upper(@tr("Library"));
             color: Theme.cursor;
         }
 

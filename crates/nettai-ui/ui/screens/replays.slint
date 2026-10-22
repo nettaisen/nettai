@@ -5,7 +5,7 @@
 // as a sheet from the bottom, and the viewer's controls are stacked under the picture. Its Rust half is
 // src/screens/replays.rs.
 
-import { Theme, Caps } from "../theme.slint";
+import { Theme, I18n } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture, PartyHud } from "../shell.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
@@ -162,35 +162,35 @@ export global ReplaysView {
     out property <string> p1: @tr("P1");
     out property <string> p2: @tr("P2");
     // Over a build's player's name: the recorder's, the other's.
-    out property <string> you: Caps.of(@tr("You"));
-    out property <string> opponent: Caps.of(@tr("Opponent"));
+    out property <string> you: I18n.upper(@tr("You"));
+    out property <string> opponent: I18n.upper(@tr("Opponent"));
     out property <string> delete-title: @tr("Delete replay?");
-    out property <string> delete: Caps.of(@tr("Delete"));
-    out property <string> cancel: Caps.of(@tr("Cancel"));
+    out property <string> delete: I18n.upper(@tr("Delete"));
+    out property <string> cancel: I18n.upper(@tr("Cancel"));
     // What the system's save dialog calls the file.
     out property <string> video-kind: @tr("MP4 video");
     // The menu of a replay (a right click on its row; WATCH's arrow has the second and third), and of a queue entry.
-    out property <string> watch-word: Caps.of(@tr("Watch"));
-    out property <string> add-word: Caps.of(@tr("Add to queue"));
-    out property <string> start-word: Caps.of(@tr("Play next"));
-    out property <string> export-word: Caps.of(@tr("verb" => "Export video"));
+    out property <string> watch-word: I18n.upper(@tr("Watch"));
+    out property <string> add-word: I18n.upper(@tr("Add to queue"));
+    out property <string> start-word: I18n.upper(@tr("Play next"));
+    out property <string> export-word: I18n.upper(@tr("verb" => "Export video"));
     // (In the browser its files are the page's: the replay is downloaded.)
-    out property <string> file-word: Theme.web ? Caps.of(@tr("Save replay")) : Caps.of(@tr("Show file"));
-    out property <string> from-here-word: Caps.of(@tr("Watch from here"));
-    out property <string> up-word: Caps.of(@tr("Move up"));
-    out property <string> down-word: Caps.of(@tr("Move down"));
-    out property <string> remove-word: Caps.of(@tr("Remove"));
+    out property <string> file-word: Theme.web ? I18n.upper(@tr("Save replay")) : I18n.upper(@tr("Show file"));
+    out property <string> from-here-word: I18n.upper(@tr("Watch from here"));
+    out property <string> up-word: I18n.upper(@tr("Move up"));
+    out property <string> down-word: I18n.upper(@tr("Move down"));
+    out property <string> remove-word: I18n.upper(@tr("Remove"));
     out property <string> clear-title: @tr("Clear the queue?");
-    out property <string> clear: Caps.of(@tr("Clear"));
+    out property <string> clear: I18n.upper(@tr("Clear"));
     // The viewer's ⋯ menu (docs/design/app-ui.md §2.95, §2.96): the sides (`p1`, `p2`), what may be over the picture,
     // the playback speed (the speed set at its right; it opens the four, their own signs) and the export
     // (`export-word`).
-    out property <string> builds-word: Caps.of(@tr("Builds"));
-    out property <string> inputs-word: Caps.of(@tr("Input display"));
-    out property <string> inset-word: Caps.of(@tr("Other side's picture"));
-    out property <string> speed-word: Caps.of(@tr("Playback speed"));
+    out property <string> builds-word: I18n.upper(@tr("Builds"));
+    out property <string> inputs-word: I18n.upper(@tr("Input display"));
+    out property <string> inset-word: I18n.upper(@tr("Other side's picture"));
+    out property <string> speed-word: I18n.upper(@tr("Playback speed"));
     // (The ⋯ menu's row for the side shown, P1 or P2 at its right: it opens the two in its place.)
-    out property <string> side-word: Caps.of(@tr("Player"));
+    out property <string> side-word: I18n.upper(@tr("Player"));
     pure public function replay-count(n: int) -> string {
         return @tr("{n} replay" | "{n} replays" % n);
     }
@@ -545,7 +545,7 @@ component DetailPanel inherits Rectangle {
             spacing: 2px;
             Button {
                 nav: "watch";
-                text: Caps.of(@tr("Watch"));
+                text: I18n.upper(@tr("Watch"));
                 kind: ButtonKind.main;
                 square: true;
                 enabled: ReplaysView.tab == 0 && ReplaysView.playable;
@@ -561,7 +561,7 @@ component DetailPanel inherits Rectangle {
 
         Button {
             nav: "export";
-            text: Caps.of(@tr("verb" => "Export video"));
+            text: I18n.upper(@tr("verb" => "Export video"));
             enabled: ReplaysView.tab == 0 && ReplaysView.playable;
         }
 
@@ -577,7 +577,7 @@ component DetailPanel inherits Rectangle {
         y: parent.height - 56px;
         visible: ReplaysView.tab == 0;
         nav: "delete";
-        text: Caps.of(@tr("Delete"));
+        text: I18n.upper(@tr("Delete"));
         kind: ButtonKind.ghost;
         danger: true;
         enabled: ReplaysView.tab == 0 && ReplaysView.selected;
@@ -594,7 +594,7 @@ component DetailPanel inherits Rectangle {
         visible: ReplaysView.tab == 1;
         Button {
             nav: "watch-from";
-            text: Caps.of(@tr("Watch from here"));
+            text: I18n.upper(@tr("Watch from here"));
             kind: ButtonKind.main;
             enabled: ReplaysView.tab == 1 && ReplaysView.playable;
         }
@@ -617,7 +617,7 @@ component DetailPanel inherits Rectangle {
         y: parent.height - 56px;
         visible: ReplaysView.tab == 1;
         nav: "remove";
-        text: Caps.of(@tr("Remove"));
+        text: I18n.upper(@tr("Remove"));
         kind: ButtonKind.ghost;
         enabled: ReplaysView.tab == 1 && ReplaysView.selected;
     }
@@ -685,7 +685,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner - 42px;
             visible: !root.queue;
             nav: "sheet.watch";
-            text: Caps.of(@tr("Watch"));
+            text: I18n.upper(@tr("Watch"));
             kind: ButtonKind.main;
             square: true;
             enabled: !root.queue && ReplaysView.playable;
@@ -707,7 +707,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: !root.queue;
             nav: "sheet.export";
-            text: Caps.of(@tr("verb" => "Export video"));
+            text: I18n.upper(@tr("verb" => "Export video"));
             enabled: !root.queue && ReplaysView.playable;
         }
 
@@ -727,7 +727,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: !root.queue;
             nav: "sheet.delete";
-            text: Caps.of(@tr("Delete"));
+            text: I18n.upper(@tr("Delete"));
             kind: ButtonKind.ghost;
             danger: true;
             enabled: !root.queue;
@@ -739,7 +739,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: root.queue;
             nav: "sheet.watch-from";
-            text: Caps.of(@tr("Watch from here"));
+            text: I18n.upper(@tr("Watch from here"));
             kind: ButtonKind.main;
             enabled: root.queue && ReplaysView.playable;
         }
@@ -750,7 +750,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: root.queue;
             nav: "sheet.move-up";
-            text: Caps.of(@tr("Move up"));
+            text: I18n.upper(@tr("Move up"));
             enabled: root.queue && ReplaysView.queue-chosen > 0;
         }
 
@@ -760,7 +760,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: root.queue;
             nav: "sheet.move-down";
-            text: Caps.of(@tr("Move down"));
+            text: I18n.upper(@tr("Move down"));
             enabled: root.queue && ReplaysView.queue-chosen < ReplaysView.queue.length - 1;
         }
 
@@ -770,7 +770,7 @@ component DetailSheet inherits Rectangle {
             width: root.inner;
             visible: root.queue;
             nav: "sheet.remove";
-            text: Caps.of(@tr("Remove"));
+            text: I18n.upper(@tr("Remove"));
             kind: ButtonKind.ghost;
             enabled: root.queue;
         }
@@ -787,8 +787,8 @@ component ListPage inherits Page {
     property <length> top: 52px;
     property <length> filter-room: ReplaysView.kinds && !Theme.phone ? 232px : 0px;
     property <length> list-top: root.top + (ReplaysView.kinds && Theme.phone && !root.queue ? 96px : 52px);
-    title: Caps.of(@tr("Replays"));
-    back: Caps.of(@tr("Menu"));
+    title: I18n.upper(@tr("Replays"));
+    back: I18n.upper(@tr("Menu"));
     status: !ReplaysView.listed ? "" : root.queue ? ReplaysView.replay-count(ReplaysView.queue.length) : ReplaysView.replay-count(ReplaysView.count);
     hints: !root.queue ? [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
@@ -812,7 +812,7 @@ component ListPage inherits Page {
             width: root.list-width + (Theme.phone ? 16px : 0px);
             nav: "tab";
             // (The Queue tab only while the queue holds something.)
-            tabs: ReplaysView.queue.length > 0 ? [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }, { text: Caps.of(@tr("Queue")), enabled: true, flagged: false }] : [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }];
+            tabs: ReplaysView.queue.length > 0 ? [{ text: I18n.upper(@tr("Replays")), enabled: true, flagged: false }, { text: I18n.upper(@tr("Queue")), enabled: true, flagged: false }] : [{ text: I18n.upper(@tr("Replays")), enabled: true, flagged: false }];
             chosen: ReplaysView.tab;
         }
 
@@ -834,8 +834,8 @@ component ListPage inherits Page {
             visible: ReplaysView.kinds && !root.queue;
             enabled: ReplaysView.kinds && !root.queue;
             nav: "kind";
-            first: Caps.of(@tr("All"));
-            second: Caps.of(@tr("Online"));
+            first: I18n.upper(@tr("All"));
+            second: I18n.upper(@tr("Online"));
             chosen: ReplaysView.kind;
         }
 
@@ -850,14 +850,14 @@ component ListPage inherits Page {
             visible: root.queue;
             Button {
                 nav: "watch-queue";
-                text: Caps.of(@tr("Watch"));
+                text: I18n.upper(@tr("Watch"));
                 kind: ButtonKind.main;
                 enabled: root.queue && ReplaysView.queue.length > 0;
             }
 
             Button {
                 nav: "clear";
-                text: Caps.of(@tr("Clear"));
+                text: I18n.upper(@tr("Clear"));
                 kind: ButtonKind.ghost;
                 danger: true;
                 enabled: root.queue && ReplaysView.queue.length > 0;
@@ -1303,7 +1303,7 @@ component Transport inherits Rectangle {
         width: root.phone ? root.half : self.natural-width;
         visible: root.exporting;
         nav: "export.start-here";
-        text: Caps.of(@tr("Set start here"));
+        text: I18n.upper(@tr("Set start here"));
         enabled: root.can-change;
     }
 
@@ -1313,7 +1313,7 @@ component Transport inherits Rectangle {
         width: root.phone ? root.half : self.natural-width;
         visible: root.exporting;
         nav: "export.end-here";
-        text: Caps.of(@tr("Set end here"));
+        text: I18n.upper(@tr("Set end here"));
         enabled: root.can-change;
     }
 
@@ -1347,7 +1347,7 @@ component Transport inherits Rectangle {
         width: root.phone ? root.half : self.natural-width;
         visible: root.exporting;
         nav: "export.cancel";
-        text: ReplaysView.export-state == ExportState.done ? Caps.of(@tr("Close")) : Caps.of(@tr("Cancel"));
+        text: ReplaysView.export-state == ExportState.done ? I18n.upper(@tr("Close")) : I18n.upper(@tr("Cancel"));
         enabled: root.exporting;
     }
 
@@ -1357,7 +1357,7 @@ component Transport inherits Rectangle {
         width: root.phone ? root.half : self.natural-width;
         visible: root.exporting;
         nav: "export.go";
-        text: Caps.of(@tr("verb" => "Export"));
+        text: I18n.upper(@tr("verb" => "Export"));
         kind: ButtonKind.main;
         enabled: root.can-change;
     }
@@ -1602,8 +1602,8 @@ component ViewerPage inherits Rectangle {
             duration: Theme.brisk;
             easing: ease-out;
         }
-        title: root.phone ? Caps.of(@tr("Replay")) : ReplaysView.title;
-        back: Caps.of(@tr("Replays"));
+        title: root.phone ? I18n.upper(@tr("Replay")) : ReplaysView.title;
+        back: I18n.upper(@tr("Replays"));
         status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
         // (B and Select show both builds, where they may be. In the export mode the arrows move a handle the focus is
         // on, and Back leaves the mode.)
@@ -1777,7 +1777,7 @@ component UpNextPopup inherits Rectangle {
             y: 12px;
             nav: "upnext.next";
             compact: true;
-            text: Caps.of(@tr("Next"));
+            text: I18n.upper(@tr("Next"));
             enabled: ReplaysView.has-next;
         }
 
@@ -1812,7 +1812,7 @@ component UpNextPopup inherits Rectangle {
             y: 68px;
             width: parent.width - 132px;
             height: 24px;
-            text: Caps.of(@tr("Up next"));
+            text: I18n.upper(@tr("Up next"));
             color: Theme.cursor;
         }
 

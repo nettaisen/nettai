@@ -3,7 +3,7 @@
 // left out and the note goes under its control. The About group's SHOW LICENSES opens About in the page's place
 // (settings/about.slint), its Back coming back to the page.
 
-import { Theme, Audit, Caps } from "../theme.slint";
+import { Theme, Audit, I18n } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
 import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
@@ -144,8 +144,8 @@ component SettingsPage inherits Page {
     // Where a row's control is, and how wide its column.
     property <length> control-x: Theme.phone ? 124px : 224px;
     property <length> control-width: Theme.phone ? page.view-width - 124px : 320px;
-    title: Caps.of(@tr("Settings"));
-    back: Caps.of(@tr("Menu"));
+    title: I18n.upper(@tr("Settings"));
+    back: I18n.upper(@tr("Menu"));
     game: false;
     hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
@@ -195,7 +195,7 @@ component SettingsPage inherits Page {
                 spacing: 4px;
                 alignment: start;
                 GroupTitle {
-                    text: Caps.of(@tr("General"));
+                    text: I18n.upper(@tr("General"));
                     first: true;
                 }
 
@@ -246,14 +246,14 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.updates";
-                        first: Caps.of(@tr("Off"));
-                        second: Caps.of(@tr("On"));
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
                         chosen: SettingsView.check-updates ? 1 : 0;
                     }
                 }
 
                 GroupTitle {
-                    text: Caps.of(@tr("Video"));
+                    text: I18n.upper(@tr("Video"));
                 }
 
                 Rectangle {
@@ -285,8 +285,8 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.fullscreen";
-                        first: Caps.of(@tr("Off"));
-                        second: Caps.of(@tr("On"));
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
                         chosen: SettingsView.full-screen ? 1 : 0;
                     }
                 }
@@ -303,8 +303,8 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.motion";
-                        first: Caps.of(@tr("Off"));
-                        second: Caps.of(@tr("On"));
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
                         chosen: SettingsView.reduce-motion ? 1 : 0;
                     }
                 }
@@ -322,14 +322,14 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 6px;
                         nav: "set.graphics";
-                        first: Caps.of(@tr("Enhanced"));
-                        second: Caps.of(@tr("Original"));
+                        first: I18n.upper(@tr("Enhanced"));
+                        second: I18n.upper(@tr("Original"));
                         chosen: SettingsView.enhanced ? 0 : 1;
                     }
                 }
 
                 GroupTitle {
-                    text: Caps.of(@tr("Audio"));
+                    text: I18n.upper(@tr("Audio"));
                 }
 
                 Rectangle {
@@ -367,7 +367,7 @@ component SettingsPage inherits Page {
                 }
 
                 GroupTitle {
-                    text: Caps.of(@tr("Online"));
+                    text: I18n.upper(@tr("Online"));
                 }
 
                 Rectangle {
@@ -390,7 +390,7 @@ component SettingsPage inherits Page {
                 }
 
                 GroupTitle {
-                    text: Caps.of(@tr("Controls"));
+                    text: I18n.upper(@tr("Controls"));
                 }
 
                 Rectangle {
@@ -404,13 +404,13 @@ component SettingsPage inherits Page {
                     Label {
                         x: root.control-x;
                         width: (root.control-width - 24px) / 2;
-                        text: Caps.of(@tr("Key"));
+                        text: I18n.upper(@tr("Key"));
                     }
 
                     Label {
                         x: root.control-x + (root.control-width + 24px) / 2;
                         width: (root.control-width - 24px) / 2;
-                        text: Caps.of(@tr("Pad"));
+                        text: I18n.upper(@tr("Pad"));
                     }
                 }
 
@@ -457,12 +457,12 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.reset";
-                        text: Caps.of(@tr("Reset controls"));
+                        text: I18n.upper(@tr("Reset controls"));
                     }
                 }
 
                 GroupTitle {
-                    text: Caps.of(@tr("About"));
+                    text: I18n.upper(@tr("About"));
                 }
 
                 Rectangle {
@@ -496,7 +496,7 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.folder";
-                        text: Caps.of(@tr("Show folder"));
+                        text: I18n.upper(@tr("Show folder"));
                     }
                 }
 
@@ -512,7 +512,7 @@ component SettingsPage inherits Page {
                         x: root.control-x;
                         y: 4px;
                         nav: "set.about";
-                        text: Caps.of(@tr("Show licenses"));
+                        text: I18n.upper(@tr("Show licenses"));
                     }
                 }
 
