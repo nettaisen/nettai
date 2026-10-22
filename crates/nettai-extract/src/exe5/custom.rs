@@ -413,7 +413,7 @@ fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
                 .flat_map(|&b| crate::exe5::hud::tiles(rom, at(ELEMENTS) + 0x80 * b, 0x80).pixels)
                 .collect(),
         },
-        element_symbols: Default::default(),
+        element_frame: Default::default(),
         element_colors: FAMILY_BYTES
             .iter()
             .map(|&b| {

@@ -89,7 +89,7 @@ graphics/
     dialogue-font.png  chatbox.png  chatbox-arrow.png
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
-    codes.png  elements.png  element-symbols.png  digits.png  slot-codes.png
+    codes.png  elements.png  element-frame.png  digits.png  slot-codes.png
     empty-icon.png
     cursor.png  form-list-cursor.png  regular.png
     chip-art/CHIP.png  emblems/NAVI.png  pictures/NAME.png
@@ -381,9 +381,10 @@ that has it.
 (by the chip under the cursor's class: standard, Mega, Giga, dark), each
 chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
 `elements.png` a palette row per element whose colors 10-15 are the ones
-the element brings (`element-symbols.png`, where the icons' frame is a
-drawing, "Frames as shapes" below: the icons laid and colored alike with
-the frame taken off, each icon's symbol on a clear ground), each navi's emblem (`emblems/NAVI.png`, 2x2 tiles,
+the element brings, each icon its symbol alone on a clear ground, no frame
+round it (`element-frame.png`: the frame they share, 2x2 tiles with its
+ground, viewed in the first element's row; the frame with an icon over it
+is the game's icon), each navi's emblem (`emblems/NAVI.png`, 2x2 tiles,
 under the navi's key) its own palette, which is the cursor's and the
 Regular chip's frame's too while that navi's console has the screen up,
 `form-list-cursor.png`
@@ -482,12 +483,22 @@ the cursors, the Regular chip's frame, each button's sets by name, the chip wind
 name, a language's own as `NAME-L`). The emotion window's faces are kept
 without the ring round them (`mugshot_frame`: the ring as a picture, each
 face's ring color; none where a face covers its ring and keeps it); the
-import puts the ring back. The element icons' frame is one drawing
-(`element_frame`, 16x16: the pixels most of the icons share, the rest of it
-the ground), and each icon's symbol a picture apart (`element-symbols.png`:
-its pixels on the frame's ground that aren't the ground's; the frame's
-pixels an icon has otherwise go with it), drawn over the frame; the icons
-stay whole in `elements.png`, which the original graphics draw.
+import puts the ring back. The element icons are taken apart at extraction
+(the user: "make the extract element icons transparent and borderless"):
+the frame they share is a picture (`element-frame.png`: each pixel the
+index most of the icons share, the rest of it the ground, its most common
+index) and a drawing (`element_frame`, 16x16: the ring and the ground in
+it, nothing round the ring, checked against the picture without the ground
+there); each icon in `elements.png`
+is its pixels that aren't the frame's, clear elsewhere: its symbol, and
+where an icon draws a pixel of the frame its own way (EXE6's and EXE5's
+fourth icon's inner corners, their no-element icon's top right), that
+pixel, so the original graphics draw the frame with the icon over it as
+the game's. The enhanced graphics and the app draw the frame's drawing
+with only the symbol's pixels inside the frame's ring over it (its ground
+there, not joined to its edge by ground). (EXE5's two icons no chip shows,
+the Program Advance's and the special family's, leave pixels clear where
+the frame has them: over the frame, they aren't the game's.)
 
 The drawings are drawn by hand, not read off the ROM: they live in the
 extractor's source (`crates/nettai-extract/shapes/<game>/`, a game's file

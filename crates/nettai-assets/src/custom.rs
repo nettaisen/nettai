@@ -340,13 +340,15 @@ pub struct CustomScreen {
     /// Chip codes as 8x16 glyphs (A..Z, '*', then one no chip has).
     pub codes: Tiles,
     /// Element icons (2x2) and the six colors each puts in palette 11
-    /// from color 10.
+    /// from color 10: each icon's symbol alone, clear elsewhere, where the
+    /// icons share a frame (`element_frame`); an icon whose own pixels of
+    /// the frame aren't the frame's keeps them, so the frame with the icon
+    /// over it is the game's icon.
     pub elements: Tiles,
     pub element_colors: Vec<[u16; 6]>,
-    /// The icons' symbols with their frame taken off (index 0 where it
-    /// was), where the frame is drawn as a shape (`shapes.element_frame`);
-    /// none: the icons stay whole.
-    pub element_symbols: Tiles,
+    /// The frame the icons share (2x2, its ground in it), in their
+    /// palettes; none: each icon is whole.
+    pub element_frame: Tiles,
     /// Damage digits as 8x16 glyphs: 0-9, then '?'.
     pub digits: Tiles,
     // ---- The slots.
@@ -393,6 +395,51 @@ pub struct CustomScreen {
 }
 
 impl CustomScreen {
+    /// Element icon `family`'s tiles as the game draws them: the frame
+    /// with the icon over it (`elements`, `element_frame`).
+    pub fn element_icon(&self, family: usize) -> Option<Tiles> {
+        let icon = self.elements.pixels.get(4 * family * Tiles::TILE..4 * (family + 1) * Tiles::TILE)?;
+        let pixels = match self.element_frame.pixels.get(..4 * Tiles::TILE) {
+            Some(frame) => icon.iter().zip(frame).map(|(&p, &f)| if p != 0 { p } else { f }).collect(),
+            None => icon.to_vec(),
+        };
+        Some(Tiles { pixels })
+    }
+
+    /// Which of an element icon's pixels (as its tiles hold them) are inside
+    /// the frame's ring: its ground there, not joined to the frame's edge
+    /// by ground (where the enhanced graphics show a symbol, over the
+    /// frame's drawing); none without a frame.
+    pub fn element_inside(&self) -> Option<Vec<bool>> {
+        let (ground, outside) = self.element_outside()?;
+        Some(self.element_frame.pixels.iter().zip(&outside).map(|(&p, &o)| p == ground && !o).collect())
+    }
+
+    /// The element frame's ground (its most common index), and which of its
+    /// pixels are that ground outside its ring (joined to its edge by ground:
+    /// the square round the ring, which the frame's drawing doesn't fill).
+    pub fn element_outside(&self) -> Option<(u8, Vec<bool>)> {
+        let frame = self.element_frame.pixels.get(..4 * Tiles::TILE)?;
+        // (A pixel's place in the tiles, by x and y.)
+        let at = |x: usize, y: usize| (2 * (y / 8) + x / 8) * Tiles::TILE + 8 * (y % 8) + x % 8;
+        let mut n = [0usize; 16];
+        for &p in frame {
+            n[p as usize & 15] += 1;
+        }
+        let ground = (0..16u8).max_by_key(|&k| (n[k as usize], std::cmp::Reverse(k)))?;
+        let mut outside = vec![false; 4 * Tiles::TILE];
+        let mut stack: Vec<(usize, usize)> = (0..16).flat_map(|k| [(k, 0), (k, 15), (0, k), (15, k)]).collect();
+        while let Some((x, y)) = stack.pop() {
+            let i = at(x, y);
+            if outside[i] || frame[i] != ground {
+                continue;
+            }
+            outside[i] = true;
+            stack.extend([(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)].into_iter().filter(|&(x, y)| x < 16 && y < 16));
+        }
+        Some((ground, outside))
+    }
+
     /// The window frame's first tile number (`window_tiles`).
     pub const WINDOW_TILE: u16 = 0x01;
     /// A form list name's tiles (9x2, `VersionPictures::form_names`).

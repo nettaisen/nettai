@@ -218,7 +218,7 @@ pub fn custom() -> CustomScreen {
         pictures: slot_pictures(),
         codes: tiles(56),
         elements: tiles(60),
-        element_symbols: Default::default(),
+        element_frame: Default::default(),
         element_colors: vec![[0x7c1f; 6]; 15],
         digits: tiles(22),
         slot_codes: tiles(56),
