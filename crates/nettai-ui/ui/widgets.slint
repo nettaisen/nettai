@@ -691,22 +691,25 @@ export component Stepper inherits Rectangle {
     }
 }
 
-// One of two: off and on, enhanced and original. Taken (Enter), Left and Right choose. The chosen half's
-// tint and underline slide across to the other.
+// One of two: off and on, enhanced and original; or of three, where it has a third. Taken (Enter), Left and Right
+// choose. The chosen part's tint and underline slide across to another.
 export component Seg inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> first;
     in property <string> second;
-    // 0 the first, 1 the second.
+    // (None: two.)
+    in property <string> third;
+    // 0 the first, 1 the second, 2 the third.
     in property <int> chosen;
     // Off: it can't be changed now (the focus passes it by), and says so by its look.
     in property <bool> enabled: true;
     out property <bool> focused: hit.focused;
     property <length> first-width: max(44px, a.preferred-width + 24px);
     property <length> second-width: max(44px, b.preferred-width + 24px);
+    property <length> third-width: root.third == "" ? 0px : max(44px, c.preferred-width + 24px) + 1px;
     height: 36px;
-    width: root.first-width + root.second-width + 1px;
+    width: root.first-width + root.second-width + 1px + root.third-width;
     horizontal-stretch: 0;
     Rectangle {
         background: Theme.inset;
@@ -721,10 +724,10 @@ export component Seg inherits Rectangle {
         enabled: root.enabled;
     }
 
-    // What marks the chosen half.
+    // What marks the chosen part.
     Rectangle {
-        x: root.chosen == 0 ? 0px : root.first-width + 1px;
-        width: root.chosen == 0 ? root.first-width : root.second-width;
+        x: root.chosen == 0 ? 0px : root.chosen == 1 ? root.first-width + 1px : root.first-width + root.second-width + 2px;
+        width: root.chosen == 0 ? root.first-width : root.chosen == 1 ? root.second-width : root.third-width - 1px;
         background: root.enabled ? Theme.tint : transparent;
         animate x, width {
             duration: Theme.brisk;
@@ -792,6 +795,39 @@ export component Seg inherits Rectangle {
         clicked => {
             Nav.point(root.nav, root.nav-index);
             Nav.choose(root.nav, root.nav-index, 1);
+        }
+    }
+
+    if root.third != "": Rectangle {
+        x: root.first-width + 1px + root.second-width;
+        width: 1px;
+        background: Theme.line;
+    }
+
+    c := Text {
+        visible: root.third != "";
+        x: root.first-width + root.second-width + 2px;
+        width: max(0px, root.third-width - 1px);
+        text: root.third;
+        color: root.chosen == 2 ? (root.enabled ? Theme.cursor : Theme.muted) : (root.enabled ? Theme.muted : Theme.dim);
+        font-family: Theme.display;
+        font-size: 13px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        animate color {
+            duration: Theme.brisk;
+        }
+    }
+
+    if root.third != "": TouchArea {
+        x: root.first-width + root.second-width + 2px;
+        width: root.third-width - 1px;
+        enabled: root.enabled;
+        clicked => {
+            Nav.point(root.nav, root.nav-index);
+            Nav.choose(root.nav, root.nav-index, 2);
         }
     }
 }

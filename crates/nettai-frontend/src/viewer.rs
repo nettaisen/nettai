@@ -3,7 +3,8 @@
 //! the replay's length and where each round starts as soon as it opens (the
 //! file marks them), seeks to any tick or time, goes five seconds or a
 //! round back or on, steps a frame either way, plays at four speeds, and
-//! shows either console, switched while it plays.
+//! shows either console or both on one screen ([`Viewer::set_both`]),
+//! switched while it plays.
 //!
 //! **A seek lands in the state playing straight there reaches**, all of
 //! it: the battle (its digest is straight playback's), what the drawing
@@ -43,12 +44,12 @@
 //! index is made elsewhere: a second viewer of the replay, on a thread of
 //! its own, plays it through ([`Viewer::index_part`]) and hands over the
 //! states it would keep, which the viewer watched takes in
-//! ([`Viewer::take_index`]). Or on three threads, as fast as the slowest
+//! ([`Viewer::take_index`]). Or on several threads, as fast as the slowest
 //! of them: a silent viewer plays the battle on one
 //! ([`Viewer::index_battle`]: the states without their sound, and each
-//! tick's cues for each console), each console's sound plays those cues on
-//! one of its own ([`ConsoleSound`]) and puts its sound into the states,
-//! and the parts go from one to the next as they are made. The replay plays
+//! tick's cues for each of the viewer's sounds, [`SOUNDS`]), each sound
+//! plays its cues on one of its own ([`ConsoleSound`]) and puts itself into
+//! the states, and the parts go from one to the next as they are made. The replay plays
 //! the same anywhere, so they are the states the viewer makes itself, and
 //! its own thread spends nothing on them. The figures measured on a game's
 //! own packs are docs/frontend.md's (§8, "Seeking").
@@ -75,7 +76,7 @@ use nettai_battle::content::Content;
 use nettai_battle::{Battle, BattleResult, RoundEnd, Snapshot};
 use nettai_render::hud::HudState;
 use nettai_render::vfont::TextRenderer;
-use nettai_render::{Frame, Renderer};
+use nettai_render::{Consoles, Frame, Renderer};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -131,8 +132,8 @@ struct State {
     battle: Snapshot,
     /// By side.
     huds: [HudState; 2],
-    /// By side; none: a silent viewer.
-    audio: Option<[BattleAudio; 2]>,
+    /// By sound ([`SOUNDS`]); none: a silent viewer.
+    audio: Option<[BattleAudio; SOUNDS]>,
     /// The session's: why it stopped, if it had, whether that was the
     /// replay's end, and the set's result.
     stopped: Option<String>,
@@ -165,26 +166,26 @@ impl IndexPart {
 }
 
 /// The battle's share of a part of a replay's index, made by a silent
-/// viewer for each console's sound to be made elsewhere
-/// ([`Viewer::index_battle`]): the states kept to seek from in the ticks it
-/// played, without their sound, and each tick's sound cues for each
-/// console, which are all a console's sound is made of. Each console's
-/// sound plays the part ([`ConsoleSound::play`]) and puts in its sound at
-/// each state; then it is the part a viewer that makes its own sound makes
+/// viewer for each sound to be made elsewhere ([`Viewer::index_battle`]):
+/// the states kept to seek from in the ticks it played, without their
+/// sound, and each tick's sound cues for each of the viewer's sounds
+/// ([`SOUNDS`]), which are all a sound is made of. Each sound plays the
+/// part ([`ConsoleSound::play`]) and puts itself in at each state; then it
+/// is the part a viewer that makes its own sound makes
 /// ([`BattlePart::into_part`]).
 pub struct BattlePart {
     part: IndexPart,
-    /// The tick it starts at: the ticks a console's sound is to have played
-    /// before it.
+    /// The tick it starts at: the ticks a sound is to have played before
+    /// it.
     from: u32,
-    /// By side: the cues of the part's ticks, all in a row.
-    cues: [Vec<SoundCue>; 2],
-    /// Where each tick's cues end in them, by side.
-    ends: Vec<[u32; 2]>,
+    /// By sound: the cues of the part's ticks, all in a row.
+    cues: [Vec<SoundCue>; SOUNDS],
+    /// Where each tick's cues end in them, by sound.
+    ends: Vec<[u32; SOUNDS]>,
     /// The part's ticks played before each state was kept.
     kept_after: Vec<u32>,
-    /// By side: the console's sound at each state, once it played the part.
-    sounds: [Option<Vec<BattleAudio>>; 2],
+    /// By sound: the sound at each state, once it played the part.
+    sounds: [Option<Vec<BattleAudio>>; SOUNDS],
 }
 
 impl BattlePart {
@@ -198,35 +199,34 @@ impl BattlePart {
         self.part.whole
     }
 
-    /// The part of the index, its states with both consoles' sound once
-    /// both played it: what a viewer making its own sound makes
-    /// ([`Viewer::index_part`]). Where neither did (a replay watched
-    /// without sound), its states have none.
+    /// The part of the index, its states with every sound once each played
+    /// it: what a viewer making its own sound makes ([`Viewer::index_part`]).
+    /// Where none did (a replay watched without sound), its states have
+    /// none.
     pub fn into_part(self) -> IndexPart {
         let BattlePart { mut part, sounds, .. } = self;
-        match sounds {
-            [Some(left), Some(right)] => {
-                for (state, sound) in part.states.iter_mut().zip(left.into_iter().zip(right)) {
-                    state.audio = Some(sound.into());
-                }
-            }
-            [None, None] => {}
-            _ => panic!("one console's sound played a part of the index and the other's didn't"),
+        if sounds.iter().all(Option::is_none) {
+            return part;
+        }
+        let mut sounds = sounds.map(|s| s.expect("every sound played the part of the index, or none").into_iter());
+        for state in &mut part.states {
+            state.audio = Some(sounds.each_mut().map(|s| s.next().expect("a sound at each state")));
         }
         part
     }
 }
 
-/// One console's sound, made apart from the battle for a replay's index: it
-/// plays the cues a silent viewer's parts carry for its console
-/// ([`Viewer::index_battle`]), each tick as a viewer's own sound plays them
-/// (the tick's cues, then the frame, its samples made and not heard), and
-/// puts its sound as it stands at each state kept into the part. The sound
-/// takes nothing else from the battle: a host has each console's played on
-/// a thread of its own beside the battle's, and the parts it hands over are
-/// the ones a viewer that makes its own sound makes.
+/// One of a viewer's sounds ([`SOUNDS`]: a console's, or a side's own
+/// effects), made apart from the battle for a replay's index: it plays the
+/// cues a silent viewer's parts carry for it ([`Viewer::index_battle`]),
+/// each tick as a viewer's own sound plays them (the tick's cues, then the
+/// frame, its samples made and not heard), and puts itself as it stands at
+/// each state kept into the part. The sound takes nothing else from the
+/// battle: a host has each played on a thread of its own beside the
+/// battle's, and the parts it hands over are the ones a viewer that makes
+/// its own sound makes.
 pub struct ConsoleSound {
-    side: u8,
+    sound: usize,
     audio: BattleAudio,
     /// The ticks it has played.
     at: u32,
@@ -234,26 +234,26 @@ pub struct ConsoleSound {
 }
 
 impl ConsoleSound {
-    /// Each console's sound at a replay's start, as a viewer opened on
-    /// `game` has it ([`Viewer::open`]); none where the game's sound isn't
+    /// Each of a viewer's sounds at a replay's start, as a viewer opened on
+    /// `game` has them ([`Viewer::open`]); none where the game's sound isn't
     /// loaded.
-    pub fn of(game: &Loaded) -> Option<[ConsoleSound; 2]> {
-        sound_of(game).map(ConsoleSound::both)
+    pub fn of(game: &Loaded) -> Option<[ConsoleSound; SOUNDS]> {
+        sound_of(game).map(ConsoleSound::all)
     }
 
-    /// Each console's sound at a replay's start, as a viewer given `audio`
-    /// has it ([`Viewer::with`]).
-    pub fn both(audio: BattleAudio) -> [ConsoleSound; 2] {
-        [0, 1].map(|side| ConsoleSound { side, audio: audio.clone(), at: 0, scratch: Vec::new() })
+    /// Each of a viewer's sounds at a replay's start, as a viewer given
+    /// `audio` has them ([`Viewer::with`]).
+    pub fn all(audio: BattleAudio) -> [ConsoleSound; SOUNDS] {
+        std::array::from_fn(|sound| ConsoleSound { sound, audio: audio.clone(), at: 0, scratch: Vec::new() })
     }
 
-    /// Play `part`'s ticks, each tick's cues for this console and then its
+    /// Play `part`'s ticks, each tick's cues for this sound and then its
     /// frame, and put the sound as it stands after each state's tick into
     /// the part. The parts in the order they were made, from the replay's
     /// start.
     pub fn play(&mut self, part: &mut BattlePart) {
-        assert_eq!(part.from, self.at, "a console's sound plays the parts in order");
-        let side = self.side as usize;
+        assert_eq!(part.from, self.at, "a sound plays the parts in order");
+        let side = self.sound;
         let mut sounds = Vec::with_capacity(part.kept_after.len());
         let mut kept = part.kept_after.iter().copied().peekable();
         let mut start = 0;
@@ -296,14 +296,17 @@ pub struct Viewer {
     session: Session,
     renderer: Renderer,
     text: Option<TextRenderer>,
-    /// Each console's sound, by side (none: silent). Both run every tick.
-    audio: Option<[BattleAudio; 2]>,
+    /// Each of its sounds ([`SOUNDS`]: each console's, each side's own
+    /// effects; none: silent). All run every tick.
+    audio: Option<[BattleAudio; SOUNDS]>,
     /// The host's levels for the sound, the music's and the effects'
     /// ([`Viewer::set_sound_levels`]): the viewer's, whatever state it is
     /// put back to.
     levels: (f32, f32),
-    /// The side whose console is shown.
+    /// The side whose console is shown (on a screen of both, the left).
     view: u8,
+    /// Both consoles on one screen ([`Viewer::set_both`]).
+    both: bool,
     /// The replay's ticks, how its input ends, and what it says of
     /// itself.
     length: u32,
@@ -330,12 +333,63 @@ pub struct Viewer {
     paused: bool,
     speed: Speed,
     clock: Clock,
-    /// The sound of the ticks played since the host last took it, by side.
-    samples: [Vec<[f32; 2]>; 2],
-    /// A tick's samples as the sound makes them, and by side those of a
-    /// group not yet whole at a speed above the original's.
-    scratch: Vec<[f32; 2]>,
-    group: [Vec<[f32; 2]>; 2],
+    /// The sound of the ticks played since the host last took it: each
+    /// console's, by side, then both consoles' on one screen's (`BOTH`).
+    samples: [Vec<[f32; 2]>; 3],
+    /// A tick's samples as each sound makes them (by sound), a tick's cues
+    /// for one, and the samples of a group not yet whole at a speed above
+    /// the original's (as `samples`).
+    ticks: [Vec<[f32; 2]>; SOUNDS],
+    cues: Vec<SoundCue>,
+    group: [Vec<[f32; 2]>; 3],
+}
+
+/// The viewer's sounds, all running every tick so that what is heard after
+/// a seek or a change of view is what was heard there the first time: each
+/// console's, by side (0, 1); and each side's own effects, by side (2, 3):
+/// the effects its console plays that the other console doesn't play that
+/// tick ([`own_effects`]), on a sound of their own that plays nothing else
+/// (its console's stop of all sound too). A screen of both consoles is
+/// heard as the left console's sound with the right side's own effects
+/// over it ([`Viewer::set_both`]: the user's "music follows the left
+/// console", each effect once).
+pub const SOUNDS: usize = 4;
+
+/// Which of `samples` holds the sound of both consoles on one screen.
+const BOTH: usize = 2;
+
+/// The cues of the viewer's sound `sound` ([`SOUNDS`]) on the tick `b` ran,
+/// appended to `out`.
+fn sound_cues(b: &Battle, sound: usize, out: &mut Vec<SoundCue>) {
+    match sound {
+        0 | 1 => out.extend_from_slice(b.sound_cues_for(sound as u8)),
+        _ => {
+            let side = (sound - 2) as u8 & 1;
+            own_effects(b.sound_cues_for(side), b.sound_cues_for(side ^ 1), out);
+        }
+    }
+}
+
+/// The effects of a console's cues `mine` that the other console's `theirs`
+/// don't play (each of theirs taking one of mine), and its stops of all
+/// sound, appended to `out`: what a side's own effects' sound plays.
+fn own_effects(mine: &[SoundCue], theirs: &[SoundCue], out: &mut Vec<SoundCue>) {
+    let mut taken = vec![false; theirs.len()];
+    for &cue in mine {
+        match cue {
+            SoundCue::Effect(_) => match theirs.iter().enumerate().position(|(k, &c)| c == cue && !taken[k]) {
+                Some(k) => taken[k] = true,
+                None => out.push(cue),
+            },
+            SoundCue::StopMusic => out.push(cue),
+            _ => {}
+        }
+    }
+}
+
+/// `a` and `b`'s samples together, a sample of each at a time.
+fn mixed(a: &[[f32; 2]], b: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    a.iter().zip(b).map(|(a, b)| [(a[0] + b[0]).clamp(-1.0, 1.0), (a[1] + b[1]).clamp(-1.0, 1.0)]).collect()
 }
 
 // (A viewer borrows nothing: a host's state of any lifetime holds one.)
@@ -375,9 +429,10 @@ impl Viewer {
             session,
             renderer,
             text,
-            audio: audio.map(|a| [a.clone(), a]),
+            audio: audio.map(|a| std::array::from_fn(|_| a.clone())),
             levels: (1.0, 1.0),
             view,
+            both: false,
             length: replay.ticks.len() as u32,
             end: replay.end,
             info: replay.info.clone(),
@@ -392,7 +447,8 @@ impl Viewer {
             speed: Speed::Normal,
             clock: Clock::new(),
             samples: Default::default(),
-            scratch: Vec::new(),
+            ticks: Default::default(),
+            cues: Vec::new(),
             group: Default::default(),
         };
         viewer.keyframes.push(viewer.state());
@@ -618,8 +674,9 @@ impl Viewer {
     }
 
     /// Show `side`'s console from now on: its picture, its HUD and its
-    /// sound, each as a viewer shown from that side all along has them.
-    /// False for a side a match doesn't have.
+    /// sound, each as a viewer shown from that side all along has them (on
+    /// a screen of both, `side`'s on the left). False for a side a match
+    /// doesn't have.
     pub fn set_view(&mut self, side: u8) -> bool {
         if side > 1 {
             return false;
@@ -633,6 +690,23 @@ impl Viewer {
             self.settle();
         }
         true
+    }
+
+    /// Whether both consoles are shown on one screen.
+    pub fn both(&self) -> bool {
+        self.both
+    }
+
+    /// Show both consoles on one screen from now on (`nettai_render::Consoles::Both`), the side shown's on the left,
+    /// or (false) its console alone. On a screen of both the sound heard is both consoles' (`take_samples`): the
+    /// left console's, its music and all, with the right side's own effects over it ([`SOUNDS`]), as a viewer shown
+    /// so all along has it: every sound runs every tick.
+    pub fn set_both(&mut self, both: bool) {
+        if both != self.both {
+            self.both = both;
+            self.renderer.consoles = if both { Consoles::Both } else { Consoles::One };
+            self.settle();
+        }
     }
 
     // ---- Indexing ahead ----------------------------------------------------
@@ -696,17 +770,17 @@ impl Viewer {
     /// own, the parts going from one to the next as they are made.
     pub fn index_battle(&mut self, ticks: u32) -> BattlePart {
         let from = self.position();
-        let (mut cues, mut ends, mut kept_after) = (<[Vec<SoundCue>; 2]>::default(), Vec::new(), Vec::new());
+        let (mut cues, mut ends, mut kept_after) = (<[Vec<SoundCue>; SOUNDS]>::default(), Vec::new(), Vec::new());
         let part = self.index_ticks(ticks, |ticked, ran, kept| {
-            for (side, cues) in cues.iter_mut().enumerate() {
-                cues.extend_from_slice(ticked.sound_cues_for(side as u8));
+            for (sound, cues) in cues.iter_mut().enumerate() {
+                sound_cues(ticked, sound, cues);
             }
             ends.push(cues.each_ref().map(|c| c.len() as u32));
             if kept {
                 kept_after.push(ran);
             }
         });
-        BattlePart { part, from, cues, ends, kept_after, sounds: [None, None] }
+        BattlePart { part, from, cues, ends, kept_after, sounds: Default::default() }
     }
 
     /// Play up to `ticks` ticks on from where the viewer is, the states it
@@ -788,18 +862,23 @@ impl Viewer {
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
     }
 
-    /// The picture `side`'s console shows now, 240x160, with nothing over it: [`Viewer::frame`] for the side shown,
-    /// the other's as [`Viewer::present_view`] draws it.
+    /// The picture `side`'s console shows now, 240x160, with nothing over it: its own screen, whether or not the
+    /// viewer shows both on one ([`Viewer::frame`] for the side shown on its own, the other's as
+    /// [`Viewer::present_view`] draws it).
     pub fn frame_view(&mut self, side: u8) -> Frame {
-        if side == self.view || side > 1 {
-            return self.frame();
-        }
-        // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
-        swap_huds(&mut self.renderer);
-        self.session.battle.setup.local_side = side;
-        let frame = self.renderer.render(&self.session.battle);
-        self.session.battle.setup.local_side = self.view;
-        swap_huds(&mut self.renderer);
+        let consoles = std::mem::replace(&mut self.renderer.consoles, Consoles::One);
+        let frame = if side == self.view || side > 1 {
+            self.renderer.render(&self.session.battle)
+        } else {
+            // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
+            swap_huds(&mut self.renderer);
+            self.session.battle.setup.local_side = side;
+            let frame = self.renderer.render(&self.session.battle);
+            self.session.battle.setup.local_side = self.view;
+            swap_huds(&mut self.renderer);
+            frame
+        };
+        self.renderer.consoles = consoles;
         frame
     }
 
@@ -812,10 +891,12 @@ impl Viewer {
 
     /// The sound of the ticks played since the last call, appended to
     /// `out`: stereo samples at `nettai_audio::SAMPLE_RATE`, about 549 a
-    /// tick at the original's speed. Nothing from a silent viewer, and
-    /// nothing of the ticks a seek passed over.
+    /// tick at the original's speed: the console shown's, or on a screen of
+    /// both both consoles' ([`Viewer::set_both`]). Nothing from a silent
+    /// viewer, and nothing of the ticks a seek passed over.
     pub fn take_samples(&mut self, out: &mut Vec<[f32; 2]>) {
-        out.append(&mut self.samples[self.view as usize]);
+        let shown = if self.both { BOTH } else { self.view as usize };
+        out.append(&mut self.samples[shown]);
     }
 
     /// The sound `side`'s console played in the ticks played since the
@@ -880,9 +961,11 @@ impl Viewer {
     }
 
     /// One tick of the replay: the battle's, then both consoles' HUD
-    /// states and sounds; with `heard`, each console's sound is kept for
-    /// the host. Nothing of it is kept to seek from. False, and nothing
-    /// runs, at the end or where the engine stopped.
+    /// states and every sound ([`SOUNDS`]); with `heard`, each console's
+    /// sound is kept for the host, and on a screen of both, both consoles'
+    /// (the left's and the right side's own effects). Nothing of it is kept
+    /// to seek from. False, and nothing runs, at the end or where the
+    /// engine stopped.
     fn play(&mut self, heard: bool) -> bool {
         if self.at_end() || !self.session.step(0) {
             // (The engine stopping is the end of what there is to index.)
@@ -901,12 +984,21 @@ impl Viewer {
         self.renderer.observe(&self.session.battle);
         if let Some(audio) = &mut self.audio {
             let ticked = ticked(&self.session);
-            for (side, sound) in audio.iter_mut().enumerate() {
-                sound.handle(ticked.sound_cues_for(side as u8));
-                self.scratch.clear();
-                sound.tick(&mut self.scratch);
-                if heard {
-                    hear(&self.scratch, speed, &mut self.group[side], &mut self.samples[side]);
+            for (k, sound) in audio.iter_mut().enumerate() {
+                self.cues.clear();
+                sound_cues(ticked, k, &mut self.cues);
+                sound.handle(&self.cues);
+                self.ticks[k].clear();
+                sound.tick(&mut self.ticks[k]);
+            }
+            if heard {
+                for side in 0..2 {
+                    hear(&self.ticks[side], speed, &mut self.group[side], &mut self.samples[side]);
+                }
+                if self.both {
+                    let left = self.view as usize & 1;
+                    let both = mixed(&self.ticks[left], &self.ticks[2 + (left ^ 1)]);
+                    hear(&both, speed, &mut self.group[BOTH], &mut self.samples[BOTH]);
                 }
             }
         }
@@ -1000,7 +1092,7 @@ fn put(
     state: &State,
     session: &mut Session,
     renderer: &mut Renderer,
-    audio: &mut Option<[BattleAudio; 2]>,
+    audio: &mut Option<[BattleAudio; SOUNDS]>,
     view: u8,
     rounds: &[u32],
 ) {

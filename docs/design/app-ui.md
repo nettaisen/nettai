@@ -2299,9 +2299,11 @@ DUPLICATE and DELETE.
   row has those two, the Range's list (the whole match; each round where there is more than one; Custom, the last
   range of the player's own, "Custom · 0:12"), the range's times ("00:41–00:53"), CANCEL (CLOSE once saved) and
   EXPORT. Over the transport a panel of the options: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
-  first), View (the viewer's side, which it follows), Sides (One, or Both side by side, the View's at the left: the
-  user, "add support for two sided side by side export"; with Both a sound track a side, the left's first: "for 2
-  sided replays, audio track 1 should be left player audio, audio track 2 should be right player audio"), Save as;
+  first), View (the viewer's side, which it follows), Sides (One; Both, both players on one screen, the View's at
+  the left, one sound track, the user: "how could you render a dual perspective replay on a single screen?"; or
+  Side by side, the View's at the left: the user, "add support for two sided side by side export"; side by side a
+  sound track a side, the left's first: "for 2 sided replays, audio track 1 should be left player audio, audio
+  track 2 should be right player audio"), Save as;
   under them the progress bar and its line, which says to drag the handles while nothing exports. A range of the
   player's own names the file "… part 01.02–01.15". Esc or B stops an export under way, else leaves the mode; while
   it is on the controls stay shown. On a phone the range's rows are under the transport's buttons and the options

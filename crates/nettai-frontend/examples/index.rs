@@ -1,14 +1,14 @@
 //! A replay's index made on threads, measured on a game's real packs: on
 //! one thread, a viewer making its own sound as it goes
-//! ([`Viewer::index_part`]), and on three, wired as the app wires them
+//! ([`Viewer::index_part`]), and on several, wired as the app wires them
 //! (crates/nettai/src/screens/replays/indexing.rs): the battle's on one (a
-//! silent viewer, [`Viewer::index_battle`]) and each console's sound on one
-//! of its own ([`ConsoleSound::play`]), the parts going from one to the next
-//! as they are made. Each index is taken in by a viewer here as it comes,
-//! as the app's window takes it in. It says the wall's time for each
+//! silent viewer, [`Viewer::index_battle`]) and each of the viewer's sounds
+//! on one of its own ([`ConsoleSound::play`]), the parts going from one to
+//! the next as they are made. Each index is taken in by a viewer here as it
+//! comes, as the app's window takes it in. It says the wall's time for each
 //! (opening the thread's viewer, then indexing) and the ticks a second,
-//! and the battle's share alone (a silent viewer), which three threads go
-//! at most as fast as.
+//! and the battle's share alone (a silent viewer), which the threads go at
+//! most as fast as.
 //!
 //! Then it checks that the two made the same index: at every state kept,
 //! each viewer sought there is the same battle, and both consoles' sound
@@ -62,38 +62,38 @@ fn on_one(game: &Loaded, replay: &Replay, v: &mut Viewer) -> Result<Took, String
     Ok(Took { open, index: began.elapsed() - open })
 }
 
-/// The index made on three threads: a silent viewer playing the battle
-/// through, each console's sound on a thread of its own; taken in by `v`.
+/// The index made on threads: a silent viewer playing the battle through,
+/// each of the viewer's sounds on a thread of its own; taken in by `v`.
 fn on_three(game: &Loaded, replay: &Replay, v: &mut Viewer) -> Result<Took, String> {
     let (send, parts) = mpsc::channel::<IndexPart>();
-    let (to_left, left_gets) = mpsc::sync_channel::<BattlePart>(4);
-    let (to_right, right_gets) = mpsc::sync_channel::<BattlePart>(4);
     let began = Instant::now();
-    let [mut left, mut right] = ConsoleSound::of(game).ok_or("the game's sound isn't loaded")?;
+    let sounds = ConsoleSound::of(game).ok_or("the game's sound isn't loaded")?;
     let open = std::thread::scope(|scope| {
-        scope.spawn(move || {
-            for mut part in right_gets {
-                right.play(&mut part);
-                if send.send(part.into_part()).is_err() {
-                    return;
+        // (Each sound's thread hands its parts to the next's; the last sends them on whole.)
+        let (to_first, mut gets) = mpsc::sync_channel::<BattlePart>(4);
+        let count = sounds.len();
+        for (k, mut sound) in sounds.into_iter().enumerate() {
+            let (to_next, next_gets) = mpsc::sync_channel::<BattlePart>(4);
+            let from = std::mem::replace(&mut gets, next_gets);
+            let send = send.clone();
+            scope.spawn(move || {
+                for mut part in from {
+                    sound.play(&mut part);
+                    let sent = if k + 1 == count { send.send(part.into_part()).is_ok() } else { to_next.send(part).is_ok() };
+                    if !sent {
+                        return;
+                    }
                 }
-            }
-        });
-        scope.spawn(move || {
-            for mut part in left_gets {
-                left.play(&mut part);
-                if to_right.send(part).is_err() {
-                    return;
-                }
-            }
-        });
+            });
+        }
+        drop((send, gets));
         let thread = scope.spawn(move || -> Result<Duration, String> {
             let mut silent = Viewer::with(&game.game.content, replay, None, game.renderer(), None, None).map_err(|e| e.to_string())?;
             let open = began.elapsed();
             loop {
                 let part = silent.index_battle(PART);
                 let whole = part.whole();
-                if to_left.send(part).is_err() || whole {
+                if to_first.send(part).is_err() || whole {
                     return Ok(open);
                 }
             }
@@ -107,7 +107,7 @@ fn on_three(game: &Loaded, replay: &Replay, v: &mut Viewer) -> Result<Took, Stri
 }
 
 /// The battle's share alone, on this thread: a silent viewer playing the
-/// replay through, its parts thrown away (what three threads go at most as
+/// replay through, its parts thrown away (what the threads go at most as
 /// fast as).
 fn battle_alone(game: &Loaded, replay: &Replay) -> Result<Duration, String> {
     let mut silent = Viewer::with(&game.game.content, replay, None, game.renderer(), None, None).map_err(|e| e.to_string())?;

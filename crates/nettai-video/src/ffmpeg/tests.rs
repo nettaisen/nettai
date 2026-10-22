@@ -229,7 +229,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     // (59 frames in: the tick before its first).
     let second = replay.round_starts()[1];
     let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
-    let both = Options { scale: 1, view: None, sides: Sides::Both, part: Part::Ticks(second - 60..second + 60), titles };
+    let both = Options { scale: 1, view: None, sides: Sides::SideBySide, part: Part::Ticks(second - 60..second + 60), titles };
     write_mp4(&mut viewer(&content, &replay, 1), &both, &Encoding::default(), std::fs::File::create(dir.join("both.mp4")).unwrap(), &mut |_| ControlFlow::Continue(())).unwrap();
     let entries = "stream=codec_type,codec_name:stream_disposition=default:stream_tags=name,handler_name";
     let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();

@@ -925,7 +925,7 @@ impl Replays {
         let Ok(summary) = &entry.read else { return shell.sound.play(Cue::Refused) };
         w.hide_builds(shell);
         let (path, side) = (w.path().to_path_buf(), w.side());
-        self.export = Some(Export::open(shell, &path, summary, side));
+        self.export = Some(Export::open(shell, &path, summary, side, w.both()));
         self.hud = None;
         shell.nav.focus("export.handle", 0);
     }
@@ -1286,9 +1286,10 @@ impl Screen for Replays {
                 None => {}
             },
             (Some(w), "speed") => w.choose_speed(shell, choice),
-            // (The side's menu: the side shown; in the export mode, the side exported with it.)
+            // (The side's menu: the side shown, or both on one screen; in the export mode, the side exported with
+            // it.)
             (Some(w), "side") => {
-                w.set_view(shell, choice);
+                w.choose_side(shell, choice);
                 if let Some(e) = &mut self.export {
                     e.set_side(shell, w.side());
                 }

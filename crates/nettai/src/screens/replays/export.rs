@@ -34,6 +34,9 @@ use std::sync::{Arc, Mutex};
 const SIZES: [u32; 3] = [2, 4, 6];
 const FIRST_SIZE: usize = 1;
 
+/// The sides offered, in the Sides switch's order: One, Both (on one screen), Side by side.
+const SIDES: [Sides; 3] = [Sides::One, Sides::Both, Sides::SideBySide];
+
 /// Where the folder last exported to is remembered (the settings' `remembered`).
 const FOLDER: &str = "replays.export-folder";
 
@@ -80,9 +83,10 @@ pub struct Export {
     size: usize,
     /// The console exported: the viewer's, which it follows.
     side: u8,
-    /// Both consoles side by side (`side`'s at the left, its sound the first track, the other's the second), or
-    /// `side`'s alone.
-    both: bool,
+    /// `side`'s console alone, both consoles on one screen (`side`'s at the left, one sound track: both consoles'),
+    /// or both side by side (`side`'s at the left, its sound the first track, the other's the second); by its place
+    /// among [`SIDES`].
+    sides: usize,
     /// The ticks exported: the start before the end, both within the replay.
     range: Range<u32>,
     /// The last range of the player's own (no round, not the whole match), which the Range's list offers as Custom.
@@ -177,14 +181,15 @@ pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) 
 }
 
 impl Export {
-    /// Begin the export mode for the replay at `replay`, shown from `side`, the whole match chosen.
-    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8) -> Export {
+    /// Begin the export mode for the replay at `replay`, shown from `side` (`both`: both consoles on one screen),
+    /// the whole match chosen, the sides as the viewer shows them.
+    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, both: bool) -> Export {
         let mut export = Export {
             replay: replay.to_path_buf(),
             summary: summary.clone(),
             size: FIRST_SIZE,
             side: side.min(1),
-            both: false,
+            sides: SIDES.iter().position(|&s| s == if both { Sides::Both } else { Sides::One }).unwrap_or(0),
             range: 0..summary.ticks.max(1),
             custom: None,
             to: PathBuf::new(),
@@ -307,9 +312,9 @@ impl Export {
         true
     }
 
-    /// A size as the video's pixels and the multiple of the frame: with both sides, twice as wide.
-    fn size_label(size: u32, both: bool) -> String {
-        format!("{} × {} ({size}×)", 240 * size * (1 + both as u32), 160 * size)
+    /// A size as the video's pixels and the multiple of the frame: with both side by side, twice as wide.
+    fn size_label(size: u32, sides: Sides) -> String {
+        format!("{} × {} ({size}×)", 240 * size * sides.count() as u32, 160 * size)
     }
 
     /// Name the file, unless the player chose its place: the day it was played, the opponent and the part, in
@@ -333,8 +338,10 @@ impl Export {
                 stem.push_str(&format!(" part {}–{}", at(self.range.start), at(self.range.end)));
             }
         }
-        if self.both {
-            stem.push_str(" both sides");
+        match SIDES[self.sides] {
+            Sides::One => {}
+            Sides::Both => stem.push_str(" both"),
+            Sides::SideBySide => stem.push_str(" side by side"),
         }
         self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !nettai_platform::fs::exists(p)).expect("some number is free");
     }
@@ -343,9 +350,9 @@ impl Export {
     pub fn show(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
-        view.set_export_size(Export::size_label(SIZES[self.size], self.both).into());
+        view.set_export_size(Export::size_label(SIZES[self.size], SIDES[self.sides]).into());
         view.set_export_view(self.side as i32);
-        view.set_export_sides(self.both as i32);
+        view.set_export_sides(self.sides as i32);
         view.set_export_part(self.label(&view, &self.range).into());
         let at = |tick: u32| clock(time_of(tick as u64), true);
         view.set_export_range(format!("{}–{}", at(self.range.start), at(self.range.end)).into());
@@ -378,9 +385,9 @@ impl Export {
         self.set_range(shell, range);
     }
 
-    /// Both consoles side by side, or the view's alone (the file's name says which).
-    fn set_both(&mut self, shell: &mut Shell, both: bool) {
-        self.both = both;
+    /// The sides exported, by their place among [`SIDES`] (the file's name says which).
+    fn set_sides(&mut self, shell: &mut Shell, sides: usize) {
+        self.sides = sides.min(SIDES.len() - 1);
         self.name(shell);
         self.show(shell);
     }
@@ -390,7 +397,7 @@ impl Export {
         match what {
             "cancel" => return self.back(shell),
             "go" => self.start(shell),
-            "size" if self.open_to_change() => shell.pick("export.size", 0, SIZES.iter().map(|&s| Export::size_label(s, self.both)).collect(), self.size),
+            "size" if self.open_to_change() => shell.pick("export.size", 0, SIZES.iter().map(|&s| Export::size_label(s, SIDES[self.sides])).collect(), self.size),
             "part" if self.open_to_change() => {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
@@ -399,7 +406,7 @@ impl Export {
                 let options = choices.iter().map(|range| self.label(&view, range)).collect();
                 shell.pick("export.part", 0, options, chosen);
             }
-            "sides" if self.open_to_change() => self.set_both(shell, !self.both),
+            "sides" if self.open_to_change() => self.set_sides(shell, (self.sides + 1) % SIDES.len()),
             "path" if self.open_to_change() => {
                 let kind = shell.ui().global::<ReplaysView>().get_video_kind();
                 if let Some(mut to) = choose(&kind, &self.to) {
@@ -422,7 +429,7 @@ impl Export {
         }
         match what {
             "size" => self.size = (self.size as i32 + by).clamp(0, SIZES.len() as i32 - 1) as usize,
-            "sides" => return self.set_both(shell, by > 0),
+            "sides" => return self.set_sides(shell, (self.sides as i32 + by.signum()).clamp(0, SIDES.len() as i32 - 1) as usize),
             _ => {}
         }
         self.show(shell);
@@ -435,7 +442,7 @@ impl Export {
         }
         match what {
             "size" => self.size = choice.clamp(0, SIZES.len() as i32 - 1) as usize,
-            "sides" => return self.set_both(shell, choice > 0),
+            "sides" => return self.set_sides(shell, choice.max(0) as usize),
             "part" => return self.set_choice(shell, choice.max(0) as usize),
             _ => {}
         }
@@ -493,7 +500,7 @@ impl Export {
         };
         // What the thread plays from: the game as the window shows it, shared.
         let game = game_for_thread(shell, &ready, true);
-        let sides = if self.both { Sides::Both } else { Sides::One };
+        let sides = SIDES[self.sides];
         // The chapters ("Round 1"...) and the sound's tracks (each side's player) in the words the window shows.
         let titles = {
             let ui = shell.ui();
@@ -677,7 +684,9 @@ mod tests {
     fn the_sizes_are_even() {
         assert!(SIZES.iter().all(|s| s % 2 == 0));
         assert_eq!(SIZES[FIRST_SIZE], 4);
-        assert_eq!(Export::size_label(4, false), "960 × 640 (4×)");
-        assert_eq!(Export::size_label(4, true), "1920 × 640 (4×)");
+        assert_eq!(Export::size_label(4, Sides::One), "960 × 640 (4×)");
+        assert_eq!(Export::size_label(4, Sides::Both), "960 × 640 (4×)");
+        assert_eq!(Export::size_label(4, Sides::SideBySide), "1920 × 640 (4×)");
+        assert_eq!(SIDES, [Sides::One, Sides::Both, Sides::SideBySide], "the Sides switch's order");
     }
 }

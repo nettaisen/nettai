@@ -3360,7 +3360,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   each row: `check`, drawn at its right; `dim`; `line`, over a group's first; `value`, a choice's value at its right
   in the muted color), 264 wide with its right edge at the button's, over it where there is more room (as it is at
   the window's foot), heard as `more`. Its rows are `viewer::MENU`'s, made by `Watching::menu` as it opens and done
-  by `Watching::choose`: PLAYER (the side shown at its right; it opens P1 and P2 in its place, `Watching::side_menu`, the one shown checked: `set_view`); BUILDS, INPUT DISPLAY and OTHER SIDE'S
+  by `Watching::choose`: PLAYER (the side shown at its right; it opens P1, P2 and Both in its place, `Watching::side_menu`, the one shown checked: `Watching::choose_side`; Both is both players on one screen, the side shown's at the left, heard as its console with the right side's own effects over it: docs/frontend.md §3, "Both on one screen"); BUILDS, INPUT DISPLAY and OTHER SIDE'S
   PICTURE (each checked while on); PLAYBACK SPEED, the speed set as its value, which opens the speeds' own menu in
   its place (`Watching::speed_menu`, the same picker by ⋯, ½×, 1×, 2×, 4× with the one set checked, heard as
   `speed`: `choose_speed`; the focus is put on ⋯ first, for that menu to give it back to); and EXPORT VIDEO, which
@@ -3443,12 +3443,13 @@ screen runs the ticks due, presents the picture into the window's texture if one
   (`screens/replays/indexing.rs`, `Indexing`), three since the user said "the preload still seems slower than it
   should be?" and approved "run each player's sound on its own thread beside the game's thread": a second `Viewer`
   of it, silent, plays the battle through on one a part of 240 ticks at a time (`Viewer::index_battle`: the states
-  kept without their sound, and each tick's sound cues for each console), each console's sound plays those cues on
-  one of its own (`ConsoleSound::play`, as a viewer opened on the game's sound has it, `export::game_for_thread`;
-  made and never heard, so that the states hold it) and puts its sound into the part's states, and the parts go from
+  kept without their sound, and each tick's sound cues for each of the viewer's sounds: each console's and each
+  side's own effects), each sound plays those cues on one of its own (`ConsoleSound::play`, as a viewer opened on
+  the game's sound has it, `export::game_for_thread`; made and never heard, so that the states hold it) and puts
+  itself into the part's states, and the parts go from
   one thread to the next as they are made (at most 4 waiting between two), the last sending each on, whole
   (`BattlePart::into_part`), keeping none of it. Each frame the viewer watched takes in the parts made since
-  (`Viewer::take_index`: docs/frontend.md §8, "The index made elsewhere", "On three threads"), and its index, the
+  (`Viewer::take_index`: docs/frontend.md §8, "The index made elsewhere", "On threads"), and its index, the
   bar's fill and the bar held past the edge go on with them; its channel is unbounded, so the window's thread never
   waits on a lock a thread holds (§6). Each thread ends at the replay's end, when the one before it has ended, or
   at its next part once the one after it has (the replay left closes the last's channel). The three index as fast
@@ -3566,8 +3567,9 @@ Playing, pausing, stepping and seeking work as they do outside it.
   controls are there outside the mode too, hidden and not focusable (`enabled` false): one component (§14).
 - *The options* (`ExportOptions`, under an `if`) are a panel 108 tall, 12 over the transport (on a phone 208,
   under it): Size (2, 4 and 6 times the frame, 4 chosen), View (the viewer's side: `export.view` sets
-  `Watching::set_view` and the export follows, as it does the ⋯ menu's PLAYER), Sides (One, or Both: the user,
-  "add support for two sided side by side export"), Save as; under them the bar and its line, which while nothing
+  `Watching::set_view` and the export follows, as it does the ⋯ menu's PLAYER), Sides (One, Both on one screen, or
+  Side by side: the user, "add support for two sided side by side export"; a `Seg` of three, chosen as the viewer
+  shows the replay when the mode opens), Save as; under them the bar and its line, which while nothing
   exports says to drag the handles. The footer's hints in the mode: Space, comma and period, the arrows ("Move a
   handle"), Back as Cancel.
 - *Leaving:* Esc, B or CANCEL stop an export under way and the mode stays (`Export::back`); with none under way they
@@ -3576,9 +3578,11 @@ Playing, pausing, stepping and seeking work as they do outside it.
 
 A range of the player's own is `Part::Ticks` (as the viewer's clip was until §2.95), its file named
 "part 00.41–00.53"; a round's `Part::Round`, the whole match's `Part::Whole`. With Both, the video is both
-consoles side by side, the View's at the left and the other's at the right, twice as wide (the Size says the
-video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's `Sides::Both`,
-docs/frontend.md §8), and the file's name ends "both sides". Its sound is two tracks, not a mix (the user:
+consoles on one screen, the View's at the left (nettai-video's `Sides::Both`: one sound track, both consoles'
+as the viewer plays it, titled with both players' names), and the file's name ends "both". With Side by side,
+the video is both consoles side by side, the View's at the left and the other's at the right, twice as wide (the
+Size says the video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's
+`Sides::SideBySide`, docs/frontend.md §8), and the file's name ends "side by side". Its sound is two tracks, not a mix (the user:
 "for 2 sided replays, audio track 1 should be left player audio, audio track 2 should be right player
 audio"): the first is what the left console played, the default a player starts with, the second what the
 right one played, which a player's audio track menu switches to. Each track is titled with its player's name
