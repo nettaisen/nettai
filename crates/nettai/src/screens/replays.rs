@@ -874,7 +874,7 @@ impl Replays {
     /// A frame of the viewer: its controls shown or hidden, and the queue's next started where it is due.
     ///
     /// The controls show while the player has done anything in the last [`HUD_IDLE`] (or the replay has just
-    /// begun), while the replay doesn't play (paused, at its end, held by a seek or a drag), while a setting is taken,
+    /// begun), while the replay doesn't play (paused, at its end, held by a drag), while a setting is taken,
     /// while the builds, the export, the ⋯ menu or the popup of what is up next are open, and always on a phone; the pointer
     /// resting on the transport holds them too (the UI's own). Hidden, the cursor goes with them.
     ///

@@ -2,9 +2,11 @@
 //!
 //! Each frame runs the ticks due at the speed set, presents the picture if one ran, and hands the sound on. So
 //! that no seek stalls the window, the replay is indexed ahead a slice a frame, each held to a budget of time,
-//! from the moment it is shown; a seek past what is indexed waits for the index to reach it, the bar showing
-//! where it is going meanwhile. A drag of the bar moves the picture in steps of the states the viewer keeps
-//! (which cost no playing) and lands where it is let go.
+//! from the moment it is shown, and no seek goes past what is indexed: one asked for further stops at its edge,
+//! which the bar shows (a fill from the start to it, under the part played, as a video player shows what it
+//! has loaded). Playing is never past it: what plays is indexed as it plays. A drag of the bar moves the picture
+//! in steps of the states the viewer keeps (which cost no playing), stopping at the index's edge while it is
+//! there, and lands where it is let go.
 //!
 //! Both builds may be shown over it, where the match's setups were open: the narrow sheets a match shows its
 //! players' builds in, the console shown's player's at the left; the sides of a match whose setups weren't open
@@ -41,8 +43,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use nettai_platform::time::Instant;
 
-/// How long a frame spends indexing ahead while the replay plays, and while nothing does (it is paused, or a
-/// seek waits for the index).
+/// How long a frame spends indexing ahead while the replay plays, and while nothing does (it is paused, or the
+/// bar is held).
 const INDEX_BUDGET: Duration = Duration::from_micros(1500);
 const IDLE_BUDGET: Duration = Duration::from_millis(5);
 /// How long the window goes without drawing before the time isn't the replay's (`Watching::frame`): the most
@@ -92,6 +94,7 @@ const INSET_MARGIN: f32 = 4.0;
 #[derive(Default, PartialEq)]
 struct Told {
     position: f32,
+    indexed: f32,
     second: u64,
     round: u32,
     playing: bool,
@@ -177,9 +180,8 @@ pub struct Watching {
     queue: Vec<[f32; 2]>,
     /// The silence owed to the device while nothing plays, in ticks.
     quiet: f64,
-    /// A seek that waits for the replay to be indexed that far.
-    pending: Option<u32>,
-    /// Where the bar is held, while it is dragged.
+    /// Where the bar is held, while it is dragged (it may be past the index: the picture and the bar stop at its
+    /// edge, and follow it as it goes on).
     drag: Option<u32>,
     /// The ticks an index slice plays (fitted to its budget as it goes), and whether the whole replay is
     /// indexed.
@@ -188,8 +190,6 @@ pub struct Watching {
     told: Option<Told>,
     stats: Option<Stats>,
     probe: Option<Probe>,
-    /// When the seek that waits was asked for (`NETTAI_PLAY_STATS` says how long it waited).
-    asked: Option<Instant>,
     /// The match's two sides, where its builds may be shown; and whether they are.
     sides: Option<Box<[Side; 2]>>,
     builds: bool,
@@ -216,7 +216,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -248,9 +248,9 @@ impl Watching {
         self.viewer.stopped()
     }
 
-    /// Whether ticks run: it isn't paused, held by a seek or a drag, at its end, or stopped.
+    /// Whether ticks run: it isn't paused, held by a drag, at its end, or stopped.
     pub fn playing(&self) -> bool {
-        !self.viewer.paused() && self.pending.is_none() && self.drag.is_none() && !self.viewer.at_end() && self.viewer.stopped().is_none()
+        !self.viewer.paused() && self.drag.is_none() && !self.viewer.at_end() && self.viewer.stopped().is_none()
     }
 
     /// How long since it played to its end, while it is still there.
@@ -263,10 +263,10 @@ impl Watching {
         self.builds
     }
 
-    /// The tick the bar shows: where a drag holds it, where a seek is going, else where the viewer is (the
-    /// export's NOW takes it).
+    /// The tick the bar shows: where a drag holds it (up to the index's edge), else where the viewer is (the
+    /// export's SET START HERE and SET END HERE take it).
     pub fn shown(&self) -> u32 {
-        self.drag.or(self.pending).unwrap_or(self.viewer.position())
+        self.drag.map_or(self.viewer.position(), |held| held.min(self.viewer.indexed()))
     }
 
     /// Set the view from the viewer: everything of it (it is shown, or the language changed under it).
@@ -281,7 +281,7 @@ impl Watching {
         self.viewer.set_sound_levels(music, effects);
         if shell.still && self.told.is_none() {
             // (The screenshot pass: one picture, the same each time. Its showreel plays from the start, and a seek
-            // lands at once: the replay indexed whole first, as here.)
+            // lands where it is asked for, at once: the replay indexed whole first, as here.)
             if !shell.reel {
                 self.viewer.set_paused(true);
             }
@@ -329,10 +329,14 @@ impl Watching {
     fn tell(&mut self, view: &ReplaysView) {
         let tick = self.shown();
         let length = self.viewer.length().max(1) as f32;
-        let now = Told { position: tick as f32 / length, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing() };
+        let indexed = self.viewer.indexed() as f32 / length;
+        let now = Told { position: tick as f32 / length, indexed, second: time_of(tick as u64).as_secs(), round: self.viewer.round_at(tick), playing: self.playing() };
         let was = self.told.as_ref();
         if was.is_none_or(|t| t.position != now.position) {
             view.set_position(now.position);
+        }
+        if was.is_none_or(|t| t.indexed != now.indexed) {
+            view.set_indexed(now.indexed);
         }
         if was.is_none_or(|t| t.second != now.second) {
             view.set_time(clock(Duration::from_secs(now.second), true).into());
@@ -355,22 +359,14 @@ impl Watching {
         self.go(tick);
     }
 
-    /// Go to `tick`: at once where the replay is indexed that far, else once it is.
+    /// Go to `tick`, or as far as the replay is indexed where that is short of it: at once, either way (it plays
+    /// under [`KEYFRAME_EVERY`] ticks).
     fn go(&mut self, tick: u32) {
-        let tick = tick.min(self.viewer.length());
-        if self.whole || tick <= self.viewer.indexed() {
-            self.pending = None;
-            self.viewer.seek(tick);
-            self.landed();
-            if self.stats.is_some() {
-                eprintln!("viewer seek: to tick {tick}, indexed that far: landed at once, at tick {}", self.viewer.position());
-            }
-        } else {
-            if self.stats.is_some() {
-                eprintln!("viewer seek: to tick {tick}, past the index ({} of {} ticks): it waits", self.viewer.indexed(), self.viewer.length());
-            }
-            self.pending = Some(tick);
-            self.asked = Some(Instant::now());
+        let to = tick.min(self.viewer.length()).min(self.viewer.indexed());
+        self.viewer.seek(to);
+        self.landed();
+        if self.stats.is_some() {
+            eprintln!("viewer seek: to tick {tick}, indexed to {} of {} ticks: landed at tick {}", self.viewer.indexed(), self.viewer.length(), self.viewer.position());
         }
     }
 
@@ -385,7 +381,7 @@ impl Watching {
         if self.drag.is_some() {
             return;
         }
-        if self.viewer.at_end() && self.pending.is_none() {
+        if self.viewer.at_end() {
             self.go(0);
             self.viewer.set_paused(false);
         } else {
@@ -397,17 +393,18 @@ impl Watching {
         self.viewer.set_paused(true);
     }
 
-    /// `seconds` on, or back.
+    /// `seconds` on (as far as the replay is indexed, at most), or back.
     pub fn skip(&mut self, seconds: i32) {
         let ticks = tick_at(Duration::from_secs(seconds.unsigned_abs() as u64)) as u32;
-        let from = self.pending.unwrap_or(self.viewer.position());
+        let from = self.viewer.position();
         self.go(if seconds < 0 { from.saturating_sub(ticks) } else { from.saturating_add(ticks) });
     }
 
-    /// A frame on (with its sound) or back, paused.
+    /// A frame on (with its sound) or back, paused. (A frame on is played, as playing plays it: where the index
+    /// ends, it goes on by that frame.)
     pub fn step(&mut self, by: i32) {
         self.viewer.set_paused(true);
-        if self.pending.is_some() || self.drag.is_some() {
+        if self.drag.is_some() {
             return;
         }
         if by > 0 {
@@ -419,10 +416,10 @@ impl Watching {
         }
     }
 
-    /// To the next round's start; or to this round's, and from there (while it plays, from its first second)
-    /// to the round before's.
+    /// To the next round's start (where the replay isn't indexed that far: as far as it is); or to this round's,
+    /// and from there (while it plays, from its first second) to the round before's.
     pub fn round(&mut self, by: i32) {
-        let from = self.pending.unwrap_or(self.viewer.position());
+        let from = self.viewer.position();
         let at = self.viewer.round_at(from) as usize - 1;
         let rounds = self.viewer.rounds();
         if by > 0 {
@@ -603,16 +600,22 @@ impl Watching {
         self.drag_to((self.viewer.length() as u64 * part.clamp(0, 10_000) as u64 / 10_000) as u32, done);
     }
 
-    /// The bar (or a handle of the export's range) held at `target`, or (`done`) let go there. While it is held the
-    /// picture follows in steps: the state the viewer keeps at or before it, which costs no playing.
+    /// The bar (or a handle of the export's range) held at `target`, or (`done`) let go there (as far as the replay
+    /// is indexed, at most). While it is held the picture follows in steps: the state the viewer keeps at or before
+    /// it, which costs no playing; past the index's edge, the one at or before the edge, as the edge goes on.
     pub fn drag_to(&mut self, target: u32, done: bool) {
         let target = target.min(self.viewer.length());
-        self.pending = None;
         if done {
             self.drag = None;
             return self.go(target);
         }
         self.drag = Some(target);
+        self.hold();
+    }
+
+    /// The picture at the step where the bar is held (`drag_to`), where that moved.
+    fn hold(&mut self) {
+        let Some(target) = self.drag else { return };
         let step = target.min(self.viewer.indexed()) / KEYFRAME_EVERY * KEYFRAME_EVERY;
         if step != self.viewer.position() {
             self.viewer.seek(step);
@@ -664,7 +667,8 @@ impl Watching {
 
     // ---- The frame --------------------------------------------------------------------------------------
 
-    /// A frame at `now`: the seek that waited, a slice of the index, the ticks due, the sound, the picture.
+    /// A frame at `now`: a slice of the index (the bar held past its edge following it), the ticks due, the sound,
+    /// the picture.
     pub fn frame(&mut self, shell: &mut Shell, now: Instant) {
         // (A gap of [`STILL_AFTER`] or more since the last drawn frame isn't the replay's time: the window wasn't
         // drawn. A shorter one, frames the system was late with, is made up, so the replay and its bar don't
@@ -673,16 +677,6 @@ impl Watching {
         let elapsed = if elapsed >= STILL_AFTER { Duration::ZERO } else { elapsed };
         self.last = Some(now);
         self.probe(shell, now);
-        if let Some(target) = self.pending
-            && (self.whole || self.viewer.indexed() >= target)
-        {
-            self.pending = None;
-            self.viewer.seek(target);
-            self.landed();
-            if let (Some(_), Some(asked)) = (&self.stats, self.asked.take()) {
-                eprintln!("viewer seek: landed at tick {} ({target} asked for), {:.2?} after it was asked", self.viewer.position(), asked.elapsed());
-            }
-        }
         // Indexing ahead: a slice, of as many ticks as the last one's time says fit the budget.
         if !self.whole {
             let budget = if self.playing() { INDEX_BUDGET } else { IDLE_BUDGET };
@@ -695,6 +689,7 @@ impl Watching {
             if let Some(s) = &mut self.stats {
                 add(&mut s.indexing, took);
             }
+            self.hold();
         }
         let playing = self.playing();
         let began = Instant::now();
@@ -891,3 +886,55 @@ impl Watching {
 
 // (A tick's sound is 4389/8 samples by the library's clock.)
 const _: () = assert!(TICK_SECONDS.0 == 4389 && nettai_audio::SAMPLE_RATE == 32768);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_frontend::game::GraphicsMode;
+    use nettai_frontend::testing::{graphics, recorded};
+
+    /// No seek the player asks for goes past what is indexed: a click, five seconds on, the next round and a drag
+    /// let go each stop at the index's edge; the bar held past it shows the edge, the picture at the kept state
+    /// before it, and both follow it as it goes on. Once the whole replay is indexed, each goes where it is asked.
+    #[test]
+    fn no_seek_goes_past_the_index() {
+        let content = nettai_match::testing::exe6_content();
+        let (replay, _) = recorded(&content, "exe6", 7);
+        let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+        let viewer = Viewer::with(&content, &replay, None, renderer, None, None).unwrap();
+        let mut w = Watching::new(Box::new(viewer), PathBuf::new(), None, Overlays::default());
+        let length = w.length();
+        assert!(length > 3 * KEYFRAME_EVERY, "a set of {length} ticks");
+        // (Nothing is indexed yet but the start.)
+        w.go_to(length / 2);
+        assert_eq!((w.viewer.position(), w.shown()), (0, 0));
+        w.viewer.index(KEYFRAME_EVERY + 20);
+        let edge = w.viewer.indexed();
+        assert_eq!(edge, KEYFRAME_EVERY + 20);
+        w.go_to(length);
+        assert_eq!((w.viewer.position(), w.shown()), (edge, edge));
+        w.skip(5);
+        assert_eq!(w.viewer.position(), edge);
+        w.skip(-1);
+        assert_eq!(w.viewer.position(), edge - tick_at(Duration::from_secs(1)) as u32);
+        w.go_to(0);
+        w.round(1);
+        assert_eq!(w.viewer.position(), w.viewer.rounds().get(1).map_or(0, |&next| next.min(edge)));
+        // Held past the edge: the bar at the edge, the picture at the kept state before it; the edge goes on, and
+        // they follow.
+        w.drag_to(length, false);
+        assert_eq!((w.viewer.position(), w.shown()), (KEYFRAME_EVERY, edge));
+        w.viewer.index(KEYFRAME_EVERY);
+        let edge = w.viewer.indexed();
+        w.hold();
+        assert_eq!((w.viewer.position(), w.shown()), (2 * KEYFRAME_EVERY, edge));
+        w.drag_to(length, true);
+        assert_eq!((w.viewer.position(), w.shown()), (edge, edge));
+        // Indexed whole: to the end.
+        while !w.viewer.index(u32::MAX) {}
+        assert_eq!(w.viewer.indexed(), length);
+        w.go_to(length);
+        assert!(w.viewer.at_end());
+        assert_eq!(w.shown(), length);
+    }
+}
