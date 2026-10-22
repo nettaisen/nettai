@@ -1,7 +1,7 @@
 # Nettai Digits
 
 The Battle Network games' battle-screen digits as an outline font, for the enhanced mode's numbers. One design: the
-HP box's digits (6 by 10 pixels), the HUD's '?', '+' and the "x" of "x2" (mapped to both `x` and `×`), traced from
+HP box's digits (6 by 10 pixels), the HUD's '?', '+' and the times sign of "x2" (`×` only; no `x`), traced from
 their pixels with sharp corners. A glyph pixel is 100 units (1000 to the em, the digits 1000 tall), each glyph in the
 game's 8-pixel cell (advance 800, the face from 100), so every digit has one advance.
 

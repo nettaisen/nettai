@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees as the art steps them (the outline two pixels across along each cut), a light blue band inside it two wide, the white ground the text is written on, its corners cut a pixel's stair. -->
-<!-- The outline, a pixel wide, its corners cut 45 degrees (as the art steps them) -->
-<path d="M1 22.5 L3.5 20 L212.5 20 L215 22.5 L215 41.5 L212.5 44 L3.5 44 L1 41.5 Z" fill="#086bc6" data-color="11"/>
-<!-- The band, two pixels wide, its corners cut as the outline's, so the outline is two pixels across along each cut, as the art's stair -->
-<path d="M2 23.5 L4.5 21 L211.5 21 L214 23.5 L214 40.5 L211.5 43 L4.5 43 L2 40.5 Z" fill="#4abdf7" data-color="10"/>
-<!-- The ground, its corners cut as the art steps them (a pixel's stair, legs 1.5, inside the outline's big cuts; square inside its small ones) -->
-<path d="M4 24.5 L5.5 23 L210.5 23 L212 24.5 L212 39.5 L210.5 41 L5.5 41 L4 39.5 Z" fill="#f7fff7" data-color="1"/>
+<!-- The chatbox's box, the description box (opening, step 1 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
+<!-- The outline, a pixel wide, its corners cut 45 degrees -->
+<path d="M1 24 L5 20 L211 20 L215 24 L215 40 L211 44 L5 44 L1 40 Z" fill="#086bc6" data-color="11"/>
+<!-- The band, two pixels wide, a pixel in, its cuts parallel to the outline's -->
+<path d="M2 24.414 L5.414 21 L210.586 21 L214 24.414 L214 39.586 L210.586 43 L5.414 43 L2 39.586 Z" fill="#4abdf7" data-color="10"/>
+<!-- The ground, three pixels in, its cuts parallel to the outline's -->
+<path d="M4 25.243 L6.243 23 L209.757 23 L212 25.243 L212 38.757 L209.757 41 L6.243 41 L4 38.757 Z" fill="#f7fff7" data-color="1"/>
 </svg>

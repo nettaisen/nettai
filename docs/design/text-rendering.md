@@ -1853,6 +1853,11 @@ What stands in for what:
   smoothly), its full shimmer's frames, the L or R cells; the emotion window's frame (its ring a drawing; the faces kept
   without it in the pack, `MugshotFrame`), the count box and the link navi's box; the banners' bars (with their
   squash); the Program Advance logos; the chatbox's boxes, open and opening, and its key-wait arrow's three frames.
+  The boxes and their name tabs are chamfered, not stepped as the art: every layer (outline, band, ground) cut at 45
+  degrees, each a parallel offset of the outline's cut, so a band is as thick through a cut as along its edges; the
+  outer cut 4 pixels, so the ground's still shows at 4x (smaller in the thin opening frames, where the ground keeps a
+  straight end); the box's own corner under a tab square, the tab's being the corner there (the user: "dialog box
+  corners still look weird, why do they look stair stepped instead of chamfered?").
 - **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
   opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the Regular chip's
   frame, the empty slots' boxes

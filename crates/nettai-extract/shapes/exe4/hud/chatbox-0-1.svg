@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box (opening, step 1 of 3): a dark outline, its corners cut 45 degrees, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on, each cut parallel to the outline's. -->
-<!-- The tab for the name: its outline two pixels wide, its top left corner cut as the box's, its right side slanting 2:1 -->
-<path d="M2 14.5 L3.5 13 L44 13 L52 17 L52 19 L2 19 Z" fill="#006bbd" data-color="13"/>
-<!-- The outline, two pixels wide, its corners cut 45 degrees (as the art steps them) -->
-<path d="M2 18.5 L3.5 17 L236.5 17 L238 18.5 L238 45.5 L236.5 47 L3.5 47 L2 45.5 Z" fill="#006bbd" data-color="13"/>
-<!-- The band inside the tab: the outline two pixels in, its cuts parallel -->
-<path d="M4 15.328 L4.328 15 L43.528 15 L53.528 20 L4 20 Z" fill="#94cee7" data-color="12"/>
-<!-- The band, a pixel wide -->
-<path d="M4 19.328 L4.328 19 L235.672 19 L236 19.328 L236 44.672 L235.672 45 L4.328 45 L4 44.672 Z" fill="#94cee7" data-color="12"/>
-<!-- The ground -->
-<path d="M5 20 L235 20 L235 44 L5 44 Z" fill="#f7fff7" data-color="11"/>
+<!-- The chatbox's box, the message box (opening, step 1 of 3): a dark outline, its corners cut 45 degrees, a tab for the name on its top edge at the left, its right side slanting, a light band inside it, the ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
+<!-- The tab for the name: its outline two pixels wide, its top left corner cut 45 degrees as the box's, its right side slanting 2:1 -->
+<path d="M2 17 L6 13 L44 13 L52 17 L52 19 L2 19 Z" fill="#006bbd" data-color="13"/>
+<!-- The outline, two pixels wide, its corners cut 45 degrees (its top left square under the tab) -->
+<path d="M2 17 L234 17 L238 21 L238 43 L234 47 L6 47 L2 43 Z" fill="#006bbd" data-color="13"/>
+<!-- The band inside the tab: the outline two pixels in, its cut and its slant parallel -->
+<path d="M4 17.828 L6.828 15 L43.528 15 L53.528 20 L4 20 Z" fill="#94cee7" data-color="12"/>
+<!-- The band, a pixel wide, its cuts parallel to the outline's -->
+<path d="M4 19 L233.172 19 L236 21.828 L236 42.172 L233.172 45 L6.828 45 L4 42.172 Z" fill="#94cee7" data-color="12"/>
+<!-- The ground, its cuts parallel to the outline's -->
+<path d="M5 22.243 L7.243 20 L232.757 20 L235 22.243 L235 41.757 L232.757 44 L7.243 44 L5 41.757 Z" fill="#f7fff7" data-color="11"/>
 </svg>

@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box, its name's tab on its top edge at the right (opening, step 0 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees as the art steps them (the outline two pixels across along each cut), a light blue band inside it two wide, the white ground the text is written on, its corners cut a pixel's stair. -->
-<!-- The tab on the top edge: its outline, its left side slanting at 45 degrees, its top right corner cut as the box's -->
-<path d="M190.5 24 L236.5 24 L239 26.5 L239 32 L182.5 32 Z" fill="#086bc6" data-color="11"/>
-<!-- The outline, a pixel wide, its corners cut 45 degrees (as the art steps them) -->
-<path d="M2 29.5 L3.5 28 L236.5 28 L239 30.5 L239 33.5 L236.5 36 L3.5 36 L2 34.5 Z" fill="#086bc6" data-color="11"/>
-<!-- The band inside the tab, a pixel in, its slant and its top right corner cut as the outline's (the art's stairs: the outline two pixels across along them) -->
-<path d="M191.5 25 L235.5 25 L238 27.5 L238 32 L184.5 32 Z" fill="#4abdf7" data-color="10"/>
-<!-- The band, two pixels wide, its corners cut as the outline's, so the outline is two pixels across along each cut, as the art's stair -->
-<path d="M3 30.5 L4.5 29 L235.5 29 L238 31.5 L238 32.5 L235.5 35 L4.5 35 L3 33.5 Z" fill="#4abdf7" data-color="10"/>
-<!-- The box's top edge running on through the tab, two rows, its left end slanting as the tab's side -->
-<path d="M193.5 27 L235 27 L235 29 L191.5 29 Z" fill="#086bc6" data-color="11"/>
-<!-- The ground, its corners cut as the art steps them (a pixel's stair, legs 1.5, inside the outline's big cuts; square inside its small ones) -->
-<path d="M5 31 L234.5 31 L236 32.5 L236 31.5 L234.5 33 L5 33 Z" fill="#f7fff7" data-color="1"/>
+<!-- The chatbox's box, the message box, its name's tab on its top edge at the right (opening, step 0 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on; every layer's cuts parallel to the outline's, each band as thick through a cut as along its edges. -->
+<!-- The tab on the top edge: its outline, its left side slanting at 45 degrees, its top right corner cut 45 degrees -->
+<path d="M190.5 24 L235 24 L239 28 L239 32 L182.5 32 Z" fill="#086bc6" data-color="11"/>
+<!-- The outline, a pixel wide, its corners cut 45 degrees (its top right square under the tab) -->
+<path d="M2 30.5 L4.5 28 L239 28 L239 33.5 L236.5 36 L4.5 36 L2 33.5 Z" fill="#086bc6" data-color="11"/>
+<!-- The band inside the tab, a pixel in all round, its slant and its cut parallel to the outline's -->
+<path d="M190.914 25 L234.586 25 L238 28.414 L238 31 L184.914 31 Z" fill="#4abdf7" data-color="10"/>
+<!-- The band, two pixels wide, a pixel in, its cuts parallel to the outline's -->
+<path d="M3 30.914 L4.914 29 L238 29 L238 33.086 L236.086 35 L4.914 35 L3 33.086 Z" fill="#4abdf7" data-color="10"/>
+<!-- The box's top edge running on through the tab, two rows, three pixels in from the tab's outline: its left end slanting as the tab's side, its right end cut as the tab's corner, parallel -->
+<path d="M191.743 27 L233.757 27 L235.757 29 L189.743 29 Z" fill="#086bc6" data-color="11"/>
+<!-- The ground, three pixels in, its cuts parallel to the outline's -->
+<path d="M5 31.743 L5.743 31 L235.257 31 L236 31.743 L236 32.257 L235.257 33 L5.743 33 L5 32.257 Z" fill="#f7fff7" data-color="1"/>
 </svg>

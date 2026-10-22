@@ -1,7 +1,9 @@
 //! The game's numbers in the enhanced mode: each digit (and the '+', the
 //! "x" of "x2", the '?' marks) drawn in a font made of the game's own
 //! digits: Nettai Digits (fonts/nettai-digits: the HP box's digits, the
-//! HUD's '?', '+' and "x", traced from their pixels with sharp corners) and,
+//! HUD's '?', '+' and the times sign '×', traced from their pixels with
+//! sharp corners; a variable font whose weight keeps its bars the game's
+//! 2 pixels however short a place draws it, [`Face::weight`]) and,
 //! for the numbered banners, Nettai Banner Digits (fonts/nettai-banner-digits:
 //! the banners' own drawing), at the output's resolution
 //! (docs/design/text-rendering.md §12.4). The numbers were Bungee first (the
@@ -410,9 +412,11 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
     Some((out, (ink_start, ink_end)))
 }
 
-/// The character the font draws for the game's "x" of "x2".
+/// The character the font draws for the game's "x" of "x2": the times sign
+/// (Nettai Digits has no `x`: the user, "x shouldn't have a glyph in nettai
+/// digits, it should only be for multiply").
 pub fn times() -> &'static str {
-    if digits_font().covers("×") { "×" } else { "X" }
+    "×"
 }
 
 #[cfg(test)]
