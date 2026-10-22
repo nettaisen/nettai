@@ -784,9 +784,6 @@ component ListPage inherits Page {
     // (The tabs, then the filter at the search's right; on a phone under it.)
     property <length> top: 52px;
     property <length> filter-room: ReplaysView.kinds && !Theme.phone ? 232px : 0px;
-    // The height the page is laid out in: the body's, or on a desktop the reference window's (1216 by 644) where the
-    // window is shorter, the page then scrolling (a short window: one scale for every screen).
-    property <length> layout-height: Theme.phone ? self.body-height : max(self.body-height, 644px);
     property <length> list-top: root.top + (ReplaysView.kinds && Theme.phone && !root.queue ? 96px : 52px);
     title: Caps.of(@tr("Replays"));
     back: Caps.of(@tr("Menu"));
@@ -805,150 +802,140 @@ component ListPage inherits Page {
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    // (Its scroll bar in the body's margin, at its right.)
-    page := ScrollPage {
-        x: 0;
-        y: 0;
-        width: root.body-width + 12px;
-        height: root.body-height;
-        nav: "replays-page.";
-        mouse-pan: false;
-        content-height: root.layout-height;
-        Arrive {
-            order: 0;
-            TabBar {
-                x: Theme.phone ? -8px : 0px;
-                y: 0;
-                width: root.list-width + (Theme.phone ? 16px : 0px);
-                nav: "tab";
-                // (The Queue tab only while the queue holds something.)
-                tabs: ReplaysView.queue.length > 0 ? [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }, { text: Caps.of(@tr("Queue")), enabled: true, flagged: false }] : [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }];
-                chosen: ReplaysView.tab;
+    Arrive {
+        order: 0;
+        TabBar {
+            x: Theme.phone ? -8px : 0px;
+            y: 0;
+            width: root.list-width + (Theme.phone ? 16px : 0px);
+            nav: "tab";
+            // (The Queue tab only while the queue holds something.)
+            tabs: ReplaysView.queue.length > 0 ? [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }, { text: Caps.of(@tr("Queue")), enabled: true, flagged: false }] : [{ text: Caps.of(@tr("Replays")), enabled: true, flagged: false }];
+            chosen: ReplaysView.tab;
+        }
+
+        Field {
+            x: 0;
+            y: root.top;
+            width: root.list-width - root.filter-room;
+            visible: !root.queue;
+            enabled: !root.queue;
+            nav: "search";
+            text: ReplaysView.search;
+            placeholder: @tr("Search by opponent");
+        }
+
+        // (Hidden, not under an `if`: a small part, docs/app.md §14.)
+        Seg {
+            x: Theme.phone ? 0px : root.list-width - self.width;
+            y: root.top + (Theme.phone ? 50px : 2px);
+            visible: ReplaysView.kinds && !root.queue;
+            enabled: ReplaysView.kinds && !root.queue;
+            nav: "kind";
+            first: Caps.of(@tr("All"));
+            second: Caps.of(@tr("Online"));
+            chosen: ReplaysView.kind;
+        }
+
+        // The Queue tab's: WATCH, from the first entry that plays; and CLEAR, which asks.
+        HorizontalLayout {
+            x: 0;
+            y: root.top;
+            width: root.list-width;
+            height: 40px;
+            spacing: 12px;
+            alignment: start;
+            visible: root.queue;
+            Button {
+                nav: "watch-queue";
+                text: Caps.of(@tr("Watch"));
+                kind: ButtonKind.main;
+                enabled: root.queue && ReplaysView.queue.length > 0;
             }
 
-            Field {
-                x: 0;
-                y: root.top;
-                width: root.list-width - root.filter-room;
-                visible: !root.queue;
-                enabled: !root.queue;
-                nav: "search";
-                text: ReplaysView.search;
-                placeholder: @tr("Search by opponent");
-            }
-
-            // (Hidden, not under an `if`: a small part, docs/app.md §14.)
-            Seg {
-                x: Theme.phone ? 0px : root.list-width - self.width;
-                y: root.top + (Theme.phone ? 50px : 2px);
-                visible: ReplaysView.kinds && !root.queue;
-                enabled: ReplaysView.kinds && !root.queue;
-                nav: "kind";
-                first: Caps.of(@tr("All"));
-                second: Caps.of(@tr("Online"));
-                chosen: ReplaysView.kind;
-            }
-
-            // The Queue tab's: WATCH, from the first entry that plays; and CLEAR, which asks.
-            HorizontalLayout {
-                x: 0;
-                y: root.top;
-                width: root.list-width;
-                height: 40px;
-                spacing: 12px;
-                alignment: start;
-                visible: root.queue;
-                Button {
-                    nav: "watch-queue";
-                    text: Caps.of(@tr("Watch"));
-                    kind: ButtonKind.main;
-                    enabled: root.queue && ReplaysView.queue.length > 0;
-                }
-
-                Button {
-                    nav: "clear";
-                    text: Caps.of(@tr("Clear"));
-                    kind: ButtonKind.ghost;
-                    danger: true;
-                    enabled: root.queue && ReplaysView.queue.length > 0;
-                }
-            }
-
-            queue-list := ListView {
-                x: 0;
-                y: root.list-top;
-                width: root.list-width;
-                height: root.layout-height - root.list-top;
-                visible: root.queue;
-                nav: "queue";
-                count: root.queue ? ReplaysView.queue.length : 0;
-                chosen: ReplaysView.queue-chosen;
-                for slot in queue-list.shown: ReplayRowView {
-                    property <int> at: queue-list.first + slot;
-                    x: 0;
-                    y: self.at * queue-list.pitch;
-                    width: queue-list.row-width;
-                    height: queue-list.row-height;
-                    replay: ReplaysView.queue[self.at];
-                    nav: queue-list.nav;
-                    nav-index: self.at;
-
-                    Rectangle { }  // (Copied in: docs/app.md §14.)
-                }
-            }
-
-            Note {
-                x: 12px;
-                y: root.list-top;
-                width: root.list-width - 24px;
-                height: 44px;
-                visible: root.queue;
-                text: !ReplaysView.listed || ReplaysView.queue.length > 0 ? "" : @tr("The queue is empty. Add replays to it with the arrow beside Watch.");
-            }
-
-            list := ListView {
-                x: 0;
-                y: root.list-top;
-                width: root.list-width;
-                height: root.layout-height - root.list-top;
-                visible: !root.queue;
-                nav: "list";
-                count: root.queue ? 0 : ReplaysView.rows.length;
-                chosen: ReplaysView.chosen;
-                for slot in list.shown: ReplayRowView {
-                    property <int> at: list.first + slot;
-                    x: 0;
-                    y: self.at * list.pitch;
-                    width: list.row-width;
-                    height: list.row-height;
-                    replay: ReplaysView.rows[self.at];
-                    nav: list.nav;
-                    nav-index: self.at;
-
-                    Rectangle { }  // (Copied in: docs/app.md §14.)
-                }
-            }
-
-            Note {
-                x: 12px;
-                y: root.list-top;
-                width: root.list-width - 24px;
-                height: 44px;
-                visible: !root.queue;
-                text: !ReplaysView.listed || ReplaysView.rows.length > 0 ? "" : (ReplaysView.count == 0 ? @tr("No replays yet. Every online match is recorded.") : @tr("No replays found."));
+            Button {
+                nav: "clear";
+                text: Caps.of(@tr("Clear"));
+                kind: ButtonKind.ghost;
+                danger: true;
+                enabled: root.queue && ReplaysView.queue.length > 0;
             }
         }
 
-        Arrive {
-            order: 1;
-            if !Theme.phone: DetailPanel {
-                x: 624px;
-                y: 0;
-                width: root.body-width - 624px;
-                height: root.layout-height;
+        queue-list := ListView {
+            x: 0;
+            y: root.list-top;
+            width: root.list-width;
+            height: root.body-height - root.list-top;
+            visible: root.queue;
+            nav: "queue";
+            count: root.queue ? ReplaysView.queue.length : 0;
+            chosen: ReplaysView.queue-chosen;
+            for slot in queue-list.shown: ReplayRowView {
+                property <int> at: queue-list.first + slot;
+                x: 0;
+                y: self.at * queue-list.pitch;
+                width: queue-list.row-width;
+                height: queue-list.row-height;
+                replay: ReplaysView.queue[self.at];
+                nav: queue-list.nav;
+                nav-index: self.at;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
+        }
+
+        Note {
+            x: 12px;
+            y: root.list-top;
+            width: root.list-width - 24px;
+            height: 44px;
+            visible: root.queue;
+            text: !ReplaysView.listed || ReplaysView.queue.length > 0 ? "" : @tr("The queue is empty. Add replays to it with the arrow beside Watch.");
+        }
+
+        list := ListView {
+            x: 0;
+            y: root.list-top;
+            width: root.list-width;
+            height: root.body-height - root.list-top;
+            visible: !root.queue;
+            nav: "list";
+            count: root.queue ? 0 : ReplaysView.rows.length;
+            chosen: ReplaysView.chosen;
+            for slot in list.shown: ReplayRowView {
+                property <int> at: list.first + slot;
+                x: 0;
+                y: self.at * list.pitch;
+                width: list.row-width;
+                height: list.row-height;
+                replay: ReplaysView.rows[self.at];
+                nav: list.nav;
+                nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        Note {
+            x: 12px;
+            y: root.list-top;
+            width: root.list-width - 24px;
+            height: 44px;
+            visible: !root.queue;
+            text: !ReplaysView.listed || ReplaysView.rows.length > 0 ? "" : (ReplaysView.count == 0 ? @tr("No replays yet. Every online match is recorded.") : @tr("No replays found."));
+        }
+    }
+
+    Arrive {
+        order: 1;
+        if !Theme.phone: DetailPanel {
+            x: 624px;
+            y: 0;
+            width: root.body-width - 624px;
+            height: root.body-height;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }

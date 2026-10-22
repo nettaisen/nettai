@@ -306,231 +306,217 @@ export component AutoBattleTab inherits Rectangle {
     property <length> top: -4px;
     property <length> pane-y: Theme.phone ? 0px : root.top + 104px + 12px;
     property <length> pane-width: Theme.phone ? self.width : 528px;
-    property <length> pane-height: Theme.phone ? self.height : 482px;
+    // (On a desktop down to 18 over the tab's foot, as the folder's: 482 at the reference window.)
+    property <length> pane-height: Theme.phone ? self.height : self.height - root.pane-y - 18px;
     property <int> columns: Theme.phone ? 1 : 2;
     // (A phone's line for what is wrong with the data, over the places.)
     property <length> phone-lead: 24px;
     property <length> place-width: (root.pane-width - 24px - 12px - (root.columns - 1) * 12px) / root.columns;
     property <length> pitch: Theme.list-row + Theme.list-gap;
     property <bool> has-element: AutoBattleView.detail.there && AutoBattleView.detail.element.width > 0;
-    // How tall what the tab shows is: on a desktop the strip and the pane under it (on a phone the tab's height: its places fill it).
-    property <length> content-height: max(self.height, Theme.phone ? self.height : root.pane-y + root.pane-height + 12px);
 
-    // (Where the tab is shorter than what it shows, a short window's, it scrolls: its scroll bar in the body's margin, at
-    // its right, the tab laid out as wide as it is. A mouse's drag moves what it drags: the wheel scrolls.)
-    tab-page := ScrollPage {
+    // ---- The strip: the chip under the cursor.
+    PanelBack {
         x: 0;
-        y: 0;
-        width: root.width + 12px;
-        height: root.height;
-        // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
-        bleed: 5px;
-        nav: "auto-tab.";
-        mouse-pan: false;
-        content-height: root.content-height;
-        // ---- The strip: the chip under the cursor.
-        PanelBack {
-            x: 0;
-            y: root.top;
-            height: Theme.phone ? 0px : 104px;
-            visible: !Theme.phone;
-        }
+        y: root.top;
+        height: Theme.phone ? 0px : 104px;
+        visible: !Theme.phone;
+    }
 
+    Image {
+        x: 18px;
+        y: root.top + 16px;
+        width: 84px;
+        height: 72px;
+        visible: !Theme.phone;
+        source: AutoBattleView.detail.art;
+        image-rendering: pixelated;
+    }
+
+    Text {
+        x: 120px;
+        y: root.top + 19px;
+        width: root.width / 2 - 120px;
+        height: 20px;
+        visible: !Theme.phone;
+        text: AutoBattleView.detail.name;
+        color: AutoBattleView.detail.kind == ChipKind.mega ? Theme.mega : AutoBattleView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
+        font-family: Theme.body;
+        font-size: 16px;
+        font-weight: 700;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // (Why what was asked of the place under the cursor wasn't done: the strip's refusal; else what the rules have
+    // against it.)
+    Refusal {
+        x: root.width / 2;
+        y: root.top + 19px;
+        width: root.width / 2 - 16px;
+        visible: !Theme.phone;
+        text: AutoBattleView.detail.problem;
+        problem: AutoBattleView.detail.fault;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Text {
+        x: 120px;
+        y: root.top + 43px;
+        width: parent.width - 136px;
+        height: 18px;
+        visible: !Theme.phone;
+        text: AutoBattleView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // (A chip with no element, a Program Advance, has its facts where the element would be.)
+    HorizontalLayout {
+        x: root.has-element ? 120px : 104px;
+        y: root.top + 69px;
+        width: parent.width - 136px;
+        height: 16px;
+        visible: !Theme.phone;
+        spacing: 16px;
+        alignment: start;
         Image {
-            x: 18px;
-            y: root.top + 16px;
-            width: 84px;
-            height: 72px;
-            visible: !Theme.phone;
-            source: AutoBattleView.detail.art;
+            width: root.has-element ? 16px : 0px;
+            height: 16px;
+            source: AutoBattleView.detail.element;
             image-rendering: pixelated;
         }
 
-        Text {
-            x: 120px;
-            y: root.top + 19px;
-            width: root.width / 2 - 120px;
-            height: 20px;
-            visible: !Theme.phone;
-            text: AutoBattleView.detail.name;
-            color: AutoBattleView.detail.kind == ChipKind.mega ? Theme.mega : AutoBattleView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
+        for fact in AutoBattleView.detail.facts: Text {
+            text: fact;
+            color: Theme.muted;
             font-family: Theme.body;
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 12px;
             vertical-alignment: center;
-            overflow: elide;
         }
+    }
 
-        // (Why what was asked of the place under the cursor wasn't done: the strip's refusal; else what the rules have
-        // against it.)
-        Refusal {
-            x: root.width / 2;
-            y: root.top + 19px;
-            width: root.width / 2 - 16px;
-            visible: !Theme.phone;
-            text: AutoBattleView.detail.problem;
-            problem: AutoBattleView.detail.fault;
+    // ---- The places, framed: the title, then the lists' places, scrolled.
+    PanelBack {
+        x: 0;
+        y: root.pane-y;
+        width: root.pane-width;
+        height: root.pane-height;
+        visible: !Theme.phone;
+    }
+
+    places-title := Label {
+        x: 12px;
+        y: root.pane-y;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
+        height: 44px;
+        visible: !Theme.phone;
+        text: Caps.of(@tr("Auto battle"));
+        color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
+    }
+
+    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // place emptied, asked first; dim where none holds anything. At the header's right end; on a phone at the right
+    // end of the line over the places.
+    clear := WordButton {
+        x: root.pane-width - (Theme.phone ? 0px : 12px) + self.pad - self.width;
+        y: Theme.phone ? 0px : root.pane-y + 14px;
+        nav: "clear";
+        text: Caps.of(@tr("Clear"));
+        enabled: AutoBattleView.filled > 0;
+    }
+
+    // (What is wrong with the data: a phone's line of its own over the places, before CLEAR.)
+    ProblemNote {
+        x: 0px;
+        y: 0px;
+        width: max(0px, clear.x + clear.pad - 12px);
+        visible: Theme.phone;
+        text: AutoBattleView.problems;
+    }
+
+    page := ScrollPage {
+        x: Theme.phone ? 0px : 12px;
+        y: root.pane-y + (Theme.phone ? root.phone-lead : 44px);
+        width: root.pane-width - (Theme.phone ? 0px : 12px);
+        height: root.pane-height - (Theme.phone ? root.phone-lead : 44px + 12px);
+        nav: "places.";
+        content-height: AutoBattleView.rows * root.pitch;
+        // (A mouse's drag on a place moves its chip: the wheel scrolls.)
+        mouse-pan: false;
+        for line[k] in AutoBattleView.lines: PlaceView {
+            // (Shifted to the place before or after it in its list: the line before or after it.)
+            property <int> step: line.title ? 0 : PlaceDrag.step(line.place);
+            x: line.column * (root.place-width + 12px);
+            y: line.row * root.pitch;
+            width: line.title ? page.view-width - 12px : root.place-width;
+            height: root.pitch - 2px;
+            line: line;
+            chosen: !line.title && line.place == AutoBattleView.marked;
+            dx: (AutoBattleView.lines[k + self.step].column - line.column) * (root.place-width + 12px) + (!line.title && line.place == AutoBattleView.refused-place ? shake.dx : 0px);
+            dy: (AutoBattleView.lines[k + self.step].row - line.row) * root.pitch;
+            gone: PlaceDrag.on && !line.title && line.place == Drag.from;
+            gap: !line.title && line.place == PlaceDrag.to;
+            number: AutoBattleView.lines[k + self.step].number;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
-        Text {
-            x: 120px;
-            y: root.top + 43px;
-            width: parent.width - 136px;
-            height: 18px;
-            visible: !Theme.phone;
-            text: AutoBattleView.detail.description;
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 13px;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-
-        // (A chip with no element, a Program Advance, has its facts where the element would be.)
-        HorizontalLayout {
-            x: root.has-element ? 120px : 104px;
-            y: root.top + 69px;
-            width: parent.width - 136px;
-            height: 16px;
-            visible: !Theme.phone;
-            spacing: 16px;
-            alignment: start;
-            Image {
-                width: root.has-element ? 16px : 0px;
-                height: 16px;
-                source: AutoBattleView.detail.element;
-                image-rendering: pixelated;
-            }
-
-            for fact in AutoBattleView.detail.facts: Text {
-                text: fact;
-                color: Theme.muted;
-                font-family: Theme.body;
-                font-size: 12px;
-                vertical-alignment: center;
-            }
-        }
-
-        // ---- The places, framed: the title, then the lists' places, scrolled.
-        PanelBack {
-            x: 0;
-            y: root.pane-y;
-            width: root.pane-width;
-            height: root.pane-height;
-            visible: !Theme.phone;
-        }
-
-        places-title := Label {
-            x: 12px;
-            y: root.pane-y;
-            width: max(0px, clear.x + clear.pad - 12px - self.x);
-            height: 44px;
-            visible: !Theme.phone;
-            text: Caps.of(@tr("Auto battle"));
-            color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
-        }
-
-        // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
-        // place emptied, asked first; dim where none holds anything. At the header's right end; on a phone at the right
-        // end of the line over the places.
-        clear := WordButton {
-            x: root.pane-width - (Theme.phone ? 0px : 12px) + self.pad - self.width;
-            y: Theme.phone ? 0px : root.pane-y + 14px;
-            nav: "clear";
-            text: Caps.of(@tr("Clear"));
-            enabled: AutoBattleView.filled > 0;
-        }
-
-        // (What is wrong with the data: a phone's line of its own over the places, before CLEAR.)
-        ProblemNote {
-            x: 0px;
-            y: 0px;
-            width: max(0px, clear.x + clear.pad - 12px);
-            visible: Theme.phone;
-            text: AutoBattleView.problems;
-        }
-
-        page := ScrollPage {
-            x: Theme.phone ? 0px : 12px;
-            y: root.pane-y + (Theme.phone ? root.phone-lead : 44px);
-            width: root.pane-width - (Theme.phone ? 0px : 12px);
-            height: root.pane-height - (Theme.phone ? root.phone-lead : 44px + 12px);
-            nav: "places.";
-            content-height: AutoBattleView.rows * root.pitch;
-            // (A mouse's drag on a place moves its chip: the wheel scrolls.)
-            mouse-pan: false;
-            for line[k] in AutoBattleView.lines: PlaceView {
-                // (Shifted to the place before or after it in its list: the line before or after it.)
-                property <int> step: line.title ? 0 : PlaceDrag.step(line.place);
-                x: line.column * (root.place-width + 12px);
-                y: line.row * root.pitch;
-                width: line.title ? page.view-width - 12px : root.place-width;
-                height: root.pitch - 2px;
-                line: line;
-                chosen: !line.title && line.place == AutoBattleView.marked;
-                dx: (AutoBattleView.lines[k + self.step].column - line.column) * (root.place-width + 12px) + (!line.title && line.place == AutoBattleView.refused-place ? shake.dx : 0px);
-                dy: (AutoBattleView.lines[k + self.step].row - line.row) * root.pitch;
-                gone: PlaceDrag.on && !line.title && line.place == Drag.from;
-                gap: !line.title && line.place == PlaceDrag.to;
-                number: AutoBattleView.lines[k + self.step].number;
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
-
-            // (The place a chip went into.)
-            Flash {
-                x: AutoBattleView.landed-column * (root.place-width + 12px);
-                y: AutoBattleView.landed-row * root.pitch;
-                width: root.place-width;
-                height: root.pitch - 2px;
-                seq: AutoBattleView.landed-seq;
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
-        }
-
-        // ---- The library, open; a place's chip dragged over it is taken out, let go there.
-        if !Theme.phone: Rectangle {
-            library := ChipsPane {
-                x: root.pane-width + 24px;
-                y: root.pane-y;
-                width: parent.width - self.x;
-                height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
-            }
-
-            RemoveTarget {
-                x: library.x - 8px;
-                y: library.y - 8px;
-                width: library.width + 8px;
-                height: library.height + 16px;
-                shown: PlaceDrag.on && Drag.removing;
-                text: Caps.of(@tr("Drop to remove"));
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
-        }
-
-        // (The place being dragged, under the pointer, or a ghost of the library's chip, faint until it is over a place: a
-        // library's row is wider, and its ghost is held no farther in than its middle. And a place a drag was refused at:
-        // it shakes.)
-        LiftedRow {
-            x: Drag.x - root.absolute-position.x - (PlaceDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
-            y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        // (The place a chip went into.)
+        Flash {
+            x: AutoBattleView.landed-column * (root.place-width + 12px);
+            y: AutoBattleView.landed-row * root.pitch;
             width: root.place-width;
             height: root.pitch - 2px;
-            visible: PlaceDrag.on || PlaceDrag.filling;
-            opacity: PlaceDrag.filling && PlaceDrag.to < 0 ? 0.7 : 1;
-            big: Theme.phone;
-            chip: AutoBattleView.lifted.chip;
-            number: AutoBattleView.lifted.number;
-            removing: Drag.removing;
+            seq: AutoBattleView.landed-seq;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+
+    // ---- The library, open; a place's chip dragged over it is taken out, let go there.
+    if !Theme.phone: Rectangle {
+        library := ChipsPane {
+            x: root.pane-width + 24px;
+            y: root.pane-y;
+            width: parent.width - self.x;
+            height: root.pane-height - 12px;
         }
 
-        shake := Shake {
-            seq: AutoBattleView.refused-seq;
+        RemoveTarget {
+            x: library.x - 8px;
+            y: library.y - 8px;
+            width: library.width + 8px;
+            height: library.height + 16px;
+            shown: PlaceDrag.on && Drag.removing;
+            text: Caps.of(@tr("Drop to remove"));
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+    }
+
+    // (The place being dragged, under the pointer, or a ghost of the library's chip, faint until it is over a place: a
+    // library's row is wider, and its ghost is held no farther in than its middle. And a place a drag was refused at:
+    // it shakes.)
+    LiftedRow {
+        x: Drag.x - root.absolute-position.x - (PlaceDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
+        y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        width: root.place-width;
+        height: root.pitch - 2px;
+        visible: PlaceDrag.on || PlaceDrag.filling;
+        opacity: PlaceDrag.filling && PlaceDrag.to < 0 ? 0.7 : 1;
+        big: Theme.phone;
+        chip: AutoBattleView.lifted.chip;
+        number: AutoBattleView.lifted.number;
+        removing: Drag.removing;
+    }
+
+    shake := Shake {
+        seq: AutoBattleView.refused-seq;
     }
 }
 

@@ -1662,6 +1662,14 @@ Each is settled unless the user changes it.
     The ⋯ menu's P1 and P2 rows are one PLAYER row (プレイヤー; at first VIEW, 視点: the user, "change \"view\" to \"player\"", which the export's row follows), the side shown at its right; it opens
     P1 and P2 in its place, the one shown checked, as PLAYBACK SPEED opens the speeds (§2.96). The menu is PLAYER;
     BUILDS, INPUT DISPLAY, OTHER SIDE'S PICTURE; PLAYBACK SPEED; EXPORT VIDEO.
+98. **No screen scrolls as a whole** (2026-10-21). For two days a short window kept a larger scale and the build
+    editor's tabs, Play's builds and lobby and the Replays list scrolled as a whole page instead. The user: "i don't
+    like having the whole thing in a scroll pane like that, it makes some screens awkward just for the phone layout
+    that isn't really used". A short window makes the whole layout smaller again (§4, "Units"), and each screen lays
+    out in the room it has: its panes as tall as the tab or the body leaves them, its lists scrolling inside
+    themselves. A page that is a list or is longer than any window (Settings, About, the practice menu's rows, the
+    ruleset's items, the viewer's two builds) still scrolls. The phone's layout isn't bent for this: where it doesn't
+    fit, its lists take the height that is left.
 
 ## 3. Chosen where the user gave no answer
 
@@ -1694,7 +1702,10 @@ field-ops lime and gold over an isometric grid (its liberation missions' map), B
 starfield with a comet's streak (Duo's comet).
 
 **Units.** Everything below is in units of a 1280 by 800 window (16:10). The window scales the whole layout from
-that reference; the battle picture alone is always a whole multiple of 240 by 160.
+that reference; the battle picture alone is always a whole multiple of 240 by 160. A window shorter than 16:10 makes
+the whole layout smaller to fit its height, so the layout is never shorter than 800: no screen is laid out shorter
+and scrolled as a whole (§2.98; the user: "i don't like having the whole thing in a scroll pane like that"). A
+wider window, or a taller one that isn't upright, gives the screens more room, which their panes and lists take.
 
 **Colors.** The ones that change with the game:
 
@@ -2101,7 +2112,8 @@ DUPLICATE and DELETE.
   +n more"). A list of forms (Crosses, souls; not the Beast Out, one always chosen) has ALL and NONE at the right end
   of each version's head, or of its heading where it shows no versions (§2.69): ALL puts that group's forms in, in
   order, while the list has room, and refuses the rest; NONE takes them out; each one change, dim where it would do
-  nothing. On a phone the panel is over the grid, as tall as what it shows, the selector's rows two to a row, the
+  nothing. The grid scrolls where it has more rows than its room. On a phone the panel is over the grid, as tall as
+  what it shows, the grid in the room left under it, the selector's rows two to a row, the
   fault line as a desktop's, and the ruleset's select between the panel and the grid.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
@@ -2109,7 +2121,8 @@ DUPLICATE and DELETE.
   where the language leaves them no room beside it; one past its limit in the error red) and CLEAR at its right end,
   which empties every entry and its marks, asked first (X; §2.71); then the overview's own 2
   by 15 block (a phone's counts' box keeps its last line for what the game's rules have against the folder). Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
-  a note, MB, attack, element, code), 15 showing. The pointer on an entry or a row shows its chip in the strip
+  a note, MB, attack, element, code), 15 showing at the reference window (both panes run down to 18 over the tab's
+  foot, as the other tabs' do, and are taller in a taller window). The pointer on an entry or a row shows its chip in the strip
   (§2.64). Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's. One the
@@ -2298,7 +2311,8 @@ the bottom.
 ### On a phone
 One column; pickers and the chip library open as sheets from the bottom; everything tapped is at least 44 tall; no
 key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the picture and
-START and MENU open the same menus. Held sideways, a phone uses the desktop layout.
+START and MENU open the same menus. Held sideways, a phone uses the desktop layout. Where a screen doesn't fit a
+short phone, its lists take the height that is left: nothing scrolls the whole screen (§2.98).
 
 ## 7. Errors the player can see
 
