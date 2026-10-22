@@ -6,11 +6,11 @@ fn the_command_line_is_as_stated() {
     let said: Vec<String> = arguments(&Encoding::default()).iter().map(|a| a.to_string_lossy().into_owned()).collect();
     assert_eq!(
         said.join(" "),
-        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0:v -map 0:a? -map_chapters -1 \
+        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0:v -map 0:a? \
          -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709 \
          -c:v libx264 -preset medium -tune animation -crf 16 -g 120 \
          -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
-         -c:a aac -b:a 192k -ar 48000 -f mp4 -movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 2000000 pipe:1"
+         -c:a aac -b:a 192k -f mp4 -movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 2000000 pipe:1"
     );
     let full = arguments(&Encoding { crf: 0, chroma: Chroma::Full, audio_kbps: 320, ..Encoding::default() });
     let said: Vec<String> = full.iter().map(|a| a.to_string_lossy().into_owned()).collect();
@@ -66,8 +66,8 @@ fn one_at_a_time() -> std::sync::MutexGuard<'static, ()> {
 }
 
 /// A video's stream as the tests' stand-ins take it: a picture of 2 by 2, one sound track.
-fn small() -> (Video, Option<Audio>, Info) {
-    (Video { width: 2, height: 2, frame_time: (4389, 262_144) }, Some(Audio { sample_rate: 32_768, tracks: 1 }), Info::default())
+fn small() -> (Video, Option<Audio>) {
+    (Video { width: 2, height: 2, frame_time: (4389, 262_144) }, Some(Audio { sample_rate: 48_000, tracks: 1 }))
 }
 
 /// An ffmpeg that isn't there is said as that.
@@ -75,8 +75,8 @@ fn small() -> (Video, Option<Audio>, Info) {
 fn no_ffmpeg_is_said() {
     let _turn = one_at_a_time();
     let dir = scratch("none");
-    let (video, audio, info) = small();
-    assert!(matches!(Ffmpeg::start(&dir.join("no-such-ffmpeg"), video, audio, &info, &Encoding::default()), Err(Error::NoFfmpeg(_))));
+    let (video, audio) = small();
+    assert!(matches!(Ffmpeg::start(&dir.join("no-such-ffmpeg"), video, audio, &Encoding::default()), Err(Error::NoFfmpeg(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -105,9 +105,9 @@ mod with_a_stand_in {
 
     /// The stand-in started, and written `frames` frames of the small stream (what writing them said).
     fn fed(program: &Path, frames: usize) -> (Box<dyn Backend>, Result<(), Error>) {
-        let (video, audio, info) = small();
-        let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(program, video, audio, &info, &Encoding::default()).unwrap());
-        let sound = [[0.25f32, -0.25]; 548];
+        let (video, audio) = small();
+        let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(program, video, audio, &Encoding::default()).unwrap());
+        let sound = [[0.25f32, -0.25]; 804];
         let written = (0..frames).try_for_each(|_| ffmpeg.frame(vec![7u8; 12], &[&sound[..]]).map(drop));
         (ffmpeg, written)
     }
@@ -165,7 +165,7 @@ mod with_a_stand_in {
 #[test]
 #[ignore]
 fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
-    use crate::tests::{options, viewer};
+    use crate::tests::{given, options, viewer};
     use crate::{Options, Part, Sides, Titles, write_mp4};
     use std::ops::ControlFlow;
     use std::process::Command;
@@ -174,7 +174,13 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
     let dir = scratch("ffmpeg");
     let part = Part::Ticks(200..320);
-    let nut = write_nut(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+    // The stream ffmpeg is given of it: what the encoder is given, as its writer writes it.
+    let given = given(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &mut |_| ControlFlow::Continue(())).unwrap();
+    let mut stream = nut::Writer::new(Vec::new(), given.video, given.audio).unwrap();
+    for (rgb, sound) in &given.frames {
+        stream.frame(rgb, &sound.iter().map(Vec::as_slice).collect::<Vec<_>>()).unwrap();
+    }
+    let nut = stream.finish().unwrap();
     let file = nut::reading::read(&nut).unwrap();
     std::fs::write(dir.join("part.nut"), &nut).unwrap();
     let run = |program: &str, args: &[&str]| -> Vec<u8> {
@@ -189,7 +195,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
         &["-v", "error", "-show_entries", "stream=codec_name,pix_fmt,width,height,r_frame_rate,time_base,sample_rate,channels,sample_fmt", "-of", "csv=p=0", "part.nut"],
     ))
     .unwrap();
-    assert_eq!(probed.lines().collect::<Vec<_>>(), ["rawvideo,480,320,rgb24,262144/4389,4389/262144", "pcm_f32le,flt,32768,2,0/0,1/32768"], "{probed}");
+    assert_eq!(probed.lines().collect::<Vec<_>>(), ["rawvideo,480,320,rgb24,262144/4389,4389/262144", "pcm_f32le,flt,48000,2,0/0,1/48000"], "{probed}");
     // The file's length, which ffprobe has from the index: the last
     // frame's time (120 frames: the 120th starts 119 frame times in).
     let length: f64 = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "part.nut"])).unwrap().trim().parse().unwrap();
@@ -201,7 +207,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "rgb24", "-fps_mode", "passthrough", "-"]].concat()) == pictures);
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:a", "-f", "f32le", "-"]].concat()) == sound);
     // The MP4: every frame, H.264 and AAC, the picture close to the frames; its head first, then its samples.
-    let mp4 = |viewer: &mut Viewer, options: &Options| -> Vec<u8> {
+    let mp4 = |viewer: &mut nettai_frontend::viewer::Viewer, options: &Options| -> Vec<u8> {
         let made = write_mp4(viewer, options, &Encoding::default(), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
         [made.head, made.body].concat()
     };

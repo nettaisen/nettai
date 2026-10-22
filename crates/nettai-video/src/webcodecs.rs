@@ -5,16 +5,15 @@
 //! [`Encoder`] is fed on a thread that may wait (a worker: never the page's main thread), a frame at a time. The
 //! encoding itself runs on a thread of its own, on its event loop, which is where WebCodecs answers: the frames go
 //! to it through a short queue (a frame waits while it is full, so the encoder sets the pace), and what it makes
-//! comes back through another. The sound, at its own rate, is resampled to 48 kHz, the rate both codecs take.
+//! comes back through another. The sound comes at 48 kHz, the rate both codecs take ([`crate::resample`]: the
+//! samples ffmpeg is given on the desktop).
 //!
 //! **Times.** The picture's time scale is a frame's own (a tick is 4389/262144 s: the time scale 262144, a frame
 //! 4389 of it), so its times are exact; the sound's is its samples (48000).
 
-mod resample;
-
 use crate::Error;
-use crate::encode::{Audio, Backend, Encoding, Event, Info, Kind, Packet, Track, Video};
-use resample::{RATE, Resampler};
+use crate::encode::{Audio, Backend, Encoding, Event, Kind, Packet, Track, Video};
+use crate::resample::RATE;
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -55,7 +54,7 @@ enum Said {
 
 /// The browser's encoder for a video of `video` and `audio`, as `encoding` says (its titles and chapters are the
 /// MP4's to write).
-pub(crate) fn start(video: Video, audio: Option<Audio>, _: &Info, encoding: &Encoding) -> Result<Box<dyn Backend>, Error> {
+pub(crate) fn start(video: Video, audio: Option<Audio>, encoding: &Encoding) -> Result<Box<dyn Backend>, Error> {
     Ok(Box::new(Encoder::start(video, audio, encoding)?))
 }
 
@@ -65,7 +64,6 @@ struct Encoder {
     said: Receiver<Said>,
     width: usize,
     height: usize,
-    resample: Vec<Resampler>,
 }
 
 impl Encoder {
@@ -98,8 +96,7 @@ impl Encoder {
             })
         })
         .map_err(|e| Error::Encoder(format!("the encoder's thread: {e}")))?;
-        let resample = audio.map(|a| (0..a.tracks).map(|_| Resampler::new(a.sample_rate)).collect()).unwrap_or_default();
-        Ok(Encoder { frames, said, width: video.width as usize, height: video.height as usize, resample })
+        Ok(Encoder { frames, said, width: video.width as usize, height: video.height as usize })
     }
 
     /// What the encoder's thread said since, without waiting: what it made, or why it stopped.
@@ -125,7 +122,7 @@ impl Backend for Encoder {
         for (x, px) in rgbx.chunks_exact_mut(4).zip(rgb.chunks_exact(3)) {
             x[..3].copy_from_slice(px);
         }
-        let samples = self.resample.iter_mut().zip(sound).map(|(r, s)| r.push(s)).collect();
+        let samples = sound.iter().map(|s| s.as_flattened().to_vec()).collect();
         let mut msg = Msg::Frame(rgbx, samples);
         let waited = nettai_platform::time::Instant::now();
         loop {

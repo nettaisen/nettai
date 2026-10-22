@@ -47,9 +47,9 @@ a match waits for before its first tick: §9.)
   It draws the battle's picture and nothing over it: it has no text of its
   own.
 
-A third crate is over them: **nettai-video** writes a replay as video, a NUT
-stream of raw frames and PCM sound, and runs ffmpeg for an MP4 of one (§8,
-"Video").
+A third crate is over them: **nettai-video** writes a replay as video, an
+MP4 encoded by ffmpeg on the desktop and by the browser's own encoder in a
+browser (§8, "Video").
 
 ## 1. The content pack
 
@@ -1425,7 +1425,7 @@ watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
 app's default; Reduce motion takes the motion off and keeps the text), and
 a replay's video the app exports (as its settings say; a replay's still in
 the list is drawn at rest); nettai-tools in its default mode (`--text
-enhanced`, or `font`: headless frames, `--nut`, `--mp4`); and a host that
+enhanced`, or `font`: headless frames, `--mp4`); and a host that
 loads with the frontend's `Options::default()`. Off: `Renderer::new` and
 `Renderer::with_packs` (Original until told otherwise), so the tests;
 `--text original`, which the frame comparisons against mGBA, the lab and
@@ -2926,22 +2926,26 @@ saying where; the match's checks then judge what it read, as for a match file.
 
 ### Video
 
-nettai-video writes a replay as video. It is a crate of its own over the
-viewer, with no encoder and no ffmpeg library in it, in three pieces that
-are each used alone:
+nettai-video writes a replay as an MP4, the same way on the desktop and in a
+browser. It is a crate of its own over the viewer, with no encoder and no
+ffmpeg library in it:
 
-- **`nut`**: FFmpeg's NUT container, written to any `std::io::Write`: raw
-  frames and PCM sound in one stream, which `ffmpeg -f nut -i -` reads from a
-  pipe. It knows nothing of replays.
-- **`write(&mut viewer, &options, out, progress)`** and
-  **`export(&game, &replay, &options, out, progress)`**: a replay through a
-  viewer into such a stream.
-- **`mp4::Encoder`**: `ffmpeg` run as a child that reads a NUT stream from a
-  pipe and writes an MP4; `export_mp4` and `write_mp4` are the two together.
+- **The playing** (`export(&game, &replay, &options, &encoding, to,
+  progress)`, `write_mp4(&mut viewer, ...)`): the replay through a viewer, a
+  frame and its sound a tick, the picture made at the video's size on
+  threads of their own (`presenters`), the sound made 48 kHz (`resample`).
+- **The encoder** (`encode`), the platform's: `ffmpeg` run as a child on the
+  desktop (`ffmpeg`), the browser's own in a browser (WebCodecs,
+  `webcodecs`). Each is given the same frames and the same samples, and says
+  back its tracks and their encoded samples.
+- **The MP4** (`mp4::Muxer`): the encoder's samples written to any
+  `std::io::Write` a chunk at a time as they come, and the head that indexes
+  them made last (`Made`), for the host to put first.
 
 **What a video holds:** one frame of the picture a tick and the sound the tick
 made, as a viewer playing the part straight presents and plays them
-(`Viewer::present`, text and all; `Viewer::take_samples`). The part is the
+(`Viewer::present`, text and all; `Viewer::take_samples`), the sound made
+48 kHz. The part is the
 whole replay, a round (`Part::Round(n)`) or a range of ticks
 (`Part::Ticks(a..b)`: what playing from position `a` to position `b` shows),
 from either console (`Options::view`), from both on one screen
@@ -2956,7 +2960,7 @@ half byte for byte that console's own video, from one playing of the
 replay: `Viewer::present_view`; nettai-video's test
 `both_sides_are_each_sides_video_side_by_side`). Side by side, each console's
 sound is a track of its own, the left one's first and the right one's
-second, each sample for sample what that console played
+second, each what that console played
 (`Viewer::take_samples_of`: both consoles' sounds run every tick, so one
 playing gives both). Not a mix: the two hear one battle, so a mix would be
 its music and shared effects twice over, and at the set's end the winner's
@@ -2964,7 +2968,10 @@ music over the loser's; apart, what one console alone hears (its own
 charge, its own navi's hit) is in its own track. A width twice an even one
 is even, so nothing changes for 4:2:0. A part starts in the state straight
 playback reaches there, sound included (the viewer's seek), so a part's
-frames and samples are the whole video's for those ticks.
+frames and samples are the whole video's for those ticks. The same replay
+gives the encoder the same frames and samples (nettai-video's test
+`the_same_replay_gives_the_same_frames`, and the same from a viewer that had
+been sought about first).
 
 **Titles and chapters** (`Options::titles`, a host's words: the app's in
 its language). The first track is the default; each track is titled with
@@ -2978,34 +2985,40 @@ still the round it ended). A part's first frame is its round's, and a
 round whose picture begins on a part's last frame starts no chapter (a
 round's part ends on the next round's first picture). nettai-video's tests
 `a_chapter_is_a_round_from_its_first_picture` and
-`the_stream_says_its_tracks_and_chapters`.
+`the_video_says_its_tracks_and_chapters`. They are the MP4's to write
+(`mp4`): each sound track's title as its handler's name, the first track
+enabled and the others its alternates, and the chapters as Nero's `chpl`.
 
-**The stream**, in NUT's terms (the specification is the NUT repository's
-`docs/nut.txt`, version 3, and `nut4cc.txt` for the raw formats' names):
-
-| | |
-|---|---|
-| the picture | stream 0, `RGB[24]` (8-bit red, green, blue; square pixels), 240·N by 160·N |
-| its time base | 4389/262144 s: a tick exactly (280,896 cycles of the GBA's 16,777,216 Hz clock: `player::TICK_SECONDS`); frame `n`'s pts is `n` |
-| the sound | stream 1 (and with both sides stream 2, the right console's), `PFD[32]` (32-bit little-endian floats, left and right), 32768 Hz; none from a viewer without sound |
-| its time base | 1/32768 s, every track's; a frame's pts is the samples before it (4389 samples every 8 ticks, by the same clock) |
-| order | frames in time order across the streams (a track's before a later one's where they start together), each a keyframe behind a syncpoint of its own (a raw frame is far past `max_distance`), its header checked |
-| info | info packets after the stream headers: each track's `Title` (and `handler_name`, FFmpeg's name for an MP4 track's handler), the first track's `Disposition` `default`, and a packet a chapter (its start and length on the picture's time base, its `Title`) |
-| headers | the main and stream headers and the info, at the start, after each of 8, 64, 512 MiB..., and at the end before the index: three times at least |
-| index | the last packet: a reader of a file has the length and every frame's place from it; a reader of a pipe skips it |
-
-Nothing in it varies: no time of day, no encoder string, no name but the
-titles given. **The same replay gives the same bytes** (nettai-video's test
-`the_same_replay_gives_the_same_bytes`, and the same from a viewer that had
-been sought about first).
+**The sound is made 48 kHz here** (`resample`), before either encoder is
+given it: the consoles' 32768 Hz is a rate neither AAC nor Opus has, and
+done here, ffmpeg and the browser's encoder are given the same samples (the
+user: "i want to make the input to the codec layer the same for both
+paths"; ffmpeg resampled for itself before, the browser's encoder by a
+Catmull-Rom interpolation of its own). Each output sample is 128 input
+samples about its place through a Kaiser-windowed sinc (β 9), cut off at
+15.9 kHz (0.97 of 16,384): flat to about 15.2 kHz, nothing from 16.6 kHz,
+where the image of what is under 16.1 kHz starts. Its places are exact:
+output sample `n` is at input sample `n·256/375` (the rates over their
+greatest common divisor), one of 375 phases with its weights worked out
+once, so the sound keeps step with the picture over any length (its time
+base 1/48000 s, the picture's 4389/262144 s: a tick exactly) and the output
+is the same however the input is split, sample for sample. Output sample 0
+is at input sample 0; the last 64 input samples' worth waits for the input
+after it, and the last frame's sound has it, the input ending there
+(`Resampler::finish`), so a video's sound is ⌈N·375/256⌉ samples for N of
+the consoles'. Measured: tones from 55 Hz to 13.5 kHz are the tone at
+48 kHz to 94 dB or better (`a_tone_is_the_same_tone_at_48_khz`); on the
+test set's sound, against ffmpeg's resampler with a 1024-tap filter, it is
+101 to 111 dB off up to 14 kHz and 45 dB off from 14 to 15.5 kHz, and has as
+little above 16.4 kHz (where only images are) as that reference, 70 dB under
+the whole; ffmpeg's default resampling, what the desktop had, is 66 dB off
+from 10 to 14 kHz and has 30 dB more above 16.4 kHz.
 
 **The picture is scaled here, by whole multiples and the nearest pixel**
-(`Options::scale`, 1 to 16), not left at 240x160 for ffmpeg to scale: in the
-enhanced mode the battle's words are drawn at the output's resolution over
-the scaled frame, so only a frame presented at its final size has them sharp.
-The cost is the stream's size, which is raw: 115 KB a frame at 240x160, 1.04
-MB at three times (62 MB a second), so the stream is for a pipe or a short
-part, and a long video at a large size goes to ffmpeg as it is made.
+(`Options::scale`, 1 to 16), not left at 240x160 for an encoder to scale: in
+the enhanced mode the battle's words are drawn at the output's resolution
+over the scaled frame, so only a frame presented at its final size has them
+sharp.
 
 **Three things at once** (the user: "is replay export slower than it should
 be?"). A video was one thread doing everything in turns: play a tick, draw
@@ -3014,7 +3027,8 @@ of it the scaling and the text), write it into ffmpeg's pipe and wait while
 ffmpeg took it. Now:
 
 - *The playing thread* plays the battle in order and draws each tick's
-  frame at 240x160 (`Viewer::frame_view`, a console each), with its sound.
+  frame at 240x160 (`Viewer::frame_view`, a console each), with its sound,
+  which it makes 48 kHz.
 - *The presenters* (`presenters`) make each frame's picture at the video's
   size, scaled with the enhanced mode's text over it, and its RGB bytes: a
   whole frame each, on as many threads as the cores but one, at most four
@@ -3026,11 +3040,13 @@ ffmpeg took it. Now:
   with the window's own `present`, on the desktop and in a browser alike:
   each thread says it started, and where they don't all within 20 seconds
   (a browser's load the page's module each), or one stops, no video is
-  made (`Error::Threads`), as where ffmpeg fails.
-- *The writer* (desktop): ffmpeg's input is written from a thread of its own
-  through a queue of three frames (`ffmpeg::QUEUE`), so the drawing never
-  waits on the pipe, and ffmpeg's output is read on another, as it was.
-- *Canceling* still stops it at the next frame written: the playing thread
+  made (`Error::Threads`), as where the encoder fails.
+- *The encoder* is fed from a queue of a few frames: on the desktop ffmpeg's
+  input is written from a thread of its own (`ffmpeg::QUEUE`, three), so the
+  drawing never waits on the pipe, and its output is read on another; in a
+  browser the encoding runs on a thread of its own, on its event loop, where
+  WebCodecs answers (eight, a frame waiting while they are full).
+- *Canceling* stops it at the next frame written: the playing thread
   lets go of the presenters' queue (each thread ends after the frame it is
   on) and of the encoder, which stops ffmpeg and waits for the writer, whose
   write fails as ffmpeg ends.
@@ -3054,59 +3070,77 @@ Measured on the user's 19:42 EXE5 replay, its first two minutes (7,200
 frames at four times the frame, 960x640, the enhanced mode; release builds,
 `nettai-tool --replay R --mp4 OUT --scale 4 --ticks 1-7200`):
 
-| | before | now |
+| | before | then |
 |---|---|---|
 | the MP4 | 34.4 s | 20.2 s |
-| the stream alone (`--nut /dev/null`) | 25.3 s | 4.7 s |
-| a frame drawn (the stream alone's) | 3.5 ms | 0.66 ms |
+| the frames alone (then `--nut /dev/null`, since gone) | 25.3 s | 4.7 s |
+| a frame drawn | 3.5 ms | 0.66 ms |
 
 (Each twice, the two in turns, on a machine other builds were using.) The MP4
-now takes as long as ffmpeg alone takes to encode the same frames from a file
+then took as long as ffmpeg alone took to encode the same frames from a file
 (1,200 of them: 3.2 s against ffmpeg's 3.0; libx264 at `-preset medium`, CRF
-16, unchanged). The MP4 is byte for byte what it was, and so are the NUT
-streams of twelve parts (their SHA-256): the enhanced mode at two times
-(ticks 1–1500 and 30001–31500), four (1–1200, 30001–31200) and six (1–600,
-30001–30600), the original mode at two (both parts), four (1–1200) and six
-(30001–30600), and both sides at four times enhanced (1–600) and two
-original (30001–30600).
+16, unchanged), and was byte for byte what it had been.
 
-**To an MP4:** `mp4::Encoder::start(to, &settings)` starts ffmpeg, is written
-the stream, and `finish()` gives the file its name. The file is written as
-`NAME.part` beside its place and renamed when ffmpeg has ended well; canceled
-(`cancel()`), failed or dropped, the child is stopped and the part removed,
-so no half-written file is ever under either name (and a file of that name
-from before stays until the new one is whole). The command line is in the
-module (`mp4::Settings::arguments`): H.264 by libx264 (`-preset medium -tune
-animation -crf 16`), 4:2:0, the colors converted and tagged as BT.709 (the
-primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's encoder
-takes them from the frames, and with `-color_primaries` and `-color_trc` alone
-the MP4 said "unknown" for both); AAC at 192 kb/s resampled to 48 kHz (the
-GBA's 32768 Hz is no rate AAC has); `+faststart`; `-map 0`, so every track
-of the stream is one of the MP4 (by itself ffmpeg takes one sound). ffmpeg
-keeps the stream's info by its defaults: the tracks' titles as each track's
-name and handler name, the default track enabled and the other its
-alternate, and the chapters both ways players read an MP4's, a chapter text
-track (QuickTime's) and Nero's `chpl` box. The bundled build has all of it in
-the NUT reader and the MP4 writer it had. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
+**On the desktop: ffmpeg** (`ffmpeg`). It is written the frames as a NUT
+stream on its standard input (`ffmpeg::nut`: FFmpeg's container, raw
+`RGB[24]` frames and `PFD[32]` sound, 32-bit little-endian floats, left and
+right; the picture on a tick's time base, the sound on 1/48000 s; each frame
+a keyframe behind a syncpoint of its own, in time order across the streams;
+the headers three times at least and an index last). The stream is ffmpeg's
+input and nothing else: no file is saved of it (the user: "don't allow raw
+.nut export", then "can you remove nut support then?"). The command line is
+the module's (`ffmpeg::arguments`): H.264 by libx264 (`-preset medium -tune
+animation -crf 16 -g 120`), 4:2:0, the colors converted and tagged as BT.709
+(the primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's
+encoder takes them from the frames, and with `-color_primaries` and
+`-color_trc` alone the MP4 said "unknown" for both); AAC at 192 kb/s of the
+samples as they come, resampled by nothing; `-map 0:a?`, so every track of
+the stream is one of the MP4 (by itself ffmpeg takes one sound). ffmpeg says
+its packets back as a fragmented MP4 on its standard output, read as it
+comes (its tracks from its `moov`, each fragment's samples from its `moof`
+and `mdat`) and not kept: the MP4 is the muxer's. The picture isn't scaled by
+ffmpeg. What 4:2:0 costs depends on
 the size: at an even multiple of the frame every game pixel covers whole
 color samples and edges stay clean, at an odd one every edge gets a fringe
 of mixed color. Measured on 120 frames of an EXE6 fight (the decoded MP4
-against the stream, RGB PSNR): 40 dB at twice the frame and 44 dB at four
+against the frames, RGB PSNR): 40 dB at twice the frame and 44 dB at four
 times, about 2 Mb/s each; 25 dB at three times, at 4 Mb/s; 38 dB at three
 times in 4:4:4 (`Chroma::Full`, which fewer players take). So a host offers
 even sizes first.
 
-**Which ffmpeg** is the host's to say (`Settings::ffmpeg`); `mp4::find_ffmpeg()`
-is the one the app, the tour and `nettai-tool --mp4` run: `$NETTAI_FFMPEG`,
-else `ffmpeg` beside the running program (the one every package bundles:
-docs/app.md §19), else one in an absolute folder of the path or where a
-package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`,
-`/opt/local/bin`). A relative folder of the path (`.`, or an empty entry) is
-never looked in, so an `ffmpeg` in the working directory isn't run; found
-nowhere, it is the bundled one's place, which fails to start (`NoFfmpeg`).
-The bundled ffmpeg is a minimal static build of this command and nothing more
-(nettaisen/ffmpeg-build); its smoke test runs the command on streams
-this crate's `nut` writer makes.
+**Which ffmpeg** is `ffmpeg::find_ffmpeg()`, the one the app, the tour and
+`nettai-tool --mp4` run: `$NETTAI_FFMPEG`, else `ffmpeg` beside the running
+program (the one every package bundles: docs/app.md §19), else one in an
+absolute folder of the path or where a package manager puts it
+(`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`). A relative folder
+of the path (`.`, or an empty entry) is never looked in, so an `ffmpeg` in
+the working directory isn't run; found nowhere, it is the bundled one's
+place, which fails to start (`NoFfmpeg`). The bundled ffmpeg is a minimal
+static build of this command and nothing more (nettaisen/ffmpeg-build); its
+release ffmpeg-9.0.2-1 makes this crate's MP4 from the 48 kHz stream as its
+test below has it.
+
+**In a browser: WebCodecs** (`webcodecs`). H.264 at level 4.2 (High, else
+Main, else the constrained baseline every encoder has), at a bit rate made
+of the rate factor (a fifth of a bit a pixel a frame at CRF 16, at most
+40 Mb/s), a key frame every 120 frames; AAC where the browser has it, else
+Opus, a track a console shown, of the same 48 kHz samples ffmpeg is given.
+The picture's times are a frame's count on a tick's time base, exact; the
+sound's are its samples.
+
+**The MP4** (`mp4::Muxer`) is the same from either encoder: the samples go
+to the host's writer in chunks of about two seconds from a key frame of the
+picture, every track's since the last chunk, and of each only its size,
+duration, offset and key flag are kept. Once every sample is written, the
+head is made (`Made`): the `ftyp`, a `moov` indexing every sample (its
+tracks, their durations, the picture's edit list past its B-frames, a track
+starting after 0 delayed by an empty edit) and a 64-bit `mdat` header. The
+host puts the head first, so the file tells its length and seeks at once,
+and plays a download from its start: no fragmented MP4. On the desktop the
+samples go beside the file as `NAME.body.part`, then the head and they as
+`NAME.part`, named once whole; in a browser to a file in the page's own
+storage, then a download of the head and the file (docs/app.md §6).
+Canceled or failed, nothing is left under either name.
 
 **Progress, canceling, errors.** `progress` is called before the first frame
 and after each with a `Progress` (the frames written and to write, so a
@@ -3120,35 +3154,35 @@ says what went wrong as a type, with the detail as its `Display`:
 
 | | |
 |---|---|
-| `NoFfmpeg(e)` | ffmpeg couldn't be started: none bundled or installed, or not where the settings say |
+| `NoFfmpeg(e)` | ffmpeg couldn't be started: none bundled or installed, or not where `$NETTAI_FFMPEG` says |
 | `FfmpegFailed { code, log }` | ffmpeg ran and failed: its exit code and the last of what it wrote to its standard error |
+| `Encoder(said)` | the browser's encoder refused or failed |
 | `Disk(e)` | the file couldn't be made there, or the disk is full |
 | `Canceled` | the caller stopped it; nothing is left |
 | `Replay(refused)`, `NoSuchPart(what)`, `Scale(n)` | the replay isn't played here; a round or range the replay hasn't; a size not 1 to 16 times |
 | `Stopped { tick, why }` | the engine stopped before the part's end |
 | `Threads(why)` | the threads the frames are presented on didn't start, or one stopped |
-| `Write(e)` | the sink's own error (`write` and `export` to a caller's sink) |
+| `Write(e)` | the writer's own error |
 
-**Checked against ffmpeg** (9.0.2): nettai-video's test
-`ffmpeg_reads_the_stream_and_makes_the_mp4` (not run by default: it needs
-`ffmpeg` and `ffprobe`) has ffprobe read a stream as `rawvideo`, `rgb24`,
-262144/4389 frames a second and `pcm_f32le`, 32768 Hz, stereo, with its
-length from the index and nothing said at `-v error`; ffmpeg decode its
-frames and samples to exactly the bytes written; and the MP4 hold every
-frame, as H.264 and AAC; and a two-sided MP4 have a track a side in order,
-named, the first the default, the two decoding differently, and the rounds
-as chapters from the frame the second's picture begins on. On EXE6's own packs, a part's stream decoded by
-ffmpeg is byte for byte the PNGs `nettai-tool --headless` writes for the same
-ticks (the picture the renderer presents: 120 frames at twice the frame with
-the enhanced mode's text from the left console, 60 at three times in the
-original mode from the right), a part's pictures and sound are the
-whole's for its ticks (120 frames of 900, the part's 65,835 samples the
-whole's from sample 328,626, where tick 599 starts by the clock), the sound
-is the picture's length to the sample (493,762 samples for 900 ticks;
-493,762.5 by the clock), a round alone is its 6,565 frames, and `nettai-tool
---nut - | ffmpeg -f nut -i - out.mp4` makes the MP4 with nothing said. The
-tool writes 900 frames at the frame's size in 0.8 s, and a round of 110
-seconds as an MP4 at twice the frame in 8.5 s.
+**Checked.** nettai-video's tests check what the encoder is given (the
+frames and samples the playing hands either encoder, kept by the tests in
+the encoder's place): a picture a tick, each the one a player playing the
+replay straight presents, and the sound what it plays, made 48 kHz as one
+run, every frame's sound in its place (the picture's length to within a
+sample); a part's the whole's for its ticks; each side, side by side, its
+own video; both on one screen the viewer's both; the titles and chapters;
+the progress and canceling; what can't be made refused before the encoder
+starts. With ffmpeg itself (9.0.2; `ffmpeg_reads_the_stream_and_makes_the_mp4`,
+not run by default: it needs `ffmpeg` and `ffprobe`), ffprobe reads the
+stream ffmpeg is given as `rawvideo`, `rgb24`, 262144/4389 frames a second
+and `pcm_f32le`, 48000 Hz, stereo, with its length from the index and nothing
+said at `-v error`; ffmpeg decodes its frames and samples to exactly the
+bytes written; the MP4 is `ftyp`, `moov` and `mdat` and no fragments, holds
+every frame as H.264 and the sound as AAC at 48 kHz; and a two-sided MP4 has
+a track a side in order, named, the first the default, the two decoding
+differently, and the rounds as chapters from the frame the second's picture
+begins on. It passes with Homebrew's ffmpeg and with the bundled one
+(ffmpeg-9.0.2-1's macos-arm64 binary, by `NETTAI_FFMPEG`).
 
 ## 9. Loading, and what a match waits for
 

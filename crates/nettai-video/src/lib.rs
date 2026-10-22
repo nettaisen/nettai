@@ -5,9 +5,10 @@
 //!   console, both on one screen, or both side by side ([`Sides`]), the picture at a whole multiple of the frame's
 //!   240x160, a frame and its sound at a time.
 //! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (written the playing as a NUT stream of raw
-//!   frames and PCM sound, which it encodes and says the packets of back; its `write_nut` saves that stream
-//!   itself), the browser's own in a browser (WebCodecs). Either makes the picture's H.264 and a sound track's AAC
-//!   (or the browser's Opus) a console shown.
+//!   frames and PCM sound, which it encodes and says the packets of back), the browser's own in a browser
+//!   (WebCodecs). Either is given the same frames and the same samples, and makes the picture's H.264 and a sound
+//!   track's AAC (or the browser's Opus) a console shown.
+//! - `resample`: the sound made 48 kHz, the rate both encoders' codecs take, before either is given it.
 //! - [`mp4`]: the MP4 of what the encoder makes, its samples written to any `std::io::Write` a chunk at a time as
 //!   they are made (a file; in a browser, the file being made in the page's storage) and its head, the index of
 //!   them, made last, for the host to put before them: its tracks, its sound tracks' titles and its rounds as
@@ -19,10 +20,12 @@
 //! the tick made, exactly as a viewer playing the part straight shows and
 //! plays them: the frames are the ones [`Viewer::present`] gives, text
 //! included (made on threads of their own, the same: below), and the
-//! samples the ones [`Viewer::take_samples`] gives. The
-//! picture's time base is a tick's exact length (4389/262144 s:
+//! samples the ones [`Viewer::take_samples`] gives, made 48 kHz
+//! (`resample`: the consoles' 32768 Hz is a rate neither AAC nor Opus
+//! has). The picture's time base is a tick's exact length (4389/262144 s:
 //! `nettai_frontend::player::TICK_SECONDS`) and the sound's a sample's
-//! (1/32768 s), so the two keep step over any length. A part starts in the
+//! (1/48000 s), each sample at an exact place in the consoles' (375 for
+//! every 256), so the two keep step over any length. A part starts in the
 //! state playing straight to it reaches, sound included (the viewer's
 //! seek), so a part's frames and samples are the whole video's for those
 //! ticks.
@@ -43,9 +46,9 @@
 //! the original mode the scaling is plain pixel repetition either
 //! way.)
 //!
-//! **The same replay gives the same bytes.** The stream has no time of
-//! day, no name and no encoder string in it, and the simulation, the
-//! drawing and the sound are functions of the replay.
+//! **The same replay gives the encoder the same frames and samples.** The
+//! simulation, the drawing, the sound and its resampling are functions of
+//! the replay.
 //!
 //! **Three things at once** (the user: "is replay export slower than it
 //! should be?"). The thread a video is made on plays the battle, a tick at
@@ -59,8 +62,9 @@
 //! Measured on a 19:42 EXE5 replay's first two minutes (7,200 frames at four
 //! times the frame, release builds, `nettai-tool --mp4`): the MP4 in 20 s
 //! (it took 34 s when one thread did all three in turns), as fast as ffmpeg
-//! alone encodes the same frames; the stream alone (`--nut`) at 0.66 ms a
-//! frame, from 3.5. The MP4 is byte for byte what it was. The frames are presented
+//! alone encodes the same frames; a frame drawn in 0.66 ms, from 3.5 (the
+//! frames alone, then written as a NUT stream by `nettai-tool --nut`, since
+//! gone). The MP4 was byte for byte what it had been. The frames are presented
 //! one way: the window's `present`, on these threads, the same on the
 //! desktop and in a browser (whose threads are Web Workers); where they
 //! don't start, no video is made ([`Error::Threads`]).
@@ -91,9 +95,6 @@ use ffmpeg as platform;
 mod webcodecs;
 #[cfg(target_arch = "wasm32")]
 use webcodecs as platform;
-// (The browser's resampler is plain Rust: its tests run on the desktop too.)
-#[cfg(all(test, not(target_arch = "wasm32")))]
-#[path = "webcodecs/resample.rs"]
 mod resample;
 
 pub use encode::{Audio, Chapter, Chroma, Encoding, Info, Video};
@@ -104,6 +105,7 @@ use nettai_frontend::replay::{Info as ReplayInfo, Refused, Replay};
 use nettai_frontend::viewer::{Speed, Viewer};
 use nettai_render::compose::{HEIGHT, WIDTH};
 use presenters::{Presented, Presenters};
+use resample::Resampler;
 use std::fmt;
 use std::io::{self, Write};
 use std::ops::{ControlFlow, Range};
@@ -355,15 +357,16 @@ impl std::error::Error for Error {
 /// stop (the video is canceled).
 pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
-/// Where a video's frames go, each its picture's RGB bytes and each console shown's sound: a NUT stream, or an MP4
-/// being encoded. Each gives back a buffer a next frame's picture may be made in: the frame's own once written, or
-/// one the encoder is done with (an empty one where it has none yet).
+/// Where a video's frames go (an MP4 being encoded; in the tests, what is kept of them), each its picture's RGB bytes
+/// and each console shown's sound, at 48 kHz. Each gives back a buffer a next frame's picture may be made in: the
+/// frame's own once written, or one the encoder is done with (an empty one where it has none yet).
 pub(crate) trait Frames {
     fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
 }
 
-/// [`write`]'s playing: the part played and each frame given to what `open` makes of the video's picture, sound
-/// and chapters.
+/// [`write_mp4`]'s playing: the part played and each frame given to what `open` makes of the video's picture,
+/// sound and chapters, the sound made 48 kHz ([`resample`]: a track's carried on from frame to frame, and the last
+/// frame's with the rest of it).
 pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: OnProgress, open: impl FnOnce(Video, Option<Audio>, &Info) -> Result<F, Error>) -> Result<F, Error> {
     let Options { scale, view, sides, ref part, ref titles } = *options;
     if !(1..=MOST_SCALE).contains(&scale) {
@@ -397,7 +400,8 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
     let video = Video { width: (width * sides.count()) as u32, height: height as u32, frame_time: TICK_SECONDS };
     let shown = [viewer.view(), viewer.view() ^ 1];
     let shown = &shown[..sides.count()];
-    let audio = viewer.has_sound().then_some(Audio { sample_rate: nettai_audio::SAMPLE_RATE, tracks: shown.len() });
+    let audio = viewer.has_sound().then_some(Audio { sample_rate: resample::RATE, tracks: shown.len() });
+    let mut resamplers: Vec<Resampler> = audio.map(|a| (0..a.tracks).map(|_| Resampler::new(nettai_audio::SAMPLE_RATE)).collect()).unwrap_or_default();
     let track_titles = match sides {
         Sides::Both => vec![titles.both(viewer.view(), viewer.info())],
         _ => shown.iter().map(|&side| titles.side(side, viewer.info())).collect(),
@@ -442,6 +446,18 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
                 (frames, sound)
             }
         };
+        let last = tick + 1 == ticks.end;
+        let sound = sound
+            .iter()
+            .zip(&mut resamplers)
+            .map(|(heard, r)| {
+                let mut made = r.push(heard);
+                if last {
+                    made.extend(r.finish());
+                }
+                made
+            })
+            .collect();
         presenters.send(frames, sound);
         if presenters.under_way() >= presenters.ahead() {
             write(&mut presenters, &mut rounds, &mut stream, &mut at)?;
@@ -478,7 +494,7 @@ struct Mp4<W: Write> {
 
 impl<W: Write> Mp4<W> {
     fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding, to: W) -> Result<Mp4<W>, Error> {
-        let encoder = platform::start(video, audio, info, encoding)?;
+        let encoder = platform::start(video, audio, encoding)?;
         let frame = video.frame_time.0 as f64 / video.frame_time.1 as f64;
         let chapters = info.chapters.iter().map(|c| mp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
         Ok(Mp4 { encoder: Some(encoder), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)) })

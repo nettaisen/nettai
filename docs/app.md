@@ -3599,11 +3599,10 @@ loser's. With One the sound is the shown console's, one track titled the same wa
 Every export has **chapters**, a round each (the user: "video exports should have chapter info for
 rounds"): "Round 1", "Round 2"… in the app's language (`ReplaysView.chapter`, "ラウンド 1" in Japanese), each
 from the frame its round's picture begins on (the tick that ends a round shows the next one at its start) to
-the next one's; a round's part has its round's chapter alone. They reach the MP4 the way the tracks' titles
-do, in the NUT stream's info packets, which ffmpeg keeps (nettai-video's `chapters` and `nut::Info`,
-docs/frontend.md §8): the MP4 has them both ways players read chapters, as a chapter text track (QuickTime's)
-and as Nero's `chpl` box. The bundled ffmpeg needed nothing added for either. EXPORT
-runs nettai-video's `export_mp4` on a thread of its own, with a copy of what the window plays from (the game's
+the next one's; a round's part has its round's chapter alone. nettai-video's own MP4 writer puts them in the
+MP4 as the tracks' titles are (nettai-video's `chapters` and `mp4`, docs/frontend.md §8): as Nero's `chpl` box,
+which ffmpeg, VLC and mpv read. EXPORT
+runs nettai-video's `export` on a thread of its own, with a copy of what the window plays from (the game's
 graphics in the language shown, the text as the settings have it, its sound); the thread says how far it is
 and is told to stop through what the two share, which the export mode reads each frame. CANCEL (or Esc, or B) stops an
 export under way and leaves the mode on; with none under way it ends it. The line says the round and
@@ -3613,12 +3612,12 @@ found, the file not written, anything else with the log named). The app keeps aw
 - *The file* is an MP4 and nothing else: the NUT stream is how the pictures reach ffmpeg, never a file. It is
   named for the day, the opponent and the part, in the folder last exported to (at first the system's videos
   folder's `nettai`), with a number after it where that name is taken; Save as asks for another place in the
-  system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left (the library's
-  `mp4::Encoder`).
+  system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left
+  (docs/frontend.md §8, "Video").
 - *ffmpeg* is `$NETTAI_FFMPEG`, else the one beside the program, which every package bundles (§19), else one on
   the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
   started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
-  an `ffmpeg` in the working directory is never run (nettai-video's `mp4::find_ffmpeg`, docs/frontend.md §8).
+  an `ffmpeg` in the working directory is never run (nettai-video's `ffmpeg::find_ffmpeg`, docs/frontend.md §8).
 - *How fast* (the user: "is replay export slower than it should be?"): the export's thread plays the replay and
   draws each tick's frame at 240x160; the picture at the video's size, text and all, is made on a few threads
   beside it (nettai-video's `presenters`, with the window's own `present`: there is one way a frame is presented),
