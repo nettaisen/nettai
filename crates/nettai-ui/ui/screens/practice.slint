@@ -41,6 +41,8 @@ export enum PracticeOption {
     custom-gauge,
     chip-draw,
     input-display,
+    // Netplay's input delay, in frames (the one setting: changed here, it is changed for netplay too).
+    input-delay,
 }
 
 // A row of the practice menu: what it is, the value it has (its place among the row's values), and for a row
@@ -123,6 +125,9 @@ export global PracticeView {
         if option == PracticeOption.input-display {
             return @tr("Input display");
         }
+        if option == PracticeOption.input-delay {
+            return @tr("Input delay");
+        }
         return "";
     }
     pure public function value(option: PracticeOption, value: int) -> string {
@@ -140,6 +145,10 @@ export global PracticeView {
         }
         if option == PracticeOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
+        }
+        // (Frames, a bare number as Settings and the lobby say it.)
+        if option == PracticeOption.input-delay {
+            return "\{value}";
         }
         // (Any other of their values is the row's text: a name of the content's.)
         if option == PracticeOption.arena || option == PracticeOption.background {
