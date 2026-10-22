@@ -399,6 +399,15 @@ fn indexing_ahead_leaves_the_viewer_as_it_was() {
     assert!(sound.is_empty());
 }
 
+/// A kept state's battle, seen from side 0: states made by viewers shown
+/// from either side are each the same battle but for the side seen from,
+/// which a state put back takes from the viewer (`setup.local_side`).
+fn seen_from_0(state: &State) -> (u64, String) {
+    let mut battle = state.battle.battle().clone();
+    battle.setup.local_side = 0;
+    (battle.digest(), format!("{battle:?}"))
+}
+
 /// An index made by another viewer of the replay, on a thread of its own
 /// and from the other side, is the viewer's own once taken in: the viewer
 /// stays where and as it was, its index reaches the end with the states a
@@ -449,13 +458,6 @@ fn an_index_made_elsewhere_is_the_viewers_own() {
     let ticks = |of: &Viewer| of.keyframes.iter().map(|k| k.tick).collect::<Vec<_>>();
     assert_eq!(ticks(&v), ticks(&own));
     assert_eq!(v.kept(), own.kept());
-    // (Each the same battle, but for the side it was seen from, which a state put back takes from the viewer:
-    // `setup.local_side`.)
-    let seen_from_0 = |state: &State| {
-        let mut battle = state.battle.battle().clone();
-        battle.setup.local_side = 0;
-        (battle.digest(), format!("{battle:?}"))
-    };
     for (taken, made) in v.keyframes.iter().zip(&own.keyframes) {
         assert!(seen_from_0(taken) == seen_from_0(made), "the battle at tick {}", taken.tick);
         assert_eq!(format!("{:?}", taken.huds), format!("{:?}", made.huds), "the HUDs at tick {}", taken.tick);
@@ -466,6 +468,108 @@ fn an_index_made_elsewhere_is_the_viewers_own() {
     follow(&mut v, &s[0], 20, "after taking it in");
     for (to, side) in [(length - 5, 0u8), (3, 0), (length / 2, 1), (2 * KEYFRAME_EVERY + 1, 1), (replay.round_starts()[1] + 9, 0)] {
         let what = format!("a seek to tick {to} from a state taken in, side {side}");
+        v.set_view(side);
+        let sought = v.sought();
+        v.seek(to);
+        assert!(v.sought() - sought < KEYFRAME_EVERY as u64, "{what}: it played {} ticks", v.sought() - sought);
+        same(&mut v, &s[side as usize], to, &what);
+        follow(&mut v, &s[side as usize], 40, &what);
+    }
+    assert_eq!(v.diverged(), None);
+}
+
+/// An index made on three threads, the battle's on one (a silent viewer,
+/// `Viewer::index_battle`) and each console's sound on one of its own
+/// (`ConsoleSound::play`), wired as a host wires them, is the one a viewer
+/// that makes its own sound makes (`Viewer::index_part`), state for state:
+/// the same ticks, battle, HUDs and how the session stood, and each
+/// console's sound the same (the samples it makes over the two seconds
+/// after, sample for sample, sounding in most). Taken in, a seek from one of
+/// its states lands where playing straight gets, the picture and the sound
+/// after it included, from either console.
+#[test]
+fn an_index_made_on_three_threads_is_the_one_made_on_one() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let mut one = viewer(&content, &replay, 0);
+    let mut made = Vec::new();
+    loop {
+        let part = one.index_part(KEYFRAME_EVERY);
+        let whole = part.whole();
+        made.push(part);
+        if whole {
+            break;
+        }
+    }
+    let (send, parts) = std::sync::mpsc::channel();
+    let (to_left, left_gets) = std::sync::mpsc::sync_channel::<BattlePart>(2);
+    let (to_right, right_gets) = std::sync::mpsc::sync_channel::<BattlePart>(2);
+    let [mut left, mut right] = ConsoleSound::both(audio(&content));
+    let (on, of) = (&content, &replay);
+    std::thread::scope(|scope| {
+        scope.spawn(move || {
+            for mut part in right_gets {
+                right.play(&mut part);
+                send.send(part.into_part()).unwrap();
+            }
+        });
+        scope.spawn(move || {
+            for mut part in left_gets {
+                left.play(&mut part);
+                to_right.send(part).unwrap();
+            }
+        });
+        scope.spawn(move || {
+            let renderer = graphics(on, 0x001F).renderer(GraphicsMode::Original, None);
+            let mut silent = Viewer::with(on, of, Some(1), renderer, None, None).unwrap();
+            // (Parts of another length than the other's, from the other side: the states are the same.)
+            loop {
+                let part = silent.index_battle(KEYFRAME_EVERY / 2 + 7);
+                let whole = part.whole();
+                to_left.send(part).unwrap();
+                if whole {
+                    break;
+                }
+            }
+        });
+    });
+    let threaded: Vec<IndexPart> = parts.into_iter().collect();
+    assert_eq!(threaded.last().map(|p| (p.reached, p.whole)), Some((length, true)));
+    fn states(parts: &[IndexPart]) -> Vec<(u32, &State)> {
+        parts.iter().flat_map(|p| &p.states).map(|s| (s.tick, s)).collect()
+    }
+    let (by_three, by_one) = (states(&threaded), states(&made));
+    assert_eq!(by_three.iter().map(|s| s.0).collect::<Vec<_>>(), by_one.iter().map(|s| s.0).collect::<Vec<_>>());
+    let after = |sound: &BattleAudio| {
+        let (mut sound, mut out) = (sound.clone(), Vec::new());
+        for _ in 0..2 * FRAME_RATE as usize {
+            sound.tick(&mut out);
+        }
+        out
+    };
+    let mut sounding = 0;
+    for (&(tick, t), &(_, m)) in by_three.iter().zip(&by_one) {
+        assert!(seen_from_0(t) == seen_from_0(m), "the battle at tick {tick}");
+        assert_eq!(format!("{:?}", t.huds), format!("{:?}", m.huds), "the HUDs at tick {tick}");
+        assert_eq!((&t.stopped, t.finished, t.result), (&m.stopped, m.finished, m.result), "the session at tick {tick}");
+        let (ts, ms) = (t.audio.as_ref().expect("a sound"), m.audio.as_ref().expect("a sound"));
+        for side in 0..2 {
+            let heard = after(&ts[side]);
+            assert!(heard == after(&ms[side]), "side {side}'s sound at tick {tick}");
+            sounding += heard.iter().any(|s| s[0] != 0.0) as usize;
+        }
+    }
+    assert!(sounding > by_three.len(), "the sound sounds in most states ({sounding} of {})", 2 * by_three.len());
+    // Taken in: seeks from its states.
+    let s = [straight(&content, &replay, 0), straight(&content, &replay, 1)];
+    let mut v = viewer(&content, &replay, 0);
+    for part in threaded {
+        v.take_index(part);
+    }
+    assert_eq!((v.indexed(), v.kept()), (length, by_one.len() + 1));
+    for (to, side) in [(length - 5, 0u8), (KEYFRAME_EVERY + 3, 1), (replay.round_starts()[1] + 9, 0), (length / 2, 1)] {
+        let what = format!("a seek to tick {to} from a state made on three threads, side {side}");
         v.set_view(side);
         let sought = v.sought();
         v.seek(to);
@@ -601,4 +705,3 @@ fn a_preloaded_viewer_is_the_viewer() {
     let five = nettai_match::testing::exe5_content();
     assert!(matches!(crate::replay::set_of(&five, &replay), Err(Refused::OtherGame { .. })));
 }
-
