@@ -108,16 +108,24 @@ async function download(files, sizes, told) {
   }));
 }
 
+// Where a file the app hands over as a download is made (a video, as it is encoded: nettai-platform's dialog.rs,
+// nettai_make_file): none of the kept files. Emptied as the page starts, nothing being made then.
+const MAKING = ".making";
+
 // The files kept: how many, to tell how far loading them is.
-async function count(dir) {
+async function count(dir, top) {
   let n = 0;
-  for await (const [, handle] of dir.entries()) n += handle.kind === "directory" ? await count(handle) : 1;
+  for await (const [name, handle] of dir.entries()) {
+    if (top && name === MAKING) continue;
+    n += handle.kind === "directory" ? await count(handle, false) : 1;
+  }
   return n;
 }
 
 // The files kept, each put in the data folder at its path there (`loaded` told of each).
 async function load(dir, prefix, loaded) {
   for await (const [name, handle] of dir.entries()) {
+    if (prefix === "" && name === MAKING) continue;
     const path = prefix + name;
     if (handle.kind === "directory") {
       await load(handle, path + "/", loaded);
@@ -212,7 +220,8 @@ async function main() {
   const root = await navigator.storage.getDirectory();
   // (Kept, not cleared when the browser is short of room, where it allows.)
   navigator.storage.persist?.();
-  const kept = await count(root);
+  await root.removeEntry(MAKING, { recursive: true }).catch((e) => e.name === "NotFoundError" || console.warn("nettai: emptying", MAKING, e));
+  const kept = await count(root, true);
   let loaded = 0;
   await load(root, "", () => {
     loaded++;

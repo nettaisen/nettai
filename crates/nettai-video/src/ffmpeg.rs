@@ -3,8 +3,9 @@
 //! a thread of its own that takes the frames through a queue of three (`QUEUE`: a write waits while ffmpeg is behind;
 //! the frames after it are drawn meanwhile), and writes a fragmented MP4 of the encoded picture and sound on its
 //! standard output, which is read back as it comes ([`Ffmpeg`]): the tracks from its `moov`, each fragment's
-//! samples from its `moof` and `mdat`. What is made of
-//! them is the same MP4 the browser's encoder makes ([`crate::fmp4`]: its tracks titled, its chapters). It links no
+//! samples from its `moof` and `mdat` (ffmpeg's fragments are how it says them as it goes; the file made of them is
+//! none). What is made of them is the same MP4 the browser's encoder makes ([`crate::mp4`]: its tracks titled, its
+//! chapters, its index first). It links no
 //! ffmpeg library and no encoder; it is the command line
 //!
 //! ```text
@@ -403,7 +404,7 @@ fn read(mut out: impl Read, width: u32, height: u32, tell: &Sender<Result<Event,
                     let edits = trak.edts.map(|mut edts| {
                         if let Some(elst) = &mut edts.elst {
                             for e in &mut elst.entries {
-                                e.segment_duration = e.segment_duration * crate::fmp4::MOVIE_TIMESCALE as u64 / movie.max(1) as u64;
+                                e.segment_duration = e.segment_duration * crate::mp4::MOVIE_TIMESCALE as u64 / movie.max(1) as u64;
                             }
                         }
                         edts

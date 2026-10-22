@@ -1,5 +1,5 @@
 //! What a video is to its encoder ([`Video`], [`Audio`], [`Info`]), and what an encoder is to the rest: frames and
-//! sound in, and out its tracks (once it knows them) and their packets, which [`crate::fmp4`] makes an MP4 of. The
+//! sound in, and out its tracks (once it knows them) and their packets, which [`crate::mp4`] makes an MP4 of. The
 //! encoder is the platform's (ffmpeg on the desktop, the browser's own in a browser), each module's `start`; the
 //! playing before and the MP4 after are the same for both.
 
@@ -50,7 +50,7 @@ pub enum Kind {
 
 /// A track of the video: its kind, its time scale (its times' units a second), how its samples are coded (its
 /// sample description, as an MP4 says it), and what of them is shown (an edit list, in the movie's time scale,
-/// [`crate::fmp4::MOVIE_TIMESCALE`]: AAC's encoder delay and padding left out; none: all of it).
+/// [`crate::mp4::MOVIE_TIMESCALE`]: AAC's encoder delay and padding left out; none: all of it).
 #[derive(Clone, Debug)]
 pub struct Track {
     pub kind: Kind,

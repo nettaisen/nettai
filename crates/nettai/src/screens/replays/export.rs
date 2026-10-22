@@ -3,9 +3,10 @@
 //! replay through a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
 //!
 //! The thread tells how far it is and is told to stop through what the two share ([`Shared`]); the export mode
-//! reads it each frame. The file takes its name only once it is whole (the library's `mp4::Encoder`): stopped or
-//! failed, nothing of it is left. What went wrong is said in the options' line, in the player's words
-//! (`UserError::of_export`); the app saves an MP4 and nothing else.
+//! reads it each frame. The file takes its name only once it is whole, the MP4's head put before its samples
+//! (nettai-video's `Made`, the platform's `Stream::finish`): stopped or failed, nothing of it is left. What went
+//! wrong is said in the options' line, in the player's words (`UserError::of_export`); the app saves an MP4 and
+//! nothing else.
 //!
 //! The part exported is a range of the replay's ticks, shown on the viewer's bar between two handles: the whole
 //! match at first; a round, or the whole match again, by the Range's list; or any part by the handles (dragged,
@@ -462,8 +463,8 @@ impl Export {
     }
 
     /// EXPORT: the export starts, on a thread of its own, written to its file as it is made: on the desktop at the
-    /// path the export mode says, in the browser where its save dialog says (which a page may open only on a click
-    /// or a key). The file is heard once this call is done (`Replays`' `Screen::chosen`, [`VIDEO_FILE`]).
+    /// path the export mode says; in the browser in the page's storage, handed over as a download of that name once
+    /// whole. The file is heard once this call is done (`Replays`' `Screen::chosen`, [`VIDEO_FILE`]).
     fn start(&mut self, shell: &mut Shell) {
         if !self.open_to_change() {
             return;
@@ -523,8 +524,9 @@ impl Export {
                 share(&told).progress = Some(progress);
                 if stopped.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             };
-            // (Whole: the file kept. Canceled or failed: let go, nothing of it left.)
-            let result = nettai_video::export(&game, &replay, &options, &encoding, to, &mut progress).map(Stream::finish);
+            // (Whole: the file kept, its head first. Canceled or failed: let go, nothing of it left.)
+            let result = nettai_video::export(&game, &replay, &options, &encoding, to, &mut progress)
+                .and_then(|made| made.body.finish(made.head).map_err(nettai_video::Error::Disk));
             share(&told).done = Some(result);
         };
         match nettai_platform::thread::spawn("export", work) {

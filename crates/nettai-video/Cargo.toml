@@ -3,7 +3,7 @@ name = "nettai-video"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "A replay as video: played frame by frame, encoded by the platform's encoder (ffmpeg run as a child on the desktop, WebCodecs in a browser) and written as a fragmented MP4 as it is made; or as a NUT stream of raw frames and PCM sound"
+description = "A replay as video: played frame by frame, encoded by the platform's encoder (ffmpeg run as a child on the desktop, WebCodecs in a browser) and written as an MP4 as it is made, its index put first once whole; or as a NUT stream of raw frames and PCM sound"
 
 [dependencies]
 # The replay's viewer: the picture and the sound of each tick.
@@ -15,7 +15,7 @@ nettai-audio = { path = "../nettai-audio", default-features = false }
 # The threads the frames are presented on (`presenters`), and the browser's encoder's (`webcodecs`): the platform's.
 nettai-platform = { path = "../nettai-platform" }
 
-# The MP4's boxes (`fmp4`), and ffmpeg's read back (`ffmpeg`).
+# The MP4's boxes (`mp4`), and ffmpeg's read back (`ffmpeg`).
 mp4-atom = "0.16"
 
 # The browser's encoder (`webcodecs`): WebCodecs through wasm-bindgen, on a worker of its own (the platform's).

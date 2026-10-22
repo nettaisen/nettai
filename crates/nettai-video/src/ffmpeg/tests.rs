@@ -88,13 +88,6 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
-/// The files in `dir`, by name.
-fn left_in(dir: &Path) -> Vec<String> {
-    let mut names: Vec<String> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
-    names.sort();
-    names
-}
-
 /// The encoder's dealings with its child, with stand-ins for ffmpeg (shell scripts that take its arguments): one
 /// that fails saying why, one that says the disk is full, one that closes its input, one that never ends.
 #[cfg(unix)]
@@ -166,9 +159,9 @@ mod with_a_stand_in {
 /// installed; `cargo test -p nettai-video -- --ignored`): a short set's
 /// stream is read by ffmpeg as the frames and the samples that were
 /// written, bit for bit, at the frame rate and sample rate stated; its
-/// MP4 is H.264 and AAC of every frame, close to them; and a two-sided
-/// one's has a track each side, named and the first the default, and the
-/// rounds as chapters.
+/// MP4 is H.264 and AAC of every frame, close to them, its index before
+/// its samples and no fragments; and a two-sided one's has a track each
+/// side, named and the first the default, and the rounds as chapters.
 #[test]
 #[ignore]
 fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
@@ -207,10 +200,24 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let quiet = ["-v", "error", "-nostdin"];
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "rgb24", "-fps_mode", "passthrough", "-"]].concat()) == pictures);
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:a", "-f", "f32le", "-"]].concat()) == sound);
-    // The MP4: every frame, H.264 and AAC, the picture close to the frames.
-    let to = dir.join("part.mp4");
-    write_mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &Encoding::default(), std::fs::File::create(&to).unwrap(), &mut |_| ControlFlow::Continue(())).unwrap();
-    assert_eq!(left_in(&dir), ["part.mp4", "part.nut"]);
+    // The MP4: every frame, H.264 and AAC, the picture close to the frames; its head first, then its samples.
+    let mp4 = |viewer: &mut Viewer, options: &Options| -> Vec<u8> {
+        let made = write_mp4(viewer, options, &Encoding::default(), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+        [made.head, made.body].concat()
+    };
+    let file = mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part));
+    let mut kinds = Vec::new();
+    let mut at = 0;
+    while at < file.len() {
+        let size = match u32::from_be_bytes(file[at..at + 4].try_into().unwrap()) {
+            1 => u64::from_be_bytes(file[at + 8..at + 16].try_into().unwrap()) as usize,
+            size => size as usize,
+        };
+        kinds.push(String::from_utf8_lossy(&file[at + 4..at + 8]).into_owned());
+        at += size;
+    }
+    assert_eq!((kinds, at), (vec!["ftyp".to_string(), "moov".into(), "mdat".into()], file.len()));
+    std::fs::write(dir.join("part.mp4"), &file).unwrap();
     let probed = String::from_utf8(run(
         "ffprobe",
         &["-v", "error", "-count_frames", "-show_entries", "stream=codec_name,pix_fmt,width,height,r_frame_rate,nb_read_frames,sample_rate", "-of", "csv=p=0", "part.mp4"],
@@ -230,7 +237,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let second = replay.round_starts()[1];
     let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
     let both = Options { scale: 1, view: None, sides: Sides::SideBySide, part: Part::Ticks(second - 60..second + 60), titles };
-    write_mp4(&mut viewer(&content, &replay, 1), &both, &Encoding::default(), std::fs::File::create(dir.join("both.mp4")).unwrap(), &mut |_| ControlFlow::Continue(())).unwrap();
+    std::fs::write(dir.join("both.mp4"), mp4(&mut viewer(&content, &replay, 1), &both)).unwrap();
     let entries = "stream=codec_type,codec_name:stream_disposition=default:stream_tags=name,handler_name";
     let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();
     assert_eq!(
