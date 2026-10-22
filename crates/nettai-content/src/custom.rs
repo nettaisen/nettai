@@ -68,14 +68,13 @@ pub struct CustomDoc {
     pub chip_art: Vec<ChipArtDoc>,
     pub pictures: PicturesDoc,
     /// Chip codes as 8x16 glyphs; element icons, each in a palette row
-    /// whose colors 10-15 are the ones it brings; damage digits (0-9, '?').
+    /// whose colors 10-15 are the ones it brings (each its symbol alone,
+    /// clear elsewhere, over the frame they share: `element_frame`, viewed
+    /// in the first one's row); damage digits (0-9, '?').
     pub codes: TileImage,
     pub elements: TileImage,
-    /// The element icons' symbols with their frame taken off, on a clear
-    /// ground, laid and colored as the icons, where the frame is drawn
-    /// (`shapes.element_frame`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub element_symbols: Option<TileImage>,
+    pub element_frame: Option<TileImage>,
     pub digits: TileImage,
     /// The slots' codes (2x1, the last the empty slot's) and the empty
     /// slot's icon.
@@ -644,7 +643,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         }
     };
     let elements = icons("elements.png", &c.elements);
-    let element_symbols = (!c.element_symbols.is_empty()).then(|| icons("element-symbols.png", &c.element_symbols));
+    let frame_row = c.element_sprite.map(|e| e.palette).or_else(|| element_rows(c).first().copied()).unwrap_or(c.icon_palette);
+    let element_frame = (!c.element_frame.is_empty()).then(|| image("element-frame.png", &c.element_frame, ICONS(1), &[frame_row], 0, &none));
     let digits = image("digits.png", &c.digits, GLYPHS(11), &[frame0], 0, &none);
     let slot_codes = image("slot-codes.png", &c.slot_codes, Layout::Blocks { width: 2, height: 1, columns: 14 }, &[frame0], 0, &none);
     let empty_icon = image("empty-icon.png", &c.empty_icon, ICONS(1), &[c.icon_palette], 0, &none);
@@ -725,7 +725,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         pictures: PicturesDoc { ok, ok_picked, other },
         codes,
         elements,
-        element_symbols,
+        element_frame,
         digits,
         slot_codes,
         empty_icon,
@@ -982,7 +982,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         pictures,
         codes: img(&doc.codes, report)?.0,
         elements,
-        element_symbols: match &doc.element_symbols {
+        element_frame: match &doc.element_frame {
             Some(i) => img(i, report)?.0,
             None => Tiles::default(),
         },

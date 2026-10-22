@@ -57,27 +57,67 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
     image(&art.picture.tiles, 7, 6, &c.chip(chip).art_palette.unwrap_or(art.picture.palette))
 }
 
-/// A chip family's 16x16 element icon, as the game's pack's chip window
-/// shows it for a chip of the family: the custom screen's element tiles in
-/// the icons' palette with the family's six colors from color 10, or in the
-/// icon's own palette where the pack draws it as a sprite. None: the pack
-/// has no icon for the family.
-pub fn element_icon(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<Image> {
-    let a = &packs.game(c).custom;
-    let family = family.0 as usize;
-    let palette = match &a.element_sprite {
-        Some(sprite) => sprite.palette,
+/// The palette a chip family's element icon is drawn in: the icons' with
+/// the family's six colors from color 10, or the icon's own where the pack
+/// draws it as a sprite. None: the pack has no icon for the family.
+fn element_palette(a: &nettai_assets::CustomScreen, family: usize) -> Option<Palette> {
+    match &a.element_sprite {
+        Some(sprite) => Some(sprite.palette),
         None => {
             let mut palette = a.icon_palette;
             palette[10..].copy_from_slice(a.element_colors.get(family)?);
-            palette
+            Some(palette)
         }
-    };
-    let mut tiles = Tiles::default();
-    for t in 4 * family..4 * family + 4 {
-        tiles.pixels.extend_from_slice(a.elements.get(t)?);
     }
-    image(&tiles, 2, 2, &palette)
+}
+
+/// A chip family's 16x16 element icon, as the game's pack's chip window
+/// shows it for a chip of the family: its frame with its symbol over it
+/// (`CustomScreen::element_icon`), in its palette. None: the pack has no
+/// icon for the family.
+pub fn element_icon(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<Image> {
+    let a = &packs.game(c).custom;
+    let family = family.0 as usize;
+    let palette = element_palette(a, family)?;
+    image(&a.element_icon(family)?, 2, 2, &palette)
+}
+
+/// A chip family's element icon as an SVG of 16x16 frame pixels: the frame
+/// the pack draws (`shapes.element_frame`) in the family's colors, smooth
+/// at any size, with the symbol over it as its pixels, square-edged (the
+/// icon's pixels inside the frame's ring: `CustomScreen::element_inside`).
+/// The user: "you should draw the element icons in the ui with the smooth
+/// frame as well". None: the pack has no drawing of the frame, or no icon
+/// for the family ([`element_icon`] is the picture).
+pub fn element_icon_svg(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<String> {
+    let a = &packs.game(c).custom;
+    let family = family.0 as usize;
+    let d = a.shapes.element_frame.as_ref().filter(|d| d.size == [16, 16])?;
+    let palette = element_palette(a, family)?;
+    let inside = a.element_inside()?;
+    let icon = a.elements.pixels.get(4 * family * Tiles::TILE..4 * (family + 1) * Tiles::TILE)?;
+    let hex = |c: u16| format!("#{:06x}", to_rgb(c));
+    // (A pixel's index in the icon, by x and y; a symbol's pixel's index,
+    // none outside the ring.)
+    let at = |x: usize, y: usize| (2 * (y / 8) + x / 8) * Tiles::TILE + 8 * (y % 8) + x % 8;
+    let symbol = |x: usize, y: usize| Some(icon[at(x, y)]).filter(|&p| p != 0 && inside[at(x, y)]);
+    // (Each row's runs of one color, a rectangle each.)
+    let mut rects = String::new();
+    for y in 0..16 {
+        let mut x = 0;
+        while x < 16 {
+            let Some(p) = symbol(x, y) else {
+                x += 1;
+                continue;
+            };
+            let end = (x + 1..16).find(|&e| symbol(e, y) != Some(p)).unwrap_or(16);
+            rects += &format!("<rect x=\"{x}\" y=\"{y}\" width=\"{}\" height=\"1\" fill=\"{}\"/>", end - x, hex(palette[p as usize & 15]));
+            x = end;
+        }
+    }
+    let frame = nettai_content::shapes::recolor(&d.source, &|_, k| palette[k as usize & 15]);
+    let end = frame.rfind("</svg>")?;
+    Some(format!("{}<g shape-rendering=\"crispEdges\">{rects}</g>\n{}", &frame[..end], &frame[end..]))
 }
 
 /// A form's face in the emotion window (its definition's mugshot, the

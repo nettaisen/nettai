@@ -380,13 +380,7 @@ pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> Stri
         bundle.hud.mugshot_box_frame = box_frame;
     }
     if !bundle.custom.is_empty() {
-        let mut shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
-        // The element icons' frame, their symbols apart from it.
-        if let Some((frame, symbols)) = element_frame(&bundle.custom, &mut sh) {
-            shapes.element_frame = Some(frame);
-            bundle.custom.element_symbols = symbols;
-        }
-        bundle.custom.shapes = shapes;
+        bundle.custom.shapes = custom_shapes(&bundle.custom, &mut sh, &mut |p| problems.push(p));
     }
     // (The colors each is looked at in: its picture's first palette.)
     let views = Views::of(bundle);
@@ -777,6 +771,14 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     let column: Vec<Option<Drawing>> = (0..2).map(|k| sh.glyphs(&format!("custom/column-cell-{k}"), &c.column_cells, k, 1)).collect();
     s.column_cells = all(column);
     s.empty_icon = sh.tiles("custom/empty-icon", &c.empty_icon, 0, 2, 2);
+    // The frame the element icons share (`elements::split`), but for its
+    // ground round the ring, which the drawing leaves out (the user: "don't
+    // draw the square background under the element icon since it just looks
+    // awkward, only the icon frame should be filled in").
+    if let Some((_, outside)) = c.element_outside() {
+        let pixels = c.element_frame.pixels.iter().zip(&outside).map(|(&p, &o)| if o { 0 } else { p }).collect();
+        s.element_frame = sh.tiles("custom/element-frame", &Tiles { pixels }, 0, 2, 2);
+    }
     s.slot_code = slot_code(c, sh, say);
     // The cursors, their corners alone (the chip cursor's) or meeting each
     // other (the form list's).
@@ -861,35 +863,6 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         }
     }
     s
-}
-
-/// The element icons' frame as its drawing, and each icon's symbol apart
-/// from it (`CustomScreen::element_symbols`): the frame each pixel's index
-/// most of the icons with any share, the rest of it the ground (its most
-/// common index); a symbol its icon's pixels on the ground that aren't the
-/// ground's, index 0 elsewhere (the frame's pixels an icon has otherwise go
-/// with it). None: the frame has no drawing, or there are no icons.
-fn element_frame(c: &CustomScreen, sh: &mut Shaper) -> Option<(Drawing, Tiles)> {
-    const ICON: usize = 4 * Tiles::TILE;
-    let icons = c.elements.pixels.as_chunks::<ICON>().0;
-    let live: Vec<&[u8; ICON]> = icons.iter().filter(|i| i.iter().any(|&p| p != 0)).collect();
-    if live.is_empty() {
-        return None;
-    }
-    let most = |values: &mut dyn Iterator<Item = u8>| -> (u8, usize) {
-        let mut n = [0usize; 16];
-        for v in values {
-            n[v as usize & 15] += 1;
-        }
-        let k = (0..16).max_by_key(|&k| (n[k], std::cmp::Reverse(k))).unwrap_or(0);
-        (k as u8, n[k])
-    };
-    let shared: Vec<(u8, usize)> = (0..ICON).map(|i| most(&mut live.iter().map(|icon| icon[i]))).collect();
-    let ground = most(&mut shared.iter().map(|s| s.0)).0;
-    let frame: Vec<u8> = shared.iter().map(|&(v, n)| if 2 * n > live.len() { v } else { ground }).collect();
-    let drawing = sh.tiles("custom/element-frame", &Tiles { pixels: frame.clone() }, 0, 2, 2)?;
-    let symbols = icons.iter().flat_map(|icon| icon.iter().zip(&frame).map(|(&p, &f)| if f == ground && p != ground { p } else { 0 })).collect();
-    Some((drawing, Tiles { pixels: symbols }))
 }
 
 /// Every one of a set of drawings, or none (a set is drawn whole or as its

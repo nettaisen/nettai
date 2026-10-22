@@ -345,7 +345,7 @@ fn custom() -> CustomScreen {
         pictures: SlotPictures { ok: picture(61), ok_picked: picture(62), other: picture(67) },
         codes: tiles(56, 70),
         elements: tiles(8, 71),
-        element_symbols: tiles(8, 72),
+        element_frame: tiles(4, 72),
         element_colors: vec![[1, 2, 3, 4, 5, 6], [0x7FFF, 0, 0x1F, 0x3E0, 0x7C00, 0x2108]],
         digits: tiles(22, 72),
         slot_codes: tiles(56, 73),
