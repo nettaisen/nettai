@@ -11,7 +11,7 @@
 // where its rows don't fit it; on a phone the panel is over the grid, which takes the room left under it. Its Rust
 // half is src/screens/builds/navi.rs.
 
-import { Theme, Caps } from "../../theme.slint";
+import { Theme, I18n } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Select, Button, ProblemNote, AllNone, ScrollPage } from "../../widgets.slint";
@@ -294,7 +294,7 @@ component ChoiceSeg inherits Rectangle {
             }
 
             word := Text {
-                text: Caps.of(preset);
+                text: I18n.upper(preset);
                 color: parent.chosen ? Theme.cursor : Theme.muted;
                 font-family: Theme.display;
                 font-size: 13px;
@@ -512,7 +512,7 @@ export component NaviTab inherits Rectangle {
                 y: 0;
                 width: self.preferred-width;
                 height: 16px;
-                text: Caps.of(group.count == "" ? group.name : group.name + "  " + group.count);
+                text: I18n.upper(group.count == "" ? group.name : group.name + "  " + group.count);
                 color: group.flagged ? Theme.bad : Theme.muted;
                 font-family: Theme.body;
                 font-size: 11px;
@@ -593,7 +593,7 @@ export component NaviTab inherits Rectangle {
         width: self.natural-width;
         visible: Theme.phone;
         nav: Theme.phone ? "ruleset-edit" : "";
-        text: Caps.of(@tr("Edit"));
+        text: I18n.upper(@tr("Edit"));
     }
 
     // (On a phone, PRACTICE under them, the row's width: the tab bar has no room for it.)
@@ -603,6 +603,6 @@ export component NaviTab inherits Rectangle {
         width: root.width;
         visible: Theme.phone && NaviView.practice;
         nav: Theme.phone && NaviView.practice ? "practice" : "";
-        text: Caps.of(@tr("Practice"));
+        text: I18n.upper(@tr("Practice"));
     }
 }

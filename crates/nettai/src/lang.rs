@@ -66,36 +66,36 @@ impl I18n {
     }
 
     /// `text` in capitals by the language's rules (Unicode's: a Turkish or an Azeri i is İ, a Lithuanian i keeps its
-    /// dot above where it has one), for the words the UI sets in capitals (`Caps` in theme.slint).
+    /// dot above where it has one), for the words the UI sets in capitals (`I18n.upper` in theme.slint).
     pub fn upper(&self, text: &str) -> String {
         self.caps.uppercase_to_string(text, &self.language).into_owned()
     }
 
     /// `items` one after the other by the language's own separator ("A, B, C", "A、B、C"), for the lines the UI lists
-    /// things on (`Lists` in theme.slint: a build's abilities, its patch cards): the user, "you should also join items
+    /// things on (`I18n.join` in theme.slint: a build's abilities, its patch cards): the user, "you should also join items
     /// by locale-aware separator in the ui".
     pub fn list<S: AsRef<str>>(&self, items: &[S]) -> String {
         self.lists.format(items.iter().map(AsRef::as_ref)).to_string()
     }
 }
 
-/// Show the app in the language `code`: its rules made (`I18n`) and given to the UI's `Caps` and `Lists`, then its
+/// Show the app in the language `code`: its rules made (`I18n`) and given to the UI's `I18n`, then its
 /// strings from its catalog (from the next frame: Slint says every `@tr` string again, and what they set in capitals
 /// or list with it, by the new rules). The app keeps what this returns; the words it sets itself it sets again.
 pub fn select(ui: &nettai_ui::AppWindow, code: &'static str) -> std::rc::Rc<I18n> {
     use slint::ComponentHandle;
     let i18n = std::rc::Rc::new(I18n::new(code));
     let rules = i18n.clone();
-    let caps = ui.global::<nettai_ui::Caps>();
-    caps.on_upper(move |text| rules.upper(&text).into());
+    let ui_i18n = ui.global::<nettai_ui::I18n>();
+    ui_i18n.on_uppercased(move |text| rules.upper(&text).into());
     let rules = i18n.clone();
-    ui.global::<nettai_ui::Lists>().on_join(move |items| rules.list(&slint::Model::iter(&items).collect::<Vec<_>>()).into());
+    ui_i18n.on_joined(move |items| rules.list(&slint::Model::iter(&items).collect::<Vec<_>>()).into());
     // (English is the source: it has no catalog.)
     let _ = slint::select_bundled_translation(if code == "en" { "" } else { code });
     ui.global::<nettai_ui::Theme>().set_cjk(cjk(code));
     // (Everything set in capitals or listed is set again by the new rules: the words the app gave too, which no
     // `@tr` brings back. The user: "fix the turkish issue".)
-    caps.set_language(caps.get_language().wrapping_add(1));
+    ui_i18n.set_language(ui_i18n.get_language().wrapping_add(1));
     i18n
 }
 

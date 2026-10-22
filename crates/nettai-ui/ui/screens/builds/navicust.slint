@@ -14,7 +14,7 @@
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board is over the list, and
 // the effects and the bugs are a line each under it. Its Rust half is src/screens/builds/navicust.rs.
 
-import { Theme, Audit, Caps, Lists } from "../../theme.slint";
+import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, ListView, Field, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -279,7 +279,7 @@ export global NavicustView {
     // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
     in property <[EffectLine]> effects;
     in property <[EffectLine]> bugs;
-    // The same on a line each, for a phone: their items, which the line lists (`Lists.of`).
+    // The same on a line each, for a phone: their items, which the line lists (`I18n.join`).
     in property <[string]> effect-items;
     in property <[string]> bug-items;
     // A stat's change, in the overview's words: HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular
@@ -776,7 +776,7 @@ export component EffectRow inherits Rectangle {
         y: 4px;
         width: parent.width;
         height: 14px;
-        text: !root.title ? "" : (root.line.kind == EffectKind.effects ? Caps.of(@tr("Effects")) : Caps.of(@tr("Bugs")));
+        text: !root.title ? "" : (root.line.kind == EffectKind.effects ? I18n.upper(@tr("Effects")) : I18n.upper(@tr("Bugs")));
     }
 
     Text {
@@ -1008,7 +1008,7 @@ export component NavicustTab inherits Rectangle {
             width: root.shape-width;
             height: 14px;
             visible: root.two-shapes;
-            text: Caps.of(@tr("Compressed"));
+            text: I18n.upper(@tr("Compressed"));
             horizontal-alignment: center;
         }
 
@@ -1030,7 +1030,7 @@ export component NavicustTab inherits Rectangle {
             width: root.shape-width;
             height: 14px;
             visible: root.two-shapes;
-            text: Caps.of(@tr("Uncompressed"));
+            text: I18n.upper(@tr("Uncompressed"));
             horizontal-alignment: center;
         }
     }
@@ -1127,7 +1127,7 @@ export component NavicustTab inherits Rectangle {
         width: max(0px, clear.x + clear.pad - 12px - self.x);
         height: root.head-height;
         visible: NavicustView.board;
-        text: Caps.of(@tr("NaviCust"));
+        text: I18n.upper(@tr("NaviCust"));
         color: NavicustView.in-list ? Theme.muted : Theme.cursor;
     }
 
@@ -1387,7 +1387,7 @@ export component NavicustTab inherits Rectangle {
         y: root.list-y;
         width: NavicustView.board ? root.list-width : max(0px, clear.x + clear.pad - 12px - self.x);
         height: 20px;
-        text: Caps.of(@tr("Programs"));
+        text: I18n.upper(@tr("Programs"));
         color: NavicustView.in-list ? Theme.cursor : Theme.muted;
     }
 
@@ -1409,7 +1409,7 @@ export component NavicustTab inherits Rectangle {
         x: NavicustView.board ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
         y: NavicustView.board ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
         nav: "clear";
-        text: Caps.of(@tr("Clear"));
+        text: I18n.upper(@tr("Clear"));
         enabled: NavicustView.clearable;
     }
 
@@ -1455,7 +1455,7 @@ export component NavicustTab inherits Rectangle {
         width: root.list-width + 16px;
         height: max(0px, root.height - self.y);
         shown: NavicustView.over-list;
-        text: Caps.of(@tr("Click to put away"));
+        text: I18n.upper(@tr("Click to put away"));
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -1494,7 +1494,7 @@ export component NavicustTab inherits Rectangle {
     }
 
     if Theme.phone: Rectangle {
-        for line[i] in [{ title: @tr("Effects"), text: Lists.of(NavicustView.effect-items), bug: false }, { title: @tr("Bugs"), text: Lists.of(NavicustView.bug-items), bug: true }]: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: I18n.join(NavicustView.effect-items), bug: false }, { title: @tr("Bugs"), text: I18n.join(NavicustView.bug-items), bug: true }]: Rectangle {
             x: 0;
             y: root.lines-y + i * 22px;
             width: root.width;

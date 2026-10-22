@@ -12,7 +12,7 @@
 // no panels: Version exclusives (its word over its control), the buttons, the category as a select, the head, the
 // items.
 
-import { Theme, Caps, Lists } from "theme.slint";
+import { Theme, I18n } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
@@ -123,9 +123,9 @@ export global RulesetView {
     // ---- Words the app asks for.
     // (The quick choice of every version's own items: Both, beside the category's ALL.)
     out property <string> both-word: @tr("Both");
-    out property <string> lobby-word: Caps.of(@tr("Lobby"));
-    out property <string> editor-word: Caps.of(@tr("Editor"));
-    out property <string> preset-word: Caps.of(@tr("Preset"));
+    out property <string> lobby-word: I18n.upper(@tr("Lobby"));
+    out property <string> editor-word: I18n.upper(@tr("Editor"));
+    out property <string> preset-word: I18n.upper(@tr("Preset"));
     out property <string> fixed-preset: @tr("A preset can't be changed. Duplicate it to make your own.");
     out property <string> fixed-viewed: @tr("This is your opponent's choice. Duplicate it to make your own.");
     public pure function allowed(n: int, of: int) -> string {
@@ -166,7 +166,7 @@ export global RulesetView {
     }
     out property <string> inherited-note: @tr("Banned for all navis");
     public pure function paired-status(keys: int, items: int) -> string {
-        return Lists.of([@tr("{n} navi" | "{n} navis" % keys), @tr("{n} program" | "{n} programs" % items)]);
+        return I18n.join([@tr("{n} navi" | "{n} navis" % keys), @tr("{n} program" | "{n} programs" % items)]);
     }
     // What the system's file dialogs say they ask for.
     out property <string> ruleset-files: @tr("Ruleset files");
@@ -425,7 +425,7 @@ component VersionPicks inherits Rectangle {
             word := Text {
                 x: (i > 0 ? 1px : 0px) + root.pad;
                 width: self.preferred-width;
-                text: Caps.of(choice.text);
+                text: I18n.upper(choice.text);
                 color: hit.has-hover && RulesetView.editable ? Theme.cursor : choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : RulesetView.editable ? Theme.muted : Theme.dim;
                 font-family: Theme.display;
                 font-size: 10px;
@@ -518,15 +518,15 @@ export component RulesetPage inherits Page {
             y: 0px;
             width: self.preferred-width;
             height: Theme.phone ? 16px : 40px;
-            text: Caps.of(@tr("Version exclusives"));
+            text: I18n.upper(@tr("Version exclusives"));
         }
 
         Seg {
             x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
             y: Theme.phone ? 20px : versions-label.y + 2px;
             nav: "rules.versions";
-            first: Caps.of(@tr("One version"));
-            second: Caps.of(@tr("Mix versions"));
+            first: I18n.upper(@tr("One version"));
+            second: I18n.upper(@tr("Mix versions"));
             chosen: RulesetView.versions;
             enabled: RulesetView.editable;
         }
@@ -537,7 +537,7 @@ export component RulesetPage inherits Page {
             width: self.natural-width;
             visible: RulesetView.deletable;
             nav: "rules.delete";
-            text: Caps.of(@tr("Delete"));
+            text: I18n.upper(@tr("Delete"));
             kind: ButtonKind.ghost;
             danger: true;
             enabled: RulesetView.deletable;
@@ -548,7 +548,7 @@ export component RulesetPage inherits Page {
             y: delete.y;
             width: self.natural-width;
             nav: "rules.duplicate";
-            text: Caps.of(@tr("Duplicate"));
+            text: I18n.upper(@tr("Duplicate"));
         }
 
         // (A file of the ruleset shown, written where the player says; and a file read in as their own, shown in its
@@ -558,7 +558,7 @@ export component RulesetPage inherits Page {
             y: Theme.phone ? delete.y + 48px : delete.y;
             width: self.natural-width;
             nav: "rules.export";
-            text: Caps.of(@tr("verb" => "Export"));
+            text: I18n.upper(@tr("verb" => "Export"));
         }
 
         Button {
@@ -566,7 +566,7 @@ export component RulesetPage inherits Page {
             y: export.y;
             width: self.natural-width;
             nav: "rules.import";
-            text: Caps.of(@tr("verb" => "Import"));
+            text: I18n.upper(@tr("verb" => "Import"));
         }
     }
 
@@ -585,7 +585,7 @@ export component RulesetPage inherits Page {
             y: root.line-y;
             width: self.preferred-width;
             height: 16px;
-            text: Caps.of(@tr("Categories"));
+            text: I18n.upper(@tr("Categories"));
         }
 
         if !Theme.phone: categories := ListView {
@@ -641,7 +641,7 @@ export component RulesetPage inherits Page {
             width: Theme.phone ? self.preferred-width : min(self.preferred-width, root.words-x - 16px - self.x);
             height: 16px;
             visible: !Theme.phone;
-            text: Caps.of(RulesetView.categories[RulesetView.category].name);
+            text: I18n.upper(RulesetView.categories[RulesetView.category].name);
             color: Theme.cursor;
         }
 
@@ -759,7 +759,7 @@ export component RulesetPage inherits Page {
                     x: 8px;
                     y: -root.head + 6px;
                     height: 14px;
-                    text: Caps.of(line.head);
+                    text: I18n.upper(line.head);
                     color: line.tone;
                     font-family: Theme.display;
                     font-size: 10px;
@@ -788,7 +788,7 @@ export component RulesetPage inherits Page {
                 y: root.programs-y + 6px;
                 width: self.preferred-width;
                 height: 14px;
-                text: Caps.of(RulesetView.programs-title);
+                text: I18n.upper(RulesetView.programs-title);
                 color: Theme.muted;
                 font-family: Theme.display;
                 font-size: 10px;

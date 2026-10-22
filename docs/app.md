@@ -593,11 +593,11 @@ screen may start one beside something of its own (Play, while an invite waits fo
 
 **Every string of the app's own goes through Slint's `@tr`**, written in English, with a context where one word
 means two things. A string Rust needs (a dialog's button, a card's role) is a property or a function of the
-screen's view in the same catalog (`out property <string> you: Caps.of(@tr("You"));`). No string from a library's error is
+screen's view in the same catalog (`out property <string> you: I18n.upper(@tr("You"));`). No string from a library's error is
 ever shown (§12).
 
-**Words in capitals are written in a sentence's case**, and set in capitals where they are shown: `Caps.of(@tr("Show
-file"))` (theme.slint's `Caps`, which the app answers with `I18n::upper`, ICU's case mapping by the language shown's
+**Words in capitals are written in a sentence's case**, and set in capitals where they are shown: `I18n.upper(@tr("Show
+file"))` (theme.slint's `I18n`, which the app answers with `I18n::upper`, ICU's case mapping by the language shown's
 own rules: a Turkish i is İ, a German ß SS). The catalog holds a word once ("Back", whether a button's BACK or a
 sentence's Back), and a translator writes it once; where the capitals' word is another in a language (a button's
 verb, a heading), a context tells the two apart (`@tr("verb" => "Export")`). Acronyms and units (HP, MB, OK, P1,
@@ -607,24 +607,25 @@ just call locale-aware to upper case in locations where they need to be uppercas
 
 **Things listed on a line are joined in the UI, by the language's own separator**: Rust hands over the items (a
 build's abilities, bugs and patch cards, an auto battle list's chips, a partner's programs, a program's effects) as
-a `[string]`, and the line shows `Lists.of(items)` (theme.slint's `Lists`, which the app answers with `I18n::list`,
+a `[string]`, and the line shows `I18n.join(items)` (theme.slint's `I18n` again, which the app answers with `I18n::list`,
 CLDR's "and" list at its narrow length, which has no "and" before the last: "A, B, C" in English, "A、B、C" in
 Japanese). No ", " is written between items in Rust or in Slint; a text Slint makes of its own strings lists them
-the same way (`Lists.of([@tr("{n} navi" | …), @tr("{n} program" | …)])`). A separator that isn't a list's (the
+the same way (`I18n.join([@tr("{n} navi" | …), @tr("{n} program" | …)])`). A separator that isn't a list's (the
 "·" between a navi and its preset, a translated pattern) stays as it is. The user: "you should also join items by
 locale-aware separator in the ui", then "surely you should join the list in slint rather than in rust".
 
 **The language's rules are made once, when it is chosen** (`lang::I18n`: its code, its parsed identifier, its case
 mapper, its list formatter; the user: "parsing the icu language identifier each time seems expensive, why not just
 parse it once at the top level then pass it in everywhere? or like an i18n context that holds a casemapper and a
-list formatter"). `lang::select` makes them, gives them to `Caps` and `Lists`, then selects the catalog; the shell
+list formatter"). `lang::select` makes them, gives them to the UI's `I18n`, then selects the catalog; the shell
 keeps them (`shell.i18n`, its `code` the language's), and Rust that lists or capitalizes is handed them (`Words`'s
 `i18n`). Choosing another language makes all of them anew ("on language switch why not just rebuild the i18n context
-with everything?"). No caller passes `Caps` or `Lists` the language: their `of` functions read `Caps.language`, a
+with everything?"). No caller passes `I18n.upper` or `I18n.join` the language: both read `I18n.language`, a
 count `lang::select` raises each time a language is chosen (after the new rules are in place), so Slint sets again
 everything in capitals or listed, the words the app gave and never gives again (a player's name, a build's) as well
 as every `@tr` one: until then those kept the old language's capitals, which matter where a language's rules differ
-(Turkish: the user, "fix the turkish issue").
+(Turkish: the user, "fix the turkish issue"; then "instead of Caps.language and List reading it maybe you should
+have I18n.upper and I18n.join": one global, `I18n`, for both).
 
 **A language is a folder**, `crates/nettai-ui/lang/<code>/`, of gettext catalogs: one file for each part of the
 app (`shell.po` for what every screen shares, then one a screen), so two screens' translators don't meet in one

@@ -8,7 +8,7 @@
 // On a phone the folder is one column under its counts, and the library opens as a sheet from the bottom
 // (`FolderOverlay`), with what a slot's keys do as buttons. Its Rust half is src/screens/builds/folder.rs.
 
-import { Theme, Audit, Caps } from "../../theme.slint";
+import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -478,7 +478,7 @@ export component LibraryHead inherits Rectangle {
         width: self.preferred-width;
         height: 40px;
         visible: !root.bare;
-        text: Caps.of(@tr("Library"));
+        text: I18n.upper(@tr("Library"));
         color: root.in-library ? Theme.cursor : Theme.muted;
     }
 
@@ -497,7 +497,7 @@ export component LibraryHead inherits Rectangle {
         width: self.preferred-width;
         height: 40px;
         visible: !root.bare;
-        text: Caps.of(@tr("Sort"));
+        text: I18n.upper(@tr("Sort"));
     }
 
     Select {
@@ -809,7 +809,7 @@ export component FolderTab inherits Rectangle {
         width: root.pane-width - 24px;
         height: root.two-lines ? 14px : 44px;
         visible: !Theme.phone;
-        text: Caps.of(@tr("Folder"));
+        text: I18n.upper(@tr("Folder"));
         color: FolderView.in-library ? Theme.muted : Theme.cursor;
     }
 
@@ -872,7 +872,7 @@ export component FolderTab inherits Rectangle {
         x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
         y: Theme.phone ? 12px : root.two-lines ? root.pane-y + 4px : root.counts-y;
         nav: "clear";
-        text: Caps.of(@tr("Clear"));
+        text: I18n.upper(@tr("Clear"));
         enabled: FolderView.counts.chips > 0;
     }
 
@@ -937,7 +937,7 @@ export component FolderTab inherits Rectangle {
             width: library.width + 8px;
             height: library.height + 16px;
             shown: FolderDrag.on && Drag.removing;
-            text: Caps.of(@tr("Drop to remove"));
+            text: I18n.upper(@tr("Drop to remove"));
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -1059,7 +1059,7 @@ export component FolderOverlay inherits Rectangle {
             y: 56px;
             width: (parent.width - 44px) / 2;
             nav: "lib.regular";
-            text: Caps.of(@tr("Regular"));
+            text: I18n.upper(@tr("Regular"));
         }
 
         Button {
@@ -1069,7 +1069,7 @@ export component FolderOverlay inherits Rectangle {
             visible: FolderView.counts.tags;
             enabled: FolderView.counts.tags;
             nav: FolderView.counts.tags ? "lib.tag" : "";
-            text: Caps.of(@tr("Tag"));
+            text: I18n.upper(@tr("Tag"));
         }
 
         Button {
@@ -1077,7 +1077,7 @@ export component FolderOverlay inherits Rectangle {
             y: FolderView.counts.tags ? 104px : 56px;
             width: (parent.width - 44px) / 2;
             nav: "lib.remove";
-            text: Caps.of(@tr("Remove"));
+            text: I18n.upper(@tr("Remove"));
             kind: ButtonKind.ghost;
             danger: true;
         }

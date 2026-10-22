@@ -5,7 +5,7 @@
 // it where the menu gives it hints (the match menu's: the match's own controls); on a phone, the pad under the
 // picture.
 
-import { Theme, Caps } from "../theme.slint";
+import { Theme, I18n } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
 import { Shell, BattleKind, Picture, LinkFigures, Footer, Hint, HintView, PartyMember, PartyHud } from "../shell.slint";
 import { Cut, Heading, Label, Note, Mono, Bars, Button } from "../widgets.slint";
@@ -194,7 +194,7 @@ component LinkPanel inherits Rectangle {
             y: 10px;
             width: parent.width - 24px - 34px;
             height: 20px;
-            text: Caps.of(@tr("Connection"));
+            text: I18n.upper(@tr("Connection"));
             color: Theme.text;
         }
 
@@ -259,7 +259,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top;
             width: root.column;
-            label: Caps.of(@tr("Round trip"));
+            label: I18n.upper(@tr("Round trip"));
             value: Shell.connection-ping < 0 ? "–" : @tr("{} ms", Shell.connection-ping);
             tone: Shell.connection-level >= 3 ? Theme.text : root.tone;
         }
@@ -268,7 +268,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 20px;
             width: root.column;
-            label: Caps.of(@tr("Jitter"));
+            label: I18n.upper(@tr("Jitter"));
             value: root.f.jitter < 0 ? "–" : @tr("{} ms", root.f.jitter);
         }
 
@@ -276,7 +276,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 40px;
             width: root.column;
-            label: Caps.of(@tr("Loss"));
+            label: I18n.upper(@tr("Loss"));
             value: @tr("{}%", floor(root.f.loss / 10) + "." + mod(root.f.loss, 10));
             tone: root.f.loss < 10 ? Theme.text : root.f.loss < 50 ? Theme.action : Theme.bad;
         }
@@ -285,7 +285,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 60px;
             width: root.column;
-            label: Caps.of(@tr("Reconnects"));
+            label: I18n.upper(@tr("Reconnects"));
             value: root.f.reconnects;
         }
 
@@ -293,7 +293,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 80px;
             width: root.column;
-            label: Caps.of(@tr("Skew"));
+            label: I18n.upper(@tr("Skew"));
             value: root.f.skew > 0 ? "+" + root.f.skew : "" + root.f.skew;
             tone: abs(root.f.skew) <= 3 ? Theme.text : abs(root.f.skew) <= 7 ? Theme.action : Theme.bad;
         }
@@ -302,7 +302,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 100px;
             width: root.column;
-            label: Caps.of(@tr("Lead"));
+            label: I18n.upper(@tr("Lead"));
             value: root.f.lead;
         }
 
@@ -311,7 +311,7 @@ component LinkPanel inherits Rectangle {
             x: parent.width - 12px - root.column;
             y: root.top;
             width: root.column;
-            label: Caps.of(@tr("Input delay"));
+            label: I18n.upper(@tr("Input delay"));
             value: root.f.input-delay;
         }
 
@@ -319,7 +319,7 @@ component LinkPanel inherits Rectangle {
             x: parent.width - 12px - root.column;
             y: root.top + 20px;
             width: root.column;
-            label: Caps.of(@tr("Rollbacks"));
+            label: I18n.upper(@tr("Rollbacks"));
             value: root.f.rollbacks;
         }
 
@@ -327,7 +327,7 @@ component LinkPanel inherits Rectangle {
             x: parent.width - 12px - root.column;
             y: root.top + 40px;
             width: root.column;
-            label: Caps.of(@tr("Last rollback"));
+            label: I18n.upper(@tr("Last rollback"));
             value: root.f.last-rollback;
             tone: root.f.last-rollback <= 2 ? Theme.text : root.f.last-rollback <= 5 ? Theme.action : Theme.bad;
         }
@@ -336,7 +336,7 @@ component LinkPanel inherits Rectangle {
             x: parent.width - 12px - root.column;
             y: root.top + 60px;
             width: root.column;
-            label: Caps.of(@tr("Deepest"));
+            label: I18n.upper(@tr("Deepest"));
             value: root.f.deepest-rollback;
         }
 
@@ -344,7 +344,7 @@ component LinkPanel inherits Rectangle {
             x: parent.width - 12px - root.column;
             y: root.top + 80px;
             width: root.column;
-            label: Caps.of(@tr("Frames waited"));
+            label: I18n.upper(@tr("Frames waited"));
             value: root.f.waits;
         }
 
@@ -353,7 +353,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 120px;
             width: parent.width - 24px;
-            label: Caps.of(@tr("Sent"));
+            label: I18n.upper(@tr("Sent"));
             value: @tr("{} packets · {} KB", root.f.sent, root.f.sent-kb);
         }
 
@@ -361,7 +361,7 @@ component LinkPanel inherits Rectangle {
             x: 12px;
             y: root.top + 140px;
             width: parent.width - 24px;
-            label: Caps.of(@tr("Received"));
+            label: I18n.upper(@tr("Received"));
             value: @tr("{} packets · {} KB", root.f.received, root.f.received-kb);
         }
     }
@@ -622,7 +622,7 @@ component TouchPad inherits Rectangle {
         x: 0;
         y: 0;
         nav: "pad.menu";
-        text: Caps.of(@tr("Menu"));
+        text: I18n.upper(@tr("Menu"));
     }
 
     Text {

@@ -68,7 +68,7 @@ fn effect_line(words: &Words, entry: EntryHandle, index: usize) -> Option<String
     cards::line(effect, text, &named).map(|l| l.text)
 }
 
-/// Things a line lists, for the UI to put one after the other by the language's own separator (`Lists.of`: the user,
+/// Things a line lists, for the UI to put one after the other by the language's own separator (`I18n.join`: the user,
 /// "you should also join items by locale-aware separator in the ui").
 pub fn items<S: Into<SharedString>>(list: impl IntoIterator<Item = S>) -> ModelRc<SharedString> {
     ModelRc::new(VecModel::from(list.into_iter().map(Into::into).collect::<Vec<_>>()))

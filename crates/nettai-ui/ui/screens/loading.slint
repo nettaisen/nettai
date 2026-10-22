@@ -3,7 +3,7 @@
 // Legacy Collection, the bar is the extraction's. The bar has one width and the percentage fixed-width digits, so
 // nothing moves as it fills.
 
-import { Theme, Caps } from "../theme.slint";
+import { Theme, I18n } from "../theme.slint";
 import { Shell, Errors, ErrorKind } from "../shell.slint";
 import { Label, Mono, Bar, Note, Button, ButtonKind } from "../widgets.slint";
 import { Tween } from "../motion.slint";
@@ -73,7 +73,7 @@ export component LoadingScreen inherits Rectangle {
         width: root.column - 56px;
         height: 16px;
         visible: !Shell.no-games;
-        text: Shell.extracting ? Caps.of(@tr("Extracting {}", Shell.game)) : Caps.of(@tr("Loading {}", Shell.game));
+        text: Shell.extracting ? I18n.upper(@tr("Extracting {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
     }
 
     Mono {

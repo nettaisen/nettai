@@ -2,7 +2,7 @@
 // screen is laid out on, the ground behind it, the cursor over it, and the dialog and the list of choices that
 // open over a screen.
 
-import { Theme, Audit, Look, PatternKind, Caps } from "theme.slint";
+import { Theme, Audit, Look, PatternKind, I18n } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
@@ -324,8 +324,8 @@ export global UpdateWords {
         return @tr("nettai {} is out", version);
     }
     out property <string> message: @tr("Update now? It downloads while you play, and nettai restarts into it at the main menu.");
-    out property <string> later: Caps.of(@tr("Later"));
-    out property <string> update: Caps.of(@tr("Update"));
+    out property <string> later: I18n.upper(@tr("Later"));
+    out property <string> update: I18n.upper(@tr("Update"));
     public pure function downloading(percent: int) -> string {
         return @tr("Downloading the update… {}%", percent);
     }
@@ -610,7 +610,7 @@ export global Errors {
     }
     // What opens the system's folder dialog, to choose the Legacy Collection's folder.
     public pure function choose-folder() -> string {
-        return Caps.of(@tr("Choose folder"));
+        return I18n.upper(@tr("Choose folder"));
     }
 }
 
