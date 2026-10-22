@@ -10,7 +10,7 @@
 # THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt}. No ROM and no extracted asset is in it: the app extracts each game's
 # pack from the player's own copy.
 #
-# NETTAI_VERSION         the version (the workflow's, from the tag); else the app crate's
+# NETTAI_VERSION         the version, if set; else the app crate's
 # NETTAI_UNIVERSAL=1     arm64 and x86_64 in one program (lipo), and in one ffmpeg; else the host's alone
 # NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architectures built); else the release packaging/ffmpeg.sha256
 #                        pins, downloaded and checked
