@@ -8,6 +8,14 @@
 //! comes back through another. The sound comes at 48 kHz, the rate both codecs take ([`crate::resample`]: the
 //! samples ffmpeg is given on the desktop).
 //!
+//! **AAC's delay.** An AAC encoder puts samples before the sound (its priming: AAC's blocks overlap, and an encoder
+//! looks ahead), which no AAC packet says and WebCodecs doesn't tell: Chromium stamps the packets from 0, its macOS
+//! encoder (AudioToolbox) putting 2112 first and its Windows one (Media Foundation) its own. So it is measured as an
+//! export starts, a click through an encoder of the same settings and a decoder (`nettai_video_aac_delay`), and each
+//! sound track is shown from past it (its edit list), as the desktop's are by ffmpeg's (the user: "is aac in the
+//! browser broken then?", then "ok fix it then": before, the sound played late by it, 44 ms on macOS). Opus says its
+//! own, its pre-skip (312, Chromium's libopus lookahead).
+//!
 //! **Times.** The picture's time scale is a frame's own (a tick is 4389/262144 s: the time scale 262144, a frame
 //! 4389 of it), so its times are exact; the sound's is its samples (48000).
 
@@ -160,6 +168,49 @@ impl Backend for Encoder {
 export function nettai_video_sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+// How many samples the AAC encoder `config` makes puts before the sound: its priming, which no AAC packet says and
+// WebCodecs doesn't tell (Chromium stamps the packets from 0: macOS's AudioToolbox puts 2112 first). A click,
+// encoded and decoded again: how much later it comes out.
+export async function nettai_video_aac_delay(config) {
+    const [at, length] = [3000, 16384];
+    const click = new Float32Array(length * 2);
+    click[at * 2] = click[at * 2 + 1] = 0.5;
+    const chunks = [];
+    let [decoderConfig, failed] = [null, null];
+    const encoder = new AudioEncoder({ output: (chunk, meta) => { chunks.push(chunk); decoderConfig ??= meta?.decoderConfig; }, error: (e) => (failed = e) });
+    encoder.configure(config);
+    const data = new AudioData({ format: "f32", sampleRate: 48000, numberOfChannels: 2, numberOfFrames: length, timestamp: 0, data: click });
+    encoder.encode(data);
+    data.close();
+    await encoder.flush();
+    encoder.close();
+    if (failed) throw failed;
+    if (!decoderConfig) throw new Error("the AAC encoder said no decoder configuration");
+    const heard = [];
+    const decoder = new AudioDecoder({
+        output: (d) => {
+            const left = new Float32Array(d.numberOfFrames);
+            d.copyTo(left, { planeIndex: 0, format: "f32-planar" });
+            heard.push(left);
+            d.close();
+        },
+        error: (e) => (failed = e),
+    });
+    decoder.configure(decoderConfig);
+    for (const chunk of chunks) decoder.decode(chunk);
+    await decoder.flush();
+    decoder.close();
+    if (failed) throw failed;
+    let [n, place, loudest] = [0, -1, 0];
+    for (const part of heard) {
+        for (const v of part) {
+            if (Math.abs(v) > loudest) [place, loudest] = [n, Math.abs(v)];
+            n++;
+        }
+    }
+    if (loudest < 0.1 || place < at) throw new Error(`the AAC encoder's delay couldn't be told (its click came out at ${place}, ${loudest} loud)`);
+    return place - at;
+}
 export async function nettai_video_open(width, height, frameUs, bitrate, tracks, audioBitrate) {
     if (!self.VideoEncoder) throw new Error("this browser has no WebCodecs");
     const chunks = [];
@@ -182,7 +233,7 @@ export async function nettai_video_open(width, height, frameUs, bitrate, tracks,
     if (!config) throw new Error(`this browser can't encode H.264 at ${width}x${height}`);
     const video = new VideoEncoder({ output: out(0), error: (e) => (failed = e) });
     video.configure(config);
-    let audioCodec = "";
+    let [audioCodec, audioDelay] = ["", 0];
     const audio = [];
     if (tracks > 0) {
         for (const [codec, extra, name] of [["mp4a.40.2", { aac: { format: "aac" } }, "aac"], ["opus", {}, "opus"]]) {
@@ -194,6 +245,8 @@ export async function nettai_video_open(width, height, frameUs, bitrate, tracks,
                     audio.push(encoder);
                 }
                 audioCodec = name;
+                // (Opus says its own: the pre-skip, its encoder's lookahead.)
+                if (name === "aac") audioDelay = await nettai_video_aac_delay(c);
                 break;
             }
         }
@@ -204,6 +257,7 @@ export async function nettai_video_open(width, height, frameUs, bitrate, tracks,
     const check = () => { if (failed) throw failed; };
     return {
         audioCodec,
+        audioDelay,
         frame(rgbx, sounds) {
             check();
             const f = new VideoFrame(rgbx, { format: "RGBX", codedWidth: width, codedHeight: height, timestamp: Math.round(frames * frameUs), duration: Math.round(frameUs) });
@@ -243,6 +297,9 @@ extern "C" {
     type Session;
     #[wasm_bindgen(method, getter, js_name = audioCodec)]
     fn audio_codec(this: &Session) -> String;
+    /// The samples the sound's encoder puts before the sound (AAC's priming; 0 for Opus, whose pre-skip says it).
+    #[wasm_bindgen(method, getter, js_name = audioDelay)]
+    fn audio_delay(this: &Session) -> u32;
     #[wasm_bindgen(method, catch)]
     fn frame(this: &Session, rgbx: &js_sys::Uint8Array, sounds: &js_sys::Array) -> Result<(), JsValue>;
     #[wasm_bindgen(method)]
@@ -265,10 +322,11 @@ async fn sleep(ms: u32) {
 }
 
 /// The tracks as their first chunks describe them: the picture's from its avcC, each sound track's from AAC's
-/// AudioSpecificConfig (or Opus's own).
+/// AudioSpecificConfig (or Opus's own), and what is shown of each sound track: past its encoder's delay.
 struct Described {
     spec: Spec,
     opus: bool,
+    delay: u32,
     codecs: Vec<Option<mp4_atom::Codec>>,
     said: bool,
 }
@@ -330,7 +388,11 @@ impl Described {
                 kind: if i == 0 { Kind::Video { width: s.width, height: s.height } } else { Kind::Audio },
                 timescale: if i == 0 { s.timescale } else { RATE },
                 codec: codec.clone().expect("described"),
-                edits: None,
+                // (A sound track shown from past its encoder's delay, to its end: an edit list as ffmpeg's.)
+                edits: (i > 0 && self.delay > 0).then(|| {
+                    let entry = mp4_atom::ElstEntry { segment_duration: 0, media_time: Some(self.delay as u64), media_rate: mp4_atom::FixedPoint::new(1, 0) };
+                    mp4_atom::Edts { elst: Some(mp4_atom::Elst { entries: vec![entry] }) }
+                }),
             })
             .collect();
         Some(Event::Tracks(tracks))
@@ -345,7 +407,7 @@ async fn encode(spec: Spec, taken: &Receiver<Msg>, tell: &mpsc::Sender<Said>) ->
         Ok(opening) => JsFuture::from(opening).await.map_err(said)?.unchecked_into(),
         Err(why) => return Err(said(why)),
     };
-    let mut described = Described { spec, opus: session.audio_codec() == "opus", codecs: vec![None; 1 + spec.tracks], said: false };
+    let mut described = Described { spec, opus: session.audio_codec() == "opus", delay: session.audio_delay(), codecs: vec![None; 1 + spec.tracks], said: false };
     // Chunks wait till every track is described.
     let mut early: Vec<Packet> = Vec::new();
     let mut take = |described: &mut Described| -> Result<(), String> {
