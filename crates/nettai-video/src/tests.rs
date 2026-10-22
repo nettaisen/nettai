@@ -1,6 +1,4 @@
 use super::*;
-use crate::ffmpeg::nut::reading;
-use crate::ffmpeg::write_nut as write;
 use nettai_battle::content::Content;
 use nettai_frontend::Player;
 use nettai_frontend::game::GraphicsMode;
@@ -25,10 +23,53 @@ pub(crate) fn options(scale: u32, sides: Sides, part: &Part) -> Options {
     Options { scale, view: None, sides, part: part.clone(), titles: Titles::default() }
 }
 
-/// `part` of `replay` from `view`'s side as a NUT stream, the picture
-/// `scale` times the frame.
-fn exported(content: &Arc<Content>, replay: &Replay, view: u8, scale: u32, part: &Part) -> Vec<u8> {
-    write(&mut viewer(content, replay, view), &options(scale, Sides::One, part), Vec::new(), &mut go_on).unwrap()
+/// What an encoder is given of a video, either platform's (what [`Mp4`]
+/// hands it as it comes): the picture, the sound and the info it is
+/// started with, then each frame's pixels and each sound track's samples
+/// with it.
+pub(crate) struct Given {
+    pub video: Video,
+    pub audio: Option<Audio>,
+    pub info: Info,
+    pub frames: Vec<(Vec<u8>, Vec<Vec<[f32; 2]>>)>,
+}
+
+impl Given {
+    /// The pictures in order.
+    pub fn pictures(&self) -> Vec<&[u8]> {
+        self.frames.iter().map(|(rgb, _)| &rgb[..]).collect()
+    }
+
+    /// Sound track `track`'s samples, as one run.
+    pub fn track(&self, track: usize) -> Vec<[f32; 2]> {
+        self.frames.iter().flat_map(|(_, sound)| sound[track].iter().copied()).collect()
+    }
+}
+
+impl Frames for Given {
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        self.frames.push((rgb, sound.iter().map(|s| s.to_vec()).collect()));
+        Ok(Vec::new())
+    }
+}
+
+/// What the replay `viewer` plays gives an encoder, as `options` say.
+pub(crate) fn given(viewer: &mut Viewer, options: &Options, progress: OnProgress) -> Result<Given, Error> {
+    play(viewer, options, progress, |video, audio, info| Ok(Given { video, audio, info: info.clone(), frames: Vec::new() }))
+}
+
+/// `part` of `replay` from `view`'s side, as an encoder is given it, the
+/// picture `scale` times the frame.
+fn given_of(content: &Arc<Content>, replay: &Replay, view: u8, scale: u32, part: &Part) -> Given {
+    given(&mut viewer(content, replay, view), &options(scale, Sides::One, part), &mut go_on).unwrap()
+}
+
+/// `sound`, a run of the consoles' samples, made 48 kHz as one run.
+fn at_48_khz(sound: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    let mut r = Resampler::new(nettai_audio::SAMPLE_RATE);
+    let mut made = r.push(sound);
+    made.extend(r.finish());
+    made
 }
 
 /// What a player playing `replay` straight presents and plays, a tick at
@@ -51,63 +92,41 @@ fn played(content: &Arc<Content>, replay: &Replay, view: u8, scale: usize) -> Ve
     out
 }
 
-/// A stream's pictures in order, and its (first track's) sound as one run
-/// of samples.
-fn pictures_and_sound(file: &reading::File) -> (Vec<&[u8]>, Vec<[f32; 2]>) {
-    let pictures = file.frames.iter().filter(|f| f.stream == 0).map(|f| &f.data[..]).collect();
-    (pictures, track(file, 1))
-}
-
-/// The samples of a stream's stream `stream` (a sound track's), as one run.
-fn track(file: &reading::File, stream: usize) -> Vec<[f32; 2]> {
-    file.frames
-        .iter()
-        .filter(|f| f.stream == stream)
-        .flat_map(|f| f.data.chunks_exact(8))
-        .map(|s| [f32::from_le_bytes(s[..4].try_into().unwrap()), f32::from_le_bytes(s[4..].try_into().unwrap())])
-        .collect()
-}
-
-/// A replay written whole is, frame for frame and sample for sample, what
-/// a player playing it straight presents and plays: one picture a tick at
-/// the scale asked for, on the tick's exact time base, and each tick's
-/// sound beside it, in a stream that reads back by NUT's syntax. From
-/// either console; and the two consoles' videos differ.
+/// A replay written whole is, frame for frame, what a player playing it
+/// straight presents, one picture a tick at the scale asked for on the
+/// tick's exact time base; and its sound is what the player plays, made
+/// 48 kHz in one run, every frame's in its place: the picture's length to
+/// within a sample. From either console; and the two consoles' videos
+/// differ.
 #[test]
 fn a_replay_is_written_as_it_is_shown_and_heard() {
     let content = nettai_match::testing::exe6_content();
     let (replay, ticks) = recorded(&content, "exe6", 7);
     let mut sides = Vec::new();
     for (view, scale) in [(0u8, 2u32), (1, 1)] {
-        let bytes = exported(&content, &replay, view, scale, &Part::Whole);
-        let file = reading::read(&bytes).unwrap_or_else(|e| panic!("side {view}: {e}"));
+        let given = given_of(&content, &replay, view, scale, &Part::Whole);
         let straight = played(&content, &replay, view, scale as usize);
         assert_eq!(straight.len() as u64, ticks);
-        let (picture, sound) = (&file.streams[0], &file.streams[1]);
-        assert_eq!((picture.size, picture.time_base, &picture.fourcc[..]), ((240 * scale as u64, 160 * scale as u64), (4389, 262_144), &b"RGB\x18"[..]));
-        assert_eq!((sound.sample_rate, sound.channels, sound.time_base, &sound.fourcc[..]), ((32_768, 1), 2, (1, 32_768), &b"PFD\x20"[..]));
-        let (pictures, heard) = pictures_and_sound(&file);
+        assert_eq!(given.video, Video { width: 240 * scale, height: 160 * scale, frame_time: (4389, 262_144) });
+        assert_eq!(given.audio, Some(Audio { sample_rate: 48_000, tracks: 1 }));
+        let (pictures, heard) = (given.pictures(), given.track(0));
         assert_eq!(pictures.len() as u64, ticks, "side {view}: a picture a tick");
         for (tick, (shown, (presented, _))) in pictures.iter().zip(&straight).enumerate() {
             assert!(shown == presented, "side {view}: the picture of tick {tick}");
         }
         let made: Vec<[f32; 2]> = straight.iter().flat_map(|(_, sound)| sound.iter().copied()).collect();
-        assert!(heard == made, "side {view}: {} samples for {}", heard.len(), made.len());
+        assert!(heard == at_48_khz(&made), "side {view}: {} samples for {}", heard.len(), made.len());
         // The pictures aren't all one, nor the sound silence; and the
-        // sound is the picture's length to within a sample a tick.
+        // sound is the picture's length to within a sample.
         assert!(pictures.iter().any(|p| p != &pictures[0]) && heard.iter().any(|s| s[0] != 0.0), "side {view}: nothing to tell by");
-        assert!((heard.len() as f64 - ticks as f64 * 4389.0 / 8.0).abs() < 2.0, "side {view}: {} samples for {ticks} ticks", heard.len());
-        // Each picture's pts is its number; each sound frame's, the
-        // samples before it.
-        let mut samples = 0;
-        for (n, f) in file.frames.iter().filter(|f| f.stream == 0).enumerate() {
-            assert_eq!(f.pts, n as u64);
-        }
-        for f in file.frames.iter().filter(|f| f.stream == 1) {
-            assert_eq!(f.pts, samples);
-            samples += f.data.len() as u64 / 8;
-        }
-        sides.push(bytes);
+        let length = ticks as f64 * 4389.0 / 262_144.0 * 48_000.0;
+        assert!((heard.len() as f64 - length).abs() < 2.0, "side {view}: {} samples for {ticks} ticks ({length})", heard.len());
+        // Each frame's sound is about its tick's: the first's a filter's
+        // half short, the last's with the rest.
+        let runs: Vec<usize> = given.frames.iter().map(|(_, sound)| sound[0].len()).collect();
+        assert!(runs[1..runs.len() - 1].iter().all(|&n| (802..=805).contains(&n)), "side {view}: {runs:?}");
+        assert!((690..802).contains(&runs[0]) && (805..920).contains(&runs[runs.len() - 1]), "side {view}: {runs:?}");
+        sides.push(given.frames);
     }
     assert!(sides[0] != sides[1]);
 }
@@ -123,13 +142,11 @@ fn both_sides_are_each_sides_video_side_by_side() {
     let (replay, _) = recorded(&content, "exe6", 7);
     let part = Part::Ticks(250..400);
     for (left, scale) in [(0u8, 2usize), (1, 1)] {
-        let both = write(&mut viewer(&content, &replay, left), &options(scale as u32, Sides::SideBySide, &part), Vec::new(), &mut go_on).unwrap();
-        let both = reading::read(&both).unwrap();
-        assert_eq!(both.streams[0].size, (480 * scale as u64, 160 * scale as u64));
-        assert_eq!((both.streams.len(), both.streams[1].class, both.streams[2].class), (3, 1, 1), "left {left}: a picture and two tracks");
-        let alone = |view| reading::read(&exported(&content, &replay, view, scale as u32, &part)).unwrap();
-        let (own, other) = (alone(left), alone(left ^ 1));
-        let ((pictures, sound), (own_pictures, own_sound), (other_pictures, other_sound)) = (pictures_and_sound(&both), pictures_and_sound(&own), pictures_and_sound(&other));
+        let both = given(&mut viewer(&content, &replay, left), &options(scale as u32, Sides::SideBySide, &part), &mut go_on).unwrap();
+        assert_eq!((both.video.width, both.video.height), (480 * scale as u32, 160 * scale as u32));
+        assert_eq!(both.audio, Some(Audio { sample_rate: 48_000, tracks: 2 }), "left {left}: a picture and two tracks");
+        let (own, other) = (given_of(&content, &replay, left, scale as u32, &part), given_of(&content, &replay, left ^ 1, scale as u32, &part));
+        let (pictures, own_pictures, other_pictures) = (both.pictures(), own.pictures(), other.pictures());
         assert_eq!(pictures.len(), 150);
         let row = 240 * scale * 3;
         for (tick, ((picture, l), r)) in pictures.iter().zip(&own_pictures).zip(&other_pictures).enumerate() {
@@ -138,9 +155,9 @@ fn both_sides_are_each_sides_video_side_by_side() {
                 assert!(&picture[at..at + row] == l && &picture[at + row..at + 2 * row] == r, "left {left}: tick {tick}'s row {y}");
             }
         }
-        assert!(sound == own_sound, "left {left}: the first track isn't the left console's");
-        assert!(track(&both, 2) == other_sound, "left {left}: the second track isn't the right console's");
-        assert!(own_sound != other_sound, "left {left}: the two consoles' sounds are one");
+        assert!(both.track(0) == own.track(0), "left {left}: the first track isn't the left console's");
+        assert!(both.track(1) == other.track(0), "left {left}: the second track isn't the right console's");
+        assert!(own.track(0) != other.track(0), "left {left}: the two consoles' sounds are one");
     }
 }
 
@@ -156,29 +173,26 @@ fn both_on_one_screen_is_the_viewers_both() {
     let left = 1u8;
     let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
     let options = Options { titles, ..options(2, Sides::Both, &part) };
-    let one = reading::read(&write(&mut viewer(&content, &replay, left), &options, Vec::new(), &mut go_on).unwrap()).unwrap();
-    assert_eq!(one.streams[0].size, (480, 320));
-    assert_eq!(one.streams.len(), 2, "a picture and one track");
-    let named = one.info.iter().find(|i| i.stream_id_plus1 == 2).map(|i| i.fields[0].1.clone());
-    assert_eq!(named.as_deref(), Some("Chaud & Lan"));
+    let one = given(&mut viewer(&content, &replay, left), &options, &mut go_on).unwrap();
+    assert_eq!((one.video.width, one.video.height), (480, 320));
+    assert_eq!(one.audio.map(|a| a.tracks), Some(1), "a picture and one track");
+    assert_eq!(one.info.titles, ["Chaud & Lan"]);
     // What a viewer shown so presents and plays, tick by tick.
     let mut v = viewer(&content, &replay, left);
     v.set_both(true);
     v.seek(250);
     let (w, h) = (WIDTH * 2, HEIGHT * 2);
     let mut buffer = vec![0u32; w * h];
-    let (pictures, sound) = pictures_and_sound(&one);
     let mut heard = Vec::new();
-    for picture in &pictures {
+    for picture in one.pictures() {
         assert!(v.step_forward());
         v.present(&mut buffer, w, h);
         let rgb: Vec<u8> = buffer.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
-        assert!(rgb == *picture, "the picture of tick {}", v.position());
+        assert!(rgb == picture, "the picture of tick {}", v.position());
         v.take_samples(&mut heard);
     }
-    assert!(sound == heard, "the track isn't both consoles' sound");
-    let (_, own) = pictures_and_sound(&reading::read(&exported(&content, &replay, left, 2, &part)).unwrap());
-    assert!(sound != own, "both consoles' sound is the left console's alone");
+    assert!(one.track(0) == at_48_khz(&heard), "the track isn't both consoles' sound");
+    assert!(one.track(0) != given_of(&content, &replay, left, 2, &part).track(0), "both consoles' sound is the left console's alone");
 }
 
 /// A video's chapters: a round each, from the frame its picture begins on
@@ -216,39 +230,36 @@ fn a_chapter_is_a_round_from_its_first_picture() {
     }
 }
 
-/// The stream says its tracks' titles and its chapters: each track the
+/// The video says its tracks' titles and its chapters: each track the
 /// player of its console as the titles give it (else the replay's name,
 /// else "Player N"), the first the default; the chapters as `chapters`
 /// makes them, titled in the host's words.
 #[test]
-fn the_stream_says_its_tracks_and_chapters() {
+fn the_video_says_its_tracks_and_chapters() {
     let content = nettai_match::testing::exe6_content();
     let (replay, ticks) = recorded(&content, "exe6", 7);
     let titles = Titles { rounds: vec!["ラウンド 1".into(), "ラウンド 2".into()], sides: ["Lan".into(), String::new()] };
     let second = replay.round_starts()[1];
     let part = Part::Ticks(second - 20..second + 10);
     let options = Options { titles: titles.clone(), ..options(1, Sides::SideBySide, &part) };
-    let file = reading::read(&write(&mut viewer(&content, &replay, 1), &options, Vec::new(), &mut go_on).unwrap()).unwrap();
-    let named = |stream: u64| file.info.iter().find(|i| i.stream_id_plus1 == stream + 1).map(|i| i.fields.clone()).unwrap();
-    let field = |name: &str, value: &str| (name.to_string(), value.to_string());
+    let given = given(&mut viewer(&content, &replay, 1), &options, &mut go_on).unwrap();
     // (The left console is side 1's, whose player the replay names nobody.)
     let unnamed = if replay.info.names[1].trim().is_empty() { "Player 2".to_string() } else { replay.info.names[1].trim().to_string() };
-    assert_eq!(named(1), [field("Title", &unnamed), field("handler_name", &unnamed), field("Disposition", "default")]);
-    assert_eq!(named(2), [field("Title", "Lan"), field("handler_name", "Lan")]);
-    let chapters: Vec<(i64, u64, u64, String)> = file.info.iter().filter(|i| i.chapter_id != 0).map(|i| (i.chapter_id, i.start / 2, i.length, i.fields[0].1.clone())).collect();
-    assert_eq!(chapters, [(1, 0, 19, "ラウンド 1".to_string()), (2, 19, 11, "ラウンド 2".to_string())]);
+    assert_eq!(given.info.titles, [unnamed, "Lan".to_string()]);
+    let chapter = |start, frames, title: &str| Chapter { start, frames, title: title.into() };
+    assert_eq!(given.info.chapters, [chapter(0, 19, "ラウンド 1"), chapter(19, 11, "ラウンド 2")]);
     assert!(ticks > second as u64 + 10);
 }
 
-/// The same replay gives the same bytes, from a viewer made anew each
-/// time; and a viewer that has been about the replay first (sought,
-/// played, shown from the other side) writes them too.
+/// The same replay gives the encoder the same frames and samples, from a
+/// viewer made anew each time; and a viewer that has been about the replay
+/// first (sought, played, shown from the other side) gives them too.
 #[test]
-fn the_same_replay_gives_the_same_bytes() {
+fn the_same_replay_gives_the_same_frames() {
     let content = nettai_match::testing::exe6_content();
     let (replay, ticks) = recorded(&content, "exe6", 7);
-    let first = exported(&content, &replay, 0, 1, &Part::Whole);
-    assert!(first == exported(&content, &replay, 0, 1, &Part::Whole), "another run, other bytes");
+    let first = given_of(&content, &replay, 0, 1, &Part::Whole).frames;
+    assert!(first == given_of(&content, &replay, 0, 1, &Part::Whole).frames, "another run, other frames");
     let mut v = viewer(&content, &replay, 1);
     v.seek(ticks as u32 / 2);
     for _ in 0..30 {
@@ -256,16 +267,16 @@ fn the_same_replay_gives_the_same_bytes() {
     }
     v.set_view(0);
     v.set_speed(Speed::Double);
-    let after = write(&mut v, &options(1, Sides::One, &Part::Whole), Vec::new(), &mut go_on).unwrap();
-    assert!(first == after, "a viewer that had been about the replay writes other bytes");
+    let after = given(&mut v, &options(1, Sides::One, &Part::Whole), &mut go_on).unwrap().frames;
+    assert!(first == after, "a viewer that had been about the replay gives other frames");
     assert!(v.paused() && v.at_end() && v.speed() == Speed::Normal);
 }
 
-/// A part is the whole video's frames and samples for its ticks: a round
-/// alone, and a range of ticks from the middle of one into the next,
-/// start where playing straight there gets (the sound in mid-note
-/// included) and stop at their last tick; their pts count from the part's
-/// start.
+/// A part is the whole video's frames for its ticks, and its sound the
+/// consoles' for those ticks made 48 kHz: a round alone, and a range of
+/// ticks from the middle of one into the next, start where playing
+/// straight there gets (the sound in mid-note included) and stop at their
+/// last tick.
 #[test]
 fn a_part_is_the_whole_videos_for_its_ticks() {
     let content = nettai_match::testing::exe6_content();
@@ -284,21 +295,18 @@ fn a_part_is_the_whole_videos_for_its_ticks() {
         (Part::Ticks(length - 1..length), length - 1..length),
     ] {
         assert_eq!(part.ticks(&replay.round_starts(), length).unwrap(), range, "{part:?}");
-        let file = reading::read(&exported(&content, &replay, 0, 1, &part)).unwrap_or_else(|e| panic!("{part:?}: {e}"));
-        let (pictures, heard) = pictures_and_sound(&file);
+        let given = given_of(&content, &replay, 0, 1, &part);
         let of_part = &straight[range.start as usize..range.end as usize];
-        assert_eq!(pictures.len(), of_part.len(), "{part:?}");
-        assert!(pictures.iter().zip(of_part).all(|(shown, (presented, _))| shown == presented), "{part:?}: its pictures");
+        assert_eq!(given.frames.len(), of_part.len(), "{part:?}");
+        assert!(given.pictures().iter().zip(of_part).all(|(shown, (presented, _))| shown == presented), "{part:?}: its pictures");
         let made: Vec<[f32; 2]> = of_part.iter().flat_map(|(_, sound)| sound.iter().copied()).collect();
-        assert!(heard == made, "{part:?}: its sound");
-        assert_eq!(file.frames.iter().find(|f| f.stream == 0).map(|f| f.pts), Some(0), "{part:?}");
-        assert_eq!(file.frames.iter().find(|f| f.stream == 1).map(|f| f.pts), Some(0), "{part:?}");
+        assert!(given.track(0) == at_48_khz(&made), "{part:?}: its sound");
     }
 }
 
 /// The progress is told before the first frame and after each, with the
 /// round being written; an answer to stop cancels the video where it is.
-/// A viewer without sound writes the picture's stream alone.
+/// A viewer without sound gives the picture alone.
 #[test]
 fn progress_is_told_and_may_cancel() {
     let content = nettai_match::testing::exe6_content();
@@ -309,7 +317,7 @@ fn progress_is_told_and_may_cancel() {
         told.push(p);
         ControlFlow::Continue(())
     };
-    write(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Whole), Vec::new(), &mut tell).unwrap();
+    given(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Whole), &mut tell).unwrap();
     assert_eq!(told.len() as u32, length + 1);
     assert_eq!(told[0], Progress { written: 0, of: length, round: 1, rounds: 2 });
     assert!(told.iter().enumerate().all(|(n, p)| p.written == n as u32 && p.of == length && p.rounds == 2));
@@ -322,7 +330,7 @@ fn progress_is_told_and_may_cancel() {
         told.push(p);
         ControlFlow::Continue(())
     };
-    write(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Ticks(length - 10..length)), Vec::new(), &mut tell).unwrap();
+    given(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Ticks(length - 10..length)), &mut tell).unwrap();
     let before = told.iter().filter(|p| p.written == 0).count();
     assert!(before > 1 && told.len() == before + 10, "{before} of {}", told.len());
     assert!(told.iter().all(|p| p.of == 10 && p.round == 2));
@@ -332,16 +340,18 @@ fn progress_is_told_and_may_cancel() {
         frames = p.written;
         if p.written == 20 { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
     };
-    let canceled = write(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Whole), Vec::new(), &mut stop_at_twenty);
+    let canceled = given(&mut viewer(&content, &replay, 0), &options(1, Sides::One, &Part::Whole), &mut stop_at_twenty);
     assert!(matches!(canceled, Err(Error::Canceled)) && frames == 20);
     // Without sound.
     let renderer = graphics(&content, 0x7C1F).renderer(GraphicsMode::Original, None);
     let mut silent = Viewer::with(&content, &replay, Some(0), renderer, None, None).unwrap();
-    let file = reading::read(&write(&mut silent, &options(1, Sides::One, &Part::Round(1)), Vec::new(), &mut go_on).unwrap()).unwrap();
-    assert_eq!((file.streams.len(), file.frames.len() as u32), (1, second));
+    let alone = given(&mut silent, &options(1, Sides::One, &Part::Round(1)), &mut go_on).unwrap();
+    assert_eq!((alone.audio, alone.frames.len() as u32), (None, second));
+    assert!(alone.frames.iter().all(|(_, sound)| sound.is_empty()) && alone.info.titles.is_empty());
 }
 
-/// What can't be made is refused before anything is written, saying what.
+/// What can't be made is refused before the encoder is started, saying
+/// what.
 #[test]
 fn what_cant_be_made_is_refused() {
     let content = nettai_match::testing::exe6_content();
@@ -349,9 +359,14 @@ fn what_cant_be_made_is_refused() {
     let length = ticks as u32;
     let mut v = viewer(&content, &replay, 0);
     let mut refused = |scale, part: Part| {
-        let mut out = Vec::new();
-        let e = write(&mut v, &options(scale, Sides::One, &part), &mut out, &mut go_on).unwrap_err();
-        assert!(out.is_empty(), "{part:?}: something was written");
+        let mut started = false;
+        let e = play(&mut v, &options(scale, Sides::One, &part), &mut go_on, |video, audio, info| {
+            started = true;
+            Ok(Given { video, audio, info: info.clone(), frames: Vec::new() })
+        })
+        .err()
+        .unwrap();
+        assert!(!started, "{part:?}: the encoder was started");
         e.to_string()
     };
     assert_eq!(refused(0, Part::Whole), "a picture 0 times the frame's size (1 to 16)");
@@ -366,4 +381,3 @@ fn what_cant_be_made_is_refused() {
     let other = Viewer::with(&five, &replay, None, renderer, None, None).map_err(Error::Replay).err().unwrap();
     assert_eq!(other.to_string(), "the replay isn't played: the replay is of exe6, not exe5");
 }
-

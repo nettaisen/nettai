@@ -11,8 +11,7 @@ a window by nettai (docs/app.md).
     cargo run -p nettai-tools -- --match match.toml --show-folders            # the setup, said
     cargo run -p nettai-tools -- --match match.toml --save-match played.toml  # keep the seed played
     cargo run -p nettai-tools -- --replay set.nettaireplay                            # does it reproduce?
-    cargo run -p nettai-tools -- --replay set.nettaireplay --nut set.nut              # the replay as video (NUT)
-    cargo run -p nettai-tools -- --replay set.nettaireplay --nut - --scale 2 | ffmpeg -f nut -i - out.mp4
+    cargo run -p nettai-tools -- --replay set.nettaireplay --mp4 set.mp4              # the replay as video
     cargo run -p nettai-tools -- --replay set.nettaireplay --mp4 round2.mp4 --round 2 --scale 4
     cargo run -p nettai-tools -- --match match.toml --audit-content           # what is missing?
     cargo run -p nettai-tools -- --audit <trace.jsonl>...                     # and in these traces?
@@ -46,8 +45,8 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
   console `--side left|right` (default: the side that recorded it), or both players on one screen with
   `--side both` (the side that recorded it on the left; `both-left`, `both-right`: that side's console on the
   left): the field as the left console draws it, each player's own pieces on its own side, the right player's
-  mirrored into the right half (docs/frontend.md §3, "Both on one screen"); with `--nut OUT` or `--mp4 OUT` it is
-  written as video ("A replay as video", below).
+  mirrored into the right half (docs/frontend.md §3, "Both on one screen"); with `--mp4 OUT` it is written as
+  video ("A replay as video", below).
 
 A trace is rendered or audited: it is no longer watched in a window.
 
@@ -77,25 +76,15 @@ tick compared with what the original recorded; the first difference is printed.
 
 ## A replay as video
 
-`--replay FILE --nut OUT` writes the replay as a NUT stream (FFmpeg's container: raw RGB frames and PCM sound in
-one stream, on exact time bases; docs/frontend.md §8, "Video") to the file `OUT`, or to standard output for `-`:
-
-    nettai-tool --replay set.nettaireplay --nut - | ffmpeg -f nut -i - out.mp4
-    nettai-tool --replay set.nettaireplay --nut - --scale 4 | ffmpeg -f nut -i - -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a aac -ar 48000 out.mp4
-
-It holds one frame a tick, the picture a viewer playing the replay straight is shown (the text included) and the
-sound the tick made, and `ffmpeg` and `ffprobe` (9.0.2) read it as it is, from the pipe or from a file, with
-nothing said (what else reads NUT through FFmpeg's libraries wasn't tried). Left to itself, as in the first line
-above, ffmpeg makes the MP4 in 4:4:4 with the sound at 32 kHz; the second line's options are the usual ones.
-Everything the tool says goes to standard error (a line every tenth of the way, then what it wrote), so the pipe
-carries the stream alone. The stream is raw: 115 KB a frame at the frame's own size, 7 MB a second, and sixteen
-times that at `--scale 4`; a long replay at a large size is for the pipe, not for a file.
-
-`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` on that stream (`$NETTAI_FFMPEG`, else one
-beside nettai-tool, else one on the path: nettai-video's `mp4::find_ffmpeg`, docs/frontend.md §8), with
-the settings the app's export is to use (nettai-video's `mp4`: H.264 at CRF 16 in 4:2:0, AAC at 48 kHz, the pixels
-not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed
-(with what it said) or the file couldn't be written.
+`--replay FILE --mp4 OUT` writes the replay as an MP4, as the app's export makes one (nettai-video,
+docs/frontend.md §8, "Video"): one frame a tick, the picture a viewer playing the replay straight is shown (the
+text included) and the sound the tick made, made 48 kHz; H.264 at CRF 16 in 4:2:0 and AAC, encoded by `ffmpeg`
+(`$NETTAI_FFMPEG`, else one beside nettai-tool, else one on the path: nettai-video's `ffmpeg::find_ffmpeg`), which
+is given the frames and samples the browser's encoder would be; the pixels aren't scaled by ffmpeg, nor the sound
+resampled. Each round is a chapter ("Round N") and each sound track is titled with its player's name. `OUT` is
+there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed (with what it said) or the
+file couldn't be written. Everything the tool says goes to standard error (a line every tenth of the way, then
+what it wrote). (`--nut`, the raw stream ffmpeg is given, is gone: the user, "can you remove nut support then?")
 
 - `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
   pixel's, and the enhanced mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
@@ -106,12 +95,12 @@ not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whet
 - `--both-sides` shows both consoles side by side in a picture twice as wide (480·N by 160·N): `--side`'s at the
   left, the other's at the right, each byte for byte its own video's, from one playing of the replay; each
   console's sound is a track of its own, the left one's first and the default (nettai-video's `Sides::SideBySide`,
-  docs/frontend.md §8). An `ffmpeg` reading `--nut` takes one sound unless told `-map 0`, as `--mp4` tells it.
+  docs/frontend.md §8).
 - `--round N` shows that round alone, and `--ticks A-B` the frames A to B alone, numbered as `--headless` numbers
   them (the pictures after the set's ticks A to B: `--ticks 600-719` is the 120 frames `--headless 600-719` writes
   as PNGs, and is byte for byte those pictures). A part starts as playing straight to it leaves the battle, its
   sound in mid-note included.
-- `--mute` leaves the sound out (a stream of the picture alone); `--text` and `--lang` are the picture's, as for
+- `--mute` leaves the sound out (an MP4 of the picture alone); `--text` and `--lang` are the picture's, as for
   headless frames.
 
 Either way each round is a chapter, "Round 1", "Round 2"…, from the frame its picture begins on, and each sound

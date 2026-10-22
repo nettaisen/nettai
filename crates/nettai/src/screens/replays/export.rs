@@ -1,5 +1,5 @@
 //! A replay's export as video (docs/design/app-ui.md §2.96; docs/app.md §16): the viewer's export mode, its range
-//! and its options, and the export itself, which is nettai-video's `export_mp4` on a thread of its own: it plays the
+//! and its options, and the export itself, which is nettai-video's `export` on a thread of its own: it plays the
 //! replay through a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
 //!
 //! The thread tells how far it is and is told to stop through what the two share ([`Shared`]); the export mode

@@ -78,22 +78,16 @@ fn a_stream_reads_back() {
     assert!(first.contains(&0) && first.contains(&1), "{first:?}");
 }
 
-/// Two sound tracks and the info: each track a stream of its own on the
-/// sound's time base, holding its own samples; its frames in time order
-/// with the picture's, the first track's before the second's where they
-/// start together; and the info packets in every set of headers: each
-/// track's title, the first the default, and each chapter on the picture's
-/// time base. The same frames and info give the same bytes.
+/// Two sound tracks: each track a stream of its own on the sound's time
+/// base, holding its own samples; its frames in time order with the
+/// picture's, the first track's before the second's where they start
+/// together. The same frames give the same bytes.
 #[test]
-fn two_tracks_and_the_info_read_back() {
+fn two_tracks_read_back() {
     let video = Video { width: 4, height: 2, frame_time: FRAME_TIME };
-    let info = Info {
-        titles: vec!["Lan".into(), "Chaud".into()],
-        chapters: vec![Chapter { start: 0, frames: 30, title: "Round 1".into() }, Chapter { start: 30, frames: 10, title: "ラウンド 2".into() }],
-    };
     let right = |n: usize| -> Vec<[f32; 2]> { sound(n).iter().map(|s| [-s[0], s[1] * 3.0]).collect() };
     let write = || {
-        let mut w = Writer::with_info(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 2 }), &info).unwrap();
+        let mut w = Writer::new(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 2 })).unwrap();
         for n in 0..40 {
             w.frame(&picture(4, 2, n), &[&sound(n), &right(n)]).unwrap();
         }
@@ -114,25 +108,6 @@ fn two_tracks_and_the_info_read_back() {
         assert!(tick == order, "tick {n}");
         samples += sound(n).len() as u64;
     }
-    let fields = |pairs: &[(&str, &str)]| -> Vec<(String, String)> { pairs.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect() };
-    let info = |stream_id_plus1, chapter_id, start, length, pairs: &[(&str, &str)]| reading::Info { stream_id_plus1, chapter_id, start, length, fields: fields(pairs) };
-    assert_eq!(
-        file.info,
-        [
-            info(2, 0, 0, 0, &[("Title", "Lan"), ("handler_name", "Lan"), ("Disposition", "default")]),
-            info(3, 0, 0, 0, &[("Title", "Chaud"), ("handler_name", "Chaud")]),
-            // (A chapter's start is a `t`: the frame times the two time
-            // bases, plus the picture's index, 0.)
-            info(0, 1, 0, 30, &[("Title", "Round 1")]),
-            info(0, 2, 60, 10, &[("Title", "ラウンド 2")]),
-        ]
-    );
-    // A track without a title says only that it is the default; a stream
-    // without sound has no track's info.
-    let untitled = Writer::with_info(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 1 }), &Info::default()).unwrap().finish().unwrap();
-    assert_eq!(reading::read(&untitled).unwrap().info, [info(2, 0, 0, 0, &[("Disposition", "default")])]);
-    let silent = Writer::with_info(Vec::new(), video, None, &Info { titles: Vec::new(), chapters: vec![Chapter { start: 0, frames: 1, title: "Round 1".into() }] });
-    assert_eq!(reading::read(&silent.unwrap().finish().unwrap()).unwrap().info, [info(0, 1, 0, 1, &[("Title", "Round 1")])]);
 }
 
 /// A stream without sound is the picture's alone: one stream, one time
@@ -197,9 +172,6 @@ fn what_isnt_a_stream_is_refused() {
     assert_eq!(refused(video, Some(Audio { sample_rate: RATE, tracks: 0 })).unwrap(), "0 sound tracks (1 to 16)");
     assert_eq!(refused(video, Some(Audio { sample_rate: RATE, tracks: 17 })).unwrap(), "17 sound tracks (1 to 16)");
     assert_eq!(refused(video, None), None);
-    let titled = Info { titles: vec!["A".into()], chapters: Vec::new() };
-    let refused_titles = Writer::with_info(Vec::new(), video, None, &titled).err().map(|e| e.to_string());
-    assert_eq!(refused_titles.unwrap(), "titles for 1 sound tracks of a stream of 0");
     let mut w = Writer::new(Vec::new(), video, None).unwrap();
     let before = w.bytes();
     assert_eq!(w.frame(&[0; 23], &[]).unwrap_err().to_string(), "23 bytes of picture; a frame of 4 by 2 is 24");
@@ -251,7 +223,6 @@ fn the_numbers_and_the_checksum_are_nuts() {
     assert_eq!(MAIN_STARTCODE.to_be_bytes(), [b'N', b'M', 0x7A, 0x56, 0x1F, 0x5F, 0x04, 0xAD]);
     assert_eq!(STREAM_STARTCODE.to_be_bytes(), [b'N', b'S', 0x11, 0x40, 0x5B, 0xF2, 0xF9, 0xDB]);
     assert_eq!(SYNCPOINT_STARTCODE.to_be_bytes(), [b'N', b'K', 0xE4, 0xAD, 0xEE, 0xCA, 0x45, 0x69]);
-    assert_eq!(INFO_STARTCODE.to_be_bytes(), [b'N', b'I', 0xAB, 0x68, 0xB5, 0x96, 0xBA, 0x78]);
 }
 
 /// A stream that breaks the specification is told from one that keeps it

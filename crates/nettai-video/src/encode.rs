@@ -14,7 +14,8 @@ pub struct Video {
     pub frame_time: (u32, u32),
 }
 
-/// The sound's tracks: `tracks` of them (a console shown each), each stereo, at this many samples a second.
+/// The sound's tracks: `tracks` of them (a console shown each), each stereo, at this many samples a second (an
+/// encoder's: 48000, [`crate::resample`]'s).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Audio {
     pub sample_rate: u32,
@@ -112,7 +113,7 @@ impl Default for Encoding {
 /// An encoder at work.
 pub(crate) trait Backend {
     /// A frame: its picture's pixels, RGB, and the sound each sound track plays with it (stereo, at the video's
-    /// rate). May wait while the encoder is behind. Gives back a buffer for a next frame's picture: this one's, or
+    /// rate: 48 kHz, the same samples whichever encoder). May wait while the encoder is behind. Gives back a buffer for a next frame's picture: this one's, or
     /// one it is done with (an empty one where it has none yet).
     fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
     /// What it has made since, without waiting.

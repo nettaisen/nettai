@@ -9,11 +9,11 @@
 //! ffmpeg library and no encoder; it is the command line
 //!
 //! ```text
-//! ffmpeg -hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0:v -map 0:a? -map_chapters -1
+//! ffmpeg -hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0:v -map 0:a?
 //!        -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709
 //!        -c:v libx264 -preset medium -tune animation -crf 16 -g 120
 //!        -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv
-//!        -c:a aac -b:a 192k -ar 48000
+//!        -c:a aac -b:a 192k
 //!        -f mp4 -movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 2000000 pipe:1
 //! ```
 //!
@@ -38,8 +38,10 @@
 //!   by `setparams`: ffmpeg 9.0's encoder takes them from the frames, which
 //!   the stream's RGB gives none, and with `-color_primaries` and
 //!   `-color_trc` alone the MP4 said "unknown" for both.)
-//! - **The sound** is AAC at 192 kb/s, resampled to 48 kHz: the GBA's 32768 Hz is no rate AAC has. Every sound
-//!   track of the stream is one (`-map 0:a?`: by itself ffmpeg takes one sound).
+//! - **The sound** is AAC at 192 kb/s, of the stream's 48 kHz samples as they are: they come resampled
+//!   ([`crate::resample`]: the GBA's 32768 Hz is no rate AAC has), the samples the browser's encoder is given, and
+//!   ffmpeg resamples nothing. Every sound track of the stream is one (`-map 0:a?`: by itself ffmpeg takes one
+//!   sound).
 //! - **The fragments** are about two seconds each: a key frame every 120 frames (`-g`), a fragment from each.
 //! - **Errors** say which of two things went wrong ([`crate::Error`]): ffmpeg couldn't be started, or it failed
 //!   (with what it said; one that said the disk is full is the disk's error).
@@ -47,15 +49,13 @@
 //!   says another). The bundled one is a minimal build with what this command needs and nothing more
 //!   (nettaisen/ffmpeg-build).
 //!
-//! The NUT stream is [`nut`]'s, which [`write_nut`] also saves as it is (a stream ffmpeg can be given by hand).
+//! The NUT stream is [`nut`]'s: ffmpeg's input and nothing else (the app saves no NUT file: the user, "don't
+//! allow raw .nut export", and since "can you remove nut support then?" nor does nettai-tool).
 
 pub mod nut;
 
-use crate::encode::{Audio, Backend, Chroma, Encoding, Event, Info, Kind, Packet, Track, Video};
-use crate::{Error, OnProgress, Options};
-use nettai_frontend::game::Loaded;
-use nettai_frontend::replay::Replay;
-use nettai_frontend::viewer::Viewer;
+use crate::Error;
+use crate::encode::{Audio, Backend, Chroma, Encoding, Event, Kind, Packet, Track, Video};
 use std::ffi::OsString;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -78,9 +78,9 @@ pub fn arguments(encoding: &Encoding) -> Vec<OsString> {
     let (crf, audio) = (encoding.crf.to_string(), format!("{}k", encoding.audio_kbps));
     [
         "-hide_banner", "-nostdin", "-loglevel", "error", "-f", "nut", "-i", "pipe:0", "-map", "0:v", "-map", "0:a?",
-        "-map_chapters", "-1", "-vf", &filter, "-c:v", "libx264", "-preset", "medium", "-tune", "animation", "-crf", &crf,
+        "-vf", &filter, "-c:v", "libx264", "-preset", "medium", "-tune", "animation", "-crf", &crf,
         "-g", "120", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-        "-c:a", "aac", "-b:a", &audio, "-ar", "48000", "-f", "mp4", "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+        "-c:a", "aac", "-b:a", &audio, "-f", "mp4", "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
         "-frag_duration", "2000000", "pipe:1",
     ]
     .iter()
@@ -210,36 +210,14 @@ impl Writing {
 }
 
 /// The desktop's encoder for a video of `video` and `audio`, as `encoding` says: ffmpeg's ([`find_ffmpeg`]).
-pub(crate) fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding) -> Result<Box<dyn Backend>, Error> {
-    Ok(Box::new(Ffmpeg::start(&find_ffmpeg(), video, audio, info, encoding)?))
-}
-
-/// Write the replay `viewer` plays to `out` as a NUT stream (ffmpeg's input: raw frames and PCM sound), as
-/// `options` say, its sound tracks titled and its rounds chapters as an MP4's are. The viewer is left paused at the
-/// part's end, at the original's speed. `progress` is told before the first frame and after each, and may stop it
-/// ([`Error::Canceled`]: what was written of the stream stays in `out`, which is the caller's to throw away).
-pub fn write_nut<W: std::io::Write>(viewer: &mut Viewer, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
-    let stream = crate::play(viewer, options, progress, |video, audio, info| nut::Writer::with_info(out, video, audio, info).map_err(Error::Write))?;
-    stream.finish().map_err(Error::Write)
-}
-
-/// Write a replay to `out` as a NUT stream ([`write_nut`]), as [`crate::export`] plays one.
-pub fn export_nut<W: std::io::Write>(game: &Loaded, replay: &Replay, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
-    let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write_nut(&mut viewer, options, out, progress)
-}
-
-impl<W: std::io::Write> crate::Frames for nut::Writer<W> {
-    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
-        nut::Writer::frame(self, &rgb, sound).map_err(Error::Write)?;
-        Ok(rgb)
-    }
+pub(crate) fn start(video: Video, audio: Option<Audio>, encoding: &Encoding) -> Result<Box<dyn Backend>, Error> {
+    Ok(Box::new(Ffmpeg::start(&find_ffmpeg(), video, audio, encoding)?))
 }
 
 impl Ffmpeg {
-    /// Start `program` (an ffmpeg) encoding the picture `video` and the sound `audio` (their stream's info `info`),
-    /// as `encoding` says. An ffmpeg that can't be started is [`Error::NoFfmpeg`].
-    fn start(program: &Path, video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding) -> Result<Ffmpeg, Error> {
+    /// Start `program` (an ffmpeg) encoding the picture `video` and the sound `audio`, as `encoding` says. An
+    /// ffmpeg that can't be started is [`Error::NoFfmpeg`].
+    fn start(program: &Path, video: Video, audio: Option<Audio>, encoding: &Encoding) -> Result<Ffmpeg, Error> {
         let mut command = Command::new(program);
         command.args(arguments(encoding)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         // (On Windows a console program started by a windowed one opens a console window of its own unless told
@@ -271,7 +249,7 @@ impl Ffmpeg {
         let (width, height) = (video.width, video.height);
         let reading = std::thread::spawn(move || read(stdout, width, height, &tell));
         let mut ffmpeg = Ffmpeg { child, writing: None, events, reading: Some(reading), log: Some(log) };
-        match nut::Writer::with_info(stdin, video, audio, info).and_then(Writing::start) {
+        match nut::Writer::new(stdin, video, audio).and_then(Writing::start) {
             Ok(writing) => ffmpeg.writing = Some(writing),
             Err(e) => return Err(ffmpeg.failed(e)),
         }

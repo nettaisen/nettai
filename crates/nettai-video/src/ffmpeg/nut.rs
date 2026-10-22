@@ -9,13 +9,11 @@
 //!
 //! ```text
 //! file      := "nut/multimedia container\0", headers, { tick }, headers [, headers], index
-//! headers   := main header, a stream header a stream, { info packet }
+//! headers   := main header, a stream header a stream
 //! tick      := syncpoint, frame, { syncpoint, frame }      (the picture and each sound
 //!                                                           track's, in time order)
 //! packet    := startcode (8 bytes), forward_ptr (v), [its checksum, past 4096,] body,
 //!              checksum (CRC-32 of the body)
-//! info      := a packet: a sound track's title and disposition, or a chapter's start,
-//!              length and title
 //! frame     := frame_code (1: the picture, 2 on: the sound tracks), coded_pts (v: the pts + 1),
 //!              data_size_msb (v: the size), checksum (CRC-32 of those), the data
 //! index     := a packet: the last pts, every syncpoint's place, and by stream which
@@ -32,15 +30,9 @@
 //! - **The picture** is `RGB[24]`: 8-bit red, green and blue a pixel, rows
 //!   from the top, square pixels. **The sound** is `PFD[32]`: little-endian
 //!   32-bit floats, left then right.
-//! - **Info packets** follow the stream headers, in every set of them
-//!   ([`Info`]): each sound track's title (as `Title`, the specification's
-//!   name, and as `handler_name`, FFmpeg's name for an MP4 track's handler,
-//!   which its MP4 writer takes from the stream's metadata as it takes the
-//!   title), the first track marked `default` (its `Disposition`), and a
-//!   packet a chapter: its start and length on the picture's time base and
-//!   its title. FFmpeg's NUT reader makes these the streams' metadata and
-//!   dispositions and the file's chapters, and its MP4 writer keeps them
-//!   (the chapters as a chapter text track and Nero's `chpl`).
+//! - **No info packets**: the stream is ffmpeg's input alone, and what a
+//!   video says of itself (its tracks' titles, its chapters) is the MP4's,
+//!   written by nettai-video's own muxer (`crate::mp4`).
 //! - **Every frame is a keyframe with its own syncpoint.** A raw frame is
 //!   far larger than `max_distance` (32768), and the specification lets
 //!   startcodes be further apart only across "a syncpoint followed by a
@@ -58,7 +50,7 @@
 //!   the end before the index (the specification's "immediately before the
 //!   index"), and after each of 8 MiB, 64 MiB, 512 MiB... of the stream
 //!   ("the earliest possible position after 2^x"), or once more at the end
-//!   of a stream too short for that. There is no info packet.
+//!   of a stream too short for that.
 //! - **The index is the stream's last packet.** A reader of a pipe skips
 //!   it; a reader of a file finds it from the end (its length is its last
 //!   field) and has the stream's length and every frame's place from it
@@ -66,15 +58,13 @@
 //!   syncpoint from the file's end, from a kilobyte back and twice as far
 //!   each try, and says "read_timestamp failed" for each until it is past
 //!   the last raw frame.) It takes about ten bytes a frame.
-//! - **Nothing varies**: no time of day, no encoder string, no name but the
-//!   caller's titles. The same frames, samples and info give the same bytes.
+//! - **Nothing varies**: no time of day, no encoder string, no name. The
+//!   same frames and samples give the same bytes.
 //!
 //! Not written: end-of-relevance frames (a "SHOULD": the picture's frames
 //! are a fixed time apart, so the last one's length is known).
 
-use crate::encode::{Audio, Info, Video};
-#[cfg(test)]
-use crate::encode::Chapter;
+use crate::encode::{Audio, Video};
 use std::io::{self, Write};
 
 /// The first bytes of every NUT file.
@@ -92,7 +82,6 @@ const MAIN_STARTCODE: u64 = 0x7A56_1F5F_04AD + (((b'N' as u64) << 8 | b'M' as u6
 const STREAM_STARTCODE: u64 = 0x1140_5BF2_F9DB + (((b'N' as u64) << 8 | b'S' as u64) << 48);
 const SYNCPOINT_STARTCODE: u64 = 0xE4AD_EECA_4569 + (((b'N' as u64) << 8 | b'K' as u64) << 48);
 const INDEX_STARTCODE: u64 = 0xDD67_2F23_E64E + (((b'N' as u64) << 8 | b'X' as u64) << 48);
-const INFO_STARTCODE: u64 = 0xAB68_B596_BA78 + (((b'N' as u64) << 8 | b'I' as u64) << 48);
 
 /// The most sound tracks a stream has.
 pub const MOST_TRACKS: usize = 16;
@@ -144,8 +133,7 @@ pub struct Writer<W: Write> {
     audio: Option<Audio>,
     /// The time bases: the picture's, the sound's (every track's).
     bases: [TimeBase; 2],
-    /// The main and stream headers and the info packets, as they are
-    /// written each time.
+    /// The main and stream headers, as they are written each time.
     headers: Vec<u8>,
     /// How many times the headers were written, and the position after
     /// which they are written next.
@@ -182,20 +170,13 @@ fn gcd(a: u32, b: u32) -> u32 {
 }
 
 impl<W: Write> Writer<W> {
-    /// A NUT stream of `video` (and `audio`, if there is sound) on `out`,
-    /// with no info: [`Writer::with_info`].
+    /// A NUT stream of `video` (and `audio`, if there is sound) on `out`:
+    /// the file's id and the headers are written at once. Refused: a
+    /// picture of no size, a frame time or sample rate of 0, a frame time
+    /// not in lowest terms or past the format's 31 bits, a sound whose time
+    /// base is the picture's (the format has each once), and no sound tracks
+    /// or more than [`MOST_TRACKS`].
     pub fn new(out: W, video: Video, audio: Option<Audio>) -> io::Result<Writer<W>> {
-        Writer::with_info(out, video, audio, &Info::default())
-    }
-
-    /// A NUT stream of `video` (and `audio`, if there is sound) on `out`,
-    /// saying `info` of itself: the file's id and the headers are written
-    /// at once. Refused: a picture of no size, a frame time or sample rate
-    /// of 0, a frame time not in lowest terms or past the format's 31 bits,
-    /// a sound whose time base is the picture's (the format has each once),
-    /// no sound tracks or more than [`MOST_TRACKS`], and titles for sound
-    /// the stream hasn't.
-    pub fn with_info(out: W, video: Video, audio: Option<Audio>, info: &Info) -> io::Result<Writer<W>> {
         let (num, den) = video.frame_time;
         if video.width == 0 || video.height == 0 {
             return Err(invalid(format!("a picture of {} by {} pixels", video.width, video.height)));
@@ -215,9 +196,6 @@ impl<W: Write> Writer<W> {
             return Err(invalid(format!("the sound's time base is the picture's ({num}/{den} s)")));
         }
         let tracks = audio.map_or(0, |a| a.tracks);
-        if info.titles.len() > tracks && info.titles[tracks..].iter().any(|t| !t.is_empty()) {
-            return Err(invalid(format!("titles for {} sound tracks of a stream of {tracks}", info.titles.len())));
-        }
         let mut w = Writer {
             out,
             written: 0,
@@ -233,7 +211,7 @@ impl<W: Write> Writer<W> {
             last: None,
             synced: Vec::new(),
         };
-        w.headers = w.header_packets(info);
+        w.headers = w.header_packets();
         w.put(FILE_ID)?;
         w.put_headers()?;
         Ok(w)
@@ -447,8 +425,8 @@ impl<W: Write> Writer<W> {
         Some(packet(INDEX_STARTCODE, &body))
     }
 
-    /// The main header, each stream's, and the info packets, as packets.
-    fn header_packets(&self, info: &Info) -> Vec<u8> {
+    /// The main header and each stream's, as packets.
+    fn header_packets(&self) -> Vec<u8> {
         let streams = self.streams() as u64;
         let mut main = Vec::new();
         put_v(&mut main, 3); // version
@@ -528,47 +506,8 @@ impl<W: Write> Writer<W> {
                 out.extend_from_slice(&packet(STREAM_STARTCODE, &sound));
             }
         }
-
-        // The info: each sound track's (its title; the first the default),
-        // then each chapter's, numbered from 1, on the picture's time base.
-        for track in 0..self.samples.len() {
-            let title = info.titles.get(track).map(String::as_str).filter(|t| !t.is_empty());
-            let mut fields = Vec::new();
-            if let Some(title) = title {
-                fields.extend([("Title", title), ("handler_name", title)]);
-            }
-            if track == 0 {
-                fields.push(("Disposition", "default"));
-            }
-            if !fields.is_empty() {
-                out.extend_from_slice(&info_packet(2 + track as u64, 0, 0, 0, &fields));
-            }
-        }
-        for (n, chapter) in info.chapters.iter().enumerate() {
-            let start = chapter.start * self.time_bases();
-            out.extend_from_slice(&info_packet(0, 1 + n as i64, start, chapter.frames, &[("Title", &chapter.title)]));
-        }
         out
     }
-}
-
-/// An info packet: of the stream `stream_id_plus1` - 1 (0: of the file or a
-/// chapter), of the chapter `chapter_id` (0: none), its start (a `t`) and
-/// length, and its fields, each a name and UTF-8 text.
-fn info_packet(stream_id_plus1: u64, chapter_id: i64, start: u64, length: u64, fields: &[(&str, &str)]) -> Vec<u8> {
-    let mut body = Vec::new();
-    put_v(&mut body, stream_id_plus1);
-    put_s(&mut body, chapter_id);
-    put_v(&mut body, start);
-    put_v(&mut body, length);
-    put_v(&mut body, fields.len() as u64);
-    for (name, value) in fields {
-        put_vb(&mut body, name.as_bytes());
-        // (A value of -1: UTF-8 text, as bytes behind their count.)
-        put_s(&mut body, -1);
-        put_vb(&mut body, value.as_bytes());
-    }
-    packet(INFO_STARTCODE, &body)
 }
 
 /// A packet: its startcode, the length of what follows (the body and its
