@@ -1665,7 +1665,10 @@ Each is settled unless the user changes it.
       build (five minutes in 1.8 s; 1.3 s in a release build), where a slice a frame on the window's thread went
       1,300 while the replay played; nothing of the bar changed. Then: "why would the thread fail? don't fallback
       just get rid of that path": the window's thread never indexes; where the thread can't (it doesn't start, or the
-      engine stops it), the index stays where it got.
+      engine stops it), the index stays where it got. The next day, the user: "the preload still seems slower than it
+      should be?", approving "run each player's sound on its own thread beside the game's thread": the battle is
+      played silent on one thread and each console's sound beside it on one of its own, and the edge goes on about
+      twice as fast (docs/app.md §16).
     - *The speed said:* the ⋯ menu's four bare rows (½× 1× 2× 4×) are one row, PLAYBACK SPEED, with the speed set at
       its right in the muted color (the picker's rows have a value now, `PickMark::value`); choosing it opens the
       four in its place, the one set checked. While the speed isn't 1× a small badge in the cursor's color by the

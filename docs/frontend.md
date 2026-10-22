@@ -2605,6 +2605,7 @@ out)`, `set_language`), and has a transport:
 | `result()`, `stopped()`, `diverged()` | the set's result for the console shown (at the end of a whole set), why the engine stopped short of the end, the first difference from the recording |
 | `index(ticks)`, `indexed()` | play ahead without moving (below) |
 | `index_part(ticks)`, `take_index(part)` | the index made by another viewer of the replay, on a thread of its own, and taken in (below) |
+| `index_battle(ticks)`, `ConsoleSound` | the same made on three threads: the battle by a silent viewer, each console's sound beside it (below) |
 
 **A seek lands in the state straight playback reaches**, all of it: the
 battle (its digest is straight playback's), what the drawing follows over
@@ -2638,7 +2639,7 @@ stretch. Reaching a tick for the first time
 plays every tick up to it; `index(ticks)` does that ahead of time, a slice
 a call, leaving the viewer exactly where and as it is (a host calls it a
 slice a frame, or all behind its loading screen, until it returns true; or
-has the index made on a thread of its own, below). A
+has the index made on threads of its own, below). A
 replay is made ready as any match is besides (§9): `replay::set_of(&content,
 &replay)?` is its set for a `Preload`, and `Preload::viewer(&replay, side)?`
 the viewer with what was made ready.
@@ -2660,8 +2661,40 @@ digest covers), and a state put back takes the side from the viewer. The
 viewer that made them keeps none. Checked by
 `an_index_made_elsewhere_is_the_viewers_own` (each state's battle and HUDs
 against a viewer that indexed itself, and the seeks after, sound and all,
-against straight playback) and on a game's packs by `examples/seek.rs`,
-whose seeks are the viewer's that took the states in. The app does this
+against straight playback).
+
+**On three threads** (the user: "the preload still seems slower than it
+should be?"; approving "run each player's sound on its own thread beside
+the game's thread"). Half of a tick or more is the two consoles' sound, and
+a console's sound takes nothing from the battle but the tick's cues: what a
+viewer's own sound is given each tick is `sound_cues_for(side)` of the
+battle that ticked (the round that ended, on a tick that ended one), then
+its frame runs (`BattleAudio::handle`, `tick`). Nothing else touches it as
+a replay plays: a round's start, the speed, the side shown and the HUDs
+don't, and the host's levels are put on a state as it is put back. So the
+sound is made beside the battle. A silent viewer (`Viewer::with` given no
+sound) plays the battle on one thread (`index_battle(ticks)`: a
+`BattlePart`, the states it would keep without their sound, each tick's cues
+for each console, and after which tick each state was kept); each console's
+sound, as a viewer opened on the game has it at the start
+(`ConsoleSound::of(&game)`, or `ConsoleSound::both(audio)` as `Viewer::with`
+is given it), plays the part's cues for its console on a thread of its own,
+tick by tick, and puts a copy of itself into the part at each state
+(`ConsoleSound::play(&mut part)`, the parts in order); once both have,
+`part.into_part()` is the `IndexPart` a viewer making its own sound makes,
+for `take_index` as before. The parts go from one thread to the next as
+they are made, so the three run at once, and the index goes as fast as the
+slowest of them: the battle's share alone (a silent viewer's) on EXE5's
+packs, a console's sound on EXE6's, whose battle is lighter. Checked by
+`an_index_made_on_three_threads_is_the_one_made_on_one` (the threads wired as
+a host wires them, from the other side and in parts of another length: each
+state's ticks, battle, HUDs and session against `index_part`'s, each
+console's sound by the samples it makes over the two seconds after, sample
+for sample; and seeks from the states taken in against straight playback,
+the picture and the sound included), and on a game's packs by
+`examples/seek.rs`, whose seeks are the viewer's that took the states in,
+and `examples/index.rs`, which makes a replay's index both ways and checks
+each state's battle and both consoles' sound after it. The app does this
 (docs/app.md §16).
 
 **What it costs**, measured on EXE6's own packs by `examples/seek.rs` in a
@@ -2685,8 +2718,23 @@ mashing):
   parts, made on a thread and taken in as they came, indexed it in 0.88 s
   of the wall, 10,190 ticks a second, as fast as the viewer indexed itself
   in slices (0.88 s of processor time, 98 µs a tick): a part costs nothing
-  to send or take in. The 300 seeks and 480 frames back were then the
-  viewer's that took the states in, each checked as below.
+  to send or take in.
+- **Indexing on three threads** (2026-10-22, in a release build, the
+  wall's time, the machine busy with other builds): on the user's own
+  19:42 EXE5 replay (70,623 ticks, three rounds; `examples/index.rs`),
+  3.8 to 4.0 s, 54 to 57 µs a tick, about 18,000 ticks a second, where one
+  thread making its own sound took 7.1 to 7.4 s (101 to 104 µs a tick):
+  1.8 to 1.9 times as fast, and as fast as the battle's share alone (a
+  silent viewer: 3.8 to 4.0 s). (Busier, in four runs more: 3.7 to 6.1 s
+  against 7.5 to 10.2 s.) The two indexes were the same: at each of the
+  297 states, the same battle, and both consoles' sound over the half
+  second after it the same, sample for sample. On EXE6's packs, whose
+  battle is lighter (`examples/seek.rs`, a set of 18,000 ticks, both navis
+  mashing): 0.46 s, 38,800 ticks a second, where a viewer indexing itself
+  took 68.7 µs a tick of processor time; there each console's sound, a
+  little longer than the battle, is what the three go at. The 300 seeks and
+  480 frames back were then the viewer's that took the states in, each
+  checked as below.
 - **A seek in what was reached before:** 4.7 ms (the median of 300 seeks of
   every kind; 20 ms at worst: at most 239 ticks are played).
 - **A frame back:** 0.5 ms (the median of 480 in a row; 16 ms for the one

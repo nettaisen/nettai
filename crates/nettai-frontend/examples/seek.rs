@@ -16,12 +16,13 @@
 //! - measures what seeking costs: the states kept and the memory they
 //!   take (a battle's snapshot and a console's sound, by counting what
 //!   copying each allocates), the time to index the whole replay (by the
-//!   viewer itself, and on a thread of its own: a second viewer hands its
-//!   states to the one whose seeks are then checked), the first far seek
-//!   of a viewer that hasn't, and a seek and a frame back in an indexed
-//!   one, with sound and without. The times are of the
+//!   viewer itself, and on three threads, the battle's and each console's
+//!   sound's, whose states go to the viewer whose seeks are then checked),
+//!   the first far seek of a viewer that hasn't, and a seek and a frame
+//!   back in an indexed one, with sound and without. The times are of the
 //!   processor (the C library's `clock`), not of the wall, so that a
-//!   machine busy with something else says the same.
+//!   machine busy with something else says the same (but the threads'
+//!   index's, which is the wall's).
 //!
 //! ```text
 //! cargo run --release -p nettai-frontend --example seek -- --game exe6 --seed 7 [--ticks 18000] [--save set.nettaireplay]
@@ -38,7 +39,7 @@ use nettai_frontend::game::{self, Loaded, Options};
 use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
 use nettai_frontend::session::Session;
-use nettai_frontend::viewer::{KEYFRAME_EVERY, Viewer};
+use nettai_frontend::viewer::{BattlePart, ConsoleSound, IndexPart, KEYFRAME_EVERY, Viewer};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -277,36 +278,58 @@ fn run() -> Result<String, String> {
     let kept = v.kept();
     same(&mut v, &sides[0], &mut buffer, "after indexing")?;
 
-    // The same made on a thread of its own, as a host makes it: a second
-    // viewer of the replay, from the other side, plays it through there
-    // and hands over the states it would keep (`Viewer::index_part`), which
-    // a viewer here takes in as they come (`Viewer::take_index`). Its time
-    // is the wall's, the thread's alone (the processor's is the process's).
-    // The seeks below are the viewer's that took them in.
+    // The same made on threads of their own, as a host makes it: a second
+    // viewer of the replay, silent and from the other side, plays the
+    // battle through on one (`Viewer::index_battle`), each console's sound
+    // plays the cues it hands over on one of its own (`ConsoleSound`), and
+    // the states made so are taken in here as they come
+    // (`Viewer::take_index`). Its time is the wall's, the threads' alone
+    // (the processor's is the process's). The seeks below are the viewer's
+    // that took them in.
     let mut v = Viewer::open(&game, &replay, Some(0)).map_err(|e| e.to_string())?;
-    let (send, parts) = std::sync::mpsc::channel();
+    let (send, parts) = std::sync::mpsc::channel::<IndexPart>();
+    let (to_left, left_gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
+    let (to_right, right_gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
+    let [mut left, mut right] = ConsoleSound::of(&game).ok_or("the game's sound isn't loaded")?;
     let (on, of) = (&game, &replay);
     let threaded = std::thread::scope(|scope| {
-        let thread = scope.spawn(move || -> Result<Duration, String> {
-            let mut other = Viewer::open(on, of, Some(1)).map_err(|e| e.to_string())?;
+        scope.spawn(move || {
+            for mut part in right_gets {
+                right.play(&mut part);
+                if send.send(part.into_part()).is_err() {
+                    return;
+                }
+            }
+        });
+        scope.spawn(move || {
+            for mut part in left_gets {
+                left.play(&mut part);
+                if to_right.send(part).is_err() {
+                    return;
+                }
+            }
+        });
+        let thread = scope.spawn(move || -> Result<std::time::Instant, String> {
+            let mut other = Viewer::with(&on.game.content, of, Some(1), on.renderer(), None, None).map_err(|e| e.to_string())?;
             let began = std::time::Instant::now();
             loop {
-                let part = other.index_part(KEYFRAME_EVERY);
+                let part = other.index_battle(KEYFRAME_EVERY);
                 let whole = part.whole();
-                if send.send(part).is_err() || whole {
-                    return Ok(began.elapsed());
+                if to_left.send(part).is_err() || whole {
+                    return Ok(began);
                 }
             }
         });
         for part in parts.iter() {
             v.take_index(part);
         }
-        thread.join().map_err(|_| "the thread stopped".to_string())?
+        let began = thread.join().map_err(|_| "the thread stopped".to_string())??;
+        Ok::<_, String>(began.elapsed())
     })?;
     if v.indexed() != length || v.kept() != kept {
-        return Err(format!("the index made on a thread reached {} of {length} ticks with {} states, not {kept}", v.indexed(), v.kept()));
+        return Err(format!("the index made on three threads reached {} of {length} ticks with {} states, not {kept}", v.indexed(), v.kept()));
     }
-    same(&mut v, &sides[0], &mut buffer, "after taking in an index made on a thread")?;
+    same(&mut v, &sides[0], &mut buffer, "after taking in an index made on three threads")?;
 
     // What a kept state takes: a battle's snapshot, each console's sound
     // and each console's HUD state (which is all in place).
@@ -382,7 +405,7 @@ fn run() -> Result<String, String> {
          states kept: {kept} (one every {KEYFRAME_EVERY} ticks and at each round's start), {:.1} MB ({:.0} KB each: a battle's snapshot {:.0} KB, each console's sound {:.0} KB)\n\
          indexing the whole replay, in slices of {SLICE} ticks: {indexing:.2?} of processor time ({:.1} us a tick; {:.2} s for five minutes); \
          playing it straight with its picture: {played:.2?}\n\
-         indexing it on a thread of its own, the states taken in here: {threaded:.2?} of the wall ({:.0} ticks a second; {:.2} s for five minutes)\n\
+         indexing it on three threads (the battle; each console's sound), the states taken in here: {threaded:.2?} of the wall ({:.0} ticks a second; {:.2} s for five minutes)\n\
          a first seek to the end, nothing indexed: {first_far:.2?}; without sound, {silent_far:.2?} ({:.1} us a tick)\n\
          a seek in the indexed replay: {median:.2?} (the median; {worst:.2?} at worst); a frame back: {step:.2?} (the median; {worst_step:.2?} at worst)",
         seconds,
