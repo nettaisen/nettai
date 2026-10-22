@@ -127,7 +127,7 @@ pub struct Binding {
 impl Binding {
     /// Ask for the key (`pad`: the pad's button) of the button at `index`.
     pub fn ask(&mut self, shell: &Shell, index: i32, pad: bool) {
-        self.asking = Some((index.clamp(0, 9) as usize, pad));
+        self.asking = Some((asked(index), pad));
         self.show(shell);
     }
 
@@ -208,6 +208,13 @@ impl Binding {
         self.show(shell);
         true
     }
+}
+
+/// The button a controls' row asks for: its place in [`crate::input::BUTTONS`], every one of them (the navi changes
+/// after SELECT: the user, "changing the navi change buttons ends up changing the select button??", when the place
+/// was kept to the GBA's ten).
+fn asked(index: i32) -> usize {
+    index.clamp(0, crate::input::BUTTONS.len() as i32 - 1) as usize
 }
 
 #[derive(Default)]
@@ -406,5 +413,23 @@ fn show_folder(path: &std::path::Path) {
     };
     if let Err(why) = std::process::Command::new(program).arg(path).spawn() {
         crate::errors::log("showing the data folder", &why);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::{BUTTONS, SWITCH_LEFT, SWITCH_RIGHT, button_index};
+    use nettai_battle::input::keys;
+
+    /// Each controls' row asks for its own button: the navi changes theirs, not SELECT's.
+    #[test]
+    fn each_row_asks_for_its_own_button() {
+        for (i, (bit, _)) in BUTTONS.iter().enumerate() {
+            assert_eq!(asked(i as i32), button_index(*bit));
+        }
+        assert_eq!(BUTTONS[asked(10)].0, SWITCH_LEFT);
+        assert_eq!(BUTTONS[asked(11)].0, SWITCH_RIGHT);
+        assert_eq!(BUTTONS[asked(9)].0, keys::SELECT);
     }
 }

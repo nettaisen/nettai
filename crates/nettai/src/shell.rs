@@ -1399,11 +1399,12 @@ impl App {
                 }
             }
             // (The mouse on the on-screen pad: one pointer, through the UI. Fingers come by `touched`.)
+            // (A button's bit: the GBA's ten, and the party battle's switches, 14 and 15.)
             NavInput::Touch(bit, down) => {
-                self.shell.touch.press(down.then_some(bit.clamp(0, 9) as u8));
+                self.shell.touch.press(down.then_some(bit.clamp(0, 15) as u8));
                 self.shell.show_pad();
             }
-            NavInput::PadKey(bit, rect) => self.shell.touch.place(bit.clamp(0, 9) as u8, rect),
+            NavInput::PadKey(bit, rect) => self.shell.touch.place(bit.clamp(0, 15) as u8, rect),
         }
         self.settle();
     }
