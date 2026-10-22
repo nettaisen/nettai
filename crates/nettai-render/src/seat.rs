@@ -176,6 +176,18 @@ impl Seat {
         if self.mirrored() { anchor - dx - w } else { anchor + dx }
     }
 
+    /// How far right of the mirrored place of its box (`x`, `w` wide, where
+    /// [`Seat::about`] or [`Seat::x`] put it) a piece laid there (`parts`)
+    /// goes so that what it draws mirrors, not its box: the margins its box
+    /// has about its pixels traded sides (an HP number's four cells about
+    /// its digits). None where the seat doesn't mirror.
+    pub fn ink_shift(self, parts: &[SpritePart], x: i32, w: i32) -> i32 {
+        match ink_span(parts).filter(|_| self.mirrored()) {
+            Some((s0, s1)) => w - (s0 - x) - (s1 - x),
+            None => 0,
+        }
+    }
+
     /// A known difference's or a mark's box ([`crate::audit::Problems`]) at
     /// its place.
     pub fn rect(self, [x0, y0, x1, y1]: [i32; 4]) -> [i32; 4] {
@@ -441,6 +453,13 @@ fn part_ink(p: &SpritePart) -> Option<[i32; 2]> {
     let a = (0..w).find(|&c| draws(c))?;
     let b = (0..w).rev().find(|&c| draws(c))? + 1;
     Some([(left + a) as i32, (left + b) as i32])
+}
+
+/// The screen's columns sprite parts draw in (the first, one past the
+/// last): their pixels', not their boxes'; none where they draw nothing.
+pub fn ink_span(parts: &[SpritePart]) -> Option<(i32, i32)> {
+    let spans = parts.iter().filter_map(|p| part_ink(p).map(|[a, b]| (part_x(p) + a, part_x(p) + b)));
+    spans.reduce(|(a0, a1), (b0, b1)| (a0.min(b0), a1.max(b1)))
 }
 
 /// The screen x of a sprite part (its coordinate wrapped as the

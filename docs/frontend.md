@@ -1454,7 +1454,10 @@ timer, "COUNTER HIT!", "PAUSE") once, by the left. Mirroring is of places,
 never of what reads: a frame, a box or a face is flipped at its mirrored
 place, while words, digits, chip art and icons go to the mirrored place of
 the box they are laid in and are laid there upright. A piece tied to an
-object goes to the mirror of its place about the object's.
+object goes to the mirror of its place about the object's: an HP number
+under one, or a warning marker over a place, where its pixels mirror,
+not its box (`Seat::ink_shift`: the HP number's four cells leave a margin
+by its digits' count).
 
 - The HP boxes in the top corners, the right's flipped with its digits in
   their cells' mirrored place; the emotion windows under them, the right's

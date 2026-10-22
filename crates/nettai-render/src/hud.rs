@@ -1115,10 +1115,17 @@ pub fn draw<'a>(
         let value = if number.damage { o.max_hp.wrapping_sub(e.shown) } else { e.shown };
         let n = value.min(9999).to_string().len() as i32;
         // (Its four cells; mirrored about the object where the seat
-        // mirrors.)
+        // mirrors, as its digits' pixels are, upright: `Seat::ink_shift`.)
         let x = seat.about(p.x, number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 }, 32);
         let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
+        let shown: Vec<SpritePart> = digits4(value)
+            .into_iter()
+            .enumerate()
+            .filter(|&(_, d)| d != 10)
+            .map(|(k, d)| glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None))
+            .collect();
+        let x = x + seat.ink_shift(&shown, x, 32);
         let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), view);
         // In the enhanced mode the number (the HP, or the damage taken) in
         // the numbers' font, in the digits' look (`numbers::laid`): centered
@@ -1399,6 +1406,9 @@ fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, seat: Seat, list: &m
         }
         let frame = if b.consoles[console].frames & 8 != 0 { 4 } else { 0 };
         let part = SpritePart { first_tile: frame, priority: 0, ..block(&hud.warning, 16, 16, hud.warning_palette, x, y) };
+        // (A place's mirrored as its arrow's pixels are, upright.)
+        let shift = if w.at.is_some() { seat.ink_shift(std::slice::from_ref(&part), x, 16) } else { 0 };
+        let part = SpritePart { x: ((x + shift) & 0x1FF) as u16, ..part };
         list.insert_placed(FRONT_LAYER, 0, vec![part], None, fine);
     }
 }
