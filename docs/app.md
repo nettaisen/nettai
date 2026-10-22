@@ -620,8 +620,11 @@ parse it once at the top level then pass it in everywhere? or like an i18n conte
 list formatter"). `lang::select` makes them, gives them to `Caps` and `Lists`, then selects the catalog; the shell
 keeps them (`shell.i18n`, its `code` the language's), and Rust that lists or capitalizes is handed them (`Words`'s
 `i18n`). Choosing another language makes all of them anew ("on language switch why not just rebuild the i18n context
-with everything?"). Neither `Caps` nor `Lists` is passed the language: the new rules are in place before Slint says
-every `@tr` string again, and the app sets the words it gives again itself.
+with everything?"). No caller passes `Caps` or `Lists` the language: their `of` functions read `Caps.language`, a
+count `lang::select` raises each time a language is chosen (after the new rules are in place), so Slint sets again
+everything in capitals or listed, the words the app gave and never gives again (a player's name, a build's) as well
+as every `@tr` one: until then those kept the old language's capitals, which matter where a language's rules differ
+(Turkish: the user, "fix the turkish issue").
 
 **A language is a folder**, `crates/nettai-ui/lang/<code>/`, of gettext catalogs: one file for each part of the
 app (`shell.po` for what every screen shares, then one a screen), so two screens' translators don't meet in one
