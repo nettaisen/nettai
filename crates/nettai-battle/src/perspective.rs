@@ -15,7 +15,10 @@
 //!   user, if to anyone; where telops run apart from the banners each
 //!   console lays its own player's on the banner block) and
 //!   [`Battle::used_chip_for`] (the other player's chip, named for a
-//!   second);
+//!   second); a screen of both consoles (a replay watched from both sides)
+//!   names each telop as its user's console does
+//!   ([`Battle::telops_for_both`]) and shows each player's own result banner
+//!   ([`Battle::result_banner_for`]);
 //! - the result: [`Battle::round_end_for`];
 //! - what each player sees of the objects: [`Battle::visible_to`] (a blind
 //!   player doesn't see the other side's objects, the Beast Out lock-on
@@ -217,12 +220,38 @@ impl Battle {
     /// simulation's two the other way round (beside the simulation's
     /// banner, which that console might not have started).
     pub fn telops_for(&self, viewer: u8) -> [Option<(ShownTelop, Banner)>; 2] {
-        let on = |block: &Banner| block.telop.filter(|_| block.active).map(|t| (shown(t, viewer), *block));
+        self.telops_named(viewer, |_| viewer)
+    }
+
+    /// The telops on a screen of both consoles (a replay watched from both
+    /// sides at once), each on its own player's side: laid as `left`'s
+    /// console lays them ([`Battle::telops_for`]), each named as its user's
+    /// console names it. A chip hidden from the other player alone is
+    /// named; one hidden from both stays "????", as both consoles show it.
+    pub fn telops_for_both(&self, left: u8) -> [Option<(ShownTelop, Banner)>; 2] {
+        self.telops_named(left, |t| t.side)
+    }
+
+    /// The telops as `viewer`'s console lays them, each named as the
+    /// console `namer` says names it.
+    fn telops_named(&self, viewer: u8, namer: impl Fn(&Telop) -> u8) -> [Option<(ShownTelop, Banner)>; 2] {
+        let on = |block: &Banner| {
+            block.telop.filter(|_| block.active).map(|t| (ShownTelop { remote: t.side != viewer, ..shown(t, namer(&t)) }, *block))
+        };
         let (banner, other) = (on(&self.banner), on(&self.remote_telop));
         match self.game_rules().effects.telops {
             Telops::Apart if viewer != self.round.local_side => [other, banner],
             _ => [banner, other],
         }
+    }
+
+    /// The round's result's banner on `viewer`'s console while it shows
+    /// (its win's or its loss's, [`Battle::banner_for`]); none while
+    /// another banner shows, or none.
+    pub fn result_banner_for(&self, viewer: u8) -> Option<BannerId> {
+        let id = self.banner_for(viewer)?;
+        let decided = matches!(self.fight.state, fight::WIN | fight::LOSE);
+        (decided && id == self.result_banner(viewer, self.round.winner == viewer)).then_some(id)
     }
 
     /// What `viewer`'s console shows of its navi's chips.
@@ -400,6 +429,23 @@ mod tests {
         b.objects.get_mut(follower).alliance = 1;
         b.hide_from_other_side(follower);
         assert_eq!(seen(&b)[0], [false, true]);
+    }
+
+    /// A screen of both consoles names a chip hidden from the other player
+    /// (its user's console names it) and keeps "????" for one hidden from
+    /// both, each telop on its own player's side.
+    #[test]
+    fn both_consoles_name_a_chip_its_user_sees() {
+        let mut b = battle();
+        let chip = crate::content::testing::chip_in(&b.content, crate::content::testing::SUN_GUN_3);
+        b.start_banner(telop_banner(&b, true).unwrap());
+        for (hidden, named) in [(TelopHidden::FromOpponent, TelopName::Chip(chip)), (TelopHidden::FromBoth, TelopName::Hidden)] {
+            b.banner.telop = Some(Telop { side: 1, chip: Some(chip), damage: 0, doubled: false, bonus: 0, hidden });
+            let [t, _] = b.telops_for_both(0);
+            let (t, _) = t.unwrap();
+            assert_eq!((t.name, t.remote), (named, true), "{hidden:?}");
+            assert_eq!(b.telops_for(0)[0].unwrap().0.name, TelopName::Hidden);
+        }
     }
 
     #[test]

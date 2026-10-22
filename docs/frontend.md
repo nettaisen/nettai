@@ -1432,6 +1432,53 @@ loads with the frontend's `Options::default()`. Off: `Renderer::new` and
 trace replays and the identity checks use; and every frame in the original
 mode, byte for byte as before the mode had motion.
 
+### Both on one screen
+
+A frame shows the local side's console's screen (`Renderer::consoles`,
+`Consoles::One`, what every console of the game shows), or both players on
+one 240x160 screen (`Consoles::Both`: a replay watched from both sides, the
+user's "dual perspective replay on a single screen"; the mockups the user
+chose are bn6battle-verify's docs/nettai-ui/spectator). The renderer
+follows both consoles' HUDs every tick (`Renderer::hud_state`, the local
+console's, and `other_hud`), so either way is drawn from the same state.
+
+The field is drawn once, as the left console draws it (the local side's:
+its camera, its panels' colors, its view mirrored or not), and its sprites
+are those either player sees (`Battle::visible_to` for either viewer: a
+blind player's opponent, a lock-on marker, a charge glow). Each console's
+pieces are drawn by `hud::draw` for its seat (`seat::Seat`): the left one's
+where its console draws them; the right one's own pieces alone, mirrored
+into the right half; and the pieces both consoles show alike (the custom
+gauge, the banners but the round's result, the judge's numbers, the turn
+timer, "COUNTER HIT!", "PAUSE") once, by the left. Mirroring is of places,
+never of what reads: a frame, a box or a face is flipped at its mirrored
+place, while words, digits, chip art and icons go to the mirrored place of
+the box they are laid in and are laid there upright. A piece tied to an
+object goes to the mirror of its place about the object's.
+
+- The HP boxes in the top corners, the right's flipped with its digits in
+  their cells' mirrored place; the emotion windows under them, the right's
+  face and box flipped so the face looks toward the middle, its count
+  upright (in Original, the count's box picture flipped with its digits put
+  back upright in the mirrored place of their box: the pack's count letters
+  say where they are).
+- The next chip's name at the bottom left and, right-aligned, at the bottom
+  right; each navi's chip icons over it, as its own console draws its own
+  (an EXE5 console shows only its own navi's).
+- No HP under a navi (both are in the corners), and of the HP a console
+  numbers under other objects, each once.
+- A defensive chip's "????" beside its own side's emotion window (the
+  right's at its mirrored place), none at the edges.
+- Telops on their player's side, as the left console lays them, each named
+  as its user's console names it (`Battle::telops_for_both`): a chip hidden
+  from the opponent alone is named, one hidden from both stays "????". The
+  chip a player just used (`used_chip_for`), each on its user's side: the
+  right player's as the left console names it, the left player's as the
+  right console names it, at the mirrored place.
+- The round's result: each player's own banner (YOU WIN!, YOU LOSE), its
+  picture's columns that show centered on its half.
+- The warning markers each console shows, once.
+
 ### What the engine gives the frontend
 
 Presentation outputs: the simulation reads none of them (`digest.rs` lists

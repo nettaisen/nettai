@@ -48,7 +48,7 @@ pub fn field(graphics: &PackGraphics, b: &Battle, keep: &[ObjectRef]) -> Vec<u32
     let mut layer = Layer::new(2, 2);
     stage.draw_field(&only, &mut layer, b.setup.local_side, &view, &mut problems);
     let mut list = SpriteList::default();
-    crate::objects::queue_objects(&only, &packs, &view, &mut list, &mut problems, false);
+    crate::objects::queue_objects(&only, &packs, &view, &[b.setup.local_side], &mut list, &mut problems, false);
     let parts = list.into_parts();
     let (pixels, depth) = compose_with_depth(0, &[&layer], &parts, Fades::default());
     let drawn = pixels.iter().zip(&depth).map(|(&c, &d)| if d == BACKDROP_DEPTH { 0 } else { 0xFF00_0000 | to_rgb(c) });

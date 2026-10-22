@@ -72,6 +72,26 @@ impl Layer {
         }
     }
 
+    /// Put what is drawn in `from` here, `dx` pixels right (a piece laid out
+    /// elsewhere first, then put in its place), over what is here.
+    pub fn put_moved(&mut self, from: &Layer, dx: i32) {
+        if !self.drawn {
+            return;
+        }
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                let i = y * WIDTH + x;
+                let to = x as i32 + dx;
+                if from.pixels[i] == CLEAR || !(0..WIDTH as i32).contains(&to) {
+                    continue;
+                }
+                let j = y * WIDTH + to as usize;
+                self.pixels[j] = from.pixels[i];
+                self.past_ranged[j] = from.past_ranged[i];
+            }
+        }
+    }
+
     /// Draw one 8x8 tile at (x, y), clipped to the screen.
     pub fn draw_tile(&mut self, tile: &[u8], palette: &Palette, x: i32, y: i32, hflip: bool, vflip: bool) {
         self.draw_tile_past(tile, palette, false, x, y, hflip, vflip);
