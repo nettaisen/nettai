@@ -2,27 +2,25 @@
 <!-- The SHUFFLE button (two slots wide), picked: an orange light, a dark orange face, a dark red shade, its words yellow: a dark outline, square-cornered as the pixels are, lit along its top and left, shaded along its right and bottom, two slots cut in its top edge and two tabs standing on its bottom edge; its words drawn as text. -->
 <!-- The window round it -->
 <rect x="0" y="0" width="32" height="24" fill="#f7ffff" data-color="1"/>
-<!-- The outline -->
-<path d="M2 2.6 L2 2 L2.6 2 L29.4 2 L30 2 L30 2.6 L30 21.4 L30 22 L29.4 22 L2.6 22 L2 22 L2 21.4 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
-<!-- The light along the top and the left -->
-<path d="M3 4 L3 3 L4 3 L29 3 L28 4 L4 4 L4 20 L3 21 Z" fill-rule="evenodd" fill="#ffad29" data-color="12"/>
-<!-- The shade along the right and the bottom -->
-<path d="M28 4 L29 3 L29 20 L29 21 L28 21 L3 21 L4 20 L28 20 Z" fill-rule="evenodd" fill="#a5314a" data-color="15"/>
-<!-- The face -->
-<rect x="4" y="4" width="24" height="16" fill="#ce6339" data-color="13"/>
-<!-- A slot cut down into the top edge: its inside the face, its rim round it, the far walls lit, the near one shaded, meeting at a mitre -->
+<!-- The outline, a pixel wide, square -->
+<path d="M2 2 L30 2 L30 22 L2 22 Z" fill="#292929" data-color="9"/>
+<!-- The face inside it; its bevel a pixel wide, lit along the top and the left, shaded along the right and the bottom, each stopping square at the corners it shares with the other, so those two corners stay the face's color (as the art) -->
+<path d="M3 3 L29 3 L29 21 L3 21 Z" fill="#ce6339" data-color="13"/>
+<path d="M3 3 L3 3 L28 3 L28 4 L4 4 L4 20 L3 20 Z" fill="#ffad29" data-color="12"/>
+<path d="M28 4 L29 4 L29 21 L29 21 L4 21 L4 20 L28 20 Z" fill="#a5314a" data-color="15"/>
+<!-- A slot cut down into the top edge: its inside the face, its rim round it, the far walls lit, the near one shaded, meeting at a miter -->
 <rect x="7" y="3" width="5" height="3" fill="#ce6339" data-color="13"/>
-<polygon points="11,4 12,4 12,6 7,6 8,5 11,5" fill="#ffad29" data-color="12"/>
-<polygon points="7,4 8,4 8,5 7,6" fill="#a5314a" data-color="15"/>
+<path d="M11 4 L12 4 L12 6 L7 6 L8 5 L11 5 Z" fill="#ffad29" data-color="12"/>
+<path d="M7 4 L8 4 L8 5 L7 6 Z" fill="#a5314a" data-color="15"/>
 <!-- A tab standing up from the bottom edge: its shaded rim over it, its inside the face -->
-<polygon points="7,18 12,18 12,20 11,20 11,19 8,19 8,20 7,20" fill="#a5314a" data-color="15"/>
+<path d="M7 18 L12 18 L12 20 L11 20 L11 19 L8 19 L8 20 L7 20 Z" fill="#a5314a" data-color="15"/>
 <rect x="7" y="20" width="5" height="1" fill="#ce6339" data-color="13"/>
 <!-- The other slot -->
 <rect x="20" y="3" width="5" height="3" fill="#ce6339" data-color="13"/>
-<polygon points="24,4 25,4 25,6 20,6 21,5 24,5" fill="#ffad29" data-color="12"/>
-<polygon points="20,4 21,4 21,5 20,6" fill="#a5314a" data-color="15"/>
+<path d="M24 4 L25 4 L25 6 L20 6 L21 5 L24 5 Z" fill="#ffad29" data-color="12"/>
+<path d="M20 4 L21 4 L21 5 L20 6 Z" fill="#a5314a" data-color="15"/>
 <!-- The other tab -->
-<polygon points="20,18 25,18 25,20 24,20 24,19 21,19 21,20 20,20" fill="#a5314a" data-color="15"/>
+<path d="M20 18 L25 18 L25 20 L24 20 L24 19 L21 19 L21 20 L20 20 Z" fill="#a5314a" data-color="15"/>
 <rect x="20" y="20" width="5" height="1" fill="#ce6339" data-color="13"/>
 <!-- The words -->
 <text data-words="window.shuffle" data-box="4 8 23 8" fill="#fff729" data-color="11" x="4" y="16" font-size="10.667" textLength="23">SHUFFLE</text>

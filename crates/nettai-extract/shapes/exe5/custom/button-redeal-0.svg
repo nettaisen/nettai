@@ -1,28 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="192" viewBox="0 0 32 24">
-<!-- The SHUFFLE button (two slots wide), its first look: a yellow light, an orange face, a dark orange shade, its words dark: a dark outline with rounded corners, lit along its top and left, shaded along its right and bottom, two slots cut in its top edge and two tabs standing on its bottom edge; its words drawn as text. -->
+<!-- The SHUFFLE button (two slots wide), its first look: a yellow light, an orange face, a dark orange shade, its words dark: a dark outline with its corners cut, lit along its top and left, shaded along its right and bottom, two slots cut in its top edge and two tabs standing on its bottom edge; its words drawn as text. -->
 <!-- The window round it -->
 <rect x="0" y="0" width="32" height="24" fill="#e7e7ef" data-color="2"/>
-<!-- The outline, its corners rounded -->
-<path d="M2 4 A2 2 0 0 1 4 2 L28 2 A2 2 0 0 1 30 4 L30 20 A2 2 0 0 1 28 22 L4 22 A2 2 0 0 1 2 20 Z" fill-rule="evenodd" fill="#292929" data-color="8"/>
-<!-- The light along the top and the left -->
-<path d="M3 4 A1 1 0 0 1 4 3 L29 3 L28 4 L4 4 L4 20 L3 21 Z" fill-rule="evenodd" fill="#fff729" data-color="11"/>
-<!-- The shade along the right and the bottom -->
-<path d="M28 4 L29 3 L29 20 A1 1 0 0 1 28 21 L3 21 L4 20 L28 20 Z" fill-rule="evenodd" fill="#ce6339" data-color="13"/>
-<!-- The face -->
-<rect x="4" y="4" width="24" height="16" fill="#ffad29" data-color="12"/>
-<!-- A slot cut down into the top edge: its inside the face, its rim round it, the far walls lit, the near one shaded, meeting at a mitre -->
+<!-- The outline, a pixel wide, its corners cut (legs 1, the art's) -->
+<path d="M2 3 L3 2 L29 2 L30 3 L30 21 L29 22 L3 22 L2 21 Z" fill="#292929" data-color="8"/>
+<!-- The face inside it, cut parallel; its bevel a pixel wide, lit along the top and the left, shaded along the right and the bottom, each stopping square at the corners it shares with the other, so those two corners stay the face's color (as the art) -->
+<path d="M3 3.414 L3.414 3 L28.586 3 L29 3.414 L29 20.586 L28.586 21 L3.414 21 L3 20.586 Z" fill="#ffad29" data-color="12"/>
+<path d="M3 3.414 L3.414 3 L28 3 L28 4 L4 4 L4 20 L3 20 Z" fill="#fff729" data-color="11"/>
+<path d="M28 4 L29 4 L29 20.586 L28.586 21 L4 21 L4 20 L28 20 Z" fill="#ce6339" data-color="13"/>
+<!-- A slot cut down into the top edge: its inside the face, its rim round it, the far walls lit, the near one shaded, meeting at a miter -->
 <rect x="7" y="3" width="5" height="3" fill="#ffad29" data-color="12"/>
-<polygon points="11,4 12,4 12,6 7,6 8,5 11,5" fill="#fff729" data-color="11"/>
-<polygon points="7,4 8,4 8,5 7,6" fill="#ce6339" data-color="13"/>
+<path d="M11 4 L12 4 L12 6 L7 6 L8 5 L11 5 Z" fill="#fff729" data-color="11"/>
+<path d="M7 4 L8 4 L8 5 L7 6 Z" fill="#ce6339" data-color="13"/>
 <!-- A tab standing up from the bottom edge: its shaded rim over it, its inside the face -->
-<polygon points="7,18 12,18 12,20 11,20 11,19 8,19 8,20 7,20" fill="#ce6339" data-color="13"/>
+<path d="M7 18 L12 18 L12 20 L11 20 L11 19 L8 19 L8 20 L7 20 Z" fill="#ce6339" data-color="13"/>
 <rect x="7" y="20" width="5" height="1" fill="#ffad29" data-color="12"/>
 <!-- The other slot -->
 <rect x="20" y="3" width="5" height="3" fill="#ffad29" data-color="12"/>
-<polygon points="24,4 25,4 25,6 20,6 21,5 24,5" fill="#fff729" data-color="11"/>
-<polygon points="20,4 21,4 21,5 20,6" fill="#ce6339" data-color="13"/>
+<path d="M24 4 L25 4 L25 6 L20 6 L21 5 L24 5 Z" fill="#fff729" data-color="11"/>
+<path d="M20 4 L21 4 L21 5 L20 6 Z" fill="#ce6339" data-color="13"/>
 <!-- The other tab -->
-<polygon points="20,18 25,18 25,20 24,20 24,19 21,19 21,20 20,20" fill="#ce6339" data-color="13"/>
+<path d="M20 18 L25 18 L25 20 L24 20 L24 19 L21 19 L21 20 L20 20 Z" fill="#ce6339" data-color="13"/>
 <rect x="20" y="20" width="5" height="1" fill="#ffad29" data-color="12"/>
 <!-- The words -->
 <text data-words="window.shuffle" data-box="4 8 23 8" fill="#292929" data-color="8" x="4" y="16" font-size="10.667" textLength="23">SHUFFLE</text>
