@@ -1555,13 +1555,14 @@ component ViewerPage inherits Rectangle {
         }
     }
 
-    // (The parties: the console shown's side's on the field's foot at the picture's left, where nothing of the battle
-    // is drawn, as a battle's is; the other side's over its picture in the corner.)
-    property <length> picture-left: Shell.picture-room-x + Shell.picture-x;
+    // (The parties: the console shown's side's on the field's foot at the picture's right, where nothing of the battle
+    // is drawn, as a battle's is (the user: "in replays the team switcher is on the left but in game the team switcher
+    // is on the right"), left of the other console's picture where that is on; the other side's over that picture.)
+    property <length> picture-right: Shell.picture-room-x + Shell.picture-x + Shell.picture-width;
     property <length> picture-bottom: Shell.picture-room-y + Shell.picture-y + Shell.picture-height;
     property <length> foot: Shell.picture-height * 10 / 160;
     PartyStrip {
-        x: root.picture-left + 16px;
+        x: (ReplaysView.inset-on ? min(root.picture-right - 16px, Shell.picture-room-x + ReplaysView.inset-x - 12px) : root.picture-right - 16px) - self.width;
         y: root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
         visible: ReplaysView.party.shown && Shell.picture-shown && !root.phone;
         party: ReplaysView.party;
