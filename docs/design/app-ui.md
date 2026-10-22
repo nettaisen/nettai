@@ -571,7 +571,9 @@ Each is settled unless the user changes it.
       they are all there shows each as it comes.
     - *The menu's groups.* Then the user: "the practice menu groupings are weird. you should rethink them. having
       an "arena" field under "arena" is so weird". The groups are DUMMY (Action, Level), STAGE (Arena, Background,
-      Music) and OPTIONS (Your HP, Dummy's HP, Custom gauge, Chip draw, Input display); in Japanese ダミー,
+      Music) and OPTIONS (Your HP, Dummy's HP, Custom gauge, Chip draw, Input display; since 2026-10-21 Input delay,
+      netplay's: the user, "add support for setting input delay in the practice mode menu", "practice mode should
+      have the same input delay as netplay and adjusting it should adjust the netplay delay"); in Japanese ダミー,
       ステージ, オプション. No group is named for one of its rows, and none has one row (the input display's
       DISPLAY group is folded into OPTIONS). The entry has no groups.
     (Since §2.57 there is no entry: the grids are the practice menu's, and DUMMY starts with Dummy's build and its

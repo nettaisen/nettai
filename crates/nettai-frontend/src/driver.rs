@@ -517,6 +517,10 @@ pub struct LivePlayer {
     second_pad: Option<u16>,
     /// The host's AI, for an opponent whose choices are its.
     ai: Option<Box<dyn Ai>>,
+    /// The player's input delay, in ticks (`Driver::set_input_delay`), and the player's tick words waiting it out,
+    /// the oldest first: a word reaches the battle `delay` ticks after it was given.
+    delay: u32,
+    delayed: std::collections::VecDeque<u16>,
 }
 
 /// Put what is left of `side`'s battle folder in `draw`'s order: the
@@ -577,6 +581,8 @@ impl LivePlayer {
             arranged: [ChipDraw::Shuffled; 2],
             second_pad: None,
             ai: None,
+            delay: 0,
+            delayed: Default::default(),
         }
     }
 
@@ -592,6 +598,12 @@ impl LivePlayer {
     /// that is its choice ([`InFight::SecondPad`]).
     pub fn set_second_pad(&mut self, held: Option<u16>) {
         self.second_pad = held;
+    }
+
+    /// The same, the player's input delay `ticks` from its first tick (`Driver::set_input_delay`).
+    pub fn with_input_delay(mut self, ticks: u32) -> LivePlayer {
+        Driver::set_input_delay(&mut self, ticks);
+        self
     }
 
     /// The same, with a training session's options from its first tick.
@@ -764,6 +776,7 @@ impl Driver for LivePlayer {
         }
         self.refill = Default::default();
         self.arranged = [ChipDraw::Shuffled; 2];
+        self.delayed.clear();
         self.set.start()
     }
 
@@ -784,6 +797,9 @@ impl Driver for LivePlayer {
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
+        // (The player's word, the input delay's ticks after it was given: nothing pressed until the first comes.)
+        self.delayed.push_back(keys);
+        let keys = if self.delayed.len() > self.delay as usize { self.delayed.pop_front().unwrap_or(0) } else { 0 };
         let local = b.setup.local_side as usize;
         // (Held, the opponent's presses are made as ever, and go nowhere.)
         let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
@@ -832,6 +848,17 @@ impl Driver for LivePlayer {
 
     fn hold_opponent(&mut self, held: bool) -> bool {
         self.held = held;
+        true
+    }
+
+    /// The player's tick words reach the battle `ticks` ticks after they are given, as a netplay match's input
+    /// delay has them seen (practice's own, the user: "add support for setting input delay in the practice mode
+    /// menu"). A shorter delay drops the oldest words waiting, a longer one passes nothing until they catch up.
+    fn set_input_delay(&mut self, ticks: u32) -> bool {
+        self.delay = ticks;
+        while self.delayed.len() > ticks as usize {
+            self.delayed.pop_front();
+        }
         true
     }
 }
@@ -920,6 +947,36 @@ pub mod short_set {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// With an input delay the player's words reach the battle that many ticks after they are given, nothing
+    /// before the first; a shorter delay set midway drops the oldest waiting, and a start over forgets them.
+    #[test]
+    fn live_input_delay() {
+        let content = nettai_battle::content::testing::content();
+        let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
+        let settings = BattleSettings::on(&content, stage);
+        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let set = || Set::new(content.clone(), live_setup(&content, settings, [folder, folder], "falzar", 7), [folder, folder]);
+        let mut live = LivePlayer::new(set());
+        assert!(Driver::set_input_delay(&mut live, 3));
+        let mut b = live.start();
+        // (Each tick's word its own: the tick's number, on the buttons' bits.)
+        let word = |tick: u32| (tick as u16 * 7) & 0x3FF;
+        for tick in 0..40u32 {
+            let step = live.next(&b, word(tick)).unwrap();
+            let want = if tick < 3 { 0 } else { word(tick - 3) };
+            assert_eq!(step.input[0].held as u16 & 0x3FF, want, "tick {tick}");
+            b.tick(&step.input, step.events);
+        }
+        // One tick of delay from now: the two oldest waiting are dropped.
+        assert!(Driver::set_input_delay(&mut live, 1));
+        let step = live.next(&b, word(40)).unwrap();
+        assert_eq!(step.input[0].held as u16 & 0x3FF, word(39));
+        // Started over: nothing waiting.
+        let b = live.start();
+        let step = live.next(&b, word(1)).unwrap();
+        assert_eq!(step.input[0].held, 0);
+    }
 
     /// Live play through the first custom screen: the local player picks
     /// the first chip and presses OK, the right navi's screen does the

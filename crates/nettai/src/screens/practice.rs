@@ -32,6 +32,7 @@ use crate::games::{Names, Ready};
 use crate::input::{Action, KeyPress};
 use crate::screens::menu::clock_seed;
 use crate::screens::{Screen, ScreenId};
+use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_frontend::driver::{ChipDraw, InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
@@ -304,7 +305,7 @@ struct Session {
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Practice::change_option`. The dummy's build and EDIT are shown in a session
 /// of Practice's own ([`shown_rows`]).
-pub(crate) const ROWS: [PracticeOption; 14] = [
+pub(crate) const ROWS: [PracticeOption; 15] = [
     PracticeOption::Dummy,
     // (Who the dummy is, then what it does: the user, "add Dummy's build to its DUMMY group".)
     PracticeOption::DummysBuild,
@@ -323,6 +324,9 @@ pub(crate) const ROWS: [PracticeOption; 14] = [
     PracticeOption::CustomGauge,
     PracticeOption::ChipDraw,
     PracticeOption::InputDisplay,
+    // (Netplay's input delay, the one setting: the user, "practice mode should have the same input delay as netplay
+    // and adjusting it should adjust the netplay delay".)
+    PracticeOption::InputDelay,
 ];
 
 /// What a session's starter hears when its EXIT is chosen ([`Start::exit`]): its rows are heard by their places.
@@ -357,6 +361,7 @@ fn values(option: PracticeOption, places: &Places) -> usize {
         PracticeOption::Music | PracticeOption::DummysBuild => 1,
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
+        PracticeOption::InputDelay => MAX_INPUT_DELAY as usize + 1,
         PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => 0,
     }
 }
@@ -373,13 +378,19 @@ fn value(option: PracticeOption, opponent: Opponent, options: Options, inputs: b
         PracticeOption::CustomGauge => options.full_gauge as usize,
         PracticeOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
         PracticeOption::InputDisplay => inputs as usize,
+        // (The setting's, not the session's: `row`.)
+        PracticeOption::InputDelay => 0,
         PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => 0,
     }
 }
 
 /// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
-/// Random) and its picture (`thumbs`'); for Music, the battle's music's name; for the Dummy's build, its name.
-fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs) -> PracticeRow {
+/// Random) and its picture (`thumbs`'); for Music, the battle's music's name; for the Dummy's build, its name; for
+/// the Input delay, the setting's ticks (`delay`).
+fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs, delay: u32) -> PracticeRow {
+    if option == PracticeOption::InputDelay {
+        return PracticeRow { option, value: delay as i32, text: Default::default(), picture: Default::default() };
+    }
     if option == PracticeOption::DummysBuild {
         let name = session.builds.get(session.dummys).map(|p| p.build.name.as_str()).unwrap_or_default();
         return PracticeRow { option, value: session.dummys as i32, text: name.into(), picture: Default::default() };
@@ -418,7 +429,7 @@ fn tell_rows(shell: &Shell, session: &Session, options: &[PracticeOption]) {
     let rows = shell.ui().global::<PracticeView>().get_rows();
     for option in options {
         if let Some(at) = session.rows.iter().position(|o| o == option) {
-            rows.set_row_data(session.added + at, row(*option, session, &shell.practice.thumbs));
+            rows.set_row_data(session.added + at, row(*option, session, &shell.practice.thumbs, shell.settings.input_delay));
         }
     }
 }
@@ -550,7 +561,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         .rows
         .iter()
         .map(|text| PracticeRow { option: PracticeOption::Added, value: 0, text: text.into(), picture: Default::default() })
-        .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs)))
+        .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs, shell.settings.input_delay)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
     view.set_leave(start.from.is_none() || start.exit.is_some());
@@ -560,7 +571,11 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     view.set_inputs(inputs);
     view.set_held_yours(0);
     view.set_held_dummys(0);
-    let driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
+    // (The player's input delay netplay's, the one setting both change: the user, "practice mode should have the same
+    // input delay as netplay and adjusting it should adjust the netplay delay".)
+    let driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64)
+        .with_training(start.options)
+        .with_input_delay(shell.settings.input_delay);
     shell.start_battle(BattleStart {
         owner: ScreenId::Practice,
         kind: BattleKind::Practice,
@@ -1048,6 +1063,25 @@ impl Practice {
             shell.practice.session = Some(session);
             return;
         }
+        // The Input delay: netplay's, saved, and the battle's player taking it at once (Play's lobby shows it too),
+        // stepped within its range, not round it.
+        if option == Some(PracticeOption::InputDelay) {
+            let next = match change {
+                Change::By(by) => (shell.settings.input_delay as i32 + by).clamp(0, MAX_INPUT_DELAY as i32) as u32,
+                Change::To(at) => (at as u32).min(MAX_INPUT_DELAY),
+            };
+            if next != shell.settings.input_delay {
+                shell.settings.input_delay = next;
+                shell.save_settings();
+                if let Some(b) = &mut shell.battle {
+                    b.stage.player.set_input_delay(next);
+                }
+                shell.ui().global::<nettai_ui::PlayView>().set_input_delay(next as i32);
+            }
+            tell_rows(shell, &session, &[PracticeOption::InputDelay]);
+            shell.practice.session = Some(session);
+            return;
+        }
         // The Dummy's build: one of the session's builds, kept for the visit, and the set started again with the
         // dummy on it, as for an arena.
         if option == Some(PracticeOption::DummysBuild) && !session.builds.is_empty() {
@@ -1131,7 +1165,7 @@ impl Practice {
                     view.set_held_dummys(0);
                 }
                 // (Above.)
-                PracticeOption::Music | PracticeOption::DummysBuild => {}
+                PracticeOption::Music | PracticeOption::DummysBuild | PracticeOption::InputDelay => {}
                 PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => {}
             }
             // (At once, on the battle as it stands behind the menu.)
@@ -1337,6 +1371,10 @@ impl Screen for Practice {
                 shell.nav.focus("menu.resume", 0);
             }
         }
+        // (The input delay as the setting has it now: Play's lobby changes it too, beside a waiting invite.)
+        if open && let Some(session) = shell.practice.session.as_ref() {
+            tell_rows(shell, session, &[PracticeOption::InputDelay]);
+        }
         // A screen other than Practice and Builds ends the visit.
         shell.practice.visit.shown(shell.screen());
         // The places' pictures made since the last frame: in the grid open, and the rows of the ones chosen.
@@ -1395,7 +1433,8 @@ mod tests {
                 assert_eq!(value(option, opponent, options, false, [0; 2]), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 10, "Dummy's build, Action, Arena, Background, Music, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
+        assert_eq!(seen, 11, "Dummy's build, Action, Arena, Background, Music, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display, Input delay");
+        assert_eq!(values(PracticeOption::InputDelay, &places), MAX_INPUT_DELAY as usize + 1, "0 to netplay's most");
         assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::SecondPad]);
         assert_eq!(value(PracticeOption::Action, dummy(InFight::SecondPad), options, false, [0; 2]), 2);
         assert_eq!(value(PracticeOption::DummysHp, opponent, Options { refills: [false, true], ..options }, false, [0; 2]), 1);

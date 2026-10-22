@@ -3115,6 +3115,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Options: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Options: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Options: Input display | Off, On | the app's own drawing, below |
+| Options: Input delay | 0 to 10 frames, not round | netplay's input delay, the one setting (the user: "practice mode should have the same input delay as netplay and adjusting it should adjust the netplay delay"): saved, Play's lobby and Settings showing it too, the battle's player taking it at once (the library's `LivePlayer` holds the player's tick words back that many ticks, as a netplay match's delay has them seen); the row says the setting as the menu opens, which the lobby beside a waiting invite may have changed |
 
 **Its rows' look** (`MenuRow`): bare, a group's title over each group, the hover tint on a row. Its controls are
 the size the entry's were (docs/design/app-ui.md §2.44, the user's "option 1"): the steppers, the selects and
