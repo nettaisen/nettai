@@ -1243,7 +1243,7 @@ docs/app.md has each part in full (§1, "A party battle's party"; §8, "The Part
   (nettai-frontend's `party::Panel`: 1 left and 2 right as a round starts, the member leaving on the button of the one
   coming). The microphone is wired to nothing.
 - **The party beside the battle**: the members' faces and HP, the member on the field, each switch's member and control,
-  the switches left as pips; a strip at the desktop window's bottom left, a phone's pad's. Read each frame from the
+  the switches left as pips; a strip at the desktop window's bottom right, a phone's pad's. Read each frame from the
   battle (`party::view`); no simulation state is added.
 - **Netplay and replays.** The party and its programs are the side's setup block, which the lobby's side bytes, a match
   and a build file carry whole (nettai-match's `exe5s_party` test); the lobby's checks are the build's (`Checked::under`:
