@@ -226,43 +226,51 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
     for (k, p) in parts.iter().enumerate() {
         draw_part(p, k as u16, &mut obj);
     }
+    // Each layer's place among what is in front (its priority, then its
+    // rank, as one number: priority × 256 + rank, smaller in front), its
+    // depth key and the fades that reach its pixels (those past the ranged
+    // fades' and the others), worked out once; the layers front to back
+    // (those of one place in the order given: the first of them wins).
+    struct Plane<'l> {
+        pixels: &'l [u16],
+        past_ranged: &'l [bool],
+        place: u16,
+        depth: u32,
+        fade: Fade,
+        past_fade: Fade,
+    }
+    let mut planes: Vec<Plane> = layers
+        .iter()
+        .map(|l| {
+            let fade = match l.palettes {
+                Palettes::Stage => fades.stage,
+                Palettes::Hud => fades.hud,
+                Palettes::Dialogue => fades.dialogue,
+            };
+            let past_fade = if l.palettes == Palettes::Hud { fades.hud_past_ranged } else { fade };
+            let place = (l.priority as u16) << 8 | (1 + l.order) as u16;
+            Plane { pixels: &l.pixels[..PIXELS], past_ranged: &l.past_ranged[..PIXELS], place, depth: layer_depth(l), fade, past_fade }
+        })
+        .collect();
+    planes.sort_by_key(|p| p.place);
     let mut out = vec![0u16; PIXELS];
     let mut depth = vec![BACKDROP_DEPTH; PIXELS];
     for i in 0..PIXELS {
-        // The two frontmost opaque candidates: (priority, rank, color),
-        // and the frontmost's depth key.
-        let mut first: (u8, u8, u16) = (5, 0, backdrop);
-        let mut second: (u8, u8, u16) = (5, 0, backdrop);
-        let mut front = BACKDROP_DEPTH;
-        let mut consider = |key: (u8, u8), c: u16, d: u32| {
-            if (key.0, key.1) < (first.0, first.1) {
-                second = first;
-                first = (key.0, key.1, c);
-                front = d;
-            } else if (key.0, key.1) < (second.0, second.1) {
-                second = (key.0, key.1, c);
-            }
+        // The frontmost opaque layer's pixel (place, color, depth key), or
+        // the backdrop's; then the sprite's, if it is in front of that (a
+        // sprite's rank is 0: in front of the layers of its priority),
+        // blended with it where the sprite is semi-transparent.
+        let (place, color, key) = match planes.iter().find(|p| p.pixels[i] != CLEAR) {
+            Some(p) => (p.place, apply_fade(p.pixels[i], if p.past_ranged[i] { p.past_fade } else { p.fade }), p.depth),
+            None => (5 << 8, backdrop, BACKDROP_DEPTH),
         };
-        if obj.color[i] != CLEAR {
-            let d = sprite_depth(obj.priority[i], obj.index[i] as usize);
-            consider((obj.priority[i], 0), apply_fade(obj.color[i], fades.sprites), d);
-        }
-        for l in layers {
-            let c = l.pixels[i];
-            if c != CLEAR {
-                let fade = match l.palettes {
-                    Palettes::Stage => fades.stage,
-                    Palettes::Hud if l.past_ranged[i] => fades.hud_past_ranged,
-                    Palettes::Hud => fades.hud,
-                    Palettes::Dialogue => fades.dialogue,
-                };
-                consider((l.priority, 1 + l.order), apply_fade(c, fade), layer_depth(l));
-            }
-        }
-        let mut c = first.2;
-        if first.1 == 0 && obj.alpha[i] != 0xFF {
-            c = blend(c, second.2, obj.alpha[i]);
-        }
+        let (c, front) = if obj.color[i] != CLEAR && (obj.priority[i] as u16) << 8 < place {
+            let c = apply_fade(obj.color[i], fades.sprites);
+            let c = if obj.alpha[i] != 0xFF { blend(c, color, obj.alpha[i]) } else { c };
+            (c, sprite_depth(obj.priority[i], obj.index[i] as usize))
+        } else {
+            (color, key)
+        };
         out[i] = apply_fade(c, fades.screen);
         depth[i] = front;
     }
@@ -664,5 +672,110 @@ mod tests {
         hud.draw_tile(&tile, &white, 8, 0, false, false);
         let out = compose(0, &[&hud], &[], Fades { hud: Fade::Black(4), ..Fades::default() });
         assert_eq!(out[8], dimmed);
+    }
+
+    /// [`compose_with_depth`]'s pixels as it put them together before what
+    /// depends on a layer alone was worked out once a frame (each layer's
+    /// fade and place found at every pixel): kept to hold it to.
+    fn composed_layer_by_layer_at_each_pixel(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
+        let backdrop = apply_fade(backdrop, fades.stage);
+        let mut obj = SpriteBuffers { color: vec![CLEAR; PIXELS], priority: vec![UNWRITTEN; PIXELS], alpha: vec![0xFFu8; PIXELS], index: vec![0u16; PIXELS] };
+        for (k, p) in parts.iter().enumerate() {
+            draw_part(p, k as u16, &mut obj);
+        }
+        let mut out = vec![0u16; PIXELS];
+        let mut depth = vec![BACKDROP_DEPTH; PIXELS];
+        for i in 0..PIXELS {
+            let mut first: (u8, u8, u16) = (5, 0, backdrop);
+            let mut second: (u8, u8, u16) = (5, 0, backdrop);
+            let mut front = BACKDROP_DEPTH;
+            let mut consider = |key: (u8, u8), c: u16, d: u32| {
+                if (key.0, key.1) < (first.0, first.1) {
+                    second = first;
+                    first = (key.0, key.1, c);
+                    front = d;
+                } else if (key.0, key.1) < (second.0, second.1) {
+                    second = (key.0, key.1, c);
+                }
+            };
+            if obj.color[i] != CLEAR {
+                let d = sprite_depth(obj.priority[i], obj.index[i] as usize);
+                consider((obj.priority[i], 0), apply_fade(obj.color[i], fades.sprites), d);
+            }
+            for l in layers {
+                let c = l.pixels[i];
+                if c != CLEAR {
+                    let fade = match l.palettes {
+                        Palettes::Stage => fades.stage,
+                        Palettes::Hud if l.past_ranged[i] => fades.hud_past_ranged,
+                        Palettes::Hud => fades.hud,
+                        Palettes::Dialogue => fades.dialogue,
+                    };
+                    consider((l.priority, 1 + l.order), apply_fade(c, fade), layer_depth(l));
+                }
+            }
+            let mut c = first.2;
+            if first.1 == 0 && obj.alpha[i] != 0xFF {
+                c = blend(c, second.2, obj.alpha[i]);
+            }
+            out[i] = apply_fade(c, fades.screen);
+            depth[i] = front;
+        }
+        (out, depth)
+    }
+
+    /// Put together, frames are pixel for pixel and key for key what
+    /// finding each layer's fade and place at every pixel made: random
+    /// layers of every kind of palettes (some of one priority and order),
+    /// over some pixels each, those of some past the ranged fades, under
+    /// sprite parts of each priority, some semi-transparent, through random
+    /// fades.
+    #[test]
+    fn a_frame_is_put_together_as_at_each_pixel_alone() {
+        let mut state = 0x9E37_79B9_7F4A_7C15u64;
+        let mut random = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let tiles = Tiles { pixels: (0..16 * Tiles::TILE).map(|i| (i * 7 % 5) as u8).collect() };
+        for case in 0..24 {
+            let mut fade = || match random() % 4 {
+                0 | 1 => Fade::None,
+                2 => Fade::Black((random() % 18) as u8),
+                _ => Fade::White((random() % 18) as u8),
+            };
+            let fades = Fades { stage: fade(), hud: fade(), hud_past_ranged: fade(), dialogue: fade(), sprites: fade(), screen: fade() };
+            let layers: Vec<Layer> = (0..5)
+                .map(|_| {
+                    let mut l = Layer::new((random() % 4) as u8, (random() % 3) as u8);
+                    l.palettes = [Palettes::Stage, Palettes::Hud, Palettes::Dialogue][(random() % 3) as usize];
+                    let shown = random() % 100;
+                    for i in 0..PIXELS {
+                        if random() % 100 < shown {
+                            l.pixels[i] = (random() & 0x7FFF) as u16;
+                            l.past_ranged[i] = random() % 4 == 0;
+                        }
+                    }
+                    l
+                })
+                .collect();
+            let layers: Vec<&Layer> = layers.iter().collect();
+            let parts: Vec<SpritePart> = (0..12)
+                .map(|_| {
+                    let mut p = part(&tiles, (random() % 260) as u16, (random() % 170) as u8, (random() % 4) as u8, (random() & 0x7FFF) as u16);
+                    (p.width, p.height) = (16, 16);
+                    p.first_tile = (random() % 8) as usize;
+                    p.palette = std::array::from_fn(|_| (random() & 0x7FFF) as u16);
+                    p.alpha = (random() % 3 == 0).then(|| (random() % 17) as u8);
+                    p
+                })
+                .collect();
+            let backdrop = (random() & 0x7FFF) as u16;
+            let now = compose_with_depth(backdrop, &layers, &parts, fades);
+            let before = composed_layer_by_layer_at_each_pixel(backdrop, &layers, &parts, fades);
+            assert!(now == before, "case {case}");
+        }
     }
 }

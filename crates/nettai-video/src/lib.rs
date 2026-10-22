@@ -12,11 +12,13 @@
 //!   as it is made (a file; in a browser, the file being saved): its tracks, its sound tracks' titles and its
 //!   rounds as chapters.
 //! - [`export`] and [`write_mp4`]: the three together, frames to the encoder to the MP4.
+//! - `presenters`: the frames' pictures made at the video's size on threads of their own, beside the playing.
 //!
 //! **What a video holds.** One frame of the picture a tick, and the sound
 //! the tick made, exactly as a viewer playing the part straight shows and
 //! plays them: the frames are the ones [`Viewer::present`] gives, text
-//! included, and the samples the ones [`Viewer::take_samples`] gives. The
+//! included (made on threads of their own, the same: below), and the
+//! samples the ones [`Viewer::take_samples`] gives. The
 //! picture's time base is a tick's exact length (4389/262144 s:
 //! `nettai_frontend::player::TICK_SECONDS`) and the sound's a sample's
 //! (1/32768 s), so the two keep step over any length. A part starts in the
@@ -42,6 +44,24 @@
 //! day, no name and no encoder string in it, and the simulation, the
 //! drawing and the sound are functions of the replay.
 //!
+//! **Three things at once** (the user: "is replay export slower than it
+//! should be?"). The thread a video is made on plays the battle, a tick at
+//! a time in order, and draws each tick's frame at 240x160
+//! (`Viewer::frame_view`); the picture at the video's size, scaled with the
+//! enhanced mode's text over it, is made on a few threads beside it, a
+//! whole frame each, each with a text renderer of its own, and comes back
+//! in order (`presenters`); and on the desktop ffmpeg is written from a
+//! thread of its own through a queue of a few frames, so the drawing never
+//! waits on ffmpeg's pipe and ffmpeg never waits on the drawing (`ffmpeg`).
+//! Measured on a 19:42 EXE5 replay's first two minutes (7,200 frames at four
+//! times the frame, release builds, `nettai-tool --mp4`): the MP4 in 20 s
+//! (it took 34 s when one thread did all three in turns), as fast as ffmpeg
+//! alone encodes the same frames; the stream alone (`--nut`) at 0.66 ms a
+//! frame, from 3.5. The MP4 is byte for byte what it was. The frames are presented
+//! one way: the window's `present`, on these threads, the same on the
+//! desktop and in a browser (whose threads are Web Workers); where they
+//! don't start, no video is made ([`Error::Threads`]).
+//!
 //! ```ignore
 //! // On a thread of its own: the progress goes to the UI, which may cancel. `to` is the file (a dialog's).
 //! let titles = Titles { rounds: vec!["Round 1".into(), "Round 2".into()], sides: Default::default() };
@@ -55,6 +75,7 @@
 
 pub mod encode;
 pub mod fmp4;
+mod presenters;
 
 // The platform's encoder, each with its `start`: ffmpeg on the desktop (and the NUT stream it is written), the
 // browser's own in a browser.
@@ -78,6 +99,7 @@ use nettai_frontend::player::TICK_SECONDS;
 use nettai_frontend::replay::{Info as ReplayInfo, Refused, Replay};
 use nettai_frontend::viewer::{Speed, Viewer};
 use nettai_render::compose::{HEIGHT, WIDTH};
+use presenters::{Presented, Presenters};
 use std::fmt;
 use std::io::{self, Write};
 use std::ops::{ControlFlow, Range};
@@ -277,6 +299,9 @@ pub enum Error {
     FfmpegFailed { code: Option<i32>, log: String },
     /// The browser's encoder (WebCodecs) refused or failed: what it said.
     Encoder(String),
+    /// The threads the frames' pictures are made on didn't start, or one
+    /// stopped: what was said.
+    Threads(String),
     /// The caller canceled it. Nothing is left of the file.
     Canceled,
 }
@@ -294,6 +319,7 @@ impl fmt::Display for Error {
             Error::FfmpegFailed { code: Some(code), log } => write!(f, "ffmpeg failed (exit code {code}): {}", log.trim()),
             Error::FfmpegFailed { code: None, log } => write!(f, "ffmpeg was stopped: {}", log.trim()),
             Error::Encoder(said) => write!(f, "the browser's encoder: {said}"),
+            Error::Threads(said) => write!(f, "the threads presenting the frames: {said}"),
             Error::Canceled => write!(f, "canceled"),
         }
     }
@@ -314,9 +340,10 @@ impl std::error::Error for Error {
 pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
 /// Where a video's frames go, each its picture's RGB bytes and each console shown's sound: a NUT stream, or an MP4
-/// being encoded.
+/// being encoded. Each gives back a buffer a next frame's picture may be made in: the frame's own once written, or
+/// one the encoder is done with (an empty one where it has none yet).
 pub(crate) trait Frames {
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error>;
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
 }
 
 /// [`write`]'s playing: the part played and each frame given to what `open` makes of the video's picture, sound
@@ -359,35 +386,40 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
         chapters: chapters(viewer.rounds(), &ticks, titles),
     };
     let mut stream = open(video, audio, &info)?;
-    let mut picture = vec![0u32; width * height];
-    let mut other = vec![0u32; if sides == Sides::Both { width * height } else { 0 }];
-    let mut rgb = Vec::with_capacity(width * sides.count() * height * 3);
-    let mut sound = vec![Vec::new(); shown.len()];
+    // (Each tick played and its frame drawn here, in order; the picture at the video's size made on the
+    // presenters' threads, a few frames under way at once; written here in order: `presenters`.)
+    let mut presenters = Presenters::start(viewer.text_renderer(), width, height, sides.count())?;
+    // (The round of each frame under way, for the progress told once it is written.)
+    let mut rounds = std::collections::VecDeque::new();
+    let mut write = |presenters: &mut Presenters, rounds: &mut std::collections::VecDeque<u32>, stream: &mut F, at: &mut Progress| -> Result<(), Error> {
+        let Presented { rgb, sound, .. } = presenters.next()?;
+        let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
+        presenters.give_back(stream.frame(rgb, &tracks)?);
+        at.round = rounds.pop_front().unwrap_or(at.round);
+        at.written += 1;
+        tell(*at)
+    };
     for tick in ticks.clone() {
-        at.round = viewer.round_at(tick);
+        rounds.push_back(viewer.round_at(tick));
         if !viewer.step_forward() {
             return Err(stopped(viewer));
         }
-        viewer.present(&mut picture, width, height);
-        rgb.clear();
-        let bytes = |c: &u32| [(c >> 16) as u8, (c >> 8) as u8, *c as u8];
-        match sides {
-            Sides::One => rgb.extend(picture.iter().flat_map(bytes)),
-            Sides::Both => {
-                viewer.present_view(viewer.view() ^ 1, &mut other, width, height);
-                for (left, right) in picture.chunks_exact(width).zip(other.chunks_exact(width)) {
-                    rgb.extend(left.iter().chain(right).flat_map(bytes));
-                }
-            }
+        let frames = shown.iter().map(|&side| viewer.frame_view(side)).collect();
+        let sound = shown
+            .iter()
+            .map(|&side| {
+                let mut heard = Vec::new();
+                viewer.take_samples_of(side, &mut heard);
+                heard
+            })
+            .collect();
+        presenters.send(frames, sound);
+        if presenters.under_way() >= presenters.ahead() {
+            write(&mut presenters, &mut rounds, &mut stream, &mut at)?;
         }
-        for (heard, &side) in sound.iter_mut().zip(shown) {
-            heard.clear();
-            viewer.take_samples_of(side, heard);
-        }
-        let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
-        stream.frame(&rgb, &tracks)?;
-        at.written += 1;
-        tell(at)?;
+    }
+    while presenters.under_way() > 0 {
+        write(&mut presenters, &mut rounds, &mut stream, &mut at)?;
     }
     Ok(stream)
 }
@@ -436,11 +468,12 @@ impl<W: Write> Mp4<W> {
 }
 
 impl<W: Write> Frames for Mp4<W> {
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error> {
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
         let encoder = self.encoder.as_mut().expect("encoding till finished");
-        encoder.frame(rgb, sound)?;
+        let spare = encoder.frame(rgb, sound)?;
         let made = encoder.events()?;
-        self.muxed(made)
+        self.muxed(made)?;
+        Ok(spare)
     }
 }
 

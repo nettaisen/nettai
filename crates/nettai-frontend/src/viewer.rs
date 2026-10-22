@@ -636,8 +636,15 @@ impl Viewer {
     /// tick), so a host can show both consoles at once (a video's two sides; an inset of the other) without
     /// playing the replay twice. Nothing of what is shown or heard changes: the side shown stays the viewer's.
     pub fn present_view(&mut self, side: u8, buffer: &mut [u32], width: usize, height: usize) {
+        let frame = self.frame_view(side);
+        nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
+    }
+
+    /// The picture `side`'s console shows now, 240x160, with nothing over it: [`Viewer::frame`] for the side shown,
+    /// the other's as [`Viewer::present_view`] draws it.
+    pub fn frame_view(&mut self, side: u8) -> Frame {
         if side == self.view || side > 1 {
-            return self.present(buffer, width, height);
+            return self.frame();
         }
         // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
         std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
@@ -645,7 +652,14 @@ impl Viewer {
         let frame = self.renderer.render(&self.session.battle);
         self.session.battle.setup.local_side = self.view;
         std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
-        nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
+        frame
+    }
+
+    /// A text renderer like the viewer's own, its font with nothing made yet (none where the frames carry their own
+    /// text): for a thread that presents the viewer's frames beside it ([`nettai_render::present::present`]), as
+    /// a video's are, drawing them as the viewer would.
+    pub fn text_renderer(&self) -> Option<TextRenderer> {
+        self.text.as_ref().map(TextRenderer::like)
     }
 
     /// The sound of the ticks played since the last call, appended to

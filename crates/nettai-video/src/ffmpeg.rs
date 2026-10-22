@@ -1,7 +1,9 @@
 //! The desktop's encoder: `ffmpeg` run as a child, encoding and nothing more. It is written the playing's NUT
-//! stream ([`crate::nut`]: raw frames and PCM sound, one sound track a console shown) on its standard input, and
-//! writes a fragmented MP4 of the encoded picture and sound on its standard output, which is read back as it comes
-//! ([`Ffmpeg`]): the tracks from its `moov`, each fragment's samples from its `moof` and `mdat`. What is made of
+//! stream ([`crate::nut`]: raw frames and PCM sound, one sound track a console shown) on its standard input, from
+//! a thread of its own that takes the frames through a queue of three (`QUEUE`: a write waits while ffmpeg is behind;
+//! the frames after it are drawn meanwhile), and writes a fragmented MP4 of the encoded picture and sound on its
+//! standard output, which is read back as it comes ([`Ffmpeg`]): the tracks from its `moov`, each fragment's
+//! samples from its `moof` and `mdat`. What is made of
 //! them is the same MP4 the browser's encoder makes ([`crate::fmp4`]: its tracks titled, its chapters). It links no
 //! ffmpeg library and no encoder; it is the command line
 //!
@@ -57,7 +59,7 @@ use std::ffi::OsString;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::JoinHandle;
 
 /// How much of what ffmpeg says is kept for a log: the last of it.
@@ -146,16 +148,64 @@ fn found_ffmpeg(
         .unwrap_or_default()
 }
 
+/// How many frames may wait for ffmpeg to take them: the frames are drawn while ffmpeg reads and encodes those
+/// before, not in turns with it.
+const QUEUE: usize = 3;
+
 /// ffmpeg encoding a video: written its frames as a NUT stream, its encoded tracks and packets read back.
 pub struct Ffmpeg {
     child: Child,
-    /// The stream to ffmpeg's standard input, until it ends.
-    stream: Option<nut::Writer<ChildStdin>>,
+    /// The stream to ffmpeg's standard input, written on a thread of its own, until it ends.
+    writing: Option<Writing>,
     /// What its standard output said, read on a thread of its own.
     events: Receiver<Result<Event, Error>>,
     reading: Option<JoinHandle<()>>,
     /// What ffmpeg says, being read.
     log: Option<JoinHandle<String>>,
+}
+
+/// The thread that writes the stream to ffmpeg's standard input (each write waits while ffmpeg is behind): the
+/// frames to write, at most [`QUEUE`] waiting; their pictures' buffers back once written; and how it ended (the
+/// stream finished, or let go of once the frames stop; or the write that failed).
+struct Writing {
+    frames: SyncSender<Written>,
+    spent: Receiver<Vec<u8>>,
+    thread: JoinHandle<io::Result<()>>,
+}
+
+/// What the writing thread is given: a frame's picture and each sound track's sound, or the stream's end.
+enum Written {
+    Frame(Vec<u8>, Vec<Vec<[f32; 2]>>),
+    End,
+}
+
+impl Writing {
+    /// Write `stream` on a thread of its own.
+    fn start(mut stream: nut::Writer<ChildStdin>) -> io::Result<Writing> {
+        let (frames, given) = mpsc::sync_channel(QUEUE);
+        let (back, spent) = mpsc::channel();
+        let thread = std::thread::Builder::new().name("ffmpeg-input".into()).spawn(move || {
+            for written in given {
+                match written {
+                    Written::Frame(rgb, sound) => {
+                        let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
+                        stream.frame(&rgb, &tracks)?;
+                        let _ = back.send(rgb);
+                    }
+                    Written::End => return stream.finish().map(drop),
+                }
+            }
+            // (Let go of with no end: canceled. The stream's end isn't written.)
+            Ok(())
+        })?;
+        Ok(Writing { frames, spent, thread })
+    }
+
+    /// How the thread ended, once it has: the stream written, or the write that failed.
+    fn ended(self) -> io::Result<()> {
+        drop(self.frames);
+        self.thread.join().unwrap_or_else(|_| Err(io::Error::other("the thread writing to ffmpeg stopped")))
+    }
 }
 
 /// The desktop's encoder for a video of `video` and `audio`, as `encoding` says: ffmpeg's ([`find_ffmpeg`]).
@@ -179,8 +229,9 @@ pub fn export_nut<W: std::io::Write>(game: &Loaded, replay: &Replay, options: &O
 }
 
 impl<W: std::io::Write> crate::Frames for nut::Writer<W> {
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error> {
-        nut::Writer::frame(self, rgb, sound).map_err(Error::Write)
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        nut::Writer::frame(self, &rgb, sound).map_err(Error::Write)?;
+        Ok(rgb)
     }
 }
 
@@ -218,9 +269,9 @@ impl Ffmpeg {
         let (tell, events) = mpsc::channel();
         let (width, height) = (video.width, video.height);
         let reading = std::thread::spawn(move || read(stdout, width, height, &tell));
-        let mut ffmpeg = Ffmpeg { child, stream: None, events, reading: Some(reading), log: Some(log) };
-        match nut::Writer::with_info(stdin, video, audio, info) {
-            Ok(stream) => ffmpeg.stream = Some(stream),
+        let mut ffmpeg = Ffmpeg { child, writing: None, events, reading: Some(reading), log: Some(log) };
+        match nut::Writer::with_info(stdin, video, audio, info).and_then(Writing::start) {
+            Ok(writing) => ffmpeg.writing = Some(writing),
             Err(e) => return Err(ffmpeg.failed(e)),
         }
         Ok(ffmpeg)
@@ -229,7 +280,7 @@ impl Ffmpeg {
     /// Writing to ffmpeg failed with `error`: a pipe that closed is ffmpeg having ended, and what it said is the
     /// reason; otherwise the error itself is. It is stopped either way.
     fn failed(&mut self, error: io::Error) -> Error {
-        self.stream = None;
+        self.writing = None;
         let ended = if error.kind() == io::ErrorKind::BrokenPipe { self.child.wait().ok() } else { None };
         match ended {
             Some(status) if !status.success() => failure(status.code(), self.said()),
@@ -245,22 +296,29 @@ impl Ffmpeg {
         self.log.take().and_then(|log| log.join().ok()).unwrap_or_default()
     }
 
-    /// Stop the child and wait for it.
+    /// Stop the child and wait for it, and for the thread writing to it (a write it waits in fails as the child
+    /// ends).
     fn stop(&mut self) {
-        self.stream = None;
+        let writing = self.writing.take();
         let _ = self.child.kill();
+        if let Some(writing) = writing {
+            let _ = writing.ended();
+        }
         let _ = self.child.wait();
         self.log = None;
     }
 }
 
 impl Backend for Ffmpeg {
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error> {
-        let stream = self.stream.as_mut().ok_or_else(|| Error::Write(io::ErrorKind::BrokenPipe.into()))?;
-        match stream.frame(rgb, sound) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(self.failed(e)),
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        let writing = self.writing.as_ref().ok_or_else(|| Error::Write(io::ErrorKind::BrokenPipe.into()))?;
+        let sound = sound.iter().map(|s| s.to_vec()).collect();
+        if writing.frames.send(Written::Frame(rgb, sound)).is_ok() {
+            return Ok(writing.spent.try_recv().unwrap_or_default());
         }
+        // (The thread ended: a write failed.)
+        let ended = self.writing.take().map_or(Ok(()), Writing::ended);
+        Err(self.failed(ended.err().unwrap_or_else(|| io::ErrorKind::BrokenPipe.into())))
     }
 
     fn events(&mut self) -> Result<Vec<Event>, Error> {
@@ -268,10 +326,11 @@ impl Backend for Ffmpeg {
     }
 
     fn finish(mut self: Box<Self>) -> Result<Vec<Event>, Error> {
-        if let Some(stream) = self.stream.take()
-            && let Err(e) = stream.finish()
-        {
-            return Err(self.failed(e));
+        if let Some(writing) = self.writing.take() {
+            let _ = writing.frames.send(Written::End);
+            if let Err(e) = writing.ended() {
+                return Err(self.failed(e));
+            }
         }
         if let Some(reading) = self.reading.take() {
             let _ = reading.join();

@@ -196,7 +196,7 @@ impl UserError {
             E::Replay(refused) => return Some(UserError::of_refusal("exporting a video", refused)),
             E::NoFfmpeg(_) => UserError::NoFfmpeg,
             E::Write(_) | E::Disk(_) => UserError::CantWriteVideo,
-            E::NoSuchPart(_) | E::Scale(_) | E::Stopped { .. } | E::FfmpegFailed { .. } | E::Encoder(_) => UserError::ExportFailed,
+            E::NoSuchPart(_) | E::Scale(_) | E::Stopped { .. } | E::FfmpegFailed { .. } | E::Encoder(_) | E::Threads(_) => UserError::ExportFailed,
         };
         log("exporting a video", error);
         Some(said)

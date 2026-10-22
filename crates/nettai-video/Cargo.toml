@@ -12,13 +12,14 @@ nettai-frontend = { path = "../nettai-frontend" }
 nettai-render = { path = "../nettai-render" }
 # The sound's sample rate (no audio device).
 nettai-audio = { path = "../nettai-audio", default-features = false }
+# The threads the frames are presented on (`presenters`), and the browser's encoder's (`webcodecs`): the platform's.
+nettai-platform = { path = "../nettai-platform" }
 
 # The MP4's boxes (`fmp4`), and ffmpeg's read back (`ffmpeg`).
 mp4-atom = "0.16"
 
 # The browser's encoder (`webcodecs`): WebCodecs through wasm-bindgen, on a worker of its own (the platform's).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-nettai-platform = { path = "../nettai-platform" }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
