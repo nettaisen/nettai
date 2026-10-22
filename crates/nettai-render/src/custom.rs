@@ -1705,12 +1705,18 @@ impl Window {
     /// screen as the window is at `place` (a block of `seat::Mirror`, moved
     /// whole where the window is mirrored): the chip window (its runs, the
     /// layout's tiles from the name's to the slots', with the box they are
-    /// drawn in: its rows and a row about them, the window's columns but
+    /// drawn in: its rows and a row about them (none under it where a
+    /// label stands there), the window's columns but
     /// its edge's before the picked column's, moved as the box, which is in
-    /// the middle of those columns, mirrors), the hand (the slots' cells),
+    /// the middle of those columns, mirrors), or the form list's bars in
+    /// its place (EXE6's Cross window: its Crosses' faces and names upright
+    /// as the chip window's picture and name, in the box about them, which
+    /// mirrors), the hand (the slots' cells),
     /// the buttons, OK (the cells its cursor's corners go about), the
-    /// labels, the picked column's icons and the screen's own emblem. A
-    /// part within one before it goes with that one.
+    /// labels (their letters' columns, where the pack says them: EXE6's
+    /// CROSSSELECT tab's cells hold its arrow too, which mirrors), the
+    /// picked column's icons and the screen's own emblem. A part within one
+    /// before it goes with that one.
     fn upright(&self, v: &View, place: Placement) -> Vec<crate::seat::Block> {
         let l = &self.layout;
         // (Where the cells are as the window slides: its columns past the
@@ -1719,24 +1725,39 @@ impl Window {
         let rect = |[c0, r0, c1, r1]: [usize; 4]| Rect::new(8 * c0 as i32 - place.scroll as i32, 8 * r0 as i32, 8 * (c1 - c0) as i32, 8 * (r1 - r0) as i32);
         let mut out: Vec<crate::seat::Block> = Vec::new();
         let tiles_box = |tiles: std::ops::Range<u16>| self.block(tiles).map(|b| [b.col, b.row, b.col + b.w, b.row + b.h]);
-        if let Some([_, r0, _, r1]) = tiles_box(l.name..l.slots) {
-            let (r0, r1, right) = (r0.saturating_sub(1), (r1 + 1).min(ROWS), l.column_columns[0] as usize);
+        if form_list_map(v).is_some() {
+            let [x0, y0] = l.form_names_at.map(usize::from);
+            let bars = [x0, y0, x0 + CustomScreen::FORM_NAME_COLUMNS, y0 + 2 * nettai_battle::custom::screen::FORM_LIST_ENTRIES];
+            out.push(crate::seat::Block::whole(rect(bars)));
+        } else if let Some([_, r0, _, r1]) = tiles_box(l.name..l.slots) {
+            // (The row under it, but where a label stands there: EXE6's
+            // CROSSSELECT tab, whose arrow mirrors with the frame.)
+            let labelled = v.assets.labels.iter().filter_map(|label| tiles_box(label.first..label.last + 1)).any(|[_, row, _, _]| row == r1);
+            let (r0, r1, right) = (r0.saturating_sub(1), (r1 + usize::from(!labelled)).min(ROWS), l.column_columns[0] as usize);
             out.push(crate::seat::Block { area: rect([1, r0, right, r1]), frame: rect([0, r0, right, r1]) });
         }
-        // (Each a box of cells: its first column and row, one past its last.)
-        let mut boxes: Vec<[usize; 4]> = Vec::new();
+        let mut boxes: Vec<Rect> = Vec::new();
         let (x0, y0) = slot_cell(0);
         let (x1, y1) = slot_cell(HAND_SLOTS - 1);
-        boxes.push([x0, y0, x1 + 2, y1 + 3]);
-        boxes.extend(self.buttons.iter().filter_map(|&(first, n)| tiles_box(first..first + n as u16)));
-        boxes.push(cursor_cells(&l.ok_cursor));
-        boxes.extend(v.assets.labels.iter().filter_map(|label| tiles_box(label.first..label.last + 1)));
-        boxes.extend(tiles_box(l.column_icons..l.column_icons + 4 * 5));
-        if let Some(e) = &v.assets.window_emblem {
-            boxes.push([e.x as usize, e.y as usize, e.x as usize + e.width as usize, e.y as usize + e.height as usize]);
-        }
-        for cells in boxes {
+        boxes.push(rect([x0, y0, x1 + 2, y1 + 3]));
+        boxes.extend(self.buttons.iter().filter_map(|&(first, n)| tiles_box(first..first + n as u16)).map(rect));
+        boxes.push(rect(cursor_cells(&l.ok_cursor)));
+        for (k, label) in v.assets.labels.iter().enumerate() {
+            let Some(cells) = tiles_box(label.first..label.last + 1) else { continue };
             let r = rect(cells);
+            boxes.push(match v.assets.letters.labels.get(k).and_then(Option::as_ref) {
+                Some(found) if cells[3] - cells[1] == 1 => {
+                    let [from, to] = found.letters.span.map(i32::from);
+                    Rect::new(r.x + from, r.y, to - from, r.h)
+                }
+                _ => r,
+            });
+        }
+        boxes.extend(tiles_box(l.column_icons..l.column_icons + 4 * 5).map(rect));
+        if let Some(e) = &v.assets.window_emblem {
+            boxes.push(rect([e.x as usize, e.y as usize, e.x as usize + e.width as usize, e.y as usize + e.height as usize]));
+        }
+        for r in boxes {
             let (mx, my) = (r.x + r.w / 2, r.y + r.h / 2);
             if !out.iter().any(|o| (o.area.x..o.area.x + o.area.w).contains(&mx) && (o.area.y..o.area.y + o.area.h).contains(&my)) {
                 out.push(crate::seat::Block::whole(r));
@@ -2534,7 +2555,8 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 /// mirrored, the parts that read moved whole (`Window::upright`, the
 /// Program Advance's names, the late turns' block, the enemy names), its
 /// sprites in their console's fade of them (`sprite_fade`, which the
-/// frame's sprites' isn't).
+/// frame's sprites' isn't); a window sliding in or out drawn whole and slid
+/// as its console's, the other way.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &'a Battle,
@@ -2576,6 +2598,14 @@ pub fn draw<'a>(
         packs: packs.clone(),
     };
     let place = placement(screen);
+    // (Where it mirrors, a sliding window is drawn whole where it comes to
+    // rest and put where it is by the mirror: the mirrored window slides in
+    // and out whole, its columns the console hasn't shown yet nearest the
+    // middle, where they come in.)
+    let (place, slide) = match place {
+        Placement { scroll, from, to, slid } if mirrored && from < to && scroll != 0 => (Placement { scroll: 0, from: 0, to, slid }, scroll as i32),
+        _ => (place, 0),
+    };
     let mut w = Window::build(&v, text, problems);
     let advance_names = w.program_advance(&v, text, problems);
     w.draw(hud_layer, place);
@@ -2737,7 +2767,7 @@ pub fn draw<'a>(
         // layers' pixels, the sprites (each as one; the items of a sprite
         // drawn as shapes with it), the text items.
         upright.splice(0..0, w.upright(&v, place));
-        let mirror = crate::seat::Mirror::new(upright);
+        let mirror = crate::seat::Mirror::new(upright).slid(slide);
         mirror.layer(scratch_hud, out_hud);
         mirror.layer(scratch_names, out_names);
         let before: Vec<i32> = queue.iter().map(crate::seat::part_x).collect();

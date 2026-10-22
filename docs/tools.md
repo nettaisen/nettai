@@ -70,7 +70,10 @@ tick compared with what the original recorded; the first difference is printed.
 - `--keys` gives your buttons by tick in a match file's set (`headless::KeyScript`): for instance
   `--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross window (a direction acts on a hold's
   second tick), chooses its first Cross and presses OK. The buttons are `a b l r up down left right start
-  select`; the right navi is the stand-in, standing still and picking its first chip.
+  select`; the right navi is the stand-in, standing still and picking its first chip. `--opponent moves` has it
+  move about at random and `--opponent attacks` press at random what a player fights with
+  (`driver::InFight::MovesAround`, `AttacksAtRandom`; `still` is the default); on its custom screen it still picks
+  its first chip.
 
 ## A replay as video
 

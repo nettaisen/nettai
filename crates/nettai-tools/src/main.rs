@@ -5,7 +5,7 @@
 //! replay checked (docs/tools.md). Its options are the retired
 //! nettai-demo's for the same.
 
-use nettai_frontend::driver::{Driver, LivePlayer};
+use nettai_frontend::driver::{Driver, InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
@@ -32,6 +32,9 @@ struct Args {
     save_match: Option<PathBuf>,
     show_folders: bool,
     keys: Option<String>,
+    /// What the opponent does in the fight of a match file's set played
+    /// headless (none: it stands still).
+    opponent: Option<InFight>,
     headless: Option<String>,
     audit: bool,
     /// With --audit: draw every frame and play every cue as well.
@@ -72,7 +75,7 @@ struct Args {
 
 const USAGE: &str = "\
 usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
-       nettai-tool [OPTIONS] --match FILE --headless FRAMES [--keys K]
+       nettai-tool [OPTIONS] --match FILE --headless FRAMES [--keys K] [--opponent O]
        nettai-tool [OPTIONS] --replay FILE --headless FRAMES [--side SIDE|both[-left|-right]]
        nettai-tool [OPTIONS] --replay FILE --nut OUT|- [--scale N] [--both-sides] [--round N | --ticks A-B]
        nettai-tool [OPTIONS] --replay FILE --mp4 OUT [--scale N] [--both-sides] [--round N | --ticks A-B]
@@ -160,6 +163,11 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)
+  --opponent O     with --headless --match: what the other side does in the
+                   fight: still (default: it presses nothing), moves (it
+                   moves about at random and never attacks) or attacks (it
+                   presses at random what a player fights with); on its
+                   custom screen it picks the first chip it can
   --audit-content  with --match FILE: make every lookup the drawing code
                    and audio make for everything the content defines (every
                    chip's icon, picture and name, every navi's and form's
@@ -201,6 +209,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         save_match: None,
         show_folders: false,
         keys: None,
+        opponent: None,
         headless: None,
         audit: false,
         draw: false,
@@ -242,6 +251,14 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--save-match" => a.save_match = Some(value("--save-match")?.into()),
             "--show-folders" => a.show_folders = true,
             "--keys" => a.keys = Some(value("--keys")?),
+            "--opponent" => {
+                a.opponent = Some(match value("--opponent")?.as_str() {
+                    "still" => InFight::StandsStill,
+                    "moves" => InFight::MovesAround,
+                    "attacks" => InFight::AttacksAtRandom,
+                    s => return Err(format!("bad --opponent {s:?} (still, moves or attacks)")),
+                });
+            }
             "--headless" => a.headless = Some(value("--headless")?),
             "--audit" => a.audit = true,
             "--draw" => a.draw = true,
@@ -298,6 +315,9 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     }
     if a.keys.is_some() && (a.match_file.is_none() || a.headless.is_none()) {
         return Err("--keys holds buttons in a match file's set played headless (--match FILE --headless F)".into());
+    }
+    if a.opponent.is_some() && (a.match_file.is_none() || a.headless.is_none()) {
+        return Err("--opponent plays the other side of a match file's set played headless (--match FILE --headless F)".into());
     }
     if a.save_match.is_some() && a.match_file.is_none() {
         return Err("--save-match writes a match file's match".into());
@@ -738,7 +758,11 @@ fn main() {
         if let Some(path) = &args.record {
             recording = Some(recorder(&content, &nettai_match::Match { seed: Some(seed), ..m.clone() }, path));
         }
-        drivers.push(Box::new(LivePlayer::new(nettai_match::Set::of(&content, &m, seed))));
+        let mut live = LivePlayer::new(nettai_match::Set::of(&content, &m, seed));
+        if let Some(in_fight) = args.opponent {
+            live.set_opponent(Opponent { in_fight, ..live.opponent() });
+        }
+        drivers.push(Box::new(live));
     } else if let Some(path) = args.traces.first() {
         let rounds = trace_rounds(path, &content).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
         for (number, r) in rounds.into_iter().skip(args.round.unwrap_or(1).saturating_sub(1)) {
@@ -793,6 +817,7 @@ mod tests {
             vec!["--pack", "p", "--draw", "--audit", "a.jsonl", "b.jsonl", "--lookups", "l.tsv"],
             vec!["--match", "exe6.toml", "--pack", "p", "--audit-content", "--lookups", "s.tsv"],
             vec!["--match", "m.toml", "--mute", "--headless", "100,300", "--out", "o", "--keys", "100:a"],
+            vec!["--match", "m.toml", "--headless", "1-600", "--opponent", "attacks", "--record", "set.nettaireplay"],
             vec!["--replay", "set.nettaireplay", "--headless", "1-60", "--side", "right"],
             vec!["--match", "m.toml", "--show-folders", "--save-match", "played.toml"],
             vec!["--replay", "set.nettaireplay"],
@@ -828,6 +853,9 @@ mod tests {
             (vec!["--audit-content"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--keys", "1:a"], "--keys holds buttons in a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),
+            (vec!["--match", "m.toml", "--opponent", "moves"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
+            (vec!["--replay", "r.nettaireplay", "--headless", "1", "--opponent", "still"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
+            (vec!["--match", "m.toml", "--headless", "1", "--opponent", "ai"], "bad --opponent \"ai\" (still, moves or attacks)"),
             (vec!["a.jsonl", "b.jsonl", "--headless", "1"], "one trace at a time (several with --audit)"),
             (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark and --png-scale go with --headless"),
             (vec!["--match", "m.toml", "--nut", "-"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
