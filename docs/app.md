@@ -256,12 +256,15 @@ going on and its scenery moving as the game's pause moves it (§15).
 **A party battle's party** (`battle/party.rs`, nettai-frontend's `party`; EXE5 DS's bottom screen, its party panel:
 docs/design/exe5ds-map.md §4.2). Where the player's side has partners, the window shows the party beside the battle, in
 the app's layer and never in the battle's picture (which shows only what the original's top screen draws): on a
-desktop a strip at the picture's bottom left: under the picture where the window leaves room, else over the field's
+desktop a strip at the picture's bottom right (the user: "you should show the navi switcher on the right actually"),
+left of the connection's corner where that shows: under the picture where the window leaves room, else over the field's
 foot, its last 10 of 160 rows under the panels' lip, where nothing of the battle is drawn, at any shape of window: one
 row, 34 tall, the layout the user chose (the verification workspace's docs/nettai-ui/party/chosen/battle-strip-2.png):
 each switch, its control as bound, the face of the member it switches to (48 by 24) and its HP, then the round's navi
-changes as pips, those made outlined, those left lit; the member on the field isn't in it, the battle's own picture
-shows it. On a phone, under MENU, the switches' two buttons of the pad (its bits 14 and 15), each with the member it
+changes as pips, those made outlined, those left lit, each switch and the pips a cell of their own with a line between
+(the user: "you should visually separate the two navis and dots"); the member on the field isn't in it, the battle's own
+picture shows it. A replay's viewer keeps the shown side's strip at the picture's bottom left, since the other side's
+inset and strip are at its right. On a phone, under MENU, the switches' two buttons of the pad (its bits 14 and 15), each with the member it
 names, its face, its HP and a bar of it, and the pips between them. All of it is read from the battle each frame through the frontend (`party::view`: the navi on
 the field's HP its object's, a benched member's its block's; on the custom screen, and after it until the turn's start fields it, the screen's choice: `party::Panel::active`), and the
 round's limit is the build's rules' (`Overview::switches`, asked once of the side's setup). **The navi changes** (the player's word, "Navi change left" and "right", and the overview's stat "Navi changes": the user's; the code's word is switch) are two

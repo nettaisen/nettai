@@ -539,11 +539,14 @@ component SwitchUnit inherits Rectangle {
 // The party beside the battle, on a desktop (a phone's is its pad's: `TouchPad`), and over a replay's picture: one row
 // (the user's choice, the verification workspace's docs/nettai-ui/party/chosen/battle-strip-2.png): each switch, its
 // control, the face of the member it switches to and its HP, then the round's navi changes as pips, those made
-// outlined, those left lit. The member on the field isn't in it: the battle's own picture shows it. Where it goes is
-// its user's.
+// outlined, those left lit. Each switch and the pips a cell of their own, a line between each two (the user: "you
+// should visually separate the two navis and dots"). The member on the field isn't in it: the battle's own picture
+// shows it. Where it goes is its user's.
 export component PartyStrip inherits Rectangle {
     in property <PartyHud> party;
-    width: 10px + (left.visible ? left.width + 22px : 0px) + (right.visible ? right.width + 22px : 0px) + pips.width + 10px;
+    // (Each cell's padding at either side: a line between two cells is in the middle of the room between them.)
+    property <length> pad: 11px;
+    width: (left.visible ? left.width + 2 * root.pad : 0px) + (right.visible ? right.width + 2 * root.pad : 0px) + pips.width + 2 * root.pad;
     height: 34px;
     Rectangle {
         background: Theme.shade;
@@ -552,7 +555,7 @@ export component PartyStrip inherits Rectangle {
     }
 
     left := SwitchUnit {
-        x: 10px;
+        x: root.pad;
         y: 5px;
         height: 24px;
         visible: root.party.left >= 0;
@@ -560,8 +563,15 @@ export component PartyStrip inherits Rectangle {
         member: root.party.members[root.party.left];
     }
 
+    Rectangle {
+        x: left.x + left.width + root.pad;
+        width: 1px;
+        visible: left.visible;
+        background: Theme.line;
+    }
+
     right := SwitchUnit {
-        x: 10px + (left.visible ? left.width + 22px : 0px);
+        x: (left.visible ? left.width + 2 * root.pad : 0px) + root.pad;
         y: 5px;
         height: 24px;
         visible: root.party.right >= 0;
@@ -569,8 +579,15 @@ export component PartyStrip inherits Rectangle {
         member: root.party.members[root.party.right];
     }
 
+    Rectangle {
+        x: right.x + right.width + root.pad;
+        width: 1px;
+        visible: right.visible;
+        background: Theme.line;
+    }
+
     pips := Pips {
-        x: parent.width - 10px - self.width;
+        x: parent.width - root.pad - self.width;
         y: (parent.height - self.height) / 2;
         made: root.party.switches;
         limit: root.party.limit;
@@ -767,13 +784,15 @@ export component BattleScreen inherits Rectangle {
 
     // (Over the corner, its right edge on the corner's; on a phone, where the picture is short, as near the top
     // as it has to be.)
-    // (The player's party, in a party battle: on a phone its pad's. Under the picture where the window leaves room,
-    // else over the field's foot, its last 10 of 160 rows, under the panels' lip: nothing of the battle is there, at
-    // any size of window.)
+    // (The player's party, in a party battle: on a phone its pad's. At the right (the user: "you should show the navi
+    // switcher on the right actually"), left of the connection's corner where that shows. Under the picture where the
+    // window leaves room, else over the field's foot, its last 10 of 160 rows, under the panels' lip: nothing of the
+    // battle is there, at any size of window.)
     property <length> picture-bottom: Shell.picture-y + Shell.picture-height;
     property <length> foot: Shell.picture-height * 10 / 160;
+    property <length> strip-right: min(root.width - 16px, Shell.picture-x + Shell.picture-width - 16px);
     PartyStrip {
-        x: max(16px, Shell.picture-x + 16px);
+        x: (corner.visible ? min(root.strip-right, corner.x - 12px) : root.strip-right) - self.width;
         y: root.height - root.picture-bottom >= self.height + 16px || Shell.picture-height <= 0 ? root.height - self.height - 16px : root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
         visible: Shell.party.shown && !Theme.phone;
         party: Shell.party;
