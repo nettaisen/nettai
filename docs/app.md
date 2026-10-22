@@ -3429,11 +3429,11 @@ screen runs the ticks due, presents the picture into the window's texture if one
   about 14,000 in a release build (72 µs a tick: five minutes in 1.3 s). Until then the window's thread indexed, a
   slice a frame (`Viewer::index`, each slice as many ticks as the last one's time said fit a budget of 1.5 ms while
   the replay played, 5 ms while nothing did): about 1,300 ticks a second while the replay played in the `dev` build
-  (§5), five minutes in 14 s, and 5,900 while it didn't. The window's thread still indexes so where the thread
-  can't: where it doesn't start (logged as `starting the replay's index`), where it ends short of the replay's end
-  (it couldn't read the replay, or the engine stopped outside a tick: logged as `indexing <file>`), and where it has
-  sent nothing in 5 seconds (a browser's worker whose module didn't load never runs, and its channel never closes;
-  once it is heard from, it is left to it). What the thread made is kept, and the window's slices go on from there.
+  (§5), five minutes in 14 s, and 5,900 while it didn't. The window's thread never indexes now (the user: "why
+  would the thread fail? don't fallback just get rid of that path"): where the thread doesn't start (logged as
+  `starting the replay's index`; in a browser, a worker whose module didn't load never runs) or ends short of the
+  replay's end (it couldn't read the replay, or the engine stopped outside a tick: logged as `indexing <file>`), the
+  index stays where it got, what the thread made kept, and what plays is indexed as it plays.
   A seek to what is indexed is done at once (it plays under 240 ticks).
 - *No seek goes past the index* (the user: "you should also show how much of the replay has preloaded and don't
   allow seeking past that preload"). The bar shows how far the replay is indexed (`ReplaysView.indexed`, 0 to 1,
