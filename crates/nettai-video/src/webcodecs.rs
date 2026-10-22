@@ -119,18 +119,18 @@ impl Encoder {
 }
 
 impl Backend for Encoder {
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error> {
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
         assert_eq!(rgb.len(), self.width * self.height * 3, "a frame's pixels are its width by its height");
-        let mut rgbx = Vec::with_capacity(self.width * self.height * 4);
-        for px in rgb.chunks_exact(3) {
-            rgbx.extend_from_slice(&[px[0], px[1], px[2], 255]);
+        let mut rgbx = vec![255u8; self.width * self.height * 4];
+        for (x, px) in rgbx.chunks_exact_mut(4).zip(rgb.chunks_exact(3)) {
+            x[..3].copy_from_slice(px);
         }
         let samples = self.resample.iter_mut().zip(sound).map(|(r, s)| r.push(s)).collect();
         let mut msg = Msg::Frame(rgbx, samples);
         let waited = nettai_platform::time::Instant::now();
         loop {
             match self.frames.try_send(msg) {
-                Ok(()) => return Ok(()),
+                Ok(()) => return Ok(rgb),
                 // (The encoder is behind: this worker waits, as a worker may.)
                 Err(TrySendError::Full(back)) => {
                     msg = back;

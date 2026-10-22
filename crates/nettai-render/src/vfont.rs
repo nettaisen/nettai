@@ -615,6 +615,13 @@ impl TextRenderer {
         &self.font
     }
 
+    /// A renderer of the same font with nothing made yet: one for another
+    /// thread, drawing the same frames the same (a video's frames presented
+    /// on several, nettai-video).
+    pub fn like(&self) -> TextRenderer {
+        TextRenderer::new(self.font.clone())
+    }
+
     /// The font a role's text is drawn in.
     fn font_of(&self, id: FontId) -> &VectorFont {
         match id {
@@ -1035,7 +1042,7 @@ impl TextRenderer {
         let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
         let fades = item.fades;
         let faded = |rgb: u32| if fades == [Fade::None, Fade::None] { rgb } else { fade_rgb(fade_rgb(rgb, fades[0]), fades[1]) };
-        image.blit(ox, oy, bounds, |x, y, rgb, a| target.blend(x, y, faded(rgb), a));
+        target.blit(&image, (ox, oy), bounds, faded);
     }
 
     /// A text item painted at the output's scale where `place` puts it,
@@ -1140,11 +1147,10 @@ impl TextRenderer {
             }
             g
         });
-        let in_cells = |x: i32, y: i32| -> bool {
-            if d.cells.is_none() && d.off.is_none() {
-                return true;
-            }
-            let (Some(&fx), Some(&fy)) = (frame.columns.get((x - frame.x) as usize), frame.rows.get((y - frame.y) as usize)) else { return false };
+        // (Whether the frame pixel (`fx`, `fy`) an output pixel shows is in
+        // them; everywhere, for a drawing with neither.)
+        let everywhere = d.cells.is_none() && d.off.is_none();
+        let in_cells = |fx: i32, fy: i32| -> bool {
             let (dx, dy) = (fx - item.rect.x, fy - item.rect.y);
             if let Some((w, off)) = &d.off
                 && dx >= 0
@@ -1177,23 +1183,31 @@ impl TextRenderer {
                     }
                 }
             };
+            // (Its columns within the bounds; on each row the clip shows,
+            // the frame row it is, once.)
+            let columns = (bounds.0 - ox).clamp(0, t.w as i32) as usize..(bounds.2 - ox).clamp(0, t.w as i32) as usize;
             for ly in 0..t.h {
                 let y = oy + ly as i32;
                 if y < bounds.1 || y >= bounds.3 {
                     continue;
                 }
-                for lx in 0..t.w {
+                let Some(fy) = target.row(y) else { continue };
+                for lx in columns.clone() {
                     let (rgb, a) = t.px[ly * t.w + lx];
-                    let x = ox + lx as i32;
-                    if a == 0 || x < bounds.0 || x >= bounds.2 {
+                    if a == 0 {
                         continue;
                     }
+                    let x = ox + lx as i32;
                     let a = match piece.cut {
                         None => a,
                         Some(_) => (a as f32 * cut(lx)).round() as u8,
                     };
-                    if a > 0 && in_cells(x, y) {
-                        target.blend(x, y, rgb, a);
+                    if a == 0 {
+                        continue;
+                    }
+                    let Some(fx) = target.column(x) else { continue };
+                    if everywhere || in_cells(fx, fy) {
+                        target.blend_at(x, y, (fx, fy), rgb, a);
                     }
                 }
             }
@@ -1788,12 +1802,48 @@ struct Target<'o> {
 }
 
 impl Target<'_> {
-    fn blend(&mut self, x: i32, y: i32, rgb: u32, a: u8) {
-        let (dx, dy) = ((x - self.frame.x) as usize, (y - self.frame.y) as usize);
-        let (Some(&fx), Some(&fy)) = (self.frame.columns.get(dx), self.frame.rows.get(dy)) else { return };
-        if fx < self.clip.x || fx >= self.clip.x + self.clip.w || fy < self.clip.y || fy >= self.clip.y + self.clip.h {
-            return;
+    /// The frame row output row `y` shows, if the clip has it.
+    fn row(&self, y: i32) -> Option<i32> {
+        let fy = *self.frame.rows.get((y - self.frame.y) as usize)?;
+        (fy >= self.clip.y && fy < self.clip.y + self.clip.h).then_some(fy)
+    }
+
+    /// The frame column output column `x` shows, if the clip has it.
+    fn column(&self, x: i32) -> Option<i32> {
+        let fx = *self.frame.columns.get((x - self.frame.x) as usize)?;
+        (fx >= self.clip.x && fx < self.clip.x + self.clip.w).then_some(fx)
+    }
+
+    /// `image` laid with its origin at output pixel (`ox`, `oy`), its
+    /// pixels within `bounds` (left, top, right, bottom) blended in, each
+    /// color through `color`. (Its columns within the bounds, and each
+    /// row's frame row, found once.)
+    fn blit(&mut self, image: &crate::rasters::Image, (ox, oy): (i32, i32), bounds: (i32, i32, i32, i32), color: impl Fn(u32) -> u32) {
+        let (left, top) = (ox + image.x, oy + image.y);
+        let columns = (bounds.0 - left).clamp(0, image.w as i32) as usize..(bounds.2 - left).clamp(0, image.w as i32) as usize;
+        for ly in 0..image.h {
+            let y = top + ly as i32;
+            if y < bounds.1 || y >= bounds.3 {
+                continue;
+            }
+            let Some(fy) = self.row(y) else { continue };
+            for lx in columns.clone() {
+                let (rgb, a) = image.px[ly * image.w + lx];
+                if a == 0 {
+                    continue;
+                }
+                let x = left + lx as i32;
+                if let Some(fx) = self.column(x) {
+                    self.blend_at(x, y, (fx, fy), color(rgb), a);
+                }
+            }
         }
+    }
+
+    /// Blend `rgb` at coverage `a` into output pixel (`x`, `y`), which
+    /// shows the frame pixel `(fx, fy)` in the clip ([`Target::row`],
+    /// [`Target::column`]), where nothing in front of the item won it.
+    fn blend_at(&mut self, x: i32, y: i32, (fx, fy): (i32, i32), rgb: u32, a: u8) {
         if self.depth.get(fy as usize * WIDTH + fx as usize).is_some_and(|&d| d < self.key) {
             return;
         }
@@ -1894,6 +1944,50 @@ mod tests {
         // A name with room to spare keeps its width: it isn't stretched.
         let natural = r.fitted_width("Cannon", Role::Cell, 1000);
         assert_eq!(r.fitted_width("Cannon", Role::Cell, natural as i32 + 20), natural);
+    }
+
+    /// What a text renderer has made (its layouts, its glyphs, the items it
+    /// painted) changes nothing it draws: frames presented one after
+    /// another by one renderer are each what a renderer like it with nothing
+    /// made draws, in any order, at any size. (A video's frames are
+    /// presented by several, a frame each: nettai-video's `presenters`.)
+    #[test]
+    fn a_renderer_draws_a_frame_the_same_whatever_it_drew_before() {
+        use crate::compose::Fade;
+        use crate::textlayer::{Align, Ink};
+        let frames: Vec<crate::render::Frame> = (0..6)
+            .map(|n| {
+                let words = ["Cannon", "GunDelS3", "ElecMan\u{E002}", "Press Ⓐ", "ミテイ ロックマン", "gjpqy"];
+                let mut items = vec![
+                    TextItem::new(words[n], Role::Cell, Rect::new(8 + 4 * n as i32, 8, 64, 16), 0x7FFF, Some(0x2108)),
+                    TextItem::new(words[(n + 2) % 6], Role::Dialogue, Rect::new(16, 120, 192, 12), 0x0421 * (n as u16 + 3), None),
+                    TextItem { vscale: Some(0xC0 + 0x10 * n as i32), align: Align::Center, ..TextItem::new(words[(n + 1) % 6], Role::FittedCell, Rect::new(80, 40, 80, 16), 0x03FF, Some(0x0010)) },
+                    TextItem { fades: [Fade::Black(n as u8 * 3), Fade::None], shown: Some(n + 1), ..TextItem::new(words[(n + 3) % 6], Role::Cell, Rect::new(120, 70, 96, 16), 0x7C00, Some(0x0000)) },
+                    TextItem {
+                        ink: Some(Ink { fill: vec![0x7FFF, 0x5294, 0x318C], rim: Some(0x0000), rim_width: 1.0, stepped: n % 2 == 0 }),
+                        ..TextItem::new("COUNTER HIT!", Role::Cell, Rect::new(40, 90, 120, 16), 0x7FFF, Some(0x2108))
+                    },
+                ];
+                items[1].depth = 7;
+                let depth = (0..WIDTH * HEIGHT).map(|i| if (i / WIDTH + i % WIDTH) % 9 == 0 { 3 } else { u32::MAX }).collect();
+                crate::render::Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth, text: items, ..crate::render::Frame::default() }
+            })
+            .collect();
+        for scale in [2, 3, 4] {
+            let (w, h) = (WIDTH * scale, HEIGHT * scale);
+            let drawn = |frame: &crate::render::Frame, r: &mut TextRenderer| {
+                let mut out = vec![0u32; w * h];
+                crate::present::present(frame, Some(r), &mut out, w, h);
+                out
+            };
+            let first = renderer();
+            let alone: Vec<Vec<u32>> = frames.iter().map(|f| drawn(f, &mut first.like())).collect();
+            assert!(alone.iter().all(|out| out.iter().any(|&p| p != crate::compose::to_rgb(0x1234))), "text drawn at {scale}x");
+            let mut one = first.like();
+            for (n, f) in frames.iter().enumerate().chain(frames.iter().enumerate().rev()) {
+                assert!(drawn(f, &mut one) == alone[n], "frame {n} at {scale}x, after others");
+            }
+        }
     }
 
     /// A white item over a black frame at 2x, `depth` the frame's depth
