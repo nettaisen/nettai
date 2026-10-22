@@ -245,7 +245,7 @@ pub struct CustomShapes {
     pub empty_icon: Option<Drawing>,
     pub slot_code: Option<Drawing>,
     /// The frame round an element's icon (16x16): its symbol is drawn
-    /// over it (`CustomScreen::element_symbols`).
+    /// over it, inside its ring (`CustomScreen::element_inside`).
     pub element_frame: Option<Drawing>,
     /// The cursor's corner (its frames) and the form list cursor's tiles
     /// (8x8 each, unflipped).

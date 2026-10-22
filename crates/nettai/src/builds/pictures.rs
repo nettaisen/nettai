@@ -84,9 +84,19 @@ impl Pictures {
         self.element(record.family)
     }
 
-    /// A chip family's 16x16 element icon, as the game's chip window shows it.
+    /// A chip family's 16x16 element icon, as the game's chip window shows it: its frame smooth at any size, drawn
+    /// from the pack's drawing of it, with the symbol over it as its pixels (`pictures::element_icon_svg`; the user:
+    /// "you should draw the element icons in the ui with the smooth frame as well"); the picture where the pack
+    /// has no drawing of the frame.
     pub fn element(&self, family: ChipFamily) -> slint::Image {
-        kept(&self.elements, family, || pictures::element_icon(&self.packs.packs(), self.ready.content(), family))
+        if let Some(i) = self.elements.borrow().get(&family) {
+            return i.clone();
+        }
+        let (packs, content) = (self.packs.packs(), self.ready.content());
+        let svg = pictures::element_icon_svg(&packs, content, family).and_then(|s| slint::Image::load_from_svg_data(s.as_bytes()).ok());
+        let i = svg.unwrap_or_else(|| image(pictures::element_icon(&packs, content, family)));
+        self.elements.borrow_mut().insert(family, i.clone());
+        i
     }
 
     /// A form's 32x16 face.

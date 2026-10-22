@@ -359,7 +359,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         elements: Tiles {
             pixels: (0..FAMILIES).flat_map(|b| crate::exe4::hud::tiles(rom, at(ELEMENTS) + 0x80 * b.min(ELEMENT_COUNT - 1), 0x80).pixels).collect(),
         },
-        element_symbols: Default::default(),
+        element_frame: Default::default(),
         element_colors: Vec::new(),
         digits: glyphs(DIGITS),
         slot_codes,

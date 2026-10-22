@@ -411,7 +411,7 @@ fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
         other_palette: palette_at(rom, at(OTHER_PALETTE)),
         codes: glyphs(CODES),
         elements: tiles(src, (ELEMENTS.0, 0x80 * ELEMENTS.1)),
-        element_symbols: Default::default(),
+        element_frame: Default::default(),
         element_colors: (0..ELEMENTS.1 as u32)
             .map(|e| std::array::from_fn(|i| rom.u16(at(ELEMENT_COLORS) + 12 * e + 2 * i as u32)))
             .collect(),
