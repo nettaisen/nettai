@@ -771,8 +771,14 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     let column: Vec<Option<Drawing>> = (0..2).map(|k| sh.glyphs(&format!("custom/column-cell-{k}"), &c.column_cells, k, 1)).collect();
     s.column_cells = all(column);
     s.empty_icon = sh.tiles("custom/empty-icon", &c.empty_icon, 0, 2, 2);
-    // The frame the element icons share (`elements::split`).
-    s.element_frame = sh.tiles("custom/element-frame", &c.element_frame, 0, 2, 2);
+    // The frame the element icons share (`elements::split`), but for its
+    // ground round the ring, which the drawing leaves out (the user: "don't
+    // draw the square background under the element icon since it just looks
+    // awkward, only the icon frame should be filled in").
+    if let Some((_, outside)) = c.element_outside() {
+        let pixels = c.element_frame.pixels.iter().zip(&outside).map(|(&p, &o)| if o { 0 } else { p }).collect();
+        s.element_frame = sh.tiles("custom/element-frame", &Tiles { pixels }, 0, 2, 2);
+    }
     s.slot_code = slot_code(c, sh, say);
     // The cursors, their corners alone (the chip cursor's) or meeting each
     // other (the form list's).

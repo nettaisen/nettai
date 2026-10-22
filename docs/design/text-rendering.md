@@ -1895,8 +1895,11 @@ element icons' symbols, the hidden chip's '?', the gauge's warning arrow; the ch
 the user's word, "the chatbox arrow should also be vectorized"). The element icons' frame is a drawing, its symbols
 pictures over it (the user: "can you also redraw the element icon frame? then you can pull the actual element images
 out of the frame and render them on top. the element icon frame actually has rounded edges and is not chamfered"):
-the frame round, a light ring a pixel wide on the dark ground, its outer and inner edges round the same middle
-(radii 2.5 and 1.5, the art stepping the outer corner a pixel and shading the inner one half); extraction takes the
+the frame round, a light ring a pixel wide, its outer and inner edges round the same middle (radii 2.5 and 1.5, the
+art stepping the outer corner a pixel and shading the inner one half), the dark ground inside it and nothing round it
+(the user: "don't draw the square background under the element icon since it just looks awkward, only the icon frame
+should be filled in": the app shows its own background there, the battle the window's panel, EXE6's and EXE5's chip
+window laying the frame's ground there as the panel round it); extraction takes the
 icons apart (the frame each pixel's index most icons share, the ground the frame's most common; a symbol its icon's
 pixels on the ground that aren't the ground's); then (the user: "you should draw the element icons in the ui with
 the smooth frame as well and make the extract element icons transparent and borderless") the pack holds the icons

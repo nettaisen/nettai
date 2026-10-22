@@ -1449,11 +1449,13 @@ impl Window {
         let family = data.family.0 as usize;
         if family < a.element_colors.len() {
             // (The frame with the icon over it, as the game's; in the
-            // enhanced mode, where the pack draws the frame, the icon alone,
-            // the frame drawn under it: `shape_frames`.)
+            // enhanced mode, where the pack draws the frame, the symbol on
+            // the frame's ground, the frame's drawing over it but for the
+            // symbol: `shape_frames`. The ground fills the square round the
+            // ring, as the window's own panel round it.)
             let framed = text.draws_shapes() && a.shapes.element_frame.is_some() && !a.element_frame.is_empty();
-            if framed {
-                self.tiles.put_part(self.layout.element, &a.elements, 4 * family, 4);
+            if let Some(symbol) = framed.then(|| element_symbol(a, family)).flatten() {
+                self.tiles.put(self.layout.element, &symbol);
             } else if let Some(icon) = a.element_icon(family) {
                 self.tiles.put(self.layout.element, &icon);
             }
@@ -2288,6 +2290,15 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     }
 }
 
+/// Element icon `family`'s symbol (its pixels inside the frame's ring:
+/// `CustomScreen::element_inside`) on the frame's ground, its tiles.
+fn element_symbol(a: &CustomScreen, family: usize) -> Option<Tiles> {
+    let (ground, _) = a.element_outside()?;
+    let inside = a.element_inside()?;
+    let icon = a.elements.pixels.get(4 * family * Tiles::TILE..4 * (family + 1) * Tiles::TILE)?;
+    Some(Tiles { pixels: icon.iter().zip(&inside).map(|(&p, &i)| if i && p != 0 { p } else { ground }).collect() })
+}
+
 /// Element icon `family`'s pixels (16x16, row by row) its frame's drawing
 /// over it is kept off: its symbol's, inside the frame's ring
 /// (`CustomScreen::element_inside`).
@@ -2341,8 +2352,8 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
 /// The element sprite's parts with their tags (`tags`, as `drawn_parts`):
 /// the frame with the icon in front of it, as the game's sprite; in the
 /// enhanced mode, where the pack draws the frame, the icon alone with the
-/// frame drawn under it as a shape as deep as it, kept off the symbol's
-/// pixels inside its ring.
+/// frame drawn over it as a shape as deep as it, kept off the symbol's
+/// pixels inside its ring, the window's panel showing round the ring.
 fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
     tags.resize(at, None);
     let family = part.first_tile / 4;
