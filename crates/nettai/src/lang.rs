@@ -86,12 +86,16 @@ pub fn select(ui: &nettai_ui::AppWindow, code: &'static str) -> std::rc::Rc<I18n
     use slint::ComponentHandle;
     let i18n = std::rc::Rc::new(I18n::new(code));
     let rules = i18n.clone();
-    ui.global::<nettai_ui::Caps>().on_of(move |text| rules.upper(&text).into());
+    let caps = ui.global::<nettai_ui::Caps>();
+    caps.on_upper(move |text| rules.upper(&text).into());
     let rules = i18n.clone();
-    ui.global::<nettai_ui::Lists>().on_of(move |items| rules.list(&slint::Model::iter(&items).collect::<Vec<_>>()).into());
+    ui.global::<nettai_ui::Lists>().on_join(move |items| rules.list(&slint::Model::iter(&items).collect::<Vec<_>>()).into());
     // (English is the source: it has no catalog.)
     let _ = slint::select_bundled_translation(if code == "en" { "" } else { code });
     ui.global::<nettai_ui::Theme>().set_cjk(cjk(code));
+    // (Everything set in capitals or listed is set again by the new rules: the words the app gave too, which no
+    // `@tr` brings back. The user: "fix the turkish issue".)
+    caps.set_language(caps.get_language().wrapping_add(1));
     i18n
 }
 
