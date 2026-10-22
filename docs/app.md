@@ -3066,8 +3066,13 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   - The frames the scenery moved are the renderer's alone (`Renderer::stage_clock`: the battle's clock and
     them), kept after the hold, so as the menu closes the background goes on from where the hold left it, a
     frame a tick, with no jump back; a new round or a start over forgets them. Nothing of them is in the
-    battle, its snapshot or its digest, and a battle never held (every online match, every replay) draws byte
-    for byte as before. The menu closed, the battle goes on from the tick it was held at.
+    battle, its snapshot or its digest, and a battle never held (every replay) draws byte for byte as before. The
+    menu closed, the battle goes on from the tick it was held at.
+  - **An online match's stalls** move the scenery the same way: a frame that runs no tick (the other player's
+    input not in yet, at the stall guard, or a frame waited for clock sync) moves the stage's clock a frame on, so
+    a stall doesn't stop the background while the music plays on (the user: "does background etc continue
+    animating? should it since it's presentation only?"). The frames are each player's renderer's alone, never in
+    either peer's battle. The test: nettai-frontend's `a_stall_keeps_the_scenery_moving`.
   - **A battle started with the menu open** (Practice's own sessions, and an arena or the Dummy's build changed
     under the menu, which starts the set over) steps through its round's opening (its fade in from white, its
     navis' arrival and its banner) with no buttons, and is held as its custom screen begins, before the screen

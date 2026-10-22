@@ -319,6 +319,12 @@ impl Player {
         }
         if self.session.fresh {
             self.renderer.observe(&self.session.battle);
+        } else if self.real_time() {
+            // (A real-time frame that ran no tick: the other player's input isn't in yet, or the clocks are being
+            // evened. The stage's scenery moves on a frame as a held battle's does, so a stall doesn't stop the
+            // background (the user: "does background etc continue animating? should it since it's presentation
+            // only?"). Drawing alone: neither peer's battle sees it.)
+            self.renderer.scenery_frame(&self.session.battle);
         }
         if let Some(audio) = &mut self.audio {
             match &self.session.sound {
@@ -675,7 +681,7 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::{LivePlayer, Step, folder_of, live_setup};
+    use crate::driver::{LivePlayer, Ran, Step, Stop, folder_of, live_setup};
     use crate::game::GraphicsMode;
     use nettai_battle::content::testing;
     use std::sync::Arc;
@@ -1104,6 +1110,79 @@ mod tests {
         for tick in 0..60 {
             both(&mut never, &mut held, tick);
             assert_eq!(never.frame().pixels, held.frame().pixels, "tick {tick}: started over, alike");
+        }
+    }
+
+    /// A real-time driver that stalls (runs no tick, as netplay's does waiting on the other player) for its frames
+    /// `from` to `from + len`, and otherwise gives each tick's inputs as `live()` does.
+    struct Stalling {
+        inner: Box<dyn Driver>,
+        frames: u32,
+        from: u32,
+        len: u32,
+    }
+
+    impl Driver for Stalling {
+        fn start(&mut self) -> Battle {
+            self.inner.start()
+        }
+        fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
+            self.inner.next(b, keys)
+        }
+        fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, Stop>> {
+            let frame = self.frames;
+            self.frames += 1;
+            (self.from..self.from + self.len).contains(&frame).then(|| Ok(Ran::default()))
+        }
+        fn position(&self) -> String {
+            self.inner.position()
+        }
+        fn real_time(&self) -> bool {
+            true
+        }
+    }
+
+    /// A real-time battle's stalled frames (no tick run) step nothing of the battle, while its stage's scenery
+    /// moves on a frame each, as a held battle's does: the background scrolls on through a stall. After it the
+    /// battle goes on as one never stalled, the scenery on from where the stall left it, nothing jumping back.
+    #[test]
+    fn a_stall_keeps_the_scenery_moving() {
+        use crate::driver::bot_buttons;
+        let content = testing::content();
+        let mut graphics = crate::testing::graphics(&content, 0x001F);
+        crate::testing::scrolling_background(&mut graphics);
+        let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
+        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
+        let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
+        let mut never = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        let stalling = Box::new(Stalling { inner: set(), frames: 0, from: 120, len: 60 });
+        let mut stalled = Player::with(Renderer::with_packs(graphics.packs()), None, None, stalling);
+        assert!(stalled.real_time());
+        for tick in 0..120 {
+            let k = bot_buttons(never.battle(), 0, tick);
+            assert!(never.tick(k) && stalled.tick(k));
+        }
+        // Stalled: no tick of the battle's, the scenery a frame on each, drawn anew.
+        let (ticks, digest, clock) = (stalled.ticks(), stalled.battle().digest(), stalled.stage_clock());
+        let mut last = stalled.frame().pixels;
+        let mut drawn_anew = 0;
+        for n in 1..=60u32 {
+            assert!(stalled.tick(0));
+            assert_eq!((stalled.ticks(), stalled.battle().digest()), (ticks, digest), "frame {n}: stalled");
+            assert_eq!(stalled.stage_clock().background, clock.background + n, "frame {n}: the background a frame on");
+            let now = stalled.frame().pixels;
+            drawn_anew += (now != last) as u32;
+            last = now;
+        }
+        assert!(drawn_anew >= 30, "the background scrolls on, drawn anew ({drawn_anew} of 60 frames)");
+        // On again: as the battle never stalled, the scenery 60 frames ahead and moving a frame a tick.
+        for tick in 120..240 {
+            let before = stalled.stage_clock();
+            let k = bot_buttons(never.battle(), 0, tick);
+            assert!(never.tick(k) && stalled.tick(k));
+            assert_eq!(stalled.battle().digest(), never.battle().digest(), "tick {tick}: as never stalled");
+            assert_eq!(stalled.stage_clock().background, before.background + 1, "tick {tick}: no jump");
         }
     }
 }
