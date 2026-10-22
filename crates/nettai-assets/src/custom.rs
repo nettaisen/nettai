@@ -343,6 +343,10 @@ pub struct CustomScreen {
     /// from color 10.
     pub elements: Tiles,
     pub element_colors: Vec<[u16; 6]>,
+    /// The icons' symbols with their frame taken off (index 0 where it
+    /// was), where the frame is drawn as a shape (`shapes.element_frame`);
+    /// none: the icons stay whole.
+    pub element_symbols: Tiles,
     /// Damage digits as 8x16 glyphs: 0-9, then '?'.
     pub digits: Tiles,
     // ---- The slots.

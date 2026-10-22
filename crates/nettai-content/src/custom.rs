@@ -71,6 +71,11 @@ pub struct CustomDoc {
     /// whose colors 10-15 are the ones it brings; damage digits (0-9, '?').
     pub codes: TileImage,
     pub elements: TileImage,
+    /// The element icons' symbols with their frame taken off, on a clear
+    /// ground, laid and colored as the icons, where the frame is drawn
+    /// (`shapes.element_frame`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub element_symbols: Option<TileImage>,
     pub digits: TileImage,
     /// The slots' codes (2x1, the last the empty slot's) and the empty
     /// slot's icon.
@@ -631,13 +636,15 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let versions = vs.versions.iter().map(|(name, v)| VersionEntry { version: name.clone(), own: version(Some(name), v) }).collect();
     let codes = image("codes.png", &c.codes, GLYPHS(28), &[frame0], 0, &none);
     // (A sprite's icons: one palette of its own, the sprite's, for viewing.)
-    let elements = match &c.element_sprite {
-        Some(e) => image("elements.png", &c.elements, ICONS(11), &[e.palette], 0, &none),
+    let mut icons = |file: &str, t: &Tiles| match &c.element_sprite {
+        Some(e) => image(file, t, ICONS(11), &[e.palette], 0, &none),
         None => {
             let rows = element_rows(c);
-            image("elements.png", &c.elements, ICONS(11), &rows, rows.len(), &|i| (i / 4) as u8)
+            image(file, t, ICONS(11), &rows, rows.len(), &|i| (i / 4) as u8)
         }
     };
+    let elements = icons("elements.png", &c.elements);
+    let element_symbols = (!c.element_symbols.is_empty()).then(|| icons("element-symbols.png", &c.element_symbols));
     let digits = image("digits.png", &c.digits, GLYPHS(11), &[frame0], 0, &none);
     let slot_codes = image("slot-codes.png", &c.slot_codes, Layout::Blocks { width: 2, height: 1, columns: 14 }, &[frame0], 0, &none);
     let empty_icon = image("empty-icon.png", &c.empty_icon, ICONS(1), &[c.icon_palette], 0, &none);
@@ -718,6 +725,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         pictures: PicturesDoc { ok, ok_picked, other },
         codes,
         elements,
+        element_symbols,
         digits,
         slot_codes,
         empty_icon,
@@ -974,6 +982,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         pictures,
         codes: img(&doc.codes, report)?.0,
         elements,
+        element_symbols: match &doc.element_symbols {
+            Some(i) => img(i, report)?.0,
+            None => Tiles::default(),
+        },
         // (A sprite's icons bring no colors to the window's palette.)
         element_colors: if element_sprite.is_some() {
             Vec::new()

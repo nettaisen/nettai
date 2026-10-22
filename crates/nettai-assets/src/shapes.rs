@@ -244,6 +244,9 @@ pub struct CustomShapes {
     /// letter (16x8).
     pub empty_icon: Option<Drawing>,
     pub slot_code: Option<Drawing>,
+    /// The frame round an element's icon (16x16): its symbol is drawn
+    /// over it (`CustomScreen::element_symbols`).
+    pub element_frame: Option<Drawing>,
     /// The cursor's corner (its frames) and the form list cursor's tiles
     /// (8x8 each, unflipped).
     pub cursor: Vec<Drawing>,
@@ -274,7 +277,7 @@ impl CustomShapes {
     pub fn drawings(&self) -> Vec<&Drawing> {
         let maps = self.window_maps.iter().chain(&self.form_list_maps).flatten().flat_map(|m| m.parts.iter().map(|p| &p.drawing));
         let sets = self.column_cells.iter().chain(&self.cursor).chain(&self.form_list_cursor).chain(&self.name_bar).chain(&self.regular);
-        let one = [&self.empty_icon, &self.slot_code, &self.form_name_bar].into_iter().flatten();
+        let one = [&self.empty_icon, &self.slot_code, &self.element_frame, &self.form_name_bar].into_iter().flatten();
         let buttons = self.buttons.iter().flat_map(|(_, sets)| sets.iter());
         maps.chain(sets).chain(one).chain(buttons).chain(self.pictures.iter().map(|(_, d)| d)).collect()
     }
