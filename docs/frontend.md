@@ -3139,6 +3139,18 @@ Main, else the constrained baseline every encoder has), at a bit rate made
 of the rate factor (a fifth of a bit a pixel a frame at CRF 16, at most
 40 Mb/s), a key frame every 120 frames; AAC where the browser has it, else
 Opus, a track a console shown, of the same 48 kHz samples ffmpeg is given.
+An AAC encoder puts samples before the sound (its priming: AAC's blocks
+overlap, and an encoder looks ahead), which no AAC packet says and WebCodecs
+doesn't tell: Chromium stamps its encoders' packets from 0 (macOS's
+AudioToolbox puts 2112 first, Windows' Media Foundation its own). So an
+export measures it as it starts, a click through an encoder of the same
+settings and a decoder, and each AAC track is shown from past it by its edit
+list, as the desktop's tracks are by ffmpeg's (the user: "is aac in the
+browser broken then?", then "ok fix it then": before, its sound played that
+much late, 44 ms on macOS). Measured in Chrome on macOS: 2112, the same each
+time, and a sound encoded and decoded, those 2112 skipped, lines up with
+what was encoded at no lag. Opus says its own delay, its pre-skip (312:
+Chromium's libopus lookahead, which it leaves in).
 The picture's times are a frame's count on a tick's time base, exact; the
 sound's are its samples.
 
