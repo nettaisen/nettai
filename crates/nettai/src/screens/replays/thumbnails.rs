@@ -6,7 +6,8 @@
 //! shows them (the language, the graphics mode, the text), no sound. It indexes the replay ahead on its own (in
 //! silence, as the index's battle thread plays it, without the two threads beside that make its sound:
 //! `super::indexing`), then seeks to each time asked for and presents that console's picture
-//! (`Viewer::present_view`) at a whole multiple of the frame. The viewer watched is never touched: its battle, its
+//! (`Viewer::present_view`), or both on one screen as the viewer watched shows them, at a whole multiple of the
+//! frame. The viewer watched is never touched: its battle, its
 //! sound, its kept states and its position are its own, as the export's thread's are. Nothing of the engine is new;
 //! this is the library's seeking (docs/frontend.md §8, "Seeking") on another instance.
 //!
@@ -41,19 +42,25 @@ const CACHE_BYTES: usize = 32 << 20;
 /// The ticks the thread indexes at a time while it has nothing asked of it (about 10 ms of its time).
 const INDEX_SLICE: u32 = 600;
 
-/// A preview's place in the cache: the replay's second it shows (each shows that second's first tick), the console,
-/// and the multiple of the frame it was drawn at.
+/// A preview's place in the cache: the replay's second it shows (each shows that second's first tick), the console
+/// (with `both`, both on one screen, its at the left), and the multiple of the frame it was drawn at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bucket {
     pub second: u32,
     pub side: u8,
     pub density: u32,
+    pub both: bool,
 }
 
 impl Bucket {
     /// The bucket of `tick`: the second it is in.
     pub fn of(tick: u32, side: u8, density: u32) -> Bucket {
-        Bucket { second: time_of(tick as u64).as_secs() as u32, side, density }
+        Bucket { second: time_of(tick as u64).as_secs() as u32, side, density, both: false }
+    }
+
+    /// The same, of both consoles on one screen (`side`'s at the left), or (false) of `side`'s alone.
+    pub fn shown_both(self, both: bool) -> Bucket {
+        Bucket { both, ..self }
     }
 
     /// The tick a bucket's preview shows: its second's first.
@@ -105,7 +112,7 @@ impl<T> Cache<T> {
     pub fn nearest(&self, bucket: &Bucket) -> Option<(Bucket, &T)> {
         self.entries
             .iter()
-            .filter(|(b, ..)| b.side == bucket.side && b.density == bucket.density)
+            .filter(|(b, ..)| b.side == bucket.side && b.density == bucket.density && b.both == bucket.both)
             .min_by_key(|(b, ..)| b.second.abs_diff(bucket.second))
             .map(|(b, t, _)| (*b, t))
     }
@@ -252,7 +259,13 @@ fn work(game: Loaded, path: PathBuf, asks: Receiver<Ask>, drawn: Sender<Drawn>) 
         let mut pixels = vec![0u32; w * h];
         let drew = nettai_frontend::session::in_engine(|| {
             viewer.seek(ask.tick);
-            viewer.present_view(ask.bucket.side, &mut pixels, w, h);
+            if ask.bucket.both {
+                viewer.set_view(ask.bucket.side);
+                viewer.set_both(true);
+                viewer.present(&mut pixels, w, h);
+            } else {
+                viewer.present_view(ask.bucket.side, &mut pixels, w, h);
+            }
         });
         if let Err(panic) = drew {
             return crate::errors::log(&doing, &format_args!("the engine stopped at tick {}: {}", ask.tick, nettai_frontend::session::panic_message(panic.as_ref())));
@@ -307,7 +320,7 @@ mod tests {
     #[test]
     fn the_cache_keeps_the_latest_used() {
         let mut cache = Cache::new(30);
-        let at = |second: u32| Bucket { second, side: 0, density: 1 };
+        let at = |second: u32| Bucket { second, side: 0, density: 1, both: false };
         for second in 0..3 {
             cache.put(at(second), second, 10);
         }

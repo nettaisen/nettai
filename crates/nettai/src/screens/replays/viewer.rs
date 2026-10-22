@@ -235,9 +235,14 @@ impl Watching {
         self.overlays
     }
 
-    /// The side whose console is shown.
+    /// The side whose console is shown (with both on one screen, the left's).
     pub fn side(&self) -> u8 {
         self.viewer.view()
+    }
+
+    /// Whether both consoles are shown on one screen.
+    pub fn both(&self) -> bool {
+        self.viewer.both()
     }
 
     /// The replay's length in ticks.
@@ -453,7 +458,7 @@ impl Watching {
         view.set_speed(if at == 1 { Default::default() } else { SPEED_WORDS[at].into() });
     }
 
-    /// Show `side`'s console.
+    /// Show `side`'s console (with both on one screen, at the left).
     pub fn set_view(&mut self, shell: &mut Shell, side: i32) {
         if self.viewer.set_view(side.clamp(0, 1) as u8) {
             self.landed();
@@ -461,6 +466,19 @@ impl Watching {
             if self.builds {
                 self.show_builds(shell);
             }
+        }
+    }
+
+    /// The side menu's choice: P1's or P2's console alone (0, 1), or both on one screen (2: the side shown's at the
+    /// left).
+    pub fn choose_side(&mut self, shell: &mut Shell, choice: i32) {
+        let both = choice >= 2;
+        if both != self.viewer.both() {
+            self.viewer.set_both(both);
+            self.landed();
+        }
+        if !both {
+            self.set_view(shell, choice);
         }
     }
 
@@ -494,7 +512,13 @@ impl Watching {
                 };
                 let value = match item {
                     MenuItem::Speed => SPEED_WORDS[self.speed() as usize].into(),
-                    MenuItem::Side => if self.side() == 0 { view.get_p1() } else { view.get_p2() }.to_string().into(),
+                    MenuItem::Side => match (self.both(), self.side()) {
+                        (true, _) => view.get_both(),
+                        (false, 0) => view.get_p1(),
+                        (false, _) => view.get_p2(),
+                    }
+                    .to_string()
+                    .into(),
                     _ => Default::default(),
                 };
                 (word, PickMark { check, dim, line: matches!(item, MenuItem::Builds | MenuItem::Speed | MenuItem::Export), value })
@@ -502,9 +526,11 @@ impl Watching {
             .collect()
     }
 
-    /// The side's own menu, which its row of the ⋯ menu opens in its place: P1 and P2, the one shown checked.
+    /// The side's own menu, which its row of the ⋯ menu opens in its place: P1, P2 and Both (both on one screen, the
+    /// side shown's at the left), the one shown checked.
     pub fn side_menu(&self, view: &ReplaysView) -> Vec<(String, PickMark)> {
-        [view.get_p1(), view.get_p2()].iter().enumerate().map(|(at, word)| (word.to_string(), PickMark { check: self.side() == at as u8, ..Default::default() })).collect()
+        let shown = if self.both() { 2 } else { self.side() as usize };
+        [view.get_p1(), view.get_p2(), view.get_both()].iter().enumerate().map(|(at, word)| (word.to_string(), PickMark { check: shown == at, ..Default::default() })).collect()
     }
 
     /// The playback speed's own menu, which its row of the ⋯ menu opens in its place: the four, the one set checked.
@@ -549,7 +575,7 @@ impl Watching {
         }
         // (At the window's density, as the picture is: a whole multiple of the frame.)
         let density = ui.window().scale_factor().round().max(1.0) as u32;
-        let bucket = Bucket::of(tick, self.viewer.view(), density);
+        let bucket = Bucket::of(tick, self.viewer.view(), density).shown_both(self.viewer.both());
         if let Some(thumbs) = &mut self.thumbs {
             thumbs.hover(Some(bucket));
             view.set_thumb_shown(thumbs.has(&bucket));

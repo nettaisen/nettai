@@ -112,7 +112,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    shown, left or right (default: the side that recorded it);
                    both: both players on one screen, the side that recorded
                    it on the left (both-left, both-right: that side's on the
-                   left), the right player's pieces mirrored onto the right
+                   left), the right player's pieces mirrored onto the right;
+                   a video's sound then the left console's with the right
+                   side's own effects over it, one track
   --nut OUT        with --replay: write it as video, a NUT stream of raw
                    frames (RGB) and PCM sound, to the file OUT, or to standard
                    output for `-` (so `nettai-tool --replay set.nettaireplay --nut - |
@@ -581,7 +583,11 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
         ControlFlow::Continue(())
     };
     let scale = args.scale;
-    let sides = if args.both_sides { Sides::Both } else { Sides::One };
+    let sides = match (args.both_sides, args.consoles) {
+        (true, _) => Sides::SideBySide,
+        (false, Consoles::Both) => Sides::Both,
+        (false, Consoles::One) => Sides::One,
+    };
     // (The chapters "Round N" and the tracks the players' names, in English.)
     let options = Options { scale, view: None, sides, part, titles: Titles::default() };
     let wrote = if let Some(to) = &args.mp4 {

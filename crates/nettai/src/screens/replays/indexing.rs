@@ -1,9 +1,10 @@
-//! The replay's index, made on threads of their own (docs/app.md §16): three, the parts of the index going from one
-//! to the next as they are made. A second `Viewer` of the replay watched, silent, plays the battle through from its
-//! start on the first (`Viewer::index_battle`: the states kept to seek from, without their sound, and each tick's
-//! sound cues for each console); each console's sound plays those cues on one of its own (`ConsoleSound::play`,
-//! made and never heard, so that the states kept hold it) and puts its sound into the part's states; the last sends
-//! the parts on, whole (`BattlePart::into_part`). The viewer watched takes them in each frame (`Viewer::take_index`),
+//! The replay's index, made on threads of their own (docs/app.md §16): the battle's and one a sound, the parts of the
+//! index going from one to the next as they are made. A second `Viewer` of the replay watched, silent, plays the
+//! battle through from its start on the first (`Viewer::index_battle`: the states kept to seek from, without their
+//! sound, and each tick's sound cues for each of the viewer's sounds, `SOUNDS`: each console's and each side's own
+//! effects); each sound plays those cues on one of its own (`ConsoleSound::play`, made and never heard, so that the
+//! states kept hold it) and puts itself into the part's states; the last sends the parts on, whole
+//! (`BattlePart::into_part`). The viewer watched takes them in each frame (`Viewer::take_index`),
 //! and its index, the bar's fill and the edge no seek goes past go on with them. The replay plays the same anywhere,
 //! so the states are the ones the viewer watched would make itself (docs/frontend.md §8, "Seeking").
 //!
@@ -58,15 +59,19 @@ impl Indexing {
         // (The battle's thread plays it silent: the sound is the other threads'.)
         game.sound = None;
         let started = match sounds {
-            Some([left, right]) => {
-                let (to_left, left_gets) = mpsc::sync_channel(AHEAD);
-                let (to_right, right_gets) = mpsc::sync_channel(AHEAD);
+            Some(sounds) => {
                 let doing = format!("indexing the sound of {}", path.display());
-                let also = doing.clone();
-                // (The last first: where one doesn't start, those started have no thread before them, and end.)
-                nettai_platform::thread::spawn("index sound 2", move || sound(right, right_gets, &doing, |part| send.send(part.into_part()).is_ok()))
-                    .and_then(|()| nettai_platform::thread::spawn("index sound 1", move || sound(left, left_gets, &also, |part| to_right.send(part).is_ok())))
-                    .and_then(|()| nettai_platform::thread::spawn("index", move || battle(game, path, |part| to_left.send(part).is_ok())))
+                // (Each sound's thread hands its parts to the next's, the last sends them on whole. The last first:
+                // where one doesn't start, those started have no thread before them, and end.)
+                let mut next: Box<dyn FnMut(BattlePart) -> bool + Send> = Box::new(move |part| send.send(part.into_part()).is_ok());
+                let mut started = Ok(());
+                for (k, console) in sounds.into_iter().enumerate().rev() {
+                    let (to, gets) = mpsc::sync_channel(AHEAD);
+                    let on = std::mem::replace(&mut next, Box::new(move |part| to.send(part).is_ok()));
+                    let doing = doing.clone();
+                    started = started.and_then(|()| nettai_platform::thread::spawn(&format!("index sound {}", k + 1), move || sound(console, gets, &doing, on)));
+                }
+                started.and_then(|()| nettai_platform::thread::spawn("index", move || battle(game, path, next)))
             }
             None => nettai_platform::thread::spawn("index", move || battle(game, path, |part| send.send(part.into_part()).is_ok())),
         };

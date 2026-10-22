@@ -2,8 +2,8 @@
 //! The pieces:
 //!
 //! - The playing: a replay through a [`Viewer`], the whole of it or a part (a round, a range of ticks), from either
-//!   console or both side by side ([`Sides`]), the picture at a whole multiple of the frame's 240x160, a frame and
-//!   its sound at a time.
+//!   console, both on one screen, or both side by side ([`Sides`]), the picture at a whole multiple of the frame's
+//!   240x160, a frame and its sound at a time.
 //! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (written the playing as a NUT stream of raw
 //!   frames and PCM sound, which it encodes and says the packets of back; its `write_nut` saves that stream
 //!   itself), the browser's own in a browser (WebCodecs). Either makes the picture's H.264 and a sound track's AAC
@@ -28,7 +28,9 @@
 //!
 //! **Its tracks and chapters.** The sound is a track a console shown: the
 //! console's own, as [`Viewer::take_samples_of`] gives it, titled with its
-//! player's name ([`Titles`]); the first is the default. Each round is a
+//! player's name ([`Titles`]); the first is the default. Both consoles on
+//! one screen are one track, both consoles' sound as the viewer shown so
+//! plays it ([`Viewer::take_samples`]), titled with both names. Each round is a
 //! chapter, titled in the host's words, from the frame its picture begins
 //! on ([`chapters`]). They are said in the stream's info packets
 //! ([`Info`]), and the MP4's ([`fmp4`]).
@@ -151,6 +153,12 @@ pub enum Sides {
     /// The console the viewer shows, and its sound.
     #[default]
     One,
+    /// Both consoles on one screen (`Viewer::set_both`): the field as the
+    /// console the viewer shows draws it, at the left, each player's own
+    /// pieces on its own side; and one sound track, both consoles' (the
+    /// left console's sound with the right side's own effects over it, as
+    /// the viewer shown so plays it).
+    Both,
     /// Both consoles side by side in a picture twice as wide: the one the
     /// viewer shows at the left, the other at the right, each as a viewer
     /// shown from its side presents it at the tick (one simulation: the
@@ -163,15 +171,15 @@ pub enum Sides {
     /// end the winner's music over the loser's; apart, what only one hears
     /// (its own charge, its own navi's hit) is in its own track. (A width
     /// twice an even one is even: nothing changes for 4:2:0, `mp4`.)
-    Both,
+    SideBySide,
 }
 
 impl Sides {
-    /// The consoles side by side.
+    /// The pictures side by side, and the sound tracks.
     pub fn count(self) -> usize {
         match self {
-            Sides::One => 1,
-            Sides::Both => 2,
+            Sides::One | Sides::Both => 1,
+            Sides::SideBySide => 2,
         }
     }
 }
@@ -209,6 +217,12 @@ impl Titles {
     pub fn round(&self, round: u32) -> String {
         let given = (round as usize).checked_sub(1).and_then(|i| self.rounds.get(i)).filter(|t| !t.trim().is_empty());
         given.cloned().unwrap_or_else(|| format!("Round {round}"))
+    }
+
+    /// The track of both consoles' sound on one screen, `left`'s at the left:
+    /// both players' tracks' titles.
+    pub fn both(&self, left: u8, info: &ReplayInfo) -> String {
+        format!("{} & {}", self.side(left, info), self.side(left ^ 1, info))
     }
 
     /// The track of `side`'s sound, in a replay that says `info` of itself.
@@ -357,6 +371,7 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
     if let Some(view) = view {
         viewer.set_view(view);
     }
+    viewer.set_both(sides == Sides::Both);
     let rounds = viewer.rounds().len() as u32;
     let mut at = Progress { written: 0, of: ticks.end - ticks.start, round: viewer.round_at(ticks.start), rounds };
     let mut tell = |at: Progress| if progress(at).is_break() { Err(Error::Canceled) } else { Ok(()) };
@@ -381,10 +396,11 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
     let shown = [viewer.view(), viewer.view() ^ 1];
     let shown = &shown[..sides.count()];
     let audio = viewer.has_sound().then_some(Audio { sample_rate: nettai_audio::SAMPLE_RATE, tracks: shown.len() });
-    let info = Info {
-        titles: if audio.is_some() { shown.iter().map(|&side| titles.side(side, viewer.info())).collect() } else { Vec::new() },
-        chapters: chapters(viewer.rounds(), &ticks, titles),
+    let track_titles = match sides {
+        Sides::Both => vec![titles.both(viewer.view(), viewer.info())],
+        _ => shown.iter().map(|&side| titles.side(side, viewer.info())).collect(),
     };
+    let info = Info { titles: if audio.is_some() { track_titles } else { Vec::new() }, chapters: chapters(viewer.rounds(), &ticks, titles) };
     let mut stream = open(video, audio, &info)?;
     // (Each tick played and its frame drawn here, in order; the picture at the video's size made on the
     // presenters' threads, a few frames under way at once; written here in order: `presenters`.)
@@ -404,15 +420,26 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
         if !viewer.step_forward() {
             return Err(stopped(viewer));
         }
-        let frames = shown.iter().map(|&side| viewer.frame_view(side)).collect();
-        let sound = shown
-            .iter()
-            .map(|&side| {
+        // (Each console's own picture and sound; both on one screen, the viewer's, shown so.)
+        let (frames, sound) = match sides {
+            Sides::Both => {
                 let mut heard = Vec::new();
-                viewer.take_samples_of(side, &mut heard);
-                heard
-            })
-            .collect();
+                viewer.take_samples(&mut heard);
+                (vec![viewer.frame()], vec![heard])
+            }
+            _ => {
+                let frames = shown.iter().map(|&side| viewer.frame_view(side)).collect();
+                let sound = shown
+                    .iter()
+                    .map(|&side| {
+                        let mut heard = Vec::new();
+                        viewer.take_samples_of(side, &mut heard);
+                        heard
+                    })
+                    .collect();
+                (frames, sound)
+            }
+        };
         presenters.send(frames, sound);
         if presenters.under_way() >= presenters.ahead() {
             write(&mut presenters, &mut rounds, &mut stream, &mut at)?;

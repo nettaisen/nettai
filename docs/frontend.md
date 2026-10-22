@@ -1505,6 +1505,17 @@ for both: `seat::Shows`):
 - A chatbox the custom screen runs spans the screen: the left player's, else
   the right's, as its console draws it.
 
+A replay's viewer shows it so with `Viewer::set_both` (the app's PLAYER
+menu's Both; `nettai-tool --side both`; a video's `Sides::Both`), and it is
+heard as one sound: the left console's, its music and all, with the right
+side's own effects over it, the ones the right console plays that the left
+doesn't on that tick (its charge, the hits it hears), each effect once
+(the user's "music follows the left console"). Each side's own effects play
+on a sound of their own (`viewer::SOUNDS`: each console's and each side's
+own effects), and all four run every tick and are kept with each state, so
+that a change into or out of Both, of the side at the left, or a seek hears
+what playing straight so would.
+
 ### What the engine gives the frontend
 
 Presentation outputs: the simulation reads none of them (`digest.rs` lists
@@ -2678,7 +2689,7 @@ out)`, `set_language`), and has a transport:
 | `result()`, `stopped()`, `diverged()` | the set's result for the console shown (at the end of a whole set), why the engine stopped short of the end, the first difference from the recording |
 | `index(ticks)`, `indexed()` | play ahead without moving (below) |
 | `index_part(ticks)`, `take_index(part)` | the index made by another viewer of the replay, on a thread of its own, and taken in (below) |
-| `index_battle(ticks)`, `ConsoleSound` | the same made on three threads: the battle by a silent viewer, each console's sound beside it (below) |
+| `index_battle(ticks)`, `ConsoleSound` | the same made on threads: the battle by a silent viewer, each of its sounds beside it (below) |
 
 **A seek lands in the state straight playback reaches**, all of it: the
 battle (its digest is straight playback's), what the drawing follows over
@@ -2736,30 +2747,32 @@ viewer that made them keeps none. Checked by
 against a viewer that indexed itself, and the seeks after, sound and all,
 against straight playback).
 
-**On three threads** (the user: "the preload still seems slower than it
+**On threads** (the user: "the preload still seems slower than it
 should be?"; approving "run each player's sound on its own thread beside
-the game's thread"). Half of a tick or more is the two consoles' sound, and
-a console's sound takes nothing from the battle but the tick's cues: what a
-viewer's own sound is given each tick is `sound_cues_for(side)` of the
-battle that ticked (the round that ended, on a tick that ended one), then
-its frame runs (`BattleAudio::handle`, `tick`). Nothing else touches it as
+the game's thread"). Half of a tick or more is the sound, and a sound takes
+nothing from the battle but the tick's cues: what each of a viewer's sounds
+(`SOUNDS`: each console's, and each side's own effects, the ones its
+console plays that the other's doesn't that tick, which a screen of both
+consoles adds to the left console's sound: "Both on one screen", §3) is
+given each tick comes of `sound_cues_for(side)` of the battle that ticked
+(the round that ended, on a tick that ended one), then its frame runs
+(`BattleAudio::handle`, `tick`). Nothing else touches it as
 a replay plays: a round's start, the speed, the side shown and the HUDs
 don't, and the host's levels are put on a state as it is put back. So the
 sound is made beside the battle. A silent viewer (`Viewer::with` given no
 sound) plays the battle on one thread (`index_battle(ticks)`: a
 `BattlePart`, the states it would keep without their sound, each tick's cues
-for each console, and after which tick each state was kept); each console's
-sound, as a viewer opened on the game has it at the start
-(`ConsoleSound::of(&game)`, or `ConsoleSound::both(audio)` as `Viewer::with`
-is given it), plays the part's cues for its console on a thread of its own,
-tick by tick, and puts a copy of itself into the part at each state
-(`ConsoleSound::play(&mut part)`, the parts in order); once both have,
-`part.into_part()` is the `IndexPart` a viewer making its own sound makes,
-for `take_index` as before. The parts go from one thread to the next as
-they are made, so the three run at once, and the index goes as fast as the
-slowest of them: the battle's share alone (a silent viewer's) on EXE5's
+for each sound, and after which tick each state was kept); each sound, as a
+viewer opened on the game has it at the start (`ConsoleSound::of(&game)`,
+or `ConsoleSound::all(audio)` as `Viewer::with` is given it), plays the
+part's cues for it on a thread of its own, tick by tick, and puts a copy of
+itself into the part at each state (`ConsoleSound::play(&mut part)`, the
+parts in order); once all have, `part.into_part()` is the `IndexPart` a
+viewer making its own sound makes, for `take_index` as before. The parts go
+from one thread to the next as they are made, so the threads run at once,
+and the index goes as fast as the slowest of them: the battle's share alone (a silent viewer's) on EXE5's
 packs, a console's sound on EXE6's, whose battle is lighter. Checked by
-`an_index_made_on_three_threads_is_the_one_made_on_one` (the threads wired as
+`an_index_made_on_threads_is_the_one_made_on_one` (the threads wired as
 a host wires them, from the other side and in parts of another length: each
 state's ticks, battle, HUDs and session against `index_part`'s, each
 console's sound by the samples it makes over the two seconds after, sample
@@ -2792,7 +2805,9 @@ mashing):
   of the wall, 10,190 ticks a second, as fast as the viewer indexed itself
   in slices (0.88 s of processor time, 98 µs a tick): a part costs nothing
   to send or take in.
-- **Indexing on three threads** (2026-10-22, in a release build, the
+- **Indexing on three threads** (2026-10-22, when the viewer had two
+  sounds, each console's; it has four since, each side's own effects
+  beside them, each on a thread of its own: §3, "Both on one screen"; in a release build, the
   wall's time, the machine busy with other builds): on the user's own
   19:42 EXE5 replay (70,623 ticks, three rounds; `examples/index.rs`),
   3.8 to 4.0 s, 54 to 57 µs a tick, about 18,000 ticks a second, where one
@@ -2905,12 +2920,17 @@ made, as a viewer playing the part straight presents and plays them
 (`Viewer::present`, text and all; `Viewer::take_samples`). The part is the
 whole replay, a round (`Part::Round(n)`) or a range of ticks
 (`Part::Ticks(a..b)`: what playing from position `a` to position `b` shows),
-from either console (`Options::view`), or from both side by side
-(`Options::sides`: `Sides::Both`, a picture twice as wide, 480·N by
+from either console (`Options::view`), from both on one screen
+(`Options::sides`: `Sides::Both`, the frame's size, as a viewer shown so
+presents it: §3, "Both on one screen"; one sound track, both consoles'
+sound as that viewer plays it, the left console's with the right side's own
+effects over it, titled with both players: nettai-video's test
+`both_on_one_screen_is_the_viewers_both`), or from both side by side
+(`Sides::SideBySide`, a picture twice as wide, 480·N by
 160·N, the view's console at the left and the other's at the right, each
 half byte for byte that console's own video, from one playing of the
 replay: `Viewer::present_view`; nettai-video's test
-`both_sides_are_each_sides_video_side_by_side`). With both, each console's
+`both_sides_are_each_sides_video_side_by_side`). Side by side, each console's
 sound is a track of its own, the left one's first and the right one's
 second, each sample for sample what that console played
 (`Viewer::take_samples_of`: both consoles' sounds run every tick, so one

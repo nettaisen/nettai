@@ -280,7 +280,7 @@ fn run() -> Result<String, String> {
 
     // The same made on threads of their own, as a host makes it: a second
     // viewer of the replay, silent and from the other side, plays the
-    // battle through on one (`Viewer::index_battle`), each console's sound
+    // battle through on one (`Viewer::index_battle`), each of the viewer's sounds
     // plays the cues it hands over on one of its own (`ConsoleSound`), and
     // the states made so are taken in here as they come
     // (`Viewer::take_index`). Its time is the wall's, the threads' alone
@@ -288,27 +288,27 @@ fn run() -> Result<String, String> {
     // that took them in.
     let mut v = Viewer::open(&game, &replay, Some(0)).map_err(|e| e.to_string())?;
     let (send, parts) = std::sync::mpsc::channel::<IndexPart>();
-    let (to_left, left_gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
-    let (to_right, right_gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
-    let [mut left, mut right] = ConsoleSound::of(&game).ok_or("the game's sound isn't loaded")?;
+    let sounds = ConsoleSound::of(&game).ok_or("the game's sound isn't loaded")?;
     let (on, of) = (&game, &replay);
     let threaded = std::thread::scope(|scope| {
-        scope.spawn(move || {
-            for mut part in right_gets {
-                right.play(&mut part);
-                if send.send(part.into_part()).is_err() {
-                    return;
+        // (Each sound's thread hands its parts to the next's; the last sends them on whole.)
+        let (to_left, mut gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
+        let count = sounds.len();
+        for (k, mut sound) in sounds.into_iter().enumerate() {
+            let (to_next, next_gets) = std::sync::mpsc::sync_channel::<BattlePart>(4);
+            let from = std::mem::replace(&mut gets, next_gets);
+            let send = send.clone();
+            scope.spawn(move || {
+                for mut part in from {
+                    sound.play(&mut part);
+                    let sent = if k + 1 == count { send.send(part.into_part()).is_ok() } else { to_next.send(part).is_ok() };
+                    if !sent {
+                        return;
+                    }
                 }
-            }
-        });
-        scope.spawn(move || {
-            for mut part in left_gets {
-                left.play(&mut part);
-                if to_right.send(part).is_err() {
-                    return;
-                }
-            }
-        });
+            });
+        }
+        drop((send, gets));
         let thread = scope.spawn(move || -> Result<std::time::Instant, String> {
             let mut other = Viewer::with(&on.game.content, of, Some(1), on.renderer(), None, None).map_err(|e| e.to_string())?;
             let began = std::time::Instant::now();
@@ -327,11 +327,11 @@ fn run() -> Result<String, String> {
         Ok::<_, String>(began.elapsed())
     })?;
     if v.indexed() != length || v.kept() != kept {
-        return Err(format!("the index made on three threads reached {} of {length} ticks with {} states, not {kept}", v.indexed(), v.kept()));
+        return Err(format!("the index made on threads reached {} of {length} ticks with {} states, not {kept}", v.indexed(), v.kept()));
     }
-    same(&mut v, &sides[0], &mut buffer, "after taking in an index made on three threads")?;
+    same(&mut v, &sides[0], &mut buffer, "after taking in an index made on threads")?;
 
-    // What a kept state takes: a battle's snapshot, each console's sound
+    // What a kept state takes: a battle's snapshot, each of the viewer's sounds
     // and each console's HUD state (which is all in place).
     let held = || HELD.load(Ordering::Relaxed);
     let before = held();
@@ -346,7 +346,7 @@ fn run() -> Result<String, String> {
         bytes
     });
     drop(snapshot);
-    let state_bytes = battle_bytes + 2 * sound_bytes + 2 * std::mem::size_of::<nettai_render::hud::HudState>();
+    let state_bytes = battle_bytes + nettai_frontend::viewer::SOUNDS * sound_bytes + 2 * std::mem::size_of::<nettai_render::hud::HudState>();
 
     // Seeks of every kind, each checked.
     let mut random = Random(seed as u64);
@@ -402,10 +402,10 @@ fn run() -> Result<String, String> {
         "{name} seed {seed}: a set of {length} ticks ({:.0} s, {} rounds), kept{}\n\
          every seek lands where straight playback is: {seeks} seeks and {steps} frames back, the battle's digest, the picture at \
          {}x{} with its text, the HUD's state and the sound of the ticks after, from both consoles ({differ} of their pictures differ)\n\
-         states kept: {kept} (one every {KEYFRAME_EVERY} ticks and at each round's start), {:.1} MB ({:.0} KB each: a battle's snapshot {:.0} KB, each console's sound {:.0} KB)\n\
+         states kept: {kept} (one every {KEYFRAME_EVERY} ticks and at each round's start), {:.1} MB ({:.0} KB each: a battle's snapshot {:.0} KB, a sound {:.0} KB)\n\
          indexing the whole replay, in slices of {SLICE} ticks: {indexing:.2?} of processor time ({:.1} us a tick; {:.2} s for five minutes); \
          playing it straight with its picture: {played:.2?}\n\
-         indexing it on three threads (the battle; each console's sound), the states taken in here: {threaded:.2?} of the wall ({:.0} ticks a second; {:.2} s for five minutes)\n\
+         indexing it on threads (the battle; each of the viewer's sounds), the states taken in here: {threaded:.2?} of the wall ({:.0} ticks a second; {:.2} s for five minutes)\n\
          a first seek to the end, nothing indexed: {first_far:.2?}; without sound, {silent_far:.2?} ({:.1} us a tick)\n\
          a seek in the indexed replay: {median:.2?} (the median; {worst:.2?} at worst); a frame back: {step:.2?} (the median; {worst_step:.2?} at worst)",
         seconds,

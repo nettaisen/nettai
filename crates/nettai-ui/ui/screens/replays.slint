@@ -142,7 +142,7 @@ export global ReplaysView {
     in property <bool> exporting;
     in property <string> export-size;
     in property <int> export-view;
-    // 0 the console of the view alone, 1 both side by side.
+    // 0 the console of the view alone, 1 both on one screen, 2 both side by side.
     in property <int> export-sides;
     // The range as the Range's list says it (with its length), and its start and end as times.
     in property <string> export-part;
@@ -161,6 +161,8 @@ export global ReplaysView {
     out property <[string]> months: [@tr("Jan"), @tr("Feb"), @tr("Mar"), @tr("Apr"), @tr("May"), @tr("Jun"), @tr("Jul"), @tr("Aug"), @tr("Sep"), @tr("Oct"), @tr("Nov"), @tr("Dec")];
     out property <string> p1: @tr("P1");
     out property <string> p2: @tr("P2");
+    // (The side menu's third: both players on one screen, the side shown's at the left.)
+    out property <string> both: @tr("sides" => "Both");
     // Over a build's player's name: the recorder's, the other's.
     out property <string> you: I18n.upper(@tr("You"));
     out property <string> opponent: I18n.upper(@tr("Opponent"));
@@ -189,7 +191,7 @@ export global ReplaysView {
     out property <string> inputs-word: I18n.upper(@tr("Input display"));
     out property <string> inset-word: I18n.upper(@tr("Other side's picture"));
     out property <string> speed-word: I18n.upper(@tr("Playback speed"));
-    // (The ⋯ menu's row for the side shown, P1 or P2 at its right: it opens the two in its place.)
+    // (The ⋯ menu's row for the side shown, P1, P2 or Both at its right: it opens the three in its place.)
     out property <string> side-word: I18n.upper(@tr("Player"));
     pure public function replay-count(n: int) -> string {
         return @tr("{n} replay" | "{n} replays" % n);
@@ -1449,7 +1451,8 @@ component ExportOptions inherits Rectangle {
         enabled: !root.busy;
     }
 
-    // (Both: the view's console at the left, heard first, and the other's at the right.)
+    // (Both: on one screen, the view's console's field, its player's pieces at the left; side by side: the view's
+    // console at the left, heard first, and the other's at the right.)
     sides-label := Value {
         x: view.x + view.width + 24px;
         y: view-label.y;
@@ -1464,6 +1467,7 @@ component ExportOptions inherits Rectangle {
         nav: "export.sides";
         first: @tr("sides" => "One");
         second: @tr("sides" => "Both");
+        third: @tr("sides" => "Side by side");
         chosen: ReplaysView.export-sides;
         enabled: !root.busy;
     }

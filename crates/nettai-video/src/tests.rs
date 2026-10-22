@@ -123,7 +123,7 @@ fn both_sides_are_each_sides_video_side_by_side() {
     let (replay, _) = recorded(&content, "exe6", 7);
     let part = Part::Ticks(250..400);
     for (left, scale) in [(0u8, 2usize), (1, 1)] {
-        let both = write(&mut viewer(&content, &replay, left), &options(scale as u32, Sides::Both, &part), Vec::new(), &mut go_on).unwrap();
+        let both = write(&mut viewer(&content, &replay, left), &options(scale as u32, Sides::SideBySide, &part), Vec::new(), &mut go_on).unwrap();
         let both = reading::read(&both).unwrap();
         assert_eq!(both.streams[0].size, (480 * scale as u64, 160 * scale as u64));
         assert_eq!((both.streams.len(), both.streams[1].class, both.streams[2].class), (3, 1, 1), "left {left}: a picture and two tracks");
@@ -142,6 +142,43 @@ fn both_sides_are_each_sides_video_side_by_side() {
         assert!(track(&both, 2) == other_sound, "left {left}: the second track isn't the right console's");
         assert!(own_sound != other_sound, "left {left}: the two consoles' sounds are one");
     }
+}
+
+/// Both consoles on one screen: a picture the frame's width, each what a
+/// viewer shown so presents at the tick, and one sound track, both
+/// consoles' as that viewer plays it (titled with both players), which
+/// isn't the left console's alone.
+#[test]
+fn both_on_one_screen_is_the_viewers_both() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, _) = recorded(&content, "exe6", 7);
+    let part = Part::Ticks(250..400);
+    let left = 1u8;
+    let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
+    let options = Options { titles, ..options(2, Sides::Both, &part) };
+    let one = reading::read(&write(&mut viewer(&content, &replay, left), &options, Vec::new(), &mut go_on).unwrap()).unwrap();
+    assert_eq!(one.streams[0].size, (480, 320));
+    assert_eq!(one.streams.len(), 2, "a picture and one track");
+    let named = one.info.iter().find(|i| i.stream_id_plus1 == 2).map(|i| i.fields[0].1.clone());
+    assert_eq!(named.as_deref(), Some("Chaud & Lan"));
+    // What a viewer shown so presents and plays, tick by tick.
+    let mut v = viewer(&content, &replay, left);
+    v.set_both(true);
+    v.seek(250);
+    let (w, h) = (WIDTH * 2, HEIGHT * 2);
+    let mut buffer = vec![0u32; w * h];
+    let (pictures, sound) = pictures_and_sound(&one);
+    let mut heard = Vec::new();
+    for picture in &pictures {
+        assert!(v.step_forward());
+        v.present(&mut buffer, w, h);
+        let rgb: Vec<u8> = buffer.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
+        assert!(rgb == *picture, "the picture of tick {}", v.position());
+        v.take_samples(&mut heard);
+    }
+    assert!(sound == heard, "the track isn't both consoles' sound");
+    let (_, own) = pictures_and_sound(&reading::read(&exported(&content, &replay, left, 2, &part)).unwrap());
+    assert!(sound != own, "both consoles' sound is the left console's alone");
 }
 
 /// A video's chapters: a round each, from the frame its picture begins on
@@ -190,7 +227,7 @@ fn the_stream_says_its_tracks_and_chapters() {
     let titles = Titles { rounds: vec!["ラウンド 1".into(), "ラウンド 2".into()], sides: ["Lan".into(), String::new()] };
     let second = replay.round_starts()[1];
     let part = Part::Ticks(second - 20..second + 10);
-    let options = Options { titles: titles.clone(), ..options(1, Sides::Both, &part) };
+    let options = Options { titles: titles.clone(), ..options(1, Sides::SideBySide, &part) };
     let file = reading::read(&write(&mut viewer(&content, &replay, 1), &options, Vec::new(), &mut go_on).unwrap()).unwrap();
     let named = |stream: u64| file.info.iter().find(|i| i.stream_id_plus1 == stream + 1).map(|i| i.fields.clone()).unwrap();
     let field = |name: &str, value: &str| (name.to_string(), value.to_string());
