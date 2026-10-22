@@ -552,6 +552,8 @@ pub struct CustomShapesDoc {
     pub empty_icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub element_frame: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cursor: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -639,6 +641,7 @@ pub fn write_custom(files: &mut Files, s: &CustomShapes) -> CustomShapesDoc {
         column_cells: set(&mut w, "column-cell", &s.column_cells),
         empty_icon: s.empty_icon.as_ref().map(|d| w("empty-icon", d)),
         slot_code: s.slot_code.as_ref().map(|d| w("slot-code", d)),
+        element_frame: s.element_frame.as_ref().map(|d| w("element-frame", d)),
         cursor: set(&mut w, "cursor", &s.cursor),
         form_list_cursor: set(&mut w, "form-list-cursor", &s.form_list_cursor),
         name_bar: set(&mut w, "name-bar", &s.name_bar),
@@ -660,6 +663,7 @@ pub fn read_custom(dir: &Path, prefix: &str, d: &CustomShapesDoc, report: &mut R
         column_cells: d.column_cells.iter().map(|f| r(f)).collect(),
         empty_icon: d.empty_icon.as_deref().map(&mut r),
         slot_code: d.slot_code.as_deref().map(&mut r),
+        element_frame: d.element_frame.as_deref().map(&mut r),
         cursor: d.cursor.iter().map(|f| r(f)).collect(),
         form_list_cursor: d.form_list_cursor.iter().map(|f| r(f)).collect(),
         name_bar: d.name_bar.iter().map(|f| r(f)).collect(),

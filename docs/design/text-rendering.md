@@ -1882,7 +1882,7 @@ What stands in for what:
   the original just have a light chamfer").
 - **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
   opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the Regular chip's
-  frame, the empty slots' boxes
+  frame, the element icons' frame (rounded, its symbols drawn over it as their pictures: below), the empty slots' boxes
   (square, as every box a chip's icon goes in) and the slots' code plates (rounded, the empty ones' too), the enemy
   names' bar, the Cross names' bar, OK (in the window's drawing), the buttons by set (`button-NAME-K`: SHUFFLE in all
   three games, EXE5's soul and arm change buttons, EXE4's soul button), and the chip window's panel for OK and the
@@ -1891,8 +1891,17 @@ What stands in for what:
 ### 13.3 Left as pictures
 
 By the user's word: TRASH CHUTE / DUST SHOOT and the Beast Out button (art and words), and the small icons (the
-element icons, the hidden chip's '?', the gauge's warning arrow; the chatbox's arrow at first, drawn since at the
-user's word, "the chatbox arrow should also be vectorized"). Pictures rather than frames:
+element icons' symbols, the hidden chip's '?', the gauge's warning arrow; the chatbox's arrow at first, drawn since at
+the user's word, "the chatbox arrow should also be vectorized"). The element icons' frame is a drawing, its symbols
+pictures over it (the user: "can you also redraw the element icon frame? then you can pull the actual element images
+out of the frame and render them on top. the element icon frame actually has rounded edges and is not chamfered"):
+the frame round, a light ring a pixel wide on the dark ground, its outer and inner edges round the same middle
+(radii 2.5 and 1.5, the art stepping the outer corner a pixel and shading the inner one half); extraction takes the
+icons apart (the frame each pixel's index most icons share, the ground the frame's most common; a symbol its icon's
+pixels on the ground that aren't the ground's, so the corners an icon draws square or shades otherwise take the
+frame's), the pack keeping the symbols as `element-symbols.png` beside the whole icons; the enhanced mode lays the
+symbol's tiles in the chip window (EXE4: the element sprite's) with the frame's drawing under it, kept off the
+symbol's pixels (`Drawn::off`). Pictures rather than frames:
 chip art and chip icons, faces and the emotion window's per-face boxes (EXE5's and EXE4's patterned boxes are each
 face's own art), portraits, the navis' emblems (sprites), EXE4's orb, the sprite at the EXE6 window's bottom right,
 and the soul and arm change pictures in the chip window. The Program Advance logos (`BannerLayout::logo`: a banner
