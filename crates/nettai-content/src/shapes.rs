@@ -307,10 +307,18 @@ pub fn labels(d: &Drawing) -> Vec<Option<(u8, u8)>> {
         .collect()
 }
 
-/// Which of `d`'s pixels its shapes cover at their centers (row by row,
-/// its size).
+/// Which of `d`'s pixels its shapes cover wholly (row by row, its size): a
+/// pixel an edge crosses is left out, so a tile pixel drawn under the shapes
+/// there can't show its square past their cut or curve (the user, of a
+/// chatbox tab's light cut over the art's one-pixel step: "why does it look
+/// like there's such a weird cut out here?").
 pub fn coverage(d: &Drawing) -> Vec<bool> {
-    labels(d).into_iter().map(|l| l.is_some()).collect()
+    let (w, h) = (d.size[0] as u32, d.size[1] as u32);
+    let Some(mut pixmap) = tiny_skia::Pixmap::new(w, h) else { return Vec::new() };
+    if paint(d, &|_, _| [0, 0, 0], tiny_skia::Transform::identity(), false, &mut pixmap.as_mut()).is_err() {
+        return vec![false; (w * h) as usize];
+    }
+    pixmap.pixels().iter().map(|px| px.alpha() == 255).collect()
 }
 
 /// A `text` element's words: `data-words` the string's key, `data-box` the
@@ -690,6 +698,18 @@ mod tests {
         assert_eq!(l[4 * 16 + 8], Some((9, 3)), "the circle in its group's row");
         assert_eq!(l[4 * 16 + 4], Some((0, 4)), "the outline");
         assert!(coverage(&d).iter().all(|&c| c));
+    }
+
+    /// Only the pixels a shape covers wholly count as covered: a pixel a cut
+    /// crosses doesn't, even with its center inside.
+    #[test]
+    fn coverage_is_whole_pixels() {
+        let d = from_svg(r##"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8"><path d="M0 1.5 L1.5 0 L8 0 L8 8 L0 8 Z" data-color="1"/></svg>"##).unwrap();
+        let c = coverage(&d);
+        assert!(!c[0], "the corner, outside the cut");
+        assert!(!c[1] && !c[8], "the cut crosses these, their centers inside");
+        assert!(c[2] && c[8 + 1] && c[2 * 8], "whole pixels past the cut");
+        assert!(c[8 * 8 - 1]);
     }
 
     /// The viewing colors set in the file, each entry's in its row.
