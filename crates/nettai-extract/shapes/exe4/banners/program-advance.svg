@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
-<!-- The Program Advance banner's logo (EXE4, English): a blue plate, square, its words on it in white, drawn as text, a green arrowhead either side pointing out; symmetric about the plate's middle. -->
+<!-- The Program Advance banner's logo (EXE4, English): its word in white, outlined in blue, drawn as text, a green arrowhead either side pointing out; symmetric about the word's middle. -->
 <!-- The green arrowheads either side, pointing out: nested, a bright edge, darker bands inside, a white core, each band's edges sloping 2:1 and parallel, cut upright where the head meets the plate; the right one the left one mirrored -->
 <path d="M15 2 L17 2 L17 13 L15 13 L4 7.5 Z" fill="#00ff00" data-color="12"/>
 <path d="M17 3.5 L17 11.5 L9 7.5 Z" fill="#00ff00" data-color="11"/>
@@ -9,8 +9,6 @@
 <path d="M77 3.5 L77 11.5 L85 7.5 Z" fill="#00ff00" data-color="11"/>
 <path d="M77 4.5 L77 10.5 L83 7.5 Z" fill="#00ff00" data-color="10"/>
 <path d="M77 6 L77 9 L80 7.5 Z" fill="#f7ffff" data-color="1"/>
-<!-- The blue plate, square -->
-<rect x="19" y="0" width="56" height="15" fill="#4a5aad" data-color="4"/>
-<!-- The words, white -->
-<text data-words="logo.program-advance" data-box="20 2 54 11" fill="#f7ffff" data-color="1" x="20" y="13" font-size="14.667" textLength="54">ADVANCE</text>
+<!-- The words, white, outlined in blue two pixels wide, straight on the logo (no plate: the blue round them is each letter's outline, the user: "it should be outlined INSTEAD OF on its blue box") -->
+<text data-words="logo.program-advance" data-box="21 2 53 11" fill="#f7ffff" data-color="1" data-rim="4" data-rim-width="2" data-font="lettering" x="21" y="13" font-size="14.667" textLength="53">ADVANCE</text>
 </svg>
