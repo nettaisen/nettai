@@ -8,9 +8,10 @@
 //!   frames and PCM sound, which it encodes and says the packets of back; its `write_nut` saves that stream
 //!   itself), the browser's own in a browser (WebCodecs). Either makes the picture's H.264 and a sound track's AAC
 //!   (or the browser's Opus) a console shown.
-//! - [`fmp4`]: the MP4 of what the encoder makes, fragmented, written to any `std::io::Write` a fragment at a time
-//!   as it is made (a file; in a browser, the file being saved): its tracks, its sound tracks' titles and its
-//!   rounds as chapters.
+//! - [`mp4`]: the MP4 of what the encoder makes, its samples written to any `std::io::Write` a chunk at a time as
+//!   they are made (a file; in a browser, the file being made in the page's storage) and its head, the index of
+//!   them, made last, for the host to put before them: its tracks, its sound tracks' titles and its rounds as
+//!   chapters. No fragmented MP4: one every player and editor takes, that tells its length and seeks at once.
 //! - [`export`] and [`write_mp4`]: the three together, frames to the encoder to the MP4.
 //! - `presenters`: the frames' pictures made at the video's size on threads of their own, beside the playing.
 //!
@@ -33,7 +34,7 @@
 //! plays it ([`Viewer::take_samples`]), titled with both names. Each round is a
 //! chapter, titled in the host's words, from the frame its picture begins
 //! on ([`chapters`]). They are said in the stream's info packets
-//! ([`Info`]), and the MP4's ([`fmp4`]).
+//! ([`Info`]), and the MP4's ([`mp4`]).
 //!
 //! **The picture is scaled here**, by whole multiples and the nearest
 //! pixel, not left at 240x160 for ffmpeg: in the enhanced mode the
@@ -76,7 +77,8 @@
 //! ```
 
 pub mod encode;
-pub mod fmp4;
+pub mod mp4;
+pub use mp4::Made;
 mod presenters;
 
 // The platform's encoder, each with its `start`: ffmpeg on the desktop (and the NUT stream it is written), the
@@ -454,31 +456,32 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
 /// Write a replay as an MP4 to `to`, as it is made, on a loaded game (its graphics, its text as it was loaded, its
 /// sound if it was): [`write_mp4`], through a viewer of its own, on the thread it is called on (a host calls it on
 /// one that isn't its window's). The same on the desktop and in a browser.
-pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<W, Error> {
+pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
     write_mp4(&mut viewer, options, encoding, to, progress)
 }
 
 /// Write the replay `viewer` plays as an MP4 to `to`, as it is made: its frames and sound encoded by the
-/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser) and made a fragmented MP4 a
-/// fragment at a time ([`fmp4`]), its sound tracks titled and its rounds chapters. `to` is
-/// given back with the MP4 whole in it; canceled or failed, what was written is the caller's to let go.
-pub fn write_mp4<W: Write>(viewer: &mut Viewer, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<W, Error> {
+/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser) and their samples written a
+/// chunk at a time ([`mp4`]), its sound tracks titled and its rounds chapters. `to` is given back with every
+/// sample in it, and the head the file starts with, which goes before them ([`Made`]); canceled or failed, what
+/// was written is the caller's to let go.
+pub fn write_mp4<W: Write>(viewer: &mut Viewer, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
     play(viewer, options, progress, |video, audio, info| Mp4::start(video, audio, info, encoding, to))?.finish()
 }
 
 /// An MP4 being made: the encoder's frames in, what it makes muxed into the file as it comes.
 struct Mp4<W: Write> {
     encoder: Option<Box<dyn encode::Backend>>,
-    muxer: Option<fmp4::Muxer<W>>,
+    muxer: Option<mp4::Muxer<W>>,
 }
 
 impl<W: Write> Mp4<W> {
     fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding, to: W) -> Result<Mp4<W>, Error> {
         let encoder = platform::start(video, audio, info, encoding)?;
         let frame = video.frame_time.0 as f64 / video.frame_time.1 as f64;
-        let chapters = info.chapters.iter().map(|c| fmp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
-        Ok(Mp4 { encoder: Some(encoder), muxer: Some(fmp4::Muxer::new(to, info.titles.clone(), chapters)) })
+        let chapters = info.chapters.iter().map(|c| mp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
+        Ok(Mp4 { encoder: Some(encoder), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)) })
     }
 
     fn muxed(&mut self, events: Vec<encode::Event>) -> Result<(), Error> {
@@ -486,7 +489,7 @@ impl<W: Write> Mp4<W> {
         events.into_iter().try_for_each(|e| muxer.event(e))
     }
 
-    fn finish(mut self) -> Result<W, Error> {
+    fn finish(mut self) -> Result<Made<W>, Error> {
         let encoder = self.encoder.take().expect("finished once");
         let rest = encoder.finish()?;
         self.muxed(rest)?;

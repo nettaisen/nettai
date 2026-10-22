@@ -1,6 +1,6 @@
 //! The browser's encoder ([`crate::encode`]): WebCodecs, the browser's own H.264 for the picture, and AAC (where
 //! the browser has it, else Opus) for each sound track, a console shown. The MP4 is the same as the desktop's
-//! ([`crate::fmp4`]).
+//! ([`crate::mp4`]).
 //!
 //! [`Encoder`] is fed on a thread that may wait (a worker: never the page's main thread), a frame at a time. The
 //! encoding itself runs on a thread of its own, on its event loop, which is where WebCodecs answers: the frames go

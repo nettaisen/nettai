@@ -611,10 +611,24 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
     // (The chapters "Round N" and the tracks the players' names, in English.)
     let options = Options { scale, view: None, sides, part, titles: Titles::default() };
     let wrote = if let Some(to) = &args.mp4 {
-        // (Written as it is made; failed or canceled, removed.)
-        let made = std::fs::File::create(to).map_err(nettai_video::Error::Disk).and_then(|file| {
+        // (Its samples written as they are made, beside it; then the file, its head and they. Failed or canceled,
+        // nothing is left.)
+        let body = to.with_file_name(format!("{}.body.part", to.file_name().unwrap_or_default().to_string_lossy()));
+        let made = std::fs::File::create(&body).map_err(nettai_video::Error::Disk).and_then(|file| {
             nettai_video::write_mp4(&mut viewer, &options, &nettai_video::Encoding::default(), std::io::BufWriter::with_capacity(1 << 20, file), &mut progress)
         });
+        let made = made.and_then(|made| {
+            drop(made.body);
+            let whole = || -> std::io::Result<()> {
+                use std::io::Write;
+                let mut out = std::io::BufWriter::with_capacity(1 << 20, std::fs::File::create(to)?);
+                out.write_all(&made.head)?;
+                std::io::copy(&mut std::fs::File::open(&body)?, &mut out)?;
+                out.flush()
+            };
+            whole().map_err(nettai_video::Error::Disk)
+        });
+        let _ = std::fs::remove_file(&body);
         if made.is_err() {
             let _ = std::fs::remove_file(to);
         }

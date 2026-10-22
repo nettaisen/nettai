@@ -1,7 +1,8 @@
 //! Files and folders the player chooses: to open, where to save one, and files dropped on the page. On the desktop
 //! the system's dialogs (rfd); in the browser its file input, its folder dialog (`showDirectoryPicker`) and
-//! downloads. A browser's files have no path the app can read, so those chosen are read into the app's files
-//! (`fs`, the page's tree), each lot in a folder of its own, and the app is given their paths there.
+//! downloads (a file made as it is written, in the page's own storage, then handed over as one: [`Stream`]). A
+//! browser's files have no path the app can read, so those chosen are read into the app's files (`fs`, the page's
+//! tree), each lot in a folder of its own, and the app is given their paths there.
 //!
 //! A dialog answers through `done`: on the desktop before the call returns (the app's frames wait while it is
 //! up), in the browser later, on the page's event loop. What goes wrong is said in `log`'s warning.
@@ -57,27 +58,28 @@ pub fn save_path(filter: Filter, name: &str, near: Option<&Path>) -> Option<Path
 }
 
 /// A file to write as it is made (a video, as it is encoded): `done` hears it, or none if the player chose none.
-/// On the desktop the system's save dialog and the file; in the browser its save dialog (`showSaveFilePicker`, which
-/// a page may open only on a click or a key) and the file's writable stream, written as the bytes come, so nothing
-/// of it is kept in memory.
+/// On the desktop the system's save dialog and the file; in the browser no dialog: the file is made in the page's
+/// own storage, written as the bytes come, so nothing of it is kept in memory, and handed over as a download named
+/// `name` once whole (the browser's downloads say where it went).
 pub fn save_stream(filter: Filter, name: &str, done: impl FnOnce(Option<Stream>) + 'static) {
     #[cfg(not(target_arch = "wasm32"))]
     done(save_path(filter, name, None).and_then(file_stream));
     #[cfg(target_arch = "wasm32")]
-    web::save_stream(filter, name, Box::new(|chosen: std::io::Result<Option<Stream>>| done(chosen.ok().flatten())));
+    {
+        let _ = filter;
+        web::save_stream(name, Box::new(|made: std::io::Result<Option<Stream>>| done(made.ok().flatten())));
+    }
 }
 
 /// A file to write as it is made at `path`, the app's choice of place: on the desktop it is written there, no dialog
-/// asked; in the browser, which writes nowhere unasked, its save dialog asks, `path`'s name the one suggested.
-/// `done` hears it: none if the player chose none, an error if it couldn't be made.
+/// asked; in the browser, which writes nowhere unasked, it is made as [`save_stream`] makes one and handed over as
+/// a download named as `path`'s file. `done` hears it: an error if it couldn't be made.
 pub fn save_stream_to(filter: Filter, path: &Path, done: impl FnOnce(std::io::Result<Option<Stream>>) + 'static) {
+    let _ = filter;
     #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = filter;
-        done(Stream::at(path.to_path_buf()).map(Some));
-    }
+    done(Stream::at(path.to_path_buf()).map(Some));
     #[cfg(target_arch = "wasm32")]
-    web::save_stream(filter, &path.file_name().unwrap_or_default().to_string_lossy(), Box::new(done));
+    web::save_stream(&path.file_name().unwrap_or_default().to_string_lossy(), Box::new(done));
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -92,8 +94,8 @@ fn file_stream(path: PathBuf) -> Option<Stream> {
 }
 
 /// A file being written as it is made ([`save_stream`]), from any thread: what is written goes to it in order.
-/// [`Stream::finish`] ends it whole; dropped unfinished, or [`Stream::abort`]ed, it is let go (in the browser,
-/// nothing of it is kept).
+/// [`Stream::finish`] ends it whole, with what goes before it put first (a head made last: an MP4's index); dropped
+/// unfinished, or [`Stream::abort`]ed, it is let go (in the browser, nothing of it is handed over).
 pub struct Stream {
     shared: std::sync::Arc<Shared>,
     finished: bool,
@@ -109,10 +111,13 @@ struct State {
     /// Bytes waiting to be written (the browser's: its writes are its main thread's), and how many.
     queue: std::collections::VecDeque<Vec<u8>>,
     queued: usize,
-    /// The desktop's file.
+    /// The desktop's file: its place, and what is written, as `NAME.body.part` beside it (made whole as
+    /// `NAME.part`, its head first, which then takes the name).
     #[cfg(not(target_arch = "wasm32"))]
-    /// (Written as `NAME.part` beside its place, which takes the name once it is whole.)
     file: Option<(PathBuf, PathBuf, std::fs::File)>,
+    /// The browser's: what goes before what is written, once it is whole.
+    #[cfg(target_arch = "wasm32")]
+    head: Vec<u8>,
     ended: Option<Ending>,
     failed: Option<String>,
 }
@@ -124,17 +129,17 @@ enum Ending {
 }
 
 impl Stream {
-    /// The desktop's file at `path`: written beside it as `NAME.part`, which takes the name once it is whole (a
-    /// file there before stays till then), and is removed if it is let go.
+    /// The desktop's file at `path`: written beside it as `NAME.body.part`, put after its head as `NAME.part`
+    /// once it is whole, which then takes the name (a file there before stays till then); removed if it is let go.
     #[cfg(not(target_arch = "wasm32"))]
     fn at(path: PathBuf) -> std::io::Result<Stream> {
         if let Some(folder) = path.parent().filter(|f| !f.as_os_str().is_empty()) {
             std::fs::create_dir_all(folder)?;
         }
         let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        let part = path.with_file_name(format!("{name}.part"));
-        let file = std::fs::File::create(&part)?;
-        let state = State { file: Some((path, part, file)), ..State::default() };
+        let body = path.with_file_name(format!("{name}.body.part"));
+        let file = std::fs::File::create(&body)?;
+        let state = State { file: Some((path, body, file)), ..State::default() };
         Ok(Stream { shared: std::sync::Arc::new(Shared { name, state: std::sync::Mutex::new(state) }), finished: false })
     }
 
@@ -168,31 +173,62 @@ impl Stream {
         self.state().queued
     }
 
-    /// The file is whole: what waits is written, and it is closed.
-    pub fn finish(mut self) {
+    /// The file is whole, `head` first and then what was written: on the desktop it is made so and takes its name
+    /// (an error: it couldn't be, and nothing of it is left); in the browser what waits is written and it is
+    /// handed over as a download (what goes wrong from here is logged).
+    pub fn finish(mut self, head: Vec<u8>) -> std::io::Result<()> {
         self.finished = true;
-        self.end(Ending::Finished);
+        self.end(Ending::Finished, head)
     }
 
-    /// The file is let go: in the browser nothing of it is kept; on the desktop it is removed.
+    /// The file is let go: in the browser nothing of it is handed over; on the desktop it is removed.
     pub fn abort(mut self) {
         self.finished = true;
-        self.end(Ending::Aborted);
+        let _ = self.end(Ending::Aborted, Vec::new());
     }
 
-    fn end(&mut self, ending: Ending) {
+    fn end(&mut self, ending: Ending, head: Vec<u8>) -> std::io::Result<()> {
         let mut state = self.state();
+        // (A write that failed: the file isn't whole, and is let go.)
+        let failed = state.failed.clone().filter(|_| ending == Ending::Finished).map(std::io::Error::other);
+        let ending = if failed.is_some() { Ending::Aborted } else { ending };
         state.ended = Some(ending);
+        #[cfg(target_arch = "wasm32")]
+        let made = {
+            state.head = head;
+            Ok(())
+        };
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some((path, part, file)) = state.file.take() {
-            let flushed = file.sync_all();
-            drop(file);
-            let kept = ending == Ending::Finished && flushed.is_ok() && std::fs::rename(&part, &path).is_ok();
-            if !kept {
-                let _ = std::fs::remove_file(part);
+        let made = match state.file.take() {
+            Some((path, body, file)) => {
+                drop(file);
+                let made = if ending == Ending::Finished { whole(&path, &body, &head) } else { Ok(()) };
+                let _ = std::fs::remove_file(body);
+                made
             }
-        }
+            None => Ok(()),
+        };
+        failed.map_or(made, Err)
     }
+}
+
+/// The desktop's file at `path` made whole: `head`, then what was written at `body`; made beside it as `NAME.part`,
+/// which takes the name once it is whole (and is removed if it can't be).
+#[cfg(not(target_arch = "wasm32"))]
+fn whole(path: &Path, body: &Path, head: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let part = path.with_file_name(format!("{}.part", path.file_name().unwrap_or_default().to_string_lossy()));
+    let made = (|| {
+        let mut out = std::io::BufWriter::with_capacity(1 << 20, std::fs::File::create(&part)?);
+        out.write_all(head)?;
+        std::io::copy(&mut std::fs::File::open(body)?, &mut out)?;
+        out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
+        std::fs::rename(&part, path)
+    })();
+    if made.is_err() {
+        let _ = std::fs::remove_file(&part);
+    }
+    made
 }
 
 /// Written as any `std::io::Write` is (a writer of the app's that takes one: a video).
@@ -210,7 +246,7 @@ impl std::io::Write for Stream {
 impl Drop for Stream {
     fn drop(&mut self) {
         if !self.finished {
-            self.end(Ending::Aborted);
+            let _ = self.end(Ending::Aborted, Vec::new());
         }
     }
 }
@@ -365,11 +401,23 @@ export function nettai_take_drops(wanted, dropped) {
         if (files.length || folders.length) dropped(await read(files), folders);
     });
 }
-export async function nettai_save_stream(kind, extensions, name) {
-    if (!window.showSaveFilePicker) throw new Error("this browser has no save dialog (showSaveFilePicker)");
-    const accept = { "application/octet-stream": extensions.map((e) => "." + e) };
-    const handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: kind, accept }] });
-    return [handle.name, await handle.createWritable()];
+// A file made in the page's own storage, written as it comes: in a folder of its own, out of the app's kept files,
+// which the page empties as it starts (index.html's MAKING). One at a time, each in the last's place: the last's
+// download is long done by the time another is whole.
+export async function nettai_make_file() {
+    const root = await navigator.storage.getDirectory();
+    const handle = await (await root.getDirectoryHandle(".making", { create: true })).getFileHandle("file", { create: true });
+    return [handle, await handle.createWritable()];
+}
+// The file made, handed over as a download named `name`: `head`, then what was written.
+export async function nettai_hand_over(handle, head, name) {
+    // (`head` copied: a Blob takes no view of the shared memory. The file's own bytes are read as it downloads.)
+    const url = URL.createObjectURL(new Blob([head.slice(), await handle.getFile()]));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 export function nettai_sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -390,7 +438,8 @@ export function nettai_download(name, bytes) {
         fn nettai_open_folder(wanted: Vec<String>) -> js_sys::Promise;
         fn nettai_take_drops(wanted: Vec<String>, dropped: &Closure<dyn FnMut(js_sys::Array, js_sys::Array)>);
         fn nettai_download(name: &str, bytes: &[u8]);
-        fn nettai_save_stream(kind: &str, extensions: Vec<String>, name: &str) -> js_sys::Promise;
+        fn nettai_make_file() -> js_sys::Promise;
+        fn nettai_hand_over(handle: &JsValue, head: &[u8], name: &str) -> js_sys::Promise;
         fn nettai_sleep(ms: u32) -> js_sys::Promise;
 
         type Writable;
@@ -402,26 +451,25 @@ export function nettai_download(name, bytes) {
         fn abort(this: &Writable) -> js_sys::Promise;
     }
 
-    pub fn save_stream(filter: Filter, name: &str, done: Box<dyn FnOnce(std::io::Result<Option<Stream>>)>) {
-        let asked = nettai_save_stream(filter.kind, filter.extensions.iter().map(|e| e.to_string()).collect(), name);
+    /// A file made in the page's storage, to be handed over as a download named `name` once whole.
+    pub fn save_stream(name: &str, done: Box<dyn FnOnce(std::io::Result<Option<Stream>>)>) {
+        let making = nettai_make_file();
+        let name = name.to_string();
         wasm_bindgen_futures::spawn_local(async move {
-            let chosen = match wasm_bindgen_futures::JsFuture::from(asked).await {
-                Ok(chosen) => chosen,
-                // (The dialog closed: an AbortError, and nothing chosen.)
-                Err(why) if why.dyn_ref::<js_sys::Error>().is_some_and(|e| e.name() == "AbortError") => return done(Ok(None)),
+            let made = match wasm_bindgen_futures::JsFuture::from(making).await {
+                Ok(made) => js_sys::Array::from(&made),
                 Err(why) => return done(Err(std::io::Error::other(format!("{why:?}")))),
             };
-            let chosen = js_sys::Array::from(&chosen);
-            let name = chosen.get(0).as_string().unwrap_or_default();
-            let writable: Writable = chosen.get(1).unchecked_into();
+            let writable: Writable = made.get(1).unchecked_into();
             let shared = Arc::new(Shared { name, state: std::sync::Mutex::new(State::default()) });
-            wasm_bindgen_futures::spawn_local(pump(shared.clone(), writable));
+            wasm_bindgen_futures::spawn_local(pump(shared.clone(), made.get(0), writable));
             done(Ok(Some(Stream { shared, finished: false })));
         });
     }
 
-    /// The page's main thread writes what the stream's writer queued, in order, till it ends.
-    async fn pump(shared: Arc<Shared>, writable: Writable) {
+    /// The page's main thread writes what the stream's writer queued, in order, till it ends; whole, the file
+    /// (`handle`'s) is handed over, its head first.
+    async fn pump(shared: Arc<Shared>, handle: JsValue, writable: Writable) {
         let state = || crate::thread::lock(&shared.state).unwrap_or_else(|e| e.into_inner());
         loop {
             let (next, ended) = {
@@ -451,6 +499,11 @@ export function nettai_download(name, bytes) {
                 (None, Some(Ending::Finished)) => {
                     if let Err(why) = wasm_bindgen_futures::JsFuture::from(writable.close()).await {
                         log::warn!("closing {}: {why:?}", shared.name);
+                        return;
+                    }
+                    let head = std::mem::take(&mut state().head);
+                    if let Err(why) = wasm_bindgen_futures::JsFuture::from(nettai_hand_over(&handle, &head, &shared.name)).await {
+                        log::warn!("handing over {}: {why:?}", shared.name);
                     }
                     return;
                 }
@@ -556,5 +609,56 @@ export function nettai_download(name, bytes) {
         if let Some(dir) = path.parent() {
             let _ = crate::fs::remove_dir(dir);
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    /// A folder of this test's own under the system's temporary one, and what it holds, by name.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("nettai-platform-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn held(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        names
+    }
+
+    fn stream(path: &Path) -> Stream {
+        let made = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let heard = made.clone();
+        save_stream_to(Filter { kind: "Videos", extensions: &["mp4"] }, path, move |s| *heard.borrow_mut() = Some(s));
+        made.take().unwrap().unwrap().unwrap()
+    }
+
+    /// Finished, the file is its head and then what was written, under its name, nothing else beside it; a file
+    /// there before stays till then. Let go, nothing of it is left, and the file before stays.
+    #[test]
+    fn a_stream_is_its_head_then_what_was_written() {
+        let dir = scratch("stream");
+        let path = dir.join("a video.mp4");
+        std::fs::write(&path, b"before").unwrap();
+        let mut s = stream(&path);
+        s.write_all(b"samples ").unwrap();
+        s.write_all(b"and more").unwrap();
+        assert_eq!(held(&dir), ["a video.mp4", "a video.mp4.body.part"]);
+        assert_eq!(std::fs::read(&path).unwrap(), b"before");
+        s.finish(b"head: ".to_vec()).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"head: samples and more");
+        assert_eq!(held(&dir), ["a video.mp4"]);
+        let mut s = stream(&path);
+        s.write_all(b"half").unwrap();
+        s.abort();
+        assert_eq!(held(&dir), ["a video.mp4"]);
+        drop(stream(&path));
+        assert_eq!((held(&dir), std::fs::read(&path).unwrap()), (vec!["a video.mp4".to_string()], b"head: samples and more".to_vec()));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

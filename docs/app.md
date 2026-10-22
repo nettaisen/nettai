@@ -1236,12 +1236,18 @@ isolated (COOP and COEP), which a page with threads must be.
   again only after a click and the browser's permission prompt, and every game is extracted as the folder is
   chosen, so it would matter only when a new version extracts again.
 - **A replay's video** is nettai-video's on both platforms: the playing's frames to the platform's encoder to one
-  fragmented MP4 (`fmp4`, written to any `std::io::Write` a fragment at a time), its sound tracks titled and its
-  rounds chapters. The encoder is ffmpeg on the desktop and WebCodecs in a browser (H.264, and AAC or Opus, an
-  encoder a sound track). EXPORT writes it to `nettai_platform::dialog::save_stream_to`'s file: the path itself on
-  the desktop (as `NAME.part`, named once whole), the browser's save dialog's file there, streamed to as it is
-  made. Exported in headless Chrome (2026-10-20): 25 s at 4x, 13 MB in 14 writes; both sides at 1920x640 with two
-  tracks (the first the default) and the chapter; every frame decoding from 0.
+  MP4 (`mp4`: its samples written to any `std::io::Write` a chunk at a time as they come, and its head, the
+  `moov` indexing them, made last and put first), its sound tracks titled and its rounds chapters. No fragmented
+  MP4 (the user: "is it possible to avoid fragmented mp4 in output for both web and local?"): the index first is
+  the file every player and editor takes, tells its length and seeks at once, and plays a download from its
+  start. The encoder is ffmpeg on the desktop and WebCodecs in a browser (H.264, and AAC or Opus, an encoder a
+  sound track); ffmpeg says its packets back as a fragmented MP4 on its pipe, which is read and not kept.
+  EXPORT writes it to `nettai_platform::dialog::save_stream_to`'s file: on the desktop the samples beside the
+  path as `NAME.body.part`, then the head and they as `NAME.part`, named once whole; in a browser the samples in
+  the page's own storage (its `.making` folder, out of the kept files and emptied as the page starts), then a
+  download of the head and the file (a Blob of the two, read as it downloads). No save dialog in a browser:
+  `showSaveFilePicker` is Chromium's alone, and the page's storage and a download are every browser's, Firefox's
+  and Safari's too.
 - **The page**: the app fills it and follows its size; a preload screen (the app's loading screen's sun,
   wordmark and bar, in its places) shows the download (against build.sh's sizes.json) and the kept files' loading,
   and fades as the app draws.
