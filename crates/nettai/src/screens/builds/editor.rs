@@ -259,9 +259,9 @@ impl Draft {
     /// The catalogs' and the game's words, in the language shown.
     pub fn with_words<R>(&self, shell: &Shell, f: impl FnOnce(&Words) -> R) -> R {
         let ui = shell.ui();
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let names = Names::of(self.kit.content(), &graphics);
-        f(&Words { ui: &ui, kit: &self.kit, names: &names })
+        f(&Words { ui: &ui, kit: &self.kit, names: &names, i18n: &shell.i18n })
     }
 }
 

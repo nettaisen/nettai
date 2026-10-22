@@ -163,7 +163,7 @@ pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) 
     Loaded {
         found: ready.loaded.found.clone(),
         game: ready.loaded.game.clone(),
-        graphics: ready.graphics(shell.lang),
+        graphics: ready.graphics(shell.i18n.code),
         mode,
         reduce_motion: shell.reduces_motion(),
         font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced),

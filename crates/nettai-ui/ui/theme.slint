@@ -199,13 +199,18 @@ export global Theme {
 
 // Words in capitals (a button's, a heading's, a label's): the catalogs hold them as they are written in a sentence,
 // and `Caps.of(@tr("Export"))` sets them in capitals by the language shown's own rules (a Turkish i is İ). The app
-// does it (`lang::upper`) and sets `lang` with the language, which a change sets them again by.
+// does it (`lang::I18n`, the language shown's rules). No language is passed: a language chosen gives the app's new
+// rules here before Slint says every `@tr` string again, so what they set in capitals is set again by them, and the
+// app sets the words it gives again itself.
 export global Caps {
-    in property <string> lang;
-    pure callback upper(string, string) -> string;
-    public pure function of(text: string) -> string {
-        return self.upper(text, self.lang);
-    }
+    pure callback of(string) -> string;
+}
+
+// Things listed on a line: `Lists.of([a, b])` puts them one after the other by the language shown's own separator
+// ("A, B, C"; Japanese's "A、B、C"), as `Caps` sets capitals (the user: "you should also join items by locale-aware
+// separator in the ui").
+export global Lists {
+    pure callback of([string]) -> string;
 }
 
 // The screenshot pass's check that no label is cut: a label whose text doesn't fit says so here while

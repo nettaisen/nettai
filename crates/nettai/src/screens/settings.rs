@@ -53,7 +53,7 @@ pub fn show_values(shell: &Shell, binding: &Binding) {
     let view = ui.global::<SettingsView>();
     let s = &shell.settings;
     view.set_name(s.name.as_str().into());
-    view.set_language(crate::lang::name(shell.lang).into());
+    view.set_language(crate::lang::name(shell.i18n.code).into());
     view.set_picture_size(if s.picture_size == 0 { Default::default() } else { size_label(s.picture_size).into() });
     view.set_full_screen(s.full_screen);
     view.set_reduce_motion(shell.reduces_motion());
@@ -68,15 +68,15 @@ pub fn show_values(shell: &Shell, binding: &Binding) {
 
 /// The language's choices for its select (control `id`), the one shown marked.
 pub fn pick_language(shell: &mut Shell, id: &str) {
-    let offered = crate::lang::offered(shell.lang);
+    let offered = crate::lang::offered(shell.i18n.code);
     let options: Vec<String> = offered.iter().map(|(_, name)| name.to_string()).collect();
-    let chosen = offered.iter().position(|(code, _)| *code == shell.lang).unwrap_or(0);
+    let chosen = offered.iter().position(|(code, _)| *code == shell.i18n.code).unwrap_or(0);
     shell.pick(id, 0, options, chosen);
 }
 
 /// The language chosen from [`pick_language`]'s choices.
 pub fn choose_language(shell: &mut Shell, choice: i32) {
-    if let Some((code, _)) = crate::lang::offered(shell.lang).get(choice.max(0) as usize) {
+    if let Some((code, _)) = crate::lang::offered(shell.i18n.code).get(choice.max(0) as usize) {
         set_language(shell, code);
     }
 }
@@ -300,7 +300,7 @@ impl Screen for Settings {
 
     fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) {
         match id {
-            "set.language" => set_language(shell, crate::lang::step(shell.lang, by)),
+            "set.language" => set_language(shell, crate::lang::step(shell.i18n.code, by)),
             "set.picture" => {
                 step_picture_size(shell, by);
                 self.show(shell);

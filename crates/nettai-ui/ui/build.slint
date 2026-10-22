@@ -6,7 +6,7 @@
 //
 // Build cost (docs/app.md §14): the rows are leaves, each under one `for`.
 
-import { Theme, Audit, Caps } from "theme.slint";
+import { Theme, Audit, Caps, Lists } from "theme.slint";
 import { Label, Pill, PanelBack, Mono, RowTouch, ProblemMark } from "widgets.slint";
 
 // A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
@@ -105,7 +105,7 @@ export struct SheetPartner {
     face: image,
     name: string,
     version: VersionTag,
-    programs: string,
+    programs: [string],
 }
 
 // A NaviCust program a build has installed, as the overview lists them: once for each of its colors, its name after
@@ -117,10 +117,10 @@ export struct SheetProgram {
 }
 
 // A list of a build's auto battle data (EXE4's, EXE5's), as the overview says it: its name in the game's words
-// ("First"), and its chips' names in order (empty: it holds none).
+// ("First"), and its chips' names in order (none: it holds none).
 export struct SheetList {
     name: string,
-    chips: string,
+    chips: [string],
 }
 
 // A build, as the overview shows it.
@@ -143,17 +143,17 @@ export struct BuildSheet {
     // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory; then any of the game's rules' own
     // (EXE5's Soul time).
     stats: [StatLine],
-    // The abilities and the bugs, every one of each, on a line.
-    abilities: string,
-    bugs: string,
+    // The abilities and the bugs, every one of each (the sheet puts each part on a line, by `Lists.of`).
+    abilities: [string],
+    bugs: [string],
     // The NaviCust's programs (`navicust`: the build has a NaviCust, its game's setup taking one and its navi being
     // the game's own).
     navicust: bool,
     programs: [SheetProgram],
-    // The patch cards' names, in the list's order (EXE4's in their slots'), on a line (`patch-cards`: the build has
-    // them, as it has a NaviCust).
+    // The patch cards' names, in the list's order (EXE4's in their slots') (`patch-cards`: the build has them, as it
+    // has a NaviCust).
     patch-cards: bool,
-    cards: string,
+    cards: [string],
     // The auto battle data's lists, in the game's order (none: the build has no such data).
     auto-battle: [SheetList],
     // How many of the folder's entries have a chip, and the entries.
@@ -701,11 +701,11 @@ component PartLabel inherits Text {
 // A part's words under the overview's stats: every item whole, wrapped (as tall as they wrap to); "None" where it has
 // none.
 component PartWords inherits Text {
-    in property <string> words;
+    in property <[string]> items;
     in property <color> tone: Theme.text;
     height: max(16px, self.preferred-height);
-    text: root.words == "" ? @tr("None") : root.words;
-    color: root.words == "" ? Theme.dim : root.tone;
+    text: root.items.length == 0 ? @tr("None") : Lists.of(root.items);
+    color: root.items.length == 0 ? Theme.dim : root.tone;
     font-family: Theme.body;
     font-size: 13px;
     font-weight: 600;
@@ -897,7 +897,7 @@ export component BuildOverview inherits Rectangle {
                 height: self.preferred-height;
                 alignment: start;
                 for partner in root.build.party: Rectangle {
-                    height: 22px + (partner.programs == "" ? 0px : max(18px, partner-programs.preferred-height));
+                    height: 22px + (partner.programs.length == 0 ? 0px : max(18px, partner-programs.preferred-height));
                     Image {
                         x: 0;
                         y: 0;
@@ -935,7 +935,7 @@ export component BuildOverview inherits Rectangle {
                         y: 20px;
                         width: max(0px, parent.width - 38px);
                         height: max(18px, self.preferred-height);
-                        text: partner.programs;
+                        text: Lists.of(partner.programs);
                         color: Theme.muted;
                         font-family: Theme.body;
                         font-size: 12px;
@@ -977,7 +977,7 @@ export component BuildOverview inherits Rectangle {
                 x: root.words-x;
                 y: root.abilities-top + root.words-dy;
                 width: root.column-width - root.words-x;
-                words: root.build.abilities;
+                items: root.build.abilities;
             }
 
             PartLabel {
@@ -992,7 +992,7 @@ export component BuildOverview inherits Rectangle {
                 x: root.words-x;
                 y: root.bugs-top + root.words-dy;
                 width: root.column-width - root.words-x;
-                words: root.build.bugs;
+                items: root.build.bugs;
                 tone: Theme.bug;
             }
 
@@ -1011,7 +1011,7 @@ export component BuildOverview inherits Rectangle {
                 y: root.navicust-top + root.words-dy;
                 width: root.column-width - root.words-x;
                 visible: root.build.navicust && root.build.programs.length == 0;
-                words: "";
+                items: [];
             }
 
             programs := FlexboxLayout {
@@ -1062,7 +1062,7 @@ export component BuildOverview inherits Rectangle {
                 y: root.cards-top + root.words-dy;
                 width: root.column-width - root.words-x;
                 visible: root.build.patch-cards;
-                words: root.build.cards;
+                items: root.build.cards;
             }
 
             // (The auto battle data's lists, each its name in the game's words and its chips, a line each.)
@@ -1100,7 +1100,7 @@ export component BuildOverview inherits Rectangle {
                         x: root.narrow ? 112px : 72px;
                         y: 0;
                         width: parent.width - self.x;
-                        words: list.chips;
+                        items: list.chips;
                     }
                 }
             }

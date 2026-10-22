@@ -13,7 +13,7 @@
 // Bugs), and the library opens as a sheet from the bottom
 // (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
 
-import { Theme, Audit, Caps } from "../../theme.slint";
+import { Theme, Audit, Caps, Lists } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -112,8 +112,8 @@ export global PatchCardsView {
     // give, and their bugs, each under its title; on a phone a line each.
     in property <[EffectLine]> effects;
     in property <[EffectLine]> bugs;
-    in property <string> effects-line;
-    in property <string> bugs-line;
+    in property <[string]> effect-items;
+    in property <[string]> bug-items;
     // The installed row a card just went into, counted: it flashes.
     in property <int> landed;
     in property <int> landed-seq;
@@ -710,7 +710,7 @@ export component PatchCardsTab inherits Rectangle {
     }
 
     if Theme.phone: Rectangle {
-        for line[i] in [{ title: @tr("Effects"), text: PatchCardsView.effects-line, bug: false }, { title: @tr("Bugs"), text: PatchCardsView.bugs-line, bug: true }]: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: Lists.of(PatchCardsView.effect-items), bug: false }, { title: @tr("Bugs"), text: Lists.of(PatchCardsView.bug-items), bug: true }]: Rectangle {
             x: 0;
             y: root.height - root.lines-height + 8px + i * 22px;
             width: root.width;

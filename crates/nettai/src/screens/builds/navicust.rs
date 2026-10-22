@@ -63,7 +63,7 @@ use nettai_match::build::{Checked, Overview, Stat};
 use nettai_match::ruleset::Item;
 use nettai_ui::{BuildWords, CellKind, Crossing, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -168,12 +168,12 @@ fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut C
 }
 
 /// The EFFECTS and BUGS panels' lines (NaviCust's, and Patch cards' of the cards: `effect_panels`), each under its
-/// title, and on a phone a line each.
+/// title, and on a phone a line each (their items, which the line lists: `Lists.of`).
 pub(super) struct Panels {
     pub effects: Vec<EffectLine>,
     pub bugs: Vec<EffectLine>,
-    pub effects_line: String,
-    pub bugs_line: String,
+    pub effect_items: ModelRc<SharedString>,
+    pub bug_items: ModelRc<SharedString>,
 }
 
 /// What overview `alone` comes to, as the EFFECTS and BUGS panels say it: each number it changes, the rules' own
@@ -211,8 +211,8 @@ pub(super) fn effect_panels(shell: &Shell, draft: &Draft, alone: Option<&Overvie
     Panels {
         effects: fitted(EffectKind::Effects, effect_lines, more),
         bugs: fitted(EffectKind::Bugs, bug_lines, more),
-        effects_line: effects.join(", "),
-        bugs_line: bugs.iter().map(said).collect::<Vec<_>>().join(", "),
+        effect_items: overview::items(effects),
+        bug_items: overview::items(bugs.iter().map(said)),
     }
 }
 
@@ -535,8 +535,8 @@ impl Navicust {
         let view = ui.global::<NavicustView>();
         view.set_effects(ModelRc::new(VecModel::from(panels.effects)));
         view.set_bugs(ModelRc::new(VecModel::from(panels.bugs)));
-        view.set_effects_line(panels.effects_line.into());
-        view.set_bugs_line(panels.bugs_line.into());
+        view.set_effect_items(panels.effect_items);
+        view.set_bug_items(panels.bug_items);
     }
 
     /// Everything shown anew: the build changed.

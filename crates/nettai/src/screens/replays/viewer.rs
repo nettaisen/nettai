@@ -279,7 +279,7 @@ impl Watching {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
         if let Some((_, ready)) = shell.ready() {
-            self.viewer.set_language(&ready.graphics(shell.lang));
+            self.viewer.set_language(&ready.graphics(shell.i18n.code));
         }
         // (Settings' Music and Sound effects: the difference between the two is the viewer's, as a battle's.)
         let (music, effects) = shell.sound.battle_levels();

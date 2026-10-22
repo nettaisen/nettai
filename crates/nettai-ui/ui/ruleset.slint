@@ -12,7 +12,7 @@
 // no panels: Version exclusives (its word over its control), the buttons, the category as a select, the head, the
 // items.
 
-import { Theme, Caps } from "theme.slint";
+import { Theme, Caps, Lists } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
@@ -166,7 +166,7 @@ export global RulesetView {
     }
     out property <string> inherited-note: @tr("Banned for all navis");
     public pure function paired-status(keys: int, items: int) -> string {
-        return @tr("{n} navi" | "{n} navis" % keys) + ", " + @tr("{n} program" | "{n} programs" % items);
+        return Lists.of([@tr("{n} navi" | "{n} navis" % keys), @tr("{n} program" | "{n} programs" % items)]);
     }
     // What the system's file dialogs say they ask for.
     out property <string> ruleset-files: @tr("Ruleset files");

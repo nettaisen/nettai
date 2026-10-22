@@ -156,9 +156,9 @@ pub(crate) fn follow_rename(shell: &mut Shell, game: &str, from: &str, to: &str)
 pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
     let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit) };
     let ui = shell.ui();
-    let graphics = kit.ready.graphics(shell.lang);
+    let graphics = kit.ready.graphics(shell.i18n.code);
     let names = Names::of(kit.content(), &graphics);
-    let words = words::Words { ui: &ui, kit, names: &names };
+    let words = words::Words { ui: &ui, kit, names: &names, i18n: &shell.i18n };
     let own = shelf::Own::of(kit);
     made.into_iter()
         .map(|(name, side)| {
@@ -420,9 +420,9 @@ impl Play {
     fn check_builds(&mut self, shell: &Shell, under: Option<shelf::Under>) {
         let Some(kit) = builds::kit(shell) else { return };
         let ui = shell.ui();
-        let graphics = kit.ready.graphics(shell.lang);
+        let graphics = kit.ready.graphics(shell.i18n.code);
         let names = Names::of(kit.content(), &graphics);
-        let words = words::Words { ui: &ui, kit: &kit, names: &names };
+        let words = words::Words { ui: &ui, kit: &kit, names: &names, i18n: &shell.i18n };
         for build in &mut self.builds {
             build.check_under(&words, under);
         }
@@ -437,7 +437,7 @@ impl Play {
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         view.set_readable(self.build().is_some_and(|b| b.build.is_some()));
-        let key = self.build().map(|b| (b.name().to_string(), b.side().cloned(), shell.lang));
+        let key = self.build().map(|b| (b.name().to_string(), b.side().cloned(), shell.i18n.code));
         if key == self.sheet_of {
             return;
         }
@@ -454,7 +454,7 @@ impl Play {
     fn show_card(&mut self, shell: &Shell) {
         let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side().clone()).or_else(|| self.side(shell, false).ok());
         let (Some(side), Some((_, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
-        let graphics = ready.graphics(shell.lang);
+        let graphics = ready.graphics(shell.i18n.code);
         let names = Names::of(ready.content(), &graphics);
         let card = PlayBuild { name: build.name().into(), navi: names.navi(side.navi(ready.content())).into() };
         shell.ui().global::<PlayView>().set_card(card);
@@ -1111,7 +1111,7 @@ impl Play {
         view.set_first_to(live.first_to);
         view.set_host(live.host);
         if let (Some(ruleset), Some((_, ready))) = (&live.ruleset, shell.ready()) {
-            let graphics = ready.graphics(shell.lang);
+            let graphics = ready.graphics(shell.i18n.code);
             view.set_ruleset(rulesets::shown_name(&Names::of(ready.content(), &graphics), &ruleset.name).into());
         }
         // The builds CHANGE BUILD offers are checked under the lobby's ruleset, the host's, where it changed.
@@ -1547,7 +1547,7 @@ impl Screen for Play {
                 if let Some((picks, at)) = self.ruleset_choices(shell).filter(|_| self.is_host())
                     && let Some((_, ready)) = shell.ready()
                 {
-                    let graphics = ready.graphics(shell.lang);
+                    let graphics = ready.graphics(shell.i18n.code);
                     let names = Names::of(ready.content(), &graphics);
                     let shown = picks.iter().map(|p| rulesets::shown_name(&names, &p.ruleset.name)).collect();
                     shell.pick("lobby.ruleset", 0, shown, at);
@@ -1625,7 +1625,7 @@ impl Screen for Play {
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
-            "menu.language" => settings::set_language(shell, crate::lang::step(shell.lang, by)),
+            "menu.language" => settings::set_language(shell, crate::lang::step(shell.i18n.code, by)),
             "menu.picture" => {
                 settings::step_picture_size(shell, by);
                 self.show_match(shell);

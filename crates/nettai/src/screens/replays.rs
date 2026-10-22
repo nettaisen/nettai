@@ -495,7 +495,7 @@ impl Replays {
                 if !made && self.still.asked.as_ref() != Some(&entry.path) {
                     self.still.asked = Some(entry.path.clone());
                     let mode = shell.settings.graphics();
-                    let look = Look { graphics: ready.graphics(shell.lang), mode, font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced) };
+                    let look = Look { graphics: ready.graphics(shell.i18n.code), mode, font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced) };
                     self.library.still(&entry, s.info.side, content, look);
                 }
                 view.set_still(made);

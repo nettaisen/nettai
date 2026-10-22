@@ -473,7 +473,7 @@ fn come(app: &App, comes: Comes) {
             link,
             content: content.clone(),
             game: game.clone(),
-            graphics: ready.graphics(app.shell.lang),
+            graphics: ready.graphics(app.shell.i18n.code),
             side,
             lobby: None,
             preload: None,

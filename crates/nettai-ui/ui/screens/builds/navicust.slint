@@ -14,7 +14,7 @@
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board is over the list, and
 // the effects and the bugs are a line each under it. Its Rust half is src/screens/builds/navicust.rs.
 
-import { Theme, Audit, Caps } from "../../theme.slint";
+import { Theme, Audit, Caps, Lists } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, ListView, Field, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
@@ -279,9 +279,9 @@ export global NavicustView {
     // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
     in property <[EffectLine]> effects;
     in property <[EffectLine]> bugs;
-    // The same on a line each, for a phone.
-    in property <string> effects-line;
-    in property <string> bugs-line;
+    // The same on a line each, for a phone: their items, which the line lists (`Lists.of`).
+    in property <[string]> effect-items;
+    in property <[string]> bug-items;
     // A stat's change, in the overview's words: HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular
     // memory.
     public pure function stat(i: int, by: string) -> string {
@@ -1494,7 +1494,7 @@ export component NavicustTab inherits Rectangle {
     }
 
     if Theme.phone: Rectangle {
-        for line[i] in [{ title: @tr("Effects"), text: NavicustView.effects-line, bug: false }, { title: @tr("Bugs"), text: NavicustView.bugs-line, bug: true }]: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: Lists.of(NavicustView.effect-items), bug: false }, { title: @tr("Bugs"), text: Lists.of(NavicustView.bug-items), bug: true }]: Rectangle {
             x: 0;
             y: root.lines-y + i * 22px;
             width: root.width;
