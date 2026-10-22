@@ -457,6 +457,7 @@ fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (
         vscale: None,
         affine: None,
         fade: None,
+        clip: None,
     }
 }
 

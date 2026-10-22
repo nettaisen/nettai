@@ -1491,6 +1491,16 @@ for both: `seat::Shows`):
   console's screen alone, its window and its header and all it draws (the
   other navi's HP under it too), the right's mirrored; the field moved
   down with its window and faded with its screen (`seat::field_side`).
+- Between them nothing jumps: the screen that stays up longer
+  (`custom::screens_left`) is drawn from the tick the other's window
+  starts out, the field seen through its console, and the leaving window
+  over it, which uncovers its header as it goes (`Shows::Window` over
+  `Shows::Screen`, kept off the leaving window's columns: `Seat::clip`);
+  windows that open or close on one tick each draw their console's screen
+  in their own half (`Shows::Half`), their headers sliding to and from the
+  middle. "Cstmzing…" is the left console's alone. One change is left at
+  W2's end: the waiting player's header (HP box, gauge, face) shows on the
+  tick the chooser's result is sent, in place of its HP under its navi.
 - A mirrored window (`seat::Mirror`) is drawn as its console draws it and
   put in the right half: its frame mirrored pixel by pixel (a drawing
   flipped), and the parts that read (`custom::Window::upright`: the chip
@@ -1500,9 +1510,13 @@ for both: `seat::Shows`):
   letters, by the columns the pack says they take, so that a tab's arrow
   beside them mirrors with the frame (EXE6's CROSSSELECT), the picked
   column's icons, the screen's own emblem, the Program Advance's names, the
-  enemy names) moved whole to their mirrored places; its sprites (the
+  enemy names) moved whole to their mirrored places (a part laid with a
+  margin of the frame about it, OK in its cursor's cells, by what it draws:
+  `Window::ink`, so that it keeps its margins to the flipped frame); its
+  sprites (the
   cursor, the Regular chip's frame, the element, the orb, the form list's
-  cursor) moved with the part under them, never flipped. A mirrored window
+  cursor) moved with the part under them, never flipped (one on no part,
+  the orb, where its pixels mirror). A mirrored window
   sliding in or out is drawn whole where it comes to rest and slid as its
   console's slides, the other way, its columns nearest the middle first in
   (`Mirror::slid`), not cut where its console has yet to copy them. Each console's

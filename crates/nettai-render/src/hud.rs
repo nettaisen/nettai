@@ -864,8 +864,11 @@ pub fn draw<'a>(
     // "Cstmzing...": once the local player's result is sent, while waiting
     // for the opponent's; it blinks every 32 frames.
     // (Two rows as wide as its words: eight tiles in English, seven in
-    // Japanese, where `sub_801CA34` copies one column fewer.)
-    if waiting_ticks(b, local).is_some_and(|n| (n / 32) % 2 == 0) {
+    // Japanese, where `sub_801CA34` copies one column fewer.) On a screen of
+    // both, once, the left's: both consoles show it while both wait for the
+    // round to go on, each blinking in its own time, and two would trade
+    // sides as they blink.
+    if seat.draws_shared() && waiting_ticks(b, local).is_some_and(|n| (n / 32) % 2 == 0) {
         let columns = (hud.waiting.len() / 2).max(1);
         let x = seat.x(22 * 8, 8 * columns as i32);
         // In the enhanced mode its words in the lettering font, in its look.
@@ -1341,7 +1344,7 @@ fn telops_of(b: &Battle, seat: Seat) -> [Option<(ShownTelop, Banner)>; 2] {
 /// left's).
 fn banner_of(b: &Battle, seat: Seat) -> Option<BannerId> {
     match (seat.shows, seat.at) {
-        (Shows::Own, At::Right) => b.result_banner_for(seat.side),
+        (Shows::Own | Shows::Half, At::Right) => b.result_banner_for(seat.side),
         _ => b.banner_for(seat.side),
     }
 }
@@ -1673,6 +1676,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         vscale,
         affine: None,
         fade: None,
+        clip: None,
     }
 }
 

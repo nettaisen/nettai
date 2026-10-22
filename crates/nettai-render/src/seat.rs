@@ -12,11 +12,14 @@
 //! navi, an HP number under one) goes to the mirror of its place about the
 //! object's, which is where the left console's view shows the object.
 //!
-//! While the custom screens are up each seat draws as `Shows` says: both
-//! windows side by side over the HUD's headers (C1), or the one console
-//! whose player still chooses alone (W2). A window is drawn as its console
-//! draws it and put in the right half by a [`Mirror`]: its frame mirrored,
-//! its parts that read moved whole.
+//! While the custom screens are up each seat draws as `Shows` says: each
+//! console's screen in its own half (C1: both windows side by side, and as
+//! both slide in or out, each one's header beside its window), the one
+//! console whose player still chooses alone (W2), and as one window leaves
+//! while the other stays, that one over the screen of the console that
+//! stays. A window is drawn as its console draws it and put in the right
+//! half by a [`Mirror`]: its frame mirrored, its parts that read moved
+//! whole.
 
 use crate::compose::{CLEAR, HEIGHT, Layer, SpritePart, WIDTH};
 use crate::textlayer::{Rect, TextItem};
@@ -53,16 +56,21 @@ pub enum At {
 pub enum Shows {
     /// All that its console draws: a console alone; on a screen of both,
     /// while its player alone chooses on the custom screen (the other's
-    /// result is sent: its window, the header beside it and what else its
-    /// console draws, W2).
+    /// result is sent, or its window leaves: its window, the header beside
+    /// it and what else its console draws, W2), and while its player's
+    /// window leaves after the other's has left.
     Screen,
+    /// All that its console draws in its own half of a screen of both (the
+    /// left's left half, the right's mirrored into the right half): while
+    /// both players choose, its window alone (C1), and as both windows
+    /// slide in or out together, each its window and its header beside it.
+    Half,
     /// Its own pieces, beside the other console's (the fight on a screen of
     /// both, F1): no HP under a navi, the other side's pieces left to the
     /// other.
     Own,
-    /// Its custom screen's window alone: both players choose, and each
-    /// window covers the header the other's console draws beside its own
-    /// (C1).
+    /// Its custom screen's window alone, leaving over the screen of the
+    /// console whose player still chooses (as that one draws it under).
     Window,
     /// Nothing: its player's result is sent and the other player chooses,
     /// whose console's screen it is (W2).
@@ -91,12 +99,16 @@ impl Seat {
         match consoles {
             Consoles::One => vec![Seat::alone(local)],
             Consoles::Both => {
-                let up = crate::custom::screens_up(b);
-                let shows = |side: u8| match (up[side as usize], up[side as usize ^ 1]) {
-                    (true, true) => Shows::Window,
-                    (true, false) => Shows::Screen,
-                    (false, true) => Shows::Nothing,
-                    (false, false) => Shows::Own,
+                // (The screen that stays up longer is drawn, the other's
+                // window leaving over it; two that stay alike, each in its
+                // half: `custom::screens_left`.)
+                let left = crate::custom::screens_left(b);
+                let shows = |side: u8| match (left[side as usize], left[side as usize ^ 1]) {
+                    (0, 0) => Shows::Own,
+                    (own, other) if own == other => Shows::Half,
+                    (own, other) if own > other => Shows::Screen,
+                    (0, _) => Shows::Nothing,
+                    _ => Shows::Window,
                 };
                 vec![Seat { side: local, at: At::Left, shows: shows(local) }, Seat { side: local ^ 1, at: At::Right, shows: shows(local ^ 1) }]
             }
@@ -125,7 +137,26 @@ impl Seat {
     /// under its navi): its whole screen; beside the other console's, the
     /// other side's own pieces say it.
     pub fn draws_other(self) -> bool {
-        self.shows == Shows::Screen
+        matches!(self.shows, Shows::Screen | Shows::Half)
+    }
+
+    /// The screen's columns its pieces are kept to (the first, one past the
+    /// last), on a screen of both where not all: its own half (`Half`), or
+    /// all but where the other console's window is as it leaves over it
+    /// (`Screen` beside a `Window`).
+    pub fn clip(self, b: &Battle, seats: &[Seat]) -> Option<[i16; 2]> {
+        let half = WIDTH as i16 / 2;
+        match self.shows {
+            Shows::Half => Some(if self.mirrored() { [half, WIDTH as i16] } else { [0, half] }),
+            Shows::Screen => {
+                let other = seats.iter().find(|s| s.side != self.side && s.shows == Shows::Window)?;
+                let (_, screen) = crate::custom::screen_of(b, other.side)?;
+                // (Its window's columns: 120 less the scroll in from its edge.)
+                let edge = (half as i32 - crate::custom::placement(screen).scroll as i32).max(0) as i16;
+                Some(if other.mirrored() { [0, WIDTH as i16 - edge] } else { [edge, WIDTH as i16] })
+            }
+            _ => None,
+        }
     }
 
     /// Where a box `w` wide that its console draws at `x` goes.
@@ -156,12 +187,15 @@ impl Seat {
 /// The side whose console the field is seen through on a frame of `b`
 /// showing `consoles`: the local side's, but on a screen of both where the
 /// other player alone chooses on the custom screen (W2: the field as its
-/// console has it, moved down with its window, faded with its screen).
+/// console has it, moved down with its window, faded with its screen), from
+/// the first tick the local's window leaves while the other's stays longer
+/// (`custom::screens_left`: under the leaving window the field is the
+/// staying console's, as it is once the window has left).
 pub fn field_side(consoles: Consoles, b: &Battle) -> u8 {
     let local = b.setup.local_side & 1;
-    let up = crate::custom::screens_up(b);
+    let left = crate::custom::screens_left(b);
     match consoles {
-        Consoles::Both if !up[local as usize] && up[local as usize ^ 1] => local ^ 1,
+        Consoles::Both if left[local as usize ^ 1] > left[local as usize] => local ^ 1,
         _ => local,
     }
 }
@@ -278,9 +312,12 @@ impl Mirror {
         let y1 = parts.iter().map(|p| p.y as i32 + p.height as i32).max().unwrap_or(0);
         match self.block((x0 + x1) / 2, (y0 + y1) / 2) {
             Some(b) => move_parts(parts, &mut [], Self::shift(b)),
+            // (Each where what it draws mirrors: its pixels' columns.)
             None => {
                 for p in parts.iter_mut() {
-                    p.x = ((WIDTH as i32 - part_x(p) - p.width as i32) & 0x1FF) as u16;
+                    let box_width = p.width as i32 * if p.affine.is_some_and(|m| m.double) { 2 } else { 1 };
+                    let [a, b] = part_ink(p).unwrap_or([0, box_width]);
+                    p.x = ((WIDTH as i32 - part_x(p) - a - b) & 0x1FF) as u16;
                 }
             }
         }
@@ -304,28 +341,38 @@ impl Mirror {
             let dx = x - item.rect.x;
             return vec![moved(item, dx)];
         };
+        // (A drawing in a block that doesn't hold all of it, what a part
+        // laid with a margin of the frame's draws, is put as the layer's
+        // pixels are: flipped at its mirrored place as the frame, and what
+        // is in the block moved with it over that.)
+        let holds = |b: Block, r: Rect| r.x >= b.area.x && r.x + r.w <= b.area.x + b.area.w && r.y >= b.area.y && r.y + r.h <= b.area.y + b.area.h;
+        let in_block = |item: TextItem, b: Block| {
+            let item = moved(item, Self::shift(b));
+            TextItem { clip: item.clip.intersect(b.area.offset(Self::shift(b), 0)), ..item }
+        };
         // (A drawing's cells, each where its middle is: those of each block,
         // and those of none.)
         let cells: Vec<[u8; 2]> = match &d.cells {
             Some(c) => c.clone(),
             None => {
-                let (x, flip) = self.place(item.rect);
-                let dx = x - item.rect.x;
-                return vec![if flip { flipped(item) } else { moved(item, dx) }];
+                return match self.block(item.rect.x + item.rect.w / 2, item.rect.y + item.rect.h / 2) {
+                    Some(b) if holds(b, item.rect) => vec![moved(item, Self::shift(b))],
+                    Some(b) => vec![flipped(item.clone()), in_block(item, b)],
+                    None => vec![flipped(item)],
+                };
             }
         };
         // (As the layer's three passes: a block's cells mirrored where no
-        // block moves to, the blocks' moved, the frame's mirrored. A cell
-        // goes with a block made of the drawing's cells: one that cuts
-        // them, a label's letters' columns, which a drawing doesn't draw,
-        // leaves them the frame's.)
-        let on_cells = |r: Rect| [r.x - item.rect.x, r.y - item.rect.y, r.w, r.h].iter().all(|v| v.rem_euclid(8) == 0);
+        // block moves to, or where the block doesn't hold all of the cell;
+        // the blocks' moved, but what they don't hold; the frame's
+        // mirrored.)
         let mut under: Vec<[u8; 2]> = Vec::new();
         let mut groups: Vec<(Option<Block>, Vec<[u8; 2]>)> = Vec::new();
         for c in cells {
-            let (x, y) = (item.rect.x + 8 * c[0] as i32 + 4, item.rect.y + 8 * c[1] as i32 + 4);
-            let at = self.block(x, y).filter(|b| on_cells(b.area));
-            if at.is_some() && !self.moved_to(WIDTH as i32 - 1 - x, y) {
+            let (x0, y0) = (item.rect.x + 8 * c[0] as i32, item.rect.y + 8 * c[1] as i32);
+            let (x, y) = (x0 + 4, y0 + 4);
+            let at = self.block(x, y);
+            if at.is_some_and(|b| !holds(b, Rect::new(x0, y0, 8, 8)) || !self.moved_to(WIDTH as i32 - 1 - x, y)) {
                 under.push(c);
             }
             match groups.iter_mut().find(|(b, _)| *b == at) {
@@ -346,7 +393,7 @@ impl Mirror {
             out.push(flipped(with_cells(under)));
         }
         out.extend(groups.into_iter().map(|(block, cells)| match block {
-            Some(b) => moved(with_cells(cells), Self::shift(b)),
+            Some(b) => in_block(with_cells(cells), b),
             None => flipped(with_cells(cells)),
         }));
         out
@@ -372,6 +419,28 @@ fn flipped(item: TextItem) -> TextItem {
 /// A clip moved `dx` right (the whole screen's stays the screen).
 fn moved_clip(clip: Rect, dx: i32) -> Rect {
     if clip == Rect::SCREEN { clip } else { clip.offset(dx, 0) }
+}
+
+/// The columns of a sprite part that draw (from the first with a pixel to
+/// one past the last, from its box's left), as its tiles have them; an
+/// affine part's as its tiles stand unturned in its box (a spinning orb's
+/// stay put); none for one that draws nothing.
+fn part_ink(p: &SpritePart) -> Option<[i32; 2]> {
+    let (w, h) = (p.width as usize, p.height as usize);
+    let per_row = (w / 8).max(1);
+    // (An affine part's texture isn't flipped, and stands in the middle of
+    // a doubled box.)
+    let (hflip, left) = match p.affine {
+        Some(m) => (false, if m.double { w / 2 } else { 0 }),
+        None => (p.hflip, 0),
+    };
+    let draws = |col: usize| {
+        let tx = if hflip { w - 1 - col } else { col };
+        (0..h).any(|ty| p.tiles.get(p.first_tile + (ty / 8) * per_row + tx / 8).is_some_and(|t| t[(ty % 8) * 8 + tx % 8] != 0))
+    };
+    let a = (0..w).find(|&c| draws(c))?;
+    let b = (0..w).rev().find(|&c| draws(c))? + 1;
+    Some([(left + a) as i32, (left + b) as i32])
 }
 
 /// The screen x of a sprite part (its coordinate wrapped as the
@@ -454,6 +523,45 @@ mod tests {
         from.pixels[0] = 3;
         m.layer(&from, &mut to);
         assert_eq!((to.pixels[208], to.pixels[209], to.pixels[239]), (1, 2, 3));
+    }
+
+    /// A sprite on no block goes where what it draws mirrors: a 16-wide part
+    /// whose pixels are its columns 3 to 5 at x 20 (pixels 23 to 25) at 214
+    /// to 216, its box at 211; an affine part's doubled box holds its
+    /// texture in its middle (columns 8 more in).
+    #[test]
+    fn a_sprite_goes_where_its_pixels_mirror() {
+        let mut pixels = vec![0u8; 2 * nettai_assets::Tiles::TILE];
+        for row in 0..8 {
+            pixels[row * 8 + 3..row * 8 + 6].fill(1);
+        }
+        let tiles = nettai_assets::Tiles { pixels };
+        let part = SpritePart {
+            x: 20,
+            y: 0,
+            width: 16,
+            height: 8,
+            tiles: &tiles,
+            first_tile: 0,
+            hflip: false,
+            vflip: false,
+            palette: [0; 16],
+            priority: 0,
+            alpha: None,
+            mosaic: None,
+            vscale: None,
+            affine: None,
+            fade: None,
+            clip: None,
+        };
+        let m = Mirror::new(Vec::new());
+        let mut parts = [part.clone()];
+        m.group(&mut parts);
+        assert_eq!(part_x(&parts[0]), 240 - 26 - 3);
+        let turned = crate::compose::Affine { pa: 256, pb: 0, pc: 0, pd: 256, double: true };
+        let mut parts = [SpritePart { affine: Some(turned), ..part }];
+        m.group(&mut parts);
+        assert_eq!(part_x(&parts[0]), 240 - 20 - (8 + 3) - (8 + 6));
     }
 
     /// A piece drawn at rest and slid: all of it where the mirror at rest

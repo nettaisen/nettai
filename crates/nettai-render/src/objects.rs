@@ -42,6 +42,9 @@ const BUCKETS: [usize; 4] = [8, 4, 0xE0, 4];
 pub struct SpriteList<'a> {
     layers: [Vec<Bucket<'a>>; 4],
     count: usize,
+    /// The columns the parts queued are kept to, while set
+    /// (`SpritePart::clip`: a console's part of a screen of both).
+    pub clip: Option<[i16; 2]>,
 }
 
 /// A depth bucket's parts, each with its tag and its fine offset.
@@ -55,7 +58,7 @@ pub type Fine = (i32, i32);
 
 impl Default for SpriteList<'_> {
     fn default() -> Self {
-        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0 }
+        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0, clip: None }
     }
 }
 
@@ -78,6 +81,7 @@ impl<'a> SpriteList<'a> {
             if bucket < 0 || bucket as usize >= self.layers[layer].len() {
                 return;
             }
+            let part = self.clipped(part);
             self.layers[layer][bucket as usize].push((part, None, fine));
             self.count += 1;
         }
@@ -102,10 +106,21 @@ impl<'a> SpriteList<'a> {
             if self.count >= MAX_PARTS {
                 return;
             }
+            let part = self.clipped(part);
             let Some(b) = self.layers[layer].get_mut(bucket) else { return };
             b.push((part, tag, fine));
             self.count += 1;
         }
+    }
+
+    /// A part kept to the columns the list keeps its parts to, and its own.
+    fn clipped(&self, part: SpritePart<'a>) -> SpritePart<'a> {
+        let Some([a, b]) = self.clip else { return part };
+        let clip = match part.clip {
+            Some([c, d]) => [a.max(c), b.min(d)],
+            None => [a, b],
+        };
+        SpritePart { clip: Some(clip), ..part }
     }
 
     /// Parts in hardware order (front first).
@@ -575,6 +590,7 @@ pub fn queue_objects<'a>(
                     vscale: None,
                     affine: None,
                     fade: None,
+                    clip: None,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 // Where the rules count the sprite's priority into the
@@ -694,6 +710,7 @@ mod tests {
             vscale: None,
             affine: None,
             fade: None,
+            clip: None,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);

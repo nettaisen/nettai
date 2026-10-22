@@ -9,7 +9,7 @@ use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
 use crate::seat::{Consoles, Seat, Shows};
 use crate::stage::{Stage, StageClock};
-use crate::textlayer::{Plane, TextItem, TextSink};
+use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::VectorFont;
 use nettai_assets::Bundle;
 use nettai_battle::Battle;
@@ -501,8 +501,21 @@ impl Renderer {
             // (The sprites' fade of its console: on the right of a screen of
             // both its own, the frame's being the field's console's.)
             let sprite_fade = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b, seat.side).unwrap_or_default() };
+            // (Kept to its part of a screen of both, where not all of it:
+            // `Seat::clip`.)
+            let clip = seat.clip(b, &seats);
+            list.clip = clip;
             crate::custom::draw(b, own_game, &packs, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
-            crate::hud::draw(b, own_game, &packs, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
+            crate::hud::draw(b, own_game, &packs, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
+            list.clip = None;
+            if let Some([x0, x1]) = clip {
+                hud.keep_columns(x0 as i32..x1 as i32);
+                names.keep_columns(x0 as i32..x1 as i32);
+                let kept = Rect::new(x0 as i32, 0, (x1 - x0) as i32, compose::HEIGHT as i32);
+                for (_, item) in text.since(mark) {
+                    item.clip = item.clip.intersect(kept);
+                }
+            }
             // (The right one's own HUD layer and BG0.)
             if seat.mirrored() {
                 for (plane, _) in text.since(mark) {
@@ -514,7 +527,9 @@ impl Renderer {
                 }
             }
         }
-        if seats.iter().any(|s| s.shows == Shows::Window) {
+        // (While both players' screens are each in its half: C1, and both
+        // windows sliding in or out together.)
+        if seats.iter().all(|s| s.shows == Shows::Half) {
             crate::hud::time_between(b, own_game, &mut self.hud, &mut text, &mut self.problems);
         }
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
