@@ -35,17 +35,23 @@
 //! **What it costs.** A kept state is a battle and two consoles' sound and
 //! HUD state; with [`KEYFRAME_EVERY`] at four seconds, a five-minute set
 //! keeps about 80. Reaching a tick for the first time plays every tick up
-//! to it, sound included (the sound is most of a tick's cost); after
-//! that a seek plays at most [`KEYFRAME_EVERY`] - 1 ticks, and one into the
-//! stretch last sought through fewer than [`NEAR_EVERY`]. [`Viewer::index`]
-//! plays ahead a slice at a time without moving, for a host that wants
-//! every seek short before its user drags the bar. Or the index is made
-//! elsewhere: a second viewer of the replay, on a thread of its own, plays
-//! it through ([`Viewer::index_part`]) and hands over the states it would
-//! keep, which the viewer watched takes in ([`Viewer::take_index`]). The
-//! replay plays the same anywhere, so they are the states it makes itself,
-//! and its own thread spends nothing on them. The figures measured on a
-//! game's own packs are docs/frontend.md's (§8, "Seeking").
+//! to it, sound included (the two consoles' sound is half a tick's cost or
+//! more); after that a seek plays at most [`KEYFRAME_EVERY`] - 1 ticks, and
+//! one into the stretch last sought through fewer than [`NEAR_EVERY`].
+//! [`Viewer::index`] plays ahead a slice at a time without moving, for a
+//! host that wants every seek short before its user drags the bar. Or the
+//! index is made elsewhere: a second viewer of the replay, on a thread of
+//! its own, plays it through ([`Viewer::index_part`]) and hands over the
+//! states it would keep, which the viewer watched takes in
+//! ([`Viewer::take_index`]). Or on three threads, as fast as the slowest
+//! of them: a silent viewer plays the battle on one
+//! ([`Viewer::index_battle`]: the states without their sound, and each
+//! tick's cues for each console), each console's sound plays those cues on
+//! one of its own ([`ConsoleSound`]) and puts its sound into the states,
+//! and the parts go from one to the next as they are made. The replay plays
+//! the same anywhere, so they are the states the viewer makes itself, and
+//! its own thread spends nothing on them. The figures measured on a game's
+//! own packs are docs/frontend.md's (§8, "Seeking").
 //!
 //! ```ignore
 //! let mut viewer = Viewer::open(&game, &replay, None)?;       // a Refused says why not
@@ -64,7 +70,7 @@ use crate::game::{Graphics, Loaded};
 use crate::player::{Clock, MOST_SAMPLES, tick_at, time_of};
 use crate::replay::{End, Info, Refused, Replay, ReplayPlayer};
 use crate::session::Session;
-use nettai_audio::BattleAudio;
+use nettai_audio::{BattleAudio, SoundCue};
 use nettai_battle::content::Content;
 use nettai_battle::{Battle, BattleResult, RoundEnd, Snapshot};
 use nettai_render::hud::HudState;
@@ -158,10 +164,121 @@ impl IndexPart {
     }
 }
 
-// (A part is made on one thread and taken in on another.)
+/// The battle's share of a part of a replay's index, made by a silent
+/// viewer for each console's sound to be made elsewhere
+/// ([`Viewer::index_battle`]): the states kept to seek from in the ticks it
+/// played, without their sound, and each tick's sound cues for each
+/// console, which are all a console's sound is made of. Each console's
+/// sound plays the part ([`ConsoleSound::play`]) and puts in its sound at
+/// each state; then it is the part a viewer that makes its own sound makes
+/// ([`BattlePart::into_part`]).
+pub struct BattlePart {
+    part: IndexPart,
+    /// The tick it starts at: the ticks a console's sound is to have played
+    /// before it.
+    from: u32,
+    /// By side: the cues of the part's ticks, all in a row.
+    cues: [Vec<SoundCue>; 2],
+    /// Where each tick's cues end in them, by side.
+    ends: Vec<[u32; 2]>,
+    /// The part's ticks played before each state was kept.
+    kept_after: Vec<u32>,
+    /// By side: the console's sound at each state, once it played the part.
+    sounds: [Option<Vec<BattleAudio>>; 2],
+}
+
+impl BattlePart {
+    /// The tick the part reached ([`IndexPart::reached`]).
+    pub fn reached(&self) -> u32 {
+        self.part.reached
+    }
+
+    /// The replay's end is in it ([`IndexPart::whole`]).
+    pub fn whole(&self) -> bool {
+        self.part.whole
+    }
+
+    /// The part of the index, its states with both consoles' sound once
+    /// both played it: what a viewer making its own sound makes
+    /// ([`Viewer::index_part`]). Where neither did (a replay watched
+    /// without sound), its states have none.
+    pub fn into_part(self) -> IndexPart {
+        let BattlePart { mut part, sounds, .. } = self;
+        match sounds {
+            [Some(left), Some(right)] => {
+                for (state, sound) in part.states.iter_mut().zip(left.into_iter().zip(right)) {
+                    state.audio = Some(sound.into());
+                }
+            }
+            [None, None] => {}
+            _ => panic!("one console's sound played a part of the index and the other's didn't"),
+        }
+        part
+    }
+}
+
+/// One console's sound, made apart from the battle for a replay's index: it
+/// plays the cues a silent viewer's parts carry for its console
+/// ([`Viewer::index_battle`]), each tick as a viewer's own sound plays them
+/// (the tick's cues, then the frame, its samples made and not heard), and
+/// puts its sound as it stands at each state kept into the part. The sound
+/// takes nothing else from the battle: a host has each console's played on
+/// a thread of its own beside the battle's, and the parts it hands over are
+/// the ones a viewer that makes its own sound makes.
+pub struct ConsoleSound {
+    side: u8,
+    audio: BattleAudio,
+    /// The ticks it has played.
+    at: u32,
+    scratch: Vec<[f32; 2]>,
+}
+
+impl ConsoleSound {
+    /// Each console's sound at a replay's start, as a viewer opened on
+    /// `game` has it ([`Viewer::open`]); none where the game's sound isn't
+    /// loaded.
+    pub fn of(game: &Loaded) -> Option<[ConsoleSound; 2]> {
+        sound_of(game).map(ConsoleSound::both)
+    }
+
+    /// Each console's sound at a replay's start, as a viewer given `audio`
+    /// has it ([`Viewer::with`]).
+    pub fn both(audio: BattleAudio) -> [ConsoleSound; 2] {
+        [0, 1].map(|side| ConsoleSound { side, audio: audio.clone(), at: 0, scratch: Vec::new() })
+    }
+
+    /// Play `part`'s ticks, each tick's cues for this console and then its
+    /// frame, and put the sound as it stands after each state's tick into
+    /// the part. The parts in the order they were made, from the replay's
+    /// start.
+    pub fn play(&mut self, part: &mut BattlePart) {
+        assert_eq!(part.from, self.at, "a console's sound plays the parts in order");
+        let side = self.side as usize;
+        let mut sounds = Vec::with_capacity(part.kept_after.len());
+        let mut kept = part.kept_after.iter().copied().peekable();
+        let mut start = 0;
+        for (ran, ends) in (1..).zip(&part.ends) {
+            let end = ends[side] as usize;
+            self.audio.handle(&part.cues[side][start..end]);
+            start = end;
+            self.scratch.clear();
+            self.audio.tick(&mut self.scratch);
+            if kept.next_if_eq(&ran).is_some() {
+                sounds.push(self.audio.clone());
+            }
+        }
+        self.at += part.ends.len() as u32;
+        part.sounds[side] = Some(sounds);
+    }
+}
+
+// (A part is made on one thread and taken in on another; a console's sound
+// is made on a thread of its own.)
 const _: () = {
     const fn send<T: Send>() {}
     send::<IndexPart>();
+    send::<BattlePart>();
+    send::<ConsoleSound>();
 };
 
 /// A kept state to go on from.
@@ -237,8 +354,7 @@ impl Viewer {
     /// replay: one of another game, of another version of nettai, or whose
     /// match doesn't read.
     pub fn open(game: &Loaded, replay: &Replay, view: Option<u8>) -> Result<Viewer, Refused> {
-        let audio = game.sound.as_ref().map(|s| BattleAudio::with_banks(s.banks.clone(), s.songs.clone()));
-        Viewer::with(&game.game.content, replay, view, game.renderer(), game.font.clone().map(TextRenderer::new), audio)
+        Viewer::with(&game.game.content, replay, view, game.renderer(), game.font.clone().map(TextRenderer::new), sound_of(game))
     }
 
     /// A viewer from its parts: the content the replay plays on, the
@@ -566,15 +682,51 @@ impl Viewer {
     /// ticks took it. A host indexes on a thread of its own so: a second
     /// viewer of the replay, opened there at its start, makes the parts
     /// one after another and sends each as it is made. The part is whole
-    /// ([`IndexPart::whole`]) once the replay's end is in it.
+    /// ([`IndexPart::whole`]) once the replay's end is in it. (Or the
+    /// sound is made elsewhere, each console's beside the battle:
+    /// [`Viewer::index_battle`].)
     pub fn index_part(&mut self, ticks: u32) -> IndexPart {
+        self.index_ticks(ticks, |_, _, _| {})
+    }
+
+    /// Play up to `ticks` ticks on from where the viewer is, as
+    /// [`Viewer::index_part`] does, for each console's sound to be made
+    /// elsewhere ([`ConsoleSound`]): a silent viewer's (one given no sound,
+    /// [`Viewer::with`]) is the battle's share of the work. The part holds
+    /// the states without their sound, and each tick's sound cues for each
+    /// console (what a viewer's own sound would be given: the cues of the
+    /// round that ended, on a tick that ended one). A host indexes on three
+    /// threads so: this viewer on one, each console's sound on one of its
+    /// own, the parts going from one to the next as they are made.
+    pub fn index_battle(&mut self, ticks: u32) -> BattlePart {
+        let from = self.position();
+        let (mut cues, mut ends, mut kept_after) = (<[Vec<SoundCue>; 2]>::default(), Vec::new(), Vec::new());
+        let part = self.index_ticks(ticks, |ticked, ran, kept| {
+            for (side, cues) in cues.iter_mut().enumerate() {
+                cues.extend_from_slice(ticked.sound_cues_for(side as u8));
+            }
+            ends.push(cues.each_ref().map(|c| c.len() as u32));
+            if kept {
+                kept_after.push(ran);
+            }
+        });
+        BattlePart { part, from, cues, ends, kept_after, sounds: [None, None] }
+    }
+
+    /// Play up to `ticks` ticks on from where the viewer is, the states it
+    /// would keep going into a part and not into its keeping; after each
+    /// tick `each` is told the battle that ticked, the ticks played and
+    /// whether the state was kept.
+    fn index_ticks(&mut self, ticks: u32, mut each: impl FnMut(&Battle, u32, bool)) -> IndexPart {
         let mut states = Vec::new();
         let mut ran = 0;
         while ran < ticks && self.play(false) {
             ran += 1;
-            if self.due(self.position()) {
+            let kept = self.due(self.position());
+            if kept {
                 states.push(self.state());
             }
+            each(ticked(&self.session), ran, kept);
         }
         // (Where the engine stopped, the tick it stopped on is past what was reached.)
         IndexPart { states, reached: self.reached.min(self.position()), whole: self.whole }
@@ -745,9 +897,7 @@ impl Viewer {
         self.other_hud.tick(&self.session.battle);
         self.session.battle.setup.local_side = view;
         if let Some(audio) = &mut self.audio {
-            // (A tick that ended a round is heard from the round it ended:
-            // the battle is the next round's by now.)
-            let ticked = self.session.ended.as_deref().unwrap_or(&self.session.battle);
+            let ticked = ticked(&self.session);
             for (side, sound) in audio.iter_mut().enumerate() {
                 sound.handle(ticked.sound_cues_for(side as u8));
                 self.scratch.clear();
@@ -827,6 +977,19 @@ impl Viewer {
         self.samples.iter_mut().chain(&mut self.group).for_each(Vec::clear);
         self.clock.rest();
     }
+}
+
+/// A viewer's sound as it opens on `game` (none: the game's sound isn't
+/// loaded): one console's, copied for the other.
+fn sound_of(game: &Loaded) -> Option<BattleAudio> {
+    game.sound.as_ref().map(|s| BattleAudio::with_banks(s.banks.clone(), s.songs.clone()))
+}
+
+/// The battle the last tick ran, whose sound cues are that tick's: a tick
+/// that ended a round is heard from the round it ended (the session's
+/// battle is the next round's by then).
+fn ticked(session: &Session) -> &Battle {
+    session.ended.as_deref().unwrap_or(&session.battle)
 }
 
 /// Put `state` in a viewer's parts, shown from `view`'s side.

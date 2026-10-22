@@ -4,11 +4,11 @@
 //! **A second viewer of its own.** The previews are drawn by a silent `Viewer` of the same replay on a thread of
 //! its own, opened at the first hover: the replay played again from its file, the game's graphics as the window
 //! shows them (the language, the graphics mode, the text), no sound. It indexes the replay ahead on its own (in
-//! silence, a quarter of the work of the index's thread, which makes the sound: `super::indexing`), then seeks to
-//! each time asked for and presents that console's picture (`Viewer::present_view`) at a whole multiple of the
-//! frame. The viewer watched is never touched: its battle, its sound, its kept states and its position are its
-//! own, as the export's thread's are. Nothing of the engine is new; this is the library's seeking
-//! (docs/frontend.md §8, "Seeking") on another instance.
+//! silence, as the index's battle thread plays it, without the two threads beside that make its sound:
+//! `super::indexing`), then seeks to each time asked for and presents that console's picture
+//! (`Viewer::present_view`) at a whole multiple of the frame. The viewer watched is never touched: its battle, its
+//! sound, its kept states and its position are its own, as the export's thread's are. Nothing of the engine is new;
+//! this is the library's seeking (docs/frontend.md §8, "Seeking") on another instance.
 //!
 //! **What it costs.** A silent viewer plays a tick in about 17.5 µs (no sound is made), so indexing a five-minute
 //! set takes about 0.3 s of the thread's time, once, and keeps about 77 states of the battle and the two HUDs

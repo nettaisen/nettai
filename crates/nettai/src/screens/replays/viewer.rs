@@ -1,13 +1,14 @@
 //! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §16).
 //!
 //! Each frame runs the ticks due at the speed set, presents the picture if one ran, and hands the sound on. So
-//! that no seek stalls the window, the replay is indexed ahead on a thread of its own from its first frame
-//! ([`Indexing`]: a second viewer of it plays it through there and sends the states it keeps, which the viewer
-//! takes in each frame), and no seek goes past what is indexed: one asked for further stops at its edge, which
-//! the bar shows (a fill from the start to it, under the part played, as a video player shows what it has
-//! loaded). Playing is never past it: what plays is indexed as it plays. A drag of the bar moves the picture in
+//! that no seek stalls the window, the replay is indexed ahead on threads of their own from its first frame
+//! ([`Indexing`]: a second viewer of it plays the battle through on one, each console's sound is made on one beside
+//! it, and they send the states it keeps, which the viewer takes in each frame), and no seek goes past what is
+//! indexed: one asked for further stops at its edge, which the bar shows (a fill from the start to it, under the
+//! part played, as a video player shows what it has loaded). Playing is never past it: what plays is indexed as it
+//! plays. A drag of the bar moves the picture in
 //! steps of the states the viewer keeps (which cost no playing), stopping at the index's edge while it is there,
-//! and lands where it is let go. The window's thread never indexes: where the thread doesn't start or ends short of
+//! and lands where it is let go. The window's thread never indexes: where the threads don't start or end short of
 //! the replay's end (each logged), the index stays where it got, and what plays is indexed as it plays.
 //!
 //! Both builds may be shown over it, where the match's setups were open: the narrow sheets a match shows its
@@ -168,8 +169,9 @@ fn add(to: &mut (Duration, u32, Duration), took: Duration) {
     to.2 = to.2.max(took);
 }
 
-/// The index's thread: not started (the first frame starts it), its parts taken in each frame, or done with (the
-/// replay indexed whole, or the thread didn't start or ended short of its end: the index then stays where it got).
+/// The index's threads: not started (the first frame starts them), their parts taken in each frame, or done with
+/// (the replay indexed whole, or the threads didn't start or ended short of its end: the index then stays where it
+/// got).
 enum IndexThread {
     Unstarted,
     Going(Indexing),
@@ -189,7 +191,7 @@ pub struct Watching {
     /// Where the bar is held, while it is dragged (it may be past the index: the picture and the bar stop at its
     /// edge, and follow it as it goes on).
     drag: Option<u32>,
-    /// The index's thread, and whether the whole replay is indexed.
+    /// The index's threads, and whether the whole replay is indexed.
     indexing: IndexThread,
     whole: bool,
     told: Option<Told>,
@@ -672,11 +674,10 @@ impl Watching {
 
     // ---- The frame --------------------------------------------------------------------------------------
 
-    /// The index goes on, and the bar held past its edge follows it: the parts its thread made since are taken in
-    /// (the thread started at the first frame). The window's thread never indexes (the user: "why would the thread
-    /// fail? don't fallback just get rid of that path"): where the thread doesn't start or ends short of the
-    /// replay's end (each logged where it happens), the index stays where it got, and what plays is indexed as it
-    /// plays.
+    /// The index goes on, and the bar held past its edge follows it: the parts its threads made since are taken in
+    /// (the threads started at the first frame). The window's thread never indexes (the user: "why would the thread
+    /// fail? don't fallback just get rid of that path"): where the threads don't start or end short of the replay's
+    /// end (each logged where it happens), the index stays where it got, and what plays is indexed as it plays.
     fn index(&mut self, shell: &Shell) {
         if matches!(self.indexing, IndexThread::Unstarted)
             && let Some((_, ready)) = shell.ready()
@@ -696,7 +697,7 @@ impl Watching {
                     self.whole = true;
                     if self.stats.is_some() {
                         let (took, length) = (indexing.began.elapsed(), self.viewer.length());
-                        eprintln!("viewer index: {length} ticks indexed on its thread in {took:.2?}, {:.0} ticks a second", length as f64 / took.as_secs_f64());
+                        eprintln!("viewer index: {length} ticks indexed on its threads in {took:.2?}, {:.0} ticks a second", length as f64 / took.as_secs_f64());
                     }
                     self.indexing = IndexThread::Done;
                 }
