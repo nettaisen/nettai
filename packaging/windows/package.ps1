@@ -9,7 +9,7 @@
 # player's alone (%LOCALAPPDATA%\nettai, no administrator), with a Start menu and a desktop shortcut; uninstalling
 # leaves the player's data folder (%APPDATA%\nettai: builds, replays, settings, the extracted packs) as it is.
 #
-# -Version   the version (the workflow's, from the tag); else $env:NETTAI_VERSION, else the app crate's
+# -Version   the version, if set; else $env:NETTAI_VERSION, else the app crate's
 # -Icon      the .ico packaging/icons.sh makes, for the program and the installer; without it neither has one
 # -Ffmpeg    the ffmpeg.exe to bundle; else $env:NETTAI_BUNDLE_FFMPEG, else the release packaging\ffmpeg.sha256
 #            pins, downloaded and checked (a static program that needs no DLL)

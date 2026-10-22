@@ -1,16 +1,22 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
 # zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's
-# updates.rs). Run by hand (Actions → Release → Run workflow) for the packages alone, as the run's artifacts; on a
-# tag `v*` also, with a draft release of them, which is never published from here: the apps see it once someone
-# publishes it. Each package bundles the ffmpeg
+# updates.rs). Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
+# it packages the version Cargo.toml says, tags that commit `v<version>` and publishes the release, which the installed
+# apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
+# packages alone, as the run's artifacts. It runs on main, not on a tag, so that its Rust caches are main's, which
+# every later run can restore: a cache saved on a tag is that tag's alone, and each release started cold (the user:
+# "it looks like rust cache doesn't actually ever work"). Each package bundles the ffmpeg
 # packaging/ffmpeg.sha256 pins (nettaisen/ffmpeg-build's release, built by that repository's own workflow),
 # which the packaging scripts download and check.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Tag the version Cargo.toml says and publish the release (on main)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -52,10 +58,6 @@ jobs:
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      - name: Version from the tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: echo "NETTAI_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -109,9 +111,6 @@ jobs:
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      - name: Version from the tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "NETTAI_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       - name: Rust
         run: |
           rustup toolchain install stable --profile minimal --no-self-update
@@ -182,9 +181,6 @@ jobs:
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      - name: Version from the tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "NETTAI_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       # ALSA (cpal), fontconfig (Slint's text), udev (SDL's gamepads), Wayland and xkbcommon (the window), and
       # libclang (bindgen, for libdatachannel's C API: nettai-rtc's datachannel-facade).
       - name: Libraries
@@ -217,13 +213,37 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Draft release
-    if: startsWith(github.ref, 'refs/tags/v')
+    name: Release
+    if: inputs.publish && github.ref == 'refs/heads/main'
     needs: [windows, macos, linux]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+      # The version Cargo.toml says, tagged on the commit the packages were built from: a tag of that name already on
+      # another commit stops the release.
+      - name: Tag
+        id: tag
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # (The commit a tag already there is on: an annotated tag's peeled ref, else the ref itself.)
+          refs=$(git ls-remote --tags origin)
+          peeled=$(echo "$refs" | awk -v r="refs/tags/$tag^{}" '$2 == r { print $1 }')
+          plain=$(echo "$refs" | awk -v r="refs/tags/$tag" '$2 == r { print $1 }')
+          at=${peeled:-$plain}
+          if [ -z "$at" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "nettai $version" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          elif [ "$at" != "$GITHUB_SHA" ]; then
+            echo "::error::$tag is already on $at, not on $GITHUB_SHA: bump the version"
+            exit 1
+          fi
       - uses: actions/download-artifact@v8
         with:
           pattern: nettai-*
@@ -239,13 +259,20 @@ jobs:
           dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
           if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
-      # A draft: someone publishes it by hand, and only then do the installed apps see it. Each platform's channel
-      # (win, osx, linux) goes up into the one release; a run again (the same tag) merges into it.
-      - name: Draft release
+      # Each platform's channel (win, osx, linux) goes up into the one release, a draft until all three are in (a run
+      # again merges into it); then it is published, the latest, and the installed apps see it.
+      - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.tag.outputs.version }}
         run: |
           for channel in win osx linux; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
-              --tag "$GITHUB_REF_NAME" --releaseName "nettai ${GITHUB_REF_NAME#v}" --merge
+              --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

@@ -3837,11 +3837,16 @@ sources submodules of the facade's repository, which Cargo fetches with it) and 
 libdatachannel's C API): Xcode's on macOS, the runner's LLVM on Windows, `libclang-dev` on Linux (the workflow
 installs it).
 
-The workflow (`.github/workflows/release.yml`) runs on a tag `v*` and by hand. The icons are made once, on Linux;
-then Windows (`windows-latest`), macOS (`macos-latest`, universal) and Linux (`ubuntu-22.04`) each package and
-upload theirs as the run's artifacts, the version the tag's without its `v`. Each installs .NET 8 and vpk
-(`VPK_VERSION`). On a tag, `vpk upload github --merge` puts each platform's channel (win, osx, linux) into one draft
-release, never published by the workflow: the installed apps see a release only once someone publishes it. Signing
+The workflow (`.github/workflows/release.yml`) is run by hand on main (`gh workflow run release.yml --ref main`), after
+the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (`windows-latest`),
+macOS (`macos-latest`, universal) and Linux (`ubuntu-22.04`) each package and upload theirs as the run's artifacts, the
+version Cargo.toml's. Each installs .NET 8 and vpk (`VPK_VERSION`). With `publish` on (the default), the workflow tags
+the commit `v<version>` (a tag of that name on another commit stops it), `vpk upload github --merge` puts each
+platform's channel (win, osx, linux) into one release, and the release is published, the latest, so the installed apps
+see it at once (the user: "you should just publish the release instead of drafting it"). It runs on main rather than on
+a tag so that its Rust caches (`Swatinem/rust-cache`) are main's, which every later run restores: a cache saved on a
+tag is that tag's alone, and every release had built from nothing (the user: "it looks like rust cache doesn't
+actually ever work"). Signing
 is optional and skipped without its secrets: `WINDOWS_CERTIFICATE` (a .pfx, base64) and
 `WINDOWS_CERTIFICATE_PASSWORD`; `MACOS_CERTIFICATE` (a Developer ID Application .p12, base64) and
 `MACOS_CERTIFICATE_PASSWORD`, and for notarizing

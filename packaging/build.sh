@@ -3,7 +3,7 @@
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-# The version: $NETTAI_VERSION (the workflow's, from the tag), else the workspace's (Cargo.toml).
+# The version: $NETTAI_VERSION if set, else the workspace's (Cargo.toml).
 version=${NETTAI_VERSION:-$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -n 1)}
 
 # A release build of the app for a packaged app (`NETTAI_PACKAGED`: it reads no content but the content it

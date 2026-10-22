@@ -11,7 +11,7 @@
 # game's pack from the player's own copy. The system's libraries (glibc, ALSA, fontconfig, OpenGL, X11 or Wayland)
 # are the system's: build it on an old distribution (the workflow's is Ubuntu 22.04) to reach more.
 #
-# NETTAI_VERSION   the version (the workflow's, from the tag); else the app crate's
+# NETTAI_VERSION   the version, if set; else the app crate's
 # NETTAI_ICONS     a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle; else the release packaging/ffmpeg.sha256 pins (a static program),
 #                  downloaded and checked
