@@ -1494,11 +1494,18 @@ for both: `seat::Shows`):
 - A mirrored window (`seat::Mirror`) is drawn as its console draws it and
   put in the right half: its frame mirrored pixel by pixel (a drawing
   flipped), and the parts that read (`custom::Window::upright`: the chip
-  window with its box, which mirrors as frame about its middle, the hand,
-  the buttons, OK, the labels' letters, the picked column's icons, the
-  Program Advance's names, the enemy names) moved whole to their mirrored
-  places; its sprites (the cursor, the Regular chip's frame, the element,
-  the orb) moved with the part under them, never flipped. Each console's
+  window with its box, which mirrors as frame about its middle, or in its
+  place EXE6's Cross window's bars, each Cross's face and name upright as a
+  chip's picture and name are; the hand, the buttons, OK, the labels'
+  letters, by the columns the pack says they take, so that a tab's arrow
+  beside them mirrors with the frame (EXE6's CROSSSELECT), the picked
+  column's icons, the screen's own emblem, the Program Advance's names, the
+  enemy names) moved whole to their mirrored places; its sprites (the
+  cursor, the Regular chip's frame, the element, the orb, the form list's
+  cursor) moved with the part under them, never flipped. A mirrored window
+  sliding in or out is drawn whole where it comes to rest and slid as its
+  console's slides, the other way, its columns nearest the middle first in
+  (`Mirror::slid`), not cut where its console has yet to copy them. Each console's
   HUD layer and BG0 are its own (`Palettes::OtherHud`, `Plane::OtherHud`):
   shaken and faded as its console shakes and fades them, its sprites in its
   console's fade (`SpritePart::fade`).

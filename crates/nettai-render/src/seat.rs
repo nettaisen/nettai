@@ -176,6 +176,8 @@ pub fn field_side(consoles: Consoles, b: &Battle) -> u8 {
 pub struct Mirror {
     /// The blocks, in frame pixels where the console draws them.
     blocks: Vec<Block>,
+    /// How far right of its place the mirrored piece is put (`slid`).
+    slide: i32,
 }
 
 /// A part of a mirrored piece that reads: what it covers, moved whole to
@@ -196,7 +198,16 @@ impl Block {
 
 impl Mirror {
     pub fn new(blocks: Vec<Block>) -> Mirror {
-        Mirror { blocks }
+        Mirror { blocks, slide: 0 }
+    }
+
+    /// A piece drawn where it comes to rest, `dx` pixels right of where its
+    /// console has it now (a window sliding in or out, drawn whole: its
+    /// layers and their items there, its sprites where they are), put
+    /// `dx` right of its mirrored place: the mirrored piece slides as its
+    /// console's does, the other way, whole.
+    pub fn slid(self, dx: i32) -> Mirror {
+        Mirror { slide: dx, ..self }
     }
 
     /// The block the point (x, y) is in.
@@ -239,12 +250,13 @@ impl Mirror {
                     }
                     let (px, py) = (x as i32, y as i32);
                     let mirrored = WIDTH as i32 - 1 - px;
-                    let at = match (pass, self.block(px, py)) {
-                        (0, Some(_)) if !self.moved_to(mirrored, py) => mirrored,
-                        (1, Some(b)) => px + Self::shift(b),
-                        (2, None) => mirrored,
-                        _ => continue,
-                    };
+                    let at = self.slide
+                        + match (pass, self.block(px, py)) {
+                            (0, Some(_)) if !self.moved_to(mirrored, py) => mirrored,
+                            (1, Some(b)) => px + Self::shift(b),
+                            (2, None) => mirrored,
+                            _ => continue,
+                        };
                     if (0..WIDTH as i32).contains(&at) {
                         let j = y * WIDTH + at as usize;
                         to.pixels[j] = from.pixels[i];
@@ -259,17 +271,20 @@ impl Mirror {
     /// one: moved with the block the group's middle is in, or each at its
     /// mirrored place; never flipped.
     pub fn group(&self, parts: &mut [SpritePart]) {
+        // (Where they are on the piece at rest.)
+        move_parts(parts, &mut [], self.slide);
         let Some((x0, x1)) = parts_span(parts) else { return };
         let y0 = parts.iter().map(|p| p.y as i32).min().unwrap_or(0);
         let y1 = parts.iter().map(|p| p.y as i32 + p.height as i32).max().unwrap_or(0);
         match self.block((x0 + x1) / 2, (y0 + y1) / 2) {
             Some(b) => move_parts(parts, &mut [], Self::shift(b)),
             None => {
-                for p in parts {
+                for p in parts.iter_mut() {
                     p.x = ((WIDTH as i32 - part_x(p) - p.width as i32) & 0x1FF) as u16;
                 }
             }
         }
+        move_parts(parts, &mut [], self.slide);
     }
 
     /// A text item at its place: words, numbers and drawings in a block
@@ -277,6 +292,12 @@ impl Mirror {
     /// over several, by the cells it draws in, as several items); words
     /// elsewhere at the mirrored place of their box, upright.
     pub fn item(&self, item: TextItem) -> Vec<TextItem> {
+        let moved = |item: TextItem, dx: i32| TextItem { rect: item.rect.offset(dx, 0), clip: moved_clip(item.clip, dx), ..item };
+        self.item_at_rest(item).into_iter().map(|item| moved(item, self.slide)).collect()
+    }
+
+    /// [`Mirror::item`] for the piece at rest.
+    fn item_at_rest(&self, item: TextItem) -> Vec<TextItem> {
         let moved = |item: TextItem, dx: i32| TextItem { rect: item.rect.offset(dx, 0), clip: moved_clip(item.clip, dx), ..item };
         let Some(d) = item.drawn.as_ref() else {
             let (x, _) = self.place(item.rect);
@@ -294,12 +315,16 @@ impl Mirror {
             }
         };
         // (As the layer's three passes: a block's cells mirrored where no
-        // block moves to, the blocks' moved, the frame's mirrored.)
+        // block moves to, the blocks' moved, the frame's mirrored. A cell
+        // goes with a block made of the drawing's cells: one that cuts
+        // them, a label's letters' columns, which a drawing doesn't draw,
+        // leaves them the frame's.)
+        let on_cells = |r: Rect| [r.x - item.rect.x, r.y - item.rect.y, r.w, r.h].iter().all(|v| v.rem_euclid(8) == 0);
         let mut under: Vec<[u8; 2]> = Vec::new();
         let mut groups: Vec<(Option<Block>, Vec<[u8; 2]>)> = Vec::new();
         for c in cells {
             let (x, y) = (item.rect.x + 8 * c[0] as i32 + 4, item.rect.y + 8 * c[1] as i32 + 4);
-            let at = self.block(x, y);
+            let at = self.block(x, y).filter(|b| on_cells(b.area));
             if at.is_some() && !self.moved_to(WIDTH as i32 - 1 - x, y) {
                 under.push(c);
             }
@@ -429,5 +454,24 @@ mod tests {
         from.pixels[0] = 3;
         m.layer(&from, &mut to);
         assert_eq!((to.pixels[208], to.pixels[209], to.pixels[239]), (1, 2, 3));
+    }
+
+    /// A piece drawn at rest and slid: all of it where the mirror at rest
+    /// puts it, that much further right (a window sliding in from the
+    /// right edge); what goes past the edge is off the screen.
+    #[test]
+    fn a_slid_mirror_puts_the_piece_at_rest_further_right() {
+        let m = Mirror::new(vec![Block::whole(Rect::new(8, 0, 24, 16))]).slid(5);
+        let mut from = Layer::new(1, 3);
+        let mut to = Layer::new(1, 3);
+        from.pixels[8] = 1;
+        from.pixels[0] = 3;
+        from.pixels[6] = 4;
+        m.layer(&from, &mut to);
+        // (8 to 208, then 213; 6 to 233, then 238; 0 to 239, then off.)
+        assert_eq!((to.pixels[213], to.pixels[238]), (1, 4));
+        assert!(!to.pixels.contains(&3));
+        let item = TextItem::new("A", crate::vfont::Role::Cell, Rect::new(8, 0, 8, 16), 0, None);
+        assert_eq!(m.item(item)[0].rect.x, 213);
     }
 }
