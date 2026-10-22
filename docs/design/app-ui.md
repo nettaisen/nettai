@@ -1658,7 +1658,12 @@ Each is settled unless the user changes it.
       a drag let go, Right on the bar, the next round, a handle of the export's range gone to or nudged each stop at
       its edge, where until then a seek past it waited for the index to reach it. Held past it, the playhead and the
       picture stop at the edge, and follow it as the index goes on. Playing is never past it (what plays is indexed
-      as it plays). The preview is its own viewer's, and still shows past the edge.
+      as it plays). The preview is its own viewer's, and still shows past the edge. The same day, the user: "why is
+      the preload so slow?", then "move preloading to a bg thread". The index is made on a thread of its own: a
+      second viewer of the replay, with its sound unheard, plays it through there and hands over the states it
+      keeps, which the viewer takes in each frame. The edge goes on at about 10,000 ticks a second in the `dev`
+      build (five minutes in 1.8 s; 1.3 s in a release build), where a slice a frame on the window's thread went
+      1,300 while the replay played; nothing of the bar changed.
     - *The speed said:* the ⋯ menu's four bare rows (½× 1× 2× 4×) are one row, PLAYBACK SPEED, with the speed set at
       its right in the muted color (the picker's rows have a value now, `PickMark::value`); choosing it opens the
       four in its place, the one set checked. While the speed isn't 1× a small badge in the cursor's color by the

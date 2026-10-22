@@ -15,9 +15,11 @@
 //!   sample;
 //! - measures what seeking costs: the states kept and the memory they
 //!   take (a battle's snapshot and a console's sound, by counting what
-//!   copying each allocates), the time to index the whole replay, the
-//!   first far seek of a viewer that hasn't, and a seek and a frame back
-//!   in an indexed one, with sound and without. The times are of the
+//!   copying each allocates), the time to index the whole replay (by the
+//!   viewer itself, and on a thread of its own: a second viewer hands its
+//!   states to the one whose seeks are then checked), the first far seek
+//!   of a viewer that hasn't, and a seek and a frame back in an indexed
+//!   one, with sound and without. The times are of the
 //!   processor (the C library's `clock`), not of the wall, so that a
 //!   machine busy with something else says the same.
 //!
@@ -275,6 +277,37 @@ fn run() -> Result<String, String> {
     let kept = v.kept();
     same(&mut v, &sides[0], &mut buffer, "after indexing")?;
 
+    // The same made on a thread of its own, as a host makes it: a second
+    // viewer of the replay, from the other side, plays it through there
+    // and hands over the states it would keep (`Viewer::index_part`), which
+    // a viewer here takes in as they come (`Viewer::take_index`). Its time
+    // is the wall's, the thread's alone (the processor's is the process's).
+    // The seeks below are the viewer's that took them in.
+    let mut v = Viewer::open(&game, &replay, Some(0)).map_err(|e| e.to_string())?;
+    let (send, parts) = std::sync::mpsc::channel();
+    let (on, of) = (&game, &replay);
+    let threaded = std::thread::scope(|scope| {
+        let thread = scope.spawn(move || -> Result<Duration, String> {
+            let mut other = Viewer::open(on, of, Some(1)).map_err(|e| e.to_string())?;
+            let began = std::time::Instant::now();
+            loop {
+                let part = other.index_part(KEYFRAME_EVERY);
+                let whole = part.whole();
+                if send.send(part).is_err() || whole {
+                    return Ok(began.elapsed());
+                }
+            }
+        });
+        for part in parts.iter() {
+            v.take_index(part);
+        }
+        thread.join().map_err(|_| "the thread stopped".to_string())?
+    })?;
+    if v.indexed() != length || v.kept() != kept {
+        return Err(format!("the index made on a thread reached {} of {length} ticks with {} states, not {kept}", v.indexed(), v.kept()));
+    }
+    same(&mut v, &sides[0], &mut buffer, "after taking in an index made on a thread")?;
+
     // What a kept state takes: a battle's snapshot, each console's sound
     // and each console's HUD state (which is all in place).
     let held = || HELD.load(Ordering::Relaxed);
@@ -349,6 +382,7 @@ fn run() -> Result<String, String> {
          states kept: {kept} (one every {KEYFRAME_EVERY} ticks and at each round's start), {:.1} MB ({:.0} KB each: a battle's snapshot {:.0} KB, each console's sound {:.0} KB)\n\
          indexing the whole replay, in slices of {SLICE} ticks: {indexing:.2?} of processor time ({:.1} us a tick; {:.2} s for five minutes); \
          playing it straight with its picture: {played:.2?}\n\
+         indexing it on a thread of its own, the states taken in here: {threaded:.2?} of the wall ({:.0} ticks a second; {:.2} s for five minutes)\n\
          a first seek to the end, nothing indexed: {first_far:.2?}; without sound, {silent_far:.2?} ({:.1} us a tick)\n\
          a seek in the indexed replay: {median:.2?} (the median; {worst:.2?} at worst); a frame back: {step:.2?} (the median; {worst_step:.2?} at worst)",
         seconds,
@@ -362,6 +396,8 @@ fn run() -> Result<String, String> {
         sound_bytes as f64 / 1e3,
         indexing.as_secs_f64() * 1e6 / length as f64,
         indexing.as_secs_f64() / length as f64 * 17_918.0,
+        length as f64 / threaded.as_secs_f64(),
+        threaded.as_secs_f64() / length as f64 * 17_918.0,
         silent_far.as_secs_f64() * 1e6 / length as f64,
     ))
 }
