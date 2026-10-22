@@ -24,9 +24,8 @@ const PART: u32 = KEYFRAME_EVERY;
 /// The thread's index, while it is made.
 pub struct Indexing {
     parts: Receiver<IndexPart>,
-    /// When it was started, and whether a part has come.
+    /// When it was started.
     pub began: Instant,
-    pub heard: bool,
 }
 
 /// What came of the thread in a frame.
@@ -35,7 +34,8 @@ pub enum Taken {
     Going,
     /// The last part: the whole replay is indexed.
     Whole,
-    /// The thread ended short of the replay's end (it couldn't read or open the replay, or the engine stopped it).
+    /// The thread ended short of the replay's end (it couldn't read or open the replay, or the engine stopped it): the
+    /// index stays where it got.
     Ended,
 }
 
@@ -44,7 +44,7 @@ impl Indexing {
     pub fn start(game: Loaded, path: PathBuf) -> Option<Indexing> {
         let (send, parts) = mpsc::channel();
         match nettai_platform::thread::spawn("index", move || work(game, path, send)) {
-            Ok(()) => Some(Indexing { parts, began: Instant::now(), heard: false }),
+            Ok(()) => Some(Indexing { parts, began: Instant::now() }),
             Err(why) => {
                 crate::errors::log("starting the replay's index", &why);
                 None
@@ -55,7 +55,7 @@ impl Indexing {
     /// The parts `parts` hands over, as a thread's (the tests make them).
     #[cfg(test)]
     pub fn of(parts: Receiver<IndexPart>) -> Indexing {
-        Indexing { parts, began: Instant::now(), heard: false }
+        Indexing { parts, began: Instant::now() }
     }
 
     /// Take the parts made since into `viewer`, in order.
@@ -63,7 +63,6 @@ impl Indexing {
         loop {
             match self.parts.try_recv() {
                 Ok(part) => {
-                    self.heard = true;
                     let whole = part.whole();
                     viewer.take_index(part);
                     if whole {

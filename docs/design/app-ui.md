@@ -1663,7 +1663,9 @@ Each is settled unless the user changes it.
       second viewer of the replay, with its sound unheard, plays it through there and hands over the states it
       keeps, which the viewer takes in each frame. The edge goes on at about 10,000 ticks a second in the `dev`
       build (five minutes in 1.8 s; 1.3 s in a release build), where a slice a frame on the window's thread went
-      1,300 while the replay played; nothing of the bar changed.
+      1,300 while the replay played; nothing of the bar changed. Then: "why would the thread fail? don't fallback
+      just get rid of that path": the window's thread never indexes; where the thread can't (it doesn't start, or the
+      engine stops it), the index stays where it got.
     - *The speed said:* the ⋯ menu's four bare rows (½× 1× 2× 4×) are one row, PLAYBACK SPEED, with the speed set at
       its right in the muted color (the picker's rows have a value now, `PickMark::value`); choosing it opens the
       four in its place, the one set checked. While the speed isn't 1× a small badge in the cursor's color by the
