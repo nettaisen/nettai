@@ -17,7 +17,7 @@
 import { Theme, Audit, Caps } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, Field, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton, ScrollPage } from "../../widgets.slint";
+import { PanelBack, Label, ListView, Field, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 import { RemoveTarget } from "folder.slint";
 
@@ -895,7 +895,7 @@ export component NavicustTab inherits Rectangle {
     property <length> list-y: Theme.phone ? root.lines-y + 2 * 22px + 8px : root.body-y;
     property <length> side-x: root.list-x + root.list-width + 24px;
     property <length> side-width: self.width - root.side-x;
-    property <length> effects-height: (root.content-height - root.body-y - 12px) * 0.5;
+    property <length> effects-height: (self.height - root.body-y - 12px) * 0.5;
     // The command line's arrows pulse.
     property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
     // ---- The strip: the program under the cursor (or the pointer): where it compresses into another shape, its
@@ -919,11 +919,6 @@ export component NavicustTab inherits Rectangle {
     property <length> bar-width: 2 * root.bar-pad + max(NavicustView.bar-slots, NavicustView.bar-room) * root.slot-pitch - 3px;
     // (The screenshot pass is told if the bar runs into CLEAR.)
     property <bool> bar-over: Theme.audit && NavicustView.board && NavicustView.color-bar.length > 0 && root.bar-x + root.bar-width > clear.x + clear.pad - 12px;
-    // How tall what the tab shows is: the board's column (its frame and its key; on a phone the lines, the search and
-    // at least `list-least` of the programs' list under it). Where the tab is shorter (a short window, a small
-    // phone), it scrolls, the board as large as ever, and the list runs to the foot of what is scrolled.
-    property <length> list-least: 6 * (Theme.list-row + Theme.list-gap);
-    property <length> content-height: max(self.height, Theme.phone ? root.list-y + 80px + root.list-least : root.key-y + root.key-height + 12px);
 
     changed bar-over => {
         if root.bar-over {
@@ -937,607 +932,594 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // (Its scroll bar in the body's margin, at its right: the tab is laid out as wide as it is. A mouse's drag moves a
-    // piece: the wheel scrolls.)
-    page := ScrollPage {
+    // (The words measured, for the key's lines.)
+    board-key-word := Text {
+        visible: false;
+        text: @tr("Board");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    line-key-word := Text {
+        visible: false;
+        text: @tr("Command line");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    plus-key-word := Text {
+        visible: false;
+        text: @tr("Plus part");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    ring-key-word := Text {
+        visible: false;
+        text: @tr("Out of bounds");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    // (Under everything: with a piece in hand, a click where nothing else takes it, off the board and the list's
+    // rows, puts it back where it was (under the rows, away into the list), and a right click puts it away; the
+    // pointer's moves are told, where it is, as the board's and the rows' are.)
+    TouchArea {
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
+                Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if NavicustView.holding && e.kind == PointerEventKind.down {
+                Nav.choose("drag", e.button == PointerEventButton.right ? 8 : 9, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            }
+        }
+    }
+
+    PanelBack {
         x: 0;
-        y: 0;
-        width: root.width + 12px;
-        height: root.height;
-        // (The strip's panel starts above the tab, under the tab bar: its line is drawn.)
-        bleed: 5px;
-        nav: "cell";
-        mouse-pan: false;
-        content-height: root.content-height;
-        // (The words measured, for the key's lines.)
-        board-key-word := Text {
-            visible: false;
-            text: @tr("Board");
-            font-family: Theme.body;
-            font-size: 12px;
+        y: root.top;
+        height: Theme.phone ? 0px : 104px;
+        visible: !Theme.phone;
+    }
+
+    if !Theme.phone && NavicustView.detail.there: Rectangle {
+        x: 0;
+        y: root.top;
+        width: root.words-x;
+        height: 104px;
+        // (The compressed shape first, then the whole one: the user, "instead of shape/compressed it should be
+        // compressed/uncompressed (in that order)". A program of one shape alone has that one, first and with no
+        // word: it is neither, "there's only one form of it".)
+        ShapeView {
+            x: 16px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            cells: root.two-shapes ? NavicustView.detail.compressed : NavicustView.detail.shape;
+            columns: root.two-shapes ? NavicustView.detail.compressed-columns : NavicustView.detail.columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
         }
 
-        line-key-word := Text {
-            visible: false;
-            text: @tr("Command line");
-            font-family: Theme.body;
-            font-size: 12px;
+        Label {
+            x: 16px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            visible: root.two-shapes;
+            text: Caps.of(@tr("Compressed"));
+            horizontal-alignment: center;
         }
 
-        plus-key-word := Text {
-            visible: false;
-            text: @tr("Plus part");
-            font-family: Theme.body;
-            font-size: 12px;
+        ShapeView {
+            x: 16px + root.shape-width + 8px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            visible: root.two-shapes;
+            cells: NavicustView.detail.shape;
+            columns: NavicustView.detail.columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
         }
 
-        ring-key-word := Text {
-            visible: false;
-            text: @tr("Out of bounds");
-            font-family: Theme.body;
-            font-size: 12px;
+        Label {
+            x: 16px + root.shape-width + 8px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            visible: root.two-shapes;
+            text: Caps.of(@tr("Uncompressed"));
+            horizontal-alignment: center;
         }
+    }
 
-        // (Under everything: with a piece in hand, a click where nothing else takes it, off the board and the list's
-        // rows, puts it back where it was (under the rows, away into the list), and a right click puts it away; the
-        // pointer's moves are told, where it is, as the board's and the rows' are.)
-        TouchArea {
-            pointer-event(e) => {
-                if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
-                    Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                } else if NavicustView.holding && e.kind == PointerEventKind.down {
-                    Nav.choose("drag", e.button == PointerEventButton.right ? 8 : 9, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
-                    Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                }
-            }
+    Rectangle {
+        x: root.words-x;
+        y: root.top + 21px;
+        width: 16px;
+        height: 16px;
+        visible: !Theme.phone && NavicustView.detail.there;
+        background: NavicustView.detail.tone;
+        Cross {
+            visible: NavicustView.detail.plus;
+            bar: 1.5px;
         }
+    }
 
-        PanelBack {
-            x: 0;
-            y: root.top;
-            height: Theme.phone ? 0px : 104px;
-            visible: !Theme.phone;
-        }
+    Text {
+        x: root.words-x + 26px;
+        y: root.top + 19px;
+        width: parent.width / 2 - self.x - 8px;
+        height: 20px;
+        visible: !Theme.phone;
+        text: NavicustView.detail.name;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 16px;
+        font-weight: 700;
+        vertical-alignment: center;
+        overflow: elide;
+    }
 
-        if !Theme.phone && NavicustView.detail.there: Rectangle {
-            x: 0;
-            y: root.top;
-            width: root.words-x;
-            height: 104px;
-            // (The compressed shape first, then the whole one: the user, "instead of shape/compressed it should be
-            // compressed/uncompressed (in that order)". A program of one shape alone has that one, first and with no
-            // word: it is neither, "there's only one form of it".)
-            ShapeView {
-                x: 16px;
-                y: 12px;
-                width: root.shape-width;
-                height: 62px;
-                cells: root.two-shapes ? NavicustView.detail.compressed : NavicustView.detail.shape;
-                columns: root.two-shapes ? NavicustView.detail.compressed-columns : NavicustView.detail.columns;
-                tone: NavicustView.detail.tone;
-                plus: NavicustView.detail.plus;
-            }
+    Text {
+        x: root.words-x;
+        y: root.top + 43px;
+        width: parent.width - self.x - 16px;
+        height: 18px;
+        visible: !Theme.phone;
+        text: NavicustView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
 
-            Label {
-                x: 16px;
-                y: 78px;
-                width: root.shape-width;
-                height: 14px;
-                visible: root.two-shapes;
-                text: Caps.of(@tr("Compressed"));
-                horizontal-alignment: center;
-            }
-
-            ShapeView {
-                x: 16px + root.shape-width + 8px;
-                y: 12px;
-                width: root.shape-width;
-                height: 62px;
-                visible: root.two-shapes;
-                cells: NavicustView.detail.shape;
-                columns: NavicustView.detail.columns;
-                tone: NavicustView.detail.tone;
-                plus: NavicustView.detail.plus;
-            }
-
-            Label {
-                x: 16px + root.shape-width + 8px;
-                y: 78px;
-                width: root.shape-width;
-                height: 14px;
-                visible: root.two-shapes;
-                text: Caps.of(@tr("Uncompressed"));
-                horizontal-alignment: center;
-            }
-        }
-
-        Rectangle {
-            x: root.words-x;
-            y: root.top + 21px;
-            width: 16px;
-            height: 16px;
-            visible: !Theme.phone && NavicustView.detail.there;
-            background: NavicustView.detail.tone;
-            Cross {
-                visible: NavicustView.detail.plus;
-                bar: 1.5px;
-            }
-        }
-
+    HorizontalLayout {
+        x: root.words-x;
+        y: root.top + 69px;
+        width: parent.width - self.x - 16px;
+        height: 16px;
+        visible: !Theme.phone && NavicustView.detail.there;
+        spacing: 6px;
+        alignment: start;
         Text {
-            x: root.words-x + 26px;
-            y: root.top + 19px;
-            width: parent.width / 2 - self.x - 8px;
-            height: 20px;
-            visible: !Theme.phone;
-            text: NavicustView.detail.name;
-            color: Theme.text;
-            font-family: Theme.body;
-            font-size: 16px;
-            font-weight: 700;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-
-        Text {
-            x: root.words-x;
-            y: root.top + 43px;
-            width: parent.width - self.x - 16px;
-            height: 18px;
-            visible: !Theme.phone;
-            text: NavicustView.detail.description;
+            text: @tr("Colors");
             color: Theme.muted;
             font-family: Theme.body;
-            font-size: 13px;
+            font-size: 12px;
             vertical-alignment: center;
-            overflow: elide;
         }
-
-        HorizontalLayout {
-            x: root.words-x;
-            y: root.top + 69px;
-            width: parent.width - self.x - 16px;
-            height: 16px;
-            visible: !Theme.phone && NavicustView.detail.there;
-            spacing: 6px;
-            alignment: start;
-            Text {
-                text: @tr("Colors");
-                color: Theme.muted;
-                font-family: Theme.body;
-                font-size: 12px;
-                vertical-alignment: center;
-            }
-
-            Rectangle {
-                width: 2px;
-            }
-
-            for tone[i] in NavicustView.detail.colors: Rectangle {
-                width: 16px;
-                height: 16px;
-                border-width: i == NavicustView.detail.color ? 1px : 0px;
-                border-color: Theme.text;
-                Rectangle {
-                    x: 3px;
-                    y: 3px;
-                    width: 10px;
-                    height: 10px;
-                    background: tone;
-                }
-            }
-        }
-
-        // ---- The board, framed.
-        PanelBack {
-            x: 0;
-            y: root.body-y;
-            width: root.board-width;
-            height: root.head-height + root.board-height;
-            visible: NavicustView.board;
-        }
-
-        board-title := Label {
-            x: 12px;
-            y: root.body-y;
-            width: max(0px, clear.x + clear.pad - 12px - self.x);
-            height: root.head-height;
-            visible: NavicustView.board;
-            text: Caps.of(@tr("NaviCust"));
-            color: NavicustView.in-list ? Theme.muted : Theme.cursor;
-        }
-
 
         Rectangle {
-            x: root.bar-x;
-            y: root.bar-y - root.bar-pad;
-            width: 2 * root.bar-pad + NavicustView.bar-slots * root.slot-pitch - 3px;
-            height: root.slot-height + 2 * root.bar-pad;
-            visible: NavicustView.board && NavicustView.color-bar.length > 0;
-            background: Theme.inset;
-            border-width: 1px;
-            border-color: Theme.line;
+            width: 2px;
         }
 
-        for slot[i] in NavicustView.color-bar: Rectangle {
-            x: root.bar-x + root.bar-pad + i * root.slot-pitch;
-            y: root.bar-y;
-            width: root.slot-width;
-            height: root.slot-height;
-            visible: NavicustView.board;
-            background: slot.filled ? slot.tone : transparent;
-            // (An empty slot: its place, faintly.)
-            border-width: slot.filled ? 0px : 1px;
-            border-color: Theme.line;
+        for tone[i] in NavicustView.detail.colors: Rectangle {
+            width: 16px;
+            height: 16px;
+            border-width: i == NavicustView.detail.color ? 1px : 0px;
+            border-color: Theme.text;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 10px;
+                height: 10px;
+                background: tone;
+            }
+        }
+    }
+
+    // ---- The board, framed.
+    PanelBack {
+        x: 0;
+        y: root.body-y;
+        width: root.board-width;
+        height: root.head-height + root.board-height;
+        visible: NavicustView.board;
+    }
+
+    board-title := Label {
+        x: 12px;
+        y: root.body-y;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
+        height: root.head-height;
+        visible: NavicustView.board;
+        text: Caps.of(@tr("NaviCust"));
+        color: NavicustView.in-list ? Theme.muted : Theme.cursor;
+    }
+
+
+    Rectangle {
+        x: root.bar-x;
+        y: root.bar-y - root.bar-pad;
+        width: 2 * root.bar-pad + NavicustView.bar-slots * root.slot-pitch - 3px;
+        height: root.slot-height + 2 * root.bar-pad;
+        visible: NavicustView.board && NavicustView.color-bar.length > 0;
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    for slot[i] in NavicustView.color-bar: Rectangle {
+        x: root.bar-x + root.bar-pad + i * root.slot-pitch;
+        y: root.bar-y;
+        width: root.slot-width;
+        height: root.slot-height;
+        visible: NavicustView.board;
+        background: slot.filled ? slot.tone : transparent;
+        // (An empty slot: its place, faintly.)
+        border-width: slot.filled ? 0px : 1px;
+        border-color: Theme.line;
+    }
+
+    if NavicustView.board: Rectangle {
+        x: 0;
+        y: root.board-top;
+        width: root.board-width;
+        height: root.board-height;
+        // (EXE6's board, outlined in white within its ring.)
+        Rectangle {
+            x: root.grid-x + NavicustView.board-x * root.pitch - 3px;
+            y: root.grid-y + NavicustView.board-y * root.pitch - 3px;
+            width: NavicustView.board-columns * root.pitch - root.gap + 6px;
+            height: NavicustView.board-rows * root.pitch - root.gap + 6px;
+            visible: NavicustView.ring;
+            border-width: 2px;
+            border-color: Theme.text;
         }
 
-        if NavicustView.board: Rectangle {
-            x: 0;
-            y: root.board-top;
-            width: root.board-width;
-            height: root.board-height;
-            // (EXE6's board, outlined in white within its ring.)
+        for cell[i] in NavicustView.cells: CellView {
+            x: root.grid-x + mod(i, NavicustView.columns) * root.pitch;
+            y: root.grid-y + floor(i / NavicustView.columns) * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            cell: cell;
+            command: floor(i / NavicustView.columns) == NavicustView.command;
+            nav-index: i;
+            gap: root.gap;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        // The command line: a line over and under its row, over what is placed on it, and an arrow at each end.
+        Rectangle {
+            x: root.grid-x - 28px;
+            y: root.grid-y + NavicustView.command * root.pitch - 4px;
+            width: root.grid-width + 56px;
+            height: root.cell + 8px;
+            visible: NavicustView.command >= 0;
             Rectangle {
-                x: root.grid-x + NavicustView.board-x * root.pitch - 3px;
-                y: root.grid-y + NavicustView.board-y * root.pitch - 3px;
-                width: NavicustView.board-columns * root.pitch - root.gap + 6px;
-                height: NavicustView.board-rows * root.pitch - root.gap + 6px;
-                visible: NavicustView.ring;
-                border-width: 2px;
-                border-color: Theme.text;
+                y: 0;
+                height: 2px;
+                background: Theme.cursor;
             }
 
-            for cell[i] in NavicustView.cells: CellView {
-                x: root.grid-x + mod(i, NavicustView.columns) * root.pitch;
-                y: root.grid-y + floor(i / NavicustView.columns) * root.pitch;
-                width: root.cell;
-                height: root.cell;
-                cell: cell;
-                command: floor(i / NavicustView.columns) == NavicustView.command;
-                nav-index: i;
-                gap: root.gap;
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
-
-            // The command line: a line over and under its row, over what is placed on it, and an arrow at each end.
             Rectangle {
-                x: root.grid-x - 28px;
-                y: root.grid-y + NavicustView.command * root.pitch - 4px;
-                width: root.grid-width + 56px;
-                height: root.cell + 8px;
-                visible: NavicustView.command >= 0;
-                Rectangle {
-                    y: 0;
-                    height: 2px;
-                    background: Theme.cursor;
-                }
-
-                Rectangle {
-                    y: parent.height - 2px;
-                    height: 2px;
-                    background: Theme.cursor;
-                }
-
-                ArrowRight {
-                    x: 9px;
-                    y: (parent.height - self.height) / 2;
-                    opacity: root.breath;
-                }
-
-                ArrowLeft {
-                    x: parent.width - 9px - self.width;
-                    y: (parent.height - self.height) / 2;
-                    opacity: root.breath;
-                }
+                y: parent.height - 2px;
+                height: 2px;
+                background: Theme.cursor;
             }
 
-            // The cells a piece was just put down on.
-            for c[i] in NavicustView.dropped: DropFlash {
-                x: root.grid-x + c.x * root.pitch;
-                y: root.grid-y + c.y * root.pitch;
-                width: root.cell;
-                height: root.cell;
-                delay: i * Theme.stagger;
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
+            ArrowRight {
+                x: 9px;
+                y: (parent.height - self.height) / 2;
+                opacity: root.breath;
             }
 
-            // The piece in hand, lifted, over the cell the cursor holds it by: it glides from cell to cell, turns about
-            // that cell, and shakes where it can't be put down. (Its cells are from the cell held.)
+            ArrowLeft {
+                x: parent.width - 9px - self.width;
+                y: (parent.height - self.height) / 2;
+                opacity: root.breath;
+            }
+        }
+
+        // The cells a piece was just put down on.
+        for c[i] in NavicustView.dropped: DropFlash {
+            x: root.grid-x + c.x * root.pitch;
+            y: root.grid-y + c.y * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            delay: i * Theme.stagger;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        // The piece in hand, lifted, over the cell the cursor holds it by: it glides from cell to cell, turns about
+        // that cell, and shakes where it can't be put down. (Its cells are from the cell held.)
+        Rectangle {
+            x: root.grid-x + NavicustView.grab-x * root.pitch;
+            y: root.grid-y + NavicustView.grab-y * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            visible: NavicustView.holding;
+            // (It glides as it is moved, and is where it is taken up at once.)
+            animate x, y {
+                duration: NavicustView.glide ? Theme.quick : 0ms;
+                easing: ease-out;
+            }
+            lift := Tween {
+                seq: NavicustView.lifted;
+                duration: Theme.brisk;
+            }
+
+            turn := Tween {
+                seq: NavicustView.turned;
+                duration: Theme.brisk;
+            }
+
+            shake := Shake {
+                seq: NavicustView.refused-seq;
+            }
+
+            // (With the pointer over the list, where a click puts it away, it fades back.)
             Rectangle {
-                x: root.grid-x + NavicustView.grab-x * root.pitch;
-                y: root.grid-y + NavicustView.grab-y * root.pitch;
-                width: root.cell;
-                height: root.cell;
-                visible: NavicustView.holding;
-                // (It glides as it is moved, and is where it is taken up at once.)
-                animate x, y {
-                    duration: NavicustView.glide ? Theme.quick : 0ms;
+                x: shake.dx;
+                opacity: NavicustView.over-list ? 0.45 : 1;
+                animate opacity {
+                    duration: Theme.quick;
                     easing: ease-out;
                 }
-                lift := Tween {
-                    seq: NavicustView.lifted;
-                    duration: Theme.brisk;
+                transform-origin: { x: root.cell / 2, y: root.cell / 2 };
+                transform-scale: 1 + 0.06 * lift.t;
+                transform-rotation: (1 - turn.t) * -90deg * NavicustView.turn-way;
+                HeldShadow {
+                    cells: NavicustView.held;
+                    cell: root.cell;
+                    pitch: root.pitch;
                 }
 
-                turn := Tween {
-                    seq: NavicustView.turned;
-                    duration: Theme.brisk;
+                for c in NavicustView.held: HeldCellView {
+                    x: c.x * root.pitch;
+                    y: c.y * root.pitch;
+                    width: root.cell;
+                    height: root.cell;
+                    at: c;
+                    tone: NavicustView.held-tone;
+                    plus: NavicustView.held-plus;
+                    fits: NavicustView.held-fits;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
 
-                shake := Shake {
-                    seq: NavicustView.refused-seq;
-                }
-
-                // (With the pointer over the list, where a click puts it away, it fades back.)
-                Rectangle {
-                    x: shake.dx;
-                    opacity: NavicustView.over-list ? 0.45 : 1;
-                    animate opacity {
-                        duration: Theme.quick;
-                        easing: ease-out;
-                    }
-                    transform-origin: { x: root.cell / 2, y: root.cell / 2 };
-                    transform-scale: 1 + 0.06 * lift.t;
-                    transform-rotation: (1 - turn.t) * -90deg * NavicustView.turn-way;
-                    HeldShadow {
-                        cells: NavicustView.held;
-                        cell: root.cell;
-                        pitch: root.pitch;
-                    }
-
-                    for c in NavicustView.held: HeldCellView {
-                        x: c.x * root.pitch;
-                        y: c.y * root.pitch;
-                        width: root.cell;
-                        height: root.cell;
-                        at: c;
-                        tone: NavicustView.held-tone;
-                        plus: NavicustView.held-plus;
-                        fits: NavicustView.held-fits;
-
-                        Rectangle { }  // (Copied in: docs/app.md §14.)
-                    }
-
-                    for c in NavicustView.held: HeldGapView {
-                        x: c.x * root.pitch;
-                        y: c.y * root.pitch;
-                        width: root.cell;
-                        height: root.cell;
-                        at: c;
-                        tone: NavicustView.held-tone;
-                        fits: NavicustView.held-fits;
-                        gap: root.gap;
-                    }
-                }
-            }
-
-            // The mouse over the board, by clicks: a click (as the button goes down) picks a placed piece up, or puts the
-            // piece in hand down; the piece in hand follows the pointer with no button held, and the wheel turns it.
-            // Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell.
-            TouchArea {
-                mouse-cursor: NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
-                pointer-event(e) => {
-                    if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
-                        // (With no button held, the piece in hand follows the pointer.)
-                        Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                    } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
-                        Nav.choose("drag", 1, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                    } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
-                        Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                    } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down {
-                        // (A right click puts the piece in hand away, else takes off the piece under it.)
-                        Nav.choose("drag", 8, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                    }
-                }
-                scroll-event(e) => {
-                    if NavicustView.holding {
-                        Nav.choose("drag", 4, round(e.delta-y / 1px));
-                        return accept;
-                    }
-                    return reject;
+                for c in NavicustView.held: HeldGapView {
+                    x: c.x * root.pitch;
+                    y: c.y * root.pitch;
+                    width: root.cell;
+                    height: root.cell;
+                    at: c;
+                    tone: NavicustView.held-tone;
+                    fits: NavicustView.held-fits;
+                    gap: root.gap;
                 }
             }
         }
 
-        // ---- The key under the board: on one line where the language's words leave it the room, else on two (which
-        // depends on the language alone).
-        board-key := KeyEntry {
-            x: 0;
-            y: root.key-y;
-            visible: NavicustView.board;
-            text: @tr("Board");
-            swatch: 0;
+        // The mouse over the board, by clicks: a click (as the button goes down) picks a placed piece up, or puts the
+        // piece in hand down; the piece in hand follows the pointer with no button held, and the wheel turns it.
+        // Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell.
+        TouchArea {
+            mouse-cursor: NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
+                    // (With no button held, the piece in hand follows the pointer.)
+                    Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                    Nav.choose("drag", 1, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                    Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down {
+                    // (A right click puts the piece in hand away, else takes off the piece under it.)
+                    Nav.choose("drag", 8, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                }
+            }
+            scroll-event(e) => {
+                if NavicustView.holding {
+                    Nav.choose("drag", 4, round(e.delta-y / 1px));
+                    return accept;
+                }
+                return reject;
+            }
         }
+    }
 
-        line-key := KeyEntry {
-            x: board-key.width + 16px;
-            y: root.key-y;
-            visible: NavicustView.board;
-            text: @tr("Command line");
-            swatch: 1;
-        }
+    // ---- The key under the board: on one line where the language's words leave it the room, else on two (which
+    // depends on the language alone).
+    board-key := KeyEntry {
+        x: 0;
+        y: root.key-y;
+        visible: NavicustView.board;
+        text: @tr("Board");
+        swatch: 0;
+    }
 
-        plus-key := KeyEntry {
-            x: root.key-lines == 2 ? 0px : line-key.x + line-key.width + 16px;
-            y: root.key-y + (root.key-lines == 2 ? 22px : 0px);
-            visible: NavicustView.board;
-            text: @tr("Plus part");
-            swatch: 2;
-        }
+    line-key := KeyEntry {
+        x: board-key.width + 16px;
+        y: root.key-y;
+        visible: NavicustView.board;
+        text: @tr("Command line");
+        swatch: 1;
+    }
 
-        ring-key := KeyEntry {
-            x: plus-key.x + plus-key.width + 16px;
-            y: plus-key.y;
-            visible: NavicustView.board && NavicustView.ring;
-            text: @tr("Out of bounds");
-            swatch: 3;
-        }
+    plus-key := KeyEntry {
+        x: root.key-lines == 2 ? 0px : line-key.x + line-key.width + 16px;
+        y: root.key-y + (root.key-lines == 2 ? 22px : 0px);
+        visible: NavicustView.board;
+        text: @tr("Plus part");
+        swatch: 2;
+    }
+
+    ring-key := KeyEntry {
+        x: plus-key.x + plus-key.width + 16px;
+        y: plus-key.y;
+        visible: NavicustView.board && NavicustView.ring;
+        text: @tr("Out of bounds");
+        swatch: 3;
+    }
 
 
-        // (Why the piece in hand couldn't be put down: the strip's refusal, at its top right as every tab's strip has it;
-        // else what the rules have against the program it describes. A phone has no strip: its line is under the key.)
-        Refusal {
-            x: root.width / 2;
-            y: root.top + 19px;
-            width: root.width / 2 - 16px;
-            visible: !Theme.phone;
-            text: NavicustView.notice;
-            problem: NavicustView.fault;
+    // (Why the piece in hand couldn't be put down: the strip's refusal, at its top right as every tab's strip has it;
+    // else what the rules have against the program it describes. A phone has no strip: its line is under the key.)
+    Refusal {
+        x: root.width / 2;
+        y: root.top + 19px;
+        width: root.width / 2 - 16px;
+        visible: !Theme.phone;
+        text: NavicustView.notice;
+        problem: NavicustView.fault;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Message {
+        x: 0;
+        y: root.key-y + root.key-height + 10px;
+        width: root.board-width;
+        visible: Theme.phone;
+        text: NavicustView.notice;
+    }
+
+    // ---- The programs: an open list, what is wrong with the NaviCust on a phone's title's line.
+    programs-title := Label {
+        x: root.list-x;
+        y: root.list-y;
+        width: NavicustView.board ? root.list-width : max(0px, clear.x + clear.pad - 12px - self.x);
+        height: 20px;
+        text: Caps.of(@tr("Programs"));
+        color: NavicustView.in-list ? Theme.cursor : Theme.muted;
+    }
+
+    ProblemNote {
+        x: root.list-x + min(programs-title.width, programs-title.preferred-width) + 16px;
+        y: root.list-y + (20px - self.height) / 2;
+        width: max(0px, (NavicustView.board ? root.list-x + root.list-width + 4px : clear.x + clear.pad) - 12px - self.x);
+        visible: Theme.phone;
+        text: NavicustView.problems;
+    }
+
+    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // placed program taken off the board (the board kept), asked first; dim where none is. With the board, at the
+    // right end of its pane's header, as the folder's and the cards' are (the user: "navicust clear should probably go
+    // on the tableau and not on the program parts list", then "clear on the navicust editor should be on the top right
+    // in the header which you should add so it matches how it looks everywhere else"); where the game draws none, at
+    // the right end of the programs' title's line.
+    clear := WordButton {
+        x: NavicustView.board ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
+        y: NavicustView.board ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
+        nav: "clear";
+        text: Caps.of(@tr("Clear"));
+        enabled: NavicustView.clearable;
+    }
+
+    // The search: the list holds the programs whose names hold it.
+    Field {
+        x: root.list-x;
+        y: root.list-y + 28px;
+        width: root.list-width;
+        nav: "programs.search";
+        text: NavicustView.search;
+        placeholder: @tr("Search programs");
+    }
+
+    list := ListView {
+        x: root.list-x;
+        y: root.list-y + 80px;
+        width: root.list-width;
+        height: max(0px, root.height - self.y);
+        nav: "programs";
+        // (A mouse's drag of a row takes its program to the board; the wheel scrolls the list.)
+        mouse-pan: false;
+        count: NavicustView.programs.length;
+        row-height: Theme.list-row;
+        chosen: self.focused-row;
+        for slot in list.shown: ProgramRowView {
+            property <int> at: list.first + slot;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            program: NavicustView.programs[self.at];
+            nav-index: self.at;
+            big: Theme.phone;
+            most-colors: NavicustView.most-colors;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+    }
 
-        Message {
+    // (With a piece in hand and the pointer over the list, a click there puts it away into the list.)
+    RemoveTarget {
+        x: root.list-x - 8px;
+        y: root.list-y - 8px;
+        width: root.list-width + 16px;
+        height: max(0px, root.height - self.y);
+        shown: NavicustView.over-list;
+        text: Caps.of(@tr("Click to put away"));
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each.
+    if !Theme.phone: Rectangle {
+        PanelBack {
+            x: root.side-x;
+            y: root.body-y;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
+
+        for line[i] in NavicustView.effects: EffectRow {
+            x: root.side-x + 16px;
+            y: root.body-y + 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+
+        PanelBack {
+            x: root.side-x;
+            y: root.body-y + root.effects-height + 12px;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
+
+        for line[i] in NavicustView.bugs: EffectRow {
+            x: root.side-x + 16px;
+            y: root.body-y + root.effects-height + 12px + 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+    }
+
+    if Theme.phone: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: NavicustView.effects-line, bug: false }, { title: @tr("Bugs"), text: NavicustView.bugs-line, bug: true }]: Rectangle {
             x: 0;
-            y: root.key-y + root.key-height + 10px;
-            width: root.board-width;
-            visible: Theme.phone;
-            text: NavicustView.notice;
-        }
-
-        // ---- The programs: an open list, what is wrong with the NaviCust on a phone's title's line.
-        programs-title := Label {
-            x: root.list-x;
-            y: root.list-y;
-            width: NavicustView.board ? root.list-width : max(0px, clear.x + clear.pad - 12px - self.x);
-            height: 20px;
-            text: Caps.of(@tr("Programs"));
-            color: NavicustView.in-list ? Theme.cursor : Theme.muted;
-        }
-
-        ProblemNote {
-            x: root.list-x + min(programs-title.width, programs-title.preferred-width) + 16px;
-            y: root.list-y + (20px - self.height) / 2;
-            width: max(0px, (NavicustView.board ? root.list-x + root.list-width + 4px : clear.x + clear.pad) - 12px - self.x);
-            visible: Theme.phone;
-            text: NavicustView.problems;
-        }
-
-        // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
-        // placed program taken off the board (the board kept), asked first; dim where none is. With the board, at the
-        // right end of its pane's header, as the folder's and the cards' are (the user: "navicust clear should probably go
-        // on the tableau and not on the program parts list", then "clear on the navicust editor should be on the top right
-        // in the header which you should add so it matches how it looks everywhere else"); where the game draws none, at
-        // the right end of the programs' title's line.
-        clear := WordButton {
-            x: NavicustView.board ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
-            y: NavicustView.board ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
-            nav: "clear";
-            text: Caps.of(@tr("Clear"));
-            enabled: NavicustView.clearable;
-        }
-
-        // The search: the list holds the programs whose names hold it.
-        Field {
-            x: root.list-x;
-            y: root.list-y + 28px;
-            width: root.list-width;
-            nav: "programs.search";
-            text: NavicustView.search;
-            placeholder: @tr("Search programs");
-        }
-
-        list := ListView {
-            x: root.list-x;
-            y: root.list-y + 80px;
-            width: root.list-width;
-            height: root.content-height - self.y;
-            nav: "programs";
-            // (A mouse's drag of a row takes its program to the board; the wheel scrolls the list.)
-            mouse-pan: false;
-            count: NavicustView.programs.length;
-            row-height: Theme.list-row;
-            chosen: self.focused-row;
-            for slot in list.shown: ProgramRowView {
-                property <int> at: list.first + slot;
-                y: self.at * list.pitch;
-                width: list.row-width;
-                height: list.row-height;
-                program: NavicustView.programs[self.at];
-                nav-index: self.at;
-                big: Theme.phone;
-                most-colors: NavicustView.most-colors;
-
-                Rectangle { }  // (Copied in: docs/app.md §14.)
-            }
-        }
-
-        // (With a piece in hand and the pointer over the list, a click there puts it away into the list.)
-        RemoveTarget {
-            x: root.list-x - 8px;
-            y: root.list-y - 8px;
-            width: root.list-width + 16px;
-            height: root.content-height - self.y;
-            shown: NavicustView.over-list;
-            text: Caps.of(@tr("Click to put away"));
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each.
-        if !Theme.phone: Rectangle {
-            PanelBack {
-                x: root.side-x;
-                y: root.body-y;
-                width: root.side-width;
-                height: root.effects-height;
-                accent: false;
-            }
-
-            for line[i] in NavicustView.effects: EffectRow {
-                x: root.side-x + 16px;
-                y: root.body-y + 10px + i * 20px;
-                width: root.side-width - 32px;
-                line: line;
-            }
-
-            PanelBack {
-                x: root.side-x;
-                y: root.body-y + root.effects-height + 12px;
-                width: root.side-width;
-                height: root.effects-height;
-                accent: false;
-            }
-
-            for line[i] in NavicustView.bugs: EffectRow {
-                x: root.side-x + 16px;
-                y: root.body-y + root.effects-height + 12px + 10px + i * 20px;
-                width: root.side-width - 32px;
-                line: line;
-            }
-        }
-
-        if Theme.phone: Rectangle {
-            for line[i] in [{ title: @tr("Effects"), text: NavicustView.effects-line, bug: false }, { title: @tr("Bugs"), text: NavicustView.bugs-line, bug: true }]: Rectangle {
+            y: root.lines-y + i * 22px;
+            width: root.width;
+            height: 16px;
+            Text {
                 x: 0;
-                y: root.lines-y + i * 22px;
-                width: root.width;
-                height: 16px;
-                Text {
-                    x: 0;
-                    width: 96px;
-                    text: line.title;
-                    color: Theme.muted;
-                    font-family: Theme.body;
-                    font-size: 13px;
-                    vertical-alignment: center;
-                    overflow: elide;
-                }
+                width: 96px;
+                text: line.title;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
 
-                Text {
-                    x: 100px;
-                    width: parent.width - 100px;
-                    text: line.text == "" ? @tr("None") : line.text;
-                    color: line.text == "" ? Theme.dim : (line.bug ? Theme.bug : Theme.text);
-                    font-family: Theme.body;
-                    font-size: 13px;
-                    font-weight: 600;
-                    vertical-alignment: center;
-                    overflow: elide;
-                }
+            Text {
+                x: 100px;
+                width: parent.width - 100px;
+                text: line.text == "" ? @tr("None") : line.text;
+                color: line.text == "" ? Theme.dim : (line.bug ? Theme.bug : Theme.text);
+                font-family: Theme.body;
+                font-size: 13px;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
             }
         }
     }

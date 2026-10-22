@@ -180,11 +180,6 @@ enum Ask {
     Quit,
 }
 
-/// How short the layout may be, in units, before the whole of it is made smaller to fit a short window (a phone
-/// on its side, a short browser window): the reference's 800 at most, the rest of a shorter window's height taken by
-/// each screen's body, which scrolls where what it shows doesn't fit (docs/design/app-ui.md, "Units").
-const LEAST_HEIGHT: f32 = 560.0;
-
 /// How the window's layout is scaled (docs/design/app-ui.md §4, "Units"): the UI's lengths are units of a
 /// 1280 by 800 window, or of a phone 390 wide when the window is upright, and the window's scale is set so
 /// that one of Slint's `px` is one unit.
@@ -847,9 +842,10 @@ impl Shell {
 
     // ---- The window's scale ------------------------------------------------------------------------------
 
-    /// Fit the layout to the window: one unit is a 1280th of its width or a [`LEAST_HEIGHT`]th of its height,
-    /// whichever is less (upright, a 390th of its width), and the window's scale is set to that: one scale for
-    /// every screen. True if the layout turned between the desktop's and the phone's.
+    /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever is
+    /// less (upright, a 390th of its width), and the window's scale is set to that. A short window makes the whole
+    /// layout smaller: no screen is laid out shorter than the reference and scrolled. True if the layout turned
+    /// between the desktop's and the phone's.
     fn fit_window(&mut self) -> bool {
         let ui = self.ui();
         let window = ui.window();
@@ -860,7 +856,7 @@ impl Shell {
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
         let (width, height) = (size.width as f32 / os, size.height as f32 / os);
         let phone = width < 0.8 * height;
-        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / LEAST_HEIGHT) }.max(0.2);
+        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / 800.0) }.max(0.2);
         let factor = os * unit;
         let turned = phone != self.scale.phone;
         let resized = (size.width, size.height) != self.scale.size || (window.scale_factor() - factor).abs() > 0.0005;
