@@ -487,7 +487,9 @@ import puts the ring back. The element icons are taken apart at extraction
 (the user: "make the extract element icons transparent and borderless"):
 the frame they share is a picture (`element-frame.png`: each pixel the
 index most of the icons share, the rest of it the ground, its most common
-index) and a drawing (`element_frame`, 16x16); each icon in `elements.png`
+index) and a drawing (`element_frame`, 16x16: the ring and the ground in
+it, nothing round the ring, checked against the picture without the ground
+there); each icon in `elements.png`
 is its pixels that aren't the frame's, clear elsewhere: its symbol, and
 where an icon draws a pixel of the frame its own way (EXE6's and EXE5's
 fourth icon's inner corners, their no-element icon's top right), that

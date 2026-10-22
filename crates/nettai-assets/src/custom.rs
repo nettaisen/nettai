@@ -411,6 +411,14 @@ impl CustomScreen {
     /// by ground (where the enhanced graphics show a symbol, over the
     /// frame's drawing); none without a frame.
     pub fn element_inside(&self) -> Option<Vec<bool>> {
+        let (ground, outside) = self.element_outside()?;
+        Some(self.element_frame.pixels.iter().zip(&outside).map(|(&p, &o)| p == ground && !o).collect())
+    }
+
+    /// The element frame's ground (its most common index), and which of its
+    /// pixels are that ground outside its ring (joined to its edge by ground:
+    /// the square round the ring, which the frame's drawing doesn't fill).
+    pub fn element_outside(&self) -> Option<(u8, Vec<bool>)> {
         let frame = self.element_frame.pixels.get(..4 * Tiles::TILE)?;
         // (A pixel's place in the tiles, by x and y.)
         let at = |x: usize, y: usize| (2 * (y / 8) + x / 8) * Tiles::TILE + 8 * (y % 8) + x % 8;
@@ -429,7 +437,7 @@ impl CustomScreen {
             outside[i] = true;
             stack.extend([(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)].into_iter().filter(|&(x, y)| x < 16 && y < 16));
         }
-        Some((0..4 * Tiles::TILE).map(|i| frame[i] == ground && !outside[i]).collect())
+        Some((ground, outside))
     }
 
     /// The window frame's first tile number (`window_tiles`).
