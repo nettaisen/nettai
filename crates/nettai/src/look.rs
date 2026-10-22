@@ -66,7 +66,7 @@ impl Looks {
         let plain = ui.global::<Theme>().get_look();
         let grounds = Rc::new(VecModel::from(vec![Ground { look: plain.clone(), from: 0 }]));
         ui.global::<nettai_ui::Shell>().set_grounds(ModelRc::from(grounds.clone()));
-        Looks { by_game, target: plain.clone(), plain, fading: None, coming: None, grounds, came: vec![crate::clock::now()] }
+        Looks { by_game, target: plain.clone(), plain, fading: None, coming: None, grounds, came: vec![Instant::now()] }
     }
 
     /// Show game `game`'s look, its ground sweeping in from side `from` (-1 the left, 1 the right); `from` 0, or
@@ -93,7 +93,7 @@ impl Looks {
         if at_once {
             self.coming = None;
             self.grounds.set_vec(vec![Ground { look, from: 0 }]);
-            self.came = vec![crate::clock::now()];
+            self.came = vec![Instant::now()];
         } else {
             self.coming = Some(Ground { look, from: from.signum() });
         }

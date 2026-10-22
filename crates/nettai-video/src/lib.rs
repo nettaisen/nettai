@@ -4,8 +4,8 @@
 //! - The playing: a replay through a [`Viewer`], the whole of it or a part (a round, a range of ticks), from either
 //!   console, both on one screen, or both side by side ([`Sides`]), the picture at a whole multiple of the frame's
 //!   240x160, a frame and its sound at a time.
-//! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (written the playing as a NUT stream of raw
-//!   frames and PCM sound, which it encodes and says the packets of back), the browser's own in a browser
+//! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (a child a track, written its raw frames or
+//!   samples, which it encodes and says the packets of back), the browser's own in a browser
 //!   (WebCodecs). Either is given the same frames and the same samples, and makes the picture's H.264 and a sound
 //!   track's AAC (or the browser's Opus) a console shown.
 //! - `resample`: the sound made 48 kHz, the rate both encoders' codecs take, before either is given it.
@@ -85,7 +85,7 @@ pub mod mp4;
 pub use mp4::Made;
 mod presenters;
 
-// The platform's encoder, each with its `start`: ffmpeg on the desktop (and the NUT stream it is written), the
+// The platform's encoder, each with its `start`: ffmpeg on the desktop (a child a track), the
 // browser's own in a browser.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod ffmpeg;

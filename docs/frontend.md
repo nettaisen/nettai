@@ -3081,24 +3081,38 @@ then took as long as ffmpeg alone took to encode the same frames from a file
 (1,200 of them: 3.2 s against ffmpeg's 3.0; libx264 at `-preset medium`, CRF
 16, unchanged), and was byte for byte what it had been.
 
-**On the desktop: ffmpeg** (`ffmpeg`). It is written the frames as a NUT
-stream on its standard input (`ffmpeg::nut`: FFmpeg's container, raw
-`RGB[24]` frames and `PFD[32]` sound, 32-bit little-endian floats, left and
-right; the picture on a tick's time base, the sound on 1/48000 s; each frame
-a keyframe behind a syncpoint of its own, in time order across the streams;
-the headers three times at least and an index last). The stream is ffmpeg's
-input and nothing else: no file is saved of it (the user: "don't allow raw
-.nut export", then "can you remove nut support then?"). The command line is
-the module's (`ffmpeg::arguments`): H.264 by libx264 (`-preset medium -tune
+**On the desktop: ffmpeg** (`ffmpeg`), a child a track (the user: "can we
+avoid emitting nut entirely?"). The picture's child is written the frames'
+raw RGB on its standard input (`-f rawvideo -pixel_format rgb24`, the
+video's size, `-framerate 262144/4389`: a tick's rate, so its times are the
+frames' count, exact), and each sound track's child that track's samples
+(`-f f32le -sample_rate 48000 -ch_layout stereo`); each says its track back
+as a fragmented MP4 on its standard output, read as it comes (its track from
+its `moov`, each fragment's samples from its `moof` and `mdat`) and not kept:
+the MP4 is the muxer's, which puts the tracks together. Each child reads its
+own pipe and nothing else, and its output and what it says are read on
+threads of their own, so no child waits on another and a full pipe only
+means that child is busy (the user: "well if i feed them separately will it
+cause pipe problems?": with one ffmpeg reading every track on pipes of their
+own it could, its output interleaving the tracks while the writer waits on
+another's full pipe; and those pipes would be more descriptors on Unix and
+named pipes on Windows). It was a NUT stream into one ffmpeg until then; that
+was no faster (the frames' bytes go to the pipe as they are either way, and
+x264 sets the pace) but a container of our own to write, read and test. The
+command lines are the module's (`ffmpeg::picture_arguments`,
+`ffmpeg::sound_arguments`): H.264 by libx264 (`-preset medium -tune
 animation -crf 16 -g 120`), 4:2:0, the colors converted and tagged as BT.709
 (the primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's
 encoder takes them from the frames, and with `-color_primaries` and
 `-color_trc` alone the MP4 said "unknown" for both); AAC at 192 kb/s of the
-samples as they come, resampled by nothing; `-map 0:a?`, so every track of
-the stream is one of the MP4 (by itself ffmpeg takes one sound). ffmpeg says
-its packets back as a fragmented MP4 on its standard output, read as it
-comes (its tracks from its `moov`, each fragment's samples from its `moof`
-and `mdat`) and not kept: the MP4 is the muxer's. The picture isn't scaled by
+samples as they come, resampled by nothing. Each child's `moov` waits for its
+first fragment (`delay_moov`), so it has the track's edit list: the
+picture's past its reordering, and the sound's past AAC's encoder delay, its
+first 1024 samples, which a player skips by it. (Before, ffmpeg wrote its
+`moov` ahead of any sample, with no edit list, and from 7ad595dff the
+desktop's sound played those 1024 samples, 21 ms, late; nettai-video's test
+`ffmpeg_makes_the_mp4` holds the decoded sound to the samples given, at no
+lag.) The picture isn't scaled by
 ffmpeg. What 4:2:0 costs depends on
 the size: at an even multiple of the frame every game pixel covers whole
 color samples and edges stay clean, at an odd one every edge gets a fringe
@@ -3116,9 +3130,9 @@ absolute folder of the path or where a package manager puts it
 of the path (`.`, or an empty entry) is never looked in, so an `ffmpeg` in
 the working directory isn't run; found nowhere, it is the bundled one's
 place, which fails to start (`NoFfmpeg`). The bundled ffmpeg is a minimal
-static build of this command and nothing more (nettaisen/ffmpeg-build); its
-release ffmpeg-9.0.2-1 makes this crate's MP4 from the 48 kHz stream as its
-test below has it.
+static build of these commands and nothing more (nettaisen/ffmpeg-build,
+from ffmpeg-9.0.2-2: the raw video and float PCM demuxers in place of NUT's,
+and pipes alone).
 
 **In a browser: WebCodecs** (`webcodecs`). H.264 at level 4.2 (High, else
 Main, else the constrained baseline every encoder has), at a bit rate made
@@ -3172,17 +3186,17 @@ run, every frame's sound in its place (the picture's length to within a
 sample); a part's the whole's for its ticks; each side, side by side, its
 own video; both on one screen the viewer's both; the titles and chapters;
 the progress and canceling; what can't be made refused before the encoder
-starts. With ffmpeg itself (9.0.2; `ffmpeg_reads_the_stream_and_makes_the_mp4`,
-not run by default: it needs `ffmpeg` and `ffprobe`), ffprobe reads the
-stream ffmpeg is given as `rawvideo`, `rgb24`, 262144/4389 frames a second
-and `pcm_f32le`, 48000 Hz, stereo, with its length from the index and nothing
-said at `-v error`; ffmpeg decodes its frames and samples to exactly the
-bytes written; the MP4 is `ftyp`, `moov` and `mdat` and no fragments, holds
-every frame as H.264 and the sound as AAC at 48 kHz; and a two-sided MP4 has
-a track a side in order, named, the first the default, the two decoding
-differently, and the rounds as chapters from the frame the second's picture
-begins on. It passes with Homebrew's ffmpeg and with the bundled one
-(ffmpeg-9.0.2-1's macos-arm64 binary, by `NETTAI_FFMPEG`).
+starts. With stand-ins for ffmpeg (shell scripts), each child is written its
+own track and nothing else (the frames' pixels, a track's samples as
+little-endian floats), and a child that fails, fills the disk, closes its
+input or never ends is said or stopped. With ffmpeg itself (9.0.2;
+`ffmpeg_makes_the_mp4`, not run by default: it needs `ffmpeg` and
+`ffprobe`), the MP4 is `ftyp`, `moov` and `mdat` and no fragments, holds
+every frame as H.264, close to the frames, and the sound as AAC at 48 kHz,
+decoding to the samples given (to within the millisecond the muxer's edit
+lists are in) at no lag; and a two-sided MP4 has a track a side in order,
+named, the first the default, the two decoding differently, and the rounds
+as chapters from the frame the second's picture begins on.
 
 ## 9. Loading, and what a match waits for
 
