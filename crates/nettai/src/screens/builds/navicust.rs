@@ -49,7 +49,7 @@
 //! piece under the pointer. A key moves the piece in hand from where it is, and the pointer's next move takes it back
 //! under the pointer.
 
-use crate::builds::grid::{self, Edit, GridData, Held};
+use crate::builds::grid::{self, Edit, GridData, Held, tone};
 use crate::builds::overview;
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
@@ -223,11 +223,6 @@ fn boxed(shape: &grid::Shape) -> (Vec<bool>, i32) {
     let (Some(left), Some(right)) = (cells.iter().map(|c| c.0).min(), cells.iter().map(|c| c.0).max()) else { return (Vec::new(), 0) };
     let (top, bottom) = (cells.iter().map(|c| c.1).min().unwrap_or(0), cells.iter().map(|c| c.1).max().unwrap_or(0));
     ((top..=bottom).flat_map(|y| (left..=right).map(move |x| shape[y][x])).collect(), (right - left + 1) as i32)
-}
-
-fn tone(name: Option<&str>) -> slint::Color {
-    let [_, r, g, b] = grid::rgb(name).to_be_bytes();
-    slint::Color::from_rgb_u8(r, g, b)
 }
 
 /// A piece's cells, each from (dx, dy), with the sides of it that are the piece's edge and whether the crossing at

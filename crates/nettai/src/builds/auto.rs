@@ -123,6 +123,11 @@ impl Layout {
     }
 }
 
+/// List `list`'s name, as the game's strings have it (its id where they have none).
+pub fn list_name(names: &crate::games::Names, list: &List) -> String {
+    names.text(LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone())
+}
+
 /// Whether setup field `name` is one of the data's (this view shows them).
 pub fn owns(layout: Option<&Layout>, name: &str) -> bool {
     layout.is_some() && matches!(name, PLACES_FIELD | RECORDS_FIELD)

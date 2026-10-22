@@ -1680,6 +1680,33 @@ Each is settled unless the user changes it.
     themselves. A page that is a list or is longer than any window (Settings, About, the practice menu's rows, the
     ruleset's items, the viewer's two builds) still scrolls. The phone's layout isn't bent for this: where it doesn't
     fit, its lists take the height that is left.
+99. **The whole build in the overview** (2026-10-21). The user: "when i hold tab to see the builds entire sections are
+    missing like auto battle, partycust specifics, etc.", then of Play's overview: "you should also unify it with the
+    regular builds screen". Of mockups of each (bn6battle-verify docs/nettai-ui/peek/), the user chose D for the
+    builds over a match and U1 for Play's, then: "there's no need to show the slot gauge or hp for the party navi",
+    "no need to say how much MB is being used by patch cards". The overview shows every part of a build, each read as
+    its editor's tab reads it, every item of each whole (no "+3 more"):
+    - *After the navi, its choices' presets* ("MegaMan · Light": EXE4's and EXE5's MegaMan, the Navi tab's segmented
+      controls, by the game's own names of them).
+    - *A partner* is its face (its version's bar under it) and its name, and under them its PartyCust programs'
+      names, muted, as many lines as they wrap to. Its HP, its gauge's blocks and their count are gone.
+    - *Under the stats, a part a line:* Abilities, Bugs, NaviCust (each program once for each of its colors, a 9 square
+      of the color before its name, "×3" after it where it has more than one copy; the programs as they fit along the
+      line, each whole), Patch cards (their names in the list's order, EXE4's in their slots'; no MB), Auto battle (a
+      line for each list but the patterns', by the game's name of it, First, Standard, Mega, Giga, Program Advance,
+      its chips in order, "None" where it has none). A part the build doesn't have isn't there: one its game has
+      none of (EXE6's auto battle data), or one the build's navi has none of (the NaviCust, patch cards and auto
+      battle data are the game's own navi's, as their tabs are); one it has with nothing in it says "None".
+    - *The narrow sheet (D)* is one column: each part's name in the stats' label column (112, the auto battle's
+      lists 12 in under it, 12 smaller), its words beside it, wrapped; the sheet as tall as they make it, which the
+      builds over a match and the replay viewer scroll as before.
+    - *The wide sheet (U1)* keeps its two columns and its header (face, name, navi, the screen's EDIT and ⋯): at the
+      left, 240 wide, the forms, the partners, STATS and its column of stats, then each part as its title over its
+      words (the auto battle's lists a line each, the list's name in a column of 72); at the right FOLDER · 30 CHIPS
+      and the numbered folder, always in view. Where the left column is taller than the frame leaves it, it alone
+      scrolls, in its place under the header, by the wheel and a drag over it, a thumb (4 wide, in the line's color)
+      in the gutter at its right saying where it is; a new build starts at its top. The keys don't scroll it: Play's
+      focus passes the overview by, as before. The frame is the size it was.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2071,12 +2098,20 @@ DUPLICATE and DELETE.
 - **Opened by Play or Practice:** Play's EDIT, and the practice menu's EDIT under Dummy's build, open the build in
   the editor, whose Back (‹ PLAY or ‹ PRACTICE in the header) goes straight back to the screen that opened it
   (§2.28; §2.57: Practice's battle starts again, the menu open).
-- **The build overview** (also Play's, and each player's panel in a match): the build's name and navi; the forms it
-  has, a row of their faces with their versions' marks (§2.62); Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
-  patch cards added beside it in cyan; then any stat the game's rules give besides, by its name in the game's
-  strings: EXE5's Soul time, the turns a Soul Unison lasts, for a navi with souls, §2.58); Abilities; Bugs, each by
-  name and level, purple; then the folder's 30 chips in two columns of 26-tall rows: number, icon, name, REG or
-  TAG1 or TAG2, element, code.
+- **The build overview** (also Play's, and each player's panel in a match): the whole build (§2.99). The build's
+  name and navi, the presets of its choices after the navi ("MegaMan · Light"); the forms it has, a row of their
+  faces with their versions' marks (§2.62); its partners (EXE5's party), each its face and name over its PartyCust
+  programs' names; Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what
+  the NaviCust and patch cards added beside it in cyan; then any stat the game's rules give besides, by its name in
+  the game's strings: EXE5's Soul time, the turns a Soul Unison lasts, for a navi with souls, §2.58); then each part
+  in words, every item whole: Abilities; Bugs, each by name and level, purple; NaviCust, each program once for each
+  of its colors, a square of the color before its name and "×3" after it where it has copies; Patch cards, their
+  names in order (EXE4's in their slots'); Auto battle, a line for each of its lists ("None" for an empty one). A
+  part the build doesn't have isn't there (EXE6 has no auto battle data; a navi that isn't the game's own has no
+  NaviCust, patch cards or auto battle data). Then the folder's 30 chips in two columns of 26-tall rows: number,
+  icon, name, REG or TAG1 or TAG2, element, code. The wide sheet (Play's) has the folder at the right and the rest
+  in a column of 240 at the left, which scrolls inside the frame where it runs past it; the narrow sheet (the
+  builds over a match, the replay viewer's) is one column, each part a line beside its name, the chips under them.
 - **New build** (Play's + NEW BUILD): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere. Under its CANCEL and CREATE BUILD, below a line, FROM A SAVE FILE… (a ghost
@@ -2282,7 +2317,7 @@ DUPLICATE and DELETE.
   has to.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
   theirs, each the build overview without a name, over the match or over its menu; letting go hides them. With
-  Open setups off, only the player's own. Each has every ability and bug, and where one is taller than the window
+  Open setups off, only the player's own. Each is the whole build (§2.99), and where one is taller than the window
   they scroll: by the wheel and a drag, and by the keys and the pad, over the menu or the match; over the match the
   battle hears no key while they show ("holding tab should allow you to scroll the build instead of passing input
   to the game").
