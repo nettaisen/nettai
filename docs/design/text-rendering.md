@@ -1898,10 +1898,16 @@ out of the frame and render them on top. the element icon frame actually has rou
 the frame round, a light ring a pixel wide on the dark ground, its outer and inner edges round the same middle
 (radii 2.5 and 1.5, the art stepping the outer corner a pixel and shading the inner one half); extraction takes the
 icons apart (the frame each pixel's index most icons share, the ground the frame's most common; a symbol its icon's
-pixels on the ground that aren't the ground's, so the corners an icon draws square or shades otherwise take the
-frame's), the pack keeping the symbols as `element-symbols.png` beside the whole icons; the enhanced mode lays the
-symbol's tiles in the chip window (EXE4: the element sprite's) with the frame's drawing under it, kept off the
-symbol's pixels (`Drawn::off`). Pictures rather than frames:
+pixels on the ground that aren't the ground's); then (the user: "you should draw the element icons in the ui with
+the smooth frame as well and make the extract element icons transparent and borderless") the pack holds the icons
+once, in `elements.png`, each its symbol alone, transparent and borderless, beside the frame as a picture
+(`element-frame.png`), an icon keeping the frame's pixels it draws its own way (EXE6's and EXE5's fourth icon's inner
+corners, their no-element icon's top right), so the original mode's frame with the icon over it is the game's icon,
+byte for byte. The enhanced mode lays the icon's tiles in the chip window (EXE4: the element sprite's) with the
+frame's drawing under it, kept off the symbol's pixels inside the ring (`Drawn::off`, `CustomScreen::element_inside`),
+so an icon's own pixels of the frame stay under the smooth ring; the app's chip lists and details draw the same: the
+frame's drawing in the family's colors as an SVG image, smooth at the window's scale, the symbol's pixels over it
+square-edged (`pictures::element_icon_svg`). Pictures rather than frames:
 chip art and chip icons, faces and the emotion window's per-face boxes (EXE5's and EXE4's patterned boxes are each
 face's own art), portraits, the navis' emblems (sprites), EXE4's orb, the sprite at the EXE6 window's bottom right,
 and the soul and arm change pictures in the chip window. The Program Advance logos (`BannerLayout::logo`: a banner

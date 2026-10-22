@@ -24,6 +24,7 @@
 
 pub mod cli;
 mod decode;
+mod elements;
 mod exe4;
 mod exe5;
 mod exe6;
@@ -301,6 +302,8 @@ fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Re
     // graphics (a frontend reads no picture): what isn't found where every
     // game has it is said (a placeholder picture has none).
     warnings.extend(nettai_content::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
+    // The element icons apart from their frame.
+    warnings.extend(elements::split(&mut graphics.custom).into_iter().map(|p| format!("element icons: {p}")));
     // The frames as shapes, read once here for the enhanced graphics (and
     // the emotion window's frame apart from its faces).
     warnings.extend(shapes::read(&mut graphics, game.id(), &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));

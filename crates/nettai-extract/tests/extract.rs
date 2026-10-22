@@ -385,7 +385,9 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
         add("custom/turn-limit", &[&c.turn_limit.pixels], NONE, &c.turn_limit);
         add("custom/name-bar", &[&c.name_bar.pixels], NONE, &c.name_bar);
         add("custom/codes", &[&c.codes.pixels, &c.slot_codes.pixels], NONE, &(&c.codes, &c.slot_codes));
-        add("custom/elements", &[&c.elements.pixels], NONE, &(&c.elements, &c.element_colors, &c.element_sprite));
+        // (The icons as the ROMs hold them: each its frame with it over it.)
+        let icons: Vec<u8> = (0..c.elements.len() / 4).filter_map(|k| c.element_icon(k)).flat_map(|t| t.pixels).collect();
+        add("custom/elements", &[&icons], NONE, &(&icons, &c.element_colors, &c.element_sprite));
         add("custom/digits", &[&c.digits.pixels], NONE, &c.digits);
         add("custom/empty-icon", &[&c.empty_icon.pixels], NONE, &c.empty_icon);
         add("custom/cursor", &[&c.cursor.pixels], NONE, &(&c.cursor, &c.cursor_palette));
