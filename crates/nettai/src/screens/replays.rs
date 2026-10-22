@@ -29,6 +29,7 @@
 //! ([`thumbnails::Thumbnails`]).
 
 mod export;
+mod indexing;
 mod queue;
 mod thumbnails;
 mod viewer;

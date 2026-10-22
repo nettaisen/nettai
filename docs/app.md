@@ -1108,10 +1108,11 @@ holds: the window's 120 frames a second at both speeds, and the replay's own spe
 four times that). At 1x a picture is presented in every other frame, at 4x in every frame (two ticks to each);
 a frame that does all of it, while the replay is being indexed, spends about 3.5 ms of its 8.3 (the ticks, the
 picture, a slice). The whole set was indexed in 21 to 22 seconds at either speed, after which a seek anywhere
-plays under 240 ticks. The one run whose windows went wrong (from 120 to 96 frames, pictures of 1200 by 800) was
-someone using the window as it was measured: its replay jumped from tick 840 to 8,640, 3,120, 13,200 and 23,520
-(clicks on the bar) and the window was made larger; it was run again. With both builds shown over the picture
-(§16) the viewer wasn't measured.
+plays under 240 ticks. (Since 2026-10-21 the index is made on a thread of its own, §16: no frame spends anything
+on a slice, and five minutes are indexed in under 2 s.) The one run whose windows went wrong (from 120 to 96
+frames, pictures of 1200 by 800) was someone using the window as it was measured: its replay jumped from tick 840
+to 8,640, 3,120, 13,200 and 23,520 (clicks on the bar) and the window was made larger; it was run again. With
+both builds shown over the picture (§16) the viewer wasn't measured.
 
 **At half and twice the speed, seeking, dragging** (2026-10-13, the same Mac and window, the build at 24d3df7da,
 the same set; load average 204 to 253; `NETTAI_REPLAY_SPEED` for the speeds, `NETTAI_VIEWER_PROBE` for the
@@ -3357,8 +3358,10 @@ screen runs the ticks due, presents the picture into the window's texture if one
   about 0.3 s indexing five minutes, once, and keeps about 77 states of the battle and the HUDs (some 2.5 MB);
   a preview is a seek of under 240 ticks (about 4 ms) and one picture (153 KB at the frame, 614 KB at twice it).
   Measured: nothing (the app wasn't run for it). The preview isn't held to the viewer's index (below): its thread
-  indexes on its own, faster (silent, 600 ticks at a time), so past the index's edge it still shows the battle
-  under the pointer, where a click stops at the edge.
+  indexes on its own, silent (600 ticks at a time, 17.5 µs a tick where the index's thread, with the sound, takes
+  about 72), so past the index's edge it still shows the battle under the pointer, where a click stops at the
+  edge. (It could take the index's states instead, which hold the sound it doesn't need; its own silent index is
+  a quarter of the work, and each thread keeps what it seeks from.)
 - *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
   the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, footer) is
   over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
@@ -3406,9 +3409,25 @@ screen runs the ticks due, presents the picture into the window's texture if one
   (§1). The screenshot pass shoots two (§13: `replays-unreadable`, `replays-watch-failed`); the engine's stop
   as it plays was seen once, through a panic forced at a tick of the second round in a build made for it and
   not kept: the viewer went back to the list with the dialog over it and the replay's own still in its box.
-- *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
-  (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the
-  replay plays, 5 ms while nothing does. A seek to what is indexed is done at once (it plays under 240 ticks).
+- *No seek stalls the window, and the window's thread doesn't index* (the user: "why is the preload so slow?", then
+  "move preloading to a bg thread"). From its first frame the replay is indexed on a thread of its own
+  (`screens/replays/indexing.rs`, `Indexing`): a second `Viewer` of it, opened there with the game's sound
+  (`export::game_for_thread`; the sound is made and never heard, so that the states hold it), plays it through a
+  part of 240 ticks at a time (`Viewer::index_part`) and sends each part over a channel as it is made, keeping none
+  of it. Each frame the viewer watched takes in the parts made since (`Viewer::take_index`: docs/frontend.md §8,
+  "The index made elsewhere"), and its index, the bar's fill and the bar held past the edge go on with them. The
+  thread ends at the replay's end, or at its next part once the replay is left (its channel closed). The thread
+  indexes as fast as a viewer indexes itself, a tick with its sound at a time: 10,190 ticks a second in the `dev`
+  build (five minutes in 1.8 s; measured by docs/frontend.md §8's `examples/seek.rs` on EXE6's packs, 9,000 ticks),
+  about 14,000 in a release build (72 µs a tick: five minutes in 1.3 s). Until then the window's thread indexed, a
+  slice a frame (`Viewer::index`, each slice as many ticks as the last one's time said fit a budget of 1.5 ms while
+  the replay played, 5 ms while nothing did): about 1,300 ticks a second while the replay played in the `dev` build
+  (§5), five minutes in 14 s, and 5,900 while it didn't. The window's thread still indexes so where the thread
+  can't: where it doesn't start (logged as `starting the replay's index`), where it ends short of the replay's end
+  (it couldn't read the replay, or the engine stopped outside a tick: logged as `indexing <file>`), and where it has
+  sent nothing in 5 seconds (a browser's worker whose module didn't load never runs, and its channel never closes;
+  once it is heard from, it is left to it). What the thread made is kept, and the window's slices go on from there.
+  A seek to what is indexed is done at once (it plays under 240 ticks).
 - *No seek goes past the index* (the user: "you should also show how much of the replay has preloaded and don't
   allow seeking past that preload"). The bar shows how far the replay is indexed (`ReplaysView.indexed`, 0 to 1,
   from `Viewer::indexed`), as a video player shows what it has loaded: a fill in the line color from its start,
@@ -3417,9 +3436,9 @@ screen runs the ticks due, presents the picture into the window's texture if one
   on), the next round's start, a handle of the export's range gone to or nudged. (Until 2026-10-21 a seek past
   the index waited, the bar showing where it was going, and landed once the index reached it.) Playing is never
   past the index, since what plays is indexed as it plays (the index is the furthest tick reached by playing,
-  seeking or indexing ahead), and a frame stepped on is played the same way; and the index, about 1,300 ticks a
-  second while the replay plays (§5), is ahead of playing at 4× too. The screenshot pass indexes the replay whole
-  before anything, so its seeks land where they are asked for.
+  seeking or indexing ahead), and a frame stepped on is played the same way; and the index, made on its thread at
+  some 10,000 ticks a second, is far ahead of playing at any speed. The screenshot pass indexes the replay whole
+  on the window's thread before anything (no thread is started), so its seeks land where they are asked for.
 - *A drag moves the picture in steps:* while the bar is held the picture is the state the viewer keeps at or
   before the pointer (one every four seconds, which costs no playing), and it lands exactly where the bar is
   let go. Held past the index's edge, the playhead and the picture stop at the edge and follow it as the index
