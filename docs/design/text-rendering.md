@@ -1432,7 +1432,7 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
 | **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes until 2026-10-21 (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
-| **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the "x" of "x2", the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | its one cut: the game's HP box digits traced, sharp corners | `crates/nettai-render/fonts/nettai-digits` (built by bn6battle-verify's `tools/digits/build_otf.py`) |
+| **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the times sign of "x2" (`×` alone: no `x`), the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | the game's HP box digits traced, sharp corners, as a variable font (CFF2): its weight axis, `wght` 400 to 700, thickens the bars into the counters, set for each place from its box (§12.4) | `crates/nettai-render/fonts/nettai-digits/NettaiDigits[wght].otf`, the one file (built by bn6battle-verify's `tools/digits/build_digits_vf.py`, from the outlines `build_otf.py` traces) |
 | **Nettai Banner Digits** (nettai's own, MPL-2.0) | the numbered banners' numbers (§12.4) | its one cut: the game's banner digits traced, another drawing | `crates/nettai-render/fonts/nettai-banner-digits` (the same tool) |
 | **Nettai Chip Codes** (nettai's own, MPL-2.0) | the chip window's code, the big one beside the chip's picture (§12.11, from 2026-10-21) | its one cut: the game's codes A to Z and `*`, 7 by 11 pixels, traced | `crates/nettai-render/fonts/nettai-chip-codes` (bn6battle-verify's `tools/digits/build_codes_otf.py`) |
 | **Nettai Slot Codes** (nettai's own, MPL-2.0) | the codes under the slots' icons (§12.11, from 2026-10-21) | its one cut: the game's small codes, 6 by 5 pixels, traced | `crates/nettai-render/fonts/nettai-slot-codes` (the same tool) |
@@ -1505,7 +1505,24 @@ font's own metrics for layout?"), in a font of the game's own digits, with the g
 advance (8 frame pixels), its face 6 pixels wide a pixel in from the cell's left, a glyph pixel a frame pixel across;
 down, each set's face box's height (`vfont::paint_fitted` draws a digit font's glyph a frame pixel a glyph pixel
 across and its set's box tall). So every number has the original's spacing and box, never squeezed, and doesn't shift
-as it changes (the test `digits_are_a_cell_apart`). The run is placed where the picture's faces are
+as it changes (the test `digits_are_a_cell_apart`).
+
+The design is 10 pixels tall with 2-pixel bars, and the game's sets at other heights keep their bars 2 pixels: fitted
+to the enemies' 8-pixel box as it was, its bars came out 1.6 pixels while its stems stayed 2, lighter than the game's
+(the user, 2026-10-21: "the numbering font looks weird when used as-is for enemy hp. you should implement opentype
+variable weight and thicken the font appropriately to match the hp"). Nettai Digits is a variable font whose weight
+axis (`wght`, 400 to 700) moves every horizontal edge inside a glyph's ink box into its counter, up to half a pixel (a
+top or bottom bar 2 + (w - 400) / 600 pixels; the glyph's height, width and advance and its stems' width kept), and
+each place is drawn at the weight that gives its bars back the game's 2 pixels: the box squeezes the design by s = the
+face box's height / 10, so w = 400 + 600 x (2 / s - 2), within the axis (`numbers::Face::weight`, from the face box,
+not a table of places): the enemies' HP, 8 tall, 700; the HP box and the damage digits, 10, 400; the chip window's,
+11, 400, the axis's least. The run is shaped and its glyphs' outlines made at that weight (`numbers::shaped`,
+`numbers::ink_box`, `vfont::number_glyph_ink`: the glyphs kept by face, weight and glyph). The static cut is gone (the
+user: "get rid of NettaiDigits-Regular, that's not really use"): the variable font's default is its outlines. Looked
+at: original, main's (400) and the weighted, side by side, the enemies' HP 8, 95, 600, 1000 and 9999 (EXE4's at most
+1000) at 4x and 6x and the whole frame at 3x, in EXE6, EXE5 and EXE4 (match files, the custom screen open); the HP box
+and the chip window draw the same as at 400 pixel for pixel. No recording shows an enemy's HP of 0: the number goes as
+the navi is deleted. The run is placed where the picture's faces are
 (`numbers::picture_span`): against the HP box's and the chip window's right, the damage taken's left, an enemy's HP
 its middle, the judge's two numbers ending and starting where theirs do; at the output's 1x a number lands on the
 original's pixels (the test `a_laid_numbers_faces_are_the_pictures`). A chip's damage follows its name ink to ink (the
@@ -1531,7 +1548,8 @@ another drawing, and EXE4's own 7s take its shapes); "the banner i think is actu
 should have variants?" (Nettai Banner Digits, a family of its own: "i think "Nettai Digits Condensed" is a misleading
 name because it's a different font"; EXE4's banner digits, a third drawing, take its shapes); then "replace them
 outright" (no setting: Saira is gone). The fonts are built by bn6battle-verify's `tools/digits/build_otf.py` from
-EXE6's pack (EXE5's digits are the same), whose README has the tracing rules.
+EXE6's pack (EXE5's digits are the same), whose README has the tracing rules; Nettai Digits' variable font by its
+`build_digits_vf.py` from those outlines.
 
 - A set with a shadow (the damage digits, a telop's) stands beside a chip's name: its shadow is the text layer's, half
   a frame pixel right and down as the name's (the original's are both a pixel). The others' rims are a frame pixel all
@@ -1853,11 +1871,13 @@ What stands in for what:
   smoothly), its full shimmer's frames, the L or R cells; the emotion window's frame (its ring a drawing; the faces kept
   without it in the pack, `MugshotFrame`), the count box and the link navi's box; the banners' bars (with their
   squash); the Program Advance logos; the chatbox's boxes, open and opening, and its key-wait arrow's three frames.
-  The boxes and their name tabs are chamfered, not stepped as the art: every layer (outline, band, ground) cut at 45
-  degrees, each a parallel offset of the outline's cut, so a band is as thick through a cut as along its edges; the
-  outer cut 4 pixels, so the ground's still shows at 4x (smaller in the thin opening frames, where the ground keeps a
-  straight end); the box's own corner under a tab square, the tab's being the corner there (the user: "dialog box
-  corners still look weird, why do they look stair stepped instead of chamfered?").
+  The boxes and their name tabs are chamfered, not stepped as the art: the outline's cuts as light as the art's (legs
+  through its stairs' middles: 2.5 pixels in EXE6, 1.5 on its opening box's left and in EXE5 and EXE4), every layer
+  inside (band, ground) a parallel offset of them, so a band is as thick through a cut as along its edges and an inner
+  cut is smaller, square where its layer lies further in than the cut reaches; the box's own corner under a tab square,
+  the tab's being the corner there (the user: "dialog box corners still look weird, why do they look stair stepped
+  instead of chamfered?", then, of a 4-pixel cut, "the corners are chamfered waayyy to much on the dialog box now,
+  the original just have a light chamfer").
 - **Custom screen**: the window's frame for each map (EXE6's with the Cross tab and without, the Cross window and its
   opening frames; EXE5's; EXE4's), the column's cells, the cursor and the Cross list's cursor, the Regular chip's
   frame, the element icons' frame (rounded, its symbols drawn over it as their pictures: below), the empty slots' boxes

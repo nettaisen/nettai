@@ -567,7 +567,9 @@ pub struct TextRenderer {
     images: crate::rasters::Images,
     /// The numbers' font's glyphs' fields and their ink's bounds (texels:
     /// left, bottom, right, top), by character (`numbers`).
-    number_glyphs: HashMap<(crate::numbers::Face, u16), Option<(Sdf, [f32; 4])>>,
+    /// (By the face, its weight (rounded; 0: a font without the axis) and
+    /// the glyph.)
+    number_glyphs: HashMap<(crate::numbers::Face, u16, u16), Option<(Sdf, [f32; 4])>>,
     made: Made,
     /// The frames' drawings, rasterized ahead (`rasters`).
     pub rasters: crate::rasters::Rasters,
@@ -1322,17 +1324,22 @@ impl TextRenderer {
         // of theirs: a digit's; a sign is let be), and their rows' top and
         // bottom (a code font's face: its letters' top to the baseline).
         let face = f.face;
+        // (At the weight its face box gives it (`numbers::Face::weight`: the
+        // digits' bars the game's 2 pixels however tall the box), its
+        // outlines the axis's there.)
+        let weight = f.glyphs.first().and_then(|g| face.weight(g.1[3]));
+        let w = weight.map_or(0, |w| w.round() as u16);
         // (Each glyph by its glyph id where the run shaped it (`ids`), else
         // its character's.)
         let id = |c: char| face.font().font().charmap().map(c);
         let ids: Vec<u16> = f.glyphs.iter().enumerate().map(|(i, g)| f.ids.get(i).copied().unwrap_or_else(|| id(g.0))).collect();
         for g in f.set.chars().map(id).chain(ids.iter().copied()) {
-            self.number_glyph_ink(face, g);
+            self.number_glyph_ink(face, weight, g);
         }
-        let inks: Vec<[f32; 4]> = f.set.chars().filter_map(|c| self.number_glyphs.get(&(face, id(c))).and_then(|g| g.as_ref()).map(|(_, b)| *b)).collect();
+        let inks: Vec<[f32; 4]> = f.set.chars().filter_map(|c| self.number_glyphs.get(&(face, w, id(c))).and_then(|g| g.as_ref()).map(|(_, b)| *b)).collect();
         let mut heights: Vec<f32> = inks.iter().map(|b| b[3] - b[1]).collect();
         heights.sort_by(f32::total_cmp);
-        let tallest = heights.get(heights.len() / 2).copied().or_else(|| ids.iter().filter_map(|g| self.number_glyphs.get(&(face, *g)).and_then(|g| g.as_ref()).map(|(_, b)| b[3] - b[1])).reduce(f32::max)).unwrap_or(1.0);
+        let tallest = heights.get(heights.len() / 2).copied().or_else(|| ids.iter().filter_map(|g| self.number_glyphs.get(&(face, w, *g)).and_then(|g| g.as_ref()).map(|(_, b)| b[3] - b[1])).reduce(f32::max)).unwrap_or(1.0);
         let (rows_top, rows_bottom) = (inks.iter().map(|b| b[3]).fold(f32::MIN, f32::max), inks.iter().map(|b| b[1]).fold(f32::MAX, f32::min));
         // (A glyph pixel a frame pixel across, at its place in its face, the
         // box being its face's: its ink in texels, made at `RES` to the em,
@@ -1340,7 +1347,7 @@ impl TextRenderer {
         let m = face.game();
         let across = m.across * face.font().font().metrics(&[]).units_per_em as f32 / RES;
         for (&(_, [bx, by, _, bh]), g) in f.glyphs.iter().zip(&ids) {
-            let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&(face, *g)] else { continue };
+            let Some((field, [x0, y0, x1, y1])) = &self.number_glyphs[&(face, w, *g)] else { continue };
             // (Down, one scale for the set, the game's own sets being its
             // glyphs stretched (the enemies' digits 8 pixels tall, the chip
             // window's 11, at one width): a digit font's ink the box's
@@ -1398,19 +1405,21 @@ impl TextRenderer {
         Some(out)
     }
 
-    /// A numbers' font glyph's ink's width and height, in texels (made once).
-    fn number_glyph_ink(&mut self, face: crate::numbers::Face, id: u16) -> Option<(f32, f32)> {
-        if !self.number_glyphs.contains_key(&(face, id)) {
+    /// A numbers' font glyph's ink's width and height at a weight, in texels
+    /// (made once).
+    fn number_glyph_ink(&mut self, face: crate::numbers::Face, weight: Option<f32>, id: u16) -> Option<(f32, f32)> {
+        let key = (face, weight.map_or(0, |w| w.round() as u16), id);
+        if !self.number_glyphs.contains_key(&key) {
             let font = face.font().font();
-            let mut scaler = self.scaler.builder(font).size(RES).build();
+            let mut scaler = self.scaler.builder(font).size(RES).variations(crate::numbers::axes(weight)).build();
             let glyph = scaler.scale_outline(id).and_then(|o| {
                 let b = o.bounds();
                 Some((Sdf::of_spread(o.points(), o.verbs(), NUMBER_SPREAD)?, [b.min.x, b.min.y, b.max.x, b.max.y]))
             });
             self.made.glyphs += 1;
-            self.number_glyphs.insert((face, id), glyph);
+            self.number_glyphs.insert(key, glyph);
         }
-        self.number_glyphs[&(face, id)].as_ref().map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0))
+        self.number_glyphs[&key].as_ref().map(|(_, [x0, y0, x1, y1])| (x1 - x0, y1 - y0))
     }
 
     /// Paint a layout's glyphs and rings (`at`: where, squashed how) into
