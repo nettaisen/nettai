@@ -55,7 +55,7 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
 /// counters (the user: "the numbering font looks weird when used as-is for
 /// enemy hp. you should implement opentype variable weight and thicken the
 /// font appropriately to match the hp"): [`Face::weight`].
-pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-digits/NettaiDigits[wght].ttf");
+pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-digits/NettaiDigits[wght].otf");
 
 /// The digits' design's bars, frame pixels at its own height (10): the
 /// game's own sets keep them at every height (the enemies' 8 tall, the chip
