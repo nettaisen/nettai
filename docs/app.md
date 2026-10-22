@@ -3609,6 +3609,16 @@ found, the file not written, anything else with the log named). The app keeps aw
   the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
   started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
   an `ffmpeg` in the working directory is never run (nettai-video's `mp4::find_ffmpeg`, docs/frontend.md §8).
+- *How fast* (the user: "is replay export slower than it should be?"): the export's thread plays the replay and
+  draws each tick's frame at 240x160; the picture at the video's size, text and all, is made on a few threads
+  beside it (nettai-video's `presenters`, with the window's own `present`: there is one way a frame is presented),
+  and ffmpeg is written from a thread of its own through a queue of three frames, so the drawing and the encoding
+  go on at once instead of in turns (docs/frontend.md §8, "Three things at once"). An export now goes as fast as
+  ffmpeg encodes: the first two minutes of a 19:42 EXE5 replay at four times the frame in 20 s, from 34 s; the MP4
+  is byte for byte what it was. The progress is told as each frame is written, its round the frame's; CANCEL still
+  stops it at the next frame (the threads end after the frame they are on, ffmpeg is stopped and the thread
+  writing to it with it). Where the threads don't start the export fails as where ffmpeg fails ("The video
+  couldn't be made", the detail in the log: `UserError::of_export`).
 
 **The main menu's reel** takes its replays from `crate::replays::Reel`: the selected game's latest five, found
 and read on a thread as the menu shows, then given one after another, around. One that doesn't play here is

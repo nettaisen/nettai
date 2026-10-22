@@ -112,8 +112,9 @@ impl Default for Encoding {
 /// An encoder at work.
 pub(crate) trait Backend {
     /// A frame: its picture's pixels, RGB, and the sound each sound track plays with it (stereo, at the video's
-    /// rate). May wait while the encoder is behind.
-    fn frame(&mut self, rgb: &[u8], sound: &[&[[f32; 2]]]) -> Result<(), Error>;
+    /// rate). May wait while the encoder is behind. Gives back a buffer for a next frame's picture: this one's, or
+    /// one it is done with (an empty one where it has none yet).
+    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
     /// What it has made since, without waiting.
     fn events(&mut self) -> Result<Vec<Event>, Error>;
     /// The frames are done: the rest of what it makes, once it has.

@@ -26,27 +26,6 @@ pub struct Image {
     pub px: Vec<(u32, u8)>,
 }
 
-impl Image {
-    /// Its pixels laid with its origin at output pixel (`ox`, `oy`), those
-    /// in `bounds` (left, top, right, bottom) given to `put` (x, y, color,
-    /// coverage).
-    pub fn blit(&self, ox: i32, oy: i32, bounds: (i32, i32, i32, i32), mut put: impl FnMut(i32, i32, u32, u8)) {
-        for ly in 0..self.h {
-            let y = oy + self.y + ly as i32;
-            if y < bounds.1 || y >= bounds.3 {
-                continue;
-            }
-            for lx in 0..self.w {
-                let (rgb, a) = self.px[ly * self.w + lx];
-                let x = ox + self.x + lx as i32;
-                if a > 0 && x >= bounds.0 && x < bounds.2 {
-                    put(x, y, rgb, a);
-                }
-            }
-        }
-    }
-}
-
 /// What a painted image is known by: a drawing colored, or a text item.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ImageKey {

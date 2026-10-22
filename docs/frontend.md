@@ -2890,6 +2890,69 @@ The cost is the stream's size, which is raw: 115 KB a frame at 240x160, 1.04
 MB at three times (62 MB a second), so the stream is for a pipe or a short
 part, and a long video at a large size goes to ffmpeg as it is made.
 
+**Three things at once** (the user: "is replay export slower than it should
+be?"). A video was one thread doing everything in turns: play a tick, draw
+its frame at the video's size (3.5 ms a frame at four times the frame, most
+of it the scaling and the text), write it into ffmpeg's pipe and wait while
+ffmpeg took it. Now:
+
+- *The playing thread* plays the battle in order and draws each tick's
+  frame at 240x160 (`Viewer::frame_view`, a console each), with its sound.
+- *The presenters* (`presenters`) make each frame's picture at the video's
+  size, scaled with the enhanced mode's text over it, and its RGB bytes: a
+  whole frame each, on as many threads as the cores but one, at most four
+  (two where the system doesn't say: a browser, whose threads are Web
+  Workers, `nettai_platform::thread`), each with a text
+  renderer like the viewer's (`Viewer::text_renderer`). The frames come
+  back in order, a frame a thread and two more under way at most, their
+  buffers going round. It is the one way a video's frames are presented,
+  with the window's own `present`, on the desktop and in a browser alike:
+  each thread says it started, and where they don't all within 20 seconds
+  (a browser's load the page's module each), or one stops, no video is
+  made (`Error::Threads`), as where ffmpeg fails.
+- *The writer* (desktop): ffmpeg's input is written from a thread of its own
+  through a queue of three frames (`ffmpeg::QUEUE`), so the drawing never
+  waits on the pipe, and ffmpeg's output is read on another, as it was.
+- *Canceling* still stops it at the next frame written: the playing thread
+  lets go of the presenters' queue (each thread ends after the frame it is
+  on) and of the encoder, which stops ffmpeg and waits for the writer, whose
+  write fails as ffmpeg ends.
+
+The drawing itself is cheaper too, the same pixels: `present` works out what
+depends on an output column alone (its frame column, whether it shows the
+nudged frame, the glide's column) once a frame and a frame row's colors once
+a row, and an output row that shows what the row above it shows is that row
+copied (it was a color conversion, two 64-bit divisions and the glide's
+lookups an output pixel); `compose_with_depth` finds each pixel's frontmost
+layer front to back and stops there, fading only what shows; the text
+layer's drawings find each row's frame row once. Each keeps the old way in
+its tests and is held to it on random frames
+(`the_picture_is_each_pixel_worked_out_on_its_own`,
+`a_frame_is_put_together_as_at_each_pixel_alone`), and a text renderer draws
+a frame the same whatever it drew before
+(`a_renderer_draws_a_frame_the_same_whatever_it_drew_before`), which is
+what lets any thread present any frame.
+
+Measured on the user's 19:42 EXE5 replay, its first two minutes (7,200
+frames at four times the frame, 960x640, the enhanced mode; release builds,
+`nettai-tool --replay R --mp4 OUT --scale 4 --ticks 1-7200`):
+
+| | before | now |
+|---|---|---|
+| the MP4 | 34.4 s | 20.2 s |
+| the stream alone (`--nut /dev/null`) | 25.3 s | 4.7 s |
+| a frame drawn (the stream alone's) | 3.5 ms | 0.66 ms |
+
+(Each twice, the two in turns, on a machine other builds were using.) The MP4
+now takes as long as ffmpeg alone takes to encode the same frames from a file
+(1,200 of them: 3.2 s against ffmpeg's 3.0; libx264 at `-preset medium`, CRF
+16, unchanged). The MP4 is byte for byte what it was, and so are the NUT
+streams of twelve parts (their SHA-256): the enhanced mode at two times
+(ticks 1–1500 and 30001–31500), four (1–1200, 30001–31200) and six (1–600,
+30001–30600), the original mode at two (both parts), four (1–1200) and six
+(30001–30600), and both sides at four times enhanced (1–600) and two
+original (30001–30600).
+
 **To an MP4:** `mp4::Encoder::start(to, &settings)` starts ffmpeg, is written
 the stream, and `finish()` gives the file its name. The file is written as
 `NAME.part` beside its place and renamed when ffmpeg has ended well; canceled
@@ -2946,6 +3009,7 @@ says what went wrong as a type, with the detail as its `Display`:
 | `Canceled` | the caller stopped it; nothing is left |
 | `Replay(refused)`, `NoSuchPart(what)`, `Scale(n)` | the replay isn't played here; a round or range the replay hasn't; a size not 1 to 16 times |
 | `Stopped { tick, why }` | the engine stopped before the part's end |
+| `Threads(why)` | the threads the frames are presented on didn't start, or one stopped |
 | `Write(e)` | the sink's own error (`write` and `export` to a caller's sink) |
 
 **Checked against ffmpeg** (9.0.2): nettai-video's test
