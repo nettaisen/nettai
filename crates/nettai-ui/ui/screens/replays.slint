@@ -91,8 +91,10 @@ export global ReplaysView {
     in property <bool> watching;
     in property <string> title;
     in property <string> when;
-    // Where it is (and where a seek under way is going), 0 to 1; each later round's start, 0 to 1.
+    // Where it is (where the bar is held, while it is dragged), 0 to 1; how far it is indexed, which no seek
+    // passes, 0 to 1; each later round's start, 0 to 1.
     in property <float> position;
+    in property <float> indexed;
     in property <[float]> marks;
     in property <string> time;
     in property <string> total;
@@ -942,8 +944,10 @@ component ListPage inherits Page {
 
 // ---- The viewer -----------------------------------------------------------------------------------------
 
-// The bar: where the replay is, with a mark where each later round begins. A click or a drag goes there (the
-// picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right go five seconds.
+// The bar: where the replay is, with a mark where each later round begins, and how far it is indexed (a fill in the
+// line color under the lit part, as a video player shows what it has loaded). A click or a drag goes there, up to
+// that fill's end (the picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right
+// go five seconds.
 // The pointer over it shows a preview of the battle at the time under it, above it (docs/design/app-ui.md §2.96).
 // In the export mode the range is a band in the code color between two handles, brackets taller than the playhead,
 // each a control of its own (`export.handle`, 0 the start, 1 the end: Left and Right nudge it); the pointer pressed
@@ -986,6 +990,15 @@ component SeekBar inherits Rectangle {
         y: 10px;
         height: 4px;
         background: Theme.raised;
+    }
+
+    // (Once the whole replay is indexed, the whole bar.)
+    Rectangle {
+        x: 0;
+        y: 10px;
+        width: root.width * clamp(ReplaysView.indexed, 0, 1);
+        height: 4px;
+        background: Theme.line;
     }
 
     Rectangle {

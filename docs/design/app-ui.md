@@ -1436,7 +1436,7 @@ Each is settled unless the user changes it.
       size still its most), the backdrop around it. Nothing is beside it or under it.
     - *Its controls are over it,* the header, the transport and the footer, fading (`brisk`) out once nothing has
       been done for 2.5 seconds while the replay plays, and back in at anything done: a key, a pad's button, the
-      pointer moved, a click. They stay while it doesn't play (paused, at its end, a seek waiting), while a setting is
+      pointer moved, a click. They stay while it doesn't play (paused, at its end, the bar held), while a setting is
       taken (the bar), while the builds, the export, the ⋯ menu (§2.95) or the queue's popup (§2.92) are open, and
       while the pointer rests
       on the transport; a replay just begun shows them as an input does. The cursor goes and comes back with them,
@@ -1651,6 +1651,14 @@ Each is settled unless the user changes it.
       ms; kept by the second, the console and the density, up to 32 MB (about 50 at twice the frame), the least
       lately seen going first; until a second's own is drawn the nearest kept shows, the box alone before any. A
       phone has no pointer over the bar, and no preview.
+    - *How far it is indexed, and no seek past it* (2026-10-21). The user: "you should also show how much of the
+      replay has preloaded and don't allow seeking past that preload". The bar shows how far the viewer has indexed
+      the replay, as a video player shows what it has loaded: a fill in the line color from its start, over the
+      track and under the part played, the whole bar once the whole replay is indexed. No seek goes past it: a click,
+      a drag let go, Right on the bar, the next round, a handle of the export's range gone to or nudged each stop at
+      its edge, where until then a seek past it waited for the index to reach it. Held past it, the playhead and the
+      picture stop at the edge, and follow it as the index goes on. Playing is never past it (what plays is indexed
+      as it plays). The preview is its own viewer's, and still shows past the edge.
     - *The speed said:* the ⋯ menu's four bare rows (½× 1× 2× 4×) are one row, PLAYBACK SPEED, with the speed set at
       its right in the muted color (the picker's rows have a value now, `PickMark::value`); choosing it opens the
       four in its place, the one set checked. While the speed isn't 1× a small badge in the cursor's color by the
@@ -2221,7 +2229,8 @@ DUPLICATE and DELETE.
   played to its end or skipped, and missing entries are passed by and leave (§2.92).
 - **The viewer:** the picture fills the window (§2.90), and over it, shown while wanted and fading after 2.5 seconds
   without input while it plays: the header, the footer (the replay's rounds, "3 rounds"), and at its foot a
-  transport (§2.94, §2.95, §2.96): the time, a bar to click or drag with a mark where each round begins, the
+  transport (§2.94, §2.95, §2.96): the time, a bar to click or drag with a mark where each round begins and how
+  far the replay is indexed (no seek goes past it), the
   length; then to the round's start, play or pause, the next round, a badge of the speed while it isn't 1× ("2×"),
   and the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button with the count up
   next (its popup: NEXT, N, and Autoplay next, on at first, over the entries up next: §2.92), and ⋯. The pointer

@@ -1135,7 +1135,7 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
   bar asked for tick 25,846. The bar showed it at once, the picture waited (the seek past the index), the index
   went on at the idle budget (3.2 to 5.0 ms a slice, about 5,900 ticks a second) and the seek landed on tick
   25,846, the one asked for, 3.17 seconds later. The window drew 119.5 and 119.7 frames a second meanwhile, p99
-  at most 10.9 ms.
+  at most 10.9 ms. (Since 2026-10-21 no seek goes past the index: it stops at its edge, §16.)
 - *A drag:* pressed at 20% of the bar (tick 5,743), moved to 50% in twenty steps over a second and let go: the
   picture followed in the states kept every 240 ticks (5,520, 6,000, 6,480 ... 14,160), each the one at or
   before the pointer, and the replay landed on tick 14,359, half of 28,718, where it was let go.
@@ -3317,7 +3317,8 @@ the viewer's round steps go by the rounds the file marks, whatever their number.
 screen runs the ticks due, presents the picture into the window's texture if one ran, and hands the sound on:
 
 - *The transport* (docs/design/app-ui.md §2.94, §2.95, §2.96: few buttons): the time, the bar (a click or a drag; a
-  mark where each later round begins), the length; to the round's start, play or pause, the next round
+  mark where each later round begins; how far the replay is indexed, below), the length; to the round's start,
+  play or pause, the next round
   (`TransportButtons`), the speed's badge while it isn't 1× (`ReplaysView.speed`, "2×", in the cursor's color:
   `Watching::show_speed`), the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button
   (below), and ⋯ (`more`, an `IconButton` of three dots, as Play's build's ⋯). The footer's status counts the
@@ -3355,7 +3356,9 @@ screen runs the ticks due, presents the picture into the window's texture if one
   export's thread is. Its cost by docs/frontend.md §8's figures: a silent tick is 17.5 µs, so the thread spends
   about 0.3 s indexing five minutes, once, and keeps about 77 states of the battle and the HUDs (some 2.5 MB);
   a preview is a seek of under 240 ticks (about 4 ms) and one picture (153 KB at the frame, 614 KB at twice it).
-  Measured: nothing (the app wasn't run for it).
+  Measured: nothing (the app wasn't run for it). The preview isn't held to the viewer's index (below): its thread
+  indexes on its own, faster (silent, 600 ticks at a time), so past the index's edge it still shows the battle
+  under the pointer, where a click stops at the edge.
 - *The picture fills the window* (docs/design/app-ui.md §2.90): the screen's `Picture` is the window's size, so
   the picture is its largest whole multiple of the frame, as a match's. The page (header, transport, footer) is
   over it, its opacity faded in and out (`brisk`). The screen decides each frame whether it shows
@@ -3406,10 +3409,21 @@ screen runs the ticks due, presents the picture into the window's texture if one
 - *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
   (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the
   replay plays, 5 ms while nothing does. A seek to what is indexed is done at once (it plays under 240 ticks).
-  A seek past it waits: the bar shows where it is going, and it lands when the index has reached it.
+- *No seek goes past the index* (the user: "you should also show how much of the replay has preloaded and don't
+  allow seeking past that preload"). The bar shows how far the replay is indexed (`ReplaysView.indexed`, 0 to 1,
+  from `Viewer::indexed`), as a video player shows what it has loaded: a fill in the line color from its start,
+  over the track and under the part played, the whole bar once the whole replay is indexed. Every seek the player
+  asks for stops at its edge (`Watching::go`): a click on the bar, a drag let go, the bar's Right (five seconds
+  on), the next round's start, a handle of the export's range gone to or nudged. (Until 2026-10-21 a seek past
+  the index waited, the bar showing where it was going, and landed once the index reached it.) Playing is never
+  past the index, since what plays is indexed as it plays (the index is the furthest tick reached by playing,
+  seeking or indexing ahead), and a frame stepped on is played the same way; and the index, about 1,300 ticks a
+  second while the replay plays (§5), is ahead of playing at 4× too. The screenshot pass indexes the replay whole
+  before anything, so its seeks land where they are asked for.
 - *A drag moves the picture in steps:* while the bar is held the picture is the state the viewer keeps at or
   before the pointer (one every four seconds, which costs no playing), and it lands exactly where the bar is
-  let go.
+  let go. Held past the index's edge, the playhead and the picture stop at the edge and follow it as the index
+  goes on (`Watching::hold`, each frame), and let go there it lands at the edge.
 - *The sound* goes to the shell in whole ticks' worth (`Shell::play_samples`), because the menus' sounds are
   ticked with what a screen plays: the viewer's own while it plays, at any speed, and while it doesn't,
   silence at the original's rate, so a move of the cursor is heard over a paused replay and the title music
