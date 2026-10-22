@@ -307,8 +307,8 @@ impl PatchCards {
         let panels = super::navicust::effect_panels(shell, draft, alone.as_ref(), &mut self.bugs);
         view.set_effects(ModelRc::new(VecModel::from(panels.effects)));
         view.set_bugs(ModelRc::new(VecModel::from(panels.bugs)));
-        view.set_effects_line(panels.effects_line.into());
-        view.set_bugs_line(panels.bugs_line.into());
+        view.set_effect_items(panels.effect_items);
+        view.set_bug_items(panels.bug_items);
     }
 
     /// The library's pane: each card with whether it is in, or why it can't go in.

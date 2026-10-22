@@ -130,9 +130,9 @@ pub fn shelved(words: &Words, listed: Listed, build: Option<Build>, own: Option<
 /// The selected game's builds, by name, in the language shown, each checked under the ruleset it is made for.
 pub fn load(shell: &Shell, kit: &Kit) -> Vec<Shelved> {
     let ui = shell.ui();
-    let graphics = kit.ready.graphics(shell.lang);
+    let graphics = kit.ready.graphics(shell.i18n.code);
     let names = Names::of(kit.content(), &graphics);
-    let words = Words { ui: &ui, kit, names: &names };
+    let words = Words { ui: &ui, kit, names: &names, i18n: &shell.i18n };
     let own = Own::of(kit);
     store::list(&kit.game)
         .into_iter()

@@ -726,7 +726,7 @@ fn want_pictures(shell: &mut Shell, game: &str) {
 /// language shown.
 fn card(shell: &Shell, ready: &Rc<Ready>, role: slint::SharedString, name: &str, build: &Build) -> VersusCard {
     let content = ready.content();
-    let graphics = ready.graphics(shell.lang);
+    let graphics = ready.graphics(shell.i18n.code);
     let names = Names::of(content, &graphics);
     VersusCard {
         role,

@@ -380,7 +380,7 @@ fn bug_card(put: Rc<RefCell<Option<slint::SharedString>>>) -> Step {
             return;
         }
         let view = ui.global::<PatchCardsView>();
-        if !view.get_bugs_line().is_empty() {
+        if !view.get_bug_items().row_count() == 0 {
             return;
         }
         let rows: Vec<nettai_ui::CardRow> = view.get_rows().iter().collect();
@@ -388,7 +388,7 @@ fn bug_card(put: Rc<RefCell<Option<slint::SharedString>>>) -> Step {
         for (i, row) in rows.iter().enumerate().filter(|(_, r)| !r.refused && r.note.is_empty()) {
             app.shell.nav.focus("lib.rows", i as i32);
             app.act(Action::Confirm);
-            if !view.get_bugs_line().is_empty() {
+            if !view.get_bug_items().row_count() == 0 {
                 *put.borrow_mut() = Some(row.number.clone());
                 return;
             }

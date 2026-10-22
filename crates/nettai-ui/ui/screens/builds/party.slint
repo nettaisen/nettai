@@ -27,7 +27,7 @@
 // On a phone, which has no strip, PARTY is the tab's width, and a button under it opens the slot's library as a sheet
 // (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
 
-import { Theme, Caps } from "../../theme.slint";
+import { Theme, Caps, Lists } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, Button, ListView, RowTouch, ProblemNote, Refusal, WordButton } from "../../widgets.slint";
@@ -77,9 +77,9 @@ export struct PartySlot {
 }
 
 // What the strip describes, as the Folder tab's strip lays a chip out: a navi (its face) or a program (its blocks), its
-// name (a navi's with its version's mark), a line of what it is (`description`: what a program does; a navi's stats in
-// its place, its element's icon the last's value), a program's facts; why it can't go in (`problem`, a refusal) or what the build's
-// problems have against it (`fault`).
+// name (a navi's with its version's mark), a line of what it is (`description`: what a program does, its effects listed
+// by `Lists.of`; a navi's stats in its place, its element's icon the last's value), a program's facts; why it can't go
+// in (`problem`, a refusal) or what the build's problems have against it (`fault`).
 export struct PartyDetail {
     there: bool,
     face: image,
@@ -87,7 +87,7 @@ export struct PartyDetail {
     version: VersionTag,
     blocks: int,
     tone: color,
-    description: string,
+    description: [string],
     // A navi's stats (HP, Attack: their labels the strip's; a stat of the rules' own with its own), what its
     // programs added in cyan, as the Navi tab says them; and its element's icon, a stat after them (Element).
     stats: [StatLine],
@@ -511,7 +511,7 @@ export component PartyTab inherits Rectangle {
         width: root.width - 136px;
         height: 18px;
         visible: !root.phone && PartyView.detail.stats.length == 0;
-        text: PartyView.detail.description;
+        text: Lists.of(PartyView.detail.description);
         color: Theme.muted;
         font-family: Theme.body;
         font-size: 13px;

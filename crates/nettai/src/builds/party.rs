@@ -130,7 +130,7 @@ pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, side: &
                 face: kit.pictures.navi(navi),
                 name: names.navi_long(navi).into(),
                 version: kit.version_tag_of(names, Registry::Navi, &nettai_match::ruleset::Item::of(navi.0)),
-                programs: p.programs.iter().map(|&h| names.entry(h)).collect::<Vec<_>>().join(", ").into(),
+                programs: crate::builds::overview::items(p.programs.iter().map(|&h| names.entry(h))),
             })
         })
         .collect()

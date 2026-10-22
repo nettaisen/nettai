@@ -209,8 +209,8 @@ pub struct Shell {
     pub touch: crate::input::TouchPad,
     /// The on-screen pad's buttons as the UI was last told they are held.
     pad_shown: u16,
-    /// The language shown, by its code.
-    pub lang: &'static str,
+    /// The language shown: its code and its rules (capitals, lists), made when it was chosen (`lang::select`).
+    pub i18n: Rc<crate::lang::I18n>,
     /// The window's texture the picture is written into (femtovg's OpenGL); none: a new image each picture.
     pub gl: Option<GlPicture>,
     /// A second texture, for a small picture over the window's one (the replay viewer's other console: `Shell::show_inset`).
@@ -347,7 +347,7 @@ impl Shell {
     /// is told again.
     fn name_games(&self) {
         let ids: Vec<&str> = self.games.list.iter().map(|g| g.id.as_str()).collect();
-        Shell::read_game_names(&ids, self.lang);
+        Shell::read_game_names(&ids, self.i18n.code);
         if let Some(id) = &self.game {
             self.ui().global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
         }
@@ -410,7 +410,7 @@ impl Shell {
 
     /// Start loading a game on its thread.
     fn load(&mut self, id: &str) {
-        self.games.load(id, self.lang, |id, step| crate::with_app(|app| app.shell.games.step(&id, step)));
+        self.games.load(id, self.i18n.code, |id, step| crate::with_app(|app| app.shell.games.step(&id, step)));
     }
 
     /// The extraction of game `id`'s pack says how far it is, or that it ended (`crate::packs`). A pack that
@@ -467,14 +467,12 @@ impl Shell {
     /// content's names from its strings table once each game's are loaded (on a thread: the screens are shown
     /// again then).
     pub fn set_language(&mut self, code: &'static str) {
-        self.lang = code;
-        crate::lang::select(&self.ui(), code);
+        self.i18n = crate::lang::select(&self.ui(), code);
         self.name_games();
-        self.ui().global::<Theme>().set_cjk(crate::lang::cjk(code));
         self.games.load_language(code, |id, lang, graphics| {
             crate::with_app(move |app| {
                 app.shell.games.language(&id, &lang, graphics);
-                if app.shell.lang == lang {
+                if app.shell.i18n.code == lang {
                     app.shell.show_language();
                 }
             })
@@ -503,7 +501,7 @@ impl Shell {
         if let Some(b) = &mut self.battle
             && let Some(ready) = self.games.ready(&b.game)
         {
-            b.stage.player.set_language(&ready.graphics(self.lang));
+            b.stage.player.set_language(&ready.graphics(self.i18n.code));
             b.stage.surface.stale = true;
         }
         self.refresh();
@@ -921,9 +919,7 @@ pub struct App {
 impl App {
     pub fn new(ui: &AppWindow, still: bool) -> App {
         let settings = if still { Settings::default() } else { Settings::load() };
-        let lang = crate::lang::initial(settings.language.as_deref());
-        crate::lang::select(ui, lang);
-        ui.global::<Theme>().set_cjk(crate::lang::cjk(lang));
+        let i18n = crate::lang::select(ui, crate::lang::initial(settings.language.as_deref()));
         let mut sound = if still { Sound::silent() } else { Sound::open() };
         sound.set_levels(settings.music, settings.effects);
         let bindings = settings.bindings();
@@ -941,7 +937,7 @@ impl App {
             bindings,
             touch: Default::default(),
             pad_shown: 0,
-            lang,
+            i18n,
             gl: None,
             inset_gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },

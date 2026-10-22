@@ -211,7 +211,7 @@ impl Shell {
                 let fit = self.fit(size.width as f32, size.height as f32);
                 let size = (nettai_render::compose::WIDTH * fit.density as usize, nettai_render::compose::HEIGHT * fit.density as usize);
                 let mode = self.settings.graphics();
-                let graphics = ready.graphics(self.lang);
+                let graphics = ready.graphics(self.i18n.code);
                 let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
                 let mut renderer = graphics.renderer(mode, font.clone());
                 renderer.reduce_motion = self.reduces_motion();

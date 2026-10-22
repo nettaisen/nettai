@@ -163,7 +163,7 @@ impl Page {
     fn show(&mut self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let ruleset = &self.shown.ruleset;
@@ -466,7 +466,7 @@ impl Page {
             return;
         }
         self.key = key;
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         self.show_items(shell, &names);
@@ -511,7 +511,7 @@ impl Page {
     /// DUPLICATE: the player's own copy of the ruleset shown, named after it (numbered past the presets' names and
     /// the player's own), saved and shown in its place.
     fn duplicate(&mut self, shell: &mut Shell) -> Outcome {
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let mut taken = self.taken();
@@ -538,7 +538,7 @@ impl Page {
     /// EXPORT: the ruleset shown written to a file where the player says (a ruleset's file, as the player's own are
     /// kept: `store`), named as it is shown (a preset's in the language shown), to be imported elsewhere.
     fn export(&self, shell: &mut Shell) -> Outcome {
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let names = Names::of(self.kit.content(), &graphics);
         let name = shown_name(&names, &self.shown.ruleset.name);
         let Some(path) = shell.choose_save(&Self::files_kind(shell), &EXTENSIONS, &format!("{}.{}", store::stem(&name), store::EXTENSION)) else { return Outcome::Nothing };
@@ -566,7 +566,7 @@ impl Page {
 
     /// IMPORT's files, as [`Page::import`] says.
     pub fn import_paths(&mut self, shell: &mut Shell, paths: &[std::path::PathBuf]) -> Outcome {
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         let mut taken: Vec<String> = store::list(&kit.game).into_iter().map(|l| l.name).collect();
@@ -758,7 +758,7 @@ impl Page {
             "rules.search" => {
                 self.search = text.to_string();
                 view.set_search(text.into());
-                let graphics = self.kit.ready.graphics(shell.lang);
+                let graphics = self.kit.ready.graphics(shell.i18n.code);
                 let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
                 self.show_items(shell, &names);
@@ -814,7 +814,7 @@ impl Page {
         self.key = None;
         let ui = shell.ui();
         ui.global::<RulesetView>().set_category(index as i32);
-        let graphics = self.kit.ready.graphics(shell.lang);
+        let graphics = self.kit.ready.graphics(shell.i18n.code);
         let kit = self.kit.clone();
         let names = Names::of(kit.content(), &graphics);
         self.show_items(shell, &names);

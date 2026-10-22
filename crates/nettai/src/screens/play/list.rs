@@ -117,7 +117,7 @@ impl Play {
     pub(super) fn show_versions(&self, shell: &Shell, kit: &Kit) {
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
-        let graphics = kit.ready.graphics(shell.lang);
+        let graphics = kit.ready.graphics(shell.i18n.code);
         let names = Names::of(kit.content(), &graphics);
         view.set_versions(ModelRc::new(VecModel::from(kit.version_tags(&names))));
         view.set_version_sets(names.text(nettai_match::build::TEXT_TABLE, "versions").unwrap_or_default().into());
@@ -299,7 +299,7 @@ impl Play {
         let mut build = Build::new(kit.content(), &name, imported.side).made_for(made_for_new(shell, kit));
         build.settle(kit.content(), &kit.builds, &crate::screens::builds::editor::navi_only_fields(kit.content()));
         let ui = shell.ui();
-        let graphics = kit.ready.graphics(shell.lang);
+        let graphics = kit.ready.graphics(shell.i18n.code);
         let names = Names::of(kit.content(), &graphics);
         let notice = imported.taken.first().map_or_else(String::new, |taken| {
             let preset = kit.builds.choice(&taken.choice).and_then(|c| c.preset(&taken.preset).map(|p| c.text_key(p)));

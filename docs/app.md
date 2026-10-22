@@ -597,13 +597,31 @@ screen's view in the same catalog (`out property <string> you: Caps.of(@tr("You"
 ever shown (§12).
 
 **Words in capitals are written in a sentence's case**, and set in capitals where they are shown: `Caps.of(@tr("Show
-file"))` (theme.slint's `Caps`, which the app answers with `lang::upper`, ICU's case mapping by the language shown's
+file"))` (theme.slint's `Caps`, which the app answers with `I18n::upper`, ICU's case mapping by the language shown's
 own rules: a Turkish i is İ, a German ß SS). The catalog holds a word once ("Back", whether a button's BACK or a
 sentence's Back), and a translator writes it once; where the capitals' word is another in a language (a button's
 verb, a heading), a context tells the two apart (`@tr("verb" => "Export")`). Acronyms and units (HP, MB, OK, P1,
 VS) are written as they are. Capitals are the UI's alone: Rust hands over a content's name as it is (a version's
 tag, a choice's presets, a group's title), and the component that shows it in capitals sets it so. The user: "instead of having both all caps and lowercase strings, why not
 just call locale-aware to upper case in locations where they need to be uppercased?"
+
+**Things listed on a line are joined in the UI, by the language's own separator**: Rust hands over the items (a
+build's abilities, bugs and patch cards, an auto battle list's chips, a partner's programs, a program's effects) as
+a `[string]`, and the line shows `Lists.of(items)` (theme.slint's `Lists`, which the app answers with `I18n::list`,
+CLDR's "and" list at its narrow length, which has no "and" before the last: "A, B, C" in English, "A、B、C" in
+Japanese). No ", " is written between items in Rust or in Slint; a text Slint makes of its own strings lists them
+the same way (`Lists.of([@tr("{n} navi" | …), @tr("{n} program" | …)])`). A separator that isn't a list's (the
+"·" between a navi and its preset, a translated pattern) stays as it is. The user: "you should also join items by
+locale-aware separator in the ui", then "surely you should join the list in slint rather than in rust".
+
+**The language's rules are made once, when it is chosen** (`lang::I18n`: its code, its parsed identifier, its case
+mapper, its list formatter; the user: "parsing the icu language identifier each time seems expensive, why not just
+parse it once at the top level then pass it in everywhere? or like an i18n context that holds a casemapper and a
+list formatter"). `lang::select` makes them, gives them to `Caps` and `Lists`, then selects the catalog; the shell
+keeps them (`shell.i18n`, its `code` the language's), and Rust that lists or capitalizes is handed them (`Words`'s
+`i18n`). Choosing another language makes all of them anew ("on language switch why not just rebuild the i18n context
+with everything?"). Neither `Caps` nor `Lists` is passed the language: the new rules are in place before Slint says
+every `@tr` string again, and the app sets the words it gives again itself.
 
 **A language is a folder**, `crates/nettai-ui/lang/<code>/`, of gettext catalogs: one file for each part of the
 app (`shell.po` for what every screen shares, then one a screen), so two screens' translators don't meet in one

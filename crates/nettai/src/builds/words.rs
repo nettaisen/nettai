@@ -66,6 +66,8 @@ pub struct Words<'a> {
     pub ui: &'a AppWindow,
     pub kit: &'a Kit,
     pub names: &'a Names<'a>,
+    /// The language shown's rules (the shell's).
+    pub i18n: &'a crate::lang::I18n,
 }
 
 impl Words<'_> {
@@ -217,9 +219,9 @@ impl Words<'_> {
 pub fn problems(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, problems: &[Problem]) -> String {
     let Some(kit) = crate::builds::kit_of(game, ready) else { return String::new() };
     let ui = shell.ui();
-    let graphics = ready.graphics(shell.lang);
+    let graphics = ready.graphics(shell.i18n.code);
     let names = Names::of(ready.content(), &graphics);
-    Words { ui: &ui, kit: &kit, names: &names }.summary(problems).unwrap_or_default()
+    Words { ui: &ui, kit: &kit, names: &names, i18n: &shell.i18n }.summary(problems).unwrap_or_default()
 }
 
 /// A kind alone said, where the problem's fact isn't at hand: a kind that is about a part of the build has its
@@ -228,9 +230,9 @@ pub fn problems(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<cra
 pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, wrong: &Wrong) -> String {
     let Some(kit) = crate::builds::kit_of(game, ready) else { return String::new() };
     let ui = shell.ui();
-    let graphics = ready.graphics(shell.lang);
+    let graphics = ready.graphics(shell.i18n.code);
     let names = Names::of(ready.content(), &graphics);
-    Words { ui: &ui, kit: &kit, names: &names }.wrong(wrong)
+    Words { ui: &ui, kit: &kit, names: &names, i18n: &shell.i18n }.wrong(wrong)
 }
 
 /// `problems` (a build's of `kit`'s game, as a list checked it: `shelf::Shelved::problems`) as [`Words::summary`] says
@@ -238,9 +240,9 @@ pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate:
 /// limit 1 · +1 more."), for a screen that starts a match with a build. None: nothing is wrong with it.
 pub fn summary(shell: &crate::shell::Shell, kit: &Kit, problems: &[Problem]) -> Option<String> {
     let ui = shell.ui();
-    let graphics = kit.ready.graphics(shell.lang);
+    let graphics = kit.ready.graphics(shell.i18n.code);
     let names = Names::of(kit.content(), &graphics);
-    Words { ui: &ui, kit, names: &names }.summary(problems)
+    Words { ui: &ui, kit, names: &names, i18n: &shell.i18n }.summary(problems)
 }
 
 #[cfg(test)]

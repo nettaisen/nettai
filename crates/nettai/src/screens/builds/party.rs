@@ -129,10 +129,10 @@ fn head_at(slots: &[Slot], row: usize) -> Option<usize> {
     }
 }
 
-/// What program `h` does, on one line: its effects in text table `table`'s words, one after the other.
-fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> String {
+/// What program `h` does: its effects in text table `table`'s words, for a line that lists them (`Lists.of`).
+fn effect_of(names: &crate::games::Names, h: EntryHandle, table: &str) -> ModelRc<slint::SharedString> {
     let named: crate::builds::cards::Named = &|_, _| None;
-    crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text).collect::<Vec<_>>().join(", ")
+    crate::builds::overview::items(crate::builds::cards::lines_in(names, h, table, named).unwrap_or_default().into_iter().map(|l| l.text))
 }
 
 /// A program's row: its name, its slots as budget `b` costs them, its color. (What it does is the strip's: the user,
@@ -692,7 +692,7 @@ impl Party {
             name: words.names.entry(h).into(),
             blocks: cost,
             tone: tone(content, h),
-            description: effect_of(words.names, h, table).into(),
+            description: effect_of(words.names, h, table),
             facts: ModelRc::new(VecModel::from(facts)),
             problem: why.unwrap_or_default().into(),
             ..Default::default()
