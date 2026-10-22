@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box, its name's tab on its top edge at the right (opening, step 2 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees, a light blue band inside it two wide, the white ground the text is written on, each cut parallel to the outline's. -->
+<!-- The chatbox's box, the message box, its name's tab on its top edge at the right (opening, step 2 of 3): a dark blue outline a pixel wide, its corners cut 45 degrees as the art steps them (the outline two pixels across along each cut), a light blue band inside it two wide, the white ground the text is written on, its corners cut a pixel's stair. -->
 <!-- The tab on the top edge: its outline, its left side slanting at 45 degrees, its top right corner cut as the box's -->
 <path d="M190.5 8 L236.5 8 L239 10.5 L239 16 L182.5 16 Z" fill="#086bc6" data-color="11"/>
 <!-- The outline, a pixel wide, its corners cut 45 degrees (as the art steps them) -->
 <path d="M1 14.5 L3.5 12 L236.5 12 L239 14.5 L239 49.5 L236.5 52 L3.5 52 L1 49.5 Z" fill="#086bc6" data-color="11"/>
-<!-- The band inside the tab, a pixel in, its cuts parallel -->
-<path d="M190.914 9 L236.086 9 L238 10.914 L238 16 L183.914 16 Z" fill="#4abdf7" data-color="10"/>
-<!-- The band, two pixels wide, its cuts parallel to the outline's -->
-<path d="M2 14.914 L3.914 13 L236.086 13 L238 14.914 L238 49.086 L236.086 51 L3.914 51 L2 49.086 Z" fill="#4abdf7" data-color="10"/>
+<!-- The band inside the tab, a pixel in, its slant and its top right corner cut as the outline's (the art's stairs: the outline two pixels across along them) -->
+<path d="M191.5 9 L235.5 9 L238 11.5 L238 16 L184.5 16 Z" fill="#4abdf7" data-color="10"/>
+<!-- The band, two pixels wide, its corners cut as the outline's, so the outline is two pixels across along each cut, as the art's stair -->
+<path d="M2 15.5 L4.5 13 L235.5 13 L238 15.5 L238 48.5 L235.5 51 L4.5 51 L2 48.5 Z" fill="#4abdf7" data-color="10"/>
 <!-- The box's top edge running on through the tab, two rows, its left end slanting as the tab's side -->
 <path d="M193.5 11 L235 11 L235 13 L191.5 13 Z" fill="#086bc6" data-color="11"/>
-<!-- The ground, its corners cut parallel (where the cut has any length left) -->
-<path d="M4 15.743 L4.743 15 L235.257 15 L236 15.743 L236 48.257 L235.257 49 L4.743 49 L4 48.257 Z" fill="#f7fff7" data-color="1"/>
+<!-- The ground, its corners cut as the art steps them (a pixel's stair, legs 1.5, inside the outline's big cuts; square inside its small ones) -->
+<path d="M4 16.5 L5.5 15 L234.5 15 L236 16.5 L236 47.5 L234.5 49 L5.5 49 L4 47.5 Z" fill="#f7fff7" data-color="1"/>
 </svg>
