@@ -8,6 +8,7 @@
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
+use crate::seat::{At, Seat};
 use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
@@ -99,9 +100,8 @@ impl SharedLoads {
     /// a telop on the banner block, one on the other player's block and the
     /// other player's used chip (the navis' chips), in the order a tick
     /// starts them; each start loads what it shares (the original reloads
-    /// nothing while a piece shows).
-    fn tick(&mut self, b: &Battle) {
-        let local = b.setup.local_side;
+    /// nothing while a piece shows), on `local`'s console.
+    fn tick(&mut self, b: &Battle, local: u8) {
         let paused = b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE;
         if paused && !self.was_paused {
             self.palette = Load::Pause;
@@ -166,6 +166,33 @@ pub struct SharedGlyphs {
     /// The palette the banner shows, and the telops', where not their own.
     banner_palette: Option<Palette>,
     telop_palette: Option<Palette>,
+    /// Tiles the HUD makes as it draws (a flipped count box with its digits
+    /// upright: `upright_count`), for its sprites to borrow.
+    made: MadeTiles,
+}
+
+/// Tiles made while a frame is drawn, kept for its sprites to borrow: a few
+/// slots, each filled once.
+pub struct MadeTiles {
+    slots: Vec<std::cell::OnceCell<Tiles>>,
+    used: std::cell::Cell<usize>,
+}
+
+impl Default for MadeTiles {
+    fn default() -> MadeTiles {
+        // (A frame makes one at most: the right seat's count box.)
+        MadeTiles { slots: (0..2).map(|_| std::cell::OnceCell::new()).collect(), used: std::cell::Cell::new(0) }
+    }
+}
+
+impl MadeTiles {
+    /// Keep `tiles` for the frame; none once every slot is filled.
+    fn make(&self, tiles: Tiles) -> Option<&Tiles> {
+        let slot = self.slots.get(self.used.get())?;
+        self.used.set(self.used.get() + 1);
+        slot.set(tiles).ok()?;
+        slot.get()
+    }
 }
 
 impl SharedGlyphs {
@@ -220,12 +247,14 @@ fn banner_tile(o: usize) -> usize {
 /// banner's 40 tiles from `banner` as five 32x16 sprites: tile `o` glyph
 /// 4 (o / 8) + o % 4, its top half for o % 8 < 4; a telop's name two
 /// tiles a glyph from its place's tile, padded to eight with glyph 0; the
-/// '×' and '2' pieces a 16x16 sprite), and the palette.
+/// '×' and '2' pieces a 16x16 sprite), and the palette. `seat`'s console's
+/// (`state` its HUD's), of the pieces it draws.
 pub fn shared_glyphs<'a>(
     b: &Battle,
     assets: &'a Bundle,
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
+    seat: Seat,
     text: &TextSink,
     problems: &mut Problems,
 ) -> SharedGlyphs {
@@ -236,7 +265,7 @@ pub fn shared_glyphs<'a>(
     let hud = &assets.hud;
     let Some((look, t)) = hud.layout.telop.as_ref().and_then(|l| l.tiles.map(|t| (l, t))) else { return out };
     let s = &state.shared;
-    let local = b.setup.local_side;
+    let local = seat.side;
     let banner_palette = matches!(s.palette, Load::Banner(_)) || s.palette == Load::Pause && t.pause_loads_banner_palette;
     out.telop_palette = banner_palette.then_some(hud.banner_palette);
     out.banner_palette = matches!(s.palette, Load::Telop(_)).then_some(look.palette);
@@ -257,7 +286,7 @@ pub fn shared_glyphs<'a>(
         Some((0..8).map(|k| fonts::cell_glyph(hud, codes.get(k).copied().unwrap_or(0))).collect())
     };
     let in_banner = |tile: u16| tile.checked_sub(t.banner).filter(|&o| o < TelopTiles::BANNER_TILES).map(|o| o as usize);
-    let telops = b.telops_for(local);
+    let telops = telops_of(b, seat);
     // The right-hand telop's name where a banner loaded over it.
     let right_shown = b.used_chip_for(local).is_some() || telops.iter().flatten().any(|(x, _)| x.remote);
     if right_shown
@@ -289,7 +318,8 @@ pub fn shared_glyphs<'a>(
         }
     }
     // The banner's glyphs where a telop loaded over them.
-    let banner_shown = b.banner_for(local).is_some() && telops[0].is_none();
+    let banner = banner_of(b, seat);
+    let banner_shown = banner.is_some() && telops[0].is_none();
     let signs = matches!(s.signs, Load::Telop(_));
     let right = match s.right {
         Load::Telop(name) => name_tiles(name, problems),
@@ -297,7 +327,7 @@ pub fn shared_glyphs<'a>(
     };
     if banner_shown
         && (signs || right.is_some())
-        && let Some(id) = b.banner_for(local)
+        && let Some(id) = banner
         && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
     {
         let sign = |o: u16| -> Option<(&'a Tiles, usize)> {
@@ -430,19 +460,19 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 }
 
 impl HudState {
-    /// Follow one tick of the battle.
-    pub fn tick(&mut self, b: &Battle) {
-        self.shared.tick(b);
+    /// Follow one tick of the battle, as `local`'s console's HUD does.
+    pub fn tick(&mut self, b: &Battle, local: u8) {
+        self.shared.tick(b, local);
         if crate::custom::screens_open(b) {
-            self.form_face_shown = crate::custom::face(b, b.setup.local_side as usize).is_some();
+            self.form_face_shown = crate::custom::face(b, local as usize).is_some();
         }
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
-        if let Some(n) = waiting_ticks(b) {
+        if let Some(n) = waiting_ticks(b, local) {
             self.frame = (n & 0x3F) as u8;
-        } else if gauge_shown(b, self) && b.gauge_for(b.setup.local_side) >= FULL && !b.late_turns() {
+        } else if gauge_shown(b, self, local) && b.gauge_for(local) >= FULL && !b.late_turns() {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
-        if let Some(r) = b.player(b.setup.local_side) {
+        if let Some(r) = b.player(local) {
             let now = Face::of(b, r);
             let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false, white: false });
             if now.picture != m.now.picture {
@@ -473,7 +503,6 @@ impl HudState {
             }
         }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
-        let local = b.setup.local_side;
         // The local navi's HP box.
         if let Some(r) = b.player(local) {
             let o = b.objects.get(r);
@@ -540,9 +569,9 @@ fn digits4(v: u16) -> [usize; 4] {
     out
 }
 
-/// Whether the local player's custom screen covers the left of the screen.
-fn custom_open(b: &Battle) -> bool {
-    b.round.mode == mode::CUSTOM && b.custom.sides[b.setup.local_side as usize].in_custom
+/// Whether `local`'s player's custom screen covers the left of its screen.
+fn custom_open(b: &Battle, local: u8) -> bool {
+    b.round.mode == mode::CUSTOM && b.custom.sides[local as usize & 1].in_custom
 }
 
 /// The custom gauge's frame: from column 6 of the top two rows, 18 columns
@@ -553,24 +582,25 @@ const GAUGE_COLUMNS: i32 = 18;
 /// frame's tiles.
 pub const GAUGE_AREA: (i32, i32, i32, i32) = (GAUGE_COLUMN * 8, 0, GAUGE_COLUMNS * 8, 16);
 
-/// While the local player's result is sent and the opponent's isn't in:
-/// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
-fn waiting_ticks(b: &Battle) -> Option<u32> {
-    let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
+/// While `local`'s player's result is sent and the opponent's isn't in:
+/// the ticks "Cstmzing..." has been up on its console (`sub_801E474` starts
+/// it).
+fn waiting_ticks(b: &Battle, local: u8) -> Option<u32> {
+    let sent = b.custom.sides[local as usize & 1].sent.as_ref()?;
     // (On the tick the custom mode starts the screens haven't opened yet:
     // what was sent is the last screen's.)
     (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
-/// Whether the custom gauge is drawn (a chip's effect may hide it:
-/// `Battle::hud_hidden`).
-fn gauge_shown(b: &Battle, state: &HudState) -> bool {
+/// Whether `local`'s console draws the custom gauge (a chip's effect may
+/// hide it: `Battle::hud_hidden`).
+fn gauge_shown(b: &Battle, state: &HudState, local: u8) -> bool {
     (b.gauge.enabled || state.gauge_was_on)
         && !b.hud_hidden.gauge
         && !state.was_over
-        && !custom_open(b)
-        && !crate::custom::gauge_held(b)
-        && !transform_hides(b, state).1
+        && !custom_open(b, local)
+        && !crate::custom::gauge_held(b, local)
+        && !transform_hides(b, state, local).1
 }
 
 /// The gauge counter's units a pixel of its bar: its 0x4000 over the
@@ -582,10 +612,12 @@ const GAUGE_UNITS_A_PIXEL: u32 = (FULL as u32) / (16 * 8);
 /// the fill to the counter's whole pixels, a cell's tile by eighths, so it
 /// grows a pixel every 2, 4 or 8 ticks (the counter's 0x40, 0x20 or 0x10 a
 /// tick: 128 a pixel); the enhanced mode's motion shows the counter's part
-/// of a pixel at the output's resolution (`Frame::nudge`).
+/// of a pixel at the output's resolution (`Frame::nudge`). The local
+/// console's (`state` its HUD's).
 pub fn gauge_sub(b: &Battle, state: &HudState, custom_gauge: bool) -> u8 {
-    let g = b.gauge_for(b.setup.local_side) as u32;
-    if !custom_gauge || !gauge_shown(b, state) || g >= FULL as u32 {
+    let local = b.setup.local_side;
+    let g = b.gauge_for(local) as u32;
+    if !custom_gauge || !gauge_shown(b, state, local) || g >= FULL as u32 {
         return 0;
     }
     (g % GAUGE_UNITS_A_PIXEL * 16 / GAUGE_UNITS_A_PIXEL) as u8
@@ -615,9 +647,10 @@ fn decided(b: &Battle) -> bool {
 /// The mugshot of a player who chose a form on the custom screen is gone
 /// from the tick the fight resumes when the screen showed the form's face
 /// in the window: closing takes the window down with it (`sub_802A0F8`;
-/// EXE5's close has no such step, its soul choice shows no face).
-fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
-    let chose = b.transform_requests[b.setup.local_side as usize & 1].form.is_some() && state.form_face_shown;
+/// EXE5's close has no such step, its soul choice shows no face). On
+/// `local`'s console.
+fn transform_hides(b: &Battle, state: &HudState, local: u8) -> (bool, bool) {
+    let chose = b.transform_requests[local as usize & 1].form.is_some() && state.form_face_shown;
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started } => (started || chose, false),
         SequencerState::Transform { .. } => (true, true),
@@ -625,12 +658,15 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
     }
 }
 
-/// Draw the HUD layer and queue the HUD sprites. What the HUD needs and
+/// Draw the HUD layer and queue the HUD sprites of `seat`'s console
+/// (`state` its HUD's), where `seat` puts them: a console's own screen, or
+/// its share of a screen of both (`crate::seat`). What the HUD needs and
 /// the pack or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
 /// is the enhanced mode's motion: the gauge's fill drawn between whole
-/// pixels.
+/// pixels. `scratch` is a layer to lay a piece out in before it is put in
+/// its place (the right seat's chip name, right-aligned).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -638,9 +674,10 @@ pub fn draw<'a>(
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
     shared: &'a SharedGlyphs,
+    seat: Seat,
     custom_gauge: bool,
     smooth: Smooth,
-    layer: &mut Layer,
+    (layer, scratch): (&mut Layer, &mut Layer),
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
     problems: &mut Problems,
@@ -649,44 +686,53 @@ pub fn draw<'a>(
     if hud.tiles.is_empty() {
         return;
     }
+    // (The view drawn: the local console's, the left one's of two.)
     let view = crate::render::Renderer::view(b);
-    let local = b.setup.local_side;
+    let local = seat.side;
     let player = b.player(local);
-    let open = custom_open(b);
+    let open = custom_open(b, local);
     let color = state.hp.map(|h| h.color).unwrap_or(0) as usize;
 
-    let (hide_mugshot, hide_boxes) = transform_hides(b, state);
-    // HP box, top left (moved right with the custom screen's window).
-    let shift = crate::custom::hud_shift(b);
+    let (hide_mugshot, hide_boxes) = transform_hides(b, state, local);
+    // HP box, top left (moved right with the custom screen's window). On
+    // the right of a screen of both, at the top right: the box flipped, its
+    // digits in their cells' mirrored place.
+    let shift = crate::custom::hud_shift(b, local);
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
+        let digits_x = seat.x(shift + 8, 32);
         // In the enhanced mode the HP in the numbers' font over the cells
         // left blank (the box's glyph 10), and the box drawn as shapes where
         // the pack has its drawing.
-        let lettered = hp_box_number(hud, pal, shown, (shift + 8, 0), text, problems);
+        let lettered = hp_box_number(hud, pal, shown, (digits_x, 0), text, problems);
         let drawn = hud.shapes.hp_box.as_ref().filter(|_| lettered.is_some() && text.draws_shapes());
         match drawn {
-            Some(d) => text.push(Plane::Hud, crate::shapes::item(crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (false, false), None), (shift, 0), (48, 16))),
+            Some(d) => {
+                let d = crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (seat.mirrored(), false), None);
+                text.push(Plane::Hud, crate::shapes::item(d, (seat.x(shift, 48), 0), (48, 16)));
+            }
             None => {
                 for (i, &e) in hud.hp_box.iter().enumerate() {
-                    put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
+                    let e = MapEntry { hflip: seat.flip(e.hflip), ..e };
+                    put_px(layer, hud, pal, e, seat.x(shift + 8 * (i as i32 % 6), 8), 8 * (i as i32 / 6));
                 }
             }
         }
         for (k, d) in digits4(shown).into_iter().enumerate().filter(|_| drawn.is_none()) {
             let d = if lettered.is_some() { HP_BLANK } else { d };
             let top = MapEntry { tile: hud.first_tile + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
-            put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
-            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
+            put_px(layer, hud, pal, top, digits_x + 8 * k as i32, 0);
+            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, digits_x + 8 * k as i32, 8);
         }
         for item in lettered.into_iter().flatten() {
             text.push(Plane::Hud, item);
         }
     }
 
-    // Custom gauge, top center.
-    if custom_gauge && gauge_shown(b, state) {
+    // Custom gauge, top center (one on a screen of both: the gauge is the
+    // battle's).
+    if custom_gauge && seat.draws_shared() && gauge_shown(b, state, local) {
         let pal = &hud.gauge_palette;
         let color = |_: u8, c: u8| pal[c as usize & 15];
         // In the enhanced mode the frame's word in the lettering font, in
@@ -721,7 +767,7 @@ pub fn draw<'a>(
             text.push(Plane::Hud, item);
         }
         // (The local console's: EXE4's keeps it full until its own send.)
-        let g = b.gauge_for(b.setup.local_side);
+        let g = b.gauge_for(local);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
         let full_frame = (state.frame & 8 != 0) as usize;
@@ -816,17 +862,18 @@ pub fn draw<'a>(
     // for the opponent's; it blinks every 32 frames.
     // (Two rows as wide as its words: eight tiles in English, seven in
     // Japanese, where `sub_801CA34` copies one column fewer.)
-    if waiting_ticks(b).is_some_and(|n| (n / 32) % 2 == 0) {
+    if waiting_ticks(b, local).is_some_and(|n| (n / 32) % 2 == 0) {
         let columns = (hud.waiting.len() / 2).max(1);
+        let x = seat.x(22 * 8, 8 * columns as i32);
         // In the enhanced mode its words in the lettering font, in its look.
         let words = lettered_word(b, text, "waiting", hud.letters.words.waiting.as_ref(), &hud.waiting_palette, Lettering::display, problems);
         let lettered = words.is_some();
         if let Some((words, look)) = words {
-            text.push(Plane::Hud, look.in_place(words, (22 * 8, 4 * 8), 16));
+            text.push(Plane::Hud, look.in_place(words, (x, 4 * 8), 16));
         }
         for i in (0..2 * columns).filter(|_| !lettered) {
             if let Some(t) = hud.waiting.get(i) {
-                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % columns) as i32) * 8, (4 + (i / columns) as i32) * 8, false, false);
+                layer.draw_tile(t, &hud.waiting_palette, x + 8 * (i % columns) as i32, (4 + (i / columns) as i32) * 8, false, false);
             }
         }
     }
@@ -842,25 +889,28 @@ pub fn draw<'a>(
     // finds the battle over (`sub_801E1A4`: `Battle::hud_hidden`). The
     // round's result takes them off with the gauge (`result_started`).
     // (Their tiles keep the HUD's plain colors while the HP box's turn with
-    // the HP: `byte_801D964`'s entries, laid once.)
+    // the HP: `byte_801D964`'s entries, laid once.) On a screen of both each
+    // side's beside its own emotion window (the right's at its mirrored
+    // place), and none at the edges.
     let marks_hidden = b.message.is_some() || b.hud_hidden.defensive_marks || result_started(b);
-    if !open && !hide_boxes && !crate::custom::gauge_held(b) && !marks_hidden {
+    if !open && !hide_boxes && !crate::custom::gauge_held(b, local) && !marks_hidden {
         let pal = &hud.hp_palettes[0];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
-            if b.linked[side as usize & 1].chip.is_none() {
+            if b.linked[side as usize & 1].chip.is_none() || (side != local && !seat.draws_other()) {
                 continue;
             }
+            let x = seat.x(8 * column, 32);
             // In the enhanced mode the marks as a telop draws a hidden chip's
             // name: the text layer's cell role in the palette's face and
             // shadow (the user: "the ???? trap font should use the telop
             // font").
             if text.takes("????") {
-                text.push(Plane::Hud, TextItem::new("????", Role::Cell, Rect::new(8 * column, 16, 32, 16), pal[1], Some(pal[2])));
+                text.push(Plane::Hud, TextItem::new("????", Role::Cell, Rect::new(x, 16, 32, 16), pal[1], Some(pal[2])));
                 continue;
             }
             for i in 0..8i32 {
                 let e = MapEntry { tile: hud.first_tile + 2 * HIDDEN_GLYPH as u16 + (i / 4) as u16, hflip: false, vflip: false, palette: 13 };
-                put(layer, hud, pal, e, column + i % 4, 2 + i / 4);
+                put_px(layer, hud, pal, e, x + 8 * (i % 4), 8 * (2 + i / 4));
             }
         }
     }
@@ -874,7 +924,7 @@ pub fn draw<'a>(
     // (The pack says when: EXE4's only from the banner's hold, until its
     // release slides it out.)
     let judge_shown = if hud.layout.judge_from_hold { b.banner.step == 4 } else { b.banner.step < 8 };
-    if b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(packs, &b.content, id)) && judge_shown {
+    if seat.draws_shared() && b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(packs, &b.content, id)) && judge_shown {
         let pal = &hud.hp_palettes[0];
         let j = &b.fight.judge;
         // While the digits roll the numbers are random; then the damage
@@ -951,7 +1001,7 @@ pub fn draw<'a>(
         };
         (line, m.ticks == nettai_battle::hud::MessageLine::SHOWN_TICKS - 1)
     });
-    if late && timed {
+    if late && timed && seat.draws_shared() {
         let line = match message {
             Some((line, true)) if one_line => line,
             _ => timer_line,
@@ -962,11 +1012,11 @@ pub fn draw<'a>(
     // `RoundSetup::custom_screen_limit`): the seconds left on the local
     // player's screen, the whole time it counts (`time_left`).
     if let Some(left) = b.custom_time_left(local) {
-        time_left(layer, text, hud, left, problems);
+        time_left(layer, text, hud, left, seat, problems);
     }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
-    // the pack's place).
-    if let Some((line, first)) = message {
+    // the pack's place), which every console shows.
+    if let Some((line, first)) = message.filter(|_| seat.draws_shared()) {
         let (column, row, width) = hud.layout.message;
         let over = (one_line && !first).then_some(timer_line);
         draw_text_under(layer, text, hud, text_palette, line, over, (column as i32, row as i32, width as usize), problems);
@@ -983,12 +1033,26 @@ pub fn draw<'a>(
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
-            let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
+            let pal = &hud.hp_palettes[color.min(2)];
+            // (On the right of a screen of both, at the bottom right: laid
+            // out from the left in the scratch layer as its console lays it,
+            // then put against the right edge.)
+            let end = if seat.mirrored() {
+                scratch.clear();
+                let mark = text.mark();
+                let end = draw_chip_name(b, scratch, text, hud, pal, hand, chip, (bonus, doubled), problems);
+                let dx = seat.x(0, end);
+                layer.put_moved(scratch, dx);
+                text.move_since(mark, dx);
+                end
+            } else {
+                draw_chip_name(b, layer, text, hud, pal, hand, chip, (bonus, doubled), problems)
+            };
             // (Shown by the screen's close, before the navi's first
             // decision, where the caller asks.)
             const AT_CLOSE: &str = "chip-window-at-close";
             if b.chip_hud_for(local).from_close && problems.wants(AT_CLOSE) {
-                problems.mark([0, 18 * 8, end, 20 * 8], AT_CLOSE.to_string());
+                problems.mark(seat.rect([0, 18 * 8, end, 20 * 8]), AT_CLOSE.to_string());
             }
         }
     }
@@ -1003,12 +1067,12 @@ pub fn draw<'a>(
         // taken out as it is set up (`sub_80172F0`), and again whenever the
         // local navi's status is reset (`sub_80144C0`), unless its form's
         // reset puts it back (EXE5's SearchSoul, 0x08011C0C: the chip HUD's
-        // `opponent`).
+        // `opponent`). On a screen of both each navi's are its own console's.
         let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
         let shows_opponent = b.chip_hud_for(local).opponent;
         for side in 0..2u8 {
-            if let Some(r) = b.player(side).filter(|_| side == local || !link || shows_opponent) {
-                icon_parts(b, packs, r, &view, list, problems);
+            if let Some(r) = b.player(side).filter(|_| side == local || (seat.draws_other() && (!link || shows_opponent))) {
+                icon_parts(b, packs, r, &view, seat, list, problems);
             }
         }
     }
@@ -1022,11 +1086,19 @@ pub fn draw<'a>(
         .player(local)
         .and_then(|p| b.objects.get(p).collision)
         .is_some_and(|c| b.collision.get(c).f1 & nettai_battle::collision::f1::BLIND != 0);
+    // (On a screen of both, none under a navi: both navis' HP are in the
+    // corners' boxes; and the right console's none under what the left's
+    // numbers.)
+    let navi = |r: ObjectRef| (0..2).any(|side| b.player(side) == Some(r));
+    let numbered_left = |r: ObjectRef| b.hp_numbers[(local ^ 1) as usize & 1].iter().flatten().any(|n| n.object == r);
     for e in state.hp_numbers.iter().flatten().filter(|_| !blind) {
         // Under the object wherever its position is on the screen, seen or
         // not (`sub_800362C`): a navi that blinks after a hit or is
         // invisible keeps its number.
         let number = e.number;
+        if seat.both() && (navi(number.object) || (seat.mirrored() && numbered_left(number.object))) {
+            continue;
+        }
         let o = b.objects.get(number.object);
         let p = project_hud((o.pos.x, o.pos.y, o.pos.z), &view);
         if !on_screen(p) {
@@ -1036,7 +1108,9 @@ pub fn draw<'a>(
         // place without centering (flag 8).
         let value = if number.damage { o.max_hp.wrapping_sub(e.shown) } else { e.shown };
         let n = value.min(9999).to_string().len() as i32;
-        let x = p.x + number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 };
+        // (Its four cells; mirrored about the object where the seat
+        // mirrors.)
+        let x = seat.about(p.x, number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 }, 32);
         let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
         let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
@@ -1082,7 +1156,7 @@ pub fn draw<'a>(
     let hidden = b.hud_hidden.emotion_window;
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        let mut items = mugshot_parts(b, hud, packs, state, r, shift, (shared, text), &mut group, problems);
+        let mut items = mugshot_parts(b, hud, packs, state, r, (shift, seat), (shared, text), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
@@ -1111,9 +1185,10 @@ pub fn draw<'a>(
         }
     }
     // The banner block's banner, where no telop lays on it. (The banner's
-    // own pack's HUD draws it, by its number there.)
-    let banner = b.banner_for(local);
-    let telops = b.telops_for(local);
+    // own pack's HUD draws it, by its number there.) On a screen of both the
+    // round's result's is each player's own, over its own half.
+    let banner = banner_of(b, seat);
+    let telops = telops_of(b, seat);
     if let (Some(id), None) = (banner, telops[0]) {
         let mut group = Vec::new();
         let mut words = Vec::new();
@@ -1151,6 +1226,13 @@ pub fn draw<'a>(
                 if let Some(p) = shared.banner_palette {
                     group.iter_mut().for_each(|part| part.palette = p);
                 }
+            }
+            if seat.both() && b.result_banner_for(local) == Some(id) {
+                // (Its picture's columns that show, centered on the middle
+                // of its player's half.)
+                let (from, to) = banner_ink(layout);
+                let (x, w) = (layout.x as i32 + from, to - from);
+                crate::seat::move_parts(&mut group, &mut words, seat.x(HALF_MIDDLE - w / 2, w) - x);
             }
         }
         insert_named(list, text, 0, group, words);
@@ -1195,16 +1277,19 @@ pub fn draw<'a>(
             },
         };
         if let Some(style) = style.map(|s| shared.telop_style(s)) {
-            let laid = used_chip_parts(b, style, used, &mut group, text, problems);
+            let mut laid = used_chip_parts(b, style, used, &mut group, text, problems);
             shared.patch(&mut group, &shared.right, 0, laid.glyphs);
             shared.patch_signs(&mut group, laid.signs);
+            // (The left player's on a screen of both: as the right console
+            // names it, at the mirrored place, read as laid.)
+            crate::seat::mirror_run(seat, &mut group, &mut laid.name);
             insert_named(list, text, NAME_BUCKET, group, laid.name);
         }
     }
     // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
     // a 32x16 and an 8x16 sprite at its place, EXE6's (100, 63), in the
     // opponents' HP digits' palette).
-    if b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
+    if seat.draws_shared() && b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
         let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
         // In the enhanced mode its word in the lettering font, in its look,
         // with blank parts in its glyphs' places.
@@ -1214,7 +1299,48 @@ pub fn draw<'a>(
         let group = (0..5).map(|k| glyph(tiles, if word.is_some() { 0 } else { k }, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
         insert_named(list, text, NAME_BUCKET, group, word);
     }
-    warning_parts(b, hud, &view, list, problems);
+    warning_parts(b, hud, &view, seat, list, problems);
+}
+
+/// The middle of the left half of the screen, where a result banner goes on
+/// a screen of both (R1); the right's at its mirrored place.
+const HALF_MIDDLE: i32 = crate::compose::WIDTH as i32 / 4;
+
+/// The columns of a banner's picture that show (its twenty 8x16 glyphs,
+/// `banner_parts`), from its left: the first, one past the last (all of
+/// them where none shows).
+fn banner_ink(layout: &nettai_assets::BannerLayout) -> (i32, i32) {
+    let shows = |column: usize| {
+        let (glyph, x) = (column / 8, column % 8);
+        (0..2).any(|half| layout.glyphs.get(2 * glyph + half).is_some_and(|t| (0..8).any(|y| t[y * 8 + x] != 0)))
+    };
+    let columns = 20 * 8;
+    match ((0..columns).find(|&c| shows(c)), (0..columns).rev().find(|&c| shows(c))) {
+        (Some(first), Some(last)) => (first as i32, last as i32 + 1),
+        _ => (0, columns as i32),
+    }
+}
+
+/// The telops `seat` draws: its console's ([`Battle::telops_for`]); on a
+/// screen of both, the left's draws both players', each on its own side and
+/// named as its user's console names it ([`Battle::telops_for_both`]), and
+/// the right's none.
+fn telops_of(b: &Battle, seat: Seat) -> [Option<(ShownTelop, Banner)>; 2] {
+    match seat.at {
+        At::Alone => b.telops_for(seat.side),
+        At::Left => b.telops_for_both(seat.side),
+        At::Right => [None, None],
+    }
+}
+
+/// The banner `seat` draws: its console's ([`Battle::banner_for`]); on the
+/// right of a screen of both, its own result's alone (the others are the
+/// left's).
+fn banner_of(b: &Battle, seat: Seat) -> Option<BannerId> {
+    match seat.at {
+        At::Alone | At::Left => b.banner_for(seat.side),
+        At::Right => b.result_banner_for(seat.side),
+    }
 }
 
 /// Queue a front-layer group; one whose words are on the text layer
@@ -1243,16 +1369,20 @@ const GAUGE_WARNING: (i32, i32) = (0x78, 0x0C);
 /// screen's top left and its bottom right below (x + 16, y + 16) < (0xFF,
 /// 0xB0). (A place left of or above the screen, within 16 pixels, makes
 /// the original write a garbled sprite: not drawn here, and no netbattle
-/// marker goes there.)
-fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
-    let console = b.setup.local_side as usize & 1;
+/// marker goes there.) `seat`'s console's: on the right of a screen of
+/// both, those the left's doesn't show, a place's mirrored about it.
+fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, seat: Seat, list: &mut SpriteList<'a>, problems: &mut Problems) {
+    let console = seat.side as usize & 1;
     for w in &b.warnings[console] {
+        if seat.mirrored() && b.warnings[console ^ 1].contains(w) {
+            continue;
+        }
         let ((x, y), fine) = match w.at {
             None => (GAUGE_WARNING, (0, 0)),
             Some(at) => {
                 let p = project_hud((at.x, at.y, at.z), view);
                 let f = project_hud_fine((at.x, at.y, at.z), view);
-                ((p.x, p.y), (f.x, f.y))
+                ((seat.about(p.x, 0, 16), p.y), (f.x, f.y))
             }
         };
         if !(0..0xFF - 16).contains(&x) || !(0..0xB0 - 16).contains(&y) {
@@ -1414,9 +1544,11 @@ const EMOTION_WINDOW_Y: i32 = 18;
 /// custom timer you should use the number font"), in that font in the
 /// place of the HP box's digits, a cell a digit, the last ending at the
 /// screen's right edge, in the plain text's colors.
-fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, problems: &mut Problems) {
+/// On the right of a screen of both, at the left edge, read as laid.
+fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, seat: Seat, problems: &mut Problems) {
     let seconds = left.div_ceil(60).to_string();
     let pal = &hud.hp_palettes[0];
+    let width = crate::compose::WIDTH as i32;
     let lettered = text
         .draws_numbers()
         .then(|| crate::lookups::letters(hud.letters.hp_digits.as_ref(), || "the HP box's digits".into(), problems))
@@ -1424,8 +1556,9 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, probl
         .and_then(|digits| {
             // (In the plain text's colors, the HP box palette's 1 with its 2 a shadow: no box is under it.)
             let set = crate::numbers::NumberSet { fill: vec![pal[1]], rim: None, shadow: Some(pal[2]), ..crate::numbers::NumberSet::of(digits, pal) };
-            let end = crate::numbers::picture_span(&set, crate::compose::WIDTH as i32 - crate::numbers::CELL, 1).1;
-            crate::numbers::laid(text, &[(seconds.clone(), &set)], EMOTION_WINDOW_Y, crate::numbers::Anchor::Right(end)).map(|l| l.0)
+            let end = crate::numbers::picture_span(&set, width - crate::numbers::CELL, 1).1;
+            let anchor = if seat.mirrored() { crate::numbers::Anchor::Left(width as f32 - end) } else { crate::numbers::Anchor::Right(end) };
+            crate::numbers::laid(text, &[(seconds.clone(), &set)], EMOTION_WINDOW_Y, anchor).map(|l| l.0)
         });
     if let Some(items) = lettered {
         items.into_iter().for_each(|item| text.push(Plane::Hud, item));
@@ -1433,7 +1566,7 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, probl
     }
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
     let cells = if text.takes(&seconds) { fonts::box_cells(hud, &seconds, glyphs.len(), 4) } else { glyphs.len() };
-    let x = crate::compose::WIDTH as i32 - 8 * cells as i32;
+    let x = seat.x(width - 8 * cells as i32, 8 * cells as i32);
     fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, cells, pal, (x, EMOTION_WINDOW_Y), (Role::FittedCell, Align::Left));
 }
 
@@ -1507,14 +1640,17 @@ fn block(tiles: &Tiles, w: u8, h: u8, palette: Palette, x: i32, y: i32) -> Sprit
 
 /// The mugshot (by the navi's emotion and form) and the count box beside
 /// it; a link navi's own face (plain, or in Full Synchro) and the box
-/// beside it (`sub_801CC34`).
+/// beside it (`sub_801CC34`). From `x` on `seat`'s console; where the seat
+/// mirrors, at the mirrored place, the face and the box flipped (the face
+/// looks toward the middle) and the count upright in its mirrored place.
+#[allow(clippy::too_many_arguments)]
 fn mugshot_parts<'a>(
     b: &Battle,
     hud: &'a Hud,
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
     r: ObjectRef,
-    x: i32,
+    (x, seat): (i32, Seat),
     (shared, text): (&'a SharedGlyphs, &TextSink),
     out: &mut Vec<SpritePart<'a>>,
     problems: &mut Problems,
@@ -1522,6 +1658,9 @@ fn mugshot_parts<'a>(
     let mut items = Vec::new();
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
+    let flip = seat.mirrored();
+    // (The face's place and the box's.)
+    let at = (seat.x(x, 32), seat.x(x + 32, 16));
     // A link navi's own face, its definition's (MegaMan's, the navi that
     // changes form, is his form's): in its second palette in Full Synchro.
     let navi = b.content.navi(stats.navi);
@@ -1532,10 +1671,10 @@ fn mugshot_parts<'a>(
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         let picture = navi.mugshot.and_then(|m| crate::packs::mugshot(&b.content, m));
         let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
-        let tiles = face_with_ring(face_hud, number, tiles, &pal, x, text, &mut items);
-        out.push(block(tiles, 32, 16, pal, x, EMOTION_WINDOW_Y));
-        out.push(box_part(hud.shapes.navi_box.as_ref(), &hud.navi_box, &pal, x, text, &mut items));
-        note_true_face(b, packs, side, navi.version.as_deref(), x, problems);
+        let tiles = face_with_ring(face_hud, number, tiles, &pal, (at.0, flip), text, &mut items);
+        out.push(SpritePart { hflip: flip, ..block(tiles, 32, 16, pal, at.0, EMOTION_WINDOW_Y) });
+        out.push(box_part(hud.shapes.navi_box.as_ref(), &hud.navi_box, &pal, (at.1, flip), text, &mut items));
+        note_true_face(b, packs, side, navi.version.as_deref(), seat.x(x, 48), problems);
         return items;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
@@ -1557,10 +1696,10 @@ fn mugshot_parts<'a>(
     let pal = window_faded(b, pal);
     let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
     let gfx = match picture {
-        Some(m) => face_with_ring(face_hud, packs.mugshot(m).1, gfx, &pal, x, text, &mut items),
+        Some(m) => face_with_ring(face_hud, packs.mugshot(m).1, gfx, &pal, (at.0, flip), text, &mut items),
         None => gfx,
     };
-    out.push(block(gfx, 32, 16, pal, x, EMOTION_WINDOW_Y));
+    out.push(SpritePart { hflip: flip, ..block(gfx, 32, 16, pal, at.0, EMOTION_WINDOW_Y) });
     // The box beside it: the face's own (EXE5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
     // without a count: a face that brings none (EXE5's souls') shows its
@@ -1582,67 +1721,117 @@ fn mugshot_parts<'a>(
     // In the enhanced mode a count in the numbers' font on the empty box
     // (the counts' own box, their digits taken off: `count_blank`; the HUD's
     // box without a count is another picture).
-    let number = count.and_then(|(h, n)| count_number(&h.letters.counts, n, &pal, (x + 32, EMOTION_WINDOW_Y), text));
+    let number = count.and_then(|(h, n)| count_number(&h.letters.counts, n, &pal, (at.1, EMOTION_WINDOW_Y), flip, text));
     let (tiles, drawing) = match (&number, tiles) {
         (Some(_), Some(_)) => (Some(&shared.count_blank), count.and_then(|(h, _)| h.shapes.count_blank.as_ref())),
         (_, Some(t)) if std::ptr::eq(t, &hud.count_box) => (Some(t), hud.shapes.count_box.as_ref()),
         (_, Some(t)) if own_drawing.is_some() && picture.and_then(|m| face_hud.mugshot_box(m.id)).is_some_and(|own| std::ptr::eq(own, t)) => (Some(t), own_drawing),
         // (A face's own box with no drawing of its own: its frame drawn apart where the pack has it.)
         (_, Some(t)) if let Some(m) = picture.filter(|m| face_hud.mugshot_box(m.id).is_some_and(|own| std::ptr::eq(own, t))) => {
-            (Some(box_with_ring(face_hud, m.id, t, &pal, x, text, &mut items)), None)
+            (Some(box_with_ring(face_hud, m.id, t, &pal, (at.1, flip), text, &mut items)), None)
         }
         (_, tiles) => (tiles, None),
     };
     if let Some(tiles) = tiles {
-        out.push(box_part(drawing, tiles, &pal, x, text, &mut items));
+        // (A count's picture with its digits in it, where the box is
+        // flipped: the digits put back upright, `upright_count`.)
+        let digits = count.filter(|_| number.is_none() && flip).map(|(h, n)| h.letters.counts.counts.get(n).and_then(Option::as_ref));
+        match digits {
+            Some(digits) => {
+                let (tiles, flip) = match digits.and_then(|d| shared.made.make(upright_count(tiles, d))) {
+                    Some(made) => (made, false),
+                    // (A count whose digits' places the pack doesn't
+                    // have: the box as drawn, so they read.)
+                    None => (tiles, false),
+                };
+                out.push(box_part(None, tiles, &pal, (at.1, flip), text, &mut items));
+            }
+            None => out.push(box_part(drawing, tiles, &pal, (at.1, flip), text, &mut items)),
+        }
     }
-    note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), x, problems);
+    note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), seat.x(x, 48), problems);
     items.extend(number);
     items
+}
+
+/// A count's 16x16 box (2x2 tiles) flipped, with its digits (their boxes in
+/// it, `digits`) upright in the mirrored place of the box they take
+/// together, in their order: the emotion window's count on the right of a
+/// screen of both, where the original draws the digits into the box's
+/// picture.
+fn upright_count(tiles: &Tiles, digits: &nettai_assets::letters::CountDigits) -> Tiles {
+    const SIZE: usize = 16;
+    let at = |x: usize, y: usize| ((y / 8) * 2 + x / 8) * Tiles::TILE + (y % 8) * 8 + x % 8;
+    let pixel = |x: usize, y: usize| tiles.pixels.get(at(x, y)).copied().unwrap_or(0);
+    let mut out = Tiles { pixels: vec![0; 4 * Tiles::TILE] };
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            out.pixels[at(x, y)] = pixel(SIZE - 1 - x, y);
+        }
+    }
+    if let Some([x0, y0, x1, y1]) = digits_box(digits) {
+        let (x0, y0, x1, y1) = (x0 as usize, y0 as usize, x1 as usize, y1 as usize);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                out.pixels[at(SIZE - x1 + (x - x0), y)] = pixel(x, y);
+            }
+        }
+    }
+    out
+}
+
+/// The box a count's digits take together in their 16x16 box (left, top,
+/// right, bottom; none: no digits, or one past the box).
+fn digits_box(digits: &nettai_assets::letters::CountDigits) -> Option<[i32; 4]> {
+    let mut boxes = digits.glyphs.iter().map(|&[x, y, w, h]| [x as i32, y as i32, x as i32 + w as i32, y as i32 + h as i32]);
+    let first = boxes.next()?;
+    let [x0, y0, x1, y1] = boxes.fold(first, |a, b| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])]);
+    (x1 <= 16 && y1 <= 16).then_some([x0, y0, x1, y1])
 }
 
 /// Four blank tiles: the part a box drawn as shapes stands in, so the
 /// sprite limit counts the box's.
 static BLANK_BOX: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 4 * Tiles::TILE] });
 
-/// The emotion window's box beside the face (16x16 at (x + 32, its row)):
-/// its drawing as shapes where it has one and the frame draws them (a
-/// blank part in its place), else its tiles.
-fn box_part<'a>(drawing: Option<&nettai_assets::shapes::Drawing>, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> SpritePart<'a> {
+/// The emotion window's box beside the face (16x16 at `x` on its row,
+/// flipped as `flip` says): its drawing as shapes where it has one and the
+/// frame draws them (a blank part in its place), else its tiles.
+fn box_part<'a>(drawing: Option<&nettai_assets::shapes::Drawing>, tiles: &'a Tiles, pal: &Palette, (x, flip): (i32, bool), text: &TextSink, items: &mut Vec<TextItem>) -> SpritePart<'a> {
     match drawing.filter(|_| text.draws_shapes()) {
         Some(d) => {
-            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
-            block(&BLANK_BOX, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y)
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, c| pal[c as usize & 15], (flip, false), None), (x, EMOTION_WINDOW_Y), (16, 16)));
+            block(&BLANK_BOX, 16, 16, *pal, x, EMOTION_WINDOW_Y)
         }
-        None => block(tiles, 16, 16, *pal, x + 32, EMOTION_WINDOW_Y),
+        None => SpritePart { hflip: flip, ..block(tiles, 16, 16, *pal, x, EMOTION_WINDOW_Y) },
     }
 }
 
-/// Face `number` of `face_hud`'s for the emotion window: where its pack has
-/// the window's frame apart from its faces and draws it as shapes, the face
-/// without its ring and the ring drawn in its color (an item in `items`);
-/// else the face as it is.
-fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
+/// Face `number` of `face_hud`'s for the emotion window (at `x`, flipped as
+/// `flip` says): where its pack has the window's frame apart from its faces
+/// and draws it as shapes, the face without its ring and the ring drawn in
+/// its color (an item in `items`); else the face as it is.
+fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, (x, flip): (i32, bool), text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
     let ring = face_hud.shapes.mugshot_frame.as_ref().filter(|_| text.draws_shapes());
     let apart = face_hud.mugshot_frame.as_ref().and_then(|f| f.face(number));
     match (ring, apart) {
         (Some(d), Some((color, face))) => {
-            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (false, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (flip, false), None), (x, EMOTION_WINDOW_Y), (32, 16)));
             face
         }
         _ => tiles,
     }
 }
 
-/// Box `number` of `face_hud`'s, a face's own, for beside the face: where its pack has the boxes' frame apart from
-/// them and draws it as shapes, the box without its frame and the frame drawn in its color (an item in `items`); else
-/// the box as it is.
-fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, x: i32, text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
+/// Box `number` of `face_hud`'s, a face's own, for beside the face (at `x`,
+/// flipped as `flip` says): where its pack has the boxes' frame apart from
+/// them and draws it as shapes, the box without its frame and the frame
+/// drawn in its color (an item in `items`); else the box as it is.
+fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, (x, flip): (i32, bool), text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
     let ring = face_hud.shapes.mugshot_box_frame.as_ref().filter(|_| text.draws_shapes());
     let apart = face_hud.mugshot_box_frame.as_ref().and_then(|f| f.of(number));
     match (ring, apart) {
         (Some(d), Some((color, b))) => {
-            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (false, false), None), (x + 32, EMOTION_WINDOW_Y), (16, 16)));
+            items.push(crate::shapes::item(crate::shapes::drawn(d, |_, _| pal[color as usize & 15], (flip, false), None), (x, EMOTION_WINDOW_Y), (16, 16)));
             b
         }
         _ => tiles,
@@ -1652,8 +1841,9 @@ fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pale
 /// The emotion window's count `n` in the numbers' font, if the text layer
 /// draws numbers and the pack has its digits' places (`CountLetters`: each
 /// a single digit's box, the union of theirs; a count of two digits, its
-/// own two): in their colors in `palette`, on the box at (x, y).
-fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette: &Palette, (x, y): (i32, i32), text: &TextSink) -> Option<TextItem> {
+/// own two): in their colors in `palette`, on the box at (x, y); in a
+/// flipped box (`flip`), each digit's box at its mirrored place, upright.
+fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette: &Palette, (x, y): (i32, i32), flip: bool, text: &TextSink) -> Option<TextItem> {
     let chars = n.to_string();
     if !text.draws_numbers() || !crate::numbers::digits_font().covers(&chars) {
         return None;
@@ -1663,7 +1853,13 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
         return None;
     }
     let color = |c: u8| palette[c as usize & 15];
-    let glyphs = chars.chars().zip(&d.glyphs).map(|(c, b)| (c, b.map(|v| v as f32))).collect();
+    // (In a flipped box the digits' box at its mirrored place, the digits in
+    // it as they stand: read left to right whichever way the box faces.)
+    let dx = match digits_box(d) {
+        Some([x0, _, x1, _]) if flip => 16 - x1 - x0,
+        _ => 0,
+    };
+    let glyphs = chars.chars().zip(&d.glyphs).map(|(c, &[gx, gy, gw, gh])| (c, [(gx as i32 + dx) as f32, gy as f32, gw as f32, gh as f32])).collect();
     let fitted = crate::numbers::Fitted { glyphs, set: crate::numbers::DIGITS.into(), fill: d.fill.iter().map(|&c| color(c)).collect(), rim: d.rim.map(color), shadow: d.shadow.map(color), face: crate::numbers::Face::Digits, ids: Vec::new() };
     Some(TextItem::fitted(fitted, Rect::new(x, y, 16, 16)))
 }
@@ -1708,18 +1904,20 @@ fn on_screen(p: crate::objects::Projected) -> bool {
 /// The chip icons stacked over a navi (`sub_801C082`): its next chip's
 /// icon, once for every chip it holds, wherever the navi's position is on
 /// the screen (seen or not), but not while its navi chip's navi stands in
-/// for it.
+/// for it. As `seat`'s console draws them, where it puts them (`view` the
+/// view drawn).
 fn icon_parts<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
     r: ObjectRef,
     view: &View,
+    seat: Seat,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
 ) {
     let o = b.objects.get(r);
     if b.game_rules().effects.chip_icons == ChipIcons::NaviOffset {
-        return own_icon_parts(b, packs, r, view, list, problems);
+        return own_icon_parts(b, packs, r, view, seat, list, problems);
     }
     let vanished = o.actor.is_some_and(|a| b.actors.get(a).status & status::VANISHED != 0);
     if o.chips_held == 0 || vanished || !b.chip_hud_for(o.alliance).icons {
@@ -1732,7 +1930,7 @@ fn icon_parts<'a>(
     // battle mode 1, the hidden chip's (EXE5's 0x08018B48: its entries of
     // the remote navi).
     let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
-    let hidden = link && o.alliance != b.setup.local_side && b.round.mode_copy != 1;
+    let hidden = link && o.alliance != seat.side && b.round.mode_copy != 1;
     let (tiles, icon_palette) = if hidden {
         let hud = &packs.game(&b.content).hud;
         (&hud.hidden_icon, &hud.icon_palette)
@@ -1748,7 +1946,7 @@ fn icon_parts<'a>(
     let fine = (fine.x, fine.y);
     // (The console's own direction: `object_getAllianceDirection` of the
     // local side, whichever navi the icons are over.)
-    let a = if b.setup.local_side & 1 == 0 { 1 } else { -1 };
+    let a = if seat.side & 1 == 0 { 1 } else { -1 };
     let f = nettai_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if b.content.identity(o.identity).class.is_player() {
@@ -1760,27 +1958,27 @@ fn icon_parts<'a>(
     } else {
         (8, 48)
     };
-    let (x0, y0) = (p.x + a * (ax * f - 1) - 8, p.y - ay - 8);
+    // (The first icon's place from the navi's on its console.)
+    let (dx, y0) = (a * (ax * f - 1) - 8, p.y - ay - 8);
     // The first icon is the front one; each next is a bucket back.
     let count = o.chips_held.min(6) as i32;
+    // (The stack's reach: from its leftmost icon, 16 and its steps wide.)
+    let back = 2 * (count - 1);
+    let reach = seat.about(p.x, if a * f > 0 { dx - back } else { dx }, 16 + back);
     // (The other version's chip's icon is its own ROM's: the stack's reach
     // is a known difference.)
     if !hidden && crate::lookups::other_versions_icon(packs, b, chip) {
-        let back = 2 * (count - 1);
-        let x = if a * f > 0 { x0 - back } else { x0 };
-        problems.known(x, y0 - back, 16 + back, 16 + back, crate::lookups::OTHER_VERSIONS_ART);
+        problems.known(reach, y0 - back, 16 + back, 16 + back, crate::lookups::OTHER_VERSIONS_ART);
     }
     // (The stack's reach, where the caller asks for the chip's icon.)
     if !hidden && !problems.marking.is_empty() {
         let what = crate::lookups::chip_icon_mark(&b.content, chip);
         if problems.wants(&what) {
-            let back = 2 * (count - 1);
-            let x = if a * f > 0 { x0 - back } else { x0 };
-            problems.mark([x, y0 - back, x + 16 + back, y0 + 16], what);
+            problems.mark([reach, y0 - back, reach + 16 + back, y0 + 16], what);
         }
     }
     for k in 0..count {
-        let icon = block(tiles, 16, 16, *icon_palette, x0 - 2 * k * a * f, y0 - 2 * k);
+        let icon = block(tiles, 16, 16, *icon_palette, seat.about(p.x, dx - 2 * k * a * f, 16), y0 - 2 * k);
         list.insert_placed(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon], None, fine);
     }
 }
@@ -1793,18 +1991,20 @@ fn icon_parts<'a>(
 /// its own icon, the next one in front and each after it two pixels up
 /// and two left, a bucket further back. A next chip that shows no icon
 /// there (its trait `no_icon_when_next`: EXE4's souls' chips, 0x0801502E)
-/// leaves the icons to the chips after it.
+/// leaves the icons to the chips after it. As `seat`'s console draws
+/// them, where it puts them (`view` the view drawn).
 fn own_icon_parts<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
     r: ObjectRef,
     view: &View,
+    seat: Seat,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
 ) {
     let o = b.objects.get(r);
     let side = o.alliance;
-    if side != b.setup.local_side || !b.chip_hud_for(side).icons {
+    if side != seat.side || !b.chip_hud_for(side).icons {
         return;
     }
     let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
@@ -1824,10 +2024,10 @@ fn own_icon_parts<'a>(
         chips.remove(0);
     }
     let count = chips.len();
-    let (x0, y0) = (p.x + dx as i32, p.y + dy as i32);
+    let y0 = p.y + dy as i32;
     for (k, &chip) in chips.iter().enumerate() {
         let Some((tiles, palette)) = crate::lookups::chip_icon(packs, &b.content, chip, problems) else { continue };
-        let (x, y) = (x0 - 2 * k as i32, y0 - 2 * k as i32);
+        let (x, y) = (seat.about(p.x, dx as i32 - 2 * k as i32, 16), y0 - 2 * k as i32);
         if crate::lookups::other_versions_icon(packs, b, chip) {
             problems.known(x, y, 16, 16, crate::lookups::OTHER_VERSIONS_ART);
         }
@@ -2435,6 +2635,68 @@ mod tests {
         assert_eq!([36, 37, 38, 39].map(banner_tile), [33, 35, 37, 39]);
     }
 
+    /// On a screen of both the right console's HP box is at the top right:
+    /// its frame flipped, its digits upright in their cells' mirrored place;
+    /// the left's stays where its console draws it.
+    #[test]
+    fn the_right_seat_puts_its_hp_box_at_the_top_right() {
+        use crate::compose::CLEAR;
+        let mut b = battle();
+        for _ in 0..4 {
+            b.tick(&[nettai_battle::input::PlayerTick::default(); 2], Default::default());
+        }
+        let mut hud = hud();
+        // A frame cell lit on its left half (color 2), so its flip shows.
+        let frame = hud.tiles.len() as u16;
+        hud.tiles.pixels.extend((0..Tiles::TILE).map(|i| if i % 8 < 4 { 2 } else { 0 }));
+        hud.hp_box = vec![MapEntry { tile: hud.first_tile + frame, hflip: false, vflip: false, palette: 13 }; 12];
+        hud.hp_palettes[0] = std::array::from_fn(|i| 0x100 * i as u16);
+        let assets = nettai_assets::Bundle { hud, ..nettai_assets::Bundle::default() };
+        let packs = crate::packs::Packs::one(&assets);
+        let at = |layer: &Layer, x: usize, y: usize| layer.pixels[y * crate::compose::WIDTH + x];
+        for (seat, lit, dark, digits) in [(Seat { side: 0, at: At::Left }, 0, 4, 8), (Seat { side: 1, at: At::Right }, 236, 232, 200)] {
+            let (mut layer, mut scratch) = (Layer::new(1, 3), Layer::new(1, 3));
+            let mut list = SpriteList::default();
+            let mut text = TextSink::original();
+            let mut problems = Problems::default();
+            let state = HudState::default();
+            let shared = shared_glyphs(&b, &assets, &packs, &state, seat, &text, &mut problems);
+            draw(&b, &assets, &packs, &state, &shared, seat, false, Smooth::default(), (&mut layer, &mut scratch), &mut list, &mut text, &mut problems);
+            let pal = assets.hud.hp_palettes[0];
+            assert_eq!((at(&layer, lit, 0), at(&layer, dark, 0)), (pal[2], CLEAR), "{seat:?}: the outer frame cell's lit half");
+            assert_eq!(at(&layer, digits + 8, 0), pal[1], "{seat:?}: the digits' cells");
+            // (Nothing of it on the other side.)
+            let other = if seat.mirrored() { 0 } else { 236 };
+            assert_eq!(at(&layer, other, 0), CLEAR, "{seat:?}");
+        }
+    }
+
+    /// A count's box flipped for the right seat keeps its digits upright, in
+    /// the mirrored place of their box.
+    #[test]
+    fn a_flipped_count_box_keeps_its_digits_upright() {
+        let at = |x: usize, y: usize| ((y / 8) * 2 + x / 8) * Tiles::TILE + (y % 8) * 8 + x % 8;
+        // The box all 3, its right column 4; a digit at x 10..13, rows 4..12,
+        // its left column 5 and the rest 6.
+        let mut tiles = Tiles { pixels: vec![3; 4 * Tiles::TILE] };
+        for y in 0..16 {
+            tiles.pixels[at(15, y)] = 4;
+        }
+        for y in 4..12 {
+            for x in 10..13 {
+                tiles.pixels[at(x, y)] = if x == 10 { 5 } else { 6 };
+            }
+        }
+        let digits = nettai_assets::letters::CountDigits { glyphs: vec![[10, 4, 3, 8]], ..Default::default() };
+        let out = upright_count(&tiles, &digits);
+        let px = |x: usize, y: usize| out.pixels[at(x, y)];
+        // The box flipped: its right column on the left.
+        assert_eq!((px(0, 0), px(15, 0)), (4, 3));
+        // The digit at 3..6, read as it was: its first column 5.
+        assert_eq!((px(3, 4), px(4, 4), px(5, 4), px(6, 4)), (5, 6, 6, 3));
+        assert_eq!(px(3, 12), 3, "below the digit's box, the box");
+    }
+
     #[test]
     fn the_last_start_owns_the_shared_tiles_and_palette() {
         let mut b = battle();
@@ -2444,25 +2706,25 @@ mod tests {
         let mut loads = SharedLoads::default();
         // The other player's chip, then a banner over it: the banner's.
         b.used_chips[local ^ 1] = Some(used);
-        loads.tick(&b);
+        loads.tick(&b, local as u8);
         let name = Load::Telop(TelopName::Chip(chip));
         assert_eq!((loads.right, loads.signs, loads.palette), (name, name, name));
         assert!(b.start_banner(BannerId(0x10)));
-        loads.tick(&b);
+        loads.tick(&b, local as u8);
         let banner = Load::Banner(BannerId(0x10));
         assert_eq!((loads.right, loads.signs, loads.palette), (banner, banner, banner));
         // The name runs on (fewer ticks left): no new load.
         b.used_chips[local ^ 1] = Some(nettai_battle::hud::UsedChip { ticks: 32, ..used });
-        loads.tick(&b);
+        loads.tick(&b, local as u8);
         assert_eq!(loads.right, banner);
         // The chip used again: its telop's start loads over the banner's.
         b.used_chips[local ^ 1] = Some(used);
-        loads.tick(&b);
+        loads.tick(&b, local as u8);
         assert_eq!((loads.right, loads.signs, loads.palette), (name, name, name));
         // "PAUSE" loads the palette alone.
         b.round.mode = mode::FIGHTING;
         b.fight.state = fight::PAUSE;
-        loads.tick(&b);
+        loads.tick(&b, local as u8);
         assert_eq!((loads.right, loads.palette), (name, Load::Pause));
     }
 

@@ -9,7 +9,7 @@ use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
-use nettai_render::GraphicsMode;
+use nettai_render::{Consoles, GraphicsMode};
 use nettai_render::vfont::TextRenderer;
 use nettai_tools::headless;
 use nettai_tools::trace::trace_rounds;
@@ -53,9 +53,11 @@ struct Args {
     lang: String,
     /// Write a replay of the set played headless to this file.
     record: Option<PathBuf>,
-    /// Play this replay; shown from this side (none: the recorder's).
+    /// Play this replay; shown from this side (none: the recorder's), its
+    /// console alone or both on one screen (that side's on the left).
     replay: Option<PathBuf>,
     side: Option<u8>,
+    consoles: Consoles,
     /// Write the replay as a NUT stream here (`-`: standard output), or
     /// as an MP4 through ffmpeg; the picture this many times the frame;
     /// the frames shown, as `--headless` numbers them (none: the round's,
@@ -71,7 +73,7 @@ struct Args {
 const USAGE: &str = "\
 usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
        nettai-tool [OPTIONS] --match FILE --headless FRAMES [--keys K]
-       nettai-tool [OPTIONS] --replay FILE --headless FRAMES [--side SIDE]
+       nettai-tool [OPTIONS] --replay FILE --headless FRAMES [--side SIDE|both[-left|-right]]
        nettai-tool [OPTIONS] --replay FILE --nut OUT|- [--scale N] [--both-sides] [--round N | --ticks A-B]
        nettai-tool [OPTIONS] --replay FILE --mp4 OUT [--scale N] [--both-sides] [--round N | --ticks A-B]
        nettai-tool [OPTIONS] --match FILE [--show-folders] [--save-match FILE]
@@ -107,7 +109,10 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    reproduced; exits 1 where it doesn't); with --headless F,
                    its frames F (ticks of the set) rendered
   --side SIDE      with --replay and --headless, --nut or --mp4: the console
-                   shown, left or right (default: the side that recorded it)
+                   shown, left or right (default: the side that recorded it);
+                   both: both players on one screen, the side that recorded
+                   it on the left (both-left, both-right: that side's on the
+                   left), the right player's pieces mirrored onto the right
   --nut OUT        with --replay: write it as video, a NUT stream of raw
                    frames (RGB) and PCM sound, to the file OUT, or to standard
                    output for `-` (so `nettai-tool --replay set.nettaireplay --nut - |
@@ -211,6 +216,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         record: None,
         replay: None,
         side: None,
+        consoles: Consoles::One,
         nut: None,
         mp4: None,
         scale: 1,
@@ -251,11 +257,14 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--record" => a.record = Some(value("--record")?.into()),
             "--replay" => a.replay = Some(value("--replay")?.into()),
             "--side" => {
-                a.side = Some(match value("--side")?.as_str() {
-                    "left" => 0,
-                    "right" => 1,
-                    s => return Err(format!("bad --side {s:?} (left or right)")),
-                })
+                (a.side, a.consoles) = match value("--side")?.as_str() {
+                    "left" => (Some(0), Consoles::One),
+                    "right" => (Some(1), Consoles::One),
+                    "both" => (None, Consoles::Both),
+                    "both-left" => (Some(0), Consoles::Both),
+                    "both-right" => (Some(1), Consoles::Both),
+                    s => return Err(format!("bad --side {s:?} (left, right, both, both-left or both-right)")),
+                };
             }
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s} (a window's options are nettai's)")),
@@ -266,8 +275,11 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if sources != 1 {
         return Err("give one of a trace file (several with --audit), --match FILE or --replay FILE".into());
     }
-    if a.side.is_some() && a.replay.is_none() {
+    if (a.side.is_some() || a.consoles == Consoles::Both) && a.replay.is_none() {
         return Err("--side goes with --replay".into());
+    }
+    if a.consoles == Consoles::Both && a.both_sides {
+        return Err("--side both shows both consoles on one screen, --both-sides side by side: one or the other".into());
     }
     let video = a.nut.is_some() || a.mp4.is_some();
     if video && (a.replay.is_none() || a.headless.is_some() || (a.nut.is_some() && a.mp4.is_some())) {
@@ -678,6 +690,7 @@ fn main() {
     let font = nettai_frontend::game::font(args.mode, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
     let mut renderer = graphics.renderer(args.mode, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
+    renderer.consoles = args.consoles;
     if args.audit {
         let setup = headless::AuditSetup {
             packs: renderer.graphics().clone(),
@@ -785,6 +798,19 @@ mod tests {
         }
     }
 
+    /// `--side both` is both players on one screen, the recorder's on the
+    /// left, or the side it names.
+    #[test]
+    fn both_sides_on_one_screen_parse() {
+        for (side, want) in [("both", None), ("both-left", Some(0)), ("both-right", Some(1)), ("left", Some(0))] {
+            let a = args(&["--replay", "set.nettaireplay", "--headless", "1-60", "--side", side]).unwrap();
+            let consoles = if side.starts_with("both") { Consoles::Both } else { Consoles::One };
+            assert_eq!((a.side, a.consoles), (want, consoles), "{side}");
+        }
+        assert!(args(&["--replay", "set.nettaireplay", "--mp4", "o.mp4", "--side", "both"]).is_ok());
+        assert_eq!(args(&["--replay", "r.nettaireplay", "--side", "bothright"]).err().as_deref(), Some("bad --side \"bothright\" (left, right, both, both-left or both-right)"));
+    }
+
     /// What needs a window isn't here; what goes together does.
     #[test]
     fn what_doesnt_go_together_is_refused() {
@@ -803,6 +829,8 @@ mod tests {
             (vec!["--replay", "r.nettaireplay", "--nut", "-", "--mp4", "o.mp4"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--scale", "2"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
             (vec!["--replay", "r.nettaireplay", "--both-sides"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
+            (vec!["--replay", "r.nettaireplay", "--nut", "-", "--both-sides", "--side", "both"], "--side both shows both consoles on one screen, --both-sides side by side: one or the other"),
+            (vec!["--match", "m.toml", "--side", "both"], "--side goes with --replay"),
             (vec!["--replay", "r.nettaireplay", "--nut", "-", "--round", "1", "--ticks", "1-9"], "a video shows a round (--round N) or a range of frames (--ticks A-B), not both"),
         ] {
             assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");

@@ -353,6 +353,20 @@ impl<'f> TextSink<'f> {
         self.items.push((plane, item));
     }
 
+    /// Where the items pushed from now on start ([`TextSink::move_since`]).
+    pub fn mark(&self) -> usize {
+        self.items.len()
+    }
+
+    /// Move the items pushed since `mark` `dx` frame pixels right, their
+    /// boxes and their clips: a piece laid out, then put in its place.
+    pub fn move_since(&mut self, mark: usize, dx: i32) {
+        for (_, item) in self.items.iter_mut().skip(mark) {
+            item.rect = item.rect.offset(dx, 0);
+            item.clip = item.clip.offset(dx, 0);
+        }
+    }
+
     pub fn into_items(self) -> Vec<(Plane, TextItem)> {
         self.items
     }

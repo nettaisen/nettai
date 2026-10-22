@@ -43,8 +43,11 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
   to play again; `--record FILE` writes the set played headless as a replay (docs/frontend.md §8).
 - `--replay FILE` plays a replay to its end and checks it against the digests it kept: what happened, and
   whether it reproduces (it exits 1 where it doesn't); with `--headless F`, its ticks F are rendered, from the
-  console `--side left|right` (default: the side that recorded it); with `--nut OUT` or `--mp4 OUT` it is written
-  as video ("A replay as video", below).
+  console `--side left|right` (default: the side that recorded it), or both players on one screen with
+  `--side both` (the side that recorded it on the left; `both-left`, `both-right`: that side's console on the
+  left): the field as the left console draws it, each player's own pieces on its own side, the right player's
+  mirrored into the right half (docs/frontend.md §3, "Both on one screen"); with `--nut OUT` or `--mp4 OUT` it is
+  written as video ("A replay as video", below).
 
 A trace is rendered or audited: it is no longer watched in a window.
 
@@ -94,7 +97,8 @@ not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whet
 - `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
   pixel's, and the enhanced mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
   keeps every pixel's edge clean in 4:2:0; an odd one leaves a fringe of mixed color at each (docs/frontend.md §8).
-- `--side left|right` is the console shown (default: the side that recorded the replay).
+- `--side left|right` is the console shown (default: the side that recorded the replay); `--side both` (or
+  `both-left`, `both-right`) shows both players on one screen, as `--headless` draws it.
 - `--both-sides` shows both consoles side by side in a picture twice as wide (480·N by 160·N): `--side`'s at the
   left, the other's at the right, each byte for byte its own video's, from one playing of the replay; each
   console's sound is a track of its own, the left one's first and the default (nettai-video's `Sides::Both`,

@@ -429,9 +429,11 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 }
 
 /// Queue every visible object's sprite the frame's sprite draw has room
-/// for ([`SpriteDraw`]); returns what the draw took. What an object names
-/// that the pack's graphics don't have goes to `problems`
-/// (`crate::lookups`); with `lookups_only` nothing is queued.
+/// for ([`SpriteDraw`]); returns what the draw took. Visible: to one of
+/// `viewers` (by side: the console's own, or on a screen of both either
+/// player's). What an object names that the pack's graphics don't have
+/// goes to `problems` (`crate::lookups`); with `lookups_only` nothing is
+/// queued.
 ///
 /// An object drawn with a sprite the caller names (`sprite:NAME`,
 /// `Problems::marking`) is marked where it is drawn.
@@ -439,6 +441,7 @@ pub fn queue_objects<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
     view: &View,
+    viewers: &[u8],
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
     lookups_only: bool,
@@ -449,7 +452,7 @@ pub fn queue_objects<'a>(
             let o = b.objects.get(r);
             // Objects whose sprite doesn't animate are culled to nothing
             // (`sub_30061E8` gives them a one-point mask).
-            if !b.visible_to(r, b.setup.local_side) || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+            if !viewers.iter().any(|&v| b.visible_to(r, v)) || o.flags & flags::NO_SPRITE_UPDATE != 0 {
                 continue;
             }
             // An effect the game spawns without a position (the second

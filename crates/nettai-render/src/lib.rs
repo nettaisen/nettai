@@ -7,7 +7,8 @@
 //! its layer and sprite ordering rules ([`Renderer::render`]), with the
 //! enhanced mode's text items to draw over it at the output's resolution
 //! ([`present`], which also writes a frame as a PNG). A chip's pictures
-//! on their own are [`pictures`]. docs/frontend.md §3.
+//! on their own are [`pictures`]. A frame shows one console's screen, or
+//! both players' on one ([`Consoles`], [`seat`]). docs/frontend.md §3.
 //!
 //! Drawing only: the window, the input, the sound and the sessions that
 //! run a battle are nettai-frontend's and its host's (nettai, nettai-tools).
@@ -27,6 +28,7 @@ pub mod rasters;
 pub mod present;
 pub mod render;
 pub mod sdf;
+pub mod seat;
 pub mod shapes;
 pub mod smooth;
 pub mod stage;
@@ -37,3 +39,4 @@ pub mod numbers;
 pub mod vfont;
 
 pub use render::{Frame, Glide, GraphicsMode, Renderer};
+pub use seat::Consoles;

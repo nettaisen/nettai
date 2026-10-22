@@ -87,10 +87,15 @@ pub(crate) fn screens_open(b: &Battle) -> bool {
 }
 
 pub fn local(b: &Battle) -> Option<(&Side, &Screen)> {
+    screen_of(b, b.setup.local_side)
+}
+
+/// Side `side`'s custom screen while the battle is on the custom screen.
+pub fn screen_of(b: &Battle, side: u8) -> Option<(&Side, &Screen)> {
     if !screens_open(b) {
         return None;
     }
-    let side = &b.custom.sides[b.setup.local_side as usize & 1];
+    let side = &b.custom.sides[side as usize & 1];
     Some((side, side.screen.as_ref()?))
 }
 
@@ -146,9 +151,9 @@ pub fn placement(s: &Screen) -> Placement {
 /// How far the HUD's HP box and mugshot move right while the custom
 /// screen is up (the HUD's `+0x12` and the HP box at column 15 under the
 /// layer's scroll): 120 less the scroll, from the slide's first tick until
-/// the result is sent.
-pub fn hud_shift(b: &Battle) -> i32 {
-    let Some((_, s)) = local(b) else { return 0 };
+/// the result is sent. On `side`'s console.
+pub fn hud_shift(b: &Battle, side: u8) -> i32 {
+    let Some((_, s)) = screen_of(b, side) else { return 0 };
     match s.phase {
         Phase::Opening { tick: 0 } | Phase::ProgramAdvance { .. } | Phase::Sending { .. } => 0,
         _ => SLIDE as i32 - placement(s).scroll as i32,
@@ -181,12 +186,12 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     (x >> 16, y >> 16)
 }
 
-/// The custom gauge stays off the local console's HUD from the screen's
+/// The custom gauge stays off a console's HUD (`side`'s) from the screen's
 /// opening until its own result is sent (HUD task 4: `sub_8026840` stops
 /// it, `sub_8027D78` starts it), even once the other player's result has
 /// restarted the battle's gauge.
-pub fn gauge_held(b: &Battle) -> bool {
-    local(b).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { started: true }))
+pub fn gauge_held(b: &Battle, side: u8) -> bool {
+    screen_of(b, side).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { started: true }))
 }
 
 /// The camera's offset (16.16, added to its Y) while the window is in.

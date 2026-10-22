@@ -7,6 +7,7 @@ use crate::smooth::{Lift, Nudge, Overlay, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
+use crate::seat::{Consoles, Seat};
 use crate::stage::{Stage, StageClock};
 use crate::textlayer::{Plane, TextItem, TextSink};
 use crate::vfont::VectorFont;
@@ -107,8 +108,18 @@ pub struct Renderer {
     /// BG0's chatbox, apart for its palette (background palette 15: the
     /// custom screen's fades of the window's palettes leave it be).
     dialogue: Layer,
-    /// Rolling HUD numbers; follow every tick with `observe`.
+    /// Rolling HUD numbers, the local console's; follow every tick with
+    /// `observe`.
     pub hud_state: HudState,
+    /// The other console's, followed alike: what a screen of both draws of
+    /// it ([`Consoles::Both`]), and what a host shows of it at once.
+    pub other_hud: HudState,
+    /// Which consoles a frame shows: the local side's screen (the default),
+    /// or both players' on one screen, the local side's on the left.
+    pub consoles: Consoles,
+    /// A layer a piece of the HUD is laid out in before it is put in its
+    /// place (`hud::draw`'s).
+    scratch: Layer,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
     /// What the last frame's sprite draw took of its budget and left out
@@ -181,6 +192,9 @@ impl Renderer {
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             dialogue: Layer { palettes: Palettes::Dialogue, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
+            other_hud: HudState::default(),
+            consoles: Consoles::One,
+            scratch: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
@@ -265,15 +279,19 @@ impl Renderer {
         self.problems.recheck();
     }
 
-    /// Follow a tick of the battle being shown (call after every tick).
+    /// Follow a tick of the battle being shown (call after every tick): each
+    /// console's HUD.
     pub fn observe(&mut self, b: &Battle) {
-        self.hud_state.tick(b);
+        let local = b.setup.local_side & 1;
+        self.hud_state.tick(b, local);
+        self.other_hud.tick(b, local ^ 1);
     }
 
-    /// Forget presentation state (a new battle or round starts): the HUD's,
+    /// Forget presentation state (a new battle or round starts): the HUDs',
     /// and how far the scenery was ahead of the battle's clock.
     pub fn reset(&mut self) {
         self.hud_state = HudState::default();
+        self.other_hud = HudState::default();
         self.scenery = StageClock::default();
     }
 
@@ -395,6 +413,7 @@ impl Renderer {
             None => crate::stage::field_lookups(b, &packs, b.setup.local_side, &mut self.problems),
         }
         self.hud.drawn = draw;
+        self.scratch.drawn = draw;
         self.names.drawn = draw;
         self.dialogue.drawn = draw;
         self.hud.clear();
@@ -427,11 +446,18 @@ impl Renderer {
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
+        // (The consoles whose pieces the frame draws, each with its HUD's
+        // state: the local one's, and on a screen of both the other's.)
+        let seats = Seat::of(self.consoles, b.setup.local_side);
+        let huds = (&self.hud_state, &self.other_hud);
+        let hud_of = |seat: Seat| if seat.side == local as u8 { huds.0 } else { huds.1 };
         // (The glyphs the banners' and the telops' loads made of each
-        // other's tiles, which the sprites below borrow.)
-        let shared = crate::hud::shared_glyphs(b, own_game, &packs, &self.hud_state, &text, &mut self.problems);
+        // other's tiles, which the sprites below borrow; each console's.)
+        let shared: Vec<_> = seats.iter().map(|&seat| crate::hud::shared_glyphs(b, own_game, &packs, hud_of(seat), seat, &text, &mut self.problems)).collect();
         let mut list = SpriteList::default();
-        self.sprite_drawn = objects::queue_objects(b, &packs, &view, &mut list, &mut self.problems, !draw);
+        // (On a screen of both, what either player sees.)
+        let viewers: Vec<u8> = seats.iter().map(|s| s.side).collect();
+        self.sprite_drawn = objects::queue_objects(b, &packs, &view, &viewers, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
             b,
             own_game,
@@ -447,7 +473,10 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.custom_gauge, smooth, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        for (&seat, shared) in seats.iter().zip(&shared) {
+            let layers = (&mut self.hud, &mut self.scratch);
+            crate::hud::draw(b, own_game, &packs, hud_of(seat), shared, seat, self.custom_gauge, smooth, layers, &mut list, &mut text, &mut self.problems);
+        }
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();

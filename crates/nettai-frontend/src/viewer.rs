@@ -302,9 +302,6 @@ pub struct Viewer {
     /// ([`Viewer::set_sound_levels`]): the viewer's, whatever state it is
     /// put back to.
     levels: (f32, f32),
-    /// What the drawing of the console not shown follows over time (the
-    /// renderer has the shown one's).
-    other_hud: HudState,
     /// The side whose console is shown.
     view: u8,
     /// The replay's ticks, how its input ends, and what it says of
@@ -380,7 +377,6 @@ impl Viewer {
             text,
             audio: audio.map(|a| [a.clone(), a]),
             levels: (1.0, 1.0),
-            other_hud: HudState::default(),
             view,
             length: replay.ticks.len() as u32,
             end: replay.end,
@@ -630,7 +626,7 @@ impl Viewer {
         }
         if side != self.view {
             self.view = side;
-            std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
+            swap_huds(&mut self.renderer);
             self.session.battle.setup.local_side = side;
             let here = self.place(self.position());
             self.session.driver.go_to(here);
@@ -668,8 +664,8 @@ impl Viewer {
             ran += 1;
         }
         self.frontier = (!self.whole).then(|| self.state());
-        let Viewer { session, renderer, other_hud, audio, view, rounds, .. } = self;
-        put(&here, session, renderer, other_hud, audio, *view, rounds);
+        let Viewer { session, renderer, audio, view, rounds, .. } = self;
+        put(&here, session, renderer, audio, *view, rounds);
         self.level();
         self.whole
     }
@@ -799,11 +795,11 @@ impl Viewer {
             return self.frame();
         }
         // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
-        std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
+        swap_huds(&mut self.renderer);
         self.session.battle.setup.local_side = side;
         let frame = self.renderer.render(&self.session.battle);
         self.session.battle.setup.local_side = self.view;
-        std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
+        swap_huds(&mut self.renderer);
         frame
     }
 
@@ -897,19 +893,12 @@ impl Viewer {
         // again as the replay plays, `Battle::pause_requests`; nobody is
         // asked here: a viewer's pause is its own host's.)
         self.session.pause_requests = [false; 2];
-        let view = self.view;
         let speed = self.speed;
         if self.session.new_round {
             self.renderer.reset();
-            self.other_hud = HudState::default();
         }
+        // (Both consoles' HUDs: the renderer follows each.)
         self.renderer.observe(&self.session.battle);
-        // (The other console's HUD follows the same battle, seen from its
-        // side: the side shown is the setup's, which the simulation
-        // doesn't read.)
-        self.session.battle.setup.local_side = view ^ 1;
-        self.other_hud.tick(&self.session.battle);
-        self.session.battle.setup.local_side = view;
         if let Some(audio) = &mut self.audio {
             let ticked = ticked(&self.session);
             for (side, sound) in audio.iter_mut().enumerate() {
@@ -929,7 +918,7 @@ impl Viewer {
 
     /// Everything the viewer is now, to come back to.
     fn state(&self) -> State {
-        let mut huds = [self.renderer.hud_state.clone(), self.other_hud.clone()];
+        let mut huds = [self.renderer.hud_state.clone(), self.renderer.other_hud.clone()];
         if self.view == 1 {
             huds.swap(0, 1);
         }
@@ -959,13 +948,13 @@ impl Viewer {
 
     /// Be as a kept state was.
     fn restore(&mut self, kept: Kept) {
-        let Viewer { session, renderer, other_hud, audio, view, rounds, keyframes, frontier, near, .. } = self;
+        let Viewer { session, renderer, audio, view, rounds, keyframes, frontier, near, .. } = self;
         let state = match kept {
             Kept::Keyframe(i) => &keyframes[i],
             Kept::Frontier => frontier.as_ref().expect("a frontier to go on from"),
             Kept::Near(i) => &near[i],
         };
-        put(state, session, renderer, other_hud, audio, *view, rounds);
+        put(state, session, renderer, audio, *view, rounds);
         self.level();
     }
 
@@ -1011,7 +1000,6 @@ fn put(
     state: &State,
     session: &mut Session,
     renderer: &mut Renderer,
-    other_hud: &mut HudState,
     audio: &mut Option<[BattleAudio; 2]>,
     view: u8,
     rounds: &[u32],
@@ -1021,10 +1009,16 @@ fn put(
     let round = rounds.partition_point(|&start| start <= state.tick).max(1) as u32;
     session.driver.go_to(Place { tick: state.tick, round, viewer: view });
     renderer.hud_state.clone_from(&state.huds[view as usize]);
-    other_hud.clone_from(&state.huds[view as usize ^ 1]);
+    renderer.other_hud.clone_from(&state.huds[view as usize ^ 1]);
     if let (Some(audio), Some(kept)) = (audio, &state.audio) {
         audio.clone_from(kept);
     }
+}
+
+/// The renderer's two consoles' HUD states the other way round: the other
+/// console's is shown from now.
+fn swap_huds(renderer: &mut Renderer) {
+    std::mem::swap(&mut renderer.hud_state, &mut renderer.other_hud);
 }
 
 /// A tick's samples as the host hears them at `speed`: as they are at the
