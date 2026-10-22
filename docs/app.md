@@ -793,7 +793,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 
 Where a build is shown whole, it is the build overview (`BuildOverview`, filled by
 `builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
-the build chosen or the language changes); a player's panel in a match, while Tab is held, the narrow sheet of
+the build chosen or the language changes; its left column scrolls inside the frame by the wheel and a drag where it
+runs past it, docs/design/app-ui.md §2.99, the keys never reaching it); a player's panel in a match, while Tab is held, the narrow sheet of
 the agreement's side, which is the build as the match plays it (without its patch cards where those were off),
 under the player's name. Each is in a box as tall as it, or as the window less its margins (and, over the menu,
 its footer) where it is taller; on a phone each is half the window. Where one is taller than its box the two
@@ -1363,14 +1364,20 @@ back by `resolve_side`):
   sound where all went in); `forms-none` takes the group's out.
 - **The overview's party** (the user: "the party is also not visible on the build overview screen"): a build with
 partners has a row for each under its forms (`BuildSheet::party`, `builds::party::sheet_rows`, read as the Party tab
-reads them: the setup's schema, the overview's budgets): its face, name, HP with its programs' bonus, and its gauge
-with the slots used of it in its programs' colors. On the wide sheet the rows are over the stats' column, the
-abilities and bugs a line fewer for each; on the narrow and a phone's sheet the sheet is taller by them.
+reads them: the setup's schema): its face and name, and under them its PartyCust programs' names (no HP, no gauge:
+the user, "there's no need to show the slot gauge or hp for the party navi"). The sheet's column is taller by them.
 
 **The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
   chooses in the setup's order and each in the build's own (the battle's), a face and its version's tag (a bar in
-  its color under the face); none for a navi that doesn't change form. The wide sheet's abilities and bugs are a
-  line fewer for each row of six (`overview::FORMS_TO_A_ROW`).
+  its color under the face); none for a navi that doesn't change form.
+- **The overview's parts** (docs/design/app-ui.md §2.99): each read as its tab reads it, every item whole. `presets`,
+  the build's choices' presets (`Builds::choices_of`, `preset_of`, named by `builds::preset_name` as the Navi tab's
+  segments are); `programs`, the NaviCust's placed programs once for each color with their copies
+  (`grid::programs`, colored by `grid::tone`); `cards`, the patch cards' names (`cards::held`, the Patch cards tab's
+  list: a list's order, EXE4's slots'); `auto_battle`, the auto battle data's lists but the patterns'
+  (`Kit::auto_layout`, `AutoBattle::of_side`, named by `auto::list_name` as the tab's titles are). `navicust` and
+  `patch_cards` say the build has those parts (its game's setup takes them and its navi is the game's own); a game
+  without auto battle data, or another navi's build, has no lists.
 - **A version's own things are marked** in the editor's rows, by the same `VersionMark` (the version's name in its
   color, framed, 16 tall; a square of the color where the row has no room for the name): the folder's entries and
   the library's rows of a Giga chip (and the auto battle data's), the selector's forms, and a card's variants (the
