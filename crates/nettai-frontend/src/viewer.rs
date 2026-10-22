@@ -39,8 +39,13 @@
 //! that a seek plays at most [`KEYFRAME_EVERY`] - 1 ticks, and one into the
 //! stretch last sought through fewer than [`NEAR_EVERY`]. [`Viewer::index`]
 //! plays ahead a slice at a time without moving, for a host that wants
-//! every seek short before its user drags the bar. The figures measured on
-//! a game's own packs are docs/frontend.md's (§8, "Seeking").
+//! every seek short before its user drags the bar. Or the index is made
+//! elsewhere: a second viewer of the replay, on a thread of its own, plays
+//! it through ([`Viewer::index_part`]) and hands over the states it would
+//! keep, which the viewer watched takes in ([`Viewer::take_index`]). The
+//! replay plays the same anywhere, so they are the states it makes itself,
+//! and its own thread spends nothing on them. The figures measured on a
+//! game's own packs are docs/frontend.md's (§8, "Seeking").
 //!
 //! ```ignore
 //! let mut viewer = Viewer::open(&game, &replay, None)?;       // a Refused says why not
@@ -128,6 +133,36 @@ struct State {
     finished: bool,
     result: Option<BattleResult>,
 }
+
+/// A part of a replay's index, made by one viewer of it for another to take
+/// in ([`Viewer::index_part`], [`Viewer::take_index`]): the states kept to
+/// seek from in the ticks it played, and how far it reached. It can go to
+/// another thread (each state is plain data: the battle's snapshot, the
+/// HUDs', the sound's over banks shared by `Arc`).
+pub struct IndexPart {
+    states: Vec<State>,
+    reached: u32,
+    whole: bool,
+}
+
+impl IndexPart {
+    /// The tick the part reached: the viewer that made it was there.
+    pub fn reached(&self) -> u32 {
+        self.reached
+    }
+
+    /// The replay's end is in it, or where the engine stopped before that:
+    /// the index is whole with it.
+    pub fn whole(&self) -> bool {
+        self.whole
+    }
+}
+
+// (A part is made on one thread and taken in on another.)
+const _: () = {
+    const fn send<T: Send>() {}
+    send::<IndexPart>();
+};
 
 /// A kept state to go on from.
 #[derive(Clone, Copy)]
@@ -501,8 +536,10 @@ impl Viewer {
     /// where and as it was, and the states seeks go on from are kept for
     /// the part played. True once the whole replay is indexed. A host that
     /// wants every seek short calls it a slice a frame (or all at once
-    /// behind a loading screen) until then; one that doesn't call it pays
-    /// for the ticks between on the first seek past [`Viewer::indexed`].
+    /// behind a loading screen) until then, or has the index made on a
+    /// thread of its own ([`Viewer::index_part`]); one that does neither
+    /// pays for the ticks between on the first seek past
+    /// [`Viewer::indexed`].
     pub fn index(&mut self, ticks: u32) -> bool {
         if self.whole || ticks == 0 {
             return self.whole;
@@ -519,6 +556,52 @@ impl Viewer {
         put(&here, session, renderer, other_hud, audio, *view, rounds);
         self.level();
         self.whole
+    }
+
+    /// Play up to `ticks` ticks on from where the viewer is, for another
+    /// viewer of the same replay to take in ([`Viewer::take_index`]): as
+    /// [`Viewer::index`] plays them, the sound running and not heard (so
+    /// each state holds it), but the states this viewer would keep go in
+    /// the part and not into its own keeping, and it is left where the
+    /// ticks took it. A host indexes on a thread of its own so: a second
+    /// viewer of the replay, opened there at its start, makes the parts
+    /// one after another and sends each as it is made. The part is whole
+    /// ([`IndexPart::whole`]) once the replay's end is in it.
+    pub fn index_part(&mut self, ticks: u32) -> IndexPart {
+        let mut states = Vec::new();
+        let mut ran = 0;
+        while ran < ticks && self.play(false) {
+            ran += 1;
+            if self.due(self.position()) {
+                states.push(self.state());
+            }
+        }
+        // (Where the engine stopped, the tick it stopped on is past what was reached.)
+        IndexPart { states, reached: self.reached.min(self.position()), whole: self.whole }
+    }
+
+    /// Take in a part of the index another viewer of the same replay made
+    /// ([`Viewer::index_part`]; the parts in the order they were made, from
+    /// the replay's start): its states are kept as this viewer's own (one
+    /// of a tick it keeps already is dropped), and [`Viewer::indexed`] goes
+    /// on to where the part reached. The replay plays the same on either
+    /// viewer, so a seek from a state taken in lands exactly as from one
+    /// this viewer made, its sound and all; the other viewer is to have
+    /// sound where this one has it.
+    pub fn take_index(&mut self, part: IndexPart) {
+        for state in part.states {
+            if let Err(at) = self.keyframes.binary_search_by_key(&state.tick, |k| k.tick) {
+                self.keyframes.insert(at, state);
+            }
+        }
+        // (Where indexing here left off is behind a kept state now.)
+        if let (Some(f), Some(last)) = (&self.frontier, self.keyframes.last())
+            && f.tick <= last.tick
+        {
+            self.frontier = None;
+        }
+        self.reached = self.reached.max(part.reached);
+        self.whole |= part.whole;
     }
 
     /// How many states the viewer keeps to seek from.
@@ -610,12 +693,35 @@ impl Viewer {
         Place { tick, round: self.round_at(tick), viewer: self.view }
     }
 
+    /// One tick of the replay ([`Viewer::play`]), the state it leaves kept
+    /// if it is one seeks go on from. False, and nothing runs, at the end
+    /// or where the engine stopped.
+    fn run(&mut self, heard: bool) -> bool {
+        if !self.play(heard) {
+            return false;
+        }
+        let here = self.position();
+        if self.due(here) && self.keyframes.last().is_none_or(|last| last.tick < here) {
+            self.keyframes.push(self.state());
+            // (Where indexing left off is behind a kept state now.)
+            if self.frontier.as_ref().is_some_and(|f| f.tick <= here) {
+                self.frontier = None;
+            }
+        }
+        true
+    }
+
+    /// Whether the state at `tick` is one kept to seek from: every
+    /// [`KEYFRAME_EVERY`]th tick's, and each round's first's.
+    fn due(&self, tick: u32) -> bool {
+        tick % KEYFRAME_EVERY == 0 || self.rounds.binary_search(&tick).is_ok()
+    }
+
     /// One tick of the replay: the battle's, then both consoles' HUD
     /// states and sounds; with `heard`, each console's sound is kept for
-    /// the host. The state it leaves is kept if it is one seeks go on
-    /// from. False, and nothing runs, at the end or where the engine
-    /// stopped.
-    fn run(&mut self, heard: bool) -> bool {
+    /// the host. Nothing of it is kept to seek from. False, and nothing
+    /// runs, at the end or where the engine stopped.
+    fn play(&mut self, heard: bool) -> bool {
         if self.at_end() || !self.session.step(0) {
             // (The engine stopping is the end of what there is to index.)
             self.whole |= self.session.stopped.is_some();
@@ -654,14 +760,6 @@ impl Viewer {
         let here = self.position();
         self.reached = self.reached.max(here);
         self.whole |= here >= self.length;
-        let due = here % KEYFRAME_EVERY == 0 || self.rounds.binary_search(&here).is_ok();
-        if due && self.keyframes.last().is_none_or(|last| last.tick < here) {
-            self.keyframes.push(self.state());
-            // (Where indexing left off is behind a kept state now.)
-            if self.frontier.as_ref().is_some_and(|f| f.tick <= here) {
-                self.frontier = None;
-            }
-        }
         true
     }
 
