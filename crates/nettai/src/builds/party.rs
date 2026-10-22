@@ -6,7 +6,7 @@
 use nettai_battle::Content;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{EntryHandle, FieldType, NaviHandle, Registry, Value};
-use nettai_match::build::{Budget, Checked, Overview};
+use nettai_match::build::{Budget, Overview};
 use nettai_match::facts::Stated;
 
 /// The setup field of the party.
@@ -57,8 +57,7 @@ pub struct Partner {
 pub fn tone(content: &Content, h: EntryHandle) -> slint::Color {
     let key = &content.defs.entry(h).key;
     let name = content.defs.definitions.get(Registry::Entry, key).and_then(|d| d.spec.field(COLOR).str().map(str::to_string));
-    let c = crate::builds::grid::rgb(name.as_deref());
-    slint::Color::from_rgb_u8((c >> 16) as u8, (c >> 8) as u8, c as u8)
+    crate::builds::grid::tone(name.as_deref())
 }
 
 /// The build's partners, in order.
@@ -112,49 +111,26 @@ pub fn budgets(content: &Content, side: &nettai_match::Side, overview: Option<&O
     (0..n).map(|i| o.budget_of(FIELD, i).cloned()).collect()
 }
 
-/// A partner's HP as its round starts: its member's, as the build's check sets the round up (its programs' bonus in).
-pub fn hp(checked: &Checked, navi: NaviHandle) -> Option<u16> {
-    checked.members().iter().skip(1).find(|s| s.navi == navi).map(|s| s.max_hp)
-}
-
 /// The blocks partner `p` fills of its gauge, each in its program's color, the programs in their order.
 pub fn tones(content: &Content, p: &Partner, budget: Option<&Budget>) -> Vec<slint::Color> {
     p.programs.iter().flat_map(|&h| std::iter::repeat_n(tone(content, h), budget.map_or(0, |b| b.cost_of(content, h)) as usize)).collect()
 }
 
-/// Whether each block of partner `p`'s gauge runs on into the next as one program's (the blocks a program fills are
-/// one piece: [`tones`]' blocks, in order).
-pub fn joins(content: &Content, p: &Partner, budget: Option<&Budget>) -> Vec<bool> {
-    p.programs
-        .iter()
-        .flat_map(|&h| {
-            let n = budget.map_or(0, |b| b.cost_of(content, h)) as usize;
-            (0..n).map(move |k| k + 1 < n)
-        })
-        .collect()
-}
-
-/// The build overview's rows of `side`'s partners (none: no party, or a game whose setup takes none): each its face,
-/// name, HP and gauge.
-pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, hp_word: impl Fn(i32) -> slint::SharedString, side: &nettai_match::Side, checked: &Checked, overview: Option<&Overview>) -> Vec<nettai_ui::SheetPartner> {
+/// The build overview's rows of `side`'s partners (none: no party, or a game whose setup takes none): each its face
+/// and name, and its PartyCust programs by name (the user: "there's no need to show the slot gauge or hp for the party
+/// navi").
+pub fn sheet_rows(kit: &crate::builds::Kit, names: &crate::games::Names, side: &nettai_match::Side) -> Vec<nettai_ui::SheetPartner> {
     let content = kit.content();
     let Some(shape) = Shape::of(content) else { return Vec::new() };
-    let budgets = budgets(content, side, overview);
     partners(content, side, &shape)
         .iter()
-        .enumerate()
-        .filter_map(|(i, p)| {
+        .filter_map(|p| {
             let navi = p.navi?;
-            let b = budgets.get(i).cloned().flatten();
             Some(nettai_ui::SheetPartner {
                 face: kit.pictures.navi(navi),
                 name: names.navi_long(navi).into(),
                 version: kit.version_tag_of(names, Registry::Navi, &nettai_match::ruleset::Item::of(navi.0)),
-                hp: hp(checked, navi).map(|h| hp_word(h as i32)).unwrap_or_default(),
-                used: b.as_ref().map_or(0, |b| b.count.used as i32),
-                gauge: b.as_ref().map_or(0, |b| b.count.limit as i32),
-                tones: slint::ModelRc::new(slint::VecModel::from(tones(content, p, b.as_ref()))),
-                joins: slint::ModelRc::new(slint::VecModel::from(joins(content, p, b.as_ref()))),
+                programs: p.programs.iter().map(|&h| names.entry(h)).collect::<Vec<_>>().join(", ").into(),
             })
         })
         .collect()

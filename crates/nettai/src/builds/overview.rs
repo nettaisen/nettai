@@ -1,30 +1,28 @@
 //! The build overview's model (docs/design/app-ui.md §6; the UI's `BuildOverview`, build.slint): what a build
-//! comes to, as a round starts it. Every number is the compiled one (`nettai_match::build::Checked::overview`:
-//! the stats as the NaviCust and the patch cards leave them, with what they added; after the eight, those the
-//! game's rules give, by their names in the game's strings), the abilities and the bugs are named by the game's
-//! own strings, and the folder's chips have the pack's own icons.
+//! comes to, as a round starts it, and the whole of what it holds. Every number is the compiled one
+//! (`nettai_match::build::Checked::overview`: the stats as the NaviCust and the patch cards leave them, with what they
+//! added; after the eight, those the game's rules give, by their names in the game's strings), the abilities and the
+//! bugs are named by the game's own strings, and the folder's chips have the pack's own icons. Each part of the build
+//! is read as its editor's tab reads it (the choices' presets as the Navi tab's, the NaviCust's programs as placed,
+//! the patch cards' list or slots, the auto battle data's lists, the partners' programs), every item of each: the
+//! sheet shows them whole (the user: "when i hold tab to see the builds entire sections are missing like auto battle,
+//! partycust specifics, etc.").
 //!
 //! Any screen shows a build with it: [`sheet`] makes the model of a side, and the screen sets it as the
 //! `build` of a `BuildOverview` (docs/app.md §8).
 
+use crate::builds::auto::{self, AutoBattle, Entry, Holds};
 use crate::builds::words::{Words, kind};
-use crate::builds::{Kit, cards};
+use crate::builds::{Kit, cards, grid};
 use crate::games::Names;
 use crate::shell::Shell;
 use nettai_content_api::{Data, EntryHandle, Registry};
 use nettai_match::build::{self, Bug, Checked, NamedStat, Overview, Source, Stat};
+use nettai_match::facts;
 use nettai_match::ruleset::Item;
 use nettai_match::{Folder, Side};
-use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetForm, SheetLine, SheetLineKind, StatLine};
+use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetForm, SheetList, SheetProgram, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
-
-/// The lines the overview has room for under its eight stats, the two titles apart: a stat of the game's rules'
-/// own after them takes one (its row is 22 tall, a line 20, and the sheet has 16 to spare under its last line).
-const LINES: usize = 9;
-
-/// The forms to a row of the wide sheet's forms (build.slint's `form-fit`, over the stats' column): each row takes a
-/// line of the abilities and bugs (its 22 against a line's 20; the sheet has 16 to spare).
-const FORMS_TO_A_ROW: usize = 6;
 
 /// A folder's entry `entry` as a row shows it; `flagged`: the folder's rules have something against it.
 pub fn chip_cell(kit: &Kit, names: &Names, folder: &Folder, entry: usize, flagged: bool) -> ChipCell {
@@ -97,22 +95,6 @@ pub fn bug(words: &Words, bug: &Bug) -> (String, String) {
     }
 }
 
-/// `items` in `room` lines: all of them, or as many as fit less one with how many more there are; none as one
-/// line that says so.
-fn fitted(words: &Words, items: Vec<SheetLine>, room: usize) -> Vec<SheetLine> {
-    if items.is_empty() {
-        return vec![SheetLine { kind: SheetLineKind::Nothing, ..Default::default() }];
-    }
-    if items.len() <= room {
-        return items;
-    }
-    let shown = room.saturating_sub(1);
-    let more = (items.len() - shown) as i32;
-    let mut out: Vec<SheetLine> = items.into_iter().take(shown).collect();
-    out.push(SheetLine { kind: SheetLineKind::More, text: words.ui.global::<nettai_ui::BuildWords>().invoke_more(more), ..Default::default() });
-    out
-}
-
 /// The overview of `side`, a build named `name` (a player's name, in a match, under `label`: YOU, OPPONENT),
 /// in the language shown.
 pub fn sheet(shell: &Shell, kit: &Kit, label: &str, name: &str, side: &Side) -> BuildSheet {
@@ -159,18 +141,37 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         false => Vec::new(),
     };
     // Its partners (a party battle's: EXE5's), a row each under the forms.
-    let party = crate::builds::party::sheet_rows(kit, names, |hp| words.ui.global::<nettai_ui::PartyView>().invoke_hp_word(hp), side, checked, overview.as_ref());
-    // The lines under the stats (a line fewer for each stat after the eight, for each row of forms and for each
-    // partner): the bugs keep four of them where both lists are long.
-    let room = LINES.saturating_sub(stats.len() - 8).saturating_sub(forms.len().div_ceil(FORMS_TO_A_ROW)).saturating_sub(party.len()).max(2);
-    let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
-    let bug_lines: Vec<SheetLine> = bugs.iter().map(|(name, extent)| SheetLine { kind: SheetLineKind::Bug, text: name.into(), extent: extent.into() }).collect();
-    let room_for_bugs = bug_lines.len().clamp(1, 4.min(room - 1));
-    let room_for_abilities = ability_lines.len().clamp(1, room - room_for_bugs);
-    let mut lines = vec![SheetLine { kind: SheetLineKind::Abilities, ..Default::default() }];
-    lines.extend(fitted(words, ability_lines, room_for_abilities));
-    lines.push(SheetLine { kind: SheetLineKind::Bugs, ..Default::default() });
-    lines.extend(fitted(words, bug_lines, room - room_for_abilities));
+    let party = crate::builds::party::sheet_rows(kit, names, side);
+    // The presets of its choices, after the navi (EXE4's and EXE5's MegaMan's Light or Dark).
+    let presets: Vec<String> = kit.builds.choices_of(content, side).iter().filter_map(|c| kit.builds.preset_of(content, side, &c.id).map(|p| crate::builds::preset_name(names, c, p))).collect();
+    // What is the game's own navi's alone (its NaviCust, patch cards and auto battle data: the editor's tabs that are)
+    // a build of another navi has none of.
+    let own = content.navi(navi).changes_form();
+    let navicust = own && facts::takes(content, grid::PIECES_FIELD);
+    let programs: Vec<SheetProgram> = match navicust {
+        true => grid::programs(content, side)
+            .into_iter()
+            .map(|(piece, color, copies)| SheetProgram { name: names.entry(EntryHandle(piece)).into(), tone: grid::tone(color.as_deref()), copies: copies as i32 })
+            .collect(),
+        false => Vec::new(),
+    };
+    let patch_cards = own && facts::takes(content, facts::PATCH_CARDS);
+    let held = if patch_cards { cards::held(&kit.builds, content, side, facts::PATCH_CARDS) } else { Vec::new() };
+    let card_names: Vec<String> = held.into_iter().flatten().map(|(h, _)| names.entry(h)).collect();
+    // (A pattern's places aren't the build's: it states no pattern records, as the Auto battle tab shows none.)
+    let auto_battle: Vec<SheetList> = match kit.auto_layout().filter(|_| own) {
+        Some(layout) => {
+            let data = AutoBattle::of_side(content, side);
+            let chip = |place: usize| if let Entry::Chip(c) = data.places[place] { Some(names.chip(c)) } else { None };
+            layout
+                .lists
+                .iter()
+                .filter(|l| l.holds != Holds::Patterns)
+                .map(|l| SheetList { name: auto::list_name(names, l).into(), chips: l.places().filter_map(&chip).collect::<Vec<_>>().join(", ").into() })
+                .collect()
+        }
+        None => Vec::new(),
+    };
     let face = checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(navi));
     let chips: Vec<ChipCell> = (0..folder.chips.len()).map(|i| chip_cell(kit, names, &folder, i, false)).collect();
     let one_line = |(name, extent): &(String, String)| if extent.is_empty() { name.clone() } else { format!("{name} {extent}") };
@@ -178,13 +179,18 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         label: label.into(),
         name: name.into(),
         navi: names.navi(navi).into(),
+        presets: presets.join(" · ").into(),
         face,
         forms: ModelRc::new(VecModel::from(forms)),
         party: ModelRc::new(VecModel::from(party)),
         stats: ModelRc::new(VecModel::from(stats)),
-        lines: ModelRc::new(VecModel::from(lines)),
         abilities: abilities.join(", ").into(),
         bugs: bugs.iter().map(one_line).collect::<Vec<_>>().join(", ").into(),
+        navicust,
+        programs: ModelRc::new(VecModel::from(programs)),
+        patch_cards,
+        cards: card_names.join(", ").into(),
+        auto_battle: ModelRc::new(VecModel::from(auto_battle)),
         count: folder.chips().count() as i32,
         chips: ModelRc::new(VecModel::from(chips)),
     }

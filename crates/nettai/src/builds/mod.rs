@@ -21,7 +21,7 @@ use crate::games::{Names, Ready};
 use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_content_api::Registry;
-use nettai_match::build::{Builds, Group, TEXT_TABLE};
+use nettai_match::build::{Builds, Choice, Group, Preset, TEXT_TABLE};
 use nettai_match::ruleset::{Item, Rulesets};
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
@@ -111,6 +111,12 @@ impl Kit {
         let [_, r, g, b] = group.color.to_be_bytes();
         nettai_ui::VersionTag { text: self.version_name(names, &group.id).into(), tone: slint::Color::from_rgb_u8(r, g, b) }
     }
+}
+
+/// Preset `preset` of choice `choice` (EXE5's Light or Dark), by its name in the game's strings in `names`' language
+/// (its id where they have none).
+pub fn preset_name(names: &Names, choice: &Choice, preset: &Preset) -> String {
+    names.text(TEXT_TABLE, &choice.text_key(preset)).unwrap_or_else(|| preset.id.clone())
 }
 
 thread_local! {

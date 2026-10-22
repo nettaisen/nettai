@@ -56,6 +56,12 @@ pub fn rgb(name: Option<&str>) -> u32 {
     name.and_then(|n| PALETTE.iter().find(|(k, _)| *k == n)).map_or(0x909090, |(_, c)| *c)
 }
 
+/// A color by name as the app draws it (the palette's, else gray).
+pub fn tone(name: Option<&str>) -> slint::Color {
+    let [_, r, g, b] = rgb(name).to_be_bytes();
+    slint::Color::from_rgb_u8(r, g, b)
+}
+
 /// What the grid reads of a game: its boards (and whether a side says
 /// which: `sized`), its command line, its color bar's slots, and its pieces'
 /// collection, shapes (plain and compressed), colors and plus marks.
@@ -217,6 +223,19 @@ pub fn colors_placed(parts: &[Placed]) -> Vec<String> {
     for c in parts.iter().filter_map(|p| p.color.as_ref()) {
         if !out.contains(c) {
             out.push(c.clone());
+        }
+    }
+    out
+}
+
+/// The programs placed, each once for each of its colors, in the order the list first has them, with how many copies
+/// of it in that color: the build overview's line of them.
+pub fn programs(c: &Content, side: &Side) -> Vec<(u16, Option<String>, usize)> {
+    let mut out: Vec<(u16, Option<String>, usize)> = Vec::new();
+    for p in placed(c, side) {
+        match out.iter_mut().find(|(piece, color, _)| *piece == p.piece && *color == p.color) {
+            Some((_, _, n)) => *n += 1,
+            None => out.push((p.piece, p.color, 1)),
         }
     }
     out
@@ -570,6 +589,10 @@ mod tests {
             let parts = placed(&content, &side);
             assert_eq!(parts.iter().filter(|p| p.piece == piece).count(), 3, "{game}");
             assert_eq!(parts[0].color, parts[1].color, "{game}: two copies in one color");
+            // (The overview lists it once for each color, with its copies in it.)
+            let colors = &data.colors[&piece];
+            let want = if colors.len() > 1 { vec![(piece, parts[0].color.clone(), 2), (piece, parts[2].color.clone(), 1)] } else { vec![(piece, parts[0].color.clone(), 3)] };
+            assert_eq!(programs(&content, &side), want, "{game}");
             let problems = nettai_match::build::Checked::of(&content, game, &side).problems;
             assert!(problems.is_empty(), "{game}: {problems:?}");
         }

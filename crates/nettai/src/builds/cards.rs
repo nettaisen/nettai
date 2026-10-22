@@ -16,7 +16,11 @@
 //! the data's names alone, as a tool reads any collection's entries.
 
 use crate::games::Names;
+use nettai_battle::Content;
 use nettai_content_api::{Data, DataKey, EntryHandle, Registry};
+use nettai_match::Side;
+use nettai_match::build::Builds;
+use nettai_match::facts::Stated;
 
 /// The strings' text table of the lines.
 pub const TABLE: &str = "patch_card_effects";
@@ -26,6 +30,26 @@ pub const GROUPS: &str = "patch_card_groups";
 pub const FIELD: &str = "effects";
 /// The effects' field that names the one variant (a version) whose card has the effect.
 pub const VERSION: &str = "version";
+
+/// A card as a build holds it: the card, and its variant where it has them (a version's id).
+pub type Card = (EntryHandle, Option<String>);
+
+/// The cards `side`'s list `field` holds, in its order, each with its variant; in a game whose cards go in slots
+/// (EXE4's: `Builds::slots`), what each slot holds, by the slot's number. The Patch cards tab's list and the build
+/// overview's line.
+pub fn held(builds: &Builds, content: &Content, side: &Side, field: &str) -> Vec<Option<Card>> {
+    if let Some(slots) = builds.slots.as_ref().filter(|s| s.field == field) {
+        return slots.held(content, side).into_iter().map(|h| h.map(|h| (h, None))).collect();
+    }
+    let variant = |i: &Stated| match i {
+        Stated::Record(fields) => fields.iter().find(|(n, _)| n == nettai_match::ruleset::VARIANT).and_then(|(_, v)| if let Stated::Variant(v) = v { v.clone() } else { None }),
+        _ => None,
+    };
+    match side.facts.get(content, field) {
+        Some(Stated::List(items)) => items.iter().filter_map(|i| i.defs().first().map(|&h| Some((EntryHandle(h), variant(i))))).collect(),
+        _ => Vec::new(),
+    }
+}
 
 /// One effect as a line: its text, whether the card shows it as a bug,
 /// and the group the card screen lists it in.
@@ -209,5 +233,33 @@ mod tests {
         of_effects(&[pair], &table, named, &mut out);
         let texts: Vec<&str> = out.iter().map(|l| l.text.as_str()).collect();
         assert_eq!(texts, ["With 077 in 3", "All Guard"]);
+    }
+
+    /// A build's cards, as the Patch cards tab lists them and the overview names them: a list's in its order (EXE6's);
+    /// in a game whose cards go in slots (EXE4's), by the slots, each card in its own.
+    #[test]
+    fn a_builds_cards_are_held_in_order() {
+        let content = nettai_match::testing::exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let mut side = builds.new_build(&content, "gregar").unwrap();
+        let card = |id: &str| nettai_match::ids::entry(&content, "exe6", "patch_cards", id).unwrap_or_else(|| panic!("exe6: no {id}"));
+        for id in ["bassbx", "airman"] {
+            assert!(crate::builds::edit::list(&content, &mut side, "patch_cards", crate::builds::edit::ListEdit::Add(card(id).0)), "exe6: {id} goes in");
+        }
+        assert_eq!(held(&builds, &content, &side, "patch_cards"), vec![Some((card("bassbx"), None)), Some((card("airman"), None))]);
+
+        let content = nettai_match::testing::exe4_content();
+        let builds = Builds::of(&content, "exe4").unwrap();
+        let mut side = builds.new_build(&content, "redsun").unwrap();
+        let slots = builds.slots.clone().unwrap();
+        let card = |id: &str| nettai_match::ids::entry(&content, "exe4", &slots.field, id).unwrap_or_else(|| panic!("exe4: no {id}"));
+        let (later, earlier) = (card("078-first-life-aura"), card("001-max-hp-up"));
+        for h in [later, earlier] {
+            slots.put(&content, &mut side, h).unwrap();
+        }
+        let got = held(&builds, &content, &side, &slots.field);
+        assert_eq!(got.len(), slots.names.len());
+        assert_eq!(got.iter().flatten().map(|c| c.0).collect::<Vec<_>>(), [earlier, later]);
+        assert_eq!(got[slots.own(&content, later).unwrap()], Some((later, None)));
     }
 }
