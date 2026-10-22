@@ -399,6 +399,83 @@ fn indexing_ahead_leaves_the_viewer_as_it_was() {
     assert!(sound.is_empty());
 }
 
+/// An index made by another viewer of the replay, on a thread of its own
+/// and from the other side, is the viewer's own once taken in: the viewer
+/// stays where and as it was, its index reaches the end with the states a
+/// viewer that indexed itself keeps (none twice, those its own playing
+/// kept among them), each the same battle and HUDs, and a seek from one
+/// lands where playing straight gets, the battle's digest, the picture,
+/// the HUD's state and the sound after it, from either console. The viewer
+/// that made the parts keeps none of their states.
+#[test]
+fn an_index_made_elsewhere_is_the_viewers_own() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let s = [straight(&content, &replay, 0), straight(&content, &replay, 1)];
+    let mut own = viewer(&content, &replay, 0);
+    while !own.index(500) {}
+    let mut v = viewer(&content, &replay, 0);
+    follow(&mut v, &s[0], 300, "before taking any in");
+    assert_eq!(v.kept(), 2, "its own playing kept tick 240's");
+    let (send, parts) = std::sync::mpsc::channel();
+    let other = {
+        let (content, replay) = (content.clone(), replay.clone());
+        std::thread::spawn(move || {
+            let mut other = viewer(&content, &replay, 1);
+            let began = std::time::Instant::now();
+            loop {
+                let part = other.index_part(2 * KEYFRAME_EVERY + 7);
+                let whole = part.whole();
+                send.send(part).unwrap();
+                if whole {
+                    let took = began.elapsed();
+                    eprintln!("indexed {length} ticks on a thread in {took:.2?}: {:.0} ticks/s", length as f64 / took.as_secs_f64());
+                    break (other.kept(), other.position());
+                }
+            }
+        })
+    };
+    let mut reached = v.indexed();
+    for part in parts {
+        assert!(part.reached() > reached || part.whole(), "each part reaches further");
+        reached = part.reached();
+        v.take_index(part);
+        assert_eq!(v.indexed(), reached.max(300));
+    }
+    assert_eq!(other.join().unwrap(), (1, length), "the other viewer played to the end and kept only its start");
+    assert_eq!(v.indexed(), length);
+    assert!(v.index(1), "nothing is left to index");
+    let ticks = |of: &Viewer| of.keyframes.iter().map(|k| k.tick).collect::<Vec<_>>();
+    assert_eq!(ticks(&v), ticks(&own));
+    assert_eq!(v.kept(), own.kept());
+    // (Each the same battle, but for the side it was seen from, which a state put back takes from the viewer:
+    // `setup.local_side`.)
+    let seen_from_0 = |state: &State| {
+        let mut battle = state.battle.battle().clone();
+        battle.setup.local_side = 0;
+        (battle.digest(), format!("{battle:?}"))
+    };
+    for (taken, made) in v.keyframes.iter().zip(&own.keyframes) {
+        assert!(seen_from_0(taken) == seen_from_0(made), "the battle at tick {}", taken.tick);
+        assert_eq!(format!("{:?}", taken.huds), format!("{:?}", made.huds), "the HUDs at tick {}", taken.tick);
+        assert_eq!(taken.audio.is_some(), made.audio.is_some());
+    }
+    // Still where it was; then seeks from the states taken in, from either side.
+    same(&mut v, &s[0], 300, "after taking it in");
+    follow(&mut v, &s[0], 20, "after taking it in");
+    for (to, side) in [(length - 5, 0u8), (3, 0), (length / 2, 1), (2 * KEYFRAME_EVERY + 1, 1), (replay.round_starts()[1] + 9, 0)] {
+        let what = format!("a seek to tick {to} from a state taken in, side {side}");
+        v.set_view(side);
+        let sought = v.sought();
+        v.seek(to);
+        assert!(v.sought() - sought < KEYFRAME_EVERY as u64, "{what}: it played {} ticks", v.sought() - sought);
+        same(&mut v, &s[side as usize], to, &what);
+        follow(&mut v, &s[side as usize], 40, &what);
+    }
+    assert_eq!(v.diverged(), None);
+}
+
 /// The sound follows the speed as a tape's does: at half speed every
 /// sample comes twice, at double and four times every two and four come as
 /// their mean, so the host gets as much sound a second at any speed; and a
@@ -524,3 +601,4 @@ fn a_preloaded_viewer_is_the_viewer() {
     let five = nettai_match::testing::exe5_content();
     assert!(matches!(crate::replay::set_of(&five, &replay), Err(Refused::OtherGame { .. })));
 }
+

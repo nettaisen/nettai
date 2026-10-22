@@ -1,12 +1,14 @@
 //! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §16).
 //!
 //! Each frame runs the ticks due at the speed set, presents the picture if one ran, and hands the sound on. So
-//! that no seek stalls the window, the replay is indexed ahead a slice a frame, each held to a budget of time,
-//! from the moment it is shown, and no seek goes past what is indexed: one asked for further stops at its edge,
-//! which the bar shows (a fill from the start to it, under the part played, as a video player shows what it
-//! has loaded). Playing is never past it: what plays is indexed as it plays. A drag of the bar moves the picture
-//! in steps of the states the viewer keeps (which cost no playing), stopping at the index's edge while it is
-//! there, and lands where it is let go.
+//! that no seek stalls the window, the replay is indexed ahead on a thread of its own from its first frame
+//! ([`Indexing`]: a second viewer of it plays it through there and sends the states it keeps, which the viewer
+//! takes in each frame), and no seek goes past what is indexed: one asked for further stops at its edge, which
+//! the bar shows (a fill from the start to it, under the part played, as a video player shows what it has
+//! loaded). Playing is never past it: what plays is indexed as it plays. A drag of the bar moves the picture in
+//! steps of the states the viewer keeps (which cost no playing), stopping at the index's edge while it is there,
+//! and lands where it is let go. Where the thread can't index (it doesn't start, or ends short of the replay's
+//! end), the window's thread does, a slice a frame, each held to a budget of time.
 //!
 //! Both builds may be shown over it, where the match's setups were open: the narrow sheets a match shows its
 //! players' builds in, the console shown's player's at the left; the sides of a match whose setups weren't open
@@ -28,6 +30,7 @@
 //! ([`Thumbnails`]: a silent viewer of the same replay on a thread of its own, started at the first hover).
 
 use super::export::game_for_thread;
+use super::indexing::{Indexing, Taken};
 use super::thumbnails::{Bucket, Thumbnails};
 use super::{clock, name, played};
 use crate::nav::Key;
@@ -43,10 +46,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use nettai_platform::time::Instant;
 
-/// How long a frame spends indexing ahead while the replay plays, and while nothing does (it is paused, or the
-/// bar is held).
+/// Where the window's thread indexes (the thread can't): how long a frame spends on it while the replay plays, and
+/// while nothing does (it is paused, or the bar is held).
 const INDEX_BUDGET: Duration = Duration::from_micros(1500);
 const IDLE_BUDGET: Duration = Duration::from_millis(5);
+/// How long the thread may go without sending its first part before the window's thread indexes as well (a browser's
+/// worker whose module didn't load never runs, and its channel never closes).
+const THREAD_WAIT: Duration = Duration::from_secs(5);
 /// How long the window goes without drawing before the time isn't the replay's (`Watching::frame`): the most
 /// time one frame catches up (the player's own cap).
 const STILL_AFTER: Duration = Duration::from_millis(250);
@@ -183,9 +189,11 @@ pub struct Watching {
     /// Where the bar is held, while it is dragged (it may be past the index: the picture and the bar stop at its
     /// edge, and follow it as it goes on).
     drag: Option<u32>,
-    /// The ticks an index slice plays (fitted to its budget as it goes), and whether the whole replay is
-    /// indexed.
-    slice: u32,
+    /// The index made on its thread, from the first frame till it is whole (none: not started, or done); where the
+    /// window's thread indexes, the ticks a slice plays (fitted to its budget as it goes); and whether the whole
+    /// replay is indexed.
+    indexing: Option<Indexing>,
+    slice: Option<u32>,
     whole: bool,
     told: Option<Told>,
     stats: Option<Stats>,
@@ -216,7 +224,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, drag: None, indexing: None, slice: None, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
     }
 
     pub fn path(&self) -> &Path {
@@ -667,8 +675,66 @@ impl Watching {
 
     // ---- The frame --------------------------------------------------------------------------------------
 
-    /// A frame at `now`: a slice of the index (the bar held past its edge following it), the ticks due, the sound,
-    /// the picture.
+    /// The index goes on, and the bar held past its edge follows it: the parts its thread made since are taken in
+    /// (the thread started at the first frame). Where the thread couldn't start or ended short of the replay's end,
+    /// the window's thread indexes the rest, and while it has sent nothing after [`THREAD_WAIT`], it indexes too: a
+    /// slice a frame, of as many ticks as the last one's time says fit the budget.
+    fn index(&mut self, shell: &Shell) {
+        if self.indexing.is_none() && self.slice.is_none() {
+            let game = shell.ready().map(|(_, ready)| game_for_thread(shell, &ready, true));
+            self.indexing = game.and_then(|game| Indexing::start(game, self.path.clone()));
+            if self.indexing.is_none() {
+                self.slice = Some(16);
+            }
+        }
+        self.index_on();
+    }
+
+    /// The index goes on once started (`index`).
+    fn index_on(&mut self) {
+        if let Some(indexing) = &mut self.indexing {
+            match indexing.take(&mut self.viewer) {
+                Taken::Going => {
+                    if !indexing.heard && self.slice.is_none() && indexing.began.elapsed() >= THREAD_WAIT {
+                        crate::errors::log(&format!("indexing {}", self.path.display()), &"its thread sent nothing: the window indexes it");
+                        self.slice = Some(16);
+                    }
+                }
+                Taken::Whole => {
+                    self.whole = true;
+                    if self.stats.is_some() {
+                        let (took, length) = (indexing.began.elapsed(), self.viewer.length());
+                        eprintln!("viewer index: {length} ticks indexed on its thread in {took:.2?}, {:.0} ticks a second", length as f64 / took.as_secs_f64());
+                    }
+                    self.indexing = None;
+                }
+                Taken::Ended => {
+                    self.indexing = None;
+                    self.slice.get_or_insert(16);
+                }
+            }
+        }
+        let budget = if self.playing() { INDEX_BUDGET } else { IDLE_BUDGET };
+        // (A thread that was late is left to it once it is heard from.)
+        let thread = self.indexing.as_ref().is_some_and(|i| i.heard);
+        if let Some(slice) = &mut self.slice
+            && !self.whole
+            && !thread
+        {
+            let began = Instant::now();
+            self.whole = self.viewer.index(*slice);
+            let took = began.elapsed();
+            let fits = budget.as_secs_f64() / took.as_secs_f64().max(1e-6) * *slice as f64;
+            // (Half way there each time: one slow slice doesn't halve the next.)
+            *slice = ((*slice as f64 + fits) / 2.0).clamp(4.0, 4000.0) as u32;
+            if let Some(s) = &mut self.stats {
+                add(&mut s.indexing, took);
+            }
+        }
+        self.hold();
+    }
+
+    /// A frame at `now`: the index goes on (`index`), the ticks due, the sound, the picture.
     pub fn frame(&mut self, shell: &mut Shell, now: Instant) {
         // (A gap of [`STILL_AFTER`] or more since the last drawn frame isn't the replay's time: the window wasn't
         // drawn. A shorter one, frames the system was late with, is made up, so the replay and its bar don't
@@ -677,19 +743,8 @@ impl Watching {
         let elapsed = if elapsed >= STILL_AFTER { Duration::ZERO } else { elapsed };
         self.last = Some(now);
         self.probe(shell, now);
-        // Indexing ahead: a slice, of as many ticks as the last one's time says fit the budget.
         if !self.whole {
-            let budget = if self.playing() { INDEX_BUDGET } else { IDLE_BUDGET };
-            let began = Instant::now();
-            self.whole = self.viewer.index(self.slice);
-            let took = began.elapsed();
-            let fits = budget.as_secs_f64() / took.as_secs_f64().max(1e-6) * self.slice as f64;
-            // (Half way there each time: one slow slice doesn't halve the next.)
-            self.slice = ((self.slice as f64 + fits) / 2.0).clamp(4.0, 4000.0) as u32;
-            if let Some(s) = &mut self.stats {
-                add(&mut s.indexing, took);
-            }
-            self.hold();
+            self.index(shell);
         }
         let playing = self.playing();
         let began = Instant::now();
@@ -936,5 +991,62 @@ mod tests {
         w.go_to(length);
         assert!(w.viewer.at_end());
         assert_eq!(w.shown(), length);
+    }
+
+    /// The index comes from its thread: each frame takes in the parts made since, the edge going on with them and
+    /// the bar held past it following; with the last the replay is indexed whole and nothing more is done. A thread
+    /// that ends short of the end leaves the rest to the window's thread, which goes on from where it got.
+    #[test]
+    fn the_index_comes_from_its_thread() {
+        let content = nettai_match::testing::exe6_content();
+        let (replay, _) = recorded(&content, "exe6", 7);
+        let open = || {
+            let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+            Viewer::with(&content, &replay, None, renderer, None, None).unwrap()
+        };
+        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default());
+        let length = w.length();
+        let (send, parts) = std::sync::mpsc::channel();
+        w.indexing = Some(Indexing::of(parts));
+        let mut other = open();
+        w.drag_to(length, false);
+        w.index_on();
+        assert_eq!((w.viewer.indexed(), w.viewer.position()), (0, 0), "nothing is indexed before a part comes");
+        send.send(other.index_part(KEYFRAME_EVERY + 20)).unwrap();
+        w.index_on();
+        assert_eq!(w.viewer.indexed(), KEYFRAME_EVERY + 20);
+        assert_eq!((w.viewer.position(), w.shown()), (KEYFRAME_EVERY, KEYFRAME_EVERY + 20), "the bar held past the edge follows it");
+        // (Two parts in a frame: both are taken.)
+        send.send(other.index_part(KEYFRAME_EVERY)).unwrap();
+        send.send(other.index_part(KEYFRAME_EVERY)).unwrap();
+        w.index_on();
+        assert_eq!(w.viewer.indexed(), 3 * KEYFRAME_EVERY + 20);
+        assert_eq!(w.viewer.position(), 3 * KEYFRAME_EVERY);
+        loop {
+            let part = other.index_part(KEYFRAME_EVERY);
+            let whole = part.whole();
+            send.send(part).unwrap();
+            if whole {
+                break;
+            }
+        }
+        w.index_on();
+        assert!(w.whole && w.indexing.is_none() && w.slice.is_none(), "whole, from the thread alone");
+        assert_eq!(w.viewer.indexed(), length);
+        w.drag_to(length, true);
+        assert!(w.viewer.at_end());
+        // A thread that ends short: the window's thread indexes the rest.
+        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default());
+        let (send, parts) = std::sync::mpsc::channel();
+        w.indexing = Some(Indexing::of(parts));
+        send.send(open().index_part(KEYFRAME_EVERY + 20)).unwrap();
+        drop(send);
+        w.index_on();
+        assert!(w.indexing.is_none() && w.slice.is_some() && !w.whole);
+        assert!(w.viewer.indexed() >= KEYFRAME_EVERY + 20, "what the thread made is kept");
+        while !w.whole {
+            w.index_on();
+        }
+        assert_eq!(w.viewer.indexed(), length);
     }
 }

@@ -2604,6 +2604,7 @@ out)`, `set_language`), and has a transport:
 | `set_paused(bool)` | pause, or go on |
 | `result()`, `stopped()`, `diverged()` | the set's result for the console shown (at the end of a whole set), why the engine stopped short of the end, the first difference from the recording |
 | `index(ticks)`, `indexed()` | play ahead without moving (below) |
+| `index_part(ticks)`, `take_index(part)` | the index made by another viewer of the replay, on a thread of its own, and taken in (below) |
 
 **A seek lands in the state straight playback reaches**, all of it: the
 battle (its digest is straight playback's), what the drawing follows over
@@ -2636,10 +2637,32 @@ from a tick or so before: only the first of them into a stretch plays the
 stretch. Reaching a tick for the first time
 plays every tick up to it; `index(ticks)` does that ahead of time, a slice
 a call, leaving the viewer exactly where and as it is (a host calls it a
-slice a frame, or all behind its loading screen, until it returns true). A
+slice a frame, or all behind its loading screen, until it returns true; or
+has the index made on a thread of its own, below). A
 replay is made ready as any match is besides (§9): `replay::set_of(&content,
 &replay)?` is its set for a `Preload`, and `Preload::viewer(&replay, side)?`
 the viewer with what was made ready.
+
+**The index made elsewhere.** A host that has threads indexes on one of its
+own, so that its own thread spends nothing on it: a second viewer of the
+replay, opened there at its start with its sound (made and never heard, so
+that each state holds it), plays it through a part at a time
+(`index_part(ticks)`: the states it would keep handed over in an
+`IndexPart`, not kept, with the tick it reached and whether the replay's end
+is in it) and sends each part as it is made; the viewer watched takes them
+in, in order (`take_index(part)`: each state kept as its own, one of a tick
+it has already dropped, `indexed()` going on to where the part reached). A
+part is plain data and `Send` (the battle's snapshot, the HUDs', the sound's
+over banks shared by `Arc`). The replay plays the same on either viewer, so
+the states are the ones the viewer would make itself, from either side: they
+differ only in the side seen from (`RoundSetup::local_side`, which the
+digest covers), and a state put back takes the side from the viewer. The
+viewer that made them keeps none. Checked by
+`an_index_made_elsewhere_is_the_viewers_own` (each state's battle and HUDs
+against a viewer that indexed itself, and the seeks after, sound and all,
+against straight playback) and on a game's packs by `examples/seek.rs`,
+whose seeks are the viewer's that took the states in. The app does this
+(docs/app.md §16).
 
 **What it costs**, measured on EXE6's own packs by `examples/seek.rs` in a
 release build, in processor time (the machine was busy with other builds),
@@ -2657,6 +2680,13 @@ mashing):
   measured), or as much of it as lies before wherever it first seeks.
   Playing the set straight with its picture takes 17 s, so the index is a
   fourteenth of that.
+- **Indexing on a thread of its own** (2026-10-21, in the `dev` build,
+  which is slower: a set of 9,000 ticks, one round): a second viewer's
+  parts, made on a thread and taken in as they came, indexed it in 0.88 s
+  of the wall, 10,190 ticks a second, as fast as the viewer indexed itself
+  in slices (0.88 s of processor time, 98 µs a tick): a part costs nothing
+  to send or take in. The 300 seeks and 480 frames back were then the
+  viewer's that took the states in, each checked as below.
 - **A seek in what was reached before:** 4.7 ms (the median of 300 seeks of
   every kind; 20 ms at worst: at most 239 ticks are played).
 - **A frame back:** 0.5 ms (the median of 480 in a row; 16 ms for the one
