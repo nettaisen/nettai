@@ -1,7 +1,9 @@
 //! The game's numbers in the enhanced mode: each digit (and the '+', the
 //! "x" of "x2", the '?' marks) drawn in a font made of the game's own
 //! digits: Nettai Digits (fonts/nettai-digits: the HP box's digits, the
-//! HUD's '?', '+' and "x", traced from their pixels with sharp corners) and,
+//! HUD's '?', '+' and the times sign '×', traced from their pixels with
+//! sharp corners; a variable font whose weight keeps its bars the game's
+//! 2 pixels however short a place draws it, [`Face::weight`]) and,
 //! for the numbered banners, Nettai Banner Digits (fonts/nettai-banner-digits:
 //! the banners' own drawing), at the output's resolution
 //! (docs/design/text-rendering.md §12.4). The numbers were Bungee first (the
@@ -50,8 +52,21 @@ pub fn font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
     &FONT_PARSED
 }
 
-/// Nettai Digits: the numbers' font (the game's own digits).
-pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-digits/NettaiDigits-Regular.otf");
+/// Nettai Digits: the numbers' font (the game's own digits), a variable
+/// font whose weight axis (`wght`, 400 to 700) thickens its bars into their
+/// counters (the user: "the numbering font looks weird when used as-is for
+/// enemy hp. you should implement opentype variable weight and thicken the
+/// font appropriately to match the hp"): [`Face::weight`].
+pub const DIGITS_FONT: &[u8] = include_bytes!("../fonts/nettai-digits/NettaiDigits[wght].otf");
+
+/// The digits' design's bars, frame pixels at its own height (10): the
+/// game's own sets keep them at every height (the enemies' 8 tall, the chip
+/// window's 11).
+const DIGIT_BAR: f32 = 2.0;
+
+/// How much thicker the weight axis makes a top or bottom bar a unit up it,
+/// in design pixels (2 + (w - 400) / 600: half a pixel at 700).
+const BAR_PER_WEIGHT: f32 = 1.0 / 600.0;
 
 /// The numbers' font, parsed once.
 pub fn digits_font() -> &'static std::sync::Arc<crate::vfont::VectorFont> {
@@ -132,6 +147,21 @@ impl Face {
         matches!(self, Face::ChipCodes | Face::SlotCodes)
     }
 
+    /// The weight its glyphs are drawn at in a face box `height` frame pixels
+    /// tall, where its font has a weight axis (Nettai Digits): the box
+    /// squeezes its design (10 pixels) by `s = height / 10`, its bars with
+    /// it, and the weight gives them back the game's 2 pixels, 400 + 600 x
+    /// (2 / s - 2), within the axis (the enemies' 8: 700; the HP box's 10:
+    /// 400; the chip window's 11: 400, the axis's least). None: a font
+    /// without one.
+    pub fn weight(self, height: f32) -> Option<f32> {
+        let f = self.font().font();
+        let axis = f.variations().find(|v| v.tag() == swash::tag_from_bytes(b"wght"))?;
+        let s = height / self.game().tall.max(1e-3);
+        let w = axis.default_value() + (DIGIT_BAR / s.max(1e-3) - DIGIT_BAR) / BAR_PER_WEIGHT;
+        Some(w.clamp(axis.min_value(), axis.max_value()))
+    }
+
     /// Its game metrics.
     pub fn game(self) -> GameMetrics {
         static DIGITS: std::sync::LazyLock<GameMetrics> = std::sync::LazyLock::new(|| GameMetrics::of(Face::Digits));
@@ -148,13 +178,15 @@ impl Face {
 }
 
 /// A font's metrics as the game's: frame pixels a font unit across (its
-/// glyphs' advance one game cell), and its glyphs' faces' insets in their
-/// cell (frame pixels: from the cell's left to the faces' left, from the
-/// faces' right to the cell's right), read off the font.
+/// glyphs' advance one game cell), its glyphs' faces' insets in their cell
+/// (frame pixels: from the cell's left to the faces' left, from the faces'
+/// right to the cell's right), and their design's height (frame pixels at
+/// a pixel a glyph pixel), read off the font.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GameMetrics {
     pub across: f32,
     pub inset: (f32, f32),
+    pub tall: f32,
 }
 
 impl GameMetrics {
@@ -163,10 +195,11 @@ impl GameMetrics {
         let cmap = f.charmap();
         let advance = f.glyph_metrics(&[]).advance_width(cmap.map(face.chars().chars().next().unwrap_or('0')));
         let across = CELL as f32 / advance.max(1.0);
-        let inks: Vec<[f32; 4]> = face.chars().chars().filter_map(|c| ink_box(face, cmap.map(c))).collect();
+        let inks: Vec<[f32; 4]> = face.chars().chars().filter_map(|c| ink_box(face, cmap.map(c), None)).collect();
         let left = inks.iter().map(|b| b[0]).fold(f32::MAX, f32::min);
         let right = inks.iter().map(|b| b[2]).fold(f32::MIN, f32::max);
-        GameMetrics { across, inset: (left * across, (advance - right) * across) }
+        let tall = inks.iter().map(|b| b[3] - b[1]).fold(0.0, f32::max) * across;
+        GameMetrics { across, inset: (left * across, (advance - right) * across), tall }
     }
 }
 
@@ -251,23 +284,33 @@ impl NumberSet {
 
 /// A glyph of a digit font's ink box, in font units: left, bottom, right,
 /// top (none: no ink).
-fn ink_box(face: Face, glyph: u16) -> Option<[f32; 4]> {
+fn ink_box(face: Face, glyph: u16, weight: Option<f32>) -> Option<[f32; 4]> {
     let f = face.font().font();
     let mut ctx = swash::scale::ScaleContext::new();
-    let mut scaler = ctx.builder(f).size(f.metrics(&[]).units_per_em as f32).build();
+    let mut scaler = ctx.builder(f).size(f.metrics(&coords(face, weight)).units_per_em as f32).variations(axes(weight)).build();
     scaler.scale_outline(glyph).map(|o| {
         let b = o.bounds();
         [b.min.x, b.min.y, b.max.x, b.max.y]
     })
 }
 
-/// `text` shaped in a digit font, in font units: each glyph's character,
-/// glyph, offset and advance.
-fn shaped(face: Face, text: &str) -> Vec<(char, u16, f32, f32)> {
+/// A weight as a font's variation settings (none: its default).
+pub fn axes(weight: Option<f32>) -> impl Iterator<Item = (&'static str, f32)> + Clone {
+    weight.map(|w| ("wght", w)).into_iter()
+}
+
+/// A font's normalized coordinates at a weight.
+fn coords(face: Face, weight: Option<f32>) -> Vec<swash::NormalizedCoord> {
+    face.font().font().variations().normalized_coords(axes(weight).map(|(t, v)| swash::Setting { tag: swash::tag_from_str_lossy(t), value: v })).collect()
+}
+
+/// `text` shaped in a digit font at a weight, in font units: each glyph's
+/// character, glyph, offset and advance.
+fn shaped(face: Face, text: &str, weight: Option<f32>) -> Vec<(char, u16, f32, f32)> {
     let f = face.font().font();
-    let upem = f.metrics(&[]).units_per_em as f32;
+    let upem = f.metrics(&coords(face, weight)).units_per_em as f32;
     let mut ctx = swash::shape::ShapeContext::new();
-    let mut shaper = ctx.builder(f).size(upem).build();
+    let mut shaper = ctx.builder(f).size(upem).variations(axes(weight)).build();
     shaper.add_str(text);
     let chars: Vec<char> = text.chars().collect();
     let starts: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -327,9 +370,11 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
     for (k, (chars, set)) in parts.iter().enumerate() {
         let metrics = set.font.game();
         let u = metrics.across;
-        for (c, glyph, dx, a) in shaped(set.font, &chars.replace(' ', "")) {
+        // (At the weight its set's face box gives it: `Face::weight`.)
+        let weight = set.font.weight(set.face[3] as f32);
+        for (c, glyph, dx, a) in shaped(set.font, &chars.replace(' ', ""), weight) {
             let origin = pen + dx * u;
-            let ink = ink_box(set.font, glyph).map(|[x0, _, x1, _]| (origin + x0 * u, (x1 - x0) * u));
+            let ink = ink_box(set.font, glyph, weight).map(|[x0, _, x1, _]| (origin + x0 * u, (x1 - x0) * u));
             glyphs.push(Glyph { part: k, c, glyph, face: origin + metrics.inset.0, ink });
             pen += a * u;
         }
@@ -367,9 +412,11 @@ pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anc
     Some((out, (ink_start, ink_end)))
 }
 
-/// The character the font draws for the game's "x" of "x2".
+/// The character the font draws for the game's "x" of "x2": the times sign
+/// (Nettai Digits has no `x`: the user, "x shouldn't have a glyph in nettai
+/// digits, it should only be for multiply").
 pub fn times() -> &'static str {
-    if digits_font().covers("×") { "×" } else { "X" }
+    "×"
 }
 
 #[cfg(test)]
@@ -395,12 +442,42 @@ mod tests {
     #[test]
     fn digits_are_a_cell_apart() {
         for face in [Face::Digits, Face::BannerDigits] {
-            let shaped = shaped(face, "0123456789");
+            let shaped = shaped(face, "0123456789", None);
             let m = face.game();
             let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
             assert_eq!(cells, vec![CELL as f32; 10], "{face:?}");
             assert_eq!(m.inset, (1.0, 1.0), "{face:?}");
         }
+    }
+
+    /// Nettai Digits' weight per place keeps its bars the game's 2 pixels:
+    /// the enemies' 8-pixel box at the axis's bold end, the HP box's 10 and
+    /// the chip window's 11 at its regular (the axis's least); the other
+    /// fonts have no axis. At the bold end a digit keeps its cell and its
+    /// ink box, and its bars are half a pixel thicker (the 0's counter).
+    #[test]
+    fn the_weight_keeps_the_bars() {
+        let d = Face::Digits;
+        assert_eq!([8.0, 10.0, 11.0, 14.0].map(|h| d.weight(h)), [Some(700.0), Some(400.0), Some(400.0), Some(400.0)]);
+        assert!((d.weight(9.0).unwrap() - (400.0 + 600.0 * (2.0 / 0.9 - 2.0))).abs() < 1e-3);
+        for face in [Face::BannerDigits, Face::ChipCodes, Face::SlotCodes] {
+            assert_eq!(face.weight(8.0), None, "{face:?}");
+        }
+        let m = d.game();
+        assert_eq!(m.tall, 10.0);
+        let cells: Vec<f32> = shaped(d, "0123456789", Some(700.0)).iter().map(|g| g.3 * m.across).collect();
+        assert_eq!(cells, vec![CELL as f32; 10]);
+        let zero = d.font().font().charmap().map('0');
+        assert_eq!(ink_box(d, zero, Some(700.0)), ink_box(d, zero, None));
+        // (The counter's top: the 0's inner edge 2 pixels under its top at 400, 2.5 at 700.)
+        let counter_top = |w: f32| {
+            let f = d.font().font();
+            let mut ctx = swash::scale::ScaleContext::new();
+            let mut scaler = ctx.builder(f).size(1000.0).variations(axes(Some(w))).build();
+            let o = scaler.scale_outline(zero).unwrap();
+            o.points().iter().filter(|p| p.x > 260.0 && p.x < 540.0 && p.y > 500.0 && p.y < 990.0).map(|p| p.y.round()).fold(0.0f32, f32::max)
+        };
+        assert_eq!((counter_top(400.0), counter_top(700.0)), (800.0, 750.0));
     }
 
     /// The code fonts keep the game's metrics too: every code one advance, a
@@ -410,14 +487,14 @@ mod tests {
     #[test]
     fn codes_are_a_cell_apart() {
         for (face, left, tall) in [(Face::ChipCodes, 0.5, 11.0), (Face::SlotCodes, 1.0, 5.0)] {
-            let shaped = shaped(face, CODES);
+            let shaped = shaped(face, CODES, None);
             let m = face.game();
             let cells: Vec<f32> = shaped.iter().map(|g| g.3 * m.across).collect();
             assert_eq!(cells, vec![CELL as f32; CODES.len()], "{face:?}");
             assert_eq!(m.inset.0, left, "{face:?}");
             assert!(m.inset.1 >= 0.0, "{face:?}: {m:?}");
             let cmap = face.font().font().charmap();
-            let rows = |c: char| ink_box(face, cmap.map(c)).map(|[_, y0, _, y1]| (y0 * m.across, y1 * m.across)).unwrap();
+            let rows = |c: char| ink_box(face, cmap.map(c), None).map(|[_, y0, _, y1]| (y0 * m.across, y1 * m.across)).unwrap();
             assert_eq!(rows('A'), (0.0, tall), "{face:?}");
             let star = rows('*');
             assert!(star.0 >= 0.0 && star.1 <= tall, "{face:?}: {star:?}");
