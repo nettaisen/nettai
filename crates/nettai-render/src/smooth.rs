@@ -137,7 +137,8 @@ impl Overlay {
     /// draws as it is (neither squashed nor turned and at its true place,
     /// or blended or in mosaic, which the frame's composition mixes).
     pub fn of(part: &SpritePart, depth: u32, fades: [Fade; 2], fine: (i32, i32)) -> Option<Overlay> {
-        if part.alpha.is_some() || part.mosaic.is_some() {
+        // (A part kept to some columns, the frame draws: `SpritePart::clip`.)
+        if part.alpha.is_some() || part.mosaic.is_some() || part.clip.is_some() {
             return None;
         }
         let reading = match (part.affine, part.vscale) {
@@ -273,6 +274,7 @@ mod tests {
             vscale,
             affine: None,
             fade: None,
+            clip: None,
         }
     }
 

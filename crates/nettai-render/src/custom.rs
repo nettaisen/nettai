@@ -90,10 +90,18 @@ pub fn local(b: &Battle) -> Option<(&Side, &Screen)> {
     screen_of(b, b.setup.local_side)
 }
 
-/// Whose custom screens are up, by side: open, and its player's result not
-/// sent (its window in, sliding, hidden or playing the Program Advance).
-pub fn screens_up(b: &Battle) -> [bool; 2] {
-    [0u8, 1].map(|side| screen_of(b, side).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { .. })))
+/// How long each side's custom screen stays up yet, by side, as a rank (a
+/// screen of both draws the one that stays longer as the screen, the
+/// other's window leaving over it): none up or its result sent, 0; its
+/// window out, playing the Program Advance, 1; sliding out, 2 and the
+/// slide's ticks left; else (opening, choosing, hidden) past all of those.
+pub fn screens_left(b: &Battle) -> [u8; 2] {
+    [0u8, 1].map(|side| match screen_of(b, side).map(|(_, s)| s.phase) {
+        None | Some(Phase::Sending { .. }) => 0,
+        Some(Phase::ProgramAdvance { .. }) => 1,
+        Some(Phase::Closing { tick }) => 2 + (SLIDE_TICKS - tick as i32).max(0) as u8,
+        Some(_) => u8::MAX,
+    })
 }
 
 /// Side `side`'s custom screen while the battle is on the custom screen.
@@ -544,6 +552,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
         vscale: None,
         affine: None,
         fade: None,
+        clip: None,
     })
 }
 
@@ -1716,7 +1725,9 @@ impl Window {
     /// labels (their letters' columns, where the pack says them: EXE6's
     /// CROSSSELECT tab's cells hold its arrow too, which mirrors), the
     /// picked column's icons and the screen's own emblem. A part within one
-    /// before it goes with that one.
+    /// before it goes with that one. Each part but the labels and the chip
+    /// window goes where what it draws mirrors (`ink`), as the frame about
+    /// it, mirrored pixel by pixel, has it.
     fn upright(&self, v: &View, place: Placement) -> Vec<crate::seat::Block> {
         let l = &self.layout;
         // (Where the cells are as the window slides: its columns past the
@@ -1725,10 +1736,17 @@ impl Window {
         let rect = |[c0, r0, c1, r1]: [usize; 4]| Rect::new(8 * c0 as i32 - place.scroll as i32, 8 * r0 as i32, 8 * (c1 - c0) as i32, 8 * (r1 - r0) as i32);
         let mut out: Vec<crate::seat::Block> = Vec::new();
         let tiles_box = |tiles: std::ops::Range<u16>| self.block(tiles).map(|b| [b.col, b.row, b.col + b.w, b.row + b.h]);
+        // (A part laid in its cells with a margin of the frame about it is
+        // the box of what it draws, `ink`, which goes where its pixels
+        // mirror; the margin is the frame's, mirrored pixel by pixel.)
+        let inked = |cells: [usize; 4]| {
+            let r = rect(cells);
+            crate::seat::Block::whole(self.ink(cells).map_or(r, |[a, b]| Rect::new(r.x + a, r.y, b - a, r.h)))
+        };
         if form_list_map(v).is_some() {
             let [x0, y0] = l.form_names_at.map(usize::from);
             let bars = [x0, y0, x0 + CustomScreen::FORM_NAME_COLUMNS, y0 + 2 * nettai_battle::custom::screen::FORM_LIST_ENTRIES];
-            out.push(crate::seat::Block::whole(rect(bars)));
+            out.push(inked(bars));
         } else if let Some([_, r0, _, r1]) = tiles_box(l.name..l.slots) {
             // (The row under it, but where a label stands there: EXE6's
             // CROSSSELECT tab, whose arrow mirrors with the frame.)
@@ -1736,34 +1754,64 @@ impl Window {
             let (r0, r1, right) = (r0.saturating_sub(1), (r1 + usize::from(!labelled)).min(ROWS), l.column_columns[0] as usize);
             out.push(crate::seat::Block { area: rect([1, r0, right, r1]), frame: rect([0, r0, right, r1]) });
         }
-        let mut boxes: Vec<Rect> = Vec::new();
+        let mut boxes: Vec<crate::seat::Block> = Vec::new();
         let (x0, y0) = slot_cell(0);
         let (x1, y1) = slot_cell(HAND_SLOTS - 1);
-        boxes.push(rect([x0, y0, x1 + 2, y1 + 3]));
-        boxes.extend(self.buttons.iter().filter_map(|&(first, n)| tiles_box(first..first + n as u16)).map(rect));
-        boxes.push(rect(cursor_cells(&l.ok_cursor)));
+        boxes.push(inked([x0, y0, x1 + 2, y1 + 3]));
+        boxes.extend(self.buttons.iter().filter_map(|&(first, n)| tiles_box(first..first + n as u16)).map(inked));
+        boxes.push(inked(cursor_cells(&l.ok_cursor)));
         for (k, label) in v.assets.labels.iter().enumerate() {
             let Some(cells) = tiles_box(label.first..label.last + 1) else { continue };
             let r = rect(cells);
-            boxes.push(match v.assets.letters.labels.get(k).and_then(Option::as_ref) {
+            boxes.push(crate::seat::Block::whole(match v.assets.letters.labels.get(k).and_then(Option::as_ref) {
                 Some(found) if cells[3] - cells[1] == 1 => {
                     let [from, to] = found.letters.span.map(i32::from);
                     Rect::new(r.x + from, r.y, to - from, r.h)
                 }
                 _ => r,
-            });
+            }));
         }
-        boxes.extend(tiles_box(l.column_icons..l.column_icons + 4 * 5).map(rect));
+        boxes.extend(tiles_box(l.column_icons..l.column_icons + 4 * 5).map(inked));
         if let Some(e) = &v.assets.window_emblem {
-            boxes.push(rect([e.x as usize, e.y as usize, e.x as usize + e.width as usize, e.y as usize + e.height as usize]));
+            boxes.push(inked([e.x as usize, e.y as usize, e.x as usize + e.width as usize, e.y as usize + e.height as usize]));
         }
-        for r in boxes {
-            let (mx, my) = (r.x + r.w / 2, r.y + r.h / 2);
+        for b in boxes {
+            let (mx, my) = (b.area.x + b.area.w / 2, b.area.y + b.area.h / 2);
             if !out.iter().any(|o| (o.area.x..o.area.x + o.area.w).contains(&mx) && (o.area.y..o.area.y + o.area.h).contains(&my)) {
-                out.push(crate::seat::Block::whole(r));
+                out.push(b);
             }
         }
         out
+    }
+
+    /// The color the window's map draws at pixel (x, y) of the window (none:
+    /// a clear pixel).
+    fn color_at(&self, x: usize, y: usize) -> Option<u16> {
+        let e = self.map[(y / 8) * COLUMNS + x / 8];
+        let (tx, ty) = (if e.hflip { 7 - x % 8 } else { x % 8 }, if e.vflip { 7 - y % 8 } else { y % 8 });
+        let index = self.tiles.tile(e.tile)[ty * 8 + tx];
+        (index != 0).then(|| self.palettes[e.palette as usize & 15][index as usize])
+    }
+
+    /// What the window's map draws in cells `[c0, r0, c1, r1]` (the first
+    /// column and row, one past the last): its columns but those at either
+    /// side that only carry on what is above or below the cells (one color
+    /// top to bottom, the pixel's over or under them: the ground they are
+    /// laid on, a line of the frame through them), as pixels from the cells'
+    /// left; none where all do. A part laid in its cells with a margin of
+    /// the frame (OK's cells about it, 1 pixel to its left and none to its
+    /// right; EXE6's Beast Out button's, with the picked column's edge) is
+    /// the box of what it draws.
+    fn ink(&self, [c0, r0, c1, r1]: [usize; 4]) -> Option<[i32; 2]> {
+        let (rows, x0, x1) = (8 * r0..8 * r1.min(ROWS), 8 * c0, 8 * c1.min(COLUMNS));
+        let about = [rows.start.checked_sub(1), Some(rows.end).filter(|&y| y < 8 * ROWS)];
+        let margin = |x: usize| {
+            let c = self.color_at(x, rows.start);
+            rows.clone().all(|y| self.color_at(x, y) == c) && about.iter().flatten().any(|&y| self.color_at(x, y) == c)
+        };
+        let a = (x0..x1).find(|&x| !margin(x))?;
+        let b = (x0..x1).rev().find(|&x| !margin(x))? + 1;
+        Some([(a - x0) as i32, (b - x0) as i32])
     }
 
     /// The picked chips' column: the icons the screen copied in
@@ -2273,6 +2321,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
             vscale: None,
             affine: None,
             fade: None,
+            clip: None,
         })
         .collect()
 }
@@ -2321,6 +2370,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             vscale: None,
             affine: None,
             fade: None,
+            clip: None,
         })
         .collect()
 }
@@ -2402,6 +2452,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
         vscale: None,
         affine: Some(Affine { pa: m(cos), pb: m(sin), pc: m(-sin), pd: m(cos), double: false }),
         fade: None,
+        clip: None,
     }
 }
 
@@ -2462,6 +2513,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         vscale: None,
         affine: None,
         fade: None,
+        clip: None,
     })
 }
 
@@ -2522,6 +2574,7 @@ fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Probl
         vscale: None,
         affine: None,
         fade: None,
+        clip: None,
     })
 }
 
@@ -2542,6 +2595,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
         vscale: None,
         affine: None,
         fade: None,
+        clip: None,
     }
 }
 
@@ -2660,9 +2714,10 @@ pub fn draw<'a>(
             }
         }
     }
-    // (Beside the window, over the field: not where the other player's
-    // window covers it.)
-    if screen.look.turn_limit && place.to == COLUMNS && seat.shows == crate::seat::Shows::Screen {
+    // (Beside the window, over the field: not for a window leaving over
+    // the other console's screen; in its half, where the other player's
+    // window is beside it, none of it shows.)
+    if screen.look.turn_limit && place.to == COLUMNS && matches!(seat.shows, crate::seat::Shows::Screen | crate::seat::Shows::Half) {
         // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette. In
         // the enhanced mode its words in the lettering font, in its look,
         // and its cells with the letters taken off (its own ground).
@@ -2683,8 +2738,9 @@ pub fn draw<'a>(
         }
     }
     // (A screen without the names' bar draws no names: EXE4's. Nor a
-    // window beside the other player's, which covers them.)
-    if names_shown(b, screen) && !a.name_bar.is_empty() && seat.shows == crate::seat::Shows::Screen {
+    // window leaving over the other console's screen; in its half, beside
+    // the other player's window, they don't show.)
+    if names_shown(b, screen) && !a.name_bar.is_empty() && matches!(seat.shows, crate::seat::Shows::Screen | crate::seat::Shows::Half) {
         upright.push(crate::seat::Block::whole(draw_names(&v, &w, hud_layer, names_layer, text, problems)));
     }
     // The sprites, as their routines queue them (each in front of the

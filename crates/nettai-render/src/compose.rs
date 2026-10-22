@@ -51,6 +51,19 @@ impl Layer {
 
     /// Move everything drawn by (dx, dy), as a scroll of the layer by
     /// (-dx, -dy) would; what moves in from past the edges is clear.
+    /// Clear every pixel outside the columns `kept`.
+    pub fn keep_columns(&mut self, kept: std::ops::Range<i32>) {
+        if !self.drawn {
+            return;
+        }
+        for y in 0..HEIGHT {
+            for x in (0..WIDTH).filter(|&x| !kept.contains(&(x as i32))) {
+                self.pixels[y * WIDTH + x] = CLEAR;
+                self.past_ranged[y * WIDTH + x] = false;
+            }
+        }
+    }
+
     pub fn shift(&mut self, dx: i32, dy: i32) {
         if (dx, dy) == (0, 0) {
             return;
@@ -155,6 +168,10 @@ pub struct SpritePart<'a> {
     /// sprites' (`Fades::sprites`): on a screen of both, the right
     /// console's custom screen's sprites, faded as that console fades them.
     pub fade: Option<Fade>,
+    /// The screen's columns it is drawn in (the first, one past the last),
+    /// where not all: on a screen of both, a console's pieces kept to its
+    /// part of the screen.
+    pub clip: Option<[i16; 2]>,
 }
 
 /// An affine sprite's matrix (8.8 fixed point) and its box: each pixel of
@@ -387,9 +404,10 @@ fn draw_part(p: &SpritePart, k: u16, obj: &mut SpriteBuffers) {
             Some(n) => (x0 + w + n - 1).div_euclid(n) * n - x0,
             None => w,
         };
+        let [c0, c1] = p.clip.map_or([0, WIDTH as i32], |c| c.map(i32::from));
         for col in 0..span {
             let sx = x0 + col;
-            if !(0..WIDTH as i32).contains(&sx) {
+            if !(0..WIDTH as i32).contains(&sx) || !(c0..c1).contains(&sx) {
                 continue;
             }
             let i = sy as usize * WIDTH + sx as usize;
@@ -421,6 +439,7 @@ fn draw_affine(p: &SpritePart, m: Affine, k: u16, obj: &mut SpriteBuffers) {
     let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
     let tiles_per_row = (p.width / 8) as usize;
     let x0 = if p.x as i32 + bw > 0x200 { p.x as i32 - 0x200 } else { p.x as i32 };
+    let [c0, c1] = p.clip.map_or([0, WIDTH as i32], |c| c.map(i32::from));
     for by in 0..bh {
         let sy = (p.y as i32 + by) & 0xFF;
         if sy >= HEIGHT as i32 {
@@ -429,7 +448,7 @@ fn draw_affine(p: &SpritePart, m: Affine, k: u16, obj: &mut SpriteBuffers) {
         let dy = by - bh / 2;
         for bx in 0..bw {
             let sx = x0 + bx;
-            if !(0..WIDTH as i32).contains(&sx) {
+            if !(0..WIDTH as i32).contains(&sx) || !(c0..c1).contains(&sx) {
                 continue;
             }
             let dx = bx - bw / 2;
@@ -516,6 +535,18 @@ pub fn to_rgb(c: u16) -> u32 {
 mod tests {
     use super::*;
 
+    /// A part kept to some columns draws in those alone.
+    #[test]
+    fn a_clipped_part_draws_in_its_columns() {
+        let tiles = solid_tiles(1, 1);
+        let layer = Layer::new(3, 0);
+        let fades = Fades::default();
+        let parts = [SpritePart { clip: Some([10, 12]), ..part(&tiles, 8, 0, 0, 0x1F) }];
+        let (pixels, _) = compose_with_depth(0, &[&layer], &parts, fades);
+        let drawn: Vec<usize> = (0..16).filter(|&x| pixels[x] == 0x1F).collect();
+        assert_eq!(drawn, [10, 11]);
+    }
+
     fn solid_tiles(n: usize, index: u8) -> Tiles {
         Tiles { pixels: vec![index; n * Tiles::TILE] }
     }
@@ -539,6 +570,7 @@ mod tests {
             vscale: None,
             affine: None,
             fade: None,
+            clip: None,
         }
     }
 
