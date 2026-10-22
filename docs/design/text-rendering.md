@@ -1858,8 +1858,10 @@ scale), unplaced, laid at whole output pixels and faded as it is laid; drawings 
 recently used let go first; the cells it may draw in (the tiles it stands in for aren't drawn); and
 a mask of the pixels it keeps off (`Drawn::off`: the Cross names' portraits stay the picture's, over the vector bar).
 Where something must stay hidden behind a frame (the chatbox's box hides the navi's HP), the tiles are still drawn
-under the shapes, but only where the shapes cover (`shapes::coverage`), so the box keeps its place in front without
-pixel corners showing past its curves. Overlays drawn in front of the window (the spinning emblem) stay in front.
+under the shapes, but only where the shapes cover a pixel wholly (`shapes::coverage`), so the box keeps its place in
+front without pixel corners showing past its curves and cuts (a pixel an edge crosses shows the shapes' own smooth edge
+over what is behind; with centers as the test, the art's one-pixel step showed as a notch under the name tab's light
+cut, the user: "why does it look like there's such a weird cut out here?"). Overlays drawn in front of the window (the spinning emblem) stay in front.
 A drawing may carry words (`Drawing::words`, its `text` elements with `data-words`, left out of what resvg draws): the
 game's string for a key in a box, drawn by the text layer over it in the numbers' font (or the lettering font,
 `data-font`), fitted to the box, a line a share of its height, with an outline of a given width and a slant where the
