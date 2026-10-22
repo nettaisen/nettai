@@ -151,6 +151,10 @@ pub struct SpritePart<'a> {
     pub vscale: Option<i32>,
     /// A rotated or scaled sprite (`sub_802FE7A`'s matrices).
     pub affine: Option<Affine>,
+    /// A fade of its palette its own console runs, in place of the
+    /// sprites' (`Fades::sprites`): on a screen of both, the right
+    /// console's custom screen's sprites, faded as that console fades them.
+    pub fade: Option<Fade>,
 }
 
 /// An affine sprite's matrix (8.8 fixed point) and its box: each pixel of
@@ -182,13 +186,17 @@ pub enum Fade {
 /// the backdrop), `hud` one of the HUD layer's, `dialogue` one of the
 /// chatbox's (background palette 15, which the fades of a range of
 /// palettes leave out), `sprites` one of the sprites' palettes, `screen`
-/// one of every palette.
+/// one of every palette. `other_hud` is the HUD layer's of the other
+/// console on a screen of both (`Palettes::OtherHud`: the right player's
+/// pieces, its own console's fades).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Fades {
     pub stage: Fade,
     pub hud: Fade,
     /// The HUD layer's pixels in palettes 14 and 15 (`Layer::past_ranged`).
     pub hud_past_ranged: Fade,
+    pub other_hud: Fade,
+    pub other_hud_past_ranged: Fade,
     pub dialogue: Fade,
     pub sprites: Fade,
     pub screen: Fade,
@@ -200,8 +208,26 @@ pub enum Palettes {
     #[default]
     Stage,
     Hud,
+    /// The other console's HUD layer on a screen of both
+    /// (`crate::seat`): the right player's, faded as its console fades its
+    /// own.
+    OtherHud,
     /// The chatbox's box (background palette 15).
     Dialogue,
+}
+
+impl Palettes {
+    /// The fades of `fades` that reach a layer of these palettes: of its
+    /// pixels in palettes past the ranged fades' (`Layer::past_ranged`),
+    /// and of the others.
+    pub fn fades(self, fades: &Fades) -> (Fade, Fade) {
+        match self {
+            Palettes::Stage => (fades.stage, fades.stage),
+            Palettes::Hud => (fades.hud_past_ranged, fades.hud),
+            Palettes::OtherHud => (fades.other_hud_past_ranged, fades.other_hud),
+            Palettes::Dialogue => (fades.dialogue, fades.dialogue),
+        }
+    }
 }
 
 /// Combine layers and sprite parts (in hardware order: earlier parts are
@@ -262,12 +288,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
     let mut planes: Vec<Plane> = layers
         .iter()
         .map(|l| {
-            let fade = match l.palettes {
-                Palettes::Stage => fades.stage,
-                Palettes::Hud => fades.hud,
-                Palettes::Dialogue => fades.dialogue,
-            };
-            let past_fade = if l.palettes == Palettes::Hud { fades.hud_past_ranged } else { fade };
+            let (past_fade, fade) = l.palettes.fades(&fades);
             let place = (l.priority as u16) << 8 | (1 + l.order) as u16;
             Plane { pixels: &l.pixels[..PIXELS], past_ranged: &l.past_ranged[..PIXELS], place, depth: layer_depth(l), fade, past_fade }
         })
@@ -285,7 +306,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
             None => (5 << 8, backdrop, BACKDROP_DEPTH),
         };
         let (c, front) = if obj.color[i] != CLEAR && (obj.priority[i] as u16) << 8 < place {
-            let c = apply_fade(obj.color[i], fades.sprites);
+            let c = apply_fade(obj.color[i], parts.get(obj.index[i] as usize).and_then(|p| p.fade).unwrap_or(fades.sprites));
             let c = if obj.alpha[i] != 0xFF { blend(c, color, obj.alpha[i]) } else { c };
             (c, sprite_depth(obj.priority[i], obj.index[i] as usize))
         } else {
@@ -517,6 +538,7 @@ mod tests {
             mosaic: None,
             vscale: None,
             affine: None,
+            fade: None,
         }
     }
 
@@ -720,7 +742,7 @@ mod tests {
             };
             if obj.color[i] != CLEAR {
                 let d = sprite_depth(obj.priority[i], obj.index[i] as usize);
-                consider((obj.priority[i], 0), apply_fade(obj.color[i], fades.sprites), d);
+                consider((obj.priority[i], 0), apply_fade(obj.color[i], parts.get(obj.index[i] as usize).and_then(|p| p.fade).unwrap_or(fades.sprites)), d);
             }
             for l in layers {
                 let c = l.pixels[i];
@@ -729,6 +751,8 @@ mod tests {
                         Palettes::Stage => fades.stage,
                         Palettes::Hud if l.past_ranged[i] => fades.hud_past_ranged,
                         Palettes::Hud => fades.hud,
+                        Palettes::OtherHud if l.past_ranged[i] => fades.other_hud_past_ranged,
+                        Palettes::OtherHud => fades.other_hud,
                         Palettes::Dialogue => fades.dialogue,
                     };
                     consider((l.priority, 1 + l.order), apply_fade(c, fade), layer_depth(l));
@@ -766,11 +790,11 @@ mod tests {
                 2 => Fade::Black((random() % 18) as u8),
                 _ => Fade::White((random() % 18) as u8),
             };
-            let fades = Fades { stage: fade(), hud: fade(), hud_past_ranged: fade(), dialogue: fade(), sprites: fade(), screen: fade() };
+            let fades = Fades { stage: fade(), hud: fade(), hud_past_ranged: fade(), other_hud: fade(), other_hud_past_ranged: fade(), dialogue: fade(), sprites: fade(), screen: fade() };
             let layers: Vec<Layer> = (0..5)
                 .map(|_| {
                     let mut l = Layer::new((random() % 4) as u8, (random() % 3) as u8);
-                    l.palettes = [Palettes::Stage, Palettes::Hud, Palettes::Dialogue][(random() % 3) as usize];
+                    l.palettes = [Palettes::Stage, Palettes::Hud, Palettes::OtherHud, Palettes::Dialogue][(random() % 4) as usize];
                     let shown = random() % 100;
                     for i in 0..PIXELS {
                         if random() % 100 < shown {

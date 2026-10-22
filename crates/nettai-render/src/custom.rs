@@ -90,6 +90,12 @@ pub fn local(b: &Battle) -> Option<(&Side, &Screen)> {
     screen_of(b, b.setup.local_side)
 }
 
+/// Whose custom screens are up, by side: open, and its player's result not
+/// sent (its window in, sliding, hidden or playing the Program Advance).
+pub fn screens_up(b: &Battle) -> [bool; 2] {
+    [0u8, 1].map(|side| screen_of(b, side).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { .. })))
+}
+
 /// Side `side`'s custom screen while the battle is on the custom screen.
 pub fn screen_of(b: &Battle, side: u8) -> Option<(&Side, &Screen)> {
     if !screens_open(b) {
@@ -172,9 +178,9 @@ pub fn face(b: &Battle, side: usize) -> Option<nettai_content_api::FormHandle> {
 /// The HUD layer's shake: in the screen's sub-screens that let it
 /// (`sub_80269E2`: Beast Out, the Cross window, the scrap, the re-deal),
 /// the camera's jitter moves the HUD layer too (`sub_8030158`), in whole
-/// pixels.
-pub fn hud_jitter(b: &Battle) -> (i32, i32) {
-    let Some((_, s)) = local(b) else { return (0, 0) };
+/// pixels. On `side`'s console.
+pub fn hud_jitter(b: &Battle, side: u8) -> (i32, i32) {
+    let Some((_, s)) = screen_of(b, side) else { return (0, 0) };
     let shakes = matches!(
         s.phase,
         Phase::Window { .. } | Phase::Description { window: Some(_), .. } | Phase::Scrapping { .. } | Phase::Redealing { .. }
@@ -182,7 +188,7 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     if !shakes {
         return (0, 0);
     }
-    let (x, y) = b.consoles[b.setup.local_side as usize & 1].camera.jitter;
+    let (x, y) = b.consoles[side as usize & 1].camera.jitter;
     (x >> 16, y >> 16)
 }
 
@@ -194,9 +200,10 @@ pub fn gauge_held(b: &Battle, side: u8) -> bool {
     screen_of(b, side).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { started: true }))
 }
 
-/// The camera's offset (16.16, added to its Y) while the window is in.
-pub fn camera_y(b: &Battle) -> i32 {
-    local(b).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
+/// The camera's offset (16.16, added to its Y) while the window is in, on
+/// `side`'s console.
+pub fn camera_y(b: &Battle, side: u8) -> i32 {
+    screen_of(b, side).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
 }
 
 /// The screen fade the local screen runs on the stage and the battle's
@@ -204,9 +211,10 @@ pub fn camera_y(b: &Battle) -> i32 {
 /// (the stage and the HUD layer) and sprite palettes 0-10 half way (modes
 /// 0x64 and 0x60); the Program Advance's and a dark chip's background
 /// palettes 0-8 and sprite palettes 0-9 (0x14 and 0x10, 0x54 and 0x50); a
-/// Cross's choice whitens every palette (4, and 0 back).
-pub fn fade(b: &Battle) -> Option<Fade> {
-    let (_, s) = local(b)?;
+/// Cross's choice whitens every palette (4, and 0 back). On `side`'s
+/// console.
+pub fn fade(b: &Battle, side: u8) -> Option<Fade> {
+    let (_, s) = screen_of(b, side)?;
     let f = s.look.fade;
     let (shown, white) = match f.mode {
         FadeMode::HalfOut | FadeMode::ProgramAdvance | FadeMode::Shade => (true, false),
@@ -223,20 +231,20 @@ pub fn fade(b: &Battle) -> Option<Fade> {
 
 /// The battle's objects' share of the screen's fade (a white fade is every
 /// sprite's: `sprite_fade`).
-pub fn object_fade(b: &Battle) -> Option<Fade> {
-    fade(b).filter(|f| !matches!(f, Fade::White(_)))
+pub fn object_fade(b: &Battle, side: u8) -> Option<Fade> {
+    fade(b, side).filter(|f| !matches!(f, Fade::White(_)))
 }
 
 /// The screen's fade of every sprite palette: a Cross's choice's white.
-pub fn sprite_fade(b: &Battle) -> Option<Fade> {
-    fade(b).filter(|f| matches!(f, Fade::White(_)))
+pub fn sprite_fade(b: &Battle, side: u8) -> Option<Fade> {
+    fade(b, side).filter(|f| matches!(f, Fade::White(_)))
 }
 
 /// The second fade record's, which only a dark chip's hover runs (modes
 /// 0x5C and 0x58): background palettes 9-13 (the window) and sprite
-/// palettes 10-13 (the screen's sprites).
-pub fn window_fade(b: &Battle) -> Option<Fade> {
-    let (_, s) = local(b)?;
+/// palettes 10-13 (the screen's sprites). On `side`'s console.
+pub fn window_fade(b: &Battle, side: u8) -> Option<Fade> {
+    let (_, s) = screen_of(b, side)?;
     let f = s.look.window_fade;
     let shown = match f.mode {
         FadeMode::ShadeWindow => true,
@@ -248,12 +256,12 @@ pub fn window_fade(b: &Battle) -> Option<Fade> {
 }
 
 /// The HUD layer's fade: Beast Out's and a Cross's (its palettes are among
-/// the first record's), else the second record's.
-pub fn hud_fade(b: &Battle) -> Option<Fade> {
-    let (_, s) = local(b)?;
+/// the first record's), else the second record's. On `side`'s console.
+pub fn hud_fade(b: &Battle, side: u8) -> Option<Fade> {
+    let (_, s) = screen_of(b, side)?;
     match s.look.fade.mode {
-        FadeMode::HalfOut | FadeMode::HalfOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b),
-        _ => window_fade(b),
+        FadeMode::HalfOut | FadeMode::HalfOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b, side),
+        _ => window_fade(b, side),
     }
 }
 
@@ -535,6 +543,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
         mosaic: None,
         vscale: None,
         affine: None,
+        fade: None,
     })
 }
 
@@ -558,7 +567,7 @@ impl View<'_> {
     /// A sprite palette of the screen's, as the second fade record leaves
     /// it.
     fn faded(&self, p: Palette) -> Palette {
-        match window_fade(self.b) {
+        match window_fade(self.b, self.side) {
             Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
             None => p,
         }
@@ -712,6 +721,9 @@ struct Window {
     /// first tile, how many, its name and the set it shows, for the
     /// enhanced mode to draw as shapes.
     buttons_laid: Vec<(u16, usize, String, usize)>,
+    /// Those buttons' tiles (the first, how many), for a mirrored window's
+    /// blocks (`upright`).
+    buttons: Vec<(u16, usize)>,
     /// The element whose icon was laid without its frame (its family), for
     /// the enhanced mode to draw the frame under it as a shape.
     element_framed: Option<usize>,
@@ -802,6 +814,7 @@ impl Window {
             empty_icons: Vec::new(),
             blank_plates: Vec::new(),
             buttons_laid: Vec::new(),
+            buttons: Vec::new(),
             element_framed: None,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
@@ -1604,13 +1617,16 @@ impl Window {
                             // (At its own place: EXE4's UNITE button.)
                             Some(p) => {
                                 self.placed_button(look.pack, p, set);
-                                self.buttons_laid.push((p.first_tile, look.pack.width as usize * look.pack.height as usize, name, set));
+                                let n = look.pack.width as usize * look.pack.height as usize;
+                                self.buttons_laid.push((p.first_tile, n, name, set));
+                                self.buttons.push((p.first_tile, n));
                             }
                             // (The slots after it start past its tiles; the
                             // special slot is the last.)
                             None => {
                                 self.tiles.put_part(at, &look.pack.tiles, look.set(state), look.count);
                                 self.buttons_laid.push((at, look.count, name, set));
+                                self.buttons.push((at, look.count));
                                 at += look.count as u16;
                             }
                         }
@@ -1632,10 +1648,12 @@ impl Window {
                             Some(p) => {
                                 self.placed_button(b, p, set);
                                 self.buttons_laid.push((p.first_tile, n, name, set));
+                                self.buttons.push((p.first_tile, n));
                             }
                             None => {
                                 self.tiles.put_part(at, &b.tiles, n * set, n);
                                 self.buttons_laid.push((at, n, name, set));
+                                self.buttons.push((at, n));
                             }
                         }
                     }
@@ -1668,7 +1686,7 @@ impl Window {
                 }
                 _ => 9,
             };
-            let (x, y) = (1 + 2 * (s % 5), 13 + 3 * (s / 5));
+            let (x, y) = slot_cell(s);
             for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                 self.map[(y + dy) * COLUMNS + x + dx].palette = palette;
             }
@@ -1678,9 +1696,53 @@ impl Window {
     /// Slot `s`'s icon cells (the first ten slots': `slots`' palettes'),
     /// where its empty box was laid.
     fn empty_icon_at(&mut self, s: usize) {
-        if s < 10 {
-            self.empty_icons.push((1 + 2 * (s % 5), 13 + 3 * (s / 5)));
+        if s < HAND_SLOTS {
+            self.empty_icons.push(slot_cell(s));
         }
+    }
+
+    /// The window's parts that read, each the box of its cells on the
+    /// screen as the window is at `place` (a block of `seat::Mirror`, moved
+    /// whole where the window is mirrored): the chip window (its runs, the
+    /// layout's tiles from the name's to the slots', with the box they are
+    /// drawn in: its rows and a row about them, the window's columns but
+    /// its edge's before the picked column's, moved as the box, which is in
+    /// the middle of those columns, mirrors), the hand (the slots' cells),
+    /// the buttons, OK (the cells its cursor's corners go about), the
+    /// labels, the picked column's icons and the screen's own emblem. A
+    /// part within one before it goes with that one.
+    fn upright(&self, v: &View, place: Placement) -> Vec<crate::seat::Block> {
+        let l = &self.layout;
+        // (Where the cells are as the window slides: its columns past the
+        // screen's left edge left of it, not wrapped as the layer wraps
+        // them, which the screen shows only once they are in.)
+        let rect = |[c0, r0, c1, r1]: [usize; 4]| Rect::new(8 * c0 as i32 - place.scroll as i32, 8 * r0 as i32, 8 * (c1 - c0) as i32, 8 * (r1 - r0) as i32);
+        let mut out: Vec<crate::seat::Block> = Vec::new();
+        let tiles_box = |tiles: std::ops::Range<u16>| self.block(tiles).map(|b| [b.col, b.row, b.col + b.w, b.row + b.h]);
+        if let Some([_, r0, _, r1]) = tiles_box(l.name..l.slots) {
+            let (r0, r1, right) = (r0.saturating_sub(1), (r1 + 1).min(ROWS), l.column_columns[0] as usize);
+            out.push(crate::seat::Block { area: rect([1, r0, right, r1]), frame: rect([0, r0, right, r1]) });
+        }
+        // (Each a box of cells: its first column and row, one past its last.)
+        let mut boxes: Vec<[usize; 4]> = Vec::new();
+        let (x0, y0) = slot_cell(0);
+        let (x1, y1) = slot_cell(HAND_SLOTS - 1);
+        boxes.push([x0, y0, x1 + 2, y1 + 3]);
+        boxes.extend(self.buttons.iter().filter_map(|&(first, n)| tiles_box(first..first + n as u16)));
+        boxes.push(cursor_cells(&l.ok_cursor));
+        boxes.extend(v.assets.labels.iter().filter_map(|label| tiles_box(label.first..label.last + 1)));
+        boxes.extend(tiles_box(l.column_icons..l.column_icons + 4 * 5));
+        if let Some(e) = &v.assets.window_emblem {
+            boxes.push([e.x as usize, e.y as usize, e.x as usize + e.width as usize, e.y as usize + e.height as usize]);
+        }
+        for cells in boxes {
+            let r = rect(cells);
+            let (mx, my) = (r.x + r.w / 2, r.y + r.h / 2);
+            if !out.iter().any(|o| (o.area.x..o.area.x + o.area.w).contains(&mx) && (o.area.y..o.area.y + o.area.h).contains(&my)) {
+                out.push(crate::seat::Block::whole(r));
+            }
+        }
+        out
     }
 
     /// The picked chips' column: the icons the screen copied in
@@ -2068,7 +2130,8 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
         )
 }
 
-fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
+/// Returns the names' box on the screen (their cells to its right edge).
+fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) -> Rect {
     let side = (v.side ^ 1) as usize;
     let other = v.b.stats[side].navi;
     // (Its variant name when its side's rules ask: EXE5's Hub Style in a link
@@ -2114,6 +2177,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
         }
     }
     fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * name_col, 0), (Role::FittedCell, Align::Left));
+    Rect::new(8 * name_col, 0, crate::compose::WIDTH as i32 - 8 * name_col, 16)
 }
 
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
@@ -2132,6 +2196,28 @@ const CHIP_CURSOR: CursorShape = CursorShape {
         [(1, 1, false, false), (1, 0xC, true, false), (0xC, 0xC, true, true), (0xC, 1, false, true)],
     ],
 };
+
+/// The slots of the hand (`slots`' first ten: two rows of five), and where
+/// slot `s`'s cells start (its icon's top left; its code under it, two rows
+/// in all and a row apart from the next).
+const HAND_SLOTS: usize = 10;
+
+fn slot_cell(s: usize) -> (usize, usize) {
+    (1 + 2 * (s % 5), 13 + 3 * (s / 5))
+}
+
+/// The cells a cursor at `p` goes about (its corners sit 3 pixels out from
+/// the place's edges), to the nearest cell edges: their first column and
+/// row, one past their last.
+fn cursor_cells(p: &nettai_assets::CursorPlace) -> [usize; 4] {
+    let corners = &p.corners[0];
+    let xs = corners.iter().map(|c| p.x as i32 - 3 + c.1 as i32);
+    let ys = corners.iter().map(|c| p.y as i32 - 3 + c.0 as i32);
+    let edge = |v: i32| (v + 4).div_euclid(8).max(0) as usize;
+    let (x0, x1) = (xs.clone().min().unwrap_or(0) + 3, xs.max().unwrap_or(0) + 8 - 3);
+    let (y0, y1) = (ys.clone().min().unwrap_or(0) + 3, ys.max().unwrap_or(0) + 8 - 3);
+    [edge(x0), edge(y0), edge(x1), edge(y1)]
+}
 
 /// The cursor at a place the pack gives (OK's, a button's).
 fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
@@ -2165,6 +2251,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
             mosaic: None,
             vscale: None,
             affine: None,
+            fade: None,
         })
         .collect()
 }
@@ -2212,6 +2299,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             mosaic: None,
             vscale: None,
             affine: None,
+            fade: None,
         })
         .collect()
 }
@@ -2292,6 +2380,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
         mosaic: None,
         vscale: None,
         affine: Some(Affine { pa: m(cos), pb: m(sin), pc: m(-sin), pd: m(cos), double: false }),
+        fade: None,
     }
 }
 
@@ -2351,6 +2440,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         mosaic: None,
         vscale: None,
         affine: None,
+        fade: None,
     })
 }
 
@@ -2410,6 +2500,7 @@ fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Probl
         mosaic: None,
         vscale: None,
         affine: None,
+        fade: None,
     })
 }
 
@@ -2429,14 +2520,21 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
         mosaic: None,
         vscale: None,
         affine: None,
+        fade: None,
     }
 }
 
-/// Draw the local player's custom screen: the window on the HUD layer, the
-/// enemy names on `names_layer` (BG0), the sprites into `list`.
-/// `emblem` holds the emblem sprite's tiles (`emblem_sprite`) and
-/// `emblem_palette` the emblem's palette (`lookups::emblem`); the enhanced mode's
-/// strings go to `text`.
+/// Draw `seat`'s player's custom screen as its console draws it: the window
+/// on the HUD layer, the enemy names on the names layer (BG0), the sprites
+/// into `list`. `emblem` holds the emblem sprite's tiles (`emblem_sprite`)
+/// and `emblem_palette` the emblem's palette (`lookups::emblem`); the
+/// enhanced mode's strings go to `text`. Where the seat mirrors (the right
+/// of a screen of both), it is drawn in the `scratch` layers as its console
+/// draws it and put in the right half by a `seat::Mirror`: the frame
+/// mirrored, the parts that read moved whole (`Window::upright`, the
+/// Program Advance's names, the late turns' block, the enemy names), its
+/// sprites in their console's fade of them (`sprite_fade`, which the
+/// frame's sprites' isn't).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &'a Battle,
@@ -2444,18 +2542,28 @@ pub fn draw<'a>(
     packs: &crate::packs::Packs<'a>,
     emblem: &'a Tiles,
     emblem_palette: Palette,
-    hud_layer: &mut Layer,
-    names_layer: &mut Layer,
+    (seat, sprite_fade): (crate::seat::Seat, Fade),
+    (out_hud, out_names): (&mut Layer, &mut Layer),
+    (scratch_hud, scratch_names): (&mut Layer, &mut Layer),
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
     problems: &mut Problems,
 ) {
-    let Some((_, screen)) = local(b) else { return };
+    let Some((_, screen)) = screen_of(b, seat.side) else { return };
     let a = &assets.custom;
     if !crate::lookups::custom_graphics(a, problems) {
         return;
     }
-    let side = b.setup.local_side & 1;
+    let side = seat.side & 1;
+    let mirrored = seat.mirrored();
+    if mirrored {
+        scratch_hud.clear();
+        scratch_names.clear();
+    }
+    let mark = text.mark();
+    let (hud_layer, names_layer): (&mut Layer, &mut Layer) = if mirrored { (&mut *scratch_hud, &mut *scratch_names) } else { (&mut *out_hud, &mut *out_names) };
+    // (The parts that read beside the window's own, for the mirror.)
+    let mut upright: Vec<crate::seat::Block> = Vec::new();
     let v = View {
         b,
         side,
@@ -2479,7 +2587,7 @@ pub fn draw<'a>(
         // placeholder of a chip it cut, draws these otherwise: its class's
         // and element's colors, no picture, no damage.)
         let digits = w.layout.digits..w.layout.digits + 6;
-        let (jx, jy) = hud_jitter(b);
+        let (jx, jy) = hud_jitter(b, side);
         for [x0, y0, x1, y1] in w.cells_rects(place, |e| matches!(e.palette & 15, 9..=11) || digits.contains(&e.tile)) {
             problems.mark([x0 - jx, y0 - jy, x1 - jx, y1 - jy], what.clone());
         }
@@ -2489,7 +2597,7 @@ pub fn draw<'a>(
         if let Some([x0, y0, x1, y1]) = w.tiles_rect(place, tiles) {
             // (Where the layer's shake leaves it: a button's window shakes
             // the layer, `hud_jitter`.)
-            let (jx, jy) = hud_jitter(b);
+            let (jx, jy) = hud_jitter(b, side);
             problems.mark([x0 - jx, y0 - jy, x1 - jx, y1 - jy], what);
         }
     }
@@ -2504,6 +2612,7 @@ pub fn draw<'a>(
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
     for (k, row, palette) in advance_names {
+        upright.push(crate::seat::Block::whole(Rect::new(layer_x(col, place.scroll), 8 * row, 8 * ADVANCE_NAME_CELLS as i32, 16)));
         let first = w.layout.art + (2 * ADVANCE_NAME_CELLS * k) as u16;
         for i in 0..2 * ADVANCE_NAME_CELLS as u16 {
             let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
@@ -2521,10 +2630,13 @@ pub fn draw<'a>(
             }
         }
     }
-    if screen.look.turn_limit && place.to == COLUMNS {
+    // (Beside the window, over the field: not where the other player's
+    // window covers it.)
+    if screen.look.turn_limit && place.to == COLUMNS && seat.shows == crate::seat::Shows::Screen {
         // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette. In
         // the enhanced mode its words in the lettering font, in its look,
         // and its cells with the letters taken off (its own ground).
+        upright.push(crate::seat::Block::whole(Rect::new(layer_x(15, place.scroll), 4 * 8, 7 * 8, 16)));
         let palette = w.palettes[w.layout.turn_limit_palette as usize & 15];
         let found = a.letters.turn_limit.as_ref();
         if let Some((words, look)) = crate::hud::lettered_word(b, text, "turn-limit", found.map(|f| &f.letters), &palette, Lettering::display, problems) {
@@ -2540,9 +2652,10 @@ pub fn draw<'a>(
             w.cell(hud_layer, e, 15 + (i % 7) as i32, 4 + (i / 7) as i32, place.scroll);
         }
     }
-    // (A screen without the names' bar draws no names: EXE4's.)
-    if names_shown(b, screen) && !a.name_bar.is_empty() {
-        draw_names(&v, &w, hud_layer, names_layer, text, problems);
+    // (A screen without the names' bar draws no names: EXE4's. Nor a
+    // window beside the other player's, which covers them.)
+    if names_shown(b, screen) && !a.name_bar.is_empty() && seat.shows == crate::seat::Shows::Screen {
+        upright.push(crate::seat::Block::whole(draw_names(&v, &w, hud_layer, names_layer, text, problems)));
     }
     // The sprites, as their routines queue them (each in front of the
     // one before).
@@ -2551,6 +2664,15 @@ pub fn draw<'a>(
     // (Parts drawn as shapes in the enhanced mode, each queued with its
     // tag: `drawn_parts`.)
     let mut tags: Vec<Option<u32>> = Vec::new();
+    // (Each sprite's parts, for the mirror to place as one.)
+    let mut sprites: Vec<std::ops::Range<usize>> = Vec::new();
+    let mut from = 0;
+    let mut sprite_ends = |queue: &Vec<SpritePart<'a>>| {
+        if queue.len() > from {
+            sprites.push(from..queue.len());
+            from = queue.len();
+        }
+    };
     // Where the screen's states are the choosing's, its tick queues the
     // Regular chip's frame before the state's own sprites (EXE4's
     // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
@@ -2561,6 +2683,7 @@ pub fn draw<'a>(
     if drawn.regular && regular_first {
         let parts = drawn_parts(vec![regular_part(&v, a)], &a.shapes.regular, 16, text, &mut tags, queue.len());
         queue.extend(parts);
+        sprite_ends(&queue);
     }
     // The offered form's flying icon (EXE5's soul choice's: its state 9's
     // routines draw it before the screen's others).
@@ -2568,16 +2691,20 @@ pub fn draw<'a>(
         && let Some(at) = b.offer_flight(v.side)
     {
         queue.extend(offered_flight(&v, at, problems));
+        sprite_ends(&queue);
     }
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(&v, packs, problems));
+    sprite_ends(&queue);
     if let Some(frame) = drawn.cursor {
         let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, 1, text, &mut tags, queue.len());
         queue.extend(parts);
+        sprite_ends(&queue);
     }
     if let Some(part) = element_part(&v, a, place) {
         let parts = framed_element(part, a, text, &mut tags, queue.len());
         queue.extend(parts);
+        sprite_ends(&queue);
     }
     // (A screen with an emblem of its own draws it on the window's map.)
     if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
@@ -2589,17 +2716,47 @@ pub fn draw<'a>(
             problems.known(if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y }, 32, 32, why);
         }
         queue.push(part);
+        sprite_ends(&queue);
     }
     if drawn.regular && !regular_first {
         let parts = drawn_parts(vec![regular_part(&v, a)], &a.shapes.regular, 16, text, &mut tags, queue.len());
         queue.extend(parts);
+        sprite_ends(&queue);
     }
     if drawn.held {
         queue.extend(held_part(&v, packs, problems));
+        sprite_ends(&queue);
     }
     if let Some(frame) = drawn.form_list_cursor {
         let parts = drawn_parts(form_list_cursor_parts(&v, a, frame), &a.shapes.form_list_cursor, 1, text, &mut tags, queue.len());
         queue.extend(parts);
+        sprite_ends(&queue);
+    }
+    if mirrored {
+        // The window as its console draws it, put in the right half: the
+        // layers' pixels, the sprites (each as one; the items of a sprite
+        // drawn as shapes with it), the text items.
+        upright.splice(0..0, w.upright(&v, place));
+        let mirror = crate::seat::Mirror::new(upright);
+        mirror.layer(scratch_hud, out_hud);
+        mirror.layer(scratch_names, out_names);
+        let before: Vec<i32> = queue.iter().map(crate::seat::part_x).collect();
+        for range in sprites {
+            mirror.group(&mut queue[range]);
+        }
+        for part in &mut queue {
+            part.fade = Some(sprite_fade);
+        }
+        let moved: Vec<(u32, i32)> =
+            queue.iter().zip(&before).enumerate().filter_map(|(k, (p, &x))| Some((tags.get(k).copied().flatten()?, crate::seat::part_x(p) - x))).collect();
+        text.rework_since(mark, |plane, item| match plane {
+            Plane::Sprite(tag) => {
+                let dx = moved.iter().find(|(t, _)| *t == tag).map_or(0, |&(_, dx)| dx);
+                let clip = if item.clip == Rect::SCREEN { item.clip } else { item.clip.offset(dx, 0) };
+                vec![TextItem { rect: item.rect.offset(dx, 0), clip, ..item }]
+            }
+            _ => mirror.item(item),
+        });
     }
     for (k, part) in queue.into_iter().enumerate() {
         list.insert_tagged(SPRITE_LAYER, 0, vec![part], tags.get(k).copied().flatten());
@@ -2610,6 +2767,15 @@ pub fn draw<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// OK's cells, from where its cursor's corners go about it (EXE5's:
+    /// at (88, 112), 3 pixels out): columns 11 to 13, rows 14 to 16.
+    #[test]
+    fn a_cursors_corners_go_about_its_cells() {
+        let p = nettai_assets::CursorPlace { x: 88, y: 112, corners: [[(2, 1, false, false), (2, 22, true, false), (20, 22, true, true), (20, 1, false, true)]; 2] };
+        assert_eq!(cursor_cells(&p), [11, 14, 14, 17]);
+        assert_eq!((slot_cell(0), slot_cell(HAND_SLOTS - 1)), ((1, 13), (9, 16)));
+    }
 
     #[test]
     fn the_window_slides_in_and_out_a_column_or_two_a_tick() {

@@ -64,10 +64,10 @@ pub struct Shown<'a> {
     portrait: Option<(&'a SpriteSheet, PortraitLook)>,
 }
 
-/// The local player's chatbox, if one is up, with its text composed.
-pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
-    let (_, screen) = crate::custom::local(b)?;
-    let navi = b.stats[b.setup.local_side as usize & 1].navi;
+/// Side `side`'s player's chatbox, if one is up, with its text composed.
+pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, packs: &crate::packs::Packs<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
+    let (_, screen) = crate::custom::screen_of(b, side)?;
+    let navi = b.stats[side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
     // (`DisplayText`); a translation prints in step with the content's
     // own, whose lines and characters the chatbox's timing counts
@@ -131,7 +131,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, crate::custom::console_version(b, packs, b.setup.local_side), problems);
+                note_true_face(b, navi, crate::custom::console_version(b, packs, side), problems);
             }
             sheet.map(|sheet| (sheet, look))
         }
@@ -456,6 +456,7 @@ fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (
         mosaic: None,
         vscale: None,
         affine: None,
+        fade: None,
     }
 }
 

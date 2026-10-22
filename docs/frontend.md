@@ -1479,6 +1479,32 @@ object goes to the mirror of its place about the object's.
   picture's columns that show centered on its half.
 - The warning markers each console shows, once.
 
+On the custom screen (both screens open on one tick, and the fight waits
+for both: `seat::Shows`):
+
+- Both players choosing (C1): both windows, the left's as its console draws
+  it, the right's mirrored into the right half; the HUD's headers beside
+  them (HP boxes, faces, the enemy names, the late turns' block) are
+  covered; the time left of the screen that ends first between the two
+  windows at the bottom (`hud::time_between`).
+- One player's result sent while the other chooses (W2): the chooser's
+  console's screen alone, its window and its header and all it draws (the
+  other navi's HP under it too), the right's mirrored; the field moved
+  down with its window and faded with its screen (`seat::field_side`).
+- A mirrored window (`seat::Mirror`) is drawn as its console draws it and
+  put in the right half: its frame mirrored pixel by pixel (a drawing
+  flipped), and the parts that read (`custom::Window::upright`: the chip
+  window with its box, which mirrors as frame about its middle, the hand,
+  the buttons, OK, the labels' letters, the picked column's icons, the
+  Program Advance's names, the enemy names) moved whole to their mirrored
+  places; its sprites (the cursor, the Regular chip's frame, the element,
+  the orb) moved with the part under them, never flipped. Each console's
+  HUD layer and BG0 are its own (`Palettes::OtherHud`, `Plane::OtherHud`):
+  shaken and faded as its console shakes and fades them, its sprites in its
+  console's fade (`SpritePart::fade`).
+- A chatbox the custom screen runs spans the screen: the left player's, else
+  the right's, as its console draws it.
+
 ### What the engine gives the frontend
 
 Presentation outputs: the simulation reads none of them (`digest.rs` lists

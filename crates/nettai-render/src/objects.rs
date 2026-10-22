@@ -574,6 +574,7 @@ pub fn queue_objects<'a>(
                     mosaic: look.mosaic,
                     vscale: None,
                     affine: None,
+                    fade: None,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 // Where the rules count the sprite's priority into the
@@ -692,6 +693,7 @@ mod tests {
             mosaic: None,
             vscale: None,
             affine: None,
+            fade: None,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);

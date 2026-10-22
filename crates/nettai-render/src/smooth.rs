@@ -272,6 +272,7 @@ mod tests {
             mosaic: None,
             vscale,
             affine: None,
+            fade: None,
         }
     }
 

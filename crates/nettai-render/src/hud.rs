@@ -8,7 +8,7 @@
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
-use crate::seat::{At, Seat};
+use crate::seat::{At, Seat, Shows};
 use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
@@ -674,7 +674,7 @@ pub fn draw<'a>(
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
     shared: &'a SharedGlyphs,
-    seat: Seat,
+    (seat, view): (Seat, &View),
     custom_gauge: bool,
     smooth: Smooth,
     (layer, scratch): (&mut Layer, &mut Layer),
@@ -686,8 +686,11 @@ pub fn draw<'a>(
     if hud.tiles.is_empty() {
         return;
     }
-    // (The view drawn: the local console's, the left one's of two.)
-    let view = crate::render::Renderer::view(b);
+    // (Both windows up, over both headers: nothing of the HUD's but the
+    // time left between them, `time_between`.)
+    if matches!(seat.shows, Shows::Window | Shows::Nothing) {
+        return;
+    }
     let local = seat.side;
     let player = b.player(local);
     let open = custom_open(b, local);
@@ -1012,7 +1015,7 @@ pub fn draw<'a>(
     // `RoundSetup::custom_screen_limit`): the seconds left on the local
     // player's screen, the whole time it counts (`time_left`).
     if let Some(left) = b.custom_time_left(local) {
-        time_left(layer, text, hud, left, seat, problems);
+        time_left(layer, text, hud, left, TimeAt::Corner(seat), problems);
     }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
     // the pack's place), which every console shows.
@@ -1072,7 +1075,7 @@ pub fn draw<'a>(
         let shows_opponent = b.chip_hud_for(local).opponent;
         for side in 0..2u8 {
             if let Some(r) = b.player(side).filter(|_| side == local || (seat.draws_other() && (!link || shows_opponent))) {
-                icon_parts(b, packs, r, &view, seat, list, problems);
+                icon_parts(b, packs, r, view, seat, list, problems);
             }
         }
     }
@@ -1096,11 +1099,11 @@ pub fn draw<'a>(
         // not (`sub_800362C`): a navi that blinks after a hit or is
         // invisible keeps its number.
         let number = e.number;
-        if seat.both() && (navi(number.object) || (seat.mirrored() && numbered_left(number.object))) {
+        if seat.shows == Shows::Own && (navi(number.object) || (seat.mirrored() && numbered_left(number.object))) {
             continue;
         }
         let o = b.objects.get(number.object);
-        let p = project_hud((o.pos.x, o.pos.y, o.pos.z), &view);
+        let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
         if !on_screen(p) {
             continue;
         }
@@ -1113,7 +1116,7 @@ pub fn draw<'a>(
         let x = seat.about(p.x, number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 }, 32);
         let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.color.min(2) as usize];
-        let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
+        let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), view);
         // In the enhanced mode the number (the HP, or the damage taken) in
         // the numbers' font, in the digits' look (`numbers::laid`): centered
         // where the original's is, or the damage taken from where it starts,
@@ -1227,7 +1230,7 @@ pub fn draw<'a>(
                     group.iter_mut().for_each(|part| part.palette = p);
                 }
             }
-            if seat.both() && b.result_banner_for(local) == Some(id) {
+            if seat.shows == Shows::Own && b.result_banner_for(local) == Some(id) {
                 // (Its picture's columns that show, centered on the middle
                 // of its player's half.)
                 let (from, to) = banner_ink(layout);
@@ -1299,7 +1302,7 @@ pub fn draw<'a>(
         let group = (0..5).map(|k| glyph(tiles, if word.is_some() { 0 } else { k }, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
         insert_named(list, text, NAME_BUCKET, group, word);
     }
-    warning_parts(b, hud, &view, seat, list, problems);
+    warning_parts(b, hud, view, seat, list, problems);
 }
 
 /// The middle of the left half of the screen, where a result banner goes on
@@ -1326,10 +1329,10 @@ fn banner_ink(layout: &nettai_assets::BannerLayout) -> (i32, i32) {
 /// named as its user's console names it ([`Battle::telops_for_both`]), and
 /// the right's none.
 fn telops_of(b: &Battle, seat: Seat) -> [Option<(ShownTelop, Banner)>; 2] {
-    match seat.at {
-        At::Alone => b.telops_for(seat.side),
-        At::Left => b.telops_for_both(seat.side),
-        At::Right => [None, None],
+    match (seat.shows, seat.at) {
+        (Shows::Screen, _) => b.telops_for(seat.side),
+        (_, At::Right) => [None, None],
+        _ => b.telops_for_both(seat.side),
     }
 }
 
@@ -1337,9 +1340,9 @@ fn telops_of(b: &Battle, seat: Seat) -> [Option<(ShownTelop, Banner)>; 2] {
 /// right of a screen of both, its own result's alone (the others are the
 /// left's).
 fn banner_of(b: &Battle, seat: Seat) -> Option<BannerId> {
-    match seat.at {
-        At::Alone | At::Left => b.banner_for(seat.side),
-        At::Right => b.result_banner_for(seat.side),
+    match (seat.shows, seat.at) {
+        (Shows::Own, At::Right) => b.result_banner_for(seat.side),
+        _ => b.banner_for(seat.side),
     }
 }
 
@@ -1545,10 +1548,17 @@ const EMOTION_WINDOW_Y: i32 = 18;
 /// place of the HP box's digits, a cell a digit, the last ending at the
 /// screen's right edge, in the plain text's colors.
 /// On the right of a screen of both, at the left edge, read as laid.
-fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, seat: Seat, problems: &mut Problems) {
+///
+/// Between the two windows of a screen of both where both players choose
+/// (`TimeAt::Between`, C1), centered at the bottom where the windows meet.
+fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, at: TimeAt, problems: &mut Problems) {
     let seconds = left.div_ceil(60).to_string();
     let pal = &hud.hp_palettes[0];
     let width = crate::compose::WIDTH as i32;
+    let y = match at {
+        TimeAt::Corner(_) => EMOTION_WINDOW_Y,
+        TimeAt::Between => BETWEEN_WINDOWS_Y,
+    };
     let lettered = text
         .draws_numbers()
         .then(|| crate::lookups::letters(hud.letters.hp_digits.as_ref(), || "the HP box's digits".into(), problems))
@@ -1557,8 +1567,12 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, seat:
             // (In the plain text's colors, the HP box palette's 1 with its 2 a shadow: no box is under it.)
             let set = crate::numbers::NumberSet { fill: vec![pal[1]], rim: None, shadow: Some(pal[2]), ..crate::numbers::NumberSet::of(digits, pal) };
             let end = crate::numbers::picture_span(&set, width - crate::numbers::CELL, 1).1;
-            let anchor = if seat.mirrored() { crate::numbers::Anchor::Left(width as f32 - end) } else { crate::numbers::Anchor::Right(end) };
-            crate::numbers::laid(text, &[(seconds.clone(), &set)], EMOTION_WINDOW_Y, anchor).map(|l| l.0)
+            let anchor = match at {
+                TimeAt::Corner(seat) if seat.mirrored() => crate::numbers::Anchor::Left(width as f32 - end),
+                TimeAt::Corner(_) => crate::numbers::Anchor::Right(end),
+                TimeAt::Between => crate::numbers::Anchor::Center(width as f32 / 2.0),
+            };
+            crate::numbers::laid(text, &[(seconds.clone(), &set)], y, anchor).map(|l| l.0)
         });
     if let Some(items) = lettered {
         items.into_iter().for_each(|item| text.push(Plane::Hud, item));
@@ -1566,9 +1580,36 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, seat:
     }
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
     let cells = if text.takes(&seconds) { fonts::box_cells(hud, &seconds, glyphs.len(), 4) } else { glyphs.len() };
-    let x = seat.x(width - 8 * cells as i32, 8 * cells as i32);
-    fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, cells, pal, (x, EMOTION_WINDOW_Y), (Role::FittedCell, Align::Left));
+    let x = match at {
+        TimeAt::Corner(seat) => seat.x(width - 8 * cells as i32, 8 * cells as i32),
+        TimeAt::Between => (width - 8 * cells as i32) / 2,
+    };
+    fonts::layer_text(text, Plane::Hud, layer, hud, &seconds, &glyphs, cells, pal, (x, y), (Role::FittedCell, Align::Left));
 }
+
+/// The custom screens' time left between the two windows of a screen of
+/// both where both players choose (C1): the screen's that ends first, once,
+/// over the windows' edges.
+pub fn time_between(b: &Battle, assets: &Bundle, layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
+    let hud = &assets.hud;
+    if let Some(left) = [0, 1].into_iter().filter_map(|side| b.custom_time_left(side)).min() {
+        time_left(layer, text, hud, left, TimeAt::Between, problems);
+    }
+}
+
+/// Where the custom screen's time left goes: in a console's corner (its
+/// own screen's, or mirrored on the right of a screen of both), or between
+/// the two windows of a screen of both.
+#[derive(Clone, Copy)]
+enum TimeAt {
+    Corner(Seat),
+    Between,
+}
+
+/// The row of the time left between two windows (C1): the windows' last
+/// rows above their bottom edge (17 and 18 of 20), where they meet at the
+/// screen's middle (between EXE5's two UNITE buttons).
+const BETWEEN_WINDOWS_Y: i32 = 8 * 17;
 
 fn draw_text(
     layer: &mut Layer,
@@ -1631,6 +1672,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         mosaic: None,
         vscale,
         affine: None,
+        fade: None,
     }
 }
 
@@ -1668,7 +1710,7 @@ fn mugshot_parts<'a>(
         // (The mugshot's own pack's HUD holds its picture.)
         let Some((tiles, palettes, number)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return items };
         let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
-        let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
+        let pal = window_faded(b, side as u8, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         let picture = navi.mugshot.and_then(|m| crate::packs::mugshot(&b.content, m));
         let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
         let tiles = face_with_ring(face_hud, number, tiles, &pal, (at.0, flip), text, &mut items);
@@ -1693,7 +1735,7 @@ fn mugshot_parts<'a>(
     ) else { return items };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
-    let pal = window_faded(b, pal);
+    let pal = window_faded(b, side as u8, pal);
     let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
     let gfx = match picture {
         Some(m) => face_with_ring(face_hud, packs.mugshot(m).1, gfx, &pal, (at.0, flip), text, &mut items),
@@ -1868,8 +1910,8 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
 /// the custom screen's second fade record leaves it: a dark chip's hover
 /// darkens sprite palettes 10-13 (`custom::window_fade`), the window's face
 /// among them.
-fn window_faded(b: &Battle, palette: Palette) -> Palette {
-    match crate::custom::window_fade(b) {
+fn window_faded(b: &Battle, side: u8, palette: Palette) -> Palette {
+    match crate::custom::window_fade(b, side) {
         Some(f) => palette.map(|c| crate::compose::apply_fade(c, f)),
         None => palette,
     }
@@ -2654,14 +2696,15 @@ mod tests {
         let assets = nettai_assets::Bundle { hud, ..nettai_assets::Bundle::default() };
         let packs = crate::packs::Packs::one(&assets);
         let at = |layer: &Layer, x: usize, y: usize| layer.pixels[y * crate::compose::WIDTH + x];
-        for (seat, lit, dark, digits) in [(Seat { side: 0, at: At::Left }, 0, 4, 8), (Seat { side: 1, at: At::Right }, 236, 232, 200)] {
+        for (seat, lit, dark, digits) in [(Seat { side: 0, at: At::Left, shows: Shows::Own }, 0, 4, 8), (Seat { side: 1, at: At::Right, shows: Shows::Own }, 236, 232, 200)] {
             let (mut layer, mut scratch) = (Layer::new(1, 3), Layer::new(1, 3));
             let mut list = SpriteList::default();
             let mut text = TextSink::original();
             let mut problems = Problems::default();
             let state = HudState::default();
             let shared = shared_glyphs(&b, &assets, &packs, &state, seat, &text, &mut problems);
-            draw(&b, &assets, &packs, &state, &shared, seat, false, Smooth::default(), (&mut layer, &mut scratch), &mut list, &mut text, &mut problems);
+            let view = crate::render::Renderer::view(&b);
+            draw(&b, &assets, &packs, &state, &shared, (seat, &view), false, Smooth::default(), (&mut layer, &mut scratch), &mut list, &mut text, &mut problems);
             let pal = assets.hud.hp_palettes[0];
             assert_eq!((at(&layer, lit, 0), at(&layer, dark, 0)), (pal[2], CLEAR), "{seat:?}: the outer frame cell's lit half");
             assert_eq!(at(&layer, digits + 8, 0), pal[1], "{seat:?}: the digits' cells");

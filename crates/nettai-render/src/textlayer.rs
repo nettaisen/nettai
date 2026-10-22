@@ -210,8 +210,14 @@ pub struct Piece {
 pub enum Plane {
     /// The HUD layer (BG3), which the custom screen's shake moves.
     Hud,
+    /// The other console's HUD layer on a screen of both (`crate::seat`:
+    /// the right player's pieces), which its own console's shake moves.
+    OtherHud,
     /// BG0, in front of everything (the enemy names).
     Bg0,
+    /// The other console's BG0 on a screen of both (its custom screen's
+    /// enemy names).
+    OtherBg0,
     /// Sprite parts queued with this tag (`SpriteList::insert_tagged`):
     /// the item is as deep as the frontmost of them.
     Sprite(u32),
@@ -364,6 +370,20 @@ impl<'f> TextSink<'f> {
         for (_, item) in self.items.iter_mut().skip(mark) {
             item.rect = item.rect.offset(dx, 0);
             item.clip = item.clip.offset(dx, 0);
+        }
+    }
+
+    /// The items pushed since `mark`, with their planes, to put elsewhere.
+    pub fn since(&mut self, mark: usize) -> impl Iterator<Item = &mut (Plane, TextItem)> {
+        self.items.iter_mut().skip(mark)
+    }
+
+    /// The items pushed since `mark` each made into what `f` makes of it
+    /// (none, itself put elsewhere, or several), on its plane.
+    pub fn rework_since(&mut self, mark: usize, mut f: impl FnMut(Plane, TextItem) -> Vec<TextItem>) {
+        let tail: Vec<(Plane, TextItem)> = self.items.drain(mark.min(self.items.len())..).collect();
+        for (plane, item) in tail {
+            self.items.extend(f(plane, item).into_iter().map(|item| (plane, item)));
         }
     }
 
