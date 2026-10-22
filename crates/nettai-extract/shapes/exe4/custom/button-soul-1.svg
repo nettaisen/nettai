@@ -2,14 +2,12 @@
 <!-- The soul button, unavailable: lit white along its top, a light gray face, shaded blue-gray, its words white (its words drawn as text): a dark outline. -->
 <!-- The window round it -->
 <rect x="0" y="0" width="24" height="16" fill="#f7ffff" data-color="1"/>
-<!-- The plate's outline -->
-<path d="M2 2.6 L2 2 L2.6 2 L23.4 2 L24 2 L24 2.6 L24 15.4 L24 16 L23.4 16 L2.6 16 L2 16 L2 15.4 Z" fill-rule="evenodd" fill="#292929" data-color="9"/>
-<!-- Its shade along the right and the bottom -->
-<path d="M3 3 L23 3 L23 15 L3 15 Z" fill-rule="evenodd" fill="#4a637b" data-color="5"/>
-<!-- Its light along the top -->
-<path d="M3 3 L23 3 L22 4 L3 4 Z" fill-rule="evenodd" fill="#f7ffff" data-color="1"/>
-<!-- The face -->
-<rect x="3" y="4" width="19" height="10" fill="#dedee7" data-color="8"/>
+<!-- The plate's outline, a pixel wide, square -->
+<rect x="2" y="2" width="22" height="14" fill="#292929" data-color="9"/>
+<!-- The face; lit along its top, shaded along its right and its bottom, each stopping square at the corners it shares with the other, so the face shows there (as the art) -->
+<rect x="3" y="3" width="20" height="12" fill="#dedee7" data-color="8"/>
+<rect x="3" y="3" width="19" height="1" fill="#f7ffff" data-color="1"/>
+<path d="M22 4 L23 4 L23 15 L4 15 L4 14 L22 14 Z" fill="#4a637b" data-color="5"/>
 <!-- The words -->
 <text data-words="window.unite" data-box="4 5 17 8" fill="#f7ffff" data-color="1" x="4" y="13" font-size="10.667" textLength="17">UNITE</text>
 </svg>
