@@ -16,7 +16,7 @@
 //! so both sides of a round are one problem.
 
 use crate::names;
-use crate::spec::{self, chips, forms, global, objects, panels, rules, LOG_TICKS};
+use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS};
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::collision::{ATTACK_OF, f1};
@@ -104,6 +104,8 @@ pub struct Names {
     /// The scalars a rules token holds: the navi stats' first, then the
     /// rules' state's.
     scalars: Vec<Scalar>,
+    /// The game's chips' fingerprints, where they were made.
+    fingerprints: Option<std::sync::Arc<crate::fingerprint::Fingerprints>>,
 }
 
 /// Where a rules token's scalar is: in the navi's stats of its game's own
@@ -142,7 +144,18 @@ impl Names {
             panel_types: content.rules.as_ref().map_or_else(Vec::new, |r| keys(&mut r.panels.names.iter().map(String::as_str))),
             defs,
             scalars,
+            fingerprints: None,
         }
+    }
+
+    /// The same, with the game's chips' fingerprints.
+    pub fn with_fingerprints(content: &Content, fingerprints: std::sync::Arc<crate::fingerprint::Fingerprints>) -> Names {
+        Names { fingerprints: Some(fingerprints), ..Names::of(content) }
+    }
+
+    /// The fingerprints, where they were made.
+    pub fn fingerprints(&self) -> Option<&crate::fingerprint::Fingerprints> {
+        self.fingerprints.as_deref()
     }
 
     /// How many scalars a rules token could hold (more than the set's
@@ -304,7 +317,7 @@ pub fn encode(b: &Battle, viewer: u8, names: &Names, extra: &Extra, out: &mut Ob
     out.clear();
     let me = viewer & 1;
     let v = View { b, names, me, them: me ^ 1, sees: b.sees(me, me ^ 1) };
-    encode_global(&v, extra, out);
+    encode_general(&v, extra, out);
     encode_panels(&v, extra, out);
     encode_objects(&v, out);
     encode_chips(&v, extra, out);
@@ -353,11 +366,11 @@ fn phase(b: &Battle) -> usize {
     }
 }
 
-fn encode_global(v: &View, extra: &Extra, out: &mut Obs) {
+fn encode_general(v: &View, extra: &Extra, out: &mut Obs) {
     let b = v.b;
     let (own, other) = navis(v);
-    let (row, ids) = out.token(spec::GLOBAL, 0);
-    one_hot(row, global::phase, 4, phase(b));
+    let (row, ids) = out.token(spec::GENERAL, 0);
+    one_hot(row, general::phase, 4, phase(b));
     let side = &b.custom.sides[v.me as usize];
     let screen = side.screen.filter(|_| b.round.mode == mode::CUSTOM);
     if let Some(s) = &screen {
@@ -367,37 +380,37 @@ fn encode_global(v: &View, extra: &Extra, out: &mut Obs) {
             _ if side.sent.is_some() => 3,
             _ => 2,
         };
-        one_hot(row, global::screen_phase, 4, i);
+        one_hot(row, general::screen_phase, 4, i);
     }
     let gauge = b.gauge_for(v.me);
-    row[global::gauge] = gauge as f32 / CustomGauge::FULL as f32;
-    row[global::gauge + 1] = flag(gauge >= CustomGauge::FULL);
+    row[general::gauge] = gauge as f32 / CustomGauge::FULL as f32;
+    row[general::gauge + 1] = flag(gauge >= CustomGauge::FULL);
     let late = b.late_turns();
-    row[global::turn] = clip(b.round.turn as f32 / 16.0, 0.0, 2.0);
-    row[global::turn + 1] = flag(late);
-    row[global::turn + 2] = if late { clip(b.fight.turn_timer as f32 / 3600.0, 0.0, 2.0) } else { 0.0 };
-    row[global::battle_time] = clip(b.round.battle_time as f32 / 3600.0, 0.0, 5.0);
+    row[general::turn] = clip(b.round.turn as f32 / 16.0, 0.0, 2.0);
+    row[general::turn + 1] = flag(late);
+    row[general::turn + 2] = if late { clip(b.fight.turn_timer as f32 / 3600.0, 0.0, 2.0) } else { 0.0 };
+    row[general::battle_time] = clip(b.round.battle_time as f32 / 3600.0, 0.0, 5.0);
     let hp = |r: ObjectRef| {
         let o = b.objects.get(r);
         [o.hp as f32 / 1000.0, o.max_hp as f32 / 1000.0, if o.max_hp > 0 { o.hp as f32 / o.max_hp as f32 } else { 0.0 }]
     };
     if let Some(r) = own {
-        row[global::own_hp..global::own_hp + 3].copy_from_slice(&hp(r));
+        row[general::own_hp..general::own_hp + 3].copy_from_slice(&hp(r));
         if let Some(a) = b.objects.get(r).actor.map(|a| b.actors.get(a)) {
-            one_hot(row, global::own_charge, 3, a.charge_level as usize);
-            one_hot(row, global::own_charge + 3, 3, a.charge_source as usize);
-            row[global::own_charge + 6] = clip(a.charge_counter as f32 / 200.0, 0.0, 2.0);
+            one_hot(row, general::own_charge, 3, a.charge_level as usize);
+            one_hot(row, general::own_charge + 3, 3, a.charge_source as usize);
+            row[general::own_charge + 6] = clip(a.charge_counter as f32 / 200.0, 0.0, 2.0);
         }
     }
     if let Some(r) = other {
-        row[global::other_hp] = 1.0;
-        row[global::other_hp + 1..global::other_hp + 4].copy_from_slice(&hp(r));
+        row[general::other_hp] = 1.0;
+        row[general::other_hp + 1..general::other_hp + 4].copy_from_slice(&hp(r));
         // (The other's charge shows by its glow, where the viewer sees it.)
         if let Some(a) = b.objects.get(r).actor.map(|a| b.actors.get(a))
             && a.charge_glow.is_some_and(|g| b.objects.is_allocated(g) && b.visible_to(g, v.me))
         {
-            row[global::other_charge] = 1.0;
-            one_hot(row, global::other_charge + 1, 3, a.charge_level as usize);
+            row[general::other_charge] = 1.0;
+            one_hot(row, general::other_charge + 1, 3, a.charge_level as usize);
         }
     }
     let s = &b.stats[v.me as usize];
@@ -411,13 +424,13 @@ fn encode_global(v: &View, extra: &Extra, out: &mut Obs) {
         s.reg_up as f32 / 50.0,
         s.max_base_hp as f32 / 1000.0,
     ];
-    row[global::own_stats..global::own_stats + 8].copy_from_slice(&stats);
-    row[global::chips_left] = b.hands[v.me as usize].remaining() as f32 / 6.0;
-    row[global::chips_left + 1] = side.folder.chips.iter().flatten().count() as f32 / 30.0;
-    row[global::chips_left + 2] = flag(side.folder.regular_pending);
+    row[general::own_stats..general::own_stats + 8].copy_from_slice(&stats);
+    row[general::chips_left] = b.hands[v.me as usize].remaining() as f32 / 6.0;
+    row[general::chips_left + 1] = side.folder.chips.iter().flatten().count() as f32 / 30.0;
+    row[general::chips_left + 2] = flag(side.folder.regular_pending);
     for (k, t) in b.telops_for(v.me).iter().enumerate() {
         if let Some((t, _)) = t {
-            let at = global::telops + 4 * k;
+            let at = general::telops + 4 * k;
             row[at] = 1.0;
             row[at + 1] = flag(t.remote);
             row[at + 2] = flag(t.name == TelopName::Hidden);
@@ -425,27 +438,27 @@ fn encode_global(v: &View, extra: &Extra, out: &mut Obs) {
         }
     }
     if let Some(u) = b.used_chip_for(v.me) {
-        row[global::used_chip] = 1.0;
-        row[global::used_chip + 1] = u.ticks as f32 / 60.0;
+        row[general::used_chip] = 1.0;
+        row[general::used_chip + 1] = u.ticks as f32 / 60.0;
     }
-    row[global::delay] = extra.delay as f32 / 30.0;
+    row[general::delay] = extra.delay as f32 / 30.0;
     if let Some(p) = extra.probe {
-        row[global::probe] = 1.0;
+        row[general::probe] = 1.0;
         for (k, opens) in p.iter().enumerate() {
-            row[global::probe + 1 + k] = flag(*opens);
+            row[general::probe + 1 + k] = flag(*opens);
         }
     }
     if let Some(s) = &screen {
-        row[global::screen] = s.selected as f32 / MAX_SELECTIONS as f32;
-        row[global::screen + 1] = flag(s.form.is_some());
-        row[global::screen + 2] = flag(side.in_custom);
-        row[global::screen + 3] = extra.screen_decisions as f32 / 24.0;
-        row[global::screen + 4] = flag(s.trade.is_some() || s.hold.is_some());
-        row[global::screen + 5] = flag(extra.only_ok);
+        row[general::screen] = s.selected as f32 / MAX_SELECTIONS as f32;
+        row[general::screen + 1] = flag(s.form.is_some());
+        row[general::screen + 2] = flag(side.in_custom);
+        row[general::screen + 3] = extra.screen_decisions as f32 / 24.0;
+        row[general::screen + 4] = flag(s.trade.is_some() || s.hold.is_some());
+        row[general::screen + 5] = flag(extra.only_ok);
     }
-    row[global::navis] = flag(own.is_some());
-    row[global::navis + 1] = flag(other.is_some());
-    row[global::navis + 2] = flag(!v.sees);
+    row[general::navis] = flag(own.is_some());
+    row[general::navis + 1] = flag(other.is_some());
+    row[general::navis + 2] = flag(!v.sees);
     put_ids(ids, 0, v.names.navis.get(b.stats[v.me as usize].navi.0 as usize).copied().unwrap_or_default());
     if other.is_some() {
         put_ids(ids, 2, v.names.navis.get(b.stats[v.them as usize].navi.0 as usize).copied().unwrap_or_default());
@@ -494,6 +507,8 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
             row[panels::state + 2] = clip(p.hole_timer as f32 / 600.0, 0.0, 2.0);
             row[panels::state + 3] = clip(p.timer as f32 / 1800.0, 0.0, 2.0);
             row[panels::state + 4] = flag(p.blink.is_some());
+            // (A stolen panel blinks as it goes back to its owner: shown.)
+            row[panels::state + 5] = flag(p.return_blink & 0xFF != 0);
             row[panels::highlight] = flag(p.highlight != 0);
             let types = b.collision.panel_self_flags(x, y);
             let bodies = v.sides(BODY_OF, p.flags);
@@ -695,7 +710,10 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
 /// What a chip's record says of it (§3: damage, element, class, codes, MB,
 /// the flag and trait bits, trap kind, modifier kind, damage formula kind,
 /// hit strength, lockout, how it's used), with this copy's code.
-fn chip_facts(content: &Content, h: ChipHandle, code: Option<u8>, row: &mut [f32]) {
+fn chip_facts(content: &Content, names: &Names, h: ChipHandle, code: Option<u8>, row: &mut [f32], ids: &mut [i32]) {
+    if let Some(fp) = names.fingerprints().and_then(|f| f.of(h)) {
+        fingerprint(names, fp, &mut row[chips::fingerprint..chips::fingerprint + spec::FINGERPRINT], ids);
+    }
     let def = &content.defs.chips[h.0 as usize];
     let c = &def.record;
     let mut at = chips::facts;
@@ -779,6 +797,66 @@ fn chip_facts(content: &Content, h: ChipHandle, code: Option<u8>, row: &mut [f32
     debug_assert_eq!(at + 3, chips::in_hand);
 }
 
+/// A chip's fingerprint into its token (`spec::fingerprint`'s features),
+/// and its names into the token's ids after the chip's own.
+fn fingerprint(names: &Names, fp: &crate::fingerprint::Fingerprint, row: &mut [f32], ids: &mut [i32]) {
+    use crate::fingerprint::{MAX_RATIO, STATUSES, top_change};
+    use crate::spec::fingerprint as f;
+    for (i, &(damage, first)) in fp.runs.iter().enumerate().take(9) {
+        row[f::positions + 3 * i] = flag(damage > 0);
+        row[f::positions + 3 * i + 1] = clip(damage as f32 / 400.0, 0.0, 4.0);
+        row[f::positions + 3 * i + 2] = first.map_or(0.0, |t| t as f32 / crate::fingerprint::RUN_TICKS as f32);
+    }
+    for k in 0..STATUSES {
+        row[f::statuses + k] = flag(fp.statuses & (1 << k) != 0);
+    }
+    let e = &fp.effect;
+    row[f::user] = clip(e.user_hp as f32 / 400.0, -4.0, 4.0);
+    row[f::user + 1] = clip(e.user_barrier as f32 / 200.0, 0.0, 4.0);
+    let own_area = |bits: u32| (0..18).filter(|&i| bits & (1 << i) != 0 && i % 6 < 3).count() as f32 / 9.0;
+    let other_area = |bits: u32| (0..18).filter(|&i| bits & (1 << i) != 0 && i % 6 >= 3).count() as f32 / 9.0;
+    row[f::panels] = own_area(e.changed);
+    row[f::panels + 1] = other_area(e.changed);
+    row[f::owners] = (e.owner_to_user.count_ones()) as f32 / 9.0;
+    row[f::owners + 1] = (e.owner_changed & !e.owner_to_user).count_ones() as f32 / 9.0;
+    row[f::owners + 2] = flag(fp.takes_front);
+    row[f::left] = e.left as f32 / 4.0;
+    row[f::left + 1] = e.left_own as f32 / 4.0;
+    row[f::left + 2] = e.left_other as f32 / 4.0;
+    row[f::left + 3] = e.longest.map_or(0.0, |(_, t)| t as f32 / crate::fingerprint::RUN_TICKS as f32);
+    row[f::duration] = e.ticks as f32 / crate::fingerprint::RUN_TICKS as f32;
+    for i in 0..18 {
+        row[f::changed + i] = flag(e.changed & (1 << i) != 0);
+        row[f::owner_changed + i] = flag(e.owner_changed & (1 << i) != 0);
+    }
+    for (k, r) in fp.status_ratios.iter().enumerate() {
+        if let Some(r) = r {
+            row[f::status_ratios + k] = r / MAX_RATIO;
+            row[f::status_conditioned + k] = 1.0;
+        }
+    }
+    let mut kinds = fp.kind_ratios.clone();
+    kinds.sort_by(|a, b| (b.1 - 1.0).abs().total_cmp(&(a.1 - 1.0).abs()).then(a.0.cmp(&b.0)));
+    for (k, (kind, r)) in kinds.iter().take(crate::fingerprint::KIND_CONDITIONS).enumerate() {
+        row[f::kind_ratios + k] = r / MAX_RATIO;
+        row[f::kind_conditioned + k] = 1.0;
+        put_ids(ids, 6 + 2 * k, names.panel_types.get(kind.0 as usize).copied().unwrap_or_default());
+    }
+    for (at, c) in [(f::stolen, fp.stolen), (f::advanced, fp.advanced)] {
+        if let Some((r, d)) = c {
+            row[at] = 1.0;
+            row[at + 1] = r / MAX_RATIO;
+            row[at + 2] = clip(d as f32 / 400.0, 0.0, 4.0);
+        }
+    }
+    if let Some(k) = top_change(e) {
+        put_ids(ids, 2, names.panel_types.get(k.0 as usize).copied().unwrap_or_default());
+    }
+    if let Some((kind, _)) = e.longest {
+        put_ids(ids, 4, names.kinds.get(kind.0 as usize).copied().unwrap_or_default());
+    }
+}
+
 /// The picks a screen's selection holds, with `extra` picked after them:
 /// what OK would build the hand from (the screen's own `confirm`, but for
 /// the invalid-chip rule and a button's chip).
@@ -822,7 +900,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
         row[chips::role] = 1.0;
         row[chips::hand_place] = k as f32 / 6.0;
         let code = hand.selection[i].filter(|s| s.id == id).map(|s| s.code.0);
-        chip_facts(content, id, code, row);
+        chip_facts(content, v.names, id, code, row, ids);
         row[chips::in_hand] = (hand.damage[i] + hand.attack_bonus[i]) as f32 / 400.0;
         row[chips::in_hand + 1] = hand.attack_bonus[i] as f32 / 100.0;
         for bit in 0..3 {
@@ -841,7 +919,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
         let base_damage = hand_damage(&base_built);
         for slot in 0..SLOTS {
             let s = &screen.slots[slot];
-            let (row, ids) = out.token(spec::CHIPS, spec::FIRST_SLOT_TOKEN + slot);
+            let (row, ids) = out.token(spec::SLOTS, slot);
             row[chips::role + 1] = 1.0;
             one_hot(row, chips::slot, 12, slot);
             let kind = match s.kind {
@@ -875,7 +953,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
             row[chips::pointer + 2] = steps[slot].map_or(1.0, |n| clip(n as f32 / 6.0, 0.0, 1.0));
             let chip = screen.chip_in(slot as u8, &side.folder).or_else(|| s.face.map(|f| nettai_battle::custom::FolderChip::new(f, nettai_battle::content::ChipCode(0))));
             if let Some(c) = chip {
-                chip_facts(content, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row);
+                chip_facts(content, v.names, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row, ids);
                 put_ids(ids, 0, v.names.chip(c.id));
             }
             // What picking it would add (§4.2): a Program Advance it
@@ -901,7 +979,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
     if let Some(u) = b.used_chip_for(v.me) {
         let (row, ids) = out.token(spec::CHIPS, spec::USED_TOKEN);
         row[chips::role + 2] = 1.0;
-        chip_facts(content, u.chip, None, row);
+        chip_facts(content, v.names, u.chip, None, row, ids);
         row[chips::used] = 1.0;
         row[chips::used + 1] = u.damage as f32 / 400.0;
         row[chips::used + 2] = u.bonus as f32 / 100.0;

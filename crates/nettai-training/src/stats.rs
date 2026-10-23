@@ -20,6 +20,8 @@ pub const BACK: u32 = 20;
 /// One round, as the pool reports it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RoundStats {
+    /// The env that played it (the pool's numbering).
+    pub env: usize,
     pub game: String,
     /// Who played each seat: "policy" or a scripted player's name.
     pub controllers: [String; 2],
@@ -52,6 +54,32 @@ pub struct RoundStats {
     /// The practice options the round played with (§6.3).
     pub full_gauge: bool,
     pub folder_order: bool,
+    /// By seat, for a folder seeded with a pair (§6.2): the pair (setup's
+    /// key, payoff's), whether both were picked, whether picked on one
+    /// screen the setup first, whether used in that order within
+    /// [`PAIR_USE`] ticks, and the most the payoff did (the other navi's HP
+    /// lost within [`LANDS`] ticks of its use) as a ratio to its plain
+    /// fingerprint's best.
+    pub pair: [Option<(String, String)>; 2],
+    pub pair_picked: [bool; 2],
+    pub pair_ordered: [bool; 2],
+    pub pair_used: [bool; 2],
+    pub payoff_damage: [Option<f32>; 2],
+}
+
+/// The ticks within which a payoff used after its setup counts as the pair
+/// used (five seconds).
+pub const PAIR_USE: u32 = 300;
+
+/// What a seat's watched pair has done so far.
+#[derive(Clone, Debug, Default)]
+struct PairWatch {
+    pair: Option<crate::fingerprint::Pair>,
+    plain: u16,
+    picked: [bool; 2],
+    setup_used: Option<u32>,
+    /// The payoff's uses: the tick and the other navi's HP then.
+    payoff_uses: Vec<(u32, u16)>,
 }
 
 /// What an env follows of a round as it is played.
@@ -65,6 +93,7 @@ pub struct Measure {
     flying: Vec<(u8, u32, u16)>,
     closing: [bool; 2],
     custom: bool,
+    pairs: [PairWatch; 2],
 }
 
 /// Side `side`'s navi's HP: none before it is on the field, 0 once it has
@@ -80,6 +109,13 @@ impl Measure {
     /// A round starts.
     pub fn new(stats: RoundStats) -> Measure {
         Measure { stats, ..Measure::default() }
+    }
+
+    /// Seat `seat`'s folder was seeded with `pair`, whose payoff's plain
+    /// fingerprint's best damage is `plain`.
+    pub fn watch_pair(&mut self, seat: usize, pair: crate::fingerprint::Pair, plain: u16, content: &nettai_battle::Content) {
+        self.pairs[seat] = PairWatch { pair: Some(pair), plain, ..PairWatch::default() };
+        self.stats.pair[seat] = Some((content.defs.chip(pair.setup).key.clone(), content.defs.chip(pair.payoff).key.clone()));
     }
 
     /// After tick `t` of `b`.
@@ -110,6 +146,7 @@ impl Measure {
             self.hp[i] = hp;
             // Chips used in the fight.
             let hand = b.hands[i].remaining();
+            let used_now = (b.round.mode == mode::FIGHTING && hand < self.hand[i]).then(|| b.hands[i].ids[b.hands[i].cursor.saturating_sub(1) as usize]).flatten();
             if b.round.mode == mode::FIGHTING && hand < self.hand[i] {
                 s.chips_used[i] += 1;
                 let used = b.hands[i].ids[b.hands[i].cursor.saturating_sub(1) as usize];
@@ -124,6 +161,21 @@ impl Measure {
                 }
             }
             self.hand[i] = hand;
+            // A watched pair's use: the setup, then the payoff.
+            if let (Some(p), Some(used)) = (self.pairs[i].pair, used_now) {
+                let used = Some(used);
+                if used == Some(p.setup) {
+                    self.pairs[i].setup_used = Some(t);
+                }
+                if used == Some(p.payoff) {
+                    if self.pairs[i].setup_used.is_some_and(|u| t - u <= PAIR_USE) {
+                        s.pair_used[i] = true;
+                    }
+                    if let Some(other) = navi_hp(b, side ^ 1, Some(0)) {
+                        self.pairs[i].payoff_uses.push((t, other));
+                    }
+                }
+            }
             // Steps, and steps back to the panel just left.
             let at = b.player(side).filter(|&r| b.objects.is_allocated(r)).map(|r| b.objects.get(r).panel);
             if let (Some(from), Some(to)) = (self.at[i], at)
@@ -145,10 +197,31 @@ impl Measure {
                 self.closing[i] = true;
                 s.chips_picked[i] += screen.selected as u32;
                 s.forms_taken[i] += screen.form.is_some() as u32;
+                // (A watched pair's picks: the hand OK built lists them in
+                // pick order.)
+                if let (Some(p), Some((Some(hand), _))) = (self.pairs[i].pair, &b.custom.sides[i].built) {
+                    let picked: Vec<_> = hand.selection.iter().flatten().map(|c| c.id).collect();
+                    let (at_setup, at_payoff) = (picked.iter().position(|&c| c == p.setup), picked.iter().position(|&c| c == p.payoff));
+                    self.pairs[i].picked[0] |= at_setup.is_some();
+                    self.pairs[i].picked[1] |= at_payoff.is_some();
+                    s.pair_picked[i] = self.pairs[i].picked == [true, true];
+                    s.pair_ordered[i] |= matches!((at_setup, at_payoff), (Some(a), Some(b)) if a < b);
+                }
             }
         }
         let hp = self.hp;
         let stats = &mut self.stats;
+        // A payoff's damage: the most the other navi lost within its window.
+        for (i, w) in self.pairs.iter_mut().enumerate() {
+            let Some(now) = hp[i ^ 1] else { continue };
+            let plain = w.plain;
+            let best = &mut stats.payoff_damage[i];
+            w.payoff_uses.retain(|&(when, before)| {
+                let r = crate::fingerprint::ratio(before.saturating_sub(now), plain);
+                *best = Some(best.unwrap_or(0.0).max(r));
+                t - when < LANDS
+            });
+        }
         self.flying.retain(|&(side, when, other)| {
             if hp[(side ^ 1) as usize].is_some_and(|now| now < other) {
                 stats.attacks_landed[side as usize] += 1;

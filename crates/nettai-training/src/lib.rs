@@ -25,6 +25,7 @@ pub mod act;
 pub mod bots;
 pub mod builds;
 pub mod env;
+pub mod fingerprint;
 pub mod names;
 pub mod observe;
 pub mod pool;

@@ -279,9 +279,17 @@ pub fn random_folder(content: &Content, game: &str, b: &mut Battle, side: u8, pi
 /// [`random_folder`] of the chips of `pool` (some of [`pool`]'s: a
 /// training's builds leave chips out of theirs).
 pub fn random_folder_of(content: &Content, pool: &[ChipHandle], b: &mut Battle, side: u8, picks: &mut Picks) -> SavedFolder {
+    random_folder_from(content, pool, &[], b, side, picks)
+}
+
+/// [`random_folder_of`], the folder starting with `start` (chips the rules
+/// accept together: a training's builds seed a folder with a pair of chips
+/// that work together), the rest drawn.
+pub fn random_folder_from(content: &Content, pool: &[ChipHandle], start: &[FolderChip], b: &mut Battle, side: u8, picks: &mut Picks) -> SavedFolder {
     assert!(!pool.is_empty(), "the rules let a folder hold no chip");
     let favored = [ChipCode(picks.below(26) as u8), ChipCode(picks.below(26) as u8)];
     let mut chips: Vec<FolderChip> = Vec::with_capacity(FOLDER_SIZE);
+    chips.extend_from_slice(&start[..start.len().min(FOLDER_SIZE)]);
     let mut tries = 0;
     while chips.len() < FOLDER_SIZE {
         tries += 1;

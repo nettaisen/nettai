@@ -3450,6 +3450,8 @@ dependencies = [
  "nettai-frontend",
  "nettai-match",
  "nettai-netplay",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
