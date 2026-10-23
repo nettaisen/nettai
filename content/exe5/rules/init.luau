@@ -84,9 +84,11 @@ local state: StateSchema = {
     unite_step = schema.role("offer_flight.step", "u8"),
     unite_count = schema.role("offer_flight.count", "u8"),
     -- The NaviCust's emotion-swing bug (./emotion): AIData +0x3A (ticks toward the next swing) and +0x0B (the
-    -- emotion last swung to) of each navi of the player's kind, by its slot on its side's list of alive actors.
+    -- emotion last swung to) of each navi of the player's kind, by its slot on its side's list of alive actors, and the
+    -- navi each slot's are of (which keeps them after it leaves the list: its deletion).
     swing_ticks = "u16[4]",
     swung = "u8[4]",
+    swing_navis = "object[4]",
     -- The side's own drive under DarkInvs (./auto_battle): the AI's state, as a navi it drives keeps it.
     drive = AI,
     -- The side's auto battle data as its console sent it as the battle started (./auto_battle/block.luau), which a
