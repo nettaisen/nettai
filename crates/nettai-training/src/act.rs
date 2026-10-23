@@ -3,6 +3,8 @@
 //! - In the fight, one of [`spec::FIGHT_ACTIONS`] joint actions, held until
 //!   the next decision: a direction (none, up, down, toward the other side,
 //!   away from it) × A held or not × B held or not ([`fight_buttons`]).
+//!   Toward is RIGHT for either side: each console shows its own player on
+//!   the left.
 //! - On the custom screen, a pointer at one of its 12 slots or one of seven
 //!   keys ([`spec::SCREEN_KEYS`]), which the [`Navigator`] presses: it walks
 //!   the cursor to a slot along the rules' own layout
@@ -22,30 +24,30 @@ use std::collections::VecDeque;
 /// up, down, toward the other side, away from it.
 pub const DIRECTIONS: usize = 5;
 
-/// The buttons fight action `action` holds for side `side` (toward the
-/// other side is right for side 0, left for side 1). Out of range: none.
-pub fn fight_buttons(action: i32, side: u8) -> u16 {
+/// The buttons fight action `action` holds (toward the other side is a
+/// side's RIGHT and away its LEFT, for either side: each console shows its
+/// own player on the left, and the engine reads LEFT as back and RIGHT as
+/// forward). Out of range: none.
+pub fn fight_buttons(action: i32) -> u16 {
     if !(0..spec::FIGHT_ACTIONS as i32).contains(&action) {
         return 0;
     }
     let a = action as u16;
-    let (toward, away) = if side & 1 == 0 { (keys::RIGHT, keys::LEFT) } else { (keys::LEFT, keys::RIGHT) };
-    let dir = [0, keys::UP, keys::DOWN, toward, away][(a / 4) as usize];
+    let dir = [0, keys::UP, keys::DOWN, keys::RIGHT, keys::LEFT][(a / 4) as usize];
     dir | if a & 2 != 0 { keys::A } else { 0 } | if a & 1 != 0 { keys::B } else { 0 }
 }
 
-/// The fight action holding `buttons` for side `side` (directions other
-/// than one of the five, and other buttons, left out): what a scripted
-/// player's buttons are as an action, for its measures.
-pub fn fight_action(buttons: u16, side: u8) -> i32 {
-    let (toward, away) = if side & 1 == 0 { (keys::RIGHT, keys::LEFT) } else { (keys::LEFT, keys::RIGHT) };
+/// The fight action holding `buttons` (directions other than one of the
+/// five, and other buttons, left out): what a scripted player's buttons are
+/// as an action, for its measures.
+pub fn fight_action(buttons: u16) -> i32 {
     let dir = if buttons & keys::UP != 0 {
         1
     } else if buttons & keys::DOWN != 0 {
         2
-    } else if buttons & toward != 0 {
+    } else if buttons & keys::RIGHT != 0 {
         3
-    } else if buttons & away != 0 {
+    } else if buttons & keys::LEFT != 0 {
         4
     } else {
         0
@@ -317,18 +319,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fight_actions_are_directions_by_a_by_b_mirrored_for_side_1() {
-        assert_eq!(fight_buttons(0, 0), 0);
-        assert_eq!(fight_buttons(1, 0), keys::B);
-        assert_eq!(fight_buttons(2, 0), keys::A);
-        assert_eq!(fight_buttons(3 * 4, 0), keys::RIGHT);
-        assert_eq!(fight_buttons(3 * 4, 1), keys::LEFT);
-        assert_eq!(fight_buttons(4 * 4 + 3, 1), keys::RIGHT | keys::A | keys::B);
-        assert_eq!(fight_buttons(20, 0), 0);
-        for side in 0..2 {
-            for a in 0..20 {
-                assert_eq!(fight_action(fight_buttons(a, side), side), a);
-            }
+    fn fight_actions_are_directions_by_a_by_b() {
+        assert_eq!(fight_buttons(0), 0);
+        assert_eq!(fight_buttons(1), keys::B);
+        assert_eq!(fight_buttons(2), keys::A);
+        assert_eq!(fight_buttons(3 * 4), keys::RIGHT);
+        assert_eq!(fight_buttons(4 * 4 + 3), keys::LEFT | keys::A | keys::B);
+        assert_eq!(fight_buttons(20), 0);
+        for a in 0..20 {
+            assert_eq!(fight_action(fight_buttons(a)), a);
         }
     }
 }

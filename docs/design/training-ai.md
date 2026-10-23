@@ -51,6 +51,7 @@ crates/nettai-training      Rust, no Python:
   observe.rs                what a side sees → fixed-size arrays and masks (§3)
   act.rs                    an action → buttons; the custom screen's navigator (§4)
   builds.rs                 random valid builds for any game, from the setup schema (§6.2)
+  fingerprint.rs            what each chip does, run in a sandbox; pairs of chips that work together (§3.1)
   env.rs                    a round as an episode: delay, rewards, the custom-screen opener (§6)
   pool.rs                   many envs on persistent worker threads, stepped as one batch (§6.5)
   bots.rs                   scripted players: still, mover, masher, shooter, dodger (§9)
@@ -93,17 +94,17 @@ all zeros. Widths as built (`spec.rs` names every feature; `spec()` lists them):
 | Set | Count | Width | Ids | What each holds |
 |---|---|---|---|---|
 | general | 1 | 71 | own navi, other navi | round phase (custom screen, fight, dimmed, between), own screen's phase, gauge (own view) and full, turn, late turns and their timer, fight time; own HP, max and share; the other's (whether shown); own charge level, source, counter; the other's charge level if its glow shows; own stats (attack, rapid, charge, custom, mega, giga, Regular memory, base HP); chips left in hand and folder, Regular pending; both telop blocks (shown, the other's, "????", damage); the other's used chip shown and how long; the reaction delay; the key probe (done, and the 7 keys); own screen (picks, form chosen, open, decisions, a trade or hold, only OK left); both navis seen, blind |
-| panels | 18 | 46 | type | place; its type's rule (doubles and its element, damage shift, expires, submerges, unbreakable, traps, cleared by, carries, carries by move, solid, flags); owner, home, stolen; cracked, visible, hole and type timers, blink; the attack highlight; own and other bodies, floating, blocker, neutral object, own and other attacks registered now; and the attack log (§5): own and other attacks presented in each of the last 8 ticks |
+| panels | 18 | 47 | type | place; its type's rule (doubles and its element, damage shift, expires, submerges, unbreakable, traps, cleared by, carries, carries by move, solid, flags); owner, home, stolen; cracked, visible, hole and type timers, blink, a stolen panel's blink as it goes back; the attack highlight; own and other bodies, floating, blocker, neutral object, own and other attacks registered now; and the attack log (§5): own and other attacks presented in each of the last 8 ticks |
 | objects | 48 | 119 | kind, identity, action | every object seen, actors first, then attacks, then effects: pool, identity class (virus, field object, navi, player, none), side (own, other, neutral), own or other player, panel and next panel, sub-panel offset, velocity, facing toward the other side, HP (has, value, max, share), damage, element and its secondary bits, collision (has, own/other attack, own/other body, other bodies, neutral, floating, blocker, breaks guard, pierces invisibility, ground only), the panels it is registered on, 21 status bits, status timers (own side's only), barrier (and its HP, own side's only), actor (charge, B's, lockout, chips held where shown), navi action (the engine's 11), animation |
-| chips | 7 | 176 | chip | 6 own hand (next first), then the other's last used chip as its telop named it. Each: its role, hand place; what the record says (element, class, this copy's code, how it is used, the flag, extra flag and trait bits, trap kind, modifier kind, damage formula kind, damage, MB, hit strength, lockout, a Program Advance's result, a link navi's own chip, codes); in hand, damage as shown, bonus and marks; the used chip's damage, bonus, x2; and 40 for the chip's fingerprint (§12 step 6; zeros until then) |
-| slots | 12 | 176 | chip (or a button's name) | the custom screen's 12 slots in the screen's order, what its pointer points at (the trainer's requirement: a set of their own, named `slots`), with the chips' features: the slot, its chip's record, the slot's kind and state, cursor, pick order, button uses, marks; the pointer (legal, refused, steps away); what picking it would add (§4.2) |
+| chips | 7 | 250 | chip, changes_to, leaves, kind_1, kind_2, kind_3 | 6 own hand (next first), then the other's last used chip as its telop named it. Each: its role, hand place; what the record says (element, class, this copy's code, how it is used, the flag, extra flag and trait bits, trap kind, modifier kind, damage formula kind, damage, MB, hit strength, lockout, a Program Advance's result, a link navi's own chip, codes); in hand, damage as shown, bonus and marks; the used chip's damage, bonus, x2; and its fingerprint, 114 (§3.1), whose names are the token's ids after the chip's |
+| slots | 12 | 250 | as chips (the chip, or a button's name) | the custom screen's 12 slots in the screen's order, what its pointer points at (the trainer's requirement: a set of their own, named `slots`), with the chips' features: the slot, its chip's record, the slot's kind and state, cursor, pick order, button uses, marks; the pointer (legal, refused, steps away); what picking it would add (§4.2); its chip's fingerprint |
 | rules | 96 | 14 | field, value | own navi stats of its game's own, then own rules' state: one token a scalar (a record's scalars one level deep, an array's elements each, lists left out; EXE6 has 43, EXE5 79, EXE4 49), its source, type (bool, number, enum, reference, code, other), value (set, /100, signed log, enum index), its place in an array |
 | forms | 12 | 22 | form | own form, the other's as it shows, and on the custom screen the forms its window offers (`form_list`) and a button's offer (`offer`): role, window place, marked, cursor, chosen; element, weakness bits, base form, buster bonus, chip bonus, null bonus, charged chips |
 
 The attack log is in the panel tokens rather than a set of its own (the coordinator's change: fewer tokens). The
 sets' names name the trainer's weights: Python identifiers and no keyword (so `general`, not `global`). The spec's
 hash is FNV-1a 64 of the layout's text (every set's name, count, width, ids and features in order, the actions and
-the names' hash): `b4dd899d4d9af11a` as built.
+the names' hash): `c4d9e4a61b0f54ba` as built.
 
 **Chips** are described by what the content states: damage, element, class, codes, MB, the flag and trait bits,
 trap kind, modifier kind, damage formula kind, hit strength, lockout, and how it's used (action, cut-in, hand-off,
@@ -130,6 +131,50 @@ playing, on the screen and in the fight), a property test changes everything the
 its observation stays the same byte for byte: the other side's hand, folder, custom screen, setup and rules' state,
 the battle's and both consoles' RNG, and every object hidden from the viewer (but its own navi, whose HP its HUD
 shows).
+
+### 3.1 Chip fingerprints
+
+A chip's name is a learned embedding, which a chip seen rarely (or a new game's) hardly has. Its fingerprint says what
+it does, measured: each chip of a game run in a sandbox (`fingerprint.rs`), once a game (computed as a pool starts,
+on its threads, kept by content hash in the process and in `cache` on disk; the app will compute a folder's chips on
+a worker as a battle starts). Nothing names a chip: a chip is what the battle shows of it.
+
+- **The sandbox.** Two of the game's default builds, through the first custom screen with nothing picked, every panel
+  the rules' normal type, three columns a side; the user (side 0) on its front column's middle panel holding the chip
+  alone, the target (the other navi, pressing nothing) walked to each of the nine panels of its area in turn, 1 to 3
+  columns ahead, a row above, level or below. The user presses A; the run lasts until it is quiet (the user idle, none
+  of the chip's attacks left, not dimmed) or 180 ticks.
+- **Damage net of the setup.** Every run's damage is the target's HP lost less what the same setup costs it with no
+  chip used (a control run, made once a setup and panel per thread): a poison panel's own damage, the first chip's
+  that goes on, isn't the chip's.
+- **Recorded, by target panel:** whether it hit, the damage (0 where it hit nothing), the first hit's tick. **Of the run
+  that hit hardest** (the middle one if none hit): the statuses it started on the target, by the engine's status
+  timer (paralysis, confusion, blindness, immobility, flash, submersion, invulnerability, freezing, bubble); the
+  user's HP and barrier gained; the panels whose type changed (in the user's area, the other's; which, as an 18-bit
+  map; the type most turned to, as a name id); the panels whose owner changed (taken for the user, lost; which; whether
+  a panel of the other side's front column was taken); the objects left on the field (how many, the user's, the
+  other's, the longest-lived's kind as a name id and its ticks); the run's ticks.
+- **Conditioned runs**, at the panel it hit hardest (the middle one if none), each the damage as a ratio to the
+  plain run's at the same panel, at most 4: a chip that hits nothing plainly and hits under a condition comes out at
+  4. The target standing on each panel type the content declares (but the missing and broken roles' types: set as the
+  run starts); the target in each status some chip of the game inflicts (put on it by using a chip that does at that
+  panel, then the chip under test while the status holds); the user's front column held by the other side (as a
+  steal leaves it: `Battle::set_panel_alliance` and the column's timer, so it would go back as a real steal does), the
+  user a column back, which brings out a revenge-type chip (GrabRevenge: nothing plainly, 80 so); and the front line
+  advanced (the other side's front column the user's, the user on it), the target a column farther, which shows a
+  chip's reach growing with the front line. The token keeps the three panel types farthest from 1 (named by its ids
+  `kind_1` to `kind_3`), every status's (and whether run), and the two ownership conditions' ratio and damage.
+- **Layout** (`spec()`'s `fingerprint_features`): positions 27 (9 × hit, damage/400, first hit/180), statuses 9, user
+  2, panels 2, owners 3, left 4, duration 1, changed 18, owner_changed 18, status_ratios 9, status_conditioned 9,
+  kind_ratios 3, kind_conditioned 3, stolen 3, advanced 3: 114. Ratios are kept over 4.
+- **Pairs.** A pair (setup, payoff) is a chip whose runs brought a condition (turned the panel under the target to a
+  type, started a status on it, took a panel of the other side's front column) and a chip whose damage that condition
+  raises past 1.3 times (grass then fire, a bubble then elec, AreaGrab then a sword that reaches the target only from
+  the stolen column). Found on the packs: 328 in EXE6 (180 by grass, 54 by bubble, 45 by paralysis, 36 by the front
+  line), 160 in EXE5, 133 in EXE4. Random folders are seeded with them (§6.2).
+- **Cost** (release, the packs): EXE6's 355 chips in 2.0 s on 10 threads (55 ms of work a chip, 25 runs a chip),
+  EXE5's 374 in 14.3 s (377 ms a chip: its ticks cost more and its runs last longer), EXE4's 341 in 5.2 s (150 ms); a
+  folder's 20 chips on one thread 0.83 s (EXE6), 4.0 s (EXE5), 2.0 s (EXE4).
 
 ## 4. What it presses
 
@@ -222,6 +267,9 @@ round is at max power (HP 1000 and max levels, as every player's build is) unles
 - a folder (`folders::random_folder_of`, which leans toward two codes as people's folders do) of the chips the rules
   let it hold, those held out left out or favored (`chip_holdout`, §6.6); its Regular chip as the draw gives it, and
   tag chips half the time where the rules take them;
+- with chance `combos` (default 0.3), the folder seeded with one of the game's pairs (§3.1) whose chips the side may
+  both hold: each in a code both come in (or `*`), two copies each where the rules take them, the rest drawn as
+  usual. The round's stats say what came of it (§9);
 - the build checked whole (`build::Checked`, the rules' `validate` and `build_check`), drawn again until it passes.
 
 Measured (release, the packs, 20 builds a game): every build accepted on its first try; 4.3, 4.9 and 3.8 ms a build
@@ -267,20 +315,20 @@ winning.
   one thread and a pool of three play the same, buffer for buffer (tested).
 
 Measured on the packs (release, `examples/throughput`, 10 s a measure, both seats a policy taking random allowed
-actions, three builds in four with every fact drawn): decisions a second. "One env" runs on the calling thread; its
-round start includes making both builds, which a pool makes ahead while Python works. The Mac (an M1 Max: 8
-performance and 2 efficiency cores) was busy with other sessions (load 8 to 12), so the many-thread numbers are low;
-a quiet machine of uniform cores scales further.
+actions, three builds in four with every fact drawn, three folders in ten seeded with a pair, the fingerprints in the
+views): decisions a second. "One env" runs on the calling thread; its round start includes making both builds, which a
+pool makes ahead while Python works. The Mac (an M1 Max: 8 performance and 2 efficiency cores) was busy with other
+sessions (load 8 to 12), so the many-thread numbers are low; a quiet machine of uniform cores scales further.
 
 | Game | One env | Pool, 1 thread | Pool, 4 threads | Pool, 10 threads | Tick | Encoding | Round start |
 |---|---|---|---|---|---|---|---|
-| EXE6 | 23,855 | 20,104 | 47,271 | 63,012 | 20 µs | 10.5% | 13.4 ms |
-| EXE5 | 6,073 | 5,569 | 15,021 | 23,827 | 73 µs | 3.9% | 16.4 ms |
-| EXE4 | 12,785 | 11,465 | 32,595 | 40,793 | 32 µs | 6.7% | 16.0 ms |
+| EXE6 | 21,846 | 17,549 | 41,870 | 60,307 | 18 µs | 13.9% | 13.6 ms |
+| EXE5 | 5,709 | 5,184 | 15,851 | 25,478 | 73 µs | 5.0% | 15.5 ms |
+| EXE4 | 12,267 | 10,381 | 30,299 | 49,759 | 35 µs | 8.3% | 14.9 ms |
 
 "Encoding" is the share of one env's time spent encoding observations (one encoding every k = 4 ticks a seat, and
-each screen decision); the key probes take 2 to 3% (0.5% in EXE4). A round of random play runs 6,000 to 16,000
-ticks. The three games mixed, through the bridge (`smoke.py`, 32 envs on 8 threads): 24,036 decisions a second.
+each screen decision); the key probes take 2% (0.4% in EXE4). A round of random play runs 6,000 to 16,000 ticks. The
+three games mixed, through the bridge (`smoke.py`, 32 envs on 8 threads): 24,964 decisions a second.
 
 ### 6.6 The bridge's interface
 
@@ -301,12 +349,14 @@ pool = nettai_gym.Pool(
     chip_holdout=(0.0, 0, "exclude"),  # (fraction, seed, mode): chips held out of training, below
     practice=0.25,                   # the chance each practice option is on in a round
     randomize=0.75,                  # the chance a build draws every fact it states (§6.2)
+    combos=0.3,                      # the chance a random folder is seeded with a pair of chips (§3.1, §6.2)
+    cache=None,                      # a directory the chips' fingerprints are kept in, by content hash
 )
 spec = pool.spec()
 # {"hash": "<hex>", "buckets": 8192, "fight_actions": 20, "screen_actions": 19,   # 12 slots, then 7 keys
 #  "screen_keys": ["up", "down", "left", "right", "a", "b", "start"],
 #  "chip_tokens": {"hand": (0, 6), "used": (6, 1)},                              # (first, count) in "chips"
-#  "fingerprint": 40, "games": [...],
+#  "fingerprint": 114, "fingerprint_features": [(name, width), ...], "games": [...],
 #  "sets": {name: {"count": C, "width": W, "ids": I, "id_names": [...],         # sets in a fixed order:
 #                  "features": [(name, width), ...]}, ...}}                     # general, panels, objects,
 #                                                                               # chips, slots, rules, forms
@@ -336,8 +386,11 @@ pool.round_stats()                    # rounds ended since the last call (§9's 
                                       #   "screens", "truncated", "error", "full_gauge", "folder_order"}, ...],
                                       # a seat's dict: "result" (+1 / -1 / 0), "controller", "navi", "delay",
                                       # "max_hp", "hp_lost", "hits_taken", "chips_used", "attack_chips",
-                                      # "attacks_landed", "chips_picked", "steps", "steps_back", "forms_taken"
+                                      # "attacks_landed", "chips_picked", "steps", "steps_back", "forms_taken",
+                                      # and for a folder seeded with a pair: "pair" (setup, payoff), "pair_picked",
+                                      # "pair_ordered", "pair_used", "payoff_damage" (None where not seeded)
 pool.profile()                        # the envs' time: encoding, round starts, key probes, builds made ahead
+pool.pairs()                          # {game: [(setup key, payoff key, condition, ratio), ...]}
 nettai_gym.name_ids("cannon")         # (834, 2843): the trainer can check its own hash against the pool's
 nettai_gym.holdout_unit(seed, key)    # a chip key's number in [0, 1) with the seed
 ```
@@ -401,7 +454,13 @@ All of these run in Rust on the pool, fast, and print a table:
   - chips picked per screen;
   - steps back to the panel just left within a third of a second (pacing);
   - forms taken.
-  These are the old fighter's measures, so the two compare.
+  These are the old fighter's measures, so the two compare. The env measures them every round (`stats.rs`,
+  `round_stats()`), and `stats::Table` sums them by game and pairing.
+- **Combos** (the user: multi-step setups learned well): for each folder seeded with a pair (§3.1, §6.2), whether both
+  chips were picked, picked on one screen setup first, used in that order within 5 seconds, and the most the payoff
+  did (the other navi's HP lost within 2 seconds of its use) as a ratio to its plain fingerprint's best. Rates of
+  these against the scripted players, by condition (a panel type, a status, the front line), say whether it learned
+  the setups.
 - **Elo** across the league's versions, mirrored seats. The shipped network is the best by Elo against a fixed
   set.
 - **A game it never trained on.** Train on EXE5 and EXE6 only, then play EXE4. This is the test of "works on any
@@ -457,7 +516,9 @@ All of these run in Rust on the pool, fast, and print a table:
    - act, with the navigator;
    - builds, env, pool and bots.
 
-   Checked by unit tests on the test content of all three games, and a throughput measurement on the packs.
+   Checked by unit tests on the test content of all three games, and a throughput measurement on the packs. Done
+   (branch learned-ai): with the bridge (step 3's module and smoke run), random builds of every setup fact, and the
+   fingerprints (step 6).
 2. **Trainer** (training/), alongside step 1 against the spec in §3–4: the model, PPO, the league, export, and
    evaluation calls into the pool.
 3. **Bridge and smoke run.** The pyo3 module. A 30-minute local run of EXE6 that must clearly beat the masher.
@@ -467,9 +528,10 @@ All of these run in Rust on the pool, fast, and print a table:
    - the practice rows;
    - the wasm32 type-check.
 5. **Cloud runs.** The full recipe, then the held-out-game test, then the levels' calibration. The weights go in.
-6. **If chips are misjudged:** chip fingerprints. Each chip is run once in a sandbox battle to record which panels
-   it hits, when, and for how much, as extra features. This is generic, and it costs a second or so for a folder's
-   chips at battle start.
+6. **Chip fingerprints: in v1** (the coordinator's call, the user wanting multi-step setups learned well). Each chip
+   run in a sandbox battle (§3.1): where it hits, when and how hard, what it changes and leaves, and its damage under
+   each condition a setup brings; the pairs of chips that work together found from them and seeded into folders.
+   Generic, kept by content hash, and a folder's chips take 1 to 4 s on one thread at battle start.
 
 ## 13. Risks
 

@@ -56,7 +56,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, combos=0.3, cache=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -73,12 +73,14 @@ impl PyPool {
         chip_holdout: (f64, u64, String),
         practice: f64,
         randomize: f64,
+        combos: f64,
+        cache: Option<std::path::PathBuf>,
     ) -> PyResult<PyPool> {
         if k == 0 || delay.0 > delay.1 || hp.0 == 0 || hp.0 > hp.1 {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
-        let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, ..Config::default() };
-        let cfg = PoolConfig { games, envs, threads, seed, content, packs, env };
+        let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, combos, ..Config::default() };
+        let cfg = PoolConfig { games, envs, threads, seed, content, packs, env, cache };
         let pool = py.detach(|| Pool::new(cfg)).map_err(err)?;
         Ok(PyPool { pool: Mutex::new(pool) })
     }
@@ -98,6 +100,7 @@ impl PyPool {
         chips.set_item("used", (spec::USED_TOKEN, 1))?;
         d.set_item("chip_tokens", chips)?;
         d.set_item("fingerprint", spec::FINGERPRINT)?;
+        d.set_item("fingerprint_features", spec::fingerprint::FIELDS.to_vec())?;
         d.set_item("games", self.pool().games().to_vec())?;
         let sets = PyDict::new(py);
         for s in spec::SETS {
@@ -217,6 +220,12 @@ impl PyPool {
                 seat.set_item("steps", r.steps[s])?;
                 seat.set_item("steps_back", r.steps_back[s])?;
                 seat.set_item("forms_taken", r.forms_taken[s])?;
+                // (A folder seeded with a pair: the pair, and what came of it.)
+                seat.set_item("pair", r.pair[s].clone())?;
+                seat.set_item("pair_picked", r.pair_picked[s])?;
+                seat.set_item("pair_ordered", r.pair_ordered[s])?;
+                seat.set_item("pair_used", r.pair_used[s])?;
+                seat.set_item("payoff_damage", r.payoff_damage[s])?;
                 seats.append(seat)?;
             }
             d.set_item("seats", seats)?;
@@ -236,6 +245,21 @@ impl PyPool {
         d.set_item("ticks", p.ticks)?;
         d.set_item("decisions", p.decisions)?;
         d.set_item("rounds", p.rounds)?;
+        Ok(d)
+    }
+
+    /// The pairs of chips each game's fingerprints found (a setup, a
+    /// payoff, the condition, the ratio), by game.
+    fn pairs<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let pool = self.pool();
+        let d = PyDict::new(py);
+        for (name, pairs) in pool.pairs() {
+            let list = PyList::empty(py);
+            for (setup, payoff, condition, ratio) in pairs {
+                list.append((setup, payoff, condition, ratio))?;
+            }
+            d.set_item(name, list)?;
+        }
         Ok(d)
     }
 }

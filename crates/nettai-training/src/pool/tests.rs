@@ -1,10 +1,10 @@
 use super::*;
-use crate::testing::{GAMES, content};
+use crate::testing::GAMES;
 use nettai_netplay::rng::SplitMix64;
 
 fn pool(envs: usize, threads: usize, seed: u64, env: Config) -> Pool {
-    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, packs: None, env };
-    Pool::with_contents(cfg, GAMES.iter().map(|g| content(g)).collect()).unwrap_or_else(|e| panic!("{e}"))
+    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, packs: None, env, cache: None };
+    Pool::with_games(cfg, crate::testing::games(&GAMES)).unwrap_or_else(|e| panic!("{e}"))
 }
 
 /// Random allowed actions for every seat the buffers ask.

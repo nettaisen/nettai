@@ -15,6 +15,9 @@ nettai-match = { path = "../nettai-match" }
 nettai-netplay = { path = "../nettai-netplay" }
 # The packs a pool plays on (their timings: the battle's content).
 nettai-content = { path = "../nettai-content" }
+# The chips' fingerprints kept on disk, by content hash.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 # Live play's AI plug (`driver::Ai`), for the app's player (ai.rs, a later
 # step): the only thing here that may pull in the frontend.
 nettai-frontend = { path = "../nettai-frontend", optional = true }

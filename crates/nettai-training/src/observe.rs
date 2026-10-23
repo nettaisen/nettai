@@ -104,6 +104,8 @@ pub struct Names {
     /// The scalars a rules token holds: the navi stats' first, then the
     /// rules' state's.
     scalars: Vec<Scalar>,
+    /// The game's chips' fingerprints, where they were made.
+    fingerprints: Option<std::sync::Arc<crate::fingerprint::Fingerprints>>,
 }
 
 /// Where a rules token's scalar is: in the navi's stats of its game's own
@@ -142,7 +144,18 @@ impl Names {
             panel_types: content.rules.as_ref().map_or_else(Vec::new, |r| keys(&mut r.panels.names.iter().map(String::as_str))),
             defs,
             scalars,
+            fingerprints: None,
         }
+    }
+
+    /// The same, with the game's chips' fingerprints.
+    pub fn with_fingerprints(content: &Content, fingerprints: std::sync::Arc<crate::fingerprint::Fingerprints>) -> Names {
+        Names { fingerprints: Some(fingerprints), ..Names::of(content) }
+    }
+
+    /// The fingerprints, where they were made.
+    pub fn fingerprints(&self) -> Option<&crate::fingerprint::Fingerprints> {
+        self.fingerprints.as_deref()
     }
 
     /// How many scalars a rules token could hold (more than the set's
@@ -494,6 +507,8 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
             row[panels::state + 2] = clip(p.hole_timer as f32 / 600.0, 0.0, 2.0);
             row[panels::state + 3] = clip(p.timer as f32 / 1800.0, 0.0, 2.0);
             row[panels::state + 4] = flag(p.blink.is_some());
+            // (A stolen panel blinks as it goes back to its owner: shown.)
+            row[panels::state + 5] = flag(p.return_blink & 0xFF != 0);
             row[panels::highlight] = flag(p.highlight != 0);
             let types = b.collision.panel_self_flags(x, y);
             let bodies = v.sides(BODY_OF, p.flags);
@@ -695,7 +710,10 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
 /// What a chip's record says of it (§3: damage, element, class, codes, MB,
 /// the flag and trait bits, trap kind, modifier kind, damage formula kind,
 /// hit strength, lockout, how it's used), with this copy's code.
-fn chip_facts(content: &Content, h: ChipHandle, code: Option<u8>, row: &mut [f32]) {
+fn chip_facts(content: &Content, names: &Names, h: ChipHandle, code: Option<u8>, row: &mut [f32], ids: &mut [i32]) {
+    if let Some(fp) = names.fingerprints().and_then(|f| f.of(h)) {
+        fingerprint(names, fp, &mut row[chips::fingerprint..chips::fingerprint + spec::FINGERPRINT], ids);
+    }
     let def = &content.defs.chips[h.0 as usize];
     let c = &def.record;
     let mut at = chips::facts;
@@ -779,6 +797,66 @@ fn chip_facts(content: &Content, h: ChipHandle, code: Option<u8>, row: &mut [f32
     debug_assert_eq!(at + 3, chips::in_hand);
 }
 
+/// A chip's fingerprint into its token (`spec::fingerprint`'s features),
+/// and its names into the token's ids after the chip's own.
+fn fingerprint(names: &Names, fp: &crate::fingerprint::Fingerprint, row: &mut [f32], ids: &mut [i32]) {
+    use crate::fingerprint::{MAX_RATIO, STATUSES, top_change};
+    use crate::spec::fingerprint as f;
+    for (i, &(damage, first)) in fp.runs.iter().enumerate().take(9) {
+        row[f::positions + 3 * i] = flag(damage > 0);
+        row[f::positions + 3 * i + 1] = clip(damage as f32 / 400.0, 0.0, 4.0);
+        row[f::positions + 3 * i + 2] = first.map_or(0.0, |t| t as f32 / crate::fingerprint::RUN_TICKS as f32);
+    }
+    for k in 0..STATUSES {
+        row[f::statuses + k] = flag(fp.statuses & (1 << k) != 0);
+    }
+    let e = &fp.effect;
+    row[f::user] = clip(e.user_hp as f32 / 400.0, -4.0, 4.0);
+    row[f::user + 1] = clip(e.user_barrier as f32 / 200.0, 0.0, 4.0);
+    let own_area = |bits: u32| (0..18).filter(|&i| bits & (1 << i) != 0 && i % 6 < 3).count() as f32 / 9.0;
+    let other_area = |bits: u32| (0..18).filter(|&i| bits & (1 << i) != 0 && i % 6 >= 3).count() as f32 / 9.0;
+    row[f::panels] = own_area(e.changed);
+    row[f::panels + 1] = other_area(e.changed);
+    row[f::owners] = (e.owner_to_user.count_ones()) as f32 / 9.0;
+    row[f::owners + 1] = (e.owner_changed & !e.owner_to_user).count_ones() as f32 / 9.0;
+    row[f::owners + 2] = flag(fp.takes_front);
+    row[f::left] = e.left as f32 / 4.0;
+    row[f::left + 1] = e.left_own as f32 / 4.0;
+    row[f::left + 2] = e.left_other as f32 / 4.0;
+    row[f::left + 3] = e.longest.map_or(0.0, |(_, t)| t as f32 / crate::fingerprint::RUN_TICKS as f32);
+    row[f::duration] = e.ticks as f32 / crate::fingerprint::RUN_TICKS as f32;
+    for i in 0..18 {
+        row[f::changed + i] = flag(e.changed & (1 << i) != 0);
+        row[f::owner_changed + i] = flag(e.owner_changed & (1 << i) != 0);
+    }
+    for (k, r) in fp.status_ratios.iter().enumerate() {
+        if let Some(r) = r {
+            row[f::status_ratios + k] = r / MAX_RATIO;
+            row[f::status_conditioned + k] = 1.0;
+        }
+    }
+    let mut kinds = fp.kind_ratios.clone();
+    kinds.sort_by(|a, b| (b.1 - 1.0).abs().total_cmp(&(a.1 - 1.0).abs()).then(a.0.cmp(&b.0)));
+    for (k, (kind, r)) in kinds.iter().take(crate::fingerprint::KIND_CONDITIONS).enumerate() {
+        row[f::kind_ratios + k] = r / MAX_RATIO;
+        row[f::kind_conditioned + k] = 1.0;
+        put_ids(ids, 6 + 2 * k, names.panel_types.get(kind.0 as usize).copied().unwrap_or_default());
+    }
+    for (at, c) in [(f::stolen, fp.stolen), (f::advanced, fp.advanced)] {
+        if let Some((r, d)) = c {
+            row[at] = 1.0;
+            row[at + 1] = r / MAX_RATIO;
+            row[at + 2] = clip(d as f32 / 400.0, 0.0, 4.0);
+        }
+    }
+    if let Some(k) = top_change(e) {
+        put_ids(ids, 2, names.panel_types.get(k.0 as usize).copied().unwrap_or_default());
+    }
+    if let Some((kind, _)) = e.longest {
+        put_ids(ids, 4, names.kinds.get(kind.0 as usize).copied().unwrap_or_default());
+    }
+}
+
 /// The picks a screen's selection holds, with `extra` picked after them:
 /// what OK would build the hand from (the screen's own `confirm`, but for
 /// the invalid-chip rule and a button's chip).
@@ -822,7 +900,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
         row[chips::role] = 1.0;
         row[chips::hand_place] = k as f32 / 6.0;
         let code = hand.selection[i].filter(|s| s.id == id).map(|s| s.code.0);
-        chip_facts(content, id, code, row);
+        chip_facts(content, v.names, id, code, row, ids);
         row[chips::in_hand] = (hand.damage[i] + hand.attack_bonus[i]) as f32 / 400.0;
         row[chips::in_hand + 1] = hand.attack_bonus[i] as f32 / 100.0;
         for bit in 0..3 {
@@ -875,7 +953,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
             row[chips::pointer + 2] = steps[slot].map_or(1.0, |n| clip(n as f32 / 6.0, 0.0, 1.0));
             let chip = screen.chip_in(slot as u8, &side.folder).or_else(|| s.face.map(|f| nettai_battle::custom::FolderChip::new(f, nettai_battle::content::ChipCode(0))));
             if let Some(c) = chip {
-                chip_facts(content, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row);
+                chip_facts(content, v.names, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row, ids);
                 put_ids(ids, 0, v.names.chip(c.id));
             }
             // What picking it would add (§4.2): a Program Advance it
@@ -901,7 +979,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
     if let Some(u) = b.used_chip_for(v.me) {
         let (row, ids) = out.token(spec::CHIPS, spec::USED_TOKEN);
         row[chips::role + 2] = 1.0;
-        chip_facts(content, u.chip, None, row);
+        chip_facts(content, v.names, u.chip, None, row, ids);
         row[chips::used] = 1.0;
         row[chips::used + 1] = u.damage as f32 / 400.0;
         row[chips::used + 2] = u.bonus as f32 / 100.0;
