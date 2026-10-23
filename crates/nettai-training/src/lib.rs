@@ -27,6 +27,7 @@ pub mod builds;
 pub mod env;
 pub mod fingerprint;
 pub mod names;
+pub mod net;
 pub mod observe;
 pub mod pool;
 pub mod spec;
