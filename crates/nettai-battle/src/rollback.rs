@@ -203,4 +203,50 @@ mod tests {
         c.objects.get_mut(r).timer ^= 1;
         assert_ne!(c.digest(), d);
     }
+
+    /// The panels attacked during a tick (`Battle::attacked_panels`) are a
+    /// look at the tick for a reader of the battle: the buster's one-tick
+    /// hit regions show there after the tick that presented them, and the
+    /// log is neither digested nor read by the simulation (a battle whose
+    /// log is scrambled after every tick goes on, digest for digest, as one
+    /// left alone).
+    #[test]
+    fn the_attacked_panels_are_no_part_of_the_simulation() {
+        // (On the custom screen START and A, to OK; in the fight B tapped
+        // every 8 frames: buster shots, each a hit region.)
+        let shoot = |b: &Battle, frame: u32| {
+            let held = match (b.round.mode == crate::battle::mode::CUSTOM, frame % 8) {
+                (true, 0) => keys::START,
+                (true, 4) => keys::A,
+                (false, 0 | 1) => keys::B,
+                _ => 0,
+            };
+            TickInput { players: [PlayerTick::buttons(held); 2], events: TickEvents::default() }
+        };
+        // (Navis with the test content's buster.)
+        let armed = || {
+            let mut stats = testing::stats(300);
+            stats.weapons.buster = testing::weapon("megaman/buster");
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
+            setup.rng = 0x2468_ACE0;
+            Battle::new(setup, testing::content())
+        };
+        let (mut b, mut scrambled) = (armed(), armed());
+        let mut seen = [false; 2];
+        for f in 0..900 {
+            let i = shoot(&b, f);
+            b.step(&i);
+            scrambled.step(&i);
+            assert_eq!(scrambled.digest(), b.digest(), "tick {f}");
+            for side in 0..2u8 {
+                seen[side as usize] |= b.attacked_panels(side) != 0;
+                // (Only the playable panels' bits.)
+                assert_eq!(b.attacked_panels(side) & !0x7E_7E7E_00, 0, "tick {f}");
+            }
+            let d = scrambled.digest();
+            scrambled.attacked.panels = [u64::MAX, 0x1234];
+            assert_eq!(scrambled.digest(), d, "tick {f}: the log isn't digested");
+        }
+        assert_eq!(seen, [true, true], "both sides' shots were logged");
+    }
 }
