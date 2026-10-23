@@ -1,0 +1,29 @@
+[package]
+name = "nettai-training"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The learned training AI's Rust side: what a side sees as arrays (observe), what it presses (act), random builds, a round as an episode, a pool of them on worker threads, scripted players and the measures (docs/design/training-ai.md)"
+
+[dependencies]
+nettai-battle.workspace = true
+# The handles the engine names content by, and the setup schemas' values.
+nettai-content-api = { path = "../nettai-content-api" }
+# Matches: random builds from the setup schema, checked; a round's setup.
+nettai-match = { path = "../nettai-match" }
+# A tick's input from buttons (`standin::tick_input`), and the masher.
+nettai-netplay = { path = "../nettai-netplay" }
+# The packs a pool plays on (their timings: the battle's content).
+nettai-content = { path = "../nettai-content" }
+# Live play's AI plug (`driver::Ai`), for the app's player (ai.rs, a later
+# step): the only thing here that may pull in the frontend.
+nettai-frontend = { path = "../nettai-frontend", optional = true }
+
+[features]
+live = ["dep:nettai-frontend"]
+# The test content of all three games (`nettai_match::testing`), for the
+# bridge's and other crates' tests.
+testing = ["nettai-match/testing"]
+
+[dev-dependencies]
+nettai-match = { path = "../nettai-match", features = ["testing"] }

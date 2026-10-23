@@ -442,6 +442,7 @@ fn make() -> Content {
         defs: Default::default(),
         strings: strings(),
         background_pool: Default::default(),
+        hash_cache: Default::default(),
     }
 }
 

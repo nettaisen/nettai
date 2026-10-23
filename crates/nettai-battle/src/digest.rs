@@ -34,7 +34,8 @@
 //!   (`RoundEnd::Error`; that it stopped is hashed);
 //! - how many times content read each side's keys while dimmed
 //!   (`Battle::dimmed_key_reads`, for an AI: the simulation never reads
-//!   it).
+//!   it), and the panels each side's attacks were presented on during the
+//!   tick (`Battle::attacked_panels`, for an AI likewise).
 //!
 //! Also left out: the content (`Battle::content`), which never changes and
 //! whose hash the round's setup carries (`RoundSetup::content`). (The
@@ -214,6 +215,7 @@ impl Hash for Battle {
             folder_check: _,
             tool_answer: _,
             dimmed_key_reads: _,
+            attacked: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

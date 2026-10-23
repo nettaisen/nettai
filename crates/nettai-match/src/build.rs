@@ -134,7 +134,7 @@ impl Choice {
     }
 
     /// The facts the choice's presets set, by name, each once.
-    fn facts(&self) -> Vec<&str> {
+    pub fn facts(&self) -> Vec<&str> {
         let mut names: Vec<&str> = self.presets.iter().flat_map(|p| fields(&p.set)).map(|(name, _)| name).collect();
         names.sort();
         names.dedup();
