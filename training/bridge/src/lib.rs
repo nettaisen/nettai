@@ -13,6 +13,7 @@
 //! keeps the pool alive): no copy is made, and a step changes what they
 //! show. `step` lets go of the GIL while the workers run.
 
+use nettai_training::builds::{Holdout, HoldoutMode};
 use nettai_training::env::{Config, Controller};
 use nettai_training::pool::{Pool, PoolConfig};
 use nettai_training::{names, spec};
@@ -55,7 +56,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), exclude_chips=None, practice=0.25, randomize=0.75))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, combos=0.3, cache=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -69,15 +70,17 @@ impl PyPool {
         delay: (u16, u16),
         max_fight_ticks: u32,
         hp: (u16, u16),
-        exclude_chips: Option<Vec<String>>,
+        chip_holdout: (f64, u64, String),
         practice: f64,
         randomize: f64,
+        combos: f64,
+        cache: Option<std::path::PathBuf>,
     ) -> PyResult<PyPool> {
         if k == 0 || delay.0 > delay.1 || hp.0 == 0 || hp.0 > hp.1 {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
-        let env = Config { k, delay, max_fight_ticks, hp, exclude_chips: exclude_chips.unwrap_or_default(), practice, randomize, ..Config::default() };
-        let cfg = PoolConfig { games, envs, threads, seed, content, packs, env };
+        let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, combos, ..Config::default() };
+        let cfg = PoolConfig { games, envs, threads, seed, content, packs, env, cache };
         let pool = py.detach(|| Pool::new(cfg)).map_err(err)?;
         Ok(PyPool { pool: Mutex::new(pool) })
     }
@@ -94,10 +97,10 @@ impl PyPool {
         d.set_item("screen_keys", spec::SCREEN_KEYS.to_vec())?;
         let chips = PyDict::new(py);
         chips.set_item("hand", (0, spec::HAND_TOKENS))?;
-        chips.set_item("slots", (spec::FIRST_SLOT_TOKEN, spec::SLOT_TOKENS))?;
         chips.set_item("used", (spec::USED_TOKEN, 1))?;
         d.set_item("chip_tokens", chips)?;
         d.set_item("fingerprint", spec::FINGERPRINT)?;
+        d.set_item("fingerprint_features", spec::fingerprint::FIELDS.to_vec())?;
         d.set_item("games", self.pool().games().to_vec())?;
         let sets = PyDict::new(py);
         for s in spec::SETS {
@@ -173,40 +176,59 @@ impl PyPool {
         self.pool().set_hp(lo, hi).map_err(err)
     }
 
-    /// The chips (by key) no random build puts in a folder, from the next
-    /// rounds.
-    fn set_exclude_chips(&self, keys: Vec<String>) -> PyResult<()> {
-        self.pool().set_exclude_chips(keys).map_err(err)
+    /// The chips held out of training from the next rounds: those a folder
+    /// may hold whose key's number with `seed` is below `fraction`
+    /// (`nettai_gym.holdout_unit`); `mode` "exclude" (random builds never
+    /// use them) or "favor" (folders lean toward them: about half a
+    /// folder's draws).
+    fn set_chip_holdout(&self, fraction: f64, seed: u64, mode: String) -> PyResult<()> {
+        let h = holdout((fraction, seed, mode))?;
+        self.pool().set_chip_holdout(h).map_err(err)
     }
 
-    /// The rounds ended since the last call, each a dict (§9's measures).
+    /// The rounds ended since the last call (§9's measures): each
+    /// `{"env", "ticks", "seats": [dict, dict], ...}`, a seat's dict its
+    /// "result" (+1, -1, 0) and its measures.
     fn round_stats<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
         let stats = self.pool().round_stats().map_err(err)?;
         let out = PyList::empty(py);
         for r in stats {
             let d = PyDict::new(py);
+            d.set_item("env", r.env)?;
+            d.set_item("ticks", r.ticks)?;
             d.set_item("game", &r.game)?;
-            d.set_item("controllers", r.controllers.to_vec())?;
-            d.set_item("navis", r.navis.to_vec())?;
-            d.set_item("delay", r.delay.to_vec())?;
-            d.set_item("result", r.result.to_vec())?;
+            d.set_item("fight_ticks", r.fight_ticks)?;
+            d.set_item("screens", r.screens)?;
             d.set_item("truncated", r.truncated)?;
             d.set_item("error", r.error.clone())?;
-            d.set_item("ticks", r.ticks)?;
-            d.set_item("fight_ticks", r.fight_ticks)?;
-            d.set_item("max_hp", r.max_hp.to_vec())?;
-            d.set_item("hp_lost", r.hp_lost.to_vec())?;
-            d.set_item("hits_taken", r.hits_taken.to_vec())?;
-            d.set_item("chips_used", r.chips_used.to_vec())?;
-            d.set_item("attack_chips", r.attack_chips.to_vec())?;
-            d.set_item("attacks_landed", r.attacks_landed.to_vec())?;
-            d.set_item("screens", r.screens)?;
-            d.set_item("chips_picked", r.chips_picked.to_vec())?;
-            d.set_item("steps", r.steps.to_vec())?;
-            d.set_item("steps_back", r.steps_back.to_vec())?;
-            d.set_item("forms_taken", r.forms_taken.to_vec())?;
             d.set_item("full_gauge", r.full_gauge)?;
             d.set_item("folder_order", r.folder_order)?;
+            let seats = PyList::empty(py);
+            for s in 0..2 {
+                let seat = PyDict::new(py);
+                seat.set_item("result", r.result[s])?;
+                seat.set_item("controller", &r.controllers[s])?;
+                seat.set_item("navi", &r.navis[s])?;
+                seat.set_item("delay", r.delay[s])?;
+                seat.set_item("max_hp", r.max_hp[s])?;
+                seat.set_item("hp_lost", r.hp_lost[s])?;
+                seat.set_item("hits_taken", r.hits_taken[s])?;
+                seat.set_item("chips_used", r.chips_used[s])?;
+                seat.set_item("attack_chips", r.attack_chips[s])?;
+                seat.set_item("attacks_landed", r.attacks_landed[s])?;
+                seat.set_item("chips_picked", r.chips_picked[s])?;
+                seat.set_item("steps", r.steps[s])?;
+                seat.set_item("steps_back", r.steps_back[s])?;
+                seat.set_item("forms_taken", r.forms_taken[s])?;
+                // (A folder seeded with a pair: the pair, and what came of it.)
+                seat.set_item("pair", r.pair[s].clone())?;
+                seat.set_item("pair_picked", r.pair_picked[s])?;
+                seat.set_item("pair_ordered", r.pair_ordered[s])?;
+                seat.set_item("pair_used", r.pair_used[s])?;
+                seat.set_item("payoff_damage", r.payoff_damage[s])?;
+                seats.append(seat)?;
+            }
+            d.set_item("seats", seats)?;
             out.append(d)?;
         }
         Ok(out)
@@ -225,6 +247,37 @@ impl PyPool {
         d.set_item("rounds", p.rounds)?;
         Ok(d)
     }
+
+    /// The pairs of chips each game's fingerprints found (a setup, a
+    /// payoff, the condition, the ratio), by game.
+    fn pairs<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let pool = self.pool();
+        let d = PyDict::new(py);
+        for (name, pairs) in pool.pairs() {
+            let list = PyList::empty(py);
+            for (setup, payoff, condition, ratio) in pairs {
+                list.append((setup, payoff, condition, ratio))?;
+            }
+            d.set_item(name, list)?;
+        }
+        Ok(d)
+    }
+}
+
+/// A chip holdout from Python's `(fraction, seed, mode)`.
+fn holdout((fraction, seed, mode): (f64, u64, String)) -> PyResult<Holdout> {
+    let mode = HoldoutMode::named(&mode).ok_or_else(|| PyValueError::new_err(format!("chip holdout mode {mode:?}: \"exclude\" or \"favor\"")))?;
+    if !(0.0..=1.0).contains(&fraction) {
+        return Err(PyValueError::new_err(format!("a fraction held out of {fraction}: 0 to 1")));
+    }
+    Ok(Holdout { fraction, seed, mode })
+}
+
+/// A chip key's number in [0, 1) with `seed`: the chip is held out where it
+/// is below the fraction (§6.6).
+#[pyfunction]
+fn holdout_unit(seed: u64, key: &str) -> f64 {
+    names::unit(seed, key)
 }
 
 /// A name's two ids (§3), as the observation carries them: for checking the
@@ -239,5 +292,6 @@ fn name_ids(name: &str) -> (i32, i32) {
 fn nettai_gym(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPool>()?;
     m.add_function(wrap_pyfunction!(name_ids, m)?)?;
+    m.add_function(wrap_pyfunction!(holdout_unit, m)?)?;
     Ok(())
 }

@@ -46,15 +46,44 @@ fn main() {
     let mut rows = Vec::new();
     for game in ["exe6", "exe5", "exe4"] {
         let content = load_game(None, &packs, game).unwrap_or_else(|e| panic!("{e}"));
-        // One env on this thread: where its time goes.
-        let games = Arc::new(vec![Game::new(content.clone()).unwrap()]);
+        // The chips' fingerprints: a folder's worth on one thread (what the
+        // app does as a battle starts), then the whole game on all.
         nettai_battle::behavior::Behaviors::for_content(&content).unwrap();
+        let all: Vec<nettai_content_api::ChipHandle> = (0..content.defs.chips.len() as u16)
+            .map(nettai_content_api::ChipHandle)
+            .filter(|&c| nettai_match::ids::in_game(&content, game, &content.defs.chip(c).key))
+            .collect();
+        let folder: Vec<_> = all.iter().copied().step_by(all.len() / 20).take(20).collect();
+        let f = nettai_training::fingerprint::Fingerprints::compute(&content, &folder, 1).unwrap();
+        println!(
+            "{game}: fingerprints of 20 chips on 1 thread: {:.2} s ({:.0} ms a chip, {} runs, {:.0} ticks a run)",
+            f.cost.wall_nanos as f64 / 1e9,
+            f.cost.wall_nanos as f64 / 20.0 / 1e6,
+            f.cost.runs,
+            f.cost.ticks as f64 / f.cost.runs as f64
+        );
+        let f = nettai_training::fingerprint::Fingerprints::for_game(&content, threads, None).unwrap();
+        println!(
+            "{game}: fingerprints of all {} chips on {threads} threads: {:.1} s ({:.0} ms of work a chip, {} runs), {} pairs",
+            f.cost.chips,
+            f.cost.wall_nanos as f64 / 1e9,
+            f.cost.nanos as f64 / f.cost.chips as f64 / 1e6,
+            f.cost.runs,
+            f.pairs.len()
+        );
+        let mut by_condition = std::collections::BTreeMap::new();
+        for p in &f.pairs {
+            *by_condition.entry(format!("{:?}", p.condition)).or_insert(0) += 1;
+        }
+        println!("{game}: pairs by condition {by_condition:?}");
+        // One env on this thread: where its time goes.
+        let games = Arc::new(vec![Game::with_fingerprints(content.clone(), f.clone()).unwrap()]);
         // What a build costs, at the rules' defaults and with every fact drawn.
         for randomize in [0.0, 1.0] {
             let maker = nettai_training::builds::Maker::new(&content).unwrap();
             let mut picks = nettai_match::Picks::new(5);
             for _ in 0..20 {
-                maker.random(&mut picks, &[], randomize).unwrap();
+                maker.random(&mut picks, &Default::default(), randomize, nettai_training::builds::Combos::NONE).unwrap();
             }
             let k = maker.counts();
             println!(
@@ -102,7 +131,7 @@ fn main() {
         // The pool, on one thread and on all.
         let mut per = Vec::new();
         for (envs, t) in [(8, 1), (32, 4), (threads * 8, threads)] {
-            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, packs: None, env: Config::default() };
+            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, packs: None, env: Config::default(), cache: None };
             let made = Instant::now();
             let mut pool = Pool::with_contents(cfg, vec![content.clone()]).unwrap();
             let start_cost = made.elapsed();

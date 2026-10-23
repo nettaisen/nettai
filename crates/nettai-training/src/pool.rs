@@ -38,6 +38,9 @@ pub struct PoolConfig {
     pub content: Option<PathBuf>,
     pub packs: Option<PathBuf>,
     pub env: Config,
+    /// Where the chips' fingerprints are kept on disk (none: computed once a
+    /// process: `Fingerprints::for_game`).
+    pub cache: Option<PathBuf>,
 }
 
 /// The pool's arrays, refilled by every step (§6.6): by set, the
@@ -187,9 +190,14 @@ struct Worker {
     thread: Option<std::thread::JoinHandle<()>>,
 }
 
+/// A pair of chips as words: the setup's key, the payoff's, the condition,
+/// the ratio.
+pub type PairNamed = (String, String, String, f32);
+
 /// N envs on persistent worker threads.
 pub struct Pool {
     games: Vec<String>,
+    made: Arc<Vec<Game>>,
     workers: Vec<Worker>,
     shared: Arc<Shared>,
     buffers: Buffers,
@@ -213,15 +221,30 @@ impl Pool {
         Pool::with_contents(cfg, contents)
     }
 
-    /// A pool on contents already loaded (by game, in `cfg.games`' order).
+    /// A pool on contents already loaded (by game, in `cfg.games`' order),
+    /// with their chips' fingerprints (`Fingerprints::for_game`, on the
+    /// pool's threads).
     pub fn with_contents(cfg: PoolConfig, contents: Vec<Arc<Content>>) -> Result<Pool, String> {
+        env::quiet_engine_panics();
+        let games = contents
+            .into_iter()
+            .map(|c| {
+                let f = crate::fingerprint::Fingerprints::for_game(&c, cfg.threads, cfg.cache.as_deref())?;
+                Game::with_fingerprints(c, f)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Pool::with_games(cfg, Arc::new(games))
+    }
+
+    /// A pool on games already made (by game, in `cfg.games`' order).
+    pub fn with_games(cfg: PoolConfig, games: Arc<Vec<Game>>) -> Result<Pool, String> {
         if cfg.envs == 0 || cfg.threads == 0 {
             return Err("a pool has at least one env and one thread".into());
         }
         if cfg.games.len() > i8::MAX as usize {
             return Err("too many games".into());
         }
-        let games: Arc<Vec<Game>> = Arc::new(contents.into_iter().map(Game::new).collect::<Result<_, _>>()?);
+        env::quiet_engine_panics();
         for (name, g) in cfg.games.iter().zip(games.iter()) {
             if *name != g.name {
                 return Err(format!("the content loaded for {name} is {}'s", g.name));
@@ -241,7 +264,7 @@ impl Pool {
                 .map_err(|e| format!("a worker thread: {e}"))?;
             workers.push(Worker { tx, rx, thread: Some(thread) });
         }
-        let mut pool = Pool { games: cfg.games.clone(), workers, shared, buffers };
+        let mut pool = Pool { games: cfg.games.clone(), made: games, workers, shared, buffers };
         // (The envs made, each at its first decision.)
         pool.run(|| Cmd::Start)?;
         Ok(pool)
@@ -249,6 +272,31 @@ impl Pool {
 
     pub fn games(&self) -> &[String] {
         &self.games
+    }
+
+    /// Each game's pairs of chips (setup key, payoff key, the condition as
+    /// words, the ratio).
+    pub fn pairs(&self) -> Vec<(String, Vec<PairNamed>)> {
+        self.made
+            .iter()
+            .map(|g| {
+                let c = &g.content;
+                let pairs = g.names.fingerprints().map_or_else(Vec::new, |f| {
+                    f.pairs
+                        .iter()
+                        .map(|p| {
+                            let condition = match p.condition {
+                                crate::fingerprint::Condition::Kind(k) => format!("panel {}", c.rules().panels.names.get(k.0 as usize).map_or("?", |n| n.as_str())),
+                                crate::fingerprint::Condition::Status(s) => format!("status {s}"),
+                                crate::fingerprint::Condition::Advanced => "front line advanced".to_string(),
+                            };
+                            (c.defs.chip(p.setup).key.clone(), c.defs.chip(p.payoff).key.clone(), condition, p.ratio)
+                        })
+                        .collect()
+                });
+                (g.name.clone(), pairs)
+            })
+            .collect()
     }
 
     pub fn envs(&self) -> usize {
@@ -346,10 +394,12 @@ impl Pool {
         self.each(None, |env| env.set_hp(lo, hi))
     }
 
-    /// The chips (by key) no random build puts in a folder, from the next
-    /// rounds.
-    pub fn set_exclude_chips(&mut self, keys: Vec<String>) -> Result<(), String> {
-        self.each(None, |env| env.set_exclude_chips(keys.clone()))
+    /// The chips held out of training, from the next rounds (§6.6).
+    pub fn set_chip_holdout(&mut self, holdout: crate::builds::Holdout) -> Result<(), String> {
+        if !(0.0..=1.0).contains(&holdout.fraction) {
+            return Err(format!("a fraction held out of {}: 0 to 1", holdout.fraction));
+        }
+        self.each(None, |env| env.set_chip_holdout(holdout))
     }
 
     /// The rounds ended since the last call.
@@ -357,7 +407,7 @@ impl Pool {
         let mut out = Vec::new();
         for e in 0..self.envs() {
             if let Some(env) = self.shared.env(e).as_mut() {
-                out.append(&mut env.ended);
+                out.extend(env.ended.drain(..).map(|r| RoundStats { env: e, ..r }));
             }
         }
         Ok(out)

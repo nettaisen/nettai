@@ -60,7 +60,7 @@ fn policy_seats_decide_in_the_fight_and_on_the_screen() {
                     FIGHT => {
                         fight += 1;
                         assert!(env.legal_fight[s].iter().all(|&l| l));
-                        assert!(env.obs[s].sets[spec::GLOBAL].mask[0]);
+                        assert!(env.obs[s].sets[spec::GENERAL].mask[0]);
                         assert_eq!(env.t % env.cfg.k, 0);
                         assert!(env.t > last_tick[s] || out.done);
                         last_tick[s] = env.t;
@@ -70,7 +70,7 @@ fn policy_seats_decide_in_the_fight_and_on_the_screen() {
                         screen += 1;
                         assert!(env.legal_screen[s].iter().any(|&l| l));
                         // (Its screen's slots are tokens.)
-                        assert!(env.obs[s].sets[spec::CHIPS].mask[spec::FIRST_SLOT_TOKEN + OK_SLOT as usize]);
+                        assert!(env.obs[s].sets[spec::SLOTS].mask[OK_SLOT as usize]);
                         actions[s] = random_action(&mut rng, &env.legal_screen[s]);
                     }
                     _ => actions[s] = 0,
@@ -97,7 +97,8 @@ pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
     let c = content(game);
     let maker = Maker::new(&c).unwrap();
     let mut picks = Picks::new(seed);
-    let sides = [maker.random(&mut picks, &[], 0.75).unwrap(), maker.random(&mut picks, &[], 0.75).unwrap()];
+    let none = crate::builds::Holdout::default();
+    let sides = [maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side, maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side];
     let m = maker.round(sides, 1000, seed).unwrap();
     let mut b = Set::of(&c, &m, seed).start();
     for _ in 0..900 {

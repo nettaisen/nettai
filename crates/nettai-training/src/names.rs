@@ -74,6 +74,15 @@ impl std::fmt::Write for Hashing {
     }
 }
 
+/// A name as a number in [0, 1) with `seed` (a chip held out of training is
+/// one whose number is below the fraction held out, §6.6): FNV-1a 64 from the
+/// first seed over the seed's eight bytes, little-endian, then the name's
+/// (its root dropped), its top 53 bits over 2^53.
+pub fn unit(seed: u64, name: &str) -> f64 {
+    let h = fnv1a(fnv1a(SEEDS[0], &seed.to_le_bytes()), nettai_content_api::keys::local(name).as_bytes());
+    (h >> 11) as f64 / (1u64 << 53) as f64
+}
+
 /// FNV-1a 64 of text with the first seed, written as 16 hex digits: the
 /// observation spec's hash.
 pub fn text_hash(text: &str) -> String {
@@ -100,6 +109,8 @@ mod tests {
             let h = SEEDS.map(|s| fnv1a(s, b"\"x\""));
             h.map(bucket)
         });
+        assert_eq!(unit(7, "exe6:cannon"), unit(7, "cannon"));
+        assert!((0.0..1.0).contains(&unit(1, "cannon")));
         // Pinned: computed apart (Python), as the trainer checks them.
         assert_eq!(ids("cannon"), [834, 2843]);
         assert_eq!(ids("exe5:megaman"), [118, 1293]);
