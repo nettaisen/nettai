@@ -537,6 +537,9 @@ pub struct Battle {
     /// Content's reads of each side's keys while dimmed: no part of the
     /// simulation ([`crate::dimming::KeyReads`]).
     pub(crate) dimmed_key_reads: crate::dimming::KeyReads,
+    /// The panels each side's attacks were presented on during the tick
+    /// ([`Battle::attacked_panels`]): no part of the simulation.
+    pub(crate) attacked: crate::collision::AttackLog,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -826,6 +829,7 @@ impl Battle {
             folder_check: None,
             tool_answer: None,
             dimmed_key_reads: Default::default(),
+            attacked: Default::default(),
             setup,
         };
         // The navi's stats of its game's own are of the rules' `stats`: a
@@ -949,6 +953,17 @@ impl Battle {
     /// the simulation ([`crate::dimming::KeyReads`]).
     pub fn dimmed_key_reads(&self, side: u8, keys: u16) -> u32 {
         self.dimmed_key_reads.get(side, keys)
+    }
+
+    /// The panels an attack of side `side` was presented on during the last
+    /// tick (a registration whose collision type is an attack of that side,
+    /// `collision::ATTACK_OF`), a bit a panel at `y * 8 + x`: what a one-tick
+    /// hit region leaves behind to read once the tick is over (it presents,
+    /// hits and is gone within the tick). A look at what happened, as the
+    /// panels' highlight is: no part of the simulation (nothing in a tick
+    /// reads it, and the digest leaves it out), cleared as each tick starts.
+    pub fn attacked_panels(&self, side: u8) -> u64 {
+        self.attacked.panels[side as usize & 1]
     }
 
     pub fn set_flags(&mut self, f: u16) {
@@ -1075,6 +1090,8 @@ impl Battle {
         // Panel highlights and blinks last one frame: the game's field
         // renderer clears them after drawing.
         self.field.clear_one_frame_looks();
+        // (And the panels attacked are this tick's.)
+        self.attacked = Default::default();
         match self.round.top {
             top::RUNNING => self.tick_running(input),
             top::END => self.tick_end(input, &events),
