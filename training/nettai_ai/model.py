@@ -24,16 +24,16 @@ FORMAT_VERSION = 1
 LN_EPS = 1e-5
 NAME_INIT_STD = 0.05
 
-# §7's budget profile: a typical fight position, by set name. Objects and hand as the coordinator put them
-# (2026-10-23); rules as the pool shows them (43 in EXE6, 79 in EXE5, 49 in EXE4, every decision); the attack
-# log is in the panels' tokens.
+# §7's budget profile: a typical fight position, by set name (the pool's sets as the trainer reads them: its chips
+# set split into hand and used). Objects and hand as the coordinator put them (2026-10-23); rules as the pool
+# shows them (43 in EXE6, 79 in EXE5, 49 in EXE4, every decision); the attack log is in the panels' tokens.
 TYPICAL = {
-    "global": 1,
+    "general": 1,
     "panels": 18,
     "objects": 10,
     "hand": 6,
-    "slots": 0,
     "used": 1,
+    "slots": 0,
     "rules": 57,
     "forms": 2,
 }

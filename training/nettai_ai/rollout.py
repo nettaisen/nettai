@@ -166,8 +166,8 @@ class Collector:
                 st.rounds += len(envs)
                 st.truncated += int(v.truncated[envs].sum())
                 games = v.game.numpy()
-                self._measure(st, read_round_stats(self.pool, envs))
-                st.records += self.league.round_end(envs, v.result.view(self.E, 2).numpy(), games)
+                self._measure(st, read_round_stats(self.pool))
+                st.records += self.league.round_end(envs, v.result.view(self.E, 2).numpy(), games, v.truncated.numpy())
                 streams = torch.from_numpy(np.stack([envs * 2, envs * 2 + 1], 1).ravel()).to(dev)
                 self.hidden[streams] = 0.0
                 self.fresh[streams] = True
@@ -242,6 +242,8 @@ class Collector:
         """§9's measures from round_stats() for the learner's seats, by opponent kind. Read before the league
         moves on, while its current plan still describes these rounds."""
         for r in rounds:
+            if r["truncated"]:  # cut off (time, or a content error): no result, and not this policy's measures
+                continue
             e = int(r["env"])
             label = self.league.opponent_label(e)
             k = int(self.league.kind[e])

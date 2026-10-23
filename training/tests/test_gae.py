@@ -72,7 +72,7 @@ class StubPool:
         b["done"][0] = f.get("done", False)
         b["truncated"][0] = f.get("trunc", False)
         b["result"][0] = f.get("result", (0, 0))
-        b["x"]["global"][0, :, 0, 0] = self.i  # something to tell decisions apart
+        b["x"]["general"][0, :, 0, 0] = self.i  # something to tell decisions apart
 
     def spec(self):
         return self.raw
@@ -88,7 +88,7 @@ class StubPool:
         self.seats.append((list(envs), seat, controller))
 
     def round_stats(self):
-        return [{"env": 0, "ticks": 10, "seats": [{"result": 0}, {"result": 0}]}]
+        return [{"env": 0, "ticks": 10, "truncated": bool(self.buf["truncated"][0]), "seats": [{"result": 0}, {"result": 0}]}]
 
 
 def test_collector_streams(tmp_path: Path, tiny_cfg):
@@ -117,8 +117,8 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     assert ro.cursor.tolist() == [6, 5]
     assert ro.open.tolist() == [5, 4]
     # Seat 0 decided at frames 0-5; seat 1 at 0, 2, 3, 4, 5.
-    assert ro.x["global"][s0, :6, 0, 0].tolist() == [0, 1, 2, 3, 4, 5]
-    assert ro.x["global"][s1, :5, 0, 0].tolist() == [0, 2, 3, 4, 5]
+    assert ro.x["general"][s0, :6, 0, 0].tolist() == [0, 1, 2, 3, 4, 5]
+    assert ro.x["general"][s1, :5, 0, 0].tolist() == [0, 2, 3, 4, 5]
     assert torch.allclose(ro.reward[s0, :5], torch.tensor([0.1, 0.2, 0.05 + 2.0, 0.0, 0.3]))
     assert torch.allclose(ro.reward[s1, :4], torch.tensor([-0.3, -0.05 - 2.0, 0.0, -0.3]))
     assert ro.term[s0, :5].tolist() == [False, False, True, False, False]
@@ -156,7 +156,7 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     # The open decisions move to the front for the next rollout; nothing else survives.
     ro.carry()
     assert ro.cursor.tolist() == [1, 1] and ro.open.tolist() == [0, 0]
-    assert ro.x["global"][s0, 0, 0, 0] == 5 and ro.x["global"][s1, 0, 0, 0] == 5
+    assert ro.x["general"][s0, 0, 0, 0] == 5 and ro.x["general"][s1, 0, 0, 0] == 5
     assert not ro.closed.any()
 
 

@@ -233,7 +233,7 @@ class Trainer:
         summary = summarize(records, cfg.eval.games)
         out = {}
         for (g, me, other), row in summary.items():
-            if me == "learner":
+            if me == "learner" and row["rounds"]:
                 out[f"eval/{g}/{other}/winrate"] = (row["win"] + 0.5 * row["draw"]) / row["rounds"]
                 out[f"eval/{g}/{other}/rounds"] = row["rounds"]
         print("eval " + "  ".join(f"{k[5:-8]} {v:.2f}" for k, v in sorted(out.items()) if k.endswith("/winrate")), flush=True)

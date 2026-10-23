@@ -67,9 +67,10 @@ class EnvConfig:
     delay: list[int] = field(default_factory=lambda: [6, 30])
     max_fight_ticks: int = 18000
     # Held-out chips (§9): this fraction of each game's chips never appears in training builds and is favored in
-    # evaluation builds. 0 turns it off. Needs the pool's `chip_holdout` argument (requested of the bridge).
+    # evaluation builds (the pool's chip_holdout). 0 turns it off.
     chip_holdout: float = 0.0
     chip_holdout_seed: int = 7
+    cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 
 @dataclass
