@@ -128,7 +128,9 @@ class Model(nn.Module):
         self.single = [i for i, s in enumerate(spec.sets) if s.count == 1]
         self.single_start = [sum(s.count for s in spec.sets[:i]) for i in self.single]
         self.pool_out = nn.Linear((cfg.pool_heads + len(self.single)) * d, cfg.summary)
-        self.gru = nn.GRUCell(cfg.summary, cfg.hidden)
+        # One GRU layer (PyTorch's GRU equations, gates r, z, n). nn.GRU rather than nn.GRUCell so sequences
+        # in training run as one fused call (cuDNN on CUDA); one decision is a sequence of one.
+        self.gru = nn.GRU(cfg.summary, cfg.hidden, batch_first=True)
         core = cfg.hidden + cfg.summary
         self.fight1 = nn.Linear(core, cfg.head_hidden)
         self.fight2 = nn.Linear(cfg.head_hidden, spec.fight_actions)
@@ -158,13 +160,8 @@ class Model(nn.Module):
             masks.append(m)
         t = torch.cat(toks, 1)  # [N, T, d]
         mask = torch.cat(masks, 1)  # [N, T]
-        # Keys: the present tokens. A decision with no token at all attends to slot 0, so no softmax row is
-        # empty; its pool below reads nothing either way (z = relu(pool_out.bias)).
-        attend = mask.clone()
-        attend[:, 0] |= ~mask.any(1)
-        attend = attend[:, None, None, :]
-        for b in self.blocks:
-            t = b(t, attend)
+        if self.blocks:
+            t = self._transform(t, mask)
         t = self.ln_f(t)
         w = masked_softmax(self.pool_score(t), mask.unsqueeze(-1), 1)  # [N, T, P]
         pooled = torch.einsum("ntp,ntd->npd", w, t).flatten(1)  # [N, P·d], head-major
@@ -172,6 +169,26 @@ class Model(nn.Module):
         z = F.relu(self.pool_out(torch.cat([pooled, *direct], 1)))
         sl = slice(self.slot_start, self.slot_start + self.n_slots)
         return z, t[:, sl], mask[:, sl]
+
+    def _transform(self, t: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """The transformer layers over present tokens only. They are moved to the front of each row and the
+        batch is cut to its most present tokens (the network has no positions, so this is the same
+        computation, only cheaper), then put back; absent tokens come out as they went in (zeros).
+
+        Keys are the present tokens. A decision with no token at all attends to its first slot, so no softmax
+        row is empty; the pool reads nothing of it either way (z = relu(pool_out.bias) then)."""
+        N, T, d = t.shape
+        tp = max(1, int(mask.sum(1).max()))
+        order = torch.argsort((~mask).to(torch.uint8), dim=1, stable=True)[:, :tp]  # present first, in order
+        idx = order.unsqueeze(-1).expand(N, tp, d)
+        x = t.gather(1, idx)
+        m = mask.gather(1, order)
+        attend = m.clone()
+        attend[:, 0] |= ~m.any(1)
+        attend = attend[:, None, None, :]
+        for b in self.blocks:
+            x = b(x, attend)
+        return t.scatter(1, idx, x * m.unsqueeze(-1))
 
     def heads(
         self, h: torch.Tensor, z: torch.Tensor, slot_tok: torch.Tensor, slot_present: torch.Tensor
@@ -191,7 +208,8 @@ class Model(nn.Module):
     def step(self, obs: Obs, h: torch.Tensor):
         """One decision per row: obs [N], h [N, H] → fight [N, 20], screen [N, 19], value [N], h' [N, H]."""
         z, slot_tok, slot_present = self.encode(obs)
-        h = self.gru(z, h)
+        _, h = self.gru(z.unsqueeze(1), h.unsqueeze(0).contiguous())
+        h = h[0]
         fight, screen, value = self.heads(h, z, slot_tok, slot_present)
         return fight, screen, value, h
 
@@ -204,13 +222,17 @@ class Model(nn.Module):
         flat = map_obs(obs, lambda t: t.flatten(0, 1))
         z, slot_tok, slot_present = self.encode(flat)
         zs = z.view(B, L, -1)
+        # The GRU runs over segments cut wherever any row resets: inside a segment no row resets, so each is
+        # one fused call; at a segment's start the rows that reset begin from zero.
+        cuts = [0] + [int(i) for i in reset[:, 1:].any(0).nonzero().squeeze(-1).add(1).tolist()] + [L]
         h = h0
         hs = []
-        for i in range(L):
-            h = h * (~reset[:, i]).unsqueeze(-1).to(h.dtype)
-            h = self.gru(zs[:, i], h)
-            hs.append(h)
-        hs = torch.stack(hs, 1)
+        for a, b in zip(cuts[:-1], cuts[1:]):
+            h = h * (~reset[:, a]).unsqueeze(-1).to(h.dtype)
+            out, hn = self.gru(zs[:, a:b], h.unsqueeze(0).contiguous())
+            h = hn[0]
+            hs.append(out)
+        hs = torch.cat(hs, 1)
         fight, screen, value = self.heads(hs.flatten(0, 1), z, slot_tok, slot_present)
         return fight.view(B, L, -1), screen.view(B, L, -1), value.view(B, L), hs
 
