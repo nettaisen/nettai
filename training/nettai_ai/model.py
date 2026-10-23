@@ -1,7 +1,7 @@
 """The network (§7): per-set token encoders, a small transformer, an attention pool, a GRU and three heads.
 
-Only Linear, LayerNorm, ReLU, multi-head attention with masks, an embedding lookup-sum, GRUCell and softmax
-are used, so the Rust forward pass can follow MODEL.md step by step. Every width and count comes from the spec.
+Only Linear, LayerNorm, ReLU, multi-head attention with masks, an embedding lookup-sum, a GRU cell's equations
+and softmax are used, so the Rust forward pass can follow MODEL.md step by step. Every width and count comes from the spec.
 
 Shapes below use N for a batch of decisions, T for the total token slots (the sum of the sets' counts).
 """
@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import math
-from dataclasses import dataclass
 from typing import Any
 
 import torch

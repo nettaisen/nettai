@@ -125,7 +125,7 @@ def test_macs_match_a_direct_count(tiny_cfg):
     """Count the multiply-adds of one decision by hooking every Linear, GRU and attention product."""
     spec = parse_spec(tiny_spec())
     cfg = dataclasses.replace(tiny_cfg)
-    m = Model(spec, cfg)
+    Model(spec, cfg)  # builds for this spec
     present = {"global": 1, "objects": 2, "slots": 2}
     obs = {"x": {}, "ids": {}, "mask": {}}
     for s in spec.sets:

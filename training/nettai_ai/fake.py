@@ -303,7 +303,7 @@ class FakePool:
         phase = b["phase"]
         on_screen = (self.stage == 0)[:, None].repeat(2, 1)
         for name, s in sets.items():
-            C, W, I = s["count"], s["width"], s["ids"]
+            C, I = s["count"], s["ids"]
             x = b["x"][name]
             rng.standard_normal(x.shape, dtype=np.float32, out=x)
             fight_occ, screen_occ = OCCUPANCY.get(name, ((1, C), (1, C)))

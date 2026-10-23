@@ -21,7 +21,7 @@ import numpy as np
 import torch
 
 from . import checkpoint
-from .config import LEVELS, EnvConfig, Level, ModelConfig, config_from_dict
+from .config import LEVELS, EnvConfig, Level, config_from_dict
 from .envs import PoolView, make_pool
 from .model import Model, mask_logits, select
 from .spec import Spec, parse_spec
@@ -145,6 +145,8 @@ def run_matches(
 
 def bot_pairs(player: Player, bots: list[str], envs: int) -> list[tuple[Player, Player]]:
     """Envs split evenly over the bots and both seats."""
+    if not bots:
+        raise ValueError("evaluation: no scripted players to play against")
     if envs < 2 * len(bots) or envs % (2 * len(bots)):
         raise ValueError(f"evaluation: envs ({envs}) must be a multiple of 2 × {len(bots)} bots")
     bp = [bot_player(b) for b in bots]

@@ -236,35 +236,107 @@ pool.round_stats()                    # list of dicts for rounds ended since the
 
 ## 7. The network
 
-- **Encoder.** Each token set has its own small MLP to width 128, plus its hashed name's embedding. Two transformer
-  layers mix the tokens, and an attention pool reads them out.
-- **Memory.** A GRU of 256 carries the round. It remembers chips the other side used, its habits, and how long since
-  the last custom screen.
-- **Heads.**
-  - The fight's 20 actions.
-  - The custom screen's pointer: a score for each slot token and each key, masked to what is allowed.
-  - A value.
-- **Budget.** Each decision may cost at most about 3 million multiply-adds. That is under half a millisecond on the
-  desktop and a few milliseconds in the browser's WebAssembly, which has no SIMD in our build today. The budget
-  sets the widths; training tries sizes within it.
+As built in `training/nettai_ai/model.py`. `training/MODEL.md` gives the exact computation the Rust port
+follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates, how masks apply.
+
+- **Tokens.** Each token set has its own small MLP (its floats, normalized by running statistics and clipped at
+  ±5, to 32, ReLU, to d), plus a learned vector for the set, plus its names. Every hashed name comes as **two
+  ids**, from two seeds of the same hash (the coordinator, 2026-10-23); both are looked up in one table shared by
+  every set (8,192 × d) and summed in. Id 0 is no name. Chip tokens carry a **fingerprint block** of fixed width
+  in the spec, zeros until §12's step 6 fills it; nothing reads it specially.
+- **Mixing.** One pre-LayerNorm transformer layer (4 heads, feed-forward 2 × d, ReLU) over the present tokens of
+  every set. Absent tokens are skipped, not computed and masked.
+- **Summary.** An attention pool (4 learned scores over the tokens, a weighted sum each), plus the token of
+  every set of one (the global state, the other side's last chip) read directly, to 128. Reading those directly
+  was the difference on FakePool's toy between learning the fight (its target is in the global token) in 40
+  updates, 71% of targets pressed, and not, 19%: a pool over 66 tokens starts out reading the one that matters
+  at 1/66.
+- **Memory.** A GRU of 256.
+- **Heads**, on the GRU's state and the summary:
+  - the fight's 20 actions;
+  - the custom screen's pointer: a score for each slot token (an MLP over the slot's token and the rest) and 7
+    key logits, 19 in all;
+  - a value.
+
+  Legal masks are −inf before the softmax; an absent slot is −inf too.
+- **Name dropout** (the coordinator, 2026-10-23). In training, each of the learner's tokens loses its name ids
+  with probability 0.2 (a setting), in the rollout and, as stored, in the update; never in evaluation, export or
+  play. A chip or object kind the network has never seen is then not noise: it has learned to play from the
+  numbers beside the name.
+- **Budget, as decided.** This section's first draft (width 128, two layers, ~140 tokens) was about 30 million
+  multiply-adds a layer, ten times the budget. The coordinator's rule (2026-10-23): count present tokens only
+  (the Rust port skips absent ones), at a typical fight position (global 1, 18 panels, about 10 objects, the 18
+  attack-log panels, about 6 in hand, no slots, 1 used chip, about 10 rules fields, about 2 forms: 66 tokens)
+  and at the max (every token: 140); targets 3 M typical, 10 M max.
+  - The transformer is most of the cost, and d 64 with a GRU of 256 doesn't fit 66 tokens. The default is one
+    layer at **d = 56**: 2.72 M typical, 3.33 M on the custom screen (its 12 slots added), 6.59 M max; 1.03 M
+    parameters, 0.46 M of them the name table; 3.9 MiB.
+  - Folding the attack log into the panels' features (18 fewer tokens) would bring the typical position to
+    about 2 M, room for d 64.
+  - `--size large` (d 128, two layers: 21.6 M typical, 50.6 M max, 2.57 M parameters) is there to try in the
+    cloud. If it plays clearly better, the app runs it on a worker thread (§10).
+  - `uv run python -m nettai_ai.model [--size large]` prints the numbers; training logs the cost at the
+    measured occupancy (`model/macs_measured_fight`).
 
 ## 8. Training
 
-- **PPO.** Clipped, with GAE (λ 0.95) and γ 0.997 per decision, about 20 seconds of horizon at 4 ticks a decision.
-  Long-ish sequences go through the GRU. It uses the GPU for updates and batched inference, and Rust for
+As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py, train.py).
+
+- **PPO.** Clipped at 0.2 (the value too), GAE λ 0.95 and γ 0.997 per decision, about 20 seconds of horizon at
+  4 ticks a decision. Entropy bonus 0.01, gradient norm 0.5, advantages normalized per minibatch, 3 epochs, Adam
+  at 3e-4 falling linearly to a tenth. It uses the GPU for updates and batched inference, and Rust for
   everything else.
+- **Each seat is its own stream.** A pool step brings decisions for some seats (phase ≠ 0) and none for others.
+  Each (env, seat) the learner plays is its own trajectory of decisions, with its own GRU state, reset when a
+  round starts. GAE runs over each stream's own decisions, never over pool steps. The trainer reads §6.6 so:
+  - a decision's reward is read at the seat's next decision, or at its round's end, whichever comes first:
+    `hp_gain` there, times the HP weight, plus, at a round's end, `result` times the result weight;
+  - so `hp_gain` must cover everything since the seat's last decision, including steps where the seat had no
+    decision (phase 0); the trainer doesn't read it on those steps.
+- **Rewards' weights.** The result 1; the HP difference from 1 down to 0.2 over the first 3,000 updates.
+  `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
+  same at any HP of the curriculum.
+- **The rollout's slices and their bootstrap.** A rollout is 128 pool steps. A stream's last decision in it is
+  still open: its reward and the next state's value come later. It is carried into the next rollout as that
+  rollout's first decision and trained once it closes; the decision before it is bootstrapped from its value. A
+  round cut off at `max_fight_ticks` (truncated) is bootstrapped from its last decision's own value, since the
+  pool's observation is already the next round's; a KO or a judged time-up is terminal.
+- **Truncated BPTT.** Chunks of 128 decisions (`ppo.chunk`), each started from the GRU state stored when its
+  first decision was made, and zeroed again at each round's first decision inside it.
 - **League.**
-  - About 50% of rounds against its latest self.
-  - About 35% against frozen past versions. A version joins the pool every few updates and is picked more often
-    while it still beats the learner.
-  - About 15% against the scripted players.
-  - If the learner plateaus, exploiters train only to beat it, as AlphaStar did.
+  - About 50% of rounds against its latest self (both seats learn).
+  - About 35% against frozen past versions. A snapshot joins every 10 updates. Each rollout draws 4 active
+    snapshots, weighted by (1 − the learner's win rate against it)², the rate over its last 200 rounds with a
+    win and a loss of prior: those that still beat it are picked most. Their forward passes are batched per
+    snapshot. Until the first snapshot, this share is self-play.
+  - About 15% against the scripted players, evenly.
+  - The learner's seat is drawn each round, so the seats mirror.
+  - Online Elo (K 16) for the learner, the snapshots and the scripted players, logged.
+  - Exploiters are not built. They come if the learner plateaus.
+- **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
+  (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
+  one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The
+  trainer takes the pool's first round, begun when the pool is made, as self-play: every seat starts as
+  "policy".
+- **HP curriculum** (the coordinator, 2026-10-23). Both sides' max HP starts at 250 and rises by 125 to 1000.
+  A round draws its HP from (level − 250, level). The level rises when the learner wins 75% of at least 100
+  rounds against the masher at that level, or after 500 updates at one level. The last quarter of training is
+  at 1000 only. The pool takes `hp=(lo, hi)` and `set_hp(lo, hi)`, from the next round.
+- **Input normalization.** Per set and feature, a running mean and variance over present tokens, merged after
+  each update so a rollout and its update see the same; set first by 32 pool steps of the untrained policy.
+  It's part of the weights, so each snapshot keeps its own.
 - **Games.** Every loaded game, mixed in each batch.
-- **Logs and checkpoints.** TensorBoard (viewed over an ssh tunnel), and a checkpoint every N updates, kept with the
-  run's settings and the git commit.
-- **Export.** `nettai_ai.export` writes safetensors with the architecture and an **observation spec hash** in its
-  header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation can't
-  silently play an old network.
+- **Logs and checkpoints.** TensorBoard (viewed over an ssh tunnel): rewards, losses, KL, explained variance,
+  win rates by opponent, Elo, §9's measures from `round_stats()` by opponent kind, the HP level, the measured
+  network cost. A checkpoint every 50 updates (a setting), with the run's settings, the git commit (a run
+  outside a git checkout fails), the observation spec, the league and the optimizer; `--resume` continues it.
+- **Export.** `nettai_ai.export` writes safetensors with the architecture and the **observation spec hash** in
+  its header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation
+  can't silently play an old network. Beside it, a parity fixture: a seat's recorded decisions from training and
+  the network's outputs for them.
+- **Checked on FakePool**, a numpy stand-in for the pool with a learnable toy (press the target action shown in
+  the global token; on the screen, point at the slot with the highest first float): in 30 updates on a laptop
+  CPU, targets pressed 7% → 53%, best slots 8% → 44%, reward per decision ×11.
 
 ## 9. How we know it's good
 
@@ -283,7 +355,17 @@ All of these run in Rust on the pool, fast, and print a table:
 - **Elo** across the league's versions, mirrored seats. The shipped network is the best by Elo against a fixed
   set.
 - **A game it never trained on.** Train on EXE5 and EXE6 only, then play EXE4. This is the test of "works on any
-  game". It is run once the main recipe works.
+  game". It is run once the main recipe works: `train --train-games exe5,exe6 --eval-games exe4` evaluates on
+  EXE4 every `eval.every` updates.
+- **Chips it never trained on.** `env.chip_holdout = 0.1` keeps a tenth of each game's chips (drawn by a seed)
+  out of training builds and favors them in evaluation builds. The pool takes it as
+  `chip_holdout=(fraction, seed, "exclude" | "favor")`.
+- **The driver.** `nettai_ai.evaluate` plays a checkpoint against each scripted player in each game (a pool per
+  game) and against other checkpoints, the envs split evenly over the opponents and both seats. Each env's
+  first round is dropped, since seats and delays change from the next round. It prints a table (wins, draws,
+  losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
+  (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it
+  reads `env`, `ticks` and `seats` (two dicts, each with `result` and any numeric measures).
 - **The user plays it.** The decisive test.
 
 ## 10. In the app
@@ -304,7 +386,10 @@ All of these run in Rust on the pool, fast, and print a table:
   | Normal | 270 ms | samples from its policy |
   | Hard | 170 ms | takes its best action |
 
-  The numbers are set by measuring the levels against each other and the scripted players.
+  The numbers are set by measuring the levels against each other and the scripted players. The trainer's first
+  values, which the weights file carries in its `levels` metadata for the Rust side: Easy 24 ticks, temperature
+  1.5, a random legal action 10% of the time; Normal 16 ticks, the policy's own sampling; Hard 10 ticks, the
+  best action. `nettai_ai.evaluate --level` plays them.
 
 ## 11. The cloud machine
 
@@ -324,8 +409,17 @@ All of these run in Rust on the pool, fast, and print a table:
   `sprite.json`. These are the asset names, the animations' timings and the frames' part layouts: a few hundred KB a
   game. No picture or sound is read or sent. `training/cloud/timings.sh` copies just those files out of `data/`. The
   made-up test timings would train a network for a game that isn't quite the real one.
-- **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine. A run goes in
-  tmux; checkpoints and logs are rsynced back.
+- **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine and runs a
+  smoke test. `run.sh` starts a run in tmux, with TensorBoard on the machine's localhost; `sync.sh` rsyncs
+  checkpoints and logs back.
+- **Measured: the network costs more than this section assumed.** On the M1 Max (8 threads, the default
+  network, FakePool, 256 envs), the rollout's batched inference runs about 5,500 decisions a second and the
+  update (3 epochs, chunks of 64) about 1,150, after packing the present tokens and fusing the GRU. That is about
+  8 ms of a core per decision, against the simulation's 0.07 to 0.22 ms (§6.5). On a CPU-only machine nearly
+  every core would be doing the network: perhaps 10,000 to 20,000 decisions a second on 96 cores, 3 to 6 days for
+  5 billion. So the first cloud run should time a GPU (L4 or RTX 4090 class) against the CPU before the full
+  recipe runs; the trainer runs on either (`run.device = "auto"`). The Mac's own GPU (MPS) was no faster at
+  this size.
 
 ## 12. Steps
 
