@@ -76,6 +76,10 @@ pub struct Config {
     pub screen_decisions: u16,
     /// Who plays each seat from the first round.
     pub seats: [Controller; 2],
+    /// The chance a random build draws every fact it states (its NaviCust,
+    /// its patch cards...), else it keeps the rules' defaults for them
+    /// (§6.2).
+    pub randomize: f64,
 }
 
 impl Default for Config {
@@ -90,6 +94,7 @@ impl Default for Config {
             practice: 0.25,
             screen_decisions: 24,
             seats: [Controller::Policy; 2],
+            randomize: 0.75,
         }
     }
 }
@@ -278,7 +283,7 @@ impl Env {
         let mut build_picks: Vec<Picks> = (0..games.len()).map(|g| Picks::new(picks.next() as u32 ^ g as u32)).collect();
         let mut ready: Vec<std::collections::VecDeque<Side>> = games.iter().map(|_| Default::default()).collect();
         let g = picks.below(games.len());
-        let first = RoundMade::new(&games[g], &mut picks, &mut build_picks[g], &mut ready[g], &exclude[g], cfg.hp)?;
+        let first = RoundMade::new(&games[g], &mut picks, &mut build_picks[g], &mut ready[g], &exclude[g], &cfg)?;
         let mut env = Env {
             ready,
             build_picks,
@@ -353,7 +358,7 @@ impl Env {
             return Ok(false);
         };
         let started = std::time::Instant::now();
-        let side = self.games[g].maker.random(&mut self.build_picks[g], &self.exclude[g])?;
+        let side = self.games[g].maker.random(&mut self.build_picks[g], &self.exclude[g], self.cfg.randomize)?;
         self.ready[g].push_back(side);
         self.profile.prepare += started.elapsed().as_nanos() as u64;
         Ok(true)
@@ -377,7 +382,7 @@ impl Env {
             Some(m) => m,
             None => {
                 let g = self.picks.below(self.games.len());
-                let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.exclude[g], self.cfg.hp)?;
+                let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.exclude[g], &self.cfg)?;
                 self.game = g;
                 self.battle = r.battle;
                 self.folders = r.folders;
@@ -755,14 +760,14 @@ impl RoundMade {
         stream: &mut Picks,
         ready: &mut std::collections::VecDeque<Side>,
         exclude: &[ChipHandle],
-        hp: (u16, u16),
+        cfg: &Config,
     ) -> Result<RoundMade, String> {
         let mut build = || match ready.pop_front() {
             Some(s) => Ok(s),
-            None => game.maker.random(stream, exclude),
+            None => game.maker.random(stream, exclude, cfg.randomize),
         };
         let sides = [build()?, build()?];
-        let hp = draw(picks, hp.0, hp.1);
+        let hp = draw(picks, cfg.hp.0, cfg.hp.1);
         let seed = picks.next() as u32;
         let m = game.maker.round(sides, hp, seed)?;
         let set = Set::of(&game.content, &m, seed);

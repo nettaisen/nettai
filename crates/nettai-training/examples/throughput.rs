@@ -49,6 +49,24 @@ fn main() {
         // One env on this thread: where its time goes.
         let games = Arc::new(vec![Game::new(content.clone()).unwrap()]);
         nettai_battle::behavior::Behaviors::for_content(&content).unwrap();
+        // What a build costs, at the rules' defaults and with every fact drawn.
+        for randomize in [0.0, 1.0] {
+            let maker = nettai_training::builds::Maker::new(&content).unwrap();
+            let mut picks = nettai_match::Picks::new(5);
+            for _ in 0..20 {
+                maker.random(&mut picks, &[], randomize).unwrap();
+            }
+            let k = maker.counts();
+            println!(
+                "{game}: builds {}: {:.1} ms each, {} tries for {} ({:.0}% accepted whole), list entries kept {:.0}%",
+                if randomize > 0.0 { "with every fact drawn" } else { "at the defaults" },
+                k.nanos as f64 / k.builds as f64 / 1e6,
+                k.tries,
+                k.builds,
+                100.0 * k.builds as f64 / k.tries as f64,
+                100.0 * k.entries_kept as f64 / k.entries_tried.max(1) as f64
+            );
+        }
         let mut env = Env::new(games, Config::default(), 1).unwrap();
         let mut rng = SplitMix64::new(1);
         let mut actions = [0i32; 2];

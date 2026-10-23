@@ -55,7 +55,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), exclude_chips=None, practice=0.25))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), exclude_chips=None, practice=0.25, randomize=0.75))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -71,11 +71,12 @@ impl PyPool {
         hp: (u16, u16),
         exclude_chips: Option<Vec<String>>,
         practice: f64,
+        randomize: f64,
     ) -> PyResult<PyPool> {
         if k == 0 || delay.0 > delay.1 || hp.0 == 0 || hp.0 > hp.1 {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
-        let env = Config { k, delay, max_fight_ticks, hp, exclude_chips: exclude_chips.unwrap_or_default(), practice, ..Config::default() };
+        let env = Config { k, delay, max_fight_ticks, hp, exclude_chips: exclude_chips.unwrap_or_default(), practice, randomize, ..Config::default() };
         let cfg = PoolConfig { games, envs, threads, seed, content, packs, env };
         let pool = py.detach(|| Pool::new(cfg)).map_err(err)?;
         Ok(PyPool { pool: Mutex::new(pool) })
