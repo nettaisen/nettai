@@ -1300,3 +1300,49 @@ fn a_shout_helps_once_a_battle() {
     shout(&mut b, 0x50);
     assert!(!b.is_dimmed());
 }
+
+/// EXE5's emotion-swing bug (content/exe5/rules/emotion, 0x080113F8) goes on
+/// through its navi's deletion: the navi leaves its side's list of alive
+/// actors as its deletion starts (`sub_800A11C`) and its tick still runs,
+/// swinging every 60 ticks from its own state, as the original's swing does
+/// from the navi's AIData (+0x3A, +0x0B). (The port kept that state by the
+/// navi's slot on the list, and stopped the round: "a navi of the player's
+/// kind on no slot of its side's list".) A patch card's or a NaviCust's bug
+/// a build creator makes brings it.
+#[test]
+fn a_deleted_navis_emotion_swing_goes_on() {
+    use nettai_battle::battle::{fight, mode};
+    use nettai_battle::input::keys;
+    let content = exe5_content();
+    let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let step = |b: &mut nettai_battle::Battle, held: u16| {
+        let input = nettai_battle::TickInput { players: [nettai_battle::PlayerTick::buttons(held); 2], events: Default::default() };
+        b.step(&input);
+        assert!(!b.is_stopped(), "the engine stopped: {:?}", b.round_end());
+    };
+    // To the fight, OK pressed on the first custom screen.
+    let mut t = 0;
+    while !(b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING) {
+        let held = if b.round.mode == mode::CUSTOM { [keys::START, 0, keys::A, 0][t % 4] } else { 0 };
+        step(&mut b, held);
+        t += 1;
+        assert!(t < 2000, "no fight");
+    }
+    // Side 1's navi with the bug, its HP gone: its deletion starts.
+    b.stats[1].bugs.emotion = 1;
+    let navi = b.player(1).unwrap();
+    b.objects.get_mut(navi).hp = 0;
+    for _ in 0..3 {
+        step(&mut b, 0);
+    }
+    assert_eq!(b.round.alive[1], 0, "the navi left its side's list");
+    assert!(b.round.alive_actors[1].iter().all(|s| s.is_none()));
+    // Two swings' time: the swing runs from the deleted navi's tick.
+    for _ in 0..130 {
+        if !b.objects.is_allocated(navi) {
+            break;
+        }
+        step(&mut b, 0);
+    }
+}
