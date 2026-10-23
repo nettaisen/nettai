@@ -1,0 +1,24 @@
+# The bridge between the Rust pool and the Python trainer (docs/design/
+# training-ai.md §6.6): a Python extension module, `nettai_gym`, over
+# nettai-training's pool. Its own workspace, so the app's `cargo build`
+# never needs Python or pyo3; built with maturin (pyproject.toml).
+[workspace]
+
+[package]
+name = "nettai-gym"
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+publish = false
+
+[lib]
+name = "nettai_gym"
+crate-type = ["cdylib"]
+
+[dependencies]
+nettai-training = { path = "../../crates/nettai-training" }
+pyo3 = "0.30"
+numpy = "0.30"
+
+[profile.release]
+debug = 1

@@ -205,6 +205,43 @@ pub struct Content {
     /// locales): the handles past the game's own ([`BackgroundId`]).
     /// Presentation, left out of the hash (`background_pool`).
     pub background_pool: BackgroundPool,
+    /// The content's hash once [`Content::hash`] has walked it: no part of
+    /// the content (left out of its hash and its equality; a copy computes
+    /// its own). [`Content::define`] and [`Content::rules_mut`] forget it;
+    /// a caller that changes the content's fields itself after hashing it
+    /// hashes a copy instead.
+    pub hash_cache: HashCache,
+}
+
+/// A content's hash, kept once computed ([`Content::hash_cache`]).
+#[derive(Debug, Default)]
+pub struct HashCache(std::sync::OnceLock<ContentHash>);
+
+impl HashCache {
+    /// Forget the hash: the content changed.
+    pub fn clear(&mut self) {
+        self.0 = std::sync::OnceLock::new();
+    }
+}
+
+impl Clone for HashCache {
+    /// A copy computes its own (a copy is made to be changed).
+    fn clone(&self) -> HashCache {
+        HashCache::default()
+    }
+}
+
+impl PartialEq for HashCache {
+    fn eq(&self, _: &HashCache) -> bool {
+        true
+    }
+}
+
+impl Eq for HashCache {}
+
+impl std::hash::Hash for HashCache {
+    /// Nothing: the hash is of the content, not of itself.
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
 /// docs/design/content-model-v2.md §4.0: a support pack defines nothing a
@@ -235,6 +272,7 @@ impl Content {
     /// (docs/design/content-model-v2.md §7.3). A battle needs defined
     /// content; loaders call this once the data and scripts are in.
     pub fn define(&mut self) -> Result<(), nettai_content_api::ContentError> {
+        self.hash_cache.clear();
         if self.scripts.modules.is_empty() && self.scripts.packs.is_empty() {
             let definitions = Default::default();
             sections::build(self, &definitions)?;
@@ -306,10 +344,12 @@ impl Content {
         self
     }
 
-    /// The content's identity (a stable hash of all of it; computing it
-    /// walks everything, so callers keep the value).
+    /// The content's identity (a stable hash of all of it). Computing it
+    /// walks everything (tens of milliseconds for a game's), so the content
+    /// keeps it once computed ([`Content::hash_cache`]): every battle made
+    /// and every round set up asks for it.
     pub fn hash(&self) -> ContentHash {
-        ContentHash(crate::digest::stable_hash(self))
+        *self.hash_cache.0.get_or_init(|| ContentHash(crate::digest::stable_hash(self)))
     }
 
     /// The game's tables. (Content that states no rules has none: nothing
@@ -326,6 +366,7 @@ impl Content {
 
     /// The game's tables, to change (tests, which play a rule another way).
     pub fn rules_mut(&mut self) -> &mut Rules {
+        self.hash_cache.clear();
         self.rules.as_mut().expect("the content states its rules (rules, defined)")
     }
 

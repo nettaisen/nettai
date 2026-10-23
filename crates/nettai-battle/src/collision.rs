@@ -70,6 +70,20 @@ pub mod f1 {
     pub const NULL_READ: u32 = 0xE3A0_2004;
 }
 
+/// The collision type bits of an attack of each side (side 0's, side
+/// 1's): docs/engine/field-collision-damage.md §3.3.
+pub const ATTACK_OF: [u32; 2] = [0x8000_0000, 0x4000_0000];
+
+/// The panels each side's attacks were presented on during a tick (a bit a
+/// panel at `y * 8 + x`, as `Collision::masks` index them), by side: what
+/// [`crate::Battle::attacked_panels`] reads. Kept for a reader of the
+/// battle (an AI's view of it), as the panels' highlight is: nothing in
+/// the simulation reads it, and the digest leaves it out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AttackLog {
+    pub panels: [u64; 2],
+}
+
 /// Per-registration-window hit results (zeroed on present).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Accumulators {
@@ -386,10 +400,16 @@ impl Battle {
         }
         s.status_final = None;
         s.acc = Accumulators::default();
-        let bit = s.bit;
+        let (bit, self_flags) = (s.bit, s.self_flags);
         let whole_field = self.collision.covers_whole_field(&self.content, id);
         for (x, y) in self.collision.region_panels(&self.content, &self.field, id) {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
+            // (The panels attacked this tick, for a reader of the battle.)
+            for (side, attack) in ATTACK_OF.iter().enumerate() {
+                if self_flags & attack != 0 {
+                    self.attacked.panels[side] |= 1 << (y * 8 + x);
+                }
+            }
             // Whole-field registrations refresh the wrong panel (a no-op).
             if !whole_field {
                 self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
