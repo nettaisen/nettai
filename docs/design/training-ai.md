@@ -57,8 +57,10 @@ crates/nettai-training      Rust, no Python:
   bots.rs                   scripted players: still, mover, masher, shooter, dodger (§9)
   stats.rs                  a round's measures, and a table of them (§9)
   examples/throughput.rs    decisions a second on the packs (§6.5)
-  net.rs                    the forward pass, from a weights file (§10; a later step)
-  ai.rs                     `driver::Ai` for live play (§10; a later step)
+  net.rs                    the forward pass, from a weights file (§10.1)
+  ai.rs                     `NetAi`, live play's `driver::Ai`, and the fingerprints made on the app's threads
+                            (§10.2, §10.3; feature `live`)
+  examples/ai_costs.rs      what live play costs: fingerprints, a decision (§10.3, §10.4)
 training/                   Python (uv), never built with the app:
   bridge/                   pyo3 module `nettai_gym` over nettai-training's pool (its own Cargo workspace), smoke.py
   nettai_ai/                model, PPO, league, evaluation, export
@@ -136,8 +138,8 @@ shows).
 
 A chip's name is a learned embedding, which a chip seen rarely (or a new game's) hardly has. Its fingerprint says what
 it does, measured: each chip of a game run in a sandbox (`fingerprint.rs`), once a game (computed as a pool starts,
-on its threads, kept by content hash in the process and in `cache` on disk; the app will compute a folder's chips on
-a worker as a battle starts). Nothing names a chip: a chip is what the battle shows of it.
+on its threads, kept by content hash in the process and in `cache` on disk; live play makes the whole game's on threads
+of its own and keeps them by content hash, §10.3). Nothing names a chip: a chip is what the battle shows of it.
 
 - **The sandbox.** Two of the game's default builds, through the first custom screen with nothing picked, every panel
   the rules' normal type, three columns a side; the user (side 0) on its front column's middle panel holding the chip
@@ -469,15 +471,167 @@ All of these run in Rust on the pool, fast, and print a table:
 
 ## 10. In the app
 
-- `nettai_training::NetAi` implements `driver::Ai`. It encodes the observation on every `fight` and `custom_screen`
-  call and decides every K ticks from the observation D ticks back.
-- **Threads.** On the desktop it runs on the battle's thread, well under a millisecond a decision. In the browser
-  it runs inline too if the budget holds. Otherwise it moves to a worker, with the reaction delay as the time it has
-  to answer.
-- **Weights.** One file, `model/nettai-ai.safetensors`, built into the crate (`include_bytes!`), the same on desktop
-  and web. It is replaced only when a better one is trained.
-- **Practice menu.** The dummy's Action gets "Fights" back, with its Level row (these rows existed before
-  cc24c9a58).
+As built (branch learned-ai-app): the forward pass (`net.rs`) and the player (`ai.rs`, feature `live`, the only
+place nettai-frontend is used) in nettai-training. The practice menu's rows come back with the first trained
+weights (§10.6).
+
+### 10.1 The forward pass
+
+- **The file.** `Net::from_safetensors(bytes)`: safetensors read by a reader of its own (an 8-byte header length,
+  the header through serde_json; no new dependency). Refused, each with the reason: a format other than `nettai-ai`
+  version 1; a `spec_hash` other than the encoder's (`spec::hash()`); an architecture field it doesn't know (a new
+  knob of the trainer's is an error until the pass computes it); a tensor missing, of another shape, or one it
+  doesn't read (a strict load); an activation other than ReLU; actions or name buckets other than the encoder's.
+  Every width comes from the `architecture` metadata. The network's sets are found in the encoder's observation: a
+  set of the encoder's own, or a part the trainer cut from one (`split`: `chips` read as `hand`, tokens 0–5, and
+  `used`, token 6), covering every token of every encoder set once.
+- **The pass** (`Net::forward`), as training/MODEL.md has it: each present token normalized and clipped, its set's
+  MLP, its set's vector and its names' embeddings; the transformer layers over the present tokens of the sets not
+  pool-only; the final LayerNorm on every present token; the attention pool and the one-token sets read directly;
+  the GRU (gates r, z, n); the heads of `core = [h', z]`. Absent tokens are never computed. A decision computes the
+  heads it reads (`Heads::Fight`; `Heads::Screen`, the keys and the pointer, whose core part is computed once;
+  `Heads::All` adds the value, for the parity test). A player's `Memory` holds the GRU state and room for a pass, so a
+  decision allocates nothing.
+- **The loops.** Plain f32, no threads, no unsafe: a dot product of a weight row in eight independent sums over
+  fixed-size chunks (`as_chunks::<8>`), which LLVM turns into vector lanes (a single sum is a chain it may not
+  reorder). The repo's nightly toolchain builds them 1.8 times faster than stable 1.92 does.
+- **Choosing** (`net::choose`), from the level's knobs in the weights' `levels`: the allowed actions are those legal
+  with a finite logit; greedy takes the first of the largest; otherwise with chance `epsilon` one of them uniformly,
+  else a sample of softmax(logits / temperature).
+- **Parity** (`net::tests`). `tests/fixtures/net.safetensors` and `net.fixture.safetensors` (1.2 MB together) are
+  made by `tests/fixtures/make_net_fixture.py` with the trainer's own `Model` and export (`save_weights`,
+  `save_fixture`) on the real pool's spec: a network of small odd widths (d 8, two heads, two layers, GRU 10),
+  every parameter and the input normalization drawn wide so the outputs vary, and 15 decisions recorded from the
+  real pool on the packs, EXE6, EXE5 and EXE4, custom screens and fights (up to 118 tokens present, 15 objects), the
+  GRU carried from a random h0 and reset at each game. Every finite output matches within 1e-4 and every −∞ exactly:
+  the raw and masked logits, the value and the GRU state after each decision. The trainer's default widths (d 64,
+  four heads, one layer) were checked the same way once (`--size default`), not committed: its name table alone is 2
+  MB. Weights of another spec, format version, an unknown architecture field or a missing tensor are refused
+  (tested).
+
+### 10.2 The player
+
+`NetAi::new(weights, level, seed, fingerprints)` (the weights as bytes, so the app can `include_bytes!` the shipped
+file; `NetAi::of` takes a network already read, for an app that keeps one); `Level` is Easy, Normal or Hard, its
+knobs the weights' by name. It plays a side as the env plays a policy seat (§4, §6), once a tick on the battle's
+thread (`fight` or `custom_screen`, both the same tick of the round):
+
+- It counts ticks from the round's start, keeps the attack log, and encodes the view into its reaction-delay ring
+  on the ticks a decision will need (`(t + D) mod k = 0`, `D` the level's delay).
+- In the fight it decides every `k` ticks from the view of `D` ticks before (what it sees now while the round is
+  younger than that) and holds the action till the next decision.
+- On the custom screen it decides whenever its navigator is idle and the screen reads keys, from the screen as it
+  is, the keys probed in a copy of the battle as each screen first reads them, only OK after 24 decisions, the
+  refused slots masked; each new screen's navigator starts from nothing. All in the env's order.
+- `k` (4) and the 24 decisions are the env's defaults, as trained: the weights don't state them. If training ever
+  uses another `k`, the levels' metadata should carry it.
+- It never reads `theirs`: it doesn't hear the player's buttons (tested: the same play whatever it is told).
+- The GRU state carries through a round and starts over at the next (a new round is a new score of the set);
+  `reset`, as the set starts over, starts everything over, its draws too (tested: the same buttons again).
+- `error()` says why it stopped, where it did (its fingerprints failed or are of another content, a decision with
+  nothing allowed): it presses nothing from then on.
+
+### 10.3 Its chips' fingerprints
+
+**The whole game's, as the pool has them.** The network must see a chip described as it was in training, and a
+folder's chips fingerprinted alone come out otherwise: a chip's conditioned runs put each status on the target with
+the first chip of those fingerprinted that inflicts it at that panel (§3.1), so with only a folder's chips the
+inflicters are others or none. Measured on the packs (`examples/ai_costs` and a first probe, 14 rounds of random
+builds): of a round's both folders' chips and their Program Advances (52 to 63), from 1 (an EXE4 round) to every
+one differs from the whole game's, more than half in 12 of the rounds, always in the status ratios alone.
+
+- `Fingerprinter::start(content, threads, cache)` reads them from the host's cache folder by content hash (the
+  pool's file, `fingerprints-<game>-<hash>.json`, the same format), or makes them with the fingerprint `Job` on
+  threads of its own (`nettai_platform::thread::spawn`: the browser's workers too; a thread that can't start fails
+  it, with the reason) and writes them there (`nettai_platform::fs`: in the browser, the app's kept folder, which
+  the page keeps in its private file system). One a content in a process: a second `start` of the same content is the
+  same one. `status()` says reading, making (items done of all), ready or failed, for the host to show;
+  `Fingerprinter::made` takes fingerprints a host has already.
+- The `Job` (fingerprint.rs) is what `Fingerprints::compute` now runs on std's scoped threads: it reads no clock
+  (std's panics in the browser) and starts no thread; a thread past the plain runs waits for them on a condition
+  variable, so a page's main thread never works on one. On the packs it makes the same fingerprints and pairs as
+  before, every chip of the three games.
+- **Till they are made**, the AI presses nothing and encodes nothing: it stands still, and its custom screen waits
+  (so the player's waits on it). The battle's thread never waits for them: it reads one `OnceLock`.
+- **Cost** (release, the packs, this Mac, an M1 Max, at load 10 to 25 from other sessions):
+
+  | Game | Chips | Whole game: 1 thread | 4 threads | 10 threads | Both folders alone (58–60): 1 / 4 threads | Cache file, read | Names made of them |
+  |---|---|---|---|---|---|---|---|
+  | EXE6 | 355 | 6.1 s | 1.9 s | 1.5 s | 1.1–1.2 s / 0.5 s | 228 KB, 0.7 ms | 0.3 ms |
+  | EXE5 | 374 | 64.3 s | 17.8 s | 12.2 s | 9.6–10.0 s / 3.1–3.6 s | 221 KB, 0.7 ms | 0.1 ms |
+  | EXE4 | 341 | 21.2 s | 5.9 s | 4.5 s | 3.9–4.3 s / 1.5–1.7 s | 204 KB, 0.7 ms | 0.1 ms |
+
+  So the first time a content is played against the AI, it waits the whole game (EXE5: about 18 s on four threads);
+  every time after, under a millisecond. A content changes with the app's content or the packs, so about once a
+  release. The browser's Luau in wasm is likely 2 to 3 times slower (not measured). The host should start them early:
+  at the app's start, for each game it has, on a few threads, so that a first practice rarely waits.
+- **If the first wait matters**, two ways, neither built: let the AI play once every chip's plain runs and both
+  folders' conditioned runs are done (about half the work: 9 of a chip's 23 runs are plain), the rest after; or
+  make a chip's fingerprint its own alone (a status put on the target by the engine, not by another chip), a
+  change to §3.1's fingerprints that the trainer would take too, after which a folder's chips are enough and a
+  cache by chip makes later folders cheap.
+
+### 10.4 Threads and time
+
+On the battle's thread, desktop and browser alike, inline. Measured (release, the packs, `examples/ai_costs`, a
+network of the trainer's default widths: 1.13 M parameters; random play, 3,000 fight decisions a game):
+
+| Game | Fight pass, median occupancy | most seen | Screen pass | Every token (194) | A view encoded | Key probe (once a screen) |
+|---|---|---|---|---|---|---|
+| EXE6 | 0.17 ms (68 tokens) | 0.22 ms (77) | 0.27 ms (85) | 0.76 ms | 2 µs (99th percentile 4) | 0.12 ms (most 0.57) |
+| EXE5 | 0.19 ms (105) | 0.27 ms (117) | 0.27 ms (118) | 0.76 ms | 2 µs (5) | 0.58 ms (1.10) |
+| EXE4 | 0.19 ms (74) | 0.27 ms (86) | 0.29 ms (86) | 0.91 ms | 2 µs (6) | 0.05 ms (0.10) |
+
+A view is encoded once every `k` = 4 ticks, under a microsecond a tick; a fight decision every 4 ticks costs the
+pass; a screen decision a view and the pass, and the key probe the first time a screen reads keys.
+
+**The browser.** The pass built alone for wasm32 (nightly, as the web build, no SIMD) and run in node's V8 takes 3.3
+to 3.5 times the native time: 0.66 to 0.85 ms a decision, 2.4 ms with every token present. With `simd128` it would
+be 1.4 to 1.5 times native (0.28 to 0.38 ms). Under a millisecond every fourth frame, it stays inline on the page's
+main thread; no worker is needed.
+
+### 10.5 Weights
+
+One file, `model/nettai-ai.safetensors`, built into the crate (`include_bytes!`), the same on desktop and web. It is
+replaced only when a better one is trained. Reading it is a copy of its floats (a few ms for 1.13 M parameters);
+the app reads it once and gives each `NetAi` the same `Arc<Net>` (`NetAi::of`).
+
+### 10.6 The practice menu, with the first weights
+
+The dummy's Action gets "Fights" back, with its Level row. They are as they were before cc24c9a58 (`git show
+cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `Fighter` was:
+
+- **crates/nettai/Cargo.toml**: `nettai-training = { path = "../nettai-training", features = ["live"] }`.
+- **crates/nettai/src/screens/practice.rs**:
+  - `ACTIONS = [StandsStill, MovesAround, Ai, SecondPad]`; `LEVELS = [Level::Easy, Level::Normal, Level::Hard]`
+    (`nettai_training::ai::Level`), `NORMAL = 1`, `kept_level`.
+  - `level: usize` back in `Start`, `Kept`, `MenuChoices` (`Option<usize>`) and `Session`, with `Session::ai: Option<usize>`
+    (the level plugged in).
+  - `PracticeOption::Level` in `ROWS` (15) after `Action`, in `values` (`LEVELS.len()`) and `value`; `shown_rows`
+    shows it under the Action while that is Fights; `lay_out_rows` puts it in or takes it out as the Action changes.
+  - `dummy(in_fight)`: the custom screen the AI's (`OnCustomScreen::Ai`) for Fights.
+  - `plug(live, opponent, level, seed, plugged)` as before, making
+    `NetAi::of(net, LEVELS[level], seed, fingerprints)` in place of `Fighter::new(LEVELS[level], seed)`: `net`, the shipped weights
+    read once (§10.5); `fingerprints`, `Fingerprinter::start(content, threads, Some(<the app's data folder>/fingerprints))`
+    for the session's game, started as the app has the game's content (§10.3). `start` plugs it as the session
+    starts; `Practice::change_option` on the Action and the Level rows. `LivePlayer::start` calls `reset`, as the set
+    starts over.
+  - `NetAi::error()` or a failed fingerprint status goes to the app's log (`crate::errors::log`) and takes the AI
+    out (the dummy stands still).
+  - The tests back: `the_dummys_ai_is_plugged_in_while_its_choices_are_the_ais`, `the_menus_rows_have_their_values`
+    (11 rows with values), `the_dummys_action_brings_its_own_row`, the visit's menu with Fights at Hard; and
+    crates/nettai/src/battle.rs `the_dummy_that_fights_takes_hp_away` (with the trained weights).
+- **crates/nettai-ui/ui/screens/practice.slint**: `PracticeOption.level` after `action`; its label `@tr("Level")`;
+  the Action's values Stands still, Moves around, `@tr("Fights")`, A second pad; the Level's
+  `@tr("level" => "Easy")`, `"Normal"`, `"Hard"`.
+- **crates/nettai-ui/lang/ja/practice.po**: Fights 戦う, Level 強さ, and in context `level` Easy よわい, Normal ふつう, Hard
+  つよい, with their comments.
+- **docs/app.md**: the rows' table (Action with Fights; "Dummy: Level (under Fights alone) | Easy, Normal, Hard"),
+  "The dummy's rows", and "The dummy that fights" written for `NetAi` (what it sees, its levels, its fingerprints'
+  first wait).
+- **New, a UI piece**: while the fingerprints are being made, a line on the practice screen saying the dummy is
+  getting ready, with its progress (`Fingerprinter::status`); its look goes through mockups first.
+- The tour's steps through Fights and Level are not brought back (the user: "stop doing the tour").
 
   | Level | Reaction | Choice |
   |---|---|---|
@@ -485,7 +639,10 @@ All of these run in Rust on the pool, fast, and print a table:
   | Normal | 270 ms | samples from its policy |
   | Hard | 170 ms | takes its best action |
 
-  The numbers are set by measuring the levels against each other and the scripted players.
+  The numbers are set by measuring the levels against each other and the scripted players. The trainer's first
+  values, which the weights file carries in its `levels` metadata for the Rust side: Easy 24 ticks, temperature
+  1.5, a random legal action 10% of the time; Normal 16 ticks, the policy's own sampling; Hard 10 ticks, the best
+  action. `nettai_ai.evaluate --level` plays them.
 
 ## 11. The cloud machine
 
@@ -527,6 +684,8 @@ All of these run in Rust on the pool, fast, and print a table:
    - `NetAi`;
    - the practice rows;
    - the wasm32 type-check.
+
+   Done but the practice rows (branch learned-ai-app, §10): they come back with the first trained weights (§10.6).
 5. **Cloud runs.** The full recipe, then the held-out-game test, then the levels' calibration. The weights go in.
 6. **Chip fingerprints: in v1** (the coordinator's call, the user wanting multi-step setups learned well). Each chip
    run in a sandbox battle (§3.1): where it hits, when and how hard, what it changes and leaves, and its damage under
