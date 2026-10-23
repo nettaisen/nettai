@@ -112,6 +112,20 @@ fn pairs_seed_folders_and_are_watched() {
     assert!(found, "no chip token carried a fingerprint");
 }
 
+/// A job makes the same fingerprints on one thread as on four, from the
+/// chips in another order.
+#[test]
+fn a_job_makes_the_same_on_any_threads() {
+    let (c, f) = few();
+    let mut chips: Vec<ChipHandle> = f.chips.keys().copied().collect();
+    chips.sort_by_key(|c| std::cmp::Reverse(c.0));
+    let one = Fingerprints::compute(&c, &chips, 1).unwrap();
+    assert_eq!(one.chips, f.chips);
+    assert_eq!(one.pairs, f.pairs);
+    let job = Job::new(&c, &[]);
+    assert!(matches!(job.result(), Some(Ok(f)) if f.chips.is_empty()), "no chips: done at once");
+}
+
 /// The fingerprints read back from their file as they were written.
 #[test]
 fn fingerprints_keep_on_disk() {

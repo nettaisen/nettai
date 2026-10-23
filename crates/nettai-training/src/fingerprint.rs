@@ -48,8 +48,8 @@ use nettai_battle::{Battle, Content};
 use nettai_content_api::{ChipHandle, KindHandle, Pool};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 
 /// The ticks a run lasts at most after the press.
 pub const RUN_TICKS: u32 = 180;
@@ -565,109 +565,25 @@ pub fn ratio(conditioned: u16, plain: u16) -> f32 {
 impl Fingerprints {
     /// The fingerprints of `chips` of `content`'s game, on `threads`
     /// threads (each loads the content's runtime first), and the pairs
-    /// among them.
+    /// among them: a [`Job`] those threads work on.
     pub fn compute(content: &Arc<Content>, chips: &[ChipHandle], threads: usize) -> Result<Fingerprints, String> {
         let wall = std::time::Instant::now();
         let threads = threads.max(1).min(chips.len().max(1));
-        let runs = AtomicUsize::new(0);
-        let ticks = AtomicUsize::new(0);
-        let busy = AtomicUsize::new(0);
-        // Pass 1: each chip at each target panel.
-        let plain: Vec<Option<(Fingerprint, Vec<Run>)>> = par(content, chips, threads, &busy, |sandbox, chip| {
-            let mut fp = Fingerprint::default();
-            let mut all = Vec::new();
-            for target in 0..9 {
-                let Some((run, n)) = sandbox.run(chip, target, Setup::Plain) else {
-                    fp.runs.push((0, None));
-                    all.push(Run::default());
-                    continue;
-                };
-                runs.fetch_add(1, Ordering::Relaxed);
-                ticks.fetch_add(n as usize, Ordering::Relaxed);
-                fp.runs.push((run.damage, run.first_hit));
-                fp.statuses |= run.statuses;
-                if let Some(k) = run.under_target {
-                    fp.turns_under_target |= 1 << k.0;
-                }
-                // (A panel of the other side's front column now the user's.)
-                fp.takes_front |= (0..3).any(|row| run.owner_to_user & (1 << (row * 6 + USER.0 as usize)) != 0);
-                all.push(run);
+        let job = Job::new(content, chips);
+        let busy = AtomicU64::new(0);
+        std::thread::scope(|scope| {
+            for _ in 0..threads {
+                scope.spawn(|| {
+                    let started = std::time::Instant::now();
+                    job.work();
+                    busy.fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                });
             }
-            let best = (0..9).filter(|&i| fp.runs[i].0 > 0).max_by_key(|&i| (fp.runs[i].0, i == MIDDLE));
-            fp.best = best;
-            fp.effect = all[best.unwrap_or(MIDDLE)].clone();
-            Some((fp, all))
-        })?;
-        let mut out = Fingerprints { version: VERSION, hash: content.hash().0, ..Fingerprints::default() };
-        for (&chip, fp) in chips.iter().zip(plain) {
-            if let Some((fp, _)) = fp {
-                out.chips.insert(chip, fp);
-            }
-        }
-        // The statuses some chip inflicts, each with a chip that does at
-        // each panel (the first in handle order).
-        let mut inflicters: Vec<[Option<ChipHandle>; 9]> = vec![[None; 9]; STATUSES];
-        let mut sorted: Vec<ChipHandle> = out.chips.keys().copied().collect();
-        sorted.sort_by_key(|c| c.0);
-        let kinds: Vec<PanelType> = {
-            let p = &content.rules().panels;
-            (0..p.types.len() as u8).map(PanelType).filter(|&k| k != p.roles.missing && k != p.roles.broken).collect()
-        };
-        // Pass 2: the conditioned runs at each chip's best panel (the
-        // middle one if it hit none).
-        let fps: Vec<(ChipHandle, Fingerprint)> = sorted.iter().map(|&c| (c, out.chips[&c].clone())).collect();
-        for (s, by_panel) in inflicters.iter_mut().enumerate() {
-            for (target, slot) in by_panel.iter_mut().enumerate() {
-                *slot = fps.iter().find(|(_, fp)| fp.statuses & (1 << s) != 0 && fp.runs[target].0 > 0).map(|(c, _)| *c);
-            }
-        }
-        let conditioned: Vec<Option<(Fingerprint, Vec<Run>)>> = par(content, &sorted, threads, &busy, |sandbox, chip| {
-            let mut fp = out.chips[&chip].clone();
-            let best = fp.best.unwrap_or(MIDDLE);
-            let plain = fp.runs[best].0;
-            for &k in &kinds {
-                if let Some((run, n)) = sandbox.run(chip, best, Setup::Kind(k)) {
-                    runs.fetch_add(1, Ordering::Relaxed);
-                    ticks.fetch_add(n as usize, Ordering::Relaxed);
-                    fp.kind_ratios.push((k, ratio(run.damage, plain)));
-                }
-            }
-            for (s, by_panel) in inflicters.iter().enumerate() {
-                let Some(setup) = by_panel[best] else { continue };
-                if let Some((run, n)) = sandbox.run(chip, best, Setup::Status(setup, s as u8)) {
-                    runs.fetch_add(1, Ordering::Relaxed);
-                    ticks.fetch_add(n as usize, Ordering::Relaxed);
-                    fp.status_ratios[s] = Some(ratio(run.damage, plain));
-                }
-            }
-            if let Some((run, n)) = sandbox.run(chip, best, Setup::Stolen) {
-                runs.fetch_add(1, Ordering::Relaxed);
-                ticks.fetch_add(n as usize, Ordering::Relaxed);
-                fp.stolen = Some((ratio(run.damage, plain), run.damage));
-            }
-            // (Advanced: the target a column farther than the user's front,
-            // in the best panel's row, against the plain run there.)
-            let farther = best / 3 * 3 + 1;
-            if let Some((run, n)) = sandbox.run(chip, farther, Setup::Advanced) {
-                runs.fetch_add(1, Ordering::Relaxed);
-                ticks.fetch_add(n as usize, Ordering::Relaxed);
-                fp.advanced = Some((ratio(run.damage, fp.runs[farther].0), run.damage));
-            }
-            Some((fp, Vec::new()))
-        })?;
-        for (&chip, fp) in sorted.iter().zip(conditioned) {
-            if let Some((fp, _)) = fp {
-                out.chips.insert(chip, fp);
-            }
-        }
-        out.pairs = pairs(&out.chips);
-        out.cost = Cost {
-            chips: chips.len(),
-            runs: runs.load(Ordering::Relaxed) as u64,
-            ticks: ticks.load(Ordering::Relaxed) as u64,
-            nanos: busy.load(Ordering::Relaxed) as u64,
-            wall_nanos: wall.elapsed().as_nanos() as u64,
-        };
+        });
+        let made = job.done.into_inner().unwrap_or_else(|| Err("the fingerprints' threads ended with chips left".into()))?;
+        let mut out = Arc::try_unwrap(made).unwrap_or_else(|f| (*f).clone());
+        out.cost.nanos = busy.into_inner();
+        out.cost.wall_nanos = wall.elapsed().as_nanos() as u64;
         Ok(out)
     }
 
@@ -687,17 +603,12 @@ impl Fingerprints {
         if let Some(f) = kept.lock().unwrap_or_else(|p| p.into_inner()).get(&hash) {
             return Ok(f.clone());
         }
-        let file = dir.map(|d| d.join(format!("fingerprints-{}-{hash:016x}.json", content.game())));
+        let file = dir.map(|d| d.join(file_name(content)));
         let read = file.as_ref().and_then(|f| std::fs::read(f).ok()).and_then(|bytes| serde_json::from_slice::<Fingerprints>(&bytes).ok());
         let f = match read.filter(|f| f.version == VERSION && f.hash == hash) {
             Some(f) => f,
             None => {
-                let game = content.game();
-                let chips: Vec<ChipHandle> = (0..content.defs.chips.len() as u16)
-                    .map(ChipHandle)
-                    .filter(|&c| nettai_match::ids::in_game(content, game, &content.defs.chip(c).key))
-                    .collect();
-                let f = Fingerprints::compute(content, &chips, threads)?;
+                let f = Fingerprints::compute(content, &game_chips(content), threads)?;
                 if let Some(file) = &file {
                     let bytes = serde_json::to_vec(&f).map_err(|e| e.to_string())?;
                     if let Some(d) = file.parent() {
@@ -712,6 +623,19 @@ impl Fingerprints {
         kept.lock().unwrap_or_else(|p| p.into_inner()).insert(hash, f.clone());
         Ok(f)
     }
+}
+
+/// The chips of `content`'s game that are fingerprinted: its own (an
+/// imported chip is its game's).
+pub fn game_chips(content: &Content) -> Vec<ChipHandle> {
+    let game = content.game();
+    (0..content.defs.chips.len() as u16).map(ChipHandle).filter(|&c| nettai_match::ids::in_game(content, game, &content.defs.chip(c).key)).collect()
+}
+
+/// The file a game's fingerprints are kept in, in a cache folder: by game
+/// and content hash.
+pub fn file_name(content: &Content) -> String {
+    format!("fingerprints-{}-{:016x}.json", content.game(), content.hash().0)
 }
 
 /// The pairs among fingerprints: a setup whose runs brought a condition
@@ -747,45 +671,252 @@ pub fn pairs(chips: &HashMap<ChipHandle, Fingerprint>) -> Vec<Pair> {
     out
 }
 
-/// Run `work` for each of `chips` on `threads` threads, each with the
-/// content's runtime loaded and its own sandbox; the results in `chips`'
-/// order. The time spent working is added to `busy`.
-fn par<T: Send>(
-    content: &Arc<Content>,
-    chips: &[ChipHandle],
-    threads: usize,
-    busy: &AtomicUsize,
-    work: impl Fn(&Sandbox, ChipHandle) -> Option<T> + Sync,
-) -> Result<Vec<Option<T>>, String> {
-    let next = AtomicUsize::new(0);
-    let results: Vec<std::sync::Mutex<Option<T>>> = chips.iter().map(|_| std::sync::Mutex::new(None)).collect();
-    let errors: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
-    std::thread::scope(|scope| {
-        for _ in 0..threads {
-            scope.spawn(|| {
-                let started = std::time::Instant::now();
-                let sandbox = match nettai_battle::behavior::Behaviors::for_content(content).map_err(|e| e.to_string()).and_then(|_| Sandbox::new(content)) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        *errors.lock().unwrap() = Some(e);
-                        return;
-                    }
-                };
-                loop {
-                    let i = next.fetch_add(1, Ordering::SeqCst);
-                    if i >= chips.len() {
-                        break;
-                    }
-                    *results[i].lock().unwrap() = work(&sandbox, chips[i]);
-                }
-                busy.fetch_add(started.elapsed().as_nanos() as usize, Ordering::Relaxed);
-            });
+/// The fingerprints of a list of chips being made, by whatever threads work
+/// on it ([`Job::work`]: each with the content's runtime and a sandbox of
+/// its own, claiming a chip at a time): first each chip's plain runs, then,
+/// once every chip's are done (a status is put on the target by a chip of
+/// them that inflicts it, [`Conditions::of`]), each chip's conditioned runs.
+/// What it makes is the same on any number of threads in any order. It
+/// reads no clock and starts no thread, so a host makes its own (the
+/// browser's workers among them); a thread may wait in `work` for the
+/// plain runs to end, so a thread that mustn't wait (a page's main thread)
+/// never works on one.
+pub struct Job {
+    content: Arc<Content>,
+    chips: Vec<ChipHandle>,
+    /// The next item to claim: a chip's plain runs (below the chips'
+    /// count), then its conditioned runs.
+    next: AtomicUsize,
+    /// Items done, and the plain runs done.
+    finished: AtomicUsize,
+    plain_finished: AtomicUsize,
+    plain: Vec<std::sync::Mutex<Option<Fingerprint>>>,
+    conditioned: Vec<std::sync::Mutex<Option<Fingerprint>>>,
+    /// The conditions, once every plain run is done; the threads waiting
+    /// for them.
+    conditions: OnceLock<Result<Conditions, String>>,
+    opened: (std::sync::Mutex<bool>, std::sync::Condvar),
+    runs: AtomicU64,
+    ticks: AtomicU64,
+    /// The fingerprints, once every chip is done (or why they can't be).
+    done: OnceLock<Result<Arc<Fingerprints>, String>>,
+}
+
+/// What the conditioned runs are set up with: by status, a chip that
+/// inflicts it at each target panel (the first in handle order of those
+/// fingerprinted); the panel types the content declares but the missing
+/// and broken roles'.
+pub struct Conditions {
+    inflicters: Vec<[Option<ChipHandle>; 9]>,
+    kinds: Vec<PanelType>,
+}
+
+impl Conditions {
+    /// The conditions of `content`, from the plain fingerprints of the chips
+    /// fingerprinted.
+    pub fn of(content: &Content, plain: &HashMap<ChipHandle, Fingerprint>) -> Conditions {
+        let mut sorted: Vec<(ChipHandle, &Fingerprint)> = plain.iter().map(|(c, f)| (*c, f)).collect();
+        sorted.sort_by_key(|(c, _)| c.0);
+        let mut inflicters: Vec<[Option<ChipHandle>; 9]> = vec![[None; 9]; STATUSES];
+        for (s, by_panel) in inflicters.iter_mut().enumerate() {
+            for (target, slot) in by_panel.iter_mut().enumerate() {
+                *slot = sorted.iter().find(|(_, fp)| fp.statuses & (1 << s) != 0 && fp.runs[target].0 > 0).map(|(c, _)| *c);
+            }
         }
-    });
-    if let Some(e) = errors.into_inner().unwrap() {
-        return Err(e);
+        let p = &content.rules().panels;
+        let kinds = (0..p.types.len() as u8).map(PanelType).filter(|&k| k != p.roles.missing && k != p.roles.broken).collect();
+        Conditions { inflicters, kinds }
     }
-    Ok(results.into_iter().map(|m| m.into_inner().unwrap()).collect())
+}
+
+impl Job {
+    pub fn new(content: &Arc<Content>, chips: &[ChipHandle]) -> Job {
+        let slots = || chips.iter().map(|_| std::sync::Mutex::new(None)).collect();
+        let job = Job {
+            content: content.clone(),
+            chips: chips.to_vec(),
+            next: AtomicUsize::new(0),
+            finished: AtomicUsize::new(0),
+            plain_finished: AtomicUsize::new(0),
+            plain: slots(),
+            conditioned: slots(),
+            conditions: OnceLock::new(),
+            opened: Default::default(),
+            runs: AtomicU64::new(0),
+            ticks: AtomicU64::new(0),
+            done: OnceLock::new(),
+        };
+        if chips.is_empty() {
+            job.finish();
+        }
+        job
+    }
+
+    /// Items done and items in all (two a chip).
+    pub fn progress(&self) -> (usize, usize) {
+        (self.finished.load(Ordering::Relaxed), 2 * self.chips.len())
+    }
+
+    /// The fingerprints, once every chip is done; or why they can't be made
+    /// (a thread's runtime or sandbox that wouldn't load, a run that
+    /// panicked).
+    pub fn result(&self) -> Option<&Result<Arc<Fingerprints>, String>> {
+        self.done.get()
+    }
+
+    /// Work on this thread till nothing is left to claim: the content's
+    /// runtime and a sandbox loaded, then a chip at a time.
+    pub fn work(&self) {
+        if self.done.get().is_some() {
+            return;
+        }
+        let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            nettai_battle::behavior::Behaviors::for_content(&self.content).map_err(|e| e.to_string())?;
+            Sandbox::new(&self.content)
+        }));
+        let sandbox = match made {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => return self.fail(e),
+            Err(_) => return self.fail(format!("{}: the fingerprints' sandbox panicked as it loaded", self.content.game())),
+        };
+        let n = self.chips.len();
+        loop {
+            let i = self.next.fetch_add(1, Ordering::SeqCst);
+            if i >= 2 * n || self.done.get().is_some() {
+                return;
+            }
+            if i >= n && !self.wait_for_conditions() {
+                return;
+            }
+            let chip = self.chips[i % n];
+            let item = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                if i < n {
+                    *self.plain[i].lock().unwrap_or_else(|p| p.into_inner()) = Some(self.plain(&sandbox, chip));
+                } else {
+                    let Some(Ok(conditions)) = self.conditions.get() else { return };
+                    let plain = self.plain[i - n].lock().unwrap_or_else(|p| p.into_inner()).clone().expect("every plain run is done");
+                    *self.conditioned[i - n].lock().unwrap_or_else(|p| p.into_inner()) = Some(self.conditioned(&sandbox, chip, plain, conditions));
+                }
+            }));
+            if item.is_err() {
+                return self.fail(format!("{}: a fingerprint run of chip {} panicked", self.content.game(), self.content.defs.chip(chip).key));
+            }
+            if i < n && self.plain_finished.fetch_add(1, Ordering::SeqCst) + 1 == n {
+                self.open();
+            }
+            if self.finished.fetch_add(1, Ordering::SeqCst) + 1 == 2 * n {
+                self.finish();
+            }
+        }
+    }
+
+    /// Every plain run done: the conditions made of them, and the threads
+    /// waiting let go.
+    fn open(&self) {
+        let plain: HashMap<ChipHandle, Fingerprint> =
+            self.chips.iter().zip(&self.plain).filter_map(|(&c, f)| f.lock().unwrap_or_else(|p| p.into_inner()).clone().map(|f| (c, f))).collect();
+        let _ = self.conditions.set(Ok(Conditions::of(&self.content, &plain)));
+        self.let_go();
+    }
+
+    fn let_go(&self) {
+        let (lock, cv) = &self.opened;
+        *lock.lock().unwrap_or_else(|p| p.into_inner()) = true;
+        cv.notify_all();
+    }
+
+    /// Wait till the conditions are made (false: the job failed).
+    fn wait_for_conditions(&self) -> bool {
+        let (lock, cv) = &self.opened;
+        let mut open = lock.lock().unwrap_or_else(|p| p.into_inner());
+        while !*open {
+            open = cv.wait(open).unwrap_or_else(|p| p.into_inner());
+        }
+        matches!(self.conditions.get(), Some(Ok(_))) && self.done.get().is_none()
+    }
+
+    fn fail(&self, why: String) {
+        let _ = self.done.set(Err(why.clone()));
+        let _ = self.conditions.set(Err(why));
+        self.let_go();
+    }
+
+    /// Every chip done: the fingerprints and their pairs.
+    fn finish(&self) {
+        let mut out = Fingerprints { version: VERSION, hash: self.content.hash().0, ..Fingerprints::default() };
+        for (&chip, fp) in self.chips.iter().zip(&self.conditioned) {
+            if let Some(fp) = fp.lock().unwrap_or_else(|p| p.into_inner()).take() {
+                out.chips.insert(chip, fp);
+            }
+        }
+        out.pairs = pairs(&out.chips);
+        out.cost = Cost { chips: self.chips.len(), runs: self.runs.load(Ordering::Relaxed), ticks: self.ticks.load(Ordering::Relaxed), nanos: 0, wall_nanos: 0 };
+        let _ = self.done.set(Ok(Arc::new(out)));
+    }
+
+    /// A run counted.
+    fn ran(&self, n: u32) {
+        self.runs.fetch_add(1, Ordering::Relaxed);
+        self.ticks.fetch_add(n as u64, Ordering::Relaxed);
+    }
+
+    /// Pass 1: the chip at each target panel.
+    fn plain(&self, sandbox: &Sandbox, chip: ChipHandle) -> Fingerprint {
+        let mut fp = Fingerprint::default();
+        let mut all = Vec::new();
+        for target in 0..9 {
+            let Some((run, n)) = sandbox.run(chip, target, Setup::Plain) else {
+                fp.runs.push((0, None));
+                all.push(Run::default());
+                continue;
+            };
+            self.ran(n);
+            fp.runs.push((run.damage, run.first_hit));
+            fp.statuses |= run.statuses;
+            if let Some(k) = run.under_target {
+                fp.turns_under_target |= 1 << k.0;
+            }
+            // (A panel of the other side's front column now the user's.)
+            fp.takes_front |= (0..3).any(|row| run.owner_to_user & (1 << (row * 6 + USER.0 as usize)) != 0);
+            all.push(run);
+        }
+        let best = (0..9).filter(|&i| fp.runs[i].0 > 0).max_by_key(|&i| (fp.runs[i].0, i == MIDDLE));
+        fp.best = best;
+        fp.effect = all[best.unwrap_or(MIDDLE)].clone();
+        fp
+    }
+
+    /// Pass 2: the conditioned runs at the chip's best panel (the middle one
+    /// if it hit none).
+    fn conditioned(&self, sandbox: &Sandbox, chip: ChipHandle, mut fp: Fingerprint, c: &Conditions) -> Fingerprint {
+        let best = fp.best.unwrap_or(MIDDLE);
+        let plain = fp.runs[best].0;
+        for &k in &c.kinds {
+            if let Some((run, n)) = sandbox.run(chip, best, Setup::Kind(k)) {
+                self.ran(n);
+                fp.kind_ratios.push((k, ratio(run.damage, plain)));
+            }
+        }
+        for (s, by_panel) in c.inflicters.iter().enumerate() {
+            let Some(setup) = by_panel[best] else { continue };
+            if let Some((run, n)) = sandbox.run(chip, best, Setup::Status(setup, s as u8)) {
+                self.ran(n);
+                fp.status_ratios[s] = Some(ratio(run.damage, plain));
+            }
+        }
+        if let Some((run, n)) = sandbox.run(chip, best, Setup::Stolen) {
+            self.ran(n);
+            fp.stolen = Some((ratio(run.damage, plain), run.damage));
+        }
+        // (Advanced: the target a column farther than the user's front, in
+        // the best panel's row, against the plain run there.)
+        let farther = best / 3 * 3 + 1;
+        if let Some((run, n)) = sandbox.run(chip, farther, Setup::Advanced) {
+            self.ran(n);
+            fp.advanced = Some((ratio(run.damage, fp.runs[farther].0), run.damage));
+        }
+        fp
+    }
 }
 
 #[cfg(test)]
