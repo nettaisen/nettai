@@ -273,6 +273,12 @@ pub fn pool(content: &Content, game: &str, b: &mut Battle, side: u8) -> Vec<Chip
 /// the rules accept as Regular, if any is.
 pub fn random_folder(content: &Content, game: &str, b: &mut Battle, side: u8, picks: &mut Picks) -> SavedFolder {
     let pool = pool(content, game, b, side);
+    random_folder_of(content, &pool, b, side, picks)
+}
+
+/// [`random_folder`] of the chips of `pool` (some of [`pool`]'s: a
+/// training's builds leave chips out of theirs).
+pub fn random_folder_of(content: &Content, pool: &[ChipHandle], b: &mut Battle, side: u8, picks: &mut Picks) -> SavedFolder {
     assert!(!pool.is_empty(), "the rules let a folder hold no chip");
     let favored = [ChipCode(picks.below(26) as u8), ChipCode(picks.below(26) as u8)];
     let mut chips: Vec<FolderChip> = Vec::with_capacity(FOLDER_SIZE);

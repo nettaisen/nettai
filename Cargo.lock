@@ -3441,6 +3441,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nettai-training"
+version = "0.1.0"
+dependencies = [
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-netplay",
+]
+
+[[package]]
 name = "nettai-ui"
 version = "0.1.0"
 dependencies = [
