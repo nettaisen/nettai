@@ -54,7 +54,7 @@ fn main() {
             let maker = nettai_training::builds::Maker::new(&content).unwrap();
             let mut picks = nettai_match::Picks::new(5);
             for _ in 0..20 {
-                maker.random(&mut picks, &[], randomize).unwrap();
+                maker.random(&mut picks, &Default::default(), randomize).unwrap();
             }
             let k = maker.counts();
             println!(

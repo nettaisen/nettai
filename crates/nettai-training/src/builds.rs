@@ -16,6 +16,66 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+/// Chips held out of training (§6.6's `chip_holdout`): those a folder may
+/// hold whose key, with `seed`, is below `fraction` ([`crate::names::unit`]).
+/// Random builds leave them out (`Exclude`), or lean toward them (`Favor`:
+/// about half a folder's draws are theirs), for evaluation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Holdout {
+    pub fraction: f64,
+    pub seed: u64,
+    pub mode: HoldoutMode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HoldoutMode {
+    Exclude,
+    Favor,
+}
+
+impl HoldoutMode {
+    pub fn named(name: &str) -> Option<HoldoutMode> {
+        match name {
+            "exclude" => Some(HoldoutMode::Exclude),
+            "favor" => Some(HoldoutMode::Favor),
+            _ => None,
+        }
+    }
+}
+
+impl Default for Holdout {
+    /// None held out.
+    fn default() -> Holdout {
+        Holdout { fraction: 0.0, seed: 0, mode: HoldoutMode::Exclude }
+    }
+}
+
+impl Holdout {
+    /// Whether the chip of key `key` is held out.
+    pub fn holds(&self, key: &str) -> bool {
+        self.fraction > 0.0 && crate::names::unit(self.seed, key) < self.fraction
+    }
+
+    /// The chips a random folder is drawn from, of `pool` (those the rules
+    /// let it hold): without those held out, or with them repeated to about
+    /// half the draws.
+    pub fn pool(&self, content: &Content, pool: Vec<ChipHandle>) -> Vec<ChipHandle> {
+        let (held, rest): (Vec<ChipHandle>, Vec<ChipHandle>) = pool.into_iter().partition(|&c| self.holds(&content.defs.chip(c).key));
+        match self.mode {
+            HoldoutMode::Exclude => rest,
+            HoldoutMode::Favor if held.is_empty() => rest,
+            HoldoutMode::Favor => {
+                let copies = (rest.len() / held.len()).max(1);
+                let mut out = rest;
+                for _ in 0..copies {
+                    out.extend(&held);
+                }
+                out
+            }
+        }
+    }
+}
+
 /// Tries at a build the rules accept before giving up.
 const TRIES: usize = 20;
 
@@ -144,28 +204,23 @@ impl Maker {
         &self.content
     }
 
-    /// The chips of the game whose keys are `keys` (a key the game hasn't
-    /// is none of them).
-    pub fn chips(&self, keys: &[String]) -> Vec<ChipHandle> {
-        keys.iter().filter_map(|k| nettai_match::ids::chip(&self.content, &self.game, k)).collect()
-    }
-
     /// A random build the rules accept (§6.2): a group's new build, a
     /// random navi of the game's (the navi that changes form half the
     /// time), each fact of forms filled at random from what it offers, a
     /// random preset of each choice, a random folder of the chips the rules
-    /// let it hold but `exclude` (its Regular chip, and tag chips half the
-    /// time where the rules take them); and with chance `randomize`, every
+    /// let it hold, those held out left out or favored (`holdout`; its
+    /// Regular chip, and tag chips half the time where the rules take
+    /// them); and with chance `randomize`, every
     /// other fact a build states drawn too ([`Maker::randomize`]: the
     /// NaviCust, the patch cards...), else the rules' defaults.
-    pub fn random(&self, picks: &mut Picks, exclude: &[ChipHandle], randomize: f64) -> Result<Side, String> {
+    pub fn random(&self, picks: &mut Picks, holdout: &Holdout, randomize: f64) -> Result<Side, String> {
         let started = std::time::Instant::now();
         let mut last = String::new();
         let result = (|| {
             for _ in 0..TRIES {
                 self.counts.tries.fetch_add(1, Ordering::Relaxed);
                 let all = chance(picks, randomize);
-                match self.try_random(picks, exclude, all) {
+                match self.try_random(picks, holdout, all) {
                     Ok(side) => {
                         let checked = Checked::of(&self.content, &self.game, &side);
                         if checked.ready() {
@@ -184,7 +239,7 @@ impl Maker {
         result
     }
 
-    fn try_random(&self, picks: &mut Picks, exclude: &[ChipHandle], all: bool) -> Result<Side, String> {
+    fn try_random(&self, picks: &mut Picks, holdout: &Holdout, all: bool) -> Result<Side, String> {
         let (content, b) = (&self.content, &self.builds);
         let group = &b.groups[picks.below(b.groups.len())].id;
         let mut side = b.new_build(content, group)?;
@@ -228,7 +283,7 @@ impl Maker {
             battle = check::set_up(content, &m)?;
         }
         // The folder, of the chips the side's rules let it hold.
-        let pool: Vec<ChipHandle> = folders::pool(content, &self.game, &mut battle, 0).into_iter().filter(|c| !exclude.contains(c)).collect();
+        let pool = holdout.pool(content, folders::pool(content, &self.game, &mut battle, 0));
         if pool.len() < 8 {
             return Err(format!("{}: {} chips are left to make a folder of", self.game, pool.len()));
         }
@@ -401,7 +456,7 @@ mod tests {
     use crate::testing::content;
 
     /// Random builds of every game are valid, of more than one navi, and
-    /// keep the chips they leave out out of their folders; a round between
+    /// keep the chips held out out of their folders; a round between
     /// two of them is a checked match at the HP asked where the navi takes
     /// it.
     #[test]
@@ -410,16 +465,16 @@ mod tests {
             let c = content(game);
             let maker = Maker::new(&c).unwrap();
             let mut picks = Picks::new(7);
-            let exclude = maker.chips(&["cannon".to_string(), "minibomb".to_string()]);
+            let holdout = Holdout { fraction: 0.3, seed: 5, mode: HoldoutMode::Exclude };
             let mut navis = std::collections::BTreeSet::new();
             for i in 0..6 {
                 let t = std::time::Instant::now();
-                let a = maker.random(&mut picks, &exclude, 0.75).unwrap_or_else(|e| panic!("{e}"));
-                let b = maker.random(&mut picks, &exclude, 0.75).unwrap_or_else(|e| panic!("{e}"));
+                let a = maker.random(&mut picks, &holdout, 0.75).unwrap_or_else(|e| panic!("{e}"));
+                let b = maker.random(&mut picks, &holdout, 0.75).unwrap_or_else(|e| panic!("{e}"));
                 let made = t.elapsed();
                 for s in [&a, &b] {
                     navis.insert(s.navi(&c));
-                    assert!(s.folder(&c).chips().all(|chip| !exclude.contains(&chip.id)), "{game}: an excluded chip");
+                    assert!(s.folder(&c).chips().all(|chip| !holdout.holds(&c.defs.chip(chip.id).key)), "{game}: a chip held out");
                 }
                 let t = std::time::Instant::now();
                 let m = maker.round([a, b], if i % 2 == 0 { 1000 } else { 600 }, i).unwrap_or_else(|e| panic!("{e}"));
@@ -429,6 +484,25 @@ mod tests {
             println!("{game}: navis {navis:?}");
             assert!(navis.len() > 1 || nettai_match::navis(&c, game).len() == 1, "{game}: one navi");
         }
+    }
+
+    /// Favoring held-out chips, about half a folder's chips are theirs.
+    #[test]
+    fn favored_chips_fill_about_half_a_folder() {
+        let c = content("exe6");
+        let maker = Maker::new(&c).unwrap();
+        let holdout = Holdout { fraction: 0.1, seed: 2, mode: HoldoutMode::Favor };
+        let mut picks = Picks::new(9);
+        let (mut held, mut all) = (0, 0);
+        for _ in 0..6 {
+            let side = maker.random(&mut picks, &holdout, 0.0).unwrap();
+            for chip in side.folder(&c).chips() {
+                held += holdout.holds(&c.defs.chip(chip.id).key) as u32;
+                all += 1;
+            }
+        }
+        println!("{held} of {all} chips held out");
+        assert!(held * 4 > all && held * 4 < 3 * all, "{held} of {all}");
     }
 
     /// Randomized builds vary every fact a build states (§6.2): over many
@@ -443,7 +517,7 @@ mod tests {
             let mut varied: std::collections::BTreeMap<String, u32> = std::collections::BTreeMap::new();
             let n = 24;
             for _ in 0..n {
-                let side = maker.random(&mut picks, &[], 1.0).unwrap_or_else(|e| panic!("{e}"));
+                let side = maker.random(&mut picks, &Holdout::default(), 1.0).unwrap_or_else(|e| panic!("{e}"));
                 for f in facts::fields(&c) {
                     *varied.entry(f.name.to_string()).or_default() += (!side.facts.is_default(&c, f.name)) as u32;
                 }

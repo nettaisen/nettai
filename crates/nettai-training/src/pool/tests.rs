@@ -64,8 +64,8 @@ fn the_pools_buffers_fill_and_play_alike_on_any_threads() {
                 seen[phase as usize] += 1;
                 assert!((6..=30).contains(&b.delay[at]));
                 if phase != 0 {
-                    let g = &spec::SETS[spec::GLOBAL];
-                    assert!(b.mask[spec::GLOBAL][at * g.count], "env {e} seat {s}: no global token");
+                    let g = &spec::SETS[spec::GENERAL];
+                    assert!(b.mask[spec::GENERAL][at * g.count], "env {e} seat {s}: no general token");
                 }
             }
             if b.done[e] {

@@ -20,6 +20,8 @@ pub const BACK: u32 = 20;
 /// One round, as the pool reports it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RoundStats {
+    /// The env that played it (the pool's numbering).
+    pub env: usize,
     pub game: String,
     /// Who played each seat: "policy" or a scripted player's name.
     pub controllers: [String; 2],
