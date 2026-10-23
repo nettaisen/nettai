@@ -1,15 +1,17 @@
 //! Many envs on persistent worker threads, stepped as one batch
 //! (docs/design/training-ai.md §6.5, §6.6).
 //!
-//! A worker owns its envs for its whole life, and with them its thread's
-//! content runtimes (a Luau VM a game, about a second to load: `behavior`'s
-//! per-thread cache). [`Pool::step`] hands every worker the batch's
-//! actions; each steps its envs to their next decisions and writes their
-//! rows of the pool's [`Buffers`], which the pool owns and never
-//! reallocates (the bridge shows them to Python as numpy arrays without a
-//! copy). While a worker waits for the next step it makes builds ahead
-//! (`Env::prepare`), from each game's own stream of draws, so a round's
-//! builds are the same however busy the workers were.
+//! A worker keeps its thread's content runtimes for its whole life (a Luau
+//! VM a game, about a second to load: `behavior`'s per-thread cache), and
+//! any worker steps any env (a battle is plain data). [`Pool::step`] hands
+//! every worker the batch's actions; each claims the next env not yet
+//! stepped, steps it to its next decision and writes its rows of the pool's
+//! [`Buffers`], until none is left: a slow core, or an env starting a round,
+//! holds up no other's. The buffers are the pool's and never reallocated
+//! (the bridge shows them to Python as numpy arrays without a copy). While
+//! a worker waits for the next step it makes builds ahead (`Env::prepare`),
+//! from each game's own stream of draws, so a round's builds are the same
+//! however busy the workers were.
 
 use crate::bots::BotKind;
 use crate::env::{self, Config, Controller, Env, Game};
@@ -18,7 +20,9 @@ use crate::stats::RoundStats;
 use nettai_battle::Content;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
+use std::sync::Mutex;
 
 /// What a pool is made with (§6.6's `Pool(...)`).
 #[derive(Clone, Debug)]
@@ -79,10 +83,10 @@ impl Buffers {
     }
 }
 
-/// Where a worker writes its envs' rows: the buffers' memory, which the
-/// pool keeps alive and in place while any worker lives. Workers write
-/// disjoint rows (their own envs'), and only while the pool waits for
-/// them in a call that holds it mutably.
+/// Where a worker writes an env's rows: the buffers' memory, which the pool
+/// keeps alive and in place while any worker lives. Workers write disjoint
+/// rows (the envs each claimed), and only while the pool waits for them in a
+/// call that holds it mutably.
 #[derive(Clone, Copy)]
 struct Rows {
     x: [*mut f32; spec::SETS.len()],
@@ -100,9 +104,10 @@ struct Rows {
 }
 
 // SAFETY: the pointers are into the pool's buffers, which outlive the
-// workers (the pool joins them before it drops the buffers), never move
-// (they are never resized), and each worker writes only its own envs' rows,
-// while the pool's own thread is blocked waiting for it.
+// workers (the pool joins them before it drops the buffers) and never move
+// (they are never resized). A worker writes an env's rows only for an env it
+// claimed in the command it runs (each env is claimed once a command), while
+// the pool's own thread is blocked waiting for every worker.
 unsafe impl Send for Rows {}
 
 impl Rows {
@@ -153,26 +158,32 @@ impl Rows {
     }
 }
 
-/// What the pool asks of a worker.
-enum Cmd {
-    Step(Arc<Vec<i32>>),
-    Seat(Vec<usize>, usize, Controller),
-    Delay(Vec<usize>, usize, Option<u16>),
-    Hp(u16, u16),
-    Exclude(Vec<String>),
-    Stats,
+/// The envs, shared by the workers: each step, each worker claims the next
+/// env not yet stepped until none is left, so a slow core or a round's
+/// start holds up no other worker's envs.
+struct Shared {
+    envs: Vec<Mutex<Option<Env>>>,
+    next: AtomicUsize,
 }
 
-enum Reply {
-    Done(Result<(), String>),
-    Stats(Vec<RoundStats>),
+impl Shared {
+    fn env(&self, e: usize) -> std::sync::MutexGuard<'_, Option<Env>> {
+        // (A worker that panicked holding one stopped the pool: its message
+        // is above; the env is as it was.)
+        self.envs[e].lock().unwrap_or_else(|p| p.into_inner())
+    }
+}
+
+/// What the pool asks of its workers.
+enum Cmd {
+    /// Make the envs (each its runtimes loaded first).
+    Start,
+    Step(Arc<Vec<i32>>),
 }
 
 struct Worker {
-    /// Its envs, by the pool's numbering.
-    envs: std::ops::Range<usize>,
     tx: Sender<Cmd>,
-    rx: Receiver<Reply>,
+    rx: Receiver<Result<(), String>>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -180,6 +191,7 @@ struct Worker {
 pub struct Pool {
     games: Vec<String>,
     workers: Vec<Worker>,
+    shared: Arc<Shared>,
     buffers: Buffers,
 }
 
@@ -217,27 +229,21 @@ impl Pool {
         }
         let mut buffers = Buffers::new(cfg.envs);
         let rows = Rows::of(&mut buffers);
-        let threads = cfg.threads.min(cfg.envs);
-        let mut workers = Vec::with_capacity(threads);
-        for w in 0..threads {
-            let envs = (cfg.envs * w / threads)..(cfg.envs * (w + 1) / threads);
+        let shared = Arc::new(Shared { envs: (0..cfg.envs).map(|_| Mutex::new(None)).collect(), next: AtomicUsize::new(0) });
+        let mut workers = Vec::with_capacity(cfg.threads);
+        for w in 0..cfg.threads {
             let (tx, rx_cmd) = channel();
             let (tx_reply, rx) = channel();
-            let (games, config, seed, range) = (games.clone(), cfg.env.clone(), cfg.seed, envs.clone());
+            let (games, config, seed, shared) = (games.clone(), cfg.env.clone(), cfg.seed, shared.clone());
             let thread = std::thread::Builder::new()
                 .name(format!("nettai-pool-{w}"))
-                .spawn(move || work(games, config, seed, range, rows, rx_cmd, tx_reply))
+                .spawn(move || work(games, config, seed, shared, rows, rx_cmd, tx_reply))
                 .map_err(|e| format!("a worker thread: {e}"))?;
-            workers.push(Worker { envs, tx, rx, thread: Some(thread) });
+            workers.push(Worker { tx, rx, thread: Some(thread) });
         }
-        let pool = Pool { games: cfg.games.clone(), workers, buffers };
-        // (Each worker's first reply: its envs made and at their first decisions.)
-        for w in &pool.workers {
-            match w.rx.recv() {
-                Ok(Reply::Done(r)) => r?,
-                _ => return Err("a worker stopped as it started".into()),
-            }
-        }
+        let mut pool = Pool { games: cfg.games.clone(), workers, shared, buffers };
+        // (The envs made, each at its first decision.)
+        pool.run(|| Cmd::Start)?;
         Ok(pool)
     }
 
@@ -259,34 +265,30 @@ impl Pool {
         &mut self.buffers
     }
 
-    /// Ask every worker `cmd` (made for each), and wait for their answers.
-    fn ask(&mut self, cmd: impl Fn(&Worker) -> Option<Cmd>) -> Result<Vec<Reply>, String> {
-        let mut asked = Vec::new();
+    /// Every worker on `cmd` over the envs, until each env is done; the
+    /// first error, if any.
+    fn run(&mut self, cmd: impl Fn() -> Cmd) -> Result<(), String> {
+        self.shared.next.store(0, Ordering::SeqCst);
         for (i, w) in self.workers.iter().enumerate() {
-            if let Some(c) = cmd(w) {
-                w.tx.send(c).map_err(|_| format!("worker {i} has stopped"))?;
-                asked.push(i);
+            w.tx.send(cmd()).map_err(|_| format!("worker {i} has stopped"))?;
+        }
+        let mut first = Ok(());
+        for (i, w) in self.workers.iter().enumerate() {
+            let r = w.rx.recv().map_err(|_| format!("worker {i} stopped (a panic: see its message above)")).and_then(|r| r);
+            if first.is_ok() {
+                first = r;
             }
         }
-        asked.into_iter().map(|i| self.workers[i].rx.recv().map_err(|_| format!("worker {i} stopped (a panic: see its message above)"))).collect()
-    }
-
-    fn done(replies: Vec<Reply>) -> Result<(), String> {
-        for r in replies {
-            if let Reply::Done(Err(e)) = r {
-                return Err(e);
-            }
-        }
-        Ok(())
+        first
     }
 
     /// Apply `actions` (`[E, 2]`, read where the last step asked a seat),
-    /// and step every env to its next decision (§6.6).
+    /// and step every env to its next decision (§6.6). An action that isn't
+    /// allowed refuses the whole step, before any env moves.
     pub fn step(&mut self, actions: &[i32]) -> Result<(), String> {
         if actions.len() != self.envs() * 2 {
             return Err(format!("{} actions for {} envs (2 a env)", actions.len(), self.envs()));
         }
-        // (An action not allowed refuses the whole step, before any env moves.)
         let b = &self.buffers;
         for (at, &a) in actions.iter().enumerate() {
             let legal = match b.phase[at] {
@@ -299,29 +301,41 @@ impl Pool {
             }
         }
         let actions = Arc::new(actions.to_vec());
-        let replies = self.ask(|_| Some(Cmd::Step(actions.clone())))?;
-        Pool::done(replies)
+        self.run(|| Cmd::Step(actions.clone()))
+    }
+
+    /// Each of envs `envs` (all: none given), changed by `f`.
+    fn each(&self, envs: Option<&[usize]>, f: impl Fn(&mut Env)) -> Result<(), String> {
+        let all: Vec<usize>;
+        let list = match envs {
+            Some(l) => l,
+            None => {
+                all = (0..self.envs()).collect();
+                &all
+            }
+        };
+        if let Some(e) = list.iter().find(|&&e| e >= self.envs()) {
+            return Err(format!("env {e}: the pool has {}", self.envs()));
+        }
+        for &e in list {
+            if let Some(env) = self.shared.env(e).as_mut() {
+                f(env);
+            }
+        }
+        Ok(())
     }
 
     /// Who plays seat `seat` of envs `envs` from their next round.
     pub fn set_seat(&mut self, envs: &[usize], seat: usize, controller: Controller) -> Result<(), String> {
-        self.check(envs, seat)?;
-        let replies = self.ask(|w| {
-            let mine: Vec<usize> = envs.iter().copied().filter(|e| w.envs.contains(e)).collect();
-            (!mine.is_empty()).then_some(Cmd::Seat(mine, seat, controller))
-        })?;
-        Pool::done(replies)
+        check_seat(seat)?;
+        self.each(Some(envs), |env| env.set_seat(seat, controller))
     }
 
     /// The delay seat `seat` of envs `envs` plays at from their next round
     /// (none: drawn again).
     pub fn set_delay(&mut self, envs: &[usize], seat: usize, ticks: Option<u16>) -> Result<(), String> {
-        self.check(envs, seat)?;
-        let replies = self.ask(|w| {
-            let mine: Vec<usize> = envs.iter().copied().filter(|e| w.envs.contains(e)).collect();
-            (!mine.is_empty()).then_some(Cmd::Delay(mine, seat, ticks))
-        })?;
-        Pool::done(replies)
+        check_seat(seat)?;
+        self.each(Some(envs), |env| env.set_delay(seat, ticks))
     }
 
     /// Both sides' base HP drawn from `lo` to `hi`, from the next rounds.
@@ -329,32 +343,47 @@ impl Pool {
         if lo == 0 || lo > hi {
             return Err(format!("HP {lo} to {hi}"));
         }
-        let replies = self.ask(|_| Some(Cmd::Hp(lo, hi)))?;
-        Pool::done(replies)
+        self.each(None, |env| env.set_hp(lo, hi))
     }
 
     /// The chips (by key) no random build puts in a folder, from the next
     /// rounds.
     pub fn set_exclude_chips(&mut self, keys: Vec<String>) -> Result<(), String> {
-        let replies = self.ask(|_| Some(Cmd::Exclude(keys.clone())))?;
-        Pool::done(replies)
+        self.each(None, |env| env.set_exclude_chips(keys.clone()))
     }
 
     /// The rounds ended since the last call.
     pub fn round_stats(&mut self) -> Result<Vec<RoundStats>, String> {
-        let replies = self.ask(|_| Some(Cmd::Stats))?;
-        Ok(replies.into_iter().flat_map(|r| if let Reply::Stats(s) = r { s } else { Vec::new() }).collect())
+        let mut out = Vec::new();
+        for e in 0..self.envs() {
+            if let Some(env) = self.shared.env(e).as_mut() {
+                out.append(&mut env.ended);
+            }
+        }
+        Ok(out)
     }
 
-    fn check(&self, envs: &[usize], seat: usize) -> Result<(), String> {
-        if seat > 1 {
-            return Err(format!("seat {seat}: a seat is 0 or 1"));
+    /// Where the envs' time went, summed.
+    pub fn profile(&self) -> env::Profile {
+        let mut p = env::Profile::default();
+        for e in 0..self.envs() {
+            if let Some(env) = self.shared.env(e).as_ref() {
+                let q = env.profile;
+                p.encode += q.encode;
+                p.reset += q.reset;
+                p.probe += q.probe;
+                p.prepare += q.prepare;
+                p.ticks += q.ticks;
+                p.decisions += q.decisions;
+                p.rounds += q.rounds;
+            }
         }
-        if let Some(e) = envs.iter().find(|&&e| e >= self.envs()) {
-            return Err(format!("env {e}: the pool has {}", self.envs()));
-        }
-        Ok(())
+        p
     }
+}
+
+fn check_seat(seat: usize) -> Result<(), String> {
+    if seat > 1 { Err(format!("seat {seat}: a seat is 0 or 1")) } else { Ok(()) }
 }
 
 impl Drop for Pool {
@@ -380,58 +409,21 @@ pub fn controller(name: &str) -> Result<Controller, String> {
     })
 }
 
-/// A worker's life: its envs made on its thread (its runtimes loaded
-/// first), their first decisions written; then each command, and builds
-/// made ahead while none waits.
-fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, range: std::ops::Range<usize>, rows: Rows, rx: Receiver<Cmd>, tx: Sender<Reply>) {
-    let started = (|| -> Result<Vec<Env>, String> {
-        for g in games.iter() {
-            nettai_battle::behavior::Behaviors::for_content(&g.content).map_err(|e| format!("{}: {e}", g.name))?;
-        }
-        let mut envs = Vec::with_capacity(range.len());
-        for e in range.clone() {
-            let mut env = Env::new(games.clone(), cfg.clone(), seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(e as u64))?;
-            let out = env.step([0, 0])?;
-            // SAFETY: env `e` is this worker's; the pool waits for its first reply.
-            unsafe { rows.write(e, &env, &out) };
-            envs.push(env);
-        }
-        Ok(envs)
-    })();
-    let mut envs = match started {
-        Ok(envs) => {
-            let _ = tx.send(Reply::Done(Ok(())));
-            envs
-        }
-        Err(e) => {
-            let _ = tx.send(Reply::Done(Err(e)));
-            return;
-        }
-    };
-    let mut failed: Option<String> = None;
+/// A worker's life: its runtimes loaded; then each command, over the envs
+/// it claims; and while none waits, builds made ahead for an env no one
+/// holds.
+fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows: Rows, rx: Receiver<Cmd>, tx: Sender<Result<(), String>>) {
+    let loaded: Result<(), String> = games.iter().try_for_each(|g| {
+        nettai_battle::behavior::Behaviors::for_content(&g.content).map(|_| ()).map_err(|e| format!("{}: {e}", g.name))
+    });
+    let mut idle_at = 0;
     loop {
         let cmd = match rx.try_recv() {
             Ok(c) => c,
             Err(TryRecvError::Disconnected) => return,
             Err(TryRecvError::Empty) => {
                 // (Nothing asked: a build made ahead, then look again.)
-                let mut made = false;
-                if failed.is_none() {
-                    for env in &mut envs {
-                        match env.prepare() {
-                            Ok(true) => {
-                                made = true;
-                                break;
-                            }
-                            Ok(false) => {}
-                            Err(e) => {
-                                failed = Some(e);
-                                break;
-                            }
-                        }
-                    }
-                }
-                if made {
+                if loaded.is_ok() && prepare_one(&shared, &mut idle_at) {
                     continue;
                 }
                 match rx.recv() {
@@ -440,49 +432,53 @@ fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, range: std::ops::Range<us
                 }
             }
         };
-        let reply = match cmd {
-            Cmd::Step(actions) => Reply::Done(match failed.take() {
-                Some(e) => Err(e),
-                None => (|| {
-                    for (k, env) in envs.iter_mut().enumerate() {
-                        let e = range.start + k;
-                        let out = env.step([actions[e * 2], actions[e * 2 + 1]]).map_err(|why| format!("env {e}: {why}"))?;
-                        // SAFETY: env `e` is this worker's; the pool waits for the reply.
-                        unsafe { rows.write(e, env, &out) };
+        let result = loaded.clone().and_then(|()| {
+            let n = shared.envs.len();
+            loop {
+                let e = shared.next.fetch_add(1, Ordering::SeqCst);
+                if e >= n {
+                    return Ok(());
+                }
+                let mut slot = shared.env(e);
+                let out = match &cmd {
+                    Cmd::Start => {
+                        let mut env = Env::new(games.clone(), cfg.clone(), seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(e as u64)).map_err(|why| format!("env {e}: {why}"))?;
+                        let out = env.step([0, 0]).map_err(|why| format!("env {e}: {why}"))?;
+                        *slot = Some(env);
+                        out
                     }
-                    Ok(())
-                })(),
-            }),
-            Cmd::Seat(list, seat, c) => {
-                for e in list {
-                    envs[e - range.start].set_seat(seat, c);
-                }
-                Reply::Done(Ok(()))
+                    Cmd::Step(actions) => {
+                        let env = slot.as_mut().ok_or_else(|| format!("env {e} wasn't made"))?;
+                        env.step([actions[e * 2], actions[e * 2 + 1]]).map_err(|why| format!("env {e}: {why}"))?
+                    }
+                };
+                // SAFETY: env `e` was claimed by this worker alone this round of
+                // the command, and the pool waits for every worker's reply.
+                unsafe { rows.write(e, slot.as_ref().expect("the env"), &out) };
             }
-            Cmd::Delay(list, seat, d) => {
-                for e in list {
-                    envs[e - range.start].set_delay(seat, d);
-                }
-                Reply::Done(Ok(()))
-            }
-            Cmd::Hp(lo, hi) => {
-                for env in &mut envs {
-                    env.set_hp(lo, hi);
-                }
-                Reply::Done(Ok(()))
-            }
-            Cmd::Exclude(keys) => {
-                for env in &mut envs {
-                    env.set_exclude_chips(keys.clone());
-                }
-                Reply::Done(Ok(()))
-            }
-            Cmd::Stats => Reply::Stats(envs.iter_mut().flat_map(|e| std::mem::take(&mut e.ended)).collect()),
-        };
-        if tx.send(reply).is_err() {
+        });
+        if tx.send(result).is_err() {
             return;
         }
     }
+}
+
+/// A build made ahead for one env that needs one and that no one holds,
+/// looking from `at` on; whether one was made.
+fn prepare_one(shared: &Shared, at: &mut usize) -> bool {
+    let n = shared.envs.len();
+    for k in 0..n {
+        let e = (*at + k) % n;
+        let Ok(mut slot) = shared.envs[e].try_lock() else { continue };
+        let Some(env) = slot.as_mut() else { continue };
+        // (An error making it ahead is met again as the round needs it.)
+        if let Ok(true) = env.prepare() {
+            *at = e;
+            return true;
+        }
+    }
+    *at = 0;
+    false
 }
 
 #[cfg(test)]
