@@ -64,6 +64,9 @@ class EnvConfig:
     content: str | None = None
     packs: str | None = None
     k: int = 4
+    # Screen decisions before only OK is allowed: the env's own limit (24), which the bridge takes no argument
+    # for; kept here so the weights record what the network was trained with.
+    screen_decisions: int = 24
     delay: list[int] = field(default_factory=lambda: [6, 30])
     max_fight_ticks: int = 18000
     # Held-out chips (§9): this fraction of each game's chips never appears in training builds and is favored in
@@ -162,7 +165,8 @@ class RunConfig:
     updates: int = 20000
     checkpoint_every: int = 50
     device: str = "auto"  # auto: cuda, else mps, else cpu
-    torch_threads: int = 0  # torch's CPU threads; 0 leaves torch's default (the pool has its own threads)
+    torch_threads: int = 0  # torch's CPU threads while collecting; 0 leaves torch's default (the pool has its own)
+    update_threads: int = 0  # torch's CPU threads in the update, while the pool waits; 0: as while collecting
     seed: int = 1
     fixture_decisions: int = 16  # decisions of one seat kept in each checkpoint for export's parity fixture
 

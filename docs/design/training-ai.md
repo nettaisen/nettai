@@ -424,13 +424,14 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   79 in EXE5, 49 in EXE4, where §3's table expected up to 24). Their relations to the field matter little, and
   in the transformer they would be most of its cost; the summary's pool reads them. Absent tokens are skipped,
   not computed and masked.
-- **The pool's chips set.** The encoder sends the hand, the screen's slots and the other's used chip as one
-  `chips` set of 19 tokens and says where each part is (`spec()["chip_tokens"]`). The trainer reads the parts as
-  sets of their own, `hand`, `slots` and `used` (so the pointer's set is `slots` and the used chip is a set of
-  one), and the weights' architecture records the split for the Rust side.
+- **The chips set's two parts.** The encoder sends the hand and the other's used chip as one `chips` set of 7
+  tokens and says where each part is (`spec()["chip_tokens"]`: hand 0–5, used 6). The trainer reads them as two
+  sets, `hand` and `used`, in `chips`' place (each its own MLP, and the used chip a set of one, read directly
+  below); the weights' architecture records the split for the Rust side. The pointer's set is the encoder's
+  `slots`.
 - **Summary.** An attention pool (4 learned scores over the tokens, a weighted sum each), plus the token of
-  every set of one (the global state, the other side's last chip) read directly, to 128. Reading those directly
-  was the difference on FakePool's toy between learning the fight (its target is in the global token) in 40
+  every set of one (`general`, the other side's `used` chip) read directly, to 128. Reading those directly was
+  the difference on FakePool's toy between learning the fight (its target is in the general token) in 40
   updates, 71% of targets pressed, and not, 19%: a pool over 66 tokens starts out reading the one that matters
   at 1/66.
 - **Memory.** A GRU of 256.
@@ -448,12 +449,13 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
 - **Budget, as decided.** This section's first draft (width 128, two layers, ~140 tokens) was about 30 million
   multiply-adds a layer, ten times the budget. The coordinator's rule (2026-10-23): count present tokens only
   (the Rust port skips absent ones), at a typical fight position and at the max; targets 3 M typical, 10 M max.
-  - The typical position, as the pool shows it (random play, 2026-10-23): global 1, 18 panels (the attack log is
-    in their tokens), about 10 objects (4 to 5 in random play, up to 17), 6 in hand, no slots, the used chip, 57
+  - The typical position, as the pool shows it (random play, 2026-10-23): general 1, 18 panels (the attack log is
+    in their tokens), about 10 objects (4 to 5 in random play, up to 17), 6 in hand, the used chip, no slots, 57
     rules scalars (the three games' mean), 2 forms: 95 tokens, 38 of them in the transformer.
-  - The default, **d = 64**, one layer: 2.20 M typical, 2.90 M on the custom screen (its 12 slots added), 5.78 M
-    max (194 tokens); 1.13 M parameters, 0.52 M of them the name table; 4.3 MiB. (Before the rules were made
-    pool-only, d had to be 56 at 66 tokens; with all 95 in the transformer it would be over 4 M.)
+  - The default, **d = 64**, one layer, on spec c4d9e4a61b0f54ba (chip tokens 250 wide with their fingerprints):
+    2.22 M typical, 2.95 M on the custom screen (its 12 slots added), 5.82 M max (194 tokens); 1.13 M parameters,
+    0.52 M of them the name table; 4.3 MiB. (Before the rules were made pool-only, d had to be 56 at 66 tokens;
+    with all 95 in the transformer it would be over 4 M.)
   - `--size large` (d 128, two layers: 13.6 M typical, 36.5 M max, 2.6 M parameters) is there to try in the
     cloud. If it plays clearly better, the app runs it on a worker thread (§10).
   - `uv run python -m nettai_ai.model [--size large]` prints the numbers; training logs the cost at the
@@ -474,12 +476,11 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     `hp_gain` there, times the HP weight, plus, at a round's end, `result` times the result weight;
   - so `hp_gain` must cover everything since the seat's last decision, including steps where the seat had no
     decision (phase 0); the trainer doesn't read it on those steps.
-- **Reading today's bridge** (2026-10-23), where it differs from §6.6, in one place (`training/nettai_ai/envs.py`):
-  the chips set's parts become sets (§7); `round_stats()` gives each round's measures as per-seat pairs and no
-  env, so the trainer regroups them by seat and matches the rounds, which come in env order, to the envs that
-  ended one in that step; the held-out chips wait for the bridge's `chip_holdout` (it takes `exclude_chips`, a
-  list of keys, today). `uv sync` drops the bridge from the environment (it isn't in the lock file): after
-  building it, run with `uv run --no-sync`.
+- **Cut-off rounds.** A round `truncated` (18,000 ticks of fight, a screen open 3,600 ticks, or the engine
+  stopping it: about 1 in 50 EXE5 rounds ends on a content error today) has no result. The trainer bootstraps it
+  (below) and counts it for nothing: not in the league's win rates or Elo, the curriculum, or the behavior
+  measures; evaluation counts it apart. `uv sync` drops the bridge from the trainer's environment (it isn't in the
+  lock file): after building it, run with `uv run --no-sync`.
 - **Rewards' weights.** The result 1; the HP difference from 1 down to 0.2 over the first 3,000 updates.
   `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
   same at any HP of the curriculum.
@@ -521,9 +522,10 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   its header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation
   can't silently play an old network. Beside it, a parity fixture: a seat's recorded decisions from training and
   the network's outputs for them.
-- **Checked on FakePool**, a numpy stand-in for the pool with a learnable toy (press the target action shown in
-  the global token; on the screen, point at the slot with the highest first float): in 30 updates on a laptop
-  CPU, targets pressed 7% → 53%, best slots 8% → 44%, reward per decision ×11.
+- **Checked on FakePool**, a numpy stand-in for the pool with the pool's sets and widths and a learnable toy
+  (press the target action shown in the general token; on the screen, point at the slot with the highest first
+  float; everything else noise): in 40 updates on a laptop CPU, targets pressed 7% → 48%, best slots 11% → 38%,
+  reward per decision ×9.
 
 ## 9. How we know it's good
 
@@ -605,14 +607,33 @@ All of these run in Rust on the pool, fast, and print a table:
 - **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine and runs a
   smoke test. `run.sh` starts a run in tmux, with TensorBoard on the machine's localhost; `sync.sh` rsyncs
   checkpoints and logs back.
-- **Measured: the network costs more than this section assumed.** On the M1 Max (8 threads, the default
-  network, FakePool, 256 envs), the rollout's batched inference runs about 5,500 decisions a second and the
-  update (3 epochs, chunks of 64) about 1,150, after packing the present tokens and fusing the GRU. That is about
-  8 ms of a core per decision, against the simulation's 0.07 to 0.22 ms (§6.5). On a CPU-only machine nearly
-  every core would be doing the network: perhaps 10,000 to 20,000 decisions a second on 96 cores, 3 to 6 days for
-  5 billion. So the first cloud run should time a GPU (L4 or RTX 4090 class) against the CPU before the full
-  recipe runs; the trainer runs on either (`run.device = "auto"`). The Mac's own GPU (MPS) was no faster at
-  this size.
+- **Measured: the network costs more than this section assumed** (`python -m nettai_ai.bench`, the real pool,
+  EXE6, 64 envs, one rollout of 15,000 decisions, the default network, the M1 Max, which other sessions kept at
+  load 10 to 20):
+
+  | Part | Decisions a second | A core's time a decision |
+  |---|---|---|
+  | Simulation (`pool.step`, 6 threads) | 74,000 to 77,000 | 0.08 ms |
+  | The rollout's inference (4 threads) | 8,600 | 0.47 ms |
+  | The update, 3 epochs (4 threads) | 1,820 | 2.2 ms |
+  | The update, 3 epochs (8 threads, the pool waiting) | 2,160 | 3.7 ms |
+
+  - The update's time is a third arithmetic (matrix products 22%, attention 13%) and two thirds small ops:
+    elementwise 32%, gathers and packing 11%, the name table's gradient 9%, copies 9%, LayerNorm 4%.
+  - Variants of one update on the same data (decisions a second): padded fixed shapes 601 (every slot computed:
+    packing the sets is worth 3×); 2 epochs 2,712, 1 epoch 5,220; minibatches of 32 and 64 chunks 2,112 and
+    2,235; chunks of 32 decisions 2,242; `torch.compile` 705 (graph breaks at the packing's sizes) and 311 padded;
+    bf16 autocast 229 (this CPU has no bf16 units; it's for CUDA).
+  - Fewer epochs or bigger minibatches don't pay: on FakePool's toy, at 60 s of wall time, 4 epochs had 58% of
+    the targets pressed, 3 epochs 51%, 2 epochs 39%, 1 epoch 18%, 3 epochs at 32 chunks a minibatch 40%. With
+    the simulation this cheap, reusing a rollout is cheaper than making one. The cheap fix that holds is
+    threads: the update on 8 (`run.update_threads`), collection on 4.
+  - So on CPUs the network is about 30 times EXE6's simulation (about 7 times EXE5's): a 96-core machine would
+    make perhaps 30,000 to 40,000 decisions a second, 2 billion in 15 to 20 hours. The first cloud run should
+    time a GPU (L4 or RTX 4090 class) with `bench --device cuda --variants base,padded,compile_padded,bf16,mb64`:
+    on a GPU the small ops are kernel launches, which fixed shapes and compilation can fold. If its update makes
+    30,000 decisions a second or more, a GPU with 16 to 32 cores beats the 96-core machine. The Mac's own GPU
+    (MPS) was slower than its CPU at this size.
 
 ## 12. Steps
 

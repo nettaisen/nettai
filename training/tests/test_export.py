@@ -41,6 +41,7 @@ def test_export_round_trip(tmp_path: Path):
     assert json.loads(meta["architecture"])["spec"]["hash"] == tr.spec.hash
     assert set(json.loads(meta["levels"])) == {"easy", "normal", "hard"}
     assert meta["git_commit"] == state["git"]["commit"]
+    assert meta["k"] == "4" and meta["screen_decisions"] == "24"
 
     # Same logits on fresh observations from the pool.
     view = PoolView(tr.pool, tr.spec)
