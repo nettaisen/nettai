@@ -44,24 +44,27 @@ def compute_gae(
 
 
 class RunningNorm:
-    """Per-set, per-feature mean and variance of present tokens' floats (float64, merged per rollout)."""
+    """Per-set, per-feature mean and variance of present tokens' floats. Each rollout's moments are taken on
+    the device (float32) and merged here on the CPU in float64 (MPS has no float64)."""
 
     def __init__(self, spec: Spec, device: torch.device, eps: float = 1e-6):
         self.eps = eps
-        self.count = {s.name: torch.zeros((), dtype=torch.float64, device=device) for s in spec.sets}
-        self.mean = {s.name: torch.zeros(s.width, dtype=torch.float64, device=device) for s in spec.sets}
-        self.m2 = {s.name: torch.zeros(s.width, dtype=torch.float64, device=device) for s in spec.sets}
+        f64 = dict(dtype=torch.float64)
+        self.count = {s.name: torch.zeros((), **f64) for s in spec.sets}
+        self.mean = {s.name: torch.zeros(s.width, **f64) for s in spec.sets}
+        self.m2 = {s.name: torch.zeros(s.width, **f64) for s in spec.sets}
 
     def update(self, ro: Rollout) -> None:
         written = ro.written()
         for n in self.mean:
             m = ro.mask[n] & written.unsqueeze(-1)
-            x = ro.x[n][m].to(torch.float64)
+            x = ro.x[n][m]
             if x.shape[0] == 0 or x.shape[1] == 0:
                 continue
-            nb = torch.tensor(float(x.shape[0]), dtype=torch.float64, device=x.device)
-            mb = x.mean(0)
-            m2b = ((x - mb) ** 2).sum(0)
+            mb_dev = x.mean(0)
+            m2b = ((x - mb_dev) ** 2).sum(0).cpu().to(torch.float64)
+            mb = mb_dev.cpu().to(torch.float64)
+            nb = torch.tensor(float(x.shape[0]), dtype=torch.float64)
             na = self.count[n]
             tot = na + nb
             delta = mb - self.mean[n]
@@ -84,7 +87,7 @@ class RunningNorm:
     def load_state_dict(self, d: dict) -> None:
         for k in ("count", "mean", "m2"):
             for n, v in d[k].items():
-                getattr(self, k)[n] = v.to(getattr(self, k)[n].device)
+                getattr(self, k)[n] = v.to("cpu", torch.float64)
 
 
 def _entropy(logp: torch.Tensor) -> torch.Tensor:
