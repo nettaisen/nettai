@@ -1045,6 +1045,8 @@ dependencies = [
  "nettai-content-api",
  "nettai-match",
  "nettai-netplay",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
