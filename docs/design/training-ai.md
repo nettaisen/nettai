@@ -166,14 +166,24 @@ of its own and keeps them by content hash, §10.3). Nothing names a chip: a chip
   advanced (the other side's front column the user's, the user on it), the target a column farther, which shows a
   chip's reach growing with the front line. The token keeps the three panel types farthest from 1 (named by its ids
   `kind_1` to `kind_3`), every status's (and whether run), and the two ownership conditions' ratio and damage.
+- **Conditions that tell nothing are dropped** from every fingerprint (`fingerprint::prune`): a condition whose
+  ratio is the same, to 0.01, for at least 95% of the chips it applies to (those that hit in the plain run at its
+  panel or under it: a chip that hits in neither is at 1 under every condition), unless a pair is made of it. On the
+  packs that drops the normal and cracked panel types, the after-hit flash (every hit's, under which nothing hits),
+  and a few statuses and types under which no chip's damage changes (EXE5's paralysis and immobility, EXE4's
+  blindness and holes). The coordinator's rule counted every chip; that dropped conditions only a few chips answer to,
+  EXE5's grass and sea among them, and with them the grass-then-fire pairs, so the count is of the chips a condition
+  applies to, and a condition a pair is made of stays.
 - **Layout** (`spec()`'s `fingerprint_features`): positions 27 (9 × hit, damage/400, first hit/180), statuses 9, user
   2, panels 2, owners 3, left 4, duration 1, changed 18, owner_changed 18, status_ratios 9, status_conditioned 9,
   kind_ratios 3, kind_conditioned 3, stolen 3, advanced 3: 114. Ratios are kept over 4.
 - **Pairs.** A pair (setup, payoff) is a chip whose runs brought a condition (turned the panel under the target to a
   type, started a status on it, took a panel of the other side's front column) and a chip whose damage that condition
   raises past 1.3 times (grass then fire, a bubble then elec, AreaGrab then a sword that reaches the target only from
-  the stolen column). Found on the packs: 328 in EXE6 (180 by grass, 54 by bubble, 45 by paralysis, 36 by the front
-  line), 160 in EXE5, 133 in EXE4. Random folders are seeded with them (§6.2).
+  the stolen column). Found on the packs, by the kind of effect the setup brings: EXE6 328 (a panel type made 193,
+  180 of them grass; a status 99; ownership 36), EXE5 160 (panel 84, status 4, ownership 72), EXE4 133 (panel 62,
+  status 2, ownership 69). No pair is of objects left: no conditioned run measures one. Random folders are seeded with
+  them (§6.2).
 - **Cost** (release, the packs): EXE6's 355 chips in 2.0 s on 10 threads (55 ms of work a chip, 25 runs a chip),
   EXE5's 374 in 14.3 s (377 ms a chip: its ticks cost more and its runs last longer), EXE4's 341 in 5.2 s (150 ms); a
   folder's 20 chips on one thread 0.83 s (EXE6), 4.0 s (EXE5), 2.0 s (EXE4).
@@ -270,8 +280,11 @@ round is at max power (HP 1000 and max levels, as every player's build is) unles
   let it hold, those held out left out or favored (`chip_holdout`, §6.6); its Regular chip as the draw gives it, and
   tag chips half the time where the rules take them;
 - with chance `combos` (default 0.3), the folder seeded with one of the game's pairs (§3.1) whose chips the side may
-  both hold: each in a code both come in (or `*`), two copies each where the rules take them, the rest drawn as
-  usual. The round's stats say what came of it (§9);
+  both hold, drawn by the kind of effect its setup brings first (a panel type made, a status, ownership taken), then
+  within it, so no kind's many pairs crowd out the rest: each chip in a code both come in (or `*`), two copies each
+  where the rules take them, the rest drawn as usual. Of 300 folders all seeded: EXE6 panel 68, status 98, ownership
+  134 (drawn by pair, grass alone took more than half); EXE5 114, 50, 136; EXE4 80, 128, 92 (its two status pairs
+  fill all of theirs). The round's stats say what came of it (§9);
 - the build checked whole (`build::Checked`, the rules' `validate` and `build_check`), drawn again until it passes.
 
 Measured (release, the packs, 20 builds a game): every build accepted on its first try; 4.3, 4.9 and 3.8 ms a build

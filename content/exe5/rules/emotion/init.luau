@@ -20,10 +20,13 @@ local operation_battle = require("../lib/operation_battle")
 local emotion = {}
 
 -- AIData +0x3A (ticks toward the next swing) and +0x0B (the emotion last swung to) of each navi of the player's kind,
--- by its slot on its side's list of alive actors (the player's the first).
+-- by its slot on its side's list of alive actors (the player's the first), and the navi each slot's are of: the navi
+-- keeps them when it leaves the list (its deletion runs, and its tick with it), as the original keeps them in the
+-- navi's own AIData (0x080113F8's [r5+0x58]).
 type State = {
     swing_ticks: { number },
     swung: { number },
+    swing_navis: { Object? },
 }
 
 -- 0x0801147C: the emotions the swing draws from (0 normal, 1 worried, 2 angry, 3 Full Synchro).
@@ -32,14 +35,32 @@ local SWINGS = { 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 3 }
 local SWING_MOODS = { [0] = 0x99, [1] = 0x3F, [2] = 0x00, [3] = 0xFF }
 local ANGRY = 2
 
--- The navi's slot on its side's list (1 to 4).
-local function slot(side: number, navi: Object): number
+-- Note the navi's slot on its side's list (1 to 4), where it is on it, as the slot of its swing state.
+local function note(side: number, navi: Object): number?
+    local s = rules.state() :: State
     for i = 1, 4 do
         if battle.alive_actor_slot(side, i) == navi then
+            s.swing_navis[i] = navi
             return i
         end
     end
-    error("a navi of the player's kind on no slot of its side's list")
+    return nil
+end
+
+-- The slot of the navi's swing state: its slot on its side's list; or, once it has left the list (`sub_800A11C` takes
+-- a navi off it as its deletion starts, and its tick goes on), the slot it was last on.
+local function slot(side: number, navi: Object): number
+    local found = note(side, navi)
+    if found ~= nil then
+        return found
+    end
+    local s = rules.state() :: State
+    for i = 1, 4 do
+        if s.swing_navis[i] == navi then
+            return i
+        end
+    end
+    error("a navi of the player's kind on no slot of its side's list, and never on one")
 end
 
 -- 0x080113F8 (the framework skips it while paused). An auto-battling navi's tick reaches the side's rules too: it has no
@@ -48,6 +69,8 @@ local function swing(side: number, navi: Object)
     if navi.actor_type ~= "player" then
         return
     end
+    -- (Its slot noted each tick, the bug on or not: a curse may set it as the navi is deleted.)
+    note(side, navi)
     if operation_battle() then
         return
     end
