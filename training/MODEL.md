@@ -18,17 +18,22 @@ order, counts `C`, widths `W` and id counts `I` come from its `spec`.
     `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count) and `keys`
     (`screen_actions - slots`).
   - `spec.split`: sets the trainer cut from one of the encoder's, as `{source: [[set, first token, count], …]}`.
-    Today the encoder's `chips` set (19 tokens) is read as `hand` (tokens 0–5), `slots` (6–17) and `used` (18),
-    three sets of their own, each with `chips`' width and ids, in `chips`' place in the order.
+    The encoder's `chips` set (7 tokens) is read as `hand` (tokens 0–5) and `used` (6), two sets of their own,
+    each with `chips`' width and ids, in `chips`' place in the order.
   - `levels`: JSON, by level name: `delay` (ticks), `temperature`, `epsilon`, `greedy` (§10).
+  - `k`: ticks a fight decision is held, and `screen_decisions`: screen decisions before only OK is allowed, as
+    the env asked for decisions in training.
   - `git_commit`, `git_dirty`, `update`, `decisions`: provenance only.
 - The pointer set is `model.pointer_set` (`"slots"`). Its tokens, in order, are screen actions `0 .. slots-1`;
   screen actions `slots ..` are the keys.
 
 ## Inputs
 
-For each set `s` in spec order: `x[s]` `[C, W]`, `ids[s]` `[C, I]` (int32, 0 = no name), `mask[s]` `[C]`
-(true = present). Also `legal_fight` `[20]`, `legal_screen` `[19]`, and the GRU state `h` `[H]` (zeros at a
+For each set `s` in the architecture's order: `x[s]` `[C, W]`, `ids[s]` `[C, I]` (int32, 0 = no name),
+`mask[s]` `[C]` (true = present). With spec c4d9e4a61b0f54ba the trainer's sets are, in order: `general` (1),
+`panels` (18), `objects` (48), `hand` (6) and `used` (1) (the encoder's `chips` set, split as `spec.split` says:
+its tokens 0–5 and 6, same width and ids), `slots` (12, the pointer set), `rules` (96, pool-only) and `forms`
+(12). Widths and id counts are in the architecture. Also `legal_fight` `[20]`, `legal_screen` `[19]`, and the GRU state `h` `[H]` (zeros at a
 round's start). These are the pool's buffers for one seat (§6.6).
 
 Absent tokens are never read: skip them everywhere. (PyTorch computes them and masks them out; the result is

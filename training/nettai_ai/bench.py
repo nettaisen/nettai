@@ -16,7 +16,6 @@ import tempfile
 import time
 from collections import defaultdict
 
-import numpy as np
 import torch
 
 from .config import load_config

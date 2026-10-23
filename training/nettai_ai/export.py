@@ -10,6 +10,8 @@ and, in its header's metadata (all strings):
     spec_hash       the observation spec's hash; the Rust side refuses weights whose hash isn't its encoder's
     architecture    JSON: the widths, the spec's sets in order, activation, LayerNorm eps
     levels          JSON: §10's difficulty knobs (delay ticks, temperature, epsilon, greedy) by level
+    k               ticks a fight decision is held in training (the env's k)
+    screen_decisions  screen decisions before only OK is allowed (the env's limit)
     git_commit, git_dirty, update, decisions    provenance
 
 The fixture holds a run of one seat's recorded decisions (from training, so real observations) and what the
@@ -46,12 +48,16 @@ def model_from_checkpoint(state: dict[str, Any]) -> Model:
 
 
 def metadata(model: Model, state: dict[str, Any]) -> dict[str, str]:
+    cfg = config_from_dict(state["config"])
     return {
         "format": FORMAT,
         "format_version": str(FORMAT_VERSION),
         "spec_hash": model.spec.hash,
         "architecture": json.dumps(model.architecture(), sort_keys=True),
         "levels": json.dumps({k: dataclasses.asdict(v) for k, v in LEVELS.items()}, sort_keys=True),
+        # How the env asked for decisions in training, which the app's player asks the same way.
+        "k": str(cfg.env.k),
+        "screen_decisions": str(cfg.env.screen_decisions),
         "git_commit": state["git"]["commit"],
         "git_dirty": str(bool(state["git"]["dirty"])).lower(),
         "update": str(state["update"]),

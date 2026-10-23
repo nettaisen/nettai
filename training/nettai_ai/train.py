@@ -62,6 +62,8 @@ class Trainer:
         self.device = pick_device(cfg.run.device)
         if cfg.run.torch_threads > 0:
             torch.set_num_threads(cfg.run.torch_threads)
+        self.collect_threads = torch.get_num_threads()
+        self.update_threads = cfg.run.update_threads if cfg.run.update_threads > 0 else self.collect_threads
         torch.manual_seed(cfg.run.seed)
         self.rng = np.random.default_rng(cfg.run.seed)
         self.git = checkpoint.git_info()
@@ -126,7 +128,9 @@ class Trainer:
             t1 = time.perf_counter()
             ro = self.rollout
             adv, ret = compute_gae(ro.reward, ro.value, ro.next_value, ro.term, ro.trunc, ro.closed, cfg.ppo.gamma, cfg.ppo.lam)
+            torch.set_num_threads(self.update_threads)
             us = ppo_update(self.model, self.opt, ro, adv, ret, cfg.ppo, self.gen)
+            torch.set_num_threads(self.collect_threads)
             t2 = time.perf_counter()
             self.norm.update(ro)
             self.norm.apply(self.model)
