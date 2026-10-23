@@ -23,7 +23,7 @@ from torch.utils.tensorboard import SummaryWriter
 from . import checkpoint
 from .config import LEVELS, Config, config_to_dict, load_config
 from .curriculum import Curriculum
-from .envs import make_pool
+from .envs import make_pool, pool_spec
 from .evaluate import Player, evaluate_vs_bots, summarize
 from .league import League
 from .model import TYPICAL, Model, budget_report, count_macs, count_params
@@ -69,7 +69,7 @@ class Trainer:
         if resume is not None:
             self.curriculum.load_state_dict(resume["curriculum"])
         self.pool = make_pool(cfg.env, fake, hp=self.curriculum.range(), holdout_mode="exclude")
-        self.spec = parse_spec(self.pool.spec())
+        self.spec = parse_spec(pool_spec(self.pool))
         if resume is not None and resume["spec"]["hash"] != self.spec.hash:
             raise SystemExit(f"resume: the checkpoint's spec hash {resume['spec']['hash']} isn't the pool's {self.spec.hash}")
         self.model = Model(self.spec, cfg.model).to(self.device)
@@ -227,7 +227,7 @@ class Trainer:
         self.model.eval()
         player = Player("learner", self.model)
         records = evaluate_vs_bots(
-            player, cfg.env, self.fake, cfg.eval.games, cfg.league.bot_names, cfg.eval.envs, cfg.eval.threads,
+            player, cfg.env, self.fake, cfg.eval.games, cfg.eval.bots, cfg.eval.envs, cfg.eval.threads,
             cfg.eval.rounds, LEVELS[cfg.eval.level], cfg.eval.hp, self.device, self.spec.hash, self.eval_pools,
         )
         summary = summarize(records, cfg.eval.games)
@@ -235,6 +235,8 @@ class Trainer:
         for (g, me, other), row in summary.items():
             if me == "learner":
                 out[f"eval/{g}/{other}/winrate"] = (row["win"] + 0.5 * row["draw"]) / row["rounds"]
+                out[f"eval/{g}/{other}/rounds"] = row["rounds"]
+        print("eval " + "  ".join(f"{k[5:-8]} {v:.2f}" for k, v in sorted(out.items()) if k.endswith("/winrate")), flush=True)
         if self.writer is not None:
             for k, v in out.items():
                 self.writer.add_scalar(k, v, self.update)

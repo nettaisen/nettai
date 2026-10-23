@@ -126,7 +126,7 @@ def test_macs_match_a_direct_count(tiny_cfg):
     spec = parse_spec(tiny_spec())
     cfg = dataclasses.replace(tiny_cfg)
     Model(spec, cfg)  # builds for this spec
-    present = {"global": 1, "objects": 2, "slots": 2}
+    present = {"global": 1, "objects": 2, "slots": 2, "rules": 3}
     obs = {"x": {}, "ids": {}, "mask": {}}
     for s in spec.sets:
         obs["x"][s.name] = torch.randn(1, s.count, s.width)
@@ -135,14 +135,47 @@ def test_macs_match_a_direct_count(tiny_cfg):
         mask[0, : present[s.name]] = True
         obs["mask"][s.name] = mask
     N = sum(present.values())
+    Nt = N - present["rules"]  # rules is pool-only: not in the transformer
     d = cfg.d
     # Linear layers per present token / once, as the Rust port runs them.
     enc = sum(present[s.name] * (s.width * cfg.token_hidden + cfg.token_hidden * d) for s in spec.sets)
-    attn = N * 4 * d * d + 2 * N * N * d
-    ffn = N * 2 * d * cfg.ffn
+    attn = Nt * 4 * d * d + 2 * Nt * Nt * d
+    ffn = Nt * 2 * d * cfg.ffn
     singles = sum(1 for s in spec.sets if s.count == 1)
     pool = N * d * cfg.pool_heads + cfg.pool_heads * N * d + (cfg.pool_heads + singles) * d * cfg.summary
     gru = 3 * (cfg.summary * cfg.hidden + cfg.hidden * cfg.hidden)
     core = cfg.hidden + cfg.summary
     fight = core * cfg.head_hidden + cfg.head_hidden * spec.fight_actions
     assert count_macs(spec, cfg, present)["fight"] == enc + cfg.layers * (attn + ffn) + pool + gru + fight
+
+
+def test_pool_only_sets_skip_the_transformer(tiny_cfg):
+    """A pool-only set's tokens change the summary but not the other tokens' transformer outputs."""
+    spec = parse_spec(tiny_spec())
+    m = Model(spec, tiny_cfg)
+    assert tiny_cfg.pool_only == ["rules"]
+    g = torch.Generator().manual_seed(4)
+    obs = random_obs(spec, 4, g)
+    obs["mask"]["global"][:] = True
+    obs["mask"]["rules"][:] = True
+    with torch.no_grad():
+        z1, slots1, _ = m.encode(obs)
+        obs["x"]["rules"] += 3.0
+        z2, slots2, _ = m.encode(obs)
+    assert torch.equal(slots1, slots2)
+    assert not torch.allclose(z1, z2)
+
+
+def test_packing_is_the_same_computation():
+    """Cutting sets to their present tokens (the default) computes what every slot at fixed shapes does."""
+    spec = parse_spec(default_spec())
+    m = Model(spec, ModelConfig())
+    g = torch.Generator().manual_seed(5)
+    obs = random_obs(spec, 16, g, present=0.3)
+    h = torch.randn(16, m.cfg.hidden, generator=g)
+    with torch.no_grad():
+        a = m.step(obs, h)
+        m.pack = False
+        b = m.step(obs, h)
+    for x, y in zip(a, b):
+        assert torch.allclose(torch.nan_to_num(x, neginf=-1e9), torch.nan_to_num(y, neginf=-1e9), atol=1e-5)

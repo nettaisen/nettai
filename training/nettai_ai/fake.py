@@ -33,33 +33,34 @@ BUSY_CHANCE = 0.15  # a fight seat with no decision this step
 
 
 def default_spec(buckets: int = 8192) -> dict[str, Any]:
-    """Made-up widths in §6.6's format, with §3's sets and counts. Names come as id pairs (§7)."""
+    """§6.6's format with the pool's sets, counts and widths (the bridge's spec of 2026-10-23, its chips set
+    split into hand, slots and used as the trainer reads it; the attack log is in the panels' tokens). Names
+    come as id pairs (§7)."""
     sets = {
-        "global": {"count": 1, "width": 32, "ids": 0},
-        "panels": {"count": 18, "width": 16, "ids": 2},
-        "attack_log": {"count": 18, "width": 16, "ids": 0},
-        "objects": {"count": 48, "width": 40, "ids": 2},
-        "hand": {"count": 6, "width": 40, "ids": 2},  # includes a chip fingerprint block
-        "slots": {"count": 12, "width": 40, "ids": 2},
-        "used": {"count": 1, "width": 40, "ids": 2},
-        "rules": {"count": 24, "width": 4, "ids": 2},
-        "forms": {"count": 12, "width": 8, "ids": 2},
+        "global": {"count": 1, "width": 71, "ids": 4},
+        "panels": {"count": 18, "width": 46, "ids": 2},
+        "objects": {"count": 48, "width": 119, "ids": 6},
+        "hand": {"count": 6, "width": 176, "ids": 2},  # a chip token, its fingerprint block included
+        "slots": {"count": 12, "width": 176, "ids": 2},
+        "used": {"count": 1, "width": 176, "ids": 2},
+        "rules": {"count": 96, "width": 14, "ids": 4},
+        "forms": {"count": 12, "width": 22, "ids": 2},
     }
     raw = {"buckets": buckets, "fight_actions": 20, "screen_actions": 19, "sets": sets}
     raw["hash"] = spec_hash(raw)
     return raw
 
 
-# Present tokens per set (lo, hi) in the fight and on the screen; sets not named here draw from (1, count).
+# Present tokens per set (lo, hi) in the fight and on the screen, as the pool shows them; sets not named here
+# draw from (1, count).
 OCCUPANCY = {
     "global": ((1, 1), (1, 1)),
     "panels": ((18, 18), (18, 18)),
-    "attack_log": ((18, 18), (18, 18)),
-    "objects": ((4, 16), (4, 16)),
+    "objects": ((2, 16), (2, 8)),
     "hand": ((0, 6), (0, 0)),
     "slots": ((0, 0), (4, 12)),
     "used": ((0, 1), (0, 1)),
-    "rules": ((6, 14), (6, 14)),
+    "rules": ((43, 79), (43, 79)),
     "forms": ((1, 3), (1, 12)),
 }
 

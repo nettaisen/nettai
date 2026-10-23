@@ -1,0 +1,31 @@
+# A short run on the real pool on a 10-core Mac (EXE6 only): CPU, which beat MPS at this size.
+#   NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
+[env]
+games = ["exe6"]
+envs = 64
+threads = 6
+
+[ppo]
+steps = 128
+chunk = 128
+minibatch_chunks = 16
+norm_warmup_steps = 16
+
+# The level moves within minutes: 20 rounds against the masher at 75%, or 30 updates.
+[curriculum]
+min_rounds = 20
+max_updates = 30
+
+[eval]
+games = ["exe6"]
+bots = ["still", "mover", "masher"]
+every = 15
+envs = 12
+threads = 2
+rounds = 1
+
+[run]
+updates = 10000
+checkpoint_every = 25
+device = "cpu"
+torch_threads = 4

@@ -16,12 +16,12 @@ from typing import Any
 class ModelConfig:
     """The network's widths (§7). MODEL.md describes the computation these size."""
 
-    # The default fits §7's budget at the typical fight position (66 tokens: 2.7 M multiply-adds a decision,
-    # 6.6 M with every token present). The transformer is most of it, so d is 56 rather than 64.
-    d: int = 56  # token width
+    # The default fits §7's budget: 2.2 M multiply-adds a decision at the typical fight position (95 tokens, 38
+    # of them in the transformer), 5.8 M with every token present.
+    d: int = 64  # token width
     heads: int = 4  # attention heads in each transformer layer
-    layers: int = 1  # transformer layers over all present tokens
-    ffn: int = 112  # transformer feed-forward hidden width (2 × d)
+    layers: int = 1  # transformer layers over the present tokens of all but the pool-only sets
+    ffn: int = 128  # transformer feed-forward hidden width (2 × d)
     token_hidden: int = 32  # each set's token MLP: width → token_hidden → d
     pool_heads: int = 4  # attention-pool heads, each a learned score over tokens
     summary: int = 128  # the pooled summary, the GRU's input
@@ -29,6 +29,9 @@ class ModelConfig:
     head_hidden: int = 128  # fight, key and value heads' hidden width
     pointer_hidden: int = 64  # the screen pointer's hidden width
     pointer_set: str = "slots"  # the token set the screen pointer scores (its count = screen slots)
+    # Sets the pool reads but the transformer doesn't: many small tokens whose relations to the field matter
+    # little (the rules' scalars: 43 to 79 present every decision), kept out of the attention's cost.
+    pool_only: list[str] = field(default_factory=lambda: ["rules"])
     norm_clip: float = 5.0  # normalized inputs are clipped to ±norm_clip
 
 
@@ -144,6 +147,7 @@ class EvalConfig:
     """Periodic evaluation during training against the scripted players, on `games` (held-out games go here)."""
 
     games: list[str] = field(default_factory=list)
+    bots: list[str] = field(default_factory=lambda: ["still", "mover", "masher", "shooter", "dodger"])
     every: int = 0  # updates; 0 = never
     envs: int = 40
     threads: int = 4

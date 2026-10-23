@@ -13,9 +13,13 @@ order, counts `C`, widths `W` and id counts `I` come from its `spec`.
 - safetensors, every tensor under the PyTorch name listed here. Metadata (strings):
   - `format` = `"nettai-ai"`, `format_version` = `"1"`: refuse anything else.
   - `spec_hash`: refuse weights whose hash isn't the encoder's own spec hash.
-  - `architecture`: JSON with `model` (the widths), `spec` (`buckets`, `fight_actions`, `screen_actions`,
-    `sets` in order with `name`, `count`, `width`, `ids`), `activation` (`"relu"`), `layer_norm_eps` (`1e-5`),
-    `slots` (the pointer set's count) and `keys` (`screen_actions - slots`).
+  - `architecture`: JSON with `model` (the widths, `pointer_set`, `pool_only`), `spec` (`buckets`,
+    `fight_actions`, `screen_actions`, `sets` in order with `name`, `count`, `width`, `ids`, and `split`),
+    `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count) and `keys`
+    (`screen_actions - slots`).
+  - `spec.split`: sets the trainer cut from one of the encoder's, as `{source: [[set, first token, count], …]}`.
+    Today the encoder's `chips` set (19 tokens) is read as `hand` (tokens 0–5), `slots` (6–17) and `used` (18),
+    three sets of their own, each with `chips`' width and ids, in `chips`' place in the order.
   - `levels`: JSON, by level name: `delay` (ticks), `temperature`, `epsilon`, `greedy` (§10).
   - `git_commit`, `git_dirty`, `update`, `decisions`: provenance only.
 - The pointer set is `model.pointer_set` (`"slots"`). Its tokens, in order, are screen actions `0 .. slots-1`;
@@ -46,6 +50,9 @@ set and index): the pointer set's tokens and the one-token sets are read again a
 
 ## 2. Transformer layers (`model.layers` of them, `blocks.<k>.`, pre-LayerNorm)
 
+Only the tokens of sets not in `model.pool_only` (`["rules"]`) take part: they are the queries and the keys.
+The pool-only sets' tokens skip this step unchanged and are read by step 3 only.
+
 `LN(v) = (v − mean(v)) / sqrt(var(v) + 1e-5) ⊙ weight + bias`, mean and (biased, divide by `d`) variance over
 the `d` features.
 
@@ -60,7 +67,7 @@ For each layer, with `nh = model.heads`, `dh = d / nh`:
 
 With no present token at all, there is nothing to do here.
 
-Then `t_i = ln_f(t_i)` for every present token.
+Then `t_i = ln_f(t_i)` for every present token, pool-only sets' included.
 
 ## 3. Summary
 
@@ -126,5 +133,5 @@ The port should match every finite value to about 1e-4 (float32 sums in another 
 ## Cost
 
 `nettai_ai.model.count_macs` counts the multiply-adds of one decision over present tokens only; `uv run python
--m nettai_ai.model [--size large]` prints them. The default is about 2.7 M at a typical fight position
-(66 tokens) and 6.6 M with every token present (§7).
+-m nettai_ai.model [--size large]` prints them. The default is about 2.2 M at a typical fight position
+(95 tokens, 38 of them in the transformer) and 5.8 M with every token present (§7).

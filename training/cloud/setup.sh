@@ -40,16 +40,16 @@ cd "$training"
 uv sync
 
 echo "== the bridge (nettai_gym)"
-uv run maturin develop --release --manifest-path bridge/Cargo.toml
+uv run maturin develop --release --uv --manifest-path bridge/Cargo.toml
 
 echo "== smoke test"
-uv run pytest -q
-NETTAI_PACKS="$timings" uv run python - <<'EOF'
+uv run --no-sync pytest -q
+NETTAI_PACKS="$timings" uv run --no-sync python - <<'EOF'
 import nettai_gym
 pool = nettai_gym.Pool(games=["exe6"], envs=2, threads=1, seed=1)
 spec = pool.spec()
 print("pool ok: spec", spec["hash"][:12], "sets", ", ".join(spec["sets"]))
 EOF
 smoke="runs/smoke-$(date +%Y%m%d-%H%M%S)"
-NETTAI_PACKS="$timings" uv run python -m nettai_ai.train --run-dir "$smoke" --config configs/smoke.toml --updates 3
+NETTAI_PACKS="$timings" uv run --no-sync python -m nettai_ai.train --run-dir "$smoke" --config configs/smoke.toml --updates 3
 echo "setup: done (smoke run in training/$smoke). Start a run with training/cloud/run.sh."
