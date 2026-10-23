@@ -124,7 +124,10 @@ class Model(nn.Module):
         self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.layers)])
         self.ln_f = nn.LayerNorm(d, eps=LN_EPS)
         self.pool_score = nn.Linear(d, cfg.pool_heads)
-        self.pool_out = nn.Linear(cfg.pool_heads * d, cfg.summary)
+        # Sets of one token (the global state, the other side's last chip) are also read directly, in spec order.
+        self.single = [i for i, s in enumerate(spec.sets) if s.count == 1]
+        self.single_start = [sum(s.count for s in spec.sets[:i]) for i in self.single]
+        self.pool_out = nn.Linear((cfg.pool_heads + len(self.single)) * d, cfg.summary)
         self.gru = nn.GRUCell(cfg.summary, cfg.hidden)
         core = cfg.hidden + cfg.summary
         self.fight1 = nn.Linear(core, cfg.head_hidden)
@@ -165,7 +168,8 @@ class Model(nn.Module):
         t = self.ln_f(t)
         w = masked_softmax(self.pool_score(t), mask.unsqueeze(-1), 1)  # [N, T, P]
         pooled = torch.einsum("ntp,ntd->npd", w, t).flatten(1)  # [N, P·d], head-major
-        z = F.relu(self.pool_out(pooled))
+        direct = [t[:, i] * mask[:, i : i + 1] for i in self.single_start]  # absent → zeros
+        z = F.relu(self.pool_out(torch.cat([pooled, *direct], 1)))
         sl = slice(self.slot_start, self.slot_start + self.n_slots)
         return z, t[:, sl], mask[:, sl]
 
@@ -311,7 +315,8 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
     N = sum(n.values())
     encoder = sum(n[s.name] * (s.width * cfg.token_hidden + cfg.token_hidden * d) for s in spec.sets)
     layers = cfg.layers * (N * (4 * d * d + 2 * d * f) + 2 * N * N * d)
-    pool = N * d * P + P * N * d + P * d * cfg.summary
+    singles = sum(1 for s in spec.sets if s.count == 1)
+    pool = N * d * P + P * N * d + (P + singles) * d * cfg.summary
     gru = 3 * (cfg.summary * cfg.hidden + cfg.hidden * cfg.hidden)
     core = cfg.hidden + cfg.summary
     fight = core * cfg.head_hidden + cfg.head_hidden * spec.fight_actions
