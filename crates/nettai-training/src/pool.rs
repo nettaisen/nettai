@@ -289,6 +289,7 @@ impl Pool {
                                 crate::fingerprint::Condition::Kind(k) => format!("panel {}", c.rules().panels.names.get(k.0 as usize).map_or("?", |n| n.as_str())),
                                 crate::fingerprint::Condition::Status(s) => format!("status {s}"),
                                 crate::fingerprint::Condition::Advanced => "front line advanced".to_string(),
+                                crate::fingerprint::Condition::Stolen => "front column stolen".to_string(),
                             };
                             (c.defs.chip(p.setup).key.clone(), c.defs.chip(p.payoff).key.clone(), condition, p.ratio)
                         })
