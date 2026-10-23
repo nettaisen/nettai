@@ -159,6 +159,11 @@ class League:
         self._send_next(envs)
         return records
 
+    def opponent_label(self, e: int) -> str:
+        """Who plays against the learner in env e's current round: "self", "snapshot" or "bot:<name>"."""
+        k = int(self.kind[e])
+        return f"bot:{self.cfg.bot_names[int(self.opp[e])]}" if k == BOTS else KIND_NAMES[k]
+
     def _elo(self, a: str, b: str, sa: float) -> None:
         ea = elo_expected(self.ratings[a], self.ratings[b])
         k = self.cfg.elo_k

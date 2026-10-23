@@ -24,16 +24,17 @@ FORMAT_VERSION = 1
 LN_EPS = 1e-5
 NAME_INIT_STD = 0.05
 
-# §7's budget profile: a typical fight position, by set name (the coordinator's numbers, 2026-10-23).
+# §7's budget profile: a typical fight position, by set name. Objects and hand as the coordinator put them
+# (2026-10-23); rules as the pool shows them (43 in EXE6, 79 in EXE5, 49 in EXE4, every decision); the attack
+# log is in the panels' tokens.
 TYPICAL = {
     "global": 1,
     "panels": 18,
     "objects": 10,
-    "attack_log": 18,
     "hand": 6,
     "slots": 0,
     "used": 1,
-    "rules": 10,
+    "rules": 57,
     "forms": 2,
 }
 BUDGET_TYPICAL = 3_000_000
@@ -110,12 +111,12 @@ class Model(nn.Module):
         self.n_keys = spec.screen_actions - self.n_slots
         if self.n_keys < 0:
             raise ValueError(f"model: screen_actions {spec.screen_actions} < the {pointer.name} set's {pointer.count}")
-        start = 0
-        for s in spec.sets:
-            if s.name == cfg.pointer_set:
-                self.slot_start = start
-            start += s.count
         d = cfg.d
+        for n in cfg.pool_only:
+            spec.set(n)  # a name the spec doesn't have is an error
+        if cfg.pointer_set in cfg.pool_only:
+            raise ValueError("model: the pointer set can't be pool-only")
+        self.pack = True  # a run-time choice, not part of the weights (see encode)
         self.enc = nn.ModuleDict({s.name: SetEncoder(s, cfg) for s in spec.sets})
         self.names = nn.Embedding(spec.buckets, d)
         nn.init.normal_(self.names.weight, std=NAME_INIT_STD)
@@ -123,9 +124,8 @@ class Model(nn.Module):
         self.ln_f = nn.LayerNorm(d, eps=LN_EPS)
         self.pool_score = nn.Linear(d, cfg.pool_heads)
         # Sets of one token (the global state, the other side's last chip) are also read directly, in spec order.
-        self.single = [i for i, s in enumerate(spec.sets) if s.count == 1]
-        self.single_start = [sum(s.count for s in spec.sets[:i]) for i in self.single]
-        self.pool_out = nn.Linear((cfg.pool_heads + len(self.single)) * d, cfg.summary)
+        singles = sum(1 for s in spec.sets if s.count == 1)
+        self.pool_out = nn.Linear((cfg.pool_heads + singles) * d, cfg.summary)
         # One GRU layer (PyTorch's GRU equations, gates r, z, n). nn.GRU rather than nn.GRUCell so sequences
         # in training run as one fused call (cuDNN on CUDA); one decision is a sequence of one.
         self.gru = nn.GRU(cfg.summary, cfg.hidden, batch_first=True)
@@ -145,38 +145,60 @@ class Model(nn.Module):
     # The forward computation (MODEL.md) ----------------------------------------------------------------
 
     def encode(self, obs: Obs) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """obs with batch shape [N] → summary z [N, summary], slot tokens [N, slots, d], slot present [N, slots]."""
-        toks, masks = [], []
-        for s in self.spec.sets:
-            m = obs["mask"][s.name]
-            t = self.enc[s.name](obs["x"][s.name])
+        """obs with batch shape [N] → summary z [N, summary], slot tokens [N, slots, d], slot present [N, slots].
+
+        With `self.pack` (the default), each set but the pointer set is first cut to the batch's most present
+        tokens, present ones first in their order (no position is read, so this is the same computation; the
+        pointer set keeps its slots, which are its actions). Without it, every slot is computed at fixed shapes
+        (for compiled or graph-captured runs)."""
+        sets = self.spec.sets
+        keep = [s.count for s in sets]
+        if self.pack:
+            counts = torch.stack([obs["mask"][s.name].sum(1).max() for s in sets]).tolist()
+            keep = [s.count if s.name == self.cfg.pointer_set else max(1, int(c)) for s, c in zip(sets, counts)]
+        toks, masks, tmasks = [], [], []
+        at = 0
+        single_at, slot_at = [], 0
+        for s, k in zip(sets, keep):
+            x, ids, m = obs["x"][s.name], obs["ids"][s.name], obs["mask"][s.name]
+            if k < s.count:
+                order = torch.argsort((~m).to(torch.uint8), dim=1, stable=True)[:, :k]
+                x = x.gather(1, order.unsqueeze(-1).expand(-1, -1, x.shape[-1]))
+                ids = ids.gather(1, order.unsqueeze(-1).expand(-1, -1, ids.shape[-1]))
+                m = m.gather(1, order)
+            t = self.enc[s.name](x)
             if s.ids:
-                ids = obs["ids"][s.name]
                 e = self.names(ids) * (ids != 0).unsqueeze(-1)
                 t = t + e.sum(-2)
             toks.append(t * m.unsqueeze(-1))
             masks.append(m)
+            tmasks.append(m if s.name not in self.cfg.pool_only else torch.zeros_like(m))
+            if s.count == 1:
+                single_at.append(at)
+            if s.name == self.cfg.pointer_set:
+                slot_at = at
+            at += k
         t = torch.cat(toks, 1)  # [N, T, d]
         mask = torch.cat(masks, 1)  # [N, T]
         if self.blocks:
-            t = self._transform(t, mask)
+            t = self._transform(t, torch.cat(tmasks, 1))
         t = self.ln_f(t)
         w = masked_softmax(self.pool_score(t), mask.unsqueeze(-1), 1)  # [N, T, P]
         pooled = torch.einsum("ntp,ntd->npd", w, t).flatten(1)  # [N, P·d], head-major
-        direct = [t[:, i] * mask[:, i : i + 1] for i in self.single_start]  # absent → zeros
+        direct = [t[:, i] * mask[:, i : i + 1] for i in single_at]  # absent → zeros
         z = F.relu(self.pool_out(torch.cat([pooled, *direct], 1)))
-        sl = slice(self.slot_start, self.slot_start + self.n_slots)
+        sl = slice(slot_at, slot_at + self.n_slots)
         return z, t[:, sl], mask[:, sl]
 
     def _transform(self, t: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """The transformer layers over present tokens only. They are moved to the front of each row and the
-        batch is cut to its most present tokens (the network has no positions, so this is the same
-        computation, only cheaper), then put back; absent tokens come out as they went in (zeros).
+        """The transformer layers over the present tokens of the sets it reads (mask). They are moved to the
+        front of each row and the batch is cut to its most present tokens (the network has no positions, so
+        this is the same computation, only cheaper), then put back; the other tokens come out as they went in.
 
         Keys are the present tokens. A decision with no token at all attends to its first slot, so no softmax
         row is empty; the pool reads nothing of it either way (z = relu(pool_out.bias) then)."""
         N, T, d = t.shape
-        tp = max(1, int(mask.sum(1).max()))
+        tp = max(1, int(mask.sum(1).max())) if self.pack else T
         order = torch.argsort((~mask).to(torch.uint8), dim=1, stable=True)[:, :tp]  # present first, in order
         idx = order.unsqueeze(-1).expand(N, tp, d)
         x = t.gather(1, idx)
@@ -186,7 +208,8 @@ class Model(nn.Module):
         attend = attend[:, None, None, :]
         for b in self.blocks:
             x = b(x, attend)
-        return t.scatter(1, idx, x * m.unsqueeze(-1))
+        x = torch.where(m.unsqueeze(-1), x, t.gather(1, idx))  # padding slots keep what they were
+        return t.scatter(1, idx, x)
 
     def heads(
         self, h: torch.Tensor, z: torch.Tensor, slot_tok: torch.Tensor, slot_present: torch.Tensor
@@ -251,6 +274,8 @@ class Model(nn.Module):
                 "fight_actions": self.spec.fight_actions,
                 "screen_actions": self.spec.screen_actions,
                 "sets": [{"name": s.name, "count": s.count, "width": s.width, "ids": s.ids} for s in self.spec.sets],
+                # Sets the trainer cut from one of the pool's (name: [[part, first token, count], ...]).
+                "split": self.spec.raw.get("split", {}),
             },
         }
 
@@ -263,6 +288,8 @@ class Model(nn.Module):
         sp = arch["spec"]
         raw = {k: sp[k] for k in ("hash", "buckets", "fight_actions", "screen_actions")}
         raw["sets"] = {s["name"]: {"count": s["count"], "width": s["width"], "ids": s["ids"]} for s in sp["sets"]}
+        if sp.get("split"):
+            raw["split"] = sp["split"]
         return Model(parse_spec(raw), ModelConfig(**arch["model"]))
 
 
@@ -333,8 +360,9 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
     d, f, P = cfg.d, cfg.ffn, cfg.pool_heads
     n = {s.name: min(present[s.name], s.count) for s in spec.sets}
     N = sum(n.values())
+    Nt = sum(v for k, v in n.items() if k not in cfg.pool_only)  # the transformer's tokens
     encoder = sum(n[s.name] * (s.width * cfg.token_hidden + cfg.token_hidden * d) for s in spec.sets)
-    layers = cfg.layers * (N * (4 * d * d + 2 * d * f) + 2 * N * N * d)
+    layers = cfg.layers * (Nt * (4 * d * d + 2 * d * f) + 2 * Nt * Nt * d)
     singles = sum(1 for s in spec.sets if s.count == 1)
     pool = N * d * P + P * N * d + (P + singles) * d * cfg.summary
     gru = 3 * (cfg.summary * cfg.hidden + cfg.hidden * cfg.hidden)
@@ -346,6 +374,7 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
     trunk = encoder + layers + pool + gru
     return {
         "tokens": N,
+        "transformer_tokens": Nt,
         "encoder": encoder,
         "transformer": layers,
         "pool": pool,
@@ -368,6 +397,7 @@ def budget_report(spec: Spec, cfg: ModelConfig, typical: dict[str, int] | None =
         "typical_screen": s["screen"],
         "max": max(m["fight"], m["screen"]),
         "typical_tokens": t["tokens"],
+        "typical_transformer_tokens": t["transformer_tokens"],
         "max_tokens": m["tokens"],
     }
 
@@ -385,7 +415,7 @@ def _main() -> None:
     ap = argparse.ArgumentParser(description="Print a model size's cost per decision (MACs) and parameters.")
     ap.add_argument("--size", default=None)
     ap.add_argument("--config", default=None)
-    ap.add_argument("--spec", default=None, help="a spec JSON file (default: the fake's)")
+    ap.add_argument("--spec", default=None, help="a spec JSON file (default: the fake's, laid out as the pool's)")
     a = ap.parse_args()
     cfg = load_config(a.config, size=a.size).model
     raw = json.load(open(a.spec)) if a.spec else default_spec()
@@ -393,7 +423,7 @@ def _main() -> None:
     r = budget_report(spec, cfg)
     m = Model(spec, cfg)
     names = m.names.weight.numel()
-    print(f"typical fight decision  {r['typical_fight'] / 1e6:6.2f} M MACs  ({r['typical_tokens']} tokens)")
+    print(f"typical fight decision  {r['typical_fight'] / 1e6:6.2f} M MACs  ({r['typical_tokens']} tokens, {r['typical_transformer_tokens']} in the transformer)")
     print(f"typical screen decision {r['typical_screen'] / 1e6:6.2f} M MACs")
     print(f"max                     {r['max'] / 1e6:6.2f} M MACs  ({r['max_tokens']} tokens)")
     print(f"parameters              {count_params(m):,} ({names:,} in the name table)")

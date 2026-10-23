@@ -245,7 +245,14 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   every set (8,192 × d) and summed in. Id 0 is no name. Chip tokens carry a **fingerprint block** of fixed width
   in the spec, zeros until §12's step 6 fills it; nothing reads it specially.
 - **Mixing.** One pre-LayerNorm transformer layer (4 heads, feed-forward 2 × d, ReLU) over the present tokens of
-  every set. Absent tokens are skipped, not computed and masked.
+  every set but the **pool-only** ones (`model.pool_only`, the rules' scalars: 43 tokens every decision in EXE6,
+  79 in EXE5, 49 in EXE4, where §3's table expected up to 24). Their relations to the field matter little, and
+  in the transformer they would be most of its cost; the summary's pool reads them. Absent tokens are skipped,
+  not computed and masked.
+- **The pool's chips set.** The encoder sends the hand, the screen's slots and the other's used chip as one
+  `chips` set of 19 tokens and says where each part is (`spec()["chip_tokens"]`). The trainer reads the parts as
+  sets of their own, `hand`, `slots` and `used` (so the pointer's set is `slots` and the used chip is a set of
+  one), and the weights' architecture records the split for the Rust side.
 - **Summary.** An attention pool (4 learned scores over the tokens, a weighted sum each), plus the token of
   every set of one (the global state, the other side's last chip) read directly, to 128. Reading those directly
   was the difference on FakePool's toy between learning the fight (its target is in the global token) in 40
@@ -265,15 +272,14 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   numbers beside the name.
 - **Budget, as decided.** This section's first draft (width 128, two layers, ~140 tokens) was about 30 million
   multiply-adds a layer, ten times the budget. The coordinator's rule (2026-10-23): count present tokens only
-  (the Rust port skips absent ones), at a typical fight position (global 1, 18 panels, about 10 objects, the 18
-  attack-log panels, about 6 in hand, no slots, 1 used chip, about 10 rules fields, about 2 forms: 66 tokens)
-  and at the max (every token: 140); targets 3 M typical, 10 M max.
-  - The transformer is most of the cost, and d 64 with a GRU of 256 doesn't fit 66 tokens. The default is one
-    layer at **d = 56**: 2.72 M typical, 3.33 M on the custom screen (its 12 slots added), 6.59 M max; 1.03 M
-    parameters, 0.46 M of them the name table; 3.9 MiB.
-  - Folding the attack log into the panels' features (18 fewer tokens) would bring the typical position to
-    about 2 M, room for d 64.
-  - `--size large` (d 128, two layers: 21.6 M typical, 50.6 M max, 2.57 M parameters) is there to try in the
+  (the Rust port skips absent ones), at a typical fight position and at the max; targets 3 M typical, 10 M max.
+  - The typical position, as the pool shows it (random play, 2026-10-23): global 1, 18 panels (the attack log is
+    in their tokens), about 10 objects (4 to 5 in random play, up to 17), 6 in hand, no slots, the used chip, 57
+    rules scalars (the three games' mean), 2 forms: 95 tokens, 38 of them in the transformer.
+  - The default, **d = 64**, one layer: 2.20 M typical, 2.90 M on the custom screen (its 12 slots added), 5.78 M
+    max (194 tokens); 1.13 M parameters, 0.52 M of them the name table; 4.3 MiB. (Before the rules were made
+    pool-only, d had to be 56 at 66 tokens; with all 95 in the transformer it would be over 4 M.)
+  - `--size large` (d 128, two layers: 13.6 M typical, 36.5 M max, 2.6 M parameters) is there to try in the
     cloud. If it plays clearly better, the app runs it on a worker thread (§10).
   - `uv run python -m nettai_ai.model [--size large]` prints the numbers; training logs the cost at the
     measured occupancy (`model/macs_measured_fight`).
@@ -293,6 +299,12 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     `hp_gain` there, times the HP weight, plus, at a round's end, `result` times the result weight;
   - so `hp_gain` must cover everything since the seat's last decision, including steps where the seat had no
     decision (phase 0); the trainer doesn't read it on those steps.
+- **Reading today's bridge** (2026-10-23), where it differs from §6.6, in one place (`training/nettai_ai/envs.py`):
+  the chips set's parts become sets (§7); `round_stats()` gives each round's measures as per-seat pairs and no
+  env, so the trainer regroups them by seat and matches the rounds, which come in env order, to the envs that
+  ended one in that step; the held-out chips wait for the bridge's `chip_holdout` (it takes `exclude_chips`, a
+  list of keys, today). `uv sync` drops the bridge from the environment (it isn't in the lock file): after
+  building it, run with `uv run --no-sync`.
 - **Rewards' weights.** The result 1; the HP difference from 1 down to 0.2 over the first 3,000 updates.
   `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
   same at any HP of the curriculum.

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import torch
 
-from .envs import PoolView
+from .envs import PoolView, read_round_stats
 from .league import BOT, KIND_NAMES, LEARNER, SELF, League
 from .model import Model, Obs, mask_logits, select
 from .spec import Spec
@@ -166,7 +166,7 @@ class Collector:
                 st.rounds += len(envs)
                 st.truncated += int(v.truncated[envs].sum())
                 games = v.game.numpy()
-                self._measure(st, self.pool.round_stats())
+                self._measure(st, read_round_stats(self.pool, envs))
                 st.records += self.league.round_end(envs, v.result.view(self.E, 2).numpy(), games)
                 streams = torch.from_numpy(np.stack([envs * 2, envs * 2 + 1], 1).ravel()).to(dev)
                 self.hidden[streams] = 0.0
@@ -243,14 +243,19 @@ class Collector:
         moves on, while its current plan still describes these rounds."""
         for r in rounds:
             e = int(r["env"])
+            label = self.league.opponent_label(e)
             k = int(self.league.kind[e])
             seats = (0, 1) if k == SELF else (int(self.league.seat[e]),)
             for s in seats:
-                for name, val in r["seats"][s].items():
-                    if isinstance(val, (int, float)) and not isinstance(val, bool):
-                        acc = st.measures.setdefault((KIND_NAMES[k], name), [0.0, 0])
+                me, other = r["seats"][s], r["seats"][1 - s]
+                vals = {n: v for n, v in me.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+                vals["ticks"] = r["ticks"]
+                if "hp_lost" in me and "max_hp" in me:
+                    # The round's HP difference as hp_gain counts it: the other's loss less its own, each by
+                    # its own max HP.
+                    vals["hp_gain"] = other["hp_lost"] / max(other["max_hp"], 1) - me["hp_lost"] / max(me["max_hp"], 1)
+                for name, val in vals.items():
+                    for key in (KIND_NAMES[k], label) if label != KIND_NAMES[k] else (label,):
+                        acc = st.measures.setdefault((key, name), [0.0, 0])
                         acc[0] += float(val)
                         acc[1] += 1
-                acc = st.measures.setdefault((KIND_NAMES[k], "ticks"), [0.0, 0])
-                acc[0] += float(r["ticks"])
-                acc[1] += 1

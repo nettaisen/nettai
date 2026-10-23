@@ -30,8 +30,8 @@ if tmux has-session -t "$session" 2>/dev/null; then
     exit 1
 fi
 tmux new-session -d -s "$session" -c "$training" \
-    "NETTAI_PACKS=$(printf %q "$timings") uv run python -m nettai_ai.train --run-dir $run$args 2>&1 | tee -a $run/train.log"
+    "NETTAI_PACKS=$(printf %q "$timings") uv run --no-sync python -m nettai_ai.train --run-dir $run$args 2>&1 | tee -a $run/train.log"
 if ! tmux has-session -t tensorboard 2>/dev/null; then
-    tmux new-session -d -s tensorboard -c "$training" "uv run tensorboard --logdir runs --host 127.0.0.1 --port 6006"
+    tmux new-session -d -s tensorboard -c "$training" "uv run --no-sync tensorboard --logdir runs --host 127.0.0.1 --port 6006"
 fi
 echo "run: started $session (log: training/$run/train.log); TensorBoard in tmux session tensorboard"

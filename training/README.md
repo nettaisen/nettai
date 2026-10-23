@@ -14,9 +14,10 @@ nettai_ai/curriculum.py  the HP curriculum
 nettai_ai/train.py       the training CLI
 nettai_ai/evaluate.py    checkpoints against bots and each other, per game; Elo
 nettai_ai/export.py      safetensors for the Rust side, and a parity fixture
+nettai_ai/bench.py       the simulation, inference and update timed apart; update variants
 bridge/                  the pyo3 module nettai_gym (its own Cargo workspace)
 cloud/                   setup, timings upload, run and sync scripts for the cloud machine
-configs/                 smoke.toml (a short local run), cloud.toml (a full run)
+configs/                 smoke.toml (a short run), mac.toml (20 minutes on a Mac), cloud.toml (a full run)
 ```
 
 ## Locally
@@ -39,11 +40,13 @@ uv run python -m nettai_ai.export runs/try --out runs/try/nettai-ai.safetensors
 uv run tensorboard --logdir runs
 ```
 
-On the real engine, build the bridge once (and after engine changes), then drop `--fake`:
+On the real engine, build the bridge into this environment once (and after engine changes), then drop
+`--fake`. `uv sync` removes it again (it isn't in the lock file), so run with `uv run --no-sync` after building:
 
 ```sh
-uv run maturin develop --release --manifest-path bridge/Cargo.toml
-NETTAI_PACKS=../data uv run python -m nettai_ai.train --run-dir runs/exe6 --config configs/smoke.toml
+uv run maturin develop --release --uv --manifest-path bridge/Cargo.toml
+NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
+NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench --profile     # where the time goes
 ```
 
 Training writes `RUN_DIR/tb` (TensorBoard), `RUN_DIR/checkpoints` (each with the config, the git commit and the

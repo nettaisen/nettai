@@ -22,7 +22,7 @@ import torch
 
 from . import checkpoint
 from .config import LEVELS, EnvConfig, Level, config_from_dict
-from .envs import PoolView, make_pool
+from .envs import PoolView, make_pool, pool_spec, read_round_stats
 from .model import Model, mask_logits, select
 from .spec import Spec, parse_spec
 
@@ -99,7 +99,7 @@ def run_matches(
     records: list[dict[str, Any]] = []
     while (counted < rounds).any():
         if view.done.any():
-            stats = {int(r["env"]): r for r in pool.round_stats()}
+            stats = {int(r["env"]): r for r in read_round_stats(pool, view.done.nonzero().squeeze(-1).numpy())}
             for e in view.done.nonzero().squeeze(-1).tolist():
                 if started[e] >= 1 and counted[e] < rounds:
                     if e not in stats:
@@ -263,7 +263,7 @@ def evaluate_vs_bots(
             pool = make_pool(env, fake, games=[g], envs=envs, threads=threads, seed=env.seed + 1000 + gi, hp=(hp, hp), holdout_mode="favor")
             if pools is not None:
                 pools[g] = pool
-        spec = parse_spec(pool.spec())
+        spec = parse_spec(pool_spec(pool))
         if spec.hash != spec_hash:
             raise RuntimeError(f"evaluation: the pool's spec hash {spec.hash} isn't the network's {spec_hash}")
         recs = run_matches(pool, spec, bot_pairs(player, bots, envs), rounds, level, device)
@@ -307,7 +307,7 @@ def main() -> None:
     if others:
         for gi, g in enumerate(games):
             pool = make_pool(cfg.env, a.fake, games=[g], envs=a.envs, threads=a.threads, seed=cfg.env.seed + 2000 + gi, hp=(a.hp, a.hp), holdout_mode="favor")
-            spec = parse_spec(pool.spec())
+            spec = parse_spec(pool_spec(pool))
             if spec.hash != main_player.model.spec.hash:
                 raise SystemExit(f"the pool's spec hash {spec.hash} isn't the network's {main_player.model.spec.hash}")
             recs = run_matches(pool, spec, round_robin_pairs(everyone, a.envs), a.rounds, level, device)
