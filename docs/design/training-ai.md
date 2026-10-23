@@ -59,7 +59,9 @@ training/                   Python (uv), never built with the app:
 crates/nettai-training/model/nettai-ai.safetensors   the shipped network, a few MB
 ```
 
-The bridge has its own Cargo workspace, so `cargo build` of the app never needs Python or pyo3.
+The bridge has its own Cargo workspace, so `cargo build` of the app never needs Python or pyo3. nettai-training
+depends on nettai-frontend only behind its `live` feature (ai.rs, which the app turns on). The bridge leaves it off,
+so it builds on a server with no sound or window libraries.
 
 ## 3. What it sees
 
@@ -188,6 +190,49 @@ winning.
 - Each env has both sides' seats; Python says which policy plays each seat.
 - Cost, from measured ticks: about 18 µs a tick in EXE6 and 55 µs in EXE5, so at 4 ticks a decision a core makes
   roughly 5,000 to 14,000 decisions a second.
+
+### 6.6 The bridge's interface
+
+The contract between the Rust pool and the Python trainer. Both sides are written against it. Widths come from
+`spec()` and are never hard-coded in Python.
+
+```python
+import nettai_gym
+
+pool = nettai_gym.Pool(
+    games=["exe6", "exe5", "exe4"],  # each env draws one per round
+    envs=256, threads=8, seed=1,
+    content=None, packs=None,        # default: the repo's content/, $NETTAI_PACKS or data/
+    k=4,                             # ticks a fight decision is held
+    delay=(6, 30),                   # reaction delay in ticks, drawn per round per seat
+    max_fight_ticks=18000,
+)
+spec = pool.spec()
+# {"hash": "<hex>", "buckets": 8192, "fight_actions": 20, "screen_actions": 19,   # 12 slots, then 7 keys
+#  "sets": {name: {"count": C, "width": W, "ids": I}, ...}}                      # sets in a fixed order
+buf = pool.buffers()   # numpy views of memory the pool owns, refilled by every step()
+# per set:  buf["x"][name]    float32 [E, 2, C, W]
+#           buf["ids"][name]  int32   [E, 2, C, I]   hashed name ids, 0 = none
+#           buf["mask"][name] bool    [E, 2, C]      true = token present
+# buf["phase"]        int8    [E, 2]   0 no decision this step, 1 fight, 2 custom screen
+# buf["legal_fight"]  bool    [E, 2, 20]
+# buf["legal_screen"] bool    [E, 2, 19]
+# buf["hp_gain"]      float32 [E, 2]   (HP the other lost - HP it lost) / 1000 since this seat's last decision
+# buf["done"]         bool    [E]      the round ended; the obs is already the next round's first
+# buf["truncated"]    bool    [E]      ended by max_fight_ticks
+# buf["result"]       int8    [E, 2]   +1 / -1 / 0 for the round that ended (valid where done)
+# buf["game"]         int8    [E]      index into games
+# buf["delay"]        int16   [E, 2]
+pool.step(actions)                    # int32 [E, 2]; read only where phase != 0
+pool.set_seat(envs, seat, controller) # "policy", "still", "mover", "masher", "shooter", "dodger"; from the next round
+pool.set_delay(envs, seat, ticks)     # pins the delay (evaluation); None draws again
+pool.round_stats()                    # list of dicts for rounds ended since the last call (§9's measures)
+```
+
+- A step advances each env until one of its policy seats needs a decision.
+- A seat played by a scripted player always has phase 0.
+- Rounds reset on their own, with new builds and a new arena.
+- Rewards are put together in Python from `hp_gain` and `result`, so their weights can change during training.
 
 ## 7. The network
 
