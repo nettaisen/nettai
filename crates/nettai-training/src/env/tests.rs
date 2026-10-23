@@ -97,7 +97,7 @@ pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
     let c = content(game);
     let maker = Maker::new(&c).unwrap();
     let mut picks = Picks::new(seed);
-    let sides = [maker.random(&mut picks, &[]).unwrap(), maker.random(&mut picks, &[]).unwrap()];
+    let sides = [maker.random(&mut picks, &[], 0.75).unwrap(), maker.random(&mut picks, &[], 0.75).unwrap()];
     let m = maker.round(sides, 1000, seed).unwrap();
     let mut b = Set::of(&c, &m, seed).start();
     for _ in 0..900 {
