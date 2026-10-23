@@ -72,10 +72,21 @@ fn main() {
             f.pairs.len()
         );
         let mut by_condition = std::collections::BTreeMap::new();
+        let mut by_category = std::collections::BTreeMap::new();
         for p in &f.pairs {
             *by_condition.entry(format!("{:?}", p.condition)).or_insert(0) += 1;
+            *by_category.entry(p.condition.category()).or_insert(0) += 1;
         }
-        println!("{game}: pairs by condition {by_condition:?}");
+        println!("{game}: pairs by condition {by_condition:?}, by category {by_category:?}; conditions dropped {:?}", f.dropped);
+        // What folders are seeded with: 300 builds, every folder seeded.
+        let maker = nettai_training::builds::Maker::new(&content).unwrap();
+        let mut picks = nettai_match::Picks::new(11);
+        let mut seeded = std::collections::BTreeMap::new();
+        for _ in 0..300 {
+            let b = maker.random(&mut picks, &Default::default(), 0.0, nettai_training::builds::Combos { pairs: &f.pairs, rate: 1.0 }).unwrap();
+            *seeded.entry(b.pair.map_or("none", |p| p.condition.category())).or_insert(0) += 1;
+        }
+        println!("{game}: 300 folders seeded by category {seeded:?}");
         // One env on this thread: where its time goes.
         let games = Arc::new(vec![Game::with_fingerprints(content.clone(), f.clone()).unwrap()]);
         // What a build costs, at the rules' defaults and with every fact drawn.
