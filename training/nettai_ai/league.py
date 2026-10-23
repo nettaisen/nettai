@@ -134,12 +134,15 @@ class League:
             self.ctrl[ls] = LEARNER
             self.ctrl[os_] = {SELF: LEARNER, SNAP: int(self.opp[e]), BOTS: BOT}[int(self.kind[e])]
 
-    def round_end(self, envs: np.ndarray, result: np.ndarray, games: np.ndarray) -> list[tuple]:
-        """Rounds of envs ended with result [E, 2]: record them, start the next plans, send the ones after."""
+    def round_end(self, envs: np.ndarray, result: np.ndarray, games: np.ndarray, truncated: np.ndarray) -> list[tuple]:
+        """Rounds of envs ended with result [E, 2]: record them, start the next plans, send the ones after.
+
+        A round cut off (truncated: max_fight_ticks, a screen open too long, a content error) has no result and
+        counts for nothing: not a draw, not a loss."""
         records = []
         for e in envs:
             k = int(self.kind[e])
-            if k == SELF:
+            if k == SELF or truncated[e]:
                 continue
             sc = score(int(result[e, self.seat[e]]))
             if k == SNAP:

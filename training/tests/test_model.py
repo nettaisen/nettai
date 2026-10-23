@@ -54,7 +54,7 @@ def test_absent_tokens_are_not_read(tiny_cfg):
     m = Model(spec, tiny_cfg)
     g = torch.Generator().manual_seed(1)
     obs = random_obs(spec, 8, g)
-    obs["mask"]["global"][:] = True
+    obs["mask"]["general"][:] = True
     h = torch.zeros(8, tiny_cfg.hidden)
     with torch.no_grad():
         a = m.step(obs, h)
@@ -118,7 +118,7 @@ def test_macs_follow_the_spec():
     fewer = dict(TYPICAL, objects=TYPICAL["objects"] - 1)
     assert count_macs(spec, cfg, fewer)["fight"] < base["fight"]
     with pytest.raises(ValueError):
-        count_macs(spec, cfg, {"global": 1})
+        count_macs(spec, cfg, {"general": 1})
 
 
 def test_macs_match_a_direct_count(tiny_cfg):
@@ -126,7 +126,7 @@ def test_macs_match_a_direct_count(tiny_cfg):
     spec = parse_spec(tiny_spec())
     cfg = dataclasses.replace(tiny_cfg)
     Model(spec, cfg)  # builds for this spec
-    present = {"global": 1, "objects": 2, "slots": 2, "rules": 3}
+    present = {"general": 1, "objects": 2, "slots": 2, "rules": 3}
     obs = {"x": {}, "ids": {}, "mask": {}}
     for s in spec.sets:
         obs["x"][s.name] = torch.randn(1, s.count, s.width)
@@ -156,7 +156,7 @@ def test_pool_only_sets_skip_the_transformer(tiny_cfg):
     assert tiny_cfg.pool_only == ["rules"]
     g = torch.Generator().manual_seed(4)
     obs = random_obs(spec, 4, g)
-    obs["mask"]["global"][:] = True
+    obs["mask"]["general"][:] = True
     obs["mask"]["rules"][:] = True
     with torch.no_grad():
         z1, slots1, _ = m.encode(obs)

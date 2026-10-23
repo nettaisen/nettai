@@ -3,7 +3,7 @@
 It plays a toy game that a policy can learn through the whole pipeline (encoder, transformer, pool, GRU,
 heads, PPO, league):
 
-- In the fight, the global token's first `fight_actions` floats are a one-hot "target" action (always
+- In the fight, the general token's first `fight_actions` floats are a one-hot "target" action (always
   legal). Pressing it deals 5% of the round's max HP to the other side.
 - On the custom screen, picking the legal slot whose first float is highest deals 8%. Keys do nothing.
 - Scripted seats deal 5% now and then (masher most often), never decide, and always have phase 0.
@@ -33,16 +33,15 @@ BUSY_CHANCE = 0.15  # a fight seat with no decision this step
 
 
 def default_spec(buckets: int = 8192) -> dict[str, Any]:
-    """§6.6's format with the pool's sets, counts and widths (the bridge's spec of 2026-10-23, its chips set
-    split into hand, slots and used as the trainer reads it; the attack log is in the panels' tokens). Names
-    come as id pairs (§7)."""
+    """§6.6's format with the pool's sets, counts and widths (spec c4d9e4a61b0f54ba, its chips set split into
+    hand and used as the trainer reads it; the attack log is in the panels' tokens). Names come as id pairs."""
     sets = {
-        "global": {"count": 1, "width": 71, "ids": 4},
-        "panels": {"count": 18, "width": 46, "ids": 2},
+        "general": {"count": 1, "width": 71, "ids": 4},
+        "panels": {"count": 18, "width": 47, "ids": 2},
         "objects": {"count": 48, "width": 119, "ids": 6},
-        "hand": {"count": 6, "width": 176, "ids": 2},  # a chip token, its fingerprint block included
-        "slots": {"count": 12, "width": 176, "ids": 2},
-        "used": {"count": 1, "width": 176, "ids": 2},
+        "hand": {"count": 6, "width": 250, "ids": 12},  # a chip token, its fingerprint included
+        "used": {"count": 1, "width": 250, "ids": 12},
+        "slots": {"count": 12, "width": 250, "ids": 12},
         "rules": {"count": 96, "width": 14, "ids": 4},
         "forms": {"count": 12, "width": 22, "ids": 2},
     }
@@ -54,7 +53,7 @@ def default_spec(buckets: int = 8192) -> dict[str, Any]:
 # Present tokens per set (lo, hi) in the fight and on the screen, as the pool shows them; sets not named here
 # draw from (1, count).
 OCCUPANCY = {
-    "global": ((1, 1), (1, 1)),
+    "general": ((1, 1), (1, 1)),
     "panels": ((18, 18), (18, 18)),
     "objects": ((2, 16), (2, 8)),
     "hand": ((0, 6), (0, 0)),
@@ -79,6 +78,7 @@ class FakePool:
         max_fight_ticks: int = 18000,
         hp: tuple[int, int] = (1000, 1000),
         chip_holdout: tuple[float, int, str] | None = None,
+        cache: str | None = None,
         spec: dict[str, Any] | None = None,
     ):
         self.games = list(games)
@@ -105,8 +105,8 @@ class FakePool:
         self.n_keys = self.sa - self.n_slots
         if self.n_keys < 0:
             raise ValueError("FakePool: screen_actions < the slots set's count")
-        if sets["global"]["width"] < self.fa + 4:
-            raise ValueError("FakePool: the global set must be at least fight_actions + 4 wide")
+        if sets["general"]["width"] < self.fa + 4:
+            raise ValueError("FakePool: the general set must be at least fight_actions + 4 wide")
         E = envs
         self.buf: dict[str, Any] = {
             "x": {n: np.zeros((E, 2, s["count"], s["width"]), np.float32) for n, s in sets.items()},
@@ -323,7 +323,7 @@ class FakePool:
                 ids[~present] = 0
                 ids[rng.random((E, 2, C)) < 0.1] = 0  # some tokens carry no name
                 b["ids"][name][:] = ids
-        g = b["x"]["global"]
+        g = b["x"]["general"]
         fa = self.fa
         self.target = rng.integers(0, fa, (E, 2))
         g[..., 0, :fa] = 0.0

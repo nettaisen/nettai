@@ -42,6 +42,7 @@ def make_pool(
         delay=tuple(env.delay),
         max_fight_ticks=env.max_fight_ticks,
         hp=tuple(hp),
+        cache=env.cache,
     )
     if env.chip_holdout > 0:
         kwargs["chip_holdout"] = (env.chip_holdout, env.chip_holdout_seed, holdout_mode)
@@ -100,23 +101,14 @@ def _arrays(buf: dict[str, Any], key: str, raw: dict[str, Any]) -> dict[str, np.
     return out
 
 
-def read_round_stats(pool, done_envs: np.ndarray) -> list[dict[str, Any]]:
-    """`pool.round_stats()` as §6.6 has it: each round {"env", "ticks", "seats": [seat 0's, seat 1's], ...}.
-
-    The bridge today gives each round's per-seat measures as pairs and no env; its rounds come in env order,
-    one per env that ended a round in the last step (the trainer reads them after every step that ends one),
-    so they are matched to `done_envs` in order and regrouped by seat."""
+def read_round_stats(pool) -> list[dict[str, Any]]:
+    """`pool.round_stats()`, checked for what the trainer reads: each round's "env", "ticks", "truncated" and
+    "seats" (two dicts, each with "result")."""
     rounds = pool.round_stats()
-    if all("seats" in r for r in rounds):
-        return rounds
-    if len(rounds) != len(done_envs):
-        raise RuntimeError(f"round_stats() gave {len(rounds)} rounds for {len(done_envs)} ended")
-    out = []
-    for e, r in zip(sorted(int(x) for x in done_envs), rounds):
-        pairs = {k: v for k, v in r.items() if isinstance(v, (list, tuple)) and len(v) == 2}
-        seats = [{k: v[s] for k, v in pairs.items()} for s in (0, 1)]
-        out.append({**{k: v for k, v in r.items() if k not in pairs}, "env": e, "seats": seats})
-    return out
+    for r in rounds:
+        if not {"env", "ticks", "truncated", "seats"} <= set(r) or len(r["seats"]) != 2:
+            raise RuntimeError(f"round_stats(): a round without env, ticks, truncated and two seats: {sorted(r)}")
+    return rounds
 
 
 class PoolView:

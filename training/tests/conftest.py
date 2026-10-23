@@ -16,7 +16,7 @@ def tiny_spec() -> dict:
         "fight_actions": 3,
         "screen_actions": 4,  # 2 slots, then 2 keys
         "sets": {
-            "global": {"count": 1, "width": 4, "ids": 0},
+            "general": {"count": 1, "width": 4, "ids": 0},
             "objects": {"count": 3, "width": 3, "ids": 2},
             "slots": {"count": 2, "width": 2, "ids": 2},
             "rules": {"count": 4, "width": 2, "ids": 2},  # pool-only by default

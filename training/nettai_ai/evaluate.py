@@ -3,8 +3,9 @@ with seats mirrored; a table of results and §9's measures from `pool.round_stat
 
     uv run python -m nettai_ai.evaluate runs/a [--vs runs/b ...] [--games exe6,exe5,exe4] [--level normal]
 
-round_stats() entries are read for "env" (int), "ticks" (int) and "seats" (two dicts, each with "result" and
-any numeric measures). Every numeric seat field is reported per minute of play.
+round_stats() entries are read for "env", "ticks", "truncated" and "seats" (two dicts, each with "result" and any
+numeric measures). Every numeric seat field is reported per minute of play. A round cut off (truncated) is
+counted apart and has no result: not a draw, not a loss.
 
 Each env's first round is discarded: seats and delays are set "from the next round" (§6.6).
 """
@@ -99,7 +100,7 @@ def run_matches(
     records: list[dict[str, Any]] = []
     while (counted < rounds).any():
         if view.done.any():
-            stats = {int(r["env"]): r for r in read_round_stats(pool, view.done.nonzero().squeeze(-1).numpy())}
+            stats = {int(r["env"]): r for r in read_round_stats(pool)}
             for e in view.done.nonzero().squeeze(-1).tolist():
                 if started[e] >= 1 and counted[e] < rounds:
                     if e not in stats:
@@ -110,6 +111,7 @@ def run_matches(
                             "game": int(view.game[e]),
                             "players": (pairs[e][0].name, pairs[e][1].name),
                             "result": (int(view.result[2 * e]), int(view.result[2 * e + 1])),
+                            "truncated": bool(view.truncated[e]),
                             "stats": stats[e],
                         }
                     )
@@ -177,7 +179,10 @@ def summarize(records: list[dict[str, Any]], games: list[str]) -> dict[tuple, di
         g = games[r["game"]]
         for seat in (0, 1):
             me, other = r["players"][seat], r["players"][1 - seat]
-            row = out.setdefault((g, me, other), {"rounds": 0, "win": 0, "draw": 0, "loss": 0, "ticks": 0, "measures": {}})
+            row = out.setdefault((g, me, other), {"rounds": 0, "win": 0, "draw": 0, "loss": 0, "cut": 0, "ticks": 0, "measures": {}})
+            if r["truncated"]:  # cut off: no result, no measures
+                row["cut"] += 1
+                continue
             res = r["result"][seat]
             row["rounds"] += 1
             row["win" if res > 0 else ("loss" if res < 0 else "draw")] += 1
@@ -216,6 +221,8 @@ def elo(results: list[tuple[str, str, float]], anchors: list[str], prior: float 
 def elo_results(records: list[dict[str, Any]]) -> list[tuple[str, str, float]]:
     out = []
     for r in records:
+        if r["truncated"]:
+            continue
         res = r["result"][0]
         out.append((r["players"][0], r["players"][1], 1.0 if res > 0 else (0.0 if res < 0 else 0.5)))
     return out
@@ -223,15 +230,15 @@ def elo_results(records: list[dict[str, Any]]) -> list[tuple[str, str, float]]:
 
 def format_table(summary: dict[tuple, dict[str, Any]], players: list[str]) -> str:
     measures = sorted({k for row in summary.values() for k in row["measures"]})
-    head = ["game", "player", "opponent", "rounds", "win%", "draw%", "loss%"] + [f"{m}/min" for m in measures]
+    head = ["game", "player", "opponent", "rounds", "cut", "win%", "draw%", "loss%"] + [f"{m}/min" for m in measures]
     rows = []
     for (g, me, other), row in sorted(summary.items()):
         if me not in players:
             continue
-        n = row["rounds"]
+        n = max(row["rounds"], 1)
         minutes = max(row["ticks"], 1) / TICKS_PER_MINUTE
         rows.append(
-            [g, me, other, str(n)]
+            [g, me, other, str(row["rounds"]), str(row["cut"])]
             + [f"{100 * row[k] / n:.1f}" for k in ("win", "draw", "loss")]
             + [f"{row['measures'].get(m, 0.0) / minutes:.1f}" for m in measures]
         )
