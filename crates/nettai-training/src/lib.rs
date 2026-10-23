@@ -17,11 +17,16 @@
 //!   into buffers the bridge (training/bridge) shows Python without a copy.
 //! - [`bots`]: the scripted players; [`stats`]: §9's measures.
 //!
-//! With the `live` feature (the app's), the player for live play is here
-//! too (a later step); without it nothing pulls in the frontend, the
-//! renderer or the sound, so the bridge builds on a server.
+//! - [`net`]: the trained network's forward pass, from its weights file.
+//!
+//! With the `live` feature (the app's), [`ai`] is the player for live play
+//! (`NetAi`, the frontend's `driver::Ai`) and the fingerprints made on the
+//! app's threads; without it nothing pulls in the frontend, the renderer or
+//! the sound, so the bridge builds on a server.
 
 pub mod act;
+#[cfg(feature = "live")]
+pub mod ai;
 pub mod bots;
 pub mod builds;
 pub mod env;
