@@ -308,14 +308,22 @@ All of these run in Rust on the pool, fast, and print a table:
 
 ## 11. The cloud machine
 
-- **Shape.** Simulation is the bulk of the work, so CPU cores matter most. One modest NVIDIA GPU does the network
-  updates. Something like 32–64 cores and one RTX 4090 / L4 / A10 class GPU, at about $1–3 an hour from the usual
-  GPU rental sites.
+- **Shape.** Simulation is the bulk of the work: the engine and its Luau, on CPU cores. The network is about 3
+  million multiply-adds a decision, so its updates are small next to that. The cost is cores.
+  - **First choice: a CPU-only machine with many cores**, such as a 48–96 core dedicated server, at well under $1 an
+    hour.
+  - **A GPU only if measured to help.** The first runs time the network updates against the simulation. A GPU
+    (RTX 4090 / L4 class, $1–3 an hour with its cores) is added only if the updates turn out to hold training back.
+  - **TPUs don't fit** (the user asked, 2026-10-23). They are built for very large matrix work, and this network is
+    tiny. XLA handles a recurrent core with changing masks badly, and they would leave the simulation, the real cost,
+    where it was.
 - **Run size.** A full run is estimated at 2 to 5 billion decisions, about 5 to 15 hours on such a machine. Tuning
   will take several runs.
-- **The packs.** Animation timings are part of the simulation, so training needs the extracted packs (`data/exe4`,
-  `data/exe5`, `data/exe6`) on the machine. The user decides whether they go there. The made-up test timings would
-  train a network for a game that isn't quite the real one.
+- **What of the packs goes there: the timings only** (the user: "you don't need the images, just the timing data").
+  The battle's loader reads a pack's `content.toml`, `assets.toml`, and each sprite's `animations.json` and
+  `sprite.json`. These are the asset names, the animations' timings and the frames' part layouts: a few hundred KB a
+  game. No picture or sound is read or sent. `training/cloud/timings.sh` copies just those files out of `data/`. The
+  made-up test timings would train a network for a game that isn't quite the real one.
 - **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine. A run goes in
   tmux; checkpoints and logs are rsynced back.
 
