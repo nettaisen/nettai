@@ -90,19 +90,19 @@ class League:
     # Plans ---------------------------------------------------------------------------------------------
 
     def start(self) -> None:
-        """The first round: the pool starts every seat as "policy", so it is self-play or a snapshot."""
+        """The first round: the pool starts every seat as "policy", so it is self-play."""
         envs = np.arange(self.E)
-        self._draw_next(envs, bots=False)
+        self.next_kind[envs] = SELF
+        self.next_seat[envs] = 0
         self._begin(envs)
-        self._draw_next(envs, bots=True)
+        self._draw_next(envs)
         self._send_next(envs)
 
-    def _draw_next(self, envs: np.ndarray, bots: bool) -> None:
+    def _draw_next(self, envs: np.ndarray) -> None:
         n = len(envs)
         c = self.cfg
-        p = np.array([c.self_play, c.snapshots, c.bots if bots else 0.0])
-        p = p / p.sum()
-        self.next_kind[envs] = self.rng.choice(3, size=n, p=p)
+        p = np.array([c.self_play, c.snapshots, c.bots])
+        self.next_kind[envs] = self.rng.choice(3, size=n, p=p / p.sum())
         self.next_seat[envs] = self.rng.integers(0, 2, n)
         self.next_bot[envs] = self.rng.integers(0, max(1, len(c.bot_names)), n)
 
@@ -155,7 +155,7 @@ class League:
             self._elo("learner", opp, sc)
             records.append((KIND_NAMES[k], opp, sc, int(games[e])))
         self._begin(envs)
-        self._draw_next(envs, bots=True)
+        self._draw_next(envs)
         self._send_next(envs)
         return records
 
