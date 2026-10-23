@@ -147,20 +147,26 @@ fn set_list(content: &Content, side: &mut Side, field: &str, entries: &[Vec<(Str
 }
 
 /// A folder's start seeded with a pair of `pairs` whose chips are both in
-/// `pool` (the chips the side may hold): each chip in a code both come in
-/// (or `*`), two copies each where the side's rules (`battle`'s) take them;
-/// none found in a few tries, none.
+/// `pool` (the chips the side may hold), drawn by the kind of effect its
+/// setup brings first (`Condition::category`), then within it: each chip in
+/// a code both come in (or `*`), two copies each where the side's rules
+/// (`battle`'s) take them; none found in a few tries, none.
 fn seed_pair(content: &Content, pool: &[ChipHandle], pairs: &[crate::fingerprint::Pair], battle: &mut Battle, picks: &mut Picks) -> (Vec<nettai_battle::custom::FolderChip>, Option<crate::fingerprint::Pair>) {
     use nettai_battle::content::ChipCode;
     use nettai_battle::custom::FolderChip;
-    if pairs.is_empty() {
+    // (A kind of effect first, of those the pairs the side may hold are of,
+    // then a pair of it: no one kind's many pairs crowd out the rest.)
+    let held: Vec<&crate::fingerprint::Pair> = pairs.iter().filter(|p| pool.contains(&p.setup) && pool.contains(&p.payoff)).collect();
+    let mut categories: Vec<&str> = held.iter().map(|p| p.condition.category()).collect();
+    categories.sort();
+    categories.dedup();
+    if categories.is_empty() {
         return (Vec::new(), None);
     }
     for _ in 0..8 {
-        let p = pairs[picks.below(pairs.len())];
-        if !pool.contains(&p.setup) || !pool.contains(&p.payoff) {
-            continue;
-        }
+        let category = categories[picks.below(categories.len())];
+        let of: Vec<&&crate::fingerprint::Pair> = held.iter().filter(|p| p.condition.category() == category).collect();
+        let p = **of[picks.below(of.len())];
         let (a, b) = (&content.chip(p.setup).codes, &content.chip(p.payoff).codes);
         let common: Vec<ChipCode> = a.iter().filter(|c| b.contains(c)).copied().collect();
         let star = ChipCode::ASTERISK;

@@ -160,7 +160,27 @@ pub enum Condition {
     /// The front line advanced: a panel of the other side's front column
     /// taken.
     Advanced,
+    /// The user's front column held by the other side (no setup of the
+    /// user's brings it: no pair is of it).
+    Stolen,
 }
+
+impl Condition {
+    /// The kind of effect a setup brings it by, for drawing pairs by kind
+    /// (§6.2): a panel type made, a status inflicted, ownership taken.
+    pub fn category(self) -> &'static str {
+        match self {
+            Condition::Kind(_) => "panel",
+            Condition::Status(_) => "status",
+            Condition::Advanced | Condition::Stolen => "ownership",
+        }
+    }
+}
+
+/// A condition is dropped when its ratio is the same (to this) for at least
+/// [`SAME_SHARE`] of the chips run under it: it tells nothing of them.
+const SAME_TO: f32 = 0.01;
+pub const SAME_SHARE: f32 = 0.95;
 
 /// A pair: a setup chip whose effect brings `condition`, and a payoff whose
 /// damage it raises by `ratio`.
@@ -184,13 +204,15 @@ pub struct Fingerprints {
     #[serde(with = "chip_map")]
     pub chips: HashMap<ChipHandle, Fingerprint>,
     pub pairs: Vec<Pair>,
+    /// The conditions dropped as telling nothing ([`SAME_SHARE`]).
+    pub dropped: Vec<Condition>,
     #[serde(skip)]
     pub cost: Cost,
 }
 
 /// The sandbox's version: a change to how chips are run makes the
 /// fingerprints kept on disk another's.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// Handles as numbers in the file.
 mod chip {
@@ -638,6 +660,66 @@ pub fn file_name(content: &Content) -> String {
     format!("fingerprints-{}-{:016x}.json", content.game(), content.hash().0)
 }
 
+/// Drop the conditions that tell nothing, from every fingerprint: those
+/// whose ratio is the same (to [`SAME_TO`]) for at least [`SAME_SHARE`] of
+/// the chips they apply to (a status every hit leaves, under which nothing
+/// hits; a panel type under which no chip's damage changes), but those a
+/// pair is made of. A chip a condition applies to hit in its plain run at
+/// the condition's panel or under the condition: one that hit in neither is
+/// at 1 under every condition, which says nothing of the condition. The
+/// conditions dropped.
+pub fn prune(chips: &mut HashMap<ChipHandle, Fingerprint>) -> Vec<Condition> {
+    let paired: Vec<Condition> = pairs(chips).iter().map(|p| p.condition).collect();
+    let mut ratios: HashMap<Condition, Vec<f32>> = HashMap::new();
+    for f in chips.values() {
+        let best = f.best.unwrap_or(MIDDLE);
+        let plain = f.runs.get(best).map_or(0, |r| r.0);
+        // (Hit plainly, or only under the condition: its ratio is the most.)
+        let applies = |r: f32| plain > 0 || r >= MAX_RATIO;
+        for (s, r) in f.status_ratios.iter().enumerate() {
+            if let Some(r) = r.filter(|&r| applies(r)) {
+                ratios.entry(Condition::Status(s as u8)).or_default().push(r);
+            }
+        }
+        for &(k, r) in f.kind_ratios.iter().filter(|(_, r)| applies(*r)) {
+            ratios.entry(Condition::Kind(k)).or_default().push(r);
+        }
+        if let Some((r, _)) = f.stolen.filter(|&(r, _)| applies(r)) {
+            ratios.entry(Condition::Stolen).or_default().push(r);
+        }
+        let farther = best / 3 * 3 + 1;
+        if let Some((r, d)) = f.advanced.filter(|&(_, d)| d > 0 || f.runs.get(farther).is_some_and(|x| x.0 > 0)) {
+            let _ = d;
+            ratios.entry(Condition::Advanced).or_default().push(r);
+        }
+    }
+    let mut dropped: Vec<Condition> = ratios
+        .into_iter()
+        .filter(|(_, rs)| {
+            let mut counts: HashMap<i32, usize> = HashMap::new();
+            for r in rs {
+                *counts.entry((r / SAME_TO).round() as i32).or_default() += 1;
+            }
+            let most = counts.values().copied().max().unwrap_or(0);
+            most as f32 >= SAME_SHARE * rs.len() as f32
+        })
+        .filter(|(c, _)| !paired.contains(c))
+        .map(|(c, _)| c)
+        .collect();
+    dropped.sort_by_key(|c| format!("{c:?}"));
+    for f in chips.values_mut() {
+        for &c in &dropped {
+            match c {
+                Condition::Status(s) => f.status_ratios[s as usize] = None,
+                Condition::Kind(k) => f.kind_ratios.retain(|(x, _)| *x != k),
+                Condition::Stolen => f.stolen = None,
+                Condition::Advanced => f.advanced = None,
+            }
+        }
+    }
+    dropped
+}
+
 /// The pairs among fingerprints: a setup whose runs brought a condition
 /// (turned the panel under the target to a type, inflicted a status) and a
 /// payoff whose conditioned damage under it is past [`PAIR_RATIO`] times
@@ -661,6 +743,7 @@ pub fn pairs(chips: &HashMap<ChipHandle, Fingerprint>) -> Vec<Pair> {
                     Condition::Kind(k) => s.turns_under_target & (1 << k.0) != 0,
                     Condition::Status(i) => s.statuses & (1 << i) != 0,
                     Condition::Advanced => s.takes_front,
+                    Condition::Stolen => false,
                 };
                 if brings && setup != payoff {
                     out.push(Pair { setup, payoff, condition, ratio });
@@ -849,6 +932,7 @@ impl Job {
                 out.chips.insert(chip, fp);
             }
         }
+        out.dropped = prune(&mut out.chips);
         out.pairs = pairs(&out.chips);
         out.cost = Cost { chips: self.chips.len(), runs: self.runs.load(Ordering::Relaxed), ticks: self.ticks.load(Ordering::Relaxed), nanos: 0, wall_nanos: 0 };
         let _ = self.done.set(Ok(Arc::new(out)));
