@@ -150,6 +150,23 @@ struct Seat {
     bot: Bot,
 }
 
+/// Where an env's time went, in nanoseconds, and what it did: for the
+/// throughput measures (§6.5).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Profile {
+    /// Encoding observations (the ring's and the screen's).
+    pub encode: u64,
+    /// Starting rounds: builds made then (none made ahead), the round set up.
+    pub reset: u64,
+    /// The key probes.
+    pub probe: u64,
+    /// Builds made ahead (`Env::prepare`).
+    pub prepare: u64,
+    pub ticks: u64,
+    pub decisions: u64,
+    pub rounds: u64,
+}
+
 /// One env: a round being played, and how it goes on.
 pub struct Env {
     games: Arc<Vec<Game>>,
@@ -177,6 +194,7 @@ pub struct Env {
     exclude: Vec<Vec<ChipHandle>>,
     /// Rounds ended since they were last taken.
     pub ended: Vec<RoundStats>,
+    pub profile: Profile,
     /// The observations and the actions allowed of the seats asked.
     pub obs: [Obs; 2],
     pub legal_fight: [[bool; spec::FIGHT_ACTIONS]; 2],
@@ -281,6 +299,7 @@ impl Env {
             hp: [None; 2],
             max_hp: [0; 2],
             ended: Vec::new(),
+            profile: Profile::default(),
             obs: [Obs::new(), Obs::new()],
             legal_fight: [[false; spec::FIGHT_ACTIONS]; 2],
             legal_screen: [[false; spec::SCREEN_ACTIONS]; 2],
@@ -333,8 +352,10 @@ impl Env {
         let Some(g) = (0..self.games.len()).filter(|&g| self.ready[g].len() < READY).min_by_key(|&g| self.ready[g].len()) else {
             return Ok(false);
         };
+        let started = std::time::Instant::now();
         let side = self.games[g].maker.random(&mut self.build_picks[g], &self.exclude[g])?;
         self.ready[g].push_back(side);
+        self.profile.prepare += started.elapsed().as_nanos() as u64;
         Ok(true)
     }
 
@@ -350,6 +371,8 @@ impl Env {
     /// the first round's, made with the env), the seats' players and
     /// delays, the practice options.
     fn start_round(&mut self, made: Option<nettai_match::Match>) -> Result<(), String> {
+        let started = std::time::Instant::now();
+        self.profile.rounds += 1;
         let m = match made {
             Some(m) => m,
             None => {
@@ -410,6 +433,7 @@ impl Env {
             folder_order,
             ..RoundStats::default()
         });
+        self.profile.reset += started.elapsed().as_nanos() as u64;
         Ok(())
     }
 
@@ -543,6 +567,7 @@ impl Env {
     /// what it may do.
     fn ask(&mut self, s: usize, phase: u8) {
         self.seats[s].decided_at = Some(self.t);
+        self.profile.decisions += 1;
         let names = &self.games[self.game].names;
         match phase {
             FIGHT => {
@@ -550,6 +575,7 @@ impl Env {
                 let k = self.cfg.k;
                 let want = self.t.checked_sub(seat.delay as u32);
                 let slot = &seat.ring[((self.t / k) as usize) % seat.ring.len()];
+                let started = std::time::Instant::now();
                 if want.is_some() && slot.0 == want {
                     self.obs[s].clone_from(&slot.1);
                 } else {
@@ -557,15 +583,20 @@ impl Env {
                     let extra = self.extra(s);
                     observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
                 }
+                self.profile.encode += started.elapsed().as_nanos() as u64;
                 self.legal_fight[s] = [true; spec::FIGHT_ACTIONS];
                 self.legal_screen[s] = [false; spec::SCREEN_ACTIONS];
             }
             _ => {
                 if self.seats[s].probe.is_none() {
+                    let started = std::time::Instant::now();
                     self.seats[s].probe = Some(probe_keys(&self.battle, s as u8));
+                    self.profile.probe += started.elapsed().as_nanos() as u64;
                 }
                 let extra = self.extra(s);
+                let started = std::time::Instant::now();
                 observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
+                self.profile.encode += started.elapsed().as_nanos() as u64;
                 let screen = self.battle.custom.sides[s].screen.expect("a screen decision is on a screen");
                 self.legal_screen[s] = act::legal_screen(&screen, &self.battle.game_rules().custom_screen, extra.refused, extra.only_ok);
                 self.legal_fight[s] = [false; spec::FIGHT_ACTIONS];
@@ -616,6 +647,7 @@ impl Env {
         }
         step_battle(&mut self.battle, held);
         self.t += 1;
+        self.profile.ticks += 1;
         self.log.push(&self.battle);
         self.measure.tick(&self.battle, self.t);
         self.gains();
@@ -629,9 +661,11 @@ impl Env {
             }
             let extra = self.extra(s);
             let at = (((self.t + d) / self.cfg.k) as usize) % seat.ring.len();
+            let started = std::time::Instant::now();
             let slot = &mut self.seats[s].ring[at];
             slot.0 = Some(self.t);
             observe::encode(&self.battle, s as u8, names, &extra, &mut slot.1);
+            self.profile.encode += started.elapsed().as_nanos() as u64;
         }
     }
 

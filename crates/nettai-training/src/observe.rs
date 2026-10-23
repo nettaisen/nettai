@@ -62,11 +62,17 @@ impl Obs {
         }
     }
 
+    /// No token there: the tokens that were are zeroed (a token not there
+    /// is all zeros already).
     fn clear(&mut self) {
-        for s in &mut self.sets {
-            s.x.fill(0.0);
-            s.ids.fill(0);
-            s.mask.fill(false);
+        for (set, buf) in spec::SETS.iter().zip(&mut self.sets) {
+            for i in 0..set.count {
+                if buf.mask[i] {
+                    buf.x[i * set.width..(i + 1) * set.width].fill(0.0);
+                    buf.ids[i * set.ids..(i + 1) * set.ids].fill(0);
+                    buf.mask[i] = false;
+                }
+            }
         }
     }
 
