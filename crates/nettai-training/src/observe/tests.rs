@@ -43,7 +43,7 @@ fn an_observation_has_the_specs_shapes() {
                 let mut obs = Obs::new();
                 encode(env.battle(), viewer, env.names(), &env.extra_now(viewer as usize), &mut obs);
                 check_shapes(&obs);
-                assert!(obs.sets[spec::GLOBAL].mask[0]);
+                assert!(obs.sets[spec::GENERAL].mask[0]);
                 assert_eq!(obs.sets[spec::PANELS].mask.iter().filter(|&&m| m).count(), 18);
             }
         }

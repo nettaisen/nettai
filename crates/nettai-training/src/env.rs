@@ -36,7 +36,6 @@ use nettai_battle::custom::FolderChip;
 use nettai_battle::custom::screen::Phase;
 use nettai_battle::hud::CustomGauge;
 use nettai_battle::input::keys;
-use nettai_content_api::ChipHandle;
 use nettai_match::{Picks, Set, Side};
 use std::sync::Arc;
 
@@ -67,8 +66,8 @@ pub struct Config {
     pub max_screen_ticks: u32,
     /// The base HP's range, drawn each round, both sides the same.
     pub hp: (u16, u16),
-    /// Chips no random build puts in a folder, by key.
-    pub exclude_chips: Vec<String>,
+    /// Chips held out of training (§6.6's `chip_holdout`).
+    pub holdout: crate::builds::Holdout,
     /// The chance each practice option is on in a round.
     pub practice: f64,
     /// Decisions a policy makes on one custom screen before only OK is
@@ -90,7 +89,7 @@ impl Default for Config {
             max_fight_ticks: 18000,
             max_screen_ticks: 3600,
             hp: (1000, 1000),
-            exclude_chips: Vec::new(),
+            holdout: Default::default(),
             practice: 0.25,
             screen_decisions: 24,
             seats: [Controller::Policy; 2],
@@ -196,7 +195,6 @@ pub struct Env {
     /// whenever they were made.
     ready: Vec<std::collections::VecDeque<Side>>,
     build_picks: Vec<Picks>,
-    exclude: Vec<Vec<ChipHandle>>,
     /// Rounds ended since they were last taken.
     pub ended: Vec<RoundStats>,
     pub profile: Profile,
@@ -209,13 +207,36 @@ pub struct Env {
 /// How many builds of each game an env keeps made ahead.
 pub const READY: usize = 2;
 
+thread_local! {
+    /// A tick runs ([`step_battle`]): a panic now is the engine's stop.
+    static IN_ENGINE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Keep the engine's stops off stderr (a round reports its own:
+/// `RoundStats::error`); other panics print as usual. Once for the
+/// process (a pool does it).
+pub fn quiet_engine_panics() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let default = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if !IN_ENGINE.with(|f| f.get()) {
+                default(info);
+            }
+        }));
+    });
+}
+
 /// One tick of `b` on the players' buttons (by side), as a session runs
 /// one: a tick the engine stops on (a panic: a content error, a state the
 /// original can't go on from) stops the battle (`Battle::fail`). Whether it
 /// went on.
 pub fn step_battle(b: &mut Battle, held: [u16; 2]) -> bool {
     let input = nettai_netplay::standin::tick_input(b, held.map(|h| h as u32));
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.step(&input))) {
+    IN_ENGINE.with(|f| f.set(true));
+    let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.step(&input)));
+    IN_ENGINE.with(|f| f.set(false));
+    match stepped {
         Ok(()) => !b.is_stopped(),
         Err(e) => {
             let why = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_else(|| "a panic".into());
@@ -259,7 +280,6 @@ impl Env {
         if games.is_empty() {
             return Err("an env plays at least one game".into());
         }
-        let exclude: Vec<Vec<ChipHandle>> = games.iter().map(|g| g.maker.chips(&cfg.exclude_chips)).collect();
         let ring = (cfg.delay.1 as u32 / cfg.k.max(1)) as usize + 2;
         let seat = |n: u64, c: Controller| Seat {
             controller: c,
@@ -283,11 +303,10 @@ impl Env {
         let mut build_picks: Vec<Picks> = (0..games.len()).map(|g| Picks::new(picks.next() as u32 ^ g as u32)).collect();
         let mut ready: Vec<std::collections::VecDeque<Side>> = games.iter().map(|_| Default::default()).collect();
         let g = picks.below(games.len());
-        let first = RoundMade::new(&games[g], &mut picks, &mut build_picks[g], &mut ready[g], &exclude[g], &cfg)?;
+        let first = RoundMade::new(&games[g], &mut picks, &mut build_picks[g], &mut ready[g], &cfg)?;
         let mut env = Env {
             ready,
             build_picks,
-            exclude,
             picks,
             game: g,
             battle: first.battle,
@@ -341,10 +360,10 @@ impl Env {
         self.cfg.hp = (lo, hi.max(lo));
     }
 
-    pub fn set_exclude_chips(&mut self, keys: Vec<String>) {
-        self.exclude = self.games.iter().map(|g| g.maker.chips(&keys)).collect();
-        self.cfg.exclude_chips = keys;
-        // (Builds made ahead may hold them.)
+    /// The chips held out, from the next round.
+    pub fn set_chip_holdout(&mut self, holdout: crate::builds::Holdout) {
+        self.cfg.holdout = holdout;
+        // (Builds made ahead were made by the last.)
         for r in &mut self.ready {
             r.clear();
         }
@@ -358,7 +377,7 @@ impl Env {
             return Ok(false);
         };
         let started = std::time::Instant::now();
-        let side = self.games[g].maker.random(&mut self.build_picks[g], &self.exclude[g], self.cfg.randomize)?;
+        let side = self.games[g].maker.random(&mut self.build_picks[g], &self.cfg.holdout, self.cfg.randomize)?;
         self.ready[g].push_back(side);
         self.profile.prepare += started.elapsed().as_nanos() as u64;
         Ok(true)
@@ -382,7 +401,7 @@ impl Env {
             Some(m) => m,
             None => {
                 let g = self.picks.below(self.games.len());
-                let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.exclude[g], &self.cfg)?;
+                let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.cfg)?;
                 self.game = g;
                 self.battle = r.battle;
                 self.folders = r.folders;
@@ -759,12 +778,11 @@ impl RoundMade {
         picks: &mut Picks,
         stream: &mut Picks,
         ready: &mut std::collections::VecDeque<Side>,
-        exclude: &[ChipHandle],
         cfg: &Config,
     ) -> Result<RoundMade, String> {
         let mut build = || match ready.pop_front() {
             Some(s) => Ok(s),
-            None => game.maker.random(stream, exclude, cfg.randomize),
+            None => game.maker.random(stream, &cfg.holdout, cfg.randomize),
         };
         let sides = [build()?, build()?];
         let hp = draw(picks, cfg.hp.0, cfg.hp.1);

@@ -221,6 +221,7 @@ impl Pool {
         if cfg.games.len() > i8::MAX as usize {
             return Err("too many games".into());
         }
+        env::quiet_engine_panics();
         let games: Arc<Vec<Game>> = Arc::new(contents.into_iter().map(Game::new).collect::<Result<_, _>>()?);
         for (name, g) in cfg.games.iter().zip(games.iter()) {
             if *name != g.name {
@@ -346,10 +347,12 @@ impl Pool {
         self.each(None, |env| env.set_hp(lo, hi))
     }
 
-    /// The chips (by key) no random build puts in a folder, from the next
-    /// rounds.
-    pub fn set_exclude_chips(&mut self, keys: Vec<String>) -> Result<(), String> {
-        self.each(None, |env| env.set_exclude_chips(keys.clone()))
+    /// The chips held out of training, from the next rounds (§6.6).
+    pub fn set_chip_holdout(&mut self, holdout: crate::builds::Holdout) -> Result<(), String> {
+        if !(0.0..=1.0).contains(&holdout.fraction) {
+            return Err(format!("a fraction held out of {}: 0 to 1", holdout.fraction));
+        }
+        self.each(None, |env| env.set_chip_holdout(holdout))
     }
 
     /// The rounds ended since the last call.
@@ -357,7 +360,7 @@ impl Pool {
         let mut out = Vec::new();
         for e in 0..self.envs() {
             if let Some(env) = self.shared.env(e).as_mut() {
-                out.append(&mut env.ended);
+                out.extend(env.ended.drain(..).map(|r| RoundStats { env: e, ..r }));
             }
         }
         Ok(out)

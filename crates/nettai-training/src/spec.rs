@@ -5,8 +5,8 @@
 //! can't play them.
 //!
 //! Each set's features are listed once here, as `name: width`; the encoder
-//! writes them by those names (`global::GAUGE` is the gauge's place in a
-//! global token), and `spec()` lists them for the trainer.
+//! writes them by those names (`general::gauge` is the gauge's place in the
+//! general token), and `spec()` lists them for the trainer.
 
 use crate::names;
 
@@ -31,10 +31,10 @@ macro_rules! features {
 }
 
 features! {
-    /// The one global token: the round's phase, the gauge and turn, both
+    /// The one general token: the round's phase, the gauge and turn, both
     /// navis' HP as the viewer's HUD shows them, its own navi's charge and
     /// stats, the telops, the custom screen's state, the reaction delay.
-    global {
+    general {
         phase: 4,
         screen_phase: 4,
         gauge: 2,
@@ -104,9 +104,11 @@ features! {
 }
 
 features! {
-    /// A chip: of its own hand in the fight (next first), on its custom
-    /// screen's slots (and the screen's other slots: OK, the rules'
-    /// buttons), and the other side's last used chip as its telop showed it.
+    /// A chip: of its own hand in the fight (next first), and the other
+    /// side's last used chip as its telop showed it (the chips set); or a
+    /// slot of its custom screen, a chip or the screen's OK and the rules'
+    /// buttons (the slots set, of the same features: what the screen's
+    /// pointer points at).
     chips {
         role: 3,
         hand_place: 1,
@@ -156,26 +158,28 @@ pub struct Set {
 }
 
 /// The sets' places in [`SETS`].
-pub const GLOBAL: usize = 0;
+pub const GENERAL: usize = 0;
 pub const PANELS: usize = 1;
 pub const OBJECTS: usize = 2;
 pub const CHIPS: usize = 3;
-pub const RULES: usize = 4;
-pub const FORMS: usize = 5;
+pub const SLOTS: usize = 4;
+pub const RULES: usize = 5;
+pub const FORMS: usize = 6;
 
-/// Hand tokens, screen slot tokens and the other's used chip, in the chips
-/// set in that order.
+/// The chips set: the hand's tokens, then the other's used chip.
 pub const HAND_TOKENS: usize = 6;
+pub const USED_TOKEN: usize = HAND_TOKENS;
+/// The slots set: a token a custom screen slot, in the screen's order.
 pub const SLOT_TOKENS: usize = nettai_battle::custom::screen::SLOTS;
-pub const FIRST_SLOT_TOKEN: usize = HAND_TOKENS;
-pub const USED_TOKEN: usize = HAND_TOKENS + SLOT_TOKENS;
 
-/// The sets, in the order the bridge and the trainer keep them.
-pub const SETS: [Set; 6] = [
-    Set { name: "global", count: 1, width: global::WIDTH, ids: 4, id_names: &["own_navi", "other_navi"], fields: global::FIELDS },
+/// The sets, in the order the bridge and the trainer keep them (their names
+/// name the trainer's weights: Python identifiers, no keyword).
+pub const SETS: [Set; 7] = [
+    Set { name: "general", count: 1, width: general::WIDTH, ids: 4, id_names: &["own_navi", "other_navi"], fields: general::FIELDS },
     Set { name: "panels", count: 18, width: panels::WIDTH, ids: 2, id_names: &["type"], fields: panels::FIELDS },
     Set { name: "objects", count: 48, width: objects::WIDTH, ids: 6, id_names: &["kind", "identity", "action"], fields: objects::FIELDS },
-    Set { name: "chips", count: HAND_TOKENS + SLOT_TOKENS + 1, width: chips::WIDTH, ids: 2, id_names: &["chip"], fields: chips::FIELDS },
+    Set { name: "chips", count: HAND_TOKENS + 1, width: chips::WIDTH, ids: 2, id_names: &["chip"], fields: chips::FIELDS },
+    Set { name: "slots", count: SLOT_TOKENS, width: chips::WIDTH, ids: 2, id_names: &["chip"], fields: chips::FIELDS },
     Set { name: "rules", count: 96, width: rules::WIDTH, ids: 4, id_names: &["field", "value"], fields: rules::FIELDS },
     Set { name: "forms", count: 12, width: forms::WIDTH, ids: 2, id_names: &["form"], fields: forms::FIELDS },
 ];
@@ -196,7 +200,7 @@ pub const SCREEN_ACTIONS: usize = SLOT_TOKENS + SCREEN_KEYS.len();
 /// hash.
 pub fn text() -> String {
     let mut out = format!("nettai observation\nnames {} buckets {}\nfight actions {FIGHT_ACTIONS}\nscreen actions {SCREEN_ACTIONS} keys {}\n", names::DESCRIPTION, names::BUCKETS, SCREEN_KEYS.join(","));
-    out += &format!("chips: hand {HAND_TOKENS} slots {SLOT_TOKENS} used 1\n");
+    out += &format!("chips: hand {HAND_TOKENS} used 1; slots {SLOT_TOKENS}\n");
     for s in SETS {
         out += &format!("set {} count {} width {} ids {} ({})\n", s.name, s.count, s.width, s.ids, s.id_names.join(","));
         for (name, w) in s.fields {
@@ -221,7 +225,10 @@ mod tests {
             assert_eq!(s.fields.iter().map(|(_, w)| w).sum::<usize>(), s.width, "{}", s.name);
             assert_eq!(s.id_names.len() * 2, s.ids, "{}: two ids a name", s.name);
         }
-        assert_eq!(global::navis + 3, global::WIDTH);
+        assert_eq!(general::navis + 3, general::WIDTH);
+        for s in SETS {
+            assert!(s.name.chars().all(|c| c.is_ascii_lowercase() || c == '_'), "{}", s.name);
+        }
         assert_eq!(chips::fingerprint + FINGERPRINT, chips::WIDTH);
         assert_eq!(hash().len(), 16);
     }
