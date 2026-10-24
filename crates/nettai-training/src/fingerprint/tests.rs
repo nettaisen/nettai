@@ -150,3 +150,45 @@ fn fingerprints_keep_on_disk() {
     assert_eq!(back.pairs, f.pairs);
     assert_eq!((back.version, back.hash), (f.version, f.hash));
 }
+
+/// Every chip of the three games is fingerprinted with no run the engine
+/// stops (a content error stops a browser's page): a chip that arrives
+/// through a form with that form taken.
+#[test]
+fn every_chip_of_every_game_runs_without_a_stop() {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    for game in ["exe6", "exe5", "exe4"] {
+        let c = content(game);
+        let chips = game_chips(&c);
+        let started = std::time::Instant::now();
+        let f = Fingerprints::compute(&c, &chips, threads).unwrap_or_else(|e| panic!("{e}"));
+        println!("{game}: {} chips, {} runs in {:.1} s on {threads} threads", chips.len(), f.cost.runs, started.elapsed().as_secs_f64());
+        assert_eq!(f.chips.len(), chips.len(), "{game}");
+        assert!(f.stops.is_empty(), "{game}: {} runs stopped: {:?}", f.stops.len(), &f.stops[..f.stops.len().min(3)]);
+    }
+}
+
+/// A chip that arrives through a form is one no player brings into a
+/// battle by itself: a folder that holds it is refused by its game's rules
+/// (EXE4's souls' chips: the UNITE button puts them in the hand, the soul
+/// given at OK), so the sandbox runs it with its form taken.
+#[test]
+fn a_chip_that_arrives_through_a_form_is_in_no_folder() {
+    let mut found = 0;
+    for game in ["exe6", "exe5", "exe4"] {
+        let c = content(game);
+        let maker = Maker::new(&c).unwrap();
+        for (chip, form) in chip_forms(&c) {
+            found += 1;
+            assert!(!c.form(form).base, "{game}: {}", c.defs.chip(chip).key);
+            let mut side = maker.default_build().unwrap();
+            let mut folder = side.folder(&c);
+            let code = c.chip(chip).codes[0];
+            folder.chips[0] = Some(FolderChip::new(chip, code));
+            side.set_folder(&c, &folder).unwrap();
+            let other = maker.default_build().unwrap();
+            assert!(maker.round([side, other], 1000, 1).is_err(), "{game}: a folder holds {}", c.defs.chip(chip).key);
+        }
+    }
+    assert!(found >= 12, "EXE4's twelve souls' chips: {found}");
+}

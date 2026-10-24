@@ -176,6 +176,14 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
   at that panel, which tied a chip's fingerprint to the whole game's and let the inflicter's own leftovers count (a
   bubble's then Wind at 4); a status no chip of the game inflicts alone (EXE6's freezing, which aqua on ice brings)
   wasn't run at all.
+- **A chip that arrives through a form** is run with that form the side's choice at OK, as the rules have it when
+  they put the chip in the hand (`chip_forms`: a form whose definition names the chip in a field of its rules'
+  extension of forms typed as a chip, no field named: EXE4's souls' chips, which OK puts first in the hand for the soul
+  given, their use the change into it). Given alone, all twelve stopped the engine in every run ("EXE4's soul change
+  asked for no soul": their change reads the soul given at OK, and none was), which no player can bring about: no
+  folder may hold them (EXE4's folder rules take Standard, Mega and Giga chips; they are Special), and the UNITE button
+  that puts one in the hand gives its soul with OK (tested: `a_chip_that_arrives_through_a_form_is_in_no_folder`). Not
+  a port bug: the sandbox's setup was one the game never has.
 - **Conditions that tell nothing** (`fingerprint::uninformative`, `Fingerprints::uninformative`): a condition whose
   ratio is the same, to 0.01, for at least 95% of the chips it applies to (those that hit in the plain run at its
   panel or under it: a chip that hits in neither is at 1 under every condition), unless a pair is made of it. They are
@@ -191,14 +199,17 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
   raises past 1.3 times (grass then fire, a bubble then elec, AreaGrab then a sword that reaches the target only from
   the stolen column). Found on the packs (version 3), by the kind of effect the setup brings: EXE6 298 (a panel type
   made 193: grass 180, ice 12; a status 69: bubble 39, paralysis 30; ownership 36), EXE5 156 (panel 84: sea 68, grass
-  14; ownership 72), EXE4 131 (panel 62: cracked 36, grass 18; ownership 69); 328, 160 and 133 in version 2. The status pairs version 2 had and 3 hasn't were the inflicter's leftovers (a bubble
+  14; ownership 72), EXE4 149 (panel 80: cracked 36, grass 36, among them FireSoul's change, which grows grass; ownership
+  69); 328, 160 and 133 in version 2. The status pairs version 2 had and 3 hasn't were the inflicter's leftovers (a bubble
   then Wind, AirShot or the tank cannons; PoisonSeed then a paralysis); version 3 has a bubble then ElecSword at 2,
   which the inflicter's own hit hid. Freezing now raises 23 EXE6 chips 1.33 to 2 times (GolemHit, DrillArm, IronShell,
   FlameHook...), but no chip freezes the target alone, so no pair is of it. GrabRevenge's stolen column is at 4 (80, 100
   in EXE4: nothing plainly); no pair is of it, no setup of the user's bringing it. No pair is of objects left: no
   conditioned run measures one. Random folders are seeded with them (§6.2).
 - **Cost** (release, the packs, this busy Mac): a whole game on 10 threads in 1.4 s (EXE6, 9,585 runs: 27 a chip), 10.1
-  s (EXE5, 8,602), 3.7 s (EXE4, 8,184); both folders' chips on one thread and on four: §10.3.
+  s (EXE5, 8,602), 3.7 s (EXE4, 8,184); both folders' chips on one thread and on four: §10.3. Every chip of the three
+  games, the packs' and the test content's, runs with no run the engine stops (tested on the test content:
+  `every_chip_of_every_game_runs_without_a_stop`).
 
 ## 4. What it presses
 

@@ -37,7 +37,8 @@
 //!
 //! A chip's fingerprint is its own alone ([`Conditions`] are the content's):
 //! the same whatever chips are fingerprinted with it, so live play makes only
-//! the chips it may see.
+//! the chips it may see. A chip that arrives through a form ([`chip_forms`])
+//! is run with that form chosen, as the rules have it.
 //!
 //! Nothing here names a game: a chip is what the battle shows of it.
 
@@ -50,7 +51,7 @@ use nettai_battle::kinds::player::NaviAction;
 use nettai_battle::object::ObjectRef;
 use nettai_battle::content::CollisionRole;
 use nettai_battle::{Battle, Content};
-use nettai_content_api::{ChipHandle, KindHandle, Pool, StatusHandle};
+use nettai_content_api::{ChipHandle, FormHandle, KindHandle, Pool, StatusHandle};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
@@ -349,6 +350,9 @@ fn walk(b: &mut Battle, side: u8, to: (u8, u8)) -> bool {
 /// chip used, by tick).
 pub struct Sandbox {
     base: Battle,
+    /// The forms the chips that arrive through one arrive through
+    /// ([`chip_forms`]).
+    forms: HashMap<ChipHandle, FormHandle>,
     controls: std::cell::RefCell<HashMap<(Setup, usize), Vec<u16>>>,
     /// The runs the engine stopped (a content error), said.
     stops: std::cell::RefCell<Vec<String>>,
@@ -383,7 +387,7 @@ impl Sandbox {
                 if !walk(&mut b, 0, USER) {
                     return Err(format!("{}: the sandbox's user can't stand on its front column", content.game()));
                 }
-                return Ok(Sandbox { base: b, controls: Default::default(), stops: Default::default() });
+                return Ok(Sandbox { base: b, forms: chip_forms(content), controls: Default::default(), stops: Default::default() });
             }
             let mut held = [0u16; 2];
             if b.round.mode == mode::CUSTOM {
@@ -409,6 +413,13 @@ impl Sandbox {
     pub fn run(&self, chip: ChipHandle, target: usize, setup: Setup) -> Option<(Run, u32)> {
         let (mut b, ticks) = self.prepared(target, setup)?;
         let control = self.control(&b, target, setup);
+        // (A chip that arrives through a form, with that form the side's
+        // choice at OK, as the rules have it when they put the chip in the
+        // hand: what the custom screen's OK sends, and this turn's.)
+        if let Some(&form) = self.forms.get(&chip) {
+            b.transform_requests[0].form = Some(form);
+            b.turn_transforms[0].form = Some(form);
+        }
         give(&mut b, 0, &[chip]);
         let (run, n) = watch(&mut b, targets()[target], &control);
         self.note(&b, || format!("{} {setup:?} at panel {target}", b.content.defs.chip(chip).key));
@@ -752,6 +763,30 @@ impl Fingerprints {
         kept.lock().unwrap_or_else(|p| p.into_inner()).insert(hash, f.clone());
         Ok(f)
     }
+}
+
+/// The chips that arrive through a form, and the form: a form whose
+/// definition names the chip in a field of its rules' extension of forms
+/// typed as a chip (EXE4's souls' chips, which OK puts in the hand for the
+/// soul given, whose use is the change into it). No field is named: the
+/// extension's type says it.
+pub fn chip_forms(content: &Content) -> HashMap<ChipHandle, FormHandle> {
+    use nettai_battle::content::ExtensionType;
+    use nettai_content_api::{Data, FieldType, Registry};
+    let mut out = HashMap::new();
+    let Some(r) = content.defs.rules() else { return out };
+    let fields: Vec<&str> =
+        r.extends.iter().filter(|e| e.registry == Registry::Form && matches!(e.ty, ExtensionType::Value(FieldType::Ref(Registry::Chip, _)))).map(|e| e.field.as_str()).collect();
+    for (i, f) in content.defs.forms.iter().enumerate() {
+        for field in &fields {
+            if let Some(Data::Ref(Registry::Chip, key)) = content.defs.extension(Registry::Form, &f.key, field)
+                && let Some(chip) = content.defs.chip_by_key(key)
+            {
+                out.insert(chip, FormHandle(i as u16));
+            }
+        }
+    }
+    out
 }
 
 /// The chips of `content`'s game that are fingerprinted: its own (an
