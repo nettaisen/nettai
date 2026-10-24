@@ -22,6 +22,7 @@ torch_threads = 3    # the collector's CPU work: each step's tokens gathered int
 update_threads = 2   # the learner's: GAE, each minibatch's indices
 
 [eval]
+games = ["exe6", "exe5", "exe4"]   # without games, no evaluation runs (the first run had none)
 every = 100
 envs = 40
 threads = 2          # its own pool, beside training's, while it runs
