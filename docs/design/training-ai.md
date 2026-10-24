@@ -19,8 +19,8 @@ The user's answers, 2026-10-23:
   line in [rust-and-luau.md](rust-and-luau.md) holds for it too). What it sees comes from the engine's shared
   state and the content's own descriptions, so a game added later is played by the same code and the same network.
 - **No imitation of replays** ("the replays i have aren't very representative"). It learns from scratch, by self-play.
-- **Kept from before:** the AI stays Rust (no Luau AI). Only the player opens the custom screen (live play strips
-  the dummy's L and R). The dummy plays whichever build the practice menu gives it. It picks most chips each turn.
+- **Kept from before:** the AI stays Rust (no Luau AI). The dummy opens the custom screen as the env did in training,
+  a while after the gauge is full (since 2026-10-24; before, only the player did). The dummy plays whichever build the practice menu gives it. It picks most chips each turn.
 
 ## 1. What "state of the art" means here
 
@@ -358,9 +358,10 @@ it.
 
 ### 6.3 Who opens the custom screen
 
-In practice only the player opens it, so neither side learns to. The env opens it for one side or the other a
-random while after the gauge fills: 0 to 10 seconds, weighted toward soon (600 u² ticks, u uniform), pressing L
-(a press and a let-go until the screen opens). No seat's own L or R reaches the fight.
+Neither side learns to open it. The env opens it for one side or the other a random while after the gauge fills
+(`env::opener_wait`): 0 to 10 seconds, weighted toward soon (600 u² ticks, u uniform), pressing L (a press and a
+let-go until the screen opens). No seat's own L or R reaches the fight. The app's player (§10.2) opens its own the
+same way (the user: "allow the dummy to go into custom screen"); the player may open it first.
 
 The practice options that change the battle are on in some rounds, each with chance `practice` (default 0.25), since
 the dummy meets them: a full gauge (whenever it runs, it is full), and the folders dealt in their own order. Both are
@@ -806,6 +807,8 @@ file; `NetAi::of` takes a network already read, for an app that keeps one); `Lev
 knobs the weights' by name. It plays a side as the env plays a policy seat (§4, §6), once a tick on the battle's
 thread (`fight` or `custom_screen`, both the same tick of the round):
 
+- It opens the custom screen as the env does (§6.3): a while after the gauge is full, drawn anew each time
+  (`env::opener_wait`, its own draws), L pressed and let go until the screen opens.
 - It counts ticks from the round's start, keeps the attack log, and encodes the view into its reaction-delay ring
   on the ticks a decision will need (`(t + D) mod k = 0`, `D` the level's delay).
 - In the fight it decides every `k` ticks from the view of `D` ticks before (what it sees now while the round is

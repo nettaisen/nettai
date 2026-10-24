@@ -806,22 +806,19 @@ impl Env {
     /// The seat the env presses L for this tick, to open the custom screen
     /// (§6.3): a random while after the gauge is full, for a random seat.
     fn opens(&mut self) -> Option<usize> {
-        let b = &self.battle;
-        if !fight_runs(b) || b.is_dimmed() || b.gauge.value < CustomGauge::FULL {
+        if !may_open(&self.battle) {
             return None;
         }
         let (seat, at) = match self.opener {
             Some(o) => o,
             None => {
-                let u = (self.picks.next() >> 11) as f64 / (1u64 << 53) as f64;
-                let wait = (600.0 * u * u) as u32;
+                let wait = opener_wait(self.picks.next());
                 let seat = self.picks.below(2);
                 self.opener = Some((seat, self.t + wait));
                 (seat, self.t + wait)
             }
         };
-        // (A press and a let-go, until the screen opens.)
-        (self.t >= at && (self.t - at).is_multiple_of(2)).then_some(seat)
+        presses_l(self.t, at).then_some(seat)
     }
 
     /// The tick's HP lost by each side, into each seat's gain (§6.4), each
@@ -869,6 +866,27 @@ impl Env {
 }
 
 /// A number from `lo` to `hi`.
+/// Whether the custom screen may be opened now (§6.3): the fight runs,
+/// undimmed, the gauge full.
+pub fn may_open(b: &Battle) -> bool {
+    fight_runs(b) && !b.is_dimmed() && b.gauge.value >= CustomGauge::FULL
+}
+
+/// How long after the gauge is full the custom screen is opened, from a
+/// draw: 600·u² ticks, u uniform in [0, 1) (10 s at most, 3.3 s on average,
+/// soon more often than late). The env's opener, and the app's AI's
+/// (`ai::NetAi`), which opens its own screen as training did.
+pub fn opener_wait(draw: u64) -> u32 {
+    let u = (draw >> 11) as f64 / (1u64 << 53) as f64;
+    (600.0 * u * u) as u32
+}
+
+/// Whether L is pressed at tick `t` to open the screen from tick `at`: a
+/// press and a let-go, until it opens.
+pub fn presses_l(t: u32, at: u32) -> bool {
+    t >= at && (t - at).is_multiple_of(2)
+}
+
 /// SplitMix64's finalizer: a deal's key and round number to a seed.
 fn mix(mut z: u64) -> u64 {
     z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);

@@ -41,6 +41,7 @@ use crate::net::{self, Action, Heads, Knobs, Memory, Net};
 use crate::observe::{self, AttackHistory, Extra, Names, Obs};
 use crate::spec;
 use nettai_battle::battle::mode;
+use nettai_battle::input::keys;
 use nettai_battle::setup::SetScore;
 use nettai_battle::{Battle, Content};
 use nettai_frontend::driver::Ai;
@@ -385,6 +386,9 @@ struct Round {
     probe: Option<[bool; act::KEYS.len()]>,
     decisions: u16,
     in_screen: bool,
+    /// The tick it opens the custom screen from, once the gauge is full (the
+    /// env's opener: `env::opener_wait`); none until it is.
+    opener: Option<u32>,
 }
 
 /// Why a [`NetAi`] stopped, for its host to read after giving it away
@@ -524,6 +528,7 @@ impl NetAi {
                 probe: None,
                 decisions: 0,
                 in_screen: false,
+                opener: None,
             });
             self.mem.reset();
             // (Both folders' chips and the Program Advances they make: the
@@ -634,6 +639,7 @@ impl NetAi {
             r.nav.reset();
             r.probe = None;
             r.decisions = 0;
+            r.opener = None;
         }
         r.in_screen = custom;
         if self.error.is_some() {
@@ -641,7 +647,10 @@ impl NetAi {
         } else if custom {
             r.nav.buttons(b, side)
         } else if fight_runs(b) {
-            act::fight_buttons(r.action)
+            // (It opens the custom screen as the env did in training, a while after the gauge is full: the user,
+            // "allow the dummy to go into custom screen". The player may open it first.)
+            let at = if env::may_open(b) { *r.opener.get_or_insert_with(|| r.t + env::opener_wait(self.rng.next_u64())) } else { u32::MAX };
+            act::fight_buttons(r.action) | if env::presses_l(r.t, at) { keys::L } else { 0 }
         } else {
             0
         }

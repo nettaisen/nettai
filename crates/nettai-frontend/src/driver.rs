@@ -709,18 +709,16 @@ impl LivePlayer {
                 (choice, _) => custom_buttons(b, side, self.ticks, choice != OnCustomScreen::PicksNothing),
             };
         }
-        // (Only the player opens the custom screen: a dummy the computer plays never presses L or R in the fight, and
-        // makes its choices once the player has opened it. The user: "in training mode, don't have the dummy go into
-        // custom automatically. only the player should trigger custom and then the dummy will make its custom
-        // selections". A second pad is a person, and opens it as the player does.)
-        let pressed = match self.opponent.in_fight {
+        // (The dummy opens the custom screen as its presses do: one attacking at random by its L and R, the AI as it
+        // was trained, a while after the gauge is full. The user: "allow the dummy to go into custom screen. remove
+        // that restriction it has", of the one before, when only the player opened it.)
+        match self.opponent.in_fight {
             InFight::StandsStill => 0,
             InFight::MovesAround => mashed & MOVES,
             InFight::AttacksAtRandom => mashed,
             InFight::SecondPad => 0,
             InFight::Ai => self.ai.as_mut().map_or(0, |ai| ai.fight(b, side as u8, keys)),
-        };
-        pressed & !(keys::L | keys::R)
+        }
     }
 }
 
@@ -1046,8 +1044,10 @@ mod tests {
     /// fight with it in hand and one that picks nothing with none, whatever
     /// it does in the fight; one that moves around or attacks leaves the
     /// panel it starts on, one that stands still never does; only one that
-    /// attacks presses anything but a direction in the fight; a set against
-    /// one started again gets the same presses.
+    /// attacks presses anything but a direction in the fight, and it opens
+    /// the custom screen by its L and R once the gauge is full (the player
+    /// presses nothing in the fight here: the others never open it); a set
+    /// against one started again gets the same presses.
     #[test]
     fn each_opponent_plays() {
         let content = nettai_match::testing::exe6_content();
@@ -1056,7 +1056,7 @@ mod tests {
             let mut live = LivePlayer::against(Set::of(&content, &m, 5), opponent, 9);
             let mut run = || {
                 let mut b = live.start();
-                let (mut hand, mut start, mut moved, mut attacked, mut presses) = (None, None, false, false, Vec::new());
+                let (mut hand, mut start, mut moved, mut attacked, mut presses, mut screens) = (None, None, false, false, Vec::new(), 0);
                 for tick in 0..1500u32 {
                     let keys = if b.round.mode == mode::CUSTOM { bot_buttons(&b, 0, tick) } else { 0 };
                     let custom = b.round.mode == mode::CUSTOM;
@@ -1064,8 +1064,8 @@ mod tests {
                     presses.push(step.input[1]);
                     attacked |= !custom && step.input[1].held & (keys::A | keys::B | keys::L | keys::R) != 0;
                     assert!(custom || step.input[1].held & keys::START == 0, "{opponent:?}: START outside the custom screen at tick {tick}");
-                    assert!(custom || opponent.in_fight == InFight::SecondPad || step.input[1].held & (keys::L | keys::R) == 0, "{opponent:?}: L or R in the fight at tick {tick}: only the player opens the custom screen");
                     b.tick(&step.input, step.events);
+                    screens += (!custom && b.round.mode == mode::CUSTOM) as u32;
                     assert!(!b.is_stopped(), "{opponent:?}: tick {tick}");
                     if b.round.mode == mode::FIGHTING && hand.is_none() {
                         hand = Some(b.hands[1].remaining());
@@ -1076,12 +1076,18 @@ mod tests {
                         start.get_or_insert(at);
                     }
                 }
-                (hand, moved, attacked, presses)
+                (hand, moved, attacked, presses, screens)
             };
-            let (hand, moved, attacked, presses) = run();
+            let (hand, moved, attacked, presses, screens) = run();
             assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
             assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded, no second pad and no AI given, it stands still");
             assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
+            // (The round's first screen, and then those the attacker opened.)
+            if opponent.in_fight == InFight::AttacksAtRandom {
+                assert!(screens >= 2, "{opponent:?}: it opens the custom screen ({screens} screens)");
+            } else {
+                assert_eq!(screens, 1, "{opponent:?}: it never opens the custom screen");
+            }
             assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
     }
@@ -1139,8 +1145,7 @@ mod tests {
                         moved += (pressed != 0) as u32;
                     }
                     InFight::AttacksAtRandom => {
-                        // (Not L or R: only the player opens the custom screen.)
-                        assert_eq!(pressed, mashed & 0x3FF & !(keys::L | keys::R), "tick {tick}");
+                        assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
                     InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
@@ -1180,8 +1185,7 @@ mod tests {
             match self.opponent.in_fight {
                 InFight::StandsStill => 0,
                 InFight::MovesAround => mashed & MOVES,
-                // (Not L or R: only the player opens the custom screen.)
-                InFight::AttacksAtRandom => mashed & !(keys::L | keys::R),
+                InFight::AttacksAtRandom => mashed,
                 // (No second pad: it stands still.)
                 InFight::SecondPad => 0,
                 // (No AI given: it stands still.)

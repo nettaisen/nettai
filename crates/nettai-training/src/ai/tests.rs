@@ -52,7 +52,7 @@ fn play_fight(game: &str, seed: u32, ai: &mut NetAi, ticks: u32, theirs: u16) ->
         } else {
             0
         };
-        let held = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, theirs) & !(keys::L | keys::R) };
+        let held = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, theirs) };
         pressed.push(held);
         runs.push(fight_runs(&b));
         if !env::step_battle(&mut b, [mine, held]) || b.is_battle_over() {
@@ -65,7 +65,8 @@ fn play_fight(game: &str, seed: u32, ai: &mut NetAi, ticks: u32, theirs: u16) ->
 /// It plays a round of each game: through custom screens (its own pressed
 /// to OK) and in the fight, where it decides every k ticks from the view
 /// of its delay before (once the round is that old), holding its buttons
-/// between, and never presses L, R, START or SELECT.
+/// between, and never presses R, START or SELECT (L, to open the custom
+/// screen, its own test's).
 #[test]
 fn it_plays_a_round_as_the_env_plays_a_seat() {
     for game in crate::testing::GAMES {
@@ -81,15 +82,63 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
         }
         let fight: Vec<(usize, u16)> = pressed.iter().copied().enumerate().filter(|&(t, _)| ai.decided.iter().any(|&(d, _)| d as usize <= t)).collect();
         assert!(fight.iter().any(|&(_, h)| h & (keys::A | keys::B) != 0) && fight.iter().any(|&(_, h)| h & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0), "{game}: it moves and attacks");
-        assert!(pressed.iter().all(|h| h & (keys::L | keys::R | keys::SELECT) == 0), "{game}");
+        assert!(pressed.iter().all(|h| h & (keys::R | keys::SELECT | keys::START) == 0), "{game}");
         // (Between decisions in the fight, the buttons held stay as they were.)
         let decisions: std::collections::HashSet<usize> = ai.decided.iter().map(|&(t, _)| t as usize).collect();
         for t in 1..pressed.len() {
+            // (Its L, pressed and let go as it opens the custom screen, apart.)
             if runs[t] && runs[t - 1] && !decisions.contains(&t) {
-                assert_eq!(pressed[t], pressed[t - 1], "{game}: tick {t}, no decision");
+                assert_eq!(pressed[t] & !keys::L, pressed[t - 1] & !keys::L, "{game}: tick {t}, no decision");
             }
         }
     }
+}
+
+/// It opens the custom screen itself as the env did in training (the user:
+/// "allow the dummy to go into custom screen"): with the other side never
+/// opening it, L a while after the gauge is full, within `opener_wait`'s
+/// 600 ticks, the while drawn anew each time.
+#[test]
+fn it_opens_the_custom_screen_as_the_env_did() {
+    let game = "exe6";
+    let c = content(game);
+    let maker = crate::builds::Maker::new(&c).unwrap();
+    let mut waits = Vec::new();
+    for seed in [3, 4] {
+        let mut ai = NetAi::of(net(), Level::Normal, seed as u64, fingerprints(game)).unwrap();
+        let mut picks = Picks::new(seed);
+        let none = crate::builds::Holdout::default();
+        let sides = [0, 1].map(|_| maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side);
+        let m = maker.round(sides, 1000, seed).unwrap();
+        let mut b = Set::of(&c, &m, seed).start();
+        let (mut full_since, mut first_l) = (None, None);
+        for t in 0..4000u32 {
+            let custom = b.round.mode == mode::CUSTOM;
+            // (The other side picks its chips and never opens the screen.)
+            let mine = if custom { nettai_frontend::driver::bot_buttons(&b, 0, t) } else { 0 };
+            let held = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, 0) };
+            if env::may_open(&b) {
+                full_since.get_or_insert(t);
+                if held & keys::L != 0 {
+                    first_l.get_or_insert(t);
+                }
+            }
+            if !env::step_battle(&mut b, [mine, held]) || b.is_battle_over() {
+                break;
+            }
+            // (A screen the gauge was full for: not a round's first, which opens on its own.)
+            if !custom && b.round.mode == mode::CUSTOM {
+                if let Some(since) = full_since.take() {
+                    let l = first_l.take().expect("the AI's L opened it");
+                    waits.push(l - since);
+                }
+            }
+        }
+    }
+    println!("waits {waits:?}");
+    assert!(waits.len() >= 4, "{waits:?}");
+    assert!(waits.iter().all(|&w| w <= 601), "{waits:?}");
+    assert!(waits.iter().any(|&w| w != waits[0]), "{waits:?}: drawn anew");
 }
 
 /// Its network's memory takes each decision's action, the next decision's
