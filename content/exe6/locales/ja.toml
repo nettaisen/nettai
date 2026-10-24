@@ -807,6 +807,14 @@ language = "ja"
 # the four ROMs of the game show alike are the English words in both languages (BATTLE START!, PAUSE, CUSTOM); the
 # navis' names in the banners, the Program Advance's, the waiting label and the help pictures' words are the Japanese
 # ROMs' own.
+# The emotions a navi can be held in (rules/status's `emotion.order`: `EmotionRules::holdable`), by name, for a
+# tool that holds a side in one (the app's practice menu). Ours.
+[emotions]
+"full_synchro" = "フルシンクロ"
+"angry" = "怒り"
+"tired" = "疲れ"
+"worn_out" = "ひどい疲れ"
+
 [lettering]
 "banner.battle-start" = "BATTLE START!"
 "banner.battle-number" = "BATTLE {n}"

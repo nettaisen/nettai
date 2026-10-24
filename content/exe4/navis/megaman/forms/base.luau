@@ -22,7 +22,7 @@ local form: FormDef = {
         angry = asset.mugshot("megaman-angry"),
         worried = asset.mugshot("megaman-worried"),
         full_synchro = asset.mugshot("megaman-full-synchro"),
-        worn_out = asset.mugshot("megaman-dark"),
+        evil = asset.mugshot("megaman-dark"),
     },
 }
 

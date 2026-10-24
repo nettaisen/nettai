@@ -1995,7 +1995,7 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 |---|---|---|---|
 | 4 | in a soul (NaviStats +0x2C) | normal (the soul's own face; nothing doubles or ends) | the soul's |
 | 3 | anger (AIData +0x34) | angry | 1 |
-| 5 | a mood of 0 (a dark MegaMan's) | worn out | 4, the dark face |
+| 5 | a mood of 0 (a dark MegaMan's) | evil (the framework's worn-out role) | 4, the dark face |
 | 2 | mood 0xFF | Full Synchro | 3 |
 | 0 | a mood of 65 or more | normal | 0 |
 | 1 | a mood under 65 | **worried** (new) | 2 |

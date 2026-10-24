@@ -4,7 +4,7 @@
 --
 -- - **The offer** (0x0801DE90, from the screen's opening, 0x0801DD02, after its hand size and the round's count of
 --   screens, before it deals): in a netbattle (battle type 0x46 and on: every EXE4 round of nettai's) to a MegaMan
---   worn out (emotion 5: a mood of 0, a dark MegaMan's from his start) alone. (Its other branches are the story's:
+--   evil (emotion 5: a mood of 0, a dark MegaMan's from his start) alone. (Its other branches are the story's:
 --   a worried MegaMan offered them too in a battle of type under 0x46, by its settings and the story's event flags,
 --   0x0416; the story's dark chips, event flag 0x74, which a dark MegaMan's save has: no other way leads to a mood of
 --   0 in a netbattle.) Two draws of the console's RNG1 pick two different chips of a list of 64 (0x0801DF38: the
@@ -93,7 +93,7 @@ end
 function dark_chips.deal(side: number)
     local s = rules.state() :: State
     s.picks, s.offered_picks = 0, 0
-    if not battle.link() or custom.player(side).emotion ~= "worn_out" then
+    if not battle.link() or custom.player(side).emotion ~= "evil" then
         return
     end
     local navi = battle.player(side)

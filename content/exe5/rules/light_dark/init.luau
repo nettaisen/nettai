@@ -171,7 +171,7 @@ local DRKRECOV = "drkrecov"
 -- effect 1 with a setting of 0x101 that leaves 2 or 3 over by 6, never holds: 0x101 - 0x101 leaves 0.)
 local function offer_dark_chip(side: number)
     local emotion = custom.player(side).emotion
-    if emotion ~= "worried" and emotion ~= "worn_out" then
+    if emotion ~= "worried" and emotion ~= "evil" then
         return
     end
     local navi = battle.player(side)

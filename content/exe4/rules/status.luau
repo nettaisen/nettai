@@ -440,7 +440,7 @@ local status = {
         chip_destruction = "hand",
         -- EXE4's emotions (0x0800F49C, in its order: the first that holds is the side's): in a soul (NaviStats +0x24,
         -- neither 0 nor 15) the soul's (its face the soul form's); angry (AIData +0x2E, anger's ticks); a mood of 0
-        -- (the dark MegaMan's: worn out); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
+        -- (the dark MegaMan's: evil); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
         -- (0x0800F4DE) leaves a mood of 0, and anger's end goes through it (0x0800C608).
         emotion = {
             mood_held = "at_zero",
@@ -448,15 +448,15 @@ local status = {
             order = {
                 { emotion = "soul", when = { { in_form = true } } },
                 { emotion = "angry", when = { { angry = true } } },
-                { emotion = "worn_out", when = { { mood = 0 } } },
+                { emotion = "evil", when = { { mood = 0 } } },
                 { emotion = "full_synchro", when = { { mood = 0xFF } } },
                 { emotion = "worried", when = { { mood_below = 65 } } },
                 { emotion = "normal" },
             },
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (0x0800D54E), Full
-            -- Synchro with its aura besides (0x0800D9AE); worn out or in a soul, anger doesn't start (0x0800C56E: the
+            -- Synchro with its aura besides (0x0800D9AE); evil or in a soul, anger doesn't start (0x0800C56E: the
             -- soul, 0x0800C57E: the emotion 5; the framework's `tired`). The buster knows no emotion.
-            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "tired", soul = "tired" },
+            roles = { full_synchro = "full_synchro", angry = "angry", evil = "tired", soul = "tired" },
             -- A hit's counter byte wears the receiver's mood, a counter hit's counting 0xFF and wearing 0x7F
             -- (0x08012C10), and what a tick's hits counted raises the hitter's, to 0xFF (Full Synchro) at most
             -- (0x080131E4: 0x0800F4FA). A chip's use leaves Full Synchro at 0x99 (0x0800D568) and plays the boost's

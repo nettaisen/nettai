@@ -495,7 +495,7 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
 
 - **The UNITE button** in slot 11 under OK (the selection's state 0xC, its keys 0x08020728), the screen's +0x0C: on the
   screen as it opens (0x0801E0B4) with Double Soul (event flag 0x14: the setup's `double_soul`) unless the navi is
-  worried or worn out (emotions 1 and 5), else its place shows the window (the look's `hidden`) and OK's DOWN goes
+  worried or evil (emotions 1 and 5), else its place shows the window (the look's `hidden`) and OK's DOWN goes
   nowhere. Its look (0x0801FF14): lit while the last pick offers a soul, gray while it doesn't and once one is given.
 - **The offer** (0x0801FF84, the screen's +0x0D, after each pick and take-back): asked only before a soul is given and
   while the navi's soul turns count (AIData +0x18 not 0xFF); the last pick, not the Regular chip, of a family a soul
@@ -514,7 +514,7 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
 **The dark chips** (group A; rules/dark_chips, the chips' own modules):
 
 - **The offer** (0x0801DE90, from the screen's opening, 0x0801DD02): in a netbattle (battle type 0x46 and on) to a
-  MegaMan worn out (emotion 5, a mood of 0: a dark MegaMan's) alone; the other branches are the story's. Two
+  MegaMan evil (emotion 5, a mood of 0: a dark MegaMan's) alone; the other branches are the story's. Two
   different draws of the console's RNG1 (the low six bits) from a list of 64 (0x0801ECB0, or with the navi's HP at
   half its maximum or less 0x0801ECF0), shown in slots 8 and 9 in code 27 with the flags 0x21: the second only while
   the side has been sent fewer than nine this battle, neither from ten (0x0203F6D0; the draws are drawn all the same).
@@ -587,8 +587,8 @@ and faces are its own table, to read.
 **As ported** (group A; the status section's `emotion`, rules/light_dark, the roles):
 
 - **The emotion** (0x0800F49C): 0 normal (a mood of 65 or more), 1 worried (under 65), 2 Full Synchro (0xFF), 3 angry
-  (AIData +0x2E: anger's ticks), 4 in a soul (NaviStats +0x24 not 0 nor 15, its soul in r1), 5 worn out (a mood of 0:
-  the dark MegaMan), read in the order soul, angry, worn out, Full Synchro, worried, normal. Worn out and in a soul
+  (AIData +0x2E: anger's ticks), 4 in a soul (NaviStats +0x24 not 0 nor 15, its soul in r1), 5 evil (a mood of 0:
+  the dark MegaMan), read in the order soul, angry, evil, Full Synchro, worried, normal. Evil and in a soul
   keep anger from starting (0x0800C560 also tests NaviStats +0x23, the navi, and the object's +4: MegaMan alone, no
   other navi plays a netbattle); the buster knows no emotion; the custom screen offers souls to none but 1 and 5
   (0x0801E0B4) and dark chips to 5 alone in a netbattle (0x0801DE90).

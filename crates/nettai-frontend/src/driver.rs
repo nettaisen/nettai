@@ -457,6 +457,12 @@ pub struct Training {
     pub full_gauge: bool,
     /// The order both sides' custom screens deal their folders in.
     pub chip_draw: ChipDraw,
+    /// By side: an emotion of its game its navi is held in, whatever would
+    /// change it (a chip that spends Full Synchro, anger running out), from
+    /// one of the game's `EmotionRules::holdable` (none: as the game goes).
+    /// Out of the fight's reach where the navi is in a form whose emotions
+    /// are its own (EXE4's and EXE5's souls), until it leaves it.
+    pub emotions: [Option<nettai_battle::content::Emotion>; 2],
 }
 
 /// The order a custom screen deals the battle folder in.
@@ -656,6 +662,9 @@ impl LivePlayer {
                 navi.hp = navi.max_hp;
             }
             self.refill[side].hp = Some(navi.hp);
+            if let Some(e) = self.training.emotions[side].filter(|_| !over && navi.hp > 0) {
+                nettai_battle::kinds::player::hold_emotion(b, side as u8, e);
+            }
         }
         // (The gauge runs from each custom screen's end until the next opens, and not after the round is decided.)
         if self.training.full_gauge && b.gauge.enabled && b.gauge.value < CustomGauge::FULL {
@@ -1301,6 +1310,69 @@ mod tests {
         assert_eq!(hp(&s.battle, 0).0, hp(&s.battle, 0).1);
     }
 
+    /// Each game's emotions a navi can be held in (`Training::emotions`)
+    /// hold through a fight of chips and shots, each side its own: past a
+    /// chip that spends Full Synchro or anger (off for the tick it was used
+    /// on alone, back before the next), past anger's 600 ticks, past the
+    /// hits that wear a mood. None held: the game's own (MegaMan starts
+    /// normal).
+    #[test]
+    fn a_held_emotion_holds_through_the_fight() {
+        use nettai_battle::kinds::player::emotion_name;
+        for game in ["exe4", "exe5", "exe6"] {
+            let content = match game {
+                "exe4" => nettai_match::testing::exe4_content(),
+                "exe5" => nettai_match::testing::exe5_content(),
+                _ => nettai_match::testing::exe6_content(),
+            };
+            let mut m = nettai_match::pick::live(&content, game, 5, None).unwrap();
+            for s in &mut m.sides {
+                s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
+            }
+            let first = Set::of(&content, &m, 5).start();
+            let held = first.game_rules().emotion.holdable();
+            let names: Vec<String> = held.iter().map(|(e, _)| first.game_rules().emotion.name(*e).to_string()).collect();
+            println!("{game}: {names:?}");
+            assert!(held.len() >= 4, "{game}: {names:?}");
+            for i in 0..held.len() {
+                let emotions = [Some(held[i].0), Some(held[(i + 1) % held.len()].0)];
+                let want = [&names[i], &names[(i + 1) % held.len()]];
+                let live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst }, 9)
+                    .with_training(Training { emotions, ..Training::default() });
+                let mut s = crate::session::Session::new(Box::new(live));
+                let (mut off, mut longest, mut spent) = ([0u32; 2], [0u32; 2], [0u32; 2]);
+                for tick in 0..2400u32 {
+                    let b = &s.battle;
+                    let keys = if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { short_set::shooter(b, 0, tick) };
+                    assert!(s.step(keys), "{game} tick {tick}");
+                    let b = &s.battle;
+                    if b.is_battle_over() {
+                        break;
+                    }
+                    for side in 0..2u8 {
+                        if b.player(side).is_none() {
+                            continue;
+                        }
+                        let now = emotion_name(b, side);
+                        let o = &mut off[side as usize];
+                        *o = if now == want[side as usize] { 0 } else { *o + 1 };
+                        spent[side as usize] += (*o == 1) as u32;
+                        longest[side as usize] = longest[side as usize].max(*o);
+                    }
+                }
+                println!("  {want:?}: off for a tick {spent:?} times");
+                assert!(longest[0] <= 1 && longest[1] <= 1, "{game}: {want:?} off for {longest:?} ticks in a row");
+            }
+        }
+        // None held: the game's own.
+        let content = nettai_match::testing::exe6_content();
+        let mut s = crate::session::Session::new(Box::new(LivePlayer::against(Set::of(&content, &long_match(&content), 5), Opponent::default(), 9)));
+        while s.battle.player(0).is_none() {
+            assert!(s.step(0));
+        }
+        assert_eq!(emotion_name(&s.battle, 0), "normal");
+    }
+
     /// With the gauge always full, it is full whenever it runs, from the
     /// tick after each custom screen ends, and the engine flags it full (L
     /// or R opens the screen) on the first tick it fills, once the turn's
@@ -1426,7 +1498,7 @@ mod tests {
         // The game's pause: START, and no buttons.
         keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
         assert_eq!(b.paused_by(), Some(0));
-        let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder };
+        let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder, ..Training::default() };
         live.set_training(options, &mut b);
         for tick in 0..300u32 {
             let step = live.next(&b, 0).unwrap();

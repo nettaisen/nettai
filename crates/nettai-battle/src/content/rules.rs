@@ -1604,6 +1604,23 @@ impl EmotionRules {
     pub fn role(&self, e: Emotion) -> Option<EmotionRole> {
         self.roles.get(e.0 as usize).copied().flatten()
     }
+
+    /// The emotions a host may hold a side in (`kinds::player::hold_emotion`,
+    /// a practice session's): each but the default that has a case with an
+    /// alternative asking for no form and no battle mode, in the order's
+    /// order, with the first such alternative (the facts holding it sets).
+    pub fn holdable(&self) -> Vec<(Emotion, EmotionWhen)> {
+        let mut out: Vec<(Emotion, EmotionWhen)> = Vec::new();
+        for c in &self.order {
+            if c.emotion == self.fallback() || out.iter().any(|(e, _)| *e == c.emotion) {
+                continue;
+            }
+            if let Some(w) = c.when.iter().find(|w| w.in_form != Some(true) && w.battle_mode.is_none()) {
+                out.push((c.emotion, *w));
+            }
+        }
+        out
+    }
 }
 
 #[derive(Deserialize)]

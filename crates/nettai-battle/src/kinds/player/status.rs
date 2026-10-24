@@ -1135,7 +1135,10 @@ fn dive_ripple(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_8014326`: anger lasts 600 ticks (player navis whose emotion
+/// How long anger lasts (`sub_8014326`'s 600 ticks).
+pub(crate) const ANGER_TICKS: u16 = 600;
+
+/// `sub_8014326`: anger lasts [`ANGER_TICKS`] (player navis whose emotion
 /// allows it).
 fn tick_anger(b: &mut Battle, r: ObjectRef) {
     if navi_record(b, r).actor_type != ActorType::Player {
@@ -1158,7 +1161,7 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
         if flag2(b, r) & 0x200 != 0 {
             clear_flag2(b, r, 0x200);
             set_flag1(b, r, f1::ANGER);
-            ai_mut(b, r).anger = 600;
+            ai_mut(b, r).anger = ANGER_TICKS;
             set_mood(b, side, 0x80);
         }
         return;

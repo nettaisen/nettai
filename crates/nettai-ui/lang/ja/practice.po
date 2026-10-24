@@ -89,6 +89,14 @@ msgstr "通常"
 msgid "Refills"
 msgstr "回復する"
 
+# Battle: each side's navi held in one of the game's emotions (their words the content's), or as the game goes
+# (Normal, the HP rows' word).
+msgid "Your emotion"
+msgstr "あなたの感情"
+
+msgid "Dummy's emotion"
+msgstr "ダミーの感情"
+
 msgid "Custom gauge"
 msgstr "カスタムゲージ"
 

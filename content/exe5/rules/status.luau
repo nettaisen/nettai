@@ -443,7 +443,7 @@ local status = {
         chip_destruction = "hand",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
-        -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.
+        -- evil), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.
         -- Its mood setter (0x080127D6) leaves a mood of 0, and anger's end goes through it (0x08011A94). (Its anger
         -- tick, 0x08011A14, passes over the actor records of AI index 23, ShadowMan's SplitUp shadow's: an
         -- identity's `never_angers`, which no navi a player operates has.)
@@ -455,14 +455,15 @@ local status = {
                 { emotion = "full_synchro", when = { { battle_mode = 1, mood = 0xFF } } },
                 { emotion = "normal", when = { { battle_mode = 1 }, { in_form = true } } },
                 { emotion = "angry", when = { { angry = true } } },
-                { emotion = "worn_out", when = { { mood = 0 } } },
+                { emotion = "evil", when = { { mood = 0 } } },
                 { emotion = "full_synchro", when = { { mood = 0xFF } } },
                 { emotion = "worried", when = { { mood_below = 65 } } },
                 { emotion = "normal" },
             },
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
-            -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
-            roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
+            -- its palette and aura besides); an evil navi plays the framework's worn-out role (EXE6's very tired
+            -- navi's): its buster deals 1, and anger doesn't start.
+            roles = { full_synchro = "full_synchro", angry = "angry", evil = "worn_out" },
             -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's;
             -- otherwise what a tick's hits counted raises the hitter's mood as a recovery does (0x08012802: a mood of 0
             -- or 0xFF stays, to 0xFE at most), where EXE6's gives nothing. A chip's use leaves Full Synchro at 0x80

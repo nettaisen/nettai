@@ -33,11 +33,11 @@ local SYNCHRO_GIFT = fruit.gift(function(navi: Object)
     end
     local stats = battle.navi(navi.alliance)
     -- EXE5's emotion (exe5-map.md §15.10): in battle mode 1 Full Synchro (2) or normal (0); else a soul's 4 first (the
-    -- engine's emotion says normal for it), then anger's 3, a mood of 0's 5 (worn out), and 0 to 2 by the mood.
+    -- engine's emotion says normal for it), then anger's 3, a mood of 0's 5 (evil), and 0 to 2 by the mood.
     if battle.mode() ~= 1 and not stats.form.base then
         return
     end
-    if battle.emotion(navi.alliance) == "worn_out" then
+    if battle.emotion(navi.alliance) == "evil" then
         return
     end
     if stats.mood ~= 0 then

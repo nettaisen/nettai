@@ -3103,6 +3103,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
 | Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Options: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
+| Options: Your emotion, Dummy's emotion | Normal, then the game's: Full Synchro, Angry, and BN4's and BN5's Worried and Evil, BN6's Tired and Very tired (the user's names and order; the content's `[emotions]` words) | `Training::emotions`, by side: the navi held in that emotion whatever would change it (a chip that spends Full Synchro, anger running out: `kinds::player::hold_emotion`, by the facts the game's rules hold it by); Normal, as the game goes |
 | Options: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Options: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Options: Input display | Off, On | the app's own drawing, below |

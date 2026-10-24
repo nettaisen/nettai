@@ -127,12 +127,12 @@ function party.karma(side: number): number
     return party.megaman_karma(side)
 end
 
--- 0x02004DD8: MegaMan's light test. With MegaMan on the field it fails only at his emotion 5 (EXE5's `worn_out`: a mood
+-- 0x02004DD8: MegaMan's light test. With MegaMan on the field it fails only at his emotion 5 (EXE5's `evil`: a mood
 -- of 0, out of a soul, unangry); with a team navi on the field, it fails when MegaMan's block's mood is 0 or his value
 -- is under the line. A party without him passes.
 function party.light(side: number): boolean
     if battle.navi(side).navi.forms ~= nil then
-        return battle.emotion(side) ~= "worn_out"
+        return battle.emotion(side) ~= "evil"
     end
     local m = megaman_member(side)
     if m == nil then

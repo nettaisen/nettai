@@ -41,6 +41,11 @@ export enum PracticeOption {
     music,
     your-hp,
     dummys-hp,
+    // Each side's navi held in an emotion of the game's (the user: "add a setting for mood", then "instead of mood
+    // it should be emotion"): Normal, as the game goes, then the game's own (the row's text is its name, the
+    // content's words: Full Synchro and Angry, then BN4's and BN5's Worried and Evil, BN6's Tired and Very tired).
+    your-emotion,
+    dummys-emotion,
     custom-gauge,
     chip-draw,
     input-display,
@@ -132,6 +137,12 @@ export global PracticeView {
         if option == PracticeOption.dummys-hp {
             return @tr("Dummy's HP");
         }
+        if option == PracticeOption.your-emotion {
+            return @tr("Your emotion");
+        }
+        if option == PracticeOption.dummys-emotion {
+            return @tr("Dummy's emotion");
+        }
         if option == PracticeOption.custom-gauge {
             return @tr("Custom gauge");
         }
@@ -158,6 +169,10 @@ export global PracticeView {
         }
         if option == PracticeOption.custom-gauge {
             return value == 0 ? @tr("Normal") : @tr("Always full");
+        }
+        // (Its other values are the row's text: the game's emotions.)
+        if option == PracticeOption.your-emotion || option == PracticeOption.dummys-emotion {
+            return @tr("Normal");
         }
         if option == PracticeOption.chip-draw {
             return value == 0 ? @tr("Shuffled") : @tr("Folder order");

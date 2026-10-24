@@ -371,6 +371,34 @@ pub fn check_battle_themes(s: &Strings, themes: &[&str], own: bool) -> Vec<Strin
     out
 }
 
+/// The text table that names a game's emotions a navi can be held in (its
+/// rules' `EmotionRules::holdable`), by name: the app's practice menu
+/// offers them.
+pub const EMOTIONS: &str = "emotions";
+
+/// What is wrong with a game's table's emotions' names ([`EMOTIONS`])
+/// against those its rules can hold a navi in (`emotions`): a name of none
+/// of them, and in the own language's (`own`), one without a name, which a
+/// list would show by its name in the rules.
+pub fn check_emotions(s: &Strings, emotions: &[&str], own: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(Table::Text(names)) = s.tables.get(EMOTIONS) {
+        for name in names.keys() {
+            if !emotions.contains(&name.as_str()) {
+                out.push(format!("{EMOTIONS}.{name}: the rules can hold a navi in no emotion of this name"));
+            }
+        }
+    }
+    if own {
+        for name in emotions {
+            if s.text(EMOTIONS, name).is_none() {
+                out.push(format!("{EMOTIONS}.{name}: the content's own language names every emotion a navi can be held in"));
+            }
+        }
+    }
+    out
+}
+
 /// Check the tables of each game `c` loaded from content `dir` against
 /// `c`: each language's table of the game's pack (a chip the game's
 /// init.luau doesn't require yet, its folder `chips/<key>/` there without
@@ -383,6 +411,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
         c.assets.names(AssetKind::Background).into_iter().filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect();
     let sounds = c.assets.names(AssetKind::Sound);
     let themes: Vec<&str> = c.battle_themes().iter().filter_map(|t| sounds.get(t.0 as usize).copied()).collect();
+    let holdable = c.rules.as_ref().map(|r| r.emotion.holdable().into_iter().map(|(e, _)| r.emotion.name(e)).collect::<Vec<_>>()).unwrap_or_default();
     for game in c.scripts.games() {
         let pack = dir.join(&game);
         let text_tables = c.scripts.manifest(&game).map(|m| m.text.clone()).unwrap_or_default();
@@ -407,6 +436,9 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
                         r.error(&at, problem);
                     }
                     for problem in check_battle_themes(&s, &themes, lang == OWN) {
+                        r.error(&at, problem);
+                    }
+                    for problem in check_emotions(&s, &holdable, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }
@@ -500,6 +532,22 @@ mod tests {
             ]
         );
         assert_eq!(check_battle_themes(&s, &["virus-battle", "winner"], false), Vec::<String>::new());
+    }
+
+    /// `[emotions]` names the emotions the rules can hold a navi in: another
+    /// is refused, and the own language names every one.
+    #[test]
+    fn the_emotions_are_the_rules() {
+        let s = parse("language = \"en\"\n[emotions]\n\"angry\" = \"Anger\"\n\"soul\" = \"?\"\n", "en.toml").unwrap();
+        assert_eq!(s.text(EMOTIONS, "angry"), Some("Anger"));
+        assert_eq!(
+            check_emotions(&s, &["angry", "worn_out"], true),
+            [
+                "emotions.soul: the rules can hold a navi in no emotion of this name",
+                "emotions.worn_out: the content's own language names every emotion a navi can be held in"
+            ]
+        );
+        assert_eq!(check_emotions(&s, &["angry", "soul"], false), Vec::<String>::new());
     }
 
     /// Each game's battle themes are named in English and in Japanese, and English names them after the game's

@@ -5,7 +5,7 @@
 -- (../auto_battle), then he reverts (the souls' revert).
 --
 -- - **The trigger** (0x08013AB0 in the player's damage, the rules' `hp_emptied`: 0x0800EBC8): not yet this battle
---   (AIData +0x1B), a navi with forms (NaviStats +0x23 0: MegaMan) whose emotion is the worn-out one (0x0800F49C's 5:
+--   (AIData +0x1B), a navi with forms (NaviStats +0x23 0: MegaMan) whose emotion is the evil one (0x0800F49C's 5:
 --   a mood of 0, a dark MegaMan's, out of a soul and unangry). Then the dark soul is asked for (AIData +0x44's
 --   0x1000) and his HP is 1. (Also tested: NaviStats +0x26, a story navi's, and an object of the battle's enemy list
 --   whose +0x0F is 224 to 227, 0x08007CE6: none in a netbattle. And the side's statistic 1 is set, 0x08008020, which
@@ -89,7 +89,7 @@ dark.change = change.make {
 function dark.hp_emptied(side: number, navi: Object): boolean
     local s = state()
     local form = form_of(side)
-    if s.dark_soul_spent or form == nil or battle.player(side) ~= navi or battle.emotion(side) ~= "worn_out" then
+    if s.dark_soul_spent or form == nil or battle.player(side) ~= navi or battle.emotion(side) ~= "evil" then
         return false
     end
     s.dark_soul_spent = true

@@ -962,6 +962,8 @@ mod tests {
         };
         let mut exe6_roles = roles();
         exe6_roles.push(("tired".to_string(), EmotionRole::Tired));
+        // (EXE5's mood of 0 is its evil emotion, which plays the worn-out role.)
+        let exe5_roles = || roles().into_iter().map(|(n, r)| (if n == "worn_out" { "evil".to_string() } else { n }, r)).collect::<Vec<_>>();
         let exe6 = EmotionRules::new(
             MoodHeld::TiredOrExhausted,
             AngerEnd::ResetsMood,
@@ -982,12 +984,12 @@ mod tests {
                 case("full_synchro", when(EmotionWhen { battle_mode: Some(1), mood: Some(0xFF), ..Default::default() })),
                 case("normal", vec![EmotionWhen { battle_mode: Some(1), ..Default::default() }, EmotionWhen { in_form: Some(true), ..Default::default() }]),
                 case("angry", when(EmotionWhen { angry: Some(true), ..Default::default() })),
-                case("worn_out", when(EmotionWhen { mood: Some(0), ..Default::default() })),
+                case("evil", when(EmotionWhen { mood: Some(0), ..Default::default() })),
                 case("full_synchro", when(EmotionWhen { mood: Some(0xFF), ..Default::default() })),
                 case("worried", when(EmotionWhen { mood_below: Some(65), ..Default::default() })),
                 case("normal", vec![]),
             ],
-            roles(),
+            exe5_roles(),
         )
         .unwrap();
         assert_eq!(testing::rules().emotion, exe6, "the test content plays as EXE6 does");
@@ -1029,6 +1031,6 @@ mod tests {
         };
         let names = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
         assert_eq!(emotions(exe6), (names(&["normal", "normal", "full_synchro", "worn_out", "worn_out", "tired"]), 0x80, 0xFF, 0x80));
-        assert_eq!(emotions(exe5), (names(&["normal", "worried", "full_synchro", "worn_out", "angry", "full_synchro"]), 0, 0, 0xFF));
+        assert_eq!(emotions(exe5), (names(&["normal", "worried", "full_synchro", "evil", "angry", "full_synchro"]), 0, 0, 0xFF));
     }
 }

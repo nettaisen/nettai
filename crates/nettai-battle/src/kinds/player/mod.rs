@@ -383,6 +383,39 @@ pub fn emotion_name(b: &Battle, side: u8) -> &str {
     b.game_rules().emotion.name(emotion(b, side))
 }
 
+/// A host's hold on side `side`'s emotion, between ticks (a practice
+/// session's, `nettai_frontend::driver::Training::emotions`; never a rule
+/// of the simulation): its navi given the facts of the first case of its
+/// game's emotion `e` a host can bring about
+/// ([`EmotionRules::holdable`](crate::content::EmotionRules::holdable)),
+/// and none of the others: the mood that case states (one under a bound:
+/// half the bound), else 0x80; angry or not (anger kept from running out,
+/// its ticks at [`status::ANGER_TICKS`] again), held tired, exhausted, as
+/// the case asks. Whether `e` is the side's emotion then (in a form whose
+/// emotions are its own, or a battle mode whose order reads otherwise, it
+/// may not be). An emotion the game can't be held in, none.
+pub fn hold_emotion(b: &mut Battle, side: u8, e: Emotion) -> bool {
+    let Some(r) = b.player(side) else { return false };
+    let Some((_, w)) = b.game_rules().emotion.holdable().into_iter().find(|(h, _)| *h == e) else { return false };
+    let angry = w.angry == Some(true);
+    if !angry && (ai(b, r).anger != 0 || flag1(b, r) & f1::ANGER != 0) {
+        status::end_anger(b, r);
+    }
+    let a = ai_mut(b, r);
+    a.tired = w.tired == Some(true);
+    a.exhausted = w.exhausted == Some(true);
+    if angry {
+        a.anger = status::ANGER_TICKS;
+        set_flag1(b, r, f1::ANGER);
+    }
+    b.stats[side as usize].mood = match (w.mood, w.mood_below) {
+        (Some(m), _) => m,
+        (None, Some(below)) => below / 2,
+        _ => 0x80,
+    };
+    emotion(b, side) == e
+}
+
 /// A loss of HP brought `r` to 0 (EXE5's `object_subtractHP` calls
 /// 0x0802C16C): its side's rules are asked (`hp_emptied`: EXE5's last
 /// stand, which may hold it at 1 HP), an object with actor data's; whether

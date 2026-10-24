@@ -821,6 +821,14 @@ language = "en"
 # (`pictures.ok.title`: the help picture's title, `.words` its words). The US ROMs' words, with the names the banners'
 # 20 cells shortened spelled out (TOMAHAWKMAN DELETED, SEARCHMAN, NUMBERMAN, NORMALNAVI: §12.5). Display only: no hash
 # and no battle reads them.
+# The emotions a navi can be held in (rules/status's `emotion.order`: `EmotionRules::holdable`), by name, for a
+# tool that holds a side in one (the app's practice menu). Ours.
+[emotions]
+"full_synchro" = "Full Synchro"
+"angry" = "Angry"
+"tired" = "Tired"
+"worn_out" = "Very tired"
+
 [lettering]
 "banner.battle-start" = "BATTLE START!"
 "banner.battle-number" = "BATTLE {n}"

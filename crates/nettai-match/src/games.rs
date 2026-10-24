@@ -490,7 +490,7 @@ fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Ba
 }
 
 /// A dark MegaMan (light/dark value 100) starts with mood 0 and the dark
-/// face (the worn-out one: `megaman-dark`); a fresh save's (500)
+/// face (the evil one: `megaman-dark`); a fresh save's (500)
 /// with mood 128 and his plain face; a light one (1000) at 190.
 #[test]
 fn a_dark_side_starts_dark() {
@@ -503,13 +503,13 @@ fn a_dark_side_starts_dark() {
         let b = started(&content, &m, 40);
         (b.stats[0].mood, nettai_battle::kinds::player::emotion_name(&b, 0).to_string())
     };
-    assert_eq!(at(Some(100)), (0, "worn_out".to_string()));
+    assert_eq!(at(Some(100)), (0, "evil".to_string()));
     assert_eq!(at(None), ((500 / 20 + 103) as u8, "normal".to_string()));
     assert_eq!(at(Some(1000)), (190, "normal".to_string()));
     // The face a mood of 0 shows: the base form's dark one.
     let base = content.base_form_for(crate::ids::navi(&content, "exe5", "megaman").unwrap());
     let emotions = &content.rules().emotion;
-    let face = content.form(base).mugshot.as_ref().unwrap().shown(emotions, emotions.by_name("worn_out").unwrap(), false);
+    let face = content.form(base).mugshot.as_ref().unwrap().shown(emotions, emotions.by_name("evil").unwrap(), false);
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 

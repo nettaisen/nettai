@@ -4,7 +4,7 @@
 -- from a recording's). What EXE4 decides by it:
 --
 -- - **The starting mood** (MegaMan's round setup, 0x0800D872: in a netbattle, battle type 0x46 and on, whatever the
---   mood was; 0x0800F56A): under 470 0 (a dark MegaMan's: his emotion worn out); with the save's Full Synchro at the
+--   mood was; 0x0800F56A): under 470 0 (a dark MegaMan's: his emotion evil); with the save's Full Synchro at the
 --   start (NaviStats +0x1F, a patch card's) 0xFF; from 1000 190; else the value / 20 + 128 (a fresh save's 500: 0x99).
 --   (Its branch for a value under 500, 64, follows the test under 470 and is never taken.)
 -- - **A dark MegaMan clears holy panels** (0x080132E6, from the navi's intake every tick of the fight, unless his

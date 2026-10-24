@@ -13,4 +13,6 @@ depends = ["exelib"]
 # (rules/battle_themes); `lettering`, the words of the battle's lettered pictures (the banners, the HUD's labels, the
 # chip window's help pictures) by picture, which the enhanced graphics draw in a font in their place
 # (docs/design/text-rendering.md §12).
-text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "battle_themes", "rulesets", "lettering"]
+# `emotions`, the emotions a navi can be held in (its rules' `emotion.order`, `EmotionRules::holdable`), by name,
+# for the app's practice menu, which holds a side in one.
+text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "battle_themes", "rulesets", "lettering", "emotions"]

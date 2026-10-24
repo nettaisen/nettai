@@ -104,7 +104,7 @@ custom_souls.button = {
     -- and OK's DOWN goes nowhere (0x0802069E).
     shown = function(side: number): boolean
         local emotion = custom.player(side).emotion
-        return (rules.setup() :: Setup).double_soul and emotion ~= "worried" and emotion ~= "worn_out"
+        return (rules.setup() :: Setup).double_soul and emotion ~= "worried" and emotion ~= "evil"
     end,
     -- 0x0801FF84 after each pick (and 0x0801FF14's look): lit while the last pick offers a soul, gray while it doesn't.
     -- The offer is asked only before a soul is given (+0x0C 1: once given it is the soul given) and while the navi's
