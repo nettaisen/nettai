@@ -150,7 +150,8 @@ class Model(nn.Module):
         With `self.pack` (the default), each set but the pointer set is first cut to the batch's most present
         tokens, present ones first in their order (no position is read, so this is the same computation; the
         pointer set keeps its slots, which are its actions). Without it, every slot is computed at fixed shapes
-        (for compiled or graph-captured runs)."""
+        (for compiled or graph-captured runs). A set may come with fewer slots than its count, its present
+        tokens first (the rollout's packed sets): nothing is cut then."""
         sets = self.spec.sets
         keep = [s.count for s in sets]
         if self.pack:
@@ -161,7 +162,8 @@ class Model(nn.Module):
         single_at, slot_at = [], 0
         for s, k in zip(sets, keep):
             x, ids, m = obs["x"][s.name], obs["ids"][s.name], obs["mask"][s.name]
-            if k < s.count:
+            k = min(k, m.shape[1])
+            if k < m.shape[1]:
                 order = torch.argsort((~m).to(torch.uint8), dim=1, stable=True)[:, :k]
                 x = x.gather(1, order.unsqueeze(-1).expand(-1, -1, x.shape[-1]))
                 ids = ids.gather(1, order.unsqueeze(-1).expand(-1, -1, ids.shape[-1]))
@@ -314,17 +316,32 @@ def select(
     level: Level | None = None,
     generator: torch.Generator | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """`choose`, checked at once: raises where a decision has no legal action or the action chosen isn't legal
+    (its log-probability isn't finite, as when the network's outputs are NaN)."""
+    action, logp = choose(fight, screen, phase, level, generator)
+    if not torch.isfinite(logp).all():
+        raise RuntimeError("select: a decision has no legal action, or the network's outputs aren't finite")
+    return action, logp
+
+
+def choose(
+    fight: torch.Tensor,
+    screen: torch.Tensor,
+    phase: torch.Tensor,
+    level: Level | None = None,
+    generator: torch.Generator | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Actions for decisions whose logits are already masked. phase 1 picks from fight, 2 from screen.
 
     Returns (action, log-probability under the unmodified policy). With a level, the action follows its knobs
-    (temperature, epsilon, greedy); without, it is a plain sample (training).
+    (temperature, epsilon, greedy); without, it is a plain sample (training). Nothing waits on the device: a
+    decision with no legal action, or outputs that aren't finite, come out with a log-probability that isn't
+    finite, for the caller to check (select does it at once; the collector with the step's one read).
     """
     is_fight = (phase == 1).unsqueeze(-1)
     width = max(fight.shape[-1], screen.shape[-1])
     pad = lambda t: F.pad(t, (0, width - t.shape[-1]), value=float("-inf"))
     logits = torch.where(is_fight, pad(fight), pad(screen))
-    if not torch.isfinite(logits).any(-1).all():
-        raise RuntimeError("select: a decision has no legal action")
     if level is None:
         action = gumbel_argmax(logits, generator)
     elif level.greedy:
@@ -336,8 +353,6 @@ def select(
             explore = torch.rand(action.shape, generator=generator, device=action.device) < level.epsilon
             action = torch.where(explore, uniform, action)
     logp = torch.log_softmax(logits, -1).gather(-1, action.unsqueeze(-1)).squeeze(-1)
-    if not torch.isfinite(logp).all():
-        raise RuntimeError("select: an illegal action was chosen")
     return action, logp
 
 

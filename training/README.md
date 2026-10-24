@@ -7,14 +7,15 @@ written in PyTorch, never built with the app. The app runs the exported network 
 ```
 nettai_ai/fake.py        FakePool: §6.6's pool in numpy, with a learnable toy game (tests, --fake)
 nettai_ai/model.py       the network, its MAC count (python -m nettai_ai.model [--size large])
-nettai_ai/rollout.py     per-seat decision streams, rollout storage
+nettai_ai/rollout.py     per-seat decision streams, compact rollout storage, the collector
 nettai_ai/ppo.py         GAE, the PPO update, input normalization
 nettai_ai/league.py      self-play, PFSP snapshots, scripted players, Elo
 nettai_ai/curriculum.py  the HP curriculum
-nettai_ai/train.py       the training CLI
+nettai_ai/device.py      the device, each thread's CUDA stream, copies that don't wait
+nettai_ai/train.py       the training loop (collector and learner threads, overlapped) and its CLI
 nettai_ai/evaluate.py    checkpoints against bots and each other, per game; Elo
 nettai_ai/export.py      safetensors for the Rust side, and a parity fixture
-nettai_ai/bench.py       the simulation, inference and update timed apart; update variants
+nettai_ai/bench.py       the simulation, inference and update timed apart; update variants; the loop (--loop)
 bridge/                  the pyo3 module nettai_gym (its own Cargo workspace)
 cloud/                   setup, timings upload, run and sync scripts for the cloud machine
 configs/                 smoke.toml (a short run), mac.toml (20 minutes on a Mac), cloud.toml (a full run)
@@ -47,7 +48,12 @@ On the real engine, build the bridge into this environment once (and after engin
 uv run maturin develop --release --uv --manifest-path bridge/Cargo.toml
 NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
 NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench --profile     # where the time goes
+NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench --variants base --loop 8   # and the loop's
 ```
+
+Training overlaps collection with the update: a collector thread plays the next rollout with a copy of the
+learner's weights (one update behind) while the learner updates on the last one (docs/design/training-ai.md
+§8). There is no other way it runs.
 
 Training writes `RUN_DIR/tb` (TensorBoard), `RUN_DIR/checkpoints` (each with the config, the git commit and the
 observation spec; `--resume` continues the latest) and `RUN_DIR/snapshots` (the league's frozen versions).

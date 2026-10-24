@@ -217,6 +217,15 @@ class League:
         s = self.bot_scores[name]
         return (sum(s) / len(s) if s else float("nan")), len(s)
 
+    def summary(self) -> dict[str, float]:
+        """What the training log shows of the league (read on the league's own thread)."""
+        out = {"elo/learner": self.ratings["learner"], "league/snapshots": len(self.snapshots)}
+        for b in self.cfg.bot_names:
+            wr, cnt = self.bot_winrate(b)
+            if cnt:
+                out[f"league/winrate_{b}"] = wr
+        return out
+
     def state_dict(self) -> dict:
         return {
             "snapshots": [(s.id, s.path, s.update, list(s.scores)) for s in self.snapshots],

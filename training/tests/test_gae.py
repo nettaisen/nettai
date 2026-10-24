@@ -109,16 +109,18 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
         lambda: Model(spec, tiny_cfg), np.random.default_rng(0),
     )
     league.start()
-    ro = Rollout(spec, 2, 8, tiny_cfg.hidden, torch.device("cpu"))
+    ro = Rollout(spec, 2, 8, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set)
     col = Collector(pool, spec, model, league, ro, name_dropout=0.0, seed=0)
     col.collect(6, hp_weight=1.0, result_weight=2.0)
 
     s0, s1 = 0, 1
+    # The stored decisions' first general float (the frame they were made at), read back from the compact store.
+    general = lambda r, s, k: r.obs(torch.full((k,), s), torch.arange(k), dense=True)["x"]["general"][:, 0, 0].tolist()
     assert ro.cursor.tolist() == [6, 5]
     assert ro.open.tolist() == [5, 4]
     # Seat 0 decided at frames 0-5; seat 1 at 0, 2, 3, 4, 5.
-    assert ro.x["general"][s0, :6, 0, 0].tolist() == [0, 1, 2, 3, 4, 5]
-    assert ro.x["general"][s1, :5, 0, 0].tolist() == [0, 2, 3, 4, 5]
+    assert general(ro, s0, 6) == [0, 1, 2, 3, 4, 5]
+    assert general(ro, s1, 5) == [0, 2, 3, 4, 5]
     assert torch.allclose(ro.reward[s0, :5], torch.tensor([0.1, 0.2, 0.05 + 2.0, 0.0, 0.3]))
     assert torch.allclose(ro.reward[s1, :4], torch.tensor([-0.3, -0.05 - 2.0, 0.0, -0.3]))
     assert ro.term[s0, :5].tolist() == [False, False, True, False, False]
@@ -153,11 +155,19 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     b0 = r1[0] + g * v1[1] - v1[0] + g * lam * b1
     assert torch.allclose(adv[s1, :5], torch.stack([b0, b1, b2, b3, torch.tensor(0.0)]), atol=1e-6)
 
-    # The open decisions move to the front for the next rollout; nothing else survives.
-    ro.carry()
-    assert ro.cursor.tolist() == [1, 1] and ro.open.tolist() == [0, 0]
-    assert ro.x["general"][s0, 0, 0, 0] == 5 and ro.x["general"][s1, 0, 0, 0] == 5
-    assert not ro.closed.any()
+    # The open decisions start the next rollout (the other of the two), tokens and GRU state with them; nothing
+    # else survives.
+    nxt = Rollout(spec, 2, 8, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set)
+    col.begin(nxt)
+    assert nxt.cursor.tolist() == [1, 1] and nxt.open.tolist() == [0, 0]
+    assert general(nxt, s0, 1) == [5] and general(nxt, s1, 1) == [5]
+    assert not nxt.closed.any()
+    assert torch.equal(nxt.h_in[:, 0], ro.h_in[[s0, s1], [5, 4]])
+    assert nxt.logp[s0, 0] == ro.logp[s0, 5] and nxt.logp[s1, 0] == ro.logp[s1, 4]
+    assert sum(t.n for t in nxt.tokens.values()) == 2 * sum(spec.set(n).count for n in nxt.tokens)  # all present
+    # And in place, as after the normalization warmup's rollout.
+    ro.take_open(ro)
+    assert ro.cursor.tolist() == [1, 1] and general(ro, s0, 1) == [5] and general(ro, s1, 1) == [5]
 
 
 def test_scripted_seat_with_a_decision_is_an_error(tmp_path: Path, tiny_cfg):
@@ -170,6 +180,6 @@ def test_scripted_seat_with_a_decision_is_an_error(tmp_path: Path, tiny_cfg):
     league.start()
     # The first round is self-play; pretend the bot round began.
     league._begin(np.array([0]))
-    col = Collector(pool, spec, Model(spec, tiny_cfg), league, Rollout(spec, 2, 4, tiny_cfg.hidden, torch.device("cpu")), 0.0, 0)
+    col = Collector(pool, spec, Model(spec, tiny_cfg), league, Rollout(spec, 2, 4, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set), 0.0, 0)
     with pytest.raises(RuntimeError, match="scripted seat"):
         col.collect(1, 1.0, 1.0)

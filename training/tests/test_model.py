@@ -80,18 +80,17 @@ def test_no_token_at_all(tiny_cfg):
 
 
 def test_name_dropout_zeroes_whole_tokens():
-    spec = parse_spec(default_spec())
+    """Name dropout works on stored tokens (a row each): a token loses both its ids or neither, at the rate."""
     g = torch.Generator().manual_seed(3)
-    obs = random_obs(spec, 64, g)
-    for d in obs["ids"].values():
-        d.clamp_(min=1)
-    out = drop_names(obs, 0.2, g)
-    ids = out["ids"]["objects"]
+    ids = torch.randint(1, 8192, (20000, 6), generator=g, dtype=torch.int32)
+    before = ids.clone()
+    drop_names(ids, 0.2, g)
     dropped = (ids == 0).all(-1)
-    assert ((ids == 0).any(-1) == dropped).all()  # a token keeps both ids or neither
-    assert 0.15 < float(dropped.float().mean()) < 0.25
-    assert out["x"] is obs["x"]
-    assert drop_names(obs, 0.0, g) is obs
+    assert ((ids == 0).any(-1) == dropped).all()
+    assert torch.equal(ids[~dropped], before[~dropped])
+    assert 0.18 < float(dropped.float().mean()) < 0.22
+    drop_names(ids, 0.0, g)
+    assert (ids == 0).all(-1).sum() == dropped.sum()
 
 
 def test_mac_budget():

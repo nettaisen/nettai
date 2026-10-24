@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 
 from .config import PPOConfig
+from .device import upload
 from .model import Model, mask_logits
 from .rollout import Rollout
 from .spec import Spec
@@ -55,10 +56,10 @@ class RunningNorm:
         self.m2 = {s.name: torch.zeros(s.width, **f64) for s in spec.sets}
 
     def update(self, ro: Rollout) -> None:
-        written = ro.written()
+        """Merge the moments of the rollout's stored tokens (every stored decision's present tokens)."""
         for n in self.mean:
-            m = ro.mask[n] & written.unsqueeze(-1)
-            x = ro.x[n][m]
+            store = ro.tokens[n]
+            x = store.x[: store.n]
             if x.shape[0] == 0 or x.shape[1] == 0:
                 continue
             mb_dev = x.mean(0)
@@ -104,42 +105,55 @@ def ppo_update(
     cfg: PPOConfig,
     generator: torch.Generator,
 ) -> dict[str, float]:
-    """cfg.epochs passes over truncated-BPTT chunks of cfg.chunk decisions, each from its stored GRU state."""
+    """cfg.epochs passes over truncated-BPTT chunks of cfg.chunk decisions, each from its stored GRU state.
+
+    adv and ret are [S, Tc] on the CPU (compute_gae over the rollout's tensors). The chunks are chosen on the CPU
+    and each minibatch's indices go to the device without waiting; the statistics stay on the device until the
+    end. The ratio is against the behavior policy, whose log-probabilities and values the rollout stores; the
+    first epoch's mean ratio and KL (behavior_ratio, behavior_kl) say how far the learner had moved from it."""
     dev = ro.device
     L = cfg.chunk
     Tc = ro.Tc
     W = math.ceil(Tc / L)
-    tgrid = torch.arange(W, device=dev)[:, None] * L + torch.arange(L, device=dev)[None, :]  # [W, L]
+    tgrid = torch.arange(W)[:, None] * L + torch.arange(L)[None, :]  # [W, L]
     tclamp = tgrid.clamp(max=Tc - 1)
     in_range = tgrid < Tc
     has = (ro.closed[:, tclamp] & in_range).any(-1)  # [S, W]
     cs, cw = has.nonzero(as_tuple=True)
     n_chunks = len(cs)
-    stats = {"loss_policy": 0.0, "loss_value": 0.0, "entropy": 0.0, "approx_kl": 0.0, "clip_frac": 0.0, "grad_norm": 0.0}
+    names = ["loss_policy", "loss_value", "entropy", "approx_kl", "clip_frac", "grad_norm"]
     if n_chunks == 0:
-        return stats | {"chunks": 0, "minibatches": 0}
-    mbs = 0
-    fa, sa = ro.legal_fight.shape[-1], ro.legal_screen.shape[-1]
-    for _ in range(cfg.epochs):
-        perm = torch.randperm(n_chunks, generator=generator, device="cpu").to(dev)
+        return {k: 0.0 for k in names} | {"behavior_ratio": 1.0, "behavior_kl": 0.0, "chunks": 0, "minibatches": 0}
+    up = lambda t: upload(t, dev)
+    legal_f, legal_s, phase_d = up(ro.legal_fight), up(ro.legal_screen), up(ro.phase)
+    action_d, logp_d, value_d, reset_d = up(ro.action), up(ro.logp), up(ro.value), up(ro.ep_start)
+    adv_d, ret_d = up(adv), up(ret)
+    fa, sa = legal_f.shape[-1], legal_s.shape[-1]
+    acc = torch.zeros(len(names), device=dev)
+    first = torch.zeros(2, device=dev)
+    mbs = first_mbs = 0
+    for epoch in range(cfg.epochs):
+        perm = torch.randperm(n_chunks, generator=generator, device="cpu")
         for start in range(0, n_chunks, cfg.minibatch_chunks):
             mb = perm[start : start + cfg.minibatch_chunks]
-            s = cs[mb][:, None]  # [B, 1]
-            t = tclamp[cw[mb]]  # [B, L]
-            valid = ro.closed[s, t] & in_range[cw[mb]]
-            obs = ro.gather(s, t)
+            sc = cs[mb][:, None].expand(-1, L)  # [B, L]
+            tc = tclamp[cw[mb]]
+            vc = ro.closed[sc, tc] & in_range[cw[mb]]
+            obs = ro.obs(sc, tc, vc)
+            idx = up(torch.stack([sc, tc, vc.to(torch.int64)]))
+            s, t, valid = idx[0], idx[1], idx[2].bool()
             h0 = ro.h_in[s[:, 0], t[:, 0]]
-            reset = ro.ep_start[s, t]
+            reset = reset_d[s, t]
             fight, screen, value, _ = model.sequence(obs, h0, reset)
-            phase = ro.phase[s, t].to(torch.int64)
+            phase = phase_d[s, t].to(torch.int64)
             is_f = valid & (phase == 1)
             is_s = valid & (phase == 2)
             # Only a row's own head is read; the other head's logits are replaced by zeros so nothing is NaN.
-            lf = torch.where(is_f.unsqueeze(-1), mask_logits(fight, ro.legal_fight[s, t]), 0.0)
-            ls = torch.where(is_s.unsqueeze(-1), mask_logits(screen, ro.legal_screen[s, t]), 0.0)
+            lf = torch.where(is_f.unsqueeze(-1), mask_logits(fight, legal_f[s, t]), 0.0)
+            ls = torch.where(is_s.unsqueeze(-1), mask_logits(screen, legal_s[s, t]), 0.0)
             logp_f = F.log_softmax(lf, -1)
             logp_s = F.log_softmax(ls, -1)
-            a = ro.action[s, t]
+            a = action_d[s, t]
             lp = torch.where(
                 is_f,
                 logp_f.gather(-1, a.clamp(0, fa - 1).unsqueeze(-1)).squeeze(-1),
@@ -148,16 +162,15 @@ def ppo_update(
             ent = torch.where(is_f, _entropy(logp_f), _entropy(logp_s))
             nvalid = valid.sum().clamp(min=1)
             vmean = lambda x: (x * valid).sum() / nvalid
-            old_lp = ro.logp[s, t]
-            log_ratio = torch.where(valid, lp - old_lp, 0.0)
+            log_ratio = torch.where(valid, lp - logp_d[s, t], 0.0)
             ratio = log_ratio.exp()
-            A = adv[s, t]
+            A = adv_d[s, t]
             mu = vmean(A)
             sd = torch.sqrt(vmean((A - mu) ** 2) + 1e-8)
             A = (A - mu) / sd
             pg = -torch.minimum(ratio * A, ratio.clamp(1 - cfg.clip, 1 + cfg.clip) * A)
-            old_v = ro.value[s, t]
-            R = ret[s, t]
+            old_v = value_d[s, t]
+            R = ret_d[s, t]
             v_clip = old_v + (value - old_v).clamp(-cfg.value_clip, cfg.value_clip)
             vl = 0.5 * torch.maximum((value - R) ** 2, (v_clip - R) ** 2)
             loss_pg, loss_v, entropy = vmean(pg), vmean(vl), vmean(ent)
@@ -167,23 +180,23 @@ def ppo_update(
             gn = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)
             opt.step()
             with torch.no_grad():
-                stats["loss_policy"] += float(loss_pg)
-                stats["loss_value"] += float(loss_v)
-                stats["entropy"] += float(entropy)
-                stats["approx_kl"] += float(vmean((ratio - 1) - log_ratio))
-                stats["clip_frac"] += float(vmean(((ratio - 1).abs() > cfg.clip).float()))
-                stats["grad_norm"] += float(gn)
+                kl = vmean((ratio - 1) - log_ratio)
+                clip = vmean(((ratio - 1).abs() > cfg.clip).float())
+                acc += torch.stack([loss_pg, loss_v, entropy, kl, clip, gn.to(acc.dtype)])
+                if epoch == 0:
+                    first += torch.stack([vmean(ratio), kl])
+                    first_mbs += 1
             mbs += 1
-    out = {k: v / mbs for k, v in stats.items()}
-    with torch.no_grad():
-        closed = ro.closed
-        rv = ret[closed]
-        vv = ro.value[closed]
-        var = rv.var() if rv.numel() > 1 else torch.tensor(0.0)
-        out["explained_variance"] = float(1 - (rv - vv).var() / var) if float(var) > 0 else 0.0
-        out["value_mean"] = float(vv.mean()) if vv.numel() else 0.0
-        out["adv_mean"] = float(adv[closed].mean()) if vv.numel() else 0.0
+    out = dict(zip(names, (acc / mbs).tolist()))
+    out["behavior_ratio"], out["behavior_kl"] = (first / max(first_mbs, 1)).tolist()
+    closed = ro.closed
+    rv = ret[closed]
+    vv = ro.value[closed]
+    var = rv.var() if rv.numel() > 1 else torch.tensor(0.0)
+    out["explained_variance"] = float(1 - (rv - vv).var() / var) if float(var) > 0 else 0.0
+    out["value_mean"] = float(vv.mean()) if vv.numel() else 0.0
+    out["adv_mean"] = float(adv[closed].mean()) if vv.numel() else 0.0
     out["chunks"] = n_chunks
     out["minibatches"] = mbs
-    out["decisions"] = int(ro.closed.sum())
+    out["decisions"] = int(closed.sum())
     return out

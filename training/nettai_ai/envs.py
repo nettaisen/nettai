@@ -116,7 +116,8 @@ class PoolView:
     stream s = env · 2 + seat."""
 
     def __init__(self, pool, spec: Spec):
-        buf = dict(pool.buffers())
+        raw = dict(pool.buffers())
+        buf = dict(raw)
         for key in ("x", "ids", "mask"):
             buf[key] = _arrays(buf, key, spec.raw)
         self.E = buf["phase"].shape[0]
@@ -130,6 +131,16 @@ class PoolView:
                 want = (self.E, 2) + shape
                 if a.shape != want:
                     raise ValueError(f"pool buffer {key}[{s.name}] is {a.shape}, the spec says {want}")
+        # Each set's tokens as rows of the buffer they live in: stream s's token j is row s·C + first + j of x and
+        # ids, C the buffer's tokens a stream (a split set is a range of its source's tokens). The collector
+        # gathers present tokens from these.
+        split = {part: (src, first) for src, parts in spec.raw.get("split", {}).items() for part, first, _n in parts}
+        self.source: dict[str, tuple[torch.Tensor, torch.Tensor, int, int]] = {}
+        for s in spec.sets:
+            src, first = split.get(s.name, (s.name, 0))
+            xa, ia = raw["x"][src], raw["ids"][src]
+            C = xa.shape[2]
+            self.source[s.name] = (t(xa).view(S * C, s.width), t(ia).view(S * C, s.ids), C, first)
         # view, never reshape: these must stay the pool's memory, which every step refills.
         self.x = {s.name: t(buf["x"][s.name]).view(S, s.count, s.width) for s in spec.sets}
         self.ids = {s.name: t(buf["ids"][s.name]).view(S, s.count, s.ids) for s in spec.sets}

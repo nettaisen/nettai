@@ -81,7 +81,9 @@ class PPOConfig:
     steps: int = 128  # pool steps per rollout
     chunk: int = 128  # decisions per truncated-BPTT chunk (each chunk starts from its stored GRU state)
     epochs: int = 3
-    minibatch_chunks: int = 16  # chunks per minibatch
+    # Chunks per minibatch: 64 (8,192 decision slots) gives the GPU more per call, 1.7× the update's speed of 16
+    # on the cloud's RTX 3090 (§11).
+    minibatch_chunks: int = 64
     lr: float = 3e-4
     lr_final: float = 0.1  # the learning rate falls linearly to lr × lr_final over run.updates
     adam_eps: float = 1e-5
@@ -164,9 +166,12 @@ class EvalConfig:
 class RunConfig:
     updates: int = 20000
     checkpoint_every: int = 50
-    device: str = "auto"  # auto: cuda, else mps, else cpu
-    torch_threads: int = 0  # torch's CPU threads while collecting; 0 leaves torch's default (the pool has its own)
-    update_threads: int = 0  # torch's CPU threads in the update, while the pool waits; 0: as while collecting
+    device: str = "auto"  # auto: cuda, else cpu
+    # torch's CPU threads, per thread (they run at once, beside the pool's own): the collector's (gathering each
+    # step's tokens; on a CPU device the rollout's inference too; 0 leaves torch's default) and the learner's
+    # (on a CPU device the update; 0: as the collector's).
+    torch_threads: int = 0
+    update_threads: int = 0
     seed: int = 1
     fixture_decisions: int = 16  # decisions of one seat kept in each checkpoint for export's parity fixture
 
