@@ -1,25 +1,28 @@
-# A full run on a many-core cloud machine (§11). Every value not named here is the default in nettai_ai/config.py.
+# A full run on the cloud machine (§11: an RTX 3090, a CPU quota of about 41 cores though it shows 128). Every
+# value not named here is the default in nettai_ai/config.py.
 #   training/cloud/run.sh first --config configs/cloud.toml
 # The held-out-game test (§9): add --train-games exe5,exe6 --eval-games exe4
 
 [env]
 games = ["exe6", "exe5", "exe4"]
-envs = 1024
-threads = 0          # every core
+envs = 1024          # two rollouts of about 3 GB each on the GPU (compact storage; 2,048 envs fit too, 6 GB each)
+threads = 36         # of the quota's ~41: the collector's and learner's threads and evaluation's pool take the rest
 
 [ppo]
 steps = 128
 chunk = 128
 epochs = 3
-minibatch_chunks = 16
+minibatch_chunks = 64
 
 [run]
 updates = 20000
 checkpoint_every = 50
 device = "auto"
+torch_threads = 3    # the collector's CPU work: each step's tokens gathered into pinned memory
+update_threads = 2   # the learner's: GAE, each minibatch's indices
 
 [eval]
 every = 100
 envs = 40
-threads = 4
+threads = 2          # its own pool, beside training's, while it runs
 rounds = 2

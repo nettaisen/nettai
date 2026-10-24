@@ -514,7 +514,7 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
 
 ## 8. Training
 
-As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py, train.py).
+As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py, device.py, train.py).
 
 - **PPO.** Clipped at 0.2 (the value too), GAE λ 0.95 and γ 0.997 per decision, about 20 seconds of horizon at
   4 ticks a decision. Entropy bonus 0.01, gradient norm 0.5, advantages normalized per minibatch, 3 epochs, Adam
@@ -562,8 +562,46 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   rounds against the masher at that level, or after 500 updates at one level. The last quarter of training is
   at 1000 only. The pool takes `hp=(lo, hi)` and `set_hp(lo, hi)`, from the next round.
 - **Input normalization.** Per set and feature, a running mean and variance over present tokens, merged after
-  each update so a rollout and its update see the same; set first by 32 pool steps of the untrained policy.
-  It's part of the weights, so each snapshot keeps its own.
+  each update (so the behavior network, one update behind, has the statistics of one rollout fewer; the PPO
+  ratio counts that as part of its policy's change); set first by 32 pool steps of the untrained policy. It's
+  part of the weights, so each snapshot keeps its own.
+- **The loop: collection and the update overlap** (the user's choice, 2026-10-23; train.py). It is the only way
+  training runs; there is no synchronous mode beside it.
+  - **Two threads.** A collector thread owns the pool, the league, the curriculum and the **behavior network**,
+    a copy of the learner's weights. It steps the pool (the bridge lets go of the GIL in `step`) and runs every
+    network's inference for the step: one forward pass a network (the behavior network for the learner's seats,
+    each active snapshot for its own), all seats needing a decision batched. The learner, the calling thread,
+    runs GAE and the PPO update.
+  - **Two rollouts, handed back and forth.** The collector hands a full rollout to the learner and takes the
+    other one, which the learner hands back after its update with a copy of its new weights. The collector
+    loads them as its behavior network before playing the next rollout. So rollout k is always played by the
+    weights after update k − 1: the policy lag is one update (the first rollout of a run is the learner's own),
+    whatever the threads' timing, and a run is the same from run to run (tested). An open decision at a
+    rollout's end is carried into the other rollout as before, played by its own version.
+  - **PPO against the behavior policy.** The loss's ratio is against the log-probabilities the behavior network
+    stored with each decision, the value clip around its values, and each chunk starts from the behavior
+    network's GRU state stored with its first decision (a test replays every stored decision with the version
+    that played it). The log shows the lag (`loop/policy_lag`) and the first epoch's mean ratio and KL against
+    the behavior policy (`ppo/behavior_ratio`, `ppo/behavior_kl`).
+  - **Snapshots and the curriculum** are the collector's: a snapshot is the behavior network as it takes up
+    every `snapshot_every`-th version, and a rollout's rounds move the curriculum before the next rollout, as
+    after each update before.
+  - **Compact rollouts.** A decision keeps only its present tokens, in order, each with its position (the
+    network reads no position but the pointer set's, which is laid out by position again when read): about 34
+    tokens of 194, 9 KB of 57. Tokens and GRU states are on the device; the rest of a decision (legal masks,
+    action, log-probability, value, reward, where its tokens are) on the CPU, where the collector writes it
+    without waiting on the device, and the update copies what it reads. Each step's deciding streams are
+    gathered from the pool's buffers on the CPU, present tokens only, into pinned memory and copied without
+    waiting; a step waits on the device once, for its actions (with their log-probabilities, checked finite
+    there). On CUDA each thread has its own stream (the collector's at the higher priority: the pool waits on
+    it), and every handoff carries an event the other side waits for.
+  - **Evaluation** runs on a thread and pools of its own, with a copy of the learner's weights at the update it
+    started at; its results join that update's row when they come. One runs at a time. This is simpler than
+    fitting its steps into the collector's waits, and its pools (2 threads in `configs/cloud.toml`) are small
+    beside the training pool. **Checkpoints** are written by the learner after its update, from the league's and curriculum's states
+    the collector handed over with the rollout (a few hundred ms every 50 updates; the collector goes on).
+  - **Threads.** torch's CPU threads are set per thread (`run.torch_threads` for the collector,
+    `run.update_threads` for the learner); they run at once beside the pool's own.
 - **Games.** Every loaded game, mixed in each batch.
 - **Logs and checkpoints.** TensorBoard (viewed over an ssh tunnel): rewards, losses, KL, explained variance,
   win rates by opponent, Elo, §9's measures from `round_stats()` by opponent kind, the HP level, the measured
@@ -575,8 +613,10 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   the network's outputs for them.
 - **Checked on FakePool**, a numpy stand-in for the pool with the pool's sets and widths and a learnable toy
   (press the target action shown in the general token; on the screen, point at the slot with the highest first
-  float; everything else noise): in 40 updates on a laptop CPU, targets pressed 7% → 48%, best slots 11% → 38%,
-  reward per decision ×9.
+  float; everything else noise): in 40 updates on a laptop CPU, targets pressed 7% → 35%, best slots 10% → 29%,
+  reward per decision ×7 (the test, with the loop overlapped; taking turns, before it, 48% and 38%). Over three
+  seeds of 60 updates the lag costs little: targets 55% against 58% taking turns, best slots 37% against 37%;
+  at 60 s of wall time on the Mac's CPU, 39% and 35% against 40% and 28%.
 
 ## 9. How we know it's good
 
@@ -838,6 +878,53 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
     on a GPU the small ops are kernel launches, which fixed shapes and compilation can fold. If its update makes
     30,000 decisions a second or more, a GPU with 16 to 32 cores beats the 96-core machine. The Mac's own GPU
     (MPS) was slower than its CPU at this size.
+- **Measured on the cloud machine** (the user, 2026-10-23: `bench --device cuda`, 36 pool threads, 512 envs, all
+  three games, the loop still taking turns):
+  - collection 123,717 decisions in 7.21 s (17,000 a second): `pool.step` 2.59 s (47,700 a second), inference
+    and Python 4.62 s (26,800 a second);
+  - the update, 3 epochs, in learner decisions a second: 16 chunks a minibatch 13,161; 64 chunks 22,136; 2
+    epochs 20,876; padded 5,180; compiled and padded 6,578; bf16 11,728;
+  - present tokens a decision: general 1, panels 18, objects 4.2, hand 0.5, used 0.1, slots 0.8, rules 4.6,
+    forms 2;
+  - so the loop made about 10,000 decisions a second, the pool idle through the updates and the GPU through
+    collection. The user chose two changes: **overlap collection with the update** and **bigger batches** (§8's
+    loop, built 2026-10-23).
+- **What changed for it** (§8): the loop overlapped (two threads, two rollouts, the behavior network one update
+  behind); the rollouts compact (present tokens only: a decision 9 KB rather than 57, so 1,024 envs' two rollouts
+  take about 6 GB of the card and 2,048 envs' about 12 GB, where the dense layout would have needed 15 and 30 GB
+  each); each step's tokens gathered on the CPU into pinned memory and copied without waiting, one wait a step;
+  the update's chunks chosen on the CPU, its indices copied without waiting and its statistics kept on the device
+  to the end; minibatches of 64 chunks by default (8,192 decision slots); `configs/cloud.toml` at 1,024 envs,
+  36 pool threads (the container's quota is about 41 cores of the 128 it shows), torch's threads 3 for the
+  collector and 2 for the learner, evaluation's pool 2.
+- **Measured on the Mac** (`bench --loop`, EXE6, 64 envs, CPU, 16 chunks a minibatch, load 4 to 9 from other
+  sessions): the loop makes 2,180 to 2,280 decisions a second against 1,800 taking turns (collect 2.0 s, update
+  6.4 s). Here the update is the slower side: the learner is busy 100% and as fast as alone (1.00 to 1.06×), the
+  collector busy 41 to 44%, its own work (all but `pool.step`) 1.5 to 1.6× slower than alone, the cores it shares
+  with the learner's 8 threads. So the loop runs at the update's own speed and collection is hidden. The split of
+  torch's threads (2 or 4 for the collector, 6 or 8 for the learner) moves it by less than the noise;
+  `configs/mac.toml` has 2 and 8. The first epoch's mean ratio against the behavior policy is 1.000 to 1.001, its
+  KL 0.003 (one update's lag). A rollout here takes 19 MB on the CPU and 187 MB on the device.
+- **The GIL.** The threads give it back in every torch op (and the pool's step, and every wait on the device),
+  so the learner's ops and the collector's interleave. How much the collector would suffer otherwise, measured on
+  16-step rollouts of the same pool: alone 13.5 ms a step; beside 8 torch threads computing (no GIL, only cores)
+  20.3 ms; beside a thread running pure Python (holding the GIL, giving it up only every 5 ms switch interval)
+  5,063 ms, since each of its thousands of ops a step waits for the GIL again. The loop's 1.6× is the first kind:
+  the cores, not the GIL. So nothing on the learner's side may run long stretches of plain Python while the
+  collector works (logging and checkpoints are short); on CUDA both threads mostly launch kernels, each op a
+  point where the GIL changes hands. `bench --loop` reports each thread's time against alone and the share of
+  it on a CPU, which tells the two apart on the cloud machine.
+- **Bigger minibatches and fewer epochs on the toy, the loop overlapped** (two seeds, the targets pressed and best
+  slots picked over the last 4 updates): at 60 s of the Mac's CPU, 4 epochs of 8 chunks 38% and 36%, 3 epochs
+  47% and 42%, 2 epochs 48% and 38%, 3 epochs of 16 chunks 48% and 40%, of 32 chunks 38% and 38%; after 80
+  updates, 59% and 43%, 48% and 39%, 49% and 42%, 38% and 39% (3 of 8, 2 of 8, 3 of 16, 3 of 32). Fewer gradient
+  steps an update learn less an update; on a CPU, where a step's cost grows with its size, that evens out at 2×
+  the minibatch and is lost at 4×. 3 epochs stays. On a GPU a bigger minibatch costs little more than a small one,
+  and the cloud's rollouts hold 16 times the toy's chunks, so 64 chunks still make 32 steps an epoch.
+- **To measure on the cloud machine**, in `training/`: `NETTAI_PACKS=$PWD/timings uv run --no-sync python -m
+  nettai_ai.bench --device cuda --games exe6,exe5,exe4 --envs 1024 --threads 36 --torch-threads 3
+  --update-threads 2 --variants base,mb128,mb256 --loop 20` (the update alone at 64, 128 and 256 chunks, then
+  20 updates of the loop); `--envs 2048 --variants base --loop 12` beside it for the bigger batch.
 
 ## 12. Steps
 
