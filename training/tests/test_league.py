@@ -56,3 +56,25 @@ def test_snapshots_in_play_stay_bounded_and_turn_over(tmp_path: Path):
     kept = [league.pfsp_weight(s) for s in on_disk if s.scores]
     assert gone and kept and np.median(gone) <= np.median(kept)
     assert (league.kind == SNAP).any()
+
+
+def test_a_run_resumed_without_its_snapshots_files_draws_none_of_them(tmp_path: Path):
+    """Snapshots whose files aren't on this machine are as deleted ones: their records kept, never in play."""
+    cfg = LeagueConfig(self_play=0.4, snapshots=0.5, bots=0.1, bot_names=["still"], active=2, draining=2, cache=4, keep=12)
+    make = lambda: League(cfg, SeatsOnly(), 64, tmp_path, torch.device("cpu"), lambda: torch.nn.Linear(2, 2), np.random.default_rng(1))
+    league = make()
+    league.start()
+    for k in range(4):
+        league.add_snapshot(torch.nn.Linear(2, 2), k)
+    state = league.state_dict()
+    gone = [s.path for s in league.snapshots[:3]]
+    for path in gone:
+        (tmp_path / "snapshots" / path).unlink()
+    moved = make()
+    moved.load_state_dict(state)
+    assert [s.path for s in moved.snapshots[:3]] == ["", "", ""] and moved.snapshots[3].path == league.snapshots[3].path
+    assert [s.update for s in moved.snapshots] == [0, 1, 2, 3]
+    moved.start()
+    for _ in range(20):
+        moved.refresh()
+        assert moved.in_play() <= {moved.snapshots[3].id}

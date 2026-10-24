@@ -271,6 +271,13 @@ class League:
 
     def load_state_dict(self, d: dict) -> None:
         self.snapshots = [Snapshot(i, p, u, deque(sc)) for i, p, u, sc in d["snapshots"]]
+        # A run resumed on another machine without its snapshots' files (the cloud machine stopped and its GPU
+        # taken): those are as deleted ones, their records kept, never drawn.
+        missing = [s for s in self.snapshots if s.path and not (self.dir / s.path).exists()]
+        for s in missing:
+            s.path = ""
+        if missing:
+            print(f"league: {len(missing)} snapshots' files are missing (a run moved without them): kept as deleted ones")
         self.ratings = dict(d["ratings"])
         for k, v in d["bot_scores"].items():
             if k in self.bot_scores:
