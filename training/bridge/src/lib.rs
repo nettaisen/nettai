@@ -56,7 +56,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=(1000, 1000), chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, combos=0.3, cache=None))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=None, chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, combos=0.3, cache=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -69,14 +69,14 @@ impl PyPool {
         k: u32,
         delay: (u16, u16),
         max_fight_ticks: u32,
-        hp: (u16, u16),
+        hp: Option<(u16, u16)>,
         chip_holdout: (f64, u64, String),
         practice: f64,
         randomize: f64,
         combos: f64,
         cache: Option<std::path::PathBuf>,
     ) -> PyResult<PyPool> {
-        if k == 0 || delay.0 > delay.1 || hp.0 == 0 || hp.0 > hp.1 {
+        if k == 0 || delay.0 > delay.1 || hp.is_some_and(|(lo, hi)| lo == 0 || lo > hi) {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
         let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, combos, ..Config::default() };
@@ -102,6 +102,11 @@ impl PyPool {
         d.set_item("fingerprint", spec::FINGERPRINT)?;
         d.set_item("fingerprint_features", spec::fingerprint::FIELDS.to_vec())?;
         d.set_item("games", self.pool().games().to_vec())?;
+        // (What the envs use, which the weights record: the ticks a fight
+        // decision holds, the decisions on a custom screen before only OK.)
+        let cfg = self.pool().config().clone();
+        d.set_item("k", cfg.k)?;
+        d.set_item("screen_decisions", cfg.screen_decisions)?;
         let sets = PyDict::new(py);
         for s in spec::SETS {
             let set = PyDict::new(py);
@@ -170,10 +175,13 @@ impl PyPool {
         self.pool().set_delay(&envs, seat, ticks).map_err(err)
     }
 
-    /// Both sides' base HP drawn from `lo` to `hi` each round, from the
-    /// next rounds.
-    fn set_hp(&self, lo: u16, hi: u16) -> PyResult<()> {
-        self.pool().set_hp(lo, hi).map_err(err)
+    /// Both sides' base HP drawn from `lo` to `hi` each round (where the
+    /// navi takes one), from the next rounds; `set_hp(None)`: each side's as
+    /// its build has it (the creator's, the default).
+    #[pyo3(signature = (lo, hi=None))]
+    fn set_hp(&self, lo: Option<u16>, hi: Option<u16>) -> PyResult<()> {
+        let hp = lo.map(|lo| (lo, hi.unwrap_or(lo)));
+        self.pool().set_hp(hp).map_err(err)
     }
 
     /// The chips held out of training from the next rounds: those a folder

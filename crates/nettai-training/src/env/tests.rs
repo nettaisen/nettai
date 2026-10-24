@@ -99,7 +99,7 @@ pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
     let mut picks = Picks::new(seed);
     let none = crate::builds::Holdout::default();
     let sides = [maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side, maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side];
-    let m = maker.round(sides, 1000, seed).unwrap();
+    let m = maker.round_with(sides, None, seed).unwrap();
     let mut b = Set::of(&c, &m, seed).start();
     for _ in 0..900 {
         if b.round.mode == mode::CUSTOM && b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing) {

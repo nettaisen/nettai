@@ -37,7 +37,9 @@ fn played(game: &str, seed: u64, ticks: u32) -> Env {
 #[test]
 fn an_observation_has_the_specs_shapes() {
     for game in GAMES {
-        for (seed, ticks) in [(1, 0), (2, 200), (3, 700), (4, 1500), (5, 3000)] {
+        // (How many rules tokens a view holds: a field at its default has none.)
+        let mut rules = Vec::new();
+        for (seed, ticks) in [(1, 0), (2, 200), (3, 700), (4, 1500), (5, 3000), (6, 400), (7, 900), (8, 2000)] {
             let env = played(game, seed, ticks);
             for viewer in 0..2u8 {
                 let mut obs = Obs::new();
@@ -45,8 +47,11 @@ fn an_observation_has_the_specs_shapes() {
                 check_shapes(&obs);
                 assert!(obs.sets[spec::GENERAL].mask[0]);
                 assert_eq!(obs.sets[spec::PANELS].mask.iter().filter(|&&m| m).count(), 18);
+                rules.push(obs.sets[spec::RULES].mask.iter().filter(|&&m| m).count());
             }
         }
+        rules.sort();
+        println!("{game}: rules tokens a view: {rules:?}");
         // How many scalars the rules tokens could hold, against the set's
         // count.
         let n = Names::of(&crate::testing::content(game)).rule_scalars();

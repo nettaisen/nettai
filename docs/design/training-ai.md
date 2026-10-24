@@ -98,7 +98,7 @@ all zeros. Widths as built (`spec.rs` names every feature; `spec()` lists them):
 | objects | 48 | 119 | kind, identity, action | every object seen, actors first, then attacks, then effects: pool, identity class (virus, field object, navi, player, none), side (own, other, neutral), own or other player, panel and next panel, sub-panel offset, velocity, facing toward the other side, HP (has, value, max, share), damage, element and its secondary bits, collision (has, own/other attack, own/other body, other bodies, neutral, floating, blocker, breaks guard, pierces invisibility, ground only), the panels it is registered on, 21 status bits, status timers (own side's only), barrier (and its HP, own side's only), actor (charge, B's, lockout, chips held where shown), navi action (the engine's 11), animation |
 | chips | 7 | 250 | chip, changes_to, leaves, kind_1, kind_2, kind_3 | 6 own hand (next first), then the other's last used chip as its telop named it. Each: its role, hand place; what the record says (element, class, this copy's code, how it is used, the flag, extra flag and trait bits, trap kind, modifier kind, damage formula kind, damage, MB, hit strength, lockout, a Program Advance's result, a link navi's own chip, codes); in hand, damage as shown, bonus and marks; the used chip's damage, bonus, x2; and its fingerprint, 114 (§3.1), whose names are the token's ids after the chip's |
 | slots | 12 | 250 | as chips (the chip, or a button's name) | the custom screen's 12 slots in the screen's order, what its pointer points at (the trainer's requirement: a set of their own, named `slots`), with the chips' features: the slot, its chip's record, the slot's kind and state, cursor, pick order, button uses, marks; the pointer (legal, refused, steps away); what picking it would add (§4.2); its chip's fingerprint |
-| rules | 96 | 14 | field, value | own navi stats of its game's own, then own rules' state: one token a scalar (a record's scalars one level deep, an array's elements each, lists left out; EXE6 has 43, EXE5 79, EXE4 49), its source, type (bool, number, enum, reference, code, other), value (set, /100, signed log, enum index), its place in an array |
+| rules | 96 | 14 | field, value | own navi stats of its game's own, then own rules' state: one token a scalar that isn't at its type's default (zero, as a round's state starts: absent means default), a record's scalars one level deep, an array's elements each, lists left out (EXE6 has 43 such scalars, EXE5 79, EXE4 49; a view holds 3 to 10 tokens in EXE6, 1 to 6 in EXE5, 2 to 8 in EXE4); its source, type (bool, number, enum, reference, code, other), value (set, /100, signed log, enum index), its place in an array |
 | forms | 12 | 22 | form | own form, the other's as it shows, and on the custom screen the forms its window offers (`form_list`) and a button's offer (`offer`): role, window place, marked, cursor, chosen; element, weakness bits, base form, buster bonus, chip bonus, null bonus, charged chips |
 
 The attack log is in the panel tokens rather than a set of its own (the coordinator's change: fewer tokens). The
@@ -266,14 +266,23 @@ round is at max power (HP 1000 and max levels, as every player's build is) unles
   (most players play it) and otherwise any of them;
 - each fact of forms the build chooses (`Builds::form_choices`: the version, a form list) picked at random: one form,
   or a list full half the time and otherwise of a random length; a random preset of each choice (`take_preset`);
-- with chance `randomize` (default 0.75), every other fact a build states drawn: not the engine's roles, not those no
-  build states (`never_stated`), not a choice's facts, and not a list of other navis (a side's party: the env plays
-  no switch to one, and party battles are out of scope for now). A fact is drawn from what its type allows (a flag, a
-  variant, a definition of the game's, a small number below 8); a list is filled an entry at a time to a random length
-  (16 at most), each entry kept only where the rules' `validate` and `build_check` say nothing of it, asked of the
-  side's round set up with its setup block changed in place (they read the setup: no new battle a check); a single
-  fact they say something of goes back to its default. The NaviCust and the patch cards come out of this, through
-  the rules' own checks, with no knowledge of a board in Rust;
+- with chance `randomize` (default 0.75), what the app's build creator lets a player change besides drawn, and only
+  that, everything else as the creator leaves it (the user's standing rule: everyone at max power; a setup never offers
+  HP, Regular memory, levels or sun). The creator's tabs edit the engine's roles (the navi, the folder, its Regular and
+  tag chips), the facts of forms, the choices (by their presets), and its lists (a board's pieces and size, the patch
+  cards, the auto battle places, the party); every other fact keeps the new build's value, and `Builds::as_built`
+  puts those no build states (`never_stated`) back at the rules' defaults. So the filler draws the lists a build
+  states (not a list of other navis: a side's party, whose switching the env doesn't play, out of scope for now) and
+  no single fact: a board's size stays the new build's, the largest. An entry's fields are drawn from what their types
+  allow (a flag, a variant, a definition of the game's, a number below 8: the creator's own ranges, a board's size,
+  are its screens' code, not data a crate below the app reads), and an entry is kept only where the rules'
+  `validate` and `build_check` say nothing of it, asked of the side's round set up with its setup block changed in
+  place. EXE4's builds data didn't name `sp_times` among the facts no build states (EXE5's and EXE6's do; no tab
+  offers it): it does now. Before, the filler drew single facts too: a board's size of none left MegaMan with no
+  NaviCust and his fresh 100 HP (max HP from 1 in EXE6, 40 in EXE5; 3.5% and 2.5% of builds under 100), `beast_out`
+  locked, random `bug_frags`. Now, over 60 builds a game, every seat's max HP is the creator's overview's (a test
+  checks it, and that every single fact is a new build's): EXE6 800 to 2,000 (median 1,320: HP+ programs up, a card's or
+  a bug's HP down), EXE5 600 to 1,400 (its team navis at their last level's), EXE4 997 to 2,700, none under 500;
 - a folder (`folders::random_folder_of`, which leans toward two codes as people's folders do) of the chips the rules
   let it hold, those held out left out or favored (`chip_holdout`, §6.6); its Regular chip as the draw gives it, and
   tag chips half the time where the rules take them;
@@ -289,9 +298,10 @@ Measured (release, the packs, 20 builds a game): every build accepted on its fir
 at the defaults (EXE6, EXE5, EXE4), 7.4, 9.1 and 8.4 ms with every fact drawn; list entries kept 25, 19 and 23% (NaviCust
 pieces the board refuses, mostly).
 
-A round between two builds is a match of one round on a random arena of the game's, both sides' base HP the drawn HP
-where the rules take one (`PlayerFact::BaseHp`); a navi whose HP is its level's (a link navi) keeps its own, as the
-rules refuse a base HP for it.
+A round between two builds is a match of one round on a random arena of the game's, each side's HP as its build has
+it (the creator's). With the pool's `hp` option set, both sides' base HP is the drawn HP where the rules take one
+(`PlayerFact::BaseHp`); a navi whose HP is its level's (a link navi) keeps its own, as the rules refuse a base HP for
+it.
 
 ### 6.3 Who opens the custom screen
 
@@ -309,7 +319,8 @@ nettai-frontend's training session's (`Training`), done in the env on the battle
 - **The round's result:** +1 for a win, −1 for a loss, 0 for a draw. Time-up counts as its judgment says. A round
   cut off is 0 for both, with `truncated` set.
 - **HP difference as it happens**, weighted down over training: (HP the other lost / the other's max HP − HP it lost
-  / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000).
+  / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000). A round's end
+  credits the ended round's alone: what a seat gains in the next round before its first decision is no transition's.
 
 Nothing else. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
 winning.
@@ -358,7 +369,8 @@ pool = nettai_gym.Pool(
     k=4,                             # ticks a fight decision is held
     delay=(6, 30),                   # reaction delay in ticks, drawn per round per seat
     max_fight_ticks=18000,
-    hp=(1000, 1000),                 # both sides' base HP, drawn per round (where the navi takes one)
+    hp=None,                         # (lo, hi): both sides' base HP drawn per round, where the navi takes one;
+                                     # None: each side's as its build has it (the creator's)
     chip_holdout=(0.0, 0, "exclude"),  # (fraction, seed, mode): chips held out of training, below
     practice=0.25,                   # the chance each practice option is on in a round
     randomize=0.75,                  # the chance a build draws every fact it states (§6.2)
@@ -370,6 +382,7 @@ spec = pool.spec()
 #  "screen_keys": ["up", "down", "left", "right", "a", "b", "start"],
 #  "chip_tokens": {"hand": (0, 6), "used": (6, 1)},                              # (first, count) in "chips"
 #  "fingerprint": 114, "fingerprint_features": [(name, width), ...], "games": [...],
+#  "k": 4, "screen_decisions": 24,                                              # what the envs use (not hashed)
 #  "sets": {name: {"count": C, "width": W, "ids": I, "id_names": [...],         # sets in a fixed order:
 #                  "features": [(name, width), ...]}, ...}}                     # general, panels, objects,
 #                                                                               # chips, slots, rules, forms
@@ -392,7 +405,7 @@ pool.step(actions)                    # int32 [E, 2]; read only where phase != 0
                                       # allowed is refused whole (an exception), nothing moved
 pool.set_seat(envs, seat, controller) # "policy", "still", "mover", "masher", "shooter", "dodger"
 pool.set_delay(envs, seat, ticks)     # pins the delay (evaluation); None draws again
-pool.set_hp(lo, hi)
+pool.set_hp(lo, hi)                   # set_hp(None): each side's as its build has it
 pool.set_chip_holdout(fraction, seed, mode)
 pool.round_stats()                    # rounds ended since the last call (§9's measures):
                                       # [{"env": int, "ticks": int, "seats": [dict, dict], "game", "fight_ticks",
