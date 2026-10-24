@@ -887,7 +887,10 @@ previous action's columns zero), its metadata the checkpoint's (update, decision
 are the old network's within 3.4e-7, and the Rust pass adds zero columns, the same floats). With the form list's
 entries in the keys' place (§4.2, spec f27f9a4a126e990f) it was converted (`nettai_ai.convert`) and exported again
 (4.67 MB): its fight, its slots and its value as they were, its entries' head new (it chooses among Crosses at
-about random till a run trains it; the `ai` tests play an EXE6 round with it). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+about random till a run trains it; the `ai` tests play an EXE6 round with it). Then the user asked for the
+latest checkpoint (2026-10-24): update 150 of the third cloud run (runs/third, warm-started from the second's 1,150
+and trained on choosing Crosses, with the stall cost of §6.4 from its update 100; 31 M decisions of its own;
+4.67 MB), exported on the cloud machine. A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
 that it plays.
