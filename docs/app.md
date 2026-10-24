@@ -3097,7 +3097,8 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Dummy's build (a dropdown; Practice's own sessions) | the game's builds that can be played, the player's own first chosen | the set starts over with the dummy on it, the menu staying open: above |
 | Dummy: EDIT (a button; Practice's own sessions) | | the dummy's build in Builds' editor, and back: above |
-| Dummy: Action | Stands still, Moves around, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
+| Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
+| Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`): below |
 | Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
 | Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
@@ -3177,8 +3178,10 @@ dummy build either"), and the player's build is Play's chosen one; a session ano
 that screen says, the dummy on the player's own build, every battle option at its normal value and the place
 Random, and keeps what its menu sets for that screen's wait alone (§4, "Waiting"), not for a visit.
 
-**The dummy's rows.** One row says what the dummy does, its Action. Its custom screen goes with its Action
-(`dummy`): a second pad's own, else the first chip it can. The user (2026-10-13):
+**The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
+Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,
+the Action's own and the focus with it, staying where they are). Its custom screen goes with its Action
+(`dummy`): the AI's for one that fights, a second pad's own, else the first chip it can. The user (2026-10-13):
 "the dummy menu is so confusing and has so many redundant options and it's confusing to navigate. you should
 make it clearer and less redundant": before, Level, Custom screen and Recording were rows of their own whatever
 the Action, and Attacks at random was a weaker Fights; they went. Then, of the dummy's recording (the player
@@ -3192,11 +3195,46 @@ reaches the battle on the custom screen alone, the menu being the player's), and
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
-**No dummy that fights.** The app plugs no AI into the dummy (the library's plug, `LivePlayer::set_ai`, stays,
-with nothing in it): the user (2026-10-17), of the training AI that was nettai-training's `Fighter`, "remove the
-fighting ai entirely for now, it's really bad", "there should still be an ai plug point, just don't have anything
-that plugs in for now". The Action Fights and its Level went with it; the crate is in history (main at
-a4e0ee26c).
+**The dummy that fights** (Action Fights). Its AI is nettai-training's `NetAi`, the learned training AI
+(docs/design/training-ai.md §10), in the fight and on its custom screen; it is plugged into the session's live
+play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and taken out otherwise
+(`practice::plug`); another Level plugs in a new one, and as the set starts over (`LivePlayer::start`) it starts
+over too (`reset`). It plays as the trainer's environment plays a seat: it sees what its side's screen shows and no
+more (the engine's view for that side), decides every 4 ticks from what it saw its reaction time
+before, and holds that action till the next; on its custom screen it points at a chip or a key and its navigator
+presses the way there. It never hears the player's buttons, and like any dummy but a second pad it never opens
+the custom screen (the player does). The Levels are the weights' own knobs: Easy reacts in 24 ticks (0.4 s) and
+samples widely, a random action a tenth of the time; Normal in 16 (0.27 s), sampling its policy; Hard in 10
+(0.17 s), taking its best action. The network is the shipped weights,
+`crates/nettai-training/model/nettai-ai.safetensors` (built in with `include_bytes!`, the same on the desktop and
+the web; the first are update 1000 of the first cloud run, early in training, and a better file replaces it as
+one is trained), read once a process and shared by every `NetAi` (`nettai_training::ai::shipped`). It thinks on
+the battle's own thread, inline (a decision costs about 0.2 ms here, under a millisecond in the browser).
+
+It reads a chip by its fingerprint (what the chip does, made by running it in a sandbox battle: §3.1 of the
+design), so it must have the fingerprints of the chips it can see before it decides on a view that shows them.
+They are made as they are needed, on threads of their own (`Fingerprinter::start`: a core left to the battle,
+four at most; the browser's workers), and kept in the data folder's `fingerprints` (in the browser the page's
+kept folder), by content, so a chip is made once: both builds' folders' chips and the Program Advances they make
+are asked for as the AI is plugged in and again when the set changes (another Dummy's build), so they are made
+while the round opens. The first time a folder's chips are met that is up to about 3 s (EXE5's, on four threads;
+EXE6's half a second); after, they are read from the file in a few milliseconds. Till a chip it sees has its
+fingerprint it waits (in the fight the action it holds goes on; its custom screen waits). If the fingerprints
+can't be made, or it stops otherwise (`NetAi::stopped`), why is said in the log and the AI is taken out: the
+dummy stands still, and its custom screen picks the first chip it can.
+
+**Getting ready** (`PracticeGettingReady`). While those fingerprints are being made for a session whose Action
+is Fights, a box over the battle says so: "Getting ready" (準備中) at its left and the chips made of those asked
+for at its right ("34/58", in the fixed-width digits), and a 2-pixel line along its foot filling as they are made
+(the `Bar`, its track raised, its fill the cursor's). It is the box of netplay's connection, in its corner
+(`Connection` in battle.slint, placed as `BattleScreen` places it): 30 tall, on the shade with a line round it,
+as wide as the longest language needs (132 at least), right of the window by 56 (a phone's margin on a phone)
+and 16 above its bottom (on a phone, above the picture's foot); practice has no connection, so the corner is
+free. It is over the battle and under the practice menu (beside the menu's panel, the shade fading out before
+it), takes no clicks, and is gone once they are made or the Action isn't Fights. The practice half tells it as
+it changes, after each frame's ticks (`PracticeView.getting-ready`: shown, made, asked; `practice::watch_ai`). It
+shows in a battle that fills the window; a session beside a waiting invite, whose picture is in Play's own
+panel, has none. The user picked its look from mockups (board E).
 
 *Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in

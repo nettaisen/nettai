@@ -117,13 +117,34 @@ fn it_waits_for_its_fingerprints_hears_nothing_and_starts_over() {
     assert!(one.iter().any(|&h| h != 0));
 }
 
-/// Fingerprints of another content stop it, with the reason.
+/// Fingerprints of another content stop it, with the reason, which its host
+/// reads too once it has given it away; as the set starts over it is gone.
 #[test]
 fn fingerprints_of_another_content_are_refused() {
     let mut ai = NetAi::of(net(), Level::Hard, 5, fingerprints("exe5")).unwrap();
+    let stopped = ai.stopped();
+    assert_eq!(stopped.why(), None);
     let (pressed, _) = play("exe6", 4, &mut ai, 600, 0);
     assert!(pressed.iter().all(|&h| h == 0));
     assert!(ai.error().is_some_and(|e| e.contains("fingerprints are of content")), "{:?}", ai.error());
+    assert_eq!(stopped.why(), ai.error(), "the host's");
+    ai.reset();
+    assert_eq!((ai.error(), stopped.why()), (None, None));
+}
+
+/// The shipped weights are this encoder's, with the three levels, Easy the
+/// slowest to react and Hard the quickest, taking its best action; read once,
+/// one network every player shares.
+#[test]
+fn the_shipped_weights_play_at_three_levels() {
+    let net = shipped().unwrap();
+    assert!(Arc::ptr_eq(&net, &shipped().unwrap()), "read once");
+    let knobs = Level::ALL.map(|l| net.level(l.name()).cloned().unwrap_or_else(|| panic!("{l:?}")));
+    let [easy, normal, hard] = &knobs;
+    assert!(easy.delay > normal.delay && normal.delay > hard.delay, "{knobs:?}");
+    assert!(hard.greedy && !easy.greedy && !normal.greedy, "{knobs:?}");
+    let ai = NetAi::of(net, Level::Hard, 5, fingerprints("exe6")).unwrap();
+    assert_eq!(ai.knobs(), hard);
 }
 
 /// Fingerprints made on threads of their own (the host's, here std's) as

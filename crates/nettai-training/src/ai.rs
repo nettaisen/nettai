@@ -18,14 +18,18 @@
 //! - **Its memory.** The GRU state carries through a round and starts over
 //!   at the next (a new round is a new score of the set), and when the set
 //!   starts over (`reset`), its draws too.
-//! - **Its chips' fingerprints.** Every chip of the game, as the trainer's
-//!   pool has them: a chip's conditioned runs put a status on the target with
-//!   a chip of the whole game's, so a folder's chips alone come out
-//!   otherwise. A [`Fingerprinter`] reads them from the host's cache folder by
-//!   content hash, or makes them on threads of its own and writes them
-//!   there. Till they are made the AI presses nothing and sees nothing (its
+//! - **Its chips' fingerprints.** The chips it may see, as they are needed
+//!   (a chip's fingerprint is its own alone, so made apart it is what the
+//!   trainer's pool makes of it): both folders' chips and the Program
+//!   Advances they make, asked for as each round starts (and by the host as
+//!   it sets a session up: [`setup_chips`]). A [`Fingerprinter`] reads them
+//!   from the host's cache folder by content hash, or makes them on threads
+//!   of its own and writes them there. A decision whose view shows a chip
+//!   without one waits for it (in the fight the action held goes on, its
 //!   custom screen waits); the network never sees a chip whose fingerprint
 //!   isn't made, and the battle's thread never waits for one.
+//! - **Its weights.** The app's are the shipped file ([`WEIGHTS`]), read
+//!   once ([`shipped`]), every `NetAi` sharing the network ([`NetAi::of`]).
 //!
 //! Nothing here names a game.
 
@@ -43,6 +47,19 @@ use nettai_netplay::rng::SplitMix64;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
+
+/// The trained network the app plays with (docs/design/training-ai.md
+/// §10.5): the trainer's export (`nettai_ai.export`), the same on the
+/// desktop and in a browser, replaced by a better one as it is trained.
+pub const WEIGHTS: &[u8] = include_bytes!("../model/nettai-ai.safetensors");
+
+/// The network of [`WEIGHTS`], read once in a process: every [`NetAi`] of
+/// the app's shares it ([`NetAi::of`]). Err: why this encoder can't play
+/// them (the same each time).
+pub fn shipped() -> Result<Arc<Net>, String> {
+    static NET: OnceLock<Result<Arc<Net>, String>> = OnceLock::new();
+    NET.get_or_init(|| Net::from_safetensors(WEIGHTS).map(Arc::new)).clone()
+}
 
 /// How well it plays: one of the levels the weights carry knobs for (their
 /// `levels` metadata: the reaction delay, how it chooses).
@@ -255,7 +272,8 @@ impl Fingerprinter {
 
 impl Shared {
     fn fail(&self, why: String) {
-        let mut m = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        // (The host's thread too, a thread that couldn't start: a page's main thread may not wait.)
+        let mut m = nettai_platform::thread::lock(&self.state).unwrap_or_else(|p| p.into_inner());
         m.error.get_or_insert(why);
         drop(m);
         self.asked.notify_all();
@@ -368,6 +386,21 @@ struct Round {
     in_screen: bool,
 }
 
+/// Why a [`NetAi`] stopped, for its host to read after giving it away
+/// ([`NetAi::stopped`]): what [`NetAi::error`] says.
+#[derive(Clone)]
+pub struct Stopped {
+    why: Arc<Mutex<Option<String>>>,
+    fingerprints: Fingerprinter,
+}
+
+impl Stopped {
+    pub fn why(&self) -> Option<String> {
+        let why = nettai_platform::thread::lock(&self.why).unwrap_or_else(|p| p.into_inner()).clone();
+        why.or_else(|| self.fingerprints.error())
+    }
+}
+
 /// The learned AI for live play (§10): a side played by the trained
 /// network at a level, as the env plays a policy seat.
 pub struct NetAi {
@@ -386,7 +419,10 @@ pub struct NetAi {
     mem: Memory,
     round: Option<Round>,
     obs: Obs,
+    /// Why it stopped, if it did, and the same where its host reads it
+    /// ([`NetAi::stopped`]).
     error: Option<String>,
+    told: Arc<Mutex<Option<String>>>,
     /// Each fight decision's tick and the tick of the view it was made from.
     #[cfg(test)]
     decided: Vec<(u32, u32)>,
@@ -418,6 +454,7 @@ impl NetAi {
             round: None,
             obs: Obs::new(),
             error: None,
+            told: Default::default(),
             #[cfg(test)]
             decided: Vec::new(),
         })
@@ -439,6 +476,18 @@ impl NetAi {
     /// from then on.
     pub fn error(&self) -> Option<String> {
         self.error.clone().or_else(|| self.fingerprints.error())
+    }
+
+    /// What its host reads of it once it has given it away (live play's
+    /// `LivePlayer::set_ai` takes it whole): why it stopped, if it did.
+    pub fn stopped(&self) -> Stopped {
+        Stopped { why: self.told.clone(), fingerprints: self.fingerprints.clone() }
+    }
+
+    /// It stops playing, for `why`.
+    fn stop(&mut self, why: String) {
+        *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
+        self.error = Some(why);
     }
 
     /// The level's knobs it plays at.
@@ -500,7 +549,7 @@ impl NetAi {
             return 0;
         }
         if self.fingerprints.hash() != b.setup.content.0 {
-            self.error = Some(format!("the fingerprints are of content {:016x}, the battle's is {}", self.fingerprints.hash(), b.setup.content));
+            self.stop(format!("the fingerprints are of content {:016x}, the battle's is {}", self.fingerprints.hash(), b.setup.content));
             return 0;
         }
         // (The names given the fingerprints made since they last were.)
@@ -549,7 +598,7 @@ impl NetAi {
                 let logits = out.fight.expect("the fight's head");
                 match net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng) {
                     Some(a) => r.action = a as i32,
-                    None => self.error = Some("a fight decision with nothing allowed".into()),
+                    None => self.stop("a fight decision with nothing allowed".into()),
                 }
             }
         } else if custom && r.nav.idle() && screen.is_some_and(|s| act::reads_keys(&s)) {
@@ -570,7 +619,7 @@ impl NetAi {
                         r.nav.point(a as i32);
                         r.decisions += 1;
                     }
-                    None => self.error = Some("a custom screen decision with nothing allowed".into()),
+                    None => self.stop("a custom screen decision with nothing allowed".into()),
                 }
             }
         }
@@ -609,8 +658,14 @@ fn waits(fingerprints: &Fingerprinter, obs: &Obs) -> bool {
 /// Both sides' folders' chips in `b` (as the round set them up) and the
 /// Program Advances the content makes of them.
 pub fn folders_chips(b: &Battle) -> Vec<nettai_content_api::ChipHandle> {
-    let mut chips: std::collections::BTreeSet<u16> = b.setup.players.iter().flat_map(|p| p.folder.chips.iter().flatten().map(|c| c.id.0)).collect();
-    for pa in b.content.program_advances() {
+    setup_chips(&b.content, &b.setup)
+}
+
+/// The same of a round's setup, `setup` (a set's first, as a host sets a
+/// session up: its every round has those folders).
+pub fn setup_chips(content: &Content, setup: &nettai_battle::setup::RoundSetup) -> Vec<nettai_content_api::ChipHandle> {
+    let mut chips: std::collections::BTreeSet<u16> = setup.players.iter().flat_map(|p| p.folder.chips.iter().flatten().map(|c| c.id.0)).collect();
+    for pa in content.program_advances() {
         let made = match &pa.recipe {
             nettai_battle::content::Recipe::CodeRun { chip, .. } => chips.contains(&chip.0),
             nettai_battle::content::Recipe::Sequence(v) => v.iter().all(|c| chips.contains(&c.0)),
@@ -636,6 +691,7 @@ impl Ai for NetAi {
         self.rng = SplitMix64::new(self.seed);
         self.mem.reset();
         self.error = None;
+        *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = None;
     }
 }
 

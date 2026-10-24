@@ -994,6 +994,46 @@ mod tests {
         battle_of(content, LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64))
     }
 
+    /// The dummy that fights, plugged in as Practice plugs it (its Action Fights at Hard, its custom screen the AI's,
+    /// on the shipped weights): against a player who only gets through their custom screen, it takes HP away, the
+    /// battle stepped as the shell steps a practice battle once its chips' fingerprints are made (made here on
+    /// threads of their own, kept nowhere).
+    #[test]
+    fn the_dummy_that_fights_takes_hp_away() {
+        use nettai_battle::battle::mode;
+        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
+        let content = nettai_match::testing::exe6_content();
+        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
+        let mut b = practice(&content, &m, 11, opponent);
+        let live = b.stage.player.live_mut().expect("live play");
+        let plugged = crate::screens::practice::plug(live, opponent, 2, 11, None, None).expect("plugged in");
+        assert_eq!(plugged.level, 2);
+        // (The fingerprints of both folders' chips, made before the battle steps: the shell's frames go on while
+        // they are made, the dummy waiting on its custom screen.)
+        let fingerprints = &plugged.fingerprints;
+        let made = std::time::Instant::now();
+        while fingerprints.status() != nettai_training::ai::Status::Ready {
+            assert!(!matches!(fingerprints.status(), nettai_training::ai::Status::Failed(_)), "{:?}", fingerprints.status());
+            assert!(made.elapsed().as_secs() < 300, "the fingerprints weren't made: {:?}", fingerprints.status());
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let hp = |b: &Battle| {
+            let battle = b.stage.player.battle();
+            battle.player(0).map(|r| (battle.objects.get(r).hp, battle.objects.get(r).max_hp))
+        };
+        for _ in 0..3600 {
+            let battle = b.stage.player.battle();
+            let keys = if battle.round.mode == mode::CUSTOM { bot_buttons(battle, 0, b.stage.player.ticks() as u32) } else { 0 };
+            frame(&mut b, keys);
+            assert_eq!(plugged.stopped.why(), None);
+            if hp(&b).is_some_and(|(hp, max)| hp < max) {
+                return;
+            }
+        }
+        panic!("in 60 seconds the dummy took no HP away: {:?}", hp(&b));
+    }
+
     /// The samples a frame made.
     fn made(b: &mut Battle) -> usize {
         let mut samples = Vec::new();

@@ -14,7 +14,7 @@ import { SettingsScreen, SettingsOverlay } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } from "screens/play.slint";
-import { PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
+import { PracticeMenu, PracticeInputs, PracticeGettingReady, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay, ReplaysView } from "screens/replays.slint";
 import { RulesetPage, RulesetView } from "ruleset.slint";
@@ -114,6 +114,13 @@ export component AppWindow inherits Window {
     // shown when it is on: an `if` would be a component for it.)
     PracticeInputs {
         visible: Shell.battle == BattleKind.practice && PracticeView.inputs;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    // (The dummy that fights getting ready, in the corner netplay's connection takes: over the battle's picture,
+    // while it is.)
+    PracticeGettingReady {
+        visible: root.in-battle && Shell.battle == BattleKind.practice && PracticeView.getting-ready.shown;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }

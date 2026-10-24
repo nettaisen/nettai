@@ -665,8 +665,8 @@ All of these run in Rust on the pool, fast, and print a table:
 ## 10. In the app
 
 As built (branch learned-ai-app): the forward pass (`net.rs`) and the player (`ai.rs`, feature `live`, the only
-place nettai-frontend is used) in nettai-training. The practice menu's rows come back with the first trained
-weights (§10.6).
+place nettai-frontend is used) in nettai-training. The practice menu's rows came back with the first trained
+weights (§10.6, branch learned-ai-ui).
 
 ### 10.1 The forward pass
 
@@ -789,6 +789,13 @@ One file, `model/nettai-ai.safetensors`, built into the crate (`include_bytes!`)
 replaced only when a better one is trained. Reading it is a copy of its floats (a few ms for 1.13 M parameters);
 the app reads it once and gives each `NetAi` the same `Arc<Net>` (`NetAi::of`).
 
+As built: crates/nettai-training/model/nettai-ai.safetensors (`ai::WEIGHTS`, read once by `ai::shipped`). The first
+is update 1000 of the first cloud run (runs/first, 177 M decisions; 4.56 MB), weak as early weights are. A better
+one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
+`ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
+that it plays.
+
 ### 10.6 The practice menu, with the first weights
 
 The dummy's Action gets "Fights" back, with its Level row. They are as they were before cc24c9a58 (`git show
@@ -824,7 +831,9 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   first wait).
 - **New, a UI piece**: while the fingerprints are being made (up to 3 s for EXE5 on four threads, the first time a
   folder's chips are met), a line on the practice screen saying the dummy is getting ready, with its progress
-  (`Fingerprinter::status`); its look goes through mockups first.
+  (`Fingerprinter::status`); its look goes through mockups first. Built as the user picked it (board E):
+  `PracticeGettingReady` in practice.slint, the box of netplay's connection in its corner, "Getting ready" and the
+  chips made of those asked for, a 2-pixel line filling along its foot (docs/app.md, "Getting ready").
 - The tour's steps through Fights and Level are not brought back (the user: "stop doing the tour").
 
   | Level | Reaction | Choice |
@@ -954,7 +963,8 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
    - the practice rows;
    - the wasm32 type-check.
 
-   Done but the practice rows (branch learned-ai-app, §10): they come back with the first trained weights (§10.6).
+   Done (branch learned-ai-app, §10); the practice rows came back with the first trained weights (§10.6, branch
+   learned-ai-ui).
 5. **Cloud runs.** The full recipe, then the held-out-game test, then the levels' calibration. The weights go in.
 6. **Chip fingerprints: in v1** (the coordinator's call, the user wanting multi-step setups learned well). Each chip
    run in a sandbox battle (§3.1): where it hits, when and how hard, what it changes and leaves, and its damage under

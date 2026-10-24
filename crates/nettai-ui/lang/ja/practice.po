@@ -52,9 +52,29 @@ msgstr "動かない"
 msgid "Moves around"
 msgstr "動き回る"
 
+# The dummy fights as a player would, as well as its Level lets it.
+msgid "Fights"
+msgstr "戦う"
+
 # The dummy is played on a second connected gamepad.
 msgid "A second pad"
 msgstr "2つ目のパッド"
+
+# How well the dummy fights: a row under the Action while it is Fights.
+msgid "Level"
+msgstr "強さ"
+
+msgctxt "level"
+msgid "Easy"
+msgstr "よわい"
+
+msgctxt "level"
+msgid "Normal"
+msgstr "ふつう"
+
+msgctxt "level"
+msgid "Hard"
+msgstr "つよい"
 
 # Battle: a side's HP stays as it goes, or comes back full once a hit is over.
 msgid "Your HP"
@@ -103,3 +123,10 @@ msgstr "最初から"
 # Ends the session: back to Practice's entry.
 msgid "Exit"
 msgstr "終了"
+
+# ---- Over the battle ----
+
+# In a corner over the battle, beside a count of chips ("34/58"): the dummy that fights is getting ready, its
+# chips being looked at before it can play (a few seconds, the first time a folder's chips are met).
+msgid "Getting ready"
+msgstr "準備中"

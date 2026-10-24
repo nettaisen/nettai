@@ -1,16 +1,17 @@
 // Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its Rust half
 // is src/screens/practice.rs.
 //
-// Practice has no screen of its own: PLAY's PRACTICE goes straight into its battle, which fills the window. Two
+// Practice has no screen of its own: PLAY's PRACTICE goes straight into its battle, which fills the window. Three
 // things are here. The practice menu (`PracticeMenu`): Start or Esc in a practice battle (and open as one of
 // Practice's own starts), the battle held behind it; its rows are a model the Rust half makes, so a row is added
-// there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
-// buttons, lit as they are held, in a corner of the picture.
+// there and worded here (`PracticeView.label` and `value`). The input display (`PracticeInputs`): both sides'
+// buttons, lit as they are held, in a corner of the picture. And the dummy that fights getting ready
+// (`PracticeGettingReady`), in the corner netplay's connection takes.
 
 import { Theme, Audit, I18n } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
 import { Shell } from "../shell.slint";
-import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
+import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, ScrollPage, Mono, Bar } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { InputDisplay } from "../inputs.slint";
 
@@ -30,6 +31,8 @@ export enum PracticeOption {
     edit-dummy,
     // A label and a value between arrows.
     action,
+    // How well the dummy fights: under the Action while it is Fights.
+    level,
     // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen (an
     // arena's place, "12 / 47"; a background's name; none: Random).
     arena,
@@ -55,6 +58,14 @@ export struct PracticeRow {
     picture: image,
 }
 
+// The dummy that fights getting ready: shown while its chips' fingerprints are being made (the first time a
+// folder's chips are met, a few seconds), `made` of the `asked` (src/screens/practice.rs, `watch_ai`).
+export struct GettingReady {
+    shown: bool,
+    made: int,
+    asked: int,
+}
+
 // What Practice shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
 // Rust by that use: nothing is added to app.slint for it.)
 export global PracticeView {
@@ -71,6 +82,8 @@ export global PracticeView {
     in property <bool> inputs;
     in property <int> held-yours;
     in property <int> held-dummys;
+    // The dummy that fights getting ready.
+    in property <GettingReady> getting-ready;
 
     // ---- What the Rust half says in words.
     // Who the two cards before a battle are.
@@ -100,6 +113,9 @@ export global PracticeView {
         }
         if option == PracticeOption.action {
             return @tr("Action");
+        }
+        if option == PracticeOption.level {
+            return @tr("Level");
         }
         if option == PracticeOption.arena {
             return @tr("Arena");
@@ -132,7 +148,10 @@ export global PracticeView {
     }
     pure public function value(option: PracticeOption, value: int) -> string {
         if option == PracticeOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : @tr("A second pad"));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : @tr("A second pad")));
+        }
+        if option == PracticeOption.level {
+            return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
         }
         if option == PracticeOption.your-hp || option == PracticeOption.dummys-hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
@@ -352,5 +371,64 @@ export component PracticeInputs inherits Rectangle {
         y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
         held-top: PracticeView.held-yours;
         held-bottom: PracticeView.held-dummys;
+    }
+}
+
+// ---- The dummy getting ready ------------------------------------------------------------------------------
+
+// The dummy that fights getting ready, while its chips' fingerprints are being made: "Getting ready" and how many
+// are made of those asked for, a line along the box's foot filling as they are made. It is the box of netplay's
+// connection in its corner (battle.slint's `Connection`, placed as `BattleScreen` places it), which practice leaves
+// free: 30 tall, on the shade with a line round it, as wide as the longest language needs. Over the battle and under
+// the menu; it takes no clicks.
+export component PracticeGettingReady inherits Rectangle {
+    property <GettingReady> ready: PracticeView.getting-ready;
+    // (The picture's height as `BattleScreen` has it: on a phone the window's top, two thirds of its width at most.)
+    property <length> picture-height: Theme.phone ? min(self.height, self.width * 2 / 3) : self.height;
+    Rectangle {
+        // (One width while the count goes on: room for the words and the count at its widest, all asked made.)
+        width: max(132px, words.preferred-width + widest.preferred-width + 8px + 24px);
+        height: 30px;
+        x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
+        y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.line;
+        widest := Mono {
+            x: 0;
+            y: 0;
+            visible: false;
+            text: "\{root.ready.asked}/\{root.ready.asked}";
+        }
+
+        words := Text {
+            x: 12px;
+            y: 0;
+            height: parent.height;
+            text: @tr("Getting ready");
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 13px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+
+        Mono {
+            x: 12px;
+            y: 0;
+            width: parent.width - 24px;
+            height: parent.height;
+            text: "\{root.ready.made}/\{root.ready.asked}";
+            horizontal-alignment: right;
+        }
+
+        // (Inside the box's line, along its foot.)
+        Bar {
+            x: 1px;
+            y: parent.height - 1px - self.height;
+            width: parent.width - 2px;
+            height: 2px;
+            value: root.ready.asked > 0 ? root.ready.made / root.ready.asked : 0;
+        }
     }
 }
