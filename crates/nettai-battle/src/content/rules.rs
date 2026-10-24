@@ -2297,6 +2297,26 @@ pub enum StatusTimer {
     Other(u8),
 }
 
+impl StatusTimer {
+    /// The engine's status timer it sets (`collision::timer`); none for
+    /// table garbage.
+    pub fn timer(self) -> Option<usize> {
+        use crate::collision::timer;
+        Some(match self {
+            StatusTimer::Paralyze => timer::PARALYZE,
+            StatusTimer::Confuse => timer::CONFUSE,
+            StatusTimer::Blind => timer::BLIND,
+            StatusTimer::Immobilize => timer::IMMOBILIZE,
+            StatusTimer::Flash => timer::FLASH,
+            StatusTimer::Submerged => timer::SUBMERGED,
+            StatusTimer::Invulnerable => timer::INVULNERABLE,
+            StatusTimer::Freeze => timer::FREEZE,
+            StatusTimer::Bubble => timer::BUBBLE,
+            StatusTimer::CollisionPanel | StatusTimer::Other(_) => return None,
+        })
+    }
+}
+
 /// A status effect (`new.status`): the requests it raises, its duration
 /// and its timer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

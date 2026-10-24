@@ -77,7 +77,7 @@ fn main() {
             *by_condition.entry(format!("{:?}", p.condition)).or_insert(0) += 1;
             *by_category.entry(p.condition.category()).or_insert(0) += 1;
         }
-        println!("{game}: pairs by condition {by_condition:?}, by category {by_category:?}; conditions dropped {:?}", f.dropped);
+        println!("{game}: pairs by condition {by_condition:?}, by category {by_category:?}; conditions that tell nothing {:?}; runs stopped {}", f.uninformative, f.cost.stopped);
         // What folders are seeded with: 300 builds, every folder seeded.
         let maker = nettai_training::builds::Maker::new(&content).unwrap();
         let mut picks = nettai_match::Picks::new(11);

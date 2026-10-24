@@ -605,15 +605,6 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
     let e = b.content.status(s);
     let c = coll_mut(b, r);
     let t = match e.timer {
-        StatusTimer::Paralyze => timer::PARALYZE,
-        StatusTimer::Confuse => timer::CONFUSE,
-        StatusTimer::Blind => timer::BLIND,
-        StatusTimer::Immobilize => timer::IMMOBILIZE,
-        StatusTimer::Flash => timer::FLASH,
-        StatusTimer::Submerged => timer::SUBMERGED,
-        StatusTimer::Invulnerable => timer::INVULNERABLE,
-        StatusTimer::Freeze => timer::FREEZE,
-        StatusTimer::Bubble => timer::BUBBLE,
         StatusTimer::CollisionPanel => {
             // Garbage entries (the original's statuses past a group's end)
             // write the collision panel.
@@ -622,6 +613,7 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
             return set_flag2(b, r, e.requests);
         }
         StatusTimer::Other(off) => panic!("status {} writes CollisionData+{off:#x}", b.content.defs.statuses[s.index()].key),
+        t => t.timer().expect("one of the engine's status timers"),
     };
     c.status_timers[t] = e.duration;
     set_flag2(b, r, e.requests);

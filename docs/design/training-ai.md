@@ -138,8 +138,10 @@ shows).
 
 A chip's name is a learned embedding, which a chip seen rarely (or a new game's) hardly has. Its fingerprint says what
 it does, measured: each chip of a game run in a sandbox (`fingerprint.rs`), once a game (computed as a pool starts,
-on its threads, kept by content hash in the process and in `cache` on disk; live play makes the whole game's on threads
-of its own and keeps them by content hash, §10.3). Nothing names a chip: a chip is what the battle shows of it.
+on its threads, kept by content hash in the process and in `cache` on disk; live play makes two folders' chips on threads
+of its own and keeps them by content hash, §10.3). Nothing names a chip: a chip is what the battle shows of it. A
+chip's fingerprint is its own alone: nothing of another chip goes in it, so it is the same however many of the game's
+chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play makes only the chips it may see).
 
 - **The sandbox.** Two of the game's default builds, through the first custom screen with nothing picked, every panel
   the rules' normal type, three columns a side; the user (side 0) on its front column's middle panel holding the chip
@@ -158,35 +160,45 @@ of its own and keeps them by content hash, §10.3). Nothing names a chip: a chip
   other's, the longest-lived's kind as a name id and its ticks); the run's ticks.
 - **Conditioned runs**, at the panel it hit hardest (the middle one if none), each the damage as a ratio to the
   plain run's at the same panel, at most 4: a chip that hits nothing plainly and hits under a condition comes out at
-  4. The target standing on each panel type the content declares (but the missing and broken roles' types: set as the
-  run starts); the target in each status some chip of the game inflicts (put on it by using a chip that does at that
-  panel, then the chip under test while the status holds); the user's front column held by the other side (as a
-  steal leaves it: `Battle::set_panel_alliance` and the column's timer, so it would go back as a real steal does), the
-  user a column back, which brings out a revenge-type chip (GrabRevenge: nothing plainly, 80 so); and the front line
-  advanced (the other side's front column the user's, the user on it), the target a column farther, which shows a
-  chip's reach growing with the front line. The token keeps the three panel types farthest from 1 (named by its ids
-  `kind_1` to `kind_3`), every status's (and whether run), and the two ownership conditions' ratio and damage.
-- **Conditions that tell nothing are dropped** from every fingerprint (`fingerprint::prune`): a condition whose
+  4. The target standing on each panel type the content declares (but the normal role's, the plain runs' own, and the
+  missing and broken roles': set as the run starts); the target in each status the content's statuses set (the
+  engine's status timers some status of the content's sets, each with the status that sets it longest: EXE6's
+  paralysis, confusion, blindness, immobility, freezing and bubble, EXE5's and EXE4's first four), put on it by a hit
+  of the engine's own (a hitbox of the user's side on the target's panel doing no damage, of the rules' own collision
+  types for a hit that reaches navis, carrying the status: it lands through the target's intake as any attack's
+  status does, or the run is left out), then the chip under test while the status holds; the user's front column held
+  by the other side (as a steal leaves it: `Battle::set_panel_alliance` and the column's timer, so it would go back as
+  a real steal does), the user a column back, which brings out a revenge-type chip (GrabRevenge: nothing plainly, 80
+  so); and the front line advanced (the other side's front column the user's, the user on it), the target a column
+  farther, which shows a chip's reach growing with the front line. The token keeps the three panel types farthest
+  from 1 (named by its ids `kind_1` to `kind_3`), every status's (and whether run), and the two ownership conditions'
+  ratio and damage. Before (version 2) a status was put on the target by the first chip of the game that inflicts it
+  at that panel, which tied a chip's fingerprint to the whole game's and let the inflicter's own leftovers count (a
+  bubble's then Wind at 4); a status no chip of the game inflicts alone (EXE6's freezing, which aqua on ice brings)
+  wasn't run at all.
+- **Conditions that tell nothing** (`fingerprint::uninformative`, `Fingerprints::uninformative`): a condition whose
   ratio is the same, to 0.01, for at least 95% of the chips it applies to (those that hit in the plain run at its
-  panel or under it: a chip that hits in neither is at 1 under every condition), unless a pair is made of it. On the
-  packs that drops the normal and cracked panel types, the after-hit flash (every hit's, under which nothing hits),
-  and a few statuses and types under which no chip's damage changes (EXE5's paralysis and immobility, EXE4's
-  blindness and holes). The coordinator's rule counted every chip; that dropped conditions only a few chips answer to,
-  EXE5's grass and sea among them, and with them the grass-then-fire pairs, so the count is of the chips a condition
-  applies to, and a condition a pair is made of stays.
+  panel or under it: a chip that hits in neither is at 1 under every condition), unless a pair is made of it. They are
+  said, no longer dropped from the fingerprints: which they are is the whole game's to say, and a chip's fingerprint
+  is its own alone; a feature nearly every chip has the same value of tells the network nothing either way. On the
+  packs: EXE6's cracked panels, confusion, blindness and immobility; EXE5's cracked and magnet panels and its four
+  statuses; EXE4's holes, metal and its four statuses.
 - **Layout** (`spec()`'s `fingerprint_features`): positions 27 (9 × hit, damage/400, first hit/180), statuses 9, user
   2, panels 2, owners 3, left 4, duration 1, changed 18, owner_changed 18, status_ratios 9, status_conditioned 9,
   kind_ratios 3, kind_conditioned 3, stolen 3, advanced 3: 114. Ratios are kept over 4.
 - **Pairs.** A pair (setup, payoff) is a chip whose runs brought a condition (turned the panel under the target to a
   type, started a status on it, took a panel of the other side's front column) and a chip whose damage that condition
   raises past 1.3 times (grass then fire, a bubble then elec, AreaGrab then a sword that reaches the target only from
-  the stolen column). Found on the packs, by the kind of effect the setup brings: EXE6 328 (a panel type made 193,
-  180 of them grass; a status 99; ownership 36), EXE5 160 (panel 84, status 4, ownership 72), EXE4 133 (panel 62,
-  status 2, ownership 69). No pair is of objects left: no conditioned run measures one. Random folders are seeded with
-  them (§6.2).
-- **Cost** (release, the packs): EXE6's 355 chips in 2.0 s on 10 threads (55 ms of work a chip, 25 runs a chip),
-  EXE5's 374 in 14.3 s (377 ms a chip: its ticks cost more and its runs last longer), EXE4's 341 in 5.2 s (150 ms); a
-  folder's 20 chips on one thread 0.83 s (EXE6), 4.0 s (EXE5), 2.0 s (EXE4).
+  the stolen column). Found on the packs (version 3), by the kind of effect the setup brings: EXE6 298 (a panel type
+  made 193: grass 180, ice 12; a status 69: bubble 39, paralysis 30; ownership 36), EXE5 156 (panel 84: sea 68, grass
+  14; ownership 72), EXE4 131 (panel 62: cracked 36, grass 18; ownership 69); 328, 160 and 133 in version 2. The status pairs version 2 had and 3 hasn't were the inflicter's leftovers (a bubble
+  then Wind, AirShot or the tank cannons; PoisonSeed then a paralysis); version 3 has a bubble then ElecSword at 2,
+  which the inflicter's own hit hid. Freezing now raises 23 EXE6 chips 1.33 to 2 times (GolemHit, DrillArm, IronShell,
+  FlameHook...), but no chip freezes the target alone, so no pair is of it. GrabRevenge's stolen column is at 4 (80, 100
+  in EXE4: nothing plainly); no pair is of it, no setup of the user's bringing it. No pair is of objects left: no
+  conditioned run measures one. Random folders are seeded with them (§6.2).
+- **Cost** (release, the packs, this busy Mac): a whole game on 10 threads in 1.4 s (EXE6, 9,585 runs: 27 a chip), 10.1
+  s (EXE5, 8,602), 3.7 s (EXE4, 8,184); both folders' chips on one thread and on four: §10.3.
 
 ## 4. What it presses
 
@@ -543,46 +555,46 @@ thread (`fight` or `custom_screen`, both the same tick of the round):
   `reset`, as the set starts over, starts everything over, its draws too (tested: the same buttons again).
 - `error()` says why it stopped, where it did (its fingerprints failed or are of another content, a decision with
   nothing allowed): it presses nothing from then on.
+- Its fingerprints are made as it needs them, and a decision whose view lacks one waits for it (§10.3).
 
 ### 10.3 Its chips' fingerprints
 
-**The whole game's, as the pool has them.** The network must see a chip described as it was in training, and a
-folder's chips fingerprinted alone come out otherwise: a chip's conditioned runs put each status on the target with
-the first chip of those fingerprinted that inflicts it at that panel (§3.1), so with only a folder's chips the
-inflicters are others or none. Measured on the packs (`examples/ai_costs` and a first probe, 14 rounds of random
-builds): of a round's both folders' chips and their Program Advances (52 to 63), from 1 (an EXE4 round) to every
-one differs from the whole game's, more than half in 12 of the rounds, always in the status ratios alone.
+**The chips it may see, as they are needed.** A chip's fingerprint is its own alone (§3.1, version 3), so a chip
+made apart is what the pool makes of it (on the packs, of a round's both folders' chips made alone, none differs from
+the whole game's). Version 2's weren't: a status was put on the target by the first chip of the whole game that
+inflicts it, so a folder's chips made alone differed from the whole game's in their status ratios, every one of them
+in most rounds, and live play had to make the whole game first (12 to 64 s for EXE5 on this Mac, once a content).
 
-- `Fingerprinter::start(content, threads, cache)` reads them from the host's cache folder by content hash (the
-  pool's file, `fingerprints-<game>-<hash>.json`, the same format), or makes them with the fingerprint `Job` on
-  threads of its own (`nettai_platform::thread::spawn`: the browser's workers too; a thread that can't start fails
-  it, with the reason) and writes them there (`nettai_platform::fs`: in the browser, the app's kept folder, which
-  the page keeps in its private file system). One a content in a process: a second `start` of the same content is the
-  same one. `status()` says reading, making (items done of all), ready or failed, for the host to show;
-  `Fingerprinter::made` takes fingerprints a host has already.
-- The `Job` (fingerprint.rs) is what `Fingerprints::compute` now runs on std's scoped threads: it reads no clock
-  (std's panics in the browser) and starts no thread; a thread past the plain runs waits for them on a condition
-  variable, so a page's main thread never works on one. On the packs it makes the same fingerprints and pairs as
-  before, every chip of the three games.
-- **Till they are made**, the AI presses nothing and encodes nothing: it stands still, and its custom screen waits
-  (so the player's waits on it). The battle's thread never waits for them: it reads one `OnceLock`.
-- **Cost** (release, the packs, this Mac, an M1 Max, at load 10 to 25 from other sessions):
+- `Fingerprinter::start(content, threads, cache)` starts its threads (`nettai_platform::thread::spawn`: the browser's
+  workers too; a thread that can't start fails it, with the reason): the first reads the cache folder (the pool's
+  file, `fingerprints-<game>-<hash>.json`, the same format, the chips it holds), each loads the content's runtime and a
+  sandbox, and they wait for chips. `want(chips)` asks for chips (those of the game's own not made or asked for); the
+  threads make them a chip at a time and give the fingerprints made out whole (an `Arc`, with a count the battle's
+  thread reads without a lock), and once none is left to make, write them all to the cache file
+  (`nettai_platform::fs`: in the browser, the app's kept folder). One a content in a process. `status()` says reading,
+  making (chips done of those asked for) or ready, or failed (a run the engine stopped fails it too); `unkept()` why
+  the cache couldn't be written. `Fingerprinter::made` takes fingerprints a host has already.
+- `NetAi` asks, as each round starts, for both sides' folders' chips (the round's setup) and the Program Advances
+  the content makes of them (`ai::folders_chips`). Reading the other side's folder is for this alone: only a chip of
+  it shown used reaches the view. The host can ask earlier, as it knows both builds at setup (`want`), so the chips
+  are made while the round opens.
+- **A view describes a chip without its fingerprint** (`Obs::unprinted`, which the encoder fills where the names have
+  fingerprints but not that chip's): if it is one of the game's chips, no decision is made on that view; the chip is
+  asked for. In the fight the action held goes on; on the custom screen it waits and asks again the next tick. A chip
+  the game doesn't fingerprint (none of its own) is a zero block, as in training. So the network never sees a chip
+  whose fingerprint wasn't made, and the battle's thread never waits for one.
+- **The first wait** (release, the packs, this busy Mac; both folders' chips and their Program Advances, 58 to 60
+  chips, two rounds a game, nothing in the cache; the threads' runtimes and sandboxes loaded in it):
 
-  | Game | Chips | Whole game: 1 thread | 4 threads | 10 threads | Both folders alone (58–60): 1 / 4 threads | Cache file, read | Names made of them |
-  |---|---|---|---|---|---|---|---|
-  | EXE6 | 355 | 6.1 s | 1.9 s | 1.5 s | 1.1–1.2 s / 0.5 s | 228 KB, 0.7 ms | 0.3 ms |
-  | EXE5 | 374 | 64.3 s | 17.8 s | 12.2 s | 9.6–10.0 s / 3.1–3.6 s | 221 KB, 0.7 ms | 0.1 ms |
-  | EXE4 | 341 | 21.2 s | 5.9 s | 4.5 s | 3.9–4.3 s / 1.5–1.7 s | 204 KB, 0.7 ms | 0.1 ms |
+  | Game | 1 thread | 4 threads | Then, from the cache file |
+  |---|---|---|---|
+  | EXE6 | 1.2 s | 0.5 s | 222 KB read in 1.8 ms |
+  | EXE5 | 9.1–10.0 s | 3.1–3.3 s | 218 KB, 0.7 ms |
+  | EXE4 | 3.5–3.8 s | 1.2–1.3 s | 202 KB, 0.6 ms |
 
-  So the first time a content is played against the AI, it waits the whole game (EXE5: about 18 s on four threads);
-  every time after, under a millisecond. A content changes with the app's content or the packs, so about once a
-  release. The browser's Luau in wasm is likely 2 to 3 times slower (not measured). The host should start them early:
-  at the app's start, for each game it has, on a few threads, so that a first practice rarely waits.
-- **If the first wait matters**, two ways, neither built: let the AI play once every chip's plain runs and both
-  folders' conditioned runs are done (about half the work: 9 of a chip's 23 runs are plain), the rest after; or
-  make a chip's fingerprint its own alone (a status put on the target by the engine, not by another chip), a
-  change to §3.1's fingerprints that the trainer would take too, after which a folder's chips are enough and a
-  cache by chip makes later folders cheap.
+  The names made of them take 0.1 ms. A chip already in the cache file isn't made again, so a later session waits only
+  for chips it hasn't met. The browser's Luau in wasm is likely 2 to 3 times slower (not measured). The whole game
+  for comparison, on 10 threads: 1.3 s, 10.4 s and 3.4 s.
 
 ### 10.4 Threads and time
 
@@ -626,7 +638,7 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   - `plug(live, opponent, level, seed, plugged)` as before, making
     `NetAi::of(net, LEVELS[level], seed, fingerprints)` in place of `Fighter::new(LEVELS[level], seed)`: `net`, the shipped weights
     read once (§10.5); `fingerprints`, `Fingerprinter::start(content, threads, Some(<the app's data folder>/fingerprints))`
-    for the session's game, started as the app has the game's content (§10.3). `start` plugs it as the session
+    for the session's game, and `want` of both builds' folders' chips as the session is set up (§10.3). `start` plugs it as the session
     starts; `Practice::change_option` on the Action and the Level rows. `LivePlayer::start` calls `reset`, as the set
     starts over.
   - `NetAi::error()` or a failed fingerprint status goes to the app's log (`crate::errors::log`) and takes the AI
@@ -642,8 +654,9 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
 - **docs/app.md**: the rows' table (Action with Fights; "Dummy: Level (under Fights alone) | Easy, Normal, Hard"),
   "The dummy's rows", and "The dummy that fights" written for `NetAi` (what it sees, its levels, its fingerprints'
   first wait).
-- **New, a UI piece**: while the fingerprints are being made, a line on the practice screen saying the dummy is
-  getting ready, with its progress (`Fingerprinter::status`); its look goes through mockups first.
+- **New, a UI piece**: while the fingerprints are being made (up to 3 s for EXE5 on four threads, the first time a
+  folder's chips are met), a line on the practice screen saying the dummy is getting ready, with its progress
+  (`Fingerprinter::status`); its look goes through mockups first.
 - The tour's steps through Fights and Level are not brought back (the user: "stop doing the tour").
 
   | Level | Reaction | Choice |

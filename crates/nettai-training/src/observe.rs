@@ -44,6 +44,9 @@ pub struct SetBuf {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Obs {
     pub sets: Vec<SetBuf>,
+    /// The chips the view describes whose fingerprints the names hadn't
+    /// (where they have fingerprints at all): their blocks are zeros.
+    pub unprinted: Vec<ChipHandle>,
 }
 
 impl Default for Obs {
@@ -59,12 +62,14 @@ impl Obs {
                 .iter()
                 .map(|s| SetBuf { x: vec![0.0; s.count * s.width], ids: vec![0; s.count * s.ids], mask: vec![false; s.count] })
                 .collect(),
+            unprinted: Vec::new(),
         }
     }
 
     /// No token there: the tokens that were are zeroed (a token not there
     /// is all zeros already).
     fn clear(&mut self) {
+        self.unprinted.clear();
         for (set, buf) in spec::SETS.iter().zip(&mut self.sets) {
             for i in 0..set.count {
                 if buf.mask[i] {
@@ -151,6 +156,11 @@ impl Names {
     /// The same, with the game's chips' fingerprints.
     pub fn with_fingerprints(content: &Content, fingerprints: std::sync::Arc<crate::fingerprint::Fingerprints>) -> Names {
         Names { fingerprints: Some(fingerprints), ..Names::of(content) }
+    }
+
+    /// The same names with other fingerprints (more of the game's chips').
+    pub fn set_fingerprints(&mut self, fingerprints: std::sync::Arc<crate::fingerprint::Fingerprints>) {
+        self.fingerprints = Some(fingerprints);
     }
 
     /// The fingerprints, where they were made.
@@ -709,10 +719,15 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
 
 /// What a chip's record says of it (§3: damage, element, class, codes, MB,
 /// the flag and trait bits, trap kind, modifier kind, damage formula kind,
-/// hit strength, lockout, how it's used), with this copy's code.
-fn chip_facts(content: &Content, names: &Names, h: ChipHandle, code: Option<u8>, row: &mut [f32], ids: &mut [i32]) {
-    if let Some(fp) = names.fingerprints().and_then(|f| f.of(h)) {
-        fingerprint(names, fp, &mut row[chips::fingerprint..chips::fingerprint + spec::FINGERPRINT], ids);
+/// hit strength, lockout, how it's used), with this copy's code. Its
+/// fingerprint where the names have it; where they have fingerprints but
+/// not its, it goes in `unprinted`.
+fn chip_facts(content: &Content, names: &Names, h: ChipHandle, code: Option<u8>, row: &mut [f32], ids: &mut [i32], unprinted: &mut Vec<ChipHandle>) {
+    if let Some(f) = names.fingerprints() {
+        match f.of(h) {
+            Some(fp) => fingerprint(names, fp, &mut row[chips::fingerprint..chips::fingerprint + spec::FINGERPRINT], ids),
+            None => unprinted.push(h),
+        }
     }
     let def = &content.defs.chips[h.0 as usize];
     let c = &def.record;
@@ -892,6 +907,7 @@ fn hand_damage(built: &builder::Built) -> f32 {
 fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
     let b = v.b;
     let content = &*b.content;
+    let mut unprinted = std::mem::take(&mut out.unprinted);
     // The hand in the fight, the next chip first.
     let hand = &b.hands[v.me as usize];
     for (k, i) in (hand.cursor as usize..6).enumerate() {
@@ -900,7 +916,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
         row[chips::role] = 1.0;
         row[chips::hand_place] = k as f32 / 6.0;
         let code = hand.selection[i].filter(|s| s.id == id).map(|s| s.code.0);
-        chip_facts(content, v.names, id, code, row, ids);
+        chip_facts(content, v.names, id, code, row, ids, &mut unprinted);
         row[chips::in_hand] = (hand.damage[i] + hand.attack_bonus[i]) as f32 / 400.0;
         row[chips::in_hand + 1] = hand.attack_bonus[i] as f32 / 100.0;
         for bit in 0..3 {
@@ -953,7 +969,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
             row[chips::pointer + 2] = steps[slot].map_or(1.0, |n| clip(n as f32 / 6.0, 0.0, 1.0));
             let chip = screen.chip_in(slot as u8, &side.folder).or_else(|| s.face.map(|f| nettai_battle::custom::FolderChip::new(f, nettai_battle::content::ChipCode(0))));
             if let Some(c) = chip {
-                chip_facts(content, v.names, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row, ids);
+                chip_facts(content, v.names, c.id, matches!(s.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)).then_some(c.code.0), row, ids, &mut unprinted);
                 put_ids(ids, 0, v.names.chip(c.id));
             }
             // What picking it would add (§4.2): a Program Advance it
@@ -979,13 +995,14 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
     if let Some(u) = b.used_chip_for(v.me) {
         let (row, ids) = out.token(spec::CHIPS, spec::USED_TOKEN);
         row[chips::role + 2] = 1.0;
-        chip_facts(content, v.names, u.chip, None, row, ids);
+        chip_facts(content, v.names, u.chip, None, row, ids, &mut unprinted);
         row[chips::used] = 1.0;
         row[chips::used + 1] = u.damage as f32 / 400.0;
         row[chips::used + 2] = u.bonus as f32 / 100.0;
         row[chips::used + 3] = flag(u.doubled);
         put_ids(ids, 0, v.names.chip(u.chip));
     }
+    out.unprinted = unprinted;
 }
 
 fn encode_rules(v: &View, out: &mut Obs) {

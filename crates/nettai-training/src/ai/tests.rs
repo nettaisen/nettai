@@ -92,17 +92,20 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
     }
 }
 
-/// Till its fingerprints are made it presses nothing and decides nothing;
-/// and what it is told the player holds changes nothing it does; and as the
-/// set starts over it plays as it did.
+/// While the fingerprints of the chips its view shows aren't made it
+/// decides nothing (its custom screen waits, asking for them); and what it
+/// is told the player holds changes nothing it does; and as the set starts
+/// over it plays as it did.
 #[test]
 fn it_waits_for_its_fingerprints_hears_nothing_and_starts_over() {
     let game = "exe6";
     let c = content(game);
-    let mut waiting = NetAi::of(net(), Level::Easy, 5, Fingerprinter::pending(c.hash().0)).unwrap();
+    let idle = Fingerprinter::idle(&c);
+    let mut waiting = NetAi::of(net(), Level::Easy, 5, idle.clone()).unwrap();
     let (pressed, b) = play(game, 4, &mut waiting, 900, 0);
     assert!(pressed.iter().all(|&h| h == 0) && waiting.decided.is_empty() && !waiting.ready());
     assert_eq!(b.round.mode, mode::CUSTOM, "the custom screen waits for it");
+    assert!(matches!(idle.status(), Status::Making { done: 0, of } if of > 10), "both folders' chips asked for: {:?}", idle.status());
     let mut ai = NetAi::of(net(), Level::Easy, 5, fingerprints(game)).unwrap();
     let (one, _) = play(game, 4, &mut ai, 1500, 0);
     let mut deaf = NetAi::of(net(), Level::Easy, 5, fingerprints(game)).unwrap();
@@ -123,11 +126,11 @@ fn fingerprints_of_another_content_are_refused() {
     assert!(ai.error().is_some_and(|e| e.contains("fingerprints are of content")), "{:?}", ai.error());
 }
 
-/// Fingerprints made on threads of their own (the host's, here std's) are
-/// the same as `Fingerprints::compute`'s, written to the cache folder, and
-/// read from it the next time without being made.
+/// Fingerprints made on threads of their own (the host's, here std's) as
+/// they are asked for are `Fingerprints::compute`'s, written to the cache
+/// folder, and read from it the next time without being made.
 #[test]
-fn fingerprints_are_made_on_threads_and_kept() {
+fn fingerprints_are_made_as_asked_on_threads_and_kept() {
     let game = "exe6";
     let c = content(game);
     let chips: Vec<_> = ["cannon", "sword", "minibomb"].iter().filter_map(|k| nettai_match::ids::chip(&c, game, k)).collect();
@@ -135,22 +138,24 @@ fn fingerprints_are_made_on_threads_and_kept() {
     let wait = |f: &Fingerprinter| {
         for _ in 0..6000 {
             match f.status() {
-                Status::Ready(f) => return f,
+                Status::Ready => return f.given().1,
                 Status::Failed(e) => panic!("{e}"),
                 _ => std::thread::sleep(std::time::Duration::from_millis(10)),
             }
         }
         panic!("never made");
     };
-    let made = Fingerprinter::begin(&c, chips.clone(), 2, Some(dir.clone()));
+    let made = Fingerprinter::begin(&c, 2, Some(dir.clone()));
+    made.want(chips.clone());
     let f = wait(&made);
     let want = Fingerprints::compute(&c, &chips, 1).unwrap();
-    assert_eq!((&f.chips, &f.pairs), (&want.chips, &want.pairs));
+    assert_eq!(f.chips, want.chips);
     assert_eq!(made.unkept(), None);
     assert!(dir.join(fingerprint::file_name(&c)).is_file());
-    let read = Fingerprinter::begin(&c, chips, 2, Some(dir.clone()));
+    let read = Fingerprinter::begin(&c, 2, Some(dir.clone()));
+    read.want(chips);
     let again = wait(&read);
-    assert!(read.0.job.get().is_none(), "read, not made");
     assert_eq!(again.chips, f.chips);
+    assert_eq!(read.generation(), 1, "read, not made");
     let _ = std::fs::remove_dir_all(&dir);
 }
