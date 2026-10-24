@@ -1004,12 +1004,17 @@ fn encode_rules(v: &View, out: &mut Obs) {
             if stats.id() != r.stats {
                 continue;
             }
-            place(stats_schema, s).map(|p| stats.get_at(p))
+            place(stats_schema, s).map(|p| (stats.get_at(p), p.ty().zero()))
         } else {
             let Some((schema, block)) = state else { continue };
-            place(schema, s).map(|p| block.get_at(p))
+            place(schema, s).map(|p| (block.get_at(p), p.ty().zero()))
         };
-        let Some(value) = value else { continue };
+        let Some((value, zero)) = value else { continue };
+        // (A field at its type's default, zero, has no token: absent is
+        // default.)
+        if value == zero {
+            continue;
+        }
         let (row, ids) = out.token(spec::RULES, n);
         n += 1;
         row[rules::source + (!s.stats) as usize] = 1.0;

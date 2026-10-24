@@ -384,17 +384,21 @@ impl Maker {
         Ok(Build { side, pair })
     }
 
-    /// Every fact a build states that nothing above drew (§6.2): not the
-    /// navi, the folder and its Regular and tag chips, the facts of forms,
-    /// the facts a choice's presets set, those no build states (the rules'
-    /// defaults: `Builds::never_stated`), nor a list of other navis (a side's
-    /// party: the env plays no switch to one). Each drawn from what its type
-    /// allows (a flag, a variant, a definition of the game's, a small
-    /// number), the side's single facts first; a list filled an entry at a
-    /// time, to a random length (16 at most), each entry kept only if the rules'
-    /// `validate` and `build_check` (asked of `battle`, the side's round set
-    /// up, its setup changed in place) say nothing of it; a single fact they
-    /// say something of goes back to its default.
+    /// What the build creator lets a player change that nothing above drew
+    /// (§6.2): its lists (the pieces on a board, the cards, the places: not
+    /// the folder, an engine's role; not those no build states, the rules'
+    /// defaults: `Builds::never_stated`; not a list of other navis, a side's
+    /// party, whose switching the env doesn't play). The creator offers no
+    /// single fact but through the choices' presets and the facts of forms
+    /// (and a board's size, which stays the new build's: the largest), so
+    /// every single fact stays as the new build has it, every build at the
+    /// most its game allows. A list is filled an entry at a time, to a random
+    /// length (16 at most), each entry's fields drawn from what their types
+    /// allow (a flag, a variant, a definition of the game's, a number below
+    /// [`SMALL`]: the creator's own ranges, a board's size, are its screens'),
+    /// each entry kept only if the rules' `validate` and `build_check` (asked
+    /// of `battle`, the side's round set up, its setup changed in place) say
+    /// nothing of it.
     fn randomize(&self, side: &mut Side, battle: &mut Battle, picks: &mut Picks) -> Result<(), String> {
         let content = &self.content;
         let skipped: Vec<String> = {
@@ -408,15 +412,8 @@ impl Maker {
             .into_iter()
             .filter(|f| facts::role_of(content, f.name).is_none() && !self.builds.never_stated(content, f.name) && !skipped.iter().any(|s| s == f.name) && !names_navis(f.ty))
             .collect();
-        let (lists, singles): (Vec<_>, Vec<_>) = fields.into_iter().partition(|f| matches!(f.ty, FieldType::List(..)));
+        let lists: Vec<facts::Field> = fields.into_iter().filter(|f| matches!(f.ty, FieldType::List(..))).collect();
         let mut defs: HashMap<(Registry, Option<String>), Vec<u16>> = HashMap::new();
-        for f in singles {
-            let Some(value) = self.draw(f.ty, picks, &mut defs) else { continue };
-            let before = side.clone();
-            if side.set_fact(content, f.name, &[value.fact()]).is_err() || !self.accepted(side, battle, f.name, None)? {
-                *side = before;
-            }
-        }
         for f in lists {
             let FieldType::List(elem, room) = f.ty else { continue };
             // (A random length up to the list's room or 16 entries; drawn
@@ -452,8 +449,8 @@ impl Maker {
         Ok(())
     }
 
-    /// Whether the rules say nothing of `side`'s fact `field` (its entry
-    /// `entry` of a list, or any of its entries) with `side` in `battle`.
+    /// Whether the rules say nothing of `side`'s list fact `field` (its entry
+    /// `entry`, or any of its entries) with `side` in `battle`.
     fn accepted(&self, side: &Side, battle: &mut Battle, field: &str, entry: Option<usize>) -> Result<bool, String> {
         battle.setup.players[0].rules = side.facts.block().cloned();
         let asked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -493,11 +490,18 @@ impl Maker {
         })
     }
 
-    /// A round between builds `sides` (the left first), on a random
-    /// arena of the game's from `seed`, each side's base HP `hp` where its
-    /// rules take one (a navi whose HP is its own, as a link navi's level
-    /// gives it, keeps its own: the rules refuse a base HP for it), checked.
+    /// [`Maker::round_with`] each side's base HP `hp`.
     pub fn round(&self, sides: [Side; 2], hp: u16, seed: u32) -> Result<Match, String> {
+        self.round_with(sides, Some(hp), seed)
+    }
+
+    /// A round between builds `sides` (the left first), on a random
+    /// arena of the game's from `seed`, checked; with `hp`, each side's base
+    /// HP that where its rules take one (a navi whose HP is its own, as a
+    /// link navi's level gives it, keeps its own: the rules refuse a base HP
+    /// for it); without, each side's HP as its build has it (the creator's:
+    /// the most its game allows, or its preset's).
+    pub fn round_with(&self, sides: [Side; 2], hp: Option<u16>, seed: u32) -> Result<Match, String> {
         let content = &self.content;
         let mut m = Match {
             game: self.game.clone(),
@@ -507,14 +511,14 @@ impl Maker {
             backgrounds: BackgroundPick::Game,
             custom_screen_time: None,
         };
-        let hp_fact = content.defs.fact_name(PlayerFact::BaseHp);
-        if let Some(name) = hp_fact {
+        let hp_fact = content.defs.fact_name(PlayerFact::BaseHp).zip(hp);
+        if let Some((name, hp)) = hp_fact {
             for side in &mut m.sides {
                 side.set_fact(content, name, &[Fact::Value(Value::Int(hp as i64))])?;
             }
         }
         let mut problems = check::problems(content, &m);
-        if let Some(name) = hp_fact {
+        if let Some((name, _)) = hp_fact {
             let refused: Vec<usize> = problems.iter().filter(|p| p.field.as_deref() == Some(name)).filter_map(|p| p.side).collect();
             if !refused.is_empty() {
                 for side in refused {
@@ -557,7 +561,7 @@ mod tests {
                     assert!(s.folder(&c).chips().all(|chip| !holdout.holds(&c.defs.chip(chip.id).key)), "{game}: a chip held out");
                 }
                 let t = std::time::Instant::now();
-                let m = maker.round([a, b], if i % 2 == 0 { 1000 } else { 600 }, i).unwrap_or_else(|e| panic!("{e}"));
+                let m = maker.round_with([a, b], if i % 2 == 0 { None } else { Some(600) }, i).unwrap_or_else(|e| panic!("{e}"));
                 assert!(nettai_match::check_match(&c, &m).is_empty());
                 println!("{game}: two builds {made:?}, a round {:?}", t.elapsed());
             }
@@ -585,9 +589,59 @@ mod tests {
         assert!(held * 4 > all && held * 4 < 3 * all, "{held} of {all}");
     }
 
-    /// Randomized builds vary every fact a build states (§6.2): over many
-    /// builds of each game, each such fact is off its default in some; the
-    /// rules accept every build made. Prints the acceptance and the time.
+    /// Random builds stay what the build creator makes (§6.2): over many
+    /// builds of each game, every one drawing all it may, each seat's max HP
+    /// as a round starts is the HP the creator's overview gives the build,
+    /// and every single fact (not an engine's role, a fact of forms, a
+    /// choice's or a list) is as a new build of the side's navi has it.
+    /// Prints the max HP's spread.
+    #[test]
+    fn random_builds_stay_what_the_creator_makes() {
+        for game in ["exe6", "exe5", "exe4"] {
+            let c = content(game);
+            let maker = Maker::new(&c).unwrap();
+            let b = Builds::of(&c, game).unwrap();
+            let form_facts: Vec<&str> = facts::form_facts(&c).iter().map(|f| f.name).collect();
+            let choice_facts: Vec<&str> = b.choices.iter().flat_map(|ch| ch.facts()).collect();
+            let mut picks = Picks::new(21);
+            let mut hps = Vec::new();
+            for i in 0..60 {
+                let side = maker.random(&mut picks, &Holdout::default(), 1.0, Combos::NONE).unwrap().side;
+                let mut checked = Checked::of(&c, game, &side);
+                let shown = checked.overview(&c, &side).expect("the creator's overview").hp.value;
+                let m = maker.round_with([side.clone(), side.clone()], None, i).unwrap();
+                let battle = nettai_battle::Battle::new(m.round(&c, i), c.clone());
+                let hp = battle.stats[0].max_hp;
+                assert_eq!(hp as i32, shown, "{game}: max HP against the creator's");
+                hps.push(hp);
+                let navi = side.navi(&c);
+                let starts: Vec<Side> = b
+                    .groups
+                    .iter()
+                    .map(|g| {
+                        let mut r = b.new_build(&c, &g.id).unwrap();
+                        b.set_navi(&c, &mut r, navi).unwrap();
+                        r
+                    })
+                    .collect();
+                for f in facts::fields(&c) {
+                    let skip = facts::role_of(&c, f.name).is_some() || form_facts.contains(&f.name) || choice_facts.contains(&f.name) || matches!(f.ty, FieldType::List(..));
+                    if !skip {
+                        let value = side.facts.get(&c, f.name);
+                        assert!(starts.iter().any(|r| r.facts.get(&c, f.name) == value), "{game}: {} is {value:?}, which no new build has", f.name);
+                    }
+                }
+            }
+            hps.sort();
+            let under = |x: u16| 100.0 * hps.iter().filter(|&&h| h < x).count() as f64 / hps.len() as f64;
+            println!("{game}: max HP min {} median {} max {}; under 100 {:.1}%, under 500 {:.1}%, at 1000 {:.1}%", hps[0], hps[hps.len() / 2], hps[hps.len() - 1], under(100), under(500), 100.0 * hps.iter().filter(|&&h| h == 1000).count() as f64 / hps.len() as f64);
+        }
+    }
+
+    /// Randomized builds vary what the creator offers (§6.2): over many
+    /// builds of each game, each list a build states, fact of forms and
+    /// choice's fact is off its default in some; the rules accept every
+    /// build made. Prints the acceptance and the time.
     #[test]
     fn randomized_builds_vary_every_fact_a_build_states() {
         for game in ["exe6", "exe5", "exe4"] {
@@ -615,12 +669,17 @@ mod tests {
             );
             println!("  builds off the default, by fact: {varied:?}");
             let b = Builds::of(&c, game).unwrap();
+            let choice_facts: Vec<&str> = b.choices.iter().flat_map(|ch| ch.facts()).collect();
             for f in facts::fields(&c) {
-                let stated = !b.never_stated(&c, f.name) && !names_navis(f.ty);
-                if stated {
+                // (What the creator offers: a list a build states, a fact of forms, a choice's.)
+                let offered = (matches!(f.ty, FieldType::List(..)) && !b.never_stated(&c, f.name) && !names_navis(f.ty) && facts::role_of(&c, f.name).is_none())
+                    || facts::form_facts(&c).iter().any(|x| x.name == f.name)
+                    || choice_facts.contains(&f.name);
+                if offered {
                     assert!(varied[f.name] > 0, "{game}: {} never varied", f.name);
                 }
             }
         }
     }
 }
+
