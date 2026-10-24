@@ -72,8 +72,9 @@ pub struct Config {
     pub max_fight_ticks: u32,
     /// A custom screen open this long cuts the round off.
     pub max_screen_ticks: u32,
-    /// The base HP's range, drawn each round, both sides the same.
-    pub hp: (u16, u16),
+    /// The base HP's range, drawn each round, both sides the same (where
+    /// the navi takes one); none: each side's as its build has it.
+    pub hp: Option<(u16, u16)>,
     /// Chips held out of training (§6.6's `chip_holdout`).
     pub holdout: crate::builds::Holdout,
     /// The chance each practice option is on in a round.
@@ -99,7 +100,7 @@ impl Default for Config {
             delay: (6, 30),
             max_fight_ticks: 18000,
             max_screen_ticks: 3600,
-            hp: (1000, 1000),
+            hp: None,
             holdout: Default::default(),
             practice: 0.25,
             screen_decisions: 24,
@@ -368,8 +369,8 @@ impl Env {
         self.seats[seat].pinned_delay = ticks;
     }
 
-    pub fn set_hp(&mut self, lo: u16, hi: u16) {
-        self.cfg.hp = (lo, hi.max(lo));
+    pub fn set_hp(&mut self, hp: Option<(u16, u16)>) {
+        self.cfg.hp = hp.map(|(lo, hi)| (lo, hi.max(lo)));
     }
 
     /// The chips held out, from the next round.
@@ -565,7 +566,13 @@ impl Env {
                     }
                     self.ask(s, asked[s]);
                     out.phase[s] = asked[s];
-                    out.hp_gain[s] += std::mem::take(&mut self.seats[s].gain);
+                    // (After a round's end in this step, the step's gain is the
+                    // ended round's alone: the new round's before its first
+                    // decision is no transition's.)
+                    let gain = std::mem::take(&mut self.seats[s].gain);
+                    if !out.done {
+                        out.hp_gain[s] += gain;
+                    }
                 }
                 self.asked = asked;
                 return Ok(out);
@@ -816,9 +823,9 @@ impl RoundMade {
         let builds = [build()?, build()?];
         let pairs = [builds[0].pair, builds[1].pair];
         let sides = builds.map(|b| b.side);
-        let hp = draw(picks, cfg.hp.0, cfg.hp.1);
+        let hp = cfg.hp.map(|(lo, hi)| draw(picks, lo, hi));
         let seed = picks.next() as u32;
-        let m = game.maker.round(sides, hp, seed)?;
+        let m = game.maker.round_with(sides, hp, seed)?;
         let set = Set::of(&game.content, &m, seed);
         Ok(RoundMade { battle: set.start(), folders: set.folders().to_vec(), m, pairs })
     }

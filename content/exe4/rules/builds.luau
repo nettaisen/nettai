@@ -48,8 +48,8 @@ return {
     },
     -- The facts a build never states: every build plays at the most the game allows, so these are always the rules'
     -- defaults (the most Regular memory, the sun, Double Soul, the rival wins at the 100 RedSun's and BlueMoon's damage
-    -- counts).
-    at_defaults = { "reg_up", "sun", "double_soul", "rival_wins" },
+    -- counts, every SP navi deleted in no time).
+    at_defaults = { "reg_up", "sun", "double_soul", "rival_wins", "sp_times" },
     -- A new build is its group's souls and each choice's first preset (a light MegaMan), with this.
     new = {
         -- The folder a new save starts with: the first folder of the ROM's folder table, which the new game routine

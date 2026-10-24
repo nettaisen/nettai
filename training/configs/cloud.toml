@@ -1,0 +1,25 @@
+# A full run on a many-core cloud machine (§11). Every value not named here is the default in nettai_ai/config.py.
+#   training/cloud/run.sh first --config configs/cloud.toml
+# The held-out-game test (§9): add --train-games exe5,exe6 --eval-games exe4
+
+[env]
+games = ["exe6", "exe5", "exe4"]
+envs = 1024
+threads = 0          # every core
+
+[ppo]
+steps = 128
+chunk = 128
+epochs = 3
+minibatch_chunks = 16
+
+[run]
+updates = 20000
+checkpoint_every = 50
+device = "auto"
+
+[eval]
+every = 100
+envs = 40
+threads = 4
+rounds = 2
