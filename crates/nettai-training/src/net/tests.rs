@@ -156,10 +156,15 @@ fn weights_of_another_encoder_or_shape_are_refused() {
     })
     .contains("pool_heads_new"));
     assert!(rewrite(&|m, _| {
-        let a = m["architecture"].replace("\"previous_action\": 40", "\"previous_action\": 41");
+        let a = m["architecture"].replace("\"previous_action\": 38", "\"previous_action\": 39");
         m.insert("architecture".into(), a);
     })
-    .contains("previous action of 41"));
+    .contains("previous action of 39"));
+    assert!(rewrite(&|m, _| {
+        let a = m["architecture"].replace("\"entries\": 5", "\"entries\": 7");
+        m.insert("architecture".into(), a);
+    })
+    .contains("7 entries"));
     assert!(rewrite(&|_, drop| drop.push("ln_f.bias".into())).contains("no ln_f.bias"));
     assert_eq!(rewrite(&|_, _| {}), "", "the file as it was is taken");
 }

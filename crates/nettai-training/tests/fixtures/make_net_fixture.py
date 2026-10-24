@@ -76,13 +76,16 @@ def record(game: str, cache: str | None, seed: int) -> list[dict]:
     return out
 
 
-def pick(decisions: list[dict]) -> list[dict]:
-    """A few of a game's decisions, in order: the screen decisions with the most allowed actions, and the fight
+def pick(decisions: list[dict], spec) -> list[dict]:
+    """A few of a game's decisions, in order: the screen decisions with the most allowed actions (one of them,
+    where there is one, after a screen decision: a screen's first decision comes after the fight's), and the fight
     decisions with the most tokens present."""
     present = lambda d: sum(int(m.sum()) for m in d["obs"]["mask"].values())
+    after_screen = lambda i: spec.fight_actions <= decisions[i]["previous"] < previous_width(spec) - 1
     screen = [i for i, d in enumerate(decisions) if d["phase"] == 2]
     fight = [i for i, d in enumerate(decisions) if d["phase"] == 1]
-    screen = sorted(screen, key=lambda i: -int(decisions[i]["legal_screen"].sum()))[:SCREEN]
+    screen = sorted(screen, key=lambda i: -int(decisions[i]["legal_screen"].sum()))
+    screen = screen[: SCREEN - 1] + [next((i for i in screen[SCREEN - 1 :] if after_screen(i)), *screen[SCREEN - 1 : SCREEN])]
     fight = sorted(fight, key=lambda i: -present(decisions[i]))[:FIGHT]
     return [decisions[i] for i in sorted(screen + fight)]
 
@@ -111,9 +114,9 @@ def main() -> None:
     ap.add_argument("--cache", default=os.environ.get("NETTAI_FINGERPRINTS"))
     a = ap.parse_args()
     out = Path(a.out)
-    seqs = [pick(record(g, a.cache, 11 + i)) for i, g in enumerate(GAMES)]
     pool = nettai_gym.Pool(games=["exe6"], envs=1, threads=1, seed=1, cache=a.cache)
     spec = parse_spec(pool_spec(pool))
+    seqs = [pick(record(g, a.cache, 11 + i), spec) for i, g in enumerate(GAMES)]
     cfg = ModelConfig(**SMALL) if a.size == "small" else ModelConfig()
     torch.manual_seed(1)
     model = Model(spec, cfg)

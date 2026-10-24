@@ -10,10 +10,10 @@
 //!   on the ticks a decision will need (`(t + D) mod k = 0`). In the fight it
 //!   decides every `k` ticks from the view of `D` ticks before (`D` its
 //!   level's delay); on the custom screen it decides whenever its navigator
-//!   is idle and the screen reads keys, from the screen as it is, the keys
-//!   probed in a copy of the battle as the screen first reads them. It holds
-//!   a fight action till the next decision; the navigator presses the way to
-//!   a slot or a key (act.rs). It never reads `theirs`: it doesn't hear the
+//!   is idle and the screen is choosing chips, from the screen as it is, the
+//!   keys probed in a copy of the battle at its first decision there. It
+//!   holds a fight action till the next decision; the navigator carries a
+//!   screen choice out, a slot or an entry of the form list (act.rs). It never reads `theirs`: it doesn't hear the
 //!   player's buttons.
 //! - **Its memory.** The GRU state and the last decision's action (the
 //!   network's next decision reads it: [`net::Memory::took`]) carry through
@@ -35,7 +35,7 @@
 //! Nothing here names a game.
 
 use crate::act::{self, Navigator};
-use crate::env::{self, fight_runs, probe_keys};
+use crate::env::{self, fight_runs};
 use crate::fingerprint::{self, Fingerprints};
 use crate::net::{self, Action, Heads, Knobs, Memory, Net};
 use crate::observe::{self, AttackHistory, Extra, Names, Obs};
@@ -605,17 +605,16 @@ impl NetAi {
                     None => self.stop("a fight decision with nothing allowed".into()),
                 }
             }
-        } else if custom && r.nav.idle() && screen.is_some_and(|s| act::reads_keys(&s)) {
+        } else if custom && r.nav.idle() && screen.is_some_and(|s| act::chooses(&s)) {
             if r.probe.is_none() {
-                r.probe = Some(probe_keys(b, side));
+                r.probe = Some(env::probe(b, side, &mut r.nav));
             }
             let extra = self.extra(r);
             observe::encode(b, side, names, &extra, &mut self.obs);
             // (No decision on a view without a chip's fingerprint: the screen
             // waits, and asks again next tick.)
             if !waits(&self.fingerprints, &self.obs) {
-                let s = screen.expect("a screen");
-                let legal = act::legal_screen(&s, &b.game_rules().custom_screen, extra.refused, extra.only_ok);
+                let legal = act::legal_screen(b, side, &r.nav, extra.only_ok);
                 let out = self.net.forward(&self.obs, &mut self.mem, Heads::Screen);
                 let logits = out.screen.expect("the screen's head");
                 match net::choose(&logits, &legal, &self.knobs, &mut self.rng) {

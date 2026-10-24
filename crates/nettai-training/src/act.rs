@@ -5,17 +5,19 @@
 //!   away from it) × A held or not × B held or not ([`fight_buttons`]).
 //!   Toward is RIGHT for either side: each console shows its own player on
 //!   the left.
-//! - On the custom screen, a pointer at one of its 12 slots or one of seven
-//!   keys ([`spec::SCREEN_KEYS`]), which the [`Navigator`] presses: it walks
-//!   the cursor to a slot along the rules' own layout
-//!   (`Screen::target_from`) and presses A, or presses a key once. A pick
-//!   that changes nothing (a screen that refuses it) is masked for the rest
-//!   of that screen.
+//! - On the custom screen, what to choose: one of its 12 slots or an entry
+//!   of the rules' form list ([`spec::FORM_ENTRIES`]: EXE6's Crosses). The
+//!   [`Navigator`] presses the way there and carries the choice out before
+//!   the next is asked: it walks the cursor to a slot along the rules' own
+//!   layout (`Screen::target_from`) and presses A, or opens the form list
+//!   and chooses in it. The network never presses a key of the screen
+//!   itself. A choice that changes nothing (a screen that refuses it) is
+//!   masked for the rest of that screen.
 
 use crate::spec;
 use nettai_battle::Battle;
 use nettai_battle::battle::mode;
-use nettai_battle::content::{CustomScreenLayout, ScreenKey};
+use nettai_battle::content::{CustomScreenLayout, ScreenKey, WindowHandle, WindowView};
 use nettai_battle::custom::screen::{MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use std::collections::VecDeque;
@@ -55,7 +57,8 @@ pub fn fight_action(buttons: u16) -> i32 {
     dir * 4 + if buttons & keys::A != 0 { 2 } else { 0 } + if buttons & keys::B != 0 { 1 } else { 0 }
 }
 
-/// The custom screen's keys, as [`spec::SCREEN_KEYS`] orders them.
+/// The keys the key probe presses (§4.2), as [`spec::PROBED_KEYS`] names
+/// them.
 pub const KEYS: [u16; 7] = [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT, keys::A, keys::B, keys::START];
 
 const MOVES: [(u16, ScreenKey); 4] = [(keys::UP, ScreenKey::Up), (keys::DOWN, ScreenKey::Down), (keys::LEFT, ScreenKey::Left), (keys::RIGHT, ScreenKey::Right)];
@@ -110,17 +113,17 @@ fn toward(screen: &Screen, layout: &CustomScreenLayout, target: u8, blocked: u64
     None
 }
 
-/// Whether a screen reads its player's keys now: choosing, or a window of
-/// the rules up.
-pub fn reads_keys(screen: &Screen) -> bool {
-    matches!(screen.phase, Phase::Choosing | Phase::Window { .. })
+/// Whether a screen takes a decision now: it is choosing chips. A window
+/// of the rules is the navigator's alone.
+pub fn chooses(screen: &Screen) -> bool {
+    screen.phase == Phase::Choosing
 }
 
 /// The slots a pointer may be at (§4.2): while the screen is choosing, a
 /// chip it can still pick (selectable, the selection not full) or a
 /// button of the rules with uses left, or OK, that the cursor can reach and
 /// the screen hasn't refused (`refused`, a bit a slot); with `only_ok`, OK
-/// alone. While a window is up, none: keys only.
+/// alone. Otherwise none.
 pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, only_ok: bool) -> [bool; SLOTS] {
     let mut out = [false; SLOTS];
     if screen.phase != Phase::Choosing {
@@ -139,27 +142,57 @@ pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, o
     out
 }
 
-/// The key that backs out of a rules' window: the only one a screen past
-/// its decisions (`only_ok`) still allows in one. A may do nothing there
-/// (EXE6's Cross window refuses a Cross already used, and reads no A once
-/// one is chosen); B closes it whatever it holds.
-pub const CLOSING_KEY: u16 = keys::B;
+/// Where the rules' form list opens from (EXE6's Cross window): the key
+/// the key probe found opening it, and where the cursor was then.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Opener {
+    pub key: u16,
+    pub cursor: u8,
+}
 
-/// The screen actions allowed now: the legal slots, then the keys (all of
-/// them while the screen reads keys). With `only_ok` (the screen's
-/// decisions spent), OK alone while it is choosing, and in a window of the
-/// rules only the key that backs out ([`CLOSING_KEY`]): a seat pressing
-/// directions, or A where A does nothing, would hold the screen open
-/// forever.
-pub fn legal_screen(screen: &Screen, layout: &CustomScreenLayout, refused: u16, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
-    let mut out = [false; spec::SCREEN_ACTIONS];
-    if !reads_keys(screen) {
+/// The opener among the windows the key probe's keys opened
+/// (`env::probe_keys`, by [`KEYS`]), the cursor at `cursor`: the first key
+/// whose window is a form list's (its view the list's, or the list's
+/// opening).
+pub fn opener(b: &Battle, cursor: u8, opened: &[Option<WindowHandle>; KEYS.len()]) -> Option<Opener> {
+    KEYS.iter().zip(opened).find_map(|(&key, w)| {
+        let view = b.content.defs.window((*w)?).view;
+        matches!(view, Some(WindowView::FormListOpening | WindowView::FormList)).then_some(Opener { key, cursor })
+    })
+}
+
+/// The entries of the rules' form list (EXE6's Crosses) an action may
+/// choose (§4.2): with an opener whose place the cursor can get back to,
+/// while no entry is chosen, each entry that holds a form, isn't marked (a
+/// Cross used this battle) and wasn't refused on this screen
+/// (`Navigator::refused_forms`).
+pub fn legal_forms(b: &Battle, side: u8, steps: &[Option<u8>; SLOTS], nav: &Navigator) -> [bool; spec::FORM_ENTRIES] {
+    let mut out = [false; spec::FORM_ENTRIES];
+    let (Some(opener), Some(list)) = (nav.opener, b.form_list(side)) else { return out };
+    if list.chosen.is_some() || steps[opener.cursor as usize].is_none() {
         return out;
     }
-    let slots = legal_slots(screen, &steps(screen, layout), refused, only_ok);
-    out[..SLOTS].copy_from_slice(&slots);
-    for (k, key) in KEYS.iter().enumerate() {
-        out[SLOTS + k] = !only_ok || (screen.phase != Phase::Choosing && *key == CLOSING_KEY);
+    for (k, legal) in out.iter_mut().enumerate().take(list.count as usize) {
+        *legal = list.forms[k].is_some() && !list.marked[k] && nav.refused_forms & (1 << k) == 0;
+    }
+    out
+}
+
+/// The key that backs out of a form list: the navigator closes with it a
+/// list it gave up on, or opened on its way to a slot.
+pub const CLOSING_KEY: u16 = keys::B;
+
+/// The screen actions allowed now on side `side`'s screen in `b` (§4.2):
+/// while it is choosing, the legal slots, then the legal entries of the
+/// form list; with `only_ok` (the screen's decisions spent), OK alone.
+/// Otherwise none.
+pub fn legal_screen(b: &Battle, side: u8, nav: &Navigator, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
+    let mut out = [false; spec::SCREEN_ACTIONS];
+    let Some(screen) = b.custom.sides[side as usize].screen.as_ref().filter(|s| chooses(s)) else { return out };
+    let steps = steps(screen, &b.game_rules().custom_screen);
+    out[..SLOTS].copy_from_slice(&legal_slots(screen, &steps, nav.refused, only_ok));
+    if !only_ok {
+        out[SLOTS..].copy_from_slice(&legal_forms(b, side, &steps, nav));
     }
     out
 }
@@ -197,20 +230,48 @@ enum Doing {
     Idle,
     /// Walking the cursor to a slot, then pressing A on it.
     Going(u8),
-    /// Pressing a key once.
-    Key(u16),
+    /// Choosing an entry of the rules' form list.
+    Listing(u8),
 }
 
-/// Presses the custom screen's buttons for a pointer (§4.2), a tick at a
-/// time: a direction is held two ticks (the screen moves on its second,
-/// its auto-repeat's) and let go a tick; A and the other keys are held a
-/// tick and let go a tick. Whether a pick changed the screen is looked at
-/// once A is let go: one that didn't is refused for the rest of the
-/// screen. A move on the way to a slot that opened a window of the rules
-/// rather than moving the cursor (EXE6's UP on the top row or OK while a
-/// Cross is on offer) is left out of the ways for the rest of the screen:
-/// a seat whose way to OK opened the window, backing out, would open it
-/// again.
+/// How a choice in the form list goes.
+#[derive(Clone, Copy, Debug, Default)]
+struct Listing {
+    /// The opener's key was pressed.
+    opened: bool,
+    /// The list's cursor before the last move, and the move tried (its
+    /// place in `MOVES`): a move that left the cursor where it was is
+    /// passed over for the next.
+    last: Option<u8>,
+    dir: u8,
+    /// A was pressed on the entry.
+    pressed: bool,
+    /// The entry is chosen: the list says so, or its chosen window is up.
+    chosen: bool,
+    /// Given up: backing out of the list.
+    leaving: bool,
+}
+
+/// Presses the custom screen's buttons for a screen action (§4.2), a tick
+/// at a time, the action done before the next is asked: a direction is
+/// held two ticks (the screen moves on its second, its auto-repeat's) and
+/// let go a tick; A and the other keys are held a tick and let go a tick.
+///
+/// - **A slot.** The cursor walks there along the rules' layout and A is
+///   pressed. Whether the pick changed the screen is looked at once A is
+///   let go: one that didn't is refused for the rest of the screen. A move
+///   on the way that opened a window of the rules rather than moving the
+///   cursor (EXE6's UP on the top row or OK while a Cross is on offer) is
+///   backed out of and left out of the ways for the rest of the screen.
+/// - **An entry of the form list.** The cursor walks to the opener's place
+///   and the opener's key is pressed; in the list, a direction is pressed
+///   till the list's cursor is on the entry (one that doesn't move it is
+///   passed over for the next), then A; the list's own windows play out
+///   till the screen is choosing again. An entry the list didn't take (the
+///   key opened nothing, A chose nothing, no direction got there) is backed
+///   out of with B and refused for the rest of the screen.
+/// - **A window it didn't open.** A form list is backed out of; the rules'
+///   other windows (EXE6's Beast Out, EXE5's soul) play out alone.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Navigator {
     doing: Doing,
@@ -222,21 +283,27 @@ pub struct Navigator {
     pressed: Option<(u8, Picked)>,
     /// Slots refused on this screen (a bit a slot).
     pub refused: u16,
-    /// Presses made toward the current target, to give up on one the
-    /// cursor never reaches.
+    /// Entries of the form list refused on this screen (a bit an entry).
+    pub refused_forms: u8,
+    /// Where the form list opens from on this screen, as the key probe
+    /// found it.
+    pub opener: Option<Opener>,
+    listing: Listing,
+    /// Presses made toward the current action, to give up on one that never
+    /// gets done.
     tries: u8,
-    /// The move last pressed toward a target (the slot, the direction's
+    /// The move last pressed toward a slot (the slot, the direction's
     /// place in `MOVES`), till the screen is looked at after it.
     moved: Option<(u8, usize)>,
     /// The moves that opened a window on this screen (`move_bit`).
     blocked: u64,
 }
 
-/// Presses toward a target at most, before it is given up.
+/// Presses toward an action at most, before it is given up.
 const MOST_PRESSES: u8 = 24;
 
 impl Navigator {
-    /// A new screen: nothing refused.
+    /// A new screen: nothing refused, no opener.
     pub fn reset(&mut self) {
         *self = Navigator::default();
     }
@@ -246,13 +313,14 @@ impl Navigator {
         self.doing == Doing::Idle && self.hold == 0 && self.release == 0
     }
 
-    /// Point at screen action `action` (a slot, then a key: §6.6's
-    /// numbering).
+    /// Carry out screen action `action` (a slot, then an entry of the form
+    /// list: §6.6's numbering); another: nothing.
     pub fn point(&mut self, action: i32) {
         self.tries = 0;
+        self.listing = Listing::default();
         self.doing = match action {
             a if (0..SLOTS as i32).contains(&a) => Doing::Going(a as u8),
-            a if (SLOTS as i32..spec::SCREEN_ACTIONS as i32).contains(&a) => Doing::Key(KEYS[a as usize - SLOTS]),
+            a if (SLOTS as i32..spec::SCREEN_ACTIONS as i32).contains(&a) => Doing::Listing((a as usize - SLOTS) as u8),
             _ => Doing::Idle,
         };
     }
@@ -283,18 +351,23 @@ impl Navigator {
         {
             self.blocked |= move_bit(at, dir);
         }
-        if !reads_keys(screen) {
+        if let Phase::Window { window, .. } = screen.phase {
+            let view = b.content.defs.window(window).view;
+            return match self.doing {
+                Doing::Listing(entry) => self.in_list(b, side, entry, view),
+                _ if view == Some(WindowView::FormList) => self.press(CLOSING_KEY),
+                _ => 0,
+            };
+        }
+        if !chooses(screen) {
             return 0;
         }
         let layout = &b.game_rules().custom_screen;
         match self.doing {
             Doing::Idle => 0,
-            Doing::Key(key) => {
-                self.doing = Doing::Idle;
-                self.press(key)
-            }
             Doing::Going(target) => {
-                if screen.phase != Phase::Choosing || self.tries >= MOST_PRESSES {
+                if self.tries >= MOST_PRESSES {
+                    self.refused |= 1 << target;
                     self.doing = Doing::Idle;
                     return 0;
                 }
@@ -304,19 +377,89 @@ impl Navigator {
                     self.pressed = Some((target, Picked::of(screen)));
                     return self.press(keys::A);
                 }
-                match toward(screen, layout, target, self.blocked) {
-                    Some(dir) => {
-                        self.moved = Some((screen.cursor, dir));
-                        self.press(MOVES[dir].0)
-                    }
-                    None => {
-                        self.refused |= 1 << target;
-                        self.doing = Doing::Idle;
-                        0
-                    }
+                self.walk(screen, layout, target).unwrap_or_else(|| {
+                    self.refused |= 1 << target;
+                    self.doing = Doing::Idle;
+                    0
+                })
+            }
+            Doing::Listing(entry) => {
+                let l = self.listing;
+                if l.chosen {
+                    self.doing = Doing::Idle;
+                    return 0;
                 }
+                let opener = self.opener.filter(|_| !l.opened && !l.leaving && self.tries < MOST_PRESSES);
+                let walked = opener.and_then(|o| {
+                    if screen.cursor == o.cursor {
+                        self.listing.opened = true;
+                        Some(self.press(o.key))
+                    } else {
+                        self.walk(screen, layout, o.cursor)
+                    }
+                });
+                self.tries += 1;
+                walked.unwrap_or_else(|| {
+                    // (Choosing again without the entry: the key opened
+                    // nothing, the list was given up on, or the cursor can't
+                    // get to the opener's place.)
+                    self.refused_forms |= 1 << entry;
+                    self.doing = Doing::Idle;
+                    0
+                })
             }
         }
+    }
+
+    /// A press toward slot `target` along the screen's moves, leaving out
+    /// the moves that opened a window; none: there is no way there.
+    fn walk(&mut self, screen: &Screen, layout: &CustomScreenLayout, target: u8) -> Option<u16> {
+        let dir = toward(screen, layout, target, self.blocked)?;
+        self.moved = Some((screen.cursor, dir));
+        Some(self.press(MOVES[dir].0))
+    }
+
+    /// A tick in a window of the rules while choosing entry `entry` of the
+    /// form list, the window's view `view`.
+    fn in_list(&mut self, b: &Battle, side: u8, entry: u8, view: Option<WindowView>) -> u16 {
+        match view {
+            Some(WindowView::FormChosen) => {
+                self.listing.chosen = true;
+                0
+            }
+            Some(WindowView::FormList) => {
+                let Some(list) = b.form_list(side) else { return self.back_out() };
+                if list.chosen.is_some() {
+                    self.listing.chosen = true;
+                    return 0;
+                }
+                let l = self.listing;
+                if l.leaving || l.pressed || self.tries >= MOST_PRESSES {
+                    // (Given up, or A chose nothing: the list refuses the entry.)
+                    return self.back_out();
+                }
+                self.tries += 1;
+                if list.cursor == entry {
+                    self.listing.pressed = true;
+                    return self.press(keys::A);
+                }
+                if l.last == Some(list.cursor) {
+                    self.listing.dir += 1;
+                }
+                let Some(&(key, _)) = MOVES.get(self.listing.dir as usize) else { return self.back_out() };
+                self.listing.last = Some(list.cursor);
+                self.press(key)
+            }
+            // (The list opening or closing, the rules' other windows: they
+            // play out.)
+            _ => 0,
+        }
+    }
+
+    /// Back out of the form list: B, the entry given up on.
+    fn back_out(&mut self) -> u16 {
+        self.listing.leaving = true;
+        self.press(CLOSING_KEY)
     }
 
     /// Press `key` this tick: a direction held one tick more, then let go.
@@ -332,13 +475,12 @@ impl Navigator {
 /// A scripted player's custom screen (§9's players, and the env's seats
 /// that no policy plays): every chip it can pick, in slot order, then OK,
 /// pointed at through the navigator. A chip that would stand alone as a
-/// modifier is passed over.
+/// modifier is passed over. In a window, nothing: the navigator's.
 pub fn scripted_pointer(b: &Battle, side: u8, nav: &Navigator) -> i32 {
     let s = &b.custom.sides[side as usize];
     let Some(screen) = s.screen.as_ref() else { return OK_SLOT as i32 };
-    if screen.phase != Phase::Choosing {
-        // (A window it didn't open: B closes it.)
-        return (SLOTS + 5) as i32;
+    if !chooses(screen) {
+        return -1;
     }
     let layout = &b.game_rules().custom_screen;
     let legal = legal_slots(screen, &steps(screen, layout), nav.refused, false);

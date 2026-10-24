@@ -8,11 +8,12 @@
 //!   `delay`. The observations a decision can need (ticks `s` with
 //!   `(s + D) % k == 0`) are encoded as the round goes into a ring, so the
 //!   delay costs one encoding every `k` ticks.
-//! - **The custom screen.** A policy decides when its screen reads keys
-//!   and its navigator is idle, from the screen as it is (nothing moves on
-//!   it but its own cursor). As the screen first reads keys, each key is
-//!   pressed in a copy of the battle to see which ones open a window (the
-//!   key probe, §4.2).
+//! - **The custom screen.** A policy decides when its screen is choosing
+//!   chips and its navigator is done with the last choice, from the screen
+//!   as it is (nothing moves on it but its own cursor). At the screen's
+//!   first decision, each key is pressed in a copy of the battle to see
+//!   which ones open a window, and the one that opens the rules' form list
+//!   is the navigator's way into it (the key probe, §4.2).
 //! - **Who opens the custom screen** (§6.3): the env, for one seat or the
 //!   other, a random while after the gauge fills (0 to 10 seconds, weighted
 //!   toward soon), pressing L; no seat's own L or R reaches the fight.
@@ -32,6 +33,7 @@ use crate::spec;
 use crate::stats::{Measure, RoundStats, navi_hp};
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
+use nettai_battle::content::WindowHandle;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::custom::screen::Phase;
 use nettai_battle::hud::CustomGauge;
@@ -264,10 +266,11 @@ pub fn fight_runs(b: &Battle) -> bool {
     b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING && !b.is_battle_over()
 }
 
-/// Which keys open a window of the rules on side `side`'s custom screen in
-/// `b` (§4.2): each pressed once in a copy of the battle, the other side
-/// pressing nothing; only that side's own screen is read of the copy.
-pub fn probe_keys(b: &Battle, side: u8) -> [bool; act::KEYS.len()] {
+/// The window of the rules each key opens on side `side`'s custom screen
+/// in `b`, if any (§4.2): each pressed once in a copy of the battle, the
+/// other side pressing nothing; only that side's own screen is read of the
+/// copy.
+pub fn probe_keys(b: &Battle, side: u8) -> [Option<WindowHandle>; act::KEYS.len()] {
     act::KEYS.map(|key| {
         let mut copy = b.clone();
         let direction = key & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0;
@@ -276,14 +279,24 @@ pub fn probe_keys(b: &Battle, side: u8) -> [bool; act::KEYS.len()] {
             let mut both = [0; 2];
             both[side as usize] = held;
             if !step_battle(&mut copy, both) {
-                return false;
+                return None;
             }
-            if copy.custom.sides[side as usize].screen.is_some_and(|s| matches!(s.phase, Phase::Window { .. })) {
-                return true;
+            if let Some(Phase::Window { window, .. }) = copy.custom.sides[side as usize].screen.map(|s| s.phase) {
+                return Some(window);
             }
         }
-        false
+        None
     })
+}
+
+/// A seat's key probe on its screen in `b` (§4.2), at its first decision
+/// there: the flags its view holds, and its navigator's way into the form
+/// list.
+pub fn probe(b: &Battle, side: u8, nav: &mut Navigator) -> [bool; act::KEYS.len()] {
+    let opened = probe_keys(b, side);
+    let cursor = b.custom.sides[side as usize].screen.map_or(0, |s| s.cursor);
+    nav.opener = act::opener(b, cursor, &opened);
+    opened.map(|w| w.is_some())
 }
 
 impl Env {
@@ -594,7 +607,7 @@ impl Env {
                 out[s] = FIGHT;
             } else if b.round.mode == mode::CUSTOM
                 && seat.nav.idle()
-                && b.custom.sides[s].screen.is_some_and(|screen| act::reads_keys(&screen))
+                && b.custom.sides[s].screen.is_some_and(|screen| act::chooses(&screen))
             {
                 out[s] = SCREEN;
             }
@@ -641,15 +654,15 @@ impl Env {
             _ => {
                 if self.seats[s].probe.is_none() {
                     let started = std::time::Instant::now();
-                    self.seats[s].probe = Some(probe_keys(&self.battle, s as u8));
+                    let seat = &mut self.seats[s];
+                    seat.probe = Some(probe(&self.battle, s as u8, &mut seat.nav));
                     self.profile.probe += started.elapsed().as_nanos() as u64;
                 }
                 let extra = self.extra(s);
                 let started = std::time::Instant::now();
                 observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
                 self.profile.encode += started.elapsed().as_nanos() as u64;
-                let screen = self.battle.custom.sides[s].screen.expect("a screen decision is on a screen");
-                self.legal_screen[s] = act::legal_screen(&screen, &self.battle.game_rules().custom_screen, extra.refused, extra.only_ok);
+                self.legal_screen[s] = act::legal_screen(&self.battle, s as u8, &self.seats[s].nav, extra.only_ok);
                 self.legal_fight[s] = [false; spec::FIGHT_ACTIONS];
             }
         }

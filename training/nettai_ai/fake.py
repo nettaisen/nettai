@@ -45,7 +45,7 @@ def default_spec(buckets: int = 8192) -> dict[str, Any]:
         "rules": {"count": 96, "width": 14, "ids": 4},
         "forms": {"count": 12, "width": 22, "ids": 2},
     }
-    raw = {"buckets": buckets, "fight_actions": 20, "screen_actions": 19, "sets": sets}
+    raw = {"buckets": buckets, "fight_actions": 20, "screen_actions": 17, "sets": sets}
     raw["hash"] = spec_hash(raw)
     return raw
 
@@ -102,8 +102,8 @@ class FakePool:
         self.fa = int(self._spec["fight_actions"])
         self.sa = int(self._spec["screen_actions"])
         self.n_slots = sets["slots"]["count"]
-        self.n_keys = self.sa - self.n_slots
-        if self.n_keys < 0:
+        self.n_entries = self.sa - self.n_slots
+        if self.n_entries < 0:
             raise ValueError("FakePool: screen_actions < the slots set's count")
         if sets["general"]["width"] < self.fa + 4:
             raise ValueError("FakePool: the general set must be at least fight_actions + 4 wide")
@@ -342,8 +342,8 @@ class FakePool:
         slot_legal = present & (rng.random((E, 2, self.n_slots)) < 0.8)
         nothing = ~slot_legal.any(-1)
         slot_legal[..., 0] |= nothing & present[..., 0]
-        keys = rng.random((E, 2, self.n_keys)) < 0.5
-        legal_s = np.concatenate([slot_legal, keys], -1)
+        entries = rng.random((E, 2, self.n_entries)) < 0.5
+        legal_s = np.concatenate([slot_legal, entries], -1)
         b["legal_screen"][:] = legal_s & (phase == 2)[..., None]
 
 

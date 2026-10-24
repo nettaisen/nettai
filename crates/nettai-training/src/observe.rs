@@ -246,7 +246,7 @@ impl AttackHistory {
 pub struct Extra {
     pub delay: u16,
     pub log: AttackHistory,
-    pub probe: Option<[bool; spec::SCREEN_KEYS.len()]>,
+    pub probe: Option<[bool; spec::PROBED_KEYS.len()]>,
     pub refused: u16,
     pub screen_decisions: u16,
     /// Only OK may be pointed at (the screen's decisions are spent).

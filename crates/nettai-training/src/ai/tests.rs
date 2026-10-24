@@ -93,7 +93,7 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
 }
 
 /// Its network's memory takes each decision's action, the next decision's
-/// GRU input: on the custom screen the slot or key it pointed at, in the
+/// GRU input: on the custom screen the slot or entry it chose, in the
 /// fight the action it holds; the set starting over forgets it with the
 /// GRU's state (a new round's [`Memory::reset`] too).
 #[test]
@@ -173,7 +173,8 @@ fn fingerprints_of_another_content_are_refused() {
 
 /// The shipped weights are this encoder's, with the three levels, Easy the
 /// slowest to react and Hard the quickest, taking its best action; read once,
-/// one network every player shares.
+/// one network every player shares. They play EXE6 through its custom
+/// screens.
 #[test]
 fn the_shipped_weights_play_at_three_levels() {
     let net = shipped().unwrap();
@@ -182,8 +183,11 @@ fn the_shipped_weights_play_at_three_levels() {
     let [easy, normal, hard] = &knobs;
     assert!(easy.delay > normal.delay && normal.delay > hard.delay, "{knobs:?}");
     assert!(hard.greedy && !easy.greedy && !normal.greedy, "{knobs:?}");
-    let ai = NetAi::of(net, Level::Hard, 5, fingerprints("exe6")).unwrap();
+    let mut ai = NetAi::of(net, Level::Hard, 5, fingerprints("exe6")).unwrap();
     assert_eq!(ai.knobs(), hard);
+    let (_, _, b) = play_fight("exe6", 9, &mut ai, 2400, 0);
+    assert_eq!(ai.error(), None);
+    assert!(b.round.turn >= 2, "it got through {} custom screens", b.round.turn);
 }
 
 /// Fingerprints made on threads of their own (the host's, here std's) as

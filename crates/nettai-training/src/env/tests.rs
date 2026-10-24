@@ -133,7 +133,7 @@ fn the_navigator_reaches_every_slot_it_may_point_at() {
         for seed in 1..4 {
             let b = at_the_custom_screen(game, seed);
             let screen = b.custom.sides[1].screen.unwrap();
-            let legal = act::legal_screen(&screen, &b.game_rules().custom_screen, 0, false);
+            let legal = act::legal_screen(&b, 1, &Navigator::default(), false);
             assert!(legal[OK_SLOT as usize], "{game}: OK");
             for slot in (0..SLOTS).filter(|&s| legal[s]) {
                 let mut copy = b.clone();
@@ -168,91 +168,135 @@ fn a_refused_pick_is_masked() {
     let mut nav = Navigator::default();
     navigate(&mut b, &mut nav, slot as i32);
     assert_eq!(nav.refused, 1 << slot, "the refused pick");
-    let screen = b.custom.sides[1].screen.unwrap();
-    let legal = act::legal_screen(&screen, &b.game_rules().custom_screen, nav.refused, false);
+    let legal = act::legal_screen(&b, 1, &nav, false);
     assert!(!legal[slot as usize] && legal[OK_SLOT as usize]);
     navigate(&mut b, &mut nav, OK_SLOT as i32);
     assert!(!matches!(b.custom.sides[1].screen.unwrap().phase, Phase::Choosing));
 }
 
-/// A screen whose decisions are spent allows, in a window of the rules,
-/// only the keys that confirm or back out (A and B) and no slot; choosing,
-/// OK alone. Before them, every key.
+/// A screen whose decisions are spent allows OK alone, the form list's
+/// entries among what it no longer allows; none while a window of the
+/// rules is up.
 #[test]
-fn past_its_decisions_a_window_allows_b_alone() {
+fn past_its_decisions_a_screen_allows_ok_alone() {
+    for game in GAMES {
+        for seed in 1..6 {
+            let b = at_the_custom_screen(game, seed);
+            let mut nav = Navigator::default();
+            probe(&b, 1, &mut nav);
+            let past = act::legal_screen(&b, 1, &nav, true);
+            assert_eq!((0..spec::SCREEN_ACTIONS).filter(|&a| past[a]).collect::<Vec<_>>(), [OK_SLOT as usize], "{game} seed {seed}");
+        }
+    }
     let mut windows = 0;
     for seed in 1..12 {
         let mut b = at_the_custom_screen("exe6", seed);
-        let layout = b.game_rules().custom_screen.clone();
-        let choosing = act::legal_screen(&b.custom.sides[1].screen.unwrap(), &layout, 0, true);
-        assert_eq!((0..spec::SCREEN_ACTIONS).filter(|&a| choosing[a]).collect::<Vec<_>>(), [OK_SLOT as usize]);
-        let Some(k) = probe_keys(&b, 1).iter().position(|&o| o) else { continue };
-        navigate(&mut b, &mut Navigator::default(), (SLOTS + k) as i32);
-        let screen = b.custom.sides[1].screen.unwrap();
-        assert!(matches!(screen.phase, Phase::Window { .. }), "seed {seed}");
-        let past = act::legal_screen(&screen, &layout, 0, true);
-        assert!(!past[..SLOTS].iter().any(|&l| l), "seed {seed}: no slot in a window");
-        let keys_left: Vec<u16> = (0..act::KEYS.len()).filter(|&k| past[SLOTS + k]).map(|k| act::KEYS[k]).collect();
-        assert_eq!(keys_left, [keys::B], "seed {seed}");
-        assert!(act::legal_screen(&screen, &layout, 0, false)[SLOTS..].iter().all(|&l| l), "seed {seed}: every key before");
+        let mut nav = Navigator::default();
+        probe(&b, 1, &mut nav);
+        let Some(o) = nav.opener else { continue };
+        open_the_list(&mut b, o);
+        assert!(act::legal_screen(&b, 1, &nav, false).iter().all(|&l| !l), "seed {seed}: an action in a window");
         windows += 1;
     }
-    assert!(windows > 0, "no seed's screen had a window behind a key");
+    assert!(windows > 0, "no seed's screen had a form list");
 }
 
-/// A seat that presses only directions on its custom screens (UP first:
-/// into EXE6's form window where it opens, and on in it) until its
-/// decisions are spent, and a direction after wherever one is allowed, has
-/// every screen closed: past them a window allows only B, and choosing
-/// only OK. (Before, every key stayed allowed in a window, and a seat that
-/// pressed directions held it open till the round was cut off.)
-#[test]
-fn a_seat_pressing_directions_has_its_screens_closed() {
-    let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 900, ..Config::default() }, 7).unwrap();
-    let mut rng = SplitMix64::new(3);
-    let mut actions = [0; 2];
-    let (mut longest, mut in_window, mut steps) = (0, 0, 0);
-    while env.ended.len() < 8 {
-        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
-        longest = longest.max(env.screen_ticks);
-        for s in 0..2 {
-            actions[s] = match out.phase[s] {
-                FIGHT => random_action(&mut rng, &env.legal_fight[s]),
-                SCREEN => {
-                    let legal = env.legal_screen[s];
-                    let screen = env.battle.custom.sides[s].screen.unwrap();
-                    if env.seats[s].decisions >= env.cfg.screen_decisions && matches!(screen.phase, Phase::Window { .. }) {
-                        in_window += 1;
-                    }
-                    match (SLOTS..SLOTS + 4).find(|&a| legal[a]) {
-                        Some(direction) => direction as i32,
-                        None => random_action(&mut rng, &legal),
-                    }
-                }
-                _ => 0,
-            };
-        }
-        steps += 1;
-        assert!(steps < 40_000, "8 rounds didn't end");
+/// Press opener `o`'s key on side 1's screen in `b`, the cursor where it
+/// was found, till the form list is up.
+fn open_the_list(b: &mut Battle, o: act::Opener) {
+    assert_eq!(b.custom.sides[1].screen.unwrap().cursor, o.cursor);
+    for held in [o.key, o.key, 0] {
+        step_battle(b, [0, held]);
     }
-    println!("longest screen {longest} ticks; decisions past the limit in a window {in_window}");
-    // (The old rule's screens ran to the cut, 3,600 ticks; these close in a few hundred.)
-    assert!(longest < env.cfg.max_screen_ticks / 4, "a screen stayed open {longest} ticks");
-    assert!(in_window > 0, "no seat spent its decisions in a window");
+    for _ in 0..30 {
+        let Some(Phase::Window { window, .. }) = b.custom.sides[1].screen.map(|s| s.phase) else { panic!("the list didn't open") };
+        if b.content.defs.window(window).view == Some(nettai_battle::content::WindowView::FormList) {
+            return;
+        }
+        step_battle(b, [0, 0]);
+    }
+    panic!("the list never came up");
 }
 
-/// Seats choosing at random on EXE6's screens, past their decisions OK
-/// alone and B alone in a window, have every screen closed. With Beast
-/// Out's button shown and the bottom row's last chips hidden, the shortest
-/// way from the top row to OK may begin with UP (to the bottom row, along
-/// it to the button, up to OK), and UP on the top row opens the form window
-/// while a Cross is on offer: that way opened the window again after every
-/// B, till the screen was cut off, unless the navigator goes around a move
-/// that opened a window.
+/// The navigator chooses every entry of EXE6's form list an action may
+/// (its Crosses): from the screen as it opens, and with the cursor moved
+/// away by a pick first. The entry is chosen (the screen's form set, the
+/// list's choice its place), the screen choosing again, nothing refused;
+/// then no entry is allowed, a Cross being chosen.
+#[test]
+fn the_navigator_chooses_every_entry_of_the_form_list() {
+    let mut chosen = 0;
+    for seed in 1..12 {
+        let b = at_the_custom_screen("exe6", seed);
+        let mut nav = Navigator::default();
+        probe(&b, 1, &mut nav);
+        let legal = act::legal_screen(&b, 1, &nav, false);
+        let entries: Vec<usize> = (0..spec::FORM_ENTRIES).filter(|&k| legal[SLOTS + k]).collect();
+        if entries.is_empty() {
+            continue;
+        }
+        let list = b.form_list(1).expect("EXE6's form list");
+        // (A chip on the bottom row picked first, if one may be, so the cursor walks back.)
+        let far = (0..SLOTS).rev().find(|&s| legal[s] && s != OK_SLOT as usize && matches!(b.custom.sides[1].screen.unwrap().slots[s].kind, SlotKind::Chip { .. }));
+        for first in [None, far].into_iter().flatten().map(Some).chain([None]) {
+            for &k in &entries {
+                let mut copy = b.clone();
+                let mut nav = nav;
+                if let Some(slot) = first {
+                    navigate(&mut copy, &mut nav, slot as i32);
+                }
+                let ticks = navigate(&mut copy, &mut nav, (SLOTS + k) as i32);
+                let after = copy.custom.sides[1].screen.unwrap();
+                assert!(act::chooses(&after), "seed {seed} entry {k}: the screen isn't choosing ({ticks} ticks)");
+                assert_eq!(nav.refused_forms, 0, "seed {seed} entry {k}: refused");
+                assert!(after.form.is_some(), "seed {seed} entry {k}: no form");
+                assert_eq!(copy.form_list(1).unwrap().chosen, Some(list.offered[k]), "seed {seed} entry {k}");
+                let again = act::legal_screen(&copy, 1, &nav, false);
+                assert!(again[SLOTS..].iter().all(|&l| !l), "seed {seed}: an entry allowed with a Cross chosen");
+                assert!(again[OK_SLOT as usize]);
+                chosen += 1;
+            }
+        }
+    }
+    assert!(chosen > 0, "no seed's screen offered a Cross");
+}
+
+/// An entry the list doesn't take is refused and masked, and the screen is
+/// choosing again: here the opener's key moves the cursor rather than
+/// opening the list.
+#[test]
+fn an_entry_the_list_does_not_take_is_refused() {
+    for seed in 1..12 {
+        let mut b = at_the_custom_screen("exe6", seed);
+        let mut nav = Navigator::default();
+        probe(&b, 1, &mut nav);
+        let Some(o) = nav.opener else { continue };
+        if !act::legal_screen(&b, 1, &nav, false)[SLOTS] {
+            continue;
+        }
+        nav.opener = Some(act::Opener { key: keys::RIGHT, ..o });
+        navigate(&mut b, &mut nav, SLOTS as i32);
+        assert_eq!(nav.refused_forms, 1);
+        assert!(act::chooses(&b.custom.sides[1].screen.unwrap()));
+        assert!(!act::legal_screen(&b, 1, &nav, false)[SLOTS]);
+        return;
+    }
+    panic!("no seed's screen offered a Cross");
+}
+
+/// Seats choosing at random on EXE6's screens (Crosses among their
+/// choices), past their decisions OK alone, have every screen closed, and
+/// the navigator backs out of the form list wherever a move on its way
+/// opened it. With Beast Out's button shown and the bottom row's last
+/// chips hidden, the shortest way from the top row to OK may begin with UP
+/// (to the bottom row, along it to the button, up to OK), and UP on the top
+/// row opens the form list while a Cross is on offer: that way opened the
+/// list again after every B, till the screen was cut off, unless the
+/// navigator goes around a move that opened a window.
 #[test]
 fn random_seats_have_their_screens_closed() {
     let cfg = Config { max_fight_ticks: 600, ..Config::default() };
-    let mut longest = 0;
+    let (mut longest, mut crosses) = (0, 0);
     for seed in 1..40 {
         let mut env = Env::new(games(&["exe6"]), cfg.clone(), seed).unwrap();
         let mut rng = SplitMix64::new(seed * 7 + 1);
@@ -267,42 +311,49 @@ fn random_seats_have_their_screens_closed() {
                     SCREEN => random_action(&mut rng, &env.legal_screen[s]),
                     _ => 0,
                 };
+                crosses += (out.phase[s] == SCREEN && actions[s] >= SLOTS as i32) as u32;
             }
             steps += 1;
             assert!(steps < 30_000, "seed {seed}: 6 rounds didn't end");
         }
+        assert!(env.ended.iter().all(|r| !r.truncated || r.ticks > cfg.max_fight_ticks), "seed {seed}: a round cut at the screen");
     }
+    println!("longest screen {longest} ticks; Crosses chosen {crosses}");
+    assert!(crosses > 0, "no seat chose a Cross");
     assert!(longest < cfg.max_screen_ticks / 4, "a screen stayed open {longest} ticks");
 }
 
 /// The key probe finds the window a game's rules put behind a key (EXE6's
-/// form window on the screen's first decision), and nothing where a key
-/// opens none; it reads its own screen of a copy, and the battle is as it
-/// was.
+/// form list on the screen's first decision, its opener), and nothing
+/// where a key opens none; it reads its own screen of a copy, and the
+/// battle is as it was.
 #[test]
 fn the_key_probe_finds_a_window_where_there_is_one() {
     for game in GAMES {
         let mut found = [false; act::KEYS.len()];
+        let mut openers = 0;
         for seed in 1..12 {
-            let b = at_the_custom_screen(game, seed);
+            let mut b = at_the_custom_screen(game, seed);
             let digest = b.digest();
-            let p = probe_keys(&b, 1);
+            let mut nav = Navigator::default();
+            let p = probe(&b, 1, &mut nav);
             assert_eq!(b.digest(), digest);
+            assert_eq!(p, probe_keys(&b, 1).map(|w| w.is_some()));
             for k in 0..p.len() {
                 found[k] |= p[k];
             }
-            // (A key that opens one, pressed, does.)
-            if let Some(k) = p.iter().position(|&o| o) {
-                let mut copy = b.clone();
-                let mut nav = Navigator::default();
-                navigate(&mut copy, &mut nav, (SLOTS + k) as i32);
-                assert!(matches!(copy.custom.sides[1].screen.unwrap().phase, Phase::Window { .. }), "{game}: key {k}");
+            // (The opener's key, pressed, opens the list.)
+            if let Some(o) = nav.opener {
+                open_the_list(&mut b, o);
+                openers += 1;
             }
         }
         let has_windows = !content(game).defs.windows.is_empty();
-        println!("{game}: keys that open a window {found:?} (windows: {has_windows})");
+        println!("{game}: keys that open a window {found:?} (windows: {has_windows}); screens with an opener {openers}");
         if game == "exe6" {
-            assert!(found.iter().any(|&f| f), "{game}: the form window");
+            assert!(found.iter().any(|&f| f) && openers > 0, "{game}: the form list");
+        } else {
+            assert_eq!(openers, 0, "{game} has no form list");
         }
     }
 }

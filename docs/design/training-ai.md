@@ -229,39 +229,54 @@ observation. One network then plays every reaction speed.
 
 ### 4.2 On the custom screen
 
-Learning the screen's cursor one button at a time would waste most of training on menu navigation. The network
-instead points at what it wants, and a navigator presses the buttons to get there:
+The network chooses what the screen ends up holding and never presses one of its keys (the user, 2026-10-24: "why
+can't you submit the whole custom screen without any cursor movement so you can avoid any issues?"). Each decision
+is one choice, which the navigator carries out to its end before the next is asked:
 
-- **A slot.** One of the 12 screen slots (chips, OK, the rules' buttons such as re-deal or Beast Out). A slot is
-  allowed while the screen is choosing, if it is a chip it can still pick (selectable, fewer than 5 picks), a button
-  with uses left, or OK, the cursor can reach it, and the screen hasn't refused it. The navigator walks the cursor
-  there along the rules' own layout (`Screen::target_from`), a direction held two ticks (the screen moves on the
-  second, its auto-repeat's) and let go one, and presses A, held a tick and let go a tick. A pick after which the
-  screen is the same (the picks, the slots' states, the phase, the form, the cursor) is refused for the rest of that
-  screen (EXE4 refuses a chip in a code it doesn't come in).
-- **A key.** UP, DOWN, LEFT, RIGHT, A, B or START, pressed once. This covers whatever a game's rules put behind a
-  key: EXE6's Cross window opens on UP, and inside a window the keys move and choose. While a window is open
-  (`Phase::Window`) only keys are allowed, and its offered forms are in the observation.
-- **Keys that open something.** At the screen's first decision, each key is pressed once in a copy of the battle
-  (the other side pressing nothing) and the env notes which ones open a window. Only its own screen is read from the
-  copy. The answer is part of the observation, so a Cross window is found from the first round rather than by luck.
+- **A slot.** One of the 12 screen slots: a chip, OK, or a button of the rules (ChpShufl's re-deal, DustCross's
+  scrap, Beast Out, EXE5's and EXE4's soul, Arm Change). A slot is allowed while the screen is choosing, if it is a
+  chip it can still pick (selectable, fewer than 5 picks), a button with uses left, or OK, the cursor can reach it,
+  and the screen hasn't refused it. The navigator walks the cursor there along the rules' own layout
+  (`Screen::target_from`), a direction held two ticks (the screen moves on the second, its auto-repeat's) and let
+  go one, and presses A, held a tick and let go a tick. A pick after which the screen is the same (the picks, the
+  slots' states, the phase, the form, the cursor) is refused for the rest of that screen (EXE4 refuses a chip in a
+  code it doesn't come in).
+- **An entry of the form list.** One of the 5 entries of the rules' form list (`Battle::form_list`, behind the
+  window views `form_list_opening`, `form_list`, `form_chosen`: EXE6's Crosses), allowed while no entry is chosen,
+  for an entry that holds a form, isn't marked (a Cross used this battle) and wasn't refused on this screen, where
+  the key probe found the key that opens the list. The navigator walks the cursor back to where the probe was made,
+  presses that key, presses a direction in the list till its cursor is on the entry (a direction that doesn't move
+  it is passed over for the next), presses A, and waits while the list's own windows play out. An entry the list
+  doesn't take (the key opened nothing, A chose nothing, no direction got there) is backed out of with B
+  (`act::CLOSING_KEY`) and refused for the rest of the screen. The entries are in the observation as the forms
+  set's list tokens (their place, marked, under the list's cursor, chosen).
+- **The key probe.** At the screen's first decision, each of 7 keys is pressed once in a copy of the battle (the
+  other side pressing nothing) and the env notes which ones open a window of the rules. The first that opens a form
+  list, with the cursor where it is, is the navigator's way into it (`act::Opener`); the flags stay in the
+  observation, so a Cross on offer is seen from the first round rather than found by luck.
+- **Windows are the navigator's.** Decisions come only while the screen is choosing. A form list the navigator
+  didn't mean to open, by a move on its way to a slot, is backed out of with B, and the move is left out of its
+  ways for the rest of the screen: with Beast Out's button shown and the bottom row's last chips hidden, the
+  shortest way from the top row to OK may begin with UP, and UP on the top row opens the Cross window while a Cross
+  is on offer. The rules' other windows (Beast Out's, EXE5's soul unison, EXE4's) are animations and play out
+  alone.
+- **One choice at a time**, not the whole screen in one: which chips may still be picked depends on those picked
+  (their codes), and the rules work that out as each pick is made. Each choice is a decision of its own, made from
+  the screen as it is.
 - **No delay on the screen.** A screen decision is made from the screen as it is: nothing moves on it but the
   player's own cursor, and the navigator needs it as it is.
-- **A screen ends.** After 24 decisions on one screen only OK is allowed, and inside a window only the keys that
-  backs out, B (`act::CLOSING_KEY`); a screen open 3,600 ticks cuts the round off. Before (2026-10-24), every key
-  stayed allowed inside a window: EXE6 rounds between the first cloud run's checkpoints 1,400 and 1,000 at full HP
-  were cut about 70% of the time, a seat in the Cross window pressing only directions for 1,000 decisions and more
-  until the screen's cut (15 to 20% of training's rounds cut, with no result), and the app's dummy, which has no such
-  cut, could have stayed on its screen forever. Allowing A and B there wasn't enough: A does nothing on a Cross
-  already used or once one is chosen, and the second run's network learned within 650 updates to press it for
-  ever (EXE6 rounds against the first run's checkpoints at full HP cut 23% of the time). A cut round has no result
-  and its value is bootstrapped, so a seat that is losing gains by holding the screen: whatever can stall will be
-  learned. The navigator's way to a slot goes around a move that opened a window on this screen: with Beast Out's
-  button shown and the bottom row's last chips hidden, the shortest way from the top row to OK may begin with UP,
-  which opens the Cross window there, and a seat backing out with B opened it again on every try (one EXE6 round
-  in 24 between those checkpoints, and random seats too). Tested: a seat pressing only directions (UP first, into
-  the Cross window), and seats choosing at random over 234 EXE6 rounds, have every screen closed within a few
-  hundred ticks, where the old rules ran some to the cut.
+- **A screen ends.** After 24 decisions on one screen only OK is allowed; a screen open 3,600 ticks cuts the round
+  off. A cut round has no result and its value is bootstrapped, so a seat that is losing gains by holding the
+  screen: whatever can stall will be learned. Twice it was (2026-10-24), each time through keys the network pressed
+  itself, when the screen's actions were the slots and 7 keys: with every key allowed in a window, the first cloud
+  run held EXE6's Cross window open pressing directions (its EXE6 rounds at full HP cut about 70% of the time, 15
+  to 20% of training's rounds); with only A and B allowed there past the limit, the second learned within 650
+  updates to press A for ever on a Cross already used (23% of its EXE6 rounds cut). Now every choice is a bounded
+  run of presses that changes the screen or is refused, and nothing the network chooses holds a screen open.
+  Tested: the navigator reaches every slot it may point at, and chooses every entry of EXE6's form list from the
+  screen as it opens and with the cursor moved away by a pick first; an entry the list doesn't take is refused and
+  masked; seats choosing at random over 234 EXE6 rounds (259 Crosses chosen) have every screen closed, the longest
+  in 280 ticks, and no round cut at the screen.
 
 Each chip slot also says what picking it would add: whether it completes a Program Advance (`builder::build` run on
 the would-be picks), the Program Advance's damage, the damage the hand as OK would build it gains (modifiers folded
@@ -416,8 +431,9 @@ pool = nettai_gym.Pool(
     cache=None,                      # a directory the chips' fingerprints are kept in, by content hash
 )
 spec = pool.spec()
-# {"hash": "<hex>", "buckets": 8192, "fight_actions": 20, "screen_actions": 19,   # 12 slots, then 7 keys
-#  "screen_keys": ["up", "down", "left", "right", "a", "b", "start"],
+# {"hash": "<hex>", "buckets": 8192, "fight_actions": 20, "screen_actions": 17,   # 12 slots, then the form
+#  "form_entries": 5,                                                           # list's 5 entries (§4.2)
+#  "probed_keys": ["up", "down", "left", "right", "a", "b", "start"],
 #  "chip_tokens": {"hand": (0, 6), "used": (6, 1)},                              # (first, count) in "chips"
 #  "fingerprint": 114, "fingerprint_features": [(name, width), ...], "games": [...],
 #  "k": 4, "screen_decisions": 24,                                              # what the envs use (not hashed)
@@ -430,7 +446,7 @@ buf = pool.buffers()   # numpy views of memory the pool owns, refilled in place 
 #           buf["mask"][name] bool    [E, 2, C]      true = token present
 # buf["phase"]        int8    [E, 2]   0 no decision this step, 1 fight, 2 custom screen
 # buf["legal_fight"]  bool    [E, 2, 20]
-# buf["legal_screen"] bool    [E, 2, 19]  the slots set's 12 tokens, then the 7 keys
+# buf["legal_screen"] bool    [E, 2, 17]  the slots set's 12 tokens, then the form list's 5 entries
 # buf["hp_gain"]      float32 [E, 2]   HP the other lost / its max HP - HP it lost / its own, everything since this
 #                                      seat's last decision (steps where it had phase 0 too); read where the seat
 #                                      decides or the round ends
@@ -499,8 +515,8 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   updates, 71% of targets pressed, and not, 19%: a pool over 66 tokens starts out reading the one that matters
   at 1/66.
 - **Memory.** A GRU of 256, its input the summary and the stream's **previous decision's action**, one-hot: the
-  fight's 20 actions, the custom screen's 19 (12 slots, 7 keys), and none (a round's first decision, where the
-  GRU's state is zero too): 40 values after the summary's 128 (the architecture's `previous_action`). The previous
+  fight's 20 actions, the custom screen's 17 (12 slots, the form list's 5 entries), and none (a round's first
+  decision, where the GRU's state is zero too): 38 values after the summary's 128 (the architecture's `previous_action`). The previous
   decision may be of the other phase (a fight action before the custom screen opened). It decides from a view D
   ticks old (D 6 to 30 in training, up to 7 decisions back), so without it the network can't know what it pressed
   since: whether it already pressed A (and wastes a chip pressing again), already stepped (and overshoots), or is
@@ -510,8 +526,8 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   (no multiply), and a warm start (§8) is zero columns. Why it came: §11's stall.
 - **Heads**, on the GRU's state and the summary:
   - the fight's 20 actions;
-  - the custom screen's pointer: a score for each slot token (an MLP over the slot's token and the rest) and 7
-    key logits, 19 in all;
+  - the custom screen's pointer: a score for each slot token (an MLP over the slot's token and the rest), and a
+    logit for each of the form list's 5 entries (`entry1`, `entry2`), 17 in all;
   - a value.
 
   Legal masks are −inf before the softmax; an absent slot is −inf too.
@@ -648,7 +664,15 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   optimizer, league and curriculum; the rest of the config a new run's) whose network is the checkpoint's, of its
   model widths (`model.warm_start`): every tensor of the same shape copied, the input normalization with its
   running statistics, and the GRU's previous-action columns zero where the checkpoint's network read none (the
-  first cloud run's), so it plays as that network did until training moves them; no normalization warmup. Its
+  first cloud run's), so it plays as that network did until training moves them; no normalization warmup. A
+  checkpoint from before the form list's entries (its screen's actions after the slots 7 keys, heads `key1` and
+  `key2`: the first two cloud runs') loses those heads, the entries' head starting as a new network's, and of the
+  GRU's previous-action columns keeps the fight's, the slots' and none's, the keys' left out and the entries'
+  zero: its fight, its slots and its value are the checkpoint's (tested on the toy's tensors). A checkpoint of
+  another spec is converted to the pool's first (`uv run python -m nettai_ai.convert CHECKPOINT OUT`: its
+  network warm-started on the pool's spec, its observation required to be the pool's, its recorded decisions with
+  the new layout's allowed actions; the optimizer and league left out, so it can't be resumed), and evaluation,
+  export and `--init-from` take it as one of their own. Its
   checkpoints keep where it came from (`init_from`: the path, update, decisions and commit). Tested: the same
   outputs as the checkpoint's network whatever the previous action, on the toy's tensors and (once, by hand) on
   the first run's checkpoint 1,000 against the old code: 3.4e-7 at most over its 16 recorded decisions. A smoke run
@@ -729,9 +753,9 @@ weights (§10.6, branch learned-ai-ui).
   MLP, its set's vector and its names' embeddings; the transformer layers over the present tokens of the sets not
   pool-only; the final LayerNorm on every present token; the attention pool and the one-token sets read directly;
   the GRU (gates r, z, n) over the summary and the previous action (`Memory::last`, the column of its one-hot's
-  place added to the input's product; the weights' `previous_action` must be this pass's 40); the heads of
+  place added to the input's product; the weights' `previous_action` must be this pass's 38); the heads of
   `core = [h', z]`. Absent tokens are never computed. A decision computes the
-  heads it reads (`Heads::Fight`; `Heads::Screen`, the keys and the pointer, whose core part is computed once;
+  heads it reads (`Heads::Fight`; `Heads::Screen`, the form list's entries and the pointer, whose core part is computed once;
   `Heads::All` adds the value, for the parity test). A player's `Memory` holds the GRU state, the last decision's
   action (`Memory::took`: the player says what it chose) and room for a pass, so a decision allocates nothing;
   `Memory::reset` zeros the state and forgets the action.
@@ -764,9 +788,9 @@ thread (`fight` or `custom_screen`, both the same tick of the round):
   on the ticks a decision will need (`(t + D) mod k = 0`, `D` the level's delay).
 - In the fight it decides every `k` ticks from the view of `D` ticks before (what it sees now while the round is
   younger than that) and holds the action till the next decision.
-- On the custom screen it decides whenever its navigator is idle and the screen reads keys, from the screen as it
-  is, the keys probed in a copy of the battle as each screen first reads them, only OK after 24 decisions, the
-  refused slots masked; each new screen's navigator starts from nothing. All in the env's order.
+- On the custom screen it decides whenever its navigator is idle and the screen is choosing, from the screen as it
+  is, the keys probed in a copy of the battle at each screen's first decision, only OK after 24 decisions, the
+  refused slots and entries masked; each new screen's navigator starts from nothing. All in the env's order.
 - `k` (4) and the 24 decisions are the env's defaults, as trained: the weights don't state them. If training ever
   uses another `k`, the levels' metadata should carry it.
 - It never reads `theirs`: it doesn't hear the player's buttons (tested: the same play whatever it is told).
@@ -830,7 +854,7 @@ network of the trainer's default widths: 1.13 M parameters; random play, 3,000 f
 | EXE4 | 0.19 ms (74) | 0.27 ms (86) | 0.29 ms (86) | 0.91 ms | 2 µs (6) | 0.05 ms (0.10) |
 
 A view is encoded once every `k` = 4 ticks, under a microsecond a tick; a fight decision every 4 ticks costs the
-pass; a screen decision a view and the pass, and the key probe the first time a screen reads keys.
+pass; a screen decision a view and the pass, and the key probe at a screen's first decision.
 
 **The browser.** The pass built alone for wasm32 (nightly, as the web build, no SIMD) and run in node's V8 takes 3.3
 to 3.5 times the native time: 0.66 to 0.85 ms a decision, 2.4 ms with every token present. With `simd128` it would
@@ -848,8 +872,10 @@ is update 1000 of the first cloud run (runs/first, 177 M decisions; 4.56 MB), we
 previous action (§7) it was exported again (4.68 MB) from that checkpoint warm-started (`model.warm_start`: the
 previous action's columns zero), its metadata the checkpoint's (update, decisions, commit): it plays as it did
 (the old file was checkpoint 1,000's tensors exactly; the new one's outputs on the checkpoint's recorded decisions
-are the old network's within 3.4e-7, and the Rust pass adds zero columns, the same floats). A better
-one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+are the old network's within 3.4e-7, and the Rust pass adds zero columns, the same floats). With the form list's
+entries in the keys' place (§4.2, spec f27f9a4a126e990f) it was converted (`nettai_ai.convert`) and exported again
+(4.67 MB): its fight, its slots and its value as they were, its entries' head new (it chooses among Crosses at
+about random till a run trains it; the `ai` tests play an EXE6 round with it). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
 that it plays.
@@ -1042,8 +1068,8 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
 
 ## 13. Risks
 
-- **Forms and windows.** If it rarely learns to open the Cross window or use Beast Out, the key probe (§4.2) is the
-  first lever, and a small bonus for exploring windows early in training is the second.
+- **Forms.** If it rarely learns to choose a Cross or use Beast Out, a small bonus for trying forms early in
+  training is the lever (§4.2 makes each one a single choice).
 - **Practice settings far from training.** A full gauge every turn, for example. These are randomized in (§6.3).
 - **Cost of EXE5 and EXE4 ticks.** They are three times EXE6's. Batches are balanced so EXE6 doesn't dominate.
 - **Weights in git.** A few MB a time, replaced rarely.

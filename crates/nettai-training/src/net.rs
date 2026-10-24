@@ -18,8 +18,8 @@
 //!   sets read directly; the GRU (gates r, z, n) over the summary and the
 //!   previous decision's action ([`Memory::took`]: the network decides from
 //!   a view its reaction delay old, so it is told what it pressed since);
-//!   the heads (the fight's actions, the custom screen's keys and its
-//!   pointer over the slots, the value). Absent tokens are never read.
+//!   the heads (the fight's actions, the custom screen's pointer over the
+//!   slots and its form list's entries, the value). Absent tokens are never read.
 //! - **Choosing** ([`choose`]): the masked logits of the decision's head,
 //!   and a level's knobs (greedy, or a sample at a temperature, with a
 //!   chance of a random allowed action).
@@ -225,7 +225,8 @@ struct Architecture {
     activation: String,
     layer_norm_eps: f64,
     slots: usize,
-    keys: usize,
+    /// The screen's actions after the slots: the form list's entries.
+    entries: usize,
     /// The previous action's one-hot width ([`PREVIOUS_ACTIONS`]).
     previous_action: usize,
     spec: ArchSpec,
@@ -411,8 +412,8 @@ pub struct Net {
     gru_hh: Linear,
     fight1: Linear,
     fight2: Linear,
-    key1: Linear,
-    key2: Linear,
+    entry1: Linear,
+    entry2: Linear,
     ptr1: Linear,
     ptr2: Linear,
     value1: Linear,
@@ -447,7 +448,8 @@ impl Weights<'_> {
 }
 
 /// Which heads a decision computes: the fight's, the custom screen's (its
-/// keys and its pointer), or all of them and the value (the parity test).
+/// pointer and the form list's entries), or all of them and the value (the
+/// parity test).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Heads {
     Fight,
@@ -592,8 +594,8 @@ impl Net {
         }
         let pointer = sets.iter().position(|s| s.name == m.pointer_set).ok_or_else(|| format!("no pointer set {}", m.pointer_set))?;
         need(!sets[pointer].pool_only, || "the pointer set is pool-only".into())?;
-        need(sets[pointer].count == spec::SLOT_TOKENS && arch.slots == spec::SLOT_TOKENS && arch.keys == spec::SCREEN_ACTIONS - spec::SLOT_TOKENS, || {
-            format!("the pointer set's {} slots and {} keys aren't the screen's", arch.slots, arch.keys)
+        need(sets[pointer].count == spec::SLOT_TOKENS && arch.slots == spec::SLOT_TOKENS && arch.entries == spec::FORM_ENTRIES, || {
+            format!("the pointer set's {} slots and {} entries aren't the screen's", arch.slots, arch.entries)
         })?;
         let singles: Vec<usize> = (0..sets.len()).filter(|&i| sets[i].count == 1).collect();
         let names = w.take("names.weight", &[arch.spec.buckets, d])?;
@@ -641,8 +643,8 @@ impl Net {
             },
             fight1: w.linear("fight1", m.head_hidden, core)?,
             fight2: w.linear("fight2", spec::FIGHT_ACTIONS, m.head_hidden)?,
-            key1: w.linear("key1", m.head_hidden, core)?,
-            key2: w.linear("key2", arch.keys, m.head_hidden)?,
+            entry1: w.linear("entry1", m.head_hidden, core)?,
+            entry2: w.linear("entry2", arch.entries, m.head_hidden)?,
             ptr1: w.linear("ptr1", m.pointer_hidden, d + core)?,
             ptr2: w.linear("ptr2", 1, m.pointer_hidden)?,
             value1: w.linear("value1", m.head_hidden, core)?,
@@ -883,8 +885,8 @@ impl Net {
         }
         if heads != Heads::Fight {
             let mut screen = [f32::NEG_INFINITY; spec::SCREEN_ACTIONS];
-            self.key1.relu(&s.core, &mut s.hh);
-            self.key2.apply(&s.hh, &mut screen[spec::SLOT_TOKENS..]);
+            self.entry1.relu(&s.core, &mut s.hh);
+            self.entry2.apply(&s.hh, &mut screen[spec::SLOT_TOKENS..]);
             // (ptr1 over [the slot's token, core]: the core's part once.)
             let cols = self.ptr1.cols;
             for r in 0..self.ptr1.rows {

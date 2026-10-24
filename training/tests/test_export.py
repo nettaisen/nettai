@@ -59,7 +59,7 @@ def test_export_round_trip(tmp_path: Path):
     with safe_open(str(fx), framework="pt") as f:
         t = {k: f.get_tensor(k) for k in f.keys()}
     n = t["reset"].shape[0]
-    assert n == 8 and t["fight"].shape == (n, 20) and t["screen"].shape == (n, 19) and t["hidden"].shape[0] == n
+    assert n == 8 and t["fight"].shape == (n, 20) and t["screen"].shape == (n, 17) and t["hidden"].shape[0] == n
     fixture = {
         k: {s.name: t[f"{k}.{s.name}"] for s in tr.spec.sets} for k in ("x", "ids", "mask")
     } | {k: t[k] for k in ("legal_fight", "legal_screen", "phase", "reset", "previous", "h0")}

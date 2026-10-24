@@ -94,7 +94,8 @@ impl PyPool {
         d.set_item("buckets", names::BUCKETS)?;
         d.set_item("fight_actions", spec::FIGHT_ACTIONS)?;
         d.set_item("screen_actions", spec::SCREEN_ACTIONS)?;
-        d.set_item("screen_keys", spec::SCREEN_KEYS.to_vec())?;
+        d.set_item("form_entries", spec::FORM_ENTRIES)?;
+        d.set_item("probed_keys", spec::PROBED_KEYS.to_vec())?;
         let chips = PyDict::new(py);
         chips.set_item("hand", (0, spec::HAND_TOKENS))?;
         chips.set_item("used", (spec::USED_TOKEN, 1))?;

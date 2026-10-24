@@ -111,8 +111,9 @@ class Model(nn.Module):
         self.set_names = spec.names
         pointer = spec.set(cfg.pointer_set)
         self.n_slots = pointer.count
-        self.n_keys = spec.screen_actions - self.n_slots
-        if self.n_keys < 0:
+        # The screen's actions after the slots: the entries of the rules' form list (§4.2).
+        self.n_entries = spec.screen_actions - self.n_slots
+        if self.n_entries < 0:
             raise ValueError(f"model: screen_actions {spec.screen_actions} < the {pointer.name} set's {pointer.count}")
         d = cfg.d
         for n in cfg.pool_only:
@@ -140,13 +141,13 @@ class Model(nn.Module):
         core = cfg.hidden + cfg.summary
         self.fight1 = nn.Linear(core, cfg.head_hidden)
         self.fight2 = nn.Linear(cfg.head_hidden, spec.fight_actions)
-        self.key1 = nn.Linear(core, cfg.head_hidden)
-        self.key2 = nn.Linear(cfg.head_hidden, self.n_keys)
+        self.entry1 = nn.Linear(core, cfg.head_hidden)
+        self.entry2 = nn.Linear(cfg.head_hidden, self.n_entries)
         self.ptr1 = nn.Linear(d + core, cfg.pointer_hidden)
         self.ptr2 = nn.Linear(cfg.pointer_hidden, 1)
         self.value1 = nn.Linear(core, cfg.head_hidden)
         self.value2 = nn.Linear(cfg.head_hidden, 1)
-        for layer in (self.fight2, self.key2, self.ptr2):  # near-uniform policy at the start
+        for layer in (self.fight2, self.entry2, self.ptr2):  # near-uniform policy at the start
             nn.init.normal_(layer.weight, std=0.01)
             nn.init.zeros_(layer.bias)
 
@@ -224,17 +225,18 @@ class Model(nn.Module):
     def heads(
         self, h: torch.Tensor, z: torch.Tensor, slot_tok: torch.Tensor, slot_present: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """core = [h, z] → fight logits [N, 20], screen logits [N, 19] (absent slots -inf), value [N]."""
+        """core = [h, z] → fight logits [N, 20], screen logits [N, 17] (the slots, absent ones -inf, then the form
+        list's entries), value [N]."""
         core = torch.cat([h, z], -1)
         fight = self.fight2(F.relu(self.fight1(core)))
-        keys = self.key2(F.relu(self.key1(core)))
+        entries = self.entry2(F.relu(self.entry1(core)))
         # ptr1 over [slot token, core]: the core's part is computed once for all slots.
         d = self.cfg.d
         w = self.ptr1.weight
         u = F.linear(slot_tok, w[:, :d]) + (F.linear(core, w[:, d:], self.ptr1.bias)).unsqueeze(-2)
         slots = self.ptr2(F.relu(u)).squeeze(-1).masked_fill(~slot_present, float("-inf"))
         value = self.value2(F.relu(self.value1(core))).squeeze(-1)
-        return fight, torch.cat([slots, keys], -1), value
+        return fight, torch.cat([slots, entries], -1), value
 
     def gru_input(self, z: torch.Tensor, previous: torch.Tensor) -> torch.Tensor:
         """[summary, the previous action one-hot]: z [..., summary], previous [...] (int64, `previous_action`)."""
@@ -242,7 +244,7 @@ class Model(nn.Module):
 
     def step(self, obs: Obs, h: torch.Tensor, previous: torch.Tensor):
         """One decision per row: obs [N], h [N, H], previous [N] (the stream's previous decision's action,
-        `previous_action`) → fight [N, 20], screen [N, 19], value [N], h' [N, H]."""
+        `previous_action`) → fight [N, 20], screen [N, 17], value [N], h' [N, H]."""
         z, slot_tok, slot_present = self.encode(obs)
         _, h = self.gru(self.gru_input(z, previous).unsqueeze(1), h.unsqueeze(0).contiguous())
         h = h[0]
@@ -253,7 +255,7 @@ class Model(nn.Module):
         """Sequences: obs [B, L] (flattened to [B·L] inside), h0 [B, H], reset [B, L] (zero h before that decision),
         previous [B, L] (each decision's previous action as the behavior network read it: stored, not derived).
 
-        Returns fight [B, L, 20], screen [B, L, 19], value [B, L], and the GRU states after each decision [B, L, H].
+        Returns fight [B, L, 20], screen [B, L, 17], value [B, L], and the GRU states after each decision [B, L, H].
         """
         B, L = reset.shape
         flat = map_obs(obs, lambda t: t.flatten(0, 1))
@@ -283,7 +285,7 @@ class Model(nn.Module):
             "activation": "relu",
             "layer_norm_eps": LN_EPS,
             "slots": self.n_slots,
-            "keys": self.n_keys,
+            "entries": self.n_entries,
             # The GRU's input after the summary: the previous decision's action, one-hot (`previous_action`).
             "previous_action": self.n_previous,
             "spec": {
@@ -325,28 +327,60 @@ def previous_action(action: torch.Tensor, phase: torch.Tensor, fight_actions: in
     return torch.where(phase == 1, action, action + fight_actions)
 
 
+# The heads of a checkpoint from before the form list's entries (2026-10-24), whose screen actions after the slots
+# were seven keys: left out of a warm start, the entries' head fresh.
+KEY_HEADS = ("key1.weight", "key1.bias", "key2.weight", "key2.bias")
+KEYS = 7
+
+
 def warm_start(model: Model, weights: dict[str, torch.Tensor]) -> None:
     """Load another network's weights (a checkpoint's "model") into `model` so it plays as that network does:
-    every tensor of the same shape copied, the input normalization among them; the GRU's input weights of a
-    network that read no previous action (the summary's columns alone) copied into their first columns, the
-    previous action's columns zero, so it reads nothing of it until trained to. A tensor missing, left over or
-    of another shape is an error (the widths must be the checkpoint's)."""
+    every tensor of the same shape copied, the input normalization among them. Two older layouts too:
+
+    - A network that read no previous action: the GRU's input weights (the summary's columns alone) copied into
+      their first columns, the previous action's columns zero, so it reads nothing of it until trained to.
+    - A network whose screen actions after the slots were keys (its heads `key1`, `key2`): those heads left out
+      and the form list's entries' head as this network's initialization made it; of the GRU's previous-action
+      columns, the fight's, the slots' and none's copied, the keys' left out and the entries' zero.
+
+    A tensor missing, left over or of another shape otherwise is an error (the widths must be the checkpoint's)."""
     own = model.state_dict()
-    missing, extra = sorted(set(own) - set(weights)), sorted(set(weights) - set(own))
+    keyed = all(k in weights for k in KEY_HEADS) and not any(k.startswith("entry") for k in weights)
+    fresh = {k for k in own if keyed and k.startswith(("entry1.", "entry2."))}
+    missing = sorted(set(own) - set(weights) - fresh)
+    extra = sorted(set(weights) - set(own) - (set(KEY_HEADS) if keyed else set()))
     if missing or extra:
         raise ValueError(f"warm start: the weights lack {missing} and have {extra} beyond this network's")
     out = {}
     for k, mine in own.items():
+        if k in fresh:
+            out[k] = mine
+            continue
         w = weights[k].to(mine.device, mine.dtype)
         if w.shape == mine.shape:
             out[k] = w
-        elif k == "gru.weight_ih_l0" and w.shape == (mine.shape[0], model.cfg.summary):
-            t = torch.zeros_like(mine)
-            t[:, : model.cfg.summary] = w
-            out[k] = t
+        elif k == "gru.weight_ih_l0" and w.shape[0] == mine.shape[0]:
+            out[k] = previous_columns(model, w, mine, keyed)
         else:
             raise ValueError(f"warm start: {k} is {tuple(w.shape)}, this network's {tuple(mine.shape)}")
     model.load_state_dict(out, strict=True)
+
+
+def previous_columns(model: Model, w: torch.Tensor, mine: torch.Tensor, keyed: bool) -> torch.Tensor:
+    """The GRU's input weights `w` of another network as `model`'s (`mine`'s shape): the summary's columns; then,
+    of a network that read the previous action with keys after the slots (`keyed`), the fight's actions', the
+    slots' and none's columns, the keys' left out and the form list's entries' zero (§7)."""
+    summary, fight, slots = model.cfg.summary, model.spec.fight_actions, model.n_slots
+    theirs = w.shape[1] - summary
+    if theirs != 0 and not (keyed and theirs == fight + slots + KEYS + 1):
+        raise ValueError(f"warm start: the GRU's input weights are {tuple(w.shape)}, this network's {tuple(mine.shape)}")
+    t = torch.zeros_like(mine)
+    t[:, :summary] = w[:, :summary]
+    if theirs:
+        head = summary + fight + slots
+        t[:, :head] = w[:, :head]
+        t[:, -1] = w[:, -1]
+    return t
 
 
 def map_obs(obs: Obs, fn) -> Obs:
@@ -438,7 +472,7 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
     core = cfg.hidden + cfg.summary
     fight = core * cfg.head_hidden + cfg.head_hidden * spec.fight_actions
     slots = n[cfg.pointer_set]
-    keys = core * cfg.head_hidden + cfg.head_hidden * (spec.screen_actions - spec.set(cfg.pointer_set).count)
+    entries = core * cfg.head_hidden + cfg.head_hidden * (spec.screen_actions - spec.set(cfg.pointer_set).count)
     pointer = core * cfg.pointer_hidden + slots * (d * cfg.pointer_hidden + cfg.pointer_hidden)
     trunk = encoder + layers + pool + gru
     return {
@@ -449,7 +483,7 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
         "pool": pool,
         "gru": gru,
         "fight": trunk + fight,
-        "screen": trunk + keys + pointer,
+        "screen": trunk + entries + pointer,
         "value_head": core * cfg.head_hidden + cfg.head_hidden,
     }
 

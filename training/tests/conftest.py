@@ -14,7 +14,7 @@ def tiny_spec() -> dict:
     raw = {
         "buckets": 64,
         "fight_actions": 3,
-        "screen_actions": 4,  # 2 slots, then 2 keys
+        "screen_actions": 4,  # 2 slots, then 2 entries of the form list
         "sets": {
             "general": {"count": 1, "width": 4, "ids": 0},
             "objects": {"count": 3, "width": 3, "ids": 2},

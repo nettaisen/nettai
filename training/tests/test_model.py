@@ -249,3 +249,41 @@ def test_warm_start_plays_as_the_network_it_came_from(tiny_cfg):
     wider = Model(spec, dataclasses.replace(tiny_cfg, hidden=tiny_cfg.hidden + 2))
     with pytest.raises(ValueError, match="warm start"):
         warm_start(wider, old)
+
+
+def test_warm_start_of_a_network_with_keys_plays_its_fight_and_slots(tiny_cfg):
+    """A network whose screen actions after the slots were seven keys (heads key1, key2; before 2026-10-24's form
+    list entries), warm-started: its keys' heads left out, the entries' head this network's own initialization, of
+    the GRU's previous-action columns the fight's, the slots' and none's copied and the entries' zero. It computes
+    what that network did for its fight, its slots and its value after any previous action but a key."""
+    spec = parse_spec(tiny_spec())
+    src = Model(spec, tiny_cfg)
+    g = torch.Generator().manual_seed(8)
+    with torch.no_grad():
+        for p in src.parameters():
+            p.add_(torch.randn(p.shape, generator=g) * 0.3)
+    head = tiny_cfg.summary + spec.fight_actions + src.n_slots
+    old = {k: v.clone() for k, v in src.state_dict().items() if not k.startswith("entry")}
+    w = src.state_dict()["gru.weight_ih_l0"]
+    old["gru.weight_ih_l0"] = torch.cat([w[:, :head], torch.randn(w.shape[0], 7, generator=g), w[:, -1:]], 1)
+    old["key1.weight"], old["key1.bias"] = src.entry1.weight.clone(), src.entry1.bias.clone()
+    old["key2.weight"], old["key2.bias"] = torch.randn(7, tiny_cfg.head_hidden, generator=g), torch.randn(7, generator=g)
+    warm = Model(spec, tiny_cfg)
+    fresh = {k: v.clone() for k, v in warm.state_dict().items() if k.startswith("entry")}
+    warm_start(warm, old)
+    for k, v in warm.state_dict().items():
+        if k.startswith("entry"):
+            assert torch.equal(v, fresh[k]), k
+        elif k == "gru.weight_ih_l0":
+            assert torch.equal(v[:, :head], w[:, :head]) and torch.equal(v[:, -1], w[:, -1]) and not v[:, head:-1].any()
+        else:
+            assert torch.equal(v, old[k]), k
+    obs = random_obs(spec, 12, g)
+    h = torch.randn(12, tiny_cfg.hidden, generator=g)
+    not_entries = torch.cat([torch.arange(spec.fight_actions + src.n_slots), torch.tensor([warm.no_previous])])
+    prev = not_entries[torch.randint(len(not_entries), (12,), generator=g)]
+    with torch.no_grad():
+        got, want = warm.step(obs, h, prev), src.step(obs, h, prev)
+    s = src.n_slots
+    for name, x, y in (("fight", got[0], want[0]), ("slots", got[1][:, :s], want[1][:, :s]), ("value", got[2], want[2]), ("h", got[3], want[3])):
+        assert torch.allclose(torch.nan_to_num(x, neginf=-1e9), torch.nan_to_num(y, neginf=-1e9), atol=1e-6), name

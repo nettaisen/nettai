@@ -15,8 +15,8 @@ order, counts `C`, widths `W` and id counts `I` come from its `spec`.
   - `spec_hash`: refuse weights whose hash isn't the encoder's own spec hash.
   - `architecture`: JSON with `model` (the widths, `pointer_set`, `pool_only`), `spec` (`buckets`,
     `fight_actions`, `screen_actions`, `sets` in order with `name`, `count`, `width`, `ids`, and `split`),
-    `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count), `keys`
-    (`screen_actions - slots`) and `previous_action` (`fight_actions + screen_actions + 1`, the GRU's
+    `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count), `entries`
+    (`screen_actions - slots`, the form list's entries) and `previous_action` (`fight_actions + screen_actions + 1`, the GRU's
     previous-action input, §4).
   - `spec.split`: sets the trainer cut from one of the encoder's, as `{source: [[set, first token, count], …]}`.
     The encoder's `chips` set (7 tokens) is read as `hand` (tokens 0–5) and `used` (6), two sets of their own,
@@ -26,15 +26,16 @@ order, counts `C`, widths `W` and id counts `I` come from its `spec`.
     the env asked for decisions in training.
   - `git_commit`, `git_dirty`, `update`, `decisions`: provenance only.
 - The pointer set is `model.pointer_set` (`"slots"`). Its tokens, in order, are screen actions `0 .. slots-1`;
-  screen actions `slots ..` are the keys.
+  screen actions `slots ..` are the entries of the rules' form list (EXE6's Crosses), which the navigator chooses
+  in the list (docs/design/training-ai.md §4.2).
 
 ## Inputs
 
 For each set `s` in the architecture's order: `x[s]` `[C, W]`, `ids[s]` `[C, I]` (int32, 0 = no name),
-`mask[s]` `[C]` (true = present). With spec c4d9e4a61b0f54ba the trainer's sets are, in order: `general` (1),
+`mask[s]` `[C]` (true = present). With spec f27f9a4a126e990f the trainer's sets are, in order: `general` (1),
 `panels` (18), `objects` (48), `hand` (6) and `used` (1) (the encoder's `chips` set, split as `spec.split` says:
 its tokens 0–5 and 6, same width and ids), `slots` (12, the pointer set), `rules` (96, pool-only) and `forms`
-(12). Widths and id counts are in the architecture. Also `legal_fight` `[20]`, `legal_screen` `[19]`, the GRU state `h` `[H]` (zeros at a
+(12). Widths and id counts are in the architecture. Also `legal_fight` `[20]`, `legal_screen` `[17]`, the GRU state `h` `[H]` (zeros at a
 round's start), and `previous`, the action the seat's previous decision took (none at a round's start, §4). The
 others are the pool's buffers for one seat (§6.6); `previous` is the player's own: it chose that action.
 
@@ -87,7 +88,7 @@ Then `t_i = ln_f(t_i)` for every present token, pool-only sets' included.
 
 ## 4. GRU (`gru.`, PyTorch's equations, gate order r, z, n)
 
-Its input is `x = [z, onehot(p)]`, width `summary + P`, `P = previous_action` (40): the summary, then the
+Its input is `x = [z, onehot(p)]`, width `summary + P`, `P = previous_action` (38): the summary, then the
 previous decision's action one-hot. `p`, its place: a fight action `a` is `a` (`0 .. fight_actions-1`), a screen
 action `a` is `fight_actions + a`, and none (a round's first decision, where `h` is zero too) is `P − 1`. The
 previous decision may be of the other phase (a fight action before the custom screen opened). It is there because
@@ -113,12 +114,12 @@ start, `h = 0` and `p` is none.
 `core = [h', z]` (width `H + summary`).
 
 - Fight: `fight = fight2(relu(fight1(core)))`, `[fight_actions]`.
-- Keys: `keys = key2(relu(key1(core)))`, `[keys]`.
+- Form list entries: `entries = entry2(relu(entry1(core)))`, `[entries]`.
 - Slot pointer: for each token `i` of the pointer set, in order: if present,
   `u_i = relu(ptr1.weight[:, :d]·t_i + ptr1.weight[:, d:]·core + ptr1.bias)` (the core's part is the same for
   every slot: compute it once) and `slot_i = ptr2(u_i)` (a scalar); if absent, `slot_i = −inf`. (`t_i` is the
   token after `ln_f`.)
-- `screen = [slot_0, …, slot_{slots−1}, keys_0, …, keys_{keys−1}]`, `[screen_actions]`.
+- `screen = [slot_0, …, slot_{slots−1}, entries_0, …, entries_{entries−1}]`, `[screen_actions]`.
 - Value: `value2(relu(value1(core)))`. Training only; the app needn't compute it.
 
 Masks: `fight[a] = −inf` where `!legal_fight[a]`; `screen[a] = −inf` where `!legal_screen[a]`. A fight
@@ -139,10 +140,10 @@ The reaction delay is the level's `delay` in ticks: the decision at tick t uses 
 `nettai_ai.export` also writes `<name>.fixture.safetensors`: one seat's recorded decisions (from training)
 and the outputs, computed decision by decision from `h0`:
 
-- inputs: `x.<set>`, `ids.<set>`, `mask.<set>` (`[N, C, …]`), `legal_fight` `[N, 20]`, `legal_screen` `[N, 19]`,
+- inputs: `x.<set>`, `ids.<set>`, `mask.<set>` (`[N, C, …]`), `legal_fight` `[N, 20]`, `legal_screen` `[N, 17]`,
   `phase` `[N]` (1 fight, 2 screen), `reset` `[N]` (set `h = 0` before that decision), `previous` `[N]` (each
   decision's `p`, §4), `h0` `[H]`;
-- outputs: `fight_raw` `[N, 20]` and `screen_raw` `[N, 19]` (before the legal masks; absent slots −inf),
+- outputs: `fight_raw` `[N, 20]` and `screen_raw` `[N, 17]` (before the legal masks; absent slots −inf),
   `fight` and `screen` (masked), `value` `[N]`, `hidden` `[N, H]` (the GRU state after each decision).
 
 The port should match every finite value to about 1e-4 (float32 sums in another order) and every −inf exactly.

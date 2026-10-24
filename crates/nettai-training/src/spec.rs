@@ -229,18 +229,22 @@ pub const SETS: [Set; 7] = [
 /// B (§4.1).
 pub const FIGHT_ACTIONS: usize = 20;
 
-/// The custom screen's keys an action may press once, after the 12 slots
-/// (§4.2).
-pub const SCREEN_KEYS: [&str; 7] = ["up", "down", "left", "right", "a", "b", "start"];
+/// The keys the key probe presses on a custom screen (§4.2), whose flags
+/// the global token holds (`general::probe`).
+pub const PROBED_KEYS: [&str; 7] = ["up", "down", "left", "right", "a", "b", "start"];
 
-/// Custom screen actions: a slot to point at, or a key.
-pub const SCREEN_ACTIONS: usize = SLOT_TOKENS + SCREEN_KEYS.len();
+/// The entries of the rules' form list a custom screen action may choose,
+/// after the 12 slots (§4.2: EXE6's Crosses).
+pub const FORM_ENTRIES: usize = nettai_battle::custom::screen::FORM_LIST_ENTRIES;
+
+/// Custom screen actions: a slot, or an entry of the form list.
+pub const SCREEN_ACTIONS: usize = SLOT_TOKENS + FORM_ENTRIES;
 
 /// The layout as text, which the spec's hash is of: every set's name,
 /// count, width, ids and features in order, the actions, and the names'
 /// hash.
 pub fn text() -> String {
-    let mut out = format!("nettai observation\nnames {} buckets {}\nfight actions {FIGHT_ACTIONS}\nscreen actions {SCREEN_ACTIONS} keys {}\n", names::DESCRIPTION, names::BUCKETS, SCREEN_KEYS.join(","));
+    let mut out = format!("nettai observation\nnames {} buckets {}\nfight actions {FIGHT_ACTIONS}\nscreen actions {SCREEN_ACTIONS} form entries {FORM_ENTRIES}\nprobed keys {}\n", names::DESCRIPTION, names::BUCKETS, PROBED_KEYS.join(","));
     out += &format!("chips: hand {HAND_TOKENS} used 1; slots {SLOT_TOKENS}\n");
     for s in SETS {
         out += &format!("set {} count {} width {} ids {} ({})\n", s.name, s.count, s.width, s.ids, s.id_names.join(","));
