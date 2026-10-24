@@ -197,6 +197,7 @@ class Evaluator:
             records = evaluate_vs_bots(
                 Player("learner", self.model), cfg.env, tr.fake, cfg.eval.games, cfg.eval.bots, cfg.eval.envs,
                 cfg.eval.threads, cfg.eval.rounds, LEVELS[cfg.eval.level], cfg.eval.hp, tr.device, tr.spec.hash, self.pools,
+                duplicate=True,  # each deal both ways: the builds' luck cancels (§9)
             )
             out = {}
             for (g, me, other), r in summarize(records, cfg.eval.games).items():

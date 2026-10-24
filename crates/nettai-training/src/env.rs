@@ -227,9 +227,10 @@ pub struct Env {
     /// whenever they were made.
     ready: Vec<std::collections::VecDeque<crate::builds::Build>>,
     build_picks: Vec<Picks>,
-    /// The deal asked for ([`Env::set_deal`]), and the one in effect with
-    /// the rounds dealt from it.
+    /// The deal asked for ([`Env::set_deal`]), whether it starts over at the
+    /// next round, and the one in effect with the rounds dealt from it.
     deal: Option<u64>,
+    deal_anew: bool,
     dealt: Option<(u64, u64)>,
     /// Rounds ended since they were last taken.
     pub ended: Vec<RoundStats>,
@@ -357,6 +358,7 @@ impl Env {
             ready,
             build_picks,
             deal: None,
+            deal_anew: false,
             dealt: None,
             picks,
             game: g,
@@ -412,9 +414,12 @@ impl Env {
     /// and practice options come from the key and the round's number since,
     /// whatever was played before, so envs of one key deal the same rounds
     /// (evaluation's duplicate matches: the same deal with the seats
-    /// swapped). Builds aren't made ahead meanwhile.
+    /// swapped). Builds aren't made ahead meanwhile. Set again, even to
+    /// the same key, it starts over from its first round: envs that played
+    /// different numbers of rounds since meet in step again.
     pub fn set_deal(&mut self, key: Option<u64>) {
         self.deal = key;
+        self.deal_anew = true;
     }
 
     /// The ticks seat `seat` holds a fight decision from the next round
@@ -471,7 +476,7 @@ impl Env {
         let (m, pairs) = match made {
             Some(m) => m,
             None => {
-                if self.deal != self.dealt.map(|d| d.0) {
+                if std::mem::take(&mut self.deal_anew) {
                     self.dealt = self.deal.map(|key| (key, 0));
                 }
                 if let Some((key, n)) = &mut self.dealt {

@@ -164,6 +164,34 @@ fn envs_of_one_deal_deal_the_same_rounds() {
     };
     let (a, ea) = deals(1, 42);
     let (b, eb) = deals(2, 42);
+    // (Set again after rounds of their own, envs deal from the first again.)
+    let again = |seed: u64, extra: usize| {
+        let mut env = Env::new(games(&GAMES), Config { max_fight_ticks: 900, ..Config::default() }, seed).unwrap();
+        env.set_deal(Some(42));
+        let (mut rng, mut actions, mut ended, mut first) = (SplitMix64::new(seed), [0; 2], 0, None);
+        while first.is_none() {
+            let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+            if out.done {
+                ended += 1;
+                if ended == 1 + extra {
+                    env.set_deal(Some(42));
+                }
+                if ended == 2 + extra {
+                    first = Some(env.battle.digest());
+                }
+            }
+            for s in 0..2 {
+                actions[s] = match out.phase[s] {
+                    FIGHT => random_action(&mut rng, &env.legal_fight[s]),
+                    SCREEN => random_action(&mut rng, &env.legal_screen[s]),
+                    _ => 0,
+                };
+            }
+        }
+        first.unwrap()
+    };
+    assert_eq!(again(1, 0), again(2, 2), "set again, from its first round");
+    assert_eq!(again(1, 0), a[0].2, "its first round again");
     let (c, _) = deals(3, 43);
     // (The first round is each env's own; the deal starts with the second.)
     assert_eq!(a, b);
