@@ -175,6 +175,72 @@ fn a_refused_pick_is_masked() {
     assert!(!matches!(b.custom.sides[1].screen.unwrap().phase, Phase::Choosing));
 }
 
+/// A screen whose decisions are spent allows, in a window of the rules,
+/// only the keys that confirm or back out (A and B) and no slot; choosing,
+/// OK alone. Before them, every key.
+#[test]
+fn past_its_decisions_a_window_allows_a_and_b_alone() {
+    let mut windows = 0;
+    for seed in 1..12 {
+        let mut b = at_the_custom_screen("exe6", seed);
+        let layout = b.game_rules().custom_screen.clone();
+        let choosing = act::legal_screen(&b.custom.sides[1].screen.unwrap(), &layout, 0, true);
+        assert_eq!((0..spec::SCREEN_ACTIONS).filter(|&a| choosing[a]).collect::<Vec<_>>(), [OK_SLOT as usize]);
+        let Some(k) = probe_keys(&b, 1).iter().position(|&o| o) else { continue };
+        navigate(&mut b, &mut Navigator::default(), (SLOTS + k) as i32);
+        let screen = b.custom.sides[1].screen.unwrap();
+        assert!(matches!(screen.phase, Phase::Window { .. }), "seed {seed}");
+        let past = act::legal_screen(&screen, &layout, 0, true);
+        assert!(!past[..SLOTS].iter().any(|&l| l), "seed {seed}: no slot in a window");
+        let keys_left: Vec<u16> = (0..act::KEYS.len()).filter(|&k| past[SLOTS + k]).map(|k| act::KEYS[k]).collect();
+        assert_eq!(keys_left, [keys::A, keys::B], "seed {seed}");
+        assert!(act::legal_screen(&screen, &layout, 0, false)[SLOTS..].iter().all(|&l| l), "seed {seed}: every key before");
+        windows += 1;
+    }
+    assert!(windows > 0, "no seed's screen had a window behind a key");
+}
+
+/// A seat that presses only directions on its custom screens (UP first:
+/// into EXE6's form window where it opens, and on in it) until its
+/// decisions are spent, and a direction after wherever one is allowed, has
+/// every screen closed: past them a window allows only A and B, and
+/// choosing only OK. (Before, every key stayed allowed in a window, and a
+/// seat that pressed directions held it open till the round was cut off.)
+#[test]
+fn a_seat_pressing_directions_has_its_screens_closed() {
+    let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 900, ..Config::default() }, 7).unwrap();
+    let mut rng = SplitMix64::new(3);
+    let mut actions = [0; 2];
+    let (mut longest, mut in_window, mut steps) = (0, 0, 0);
+    while env.ended.len() < 8 {
+        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+        longest = longest.max(env.screen_ticks);
+        for s in 0..2 {
+            actions[s] = match out.phase[s] {
+                FIGHT => random_action(&mut rng, &env.legal_fight[s]),
+                SCREEN => {
+                    let legal = env.legal_screen[s];
+                    let screen = env.battle.custom.sides[s].screen.unwrap();
+                    if env.seats[s].decisions >= env.cfg.screen_decisions && matches!(screen.phase, Phase::Window { .. }) {
+                        in_window += 1;
+                    }
+                    match (SLOTS..SLOTS + 4).find(|&a| legal[a]) {
+                        Some(direction) => direction as i32,
+                        None => random_action(&mut rng, &legal),
+                    }
+                }
+                _ => 0,
+            };
+        }
+        steps += 1;
+        assert!(steps < 40_000, "8 rounds didn't end");
+    }
+    println!("longest screen {longest} ticks; decisions past the limit in a window {in_window}");
+    // (The old rule's screens ran to the cut, 3,600 ticks; these close in a few hundred.)
+    assert!(longest < env.cfg.max_screen_ticks / 4, "a screen stayed open {longest} ticks");
+    assert!(in_window > 0, "no seat spent its decisions in a window");
+}
+
 /// The key probe finds the window a game's rules put behind a key (EXE6's
 /// form window on the screen's first decision), and nothing where a key
 /// opens none; it reads its own screen of a copy, and the battle is as it

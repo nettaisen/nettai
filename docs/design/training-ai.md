@@ -247,8 +247,14 @@ instead points at what it wants, and a navigator presses the buttons to get ther
   copy. The answer is part of the observation, so a Cross window is found from the first round rather than by luck.
 - **No delay on the screen.** A screen decision is made from the screen as it is: nothing moves on it but the
   player's own cursor, and the navigator needs it as it is.
-- **A screen ends.** After 24 decisions on one screen only OK is allowed (keys stay allowed inside a window), and a
-  screen open 3,600 ticks cuts the round off.
+- **A screen ends.** After 24 decisions on one screen only OK is allowed, and inside a window only the keys that
+  confirm or back out, A and B (`act::CLOSING_KEYS`); a screen open 3,600 ticks cuts the round off. Before
+  (2026-10-24), every key stayed allowed inside a window: EXE6 rounds between the first cloud run's checkpoints 1,400
+  and 1,000 at full HP were cut about 70% of the time, a seat in the Cross window pressing only directions for 1,000
+  decisions and more until the screen's cut (15 to 20% of training's rounds cut, with no result), and the app's
+  dummy, which has no such cut, could have stayed on its screen forever. Tested: a seat pressing only directions
+  (UP first, into the Cross window) has every screen closed within a few hundred ticks, where the old rule ran each
+  to the cut.
 
 Each chip slot also says what picking it would add: whether it completes a Program Advance (`builder::build` run on
 the would-be picks), the Program Advance's damage, the damage the hand as OK would build it gains (modifiers folded

@@ -128,8 +128,15 @@ pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, o
     out
 }
 
+/// The keys that confirm or back out of a rules' window: those a screen
+/// past its decisions (`only_ok`) still allows in one.
+pub const CLOSING_KEYS: [u16; 2] = [keys::A, keys::B];
+
 /// The screen actions allowed now: the legal slots, then the keys (all of
-/// them while the screen reads keys).
+/// them while the screen reads keys). With `only_ok` (the screen's
+/// decisions spent), OK alone while it is choosing, and in a window of the
+/// rules only the keys that confirm or back out ([`CLOSING_KEYS`]): a seat
+/// pressing directions in a window would hold the screen open forever.
 pub fn legal_screen(screen: &Screen, layout: &CustomScreenLayout, refused: u16, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
     let mut out = [false; spec::SCREEN_ACTIONS];
     if !reads_keys(screen) {
@@ -137,9 +144,8 @@ pub fn legal_screen(screen: &Screen, layout: &CustomScreenLayout, refused: u16, 
     }
     let slots = legal_slots(screen, &steps(screen, layout), refused, only_ok);
     out[..SLOTS].copy_from_slice(&slots);
-    let keys = !(only_ok && screen.phase == Phase::Choosing);
-    for k in 0..KEYS.len() {
-        out[SLOTS + k] = keys;
+    for (k, key) in KEYS.iter().enumerate() {
+        out[SLOTS + k] = !only_ok || (screen.phase != Phase::Choosing && CLOSING_KEYS.contains(key));
     }
     out
 }
