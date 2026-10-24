@@ -151,6 +151,7 @@ class PoolView:
         self.hp_gain = t(buf["hp_gain"]).view(S)
         self.done = t(buf["done"])
         self.truncated = t(buf["truncated"])
+        self.ending = t(buf["ending"])
         self.result = t(buf["result"]).view(S)
         self.game = t(buf["game"])
         self.delay = t(buf["delay"]).view(S)
@@ -159,6 +160,7 @@ class PoolView:
             ("hp_gain", buf["hp_gain"], np.float32),
             ("result", buf["result"], np.int8),
             ("done", buf["done"], np.bool_),
+            ("ending", buf["ending"], np.int8),
         ):
             if a.dtype != dtype:
                 raise ValueError(f"pool buffer {name} is {a.dtype}, §6.6 says {np.dtype(dtype)}")

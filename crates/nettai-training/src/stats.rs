@@ -30,6 +30,9 @@ pub struct RoundStats {
     /// +1, −1 or 0 by seat (0 for a round cut off or stopped).
     pub result: [i8; 2],
     pub truncated: bool,
+    /// How it ended where it wasn't cut (`env::BY_KO`, `BY_JUDGE`,
+    /// `BY_LIMIT`).
+    pub ending: u8,
     /// Why the engine stopped the round, if it did.
     pub error: Option<String>,
     pub ticks: u32,

@@ -57,6 +57,7 @@ class StubPool:
             "hp_gain": np.zeros((1, 2), np.float32),
             "done": np.zeros(1, np.bool_),
             "truncated": np.zeros(1, np.bool_),
+            "ending": np.zeros(1, np.int8),
             "result": np.zeros((1, 2), np.int8),
             "game": np.zeros(1, np.int8),
             "delay": np.zeros((1, 2), np.int16),
@@ -189,3 +190,14 @@ def test_scripted_seat_with_a_decision_is_an_error(tmp_path: Path, tiny_cfg):
     col = Collector(pool, spec, Model(spec, tiny_cfg), league, Rollout(spec, 2, 4, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set), 0.0, 0)
     with pytest.raises(RuntimeError, match="scripted seat"):
         col.collect(1, 1.0, 1.0)
+
+
+def test_a_stall_costs():
+    """§6.4: a KO is its result; on the judge's ruling a win is worth result − judged_cost, a draw −judged_cost,
+    a loss as a KO's; the fight's limit is `limit` to each seat."""
+    from nettai_ai.rollout import BY_JUDGE, BY_KO, BY_LIMIT, round_end_reward
+
+    result = torch.tensor([1.0, -1.0, 1.0, -1.0, 0.0, 0.0, 0.0])
+    ending = torch.tensor([BY_KO, BY_KO, BY_JUDGE, BY_JUDGE, BY_JUDGE, BY_LIMIT, BY_KO])
+    got = round_end_reward(result, ending, 1.0, 0.75, -1.0)
+    assert got.tolist() == [1.0, -1.0, 0.25, -1.0, -0.75, -1.0, 0.0]

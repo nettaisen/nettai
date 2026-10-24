@@ -357,3 +357,21 @@ fn the_key_probe_finds_a_window_where_there_is_one() {
         }
     }
 }
+
+/// How a round ends (§6.4): two players that never attack go to the
+/// judge's ruling after the final turn (a draw), and a round past the
+/// fight's limit ends there with no result, not cut off.
+#[test]
+fn rounds_end_by_the_judge_or_at_the_fight_limit() {
+    let seats = [Controller::Bot(BotKind::Still), Controller::Bot(BotKind::Still)];
+    let mut env = Env::new(games(&["exe6"]), Config { practice: 1.0, seats, ..Config::default() }, 5).unwrap();
+    let out = env.step([0, 0]).unwrap_or_else(|e| panic!("{e}"));
+    let r = env.ended.last().unwrap();
+    println!("judged: ticks {} fight {} result {:?} ending {}", r.ticks, r.fight_ticks, r.result, r.ending);
+    assert!(out.done && !out.truncated, "{r:?}");
+    assert_eq!((out.ending, out.result, r.ending), (BY_JUDGE, [0, 0], BY_JUDGE));
+    let mut env = Env::new(games(&["exe6"]), Config { practice: 1.0, seats, max_fight_ticks: 300, ..Config::default() }, 5).unwrap();
+    let out = env.step([0, 0]).unwrap_or_else(|e| panic!("{e}"));
+    assert!(out.done && !out.truncated);
+    assert_eq!((out.ending, out.result, env.ended.last().unwrap().ending), (BY_LIMIT, [0, 0], BY_LIMIT));
+}

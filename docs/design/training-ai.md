@@ -369,13 +369,23 @@ nettai-frontend's training session's (`Training`), done in the env on the battle
 
 ### 6.4 Rewards
 
-- **The round's result:** +1 for a win, −1 for a loss, 0 for a draw. Time-up counts as its judgment says. A round
-  cut off is 0 for both, with `truncated` set.
+- **The round's result:** +1 for a win, −1 for a loss, 0 for a draw (`reward.result` × it), by a KO.
+- **A stall costs** (the user, 2026-10-24: "you should penalize winning by stalling more because that's boring").
+  Link rounds end on the judge's ruling on damage once the final turn's timer runs out (turn 15): a seat that takes
+  a lead and runs the clock out wins there. A seat that didn't lose a round decided by the judge gives up
+  `reward.judged_cost` (0.75): a judged win is worth 0.25, a judged draw −0.75, a judged loss −1 as a KO's, so the
+  leader gains by finishing and the one behind gains nothing by running. A round that reaches the fight's limit
+  (`max_fight_ticks`, 5 minutes of fight) ends there, worth `reward.limit` (−1) to each seat: before, it was cut
+  off and bootstrapped from the value, so whoever was ahead kept the lead's worth by stalling to it. The pool says
+  how each round ended (`ending`). Two players that never attack go to the judge after 4,300 ticks of fight (a
+  test).
+- **A cut** (a screen open too long, the engine stopping the round) is 0 for both, with `truncated` set, and
+  bootstrapped.
 - **HP difference as it happens**, weighted down over training: (HP the other lost / the other's max HP − HP it lost
   / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000). A round's end
   credits the ended round's alone: what a seat gains in the next round before its first decision is no transition's.
 
-Nothing else. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
+Nothing else for behavior. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
 winning.
 
 ### 6.5 The pool
@@ -451,7 +461,9 @@ buf = pool.buffers()   # numpy views of memory the pool owns, refilled in place 
 #                                      seat's last decision (steps where it had phase 0 too); read where the seat
 #                                      decides or the round ends
 # buf["done"]         bool    [E]      the round ended; the obs is already the next round's first
-# buf["truncated"]    bool    [E]      cut off (max_fight_ticks, a screen open too long, the engine stopped)
+# buf["truncated"]    bool    [E]      cut off (a screen open too long, the engine stopped)
+# buf["ending"]       int8    [E]      how a round not cut off ended: 0 a KO, 1 the judge's ruling, 2 the fight's
+#                                      limit (max_fight_ticks, no result) (valid where done)
 # buf["result"]       int8    [E, 2]   +1 / -1 / 0 for the round that ended (valid where done)
 # buf["game"]         int8    [E]      index into games
 # buf["delay"]        int16   [E, 2]

@@ -118,6 +118,7 @@ class FakePool:
             "hp_gain": np.zeros((E, 2), np.float32),
             "done": np.zeros(E, np.bool_),
             "truncated": np.zeros(E, np.bool_),
+            "ending": np.zeros(E, np.int8),
             "result": np.zeros((E, 2), np.int8),
             "game": np.zeros(E, np.int8),
             "delay": np.zeros((E, 2), np.int16),

@@ -21,9 +21,11 @@
 //!   `practice`: the gauge full whenever it runs, the folders dealt in
 //!   their own order. Both are the training session's (nettai-frontend's
 //!   `Training`), done here on the battle's state as it does them.
-//! - **The end.** A KO or the judge's ruling (+1, −1, 0 by seat), or a cut:
-//!   `max_fight_ticks` of fight, a custom screen open `max_screen_ticks`,
-//!   or the engine stopping the round. The next round starts at once.
+//! - **The end.** A KO or the judge's ruling (+1, −1, 0 by seat), the
+//!   fight's limit (`max_fight_ticks` of fight: no result, a stall), or a
+//!   cut: a custom screen open `max_screen_ticks`, or the engine stopping
+//!   the round. How it ended is the step's `ending` (§6.4: a stall costs).
+//!   The next round starts at once.
 
 use crate::act::{self, Navigator};
 use crate::bots::{Bot, BotKind};
@@ -139,6 +141,13 @@ pub const NONE: u8 = 0;
 pub const FIGHT: u8 = 1;
 pub const SCREEN: u8 = 2;
 
+/// How a round ended (§6.4, the pool's `ending`): a KO (or the rules' own
+/// end), the judge's ruling on damage once the final turn's time ran out,
+/// or the fight's limit (`max_fight_ticks`) with no result.
+pub const BY_KO: u8 = 0;
+pub const BY_JUDGE: u8 = 1;
+pub const BY_LIMIT: u8 = 2;
+
 /// What a step ended on.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Outcome {
@@ -146,6 +155,9 @@ pub struct Outcome {
     pub done: bool,
     pub truncated: bool,
     pub result: [i8; 2],
+    /// How the round ended, where it did and wasn't cut ([`BY_KO`],
+    /// [`BY_JUDGE`], [`BY_LIMIT`]).
+    pub ending: u8,
     /// (HP the other lost / its max HP − HP it lost / its own) since the
     /// seat's last decision: valid where the seat decides or the round
     /// ended.
@@ -495,12 +507,12 @@ impl Env {
         Ok(())
     }
 
-    /// Why the round is over, if it is: its result by seat, and whether it
-    /// was cut off.
-    fn over(&self) -> Option<([i8; 2], bool, Option<String>)> {
+    /// Why the round is over, if it is: its result by seat, whether it was
+    /// cut off, how it ended, and the engine's error.
+    fn over(&self) -> Option<([i8; 2], bool, u8, Option<String>)> {
         let b = &self.battle;
         if let Some(nettai_battle::RoundEnd::Error(why)) = b.round_end() {
-            return Some(([0; 2], true, Some(why.clone())));
+            return Some(([0; 2], true, BY_KO, Some(why.clone())));
         }
         if b.round.mode == mode::FIGHTING && matches!(b.fight.state, fight::WIN | fight::LOSE | fight::DRAW) {
             // (The fight's result is the simulation's own side's.)
@@ -511,12 +523,13 @@ impl Env {
                 fight::LOSE => (result[local], result[local ^ 1]) = (-1, 1),
                 _ => {}
             }
-            return Some((result, false, None));
+            return Some((result, false, if b.round.time_up != 0 { BY_JUDGE } else { BY_KO }, None));
         }
-        let cut = self.measure.stats.fight_ticks > self.cfg.max_fight_ticks
-            || self.screen_ticks > self.cfg.max_screen_ticks
-            || self.t > 4 * self.cfg.max_fight_ticks + 4 * self.cfg.max_screen_ticks;
-        cut.then_some(([0; 2], true, None))
+        if self.measure.stats.fight_ticks > self.cfg.max_fight_ticks {
+            return Some(([0; 2], false, BY_LIMIT, None));
+        }
+        let cut = self.screen_ticks > self.cfg.max_screen_ticks || self.t > 4 * self.cfg.max_fight_ticks + 4 * self.cfg.max_screen_ticks;
+        cut.then_some(([0; 2], true, BY_KO, None))
     }
 
     fn has_policy(&self) -> bool {
@@ -553,15 +566,17 @@ impl Env {
         self.asked = [NONE; 2];
         let mut out = Outcome::default();
         loop {
-            if let Some((result, truncated, error)) = self.over() {
+            if let Some((result, truncated, ending, error)) = self.over() {
                 let mut stats = std::mem::take(&mut self.measure).stats;
                 stats.result = result;
                 stats.truncated = truncated;
+                stats.ending = ending;
                 stats.error = error;
                 self.ended.push(stats);
                 out.done = true;
                 out.truncated = truncated;
                 out.result = result;
+                out.ending = ending;
                 for s in 0..2 {
                     out.hp_gain[s] += std::mem::take(&mut self.seats[s].gain);
                 }

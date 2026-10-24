@@ -327,6 +327,18 @@ class StepBatch:
         )
 
 
+
+# How a round ended (the pool's `ending`, §6.6): a KO, the judge's ruling, the fight's limit.
+BY_KO, BY_JUDGE, BY_LIMIT = 0, 1, 2
+
+
+def round_end_reward(result: torch.Tensor, ending: torch.Tensor, result_weight: float, judged_cost: float, limit: float) -> torch.Tensor:
+    """What a round's end is worth to each seat (§6.4): its result (+1, -1, 0) × result_weight; decided by the
+    judge's ruling, `judged_cost` less for a seat that didn't lose; at the fight's limit, `limit`."""
+    out = result * result_weight - torch.where((ending == BY_JUDGE) & (result >= 0), judged_cost, 0.0)
+    return torch.where(ending == BY_LIMIT, torch.full_like(out, limit), out)
+
+
 @dataclass
 class CollectStats:
     steps: int = 0
@@ -334,6 +346,8 @@ class CollectStats:
     opponent_decisions: int = 0
     rounds: int = 0
     truncated: int = 0
+    judged: int = 0  # rounds decided by the judge's ruling
+    limited: int = 0  # rounds that reached the fight's limit
     reward_sum: float = 0.0
     hp_gain_sum: float = 0.0
     step_seconds: float = 0.0  # in pool.step (the GIL let go)
@@ -373,24 +387,33 @@ class Collector:
         self.ro = rollout
 
     @torch.no_grad()
-    def collect(self, steps: int, hp_weight: float, result_weight: float, stop: threading.Event | None = None) -> CollectStats:
+    def collect(
+        self,
+        steps: int,
+        hp_weight: float,
+        result_weight: float,
+        stop: threading.Event | None = None,
+        judged_cost: float = 0.0,
+        limit: float = 0.0,
+    ) -> CollectStats:
         st = CollectStats(present={s.name: 0 for s in self.spec.sets})
         for _ in range(steps):
             if stop is not None and stop.is_set():
                 raise Stopped()
-            self._decide(st, hp_weight, result_weight)
+            self._decide(st, hp_weight, (result_weight, judged_cost, limit))
             t = time.perf_counter()
             self.pool.step(self.actions)
             st.step_seconds += time.perf_counter() - t
             st.steps += 1
         return st
 
-    def _decide(self, st: CollectStats, hp_weight: float, result_weight: float) -> None:
+    def _decide(self, st: CollectStats, hp_weight: float, ending_weights: tuple[float, float, float]) -> None:
         v, ro, dev = self.view, self.ro, self.device
         phase = v.phase.to(torch.int64)
         done_e = v.done.clone()
         done = done_e.repeat_interleave(2)
         trunc = v.truncated.repeat_interleave(2)
+        ending = v.ending.repeat_interleave(2)
 
         # 1. Close open learner decisions: at the stream's next decision, or at its round's end.
         closing = ((phase != 0) | done) & (ro.open >= 0)
@@ -401,7 +424,7 @@ class Collector:
             d, tr = done[s], trunc[s]
             gain = v.hp_gain[s]
             end = d & ~tr
-            r = hp_weight * gain + result_weight * v.result[s].to(torch.float32) * end
+            r = hp_weight * gain + end * round_end_reward(v.result[s].to(torch.float32), ending[s], *ending_weights)
             ro.reward[s, t] = r
             ro.term[s, t] = end
             ro.trunc[s, t] = d & tr
@@ -417,6 +440,8 @@ class Collector:
             envs = done_e.nonzero().squeeze(-1).numpy()
             st.rounds += len(envs)
             st.truncated += int(v.truncated[envs].sum())
+            st.judged += int((v.ending[envs] == BY_JUDGE).sum())
+            st.limited += int((v.ending[envs] == BY_LIMIT).sum())
             games = v.game.numpy()
             self._measure(st, read_round_stats(self.pool))
             st.records += self.league.round_end(envs, v.result.view(self.E, 2).numpy(), games, v.truncated.numpy())

@@ -148,6 +148,7 @@ impl PyPool {
             d.set_item("hp_gain", view(this, b.hp_gain.as_ptr(), b.hp_gain.len(), &[e, 2]))?;
             d.set_item("done", view(this, b.done.as_ptr(), b.done.len(), &[e]))?;
             d.set_item("truncated", view(this, b.truncated.as_ptr(), b.truncated.len(), &[e]))?;
+            d.set_item("ending", view(this, b.ending.as_ptr(), b.ending.len(), &[e]))?;
             d.set_item("result", view(this, b.result.as_ptr(), b.result.len(), &[e, 2]))?;
             d.set_item("game", view(this, b.game.as_ptr(), b.game.len(), &[e]))?;
             d.set_item("delay", view(this, b.delay.as_ptr(), b.delay.len(), &[e, 2]))?;
@@ -209,6 +210,7 @@ impl PyPool {
             d.set_item("fight_ticks", r.fight_ticks)?;
             d.set_item("screens", r.screens)?;
             d.set_item("truncated", r.truncated)?;
+            d.set_item("ending", r.ending)?;
             d.set_item("error", r.error.clone())?;
             d.set_item("full_gauge", r.full_gauge)?;
             d.set_item("folder_order", r.folder_order)?;

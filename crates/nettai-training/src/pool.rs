@@ -60,6 +60,7 @@ pub struct Buffers {
     pub hp_gain: Vec<f32>,
     pub done: Vec<bool>,
     pub truncated: Vec<bool>,
+    pub ending: Vec<i8>,
     pub result: Vec<i8>,
     pub game: Vec<i8>,
     pub delay: Vec<i16>,
@@ -79,6 +80,7 @@ impl Buffers {
             hp_gain: vec![0.0; seats],
             done: vec![false; envs],
             truncated: vec![false; envs],
+            ending: vec![0; envs],
             result: vec![0; seats],
             game: vec![0; envs],
             delay: vec![0; seats],
@@ -101,6 +103,7 @@ struct Rows {
     hp_gain: *mut f32,
     done: *mut bool,
     truncated: *mut bool,
+    ending: *mut i8,
     result: *mut i8,
     game: *mut i8,
     delay: *mut i16,
@@ -125,6 +128,7 @@ impl Rows {
             hp_gain: b.hp_gain.as_mut_ptr(),
             done: b.done.as_mut_ptr(),
             truncated: b.truncated.as_mut_ptr(),
+            ending: b.ending.as_mut_ptr(),
             result: b.result.as_mut_ptr(),
             game: b.game.as_mut_ptr(),
             delay: b.delay.as_mut_ptr(),
@@ -156,6 +160,7 @@ impl Rows {
             }
             *self.done.add(e) = out.done;
             *self.truncated.add(e) = out.truncated;
+            *self.ending.add(e) = out.ending as i8;
             *self.game.add(e) = env.game() as i8;
         }
     }

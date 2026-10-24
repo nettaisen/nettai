@@ -138,7 +138,9 @@ class Loop:
                     tr.rounds_seen(prev.records, k)
                 tr.league.refresh()
                 tr.collector.begin(tr.rollouts[buffer])
-                cs = tr.collector.collect(cfg.ppo.steps, hp_weight_at(cfg, k), cfg.reward.result, self.stop)
+                cs = tr.collector.collect(
+                    cfg.ppo.steps, hp_weight_at(cfg, k), cfg.reward.result, self.stop, cfg.reward.judged_cost, cfg.reward.limit
+                )
                 mark = tr.collect_lane.mark()
                 shared = tr.shared_state() if tr.checkpoint_due(k + 1) else None
                 self.full.put(
@@ -450,6 +452,8 @@ class Trainer:
         row["opponent_decisions"] = cs.opponent_decisions
         row["rounds"] = cs.rounds
         row["truncated"] = cs.truncated
+        row["judged"] = cs.judged
+        row["limited"] = cs.limited
         row["sps_decisions"] = (cs.learner_decisions + cs.opponent_decisions) / max(item.seconds, 1e-9)
         row["time/collect"] = item.seconds
         row["time/collect_cpu"] = item.cpu_seconds

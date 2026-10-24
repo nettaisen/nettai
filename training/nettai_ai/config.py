@@ -103,9 +103,14 @@ class RewardConfig:
     """§6.4: the round's result, and the HP difference weighted down over training.
 
     The pool's hp_gain is already a fraction of the round's max HP, so a KO's shaping is the same at any HP of
-    the curriculum."""
+    the curriculum. A stall costs (the user, 2026-10-24: "you should penalize winning by stalling more because
+    that's boring"): a seat that didn't lose a round decided by the judge's ruling gives up `judged_cost` (a win
+    there worth result − judged_cost, a draw −judged_cost; a loss is a loss), and a round that reaches the
+    fight's limit is worth `limit` to each seat."""
 
     result: float = 1.0
+    judged_cost: float = 0.75
+    limit: float = -1.0
     hp_start: float = 1.0
     hp_end: float = 0.2
     hp_anneal_updates: int = 3000
