@@ -125,14 +125,16 @@ fn the_network_computes_what_the_trainers_does() {
     parity("net");
 }
 
-/// The fixture's levels are the trainer's, and a weights file whose spec
-/// hash, format or tensors aren't this pass's is refused.
+/// The fixture's levels and k are the trainer's, and a weights file whose
+/// spec hash, format or tensors aren't this pass's, or without its k, is
+/// refused.
 #[test]
 fn weights_of_another_encoder_or_shape_are_refused() {
     let weights = std::fs::read(fixtures().join("net.safetensors")).unwrap();
     let net = Net::from_safetensors(&weights).unwrap();
     assert_eq!(net.levels().iter().map(|l| l.name.as_str()).collect::<Vec<_>>(), ["easy", "hard", "normal"]);
     assert!(net.level("hard").unwrap().greedy);
+    assert_eq!((net.k(), net.screen_decisions()), (4, 24));
     // The header rewritten: (what to change in the metadata, what the refusal says).
     let file = safetensors::parse(&weights).unwrap();
     let rewrite = |change: &Change| -> String {
@@ -165,6 +167,10 @@ fn weights_of_another_encoder_or_shape_are_refused() {
         m.insert("architecture".into(), a);
     })
     .contains("7 entries"));
+    assert!(rewrite(&|m, _| {
+        m.remove("k");
+    })
+    .contains("metadata has no k"));
     assert!(rewrite(&|_, drop| drop.push("ln_f.bias".into())).contains("no ln_f.bias"));
     assert_eq!(rewrite(&|_, _| {}), "", "the file as it was is taken");
 }

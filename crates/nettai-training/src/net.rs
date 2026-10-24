@@ -419,6 +419,10 @@ pub struct Net {
     value1: Linear,
     value2: Linear,
     levels: Vec<Knobs>,
+    /// How the env asked for decisions in training: ticks a fight decision
+    /// is held, and screen decisions before only OK is allowed.
+    k: u32,
+    screen_decisions: u16,
     /// Tokens at most: all, and those the transformer reads.
     tokens: usize,
     transformer_tokens: usize,
@@ -547,6 +551,9 @@ impl Net {
         for l in &levels {
             need(l.temperature > 0.0 && (0.0..=1.0).contains(&l.epsilon), || format!("level {}'s knobs are out of range", l.name))?;
         }
+        let k: u32 = get("k")?.parse().map_err(|e| format!("the weights' k: {e}"))?;
+        let screen_decisions: u16 = get("screen_decisions")?.parse().map_err(|e| format!("the weights' screen_decisions: {e}"))?;
+        need(k > 0, || "the weights' k is 0".into())?;
         need(arch.previous_action == PREVIOUS_ACTIONS, || format!("a previous action of {} values, this pass's has {PREVIOUS_ACTIONS}", arch.previous_action))?;
         let m = &arch.model;
         let (d, eps) = (m.d, arch.layer_norm_eps as f32);
@@ -663,6 +670,8 @@ impl Net {
             singles,
             pointer,
             levels,
+            k,
+            screen_decisions,
             metadata: meta,
         };
         let mut left: Vec<&String> = w.0.keys().collect();
@@ -678,6 +687,16 @@ impl Net {
 
     pub fn levels(&self) -> &[Knobs] {
         &self.levels
+    }
+
+    /// Ticks a fight decision was held in training.
+    pub fn k(&self) -> u32 {
+        self.k
+    }
+
+    /// Screen decisions in training before only OK was allowed.
+    pub fn screen_decisions(&self) -> u16 {
+        self.screen_decisions
     }
 
     /// The weights' metadata (their provenance among it).

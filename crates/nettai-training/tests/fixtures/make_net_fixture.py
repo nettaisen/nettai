@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 import nettai_gym
-from nettai_ai.config import LEVELS, ModelConfig
+from nettai_ai.config import LEVELS, EnvConfig, ModelConfig
 from nettai_ai.envs import PoolView, pool_spec
 from nettai_ai.export import save_fixture, save_weights
 from nettai_ai.model import FORMAT, FORMAT_VERSION, Model, previous_action, previous_width
@@ -148,6 +148,8 @@ def main() -> None:
         "spec_hash": spec.hash,
         "architecture": json.dumps(model.architecture(), sort_keys=True),
         "levels": json.dumps({k: dataclasses.asdict(v) for k, v in LEVELS.items()}, sort_keys=True),
+        "k": str(EnvConfig().k),
+        "screen_decisions": str(EnvConfig().screen_decisions),
         "git_commit": "fixture",
         "git_dirty": "false",
         "update": "0",

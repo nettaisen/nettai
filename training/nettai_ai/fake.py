@@ -126,6 +126,7 @@ class FakePool:
         self.ctrl = np.zeros((E, 2), np.int64)  # index into CONTROLLERS, this round
         self.ctrl_next = np.zeros((E, 2), np.int64)
         self.delay_pin = np.full((E, 2), -1, np.int64)
+        self.k_pin = np.full((E, 2), -1, np.int64)
         self.maxhp = np.zeros(E, np.float64)
         self.hp = np.zeros((E, 2), np.float64)
         self.stage = np.zeros(E, np.int64)  # 0 custom screen, 1 fight
@@ -158,6 +159,10 @@ class FakePool:
 
     def set_delay(self, envs, seat: int, ticks: int | None) -> None:
         self.delay_pin[np.asarray(envs, np.int64), seat] = -1 if ticks is None else int(ticks)
+
+    def set_k(self, envs, seat: int, k: int | None) -> None:
+        """Recorded only: the fake asks for a decision every step whatever k is."""
+        self.k_pin[np.asarray(envs, np.int64), seat] = -1 if k is None else int(k)
 
     def set_hp(self, lo: int, hi: int) -> None:
         if not 1 <= lo <= hi:

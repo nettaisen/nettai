@@ -35,6 +35,7 @@ class Player:
     name: str
     model: Model | None = None  # None: a scripted player
     bot: str | None = None
+    k: int | None = None  # ticks its fight decisions are held, as in its training (None: the pool's)
 
     @property
     def scripted(self) -> bool:
@@ -52,7 +53,7 @@ def load_player(path: str | Path, device: torch.device, name: str | None = None)
     model = Model(parse_spec(state["spec"]), cfg.model).to(device)
     warm_start(model, state["model"])
     model.eval()
-    return Player(name or f"{Path(path).name}@{state['update']}", model), state
+    return Player(name or f"{Path(path).name}@{state['update']}", model, k=cfg.env.k), state
 
 
 @torch.no_grad()
@@ -90,6 +91,12 @@ def run_matches(
         for ctl, es in groups.items():
             pool.set_seat(np.asarray(es, np.int64), seat, ctl)
             pool.set_delay(np.asarray(es, np.int64), seat, None if ctl != "policy" else level.delay)
+        # Each network decides at the k it was trained at.
+        ks: dict[int | None, list[int]] = {}
+        for e, pair in enumerate(pairs):
+            ks.setdefault(pair[seat].k, []).append(e)
+        for k, es in ks.items():
+            pool.set_k(np.asarray(es, np.int64), seat, k)
     hidden = {i: torch.zeros(S, p.model.cfg.hidden, device=device) for i, p in enumerate(players) if not p.scripted}
     # Each stream's previous decision's action (none at a round's start), as the network reads it.
     no_previous = previous_width(spec) - 1

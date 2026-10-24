@@ -471,6 +471,8 @@ pool.step(actions)                    # int32 [E, 2]; read only where phase != 0
                                       # allowed is refused whole (an exception), nothing moved
 pool.set_seat(envs, seat, controller) # "policy", "still", "mover", "masher", "shooter", "dodger"
 pool.set_delay(envs, seat, ticks)     # pins the delay (evaluation); None draws again
+pool.set_k(envs, seat, k)             # the seat's own k (evaluation: each network at the k it trained at);
+                                      # None: the env's
 pool.set_hp(lo, hi)                   # set_hp(None): each side's as its build has it
 pool.set_chip_holdout(fraction, seed, mode)
 pool.round_stats()                    # rounds ended since the last call (§9's measures):
@@ -487,8 +489,8 @@ nettai_gym.name_ids("cannon")         # (834, 2843): the trainer can check its o
 nettai_gym.holdout_unit(seed, key)    # a chip key's number in [0, 1) with the seed
 ```
 
-- The first round begins when the pool is made, every seat "policy". `set_seat`, `set_delay`, `set_hp` and
-  `set_chip_holdout` take effect from the next round (the one after the round each env is playing).
+- The first round begins when the pool is made, every seat "policy". `set_seat`, `set_delay`, `set_k`, `set_hp`
+  and `set_chip_holdout` take effect from the next round (the one after the round each env is playing).
 - A step advances each env until one of its policy seats needs a decision.
 - A seat played by a scripted player always has phase 0. An env with no policy seat plays a whole round a step.
 - Rounds reset on their own, with new builds and a new arena.
@@ -738,8 +740,9 @@ All of these run in Rust on the pool, fast, and print a table:
   out of training builds and favors them in evaluation builds. The pool takes it as
   `chip_holdout=(fraction, seed, "exclude" | "favor")`.
 - **The driver.** `nettai_ai.evaluate` plays a checkpoint against each scripted player in each game (a pool per
-  game) and against other checkpoints, the envs split evenly over the opponents and both seats. Each env's
-  first round is dropped, since seats and delays change from the next round. It prints a table (wins, draws,
+  game) and against other checkpoints, the envs split evenly over the opponents and both seats, each network
+  deciding at the k of its training (`set_k`; the fourth cloud run's is 8, the earlier runs' 4). Each env's
+  first round is dropped, since seats, delays and k change from the next round. It prints a table (wins, draws,
   losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
   (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it
   reads `env`, `ticks` and `seats` (two dicts, each with `result` and any numeric measures).
@@ -803,8 +806,8 @@ thread (`fight` or `custom_screen`, both the same tick of the round):
 - On the custom screen it decides whenever its navigator is idle and the screen is choosing, from the screen as it
   is, the keys probed in a copy of the battle at each screen's first decision, only OK after 24 decisions, the
   refused slots and entries masked; each new screen's navigator starts from nothing. All in the env's order.
-- `k` (4) and the 24 decisions are the env's defaults, as trained: the weights don't state them. If training ever
-  uses another `k`, the levels' metadata should carry it.
+- `k` and the 24 decisions are the weights' metadata (`k`, `screen_decisions`), the env's in training: a weights
+  file without them is refused.
 - It never reads `theirs`: it doesn't hear the player's buttons (tested: the same play whatever it is told).
 - The GRU state carries through a round and starts over at the next (a new round is a new score of the set);
   `reset`, as the set starts over, starts everything over, its draws too (tested: the same buttons again). Its

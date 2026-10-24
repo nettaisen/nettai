@@ -177,6 +177,14 @@ impl PyPool {
         self.pool().set_delay(&envs, seat, ticks).map_err(err)
     }
 
+    /// The ticks seat `seat` of envs `envs` holds a fight decision from
+    /// their next round (None: the env's k): a network meets another
+    /// trained at another k each at its own.
+    #[pyo3(signature = (envs, seat, k=None))]
+    fn set_k(&self, envs: Vec<usize>, seat: usize, k: Option<u32>) -> PyResult<()> {
+        self.pool().set_k(&envs, seat, k).map_err(err)
+    }
+
     /// Both sides' base HP drawn from `lo` to `hi` each round (where the
     /// navi takes one), from the next rounds; `set_hp(None)`: each side's as
     /// its build has it (the creator's, the default).

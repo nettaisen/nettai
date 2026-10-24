@@ -399,6 +399,13 @@ impl Pool {
         self.each(Some(envs), |env| env.set_delay(seat, ticks))
     }
 
+    /// The ticks seat `seat` of envs `envs` holds a fight decision from
+    /// their next round (none: the env's k).
+    pub fn set_k(&mut self, envs: &[usize], seat: usize, k: Option<u32>) -> Result<(), String> {
+        check_seat(seat)?;
+        self.each(Some(envs), |env| env.set_k(seat, k))
+    }
+
     /// Both sides' base HP drawn from `lo` to `hi` (none: each side's as
     /// its build has it), from the next rounds.
     pub fn set_hp(&mut self, hp: Option<(u16, u16)>) -> Result<(), String> {

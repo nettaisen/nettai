@@ -69,7 +69,8 @@ impl Game {
 /// What an env is set to.
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// Ticks a fight decision is held.
+    /// Ticks a fight decision is held (a seat's own where it is pinned,
+    /// [`Env::set_k`]).
     pub k: u32,
     /// The reaction delay's range, in ticks, drawn each round for each seat.
     pub delay: (u16, u16),
@@ -169,6 +170,10 @@ struct Seat {
     next: Controller,
     pinned_delay: Option<u16>,
     delay: u16,
+    /// Ticks its fight decisions are held this round, and the same from the
+    /// next where it is pinned (none: the env's k).
+    pinned_k: Option<u32>,
+    k: u32,
     action: i32,
     nav: Navigator,
     probe: Option<[bool; act::KEYS.len()]>,
@@ -324,6 +329,8 @@ impl Env {
             next: c,
             pinned_delay: None,
             delay: cfg.delay.0,
+            pinned_k: None,
+            k: cfg.k.max(1),
             action: 0,
             nav: Navigator::default(),
             probe: None,
@@ -394,6 +401,13 @@ impl Env {
         self.seats[seat].pinned_delay = ticks;
     }
 
+    /// The ticks seat `seat` holds a fight decision from the next round
+    /// (none: the env's k), so that networks trained at different k meet
+    /// each at its own.
+    pub fn set_k(&mut self, seat: usize, k: Option<u32>) {
+        self.seats[seat].pinned_k = k.map(|k| k.max(1));
+    }
+
     pub fn set_hp(&mut self, hp: Option<(u16, u16)>) {
         self.cfg.hp = hp.map(|(lo, hi)| (lo, hi.max(lo)));
     }
@@ -453,9 +467,17 @@ impl Env {
                 None => self.draw(self.cfg.delay.0, self.cfg.delay.1),
             };
             let seed = self.picks.next();
+            let k = self.seats[s].pinned_k.unwrap_or(self.cfg.k.max(1));
             let seat = &mut self.seats[s];
             seat.controller = seat.next;
             seat.delay = delay;
+            seat.k = k;
+            // Room for the views of the decisions a delay spans (a pinned
+            // delay may pass the drawn range's).
+            let len = (delay.max(self.cfg.delay.1) as u32 / k) as usize + 2;
+            if seat.ring.len() < len {
+                seat.ring.resize_with(len, || (None, Obs::new()));
+            }
             seat.action = 0;
             seat.nav.reset();
             seat.probe = None;
@@ -618,7 +640,7 @@ impl Env {
             if seat.controller != Controller::Policy || seat.decided_at == Some(self.t) {
                 continue;
             }
-            if fight_runs(b) && self.t.is_multiple_of(self.cfg.k) && b.player(s as u8).is_some() {
+            if fight_runs(b) && self.t.is_multiple_of(seat.k) && b.player(s as u8).is_some() {
                 out[s] = FIGHT;
             } else if b.round.mode == mode::CUSTOM
                 && seat.nav.idle()
@@ -651,7 +673,7 @@ impl Env {
         match phase {
             FIGHT => {
                 let seat = &self.seats[s];
-                let k = self.cfg.k;
+                let k = seat.k;
                 let want = self.t.checked_sub(seat.delay as u32);
                 let slot = &seat.ring[((self.t / k) as usize) % seat.ring.len()];
                 let started = std::time::Instant::now();
@@ -735,11 +757,11 @@ impl Env {
         for s in 0..2 {
             let seat = &self.seats[s];
             let d = seat.delay as u32;
-            if seat.controller != Controller::Policy || !(self.t + d).is_multiple_of(self.cfg.k) {
+            if seat.controller != Controller::Policy || !(self.t + d).is_multiple_of(seat.k) {
                 continue;
             }
             let extra = self.extra(s);
-            let at = (((self.t + d) / self.cfg.k) as usize) % seat.ring.len();
+            let at = (((self.t + d) / seat.k) as usize) % seat.ring.len();
             let started = std::time::Instant::now();
             let slot = &mut self.seats[s].ring[at];
             slot.0 = Some(self.t);

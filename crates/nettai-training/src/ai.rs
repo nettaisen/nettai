@@ -410,7 +410,7 @@ pub struct NetAi {
     seed: u64,
     rng: SplitMix64,
     /// Ticks a fight action is held, and decisions on one custom screen
-    /// before only OK is allowed: the env's, as it was trained.
+    /// before only OK is allowed: the env's in training, as the weights say.
     k: u32,
     screen_decisions: u16,
     fingerprints: Fingerprinter,
@@ -441,15 +441,15 @@ impl NetAi {
     /// The same, of a network already read.
     pub fn of(net: Arc<Net>, level: Level, seed: u64, fingerprints: Fingerprinter) -> Result<NetAi, String> {
         let knobs = net.level(level.name()).cloned().ok_or_else(|| format!("the weights have no level {}", level.name()))?;
-        let cfg = env::Config::default();
+        let (k, screen_decisions) = (net.k(), net.screen_decisions());
         Ok(NetAi {
             mem: net.memory(),
             net,
             knobs,
             seed,
             rng: SplitMix64::new(seed),
-            k: cfg.k,
-            screen_decisions: cfg.screen_decisions,
+            k,
+            screen_decisions,
             fingerprints,
             names: None,
             round: None,

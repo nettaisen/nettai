@@ -91,6 +91,50 @@ fn policy_seats_decide_in_the_fight_and_on_the_screen() {
     }
 }
 
+/// Seats pinned to their own k and delay (from the next round) decide in
+/// the fight each every its k ticks, from the view its delay before: a
+/// network meets another trained at another k each at its own. Seat 0's
+/// delay is past the drawn range's, so its views need more room.
+#[test]
+fn each_seat_decides_at_its_own_k() {
+    let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 3000, ..Config::default() }, 7).unwrap();
+    let (ks, delays) = ([4u32, 8], [40u16, 13]);
+    assert!(delays[0] > env.cfg.delay.1);
+    for s in 0..2 {
+        env.set_k(s, Some(ks[s]));
+        env.set_delay(s, Some(delays[s]));
+    }
+    let mut rng = SplitMix64::new(9);
+    let mut actions = [0; 2];
+    let (mut rounds, mut fight, mut off_eight) = (0, [0u32; 2], 0);
+    while rounds < 3 {
+        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+        for s in 0..2 {
+            actions[s] = match out.phase[s] {
+                FIGHT => {
+                    if rounds >= 1 {
+                        let seat = &env.seats[s];
+                        assert_eq!((seat.k, seat.delay), (ks[s], delays[s]));
+                        assert_eq!(env.t % ks[s], 0, "seat {s}");
+                        off_eight += (env.t % 8 != 0) as u32;
+                        if env.t > delays[s] as u32 {
+                            let slot = &seat.ring[(env.t / seat.k) as usize % seat.ring.len()];
+                            assert_eq!(slot.0, Some(env.t - delays[s] as u32), "seat {s}'s view at {}", env.t);
+                        }
+                        fight[s] += 1;
+                    }
+                    random_action(&mut rng, &env.legal_fight[s])
+                }
+                SCREEN => random_action(&mut rng, &env.legal_screen[s]),
+                _ => 0,
+            };
+        }
+        rounds += out.done as u32;
+    }
+    println!("fight decisions {fight:?}, seat 0's off a multiple of 8: {off_eight}");
+    assert!(fight[1] > 100 && fight[0] > fight[1] * 3 / 2 && off_eight > 0);
+}
+
 /// Side 1's first custom screen of a round of random builds of `game`,
 /// choosing.
 pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
