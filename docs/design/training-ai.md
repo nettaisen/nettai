@@ -336,6 +336,19 @@ round is at max power (HP 1000 and max levels, as every player's build is) unles
   locked, random `bug_frags`. Now, over 60 builds a game, every seat's max HP is the creator's overview's (a test
   checks it, and that every single fact is a new build's): EXE6 800 to 2,000 (median 1,320: HP+ programs up, a card's or
   a bug's HP down), EXE5 600 to 1,400 (its team navis at their last level's), EXE4 997 to 2,700, none under 500;
+  Those lists were sparse, though (the user, of the HP gap the duplicate deals showed, 2026-10-24: "megaman's hp can
+  change through navicust though", "there's all kinds of navicust programs", "sometimes bugs on the navicust are
+  advantageous", "you might want to take patch cards into account as well"): an entry drawn whole is rarely one the
+  rules take (a color its program doesn't come in, a turn past 3, a place off the board), so ten refusals in a row
+  ended most lists early. Over 80 randomized builds a game, NaviCust programs averaged 0.2 (none in 69 of 80, EXE6),
+  0.1 and 0.3; patch cards 3.1 of 32, 2.7 and 1.2 of 7; auto battle places under 1 of 42. Now half the randomized builds
+  (`builds::FULL_SHARE`) fill each list full: to its room, refused 60 times in a row at most (`FULL_PATIENCE`), its
+  entries mostly from the list's pool (`Maker::pools`: those of 4,000 drawn on a seed of the list's that the rules
+  take alone in a new build of the navi that changes form, made once a maker, the same whatever thread asks first),
+  a field drawn anew in half of those, the rest drawn whole; nothing the rules take is judged (bugs come as the places
+  make them, every kind of program and card as drawn). Full: NaviCust programs 5.5 (EXE6; ~9 a MegaMan build), 4.1
+  and 9.0; patch cards 4.1, 4.0 and 5.7; auto battle places ~39; EXE4's max HP mean 1,216 → 2,118; 38, 85 and 128 ms a
+  build (8 to 10 ms the others), the pools 0.6 to 1 s (`how_full_randomized_lists_are` prints these);
 - a folder (`folders::random_folder_of`, which leans toward two codes as people's folders do) of the chips the rules
   let it hold, those held out left out or favored (`chip_holdout`, §6.6); its Regular chip as the draw gives it, and
   tag chips half the time where the rules take them;

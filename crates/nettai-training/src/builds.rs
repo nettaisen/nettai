@@ -104,6 +104,25 @@ const TRIES: usize = 20;
 /// game's small numbers; the rules refuse what is past theirs).
 const SMALL: usize = 8;
 
+/// The share of randomized builds whose lists are filled full: entries
+/// tried until the list's room is reached or the rules refuse
+/// [`FULL_PATIENCE`] in a row (a board as full as random places can make
+/// it, as a player's is), every entry the rules take kept, bugs and all;
+/// the rest to a random length (the user: random boards were far sparser
+/// than a player's, "you might want to take patch cards into account as
+/// well").
+pub const FULL_SHARE: f64 = 0.5;
+
+/// Refusals in a row that end a list filled full.
+const FULL_PATIENCE: usize = 60;
+
+/// Entries drawn for each list's pool ([`Maker::pools`]).
+const POOL_TRIES: usize = 4000;
+
+/// A list's entry as drawn: its fields by name (one unnamed for a list of
+/// single values).
+type Entry = Vec<(String, Drawn)>;
+
 /// Whether `p` comes up, a chance in [0, 1].
 pub fn chance(picks: &mut Picks, p: f64) -> bool {
     p > 0.0 && (picks.next() >> 11) as f64 / (1u64 << 53) as f64 <= p
@@ -213,6 +232,10 @@ pub struct Maker {
     navis: Vec<NaviHandle>,
     /// What its builds took ([`Maker::counts`]).
     counts: Counters,
+    /// By list, entries the rules take alone in a new build of the navi that
+    /// changes form ([`Maker::pools`]), made the first time a list is filled
+    /// full.
+    pools: std::sync::OnceLock<HashMap<String, Vec<Entry>>>,
 }
 
 /// What a maker's builds took, counted as they are made (from any thread).
@@ -248,7 +271,7 @@ impl Maker {
         if navis.is_empty() {
             return Err(format!("{game} has no navi a side can play"));
         }
-        Ok(Maker { content: content.clone(), game, builds, navis, counts: Counters::default() })
+        Ok(Maker { content: content.clone(), game, builds, navis, counts: Counters::default(), pools: Default::default() })
     }
 
     /// The game's default build: its first group's new build (the navi that
@@ -299,7 +322,8 @@ impl Maker {
             for _ in 0..TRIES {
                 self.counts.tries.fetch_add(1, Ordering::Relaxed);
                 let all = chance(picks, randomize);
-                match self.try_random(picks, holdout, all, combos) {
+                let full = all && chance(picks, FULL_SHARE);
+                match self.try_random(picks, holdout, all, full, combos) {
                     Ok(build) => {
                         let checked = Checked::of(&self.content, &self.game, &build.side);
                         if checked.ready() {
@@ -318,7 +342,7 @@ impl Maker {
         result
     }
 
-    fn try_random(&self, picks: &mut Picks, holdout: &Holdout, all: bool, combos: Combos) -> Result<Build, String> {
+    fn try_random(&self, picks: &mut Picks, holdout: &Holdout, all: bool, full: bool, combos: Combos) -> Result<Build, String> {
         let (content, b) = (&self.content, &self.builds);
         let group = &b.groups[picks.below(b.groups.len())].id;
         let mut side = b.new_build(content, group)?;
@@ -357,7 +381,7 @@ impl Maker {
         let m = Match { sides: [side.clone(), side.clone()], ..Match::empty(content, &self.game)? };
         let mut battle = check::set_up(content, &m)?;
         if all {
-            self.randomize(&mut side, &mut battle, picks)?;
+            self.randomize(&mut side, &mut battle, picks, full)?;
             let m = Match { sides: [side.clone(), side.clone()], ..Match::empty(content, &self.game)? };
             battle = check::set_up(content, &m)?;
         }
@@ -393,42 +417,48 @@ impl Maker {
     /// (and a board's size, which stays the new build's: the largest), so
     /// every single fact stays as the new build has it, every build at the
     /// most its game allows. A list is filled an entry at a time, to a random
-    /// length (16 at most), each entry's fields drawn from what their types
+    /// length (16 at most), or with `full` to its room ([`FULL_SHARE`]: its
+    /// entries mostly from its pool, [`Maker::pools`]), each entry's fields drawn from what their types
     /// allow (a flag, a variant, a definition of the game's, a number below
     /// [`SMALL`]: the creator's own ranges, a board's size, are its screens'),
     /// each entry kept only if the rules' `validate` and `build_check` (asked
     /// of `battle`, the side's round set up, its setup changed in place) say
     /// nothing of it.
-    fn randomize(&self, side: &mut Side, battle: &mut Battle, picks: &mut Picks) -> Result<(), String> {
+    fn randomize(&self, side: &mut Side, battle: &mut Battle, picks: &mut Picks, full: bool) -> Result<(), String> {
         let content = &self.content;
-        let skipped: Vec<String> = {
-            let mut out: Vec<String> = facts::form_facts(content).iter().map(|f| f.name.to_string()).collect();
-            for c in &self.builds.choices {
-                out.extend(c.facts().into_iter().map(str::to_string));
-            }
-            out
-        };
-        let fields: Vec<facts::Field> = facts::fields(content)
-            .into_iter()
-            .filter(|f| facts::role_of(content, f.name).is_none() && !self.builds.never_stated(content, f.name) && !skipped.iter().any(|s| s == f.name) && !names_navis(f.ty))
-            .collect();
-        let lists: Vec<facts::Field> = fields.into_iter().filter(|f| matches!(f.ty, FieldType::List(..))).collect();
+        let lists = self.list_fields();
         let mut defs: HashMap<(Registry, Option<String>), Vec<u16>> = HashMap::new();
+        let pools = if full { Some(self.pools()) } else { None };
         for f in lists {
             let FieldType::List(elem, room) = f.ty else { continue };
             // (A random length up to the list's room or 16 entries; drawn
             // entries tried until it is reached, or the rules refuse ten in
-            // a row: a board full.)
-            let target = picks.below((*room as usize).min(2 * SMALL) + 1);
-            let mut entries: Vec<Vec<(String, Drawn)>> = Vec::new();
+            // a row. Filled full, to its room, refused FULL_PATIENCE times in a
+            // row: a board full. Its entries then mostly from its pool, with a
+            // field drawn anew half the time, and else drawn whole.)
+            let (target, patience) = if full { (*room as usize, FULL_PATIENCE) } else { (picks.below((*room as usize).min(2 * SMALL) + 1), 10) };
+            let pool: &[Entry] = pools.and_then(|p| p.get(f.name)).map_or(&[], Vec::as_slice);
+            let mut entries: Vec<Entry> = Vec::new();
             let mut refused = 0;
-            while entries.len() < target && refused < 10 {
-                let entry: Vec<(String, Drawn)> = match &**elem {
-                    FieldType::Record(fields) => fields.fields().iter().filter_map(|g| Some((g.name.clone(), self.draw(&g.ty, picks, &mut defs)?))).collect(),
-                    ty => match self.draw(ty, picks, &mut defs) {
-                        Some(v) => vec![(String::new(), v)],
+            while entries.len() < target && refused < patience {
+                let entry = if !pool.is_empty() && picks.below(4) != 0 {
+                    let mut e = pool[picks.below(pool.len())].clone();
+                    if picks.below(2) == 0 && !e.is_empty() {
+                        let at = picks.below(e.len());
+                        let ty = match &**elem {
+                            FieldType::Record(fields) => fields.fields().iter().find(|g| g.name == e[at].0).map(|g| g.ty.clone()),
+                            ty => Some(ty.clone()),
+                        };
+                        if let Some(v) = ty.and_then(|ty| self.draw(&ty, picks, &mut defs)) {
+                            e[at].1 = v;
+                        }
+                    }
+                    e
+                } else {
+                    match self.draw_entry(elem, picks, &mut defs) {
+                        Some(e) => e,
                         None => break,
-                    },
+                    }
                 };
                 entries.push(entry);
                 self.counts.entries_tried.fetch_add(1, Ordering::Relaxed);
@@ -447,6 +477,69 @@ impl Maker {
         // (The battle's setup back to the side's, as it now is.)
         battle.setup.players[0].rules = side.facts.block().cloned();
         Ok(())
+    }
+
+    /// A list's entry, each field drawn (none: its type draws nothing).
+    fn draw_entry(&self, elem: &FieldType, picks: &mut Picks, defs: &mut HashMap<(Registry, Option<String>), Vec<u16>>) -> Option<Entry> {
+        Some(match elem {
+            FieldType::Record(fields) => fields.fields().iter().filter_map(|g| Some((g.name.clone(), self.draw(&g.ty, picks, defs)?))).collect(),
+            ty => vec![(String::new(), self.draw(ty, picks, defs)?)],
+        })
+    }
+
+    /// By list a build states, entries the rules take alone, each the only
+    /// entry of its list in a new build of the navi that changes form (its
+    /// board the largest), from [`POOL_TRIES`] drawn on a seed of the list's:
+    /// what a list filled full mostly draws from, so its tries are spent on
+    /// where entries go rather than on fields no entry could have (a color
+    /// a program doesn't come in, a turn past the last). The same whichever
+    /// thread makes them first. A list none fits has none.
+    fn pools(&self) -> &HashMap<String, Vec<Entry>> {
+        self.pools.get_or_init(|| {
+            let content = &self.content;
+            let made = (|| -> Result<HashMap<String, Vec<Entry>>, String> {
+                let mut side = self.builds.new_build(content, &self.builds.groups[0].id)?;
+                if let Some(n) = content.form_changing_navi().filter(|n| self.navis.contains(n)) {
+                    self.builds.set_navi(content, &mut side, n)?;
+                }
+                let m = Match { sides: [side.clone(), side.clone()], ..Match::empty(content, &self.game)? };
+                let mut battle = check::set_up(content, &m)?;
+                let mut defs = HashMap::new();
+                let mut out = HashMap::new();
+                for (i, f) in self.list_fields().into_iter().enumerate() {
+                    let FieldType::List(elem, _) = f.ty else { continue };
+                    let mut picks = Picks::new(0x9001 + i as u32);
+                    let mut kept: Vec<Entry> = Vec::new();
+                    for _ in 0..POOL_TRIES {
+                        let Some(e) = self.draw_entry(elem, &mut picks, &mut defs) else { break };
+                        let mut one = side.clone();
+                        if set_list(content, &mut one, f.name, std::slice::from_ref(&e)).is_ok() && self.accepted(&one, &mut battle, f.name, Some(0))? && !kept.contains(&e) {
+                            kept.push(e);
+                        }
+                    }
+                    out.insert(f.name.to_string(), kept);
+                }
+                Ok(out)
+            })();
+            made.unwrap_or_default()
+        })
+    }
+
+    /// The lists a randomized build states ([`Maker::randomize`]).
+    fn list_fields(&self) -> Vec<facts::Field<'_>> {
+        let content = &self.content;
+        let skipped: Vec<String> = {
+            let mut out: Vec<String> = facts::form_facts(content).iter().map(|f| f.name.to_string()).collect();
+            for c in &self.builds.choices {
+                out.extend(c.facts().into_iter().map(str::to_string));
+            }
+            out
+        };
+        let fields: Vec<facts::Field> = facts::fields(content)
+            .into_iter()
+            .filter(|f| facts::role_of(content, f.name).is_none() && !self.builds.never_stated(content, f.name) && !skipped.iter().any(|s| s == f.name) && !names_navis(f.ty))
+            .collect();
+        fields.into_iter().filter(|f| matches!(f.ty, FieldType::List(..))).collect()
     }
 
     /// Whether the rules say nothing of `side`'s list fact `field` (its entry
@@ -635,6 +728,56 @@ mod tests {
             hps.sort();
             let under = |x: u16| 100.0 * hps.iter().filter(|&&h| h < x).count() as f64 / hps.len() as f64;
             println!("{game}: max HP min {} median {} max {}; under 100 {:.1}%, under 500 {:.1}%, at 1000 {:.1}%", hps[0], hps[hps.len() / 2], hps[hps.len() - 1], under(100), under(500), 100.0 * hps.iter().filter(|&&h| h == 1000).count() as f64 / hps.len() as f64);
+        }
+    }
+
+    /// How full randomized builds' lists are (§6.2): by game, each list a
+    /// build states, its entries over many builds, and the max HP the
+    /// builds start with, printed. (A measure: the user, of random boards
+    /// sparser than a player's, "you might want to take patch cards into
+    /// account as well".)
+    #[test]
+    fn how_full_randomized_lists_are() {
+        for game in ["exe6", "exe5", "exe4"] {
+            let c = content(game);
+            let maker = Maker::new(&c).unwrap();
+            let lists: Vec<(String, u16)> = facts::fields(&c)
+                .into_iter()
+                .filter_map(|f| match f.ty {
+                    FieldType::List(_, room) if facts::role_of(&c, f.name).is_none() => Some((f.name.to_string(), *room)),
+                    _ => None,
+                })
+                .collect();
+            let started = std::time::Instant::now();
+            let pools: Vec<(String, usize)> = maker.pools().iter().map(|(k, v)| (k.clone(), v.len())).collect();
+            println!("{game}: pools {pools:?} in {:.0} ms", started.elapsed().as_secs_f64() * 1000.0);
+            for full in [false, true] {
+            let mut picks = Picks::new(5);
+            let (mut counts, mut hps) = (vec![Vec::new(); lists.len()], Vec::new());
+            let started = std::time::Instant::now();
+            for _ in 0..80 {
+                let side = (0..TRIES)
+                    .find_map(|_| maker.try_random(&mut picks, &Holdout::default(), true, full, Combos::NONE).ok().filter(|b| Checked::of(&c, game, &b.side).ready()))
+                    .expect("a build the rules accept")
+                    .side;
+                for (i, (name, _)) in lists.iter().enumerate() {
+                    counts[i].push(match side.facts.get(&c, name) {
+                        Some(nettai_match::facts::Stated::List(e)) => e.len(),
+                        _ => 0,
+                    });
+                }
+                hps.push(Checked::of(&c, game, &side).overview(&c, &side).expect("the overview").hp.value);
+            }
+            let ms = started.elapsed().as_secs_f64() * 1000.0 / 80.0;
+            println!("{game}{}: {ms:.0} ms a build; max HP mean {:.0}, at its least {}, at its most {}", if full { " (full)" } else { "" }, hps.iter().sum::<i32>() as f64 / hps.len() as f64, hps.iter().min().unwrap(), hps.iter().max().unwrap());
+            for (i, (name, room)) in lists.iter().enumerate() {
+                let v = &counts[i];
+                if v.iter().all(|&n| n == 0) {
+                    continue;
+                }
+                println!("  {name}: room {room}, entries mean {:.1}, most {}, none in {}", v.iter().sum::<usize>() as f64 / v.len() as f64, v.iter().max().unwrap(), v.iter().filter(|&&n| n == 0).count());
+            }
+            }
         }
     }
 
