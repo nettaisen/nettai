@@ -79,14 +79,25 @@ pub fn steps(screen: &Screen, layout: &CustomScreenLayout) -> [Option<u8>; SLOTS
     out
 }
 
-/// The first direction of the shortest way from the cursor to `target`.
-fn toward(screen: &Screen, layout: &CustomScreenLayout, target: u8) -> Option<u16> {
-    let mut first: [Option<u16>; SLOTS] = [None; SLOTS];
+/// A move's bit in [`Navigator`]'s blocked moves: slot `at`, direction
+/// `dir` (its place in `MOVES`).
+fn move_bit(at: u8, dir: usize) -> u64 {
+    1 << (at as usize * MOVES.len() + dir)
+}
+const _: () = assert!(SLOTS * MOVES.len() <= 64);
+
+/// The first direction of the shortest way from the cursor to `target`
+/// (its place in `MOVES`), leaving out the moves in `blocked`.
+fn toward(screen: &Screen, layout: &CustomScreenLayout, target: u8, blocked: u64) -> Option<usize> {
+    let mut first: [Option<usize>; SLOTS] = [None; SLOTS];
     let mut seen = [false; SLOTS];
     seen[screen.cursor as usize] = true;
     let mut queue = VecDeque::from([screen.cursor]);
     while let Some(at) = queue.pop_front() {
-        for (dir, key) in MOVES {
+        for (dir, (_, key)) in MOVES.into_iter().enumerate() {
+            if blocked & move_bit(at, dir) != 0 {
+                continue;
+            }
             let Some(to) = screen.target_from(at, key, layout).filter(|t| (*t as usize) < SLOTS && !seen[*t as usize]) else { continue };
             seen[to as usize] = true;
             first[to as usize] = first[at as usize].or(Some(dir));
@@ -128,15 +139,18 @@ pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, o
     out
 }
 
-/// The keys that confirm or back out of a rules' window: those a screen
-/// past its decisions (`only_ok`) still allows in one.
-pub const CLOSING_KEYS: [u16; 2] = [keys::A, keys::B];
+/// The key that backs out of a rules' window: the only one a screen past
+/// its decisions (`only_ok`) still allows in one. A may do nothing there
+/// (EXE6's Cross window refuses a Cross already used, and reads no A once
+/// one is chosen); B closes it whatever it holds.
+pub const CLOSING_KEY: u16 = keys::B;
 
 /// The screen actions allowed now: the legal slots, then the keys (all of
 /// them while the screen reads keys). With `only_ok` (the screen's
 /// decisions spent), OK alone while it is choosing, and in a window of the
-/// rules only the keys that confirm or back out ([`CLOSING_KEYS`]): a seat
-/// pressing directions in a window would hold the screen open forever.
+/// rules only the key that backs out ([`CLOSING_KEY`]): a seat pressing
+/// directions, or A where A does nothing, would hold the screen open
+/// forever.
 pub fn legal_screen(screen: &Screen, layout: &CustomScreenLayout, refused: u16, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
     let mut out = [false; spec::SCREEN_ACTIONS];
     if !reads_keys(screen) {
@@ -145,7 +159,7 @@ pub fn legal_screen(screen: &Screen, layout: &CustomScreenLayout, refused: u16, 
     let slots = legal_slots(screen, &steps(screen, layout), refused, only_ok);
     out[..SLOTS].copy_from_slice(&slots);
     for (k, key) in KEYS.iter().enumerate() {
-        out[SLOTS + k] = !only_ok || (screen.phase != Phase::Choosing && CLOSING_KEYS.contains(key));
+        out[SLOTS + k] = !only_ok || (screen.phase != Phase::Choosing && *key == CLOSING_KEY);
     }
     out
 }
@@ -192,7 +206,11 @@ enum Doing {
 /// its auto-repeat's) and let go a tick; A and the other keys are held a
 /// tick and let go a tick. Whether a pick changed the screen is looked at
 /// once A is let go: one that didn't is refused for the rest of the
-/// screen.
+/// screen. A move on the way to a slot that opened a window of the rules
+/// rather than moving the cursor (EXE6's UP on the top row or OK while a
+/// Cross is on offer) is left out of the ways for the rest of the screen:
+/// a seat whose way to OK opened the window, backing out, would open it
+/// again.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Navigator {
     doing: Doing,
@@ -207,6 +225,11 @@ pub struct Navigator {
     /// Presses made toward the current target, to give up on one the
     /// cursor never reaches.
     tries: u8,
+    /// The move last pressed toward a target (the slot, the direction's
+    /// place in `MOVES`), till the screen is looked at after it.
+    moved: Option<(u8, usize)>,
+    /// The moves that opened a window on this screen (`move_bit`).
+    blocked: u64,
 }
 
 /// Presses toward a target at most, before it is given up.
@@ -255,6 +278,11 @@ impl Navigator {
             }
             return 0;
         }
+        if let Some((at, dir)) = self.moved.take()
+            && matches!(screen.phase, Phase::Window { .. })
+        {
+            self.blocked |= move_bit(at, dir);
+        }
         if !reads_keys(screen) {
             return 0;
         }
@@ -276,8 +304,11 @@ impl Navigator {
                     self.pressed = Some((target, Picked::of(screen)));
                     return self.press(keys::A);
                 }
-                match toward(screen, layout, target) {
-                    Some(dir) => self.press(dir),
+                match toward(screen, layout, target, self.blocked) {
+                    Some(dir) => {
+                        self.moved = Some((screen.cursor, dir));
+                        self.press(MOVES[dir].0)
+                    }
                     None => {
                         self.refused |= 1 << target;
                         self.doing = Doing::Idle;
