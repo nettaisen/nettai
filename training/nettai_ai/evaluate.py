@@ -24,7 +24,7 @@ import torch
 from . import checkpoint
 from .config import LEVELS, EnvConfig, Level, config_from_dict
 from .envs import PoolView, make_pool, pool_spec, read_round_stats
-from .model import Model, mask_logits, previous_action, previous_width, select
+from .model import Model, mask_logits, previous_action, previous_width, select, warm_start
 from .spec import Spec, parse_spec
 
 TICKS_PER_MINUTE = 3600
@@ -46,10 +46,11 @@ def bot_player(name: str) -> Player:
 
 
 def load_player(path: str | Path, device: torch.device, name: str | None = None) -> tuple[Player, dict]:
+    """A checkpoint's network; one from before the GRU read the previous action plays as it did (`warm_start`)."""
     state = checkpoint.load(path, device)
     cfg = config_from_dict(state["config"])
     model = Model(parse_spec(state["spec"]), cfg.model).to(device)
-    model.load_state_dict(state["model"])
+    warm_start(model, state["model"])
     model.eval()
     return Player(name or f"{Path(path).name}@{state['update']}", model), state
 
