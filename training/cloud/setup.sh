@@ -20,7 +20,8 @@ fi
 
 echo "== system packages"
 sudo apt-get update -q
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq build-essential pkg-config git tmux rsync curl ca-certificates
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq build-essential pkg-config git tmux rsync curl ca-certificates \
+    libwayland-dev  # nettai-platform's file dialogs (rfd) need it on Linux, even in the headless bridge
 
 echo "== Rust"
 if ! command -v cargo >/dev/null 2>&1 && [ ! -x "$HOME/.cargo/bin/cargo" ]; then
