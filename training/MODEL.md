@@ -15,8 +15,9 @@ order, counts `C`, widths `W` and id counts `I` come from its `spec`.
   - `spec_hash`: refuse weights whose hash isn't the encoder's own spec hash.
   - `architecture`: JSON with `model` (the widths, `pointer_set`, `pool_only`), `spec` (`buckets`,
     `fight_actions`, `screen_actions`, `sets` in order with `name`, `count`, `width`, `ids`, and `split`),
-    `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count) and `keys`
-    (`screen_actions - slots`).
+    `activation` (`"relu"`), `layer_norm_eps` (`1e-5`), `slots` (the pointer set's count), `keys`
+    (`screen_actions - slots`) and `previous_action` (`fight_actions + screen_actions + 1`, the GRU's
+    previous-action input, §4).
   - `spec.split`: sets the trainer cut from one of the encoder's, as `{source: [[set, first token, count], …]}`.
     The encoder's `chips` set (7 tokens) is read as `hand` (tokens 0–5) and `used` (6), two sets of their own,
     each with `chips`' width and ids, in `chips`' place in the order.
@@ -33,8 +34,9 @@ For each set `s` in the architecture's order: `x[s]` `[C, W]`, `ids[s]` `[C, I]`
 `mask[s]` `[C]` (true = present). With spec c4d9e4a61b0f54ba the trainer's sets are, in order: `general` (1),
 `panels` (18), `objects` (48), `hand` (6) and `used` (1) (the encoder's `chips` set, split as `spec.split` says:
 its tokens 0–5 and 6, same width and ids), `slots` (12, the pointer set), `rules` (96, pool-only) and `forms`
-(12). Widths and id counts are in the architecture. Also `legal_fight` `[20]`, `legal_screen` `[19]`, and the GRU state `h` `[H]` (zeros at a
-round's start). These are the pool's buffers for one seat (§6.6).
+(12). Widths and id counts are in the architecture. Also `legal_fight` `[20]`, `legal_screen` `[19]`, the GRU state `h` `[H]` (zeros at a
+round's start), and `previous`, the action the seat's previous decision took (none at a round's start, §4). The
+others are the pool's buffers for one seat (§6.6); `previous` is the player's own: it chose that action.
 
 Absent tokens are never read: skip them everywhere. (PyTorch computes them and masks them out; the result is
 the same.)
@@ -85,8 +87,16 @@ Then `t_i = ln_f(t_i)` for every present token, pool-only sets' included.
 
 ## 4. GRU (`gru.`, PyTorch's equations, gate order r, z, n)
 
-`weight_ih_l0` `[3H, summary]`, `weight_hh_l0` `[3H, H]`, `bias_ih_l0`, `bias_hh_l0` `[3H]`. Rows `[0, H)` are
-r, `[H, 2H)` are z, `[2H, 3H)` are n. With `gi = weight_ih_l0·z + bias_ih_l0`, `gh = weight_hh_l0·h + bias_hh_l0`:
+Its input is `x = [z, onehot(p)]`, width `summary + P`, `P = previous_action` (40): the summary, then the
+previous decision's action one-hot. `p`, its place: a fight action `a` is `a` (`0 .. fight_actions-1`), a screen
+action `a` is `fight_actions + a`, and none (a round's first decision, where `h` is zero too) is `P − 1`. The
+previous decision may be of the other phase (a fight action before the custom screen opened). It is there because
+the fight decides from a view `D` ticks old: without it the network couldn't know what it pressed since.
+
+`weight_ih_l0` `[3H, summary + P]`, `weight_hh_l0` `[3H, H]`, `bias_ih_l0`, `bias_hh_l0` `[3H]`. Rows `[0, H)` are
+r, `[H, 2H)` are z, `[2H, 3H)` are n. With `gi = weight_ih_l0·x + bias_ih_l0` (that is,
+`weight_ih_l0[:, :summary]·z + weight_ih_l0[:, summary + p] + bias_ih_l0`: the one-hot's product is a column),
+`gh = weight_hh_l0·h + bias_hh_l0`:
 
 ```
 r  = σ(gi[r] + gh[r])
@@ -95,7 +105,8 @@ nn = tanh(gi[n] + r ⊙ gh[n])
 h' = (1 − u) ⊙ nn + u ⊙ h
 ```
 
-`h'` is kept for the next decision. At a round's start, `h = 0`.
+`h'` is kept for the next decision, and so is the action the decision takes (its `p` for the next). At a round's
+start, `h = 0` and `p` is none.
 
 ## 5. Heads
 
@@ -129,7 +140,8 @@ The reaction delay is the level's `delay` in ticks: the decision at tick t uses 
 and the outputs, computed decision by decision from `h0`:
 
 - inputs: `x.<set>`, `ids.<set>`, `mask.<set>` (`[N, C, …]`), `legal_fight` `[N, 20]`, `legal_screen` `[N, 19]`,
-  `phase` `[N]` (1 fight, 2 screen), `reset` `[N]` (set `h = 0` before that decision), `h0` `[H]`;
+  `phase` `[N]` (1 fight, 2 screen), `reset` `[N]` (set `h = 0` before that decision), `previous` `[N]` (each
+  decision's `p`, §4), `h0` `[H]`;
 - outputs: `fight_raw` `[N, 20]` and `screen_raw` `[N, 19]` (before the legal masks; absent slots −inf),
   `fight` and `screen` (masked), `value` `[N]`, `hidden` `[N, H]` (the GRU state after each decision).
 
@@ -137,6 +149,6 @@ The port should match every finite value to about 1e-4 (float32 sums in another 
 
 ## Cost
 
-`nettai_ai.model.count_macs` counts the multiply-adds of one decision over present tokens only; `uv run python
--m nettai_ai.model [--size large]` prints them. The default is about 2.2 M at a typical fight position
+`nettai_ai.model.count_macs` counts the multiply-adds of one decision over present tokens only (the previous
+action is a column added, none); `uv run python -m nettai_ai.model [--size large]` prints them. The default is about 2.2 M at a typical fight position
 (95 tokens, 38 of them in the transformer) and 5.8 M with every token present (§7).

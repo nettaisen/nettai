@@ -10,7 +10,7 @@ import torch
 
 from nettai_ai.config import LeagueConfig
 from nettai_ai.league import League
-from nettai_ai.model import Model
+from nettai_ai.model import Model, previous_action
 from nettai_ai.ppo import compute_gae
 from nettai_ai.rollout import Collector, Rollout
 from nettai_ai.spec import parse_spec
@@ -131,6 +131,11 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     assert ro.closed[s1].tolist()[:5] == [True] * 4 + [False]
     assert ro.ep_start[s0, :6].tolist() == [True, False, False, True, False, True]
     assert ro.ep_start[s1, :5].tolist() == [True, False, True, False, True]
+    # Each decision's previous action: none at a round's first, else the action the stream took before.
+    for s, n in ((s0, 6), (s1, 5)):
+        for t in range(n):
+            took = previous_action(ro.action[s, t - 1], ro.phase[s, t - 1].long(), spec.fight_actions) if t else None
+            assert int(ro.previous[s, t]) == (model.no_previous if ro.ep_start[s, t] else int(took)), (s, t)
     v0, v1 = ro.value[s0], ro.value[s1]
     nv0 = [v0[1], v0[2], 0.0, v0[4], v0[4]]  # next decision's value; terminal 0; truncated: its own
     nv1 = [v1[1], 0.0, v1[3], v1[3]]
@@ -164,6 +169,7 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     assert not nxt.closed.any()
     assert torch.equal(nxt.h_in[:, 0], ro.h_in[[s0, s1], [5, 4]])
     assert nxt.logp[s0, 0] == ro.logp[s0, 5] and nxt.logp[s1, 0] == ro.logp[s1, 4]
+    assert nxt.previous[s0, 0] == ro.previous[s0, 5] and nxt.previous[s1, 0] == ro.previous[s1, 4]
     assert sum(t.n for t in nxt.tokens.values()) == 2 * sum(spec.set(n).count for n in nxt.tokens)  # all present
     # And in place, as after the normalization warmup's rollout.
     ro.take_open(ro)

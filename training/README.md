@@ -57,6 +57,9 @@ learner's weights (one update behind) while the learner updates on the last one 
 
 Training writes `RUN_DIR/tb` (TensorBoard), `RUN_DIR/checkpoints` (each with the config, the git commit and the
 observation spec; `--resume` continues the latest) and `RUN_DIR/snapshots` (the league's frozen versions).
+`--init-from CHECKPOINT` (a file, or a run directory's latest) starts a new run from another run's network:
+update 0, a fresh optimizer, league and curriculum, the checkpoint's model widths and input normalization, and the
+GRU's previous-action columns zero where its network had none, so it plays as that checkpoint did (§8).
 Settings: a TOML file (`--config`), a named size (`--size large`), and overrides (`--set ppo.lr=1e-4`).
 `nettai_ai/config.py` has every setting and its default.
 

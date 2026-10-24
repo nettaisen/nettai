@@ -16,6 +16,10 @@ CPU, where the collector writes it without waiting on the device, and the update
 
 Each step's deciding streams are gathered from the pool's buffers on the CPU (present tokens only) into pinned
 memory and copied to the device without waiting; a step waits on the device once, for its actions.
+
+Every stream the networks play (the learner's and the snapshots') carries its previous decision's action, which
+the GRU reads (`model.previous_action`; none at a round's first decision, as the GRU state is zero there). The
+rollout stores it with each decision, so the update reads exactly what the behavior network read.
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ import torch
 from .device import upload
 from .envs import PoolView, read_round_stats
 from .league import BOT, KIND_NAMES, LEARNER, SELF, League
-from .model import Model, Obs, choose, map_obs, mask_logits
+from .model import Model, Obs, choose, map_obs, mask_logits, previous_action
 from .spec import Spec
 
 
@@ -126,7 +130,7 @@ class Rollout:
     on CUDA, so the update's copies don't wait), the tokens and GRU states on the device."""
 
     # What an open decision takes with it into the next rollout (its reward and successor come there).
-    CARRIED = ("legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start")
+    CARRIED = ("legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start", "previous")
 
     def __init__(self, spec: Spec, streams: int, steps: int, hidden: int, device: torch.device, pointer: str):
         S, Tc = streams, steps + 1
@@ -140,6 +144,7 @@ class Rollout:
         self.logp = z()
         self.value = z()
         self.ep_start = z(dtype=torch.bool)  # the first decision of its round (h_in is zero)
+        self.previous = z(dtype=torch.int64)  # the stream's previous decision's action, as the GRU read it
         self.reward = z()
         self.term = z(dtype=torch.bool)
         self.trunc = z(dtype=torch.bool)
@@ -231,6 +236,7 @@ class Step:
     cnt_cpu: dict
     rows: dict  # set → tokens of all decisions (an int)
     streams: torch.Tensor  # [n]
+    previous: torch.Tensor  # [n] each stream's previous action (`model.previous_action`)
     legal_fight: torch.Tensor
     legal_screen: torch.Tensor
     phase: torch.Tensor
@@ -260,13 +266,15 @@ class StepBatch:
             for s in spec.sets
         }
         ns = len(spec.sets)
-        self.meta = e(S, 2 * ns + 1, dtype=torch.int64)  # per decision: each set's count, each set's first, the stream
+        # Per decision: each set's count, each set's first, the stream, its previous action.
+        self.meta = e(S, 2 * ns + 2, dtype=torch.int64)
         self.legal = e(S, spec.fight_actions + spec.screen_actions, dtype=torch.bool)
         self.phase = e(S, dtype=torch.int64)
         self.copied = None  # the last load's copies (the buffers are rewritten once they're done)
 
-    def load(self, order: torch.Tensor) -> Step:
-        """Gather streams `order` (CPU int64 [n]) and copy them to the device."""
+    def load(self, order: torch.Tensor, previous: torch.Tensor) -> Step:
+        """Gather streams `order` (CPU int64 [n]), with their previous actions (CPU int64 [n]), and copy them to
+        the device."""
         v, dev, sets = self.view, self.device, self.spec.sets
         if self.copied is not None:
             self.copied.synchronize()
@@ -289,6 +297,7 @@ class StepBatch:
             tokens[s.name] = tuple(h[:k].to(dev, non_blocking=True) for h in (hx, hi, hp))
             rows[s.name] = p
         self.meta[:n, 2 * ns] = order
+        self.meta[:n, 2 * ns + 1] = previous
         F = self.spec.fight_actions
         self.legal[:n, :F] = v.legal_fight[order]
         self.legal[:n, F:] = v.legal_screen[order]
@@ -309,6 +318,7 @@ class StepBatch:
             cnt_cpu={k: self.meta[:n, i] for i, k in enumerate(names)},
             rows=rows,
             streams=meta[:, 2 * ns],
+            previous=meta[:, 2 * ns + 1],
             legal_fight=legal[:, :F],
             legal_screen=legal[:, F:],
             phase=phase,
@@ -347,6 +357,9 @@ class Collector:
         self.S = self.view.S
         self.E = self.view.E
         self.hidden = torch.zeros(self.S, model.cfg.hidden, device=self.device)
+        # Each stream's previous decision's action (CPU), none until it decides and at each round's start.
+        self.no_previous = model.no_previous
+        self.previous = torch.full((self.S,), self.no_previous, dtype=torch.int64)
         self.fresh = torch.ones(self.S, dtype=torch.bool)
         self.actions = np.zeros((self.E, 2), np.int32)
         self.name_dropout = name_dropout
@@ -399,7 +412,7 @@ class Collector:
             st.hp_gain_sum += float(gain.sum())
             pending_s, pending_t = s[~d], t[~d]
 
-        # 2. Rounds that ended: results to the league, the next plans, fresh GRU states.
+        # 2. Rounds that ended: results to the league, the next plans, fresh GRU states and no previous action.
         if done_e.any():
             envs = done_e.nonzero().squeeze(-1).numpy()
             st.rounds += len(envs)
@@ -409,6 +422,7 @@ class Collector:
             st.records += self.league.round_end(envs, v.result.view(self.E, 2).numpy(), games, v.truncated.numpy())
             streams = torch.from_numpy(np.stack([envs * 2, envs * 2 + 1], 1).ravel())
             self.hidden.index_fill_(0, upload(streams, dev), 0.0)
+            self.previous[streams] = self.no_previous
             self.fresh[streams] = True
 
         # 3. Decisions: the learner's streams, then each snapshot's, gathered as one batch.
@@ -434,7 +448,8 @@ class Collector:
         t_l = ro.cursor[learner]
         if nl and int(t_l.max()) >= ro.Tc:
             raise RuntimeError("rollout storage overflow (a stream decided twice in one step?)")
-        b = self.batch.load(order)
+        previous = self.previous[order]
+        b = self.batch.load(order, previous)
         # The learner's tokens (the batch's first rows of each set): names dropped, then stored. A store that
         # must grow is given room for the whole rollout at this many tokens a decision (most slots fill).
         first = {}
@@ -454,7 +469,7 @@ class Collector:
                 continue
             sd = b.streams[a0:a1]
             h_in = self.hidden[sd]
-            fight, screen, value, h = net.step(b.obs(a0, a1), h_in)
+            fight, screen, value, h = net.step(b.obs(a0, a1), h_in, b.previous[a0:a1])
             a, logp = choose(
                 mask_logits(fight, b.legal_fight[a0:a1]), mask_logits(screen, b.legal_screen[a0:a1]), b.phase[a0:a1],
                 generator=self.gen,
@@ -470,6 +485,7 @@ class Collector:
         if not torch.isfinite(logp_all).all():
             raise RuntimeError("collect: a decision has no legal action, or a network's outputs aren't finite")
         self.actions.reshape(-1)[order.numpy()] = a_all.numpy().astype(np.int32)
+        self.previous[order] = previous_action(a_all, phase[order], self.spec.fight_actions)
         if nl:
             ro.action[learner, t_l] = a_all[:nl]
             ro.logp[learner, t_l] = logp_all[:nl]
@@ -478,6 +494,7 @@ class Collector:
             ro.legal_screen[learner, t_l] = v.legal_screen[learner]
             ro.phase[learner, t_l] = phase[learner].to(torch.int8)
             ro.ep_start[learner, t_l] = self.fresh[learner]
+            ro.previous[learner, t_l] = previous[:nl]
             for name in ro.tokens:
                 ro.off[name][learner, t_l] = first[name] + b.off_cpu[name][:nl]
                 ro.cnt[name][learner, t_l] = b.cnt_cpu[name][:nl]

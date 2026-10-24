@@ -50,9 +50,12 @@ def latest(run_dir: Path) -> Path:
     return d / marker.read_text().strip()
 
 
+def resolve(path: str | Path) -> Path:
+    """A checkpoint file, or a run directory's latest checkpoint."""
+    p = Path(path)
+    return latest(p) if p.is_dir() else p
+
+
 def load(path: str | Path, device: str | torch.device = "cpu") -> dict[str, Any]:
     """A checkpoint file, or a run directory (its latest checkpoint)."""
-    p = Path(path)
-    if p.is_dir():
-        p = latest(p)
-    return torch.load(p, map_location=device, weights_only=False)
+    return torch.load(resolve(path), map_location=device, weights_only=False)

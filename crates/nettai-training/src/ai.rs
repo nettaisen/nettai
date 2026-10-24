@@ -15,9 +15,10 @@
 //!   a fight action till the next decision; the navigator presses the way to
 //!   a slot or a key (act.rs). It never reads `theirs`: it doesn't hear the
 //!   player's buttons.
-//! - **Its memory.** The GRU state carries through a round and starts over
-//!   at the next (a new round is a new score of the set), and when the set
-//!   starts over (`reset`), its draws too.
+//! - **Its memory.** The GRU state and the last decision's action (the
+//!   network's next decision reads it: [`net::Memory::took`]) carry through
+//!   a round and start over at the next (a new round is a new score of the
+//!   set), and when the set starts over (`reset`), its draws too.
 //! - **Its chips' fingerprints.** The chips it may see, as they are needed
 //!   (a chip's fingerprint is its own alone, so made apart it is what the
 //!   trainer's pool makes of it): both folders' chips and the Program
@@ -36,7 +37,7 @@
 use crate::act::{self, Navigator};
 use crate::env::{self, fight_runs, probe_keys};
 use crate::fingerprint::{self, Fingerprints};
-use crate::net::{self, Heads, Knobs, Memory, Net};
+use crate::net::{self, Action, Heads, Knobs, Memory, Net};
 use crate::observe::{self, AttackHistory, Extra, Names, Obs};
 use crate::spec;
 use nettai_battle::battle::mode;
@@ -597,7 +598,10 @@ impl NetAi {
                 let out = self.net.forward(obs, &mut self.mem, Heads::Fight);
                 let logits = out.fight.expect("the fight's head");
                 match net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng) {
-                    Some(a) => r.action = a as i32,
+                    Some(a) => {
+                        r.action = a as i32;
+                        self.mem.took(Action::Fight(a));
+                    }
                     None => self.stop("a fight decision with nothing allowed".into()),
                 }
             }
@@ -618,6 +622,7 @@ impl NetAi {
                     Some(a) => {
                         r.nav.point(a as i32);
                         r.decisions += 1;
+                        self.mem.took(Action::Screen(a));
                     }
                     None => self.stop("a custom screen decision with nothing allowed".into()),
                 }

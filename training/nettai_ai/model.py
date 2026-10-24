@@ -1,5 +1,8 @@
 """The network (§7): per-set token encoders, a small transformer, an attention pool, a GRU and three heads.
 
+The GRU reads the summary and the stream's previous decision's action, one-hot (`previous_action`): it decides
+from a view D ticks old, so without it it wouldn't know what it pressed in the last D ticks.
+
 Only Linear, LayerNorm, ReLU, multi-head attention with masks, an embedding lookup-sum, a GRU cell's equations
 and softmax are used, so the Rust forward pass can follow MODEL.md step by step. Every width and count comes from the spec.
 
@@ -126,9 +129,14 @@ class Model(nn.Module):
         # Sets of one token (the global state, the other side's last chip) are also read directly, in spec order.
         singles = sum(1 for s in spec.sets if s.count == 1)
         self.pool_out = nn.Linear((cfg.pool_heads + singles) * d, cfg.summary)
-        # One GRU layer (PyTorch's GRU equations, gates r, z, n). nn.GRU rather than nn.GRUCell so sequences
-        # in training run as one fused call (cuDNN on CUDA); one decision is a sequence of one.
-        self.gru = nn.GRU(cfg.summary, cfg.hidden, batch_first=True)
+        # The previous decision's action, one-hot: the fight's actions, then the custom screen's, then none (a
+        # round's first decision). A decision's previous one may be of the other phase.
+        self.n_previous = previous_width(spec)
+        self.no_previous = self.n_previous - 1
+        # One GRU layer (PyTorch's GRU equations, gates r, z, n) over [summary, previous action]. nn.GRU rather
+        # than nn.GRUCell so sequences in training run as one fused call (cuDNN on CUDA); one decision is a
+        # sequence of one.
+        self.gru = nn.GRU(cfg.summary + self.n_previous, cfg.hidden, batch_first=True)
         core = cfg.hidden + cfg.summary
         self.fight1 = nn.Linear(core, cfg.head_hidden)
         self.fight2 = nn.Linear(cfg.head_hidden, spec.fight_actions)
@@ -228,23 +236,29 @@ class Model(nn.Module):
         value = self.value2(F.relu(self.value1(core))).squeeze(-1)
         return fight, torch.cat([slots, keys], -1), value
 
-    def step(self, obs: Obs, h: torch.Tensor):
-        """One decision per row: obs [N], h [N, H] → fight [N, 20], screen [N, 19], value [N], h' [N, H]."""
+    def gru_input(self, z: torch.Tensor, previous: torch.Tensor) -> torch.Tensor:
+        """[summary, the previous action one-hot]: z [..., summary], previous [...] (int64, `previous_action`)."""
+        return torch.cat([z, F.one_hot(previous, self.n_previous).to(z.dtype)], -1)
+
+    def step(self, obs: Obs, h: torch.Tensor, previous: torch.Tensor):
+        """One decision per row: obs [N], h [N, H], previous [N] (the stream's previous decision's action,
+        `previous_action`) → fight [N, 20], screen [N, 19], value [N], h' [N, H]."""
         z, slot_tok, slot_present = self.encode(obs)
-        _, h = self.gru(z.unsqueeze(1), h.unsqueeze(0).contiguous())
+        _, h = self.gru(self.gru_input(z, previous).unsqueeze(1), h.unsqueeze(0).contiguous())
         h = h[0]
         fight, screen, value = self.heads(h, z, slot_tok, slot_present)
         return fight, screen, value, h
 
-    def sequence(self, obs: Obs, h0: torch.Tensor, reset: torch.Tensor):
-        """Sequences: obs [B, L] (flattened to [B·L] inside), h0 [B, H], reset [B, L] (zero h before that decision).
+    def sequence(self, obs: Obs, h0: torch.Tensor, reset: torch.Tensor, previous: torch.Tensor):
+        """Sequences: obs [B, L] (flattened to [B·L] inside), h0 [B, H], reset [B, L] (zero h before that decision),
+        previous [B, L] (each decision's previous action as the behavior network read it: stored, not derived).
 
         Returns fight [B, L, 20], screen [B, L, 19], value [B, L], and the GRU states after each decision [B, L, H].
         """
         B, L = reset.shape
         flat = map_obs(obs, lambda t: t.flatten(0, 1))
         z, slot_tok, slot_present = self.encode(flat)
-        zs = z.view(B, L, -1)
+        zs = self.gru_input(z.view(B, L, -1), previous)
         # The GRU runs over segments cut wherever any row resets: inside a segment no row resets, so each is
         # one fused call; at a segment's start the rows that reset begin from zero.
         cuts = [0] + [int(i) for i in reset[:, 1:].any(0).nonzero().squeeze(-1).add(1).tolist()] + [L]
@@ -270,6 +284,8 @@ class Model(nn.Module):
             "layer_norm_eps": LN_EPS,
             "slots": self.n_slots,
             "keys": self.n_keys,
+            # The GRU's input after the summary: the previous decision's action, one-hot (`previous_action`).
+            "previous_action": self.n_previous,
             "spec": {
                 "hash": self.spec.hash,
                 "buckets": self.spec.buckets,
@@ -292,7 +308,45 @@ class Model(nn.Module):
         raw["sets"] = {s["name"]: {"count": s["count"], "width": s["width"], "ids": s["ids"]} for s in sp["sets"]}
         if sp.get("split"):
             raw["split"] = sp["split"]
-        return Model(parse_spec(raw), ModelConfig(**arch["model"]))
+        model = Model(parse_spec(raw), ModelConfig(**arch["model"]))
+        if arch.get("previous_action") != model.n_previous:
+            raise ValueError(f"the architecture's previous_action {arch.get('previous_action')} isn't {model.n_previous}")
+        return model
+
+
+def previous_width(spec: Spec) -> int:
+    """The previous action's one-hot width: the fight's actions, the custom screen's, and none."""
+    return spec.fight_actions + spec.screen_actions + 1
+
+
+def previous_action(action: torch.Tensor, phase: torch.Tensor, fight_actions: int) -> torch.Tensor:
+    """What the stream's next decision reads of a decision's action (phase 1 fight, 2 screen), as the one-hot's
+    index: a fight action as itself, a screen action after the fight's. None is `Model.no_previous`."""
+    return torch.where(phase == 1, action, action + fight_actions)
+
+
+def warm_start(model: Model, weights: dict[str, torch.Tensor]) -> None:
+    """Load another network's weights (a checkpoint's "model") into `model` so it plays as that network does:
+    every tensor of the same shape copied, the input normalization among them; the GRU's input weights of a
+    network that read no previous action (the summary's columns alone) copied into their first columns, the
+    previous action's columns zero, so it reads nothing of it until trained to. A tensor missing, left over or
+    of another shape is an error (the widths must be the checkpoint's)."""
+    own = model.state_dict()
+    missing, extra = sorted(set(own) - set(weights)), sorted(set(weights) - set(own))
+    if missing or extra:
+        raise ValueError(f"warm start: the weights lack {missing} and have {extra} beyond this network's")
+    out = {}
+    for k, mine in own.items():
+        w = weights[k].to(mine.device, mine.dtype)
+        if w.shape == mine.shape:
+            out[k] = w
+        elif k == "gru.weight_ih_l0" and w.shape == (mine.shape[0], model.cfg.summary):
+            t = torch.zeros_like(mine)
+            t[:, : model.cfg.summary] = w
+            out[k] = t
+        else:
+            raise ValueError(f"warm start: {k} is {tuple(w.shape)}, this network's {tuple(mine.shape)}")
+    model.load_state_dict(out, strict=True)
 
 
 def map_obs(obs: Obs, fn) -> Obs:
@@ -380,7 +434,7 @@ def count_macs(spec: Spec, cfg: ModelConfig, present: dict[str, int] | None = No
     layers = cfg.layers * (Nt * (4 * d * d + 2 * d * f) + 2 * Nt * Nt * d)
     singles = sum(1 for s in spec.sets if s.count == 1)
     pool = N * d * P + P * N * d + (P + singles) * d * cfg.summary
-    gru = 3 * (cfg.summary * cfg.hidden + cfg.hidden * cfg.hidden)
+    gru = 3 * (cfg.summary * cfg.hidden + cfg.hidden * cfg.hidden)  # the previous action: a column added, no product
     core = cfg.hidden + cfg.summary
     fight = core * cfg.head_hidden + cfg.head_hidden * spec.fight_actions
     slots = n[cfg.pointer_set]

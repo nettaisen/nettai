@@ -16,7 +16,8 @@ and, in its header's metadata (all strings):
 
 The fixture holds a run of one seat's recorded decisions (from training, so real observations) and what the
 network computes for them, step by step from h0: inputs `x.<set>`, `ids.<set>`, `mask.<set>`, `legal_fight`,
-`legal_screen`, `phase`, `reset` (zero the GRU state before that decision), `h0`; outputs `fight_raw`,
+`legal_screen`, `phase`, `reset` (zero the GRU state before that decision), `previous` (the previous decision's
+action as the GRU reads it, `model.previous_action`), `h0`; outputs `fight_raw`,
 `screen_raw` (absent slots -inf), `fight` and `screen` (legal masks applied, -inf), `value`, `hidden` (the GRU
 state after each decision). The Rust port must reproduce the outputs.
 """
@@ -95,7 +96,7 @@ def run_fixture(model: Model, fx: dict[str, Any]) -> dict[str, torch.Tensor]:
         obs = {k: {name: v[i : i + 1] for name, v in fx[k].items()} for k in ("x", "ids", "mask")}
         if bool(fx["reset"][i]):
             h = torch.zeros_like(h)
-        fight, screen, value, h = model.step(obs, h)
+        fight, screen, value, h = model.step(obs, h, fx["previous"][i : i + 1].long())
         out["fight_raw"].append(fight[0])
         out["screen_raw"].append(screen[0])
         out["fight"].append(mask_logits(fight, fx["legal_fight"][i : i + 1])[0])
@@ -111,7 +112,7 @@ def save_fixture(model: Model, fx: dict[str, Any], path: str | Path, meta: dict[
     for k in ("x", "ids", "mask"):
         for name, v in fx[k].items():
             tensors[f"{k}.{name}"] = v
-    for k in ("legal_fight", "legal_screen", "phase", "reset"):
+    for k in ("legal_fight", "legal_screen", "phase", "reset", "previous"):
         tensors[k] = fx[k]
     tensors["h0"] = fx["h0"]
     tensors.update(outputs)

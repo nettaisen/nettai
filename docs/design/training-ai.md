@@ -491,7 +491,16 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
   the difference on FakePool's toy between learning the fight (its target is in the general token) in 40
   updates, 71% of targets pressed, and not, 19%: a pool over 66 tokens starts out reading the one that matters
   at 1/66.
-- **Memory.** A GRU of 256.
+- **Memory.** A GRU of 256, its input the summary and the stream's **previous decision's action**, one-hot: the
+  fight's 20 actions, the custom screen's 19 (12 slots, 7 keys), and none (a round's first decision, where the
+  GRU's state is zero too): 40 values after the summary's 128 (the architecture's `previous_action`). The previous
+  decision may be of the other phase (a fight action before the custom screen opened). It decides from a view D
+  ticks old (D 6 to 30 in training, up to 7 decisions back), so without it the network can't know what it pressed
+  since: whether it already pressed A (and wastes a chip pressing again), already stepped (and overshoots), or is
+  charging. Feeding the recurrent core its last action is the standard answer (IMPALA, R2D2, the delayed-MDP
+  literature), and fair under §0's rule: a player knows its own presses. Concatenated rather than embedded and
+  added: the one-hot's product with the GRU's input weights is a column of them, so the Rust pass adds one column
+  (no multiply), and a warm start (§8) is zero columns. Why it came: §11's stall.
 - **Heads**, on the GRU's state and the summary:
   - the fight's 20 actions;
   - the custom screen's pointer: a score for each slot token (an MLP over the slot's token and the rest) and 7
@@ -510,8 +519,8 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
     in their tokens), about 10 objects (4 to 5 in random play, up to 17), 6 in hand, the used chip, no slots, 57
     rules scalars (the three games' mean), 2 forms: 95 tokens, 38 of them in the transformer.
   - The default, **d = 64**, one layer, on spec c4d9e4a61b0f54ba (chip tokens 250 wide with their fingerprints):
-    2.22 M typical, 2.95 M on the custom screen (its 12 slots added), 5.82 M max (194 tokens); 1.13 M parameters,
-    0.52 M of them the name table; 4.3 MiB. (Before the rules were made pool-only, d had to be 56 at 66 tokens;
+    2.22 M typical, 2.95 M on the custom screen (its 12 slots added), 5.82 M max (194 tokens); 1.17 M parameters,
+    0.52 M of them the name table; 4.4 MiB (1.13 M and 4.3 MiB before the previous action's columns). (Before the rules were made pool-only, d had to be 56 at 66 tokens;
     with all 95 in the transformer it would be over 4 M.)
   - `--size large` (d 128, two layers: 13.6 M typical, 36.5 M max, 2.6 M parameters) is there to try in the
     cloud. If it plays clearly better, the app runs it on a worker thread (§10).
@@ -548,6 +557,13 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   pool's observation is already the next round's; a KO or a judged time-up is terminal.
 - **Truncated BPTT.** Chunks of 128 decisions (`ppo.chunk`), each started from the GRU state stored when its
   first decision was made, and zeroed again at each round's first decision inside it.
+- **The previous action** (§7). The collector keeps each stream's previous decision's action for every stream a
+  network plays (the learner's and each snapshot's), set to none with the GRU state as a round starts, and gives
+  it to the stream's network with each decision. The rollout stores it with the decision (an open decision
+  carries its own into the next rollout), and the update reads it from there, never derived from the stored
+  actions, so it replays exactly what the behavior network read: a test checks every stored one is the stream's
+  last action (none at a round's first) and replays each decision's log-probability. Evaluation keeps its own
+  the same way.
 - **League.**
   - About 50% of rounds against its latest self (both seats learn).
   - About 35% against frozen past versions. A snapshot joins every 10 updates. New snapshot rounds draw from
@@ -621,6 +637,16 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   win rates by opponent, Elo, §9's measures from `round_stats()` by opponent kind, the HP level, the measured
   network cost. A checkpoint every 50 updates (a setting), with the run's settings, the git commit (a run
   outside a git checkout fails), the observation spec, the league and the optimizer; `--resume` continues it.
+- **Warm start** (`--init-from CHECKPOINT`, a file or a run directory's latest). A new run (update 0, a fresh
+  optimizer, league and curriculum; the rest of the config a new run's) whose network is the checkpoint's, of its
+  model widths (`model.warm_start`): every tensor of the same shape copied, the input normalization with its
+  running statistics, and the GRU's previous-action columns zero where the checkpoint's network read none (the
+  first cloud run's), so it plays as that network did until training moves them; no normalization warmup. Its
+  checkpoints keep where it came from (`init_from`: the path, update, decisions and commit). Tested: the same
+  outputs as the checkpoint's network whatever the previous action, on the toy's tensors and (once, by hand) on
+  the first run's checkpoint 1,000 against the old code: 3.4e-7 at most over its 16 recorded decisions. A smoke run
+  from checkpoint 1,500 on the real pool (three games, 48 envs): the first epoch's ratio against the behavior
+  policy 0.999, explained variance 0.65 from the first update.
 - **Export.** `nettai_ai.export` writes safetensors with the architecture and the **observation spec hash** in
   its header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation
   can't silently play an old network. Beside it, a parity fixture: a seat's recorded decisions from training and
@@ -628,9 +654,17 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
 - **Checked on FakePool**, a numpy stand-in for the pool with the pool's sets and widths and a learnable toy
   (press the target action shown in the general token; on the screen, point at the slot with the highest first
   float; everything else noise): in 40 updates on a laptop CPU, targets pressed 7% → 35%, best slots 10% → 29%,
-  reward per decision ×7 (the test, with the loop overlapped; taking turns, before it, 48% and 38%). Over three
+  reward per decision ×7 (the test, with the loop overlapped; taking turns, before it, 48% and 38%). By 2026-10-24
+  the test's seed came to 32% (24 to 33% over seeds 1 to 4), and with the previous action (§7), which moves every
+  random draw after the GRU's, 28% (24 to 30%): seed noise, its bar now three times the random policy's, 21%. Over three
   seeds of 60 updates the lag costs little: targets 55% against 58% taking turns, best slots 37% against 37%;
   at 60 s of wall time on the Mac's CPU, 39% and 35% against 40% and 28%.
+- **And on ComboPool** (`fake.py`, the previous action's toy): a fight seat's decisions alternate between an
+  opener, of which only one of 4 is allowed, drawn at random (the network reads no legal mask, and nothing it
+  sees says which), and its finisher, every action allowed, the opener's own finisher hitting; the view shows the
+  opener two decisions late. Rates of finishers right over 5 updates, of 100: with the previous action 0.06, 0.11,
+  0.23, 0.46, 0.82, 0.94 at 50, 0.97 at 100; with it hidden (always none), 0.25 from about update 45 to the end:
+  one of the 4 finishers, as the toy allows. The test runs 60 updates of each (0.83 and 0.22 as committed).
 
 ## 9. How we know it's good
 
@@ -687,10 +721,13 @@ weights (§10.6, branch learned-ai-ui).
 - **The pass** (`Net::forward`), as training/MODEL.md has it: each present token normalized and clipped, its set's
   MLP, its set's vector and its names' embeddings; the transformer layers over the present tokens of the sets not
   pool-only; the final LayerNorm on every present token; the attention pool and the one-token sets read directly;
-  the GRU (gates r, z, n); the heads of `core = [h', z]`. Absent tokens are never computed. A decision computes the
+  the GRU (gates r, z, n) over the summary and the previous action (`Memory::last`, the column of its one-hot's
+  place added to the input's product; the weights' `previous_action` must be this pass's 40); the heads of
+  `core = [h', z]`. Absent tokens are never computed. A decision computes the
   heads it reads (`Heads::Fight`; `Heads::Screen`, the keys and the pointer, whose core part is computed once;
-  `Heads::All` adds the value, for the parity test). A player's `Memory` holds the GRU state and room for a pass, so a
-  decision allocates nothing.
+  `Heads::All` adds the value, for the parity test). A player's `Memory` holds the GRU state, the last decision's
+  action (`Memory::took`: the player says what it chose) and room for a pass, so a decision allocates nothing;
+  `Memory::reset` zeros the state and forgets the action.
 - **The loops.** Plain f32, no threads, no unsafe: a dot product of a weight row in eight independent sums over
   fixed-size chunks (`as_chunks::<8>`), which LLVM turns into vector lanes (a single sum is a chain it may not
   reorder). The repo's nightly toolchain builds them 1.8 times faster than stable 1.92 does.
@@ -702,11 +739,12 @@ weights (§10.6, branch learned-ai-ui).
   `save_fixture`) on the real pool's spec: a network of small odd widths (d 8, two heads, two layers, GRU 10),
   every parameter and the input normalization drawn wide so the outputs vary, and 15 decisions recorded from the
   real pool on the packs, EXE6, EXE5 and EXE4, custom screens and fights (up to 118 tokens present, 15 objects), the
-  GRU carried from a random h0 and reset at each game. Every finite output matches within 1e-4 and every −∞ exactly:
+  GRU carried from a random h0 and reset at each game, each decision's previous action its stream's (fight and
+  screen actions, none at each game's start). Every finite output matches within 1e-4 and every −∞ exactly:
   the raw and masked logits, the value and the GRU state after each decision. The trainer's default widths (d 64,
   four heads, one layer) were checked the same way once (`--size default`), not committed: its name table alone is 2
-  MB. Weights of another spec, format version, an unknown architecture field or a missing tensor are refused
-  (tested).
+  MB. Weights of another spec, format version, an unknown architecture field, a previous action of another width
+  or a missing tensor are refused (tested).
 
 ### 10.2 The player
 
@@ -726,7 +764,10 @@ thread (`fight` or `custom_screen`, both the same tick of the round):
   uses another `k`, the levels' metadata should carry it.
 - It never reads `theirs`: it doesn't hear the player's buttons (tested: the same play whatever it is told).
 - The GRU state carries through a round and starts over at the next (a new round is a new score of the set);
-  `reset`, as the set starts over, starts everything over, its draws too (tested: the same buttons again).
+  `reset`, as the set starts over, starts everything over, its draws too (tested: the same buttons again). Its
+  last decision's action goes with it: each decision tells the network's memory what it took (the fight action it
+  holds, the slot or key it points at), which the next decision reads, and a new round or `reset` forgets it with
+  the GRU state (tested). A decision that waits for a fingerprint takes nothing, as none is made.
 - `error()` says why it stopped, where it did (its fingerprints failed or are of another content, a decision with
   nothing allowed): it presses nothing from then on.
 - Its fingerprints are made as it needs them, and a decision whose view lacks one waits for it (§10.3).
@@ -796,7 +837,11 @@ replaced only when a better one is trained. Reading it is a copy of its floats (
 the app reads it once and gives each `NetAi` the same `Arc<Net>` (`NetAi::of`).
 
 As built: crates/nettai-training/model/nettai-ai.safetensors (`ai::WEIGHTS`, read once by `ai::shipped`). The first
-is update 1000 of the first cloud run (runs/first, 177 M decisions; 4.56 MB), weak as early weights are. A better
+is update 1000 of the first cloud run (runs/first, 177 M decisions; 4.56 MB), weak as early weights are. With the
+previous action (§7) it was exported again (4.68 MB) from that checkpoint warm-started (`model.warm_start`: the
+previous action's columns zero), its metadata the checkpoint's (update, decisions, commit): it plays as it did
+(the old file was checkpoint 1,000's tensors exactly; the new one's outputs on the checkpoint's recorded decisions
+are the old network's within 3.4e-7, and the Rust pass adds zero columns, the same floats). A better
 one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
@@ -948,6 +993,17 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   nettai_ai.bench --device cuda --games exe6,exe5,exe4 --envs 1024 --threads 36 --torch-threads 3
   --update-threads 2 --variants base,mb128,mb256 --loop 20` (the update alone at 64, 128 and 256 chunks, then
   20 updates of the loop); `--envs 2048 --variants base --loop 12` beside it for the bigger batch.
+- **The first run's stall, and the previous action** (2026-10-24). By update 1,400 the first cloud run had
+  stopped getting better: checkpoint 1,400 played 1,000 dead even (53%, 49% and 50% in EXE4, EXE5 and EXE6, about
+  160 rounds each), as 1,000 played 500; it beat the passive scripted players 90 to 100% but the masher (random
+  presses) only 65 to 75%. A lower entropy bonus (0.01 to 0.003) didn't help. The diagnosis: the network never
+  knew what it had pressed. It decides every 4 ticks from a view 6 to 30 ticks old, and its GRU read only the
+  pooled view, so under the delay it pressed A again (a chip wasted), stepped again (overshot), lost track of a
+  charge: its play stayed incoherent. So the GRU now reads its previous action (§7), and the next run starts from
+  the first run's latest checkpoint with it (§8's warm start), playing as that checkpoint did on its first update:
+  `training/cloud/run.sh NAME --config configs/cloud.toml --init-from runs/first`. Beside it, a custom screen
+  past its decisions now closes in a window too (§4.2): EXE6 rounds between those checkpoints were cut 70% of the
+  time by screens held open in the Cross window.
 
 ## 12. Steps
 

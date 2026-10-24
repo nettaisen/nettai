@@ -8,7 +8,7 @@ import torch
 from nettai_ai.config import LEVELS
 from nettai_ai.fake import FakePool
 from nettai_ai.envs import PoolView
-from nettai_ai.model import Model, mask_logits, select
+from nettai_ai.model import Model, mask_logits, previous_action, select
 from nettai_ai.spec import parse_spec
 
 
@@ -47,14 +47,16 @@ def test_model_on_pool_never_illegal(tiny_cfg):
     view = PoolView(pool, spec)
     g = torch.Generator().manual_seed(0)
     h = torch.zeros(view.S, tiny_cfg.hidden)
+    prev = torch.full((view.S,), model.no_previous)
     for _ in range(60):
         phase = view.phase.long()
         idx = (phase != 0).nonzero().squeeze(-1)
-        f, s, _, h_new = model.step(view.obs(idx, torch.device("cpu")), h[idx])
+        f, s, _, h_new = model.step(view.obs(idx, torch.device("cpu")), h[idx], prev[idx])
         h[idx] = h_new.detach()
         a, _ = select(mask_logits(f, view.legal_fight[idx]), mask_logits(s, view.legal_screen[idx]), phase[idx], None, g)
         acts = torch.zeros(view.S, dtype=torch.int32)
         acts[idx] = a.to(torch.int32)
+        prev[idx] = previous_action(a, phase[idx], spec.fight_actions)
         slot = (phase[idx] == 2) & (a < model.n_slots)
         if slot.any():  # the pointer only ever lands on a present slot
             present = view.mask["slots"][idx[slot]]

@@ -30,6 +30,17 @@ fn observation(net: &Net, fx: &safetensors::File, i: usize) -> Obs {
     obs
 }
 
+/// The fixture's previous action, by its place in the one-hot.
+fn action_at(i: usize) -> Option<Action> {
+    if i < spec::FIGHT_ACTIONS {
+        Some(Action::Fight(i))
+    } else if i < PREVIOUS_ACTIONS - 1 {
+        Some(Action::Screen(i - spec::FIGHT_ACTIONS))
+    } else {
+        None
+    }
+}
+
 /// A finite value within 1e-4 (relative past 1) and every −∞ exactly.
 fn close(what: &str, got: &[f32], want: &[f32]) {
     assert_eq!(got.len(), want.len(), "{what}");
@@ -44,7 +55,9 @@ fn close(what: &str, got: &[f32], want: &[f32]) {
 
 /// Every output of the trainer's network on a fixture of its own export
 /// (training/MODEL.md's "Checking the port"), decision by decision from
-/// its h0, the GRU state carried and reset where the fixture says.
+/// its h0, the GRU state carried and reset where the fixture says, each
+/// decision's previous action the fixture's (none, fight and screen
+/// actions among them).
 fn parity(name: &str) {
     let weights = std::fs::read(fixtures().join(format!("{name}.safetensors"))).unwrap();
     let net = Net::from_safetensors(&weights).unwrap_or_else(|e| panic!("{e}"));
@@ -56,7 +69,7 @@ fn parity(name: &str) {
     let f32s = |k: &str| fx.tensors[k].f32s().unwrap();
     let ints = |k: &str| fx.tensors[k].ints().unwrap();
     let (fight_raw, screen_raw, fight, screen, value, hidden) = (f32s("fight_raw"), f32s("screen_raw"), f32s("fight"), f32s("screen"), f32s("value"), f32s("hidden"));
-    let (legal_fight, legal_screen, phase) = (ints("legal_fight"), ints("legal_screen"), ints("phase"));
+    let (legal_fight, legal_screen, phase, previous) = (ints("legal_fight"), ints("legal_screen"), ints("phase"), ints("previous"));
     let h = net.hidden();
     let mut mem = net.memory();
     mem.h.copy_from_slice(&f32s("h0"));
@@ -66,6 +79,9 @@ fn parity(name: &str) {
         if reset[i] != 0 {
             mem.reset();
         }
+        let last = action_at(previous[i] as usize);
+        assert_eq!(previous_index(last), previous[i] as usize);
+        mem.last = last;
         let obs = observation(&net, &fx, i);
         let before = mem.h.clone();
         let out = net.forward(&obs, &mut mem, Heads::All);
@@ -84,6 +100,7 @@ fn parity(name: &str) {
         // (The heads a decision asks alone are the same as all of them.)
         let mut again = net.memory();
         again.h.copy_from_slice(&before);
+        again.last = last;
         let alone = net.forward(&obs, &mut again, if phase[i] == 1 { Heads::Fight } else { Heads::Screen });
         assert_eq!(alone.value, None);
         if phase[i] == 1 {
@@ -94,6 +111,13 @@ fn parity(name: &str) {
     }
     assert!(phases.contains('f') && phases.contains('s'), "{name}: the fixture has both kinds of decisions ({phases})");
     assert!(reset.iter().any(|&r| r != 0) && reset[0] == 0, "{name}: the GRU state carries from h0 and is reset in the sequence");
+    let kinds = previous.iter().map(|&p| match action_at(p as usize) {
+        Some(Action::Fight(_)) => 'f',
+        Some(Action::Screen(_)) => 's',
+        None => 'n',
+    });
+    let kinds: String = kinds.collect();
+    assert!(kinds.contains('f') && kinds.contains('s') && kinds.contains('n'), "{name}: previous actions of every kind ({kinds})");
 }
 
 #[test]
@@ -131,6 +155,11 @@ fn weights_of_another_encoder_or_shape_are_refused() {
         m.insert("architecture".into(), a);
     })
     .contains("pool_heads_new"));
+    assert!(rewrite(&|m, _| {
+        let a = m["architecture"].replace("\"previous_action\": 40", "\"previous_action\": 41");
+        m.insert("architecture".into(), a);
+    })
+    .contains("previous action of 41"));
     assert!(rewrite(&|_, drop| drop.push("ln_f.bias".into())).contains("no ln_f.bias"));
     assert_eq!(rewrite(&|_, _| {}), "", "the file as it was is taken");
 }

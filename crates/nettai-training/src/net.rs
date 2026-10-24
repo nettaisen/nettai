@@ -15,9 +15,11 @@
 //!   its set's MLP, plus its set's vector and its names' embeddings; the
 //!   transformer layers over the present tokens of the sets that aren't
 //!   pool-only; a final LayerNorm; the attention pool and the one-token
-//!   sets read directly; the GRU (gates r, z, n); the heads (the fight's
-//!   actions, the custom screen's keys and its pointer over the slots, the
-//!   value). Absent tokens are never read.
+//!   sets read directly; the GRU (gates r, z, n) over the summary and the
+//!   previous decision's action ([`Memory::took`]: the network decides from
+//!   a view its reaction delay old, so it is told what it pressed since);
+//!   the heads (the fight's actions, the custom screen's keys and its
+//!   pointer over the slots, the value). Absent tokens are never read.
 //! - **Choosing** ([`choose`]): the masked logits of the decision's head,
 //!   and a level's knobs (greedy, or a sample at a temperature, with a
 //!   chance of a random allowed action).
@@ -35,6 +37,30 @@ use std::collections::HashMap;
 /// The weights file's format and its version: anything else is refused.
 pub const FORMAT: &str = "nettai-ai";
 pub const FORMAT_VERSION: u32 = 1;
+
+/// The GRU's input after the summary: the previous decision's action,
+/// one-hot over the fight's actions, the custom screen's, and none (a
+/// round's first decision).
+pub const PREVIOUS_ACTIONS: usize = spec::FIGHT_ACTIONS + spec::SCREEN_ACTIONS + 1;
+
+/// A decision's action, as the next decision's GRU reads it back: a fight
+/// action or a custom screen's (the previous decision may be of the other
+/// phase).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Action {
+    Fight(usize),
+    Screen(usize),
+}
+
+/// The previous action's place in the one-hot (training/MODEL.md §4): a
+/// fight action as itself, a screen action after the fight's, none last.
+pub fn previous_index(last: Option<Action>) -> usize {
+    match last {
+        Some(Action::Fight(a)) => a,
+        Some(Action::Screen(a)) => spec::FIGHT_ACTIONS + a,
+        None => PREVIOUS_ACTIONS - 1,
+    }
+}
 
 /// A reader of safetensors files: an 8-byte little-endian header length,
 /// the header (JSON: each tensor's type, shape and byte range in the data
@@ -200,6 +226,8 @@ struct Architecture {
     layer_norm_eps: f64,
     slots: usize,
     keys: usize,
+    /// The previous action's one-hot width ([`PREVIOUS_ACTIONS`]).
+    previous_action: usize,
     spec: ArchSpec,
 }
 
@@ -375,7 +403,11 @@ pub struct Net {
     /// The one-token sets, in order (read directly), and the pointer's set.
     singles: Vec<usize>,
     pointer: usize,
+    /// The GRU's input weights of the summary, and of the previous action
+    /// by its one-hot's place (a column each, `[PREVIOUS_ACTIONS, 3H]`: the
+    /// one-hot's product is its column).
     gru_ih: Linear,
+    gru_previous: Vec<f32>,
     gru_hh: Linear,
     fight1: Linear,
     fight2: Linear,
@@ -432,10 +464,12 @@ pub struct Output {
     pub value: Option<f32>,
 }
 
-/// A player's state between decisions: the GRU's, and room for a pass (so a
-/// decision allocates nothing).
+/// A player's state between decisions: the GRU's, the last decision's
+/// action, and room for a pass (so a decision allocates nothing).
 pub struct Memory {
     pub h: Vec<f32>,
+    /// What the last decision took (none: a round's first decision is next).
+    pub last: Option<Action>,
     s: Scratch,
 }
 
@@ -471,9 +505,15 @@ struct Scratch {
 }
 
 impl Memory {
-    /// A round's start: the GRU's state zeros.
+    /// A round's start: the GRU's state zeros, and no previous action.
     pub fn reset(&mut self) {
         self.h.fill(0.0);
+        self.last = None;
+    }
+
+    /// The decision just made took `action`: the next one reads it.
+    pub fn took(&mut self, action: Action) {
+        self.last = Some(action);
     }
 }
 
@@ -505,6 +545,7 @@ impl Net {
         for l in &levels {
             need(l.temperature > 0.0 && (0.0..=1.0).contains(&l.epsilon), || format!("level {}'s knobs are out of range", l.name))?;
         }
+        need(arch.previous_action == PREVIOUS_ACTIONS, || format!("a previous action of {} values, this pass's has {PREVIOUS_ACTIONS}", arch.previous_action))?;
         let m = &arch.model;
         let (d, eps) = (m.d, arch.layer_norm_eps as f32);
         need(d > 0 && m.heads > 0 && d % m.heads == 0, || format!("d {d} isn't a multiple of {} heads", m.heads))?;
@@ -571,16 +612,27 @@ impl Net {
             });
         }
         let core = m.hidden + m.summary;
+        // (The GRU's input weights, `[3H, summary + PREVIOUS_ACTIONS]`: the
+        // summary's columns a Linear, the previous action's a column each.)
+        let cols = m.summary + PREVIOUS_ACTIONS;
+        let ih = w.take("gru.weight_ih_l0", &[3 * m.hidden, cols])?;
+        let mut gru_previous = vec![0.0; PREVIOUS_ACTIONS * 3 * m.hidden];
+        for (r, row) in ih.chunks(cols).enumerate() {
+            for (a, &v) in row[m.summary..].iter().enumerate() {
+                gru_previous[a * 3 * m.hidden + r] = v;
+            }
+        }
         let net = Net {
             ln_f: w.norm("ln_f", d, eps)?,
             pool_score: w.linear("pool_score", m.pool_heads, d)?,
             pool_out: w.linear("pool_out", m.summary, (m.pool_heads + singles.len()) * d)?,
             gru_ih: Linear {
-                w: w.take("gru.weight_ih_l0", &[3 * m.hidden, m.summary])?,
+                w: ih.chunks(cols).flat_map(|row| row[..m.summary].iter().copied()).collect(),
                 b: w.take("gru.bias_ih_l0", &[3 * m.hidden])?,
                 rows: 3 * m.hidden,
                 cols: m.summary,
             },
+            gru_previous,
             gru_hh: Linear {
                 w: w.take("gru.weight_hh_l0", &[3 * m.hidden, m.hidden])?,
                 b: w.take("gru.bias_hh_l0", &[3 * m.hidden])?,
@@ -655,6 +707,7 @@ impl Net {
         let hh = self.fight1.rows;
         Memory {
             h: vec![0.0; self.hidden],
+            last: None,
             s: Scratch {
                 t: vec![0.0; self.tokens * d],
                 at: Vec::with_capacity(self.tokens),
@@ -684,10 +737,12 @@ impl Net {
     }
 
     /// One decision from observation `obs` (the encoder's, `spec::SETS`'
-    /// layout): the GRU state `mem.h` carried forward, and the heads asked.
+    /// layout): the GRU state `mem.h` carried forward, the last decision's
+    /// action `mem.last` read (the caller says what this one took, with
+    /// [`Memory::took`]), and the heads asked.
     pub fn forward(&self, obs: &Obs, mem: &mut Memory, heads: Heads) -> Output {
         let d = self.d;
-        let Memory { h, s } = mem;
+        let Memory { h, last, s } = mem;
         // 1. The present tokens, the transformer's first.
         s.at.clear();
         s.slot_at.fill(None);
@@ -801,9 +856,14 @@ impl Net {
             }
         }
         self.pool_out.relu(&s.pool_in, &mut s.z);
-        // 4. The GRU: gates r, z, n.
+        // 4. The GRU: gates r, z, n, its input the summary and the previous
+        // action (one-hot: its column).
         let hd = self.hidden;
         self.gru_ih.apply(&s.z, &mut s.gi);
+        let column = &self.gru_previous[previous_index(*last) * 3 * hd..][..3 * hd];
+        for (g, w) in s.gi.iter_mut().zip(column) {
+            *g += w;
+        }
         self.gru_hh.apply(h, &mut s.gh);
         for i in 0..hd {
             let r = sigmoid(s.gi[i] + s.gh[i]);

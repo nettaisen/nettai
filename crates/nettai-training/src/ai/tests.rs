@@ -92,6 +92,45 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
     }
 }
 
+/// Its network's memory takes each decision's action, the next decision's
+/// GRU input: on the custom screen the slot or key it pointed at, in the
+/// fight the action it holds; the set starting over forgets it with the
+/// GRU's state (a new round's [`Memory::reset`] too).
+#[test]
+fn its_memory_takes_what_each_decision_took() {
+    let game = "exe6";
+    let mut ai = NetAi::of(net(), Level::Normal, 5, fingerprints(game)).unwrap();
+    assert_eq!(ai.mem.last, None);
+    let mut on_screen = false;
+    for ticks in (20..900).step_by(10) {
+        ai.reset();
+        let (_, _, b) = play_fight(game, 9, &mut ai, ticks, 0);
+        if b.round.mode == mode::CUSTOM && ai.round.as_ref().is_some_and(|r| r.decisions > 0) {
+            assert!(matches!(ai.mem.last, Some(Action::Screen(a)) if a < spec::SCREEN_ACTIONS), "{:?}", ai.mem.last);
+            on_screen = true;
+            break;
+        }
+    }
+    assert!(on_screen, "no screen decision in the first custom screen");
+    ai.reset();
+    assert_eq!((ai.mem.last, ai.mem.h.iter().all(|&v| v == 0.0)), (None, true));
+    // (A play that ends 40 ticks into a fight that runs: its last decision a fight one.)
+    let mut in_fight = false;
+    for ticks in (1200..2400).step_by(7) {
+        ai.reset();
+        let (_, runs, _) = play_fight(game, 9, &mut ai, ticks, 0);
+        if runs.len() == ticks as usize && runs[runs.len() - 40..].iter().all(|&r| r) {
+            let held = ai.round.as_ref().unwrap().action as usize;
+            assert_eq!(ai.mem.last, Some(Action::Fight(held)));
+            in_fight = true;
+            break;
+        }
+    }
+    assert!(in_fight, "no play ended in a fight that ran");
+    ai.reset();
+    assert_eq!(ai.mem.last, None);
+}
+
 /// While the fingerprints of the chips its view shows aren't made it
 /// decides nothing (its custom screen waits, asking for them); and what it
 /// is told the player holds changes nothing it does; and as the set starts

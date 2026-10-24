@@ -345,3 +345,76 @@ class FakePool:
         keys = rng.random((E, 2, self.n_keys)) < 0.5
         legal_s = np.concatenate([slot_legal, keys], -1)
         b["legal_screen"][:] = legal_s & (phase == 2)[..., None]
+
+
+# The combo toy (ComboPool) ---------------------------------------------------------------------------------
+
+COMBO = 4  # openers: fight actions 0 .. COMBO-1; opener i's finisher is fight action COMBO + i
+OPEN, FINISH = 0, 1
+
+
+class ComboPool(FakePool):
+    """FakePool with a fight rule a network can play only knowing what it just pressed, as the real env's view is
+    its reaction delay late (§7's previous action):
+
+    - a fight seat's decisions alternate: an opener, then its finisher;
+    - at an opener only one of the `COMBO` openers is allowed, drawn at random (the network reads no legal mask,
+      and nothing in the observation says which);
+    - at the finisher every action is allowed, and the opener's own finisher (`COMBO` + its index) hits;
+    - the general token says which of the two the decision is, and shows the opener two decisions late (the one
+      before the last), too late for its finisher.
+
+    Without its previous action a network can do no better than 1 in `COMBO` finishers right. The screen is
+    FakePool's. Each round's seats report `toy_combo_correct` and `toy_combo_decisions` (finishers)."""
+
+    def __init__(self, *args, envs: int = 8, **kwargs):
+        shape = (envs, 2)
+        self.part = np.zeros(shape, np.int64)  # OPEN or FINISH: the part of the combo the seat's next fight decision is
+        self.opener = np.zeros(shape, np.int64)
+        self.shown = np.full(shape, -1, np.int64)  # the opener before the last, -1 none yet
+        self.combo = np.zeros((*shape, 2), np.int64)  # finishers right, finishers
+        super().__init__(*args, envs=envs, **kwargs)
+        if self.fa < 2 * COMBO or self._spec["sets"]["general"]["width"] < self.fa + 4:
+            raise ValueError("ComboPool: too few fight actions for its openers and finishers")
+
+    def step(self, actions) -> None:
+        a = np.asarray(actions)
+        fight = self.buf["phase"] == 1
+        opening = fight & (self.part == OPEN)
+        finishing = fight & (self.part == FINISH)
+        self.combo[..., 0] += finishing & (a == COMBO + self.opener)
+        self.combo[..., 1] += finishing
+        self.shown = np.where(opening, self.opener, self.shown)
+        self.opener = np.where(opening, a, self.opener)
+        self.part = np.where(opening, FINISH, np.where(finishing, OPEN, self.part))
+        super().step(actions)
+
+    def _round_stat(self, e: int, truncated: bool, result) -> dict[str, Any]:
+        out = super()._round_stat(e, truncated, result)
+        for s in range(2):
+            out["seats"][s]["toy_combo_correct"] = int(self.combo[e, s, 0])
+            out["seats"][s]["toy_combo_decisions"] = int(self.combo[e, s, 1])
+        return out
+
+    def _start_rounds(self, envs: np.ndarray) -> None:
+        super()._start_rounds(envs)
+        self.part[envs] = OPEN
+        self.opener[envs] = 0
+        self.shown[envs] = -1
+        self.combo[envs] = 0
+
+    def _observe(self) -> None:
+        super()._observe()
+        b, fa = self.buf, self.fa
+        fight = b["phase"] == 1
+        finishing = self.part == FINISH
+        g = b["x"]["general"]
+        g[..., 0, :fa] = 0.0
+        g[..., 0, 0] = fight & ~finishing
+        g[..., 0, 1] = fight & finishing
+        e, s = np.nonzero(fight & (self.shown >= 0))
+        g[e, s, 0, 2 + self.shown[e, s]] = 1.0
+        forced = self.rng.integers(0, COMBO, self.part.shape)
+        legal = np.where(finishing[..., None], True, np.arange(fa)[None, None, :] == forced[..., None])
+        b["legal_fight"][:] = legal & fight[..., None]
+        self.target = np.where(finishing, COMBO + self.opener, -1)

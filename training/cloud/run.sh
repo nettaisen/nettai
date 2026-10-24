@@ -5,6 +5,8 @@
 #
 # e.g. training/cloud/run.sh first --config configs/cloud.toml
 #      training/cloud/run.sh first --resume            (continue the run's latest checkpoint)
+#      training/cloud/run.sh second --config configs/cloud.toml --init-from runs/first
+#                                                      (a new run from the first run's latest network)
 #
 # Watch it with `tmux attach -t train-NAME`; see TensorBoard from your machine through an ssh tunnel:
 #   ssh -L 6006:localhost:6006 HOST     then open http://localhost:6006

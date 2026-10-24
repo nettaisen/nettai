@@ -24,7 +24,7 @@ import torch
 from . import checkpoint
 from .config import LEVELS, EnvConfig, Level, config_from_dict
 from .envs import PoolView, make_pool, pool_spec, read_round_stats
-from .model import Model, mask_logits, select
+from .model import Model, mask_logits, previous_action, previous_width, select
 from .spec import Spec, parse_spec
 
 TICKS_PER_MINUTE = 3600
@@ -90,6 +90,9 @@ def run_matches(
             pool.set_seat(np.asarray(es, np.int64), seat, ctl)
             pool.set_delay(np.asarray(es, np.int64), seat, None if ctl != "policy" else level.delay)
     hidden = {i: torch.zeros(S, p.model.cfg.hidden, device=device) for i, p in enumerate(players) if not p.scripted}
+    # Each stream's previous decision's action (none at a round's start), as the network reads it.
+    no_previous = previous_width(spec) - 1
+    previous = torch.full((S,), no_previous, dtype=torch.int64)
     gen = torch.Generator(device=device)
     gen.manual_seed(seed)
     started = np.zeros(E, np.int64)  # rounds ended per env
@@ -119,6 +122,7 @@ def run_matches(
                 started[e] += 1
                 for h in hidden.values():
                     h[2 * e : 2 * e + 2] = 0.0
+                previous[2 * e : 2 * e + 2] = no_previous
         phase = view.phase.to(torch.int64)
         deciding = phase != 0
         actions.fill(0)
@@ -137,10 +141,12 @@ def run_matches(
                     raise RuntimeError(f"{p.name}'s seat has a decision after its first round")
             else:
                 di = idx.to(device)
-                fight, screen, _, h = p.model.step(view.obs(idx, device), hidden[i][di])
+                fight, screen, _, h = p.model.step(view.obs(idx, device), hidden[i][di], previous[idx].to(device))
                 hidden[i][di] = h
                 a, _ = select(mask_logits(fight, lf), mask_logits(screen, ls), ph, level, gen)
-            acts[idx.numpy()] = a.to(torch.int32).cpu().numpy()
+            a = a.cpu()
+            acts[idx.numpy()] = a.to(torch.int32).numpy()
+            previous[idx] = previous_action(a, phase[idx], spec.fight_actions)
         pool.step(actions)
     return records
 

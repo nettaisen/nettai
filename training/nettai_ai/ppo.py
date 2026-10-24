@@ -107,7 +107,8 @@ def ppo_update(
 ) -> dict[str, float]:
     """cfg.epochs passes over truncated-BPTT chunks of cfg.chunk decisions, each from its stored GRU state.
 
-    adv and ret are [S, Tc] on the CPU (compute_gae over the rollout's tensors). The chunks are chosen on the CPU
+    adv and ret are [S, Tc] on the CPU (compute_gae over the rollout's tensors). Each decision is replayed with the
+    previous action the behavior network read, as stored. The chunks are chosen on the CPU
     and each minibatch's indices go to the device without waiting; the statistics stay on the device until the
     end. The ratio is against the behavior policy, whose log-probabilities and values the rollout stores; the
     first epoch's mean ratio and KL (behavior_ratio, behavior_kl) say how far the learner had moved from it."""
@@ -127,6 +128,7 @@ def ppo_update(
     up = lambda t: upload(t, dev)
     legal_f, legal_s, phase_d = up(ro.legal_fight), up(ro.legal_screen), up(ro.phase)
     action_d, logp_d, value_d, reset_d = up(ro.action), up(ro.logp), up(ro.value), up(ro.ep_start)
+    previous_d = up(ro.previous)
     adv_d, ret_d = up(adv), up(ret)
     fa, sa = legal_f.shape[-1], legal_s.shape[-1]
     acc = torch.zeros(len(names), device=dev)
@@ -144,7 +146,7 @@ def ppo_update(
             s, t, valid = idx[0], idx[1], idx[2].bool()
             h0 = ro.h_in[s[:, 0], t[:, 0]]
             reset = reset_d[s, t]
-            fight, screen, value, _ = model.sequence(obs, h0, reset)
+            fight, screen, value, _ = model.sequence(obs, h0, reset, previous_d[s, t])
             phase = phase_d[s, t].to(torch.int64)
             is_f = valid & (phase == 1)
             is_s = valid & (phase == 2)

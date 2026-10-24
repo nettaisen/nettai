@@ -1,11 +1,15 @@
 """Training (§8): recurrent PPO by self-play in a league, on the pool's envs.
 
     uv run python -m nettai_ai.train --run-dir runs/NAME [--config configs/x.toml] [--size large]
-        [--set ppo.lr=1e-4 ...] [--fake] [--resume] [--train-games exe5,exe6] [--eval-games exe4]
+        [--set ppo.lr=1e-4 ...] [--fake] [--resume | --init-from CHECKPOINT] [--train-games exe5,exe6]
+        [--eval-games exe4]
 
 TensorBoard logs go to RUN_DIR/tb, checkpoints to RUN_DIR/checkpoints (each with the config, the git
 commit and the spec), league snapshots to RUN_DIR/snapshots. --resume continues from the latest checkpoint
-with its config (--set and --size still apply on top).
+with its config (--set and --size still apply on top). --init-from starts a new run (update 0, a fresh
+optimizer, league and curriculum) whose network is another run's checkpoint's (`model.warm_start`: its input
+normalization too, and the GRU's previous-action columns zero where the checkpoint's network had none, so it
+plays as that network did), with that checkpoint's model widths and the rest of the config as a new run's.
 
 Collection and the update overlap. A collector thread owns the pool, the league, the curriculum and the
 behavior network (a copy of the learner's weights) and plays rollout N+1 while the learner, the calling
@@ -39,7 +43,7 @@ from .device import Lane, pick_device, pin_torch_threads, synchronize
 from .envs import make_pool, pool_spec
 from .evaluate import Player, evaluate_vs_bots, summarize
 from .league import League
-from .model import TYPICAL, Model, budget_report, count_macs, count_params
+from .model import TYPICAL, Model, budget_report, count_macs, count_params, warm_start
 from .ppo import RunningNorm, compute_gae, ppo_update
 from .rollout import CollectStats, Collector, Rollout, Stopped
 from .spec import parse_spec
@@ -209,7 +213,17 @@ class Evaluator:
 
 
 class Trainer:
-    def __init__(self, cfg: Config, run_dir: str | Path, fake: bool, resume: dict[str, Any] | None = None, log: bool = True):
+    def __init__(
+        self,
+        cfg: Config,
+        run_dir: str | Path,
+        fake: bool,
+        resume: dict[str, Any] | None = None,
+        log: bool = True,
+        init: dict[str, Any] | None = None,
+    ):
+        """resume: a checkpoint of this run to continue; init: another run's checkpoint whose network a new run
+        starts from (`model.warm_start`), with "path" naming it."""
         self.cfg = cfg
         self.run_dir = Path(run_dir)
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -231,8 +245,9 @@ class Trainer:
             self.curriculum.load_state_dict(resume["curriculum"])
         self.pool = make_pool(cfg.env, fake, hp=self.curriculum.range(), holdout_mode="exclude")
         self.spec = parse_spec(pool_spec(self.pool))
-        if resume is not None and resume["spec"]["hash"] != self.spec.hash:
-            raise SystemExit(f"resume: the checkpoint's spec hash {resume['spec']['hash']} isn't the pool's {self.spec.hash}")
+        for what, state in (("resume", resume), ("init-from", init)):
+            if state is not None and state["spec"]["hash"] != self.spec.hash:
+                raise SystemExit(f"{what}: the checkpoint's spec hash {state['spec']['hash']} isn't the pool's {self.spec.hash}")
         self.model = Model(self.spec, cfg.model).to(self.device)
         self.opt = torch.optim.Adam(self.model.parameters(), lr=cfg.ppo.lr, eps=cfg.ppo.adam_eps)
         self.norm = RunningNorm(self.spec, self.device)
@@ -240,6 +255,12 @@ class Trainer:
         self.update = 0
         self.decisions = 0
         self.fixture: dict[str, Any] | None = None
+        # The checkpoint a warm-started run's network came from (provenance, kept in its checkpoints).
+        self.init_from: dict[str, Any] | None = None
+        if init is not None:
+            warm_start(self.model, init["model"])
+            self.norm.load_state_dict(init["norm"])
+            self.init_from = {"path": str(init["path"]), "update": init["update"], "decisions": init["decisions"], "git": init["git"]}
         if resume is not None:
             self.model.load_state_dict(resume["model"])
             self.opt.load_state_dict(resume["optimizer"])
@@ -247,6 +268,7 @@ class Trainer:
             self.update = resume["update"]
             self.decisions = resume["decisions"]
             self.fixture = resume.get("fixture")
+            self.init_from = resume.get("init_from")
         synchronize(self.device)
         # The collector's side, made on its lane: the league (its snapshots' networks), the behavior network,
         # the two rollouts.
@@ -273,7 +295,7 @@ class Trainer:
         self.history: list[dict[str, Any]] = []
         self.evaluator = Evaluator(self)
         self.league.start()
-        if resume is None:
+        if resume is None and init is None:  # (a warm start keeps its network's normalization)
             self._warmup()
         (self.run_dir / "config.json").write_text(json.dumps(config_to_dict(cfg), indent=2) + "\n")
 
@@ -414,6 +436,7 @@ class Trainer:
             "legal_screen": ro.legal_screen[s, :k].clone(),
             "phase": ro.phase[s, :k].clone(),
             "reset": ro.ep_start[s, :k].clone(),
+            "previous": ro.previous[s, :k].clone(),
             "h0": cpu(ro.h_in[s, 0]),
         }
 
@@ -470,6 +493,7 @@ class Trainer:
             "league": shared["league"],
             "curriculum": shared["curriculum"],
             "fixture": self.fixture,
+            "init_from": self.init_from,
             "params": count_params(self.model),
         }
 
@@ -485,6 +509,11 @@ def main() -> None:
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="override a config value")
     ap.add_argument("--fake", action="store_true", help="train on FakePool instead of nettai_gym")
     ap.add_argument("--resume", action="store_true", help="continue the run's latest checkpoint")
+    ap.add_argument(
+        "--init-from", default=None, metavar="CHECKPOINT",
+        help="start a new run whose network is this checkpoint's (a file, or a run directory's latest): update 0, "
+        "a fresh optimizer, league and curriculum, the checkpoint's model widths and input normalization",
+    )
     ap.add_argument("--train-games", default=None, help="comma-separated: the games trained on (env.games)")
     ap.add_argument("--eval-games", default=None, help="comma-separated: games evaluated every eval.every updates")
     ap.add_argument("--updates", type=int, default=None, help="stop after this many updates in this process")
@@ -494,15 +523,24 @@ def main() -> None:
         overrides.append(f"env.games={json.dumps(a.train_games.split(','))}")
     if a.eval_games:
         overrides.append(f"eval.games={json.dumps(a.eval_games.split(','))}")
-    resume = None
+    if a.resume and a.init_from:
+        raise SystemExit("--resume continues this run; --init-from starts a new one: not both")
+    resume = init = None
     if a.resume:
         resume = checkpoint.load(a.run_dir)
         cfg = load_config(a.config, overrides, a.size, base=resume["config"])
     else:
         if (Path(a.run_dir) / "checkpoints" / "latest").exists():
             raise SystemExit(f"{a.run_dir} already has checkpoints: pass --resume, or another --run-dir")
-        cfg = load_config(a.config, overrides, a.size)
-    trainer = Trainer(cfg, a.run_dir, a.fake, resume)
+        base = None
+        if a.init_from:
+            init = checkpoint.load(a.init_from)
+            init["path"] = checkpoint.resolve(a.init_from)
+            base = {"model": init["config"]["model"]}
+        cfg = load_config(a.config, overrides, a.size, base=base)
+    trainer = Trainer(cfg, a.run_dir, a.fake, resume, init=init)
+    if init is not None:
+        print(f"warm start from {init['path']} (update {init['update']}, {init['decisions']:,} decisions)")
     m = trainer.model
     print(f"device {trainer.device}, {count_params(m):,} parameters, spec {trainer.spec.hash[:12]}, git {trainer.git['commit'][:10]}{' (dirty)' if trainer.git['dirty'] else ''}")
     worst = count_macs(trainer.spec, cfg.model, None)

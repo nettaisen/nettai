@@ -11,7 +11,7 @@ import torch
 from nettai_ai.config import load_config
 from nettai_ai.envs import PoolView
 from nettai_ai.fake import FakePool
-from nettai_ai.model import Model, mask_logits
+from nettai_ai.model import Model, mask_logits, previous_action
 from nettai_ai.rollout import StepBatch, tokens_to_obs
 from nettai_ai.spec import parse_spec
 from nettai_ai.train import Trainer
@@ -58,7 +58,9 @@ class Recording(Trainer):
                 # A stream's first decision may be the last rollout's open one, played by that rollout's version.
                 carried = t == 0 and self.carried is not None and bool(self.carried[0][s])
                 net = nets[self.carried[1] if carried else item.behavior]
-                fight, screen, _, h = net.step(ro.obs(torch.tensor([s]), torch.tensor([t])), ro.h_in[s, t].unsqueeze(0))
+                fight, screen, _, h = net.step(
+                    ro.obs(torch.tensor([s]), torch.tensor([t])), ro.h_in[s, t].unsqueeze(0), ro.previous[s, t].unsqueeze(0)
+                )
                 if int(ro.phase[s, t]) == 1:
                     logits = mask_logits(fight, ro.legal_fight[s, t].unsqueeze(0))
                 else:
@@ -67,6 +69,11 @@ class Recording(Trainer):
                 assert torch.allclose(logp, ro.logp[s, t], atol=1e-5), (item.update, s, t, float(logp), float(ro.logp[s, t]))
                 if t + 1 < n and not bool(ro.ep_start[s, t + 1]):
                     assert torch.allclose(h[0], ro.h_in[s, t + 1], atol=1e-5)  # the GRU state it went on with
+                    # and the action it took is the next decision's previous action
+                    took = previous_action(ro.action[s, t], ro.phase[s, t].long(), self.spec.fight_actions)
+                    assert int(ro.previous[s, t + 1]) == int(took), (item.update, s, t)
+                if bool(ro.ep_start[s, t]):
+                    assert int(ro.previous[s, t]) == net.no_previous
                 checked += 1
         self.carried = (ro.open >= 0, item.behavior)
         return checked
@@ -111,7 +118,8 @@ def test_compact_tokens_are_the_same_input(tiny_cfg):
     for _ in range(3):
         order = (view.phase != 0).nonzero().squeeze(-1).flip(0)  # any order
         n = len(order)
-        step = batch.load(order)
+        prev = torch.randint(0, m.n_previous, (n,), generator=g)
+        step = batch.load(order, prev)
         dense = tokens_to_obs(spec, tiny_cfg.pointer_set, step.tokens, step.off, step.cnt, full, dense=True)
         pool_obs = view.obs(order, torch.device("cpu"))
         for s in spec.sets:
@@ -121,8 +129,8 @@ def test_compact_tokens_are_the_same_input(tiny_cfg):
             assert torch.equal(dense["ids"][s.name][mask], pool_obs["ids"][s.name][mask])
         h = torch.randn(n, tiny_cfg.hidden, generator=g)
         with torch.no_grad():
-            a = m.step(step.obs(0, n), h)
-            b = m.step(pool_obs, h)
+            a = m.step(step.obs(0, n), h, step.previous)
+            b = m.step(pool_obs, h, prev)
         for x, y in zip(a, b):
             assert torch.allclose(torch.nan_to_num(x, neginf=-1e9), torch.nan_to_num(y, neginf=-1e9), atol=1e-5)
         acts = torch.zeros(view.S, dtype=torch.int32)

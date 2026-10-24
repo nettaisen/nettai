@@ -1,7 +1,8 @@
 """The parity fixture of net.rs (crates/nettai-training/src/net/tests.rs), made with the trainer's own model and
 export: a network of `nettai_ai.model.Model` on the real pool's spec, small widths, its parameters drawn at random
 (wider than the trainer's initialization, so its outputs differ from decision to decision), and decisions recorded
-from the real pool (`nettai_gym`), of the three games, with what the network computes for them, step by step from h0
+from the real pool (`nettai_gym`), of the three games, each with the previous action its stream took (none at a game's
+first, where the GRU state is reset), with what the network computes for them, step by step from h0
 (`nettai_ai.export.save_weights`, `save_fixture`).
 
     cd training && NETTAI_PACKS=<packs> uv run --no-sync python \
@@ -26,7 +27,7 @@ import nettai_gym
 from nettai_ai.config import LEVELS, ModelConfig
 from nettai_ai.envs import PoolView, pool_spec
 from nettai_ai.export import save_fixture, save_weights
-from nettai_ai.model import FORMAT, FORMAT_VERSION, Model
+from nettai_ai.model import FORMAT, FORMAT_VERSION, Model, previous_action, previous_width
 from nettai_ai.spec import parse_spec
 
 SMALL = dict(d=8, heads=2, layers=2, ffn=16, token_hidden=8, pool_heads=2, summary=12, hidden=10, head_hidden=12, pointer_hidden=6)
@@ -36,12 +37,14 @@ SCREEN, FIGHT = 2, 3
 
 
 def record(game: str, cache: str | None, seed: int) -> list[dict]:
-    """Seat 0's decisions of one env of `game`, random allowed actions on both seats, through two custom screens."""
+    """Seat 0's decisions of one env of `game`, random allowed actions on both seats, through two custom screens,
+    each with the previous action seat 0 took (none at its first)."""
     pool = nettai_gym.Pool(games=[game], envs=1, threads=8, seed=seed, cache=cache)
     spec = parse_spec(pool_spec(pool))
     view = PoolView(pool, spec)
     rng = np.random.default_rng(seed)
     out, screens, was_screen = [], 0, False
+    previous = previous_width(spec) - 1
     for _ in range(4000):
         if view.phase[0] != 0:
             obs = view.obs(torch.tensor([0]), torch.device("cpu"))
@@ -50,6 +53,7 @@ def record(game: str, cache: str | None, seed: int) -> list[dict]:
                 "legal_fight": view.legal_fight[0].clone(),
                 "legal_screen": view.legal_screen[0].clone(),
                 "phase": int(view.phase[0]),
+                "previous": previous,
             })
             is_screen = int(view.phase[0]) == 2
             screens += is_screen and not was_screen
@@ -64,7 +68,11 @@ def record(game: str, cache: str | None, seed: int) -> list[dict]:
             if phase:
                 allowed = legal.nonzero().squeeze(-1).numpy()
                 actions[0, seat] = int(rng.choice(allowed))
+                if seat == 0:
+                    previous = int(previous_action(torch.tensor(actions[0, 0]), torch.tensor(phase), spec.fight_actions))
         pool.step(actions)
+        if bool(view.done[0]):  # a new round: no previous action
+            previous = previous_width(spec) - 1
     return out
 
 
@@ -119,6 +127,8 @@ def main() -> None:
         starts.add(at)
         at += len(seq)
     reset = torch.tensor([i in starts and i > 0 for i in range(len(flat))])
+    # Each decision's previous action as its stream took it; none where the GRU state is reset.
+    previous = torch.tensor([model.no_previous if reset[i] else d["previous"] for i, d in enumerate(flat)])
     fx = {
         k: {s.name: torch.stack([d["obs"][k][s.name] for d in flat]) for s in spec.sets} for k in ("x", "ids", "mask")
     } | {
@@ -126,6 +136,7 @@ def main() -> None:
         "legal_screen": torch.stack([d["legal_screen"] for d in flat]),
         "phase": torch.tensor([d["phase"] for d in flat], dtype=torch.int8),
         "reset": reset,
+        "previous": previous,
         "h0": torch.randn(cfg.hidden, generator=gen),
     }
     meta = {
@@ -143,7 +154,8 @@ def main() -> None:
     save_weights(model, out / f"{name}.safetensors", meta)
     save_fixture(model, fx, out / f"{name}.fixture.safetensors", {k: meta[k] for k in ("format", "format_version", "spec_hash")})
     phases = "".join("f" if d["phase"] == 1 else "s" for d in flat)
-    print(f"wrote {out}/{name}.safetensors and {name}.fixture.safetensors: {len(flat)} decisions ({phases}), spec {spec.hash}")
+    kinds = "".join("n" if p == model.no_previous else ("f" if p < spec.fight_actions else "s") for p in previous.tolist())
+    print(f"wrote {out}/{name}.safetensors and {name}.fixture.safetensors: {len(flat)} decisions ({phases}), previous actions ({kinds}), spec {spec.hash}")
 
 
 if __name__ == "__main__":

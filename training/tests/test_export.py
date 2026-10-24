@@ -10,6 +10,7 @@ from safetensors import safe_open
 
 from nettai_ai import checkpoint
 from nettai_ai.config import load_config
+from nettai_ai.curriculum import Curriculum
 from nettai_ai.envs import PoolView
 from nettai_ai.export import export, load_weights, model_from_checkpoint, run_fixture
 from nettai_ai.model import FORMAT
@@ -48,8 +49,9 @@ def test_export_round_trip(tmp_path: Path):
     idx = (view.phase != 0).nonzero().squeeze(-1)
     obs = view.obs(idx, torch.device("cpu"))
     h = torch.randn(len(idx), original.cfg.hidden)
+    prev = torch.randint(0, original.n_previous, (len(idx),))
     with torch.no_grad():
-        a, b = original.step(obs, h), rebuilt.step(obs, h)
+        a, b = original.step(obs, h, prev), rebuilt.step(obs, h, prev)
     for x, y in zip(a, b):
         assert torch.equal(x, y)
 
@@ -60,9 +62,55 @@ def test_export_round_trip(tmp_path: Path):
     assert n == 8 and t["fight"].shape == (n, 20) and t["screen"].shape == (n, 19) and t["hidden"].shape[0] == n
     fixture = {
         k: {s.name: t[f"{k}.{s.name}"] for s in tr.spec.sets} for k in ("x", "ids", "mask")
-    } | {k: t[k] for k in ("legal_fight", "legal_screen", "phase", "reset", "h0")}
+    } | {k: t[k] for k in ("legal_fight", "legal_screen", "phase", "reset", "previous", "h0")}
     again = run_fixture(rebuilt, fixture)
     for k in ("fight_raw", "screen_raw", "fight", "screen", "value", "hidden"):
         assert torch.equal(again[k], t[k]), k
+    # The previous actions as the rollout recorded them: none at a round's first decision.
+    prev = t["previous"]
+    assert int(prev.min()) >= 0 and int(prev.max()) < rebuilt.n_previous
+    assert (prev[t["reset"]] == rebuilt.no_previous).all()
     # Masked entries are -inf exactly where the legal mask is false.
     assert torch.equal(torch.isinf(t["fight"]), ~t["legal_fight"])
+
+
+def test_a_warm_started_run_starts_from_the_checkpoints_network(tmp_path: Path):
+    """--init-from: a new run (update 0, a fresh optimizer, league and curriculum) whose network is a checkpoint's,
+    its input normalization too, from a checkpoint whose network read no previous action (the first cloud run's:
+    its GRU's input the summary alone): its play starts as that network's, and its checkpoints say where it came
+    from."""
+    tr = tiny_run(tmp_path)
+    state = checkpoint.load(tr.run_dir)
+    summary = state["config"]["model"]["summary"]
+    state["model"]["gru.weight_ih_l0"] = state["model"]["gru.weight_ih_l0"][:, :summary].clone()
+    state["path"] = checkpoint.resolve(tr.run_dir)
+    over = [
+        'env.games=["exe6"]', "env.envs=6", "env.threads=1", "ppo.steps=12", "ppo.chunk=6", "ppo.epochs=1",
+        "ppo.minibatch_chunks=4", "run.updates=1", "run.device='cpu'",
+    ]
+    cfg = load_config(None, over, base={"model": state["config"]["model"]})
+    warm = Trainer(cfg, tmp_path / "warm", fake=True, log=False, init=state)
+    assert warm.update == 0 and warm.decisions == 0 and not warm.league.snapshots and not warm.opt.state
+    assert warm.curriculum.state_dict() == Curriculum(cfg.curriculum, cfg.run.updates).state_dict()
+    for k, v in warm.model.state_dict().items():
+        if k == "gru.weight_ih_l0":
+            assert torch.equal(v[:, :summary], state["model"][k]) and not v[:, summary:].any()
+        else:
+            assert torch.equal(v, state["model"][k]), k
+    assert all(torch.equal(warm.norm.state_dict()["mean"][n], state["norm"]["mean"][n]) for n in state["norm"]["mean"])
+    # The behavior network plays it too, and whatever the previous action, as the checkpoint's network did.
+    original = model_from_checkpoint(checkpoint.load(tr.run_dir))
+    view = PoolView(warm.pool, warm.spec)
+    idx = (view.phase != 0).nonzero().squeeze(-1)
+    obs = view.obs(idx, torch.device("cpu"))
+    h = torch.randn(len(idx), original.cfg.hidden)
+    with torch.no_grad():
+        original.gru.weight_ih_l0[:, summary:] = 0  # the checkpoint's network: no previous action read
+        want = original.step(obs, h, torch.zeros(len(idx), dtype=torch.long))
+        got = warm.behavior.step(obs, h, torch.randint(0, warm.model.n_previous, (len(idx),)))
+    for x, y in zip(want, got):
+        assert torch.allclose(torch.nan_to_num(x, neginf=-1e9), torch.nan_to_num(y, neginf=-1e9), atol=1e-6)
+    warm.train()
+    saved = checkpoint.load(warm.save())
+    assert saved["update"] == 1 and saved["init_from"]["update"] == state["update"]
+    assert saved["init_from"]["path"] == str(state["path"])
