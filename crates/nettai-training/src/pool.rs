@@ -197,6 +197,8 @@ pub type PairNamed = (String, String, String, f32);
 /// N envs on persistent worker threads.
 pub struct Pool {
     games: Vec<String>,
+    /// What the envs were made with.
+    config: Config,
     made: Arc<Vec<Game>>,
     workers: Vec<Worker>,
     shared: Arc<Shared>,
@@ -264,7 +266,7 @@ impl Pool {
                 .map_err(|e| format!("a worker thread: {e}"))?;
             workers.push(Worker { tx, rx, thread: Some(thread) });
         }
-        let mut pool = Pool { games: cfg.games.clone(), made: games, workers, shared, buffers };
+        let mut pool = Pool { games: cfg.games.clone(), config: cfg.env.clone(), made: games, workers, shared, buffers };
         // (The envs made, each at its first decision.)
         pool.run(|| Cmd::Start)?;
         Ok(pool)
@@ -272,6 +274,11 @@ impl Pool {
 
     pub fn games(&self) -> &[String] {
         &self.games
+    }
+
+    /// What the envs were made with (their `k`, their screen decisions...).
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     /// Each game's pairs of chips (setup key, payoff key, the condition as
@@ -387,12 +394,15 @@ impl Pool {
         self.each(Some(envs), |env| env.set_delay(seat, ticks))
     }
 
-    /// Both sides' base HP drawn from `lo` to `hi`, from the next rounds.
-    pub fn set_hp(&mut self, lo: u16, hi: u16) -> Result<(), String> {
-        if lo == 0 || lo > hi {
+    /// Both sides' base HP drawn from `lo` to `hi` (none: each side's as
+    /// its build has it), from the next rounds.
+    pub fn set_hp(&mut self, hp: Option<(u16, u16)>) -> Result<(), String> {
+        if let Some((lo, hi)) = hp
+            && (lo == 0 || lo > hi)
+        {
             return Err(format!("HP {lo} to {hi}"));
         }
-        self.each(None, |env| env.set_hp(lo, hi))
+        self.each(None, |env| env.set_hp(hp))
     }
 
     /// The chips held out of training, from the next rounds (§6.6).

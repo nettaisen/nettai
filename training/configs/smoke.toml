@@ -1,0 +1,24 @@
+# A short local run: small pool, small batches. `--fake` runs it on FakePool.
+[env]
+games = ["exe6"]
+envs = 16
+threads = 4
+
+[ppo]
+steps = 32
+chunk = 16
+epochs = 2
+minibatch_chunks = 8
+norm_warmup_steps = 8
+
+[league]
+snapshot_every = 5
+
+[curriculum]
+min_rounds = 10
+max_updates = 20
+
+[run]
+updates = 20
+checkpoint_every = 10
+device = "cpu"

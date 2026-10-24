@@ -100,7 +100,7 @@ all zeros. Widths as built (`spec.rs` names every feature; `spec()` lists them):
 | objects | 48 | 119 | kind, identity, action | every object seen, actors first, then attacks, then effects: pool, identity class (virus, field object, navi, player, none), side (own, other, neutral), own or other player, panel and next panel, sub-panel offset, velocity, facing toward the other side, HP (has, value, max, share), damage, element and its secondary bits, collision (has, own/other attack, own/other body, other bodies, neutral, floating, blocker, breaks guard, pierces invisibility, ground only), the panels it is registered on, 21 status bits, status timers (own side's only), barrier (and its HP, own side's only), actor (charge, B's, lockout, chips held where shown), navi action (the engine's 11), animation |
 | chips | 7 | 250 | chip, changes_to, leaves, kind_1, kind_2, kind_3 | 6 own hand (next first), then the other's last used chip as its telop named it. Each: its role, hand place; what the record says (element, class, this copy's code, how it is used, the flag, extra flag and trait bits, trap kind, modifier kind, damage formula kind, damage, MB, hit strength, lockout, a Program Advance's result, a link navi's own chip, codes); in hand, damage as shown, bonus and marks; the used chip's damage, bonus, x2; and its fingerprint, 114 (§3.1), whose names are the token's ids after the chip's |
 | slots | 12 | 250 | as chips (the chip, or a button's name) | the custom screen's 12 slots in the screen's order, what its pointer points at (the trainer's requirement: a set of their own, named `slots`), with the chips' features: the slot, its chip's record, the slot's kind and state, cursor, pick order, button uses, marks; the pointer (legal, refused, steps away); what picking it would add (§4.2); its chip's fingerprint |
-| rules | 96 | 14 | field, value | own navi stats of its game's own, then own rules' state: one token a scalar (a record's scalars one level deep, an array's elements each, lists left out; EXE6 has 43, EXE5 79, EXE4 49), its source, type (bool, number, enum, reference, code, other), value (set, /100, signed log, enum index), its place in an array |
+| rules | 96 | 14 | field, value | own navi stats of its game's own, then own rules' state: one token a scalar that isn't at its type's default (zero, as a round's state starts: absent means default), a record's scalars one level deep, an array's elements each, lists left out (EXE6 has 43 such scalars, EXE5 79, EXE4 49; a view holds 3 to 10 tokens in EXE6, 1 to 6 in EXE5, 2 to 8 in EXE4); its source, type (bool, number, enum, reference, code, other), value (set, /100, signed log, enum index), its place in an array |
 | forms | 12 | 22 | form | own form, the other's as it shows, and on the custom screen the forms its window offers (`form_list`) and a button's offer (`offer`): role, window place, marked, cursor, chosen; element, weakness bits, base form, buster bonus, chip bonus, null bonus, charged chips |
 
 The attack log is in the panel tokens rather than a set of its own (the coordinator's change: fewer tokens). The
@@ -291,14 +291,23 @@ round is at max power (HP 1000 and max levels, as every player's build is) unles
   (most players play it) and otherwise any of them;
 - each fact of forms the build chooses (`Builds::form_choices`: the version, a form list) picked at random: one form,
   or a list full half the time and otherwise of a random length; a random preset of each choice (`take_preset`);
-- with chance `randomize` (default 0.75), every other fact a build states drawn: not the engine's roles, not those no
-  build states (`never_stated`), not a choice's facts, and not a list of other navis (a side's party: the env plays
-  no switch to one, and party battles are out of scope for now). A fact is drawn from what its type allows (a flag, a
-  variant, a definition of the game's, a small number below 8); a list is filled an entry at a time to a random length
-  (16 at most), each entry kept only where the rules' `validate` and `build_check` say nothing of it, asked of the
-  side's round set up with its setup block changed in place (they read the setup: no new battle a check); a single
-  fact they say something of goes back to its default. The NaviCust and the patch cards come out of this, through
-  the rules' own checks, with no knowledge of a board in Rust;
+- with chance `randomize` (default 0.75), what the app's build creator lets a player change besides drawn, and only
+  that, everything else as the creator leaves it (the user's standing rule: everyone at max power; a setup never offers
+  HP, Regular memory, levels or sun). The creator's tabs edit the engine's roles (the navi, the folder, its Regular and
+  tag chips), the facts of forms, the choices (by their presets), and its lists (a board's pieces and size, the patch
+  cards, the auto battle places, the party); every other fact keeps the new build's value, and `Builds::as_built`
+  puts those no build states (`never_stated`) back at the rules' defaults. So the filler draws the lists a build
+  states (not a list of other navis: a side's party, whose switching the env doesn't play, out of scope for now) and
+  no single fact: a board's size stays the new build's, the largest. An entry's fields are drawn from what their types
+  allow (a flag, a variant, a definition of the game's, a number below 8: the creator's own ranges, a board's size,
+  are its screens' code, not data a crate below the app reads), and an entry is kept only where the rules'
+  `validate` and `build_check` say nothing of it, asked of the side's round set up with its setup block changed in
+  place. EXE4's builds data didn't name `sp_times` among the facts no build states (EXE5's and EXE6's do; no tab
+  offers it): it does now. Before, the filler drew single facts too: a board's size of none left MegaMan with no
+  NaviCust and his fresh 100 HP (max HP from 1 in EXE6, 40 in EXE5; 3.5% and 2.5% of builds under 100), `beast_out`
+  locked, random `bug_frags`. Now, over 60 builds a game, every seat's max HP is the creator's overview's (a test
+  checks it, and that every single fact is a new build's): EXE6 800 to 2,000 (median 1,320: HP+ programs up, a card's or
+  a bug's HP down), EXE5 600 to 1,400 (its team navis at their last level's), EXE4 997 to 2,700, none under 500;
 - a folder (`folders::random_folder_of`, which leans toward two codes as people's folders do) of the chips the rules
   let it hold, those held out left out or favored (`chip_holdout`, §6.6); its Regular chip as the draw gives it, and
   tag chips half the time where the rules take them;
@@ -314,9 +323,10 @@ Measured (release, the packs, 20 builds a game): every build accepted on its fir
 at the defaults (EXE6, EXE5, EXE4), 7.4, 9.1 and 8.4 ms with every fact drawn; list entries kept 25, 19 and 23% (NaviCust
 pieces the board refuses, mostly).
 
-A round between two builds is a match of one round on a random arena of the game's, both sides' base HP the drawn HP
-where the rules take one (`PlayerFact::BaseHp`); a navi whose HP is its level's (a link navi) keeps its own, as the
-rules refuse a base HP for it.
+A round between two builds is a match of one round on a random arena of the game's, each side's HP as its build has
+it (the creator's). With the pool's `hp` option set, both sides' base HP is the drawn HP where the rules take one
+(`PlayerFact::BaseHp`); a navi whose HP is its level's (a link navi) keeps its own, as the rules refuse a base HP for
+it.
 
 ### 6.3 Who opens the custom screen
 
@@ -334,7 +344,8 @@ nettai-frontend's training session's (`Training`), done in the env on the battle
 - **The round's result:** +1 for a win, −1 for a loss, 0 for a draw. Time-up counts as its judgment says. A round
   cut off is 0 for both, with `truncated` set.
 - **HP difference as it happens**, weighted down over training: (HP the other lost / the other's max HP − HP it lost
-  / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000).
+  / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000). A round's end
+  credits the ended round's alone: what a seat gains in the next round before its first decision is no transition's.
 
 Nothing else. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
 winning.
@@ -383,7 +394,8 @@ pool = nettai_gym.Pool(
     k=4,                             # ticks a fight decision is held
     delay=(6, 30),                   # reaction delay in ticks, drawn per round per seat
     max_fight_ticks=18000,
-    hp=(1000, 1000),                 # both sides' base HP, drawn per round (where the navi takes one)
+    hp=None,                         # (lo, hi): both sides' base HP drawn per round, where the navi takes one;
+                                     # None: each side's as its build has it (the creator's)
     chip_holdout=(0.0, 0, "exclude"),  # (fraction, seed, mode): chips held out of training, below
     practice=0.25,                   # the chance each practice option is on in a round
     randomize=0.75,                  # the chance a build draws every fact it states (§6.2)
@@ -395,6 +407,7 @@ spec = pool.spec()
 #  "screen_keys": ["up", "down", "left", "right", "a", "b", "start"],
 #  "chip_tokens": {"hand": (0, 6), "used": (6, 1)},                              # (first, count) in "chips"
 #  "fingerprint": 114, "fingerprint_features": [(name, width), ...], "games": [...],
+#  "k": 4, "screen_decisions": 24,                                              # what the envs use (not hashed)
 #  "sets": {name: {"count": C, "width": W, "ids": I, "id_names": [...],         # sets in a fixed order:
 #                  "features": [(name, width), ...]}, ...}}                     # general, panels, objects,
 #                                                                               # chips, slots, rules, forms
@@ -417,7 +430,7 @@ pool.step(actions)                    # int32 [E, 2]; read only where phase != 0
                                       # allowed is refused whole (an exception), nothing moved
 pool.set_seat(envs, seat, controller) # "policy", "still", "mover", "masher", "shooter", "dodger"
 pool.set_delay(envs, seat, ticks)     # pins the delay (evaluation); None draws again
-pool.set_hp(lo, hi)
+pool.set_hp(lo, hi)                   # set_hp(None): each side's as its build has it
 pool.set_chip_holdout(fraction, seed, mode)
 pool.round_stats()                    # rounds ended since the last call (§9's measures):
                                       # [{"env": int, "ticks": int, "seats": [dict, dict], "game", "fight_ticks",
@@ -449,35 +462,121 @@ nettai_gym.holdout_unit(seed, key)    # a chip key's number in [0, 1) with the s
 
 ## 7. The network
 
-- **Encoder.** Each token set has its own small MLP to width 128, plus its hashed name's embedding. Two transformer
-  layers mix the tokens, and an attention pool reads them out.
-- **Memory.** A GRU of 256 carries the round. It remembers chips the other side used, its habits, and how long since
-  the last custom screen.
-- **Heads.**
-  - The fight's 20 actions.
-  - The custom screen's pointer: a score for each slot token and each key, masked to what is allowed.
-  - A value.
-- **Budget.** Each decision may cost at most about 3 million multiply-adds. That is under half a millisecond on the
-  desktop and a few milliseconds in the browser's WebAssembly, which has no SIMD in our build today. The budget
-  sets the widths; training tries sizes within it.
+As built in `training/nettai_ai/model.py`. `training/MODEL.md` gives the exact computation the Rust port
+follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates, how masks apply.
+
+- **Tokens.** Each token set has its own small MLP (its floats, normalized by running statistics and clipped at
+  ±5, to 32, ReLU, to d), plus a learned vector for the set, plus its names. Every hashed name comes as **two
+  ids**, from two seeds of the same hash (the coordinator, 2026-10-23); both are looked up in one table shared by
+  every set (8,192 × d) and summed in. Id 0 is no name. Chip tokens carry a **fingerprint block** of fixed width
+  in the spec, zeros until §12's step 6 fills it; nothing reads it specially.
+- **Mixing.** One pre-LayerNorm transformer layer (4 heads, feed-forward 2 × d, ReLU) over the present tokens of
+  every set but the **pool-only** ones (`model.pool_only`, the rules' scalars: 43 tokens every decision in EXE6,
+  79 in EXE5, 49 in EXE4, where §3's table expected up to 24). Their relations to the field matter little, and
+  in the transformer they would be most of its cost; the summary's pool reads them. Absent tokens are skipped,
+  not computed and masked.
+- **The chips set's two parts.** The encoder sends the hand and the other's used chip as one `chips` set of 7
+  tokens and says where each part is (`spec()["chip_tokens"]`: hand 0–5, used 6). The trainer reads them as two
+  sets, `hand` and `used`, in `chips`' place (each its own MLP, and the used chip a set of one, read directly
+  below); the weights' architecture records the split for the Rust side. The pointer's set is the encoder's
+  `slots`.
+- **Summary.** An attention pool (4 learned scores over the tokens, a weighted sum each), plus the token of
+  every set of one (`general`, the other side's `used` chip) read directly, to 128. Reading those directly was
+  the difference on FakePool's toy between learning the fight (its target is in the general token) in 40
+  updates, 71% of targets pressed, and not, 19%: a pool over 66 tokens starts out reading the one that matters
+  at 1/66.
+- **Memory.** A GRU of 256.
+- **Heads**, on the GRU's state and the summary:
+  - the fight's 20 actions;
+  - the custom screen's pointer: a score for each slot token (an MLP over the slot's token and the rest) and 7
+    key logits, 19 in all;
+  - a value.
+
+  Legal masks are −inf before the softmax; an absent slot is −inf too.
+- **Name dropout** (the coordinator, 2026-10-23). In training, each of the learner's tokens loses its name ids
+  with probability 0.2 (a setting), in the rollout and, as stored, in the update; never in evaluation, export or
+  play. A chip or object kind the network has never seen is then not noise: it has learned to play from the
+  numbers beside the name.
+- **Budget, as decided.** This section's first draft (width 128, two layers, ~140 tokens) was about 30 million
+  multiply-adds a layer, ten times the budget. The coordinator's rule (2026-10-23): count present tokens only
+  (the Rust port skips absent ones), at a typical fight position and at the max; targets 3 M typical, 10 M max.
+  - The typical position, as the pool shows it (random play, 2026-10-23): general 1, 18 panels (the attack log is
+    in their tokens), about 10 objects (4 to 5 in random play, up to 17), 6 in hand, the used chip, no slots, 57
+    rules scalars (the three games' mean), 2 forms: 95 tokens, 38 of them in the transformer.
+  - The default, **d = 64**, one layer, on spec c4d9e4a61b0f54ba (chip tokens 250 wide with their fingerprints):
+    2.22 M typical, 2.95 M on the custom screen (its 12 slots added), 5.82 M max (194 tokens); 1.13 M parameters,
+    0.52 M of them the name table; 4.3 MiB. (Before the rules were made pool-only, d had to be 56 at 66 tokens;
+    with all 95 in the transformer it would be over 4 M.)
+  - `--size large` (d 128, two layers: 13.6 M typical, 36.5 M max, 2.6 M parameters) is there to try in the
+    cloud. If it plays clearly better, the app runs it on a worker thread (§10).
+  - `uv run python -m nettai_ai.model [--size large]` prints the numbers; training logs the cost at the
+    measured occupancy (`model/macs_measured_fight`).
 
 ## 8. Training
 
-- **PPO.** Clipped, with GAE (λ 0.95) and γ 0.997 per decision, about 20 seconds of horizon at 4 ticks a decision.
-  Long-ish sequences go through the GRU. It uses the GPU for updates and batched inference, and Rust for
+As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py, train.py).
+
+- **PPO.** Clipped at 0.2 (the value too), GAE λ 0.95 and γ 0.997 per decision, about 20 seconds of horizon at
+  4 ticks a decision. Entropy bonus 0.01, gradient norm 0.5, advantages normalized per minibatch, 3 epochs, Adam
+  at 3e-4 falling linearly to a tenth. It uses the GPU for updates and batched inference, and Rust for
   everything else.
+- **Each seat is its own stream.** A pool step brings decisions for some seats (phase ≠ 0) and none for others.
+  Each (env, seat) the learner plays is its own trajectory of decisions, with its own GRU state, reset when a
+  round starts. GAE runs over each stream's own decisions, never over pool steps. The trainer reads §6.6 so:
+  - a decision's reward is read at the seat's next decision, or at its round's end, whichever comes first:
+    `hp_gain` there, times the HP weight, plus, at a round's end, `result` times the result weight;
+  - so `hp_gain` must cover everything since the seat's last decision, including steps where the seat had no
+    decision (phase 0); the trainer doesn't read it on those steps.
+- **Cut-off rounds.** A round `truncated` (18,000 ticks of fight, a screen open 3,600 ticks, or the engine
+  stopping it: about 1 in 50 EXE5 rounds ends on a content error today) has no result. The trainer bootstraps it
+  (below) and counts it for nothing: not in the league's win rates or Elo, the curriculum, or the behavior
+  measures; evaluation counts it apart. `uv sync` drops the bridge from the trainer's environment (it isn't in the
+  lock file): after building it, run with `uv run --no-sync`.
+- **Rewards' weights.** The result 1; the HP difference from 1 down to 0.2 over the first 3,000 updates.
+  `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
+  same at any HP of the curriculum.
+- **The rollout's slices and their bootstrap.** A rollout is 128 pool steps. A stream's last decision in it is
+  still open: its reward and the next state's value come later. It is carried into the next rollout as that
+  rollout's first decision and trained once it closes; the decision before it is bootstrapped from its value. A
+  round cut off at `max_fight_ticks` (truncated) is bootstrapped from its last decision's own value, since the
+  pool's observation is already the next round's; a KO or a judged time-up is terminal.
+- **Truncated BPTT.** Chunks of 128 decisions (`ppo.chunk`), each started from the GRU state stored when its
+  first decision was made, and zeroed again at each round's first decision inside it.
 - **League.**
-  - About 50% of rounds against its latest self.
-  - About 35% against frozen past versions. A version joins the pool every few updates and is picked more often
-    while it still beats the learner.
-  - About 15% against the scripted players.
-  - If the learner plateaus, exploiters train only to beat it, as AlphaStar did.
+  - About 50% of rounds against its latest self (both seats learn).
+  - About 35% against frozen past versions. A snapshot joins every 10 updates. Each rollout draws 4 active
+    snapshots, weighted by (1 − the learner's win rate against it)², the rate over its last 200 rounds with a
+    win and a loss of prior: those that still beat it are picked most. Their forward passes are batched per
+    snapshot. Until the first snapshot, this share is self-play.
+  - About 15% against the scripted players, evenly.
+  - The learner's seat is drawn each round, so the seats mirror.
+  - Online Elo (K 16) for the learner, the snapshots and the scripted players, logged.
+  - Exploiters are not built. They come if the learner plateaus.
+- **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
+  (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
+  one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The
+  trainer takes the pool's first round, begun when the pool is made, as self-play: every seat starts as
+  "policy".
+- **HP curriculum** (the coordinator, 2026-10-23). Both sides' max HP starts at 250 and rises by 125 to 1000.
+  A round draws its HP from (level − 250, level). The level rises when the learner wins 75% of at least 100
+  rounds against the masher at that level, or after 500 updates at one level. The last quarter of training is
+  at 1000 only. The pool takes `hp=(lo, hi)` and `set_hp(lo, hi)`, from the next round.
+- **Input normalization.** Per set and feature, a running mean and variance over present tokens, merged after
+  each update so a rollout and its update see the same; set first by 32 pool steps of the untrained policy.
+  It's part of the weights, so each snapshot keeps its own.
 - **Games.** Every loaded game, mixed in each batch.
-- **Logs and checkpoints.** TensorBoard (viewed over an ssh tunnel), and a checkpoint every N updates, kept with the
-  run's settings and the git commit.
-- **Export.** `nettai_ai.export` writes safetensors with the architecture and an **observation spec hash** in its
-  header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation can't
-  silently play an old network.
+- **Logs and checkpoints.** TensorBoard (viewed over an ssh tunnel): rewards, losses, KL, explained variance,
+  win rates by opponent, Elo, §9's measures from `round_stats()` by opponent kind, the HP level, the measured
+  network cost. A checkpoint every 50 updates (a setting), with the run's settings, the git commit (a run
+  outside a git checkout fails), the observation spec, the league and the optimizer; `--resume` continues it.
+- **Export.** `nettai_ai.export` writes safetensors with the architecture and the **observation spec hash** in
+  its header. The Rust side refuses weights whose hash doesn't match its own encoder, so a changed observation
+  can't silently play an old network. Beside it, a parity fixture: a seat's recorded decisions from training and
+  the network's outputs for them.
+- **Checked on FakePool**, a numpy stand-in for the pool with the pool's sets and widths and a learnable toy
+  (press the target action shown in the general token; on the screen, point at the slot with the highest first
+  float; everything else noise): in 40 updates on a laptop CPU, targets pressed 7% → 48%, best slots 11% → 38%,
+  reward per decision ×9.
 
 ## 9. How we know it's good
 
@@ -502,7 +601,17 @@ All of these run in Rust on the pool, fast, and print a table:
 - **Elo** across the league's versions, mirrored seats. The shipped network is the best by Elo against a fixed
   set.
 - **A game it never trained on.** Train on EXE5 and EXE6 only, then play EXE4. This is the test of "works on any
-  game". It is run once the main recipe works.
+  game". It is run once the main recipe works: `train --train-games exe5,exe6 --eval-games exe4` evaluates on
+  EXE4 every `eval.every` updates.
+- **Chips it never trained on.** `env.chip_holdout = 0.1` keeps a tenth of each game's chips (drawn by a seed)
+  out of training builds and favors them in evaluation builds. The pool takes it as
+  `chip_holdout=(fraction, seed, "exclude" | "favor")`.
+- **The driver.** `nettai_ai.evaluate` plays a checkpoint against each scripted player in each game (a pool per
+  game) and against other checkpoints, the envs split evenly over the opponents and both seats. Each env's
+  first round is dropped, since seats and delays change from the next round. It prints a table (wins, draws,
+  losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
+  (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it
+  reads `env`, `ticks` and `seats` (two dicts, each with `result` and any numeric measures).
 - **The user plays it.** The decisive test.
 
 ## 10. In the app
@@ -683,24 +792,52 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
 
 ## 11. The cloud machine
 
-- **Shape.** Simulation is the bulk of the work: the engine and its Luau, on CPU cores. The network is about 3
-  million multiply-adds a decision, so its updates are small next to that. The cost is cores.
-  - **First choice: a CPU-only machine with many cores**, such as a 48–96 core dedicated server, at well under $1 an
-    hour.
-  - **A GPU only if measured to help.** The first runs time the network updates against the simulation. A GPU
-    (RTX 4090 / L4 class, $1–3 an hour with its cores) is added only if the updates turn out to hold training back.
+- **Shape: one GPU and many CPU cores.** The battles run on the cores. The network's updates, about ten times its
+  forward pass, run on the GPU. On CPUs alone they cost about 30 times the simulation (measured below), so the
+  first plan here, a CPU-only machine, was wrong.
+  - **The machine** (the user's pick, 2026-10-23): a Vast.ai instance with an RTX 3090 (24 GB) on an AMD EPYC 7702P,
+    with a CPU quota of about 41 cores, Ubuntu 24.04, and PyTorch 2.14 (CUDA 13.0) in `/venv/main`. Its `/workspace`
+    is ordinary container storage, lost when the instance is destroyed, so checkpoints are copied back to the Mac.
+    Any NVIDIA card from the RTX 20 series on with 8 GB or more would do; cores matter more than the card.
   - **TPUs don't fit** (the user asked, 2026-10-23). They are built for very large matrix work, and this network is
-    tiny. XLA handles a recurrent core with changing masks badly, and they would leave the simulation, the real cost,
-    where it was.
+    tiny. XLA handles a recurrent core with changing masks badly.
 - **Run size.** A full run is estimated at 2 to 5 billion decisions, about 5 to 15 hours on such a machine. Tuning
   will take several runs.
 - **What of the packs goes there: the timings only** (the user: "you don't need the images, just the timing data").
   The battle's loader reads a pack's `content.toml`, `assets.toml`, and each sprite's `animations.json` and
-  `sprite.json`. These are the asset names, the animations' timings and the frames' part layouts: a few hundred KB a
-  game. No picture or sound is read or sent. `training/cloud/timings.sh` copies just those files out of `data/`. The
+  `sprite.json`. These are the asset names, the animations' timings and the frames' part layouts: 1,648 files,
+  12 MB for the three games. No picture or sound is read or sent. `training/cloud/timings.sh` copies just those files out of `data/`. The
   made-up test timings would train a network for a game that isn't quite the real one.
-- **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine. A run goes in
-  tmux; checkpoints and logs are rsynced back.
+- **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine and runs a
+  smoke test. `run.sh` starts a run in tmux, with TensorBoard on the machine's localhost; `sync.sh` rsyncs
+  checkpoints and logs back.
+- **Measured: the network costs more than this section assumed** (`python -m nettai_ai.bench`, the real pool,
+  EXE6, 64 envs, one rollout of 15,000 decisions, the default network, the M1 Max, which other sessions kept at
+  load 10 to 20):
+
+  | Part | Decisions a second | A core's time a decision |
+  |---|---|---|
+  | Simulation (`pool.step`, 6 threads) | 74,000 to 77,000 | 0.08 ms |
+  | The rollout's inference (4 threads) | 8,600 | 0.47 ms |
+  | The update, 3 epochs (4 threads) | 1,820 | 2.2 ms |
+  | The update, 3 epochs (8 threads, the pool waiting) | 2,160 | 3.7 ms |
+
+  - The update's time is a third arithmetic (matrix products 22%, attention 13%) and two thirds small ops:
+    elementwise 32%, gathers and packing 11%, the name table's gradient 9%, copies 9%, LayerNorm 4%.
+  - Variants of one update on the same data (decisions a second): padded fixed shapes 601 (every slot computed:
+    packing the sets is worth 3×); 2 epochs 2,712, 1 epoch 5,220; minibatches of 32 and 64 chunks 2,112 and
+    2,235; chunks of 32 decisions 2,242; `torch.compile` 705 (graph breaks at the packing's sizes) and 311 padded;
+    bf16 autocast 229 (this CPU has no bf16 units; it's for CUDA).
+  - Fewer epochs or bigger minibatches don't pay: on FakePool's toy, at 60 s of wall time, 4 epochs had 58% of
+    the targets pressed, 3 epochs 51%, 2 epochs 39%, 1 epoch 18%, 3 epochs at 32 chunks a minibatch 40%. With
+    the simulation this cheap, reusing a rollout is cheaper than making one. The cheap fix that holds is
+    threads: the update on 8 (`run.update_threads`), collection on 4.
+  - So on CPUs the network is about 30 times EXE6's simulation (about 7 times EXE5's): a 96-core machine would
+    make perhaps 30,000 to 40,000 decisions a second, 2 billion in 15 to 20 hours. The first cloud run should
+    time a GPU (L4 or RTX 4090 class) with `bench --device cuda --variants base,padded,compile_padded,bf16,mb64`:
+    on a GPU the small ops are kernel launches, which fixed shapes and compilation can fold. If its update makes
+    30,000 decisions a second or more, a GPU with 16 to 32 cores beats the 96-core machine. The Mac's own GPU
+    (MPS) was slower than its CPU at this size.
 
 ## 12. Steps
 
