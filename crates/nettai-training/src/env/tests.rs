@@ -135,6 +135,45 @@ fn each_seat_decides_at_its_own_k() {
     assert!(fight[1] > 100 && fight[0] > fight[1] * 3 / 2 && off_eight > 0);
 }
 
+/// Envs of one deal deal the same rounds from the next, however each round
+/// went (random play, different seeds, so different screens and lengths);
+/// another key deals others.
+#[test]
+fn envs_of_one_deal_deal_the_same_rounds() {
+    let deals = |seed: u64, key: u64| {
+        let mut env = Env::new(games(&GAMES), Config { max_fight_ticks: 900, ..Config::default() }, seed).unwrap();
+        env.set_deal(Some(key));
+        let mut rng = SplitMix64::new(seed);
+        let mut actions = [0; 2];
+        let mut rounds = Vec::new();
+        while rounds.len() < 4 {
+            let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+            if out.done {
+                rounds.push((env.game, env.folders.clone(), env.battle.digest()));
+            }
+            for s in 0..2 {
+                actions[s] = match out.phase[s] {
+                    FIGHT => random_action(&mut rng, &env.legal_fight[s]),
+                    SCREEN => random_action(&mut rng, &env.legal_screen[s]),
+                    _ => 0,
+                };
+            }
+        }
+        let ended: Vec<_> = env.ended.iter().map(|r| (r.game.clone(), r.navis.clone(), r.max_hp, r.ticks)).collect();
+        (rounds, ended)
+    };
+    let (a, ea) = deals(1, 42);
+    let (b, eb) = deals(2, 42);
+    let (c, _) = deals(3, 43);
+    // (The first round is each env's own; the deal starts with the second.)
+    assert_eq!(a, b);
+    assert_ne!(a, c);
+    for i in 1..4 {
+        assert_eq!((&ea[i].0, &ea[i].1, ea[i].2), (&eb[i].0, &eb[i].1, eb[i].2), "round {i}");
+    }
+    assert!((1..4).any(|i| ea[i].3 != eb[i].3), "the rounds were played alike");
+}
+
 /// Side 1's first custom screen of a round of random builds of `game`,
 /// choosing.
 pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {

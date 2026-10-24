@@ -227,6 +227,10 @@ pub struct Env {
     /// whenever they were made.
     ready: Vec<std::collections::VecDeque<crate::builds::Build>>,
     build_picks: Vec<Picks>,
+    /// The deal asked for ([`Env::set_deal`]), and the one in effect with
+    /// the rounds dealt from it.
+    deal: Option<u64>,
+    dealt: Option<(u64, u64)>,
     /// Rounds ended since they were last taken.
     pub ended: Vec<RoundStats>,
     pub profile: Profile,
@@ -352,6 +356,8 @@ impl Env {
         let mut env = Env {
             ready,
             build_picks,
+            deal: None,
+            dealt: None,
             picks,
             game: g,
             battle: first.battle,
@@ -401,6 +407,16 @@ impl Env {
         self.seats[seat].pinned_delay = ticks;
     }
 
+    /// Rounds dealt from `key` from the next round (none: from the env's
+    /// own draws): each round's game, builds, HP, arena, seed, drawn delays
+    /// and practice options come from the key and the round's number since,
+    /// whatever was played before, so envs of one key deal the same rounds
+    /// (evaluation's duplicate matches: the same deal with the seats
+    /// swapped). Builds aren't made ahead meanwhile.
+    pub fn set_deal(&mut self, key: Option<u64>) {
+        self.deal = key;
+    }
+
     /// The ticks seat `seat` holds a fight decision from the next round
     /// (none: the env's k), so that networks trained at different k meet
     /// each at its own.
@@ -425,6 +441,9 @@ impl Env {
     /// fewer than [`READY`]: what a worker does while it waits. Whether it
     /// made one.
     pub fn prepare(&mut self) -> Result<bool, String> {
+        if self.deal.is_some() {
+            return Ok(false);
+        }
         let Some(g) = (0..self.games.len()).filter(|&g| self.ready[g].len() < READY).min_by_key(|&g| self.ready[g].len()) else {
             return Ok(false);
         };
@@ -452,6 +471,20 @@ impl Env {
         let (m, pairs) = match made {
             Some(m) => m,
             None => {
+                if self.deal != self.dealt.map(|d| d.0) {
+                    self.dealt = self.deal.map(|key| (key, 0));
+                }
+                if let Some((key, n)) = &mut self.dealt {
+                    let seed = mix(*key ^ mix(*n));
+                    *n += 1;
+                    self.picks = Picks::new(seed as u32);
+                    for (g, p) in self.build_picks.iter_mut().enumerate() {
+                        *p = Picks::new((seed >> 32) as u32 ^ g as u32);
+                    }
+                    for r in &mut self.ready {
+                        r.clear();
+                    }
+                }
                 let g = self.picks.below(self.games.len());
                 let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.cfg)?;
                 self.game = g;
@@ -836,6 +869,14 @@ impl Env {
 }
 
 /// A number from `lo` to `hi`.
+/// SplitMix64's finalizer: a deal's key and round number to a seed.
+fn mix(mut z: u64) -> u64 {
+    z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
 fn draw(picks: &mut Picks, lo: u16, hi: u16) -> u16 {
     lo + picks.below((hi.max(lo) - lo) as usize + 1) as u16
 }

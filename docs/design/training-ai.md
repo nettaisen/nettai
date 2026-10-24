@@ -473,6 +473,9 @@ pool.set_seat(envs, seat, controller) # "policy", "still", "mover", "masher", "s
 pool.set_delay(envs, seat, ticks)     # pins the delay (evaluation); None draws again
 pool.set_k(envs, seat, k)             # the seat's own k (evaluation: each network at the k it trained at);
                                       # None: the env's
+pool.set_deal(envs, key)              # envs dealt the same rounds from key (game, builds, HP, arena, seed, drawn
+                                      # delays, practice options: from the key and the round's number since);
+                                      # None: each its own draws
 pool.set_hp(lo, hi)                   # set_hp(None): each side's as its build has it
 pool.set_chip_holdout(fraction, seed, mode)
 pool.round_stats()                    # rounds ended since the last call (§9's measures):
@@ -489,8 +492,8 @@ nettai_gym.name_ids("cannon")         # (834, 2843): the trainer can check its o
 nettai_gym.holdout_unit(seed, key)    # a chip key's number in [0, 1) with the seed
 ```
 
-- The first round begins when the pool is made, every seat "policy". `set_seat`, `set_delay`, `set_k`, `set_hp`
-  and `set_chip_holdout` take effect from the next round (the one after the round each env is playing).
+- The first round begins when the pool is made, every seat "policy". `set_seat`, `set_delay`, `set_k`, `set_deal`,
+  `set_hp` and `set_chip_holdout` take effect from the next round (the one after the round each env is playing).
 - A step advances each env until one of its policy seats needs a decision.
 - A seat played by a scripted player always has phase 0. An env with no policy seat plays a whole round a step.
 - Rounds reset on their own, with new builds and a new arena.
@@ -742,7 +745,11 @@ All of these run in Rust on the pool, fast, and print a table:
 - **The driver.** `nettai_ai.evaluate` plays a checkpoint against each scripted player in each game (a pool per
   game) and against other checkpoints, the envs split evenly over the opponents and both seats, each network
   deciding at the k of its training (`set_k`; the fourth cloud run's is 8, the earlier runs' 4). Each env's
-  first round is dropped, since seats, delays and k change from the next round. It prints a table (wins, draws,
+  first round is dropped, since seats, delays and k change from the next round. `--duplicate` plays each deal
+  twice with the seats swapped (`pool.set_deal`: an env and one of the same pairing the other way round share a
+  key) and counts the deals each player won both times, lost both times, or split (the deal decided: 50% if the
+  deal didn't matter between even players, 100% if it decided every round); `--records` writes every counted
+  round's record (JSON lines). It prints a table (wins, draws,
   losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
   (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it
   reads `env`, `ticks` and `seats` (two dicts, each with `result` and any numeric measures).

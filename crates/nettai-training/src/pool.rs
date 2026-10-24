@@ -399,6 +399,12 @@ impl Pool {
         self.each(Some(envs), |env| env.set_delay(seat, ticks))
     }
 
+    /// Envs `envs` dealt the same rounds from `key` from their next round
+    /// (none: each from its own draws), [`Env::set_deal`].
+    pub fn set_deal(&mut self, envs: &[usize], key: Option<u64>) -> Result<(), String> {
+        self.each(Some(envs), |env| env.set_deal(key))
+    }
+
     /// The ticks seat `seat` of envs `envs` holds a fight decision from
     /// their next round (none: the env's k).
     pub fn set_k(&mut self, envs: &[usize], seat: usize, k: Option<u32>) -> Result<(), String> {

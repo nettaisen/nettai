@@ -177,6 +177,13 @@ impl PyPool {
         self.pool().set_delay(&envs, seat, ticks).map_err(err)
     }
 
+    /// Envs `envs` dealt the same rounds from `key` from their next round
+    /// (None: each from its own draws): evaluation's duplicate matches.
+    #[pyo3(signature = (envs, key=None))]
+    fn set_deal(&self, envs: Vec<usize>, key: Option<u64>) -> PyResult<()> {
+        self.pool().set_deal(&envs, key).map_err(err)
+    }
+
     /// The ticks seat `seat` of envs `envs` holds a fight decision from
     /// their next round (None: the env's k): a network meets another
     /// trained at another k each at its own.

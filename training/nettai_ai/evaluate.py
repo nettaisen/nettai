@@ -65,11 +65,14 @@ def run_matches(
     level: Level,
     device: torch.device,
     seed: int = 1,
+    duplicate: bool = False,
 ) -> list[dict[str, Any]]:
     """Env e plays pairs[e] = (seat 0, seat 1) until it has `rounds` counted rounds after its first.
 
     Returns one record per counted round: env, game index, the two players' names, the result and the
-    round_stats() entry.
+    round_stats() entry. `duplicate`: each env is dealt the same rounds as the env of the same pair the other
+    way round (`pool.set_deal`), so each deal is played twice with the seats swapped; a record's "deal" is
+    (its key, the round's number), None otherwise.
     """
     view = PoolView(pool, spec)
     E, S = view.E, view.S
@@ -97,6 +100,13 @@ def run_matches(
             ks.setdefault(pair[seat].k, []).append(e)
         for k, es in ks.items():
             pool.set_k(np.asarray(es, np.int64), seat, k)
+    keys = duplicate_keys(pairs) if duplicate else [None] * E
+    if duplicate:
+        by_key: dict[int, list[int]] = {}
+        for e, k in enumerate(keys):
+            by_key.setdefault(k, []).append(e)
+        for k, es in by_key.items():
+            pool.set_deal(np.asarray(es, np.int64), k)
     hidden = {i: torch.zeros(S, p.model.cfg.hidden, device=device) for i, p in enumerate(players) if not p.scripted}
     # Each stream's previous decision's action (none at a round's start), as the network reads it.
     no_previous = previous_width(spec) - 1
@@ -124,6 +134,7 @@ def run_matches(
                             "result": (int(view.result[2 * e]), int(view.result[2 * e + 1])),
                             "truncated": bool(view.truncated[e]),
                             "stats": stats[e],
+                            "deal": None if keys[e] is None else (keys[e], int(counted[e])),
                         }
                     )
                     counted[e] += 1
@@ -157,6 +168,68 @@ def run_matches(
             previous[idx] = previous_action(a, phase[idx], spec.fight_actions)
         pool.step(actions)
     return records
+
+
+def duplicate_keys(pairs: list[tuple[Player, Player]]) -> list[int]:
+    """A deal's key for each env, shared with one env of the same pair the other way round."""
+    keys: list[int | None] = [None] * len(pairs)
+    n = 0
+    for e, (a, b) in enumerate(pairs):
+        if keys[e] is not None:
+            continue
+        partner = next((f for f in range(e + 1, len(pairs)) if keys[f] is None and pairs[f][0] is b and pairs[f][1] is a), None)
+        if partner is None:
+            raise ValueError(f"duplicate: env {e}'s pair ({a.name}, {b.name}) has no env the other way round")
+        keys[e] = keys[partner] = n
+        n += 1
+    return keys  # type: ignore[return-value]
+
+
+def duplicate_summary(records: list[dict[str, Any]], games: list[str]) -> dict[tuple, dict[str, int]]:
+    """By (game, player, opponent), the players in name order: of the deals played twice with the seats
+    swapped, how many the first won both times, the second both times, each once (the deal decided), and with
+    a draw or a cut round."""
+    by_deal: dict[tuple, list[dict[str, Any]]] = {}
+    for r in records:
+        if r.get("deal") is not None:
+            # (Each call of run_matches keys its deals from 0: its players tell them apart.)
+            by_deal.setdefault((r["game"], tuple(sorted(r["players"])), tuple(r["deal"])), []).append(r)
+    out: dict[tuple, dict[str, int]] = {}
+    for (g, _, _), rs in by_deal.items():
+        if len(rs) != 2:
+            raise RuntimeError(f"duplicate: a deal played {len(rs)} times")
+        p, q = sorted(rs[0]["players"])
+        row = out.setdefault((games[g], p, q), {"deals": 0, "first": 0, "second": 0, "split": 0, "other": 0})
+        row["deals"] += 1
+        if any(r["truncated"] for r in rs):
+            row["other"] += 1
+            continue
+        mine = [r["result"][r["players"].index(p)] if r["players"][0] != r["players"][1] else r["result"][0] for r in rs]
+        if 0 in mine:
+            row["other"] += 1
+        elif mine[0] > 0 and mine[1] > 0:
+            row["first"] += 1
+        elif mine[0] < 0 and mine[1] < 0:
+            row["second"] += 1
+        else:
+            row["split"] += 1
+    return out
+
+
+def format_duplicates(summary: dict[tuple, dict[str, int]]) -> str:
+    head = ["game", "player", "opponent", "deals", "won both", "lost both", "split", "draw/cut", "split%"]
+    rows = []
+    totals = {"first": 0, "second": 0, "split": 0}
+    for (g, p, q), row in sorted(summary.items()):
+        decided = row["first"] + row["second"] + row["split"]
+        for k in totals:
+            totals[k] += row[k]
+        rows.append([g, p, q, str(row["deals"]), str(row["first"]), str(row["second"]), str(row["split"]), str(row["other"]), f"{100 * row['split'] / max(decided, 1):.0f}"])
+    widths = [max(len(h), *(len(r[i]) for r in rows)) if rows else len(h) for i, h in enumerate(head)]
+    line = lambda cells: "  ".join(c.ljust(w) for c, w in zip(cells, widths))
+    decided = sum(totals.values())
+    foot = f"all: {decided} deals decided both times, split {100 * totals['split'] / max(decided, 1):.0f}% (50% if the deal didn't matter and the two were even; 100% if the deal decided every round)"
+    return "\n".join([line(head), line(["-" * w for w in widths])] + [line(r) for r in rows] + ["", foot])
 
 
 def bot_pairs(player: Player, bots: list[str], envs: int) -> list[tuple[Player, Player]]:
@@ -275,6 +348,7 @@ def evaluate_vs_bots(
     device: torch.device,
     spec_hash: str,
     pools: dict[str, Any] | None = None,
+    duplicate: bool = False,
 ) -> list[dict[str, Any]]:
     """player against each bot in each game (one pool per game; pass `pools` to keep them between calls)."""
     records = []
@@ -287,7 +361,7 @@ def evaluate_vs_bots(
         spec = parse_spec(pool_spec(pool))
         if spec.hash != spec_hash:
             raise RuntimeError(f"evaluation: the pool's spec hash {spec.hash} isn't the network's {spec_hash}")
-        recs = run_matches(pool, spec, bot_pairs(player, bots, envs), rounds, level, device)
+        recs = run_matches(pool, spec, bot_pairs(player, bots, envs), rounds, level, device, duplicate=duplicate)
         for r in recs:
             r["game"] = gi
         records += recs
@@ -307,6 +381,8 @@ def main() -> None:
     ap.add_argument("--level", default="normal", choices=sorted(LEVELS))
     ap.add_argument("--hp", type=int, default=1000)
     ap.add_argument("--fake", action="store_true", help="play FakePool instead of nettai_gym")
+    ap.add_argument("--duplicate", action="store_true", help="each deal twice, the seats swapped (pool.set_deal)")
+    ap.add_argument("--records", default=None, help="write every counted round's record here (JSON lines)")
     ap.add_argument("--device", default="cpu")
     a = ap.parse_args()
     device = torch.device(a.device)
@@ -323,7 +399,8 @@ def main() -> None:
     records = []
     for p in everyone if bots else []:
         records += evaluate_vs_bots(
-            p, cfg.env, a.fake, games, bots, a.envs, a.threads, a.rounds, level, a.hp, device, main_player.model.spec.hash
+            p, cfg.env, a.fake, games, bots, a.envs, a.threads, a.rounds, level, a.hp, device, main_player.model.spec.hash,
+            duplicate=a.duplicate,
         )
     if others:
         for gi, g in enumerate(games):
@@ -331,13 +408,22 @@ def main() -> None:
             spec = parse_spec(pool_spec(pool))
             if spec.hash != main_player.model.spec.hash:
                 raise SystemExit(f"the pool's spec hash {spec.hash} isn't the network's {main_player.model.spec.hash}")
-            recs = run_matches(pool, spec, round_robin_pairs(everyone, a.envs), a.rounds, level, device)
+            recs = run_matches(pool, spec, round_robin_pairs(everyone, a.envs), a.rounds, level, device, duplicate=a.duplicate)
             for r in recs:
                 r["game"] = gi
             records += recs
+    if a.records:
+        import json
+
+        with open(a.records, "w") as f:
+            for r in records:
+                f.write(json.dumps({**r, "game": games[r["game"]]}, default=str) + "\n")
     summary = summarize(records, games)
     print(f"level {level.name}: delay {level.delay} ticks, temperature {level.temperature}, epsilon {level.epsilon}, greedy {level.greedy}")
     print(format_table(summary, [p.name for p in everyone]))
+    if a.duplicate:
+        print("\nDuplicate deals (each played twice, the seats swapped):")
+        print(format_duplicates(duplicate_summary(records, games)))
     ratings = elo(elo_results(records), [f"bot:{b}" for b in bots])
     print("\nElo (bots' mean = 1000)" if bots else "\nElo (mean = 1000)")
     for n, r in sorted(ratings.items(), key=lambda kv: -kv[1]):
