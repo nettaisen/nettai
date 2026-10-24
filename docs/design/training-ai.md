@@ -544,10 +544,18 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   first decision was made, and zeroed again at each round's first decision inside it.
 - **League.**
   - About 50% of rounds against its latest self (both seats learn).
-  - About 35% against frozen past versions. A snapshot joins every 10 updates. Each rollout draws 4 active
-    snapshots, weighted by (1 − the learner's win rate against it)², the rate over its last 200 rounds with a
-    win and a loss of prior: those that still beat it are picked most. Their forward passes are batched per
-    snapshot. Until the first snapshot, this share is self-play.
+  - About 35% against frozen past versions. A snapshot joins every 10 updates. New snapshot rounds draw from
+    2 active snapshots, picked by weight (1 − the learner's win rate against it)², the rate over its last 200
+    rounds with a win and a loss of prior: those that still beat it are picked most. Until the first
+    snapshot, this share is self-play.
+  - A round keeps its opponent to its end, about eight rollouts, and each snapshot in play costs the
+    collector one network pass a step (about 1.1 s a rollout on the cloud machine). So the number in play is
+    bounded. Before each rollout the longest-serving active slot turns over to a new draw, but only while
+    fewer than 2 dropped snapshots still play out their rounds: at most 4 snapshots play at once. The first
+    cloud run drew 4 new active snapshots every rollout. Rounds kept older ones, so 9 played by update 94,
+    past the cache of 8 loaded networks, and collection went from 14 s to 56 s a rollout.
+  - On disk: past 200 snapshots, the file of the one the learner beats most is deleted (never an active or
+    in-play one; its record stays). The first cloud machine's disk is 16 GB.
   - About 15% against the scripted players, evenly.
   - The learner's seat is drawn each round, so the seats mirror.
   - Online Elo (K 16) for the learner, the snapshots and the scripted players, logged.

@@ -64,6 +64,8 @@ class League:
             raise ValueError(f"league: self_play + snapshots + bots = {total}, not 1")
         if cfg.bots > 0 and not cfg.bot_names:
             raise ValueError("league: a bot share with no bot_names")
+        if cfg.cache < cfg.active + cfg.draining:
+            raise ValueError(f"league: cache {cfg.cache} holds fewer than active + draining ({cfg.active + cfg.draining})")
         self.cfg = cfg
         self.pool = pool
         self.E = envs
@@ -175,19 +177,36 @@ class League:
 
     # Snapshots -----------------------------------------------------------------------------------------
 
-    def pfsp_weights(self) -> np.ndarray:
+    def pfsp_weight(self, s: Snapshot) -> float:
         """(1 − the learner's win rate) ** power: snapshots that still beat it are picked most."""
-        return np.array([(1.0 - s.winrate()) ** self.cfg.pfsp_power for s in self.snapshots])
+        return (1.0 - s.winrate()) ** self.cfg.pfsp_power
+
+    def in_play(self) -> set[int]:
+        """The snapshots playing a current round."""
+        return {int(o) for o in self.opp[self.kind == SNAP]}
+
+    def _draw(self, exclude: set[int]) -> int | None:
+        """A snapshot on disk outside `exclude`, by PFSP weight (None: there is none)."""
+        cands = [s for s in self.snapshots if s.path and s.id not in exclude]
+        if not cands:
+            return None
+        w = np.array([self.pfsp_weight(s) for s in cands]) + 1e-6
+        return cands[int(self.rng.choice(len(cands), p=w / w.sum()))].id
 
     def refresh(self) -> None:
-        """Pick this rollout's active snapshots by PFSP weight, without replacement."""
-        n = len(self.snapshots)
-        if n == 0:
-            self.active = []
-            return
-        w = self.pfsp_weights() + 1e-6
-        k = min(self.cfg.active, n)
-        self.active = [int(i) for i in self.rng.choice(n, size=k, replace=False, p=w / w.sum())]
+        """Before each rollout: fill the active set (the snapshots new rounds draw from) to `active`, then turn
+        its longest-serving slot over to a new PFSP draw if fewer than `draining` dropped snapshots still play.
+        So no more than active + draining snapshots are ever in play (LeagueConfig.active)."""
+        draining = self.in_play() - set(self.active)
+        while len(self.active) < self.cfg.active:
+            sid = self._draw(set(self.active) | draining)
+            if sid is None:
+                return
+            self.active.append(sid)
+        if len(draining) < self.cfg.draining:
+            sid = self._draw(set(self.active) | draining)
+            if sid is not None:
+                self.active = self.active[1:] + [sid]
 
     def add_snapshot(self, model: Model, update: int) -> Snapshot:
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -197,7 +216,19 @@ class League:
         snap = Snapshot(sid, path.name, update)
         self.snapshots.append(snap)
         self.ratings[f"snap:{sid}"] = self.ratings["learner"]
+        self._prune()
         return snap
+
+    def _prune(self) -> None:
+        """Past `keep` snapshots on disk, delete the files of those the learner beats most (never an active or
+        in-play one). A deleted snapshot keeps its record, with an empty path, and is never drawn again."""
+        on_disk = [s for s in self.snapshots if s.path]
+        busy = set(self.active) | self.in_play()
+        spare = sorted((s for s in on_disk if s.id not in busy), key=self.pfsp_weight)
+        for s in spare[: max(0, len(on_disk) - self.cfg.keep)]:
+            (self.dir / s.path).unlink(missing_ok=True)
+            s.path = ""
+            self.cache.pop(s.id, None)
 
     def model(self, sid: int) -> Model:
         if sid in self.cache:
@@ -207,7 +238,7 @@ class League:
         m.load_state_dict(torch.load(self.dir / self.snapshots[sid].path, map_location=self.device, weights_only=True))
         m.eval()
         self.cache[sid] = m
-        while len(self.cache) > max(self.cfg.cache, self.cfg.active):
+        while len(self.cache) > self.cfg.cache:
             self.cache.popitem(last=False)
         return m
 
@@ -219,7 +250,12 @@ class League:
 
     def summary(self) -> dict[str, float]:
         """What the training log shows of the league (read on the league's own thread)."""
-        out = {"elo/learner": self.ratings["learner"], "league/snapshots": len(self.snapshots)}
+        out = {
+            "elo/learner": self.ratings["learner"],
+            "league/snapshots": len(self.snapshots),
+            "league/on_disk": sum(1 for s in self.snapshots if s.path),
+            "league/in_play": len(self.in_play()),
+        }
         for b in self.cfg.bot_names:
             wr, cnt = self.bot_winrate(b)
             if cnt:

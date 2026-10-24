@@ -142,8 +142,16 @@ class LeagueConfig:
     bot_names: list[str] = field(default_factory=lambda: ["still", "mover", "masher", "shooter", "dodger"])
     snapshot_every: int = 10  # updates
     pfsp_power: float = 2.0  # a snapshot's weight is (1 - learner's win rate against it) ** power
-    active: int = 4  # snapshots in play during one rollout, drawn by PFSP weight
-    cache: int = 8  # snapshot networks kept loaded on the device
+    # A round keeps its opponent to its end (rounds last about eight rollouts), and each snapshot in play costs
+    # the collector a network pass every step (about 1.1 s a rollout on the cloud machine), so the number in
+    # play is bounded: new rounds draw from `active` snapshots, and at most `draining` dropped ones still play
+    # out their rounds. One active slot turns over a rollout while fewer than `draining` are draining.
+    active: int = 2  # snapshots new snapshot rounds draw from, by PFSP weight
+    draining: int = 2  # dropped from the active set, still in rounds begun before
+    cache: int = 8  # snapshot networks kept loaded on the device (at least active + draining)
+    # Snapshots kept on disk: past this, the one the learner beats most is deleted (its record stays, its
+    # PFSP weight is near zero anyway). Neither an active nor an in-play one.
+    keep: int = 200
     elo_k: float = 16.0
     winrate_window: int = 200  # rounds the learner's win rate against a snapshot is averaged over
 
