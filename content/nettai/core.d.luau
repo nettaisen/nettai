@@ -1277,6 +1277,10 @@ declare battle: {
     show_hp: (object: Object, spec: HpNumberSpec) -> (),
     -- `sub_801DD34`: the object's HP number goes.
     hide_hp: (object: Object) -> (),
+    -- A navi's HP number under it, as it shows once the navi is in (on the
+    -- other side's console; none for a body that hides its HP): for a navi
+    -- brought back from 0 HP, whose number went at 0.
+    show_navi_hp: (navi: Object) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.

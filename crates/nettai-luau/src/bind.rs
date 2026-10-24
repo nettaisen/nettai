@@ -1940,6 +1940,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.show_hp(o.0, dx, dy, damage)))
     });
     lib_fn!(lua, t, "hide_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_hp(o.0))));
+    lib_fn!(lua, t, "show_navi_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_navi_hp(o.0))));
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
         let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
         if magnitude > 3 {

@@ -1373,6 +1373,11 @@ pub trait CoreApi {
     fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool);
     /// `sub_801DD34`: `o`'s HP number goes.
     fn hide_hp(&mut self, o: ObjectRef);
+    /// A navi's HP number under it, as it shows once the navi is in
+    /// (`sub_801DC7C(0, 0)` on the other side's console, on both in battle
+    /// mode 6, none for a body that hides its HP): for a navi brought back
+    /// from 0 HP, whose number went at 0.
+    fn show_navi_hp(&mut self, o: ObjectRef);
     /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.

@@ -175,7 +175,9 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
 /// `sub_801DC7C(0, 0)` where the navi's HP shows under it: on the other
 /// side's console, or on both in battle mode 6. (The original moves the
 /// number for NameIDs 0x49..=0x4E, viruses', which no player navi has.)
-fn show_hp_number(b: &mut Battle, r: ObjectRef) {
+/// Also content's `battle.show_navi_hp`, for a navi brought back from 0 HP,
+/// whose number went at 0 (`Battle::run_hud_tasks`).
+pub(crate) fn show_hp_number(b: &mut Battle, r: ObjectRef) {
     // (EXE5 shows none for its NameID 0x18D, 0x0801339C: a body that hides
     // its HP.)
     if b.content.identity(b.objects.get(r).identity).body.as_ref().is_some_and(|body| body.hides_hp) {

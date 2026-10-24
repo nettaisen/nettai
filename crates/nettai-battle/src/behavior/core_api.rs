@@ -598,6 +598,10 @@ impl CoreApi for Battle {
         Battle::hide_hp(self, o);
     }
 
+    fn show_navi_hp(&mut self, o: ObjectRef) {
+        crate::kinds::player::show_hp_number(self, o);
+    }
+
     fn navi_stat(&self, of: StatsOf, stat: NaviStat) -> Value {
         let Some(s) = self.stats_of(of) else { return Value::Nil };
         let i = |v: i64| Value::Int(v);

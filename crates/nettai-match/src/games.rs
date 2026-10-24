@@ -1148,21 +1148,28 @@ fn a_battle_ending_with_a_team_navi_on_the_field_brings_megaman_back() {
 }
 
 /// ToadMan's rescue (with P.Spport): the navi at 0 HP is healed a quarter of
-/// its maximum, once a battle; the second time it is deleted.
+/// its maximum, once a battle; the second time it is deleted. Its HP number,
+/// gone at 0 HP, shows again on the other side's console.
 #[test]
 fn toadman_rescues_once_a_battle() {
     let mut b = party_battle(r#"{ navi = "toadman", programs = ["p-spport"] }"#);
     let r = b.player(0).unwrap();
+    let numbered = |b: &nettai_battle::Battle, console: usize| b.hp_numbers[console].iter().flatten().any(|n| n.object == r);
+    assert!(numbered(&b, 1) && !numbered(&b, 0));
     let max = b.objects.get(r).max_hp;
     b.objects.get_mut(r).hp = 0;
+    let mut gone = false;
     for _ in 0..400 {
         b.tick(&Default::default(), Default::default());
+        gone |= !numbered(&b, 1);
         if b.objects.get(r).hp != 0 {
             break;
         }
     }
     assert_eq!(b.objects.get(r).hp, max / 4);
     assert!(!b.is_battle_over());
+    assert!(gone, "the number goes at 0 HP");
+    assert!(numbered(&b, 1) && !numbered(&b, 0), "and shows again as it is healed");
     fight(&mut b);
     b.objects.get_mut(r).hp = 0;
     for _ in 0..200 {
