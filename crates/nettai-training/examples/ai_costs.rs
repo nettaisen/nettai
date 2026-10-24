@@ -1,10 +1,11 @@
 //! What the learned AI costs in live play (docs/design/training-ai.md §10),
 //! on the packs, for each game:
 //!
-//! - the chips' fingerprints: the whole game's (what live play makes, once a
-//!   content) on one thread and on several, against both folders' chips alone
-//!   (and their Program Advances); reading them back from the cache file;
-//!   the names made of them;
+//! - the chips' fingerprints: both folders' chips and their Program
+//!   Advances (what live play makes as a session starts, the first time) on
+//!   one thread and on several, the whole game's, and that a chip made with
+//!   its folders alone is what the whole game's has; reading them back from
+//!   the cache file; the names made of them;
 //! - a decision: the view encoded, and the network's pass, at the occupancy
 //!   decisions of random play have (the median and the most tokens present)
 //!   and with every token present.
@@ -67,22 +68,22 @@ fn main() {
         let content = load_game(None, &packs, game).unwrap();
         nettai_battle::behavior::Behaviors::for_content(&content).unwrap();
         let all = fingerprint::game_chips(&content);
-        // The chips' fingerprints.
-        let mut whole = None;
-        for &t in &threads {
-            let f = Fingerprints::compute(&content, &all, t).unwrap();
-            println!("{game}: the whole game's {} chips on {t} threads: {:.1} s ({:.0} ms of work a chip, {} runs)", all.len(), f.cost.wall_nanos as f64 / 1e9, f.cost.nanos as f64 / all.len() as f64 / 1e6, f.cost.runs);
-            whole = Some(f);
-        }
-        let whole = Arc::new(whole.unwrap());
+        // The chips' fingerprints: both folders' chips (what live play makes
+        // as a session starts, the first time), then the whole game's.
         for seed in [3, 4] {
             let chips = folders(&content, seed);
             for &t in &threads[..threads.len().min(2)] {
                 let f = Fingerprints::compute(&content, &chips, t).unwrap();
-                let differ = chips.iter().filter(|&&c| f.of(c) != whole.of(c)).count();
-                println!("{game}: both folders' {} chips alone on {t} threads: {:.1} s ({differ} differ from the whole game's)", chips.len(), f.cost.wall_nanos as f64 / 1e9);
+                println!("{game}: both folders' {} chips on {t} threads: {:.2} s ({} runs, {} stopped)", chips.len(), f.cost.wall_nanos as f64 / 1e9, f.cost.runs, f.cost.stopped);
             }
         }
+        let t = *threads.last().unwrap();
+        let whole = Arc::new(Fingerprints::compute(&content, &all, t).unwrap());
+        println!("{game}: the whole game's {} chips on {t} threads: {:.1} s ({:.0} ms of work a chip, {} runs, {} stopped), {} pairs", all.len(), whole.cost.wall_nanos as f64 / 1e9, whole.cost.nanos as f64 / all.len() as f64 / 1e6, whole.cost.runs, whole.cost.stopped, whole.pairs.len());
+        let chips = folders(&content, 3);
+        let alone = Fingerprints::compute(&content, &chips, t).unwrap();
+        let differ = chips.iter().filter(|&&c| alone.of(c) != whole.of(c)).count();
+        println!("{game}: of both folders' chips made alone, {differ} differ from the whole game's");
         let bytes = serde_json::to_vec(&*whole).unwrap();
         let started = Instant::now();
         let back: Fingerprints = serde_json::from_slice(&bytes).unwrap();

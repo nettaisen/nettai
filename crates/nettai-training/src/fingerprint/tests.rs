@@ -113,7 +113,9 @@ fn pairs_seed_folders_and_are_watched() {
 }
 
 /// A job makes the same fingerprints on one thread as on four, from the
-/// chips in another order.
+/// chips in another order; and a chip's fingerprint is its own alone, the
+/// same whatever chips are fingerprinted with it; a status condition runs
+/// for every status timer a status of the content's sets.
 #[test]
 fn a_job_makes_the_same_on_any_threads() {
     let (c, f) = few();
@@ -122,6 +124,18 @@ fn a_job_makes_the_same_on_any_threads() {
     let one = Fingerprints::compute(&c, &chips, 1).unwrap();
     assert_eq!(one.chips, f.chips);
     assert_eq!(one.pairs, f.pairs);
+    let alone = Fingerprints::compute(&c, &chips[..2], 1).unwrap();
+    for chip in &chips[..2] {
+        assert_eq!(alone.of(*chip), f.of(*chip), "{}", c.defs.chip(*chip).key);
+    }
+    let conditions = Conditions::of(&c);
+    for chip in &chips {
+        let fp = f.of(*chip).unwrap();
+        for (t, r) in fp.status_ratios.iter().enumerate() {
+            assert_eq!(conditions.status(t).is_some(), r.is_some(), "{} status {t}", c.defs.chip(*chip).key);
+        }
+    }
+    assert!(f.stops.is_empty(), "{:?}", f.stops);
     let job = Job::new(&c, &[]);
     assert!(matches!(job.result(), Some(Ok(f)) if f.chips.is_empty()), "no chips: done at once");
 }
