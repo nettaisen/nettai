@@ -42,6 +42,8 @@ def make_pool(
         delay=tuple(env.delay),
         max_fight_ticks=env.max_fight_ticks,
         hp=tuple(hp),
+        full_lists=env.full_lists,
+        builders=env.builders,
         cache=env.cache,
     )
     if env.chip_holdout > 0:

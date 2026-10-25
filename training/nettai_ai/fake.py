@@ -78,6 +78,8 @@ class FakePool:
         max_fight_ticks: int = 18000,
         hp: tuple[int, int] = (1000, 1000),
         chip_holdout: tuple[float, int, str] | None = None,
+        full_lists: float = 0.5,  # (no builds: taken and unused)
+        builders: int = 0,
         cache: str | None = None,
         spec: dict[str, Any] | None = None,
     ):

@@ -411,9 +411,17 @@ winning.
   start or a key probe holds up no other worker's envs. The buffers are the pool's own memory, never reallocated, and
   the bridge shows them to Python as numpy arrays with no copy.
 - Each env has both sides' seats; Python says which policy plays each seat.
-- While a worker waits for the next step (Python's forward pass) it makes builds ahead. Each game has its own stream
-  of draws for its builds, used in order, so a round's builds are the same however busy the workers were: a pool of
-  one thread and a pool of three play the same, buffer for buffer (tested).
+- Builds are made ahead, two a game an env (`READY`), by the pool's `builders` threads (the trainer's
+  `env.builders`, 4), or with none by the workers while they wait for the next step (Python's forward pass). Each
+  game has its own stream of draws for its builds, used in order, one build at a time, so a round's builds are the
+  same however busy the threads were: a pool of one thread, one of three and one of three with two builders play the
+  same, buffer for buffer (tested, with every randomized build's lists full). A build is made with its game's stream
+  taken out of the env's build queue (`env::EnvBuilds`), the env's lock not held, and a round that needs one being
+  made waits for it. (Until 2026-10-24 a worker made one holding the env's lock and answered no step until it was
+  made: with full lists, §6.2, builds of up to 130 ms against steps of a millisecond or two, the fourth cloud run fell
+  from ~27,000 decisions a second to ~16,000. On the Mac, 96 envs of the three games, 8 workers, random actions, after
+  the queues filled: lists never full 34,500; half full, the workers making builds 24,700; with two builders
+  33,800.)
 
 Measured on the packs (release, `examples/throughput`, 10 s a measure, both seats a policy taking random allowed
 actions, three builds in four with every fact drawn, three folders in ten seeded with a pair, the fingerprints in the

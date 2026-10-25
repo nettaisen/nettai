@@ -41,6 +41,11 @@ pub struct PoolConfig {
     /// Where the chips' fingerprints are kept on disk (none: computed once a
     /// process: `Fingerprints::for_game`).
     pub cache: Option<PathBuf>,
+    /// Threads that only make builds ahead; with any, the workers that step
+    /// make none (a build takes up to 130 ms, a step a millisecond or two:
+    /// a worker making one when a step comes leaves it short-handed). None:
+    /// the workers make them while they wait.
+    pub builders: usize,
 }
 
 /// The pool's arrays, refilled by every step (§6.6): by set, the
@@ -171,7 +176,12 @@ impl Rows {
 /// start holds up no other worker's envs.
 struct Shared {
     envs: Vec<Mutex<Option<Env>>>,
+    /// Each env's builds, as it is made: a worker makes builds ahead there
+    /// without the env's lock.
+    builds: Vec<std::sync::OnceLock<Arc<env::EnvBuilds>>>,
     next: AtomicUsize,
+    /// The builders end.
+    stop: std::sync::atomic::AtomicBool,
 }
 
 impl Shared {
@@ -206,6 +216,7 @@ pub struct Pool {
     config: Config,
     made: Arc<Vec<Game>>,
     workers: Vec<Worker>,
+    builders: Vec<std::thread::JoinHandle<()>>,
     shared: Arc<Shared>,
     buffers: Buffers,
 }
@@ -259,19 +270,34 @@ impl Pool {
         }
         let mut buffers = Buffers::new(cfg.envs);
         let rows = Rows::of(&mut buffers);
-        let shared = Arc::new(Shared { envs: (0..cfg.envs).map(|_| Mutex::new(None)).collect(), next: AtomicUsize::new(0) });
+        let shared = Arc::new(Shared {
+            envs: (0..cfg.envs).map(|_| Mutex::new(None)).collect(),
+            builds: (0..cfg.envs).map(|_| Default::default()).collect(),
+            next: AtomicUsize::new(0),
+            stop: Default::default(),
+        });
         let mut workers = Vec::with_capacity(cfg.threads);
+        let prepares = cfg.builders == 0;
         for w in 0..cfg.threads {
             let (tx, rx_cmd) = channel();
             let (tx_reply, rx) = channel();
             let (games, config, seed, shared) = (games.clone(), cfg.env.clone(), cfg.seed, shared.clone());
             let thread = std::thread::Builder::new()
                 .name(format!("nettai-pool-{w}"))
-                .spawn(move || work(games, config, seed, shared, rows, rx_cmd, tx_reply))
+                .spawn(move || work(games, config, seed, shared, rows, rx_cmd, tx_reply, prepares))
                 .map_err(|e| format!("a worker thread: {e}"))?;
             workers.push(Worker { tx, rx, thread: Some(thread) });
         }
-        let mut pool = Pool { games: cfg.games.clone(), config: cfg.env.clone(), made: games, workers, shared, buffers };
+        let mut builders = Vec::with_capacity(cfg.builders);
+        for b in 0..cfg.builders {
+            let (games, shared) = (games.clone(), shared.clone());
+            let thread = std::thread::Builder::new()
+                .name(format!("nettai-builder-{b}"))
+                .spawn(move || build_ahead(games, shared))
+                .map_err(|e| format!("a builder thread: {e}"))?;
+            builders.push(thread);
+        }
+        let mut pool = Pool { games: cfg.games.clone(), config: cfg.env.clone(), made: games, workers, builders, shared, buffers };
         // (The envs made, each at its first decision.)
         pool.run(|| Cmd::Start)?;
         Ok(pool)
@@ -447,7 +473,7 @@ impl Pool {
         let mut p = env::Profile::default();
         for e in 0..self.envs() {
             if let Some(env) = self.shared.env(e).as_ref() {
-                let q = env.profile;
+                let q = env.profile();
                 p.encode += q.encode;
                 p.reset += q.reset;
                 p.probe += q.probe;
@@ -467,6 +493,11 @@ fn check_seat(seat: usize) -> Result<(), String> {
 
 impl Drop for Pool {
     fn drop(&mut self) {
+        self.shared.stop.store(true, Ordering::SeqCst);
+        for b in self.builders.drain(..) {
+            b.thread().unpark();
+            let _ = b.join();
+        }
         for w in &mut self.workers {
             // (A worker whose channel closes ends.)
             let (tx, _) = channel();
@@ -491,7 +522,8 @@ pub fn controller(name: &str) -> Result<Controller, String> {
 /// A worker's life: its runtimes loaded; then each command, over the envs
 /// it claims; and while none waits, builds made ahead for an env no one
 /// holds.
-fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows: Rows, rx: Receiver<Cmd>, tx: Sender<Result<(), String>>) {
+#[allow(clippy::too_many_arguments)]
+fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows: Rows, rx: Receiver<Cmd>, tx: Sender<Result<(), String>>, prepares: bool) {
     let loaded: Result<(), String> = games.iter().try_for_each(|g| {
         nettai_battle::behavior::Behaviors::for_content(&g.content).map(|_| ()).map_err(|e| format!("{}: {e}", g.name))
     });
@@ -502,7 +534,7 @@ fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows
             Err(TryRecvError::Disconnected) => return,
             Err(TryRecvError::Empty) => {
                 // (Nothing asked: a build made ahead, then look again.)
-                if loaded.is_ok() && prepare_one(&shared, &mut idle_at) {
+                if prepares && loaded.is_ok() && prepare_one(&shared, &mut idle_at) {
                     continue;
                 }
                 match rx.recv() {
@@ -523,6 +555,7 @@ fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows
                     Cmd::Start => {
                         let mut env = Env::new(games.clone(), cfg.clone(), seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(e as u64)).map_err(|why| format!("env {e}: {why}"))?;
                         let out = env.step([0, 0]).map_err(|why| format!("env {e}: {why}"))?;
+                        let _ = shared.builds[e].set(env.builds());
                         *slot = Some(env);
                         out
                     }
@@ -542,16 +575,28 @@ fn work(games: Arc<Vec<Game>>, cfg: Config, seed: u64, shared: Arc<Shared>, rows
     }
 }
 
+/// A builder's life: its runtimes loaded; then builds made ahead for the
+/// envs as they need them, a short sleep when none does, until the pool
+/// ends.
+fn build_ahead(games: Arc<Vec<Game>>, shared: Arc<Shared>) {
+    let loaded = games.iter().all(|g| nettai_battle::behavior::Behaviors::for_content(&g.content).is_ok());
+    let mut at = 0;
+    while loaded && !shared.stop.load(Ordering::SeqCst) {
+        if !prepare_one(&shared, &mut at) {
+            std::thread::park_timeout(std::time::Duration::from_millis(5));
+        }
+    }
+}
+
 /// A build made ahead for one env that needs one and that no one holds,
 /// looking from `at` on; whether one was made.
 fn prepare_one(shared: &Shared, at: &mut usize) -> bool {
     let n = shared.envs.len();
     for k in 0..n {
         let e = (*at + k) % n;
-        let Ok(mut slot) = shared.envs[e].try_lock() else { continue };
-        let Some(env) = slot.as_mut() else { continue };
+        let Some(builds) = shared.builds[e].get() else { continue };
         // (An error making it ahead is met again as the round needs it.)
-        if let Ok(true) = env.prepare() {
+        if let Ok(true) = builds.make_ahead() {
             *at = e;
             return true;
         }

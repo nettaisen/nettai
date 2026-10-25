@@ -316,13 +316,19 @@ impl Maker {
     /// chips in a code they share, two copies each where the rules take
     /// them), the rest drawn.
     pub fn random(&self, picks: &mut Picks, holdout: &Holdout, randomize: f64, combos: Combos) -> Result<Build, String> {
+        self.random_with(picks, holdout, randomize, FULL_SHARE, combos)
+    }
+
+    /// The same, with chance `full` (of a randomized build) that its lists
+    /// are filled full (the env's `full_lists`; [`FULL_SHARE`] by default).
+    pub fn random_with(&self, picks: &mut Picks, holdout: &Holdout, randomize: f64, full: f64, combos: Combos) -> Result<Build, String> {
         let started = std::time::Instant::now();
         let mut last = String::new();
         let result = (|| {
             for _ in 0..TRIES {
                 self.counts.tries.fetch_add(1, Ordering::Relaxed);
                 let all = chance(picks, randomize);
-                let full = all && chance(picks, FULL_SHARE);
+                let full = all && chance(picks, full);
                 match self.try_random(picks, holdout, all, full, combos) {
                     Ok(build) => {
                         let checked = Checked::of(&self.content, &self.game, &build.side);
@@ -777,6 +783,52 @@ mod tests {
                 }
                 println!("  {name}: room {room}, entries mean {:.1}, most {}, none in {}", v.iter().sum::<usize>() as f64 / v.len() as f64, v.iter().max().unwrap(), v.iter().filter(|&&n| n == 0).count());
             }
+            }
+        }
+    }
+
+    /// (A measure, run by hand: ticks a second of rounds of full builds, and
+    /// of the same builds with one list emptied.)
+    #[test]
+    #[ignore]
+    fn what_full_lists_cost_a_tick() {
+        for game in ["exe4", "exe5", "exe6"] {
+            let c = content(game);
+            let maker = Maker::new(&c).unwrap();
+            let mut picks = Picks::new(11);
+            let mut make = |full: bool| -> Vec<Side> {
+                (0..12)
+                    .map(|_| (0..TRIES).find_map(|_| maker.try_random(&mut picks, &Holdout::default(), true, full, Combos::NONE).ok().filter(|b| Checked::of(&c, game, &b.side).ready())).unwrap().side)
+                    .collect()
+            };
+            let (builds, plain) = (make(true), make(false));
+            let lists: Vec<String> = maker.list_fields().iter().map(|f| f.name.to_string()).collect();
+            let rate = |builds: &[Side], emptied: Option<&str>| {
+                let started = std::time::Instant::now();
+                let mut ticks = 0u64;
+                for (i, pair) in builds.chunks(2).enumerate() {
+                    let mut sides = [pair[0].clone(), pair[1].clone()];
+                    if let Some(name) = emptied {
+                        for s in &mut sides {
+                            let _ = set_list(&c, s, name, &[]);
+                        }
+                    }
+                    let Ok(m) = maker.round(sides, 1000, i as u32) else { continue };
+                    let mut b = nettai_match::Set::of(&c, &m, i as u32).start();
+                    let mut rng = nettai_netplay::rng::SplitMix64::new(i as u64);
+                    for _ in 0..3000 {
+                        let keys = [0u16, 1].map(|_| (rng.next_u64() & 0x3FF) as u16 & !0x0C);
+                        if !crate::env::step_battle(&mut b, keys) || b.is_battle_over() {
+                            break;
+                        }
+                        ticks += 1;
+                    }
+                }
+                ticks as f64 / started.elapsed().as_secs_f64()
+            };
+            println!("{game}: full {:.0} ticks/s, not full {:.0}", rate(&builds, None), rate(&plain, None));
+            for l in &lists {
+                println!("  full without {l}: {:.0} ticks/s", rate(&builds, Some(l)));
             }
         }
     }

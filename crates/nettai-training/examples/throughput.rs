@@ -142,7 +142,7 @@ fn main() {
         // The pool, on one thread and on all.
         let mut per = Vec::new();
         for (envs, t) in [(8, 1), (32, 4), (threads * 8, threads)] {
-            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, packs: None, env: Config::default(), cache: None };
+            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, packs: None, env: Config::default(), cache: None, builders: 0 };
             let made = Instant::now();
             let mut pool = Pool::with_contents(cfg, vec![content.clone()]).unwrap();
             let start_cost = made.elapsed();

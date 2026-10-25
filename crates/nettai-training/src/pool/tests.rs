@@ -3,7 +3,11 @@ use crate::testing::GAMES;
 use nettai_netplay::rng::SplitMix64;
 
 fn pool(envs: usize, threads: usize, seed: u64, env: Config) -> Pool {
-    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, packs: None, env, cache: None };
+    pool_with(envs, threads, 0, seed, env)
+}
+
+fn pool_with(envs: usize, threads: usize, builders: usize, seed: u64, env: Config) -> Pool {
+    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, packs: None, env, cache: None, builders };
     Pool::with_games(cfg, crate::testing::games(&GAMES)).unwrap_or_else(|e| panic!("{e}"))
 }
 
@@ -42,11 +46,14 @@ fn snapshot(b: &Buffers) -> Vec<u64> {
 /// The buffers fill as §6.6 says: every seat a policy plays is asked in
 /// turn, with its observation (the global token there), what it may do,
 /// and its game and delay; a round's end comes with its result; and the
-/// same seed plays the same, whatever the number of threads.
+/// same seed plays the same, whatever the number of threads, and with
+/// threads of their own making the builds ahead (full lists every
+/// randomized build: the slow ones).
 #[test]
 fn the_pools_buffers_fill_and_play_alike_on_any_threads() {
-    let cfg = Config { max_fight_ticks: 1200, ..Config::default() };
+    let cfg = Config { max_fight_ticks: 1200, full_lists: 1.0, ..Config::default() };
     let mut one = pool(6, 1, 9, cfg.clone());
+    let mut built = pool_with(6, 3, 2, 9, cfg.clone());
     let mut three = pool(6, 3, 9, cfg);
     let (mut rng, mut rng3) = (SplitMix64::new(1), SplitMix64::new(1));
     let mut seen = [0u32; 3];
@@ -54,6 +61,7 @@ fn the_pools_buffers_fill_and_play_alike_on_any_threads() {
     let mut games = std::collections::BTreeSet::new();
     for step in 0..1500 {
         assert_eq!(snapshot(one.buffers()), snapshot(three.buffers()), "step {step}");
+        assert_eq!(snapshot(one.buffers()), snapshot(built.buffers()), "step {step}: with builders");
         let b = one.buffers();
         for e in 0..b.envs {
             games.insert(b.game[e]);
@@ -77,6 +85,7 @@ fn the_pools_buffers_fill_and_play_alike_on_any_threads() {
         assert_eq!(a, actions(three.buffers(), &mut rng3));
         one.step(&a).unwrap_or_else(|e| panic!("{e}"));
         three.step(&a).unwrap_or_else(|e| panic!("{e}"));
+        built.step(&a).unwrap_or_else(|e| panic!("{e}"));
     }
     let stats = one.round_stats().unwrap();
     println!("phases {seen:?}, {ended} rounds ended, games {games:?}, {} rounds' stats", stats.len());

@@ -93,6 +93,9 @@ pub struct Config {
     /// its patch cards...), else it keeps the rules' defaults for them
     /// (§6.2).
     pub randomize: f64,
+    /// The chance a randomized build's lists are filled full
+    /// ([`crate::builds::FULL_SHARE`]).
+    pub full_lists: f64,
     /// The chance a random folder is seeded with a pair of chips that work
     /// together (a setup and its payoff, from the fingerprints, §6.2).
     pub combos: f64,
@@ -111,6 +114,7 @@ impl Default for Config {
             screen_decisions: 24,
             seats: [Controller::Policy; 2],
             randomize: 0.75,
+            full_lists: crate::builds::FULL_SHARE,
             combos: 0.3,
         }
     }
@@ -222,11 +226,9 @@ pub struct Env {
     measure: Measure,
     hp: [Option<u16>; 2],
     max_hp: [u16; 2],
-    /// Builds made ahead, by game, the oldest first, and each game's own
-    /// stream of draws for its builds: a round's builds are the same
-    /// whenever they were made.
-    ready: Vec<std::collections::VecDeque<crate::builds::Build>>,
-    build_picks: Vec<Picks>,
+    /// Its builds: each game's stream of draws and the builds made ahead
+    /// from it, which the pool's workers make outside the env's lock.
+    builds: Arc<EnvBuilds>,
     /// The deal asked for ([`Env::set_deal`]), whether it starts over at the
     /// next round, and the one in effect with the rounds dealt from it.
     deal: Option<u64>,
@@ -350,13 +352,12 @@ impl Env {
         for _ in 0..(seed % 7) {
             picks.next();
         }
-        let mut build_picks: Vec<Picks> = (0..games.len()).map(|g| Picks::new(picks.next() as u32 ^ g as u32)).collect();
-        let mut ready: Vec<std::collections::VecDeque<crate::builds::Build>> = games.iter().map(|_| Default::default()).collect();
+        let streams: Vec<Picks> = (0..games.len()).map(|g| Picks::new(picks.next() as u32 ^ g as u32)).collect();
+        let builds = Arc::new(EnvBuilds::new(games.clone(), streams, &cfg));
         let g = picks.below(games.len());
-        let first = RoundMade::new(&games[g], &mut picks, &mut build_picks[g], &mut ready[g], &cfg)?;
+        let first = RoundMade::new(&games[g], &mut picks, &builds, g, &cfg)?;
         let mut env = Env {
-            ready,
-            build_picks,
+            builds,
             deal: None,
             deal_anew: false,
             dealt: None,
@@ -420,6 +421,7 @@ impl Env {
     pub fn set_deal(&mut self, key: Option<u64>) {
         self.deal = key;
         self.deal_anew = true;
+        self.builds.lock().paused = key.is_some();
     }
 
     /// The ticks seat `seat` holds a fight decision from the next round
@@ -436,8 +438,11 @@ impl Env {
     /// The chips held out, from the next round.
     pub fn set_chip_holdout(&mut self, holdout: crate::builds::Holdout) {
         self.cfg.holdout = holdout;
-        // (Builds made ahead were made by the last.)
-        for r in &mut self.ready {
+        // (Builds made ahead were made by the last, and those being made are dropped as they come back.)
+        let mut s = self.builds.lock();
+        s.settings.holdout = holdout;
+        s.generation += 1;
+        for r in &mut s.ready {
             r.clear();
         }
     }
@@ -446,17 +451,18 @@ impl Env {
     /// fewer than [`READY`]: what a worker does while it waits. Whether it
     /// made one.
     pub fn prepare(&mut self) -> Result<bool, String> {
-        if self.deal.is_some() {
-            return Ok(false);
-        }
-        let Some(g) = (0..self.games.len()).filter(|&g| self.ready[g].len() < READY).min_by_key(|&g| self.ready[g].len()) else {
-            return Ok(false);
-        };
-        let started = std::time::Instant::now();
-        let build = self.games[g].maker.random(&mut self.build_picks[g], &self.cfg.holdout, self.cfg.randomize, combos(&self.games[g], &self.cfg))?;
-        self.ready[g].push_back(build);
-        self.profile.prepare += started.elapsed().as_nanos() as u64;
-        Ok(true)
+        self.builds.make_ahead()
+    }
+
+    /// Its builds, which a worker makes ahead without the env
+    /// ([`EnvBuilds::make_ahead`]).
+    pub fn builds(&self) -> Arc<EnvBuilds> {
+        self.builds.clone()
+    }
+
+    /// Where its time went, with the builds made ahead for it.
+    pub fn profile(&self) -> Profile {
+        Profile { prepare: self.builds.prepare.load(std::sync::atomic::Ordering::Relaxed), ..self.profile }
     }
 
     fn draw(&mut self, lo: u16, hi: u16) -> u16 {
@@ -483,15 +489,18 @@ impl Env {
                     let seed = mix(*key ^ mix(*n));
                     *n += 1;
                     self.picks = Picks::new(seed as u32);
-                    for (g, p) in self.build_picks.iter_mut().enumerate() {
-                        *p = Picks::new((seed >> 32) as u32 ^ g as u32);
-                    }
-                    for r in &mut self.ready {
-                        r.clear();
-                    }
+                    // (Once no build is being made ahead from them.)
+                    self.builds.settled(|b| {
+                        for (g, p) in b.streams.iter_mut().enumerate() {
+                            *p = Some(Picks::new((seed >> 32) as u32 ^ g as u32));
+                        }
+                        for r in &mut b.ready {
+                            r.clear();
+                        }
+                    });
                 }
                 let g = self.picks.below(self.games.len());
-                let r = RoundMade::new(&self.games[g], &mut self.picks, &mut self.build_picks[g], &mut self.ready[g], &self.cfg)?;
+                let r = RoundMade::new(&self.games[g], &mut self.picks, &self.builds, g, &self.cfg)?;
                 self.game = g;
                 self.battle = r.battle;
                 self.folders = r.folders;
@@ -914,27 +923,137 @@ struct RoundMade {
     pairs: [Option<crate::fingerprint::Pair>; 2],
 }
 
-/// The pairs a game's random folders may be seeded with, at `cfg`'s rate.
-fn combos<'a>(game: &'a Game, cfg: &Config) -> crate::builds::Combos<'a> {
+/// The pairs a game's random folders may be seeded with, at rate `rate`.
+fn combos(game: &Game, rate: f64) -> crate::builds::Combos<'_> {
     match game.names.fingerprints() {
-        Some(f) => crate::builds::Combos { pairs: &f.pairs, rate: cfg.combos },
+        Some(f) => crate::builds::Combos { pairs: &f.pairs, rate },
         None => crate::builds::Combos::NONE,
     }
 }
 
-impl RoundMade {
-    fn new(
-        game: &Game,
-        picks: &mut Picks,
-        stream: &mut Picks,
-        ready: &mut std::collections::VecDeque<crate::builds::Build>,
-        cfg: &Config,
-    ) -> Result<RoundMade, String> {
-        let mut build = || match ready.pop_front() {
-            Some(b) => Ok(b),
-            None => game.maker.random(stream, &cfg.holdout, cfg.randomize, combos(game, cfg)),
+/// What an env's builds are made with.
+#[derive(Clone, Copy)]
+struct BuildSettings {
+    holdout: crate::builds::Holdout,
+    randomize: f64,
+    full: f64,
+    combos: f64,
+}
+
+/// An env's builds (§6.5): each game's stream of draws, and the builds made
+/// ahead from it, by game, the oldest first. The pool's workers make them
+/// while they wait for a step ([`EnvBuilds::make_ahead`]), each with a
+/// game's stream taken out and the env's lock not held, so a step never
+/// waits on a build being made ahead (a full one takes up to 130 ms, a
+/// step a millisecond or two). One build at a time a game, in its
+/// stream's order, so a round's builds are the same however busy the
+/// workers were: a round that needs one being made waits for it.
+pub struct EnvBuilds {
+    games: Arc<Vec<Game>>,
+    state: std::sync::Mutex<BuildState>,
+    returned: std::sync::Condvar,
+    /// Nanoseconds spent making builds ahead.
+    prepare: std::sync::atomic::AtomicU64,
+}
+
+struct BuildState {
+    /// By game; none while a build is being made from it.
+    streams: Vec<Option<Picks>>,
+    ready: Vec<std::collections::VecDeque<crate::builds::Build>>,
+    settings: BuildSettings,
+    /// No builds made ahead (a deal reseeds the streams every round).
+    paused: bool,
+    /// Counted up as the settings change: a build made ahead with older
+    /// ones is dropped as it comes back.
+    generation: u64,
+}
+
+impl EnvBuilds {
+    fn new(games: Arc<Vec<Game>>, streams: Vec<Picks>, cfg: &Config) -> EnvBuilds {
+        let ready = streams.iter().map(|_| Default::default()).collect();
+        let settings = BuildSettings { holdout: cfg.holdout, randomize: cfg.randomize, full: cfg.full_lists, combos: cfg.combos };
+        let state = BuildState { streams: streams.into_iter().map(Some).collect(), ready, settings, paused: false, generation: 0 };
+        EnvBuilds { games, state: std::sync::Mutex::new(state), returned: std::sync::Condvar::new(), prepare: Default::default() }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, BuildState> {
+        self.state.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    fn make(&self, g: usize, stream: &mut Picks, s: &BuildSettings) -> Result<crate::builds::Build, String> {
+        let game = &self.games[g];
+        game.maker.random_with(stream, &s.holdout, s.randomize, s.full, combos(game, s.combos))
+    }
+
+    /// Make a build ahead, for the game with the fewest made of those with
+    /// fewer than [`READY`] and no build being made: what a worker does
+    /// while it waits. Whether it made one.
+    pub fn make_ahead(&self) -> Result<bool, String> {
+        let (g, mut stream, settings, generation) = {
+            let mut s = self.lock();
+            if s.paused {
+                return Ok(false);
+            }
+            let Some(g) = (0..s.ready.len()).filter(|&g| s.streams[g].is_some() && s.ready[g].len() < READY).min_by_key(|&g| s.ready[g].len()) else {
+                return Ok(false);
+            };
+            let stream = s.streams[g].take().expect("its stream");
+            (g, stream, s.settings, s.generation)
         };
-        let builds = [build()?, build()?];
+        let started = std::time::Instant::now();
+        let made = self.make(g, &mut stream, &settings);
+        self.prepare.fetch_add(started.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
+        let mut s = self.lock();
+        s.streams[g] = Some(stream);
+        let out = match made {
+            Ok(b) => {
+                if s.generation == generation {
+                    s.ready[g].push_back(b);
+                }
+                Ok(true)
+            }
+            Err(e) => Err(e),
+        };
+        drop(s);
+        self.returned.notify_all();
+        out
+    }
+
+    /// A build of game `g` for a round: the first made ahead, else made now
+    /// (once one being made ahead is back).
+    fn next(&self, g: usize) -> Result<crate::builds::Build, String> {
+        let mut s = self.lock();
+        loop {
+            if let Some(b) = s.ready[g].pop_front() {
+                return Ok(b);
+            }
+            if s.streams[g].is_some() {
+                break;
+            }
+            s = self.returned.wait(s).unwrap_or_else(|p| p.into_inner());
+        }
+        let mut stream = s.streams[g].take().expect("its stream");
+        let settings = s.settings;
+        drop(s);
+        let made = self.make(g, &mut stream, &settings);
+        self.lock().streams[g] = Some(stream);
+        self.returned.notify_all();
+        made
+    }
+
+    /// `f` on the state once no build is being made ahead.
+    fn settled<R>(&self, f: impl FnOnce(&mut BuildState) -> R) -> R {
+        let mut s = self.lock();
+        while s.streams.iter().any(Option::is_none) {
+            s = self.returned.wait(s).unwrap_or_else(|p| p.into_inner());
+        }
+        f(&mut s)
+    }
+}
+
+impl RoundMade {
+    fn new(game: &Game, picks: &mut Picks, builds: &EnvBuilds, g: usize, cfg: &Config) -> Result<RoundMade, String> {
+        let builds = [builds.next(g)?, builds.next(g)?];
         let pairs = [builds[0].pair, builds[1].pair];
         let sides = builds.map(|b| b.side);
         let hp = cfg.hp.map(|(lo, hi)| draw(picks, lo, hi));

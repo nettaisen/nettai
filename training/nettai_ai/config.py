@@ -73,6 +73,12 @@ class EnvConfig:
     # evaluation builds (the pool's chip_holdout). 0 turns it off.
     chip_holdout: float = 0.0
     chip_holdout_seed: int = 7
+    # The chance a randomized build's lists (its NaviCust, patch cards...) are filled full rather than to a random
+    # length (§6.2, `builds::FULL_SHARE`).
+    full_lists: float = 0.5
+    # Threads that only make builds ahead (the pool's `builders`); 0: the stepping workers make them as they wait,
+    # which leaves a step short-handed while a full build (up to 130 ms) is being made.
+    builders: int = 4
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 
