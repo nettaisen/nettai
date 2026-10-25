@@ -486,3 +486,32 @@ fn rounds_end_by_the_judge_or_at_the_fight_limit() {
     assert!(out.done && !out.truncated);
     assert_eq!((out.ending, out.result, env.ended.last().unwrap().ending), (BY_LIMIT, [0, 0], BY_LIMIT));
 }
+
+/// The fight action held is let go when a custom screen opens: the fight
+/// resumes pressing nothing till its next decision, not the action from
+/// before the screen (held on, an A in it used the new hand's first chip
+/// at once, unknown to the decision after). Seats always choosing up with
+/// A and B are found holding nothing on every screen.
+#[test]
+fn a_custom_screen_lets_the_fight_action_go() {
+    let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 3000, ..Config::default() }, 4).unwrap();
+    let mut rng = SplitMix64::new(2);
+    let held = 4 + 2 + 1; // up, A, B
+    let mut actions = [0; 2];
+    let mut screens = 0;
+    for _ in 0..3000 {
+        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+        for s in 0..2 {
+            actions[s] = match out.phase[s] {
+                FIGHT => held,
+                SCREEN => {
+                    assert_eq!(env.seats[s].action, 0, "seat {s} holds its fight action on the screen");
+                    screens += 1;
+                    random_action(&mut rng, &env.legal_screen[s])
+                }
+                _ => 0,
+            };
+        }
+    }
+    assert!(screens > 20, "{screens} screen decisions");
+}

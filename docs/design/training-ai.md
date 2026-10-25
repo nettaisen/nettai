@@ -217,8 +217,10 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
 
 Each decision chooses one of 20 joint actions: a direction (none, up, down, toward, away) × A held or not × B held
 or not, numbered direction × 4 + A × 2 + B. Toward is right for side 0 and left for side 1. They are held until the
-next decision, every 4 ticks by default (`k`, a setting; Hard may use 2). A press is "held, then not held", and a
-charge is "B held" over many decisions. The back special and charged chips fall out of these sequences. It never
+next decision, every 4 ticks by default (`k`, a setting; Hard may use 2), and let go when a custom screen opens:
+held on, the action from before the screen came back for up to k − 1 ticks as the fight resumed, before the next
+decision and unknown to it (its previous action is the screen's last choice), an A in it using the new hand's first
+chip at once (fixed 2026-10-25). A press is "held, then not held", and a charge is "B held" over many decisions. The back special and charged chips fall out of these sequences. It never
 presses L, R, START or SELECT in the fight. Every action is always allowed.
 
 **Reaction delay.** The decision at tick t is made from the observation of tick t − D. Decisions come at the env's

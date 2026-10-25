@@ -87,6 +87,8 @@ fn the_pools_buffers_fill_and_play_alike_on_any_threads() {
         three.step(&a).unwrap_or_else(|e| panic!("{e}"));
         built.step(&a).unwrap_or_else(|e| panic!("{e}"));
     }
+    // (A round the last step ended.)
+    ended += one.buffers().done.iter().filter(|&&d| d).count();
     let stats = one.round_stats().unwrap();
     println!("phases {seen:?}, {ended} rounds ended, games {games:?}, {} rounds' stats", stats.len());
     assert_eq!(stats.len(), ended);

@@ -756,8 +756,10 @@ impl Env {
     fn tick(&mut self) {
         let custom = self.battle.round.mode == mode::CUSTOM;
         if custom && !self.in_screen {
-            // A new custom screen.
+            // A new custom screen: the fight action held before it is let go
+            // (the fight resumes pressing nothing till the next decision).
             for seat in &mut self.seats {
+                seat.action = 0;
                 seat.nav.reset();
                 seat.probe = None;
                 seat.decisions = 0;

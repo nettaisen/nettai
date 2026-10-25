@@ -633,9 +633,10 @@ impl NetAi {
             }
         }
         // This tick's buttons (the env's `tick`): a new screen's navigator
-        // from nothing; on the screen the navigator's, in the fight the
-        // action held.
+        // from nothing and the fight action let go; on the screen the
+        // navigator's, in the fight the action held.
         if custom && !r.in_screen {
+            r.action = 0;
             r.nav.reset();
             r.probe = None;
             r.decisions = 0;
