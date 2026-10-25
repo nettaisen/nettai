@@ -81,11 +81,20 @@ function block.turn(side: number)
     state.auto_battle_places = places.turn(state.auto_battle_places)
 end
 
+-- A soul's chip: its family the souls' (15), which the intake reads for one (0x0800B68C, 0x0800B924).
+local SOUL_FAMILY = "special"
+
 -- `validate`'s part: the places' (each one thing, a pattern one of the eight records, no chip the AI can't play:
 -- its positioning class past the table at 0x0800F3C8; only mega chips in the mega list, giga chips in the giga list
 -- and program advances in the program advance list), and no place holding 0: where EXE5's AI takes a first place
 -- of 0 for nothing to play, EXE4's has no test of it (0x0800E5AA) and plays its chip table's record 0, which is no
--- chip (the game's own writer puts none there).
+-- chip (the game's own writer puts none there). Nor a soul's chip, which the game's own writer puts nowhere either
+-- (0x0800EFA8 sorts the chips into lists by class, 0x0800F174's and 0x0800F188's, and places none of class 3's,
+-- 0x02033C00 and 0x02035000: the souls' chips'): the AI uses a chip by its record's action (0x0800EB1E), a soul's the
+-- soul's change (action 0x0D, ../souls/change), whose soul is AIData +0x10 as the intake leaves it, never the chip's.
+-- In the dark soul, the only navi a netbattle's AI drives, that is 0xFF each tick its ticks run on (0x0800B6D0; 0 on
+-- their last, as the revert is asked, 0x0800B6C4): the change puts it in NaviStats +0x24 (0x080EBB80) and jumps by it
+-- through the status reset's table of souls (0x0800E05C: 0x0800E0A0's), past its end to 0xBC031C02, where nothing is.
 function block.validate(side: number, problem: (p: SetupProblem) -> ())
     local stated: { Place } = rules.setup_of(side).auto_battle_places
     places.validate(stated, problem)
@@ -96,6 +105,20 @@ function block.validate(side: number, problem: (p: SetupProblem) -> ())
                 field = "auto_battle_places",
                 entry = i,
                 text = string.format("place %d of the auto battle data holds 0: the original plays its chip table's first record there, which is no chip", i),
+            })
+        end
+        local chip: Chip? = p.chip
+        if chip ~= nil and chip.family == SOUL_FAMILY then
+            problem({
+                kind = "chip_not_allowed",
+                field = "auto_battle_places",
+                entry = i,
+                chip = chip,
+                text = string.format(
+                    "place %d of the auto battle data holds %s, a soul's chip: the original's dark soul plays it as the soul's change with no soul, past the tables of souls (the game crashes)",
+                    i,
+                    battle.name(chip)
+                ),
             })
         end
     end

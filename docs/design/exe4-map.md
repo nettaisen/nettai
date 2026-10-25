@@ -3143,7 +3143,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      sixteen most used standard chips by the repeat table 0x0800F1F8 (4, 4, 2, 2, then once each; 0x0800F1C2), 28 to
      32 the five most used mega chips (0x0800F118), 33 the most used giga chip (0x0800F128), 34 to 41 the patterns
      (0x0800F138: 0x0800F2DC), 42 the most used program advance (0x0800F142). (US Red Sun's addresses; Blue Moon's
-     repeat table is at the same address, the Japanese Red Sun's at 0x0800F1A4.)
+     repeat table is at the same address, the Japanese Red Sun's at 0x0800F1A4.) Class 3's lists (0x02033C00 and
+     0x02035000, the souls' chips') are sorted and placed nowhere. A soul's chip the AI played would run the soul's
+     change (action 0x0D) with the soul the intake left in AIData +0x10, never the chip's: in the dark soul 0xFF
+     (0x0800B6D0), which the change puts in NaviStats +0x24 and the status reset jumps by through its table of souls
+     (0x0800E05C: 0x0800E0A0's), past its end to 0xBC031C02. The rules' `validate` refuses a soul's chip in any
+     place, as it does a 0 (the training's random builds put one there and a dark soul played it, 2026-10-25).
 
      **Getting in place** (0x0800F394, `rules/auto_battle/place`; its state 16 bytes a side at 0x0203C030): the
      chip record's byte 13 names one of 46 classes (0x0800F3C8; each chip's `auto_battle.class`, with its reach list

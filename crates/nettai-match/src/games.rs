@@ -829,6 +829,31 @@ fn exe5s_rules_send_the_auto_battle_data() {
     assert_eq!(b2.rng, rng);
 }
 
+/// No soul's chip in EXE4's auto battle data (content/exe4/rules/
+/// auto_battle/block.luau): the game's writer places no chip of class 3
+/// (0x0800EFA8), and the dark soul's AI playing one starts the soul's
+/// change with no soul, AIData +0x10 at the 0xFF the dark soul's intake
+/// leaves (0x0800B6D0), which the original takes past its tables by soul
+/// (0x0800E05C's jump). Its `validate` says so of each place that holds
+/// one, and nothing of a Cannon.
+#[test]
+fn a_souls_chip_is_no_place_of_exe4s_auto_battle_data() {
+    use crate::wrong::Wrong;
+    let content = exe4_content();
+    let mut m = crate::pick::live(&content, "exe4", 3, None).unwrap();
+    let chip = |name: &str| crate::ids::chip(&content, "exe4", name).unwrap();
+    let place = |name: &str| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, chip(name).0)))]);
+    let places = [place("metlsoul"), place("cannon"), Fact::Record(Vec::new()), place("rollsoul")];
+    m.sides[0].set_fact(&content, "auto_battle_places", &places).unwrap();
+    let said: Vec<(Option<usize>, Option<usize>, Wrong)> = crate::check::problems(&content, &m)
+        .into_iter()
+        .filter(|p| p.field.as_deref() == Some("auto_battle_places"))
+        .map(|p| (p.side, p.entry, p.what))
+        .collect();
+    let refused = |entry: usize, name: &str| (Some(0), Some(entry), Wrong::ChipNotAllowed { chip: chip(name) });
+    assert_eq!(said, [refused(0, "metlsoul"), refused(3, "rollsoul")]);
+}
+
 /// The stages a match may name are its rules' (`link_pick.match_stages`):
 /// each game's link battle stages, those with the link effect that aren't
 /// the random battle's (EXE5's that its pick never reaches among them), in

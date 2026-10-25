@@ -207,6 +207,8 @@ function change.make(spec: Spec): Action
         -- One tick of the change.
         update = function(me: Object, s: State)
             local soul = me:form_change_target()
+            -- (None: the soul's chip used other than as the intake asks, the dark soul's AI playing it from the auto
+            -- battle data, where the original's soul is 0xFF; `validate` refuses such data, ../auto_battle/block.)
             if soul == nil then
                 error("EXE4's soul change asked for no soul (0x080EBA44: AIData +0x10)")
             end
