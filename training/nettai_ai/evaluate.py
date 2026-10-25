@@ -397,6 +397,9 @@ def main() -> None:
         level = dataclasses.replace(level, delay=a.delay)
     others = [load_player(p, device)[0] for p in a.vs]
     everyone = [main_player] + others
+    names = [p.name for p in everyone]
+    if len(set(names)) < len(names):
+        raise SystemExit(f"players {names}: two have one name (a checkpoint's file name and update): copy one to another name")
     for p in others:
         if p.model.spec.hash != main_player.model.spec.hash:
             raise SystemExit(f"{p.name} was trained on another observation spec than {main_player.name}")
