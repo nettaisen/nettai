@@ -926,7 +926,9 @@ latest checkpoint (2026-10-24): update 150 of the third cloud run (runs/third, w
 and trained on choosing Crosses, with the stall cost of §6.4 from its update 100; 31 M decisions of its own;
 4.67 MB), exported on the cloud machine. Then, for the user to play (2026-10-24), update 500 of the fourth cloud
 run (runs/fourth, warm-started from the third's 350; one decision every 8 ticks, γ 0.999, λ 0.98; 196 M decisions;
-its weights' k 8, which the player reads). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+its weights' k 8, which the player reads). Then update 750 of the same run (295 M decisions; half its randomized builds'
+lists full from 700), which at Hard beat the first run's 1,000 over duplicate deals, 79 won both ways to 36. A better
+one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
 that it plays.
