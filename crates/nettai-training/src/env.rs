@@ -40,7 +40,6 @@ use nettai_battle::custom::FolderChip;
 use nettai_battle::custom::screen::Phase;
 use nettai_battle::hud::CustomGauge;
 use nettai_battle::input::keys;
-use nettai_battle::kinds::player::{EngineAction, NaviAction, navi_action};
 use nettai_match::{Picks, Set, Side};
 use std::sync::Arc;
 
@@ -100,12 +99,6 @@ pub struct Config {
     /// The chance a random folder is seeded with a pair of chips that work
     /// together (a setup and its payoff, from the fingerprints, §6.2).
     pub combos: f64,
-    /// Fight ticks after an action of a navi's own starts (an attack, a
-    /// chip: [`own_act`]) within which HP the other navi loses is credited
-    /// to the seat's decision it started under, not the one current then
-    /// (§6.4: [`Outcome::credit`]). 0: every HP change is the current
-    /// decision's.
-    pub credit_ticks: u32,
 }
 
 impl Default for Config {
@@ -123,7 +116,6 @@ impl Default for Config {
             randomize: 0.75,
             full_lists: crate::builds::FULL_SHARE,
             combos: 0.3,
-            credit_ticks: 0,
         }
     }
 }
@@ -173,36 +165,8 @@ pub struct Outcome {
     pub ending: u8,
     /// (HP the other lost / its max HP − HP it lost / its own) since the
     /// seat's last decision: valid where the seat decides or the round
-    /// ended. HP credited to an earlier decision (`credit`) is left out.
+    /// ended.
     pub hp_gain: [f32; 2],
-    /// HP the other lost (by its max HP) credited to earlier decisions of
-    /// the seat than the one closed now: those its attacks started under
-    /// ([`Config::credit_ticks`]). By seat, up to [`CREDITS`] entries
-    /// (lag, amount): lag 2 is the decision before the one closed now, 3
-    /// the one before that, and so on, in the seat's decisions of this
-    /// round, fight and screen; lag 0, no entry. Valid where `hp_gain` is.
-    pub credit: [[(u16, f32); CREDITS]; 2],
-    /// HP the other lost and the seat's own navi lost (each by its max HP,
-    /// losses only) since the seat's last decision, however credited:
-    /// valid where `hp_gain` is (for the trainer's predictions, §8).
-    pub dealt: [f32; 2],
-    pub taken: [f32; 2],
-    /// Where the seat decides now: whether the two navis stand in one row
-    /// at this tick (1), not (0), or one isn't on the field (−1). What
-    /// the trainer's predictions are told, never the policy (§8).
-    pub same_row: [i8; 2],
-}
-
-/// The entries of [`Outcome::credit`] a seat has: more decisions credited
-/// in one step than this, and the rest is the closed decision's.
-pub const CREDITS: usize = 4;
-
-/// Whether a navi's action is one of its own in the fight, whose hits
-/// [`Config::credit_ticks`] credits to the decision it started under: a
-/// content action (its attacks, its chips' actions) or one of the rules'
-/// chip uses. Not its moves, entry, reactions or form changes.
-pub fn own_act(a: NaviAction) -> bool {
-    matches!(a, NaviAction::Content(_) | NaviAction::Engine(EngineAction::DimmingChip | EngineAction::HandOffChip | EngineAction::InstantChip))
 }
 
 struct Seat {
@@ -220,20 +184,6 @@ struct Seat {
     decisions: u16,
     decided_at: Option<u32>,
     gain: f32,
-    /// Decisions asked this round, fight and screen: the current one's
-    /// number (from 1; 0 before the first).
-    asked_n: u32,
-    /// What its navi ran last tick, and the latest start of an action of
-    /// its own in the fight: the fight tick and the decision it started
-    /// under.
-    was: Option<NaviAction>,
-    act: Option<(u32, u32)>,
-    /// HP the other lost credited to earlier decisions since the seat last
-    /// reported: (decision, amount).
-    credits: Vec<(u32, f32)>,
-    /// HP dealt and taken since it last reported (`Outcome::dealt`).
-    dealt: f32,
-    taken: f32,
     /// Observations a fight decision may need, by `(s + D) / k` modulo its
     /// length: their ticks and them.
     ring: Vec<(Option<u32>, Obs)>,
@@ -394,12 +344,6 @@ impl Env {
             decisions: 0,
             decided_at: None,
             gain: 0.0,
-            asked_n: 0,
-            was: None,
-            act: None,
-            credits: Vec::new(),
-            dealt: 0.0,
-            taken: 0.0,
             ring: (0..ring).map(|_| (None, Obs::new())).collect(),
             bot: Bot::new(BotKind::Still, n),
         };
@@ -587,12 +531,6 @@ impl Env {
             seat.decisions = 0;
             seat.decided_at = None;
             seat.gain = 0.0;
-            seat.asked_n = 0;
-            seat.was = None;
-            seat.act = None;
-            seat.credits.clear();
-            seat.dealt = 0.0;
-            seat.taken = 0.0;
             for slot in &mut seat.ring {
                 slot.0 = None;
             }
@@ -709,7 +647,7 @@ impl Env {
                 out.result = result;
                 out.ending = ending;
                 for s in 0..2 {
-                    self.report(s, &mut out);
+                    out.hp_gain[s] += std::mem::take(&mut self.seats[s].gain);
                 }
                 self.start_round(None)?;
                 if !self.has_policy() {
@@ -723,18 +661,15 @@ impl Env {
                     if asked[s] == NONE {
                         continue;
                     }
-                    // (After a round's end in this step, the step's gain is the
-                    // ended round's alone: the new round's before its first
-                    // decision is no transition's, and credits none.)
-                    if out.done {
-                        let seat = &mut self.seats[s];
-                        (seat.gain, seat.dealt, seat.taken) = (0.0, 0.0, 0.0);
-                    } else {
-                        self.report(s, &mut out);
-                    }
                     self.ask(s, asked[s]);
                     out.phase[s] = asked[s];
-                    out.same_row[s] = self.same_row();
+                    // (After a round's end in this step, the step's gain is the
+                    // ended round's alone: the new round's before its first
+                    // decision is no transition's.)
+                    let gain = std::mem::take(&mut self.seats[s].gain);
+                    if !out.done {
+                        out.hp_gain[s] += gain;
+                    }
                 }
                 self.asked = asked;
                 return Ok(out);
@@ -776,42 +711,10 @@ impl Env {
         }
     }
 
-    /// Seat `s`'s gain since its last decision, and its HP credited to
-    /// earlier ones (by lag from the decision closed now), into `out`.
-    fn report(&mut self, s: usize, out: &mut Outcome) {
-        let seat = &mut self.seats[s];
-        out.hp_gain[s] += std::mem::take(&mut seat.gain);
-        out.dealt[s] += std::mem::take(&mut seat.dealt);
-        out.taken[s] += std::mem::take(&mut seat.taken);
-        let closed = seat.asked_n;
-        for (n, d) in seat.credits.drain(..) {
-            let lag = u16::try_from(closed - n + 1).unwrap_or(u16::MAX);
-            let entries = &mut out.credit[s];
-            if let Some(e) = entries.iter_mut().find(|e| e.0 == lag) {
-                e.1 += d;
-            } else if let Some(e) = entries.iter_mut().find(|e| e.0 == 0) {
-                *e = (lag, d);
-            } else {
-                out.hp_gain[s] += d;
-            }
-        }
-    }
-
-    /// Whether the two navis stand in one row now ([`Outcome::same_row`]).
-    fn same_row(&self) -> i8 {
-        let b = &self.battle;
-        let row = |side: u8| b.player(side).filter(|&r| b.objects.is_allocated(r)).map(|r| b.objects.get(r).panel.y);
-        match (row(0), row(1)) {
-            (Some(a), Some(c)) => (a == c) as i8,
-            _ => -1,
-        }
-    }
-
     /// Ask seat `s` for a decision of kind `phase`: its observation and
     /// what it may do.
     fn ask(&mut self, s: usize, phase: u8) {
         self.seats[s].decided_at = Some(self.t);
-        self.seats[s].asked_n += 1;
         self.profile.decisions += 1;
         let names = &self.games[self.game].names;
         match phase {
@@ -895,7 +798,6 @@ impl Env {
         self.profile.ticks += 1;
         self.log.push(&self.battle);
         self.measure.tick(&self.battle, self.t);
-        self.acts();
         self.gains();
         // The observations later decisions will need.
         let names = &self.games[self.game].names;
@@ -933,30 +835,8 @@ impl Env {
         presses_l(self.t, at).then_some(seat)
     }
 
-    /// Each seat's navi's action this tick: one of its own that starts in
-    /// the fight is the one the other's HP lost is credited to next
-    /// ([`Config::credit_ticks`]).
-    fn acts(&mut self) {
-        let b = &self.battle;
-        let fighting = b.round.mode == mode::FIGHTING;
-        let at = self.measure.stats.fight_ticks;
-        for side in 0..2u8 {
-            let now = b
-                .player(side)
-                .filter(|&r| b.objects.is_allocated(r) && b.objects.get(r).actor.is_some())
-                .map(|r| navi_action(b, r));
-            let seat = &mut self.seats[side as usize];
-            if fighting && now != seat.was && now.is_some_and(own_act) {
-                seat.act = Some((at, seat.asked_n));
-            }
-            seat.was = now;
-        }
-    }
-
     /// The tick's HP lost by each side, into each seat's gain (§6.4), each
-    /// side's loss by its own max HP; the other's loss within
-    /// `credit_ticks` of an action of the seat's own that started under an
-    /// earlier decision, credited to that decision.
+    /// side's loss by its own max HP.
     fn gains(&mut self) {
         let b = &self.battle;
         let mut lost = [0.0f32; 2];
@@ -971,24 +851,8 @@ impl Env {
             }
             self.hp[i] = now;
         }
-        let window = self.cfg.credit_ticks;
-        let at = self.measure.stats.fight_ticks;
-        for i in 0..2 {
-            let seat = &mut self.seats[i];
-            let dealt = lost[i ^ 1];
-            seat.gain -= lost[i];
-            seat.dealt += dealt.max(0.0);
-            seat.taken += lost[i].max(0.0);
-            match seat.act {
-                Some((started, n)) if window > 0 && dealt > 0.0 && n >= 1 && n < seat.asked_n && at - started <= window => {
-                    match seat.credits.last_mut() {
-                        Some(last) if last.0 == n => last.1 += dealt,
-                        _ => seat.credits.push((n, dealt)),
-                    }
-                }
-                _ => seat.gain += dealt,
-            }
-        }
+        self.seats[0].gain += lost[1] - lost[0];
+        self.seats[1].gain += lost[0] - lost[1];
     }
 }
 

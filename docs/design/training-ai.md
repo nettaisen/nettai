@@ -398,17 +398,6 @@ nettai-frontend's training session's (`Training`), done in the env on the battle
 - **HP difference as it happens**, weighted down over training: (HP the other lost / the other's max HP − HP it lost
   / its own max HP), so a whole KO adds up to 1 whatever the HP (the coordinator's change from / 1000). A round's end
   credits the ended round's alone: what a seat gains in the next round before its first decision is no transition's.
-- **A hit is the press's that fired it** (`env.credit_ticks`, 120; 2026-10-25). HP the other navi loses within 120
-  ticks of fight after an action of the seat's own navi starts (a content action: its attacks and chips; or one of
-  the rules' chip uses; not a move, a reaction or a form change) is credited to the decision that action started
-  under, not the decision current when the HP fell; the latest such start wins. HP the seat loses stays the current
-  decision's (a dodge is the decisions just before the hit). The diagnosis behind it (the fourth run, update 1,650):
-  the network never learned to aim. An attack in the other's row dealt about 3 times the damage of one off it, but
-  with every HP change the current decision's, the advantages told an aimed press from an unaimed one by 0.05 to 0.1
-  of a standard deviation: the damage arrived decisions later, among everything else those decisions did, and the
-  custom screen's decisions (+0.57) set the scale. The pool reports a credit with the step that would have carried
-  it, as a lag back from the decision closed then (`credit_lag`, `credit_hp`, §6.6), so a step's gain and credits
-  add up to its gain without them (a test).
 
 Nothing else for behavior. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
 winning.
@@ -493,13 +482,6 @@ buf = pool.buffers()   # numpy views of memory the pool owns, refilled in place 
 # buf["hp_gain"]      float32 [E, 2]   HP the other lost / its max HP - HP it lost / its own, everything since this
 #                                      seat's last decision (steps where it had phase 0 too); read where the seat
 #                                      decides or the round ends
-# buf["credit_lag"]   uint16  [E, 2, 4] HP the other lost credited to earlier decisions (§6.4): lag 2 the decision
-# buf["credit_hp"]    float32 [E, 2, 4] before the one closed now, 3 the one before that...; 0 no entry; left out of
-#                                      hp_gain; read where hp_gain is
-# buf["dealt"]        float32 [E, 2]   HP the other lost and the seat's own navi lost since its last decision (by
-# buf["taken"]        float32 [E, 2]   max HP, losses only), however credited: the auxiliary predictions' targets
-# buf["same_row"]     int8    [E, 2]   where the seat decides: the two navis in one row now (1), not (0), unknown
-#                                      (-1); the auxiliary predictions' target, never the policy's input
 # buf["done"]         bool    [E]      the round ended; the obs is already the next round's first
 # buf["truncated"]    bool    [E]      cut off (a screen open too long, the engine stopped)
 # buf["ending"]       int8    [E]      how a round not cut off ended: 0 a KO, 1 the judge's ruling, 2 the fight's
@@ -612,18 +594,20 @@ follows: tensor names and shapes, op order, the LayerNorm's eps, the GRU's gates
 As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py, device.py, train.py).
 
 - **PPO.** Clipped at 0.2 (the value too), GAE λ 0.95 and γ 0.997 per decision, about 20 seconds of horizon at
-  4 ticks a decision. Entropy bonus 0.01, gradient norm 0.5, 3 epochs, Adam at 3e-4 falling linearly to a tenth.
-  It uses the GPU for updates and batched inference, and Rust for everything else.
-- **The fight and the screen apart** (2026-10-25, with §6.4's credit). A fight decision's advantage is GAE at
-  `ppo.lam_fight` (0.8): its own hits are credited to it, so it needs little of the TD errors after it, which are
-  mostly the later decisions' doing; a screen decision's at `ppo.lam`, its picks paying off seconds later (each
-  phase from a pass of its own). A minibatch's advantages are normalized among its fight decisions and among its
-  screen decisions apart (`ppo.adv_by_phase`): together, the screen's larger ones set the fight's scale.
-- **Auxiliary predictions** (`ppo.aux_coef` 0.1). Heads on the GRU's state predict whether the other navi loses
-  HP in the seat's next 4 decisions (`ppo.aux_horizon`, half a second at k 8), whether its own does, and whether
-  the two stand in one row as it decides (the pool's `dealt`, `taken`, `same_row`). Trained with the policy's loss
-  (their gradients reach the trunk), they make the network represent where things are and what is about to hit;
-  they are no part of what is played or exported (the trainer's `AuxHeads`, kept in the checkpoint).
+  4 ticks a decision. Entropy bonus 0.01, gradient norm 0.5, advantages normalized per minibatch, 3 epochs, Adam
+  at 3e-4 falling linearly to a tenth. It uses the GPU for updates and batched inference, and Rust for
+  everything else.
+- **Tried and dropped (2026-10-25, commit 637dd6959, reverted).** Crediting each hit to the decision whose own
+  action started it (within 120 ticks), the fight decisions' GAE at λ 0.8 with their advantages normalized apart from
+  the screen's, the last 16 decisions of a round held for credits to come, and auxiliary heads (the other loses HP
+  soon, the seat does, the two share a row). From the fourth run's update 3,750, 400 updates on the Mac each way:
+  against the still bot (EXE4, no delay, HP only) the kill speed was 521 HP/min against the old way's 579; against
+  the masher, shooter, dodger and mover (delays 6 to 30) the two played even over duplicate deals (72 deals won both
+  ways to 76; Elo 1,316 to 1,322), with the same hits taken. The diagnosis that led to it (the network "doesn't
+  aim") was wrong: the scripted shooter, which walks to the other's row and fires at once, kills a still navi slower
+  (133 s a round in EXE4) than the network (122 s), and beats the masher only half the time (50 to 52%, against the
+  network's 68 to 80%); about half of all chips can't hit a still navi at all. What the numbers do show is little
+  dodging: the network takes 95, 83 and 63% (EXE4, 5, 6) of the masher's damage a still navi takes.
 - **Each seat is its own stream.** A pool step brings decisions for some seats (phase ≠ 0) and none for others.
   Each (env, seat) the learner plays is its own trajectory of decisions, with its own GRU state, reset when a
   round starts. GAE runs over each stream's own decisions, never over pool steps. The trainer reads §6.6 so:
@@ -640,12 +624,8 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
   same at any HP of the curriculum.
 - **The rollout's slices and their bootstrap.** A rollout is 128 pool steps. A stream's last decision in it is
-  still open: its reward and the next state's value come later. It is carried into the next rollout and trained
-  once it closes; the decision before it is bootstrapped from its value. Credits (§6.4) and the predictions'
-  targets come after a decision closes, so a stream's last decisions of a round still being played (the open one
-  and up to `ppo.defer`, 16, before it) are all carried, closed ones with what they have, and trained in the next
-  rollout; the decision before them is bootstrapped from its next value. A credit from further back than the
-  stored decisions is the closing decision's. A
+  still open: its reward and the next state's value come later. It is carried into the next rollout as that
+  rollout's first decision and trained once it closes; the decision before it is bootstrapped from its value. A
   round cut off at `max_fight_ticks` (truncated) is bootstrapped from its last decision's own value, since the
   pool's observation is already the next round's; a KO or a judged time-up is terminal.
 - **Truncated BPTT.** Chunks of 128 decisions (`ppo.chunk`), each started from the GRU state stored when its

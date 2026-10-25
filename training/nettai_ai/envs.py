@@ -45,7 +45,6 @@ def make_pool(
         full_lists=env.full_lists,
         builders=env.builders,
         cache=env.cache,
-        credit_ticks=env.credit_ticks,
     )
     if env.chip_holdout > 0:
         kwargs["chip_holdout"] = (env.chip_holdout, env.chip_holdout_seed, holdout_mode)
@@ -152,13 +151,6 @@ class PoolView:
         self.legal_fight = t(buf["legal_fight"]).view(S, spec.fight_actions)
         self.legal_screen = t(buf["legal_screen"]).view(S, spec.screen_actions)
         self.hp_gain = t(buf["hp_gain"]).view(S)
-        # HP credited to a stream's earlier decisions (lag 2 the one before the decision closed now; 0 no entry).
-        self.credits = buf["credit_lag"].shape[-1]
-        self.credit_lag = t(buf["credit_lag"].view(np.int16)).view(S, self.credits)
-        self.credit_hp = t(buf["credit_hp"]).view(S, self.credits)
-        self.dealt = t(buf["dealt"]).view(S)
-        self.taken = t(buf["taken"]).view(S)
-        self.same_row = t(buf["same_row"]).view(S)
         self.done = t(buf["done"])
         self.truncated = t(buf["truncated"])
         self.ending = t(buf["ending"])
@@ -168,10 +160,6 @@ class PoolView:
         for name, a, dtype in (
             ("phase", buf["phase"], np.int8),
             ("hp_gain", buf["hp_gain"], np.float32),
-            ("credit_lag", buf["credit_lag"], np.uint16),
-            ("credit_hp", buf["credit_hp"], np.float32),
-            ("dealt", buf["dealt"], np.float32),
-            ("same_row", buf["same_row"], np.int8),
             ("result", buf["result"], np.int8),
             ("done", buf["done"], np.bool_),
             ("ending", buf["ending"], np.int8),

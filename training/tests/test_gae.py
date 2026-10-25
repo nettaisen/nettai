@@ -55,11 +55,6 @@ class StubPool:
             "legal_fight": np.ones((1, 2, 3), np.bool_),
             "legal_screen": np.ones((1, 2, 4), np.bool_),
             "hp_gain": np.zeros((1, 2), np.float32),
-            "credit_lag": np.zeros((1, 2, 4), np.uint16),
-            "credit_hp": np.zeros((1, 2, 4), np.float32),
-            "dealt": np.zeros((1, 2), np.float32),
-            "taken": np.zeros((1, 2), np.float32),
-            "same_row": np.full((1, 2), -1, np.int8),
             "done": np.zeros(1, np.bool_),
             "truncated": np.zeros(1, np.bool_),
             "ending": np.zeros(1, np.int8),
@@ -75,15 +70,6 @@ class StubPool:
         b = self.buf
         b["phase"][0] = f["phase"]
         b["hp_gain"][0] = f.get("gain", (0.0, 0.0))
-        b["credit_lag"][0] = 0
-        b["credit_hp"][0] = 0.0
-        for seat, entries in f.get("credit", {}).items():
-            for c, (lag, hp) in enumerate(entries):
-                b["credit_lag"][0, seat, c] = lag
-                b["credit_hp"][0, seat, c] = hp
-        b["dealt"][0] = f.get("dealt", (0.0, 0.0))
-        b["taken"][0] = f.get("taken", (0.0, 0.0))
-        b["same_row"][0] = f.get("row", (-1, -1))
         b["done"][0] = f.get("done", False)
         b["truncated"][0] = f.get("trunc", False)
         b["result"][0] = f.get("result", (0, 0))
@@ -189,51 +175,6 @@ def test_collector_streams(tmp_path: Path, tiny_cfg):
     # And in place, as after the normalization warmup's rollout.
     ro.take_open(ro)
     assert ro.cursor.tolist() == [1, 1] and general(ro, s0, 1) == [5] and general(ro, s1, 1) == [5]
-
-
-def test_credits_reach_earlier_decisions_and_the_round_still_played_is_carried(tmp_path: Path, tiny_cfg):
-    """HP credited back (lag 2: the decision before the one closing) is added to that decision's reward, scaled as
-    the gain is; one from before the stream's first stored decision is the closing one's. With defer, a stream's
-    last decisions of the round still being played are carried into the next rollout, closed ones with what they
-    have, and only the decisions before them (and an ended round's) are trained; credits arriving in the next
-    rollout reach the carried ones there."""
-    frames = [
-        {"phase": (1, 1)},
-        {"phase": (1, 1), "gain": (0.1, 0.0)},
-        {"phase": (1, 1), "credit": {0: [(2, 0.2)], 1: [(9, 0.4)]}},  # seat 0: decision 0's; seat 1: before its first
-        {"phase": (1, 1), "gain": (0.0, 0.1), "done": True, "result": (0, 0), "dealt": (0.5, 0.0), "row": (1, 0)},
-        {"phase": (1, 1)},
-        {"phase": (1, 1)},
-        {"phase": (1, 1)},
-        {"phase": (1, 1), "credit": {0: [(3, 0.3), (5, 0.25)]}},  # in the next rollout: a carried decision's
-        {"phase": (1, 1)},
-    ]
-    pool = StubPool(frames)
-    spec = parse_spec(pool.spec())
-    league = League(
-        LeagueConfig(self_play=1.0, snapshots=0.0, bots=0.0, bot_names=[]), pool, 1, tmp_path, torch.device("cpu"),
-        lambda: Model(spec, tiny_cfg), np.random.default_rng(0),
-    )
-    league.start()
-    ro = Rollout(spec, 2, 6, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set, defer=1)
-    col = Collector(pool, spec, Model(spec, tiny_cfg), league, ro, name_dropout=0.0, seed=0, defer=1)
-    col.collect(6, hp_weight=0.5, result_weight=1.0)
-    assert torch.allclose(ro.reward[0, :3], torch.tensor([0.05 + 0.1, 0.0, 0.0]))
-    assert torch.allclose(ro.reward[1, :3], torch.tensor([0.0, 0.2, 0.05]))
-    assert ro.dealt[0, 2] == 0.5 and ro.same_row[0, 3] == 1 and ro.same_row[1, 3] == 0
-    # The first round ended at decision 2: all of it trained. Of the second (decisions 3-5, 5 open), the last
-    # closed one and the open one are carried.
-    assert ro.cursor.tolist() == [6, 6] and ro.carry_from.tolist() == [4, 4]
-    assert ro.trainable[0].tolist()[:6] == [True] * 4 + [False] * 2
-    nxt = Rollout(spec, 2, 6, tiny_cfg.hidden, torch.device("cpu"), tiny_cfg.pointer_set, defer=1)
-    col.begin(nxt)
-    assert nxt.cursor.tolist() == [2, 2] and nxt.open.tolist() == [1, 1]
-    assert nxt.closed[:, :2].tolist() == [[True, False], [True, False]]
-    assert torch.equal(nxt.h_in[:, :2], ro.h_in[:, 4:6])
-    col.collect(2, hp_weight=0.5, result_weight=1.0)
-    # Frame 7 closes decision 2 of nxt: lag 3 is decision 0 (carried, closed in the last rollout), lag 5 is from
-    # before the stream's first stored decision.
-    assert torch.allclose(nxt.reward[0, :3], torch.tensor([0.15, 0.0, 0.125]))
 
 
 def test_scripted_seat_with_a_decision_is_an_error(tmp_path: Path, tiny_cfg):

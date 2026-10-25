@@ -22,7 +22,6 @@ import numpy as np
 
 from .spec import spec_hash
 
-CREDITS = 4  # a seat's entries of credit_lag and credit_hp (the env's CREDITS)
 CONTROLLERS = ("policy", "still", "mover", "masher", "shooter", "dodger")
 # Chance per fight step that a scripted seat lands a hit.
 BOT_HIT = {"still": 0.0, "mover": 0.01, "masher": 0.03, "shooter": 0.05, "dodger": 0.02}
@@ -82,7 +81,6 @@ class FakePool:
         full_lists: float = 0.5,  # (no builds: taken and unused)
         builders: int = 0,
         cache: str | None = None,
-        credit_ticks: int = 0,  # (its hits land at once: none is credited back)
         spec: dict[str, Any] | None = None,
     ):
         self.games = list(games)
@@ -120,11 +118,6 @@ class FakePool:
             "legal_fight": np.zeros((E, 2, self.fa), np.bool_),
             "legal_screen": np.zeros((E, 2, self.sa), np.bool_),
             "hp_gain": np.zeros((E, 2), np.float32),
-            "credit_lag": np.zeros((E, 2, CREDITS), np.uint16),
-            "credit_hp": np.zeros((E, 2, CREDITS), np.float32),
-            "dealt": np.zeros((E, 2), np.float32),
-            "taken": np.zeros((E, 2), np.float32),
-            "same_row": np.full((E, 2), -1, np.int8),  # (no rows)
             "done": np.zeros(E, np.bool_),
             "truncated": np.zeros(E, np.bool_),
             "ending": np.zeros(E, np.int8),
@@ -144,8 +137,6 @@ class FakePool:
         self.fight_steps = np.zeros(E, np.int64)
         self.ticks = np.zeros(E, np.int64)
         self.acc = np.zeros((E, 2), np.float64)
-        self.acc_dealt = np.zeros((E, 2), np.float64)
-        self.acc_taken = np.zeros((E, 2), np.float64)
         self.target = np.zeros((E, 2), np.int64)
         self.slot_value = np.zeros((E, 2, self.n_slots), np.float32)
         self.counts = np.zeros((E, 2, 6), np.int64)  # dealt, lost, fight ok, fight n, screen ok, screen n
@@ -235,8 +226,6 @@ class FakePool:
         self.counts[..., 0] += dmg.astype(np.int64)
         self.counts[..., 1] += dmg[:, ::-1].astype(np.int64)
         self.acc += (dealt - dealt[:, ::-1])
-        self.acc_dealt += dealt
-        self.acc_taken += dealt[:, ::-1]
 
         # Time.
         self.ticks += self.k
@@ -261,11 +250,8 @@ class FakePool:
         self._next_phases(np.arange(E))
         # hp_gain: since the seat's last decision; read and cleared where it decides now or the round ended.
         b["hp_gain"][:] = self.acc
-        b["dealt"][:] = self.acc_dealt
-        b["taken"][:] = self.acc_taken
         cleared = (b["phase"] != 0) | done[:, None]
-        for acc in (self.acc, self.acc_dealt, self.acc_taken):
-            acc[cleared] = 0.0
+        self.acc[cleared] = 0.0
         self._observe()
 
     # The toy game --------------------------------------------------------------------------------------

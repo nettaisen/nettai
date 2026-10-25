@@ -4,14 +4,8 @@ A stream's decisions are stored in order, only where the learner plays that seat
 (phase != 0). A decision is *open* until the stream's next event: its next decision (the reward since is
 `hp_gain` there, and the next decision's value bootstraps it) or the round's end (`hp_gain` and `result`
 there; terminal, or truncated, which bootstraps from the decision's own value since the pool's observation is
-already the next round's). A decision still open when the rollout ends is carried into the next rollout, so it
-is trained on once it closes.
-
-A hit can come after decisions that closed: the pool credits the other navi's HP lost to the decision the attack
-started under, up to some decisions back (`credit_lag`, `credit_hp`), and the auxiliary predictions' targets are
-of the decisions after (§8). So with `defer`, a stream's last decisions of a round still being played (the open
-one and up to `defer` before it) aren't trained in their rollout but carried, closed or not, into the next one,
-where what is still to come for them reaches them (`seal`, `take_open`).
+already the next round's). A decision still open when the rollout ends is carried into the next rollout as
+its first entry, so it is trained on once it closes.
 
 Storage is compact. A decision keeps only its present tokens, in their order, each with its position in its
 set: the network reads no position but the pointer set's, which is laid out by position again when read
@@ -132,18 +126,14 @@ class Tokens:
 
 
 class Rollout:
-    """One rollout's decisions, [S streams, Tc = steps + 1 + defer decisions]: the per-decision tensors on the CPU
-    (pinned on CUDA, so the update's copies don't wait), the tokens and GRU states on the device."""
+    """One rollout's decisions, [S streams, Tc = steps + 1 decisions]: the per-decision tensors on the CPU (pinned
+    on CUDA, so the update's copies don't wait), the tokens and GRU states on the device."""
 
-    # What a carried decision takes with it into the next rollout (an open one's reward and successor come there;
-    # a closed one's credits and the later decisions its predictions' targets need).
-    CARRIED = (
-        "legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start", "previous",
-        "reward", "term", "trunc", "next_value", "closed", "dealt", "taken", "same_row",
-    )
+    # What an open decision takes with it into the next rollout (its reward and successor come there).
+    CARRIED = ("legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start", "previous")
 
-    def __init__(self, spec: Spec, streams: int, steps: int, hidden: int, device: torch.device, pointer: str, defer: int = 0):
-        S, Tc = streams, steps + 1 + defer
+    def __init__(self, spec: Spec, streams: int, steps: int, hidden: int, device: torch.device, pointer: str):
+        S, Tc = streams, steps + 1
         self.S, self.Tc, self.spec, self.device, self.pointer = S, Tc, spec, device, pointer
         pin = device.type == "cuda"
         z = lambda *shape, dtype=torch.float32: torch.zeros(S, Tc, *shape, dtype=dtype, pin_memory=pin)
@@ -160,14 +150,6 @@ class Rollout:
         self.trunc = z(dtype=torch.bool)
         self.next_value = z()
         self.closed = z(dtype=torch.bool)
-        # HP the other navi lost and its own lost (each by its max) in the decision's time, and whether the two
-        # stood in one row as it was made (1, 0, -1 unknown): the auxiliary predictions' targets.
-        self.dealt = z()
-        self.taken = z()
-        self.same_row = z(dtype=torch.int8)
-        # Set by seal: the decisions trained in this rollout, and each stream's first carried into the next.
-        self.trainable = z(dtype=torch.bool)
-        self.carry_from = torch.zeros(S, dtype=torch.int64)
         self.off = {s.name: z(dtype=torch.int64) for s in spec.sets}  # a decision's first row in tokens[set]
         self.cnt = {s.name: z(dtype=torch.int64) for s in spec.sets}  # its present tokens there
         self.cursor = torch.zeros(S, dtype=torch.int64)
@@ -203,24 +185,11 @@ class Rollout:
         )
         return map_obs(out, lambda v: v.view(*shape, *v.shape[1:]))
 
-    def seal(self, defer: int) -> None:
-        """At the rollout's end: each stream's decisions carried into the next rollout (from carry_from on: the open
-        one and those of its round before it among its last defer + 1; none of a round that ended) and those trained
-        now (`trainable`: closed, before carry_from)."""
-        idx = torch.arange(self.Tc)[None, :]
-        written = idx < self.cursor[:, None]
-        last_end = torch.where((self.term | self.trunc) & written, idx, -1).max(1).values
-        held = torch.maximum(last_end + 1, self.cursor - 1 - defer)
-        self.carry_from = torch.where(self.open >= 0, held, self.cursor)
-        self.trainable = self.closed & (idx < self.carry_from[:, None])
-
     def take_open(self, src: "Rollout") -> None:
-        """Start this rollout from src's carried decisions (src may be this one; `seal` says which): each stream's
-        move to its first indices in their order, tokens and GRU states with them; nothing else is kept."""
-        n = (src.cursor - src.carry_from).clamp(min=0)
-        s = torch.repeat_interleave(torch.arange(self.S), n)
-        j = torch.arange(int(n.sum())) - torch.repeat_interleave(torch.cumsum(n, 0) - n, n)
-        t = src.carry_from[s] + j
+        """Start this rollout from src's open decisions (src may be this one): each moves to index 0 of its stream,
+        tokens and GRU state with it; nothing else is kept."""
+        s = (src.open >= 0).nonzero().squeeze(-1)
+        t = src.open[s]
         for name, store in self.tokens.items():
             cnt = src.cnt[name][s, t]
             first = torch.cumsum(cnt, 0) - cnt
@@ -228,27 +197,22 @@ class Rollout:
             moved = [p[upload(rows, self.device)] for p in src.tokens[name].parts()]  # copies: src may be this one
             store.n = 0
             store.put(*moved)
-            self.off[name][s, j] = first
-            self.cnt[name][s, j] = cnt
-        carried = {name: getattr(src, name)[s, t] for name in self.CARRIED}  # copies, before any is written
-        sd, td, jd = upload(s, self.device), upload(t, self.device), upload(j, self.device)
-        h = src.h_in[sd, td]
-        for v in (self.reward, self.next_value, self.term, self.trunc, self.closed, self.dealt, self.taken):
+            self.off[name][s, 0] = first
+            self.cnt[name][s, 0] = cnt
+        for name in self.CARRIED:
+            getattr(self, name)[s, 0] = getattr(src, name)[s, t]
+        sd, td = upload(s, self.device), upload(t, self.device)
+        self.h_in[sd, 0] = src.h_in[sd, td]
+        for v in (self.reward, self.next_value, self.term, self.trunc, self.closed):
             v.zero_()
-        self.same_row.fill_(-1)
-        for name, v in carried.items():
-            getattr(self, name)[s, j] = v
-        self.h_in[sd, jd] = h
-        open_ = src.open >= 0
-        self.cursor.copy_(n)
-        self.open.copy_(torch.where(open_ & (n > 0), n - 1, -1))
-        self.carry_from.zero_()
-        self.trainable.zero_()
+        self.cursor.zero_()
+        self.cursor[s] = 1
+        self.open.fill_(-1)
+        self.open[s] = 0
 
     def clear(self) -> None:
         """Drop everything, open decisions too (after the normalization warmup)."""
         self.open.fill_(-1)
-        self.carry_from.copy_(self.cursor)
         self.take_open(self)
 
     def nbytes(self) -> dict[str, int]:
@@ -396,11 +360,8 @@ class Collector:
     """Plays the pool's policy seats, the learner's with `model` (the behavior network) and the others with the
     league's snapshots, one forward pass a network a step, and stores the learner's decisions in its rollout."""
 
-    def __init__(
-        self, pool, spec: Spec, model: Model, league: League, rollout: Rollout, name_dropout: float, seed: int, defer: int = 0
-    ):
+    def __init__(self, pool, spec: Spec, model: Model, league: League, rollout: Rollout, name_dropout: float, seed: int):
         self.pool = pool
-        self.defer = defer
         self.view = PoolView(pool, spec)
         self.spec = spec
         self.model = model
@@ -444,7 +405,6 @@ class Collector:
             self.pool.step(self.actions)
             st.step_seconds += time.perf_counter() - t
             st.steps += 1
-        self.ro.seal(self.defer)
         return st
 
     def _decide(self, st: CollectStats, hp_weight: float, ending_weights: tuple[float, float, float]) -> None:
@@ -466,21 +426,6 @@ class Collector:
             end = d & ~tr
             r = hp_weight * gain + end * round_end_reward(v.result[s].to(torch.float32), ending[s], *ending_weights)
             ro.reward[s, t] = r
-            ro.dealt[s, t] = v.dealt[s]
-            ro.taken[s, t] = v.taken[s]
-            # HP credited to earlier decisions of the stream (lag 2: the one before t), where they're stored; one
-            # from before the stream's first stored decision is t's.
-            lag = v.credit_lag[s].to(torch.int64)
-            on = lag >= 2
-            if bool(on.any()):
-                amt = hp_weight * v.credit_hp[s]
-                back = t[:, None] - (lag - 1)
-                ok = on & (back >= 0)
-                rows = s[:, None].expand_as(back)
-                ro.reward.index_put_((rows[ok], back[ok]), amt[ok], accumulate=True)
-                ro.reward[s, t] += (amt * (on & ~ok)).sum(1)
-                st.reward_sum += float(amt[on].sum())
-                st.hp_gain_sum += float(v.credit_hp[s][on].sum())
             ro.term[s, t] = end
             ro.trunc[s, t] = d & tr
             ro.closed[s, t] = True
@@ -575,7 +520,6 @@ class Collector:
             ro.phase[learner, t_l] = phase[learner].to(torch.int8)
             ro.ep_start[learner, t_l] = self.fresh[learner]
             ro.previous[learner, t_l] = previous[:nl]
-            ro.same_row[learner, t_l] = v.same_row[learner]
             for name in ro.tokens:
                 ro.off[name][learner, t_l] = first[name] + b.off_cpu[name][:nl]
                 ro.cnt[name][learner, t_l] = b.cnt_cpu[name][:nl]

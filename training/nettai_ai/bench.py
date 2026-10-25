@@ -24,7 +24,7 @@ import torch
 
 from .config import load_config
 from .device import pin_torch_threads, synchronize
-from .ppo import advantages, ppo_update
+from .ppo import compute_gae, ppo_update
 from .train import Trainer
 
 VARIANTS = {
@@ -167,7 +167,7 @@ def main() -> None:
     print(f"  simulation (pool.step, {a.threads} threads): {sim_s:.2f} s = {decisions / sim_s:,.0f} decisions/s")
     print(f"  inference and Python (the rest, {tr.collect_threads} torch threads): {rest_s:.2f} s = {decisions / rest_s:,.0f} decisions/s")
     ro = tr.collector.ro
-    adv, ret = advantages(ro, cfg.ppo)
+    adv, ret = compute_gae(ro.reward, ro.value, ro.next_value, ro.term, ro.trunc, ro.closed, cfg.ppo.gamma, cfg.ppo.lam)
     present = {k: v / max(1, cs.learner_decisions) for k, v in cs.present.items()}
     print("  present tokens a decision: " + ", ".join(f"{k} {v:.1f}" for k, v in present.items()))
     size = ro.nbytes()

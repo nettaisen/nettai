@@ -44,7 +44,7 @@ from .envs import make_pool, pool_spec
 from .evaluate import Player, evaluate_vs_bots, summarize
 from .league import League
 from .model import TYPICAL, Model, budget_report, count_macs, count_params, warm_start
-from .ppo import AuxHeads, RunningNorm, advantages, ppo_update
+from .ppo import RunningNorm, compute_gae, ppo_update
 from .rollout import CollectStats, Collector, Rollout, Stopped
 from .spec import parse_spec
 
@@ -253,10 +253,6 @@ class Trainer:
                 raise SystemExit(f"{what}: the checkpoint's spec hash {state['spec']['hash']} isn't the pool's {self.spec.hash}")
         self.model = Model(self.spec, cfg.model).to(self.device)
         self.opt = torch.optim.Adam(self.model.parameters(), lr=cfg.ppo.lr, eps=cfg.ppo.adam_eps)
-        # The auxiliary predictions' heads, with an optimizer of their own (a checkpoint from before them resumes
-        # with them fresh).
-        self.aux = AuxHeads(cfg.model.hidden).to(self.device)
-        self.aux_opt = torch.optim.Adam(self.aux.parameters(), lr=cfg.ppo.lr, eps=cfg.ppo.adam_eps)
         self.norm = RunningNorm(self.spec, self.device)
         E = cfg.env.envs
         self.update = 0
@@ -271,9 +267,6 @@ class Trainer:
         if resume is not None:
             self.model.load_state_dict(resume["model"])
             self.opt.load_state_dict(resume["optimizer"])
-            if "aux" in resume:
-                self.aux.load_state_dict(resume["aux"])
-                self.aux_opt.load_state_dict(resume["aux_optimizer"])
             self.norm.load_state_dict(resume["norm"])
             self.update = resume["update"]
             self.decisions = resume["decisions"]
@@ -292,12 +285,10 @@ class Trainer:
             self.behavior.eval()
             self.behavior_version = self.update
             self.rollouts = [
-                Rollout(self.spec, 2 * E, cfg.ppo.steps, cfg.model.hidden, self.device, cfg.model.pointer_set, cfg.ppo.defer)
-                for _ in range(2)
+                Rollout(self.spec, 2 * E, cfg.ppo.steps, cfg.model.hidden, self.device, cfg.model.pointer_set) for _ in range(2)
             ]
             self.collector = Collector(
-                self.pool, self.spec, self.behavior, self.league, self.rollouts[0], cfg.ppo.name_dropout, cfg.run.seed,
-                cfg.ppo.defer,
+                self.pool, self.spec, self.behavior, self.league, self.rollouts[0], cfg.ppo.name_dropout, cfg.run.seed
             )
         synchronize(self.device)
         self.gen = torch.Generator()
@@ -389,10 +380,10 @@ class Trainer:
         self.learn_lane.follow(item.mark)
         ro = self.rollouts[item.buffer]
         lr = lr_at(cfg, u)
-        for g in [*self.opt.param_groups, *self.aux_opt.param_groups]:
+        for g in self.opt.param_groups:
             g["lr"] = lr
-        adv, ret = advantages(ro, cfg.ppo)
-        us = ppo_update(self.model, self.opt, ro, adv, ret, cfg.ppo, self.gen, (self.aux, self.aux_opt))
+        adv, ret = compute_gae(ro.reward, ro.value, ro.next_value, ro.term, ro.trunc, ro.closed, cfg.ppo.gamma, cfg.ppo.lam)
+        us = ppo_update(self.model, self.opt, ro, adv, ret, cfg.ppo, self.gen)
         self.norm.update(ro)
         self.norm.apply(self.model)
         self.update = u + 1
@@ -503,8 +494,6 @@ class Trainer:
             "spec": self.spec.raw,
             "model": {k: v.detach().cpu() for k, v in self.model.state_dict().items()},
             "optimizer": self.opt.state_dict(),
-            "aux": {k: v.detach().cpu() for k, v in self.aux.state_dict().items()},
-            "aux_optimizer": self.aux_opt.state_dict(),
             "norm": {k: {n: v.cpu() for n, v in d.items()} for k, d in self.norm.state_dict().items()},
             "league": shared["league"],
             "curriculum": shared["curriculum"],
