@@ -961,7 +961,8 @@ its weights' k 8, which the player reads). Then update 750 of the same run (295 
 lists full from 700), which at Hard beat the first run's 1,000 over duplicate deals, 79 won both ways to 36. Then update 1,650 (647 M
 decisions; the entropy bonus 0.003 from 1,300, its entropy 2.59 → 2.24), which beat 750 over duplicate deals 92 to 44
 at Hard and 82 to 51 at Normal. Then update 2,200 (860 M decisions; entropy 2.01), which beat 1,650 over duplicate
-deals 85 to 39 at Hard and 96 to 47 at Normal. A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+deals 85 to 39 at Hard and 96 to 47 at Normal. Then update 3,750 (1,461 M decisions; entropy 1.76), which beat
+2,200 over duplicate deals 108 to 35 at Hard and 94 to 47 at Normal. A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
 that it plays.
