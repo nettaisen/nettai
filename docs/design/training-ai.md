@@ -237,8 +237,12 @@ is one choice, which the navigator carries out to its end before the next is ask
 
 - **A slot.** One of the 12 screen slots: a chip, OK, or a button of the rules (ChpShufl's re-deal, DustCross's
   scrap, Beast Out, EXE5's and EXE4's soul, Arm Change). A slot is allowed while the screen is choosing, if it is a
-  chip it can still pick (selectable, fewer than 5 picks), a button with uses left, or OK, the cursor can reach it,
-  and the screen hasn't refused it. The navigator walks the cursor there along the rules' own layout
+  chip it can still pick (selectable, fewer than 5 picks), a button the screen shows selectable (its cell that holds
+  its state: one cell wide, or the left of two), or OK, the cursor can reach it, and the screen hasn't refused it. A
+  button that counts its uses (ChpShufl's, DustCross's) turns itself off as they run out; one that counts none (the
+  souls', Beast Out's) keeps 0 uses, and until 2026-10-25 a button also needed uses left: the network could never
+  press EXE5's soul button or EXE6's Beast Out, and never took a Soul in EXE5 or Beast Out (EXE4's souls came
+  through its offered slots). The navigator walks the cursor there along the rules' own layout
   (`Screen::target_from`), a direction held two ticks (the screen moves on the second, its auto-repeat's) and let
   go one, and presses A, held a tick and let go a tick. A pick after which the screen is the same (the picks, the
   slots' states, the phase, the form, the cursor) is refused for the rest of that screen (EXE4 refuses a chip in a
@@ -761,7 +765,8 @@ All of these run in Rust on the pool, fast, and print a table:
   - share of attack chips that land;
   - chips picked per screen;
   - steps back to the panel just left within a third of a second (pacing);
-  - forms taken.
+  - forms taken: screens left with a form chosen, and forms entered however they came to (a Cross, a Soul, Beast
+    Out: the navi out of its game's base form) and the share of the fight spent in one.
   These are the old fighter's measures, so the two compare. The env measures them every round (`stats.rs`,
   `round_stats()`), and `stats::Table` sums them by game and pairing.
 - **Combos** (the user: multi-step setups learned well): for each folder seeded with a pair (§3.1, §6.2), whether both

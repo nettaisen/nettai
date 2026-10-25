@@ -18,7 +18,7 @@ use crate::spec;
 use nettai_battle::Battle;
 use nettai_battle::battle::mode;
 use nettai_battle::content::{CustomScreenLayout, ScreenKey, WindowHandle, WindowView};
-use nettai_battle::custom::screen::{MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
+use nettai_battle::custom::screen::{ButtonCell, MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use std::collections::VecDeque;
 
@@ -134,7 +134,11 @@ pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, o
             SlotKind::Ok => true,
             _ if only_ok => false,
             SlotKind::Chip { .. } | SlotKind::Offered(_) => s.state == SlotState::Selectable && (screen.selected as usize) < MAX_SELECTIONS,
-            SlotKind::Button { .. } => s.state == SlotState::Selectable && s.uses_left > 0,
+            // (A button is its cell that holds its state: one cell wide, or
+            // the left of two. One that counts its uses turns itself off as
+            // they run out; one that counts none, as the souls' and Beast
+            // Out's, keeps 0 uses.)
+            SlotKind::Button { cell, .. } => cell != ButtonCell::Right && s.state == SlotState::Selectable,
             SlotKind::Empty | SlotKind::Hidden => false,
         };
         out[i] = wanted && steps[i].is_some() && refused & (1 << i) == 0;

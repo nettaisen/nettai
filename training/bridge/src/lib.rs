@@ -248,6 +248,8 @@ impl PyPool {
                 seat.set_item("steps", r.steps[s])?;
                 seat.set_item("steps_back", r.steps_back[s])?;
                 seat.set_item("forms_taken", r.forms_taken[s])?;
+                seat.set_item("forms_entered", r.forms_entered[s])?;
+                seat.set_item("form_ticks", r.form_ticks[s])?;
                 // (A folder seeded with a pair: the pair, and what came of it.)
                 seat.set_item("pair", r.pair[s].clone())?;
                 seat.set_item("pair_picked", r.pair_picked[s])?;

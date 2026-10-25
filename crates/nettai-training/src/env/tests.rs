@@ -515,3 +515,33 @@ fn a_custom_screen_lets_the_fight_action_go() {
     }
     assert!(screens > 20, "{screens} screen decisions");
 }
+
+/// The rules' buttons that count no uses (EXE4's and EXE5's soul button,
+/// EXE6's Beast Out) may be pointed at whenever the screen shows them
+/// selectable: seats choosing at random reach a Soul in EXE4 and EXE5 and
+/// Beast Out in EXE6. (They were never allowed while a button needed uses
+/// left: none of them was ever taken.)
+#[test]
+fn the_rules_buttons_without_uses_can_be_pressed() {
+    for (game, wanted) in [("exe4", "soul"), ("exe5", "soul"), ("exe6", "beast")] {
+        let mut env = Env::new(games(&[game]), Config { max_fight_ticks: 3000, ..Config::default() }, 6).unwrap();
+        let mut rng = SplitMix64::new(8);
+        let mut actions = [0; 2];
+        let mut seen = std::collections::BTreeSet::new();
+        for _ in 0..8000 {
+            let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+            for s in 0..2 {
+                actions[s] = match out.phase[s] {
+                    FIGHT => random_action(&mut rng, &env.legal_fight[s]),
+                    SCREEN => random_action(&mut rng, &env.legal_screen[s]),
+                    _ => 0,
+                };
+                if env.battle.player(s as u8).is_some() {
+                    seen.insert(env.battle.content.defs.form(env.battle.stats[s].form).key.clone());
+                }
+            }
+        }
+        println!("{game}: forms {seen:?}");
+        assert!(seen.iter().any(|k| k.contains(wanted) && k != "darksoul"), "{game}: no {wanted} form taken: {seen:?}");
+    }
+}

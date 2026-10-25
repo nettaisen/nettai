@@ -54,6 +54,11 @@ pub struct RoundStats {
     pub steps_back: [u32; 2],
     /// Screens each side left with a form chosen.
     pub forms_taken: [u32; 2],
+    /// Times each side's navi changed from its game's base form to another
+    /// (a Cross, a Soul, Beast Out: however it came to), and the fight
+    /// ticks it spent out of the base form.
+    pub forms_entered: [u32; 2],
+    pub form_ticks: [u32; 2],
     /// The practice options the round played with (§6.3).
     pub full_gauge: bool,
     pub folder_order: bool,
@@ -96,6 +101,7 @@ pub struct Measure {
     flying: Vec<(u8, u32, u16)>,
     closing: [bool; 2],
     custom: bool,
+    in_form: [bool; 2],
     pairs: [PairWatch; 2],
 }
 
@@ -147,6 +153,15 @@ impl Measure {
                 }
             }
             self.hp[i] = hp;
+            // Forms: out of the base form, however it came to.
+            let in_form = b.player(side).is_some() && !b.form(i).base;
+            if in_form && !self.in_form[i] {
+                s.forms_entered[i] += 1;
+            }
+            if in_form && b.round.mode == mode::FIGHTING {
+                s.form_ticks[i] += 1;
+            }
+            self.in_form[i] = in_form;
             // Chips used in the fight.
             let hand = b.hands[i].remaining();
             let used_now = (b.round.mode == mode::FIGHTING && hand < self.hand[i]).then(|| b.hands[i].ids[b.hands[i].cursor.saturating_sub(1) as usize]).flatten();
