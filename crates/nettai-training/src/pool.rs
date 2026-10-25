@@ -51,8 +51,10 @@ pub struct PoolConfig {
 /// The pool's arrays, refilled by every step (§6.6): by set, the
 /// observation's features `[E, 2, C, W]`, ids `[E, 2, C, I]` and masks
 /// `[E, 2, C]`; by env and seat, the phase, the actions allowed, the HP
-/// gain, the result and the delay; by env, whether the round ended (and
-/// was cut off), and its game.
+/// gain and its credits to earlier decisions (`[E, 2, CREDITS]`: lags and
+/// amounts, `env::Outcome::credit`), the HP dealt and taken, whether the
+/// navis share a row, the result and the delay; by env,
+/// whether the round ended (and was cut off), and its game.
 #[derive(Debug)]
 pub struct Buffers {
     pub envs: usize,
@@ -63,6 +65,11 @@ pub struct Buffers {
     pub legal_fight: Vec<bool>,
     pub legal_screen: Vec<bool>,
     pub hp_gain: Vec<f32>,
+    pub credit_lag: Vec<u16>,
+    pub credit_hp: Vec<f32>,
+    pub dealt: Vec<f32>,
+    pub taken: Vec<f32>,
+    pub same_row: Vec<i8>,
     pub done: Vec<bool>,
     pub truncated: Vec<bool>,
     pub ending: Vec<i8>,
@@ -83,6 +90,11 @@ impl Buffers {
             legal_fight: vec![false; seats * spec::FIGHT_ACTIONS],
             legal_screen: vec![false; seats * spec::SCREEN_ACTIONS],
             hp_gain: vec![0.0; seats],
+            credit_lag: vec![0; seats * env::CREDITS],
+            credit_hp: vec![0.0; seats * env::CREDITS],
+            dealt: vec![0.0; seats],
+            taken: vec![0.0; seats],
+            same_row: vec![0; seats],
             done: vec![false; envs],
             truncated: vec![false; envs],
             ending: vec![0; envs],
@@ -106,6 +118,11 @@ struct Rows {
     legal_fight: *mut bool,
     legal_screen: *mut bool,
     hp_gain: *mut f32,
+    credit_lag: *mut u16,
+    credit_hp: *mut f32,
+    dealt: *mut f32,
+    taken: *mut f32,
+    same_row: *mut i8,
     done: *mut bool,
     truncated: *mut bool,
     ending: *mut i8,
@@ -131,6 +148,11 @@ impl Rows {
             legal_fight: b.legal_fight.as_mut_ptr(),
             legal_screen: b.legal_screen.as_mut_ptr(),
             hp_gain: b.hp_gain.as_mut_ptr(),
+            credit_lag: b.credit_lag.as_mut_ptr(),
+            credit_hp: b.credit_hp.as_mut_ptr(),
+            dealt: b.dealt.as_mut_ptr(),
+            taken: b.taken.as_mut_ptr(),
+            same_row: b.same_row.as_mut_ptr(),
             done: b.done.as_mut_ptr(),
             truncated: b.truncated.as_mut_ptr(),
             ending: b.ending.as_mut_ptr(),
@@ -149,6 +171,13 @@ impl Rows {
                 let at = e * 2 + s;
                 *self.phase.add(at) = out.phase[s] as i8;
                 *self.hp_gain.add(at) = out.hp_gain[s];
+                *self.dealt.add(at) = out.dealt[s];
+                *self.taken.add(at) = out.taken[s];
+                *self.same_row.add(at) = out.same_row[s];
+                for (c, &(lag, hp)) in out.credit[s].iter().enumerate() {
+                    *self.credit_lag.add(at * env::CREDITS + c) = lag;
+                    *self.credit_hp.add(at * env::CREDITS + c) = hp;
+                }
                 *self.result.add(at) = out.result[s];
                 *self.delay.add(at) = env.delay()[s] as i16;
                 if out.phase[s] == env::NONE {

@@ -79,6 +79,11 @@ class EnvConfig:
     # Threads that only make builds ahead (the pool's `builders`); 0: the stepping workers make them as they wait,
     # which leaves a step short-handed while a full build (up to 130 ms) is being made.
     builders: int = 4
+    # Fight ticks after an action of a navi's own starts (an attack, a chip) within which the other navi's HP lost is
+    # credited to the decision the action started under, not the one current when the HP fell (§6.4, the pool's
+    # credit_ticks): an aimed shot's damage is its press's, not the presses' after it. 0: each HP change is the
+    # current decision's.
+    credit_ticks: int = 120
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 
@@ -95,6 +100,22 @@ class PPOConfig:
     adam_eps: float = 1e-5
     gamma: float = 0.997
     lam: float = 0.95
+    # The fight decisions' λ, the custom screen's being lam (§8): a fight decision's own hits are credited to it
+    # (env.credit_ticks), so it needs little of the TD errors after it, which are mostly the later decisions'
+    # doing; a screen's picks pay off seconds later. None: lam for both.
+    lam_fight: float | None = 0.8
+    # Advantages normalized within a minibatch's fight decisions and its screen decisions apart (the screen's are
+    # larger and would set the fight's scale); False: all together.
+    adv_by_phase: bool = True
+    # Each stream's last decisions of a round still being played, held from the update and carried into the next
+    # rollout, where the credits and predictions' targets still to come reach them (the most decisions back a
+    # credit can reach; one further back is the current decision's).
+    defer: int = 16
+    # The auxiliary predictions (§8), read from the GRU's state, trained with the policy (their gradients reach
+    # the trunk), never played: whether the other navi loses HP in the seat's next aux_horizon decisions,
+    # whether its own does, and whether the two stand in one row now. aux_coef 0: none.
+    aux_coef: float = 0.1
+    aux_horizon: int = 4
     clip: float = 0.2
     value_clip: float = 0.2
     entropy: float = 0.01

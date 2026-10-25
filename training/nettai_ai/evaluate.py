@@ -13,6 +13,7 @@ Each env's first round is discarded: seats and delays are set "from the next rou
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -379,6 +380,7 @@ def main() -> None:
     ap.add_argument("--envs", type=int, default=40)
     ap.add_argument("--threads", type=int, default=0)
     ap.add_argument("--level", default="normal", choices=sorted(LEVELS))
+    ap.add_argument("--delay", type=int, default=None, help="the level's reaction delay in ticks, overridden")
     ap.add_argument("--hp", type=int, default=1000)
     ap.add_argument("--fake", action="store_true", help="play FakePool instead of nettai_gym")
     ap.add_argument("--duplicate", action="store_true", help="each deal twice, the seats swapped (pool.set_deal)")
@@ -391,6 +393,8 @@ def main() -> None:
     games = a.games.split(",") if a.games else list(cfg.env.games)
     bots = [] if a.no_bots else [b for b in a.bots.split(",") if b]
     level = LEVELS[a.level]
+    if a.delay is not None:
+        level = dataclasses.replace(level, delay=a.delay)
     others = [load_player(p, device)[0] for p in a.vs]
     everyone = [main_player] + others
     for p in others:

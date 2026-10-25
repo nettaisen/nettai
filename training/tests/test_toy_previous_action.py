@@ -32,6 +32,9 @@ def run(tmp_path: Path, name: str, monkeypatch) -> tuple[float, float]:
         'env.games=["exe6"]', "env.envs=32", "env.threads=1",
         "ppo.steps=32", "ppo.chunk=16", "ppo.epochs=4", "ppo.minibatch_chunks=8", "ppo.lr=5e-4",
         "ppo.norm_warmup_steps=8", "ppo.entropy=0.003", "ppo.gamma=0.9", "ppo.lam=0.9",
+        # (The toy's hits land at once and it has no rows: holding decisions for credits to come, and the auxiliary
+        # predictions, only slow it.)
+        "ppo.defer=0", "ppo.aux_coef=0.0",
         "reward.result=0.0",
         "league.self_play=0.0", "league.snapshots=0.0", "league.bots=1.0", 'league.bot_names=["still"]',
         "model.d=32", "model.ffn=64", "model.token_hidden=32", "model.summary=64", "model.hidden=64",

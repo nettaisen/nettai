@@ -29,6 +29,9 @@ def test_ppo_learns_the_toy_rule(tmp_path: Path):
         'env.games=["exe6"]', "env.envs=32", "env.threads=1",
         "ppo.steps=32", "ppo.chunk=16", "ppo.epochs=4", "ppo.minibatch_chunks=8", "ppo.lr=5e-4",
         "ppo.norm_warmup_steps=8", "ppo.entropy=0.003", "ppo.gamma=0.9", "ppo.lam=0.9",
+        # (The toy's hits land at once and it has no rows: holding decisions for credits to come, and the auxiliary
+        # predictions, only slow it.)
+        "ppo.defer=0", "ppo.aux_coef=0.0",
         # The toy's ±1 result is noise to it (rounds end at random); the HP shaping carries its signal.
         "reward.result=0.0",
         "league.self_play=0.0", "league.snapshots=0.0", "league.bots=1.0", 'league.bot_names=["still"]',

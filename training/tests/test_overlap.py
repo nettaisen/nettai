@@ -32,7 +32,7 @@ class Recording(Trainer):
     def __init__(self, *a, **kw):
         self.versions: dict[int, dict] = {}
         self.checked: list[tuple[int, int, int]] = []  # (update, behavior version, decisions replayed)
-        self.carried = None  # (streams with an open decision at the last rollout's end, the version that played it)
+        self.carried = None  # by stream, the versions that played the decisions the last rollout carried, in order
         super().__init__(*a, **kw)
 
     def weights(self) -> dict:
@@ -47,17 +47,21 @@ class Recording(Trainer):
     @torch.no_grad()
     def _replay(self, item) -> int:
         ro = self.rollouts[item.buffer]
+        # A stream's first decisions may be the last rollout's carried ones (its open one, and with ppo.defer the
+        # round's last before it), each played by the version that played it there.
+        played = [
+            (self.carried[s] if self.carried else []) + [item.behavior] * (int(ro.cursor[s]) - len(self.carried[s] if self.carried else []))
+            for s in range(ro.S)
+        ]
         nets = {}
-        for v in {item.behavior} | ({self.carried[1]} if self.carried else set()):
+        for v in {v for p in played for v in p}:
             nets[v] = Model(self.spec, self.cfg.model)
             nets[v].load_state_dict(self.versions[v])
         checked = 0
         for s in range(ro.S):
             n = int(ro.cursor[s])
             for t in range(n):
-                # A stream's first decision may be the last rollout's open one, played by that rollout's version.
-                carried = t == 0 and self.carried is not None and bool(self.carried[0][s])
-                net = nets[self.carried[1] if carried else item.behavior]
+                net = nets[played[s][t]]
                 fight, screen, _, h = net.step(
                     ro.obs(torch.tensor([s]), torch.tensor([t])), ro.h_in[s, t].unsqueeze(0), ro.previous[s, t].unsqueeze(0)
                 )
@@ -75,7 +79,7 @@ class Recording(Trainer):
                 if bool(ro.ep_start[s, t]):
                     assert int(ro.previous[s, t]) == net.no_previous
                 checked += 1
-        self.carried = (ro.open >= 0, item.behavior)
+        self.carried = [played[s][int(ro.carry_from[s]) : int(ro.cursor[s])] for s in range(ro.S)]
         return checked
 
 

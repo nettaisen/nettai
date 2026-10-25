@@ -37,7 +37,9 @@ fn snapshot(b: &Buffers) -> Vec<u64> {
     }
     out.extend(b.phase.iter().map(|&v| v as u64));
     out.extend(b.legal_fight.iter().chain(&b.legal_screen).chain(&b.done).chain(&b.truncated).map(|&v| v as u64));
-    out.extend(b.hp_gain.iter().map(|v| v.to_bits() as u64));
+    out.extend(b.hp_gain.iter().chain(&b.credit_hp).chain(&b.dealt).chain(&b.taken).map(|v| v.to_bits() as u64));
+    out.extend(b.same_row.iter().map(|&v| v as u64));
+    out.extend(b.credit_lag.iter().map(|&v| v as u64));
     out.extend(b.result.iter().chain(&b.game).map(|&v| v as u64));
     out.extend(b.delay.iter().map(|&v| v as u64));
     out
