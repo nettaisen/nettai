@@ -2099,8 +2099,11 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     switched at once; not beside a waiting invite, whose music is the menus'). A group of its own: "you should
     split the practice menu settings into arena and battle so the arena settings aren't mixed together"; named
     STAGE since §2.56, "having an "arena" field under "arena" is so weird".
-  - Options: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
-    folder order), Input display (a group of its own, Display, until §2.56)
+  - Options: HP (normal, refills) and Emotion (normal, then the game's), each a row of two columns, the player's
+    value and the dummy's side by side under YOU and DUMMY, each column a control of its own (2026-10-25: "change
+    the practice ui so settings that are player/dummy are in a 2 column view rather than sequentially"; they were
+    Your HP and Dummy's HP, a row each); Custom gauge (normal, always full), Chip draw (shuffled, folder order),
+    Input display (a group of its own, Display, until §2.56), Input delay
   - RESUME, RESTART, EXIT (§2.40; since §2.57 back to PLAY, the build still chosen; no QUIT TO MENU). Restart is
     also R or the pad's top button.
 

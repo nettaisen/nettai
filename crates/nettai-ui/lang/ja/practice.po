@@ -76,12 +76,10 @@ msgctxt "level"
 msgid "Hard"
 msgstr "つよい"
 
-# Battle: a side's HP stays as it goes, or comes back full once a hit is over.
-msgid "Your HP"
-msgstr "あなたのHP"
-
-msgid "Dummy's HP"
-msgstr "ダミーのHP"
+# Battle, rows of two columns under the headings YOU and DUMMY, a value for each side: a side's HP stays as it
+# goes, or comes back full once a hit is over.
+msgid "HP"
+msgstr "HP"
 
 msgid "Normal"
 msgstr "通常"
@@ -89,13 +87,10 @@ msgstr "通常"
 msgid "Refills"
 msgstr "回復する"
 
-# Battle: each side's navi held in one of the game's emotions (their words the content's), or as the game goes
-# (Normal, the HP rows' word).
-msgid "Your emotion"
-msgstr "あなたの感情"
-
-msgid "Dummy's emotion"
-msgstr "ダミーの感情"
+# Each side's navi held in one of the game's emotions (their words the content's), or as the game goes (Normal,
+# the HP row's word).
+msgid "Emotion"
+msgstr "感情"
 
 msgid "Custom gauge"
 msgstr "カスタムゲージ"

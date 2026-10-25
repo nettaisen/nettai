@@ -21,9 +21,11 @@
 //! going on and its scenery moving as the game's pause shows them (`battle/hold.rs`). Its
 //! rows are a label and a value between arrows, changed at once by Left and Right (Dummy's build, Arena,
 //! Background and Music a dropdown: Enter opens its list, Arena's and Background's a grid of pictures): [`ROWS`]
-//! lists them, and a row is added there. EDIT, under the Dummy's build, opens it in Builds' editor, whose
-//! Back comes back to the session, started again on the build as the edit left it, the menu open. Under the
-//! rows RESUME, RESTART and, in a session of Practice's own, EXIT.
+//! lists them, and a row is added there. HP and Emotion are rows of two columns, the player's value and the
+//! dummy's side by side under YOU and DUMMY, each a control of its own (`menu.rows.option` and
+//! `menu.rows.dummys`). EDIT, under the Dummy's build, opens it in Builds' editor, whose Back comes back to the
+//! session, started again on the build as the edit left it, the menu open. Under the rows RESUME, RESTART and,
+//! in a session of Practice's own, EXIT.
 
 use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::builds::{self, words};
@@ -301,7 +303,7 @@ struct Session {
     options: Options,
     inputs: bool,
     /// The game's emotions a side can be held in, in the menu's order, with their words ([`emotions_of`]): the
-    /// Emotion rows' values after Normal.
+    /// Emotion row's values after Normal, each side's.
     emotions: Vec<(Emotion, String)>,
     /// The AI plugged into the dummy's live play, while one is ([`plug`]); and what the corner over the battle was
     /// last told of its getting ready ([`watch_ai`]).
@@ -322,8 +324,9 @@ struct Session {
 /// The practice menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Practice::change_option`. The dummy's Level is shown under its Action while
-/// that is Fights alone, and its build and EDIT in a session of Practice's own ([`shown_rows`]).
-pub(crate) const ROWS: [PracticeOption; 18] = [
+/// that is Fights alone, and its build and EDIT in a session of Practice's own ([`shown_rows`]). A row of two
+/// columns ([`paired`]) is under the Columns row, its headings.
+pub(crate) const ROWS: [PracticeOption; 17] = [
     PracticeOption::Dummy,
     // (Who the dummy is, then what it does: the user, "add Dummy's build to its DUMMY group".)
     PracticeOption::DummysBuild,
@@ -338,10 +341,11 @@ pub(crate) const ROWS: [PracticeOption; 18] = [
     PracticeOption::Background,
     PracticeOption::Music,
     PracticeOption::Options,
-    PracticeOption::YourHp,
-    PracticeOption::DummysHp,
-    PracticeOption::YourEmotion,
-    PracticeOption::DummysEmotion,
+    // (Each side's on one row, the player's and the dummy's side by side: the user, "settings that are
+    // player/dummy are in a 2 column view rather than sequentially".)
+    PracticeOption::Columns,
+    PracticeOption::Hp,
+    PracticeOption::Emotion,
     PracticeOption::CustomGauge,
     PracticeOption::ChipDraw,
     PracticeOption::InputDisplay,
@@ -371,11 +375,24 @@ fn menu_button(id: &str) -> Option<MenuButton> {
     MENU_BUTTONS.iter().find(|(name, _)| *name == id).map(|(_, b)| *b)
 }
 
-/// How many values a row steps through (none: a group's title, or EDIT; Arena and Background the
-/// game's `places` and Random; the Emotion rows Normal and the game's `emotions` it can hold a side in).
+/// The rows of two columns, the player's side's value and the dummy's: the menu's controls of the dummy's column
+/// are theirs alone.
+fn paired(option: PracticeOption) -> bool {
+    matches!(option, PracticeOption::Hp | PracticeOption::Emotion)
+}
+
+/// The side a control of an option's row is of: 1 for the dummy's column of a row of two (`menu.rows.dummys`),
+/// else 0 (the player's column, or the row's one control: `menu.rows.option`).
+fn side_of(id: &str) -> usize {
+    (id == "menu.rows.dummys") as usize
+}
+
+/// How many values a row steps through, each side's of a row of two columns (none: a group's title, the columns'
+/// headings, or EDIT; Arena and Background the game's `places` and Random; Emotion Normal and the game's
+/// `emotions` it can hold a side in).
 fn values(option: PracticeOption, places: &Places, emotions: usize) -> usize {
     match option {
-        PracticeOption::YourEmotion | PracticeOption::DummysEmotion => 1 + emotions,
+        PracticeOption::Emotion => 1 + emotions,
         PracticeOption::Arena => places.len(ARENA),
         PracticeOption::Background => places.len(BACKGROUND),
         // (The battle's music steps through what `crate::music` offers, and the dummy's build through the session's
@@ -383,46 +400,47 @@ fn values(option: PracticeOption, places: &Places, emotions: usize) -> usize {
         PracticeOption::Music | PracticeOption::DummysBuild => 1,
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::Level => LEVELS.len(),
-        PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
+        PracticeOption::Hp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
         PracticeOption::InputDelay => MAX_INPUT_DELAY as usize + 1,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => 0,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::Columns | PracticeOption::EditDummy => 0,
     }
 }
 
-/// The value a row has: its place among its values (an Emotion row's, its emotion's among `emotions`, after Normal).
-fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Options, inputs: bool, place: [usize; 2], emotions: &[(Emotion, String)]) -> usize {
+/// The values a row has, each its place among the row's values: a row of two columns' the player's side's and the
+/// dummy's (Emotion's, each side's emotion's among `emotions`, after Normal); another row's its one, then 0.
+fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Options, inputs: bool, place: [usize; 2], emotions: &[(Emotion, String)]) -> [usize; 2] {
     let held = |side: usize| options.emotions[side].and_then(|e| emotions.iter().position(|(h, _)| *h == e)).map_or(0, |at| at + 1);
-    match option {
-        PracticeOption::YourEmotion => held(0),
-        PracticeOption::DummysEmotion => held(1),
+    let one = match option {
+        PracticeOption::Hp => return options.refills.map(usize::from),
+        PracticeOption::Emotion => return [0, 1].map(held),
         PracticeOption::Level => level,
         PracticeOption::Arena => place[ARENA],
         PracticeOption::Background => place[BACKGROUND],
         PracticeOption::Music | PracticeOption::DummysBuild => 0,
         PracticeOption::Action => ACTIONS.iter().position(|a| *a == opponent.in_fight).unwrap_or(0),
-        PracticeOption::YourHp => options.refills[0] as usize,
-        PracticeOption::DummysHp => options.refills[1] as usize,
         PracticeOption::CustomGauge => options.full_gauge as usize,
         PracticeOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
         PracticeOption::InputDisplay => inputs as usize,
         // (The setting's, not the session's: `row`.)
         PracticeOption::InputDelay => 0,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => 0,
-    }
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::Columns | PracticeOption::EditDummy => 0,
+    };
+    [one, 0]
 }
 
-/// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
-/// Random) and its picture (`thumbs`'); for Music, the battle's music's name; for the Dummy's build, its name; for
-/// the Input delay, the setting's ticks (`delay`).
+/// A row as the menu shows it: its value's place (a row of two columns' each side's); for Arena and Background,
+/// the name of the one chosen (none: Random) and its picture (`thumbs`'); for Music, the battle's music's name;
+/// for the Dummy's build, its name; for Emotion, each side's emotion's words (none: Normal); for the Input delay,
+/// the setting's ticks (`delay`).
 fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs, delay: u32) -> PracticeRow {
     if option == PracticeOption::InputDelay {
-        return PracticeRow { option, value: delay as i32, text: Default::default(), picture: Default::default() };
+        return PracticeRow { option, value: delay as i32, ..Default::default() };
     }
     if option == PracticeOption::DummysBuild {
         let name = session.builds.get(session.dummys).map(|p| p.build.name.as_str()).unwrap_or_default();
-        return PracticeRow { option, value: session.dummys as i32, text: name.into(), picture: Default::default() };
+        return PracticeRow { option, value: session.dummys as i32, text: name.into(), ..Default::default() };
     }
-    let value = value(option, session.opponent, session.level, session.options, session.inputs, session.place, &session.emotions) as i32;
+    let [value, dummys] = value(option, session.opponent, session.level, session.options, session.inputs, session.place, &session.emotions);
     let part = match option {
         PracticeOption::Arena => Some(ARENA),
         PracticeOption::Background => Some(BACKGROUND),
@@ -430,13 +448,14 @@ fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs, delay
     };
     let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_labels[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
     let text = if option == PracticeOption::Music { session.music.as_str().into() } else { text };
-    // (An Emotion row's Normal is practice.slint's word; the game's emotions, the content's.)
-    let text = match option {
-        PracticeOption::YourEmotion | PracticeOption::DummysEmotion => (value as usize).checked_sub(1).and_then(|at| session.emotions.get(at)).map(|(_, w)| w.as_str().into()).unwrap_or_default(),
-        _ => text,
+    // (Emotion's Normal is practice.slint's word; the game's emotions, the content's.)
+    let words = |value: usize| -> slint::SharedString { value.checked_sub(1).and_then(|at| session.emotions.get(at)).map(|(_, w)| w.as_str().into()).unwrap_or_default() };
+    let (text, dummys_text) = match option {
+        PracticeOption::Emotion => (words(value), words(dummys)),
+        _ => (text, Default::default()),
     };
     let picture = part.map(|part| thumbs.picture(&session.game, part, session.place[part])).unwrap_or_default();
-    PracticeRow { option, value, text, picture }
+    PracticeRow { option, value: value as i32, text, picture, dummys_value: dummys as i32, dummys_text }
 }
 
 /// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone),
@@ -726,7 +745,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     let rows: Vec<PracticeRow> = start
         .rows
         .iter()
-        .map(|text| PracticeRow { option: PracticeOption::Added, value: 0, text: text.into(), picture: Default::default() })
+        .map(|text| PracticeRow { option: PracticeOption::Added, text: text.into(), ..Default::default() })
         .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs, shell.settings.input_delay)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
@@ -1053,7 +1072,7 @@ impl Places {
     }
 }
 
-/// The game's emotions a side can be held in (`EmotionRules::holdable`) as the Emotion rows offer them, with
+/// The game's emotions a side can be held in (`EmotionRules::holdable`) as the Emotion row offers them, with
 /// their words in the language shown (the game's `[emotions]` table; one it hasn't, by its name): Full Synchro and
 /// Angry, then the game's own (the user's order: BN4's and BN5's Worried and Evil, BN6's Tired and Very tired),
 /// [`menu_place`].
@@ -1069,7 +1088,7 @@ fn emotions_of(content: &Content, names: &Names) -> Vec<(Emotion, String)> {
         .collect()
 }
 
-/// Where an emotion goes among the Emotion rows' values, by the facts that hold it (the framework's, no game's
+/// Where an emotion goes among the Emotion row's values, by the facts that hold it (the framework's, no game's
 /// names): a mood of 0xFF (Full Synchro), anger, then a low mood or held tired (Worried, Tired), then a mood of 0
 /// or exhausted (Evil, Very tired).
 fn menu_place(w: &EmotionWhen) -> u8 {
@@ -1229,12 +1248,12 @@ impl Practice {
         crate::screens::builds::open(shell, ScreenId::Practice, at);
     }
 
-    /// Enter, a click or a tap on the menu's option at row `index`: the Dummy's build, Arena, Background and Music
-    /// open their lists (Arena's and Background's grids of their pictures), EDIT opens the editor,
-    /// another steps on by one.
-    fn open_option(&mut self, shell: &mut Shell, index: i32) {
+    /// Enter, a click or a tap on the menu's option at row `index` (on side `side` of a row of two columns): the
+    /// Dummy's build, Arena, Background and Music open their lists (Arena's and Background's grids of their
+    /// pictures), EDIT opens the editor, another steps on by one.
+    fn open_option(&mut self, shell: &mut Shell, index: i32, side: usize) {
         let Some(session) = shell.practice.session.as_ref() else { return };
-        let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
+        let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied().filter(|_| side == 0);
         match option {
             Some(PracticeOption::DummysBuild) => {
                 let names = session.builds.iter().map(|p| p.build.name.clone()).collect();
@@ -1248,15 +1267,17 @@ impl Practice {
                 open_places(shell, "menu.rows.option", index, &game, part, &labels, at);
             }
             Some(PracticeOption::Music) => crate::music::open(shell, "menu.rows.option", index),
-            _ => self.change_option(shell, index, Change::By(1)),
+            _ => self.change_option(shell, index, side, Change::By(1)),
         }
     }
 
     /// Change the menu's option at row `index` (`change`: stepped, around from its last value to its first, or
-    /// chosen from its list): it changes at once.
-    fn change_option(&mut self, shell: &mut Shell, index: i32, change: Change) {
+    /// chosen from its list), a row of two columns' on side `side` (0 the player's, 1 the dummy's): it changes at
+    /// once.
+    fn change_option(&mut self, shell: &mut Shell, index: i32, side: usize, change: Change) {
         let Some(mut session) = shell.practice.session.take() else { return };
-        let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
+        // (The dummy's column is a row of two columns' alone.)
+        let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied().filter(|o| side == 0 || paired(*o));
         // Music: the player's one pick, and the battle's music switched to it at once (the user: "also you should
         // be able to change the bgm in the practice menu").
         if option == Some(PracticeOption::Music) {
@@ -1315,7 +1336,7 @@ impl Practice {
         let count = |o: PracticeOption, session: &Session| values(o, &session.places, session.emotions.len());
         if let Some(option) = option.filter(|o| count(*o, &session) > 0) {
             let next = match change {
-                Change::By(by) => (value(option, session.opponent, session.level, session.options, session.inputs, session.place, &session.emotions) as i32 + by).rem_euclid(count(option, &session) as i32) as usize,
+                Change::By(by) => (value(option, session.opponent, session.level, session.options, session.inputs, session.place, &session.emotions)[side] as i32 + by).rem_euclid(count(option, &session) as i32) as usize,
                 Change::To(at) => at.min(count(option, &session) - 1),
             };
             // (A session another screen started keeps its choices for its wait alone, not for the visit.)
@@ -1348,15 +1369,13 @@ impl Practice {
                         shell.practice.visit.menu.level = Some(next);
                     }
                 }
-                PracticeOption::YourHp | PracticeOption::DummysHp => {
-                    let side = (option == PracticeOption::DummysHp) as usize;
+                PracticeOption::Hp => {
                     session.options.refills[side] = next == 1;
                     if keep {
                         shell.practice.visit.menu.refills[side] = next == 1;
                     }
                 }
-                PracticeOption::YourEmotion | PracticeOption::DummysEmotion => {
-                    let side = (option == PracticeOption::DummysEmotion) as usize;
+                PracticeOption::Emotion => {
                     let held = next.checked_sub(1).and_then(|at| session.emotions.get(at)).map(|(e, _)| *e);
                     session.options.emotions[side] = held;
                     if keep {
@@ -1389,7 +1408,7 @@ impl Practice {
                 }
                 // (Above.)
                 PracticeOption::Music | PracticeOption::DummysBuild | PracticeOption::InputDelay => {}
-                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::EditDummy => {}
+                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::Columns | PracticeOption::EditDummy => {}
             }
             // (At once, on the battle as it stands behind the menu, the dummy's AI with it.)
             if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
@@ -1463,7 +1482,7 @@ impl Screen for Practice {
                 },
                 _ => {}
             },
-            "menu.rows.option" => self.open_option(shell, index),
+            "menu.rows.option" | "menu.rows.dummys" => self.open_option(shell, index, side_of(id)),
             // A row another screen added: it is told which.
             "menu.rows.added" => {
                 if let Some(Session { from: Some((to, tag)), .. }) = &shell.practice.session {
@@ -1476,14 +1495,14 @@ impl Screen for Practice {
     }
 
     fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) {
-        if id == "menu.rows.option" {
-            self.change_option(shell, index, Change::By(by));
+        if matches!(id, "menu.rows.option" | "menu.rows.dummys") {
+            self.change_option(shell, index, side_of(id), Change::By(by));
         }
     }
 
     fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         if id == "menu.rows.option" {
-            self.change_option(shell, index, Change::To(choice.max(0) as usize));
+            self.change_option(shell, index, 0, Change::To(choice.max(0) as usize));
         }
     }
 
@@ -1674,8 +1693,8 @@ mod tests {
         assert_eq!(level(&plugged), None, "taken out");
     }
 
-    /// Every row of the menu that steps has its values, and each value of the dummy's choices is kept by a
-    /// name of its own.
+    /// Every row of the menu that steps has its values, each side's in a row of two columns, and each value of the
+    /// dummy's choices is kept by a name of its own.
     #[test]
     fn the_menus_rows_have_their_values() {
         let content = nettai_match::testing::exe6_content();
@@ -1685,37 +1704,54 @@ mod tests {
         let values = |option, places: &Places| values(option, places, emotions.len());
         for option in ROWS {
             if values(option, &places) > 0 {
-                seen += 1;
-                assert!(value(option, opponent, NORMAL, options, false, [0; 2]) < values(option, &places), "{option:?}");
+                let sides = 1 + paired(option) as usize;
+                seen += sides;
+                let had = value(option, opponent, NORMAL, options, false, [0; 2]);
+                assert!(had[..sides].iter().all(|v| *v < values(option, &places)), "{option:?}");
             }
             // (A session another screen starts has the battle's options at their normal values and the places
             // Random: the first.)
-            if matches!(option, PracticeOption::Arena | PracticeOption::Background | PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::YourEmotion | PracticeOption::DummysEmotion | PracticeOption::CustomGauge | PracticeOption::ChipDraw) {
-                assert_eq!(value(option, opponent, NORMAL, options, false, [0; 2]), 0, "{option:?}");
+            if matches!(option, PracticeOption::Arena | PracticeOption::Background | PracticeOption::Hp | PracticeOption::Emotion | PracticeOption::CustomGauge | PracticeOption::ChipDraw) {
+                assert_eq!(value(option, opponent, NORMAL, options, false, [0; 2]), [0, 0], "{option:?}");
             }
         }
-        assert_eq!(seen, 14, "Dummy's build, Action, Level, Arena, Background, Music, Your HP, Dummy's HP, Your emotion, Dummy's emotion, Custom gauge, Chip draw, Input display, Input delay");
-        // (Normal, then the game's emotions; a held one is its place after Normal.)
-        assert_eq!(values(PracticeOption::DummysEmotion, &places), 1 + emotions.len());
+        assert_eq!(seen, 14, "Dummy's build, Action, Level, Arena, Background, Music, HP and Emotion each side's, Custom gauge, Chip draw, Input display, Input delay");
+        // (Normal, then the game's emotions; a held one is its place after Normal, on its side.)
+        assert_eq!(values(PracticeOption::Emotion, &places), 1 + emotions.len());
         let angry = Options { emotions: [None, Some(emotions[1].0)], ..options };
-        assert_eq!((value(PracticeOption::YourEmotion, opponent, NORMAL, angry, false, [0; 2]), value(PracticeOption::DummysEmotion, opponent, NORMAL, angry, false, [0; 2])), (0, 2));
+        assert_eq!(value(PracticeOption::Emotion, opponent, NORMAL, angry, false, [0; 2]), [0, 2]);
         assert_eq!(values(PracticeOption::InputDelay, &places), MAX_INPUT_DELAY as usize + 1, "0 to netplay's most");
         assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
-        assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
-        assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
+        assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), [2, 0]);
+        assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), [1, 0], "Normal at first");
         assert_eq!(LEVELS, [Level::Easy, Level::Normal, Level::Hard]);
-        assert_eq!(value(PracticeOption::DummysHp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), 1);
-        assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), 1);
-        assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
+        assert_eq!(value(PracticeOption::Hp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), [0, 1]);
+        assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), [1, 0]);
+        assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), [2, 0]);
         // (The arenas and the backgrounds after Random.)
         assert_eq!(values(PracticeOption::Arena, &places), 1 + places.arenas.len());
         assert_eq!(values(PracticeOption::Background, &places), 1 + nettai_match::ids::pool_backgrounds(&content).len(), "every game's");
     }
 
-    /// The Emotion rows offer each game's emotions a side can be held in, after Normal, in the user's order: Full
+    /// HP and Emotion are the rows of two columns, the first of OPTIONS under their headings (Columns: YOU and
+    /// DUMMY), and no other row is one: practice.slint's are the same two, their dummy's column `menu.rows.dummys`,
+    /// which this hears as the dummy's side.
+    #[test]
+    fn each_sides_settings_are_a_row_of_two_columns() {
+        let pairs: Vec<PracticeOption> = ROWS.into_iter().filter(|o| paired(*o)).collect();
+        assert_eq!(pairs, [PracticeOption::Hp, PracticeOption::Emotion]);
+        let at = ROWS.iter().position(|o| *o == PracticeOption::Columns).unwrap();
+        assert_eq!(ROWS[at - 1..at + 3], [PracticeOption::Options, PracticeOption::Columns, PracticeOption::Hp, PracticeOption::Emotion]);
+        assert_eq!((side_of("menu.rows.option"), side_of("menu.rows.dummys")), (0, 1));
+        let slint = include_str!("../../../nettai-ui/ui/screens/practice.slint");
+        assert!(slint.contains("property <bool> paired: root.entry.option == PracticeOption.hp || root.entry.option == PracticeOption.emotion;"));
+        assert_eq!(slint.matches("nav: root.paired ? \"menu.rows.dummys\" : \"\";").count(), 2, "the dummy's column, and its stepper's arrows");
+    }
+
+    /// Emotion offers each game's emotions a side can be held in, after Normal, in the user's order: Full
     /// Synchro and Angry, then BN4's and BN5's Worried and Evil, BN6's Tired and Very tired; by the game's words.
     #[test]
-    fn the_emotion_rows_offer_the_games_emotions() {
+    fn the_emotion_row_offers_the_games_emotions() {
         for (game, content, want) in [
             ("exe4", nettai_match::testing::exe4_content(), ["full_synchro", "angry", "worried", "evil"]),
             ("exe5", nettai_match::testing::exe5_content(), ["full_synchro", "angry", "worried", "evil"]),

@@ -11,7 +11,7 @@
 import { Theme, Audit, I18n } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
 import { Shell } from "../shell.slint";
-import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, ScrollPage, Mono, Bar } from "../widgets.slint";
+import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, Label, ScrollPage, Mono, Bar } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { InputDisplay } from "../inputs.slint";
 
@@ -39,13 +39,15 @@ export enum PracticeOption {
     background,
     // The battle's music (the player's one pick for the visit): the row's text is its name.
     music,
-    your-hp,
-    dummys-hp,
+    // The headings of the rows of two columns under them: YOU and DUMMY, over the player's column and the dummy's.
+    columns,
+    // Rows of two columns, the player's value and the dummy's side by side (the user: "settings that are
+    // player/dummy are in a 2 column view rather than sequentially"). Each side's HP refilling or not.
+    hp,
     // Each side's navi held in an emotion of the game's (the user: "add a setting for mood", then "instead of mood
-    // it should be emotion"): Normal, as the game goes, then the game's own (the row's text is its name, the
+    // it should be emotion"): Normal, as the game goes, then the game's own (a side's text is its name, the
     // content's words: Full Synchro and Angry, then BN4's and BN5's Worried and Evil, BN6's Tired and Very tired).
-    your-emotion,
-    dummys-emotion,
+    emotion,
     custom-gauge,
     chip-draw,
     input-display,
@@ -55,12 +57,15 @@ export enum PracticeOption {
 
 // A row of the practice menu: what it is, the value it has (its place among the row's values), and for a row
 // another screen added, its text; for Arena and Background, the chosen one's picture (none: Random, or not drawn
-// yet).
+// yet). A row of two columns' `value` and `text` are the player's side's, `dummys-value` and `dummys-text` the
+// dummy's.
 export struct PracticeRow {
     option: PracticeOption,
     value: int,
     text: string,
     picture: image,
+    dummys-value: int,
+    dummys-text: string,
 }
 
 // The dummy that fights getting ready: shown while its chips' fingerprints are being made (the first time a
@@ -91,7 +96,7 @@ export global PracticeView {
     in property <GettingReady> getting-ready;
 
     // ---- What the Rust half says in words.
-    // Who the two cards before a battle are.
+    // Who the two sides are: the two cards before a battle, and the menu's two columns' headings.
     out property <string> you: I18n.upper(@tr("You"));
     out property <string> dummy: I18n.upper(@tr("Dummy"));
     // The first of the Arena and Background rows' values: each round's place picked from the seed, as a match's
@@ -131,17 +136,11 @@ export global PracticeView {
         if option == PracticeOption.music {
             return @tr("Music");
         }
-        if option == PracticeOption.your-hp {
-            return @tr("Your HP");
+        if option == PracticeOption.hp {
+            return @tr("HP");
         }
-        if option == PracticeOption.dummys-hp {
-            return @tr("Dummy's HP");
-        }
-        if option == PracticeOption.your-emotion {
-            return @tr("Your emotion");
-        }
-        if option == PracticeOption.dummys-emotion {
-            return @tr("Dummy's emotion");
+        if option == PracticeOption.emotion {
+            return @tr("Emotion");
         }
         if option == PracticeOption.custom-gauge {
             return @tr("Custom gauge");
@@ -164,14 +163,14 @@ export global PracticeView {
         if option == PracticeOption.level {
             return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
         }
-        if option == PracticeOption.your-hp || option == PracticeOption.dummys-hp {
+        if option == PracticeOption.hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
         }
         if option == PracticeOption.custom-gauge {
             return value == 0 ? @tr("Normal") : @tr("Always full");
         }
-        // (Its other values are the row's text: the game's emotions.)
-        if option == PracticeOption.your-emotion || option == PracticeOption.dummys-emotion {
+        // (Its other values are the sides' texts: the game's emotions.)
+        if option == PracticeOption.emotion {
             return @tr("Normal");
         }
         if option == PracticeOption.chip-draw {
@@ -197,35 +196,67 @@ export global PracticeView {
 // A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
 // focused as a whole (on a phone the label is over the arrows), or for the Dummy's build, Arena, Background and
 // Music the value in a box that opens the values (Arena's and Background's a grid of their pictures, the chosen
-// one's before its name); EDIT, a button under the Dummy's build in the controls' column; or a row another
-// screen added. Its controls are 40 tall (36 on a phone), its steppers, selects and EDIT one column's width so
-// they line up (the user's "option 1", docs/design/app-ui.md §2.44); the row is bare, 52 tall. (One component
-// under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
+// one's before its name); a row of two columns (HP, Emotion), a label and two values between arrows, the
+// player's and the dummy's, each focused alone, under a row of their headings (YOU, DUMMY) as Settings' controls
+// are under KEY and PAD; EDIT, a button under the Dummy's build in the controls' column; or a row another screen
+// added. Its controls are 40 tall (36 on a phone), its steppers, selects and EDIT one column's width so they line
+// up (the user's "option 1", docs/design/app-ui.md §2.44), a row of two columns' two narrower steppers ending
+// where they do; the row is bare, 52 tall. (One component under the menu's one `for`: its parts are all there,
+// and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == PracticeOption.added;
     property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.stage || root.entry.option == PracticeOption.options;
+    property <bool> columns: root.entry.option == PracticeOption.columns;
     property <bool> edit: root.entry.option == PracticeOption.edit-dummy;
-    property <bool> option: !root.added && !root.title && !root.edit;
+    property <bool> option: !root.added && !root.title && !root.columns && !root.edit;
+    property <bool> paired: root.entry.option == PracticeOption.hp || root.entry.option == PracticeOption.emotion;
     property <bool> pictured: root.entry.option == PracticeOption.arena || root.entry.option == PracticeOption.background;
     property <bool> select: root.pictured || root.entry.option == PracticeOption.music || root.entry.option == PracticeOption.dummys-build;
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
+    property <string> dummys-value: root.entry.dummys-text != "" ? root.entry.dummys-text : PracticeView.value(root.entry.option, root.entry.dummys-value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
     // and tells the pass if it can't); the stepper and the select are as wide as it and their arrows (`box`), and
     // 40 tall (36 on a phone).
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
     property <length> box: root.value-width + 72px;
+    // A row of two columns' steppers, each as wide as its value's box (room for the longest of the two rows'
+    // values, Full Synchro and フルシンクロ) and its arrows (`pair`), 20 apart, the dummy's ending where the other
+    // rows' controls do; on a phone each half the row.
+    property <length> pair-value-width: Theme.phone ? (root.width - 20px) / 2 - 72px : 92px;
+    property <length> pair: root.pair-value-width + 72px;
+    property <length> yours-x: Theme.phone ? 0px : root.width - 2 * root.pair - 28px;
+    property <length> dummys-x: root.yours-x + root.pair + 20px;
     property <length> control: Theme.phone ? 36px : 40px;
     property <bool> over: Theme.audit && root.option && name.preferred-width > name.width + 0.5px;
-    height: root.title ? head.height : root.added ? 48px : root.edit ? root.control + 12px : (Theme.phone ? 64px : 52px);
+    height: root.title ? head.height : root.added ? 48px : root.edit ? root.control + 12px : root.columns ? 20px : (Theme.phone ? 64px : 52px);
     head := GroupTitle {
         x: 0;
         y: 0;
         visible: root.title;
         text: root.title ? root.label : "";
         first: root.index == 0;
+    }
+
+    // (The headings, each over its column's stepper.)
+    Label {
+        x: root.yours-x;
+        y: 0;
+        width: root.pair;
+        height: parent.height;
+        text: root.columns ? PracticeView.you : "";
+        horizontal-alignment: center;
+    }
+
+    Label {
+        x: root.dummys-x;
+        y: 0;
+        width: root.pair;
+        height: parent.height;
+        text: root.columns ? PracticeView.dummy : "";
+        horizontal-alignment: center;
     }
 
     MenuItem {
@@ -253,8 +284,30 @@ component MenuRow inherits Rectangle {
 
     Rectangle {
         visible: root.option;
-        background: hit.has-hover ? Theme.tint : transparent;
+        // (The pointer's tint, on what a click there takes: the row, or a column of a row of two.)
+        Rectangle {
+            x: hit.x;
+            y: 0;
+            width: hit.width;
+            background: hit.has-hover ? Theme.tint : transparent;
+        }
+
+        Rectangle {
+            x: dummys.x;
+            y: 0;
+            width: dummys.width;
+            background: dummys.has-hover ? Theme.tint : transparent;
+        }
+
+        // The row; in a row of two columns the player's column, the label and the first stepper, and the dummy's
+        // the rest, each a control of its own (Left and Right go between the two, Up and Down along each column),
+        // 4 past its stepper towards the other, where the cursor's arrows have room. (Begun at the row's edge, the
+        // player's has nothing to its left: else Left would find the buttons under the rows.)
         hit := Focusable {
+            x: 0;
+            y: 0;
+            width: root.paired ? root.yours-x + root.pair + 4px : parent.width;
+            height: parent.height;
             nav: root.option ? "menu.rows.option" : "";
             nav-index: root.index;
             // (A row that opens its list is a select's: Enter opens it. Another is a setting: Enter takes it.)
@@ -262,10 +315,21 @@ component MenuRow inherits Rectangle {
             enabled: root.option;
         }
 
+        dummys := Focusable {
+            x: root.dummys-x - 4px;
+            y: 0;
+            width: root.paired ? parent.width - self.x : 0px;
+            height: parent.height;
+            nav: root.paired ? "menu.rows.dummys" : "";
+            nav-index: root.index;
+            kind: NavKind.stepper;
+            enabled: root.paired;
+        }
+
         name := Text {
             x: 12px;
             y: 0;
-            width: Theme.phone ? parent.width - 24px : parent.width - root.value-width - 104px;
+            width: Theme.phone ? parent.width - 24px : root.paired ? root.yours-x - 24px : parent.width - root.value-width - 104px;
             height: Theme.phone ? 24px : parent.height;
             text: root.option ? root.label : "";
             color: Theme.text;
@@ -277,14 +341,26 @@ component MenuRow inherits Rectangle {
         }
 
         Stepper {
-            x: Theme.phone ? 0px : parent.width - root.box - 8px;
+            x: root.paired ? root.yours-x : Theme.phone ? 0px : parent.width - root.box - 8px;
             y: Theme.phone ? 26px : (parent.height - self.height) / 2;
             height: root.control;
             visible: !root.select;
             nav: root.select ? "" : "menu.rows.option";
             nav-index: root.index;
             value: root.value;
-            value-width: root.value-width;
+            value-width: root.paired ? root.pair-value-width : root.value-width;
+            focusable: false;
+        }
+
+        Stepper {
+            x: root.dummys-x;
+            y: Theme.phone ? 26px : (parent.height - self.height) / 2;
+            height: root.control;
+            visible: root.paired;
+            nav: root.paired ? "menu.rows.dummys" : "";
+            nav-index: root.index;
+            value: root.dummys-value;
+            value-width: root.pair-value-width;
             focusable: false;
         }
 

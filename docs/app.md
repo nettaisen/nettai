@@ -2452,10 +2452,11 @@ Play as a player makes them, and Replays lists replays of the pass's own.
 **Practice's steps** (`tour/practice.rs`) walk the editor's PRACTICE (`practice::open`, as it opens Practice; the two cards, then the battle with the practice
 menu open over it as it starts, the focus on RESUME, a step checking both), the menu's Dummy's build (a value
 apart, the set started over; its list; a list of 24 names, scrolled), the battle, and the practice menu (each
-Battle row with its value changed, a pair apart; the Arena's and Background's grids and Music's list, and a
-background chosen from its grid, a step checking the list closed and the place moved on one), and drive the
-options in the battle as a player would, the buttons held as the shell holds them: the dummy shot with Your HP
-and Dummy's HP on Refills, a shot after the hits and one after a rest; the custom gauge full, L, and the custom
+Battle setting with its value changed, HP's two columns each, a pair apart; the Arena's and Background's grids
+and Music's list, and a background chosen from its grid, a step checking the list closed and the place moved on
+one), and drive the
+options in the battle as a player would, the buttons held as the shell holds them: the dummy shot with HP on
+Refills in both columns, a shot after the hits and one after a rest; the custom gauge full, L, and the custom
 screen dealing in folder order. Then EXIT, a step checking
 Play is shown; and the way to Builds' editor and back: with the pass's new builds kept as files in its own
 folder (Practice lists them as a player's: `Shared::tour_files`), PRACTICE on the first, the Dummy's build
@@ -3102,8 +3103,9 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
 | Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
-| Options: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
-| Options: Your emotion, Dummy's emotion | Normal, then the game's: Full Synchro, Angry, and BN4's and BN5's Worried and Evil, BN6's Tired and Very tired (the user's names and order; the content's `[emotions]` words) | `Training::emotions`, by side: the navi held in that emotion whatever would change it (a chip that spends Full Synchro, anger running out: `kinds::player::hold_emotion`, by the facts the game's rules hold it by); Normal, as the game goes |
+| Options: YOU and DUMMY (the headings of the rows of two columns under them) | | |
+| Options: HP (two columns: yours, the dummy's) | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
+| Options: Emotion (two columns: yours, the dummy's) | Normal, then the game's: Full Synchro, Angry, and BN4's and BN5's Worried and Evil, BN6's Tired and Very tired (the user's names and order; the content's `[emotions]` words) | `Training::emotions`, by side: the navi held in that emotion whatever would change it (a chip that spends Full Synchro, anger running out: `kinds::player::hold_emotion`, by the facts the game's rules hold it by); Normal, as the game goes |
 | Options: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Options: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Options: Input display | Off, On | the app's own drawing, below |
@@ -3116,6 +3118,23 @@ to spare, so the selects and the steppers line up; a row is 52 tall (it was 44, 
 32 in a narrower column). EDIT's row is the control's height and 12 (52; 48 on a phone), the button in the
 controls' column, a ghost button with its word alone. On a phone a row is 64, its label over its control (24, then the control at 26, as wide
 as the panel). The menu scrolls a little more for it, and Up and Down go through the whole page first, as before.
+
+**Its rows of two columns** (HP and Emotion; the user, 2026-10-25: "change the practice ui so settings that are
+player/dummy are in a 2 column view rather than sequentially"; they were a row for each side, Your HP over
+Dummy's HP): the player's value and the dummy's side by side, under a row of their headings, YOU and DUMMY in the
+label style, each centered over its column (20 tall: Settings' controls are under KEY and PAD so). Each column's
+stepper is its value's box (92, room for Full Synchro and フルシンクロ) and its arrows' room (72), the two 20
+apart, the dummy's ending where the other rows' controls do, so its arrows line up with theirs; the label has the
+room left of them. Each column is a control of its own, `menu.rows.option` the player's and `menu.rows.dummys` the
+dummy's (the Rust half hears which side by the name), as tall as the row, tinted and bracketed by the cursor
+alone: the player's from the row's edge, the label in it as in any row, to 4 past its stepper; the dummy's from 4
+before its stepper to the row's other edge. (The 12 between them leave the cursor's arrows of a column taken room
+clear of the other stepper; and the player's column begun at the edge has nothing to its left, where Left would
+otherwise find RESUME under the rows.) The focus goes among them by their places as anywhere (§11): Left and
+Right between the two columns, Up and Down along each, into the player's column from a row above or below; Enter
+takes one, and Left and Right then change it; Tab goes your HP, the dummy's HP, your emotion, the dummy's emotion,
+as the rows went. A click or a tap on a column steps it on, on an arrow steps it that way. On a phone each column
+is half the row, under the label.
 
 Arena changes the field, which a round sets as it starts, so a change starts the set over on the new arena:
 the session's match is put on it, its set made again from the session's seed, and the live driver plays that

@@ -155,10 +155,16 @@ fn focus(id: &'static str, index: i32) -> Step {
 /// The focus on the practice menu's row of `option`, where the menu shows it as the step runs (the dummy's
 /// Action has rows under it for some of its values).
 fn focus_row(option: PracticeOption) -> Step {
+    focus_in(option, "menu.rows.option")
+}
+
+/// The focus on control `id` of the practice menu's row `option`: of a row of two columns, the player's column
+/// (`menu.rows.option`) or the dummy's (`menu.rows.dummys`).
+fn focus_in(option: PracticeOption, id: &'static str) -> Step {
     Box::new(move |_, app, _| {
         let mut app = app.borrow_mut();
         let at = practice::row_of(&app.shell, option).expect("a row the menu shows");
-        app.shell.nav.focus("menu.rows.option", at);
+        app.shell.nav.focus(id, at);
     })
 }
 
@@ -322,15 +328,15 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's music list"));
     shot(add, "practice-menu-music-list", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Back));
-    // Each of the other Battle rows, and its value changed (at once, on the battle behind the menu: the HP
-    // refilled, the gauge full, the folders put in their own order).
-    for (name, changed, option) in [
-        ("practice-menu-your-hp", "practice-menu-your-hp-value", PracticeOption::YourHp),
-        ("practice-menu-dummys-hp", "practice-menu-dummys-hp-value", PracticeOption::DummysHp),
-        ("practice-menu-gauge", "practice-menu-gauge-value", PracticeOption::CustomGauge),
-        ("practice-menu-draw", "practice-menu-draw-value", PracticeOption::ChipDraw),
+    // Each of the other Battle settings, and its value changed (at once, on the battle behind the menu: the HP
+    // refilled, the gauge full, the folders put in their own order); the HP row's two columns each.
+    for (name, changed, option, id) in [
+        ("practice-menu-your-hp", "practice-menu-your-hp-value", PracticeOption::Hp, "menu.rows.option"),
+        ("practice-menu-dummys-hp", "practice-menu-dummys-hp-value", PracticeOption::Hp, "menu.rows.dummys"),
+        ("practice-menu-gauge", "practice-menu-gauge-value", PracticeOption::CustomGauge, "menu.rows.option"),
+        ("practice-menu-draw", "practice-menu-draw-value", PracticeOption::ChipDraw, "menu.rows.option"),
     ] {
-        add(SETTLE, focus_row(option));
+        add(SETTLE, focus_in(option, id));
         add(SETTLE, act(Action::Confirm));
         shot(add, name, lang, size, Differs::Unheld, true);
         add(SETTLE, act(Action::Right));
