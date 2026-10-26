@@ -3376,6 +3376,7 @@ dependencies = [
 name = "nettai-content"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "m4a",
  "miniz_oxide 0.8.9",
  "nettai-assets",
@@ -3386,6 +3387,8 @@ dependencies = [
  "resvg",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
+ "tar",
  "toml 0.8.23",
  "toml_edit 0.22.27",
 ]

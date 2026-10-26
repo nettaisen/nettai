@@ -35,6 +35,7 @@
 //! [`custom`] and the field's panel tables are EXE6-shaped.
 
 pub mod aseprite;
+pub mod bundle;
 pub mod custom;
 pub mod hud;
 pub mod image;

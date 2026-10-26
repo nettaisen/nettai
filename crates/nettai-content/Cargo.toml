@@ -21,6 +21,10 @@ toml = "0.8"
 # Writing TOML with hex ids and flag words (the version toml uses).
 toml_edit = "0.22"
 miniz_oxide = "0.8"
+# Content bundles (bundle.rs): the deterministic tar, its gzip, and its SHA-256 id.
+tar = { version = "0.4", default-features = false }
+flate2 = "1"
+sha2 = "0.10"
 # Reading and drawing the frames' drawings (`shapes`, SVG): the version
 # Slint builds into the app, so the build has one copy.
 resvg = { version = "=0.48.1", default-features = false }
