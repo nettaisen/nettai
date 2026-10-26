@@ -9,13 +9,19 @@
 //! A ROM is given as its bytes (`RomSet::insert`), from wherever the host has it: nettai reads its ROMs out of
 //! an installed Legacy Collection's archives into memory and writes none to disk. [`recognize`] tells a ROM's
 //! game from its header alone; [`extract_reporting`] and [`Extraction::write_reporting`] say how far they are as
-//! they go; [`fingerprint`] tells apart the packs two builds write.
+//! they go; [`fingerprint`] tells apart the packs two contents' tables write.
+//!
+//! The names a pack's assets are written under, and the numbers the extraction finds some of them by, are the
+//! content's: its game's compat tables ([`Tables`], `<game>/compat/assets.toml` and the tables it names), read
+//! from the content at run time, so content that names a new asset has its pack extracted again with it, with
+//! no new build of the extractor (docs/design/content-deployment.md §5, "Asset packs").
 //!
 //! ```no_run
-//! use nettai_extract::{extract, Game, RomSet};
+//! use nettai_extract::{extract, Game, RomSet, Tables};
+//! let tables = Tables::of_content(Game::Exe6, std::path::Path::new("content"))?;
 //! let mut roms = RomSet::default();
 //! roms.insert(nettai_platform::fs::read("falzar.gba")?)?;
-//! let assets = extract(Game::Exe6, &roms)?;
+//! let assets = extract(&tables, &roms)?;
 //! // Use assets.graphics / assets.sound directly, or embed the open-format files.
 //! let files = assets.files()?;
 //! assets.write(std::path::Path::new("new-pack"))?;
@@ -83,28 +89,82 @@ pub fn recognize(header: &[u8]) -> Option<(Game, &'static str)> {
     Game::ALL.into_iter().find_map(|game| game.codes().into_iter().find(|c| c.as_bytes() == code).map(|c| (game, c)))
 }
 
-/// What tells apart the packs of `game` that two builds of the extractor write: a digest, as 16 hex digits, of
-/// the versions of the pack's formats (`pack::FORMATS`) and of the names the pack's assets are written under,
-/// which a frontend finds them by: the content's `compat/assets.toml`, and the names given by the content's
-/// other tables (a chip's icon by its id, a navi's emblem by its key, what each of the fonts' glyphs draws). Two
-/// builds whose digests are the same write packs that the same content loads; a build whose content names an
-/// asset under another name, or one more, or writes a format of another version, has another. (A change to how
-/// an asset is decoded that names nothing new doesn't change it.)
-pub fn fingerprint(game: Game) -> String {
-    let said = format!("{:?} {:?}", pack::FORMATS, asset_names(game));
+/// A game's compat tables, as its content has them (`<content>/<game>/compat`): what a pack of the game is
+/// written by. They give the names its assets are written under, which a frontend finds them by (`assets.toml`,
+/// a chip's icon by its id, a navi's emblem by its key, what each of the fonts' glyphs draws), and the numbers the
+/// extraction reads some by (the panels' types, a version's own chips, the backgrounds several numbers share).
+#[derive(Clone, Debug)]
+pub enum Tables {
+    Exe4(Box<exe4_compat::Compat>),
+    Exe5(Box<exe5_compat::Compat>),
+    Exe6(Box<exe6_compat::Compat>),
+}
+
+impl Tables {
+    /// `game`'s tables in the content directory `content` (a bundle's, or the repository's content/), read.
+    pub fn of_content(game: Game, content: &Path) -> Result<Tables, Error> {
+        let said = |e: String| Error(format!("{}'s compat tables in {}: {e}", game.id(), content.display()));
+        Ok(match game {
+            Game::Exe4 => Tables::Exe4(Box::new(exe4_compat::Compat::of_content(content).map_err(said)?)),
+            Game::Exe5 => Tables::Exe5(Box::new(exe5_compat::Compat::of_content(content).map_err(said)?)),
+            Game::Exe6 => Tables::Exe6(Box::new(exe6_compat::Compat::of_content(content).map_err(said)?)),
+        })
+    }
+
+    /// The game they are of.
+    pub fn game(&self) -> Game {
+        match self {
+            Tables::Exe4(_) => Game::Exe4,
+            Tables::Exe5(_) => Game::Exe5,
+            Tables::Exe6(_) => Game::Exe6,
+        }
+    }
+
+    /// The names the pack's assets are written under.
+    fn names(&self) -> AssetNames {
+        match self {
+            Tables::Exe4(c) => exe4::names::asset_names(c),
+            Tables::Exe5(c) => exe5::names::asset_names(c),
+            Tables::Exe6(c) => exe6::names::asset_names(c),
+        }
+    }
+
+    /// The field's panel types' names by number.
+    fn panel_names(&self) -> Vec<String> {
+        match self {
+            Tables::Exe4(c) => exe4::graphics::panel_names(c),
+            Tables::Exe5(c) => exe5::graphics::panel_names(c),
+            Tables::Exe6(_) => exe6::graphics::panel_names(),
+        }
+    }
+
+    /// What else of them the extraction reads, which changes what a pack holds: EXE4's version chips and its
+    /// text's first control byte, EXE5's backgrounds by their numbers.
+    fn read_by_number(&self) -> String {
+        match self {
+            Tables::Exe4(c) => {
+                let versions: Vec<(&String, &Option<exe4_compat::Version>)> = c.chips.iter().map(|(k, e)| (k, &e.version)).collect();
+                format!("{versions:?} {}", c.text.first_control)
+            }
+            Tables::Exe5(c) => format!("{:?}", c.assets.backgrounds),
+            Tables::Exe6(_) => String::new(),
+        }
+    }
+}
+
+/// What tells apart the packs that two contents' tables (or two builds of the extractor) write of a game: a
+/// digest, as 16 hex digits, of the versions of the pack's formats (`pack::FORMATS`) and of what the extraction
+/// reads of the content's tables ([`Tables`]): the names the pack's assets are written under, which a frontend
+/// finds them by, the panels' names and the numbers it reads some assets by. Two whose digests are the same write
+/// packs that the same content loads; content that names an asset under another name, or one more, or a build
+/// that writes a format of another version, has another. (A change to how an asset is decoded that names nothing
+/// new doesn't change it.) A pack is kept under it (the app's `packs/<game>-<fingerprint>`).
+pub fn fingerprint(tables: &Tables) -> String {
+    let said = format!("{:?} {:?} {:?} {}", pack::FORMATS, tables.names(), tables.panel_names(), tables.read_by_number());
     // (FNV-1a, 64 bits: the same digest from every build and toolchain, which the standard library's hasher
     // doesn't promise.)
     let digest = said.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3));
     format!("{digest:016x}")
-}
-
-/// The names `game`'s pack is written under (its content's compat tables).
-fn asset_names(game: Game) -> AssetNames {
-    match game {
-        Game::Exe4 => exe4::names::asset_names(),
-        Game::Exe5 => exe5::names::asset_names(),
-        Game::Exe6 => exe6::names::asset_names(),
-    }
 }
 
 #[derive(Debug)]
@@ -195,8 +255,8 @@ pub struct RomRead {
 /// For comparing what two releases' ROMs hold where the extractor looks
 /// (the verification's cross-ROM sweep); the sound bank's reads aren't in
 /// it.
-pub fn extract_recording_reads(game: Game, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
-    let (extraction, reads) = rom::record_reads(|| extract(game, roms));
+pub fn extract_recording_reads(tables: &Tables, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
+    let (extraction, reads) = rom::record_reads(|| extract(tables, roms));
     let code = |at: usize| {
         roms.roms
             .iter()
@@ -231,18 +291,19 @@ pub fn songs_played_otherwise(a: &[u8], b: &[u8]) -> Result<Vec<u16>, Error> {
     Ok(sound::played_otherwise(&bank(a)?, &bank(b)?))
 }
 
-/// Extract all available sources of `game`. Even an empty set produces a usable
-/// placeholder pack. Malformed supplied data fails extraction instead of being
-/// treated as a missing source. Existing game decoders' assertions are translated
-/// to errors at this boundary (on targets with unwinding enabled).
-pub fn extract(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
-    extract_reporting(game, roms, &mut |_| {})
+/// Extract all available sources of the game of `tables` (its content's compat tables), its assets written
+/// under the names they give. Even an empty set produces a usable placeholder pack. Malformed supplied data fails
+/// extraction instead of being treated as a missing source. Existing game decoders' assertions are translated to
+/// errors at this boundary (on targets with unwinding enabled).
+pub fn extract(tables: &Tables, roms: &RomSet) -> Result<Extraction, Error> {
+    extract_reporting(tables, roms, &mut |_| {})
 }
 
 /// [`extract`], telling `progress` how far it is as it goes (a fraction, 0 to 1, after each of its stretches:
 /// the graphics, the sound, the checks), for a host that shows a bar.
-pub fn extract_reporting(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| extract_inner(game, roms, progress))).map_err(|panic| {
+pub fn extract_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
+    let game = tables.game();
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| extract_inner(tables, roms, progress))).map_err(|panic| {
         let detail = panic
             .downcast_ref::<String>()
             .map(String::as_str)
@@ -261,8 +322,9 @@ const JAPANESE: &str = "ja";
 /// pack's writing, with its encoding, nearly all of its time.)
 const GRAPHICS_SHARE: f32 = 0.6;
 
-fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
-    let names = asset_names(game);
+fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
+    let game = tables.game();
+    let names = tables.names();
     let codes = game.codes();
     let sources = codes.map(|code| roms.get(code));
     let missing_roms = codes
@@ -274,16 +336,12 @@ fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Re
         .iter()
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
-    let mut graphics = match game {
-        Game::Exe4 => exe4::graphics::bundle(&rom::Roms(sources), &names),
-        Game::Exe5 => exe5::graphics::bundle(&rom::Roms(sources), &names),
-        Game::Exe6 => exe6::graphics::bundle(&rom::Roms(sources), &names),
+    let mut graphics = match tables {
+        Tables::Exe4(c) => exe4::graphics::bundle(&rom::Roms(sources), &names, c),
+        Tables::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
+        Tables::Exe6(_) => exe6::graphics::bundle(&rom::Roms(sources), &names),
     };
-    let panel_names = match game {
-        Game::Exe4 => exe4::graphics::panel_names(),
-        Game::Exe5 => exe5::graphics::panel_names(),
-        Game::Exe6 => exe6::graphics::panel_names(),
-    };
+    let panel_names = tables.panel_names();
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
     progress(GRAPHICS_SHARE);
     // A pack has the words of the releases its ROMs are of (`sources`: the

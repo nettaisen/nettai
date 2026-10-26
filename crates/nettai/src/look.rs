@@ -49,12 +49,12 @@ pub struct Looks {
 }
 
 impl Looks {
-    /// Every game's look in `games`, read from the content; the window shows the app's own until a game is
-    /// shown ([`Looks::show`]).
+    /// Every game's look in `games`, read from each one's content (`crate::contents`); the window shows the app's
+    /// own until a game is shown ([`Looks::show`]).
     pub fn new<'g>(ui: &AppWindow, games: impl IntoIterator<Item = &'g str>) -> Looks {
-        let dir = nettai_content::index::content();
         let mut by_game = HashMap::new();
         for game in games {
+            let Some(dir) = crate::contents::dir(game) else { continue };
             match nettai_content::look::of(&dir, game) {
                 Ok(Some(look)) => {
                     by_game.insert(game.to_string(), of(&look));

@@ -1,6 +1,6 @@
-pub(crate) fn asset_names() -> nettai_content::names::AssetNames {
+/// The names `c` (the content's compat) gives EXE6's pack's assets.
+pub(crate) fn asset_names(c: &exe6_compat::Compat) -> nettai_content::names::AssetNames {
     let mut names = nettai_content::names::AssetNames::default();
-    let c = exe6_compat::Compat::exe6();
     for (name, id) in &c.assets.sprites {
         let parse = |s: &str| u8::from_str_radix(s, 16).ok();
         let Some((cat, index)) = id

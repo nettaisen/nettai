@@ -16,6 +16,7 @@ mod backgrounds;
 mod battle;
 mod bnlc;
 mod builds;
+mod contents;
 mod errors;
 mod games;
 mod gl;

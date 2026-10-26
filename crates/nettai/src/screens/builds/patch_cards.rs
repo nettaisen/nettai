@@ -1,7 +1,7 @@
 //! The Patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"; §2 items 19 and 20).
 //!
 //! A card's number, name, MB, slot and lines are the game's data (`crate::builds::cards`: its effects' lines from
-//! the strings, a bug's marked; its number its own, the game's compat tables' (`builds::import::card_number`); its
+//! the strings, a bug's marked; its number its own, the game's compat tables' (`Kit::card_number`); its
 //! MB the field the rules' budget names). What the cards may be is the game's rules': the list's budget and why a card can't go in now
 //! (nettai-match's `Overview::budget`, `Budget::refusal`), and in a game whose cards go in slots, each card's own
 //! (`Builds::slots`: `Slots::own`, `held`, `put`, `clear`). What they add up to is the build's overview without its
@@ -174,7 +174,7 @@ impl PatchCards {
     /// The card's number as its game shows it (`074`).
     fn number(&self, draft: &Draft, h: EntryHandle) -> String {
         let id = draft.content().defs.entry(h).id();
-        crate::builds::import::card_number(&draft.kit.game, id).map(|n| format!("{n:03}")).unwrap_or_default()
+        draft.kit.card_number(id).map(|n| format!("{n:03}")).unwrap_or_default()
     }
 
     /// The library's rows, as sorted and searched.
@@ -938,7 +938,7 @@ mod tests {
             let collection = collection_of(&content, FIELD).unwrap();
             let mut cards: Vec<((), EntryHandle)> = edit::of_game(&content, game, Registry::Entry, Some(&collection)).into_iter().map(|h| ((), EntryHandle(h))).collect();
             order.entries(&content, &collection, &mut cards);
-            let numbers: Vec<u8> = cards.iter().map(|(_, h)| crate::builds::import::card_number(game, content.defs.entry(*h).id()).unwrap_or_else(|| panic!("{game}: {} has no number", content.defs.entry(*h).id()))).collect();
+            let numbers: Vec<u8> = cards.iter().map(|(_, h)| crate::builds::import::card_number(&crate::builds::import::tests::tables(nettai_extract::Game::named(game).unwrap()), content.defs.entry(*h).id()).unwrap_or_else(|| panic!("{game}: {} has no number", content.defs.entry(*h).id()))).collect();
             assert_eq!(numbers.len(), count, "{game}");
             assert!(numbers.windows(2).all(|w| w[0] <= w[1]), "{game}: the library's order is the numbers'");
             let mut distinct = numbers.clone();

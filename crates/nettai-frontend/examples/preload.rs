@@ -117,7 +117,7 @@ fn run() -> Result<(), String> {
 
     // Copies of the game's pack and of the content, to load and then delete.
     let found = Found::find(&nettai_content::pack::packs_dir(), &[]).map_err(|e| format!("{}\n{e}", e.report))?;
-    let pack = found.packs.iter().find(|p| p.game == name).ok_or(format!("no pack of {name} in {}", found.dir.display()))?;
+    let pack = found.packs.iter().find(|p| p.game == name).ok_or(format!("no pack of {name} in {}", nettai_content::pack::packs_dir().display()))?;
     let scratch = std::env::temp_dir().join(format!("nettai-preload-{}", std::process::id()));
     let copies: (PathBuf, PathBuf) = (scratch.join("pack"), scratch.join("content"));
     let copied = copy_dir(&pack.dir, &copies.0).and_then(|a| Ok(a + copy_dir(&nettai_content::index::content(), &copies.1)?));
@@ -125,7 +125,7 @@ fn run() -> Result<(), String> {
     println!("{name}: {copied} files of its pack and the content copied to {}", scratch.display());
 
     // The game, a part at a time.
-    let options = Options { packs_dir: scratch.join("no-packs"), packs: vec![copies.0.clone()], content: Some(copies.1.clone()), ..Options::default() };
+    let options = Options { packs_dir: None, packs: vec![copies.0.clone()], content: Some(copies.1.clone()), ..Options::default() };
     let mut loading = Loading::new(&name, options);
     let started = Instant::now();
     while let Some(part) = loading.next() {

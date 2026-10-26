@@ -162,8 +162,14 @@ fn backgrounds_in(dir: &Path, game: &str, lang: &str) -> Option<std::collections
 /// game whose table can't be read has none in it.
 pub fn background_pool(dir: &Path) -> nettai_battle::content::BackgroundPool {
     let games = crate::index::games(dir).unwrap_or_default();
+    background_pool_of(&games.into_iter().map(|game| (game, dir.to_path_buf())).collect::<Vec<_>>())
+}
+
+/// The background pool of `games`, each a game and the content directory its locales are read from (an app whose
+/// games each have content of their own: a bundle each, docs/design/content-deployment.md §5).
+pub fn background_pool_of(games: &[(String, std::path::PathBuf)]) -> nettai_battle::content::BackgroundPool {
     nettai_battle::content::BackgroundPool::new(
-        games.iter().flat_map(|game| backgrounds_in(dir, game, OWN).unwrap_or_default().into_keys().map(move |name| (game.clone(), name))),
+        games.iter().flat_map(|(game, dir)| backgrounds_in(dir, game, OWN).unwrap_or_default().into_keys().map(move |name| (game.clone(), name))),
     )
 }
 

@@ -107,13 +107,13 @@ fn of_effects(effects: &[Data], text: &dyn Fn(&str) -> Option<String>, named: Na
 /// What the names of a card's line are as its screen shows them: a slot by
 /// its name (the game's builds data's slots, by the field of an entry's
 /// data that names one), a card by its own number (the game's compat
-/// tables': `import::card_number`).
+/// tables': `Kit::card_number`).
 pub fn named_by<'a>(kit: &'a crate::builds::Kit) -> impl Fn(&str, &Data) -> Option<String> + 'a {
     move |path, value| {
         let last = path.rsplit('.').next().unwrap_or(path);
         match value {
             Data::Int(n) => kit.builds.slots.as_ref().filter(|s| s.slot_field() == last).and_then(|s| s.name(usize::try_from(*n).ok()?)).map(str::to_string),
-            Data::Str(id) => crate::builds::import::card_number(&kit.game, id).map(|n| format!("{n:03}")),
+            Data::Str(id) => kit.card_number(id).map(|n| format!("{n:03}")),
             _ => None,
         }
     }

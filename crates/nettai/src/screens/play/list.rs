@@ -289,7 +289,8 @@ impl Play {
             crate::errors::log(&format!("reading the save {}", path.display()), &why);
             UserError::Other
         })?;
-        let imported = match import::side_of_save(kit.content(), &kit.builds, &file) {
+        let Some(tables) = kit.tables() else { return Err(UserError::Other) };
+        let imported = match import::side_of_save(tables, kit.content(), &kit.builds, &file) {
             Ok(imported) => imported,
             Err(import::Refused::NotThisGames) => return Err(UserError::WrongGameSave { game: Shell::game_name(&kit.game) }),
             Err(import::Refused::Failed) => return Err(UserError::Other),

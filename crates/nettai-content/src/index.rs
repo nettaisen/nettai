@@ -74,6 +74,20 @@ pub fn content() -> PathBuf {
     }
 }
 
+/// The content directory of development, which an app plays every game from instead of its store of bundles
+/// (docs/design/content-deployment.md §5, "Development"): `$NETTAI_CONTENT`, else this repository's content/ for a
+/// build run from the repository. None for a packaged build (built with `NETTAI_PACKAGED`) and in the browser, whose
+/// content is the bundles they ship and download.
+pub fn development() -> Option<PathBuf> {
+    if cfg!(target_arch = "wasm32") {
+        return None;
+    }
+    if let Some(dir) = std::env::var_os("NETTAI_CONTENT") {
+        return Some(PathBuf::from(dir));
+    }
+    REPOSITORY.map(PathBuf::from)
+}
+
 /// The engine's API declarations for content (content/nettai).
 pub fn engine_declarations(content: &Path) -> PathBuf {
     content.join(DECLARATIONS)

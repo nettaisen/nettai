@@ -4,7 +4,9 @@
 //!
 //! - [`Compat`]: the tables, content key to the original's numbers (chip
 //!   ids, action numbers, object slots, weapon routines, NameIDs, asset
-//!   numbers...). [`Compat::exe6`] is this repository's, built in.
+//!   numbers...). [`Compat::of_content`] reads a content's; `Compat::exe6`
+//!   is this repository's, built in (the `builtin` feature: tools and
+//!   tests; the app reads the compat of the content it plays).
 //! - [`codec`]: the game's setup records (navi stats, battle folders, chip
 //!   hands, transformation requests, battle settings, the set's stages, SP
 //!   deletion times) to the engine's types and back, for traces, real saves
@@ -445,7 +447,9 @@ pub const FILES: [&str; 13] = [
 /// The game EXE6's compat numbers.
 pub const ROOT: &str = "exe6";
 
-/// This repository's compat (content/exe6/compat), built in.
+/// This repository's compat (content/exe6/compat), built in (the `builtin` feature: tools and tests; the app reads
+/// the compat of the content it plays, [`Compat::of_content`]).
+#[cfg(feature = "builtin")]
 const EXE6: [(&str, &str); 14] = [
     ("chips.toml", include_str!("../../../content/exe6/compat/chips.toml")),
     ("actions.toml", include_str!("../../../content/exe6/compat/actions.toml")),
@@ -469,7 +473,8 @@ impl Compat {
         self.patch_cards.get(key).copied()
     }
 
-    /// EXE6's compat, as this repository's content/exe6/compat has it.
+    /// EXE6's compat, as this repository's content/exe6/compat has it (built in: the `builtin` feature).
+    #[cfg(feature = "builtin")]
     pub fn exe6() -> &'static Compat {
         static EXE6_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
         EXE6_COMPAT.get_or_init(|| {
@@ -481,8 +486,15 @@ impl Compat {
     /// EXE6's compat for `content`: EXE6's own (the engine's test content,
     /// which borrows EXE6's modules, writes EXE6's ids: a match plays one
     /// game, docs/design/content-model-v2.md §4.0).
+    #[cfg(feature = "builtin")]
     pub fn exe6_for(_content: &nettai_battle::Content) -> &'static Compat {
         Compat::exe6()
+    }
+
+    /// The compat of the content directory `content` (a bundle's, or the repository's content/): its
+    /// `exe6/compat` folder, read.
+    pub fn of_content(content: &Path) -> Result<Compat, String> {
+        Compat::read(&content.join(ROOT).join("compat"))
     }
 
     /// Read a compat folder.
@@ -581,6 +593,7 @@ impl Compat {
     /// EXE6's compat with `file` replaced by `text`, as it reads (for the
     /// tests of what reading rejects).
     #[doc(hidden)]
+    #[cfg(feature = "builtin")]
     pub fn exe6_with(file: &str, text: &str) -> Result<Compat, String> {
         Compat::parse(|f| {
             Ok(if f == file { text.to_string() } else { EXE6.iter().find(|(name, _)| *name == f).map(|(_, t)| t.to_string()).unwrap_or_default() })

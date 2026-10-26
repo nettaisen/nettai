@@ -354,8 +354,8 @@ impl Shell {
     /// Read games `ids`' names in `lang` (for [`Shell::game_name`]), their battle themes' (for
     /// `crate::music::name`) and their backgrounds' (for `crate::backgrounds::name`).
     pub(crate) fn read_game_names(ids: &[&str], lang: &str) {
-        let dir = nettai_content::index::content();
-        let names: HashMap<String, String> = ids.iter().filter_map(|id| nettai_content::locale::game_name(&dir, id, lang).map(|name| (id.to_string(), name))).collect();
+        let names: HashMap<String, String> =
+            ids.iter().filter_map(|id| nettai_content::locale::game_name(&crate::contents::dir(id)?, id, lang).map(|name| (id.to_string(), name))).collect();
         GAME_NAMES.with(|n| *n.borrow_mut() = names);
         crate::music::name_themes(ids.iter().copied(), lang);
         crate::backgrounds::name_backgrounds(ids.iter().copied(), lang);
@@ -411,11 +411,13 @@ impl Shell {
         self.games.load(id, self.i18n.code, |id, step| crate::with_app(|app| app.shell.games.step(&id, step)));
     }
 
-    /// The extraction of game `id`'s pack says how far it is, or that it ended (`crate::packs`). A pack that
-    /// lands behind the menu is loaded there; the selected game's loads as `App::follow_games` sees it.
-    pub fn extracting(&mut self, id: &str, told: crate::packs::Told) {
-        if self.games.extracting(id, told) && self.announced.is_some() {
-            self.load(id);
+    /// The extraction of the pack of folder `pack` says how far it is, or that it ended (`crate::packs`). A pack
+    /// that lands behind the menu is loaded there; the selected game's loads as `App::follow_games` sees it.
+    pub fn extracting(&mut self, pack: &str, told: crate::packs::Told) {
+        if let Some((id, true)) = self.games.extracting(pack, told)
+            && self.announced.is_some()
+        {
+            self.load(&id);
         }
     }
 

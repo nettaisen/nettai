@@ -26,6 +26,10 @@
 //! - The look: a game's `look.toml`, the colors the app's menus are drawn
 //!   in while it is selected and the pattern of their backdrop ([`look`]).
 //!
+//! - Bundles: a game's content as it is published, one deterministic tar
+//!   named by its SHA-256 ([`bundle`]), and an app's store of them,
+//!   unpacked ([`store`]; docs/design/content-deployment.md).
+//!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what
 //! it found in a [`report::Report`]; nothing is silently approximated.
@@ -54,6 +58,7 @@ pub mod song;
 pub mod sound;
 pub mod sprite;
 pub mod stage;
+pub mod store;
 pub mod tiles;
 pub mod timeline;
 pub mod timing;

@@ -58,6 +58,8 @@ pub struct Kit {
     auto_layout: OnceCell<Option<auto::Layout>>,
     /// The game's rulesets (read of its rules once).
     rulesets: OnceCell<Option<Arc<Rulesets>>>,
+    /// The compat tables of the game's content (read once): a save's import, a card's number.
+    tables: OnceCell<Option<nettai_extract::Tables>>,
 }
 
 impl Kit {
@@ -83,6 +85,23 @@ impl Kit {
                 }
             })
             .clone()
+    }
+
+    /// The compat tables of the content the game is loaded from (`<content>/<game>/compat`), which a save's import
+    /// and a card's number read; none where they don't read (why is in the log).
+    pub fn tables(&self) -> Option<&nettai_extract::Tables> {
+        self.tables
+            .get_or_init(|| {
+                let dir = &self.ready.loaded.game.dir;
+                let game = nettai_extract::Game::named(&self.game)?;
+                nettai_extract::Tables::of_content(game, dir).map_err(|why| crate::errors::log(&format!("reading {}'s compat tables", self.game), &why)).ok()
+            })
+            .as_ref()
+    }
+
+    /// The number patch card `id` is printed with (`import::card_number`), as the game's content's tables say.
+    pub fn card_number(&self, id: &str) -> Option<u8> {
+        import::card_number(self.tables()?, id)
     }
 
     /// A version's (a group's) name, as the game's strings have it in `names`' language (its id where they have
@@ -132,7 +151,8 @@ pub fn kit(shell: &Shell) -> Option<Rc<Kit>> {
 
 /// Game `game`'s kit, the game loaded.
 pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
-    if let Some(kit) = KITS.with(|kits| kits.borrow().get(game).cloned()) {
+    // (A kit is of the game as it was loaded: one loaded again, on other content, has a new one.)
+    if let Some(kit) = KITS.with(|kits| kits.borrow().get(game).cloned()).filter(|kit| Rc::ptr_eq(&kit.ready, ready)) {
         return Some(kit);
     }
     let builds = match Builds::of(ready.content(), game) {
@@ -150,6 +170,7 @@ pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
         order: order::Order::load(&ready.loaded.game.dir, game),
         auto_layout: OnceCell::new(),
         rulesets: OnceCell::new(),
+        tables: OnceCell::new(),
     });
     KITS.with(|kits| kits.borrow_mut().insert(game.to_string(), kit.clone()));
     Some(kit)

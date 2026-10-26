@@ -1,7 +1,17 @@
 use nettai_content::{pack, report::Report};
-use nettai_extract::{Game, RomSet, extract};
+use nettai_extract::{Game, RomSet, Tables, extract};
 use std::path::Path;
 use std::sync::Arc;
+
+/// The repository's content directory.
+fn content() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content")
+}
+
+/// `game`'s tables, as the repository's content has them.
+fn tables(game: Game) -> Tables {
+    Tables::of_content(game, &content()).unwrap_or_else(|e| panic!("{e}"))
+}
 
 /// What the content audit (nettai-tool's `--audit-content`) finds missing
 /// of `game`'s content drawn and heard with the pack at `dir`: every
@@ -14,7 +24,7 @@ fn audit(game: Game, dir: &Path) -> Vec<String> {
     // (A packs directory with no pack in it: the pack is the one given.)
     let none = tempfile::tempdir().unwrap();
     let found = Found::find(none.path(), &[dir.to_path_buf()]).unwrap_or_else(|e| panic!("{e}"));
-    let loaded = Loaded::load(&found, Some(&content), game.id()).unwrap_or_else(|e| panic!("{e}"));
+    let loaded = Loaded::load(&found, Some(&content), game.id(), &[]).unwrap_or_else(|e| panic!("{e}"));
     let bundles = loaded.packs.iter().map(|p| pack::load_graphics(p).unwrap_or_else(|r| panic!("{r}")).0).collect();
     let banks = loaded.sound().unwrap_or_else(|e| panic!("{e}")).banks;
     let own = nettai_content::locale::OWN;
@@ -29,7 +39,7 @@ fn audit(game: Game, dir: &Path) -> Vec<String> {
 #[test]
 fn empty_sets_make_loadable_packs_and_language_variants() {
     for game in [Game::Exe5, Game::Exe6] {
-        let assets = extract(game, &RomSet::default()).unwrap();
+        let assets = extract(&tables(game), &RomSet::default()).unwrap();
         assert_eq!(assets.missing_roms.len(), 4);
         assert!(!assets.placeholders.is_empty());
         assert!(!assets.graphics.sprites.is_empty());
@@ -93,7 +103,7 @@ fn check_banner_kinds(game: Game, graphics: &nettai_assets::Bundle, what: &str) 
 /// other games' take a navi's), written and read back.
 #[test]
 fn an_empty_set_makes_an_exe4_pack() {
-    let assets = extract(Game::Exe4, &RomSet::default()).unwrap();
+    let assets = extract(&tables(Game::Exe4), &RomSet::default()).unwrap();
     assert_eq!(assets.missing_roms.len(), 4);
     assert!(assets.placeholders.iter().any(|p| p == "sprite/megaman"));
     assert!(assets.graphics.custom.buttons.iter().any(|(n, b)| n == "soul" && b.place.is_some()));
@@ -110,7 +120,7 @@ fn an_empty_set_makes_an_exe4_pack() {
 #[test]
 fn empty_sets_pass_the_content_audit() {
     for game in [Game::Exe4, Game::Exe5, Game::Exe6] {
-        let assets = extract(game, &RomSet::default()).unwrap();
+        let assets = extract(&tables(game), &RomSet::default()).unwrap();
         check_banner_kinds(game, &assets.graphics, "from no ROMs");
         let dir = tempfile::tempdir().unwrap();
         assets.write(dir.path()).unwrap();
@@ -142,7 +152,7 @@ fn rejects_unknown_truncated_and_duplicate_roms() {
             .contains("duplicate")
     );
     // Supplied but corrupt data is an error, not a successful placeholder pack.
-    assert!(extract(Game::Exe6, &roms).is_err());
+    assert!(extract(&tables(Game::Exe6), &roms).is_err());
 }
 
 /// A ROM is told by its header alone, the first `HEADER_LEN` bytes: its game and its code, for each of the
@@ -167,10 +177,39 @@ fn a_rom_is_recognized_by_its_header() {
 /// Each game's packs have a fingerprint of their own, the same each time it is asked for.
 #[test]
 fn each_game_has_its_own_fingerprint() {
-    let prints: Vec<String> = Game::ALL.into_iter().map(nettai_extract::fingerprint).collect();
+    let print = |game| nettai_extract::fingerprint(&tables(game));
+    let prints: Vec<String> = Game::ALL.into_iter().map(print).collect();
     assert!(prints.iter().all(|p| p.len() == 16 && p.chars().all(|c| c.is_ascii_hexdigit())), "{prints:?}");
-    assert_eq!(prints, Game::ALL.map(nettai_extract::fingerprint));
+    assert_eq!(prints, Game::ALL.map(print));
     assert!(prints[0] != prints[1] && prints[1] != prints[2] && prints[0] != prints[2], "{prints:?}");
+}
+
+/// The names are the content's, read when the extraction runs: content whose `assets.toml` names an asset
+/// otherwise has another fingerprint, and its pack writes the asset under the new name. Tables that don't read
+/// are an error that names the folder.
+#[test]
+fn the_names_are_the_contents() {
+    let copy = tempfile::tempdir().unwrap();
+    let compat = copy.path().join("exe6/compat");
+    std::fs::create_dir_all(&compat).unwrap();
+    for entry in std::fs::read_dir(content().join("exe6/compat")).unwrap() {
+        let entry = entry.unwrap();
+        std::fs::copy(entry.path(), compat.join(entry.file_name())).unwrap();
+    }
+    let same = Tables::of_content(Game::Exe6, copy.path()).unwrap();
+    assert_eq!(nettai_extract::fingerprint(&same), nettai_extract::fingerprint(&tables(Game::Exe6)));
+    let assets = compat.join("assets.toml");
+    let text = std::fs::read_to_string(&assets).unwrap().replacen("\ndummy-shield = ", "\nwooden-shield = ", 1);
+    std::fs::write(&assets, text).unwrap();
+    let renamed = Tables::of_content(Game::Exe6, copy.path()).unwrap();
+    assert_ne!(nettai_extract::fingerprint(&renamed), nettai_extract::fingerprint(&same));
+    let pack = extract(&renamed, &RomSet::default()).unwrap();
+    let files = pack.files().unwrap();
+    assert!(files.iter().any(|(path, _)| path.contains("wooden-shield")), "the new name is written");
+    assert!(!files.iter().any(|(path, _)| path.contains("dummy-shield")), "the old one isn't");
+    std::fs::remove_file(&assets).unwrap();
+    let e = Tables::of_content(Game::Exe6, copy.path()).unwrap_err().to_string();
+    assert!(e.contains("assets.toml") && e.contains(&copy.path().display().to_string()), "{e}");
 }
 
 /// The extraction and the writing say how far they are, from 0 to 1 and never back; and what the writing that
@@ -178,7 +217,7 @@ fn each_game_has_its_own_fingerprint() {
 #[test]
 fn an_extraction_reports_how_far_it_is() {
     let mut said = Vec::new();
-    let assets = nettai_extract::extract_reporting(Game::Exe6, &RomSet::default(), &mut |f| said.push(f)).unwrap();
+    let assets = nettai_extract::extract_reporting(&tables(Game::Exe6), &RomSet::default(), &mut |f| said.push(f)).unwrap();
     let (reported, plain) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     assets.write_reporting(reported.path(), &mut |f| said.push(f + 1.0)).unwrap();
     assets.write(plain.path()).unwrap();
@@ -506,7 +545,7 @@ fn every_source_subset() {
             }
             eprintln!("{} sources {mask:04b}", game.id());
             let assets =
-                extract(game, &roms).unwrap_or_else(|e| panic!("{} {mask:04b}: {e}", game.id()));
+                extract(&tables(game), &roms).unwrap_or_else(|e| panic!("{} {mask:04b}: {e}", game.id()));
             assert_eq!(assets.missing_roms.len(), 4 - mask.count_ones() as usize);
             // A pack says which languages it has words in: the releases'
             // its ROMs are of, its own first; English placeholders with none.
@@ -587,7 +626,7 @@ fn full_sets_preserve_reference_graphics() {
             roms.insert(std::fs::read(dir.join(format!("{code}.gba"))).unwrap())
                 .unwrap();
         }
-        let a = extract(game, &roms).unwrap();
+        let a = extract(&tables(game), &roms).unwrap();
         assert!(
             a.placeholders.is_empty(),
             "{}: {:?}",

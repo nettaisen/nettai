@@ -4,8 +4,9 @@
 //!
 //! - [`Compat`]: the tables, content key to the original's numbers (chip
 //!   ids, the chips' uses by number, damage formulas, the version
-//!   differences) and EXE5's panel types. [`Compat::exe5`] is this
-//!   repository's, built in.
+//!   differences) and EXE5's panel types. [`Compat::of_content`] reads a
+//!   content's; `Compat::exe5` is this repository's, built in (the
+//!   `builtin` feature: tools and tests).
 //! - [`codec`]: EXE5's records in the engine's terms: the 0x60-byte
 //!   NaviStats with EXE5's light/dark value, the panels, the chip blocks.
 //! - [`save`]: an EXE5 save file, and what a player's setup takes of it
@@ -484,7 +485,9 @@ pub const FILES: [&str; 12] = [
     "patch-cards.toml",
 ];
 
-/// This repository's compat (content/exe5/compat), built in.
+/// This repository's compat (content/exe5/compat), built in (the `builtin` feature: tools and tests; the app reads
+/// the compat of the content it plays, [`Compat::of_content`]).
+#[cfg(feature = "builtin")]
 const EXE5: [(&str, &str); 12] = [
     ("actions.toml", include_str!("../../../content/exe5/compat/actions.toml")),
     ("games.toml", include_str!("../../../content/exe5/compat/games.toml")),
@@ -512,13 +515,20 @@ impl Compat {
         self.patch_cards.get(key).copied()
     }
 
-    /// EXE5's compat, as this repository's content/exe5/compat has it.
+    /// EXE5's compat, as this repository's content/exe5/compat has it (built in: the `builtin` feature).
+    #[cfg(feature = "builtin")]
     pub fn exe5() -> &'static Compat {
         static EXE5_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
         EXE5_COMPAT.get_or_init(|| {
             Compat::parse(|file| Ok(EXE5.iter().find(|(f, _)| *f == file).map(|(_, t)| t.to_string()).unwrap_or_default()))
                 .unwrap_or_else(|e| panic!("content/exe5/compat: {e}"))
         })
+    }
+
+    /// The compat of the content directory `content` (a bundle's, or the repository's content/): its
+    /// `exe5/compat` folder, read.
+    pub fn of_content(content: &Path) -> Result<Compat, String> {
+        Compat::read(&content.join(ROOT).join("compat"))
     }
 
     /// Read a compat folder.

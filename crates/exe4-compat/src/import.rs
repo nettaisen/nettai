@@ -31,9 +31,8 @@ pub fn read(file: &[u8]) -> Result<Save, String> {
 
 /// The side an EXE4 save gives, of a match of `game` (an EXE4 one), and
 /// what is worth saying about it.
-pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
+pub fn import(compat: &crate::Compat, content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
     let mut notes = Vec::new();
-    let compat = crate::Compat::exe4();
     match ids::navi(content, game, "megaman") {
         Some(navi) => {
             if let Err(e) = side.set_navi(content, navi) {
@@ -208,7 +207,7 @@ mod tests {
         let content = exe4_content();
         let save = read(&image()).unwrap();
         let mut side = Side::fresh(&content, "exe4").unwrap();
-        let notes = import(&content, "exe4", &mut side, &save);
+        let notes = import(crate::Compat::exe4(), &content, "exe4", &mut side, &save);
         let get = |field: &str| side.facts.get(&content, field);
         assert_eq!(
             (get("karma"), get("hp"), get("reg_up")),
@@ -261,7 +260,7 @@ mod tests {
         img[folder + 4..folder + 6].copy_from_slice(&(0x138u16 | 6 << 9).to_le_bytes());
         let save = read(&img).unwrap();
         let mut side = Side::fresh(&content, "exe4").unwrap();
-        let notes = import(&content, "exe4", &mut side, &save);
+        let notes = import(crate::Compat::exe4(), &content, "exe4", &mut side, &save);
         let chips = side.folder(&content).chips;
         let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
         assert_eq!(

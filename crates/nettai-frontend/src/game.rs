@@ -73,8 +73,8 @@ impl std::error::Error for LoadError {}
 /// one of its game among those given by path.
 #[derive(Clone, Debug)]
 pub struct Found {
-    /// The packs directory looked in.
-    pub dir: PathBuf,
+    /// The packs directory looked in (none: the packs given alone).
+    pub dir: Option<PathBuf>,
     pub packs: Vec<pack::Found>,
     pub report: Report,
 }
@@ -83,9 +83,17 @@ impl Found {
     /// The packs in `dir` (`nettai_content::pack::packs_dir` is where the
     /// desktop program looks) and those `given` by their directories.
     pub fn find(dir: &Path, given: &[PathBuf]) -> Result<Found, LoadError> {
+        Found::find_in(Some(dir), given)
+    }
+
+    /// The packs in `dir`, if one is named, and those `given` by their
+    /// directories (a host that names each pack it loads gives no `dir`).
+    pub fn find_in(dir: Option<&Path>, given: &[PathBuf]) -> Result<Found, LoadError> {
         let mut report = Report::default();
-        match pack::find(dir, given, &mut report) {
-            Some(packs) => Ok(Found { dir: dir.to_path_buf(), packs, report }),
+        // (No folder to look in: a folder that has no pack.)
+        let looked = dir.map_or_else(PathBuf::new, Path::to_path_buf);
+        match pack::find(&looked, given, &mut report) {
+            Some(packs) => Ok(Found { dir: dir.map(Path::to_path_buf), packs, report }),
             None => Err(LoadError { what: Failed::Packs, report }),
         }
     }
@@ -113,10 +121,16 @@ pub struct Game {
 impl Game {
     /// Game `name`'s content, from the content directory `content` (none:
     /// the one the program comes with), drawn and heard from its pack
-    /// among `found`.
-    pub fn load(found: &Found, content: Option<&Path>, name: &str) -> Result<Game, LoadError> {
-        let loaded =
+    /// among `found`. Its background pool is the backgrounds of the games
+    /// of `pool`, each read from its own content directory (a host whose
+    /// games each have content of their own: its store's bundles); none
+    /// given, the content directory's own games'.
+    pub fn load(found: &Found, content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) -> Result<Game, LoadError> {
+        let mut loaded =
             pack::load_game(content, name, &found.packs).map_err(|report| LoadError { what: Failed::Content { game: name.to_string() }, report })?;
+        if !pool.is_empty() {
+            loaded.content.background_pool = locale::background_pool_of(pool);
+        }
         let content = Arc::new(loaded.content);
         let Some(own) = content.assets.pack(name) else {
             return Err(LoadError { what: Failed::NoPack { game: name.to_string() }, report: loaded.report });
@@ -281,12 +295,15 @@ pub fn font(mode: GraphicsMode, path: Option<&Path>, lang: &str) -> Result<Optio
 /// What [`load`] loads.
 #[derive(Clone, Debug)]
 pub struct Options {
-    /// The packs directory, and packs given by their directories (each in
-    /// place of the found one of its game).
-    pub packs_dir: PathBuf,
+    /// The packs directory (none: the packs given alone), and packs given
+    /// by their directories (each in place of the found one of its game).
+    pub packs_dir: Option<PathBuf>,
     pub packs: Vec<PathBuf>,
     /// The content directory (none: the one the program comes with).
     pub content: Option<PathBuf>,
+    /// The games whose backgrounds the background pool has, each with its
+    /// content directory ([`Game::load`]); none: the content directory's.
+    pub pool: Vec<(String, PathBuf)>,
     /// The language shown.
     pub lang: String,
     /// How the battle is drawn, and the enhanced mode's font file (none: the
@@ -304,7 +321,7 @@ impl Default for Options {
     /// (`nettai_content::pack::packs_dir`), the content's own language,
     /// the enhanced mode with the library's font, with sound.
     fn default() -> Options {
-        Options { packs_dir: pack::packs_dir(), packs: Vec::new(), content: None, lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, reduce_motion: false, sound: true }
+        Options { packs_dir: Some(pack::packs_dir()), packs: Vec::new(), content: None, pool: Vec::new(), lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, reduce_motion: false, sound: true }
     }
 }
 
@@ -479,10 +496,10 @@ impl Loading {
         let reports = [self.found.as_ref().map(|f| &f.report), self.game.as_ref().map(|g| &g.report), self.graphics.as_ref().map(|g| &g.report)];
         let loaded = |what: &str| -> ! { unreachable!("the {what} loads before this part") };
         match part {
-            Part::Packs => self.found = Some(Found::find(&self.options.packs_dir, &self.options.packs)?),
+            Part::Packs => self.found = Some(Found::find_in(self.options.packs_dir.as_deref(), &self.options.packs)?),
             Part::Content => {
                 let Some(found) = &self.found else { loaded("packs") };
-                let game = Game::load(found, self.options.content.as_deref(), &self.name).map_err(|e| after(&reports, e))?;
+                let game = Game::load(found, self.options.content.as_deref(), &self.name, &self.options.pool).map_err(|e| after(&reports, e))?;
                 self.game = Some(game);
             }
             Part::Graphics => {
@@ -521,7 +538,7 @@ mod tests {
     fn a_game_loads_a_part_at_a_time() {
         let dir = std::env::temp_dir().join(format!("nettai-frontend-loading-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let options = Options { packs_dir: dir.clone(), ..Options::default() };
+        let options = Options { packs_dir: Some(dir.clone()), ..Options::default() };
         let mut loading = Loading::new("exe6", options.clone());
         assert_eq!(loading.parts().collect::<Vec<_>>(), Part::ALL);
         assert_eq!(Part::ALL.map(Part::share).iter().sum::<u32>(), 100);
@@ -548,7 +565,7 @@ mod tests {
     fn a_game_with_no_pack_fails_as_a_value() {
         let dir = std::env::temp_dir().join(format!("nettai-frontend-no-packs-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let options = Options { packs_dir: dir.clone(), ..Options::default() };
+        let options = Options { packs_dir: Some(dir.clone()), ..Options::default() };
         let Err(e) = load("exe6", &options) else { panic!("loaded exe6 with no pack of it") };
         assert_eq!(e.what, Failed::Content { game: "exe6".into() });
         assert_eq!(e.to_string(), "can't load exe6's battle content");

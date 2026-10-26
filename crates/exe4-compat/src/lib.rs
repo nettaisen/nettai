@@ -6,8 +6,9 @@
 //!   chips' ids, the names the extractor writes EXE4's assets under, the
 //!   text encodings, the statuses, the netbattle stages, the object kinds,
 //!   the navi actions, what NaviStats name by number, and where the other
-//!   ROMs have what compat addresses. [`Compat::exe4`] is this repository's,
-//!   built in.
+//!   ROMs have what compat addresses. [`Compat::of_content`] reads a
+//!   content's; `Compat::exe4` is this repository's, built in (the
+//!   `builtin` feature: tools and tests).
 //! - [`codec`]: EXE4's records in the engine's terms: the 0x40-byte
 //!   NaviStats, the field's panels, the chip blocks, the link record.
 //! - [`save`]: an EXE4 save file, and what a player's setup takes of it.
@@ -354,7 +355,9 @@ pub const FILES: [&str; 12] = [
     "patch-cards.toml",
 ];
 
-/// This repository's compat (content/exe4/compat), built in.
+/// This repository's compat (content/exe4/compat), built in (the `builtin` feature: tools and tests; the app reads
+/// the compat of the content it plays, [`Compat::of_content`]).
+#[cfg(feature = "builtin")]
 const EXE4: [(&str, &str); 12] = [
     ("chips.toml", include_str!("../../../content/exe4/compat/chips.toml")),
     ("assets.toml", include_str!("../../../content/exe4/compat/assets.toml")),
@@ -392,13 +395,20 @@ impl Compat {
         self.patch_cards.cards.get(key).copied()
     }
 
-    /// EXE4's compat, as this repository's content/exe4/compat has it.
+    /// EXE4's compat, as this repository's content/exe4/compat has it (built in: the `builtin` feature).
+    #[cfg(feature = "builtin")]
     pub fn exe4() -> &'static Compat {
         static EXE4_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
         EXE4_COMPAT.get_or_init(|| {
             Compat::parse(|file| Ok(EXE4.iter().find(|(f, _)| *f == file).map(|(_, t)| t.to_string()).unwrap_or_default()))
                 .unwrap_or_else(|e| panic!("content/exe4/compat: {e}"))
         })
+    }
+
+    /// The compat of the content directory `content` (a bundle's, or the repository's content/): its
+    /// `exe4/compat` folder, read.
+    pub fn of_content(content: &Path) -> Result<Compat, String> {
+        Compat::read(&content.join(ROOT).join("compat"))
     }
 
     /// Read a compat folder.

@@ -1,5 +1,5 @@
-pub(crate) fn asset_names() -> nettai_content::names::AssetNames {
-    let c = exe4_compat::Compat::exe4();
+/// The names `c` (the content's compat) gives EXE4's pack's assets.
+pub(crate) fn asset_names(c: &exe4_compat::Compat) -> nettai_content::names::AssetNames {
     nettai_content::names::AssetNames {
         sprites: c.sprite_names(),
         songs: c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect(),

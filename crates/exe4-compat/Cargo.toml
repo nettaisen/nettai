@@ -17,9 +17,14 @@ toml = "0.8"
 nettai-match = { path = "../nettai-match" }
 
 [dev-dependencies]
+# The tests' compat: this repository's, built in.
+exe4-compat = { path = ".", features = ["builtin"] }
 # The games' content, for the import's tests.
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 
 [features]
+# This repository's content/exe4/compat compiled in (`Compat::exe4`), for tools and tests: the app reads the compat of
+# the content it plays at run time (`Compat::of_content`), and builds without content/.
+builtin = []
 # Recorded battles (the chip lab's EXE4 traces): reading them and decoding them.
-trace = ["dep:serde_json"]
+trace = ["dep:serde_json", "builtin"]

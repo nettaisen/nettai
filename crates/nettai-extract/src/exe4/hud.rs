@@ -314,7 +314,7 @@ fn telop(src: Source) -> TelopLook {
 /// souls' faces a ROM's of that version. What no ROM given holds is a
 /// placeholder; how the HUD is laid out is the game's code, whichever ROMs
 /// are given.
-pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
+pub fn hud(roms: &Roms, names: &AssetNames, c: &exe4_compat::Compat, chip_icons: Vec<ChipIcon>) -> Hud {
     let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
     let (font, font_chars) = super::graphics::placeholder_font(encoding);
     let (mugshots, mugshot_boxes) = mugshots(roms);
@@ -347,7 +347,7 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
     }
     let words = roms.us();
     if words.is_present() {
-        h = worded(words, names, h);
+        h = worded(words, names, c, h);
     }
     h
 }
@@ -408,14 +408,14 @@ fn drawn(src: Source, h: Hud) -> Hud {
 /// `h` with the words of `src`'s release (a US ROM's: the pack's own
 /// language is English, and the Japanese ROMs' words are graphics.rs's
 /// `lettering`).
-fn worded(src: Source, names: &AssetNames, h: Hud) -> Hud {
+fn worded(src: Source, names: &AssetNames, c: &exe4_compat::Compat, h: Hud) -> Hud {
     let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
     let (font, font_chars) = super::graphics::font(src, encoding);
     Hud {
         font,
         font_chars,
         dialogue_font: super::graphics::dialogue_font(src, encoding),
-        texts: super::graphics::texts(src),
+        texts: super::graphics::texts(src, c),
         banners: (0..BANNER_COUNT).map(|id| banner(src, id)).collect(),
         waiting: waiting(src),
         ..h

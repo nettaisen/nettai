@@ -34,9 +34,8 @@ const BLANK: AutoBattlePattern = AutoBattlePattern { dx: -1, dy: -1, chips: [AUT
 /// rules can't play in auto battle comes in as the save has it: the game
 /// writes none among the places, where the rules' `validate` refuses one,
 /// and a record may hold one.) What is worth saying about it.
-pub fn state_auto_battle(content: &Content, game: &str, block: &AutoBattleBlock, side: &mut Side) -> Vec<String> {
+pub fn state_auto_battle(compat: &crate::Compat, content: &Content, game: &str, block: &AutoBattleBlock, side: &mut Side) -> Vec<String> {
     let mut notes = Vec::new();
-    let compat = crate::Compat::exe5();
     let mut nameless: Vec<u16> = Vec::new();
     let mut chip = |n: u16| {
         let c = compat.chip_key(n).and_then(|k| ids::chip(content, game, k));
@@ -101,11 +100,11 @@ pub fn state_auto_battle(content: &Content, game: &str, block: &AutoBattleBlock,
 /// raw save image) as `side`'s, a side of a match of `game` (an editor
 /// takes it alone): what the game has learned of the save's player, and
 /// what is worth saying about it; or why the file gives none.
-pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mut Side) -> Result<Vec<String>, String> {
+pub fn auto_battle_of_save(compat: &crate::Compat, content: &Content, game: &str, file: &[u8], side: &mut Side) -> Result<Vec<String>, String> {
     if !nettai_match::facts::takes(content, "auto_battle_places") {
         return Err(format!("{game} has no auto battle"));
     }
-    Ok(state_auto_battle(content, game, &read(file)?.auto_battle(), side))
+    Ok(state_auto_battle(compat, content, game, &read(file)?.auto_battle(), side))
 }
 
 /// The EXE5 save in `file` (a .sav's bytes, or a raw save image as Tango's
@@ -125,9 +124,8 @@ pub fn read(file: &[u8]) -> Result<Save, String> {
 /// battle data (its first block, [`state_auto_battle`]: what the game has
 /// learned of this player) as the side's; the save's SP navi deletion times
 /// (`sp_times`, [`sp_times`]). What is worth saying about it.
-pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
+pub fn import(compat: &crate::Compat, content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
     let mut notes = Vec::new();
-    let compat = crate::Compat::exe5();
     // The navi it operates.
     match compat.navi_key(save.navi()).and_then(|k| ids::navi(content, game, k)) {
         Some(navi) => {
@@ -209,14 +207,14 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         }
         state(side, "reg_up", &[Fact::Value(Value::Int(stats[0x09] as i64))]);
     }
-    let (times, nameless) = sp_times(content, game, save);
+    let (times, nameless) = sp_times(compat, content, game, save);
     state(side, "sp_times", &times);
     notes.extend(nameless);
     notes.extend(left_out);
     if nettai_match::facts::takes(content, "auto_battle_places") {
-        notes.extend(state_auto_battle(content, game, &save.auto_battle(), side));
+        notes.extend(state_auto_battle(compat, content, game, &save.auto_battle(), side));
     }
-    notes.extend(team_navi(content, side, save));
+    notes.extend(team_navi(compat, content, side, save));
     notes
 }
 
@@ -228,8 +226,7 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
 /// chip's least damage), as the game's battle does; left out, the rules
 /// would read it as deleted in no time. A slot whose chip `game` hasn't is
 /// said and left out.
-pub fn sp_times(content: &Content, game: &str, save: &Save) -> (Vec<Fact<'static>>, Vec<String>) {
-    let compat = crate::Compat::exe5();
+pub fn sp_times(compat: &crate::Compat, content: &Content, game: &str, save: &Save) -> (Vec<Fact<'static>>, Vec<String>) {
     let times = save.sp_times();
     let mut slots: Vec<(&String, u8)> = compat.records.sp_slots.iter().map(|(k, &n)| (k, n)).collect();
     slots.sort_by_key(|&(_, n)| n);
@@ -251,7 +248,7 @@ pub fn sp_times(content: &Content, game: &str, save: &Save) -> (Vec<Fact<'static
 /// save's level (its story flags' count), which its HP is the story's
 /// at (EXE5's rules/save), and, where the save's version has the navi,
 /// the light/dark value of the navi's own block.
-fn team_navi(content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
+fn team_navi(compat: &crate::Compat, content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
     // (MegaMan takes no level.)
     if content.navi(side.navi(content)).story.is_none() {
         return match side.set_level(content, None) {
@@ -264,7 +261,6 @@ fn team_navi(content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
     if let Err(e) = side.set_level(content, Some(level)) {
         return vec![format!("{}: the save's level {level} is left out: {e}", nettai_match::names::navi(content, side.navi(content)))];
     }
-    let compat = crate::Compat::exe5();
     let key = ids::local(&content.defs.navi(side.navi(content)).key);
     let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
     let mut notes = vec![format!("{name}: the save's level {level}")];
@@ -537,9 +533,9 @@ mod tests {
         assert_eq!(block_of(&content, &m.sides[1]), AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] });
         // The data alone, from a save's file (the build creator's FROM A SAVE…).
         let mut side = m.sides[0].clone();
-        assert_eq!(auto_battle_of_save(&content, "exe5", &image, &mut side), Ok(Vec::new()));
+        assert_eq!(auto_battle_of_save(crate::Compat::exe5(), &content, "exe5", &image, &mut side), Ok(Vec::new()));
         assert_eq!(block_of(&content, &side), block_of(&content, &m.sides[1]));
-        assert!(auto_battle_of_save(&content, "exe5", b"not a save", &mut side).is_err());
+        assert!(auto_battle_of_save(crate::Compat::exe5(), &content, "exe5", b"not a save", &mut side).is_err());
     }
 
     /// What a match states of a block is the block: a block read into a
@@ -592,13 +588,13 @@ mod tests {
         ];
         for (name, original) in &blocks {
             let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
-            let notes = state_auto_battle(&content, "exe5", original, &mut m.sides[0]);
+            let notes = state_auto_battle(crate::Compat::exe5(), &content, "exe5", original, &mut m.sides[0]);
             assert_eq!(notes, Vec::<String>::new(), "{name}");
             assert_eq!(block_of(&content, &m.sides[0]), *original, "{name}");
             // (And as bytes, but for the count and the last eight.)
             assert_eq!(AutoBattleBlock::read(&original.bytes()), Ok(*original), "{name}");
             // Through a match file.
-            state_auto_battle(&content, "exe5", &blocks[8].1, &mut m.sides[1]);
+            state_auto_battle(crate::Compat::exe5(), &content, "exe5", &blocks[8].1, &mut m.sides[1]);
             let text = nettai_match::write(&content, &m);
             let file: nettai_match::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
             let back = nettai_match::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
@@ -610,6 +606,6 @@ mod tests {
     /// A save's file imported into side `side` of `m` (an EXE5 match).
     fn import_file(content: &Content, m: &mut nettai_match::Match, side: usize, file: &[u8]) -> Result<Vec<String>, String> {
         let game = m.game.clone();
-        Ok(import(content, &game, &mut m.sides[side], &read(file)?))
+        Ok(import(crate::Compat::exe5(), content, &game, &mut m.sides[side], &read(file)?))
     }
 }

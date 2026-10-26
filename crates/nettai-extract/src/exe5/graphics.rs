@@ -16,6 +16,7 @@
 use crate::decode::{background_picture, gfx_anims, speeding_scroll};
 use crate::exe5::rom::{Place, Roms, Source, Version};
 use nettai_assets::*;
+use exe5_compat::Compat;
 use nettai_content::names::AssetNames;
 
 /// `SpritePointersList` (EXE6 0x08031CC4; Team ProtoMan US's 0x08032728):
@@ -98,8 +99,9 @@ fn chip_ids(names: &AssetNames) -> impl Iterator<Item = u32> + '_ {
 const PICTURE_BYTES: usize = 0x540;
 
 /// Everything the pack draws with: `names` gives the chips their keys, the
-/// fonts their characters and the faces their names.
-pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
+/// fonts their characters and the faces their names, and the content's
+/// compat `c` the panels and the backgrounds several numbers share.
+pub fn bundle(roms: &Roms, names: &AssetNames, c: &Compat) -> Bundle {
     let art = roms.any();
     let mut hud = crate::exe5::hud::hud(roms, names, chip_icons(roms, names));
     let mut custom = crate::exe5::custom::custom(roms, names, chip_art(roms, names));
@@ -116,14 +118,14 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     // US ROM is given (it has another picture of 0x05: the verification
     // knows what a Japanese console shows there). The sprites likewise
     // (the four ROMs have the same but for one label's words).
-    let backgrounds = if art.is_present() { backgrounds(art) } else { Vec::new() };
+    let backgrounds = if art.is_present() { backgrounds(art, c) } else { Vec::new() };
     let mut sprites = if art.is_present() { sprites(art) } else { Vec::new() };
     sprites.extend(portraits(roms, names));
     sprites.sort_by_key(|s| (s.category, s.index));
     Bundle {
         sprites,
         field: if art.is_present() {
-            field(art)
+            field(art, c)
         } else {
             Field::default()
         },
@@ -210,13 +212,12 @@ fn portraits(roms: &Roms, names: &AssetNames) -> Vec<SpriteSheet> {
 // ---- Field -----------------------------------------------------------------------
 
 /// EXE5's panel types' names by number (compat/panels.toml).
-pub fn panel_names() -> Vec<String> {
-    let c = exe5_compat::Compat::exe5();
+pub fn panel_names(c: &Compat) -> Vec<String> {
     (0..PANEL_TYPES as u8).map(|n| c.panel_name(n).unwrap_or_else(|e| panic!("EXE5 panel {n}: {e}")).to_string()).collect()
 }
 
-fn field(src: Source) -> Field {
-    let panel_types = panel_names();
+fn field(src: Source, c: &Compat) -> Field {
+    let panel_types = panel_names(c);
     crate::decode::field(
         src.rom,
         crate::decode::FieldAddresses {
@@ -239,7 +240,7 @@ fn field(src: Source) -> Field {
 /// number and its area's), the pack has the first's, and the others must be
 /// the same (their load data, their scroll callbacks and their animations),
 /// or the extraction fails.
-fn backgrounds(src: Source) -> Vec<Option<Background>> {
+fn backgrounds(src: Source, c: &Compat) -> Vec<Option<Background>> {
     let rom = src.rom;
     let tables = (src.at(BACKGROUNDS), src.at(BACKGROUND_SCROLL), src.at(BACKGROUND_ANIMS));
     let mut out = pictures(src);
@@ -249,7 +250,7 @@ fn backgrounds(src: Source) -> Vec<Option<Background>> {
         let scroll: Vec<u32> = (0..4).map(|i| rom.u32(tables.1 + 16 * id + 4 * i)).collect();
         (load, scroll)
     };
-    for (name, numbers) in &exe5_compat::Compat::exe5().assets.backgrounds {
+    for (name, numbers) in &c.assets.backgrounds {
         let (&first, others) = numbers.all().split_first().expect("compat checks a background has a number");
         for &n in others {
             assert!(

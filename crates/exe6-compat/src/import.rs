@@ -36,9 +36,8 @@ const SUN: usize = 0x22;
 /// operated navi's); its BugFrags (`bug_frags`); and its SP deletion
 /// times (`sp_times`). A link navi's stats are the round's to build from
 /// its level. What is worth saying about it, or why the save can't be
-/// read.
-pub fn import(content: &Content, side: &mut Side, save: &Save) -> Result<Vec<String>, String> {
-    let compat = crate::Compat::exe6();
+/// read. `compat` is the compat of the content played (`Compat::of_content`).
+pub fn import(compat: &crate::Compat, content: &Content, side: &mut Side, save: &Save) -> Result<Vec<String>, String> {
     let mut notes = Vec::new();
     // The navi it operates.
     let key = compat.navi_key(save.navi()).ok_or_else(|| format!("the save operates navi {:#x}, which EXE6 hasn't", save.navi()))?;
@@ -284,6 +283,6 @@ mod tests {
 
     /// A save's file imported into `side`.
     fn import_file(content: &Content, side: &mut Side, file: &[u8]) -> Result<Vec<String>, String> {
-        import(content, side, &read(file)?)
+        import(crate::Compat::exe6(), content, side, &read(file)?)
     }
 }

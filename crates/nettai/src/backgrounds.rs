@@ -21,9 +21,9 @@ thread_local! {
 /// Read the backgrounds' names of `games` in `lang`, for [`name`]: from the content's locales alone, at start-up
 /// and when the language changes (`Shell::read_game_names`).
 pub fn name_backgrounds<'a>(games: impl IntoIterator<Item = &'a str>, lang: &str) {
-    let dir = nettai_content::index::content();
     let mut names = HashMap::new();
     for game in games {
+        let Some(dir) = crate::contents::dir(game) else { continue };
         for (background, name) in nettai_content::locale::background_names(&dir, game, lang) {
             names.insert((game.to_string(), background), name);
         }

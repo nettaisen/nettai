@@ -1,5 +1,5 @@
-pub(crate) fn asset_names() -> nettai_content::names::AssetNames {
-    let c = exe5_compat::Compat::exe5();
+/// The names `c` (the content's compat) gives EXE5's pack's assets.
+pub(crate) fn asset_names(c: &exe5_compat::Compat) -> nettai_content::names::AssetNames {
     nettai_content::names::AssetNames {
         sprites: c.sprite_names(),
         songs: c

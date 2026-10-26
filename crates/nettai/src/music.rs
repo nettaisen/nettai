@@ -55,9 +55,9 @@ thread_local! {
 /// Read the battle themes' names of `games` in `lang`, for [`name`]: from the content's locales alone, at
 /// start-up and when the language changes (`Shell::read_game_names`).
 pub fn name_themes<'a>(games: impl IntoIterator<Item = &'a str>, lang: &str) {
-    let dir = nettai_content::index::content();
     let mut names = HashMap::new();
     for game in games {
+        let Some(dir) = crate::contents::dir(game) else { continue };
         for (song, name) in nettai_content::locale::text_table(&dir, game, lang, nettai_content::locale::BATTLE_THEMES) {
             names.insert((game.to_string(), song), name);
         }
@@ -179,7 +179,7 @@ mod tests {
             }
         }
         Loaded {
-            found: Found { dir: Default::default(), packs: Vec::new(), report: Default::default() },
+            found: Found { dir: None, packs: Vec::new(), report: Default::default() },
             game: Game {
                 name: content.game().to_string(),
                 content: content.clone(),

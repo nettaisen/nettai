@@ -106,6 +106,10 @@ winresource = "0.1"
 
 [dev-dependencies]
 png = "0.17"
+# The tests' compat tables: the repository's, built in (the app reads its content's at run time).
+exe6-compat = { path = "../exe6-compat", features = ["builtin"] }
+exe5-compat = { path = "../exe5-compat", features = ["builtin"] }
+exe4-compat = { path = "../exe4-compat", features = ["builtin"] }
 nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
 # The tests: the content of the repository.
 nettai-match = { path = "../nettai-match", features = ["testing"] }

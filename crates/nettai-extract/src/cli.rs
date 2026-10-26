@@ -1,10 +1,12 @@
 //! Command-line adapter; the extraction API itself has no process or I/O policy.
-use crate::{Error, Game, RomSet, extract, extract_recording_reads, songs_played_otherwise};
+use crate::{Error, Game, RomSet, Tables, extract, extract_recording_reads, songs_played_otherwise};
 use std::{ffi::OsString, path::PathBuf, process::ExitCode};
 
 const USAGE: &str = "usage: nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...] [--content <dir>] [--reads <file>]\n\
 ROMs may be supplied in any order. Missing ROMs generate placeholders.\n\
-The output must be a new or empty directory. --content also checks battle definitions.\n\
+The output must be a new or empty directory. The names the assets are written under are the\n\
+content's (its game's compat tables): --content's, else the repository's content/ ($NETTAI_CONTENT);\n\
+--content also checks the battle definitions load with the pack.\n\
 --reads writes every range of the ROMs the extraction read, in order (tab-separated: the\n\
 ROM's code, the address, the length, and `data`, `open` (a span a parser took what it\n\
 needed of) or the ROM address the word read holds): for comparing ROMs where it looks.\n\
@@ -73,6 +75,8 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
 }
 
 fn execute(args: Args) -> Result<(), Error> {
+    let content = args.content.clone().unwrap_or_else(nettai_content::index::content);
+    let tables = Tables::of_content(args.game, &content)?;
     let mut roms = RomSet::default();
     for path in args.roms {
         let bytes = std::fs::read(&path).map_err(|e| Error(format!("{}: {e}", path.display())))?;
@@ -92,7 +96,7 @@ fn execute(args: Args) -> Result<(), Error> {
     }
     let assets = match &args.reads {
         Some(path) => {
-            let (assets, reads) = extract_recording_reads(args.game, &roms)?;
+            let (assets, reads) = extract_recording_reads(&tables, &roms)?;
             let mut out = String::new();
             for r in &reads {
                 let kind = match (r.pointer, r.open) {
@@ -105,7 +109,7 @@ fn execute(args: Args) -> Result<(), Error> {
             std::fs::write(path, out).map_err(|e| Error(format!("{}: {e}", path.display())))?;
             assets
         }
-        None => extract(args.game, &roms)?,
+        None => extract(&tables, &roms)?,
     };
     for warning in &assets.warnings {
         eprintln!("{warning}");

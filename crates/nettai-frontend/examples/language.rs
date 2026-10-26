@@ -64,7 +64,7 @@ fn run() -> Result<String, String> {
     // The game, and its graphics in each language: the host loads what it offers.
     let said = |e: game::LoadError| format!("{}\n{e}", e.report);
     let found = Found::find(&nettai_content::pack::packs_dir(), &[]).map_err(said)?;
-    let game = Game::load(&found, None, &name).map_err(said)?;
+    let game = Game::load(&found, None, &name, &[]).map_err(said)?;
     let (first, other) = (game.graphics(&from).map_err(said)?, game.graphics(&to).map_err(said)?);
     let font = game::font(text, None, &to).map_err(said)?;
     let m = nettai_match::pick::live(&game.content, &name, seed, None)?;

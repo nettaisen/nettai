@@ -1,4 +1,4 @@
-//! The games the app plays: those the content has (`pack::games`), each
+//! The games the app plays: those there is content of (`crate::contents`: each game's content directory), each
 //! loaded and kept (docs/frontend.md §9).
 //!
 //! A game is ready in two stretches, and the loading screen's bar covers both. Everything read from disk (the
@@ -14,10 +14,12 @@
 //!
 //! Before all that, a game whose pack is missing, or was made by another build, has it extracted from the
 //! player's Legacy Collection, on a thread of the extraction's own (`crate::packs`; docs/app.md §17): the bar is
-//! that first, and the game loads as its pack lands.
+//! that first, and the game loads as its pack lands. Its pack is the one its content's tables name
+//! (`packs/<game>-<fingerprint>`, `nettai_extract::Tables`), extracted by them.
 
 use crate::bnlc::Install;
 use crate::packs::{self, Extractor, Job, Kept, Told};
+use nettai_extract::Tables;
 use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
@@ -86,6 +88,31 @@ pub struct Entry {
     /// The game pack's id (`exe6`).
     pub id: String,
     pub state: State,
+    /// The content directory it is played from (`crate::contents::dir`).
+    pub content: PathBuf,
+    /// Its asset pack, where it is or is to be; none where there is none to find or make.
+    pack: Option<Pack>,
+}
+
+/// A game's asset pack: its folder, and, among the app's own packs, the content's tables it is extracted by and
+/// their fingerprint (its folder's name: `crate::packs::folder`).
+#[derive(Clone)]
+struct Pack {
+    dir: PathBuf,
+    own: Option<(Arc<Tables>, String)>,
+}
+
+impl Pack {
+    /// Whether it is there.
+    fn is_there(&self) -> bool {
+        nettai_platform::fs::is_file(self.dir.join(nettai_content::pack::MANIFEST))
+    }
+
+    /// Its folder's name among the app's own packs (`exe6-<fingerprint>`).
+    fn folder(&self) -> Option<&str> {
+        self.own.as_ref()?;
+        self.dir.file_name()?.to_str()
+    }
 }
 
 /// What the player is to be told of the games, once (each is given by [`Games::take_notice`]).
@@ -130,31 +157,38 @@ impl Games {
         if games.extracts {
             packs::tidy(&games.packs);
         }
-        let found = match game::Found::find(&games.packs, &[]) {
-            Ok(f) => f,
-            Err(e) => {
-                crate::errors::log("finding the packs", &format_args!("{e}: {}", e.report));
+        // (`$NETTAI_PACKS`'s packs, by the game each says.)
+        let found = if own {
+            Vec::new()
+        } else {
+            match game::Found::find(&games.packs, &[]) {
+                Ok(f) => f.packs,
+                Err(e) => {
+                    crate::errors::log("finding the packs", &format_args!("{e}: {}", e.report));
+                    return games;
+                }
+            }
+        };
+        let ids = match crate::contents::games() {
+            Ok(ids) => ids,
+            Err(why) => {
+                crate::errors::log("listing the games", &why);
                 return games;
             }
         };
-        match nettai_content::pack::games(None, &found.packs) {
-            Ok(choices) => {
-                games.list = choices
-                    .into_iter()
-                    .map(|c| {
-                        if let Some(why) = &c.why_not
-                            && !games.extracts
-                        {
-                            crate::errors::log(&format!("{}'s pack", c.game), why);
-                        }
-                        Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack }, id: c.game }
-                    })
-                    .collect()
-            }
-            Err(report) => {
-                crate::errors::log("listing the games", &report);
-                return games;
-            }
+        for id in ids {
+            let Some(content) = crate::contents::dir(&id) else { continue };
+            let pack = if own {
+                games.own_pack(&id, &content)
+            } else {
+                let pack = found.iter().find(|f| f.game == id).map(|f| Pack { dir: f.dir.clone(), own: None });
+                if pack.is_none() {
+                    crate::errors::log(&format!("{id}'s pack"), &format_args!("no pack of {id} in {}", games.packs.display()));
+                }
+                pack
+            };
+            let state = if pack.as_ref().is_some_and(Pack::is_there) { State::NotLoaded } else { State::NoPack };
+            games.list.push(Entry { id, state, content, pack });
         }
         if !games.extracts {
             return games;
@@ -162,7 +196,7 @@ impl Games {
         games.stale = games
             .list
             .iter()
-            .filter(|e| nettai_extract::Game::named(&e.id).is_some_and(|g| packs::kept(&games.packs, &e.id, g) == Kept::Stale))
+            .filter(|e| e.pack.as_ref().and_then(|p| p.own.as_ref()).is_some_and(|(_, print)| packs::kept(&games.packs, &e.id, print) == Kept::Stale))
             .map(|e| e.id.clone())
             .collect();
         if games.wanted().is_empty() {
@@ -181,12 +215,29 @@ impl Games {
         games
     }
 
+    /// Game `id`'s own pack, for its content `content`: the one its content's tables name, among the app's packs
+    /// (none where the extractor makes no pack of the game, or its tables don't read: why is in the log).
+    fn own_pack(&self, id: &str, content: &Path) -> Option<Pack> {
+        let game = nettai_extract::Game::named(id)?;
+        match Tables::of_content(game, content) {
+            Ok(tables) => {
+                let print = nettai_extract::fingerprint(&tables);
+                Some(Pack { dir: self.packs.join(packs::folder(id, &print)), own: Some((Arc::new(tables), print)) })
+            }
+            Err(why) => {
+                crate::errors::log(&format!("reading {id}'s compat tables"), &why);
+                None
+            }
+        }
+    }
+
     /// The games whose pack is to be made: those the extractor makes a pack of with none, or with another
     /// build's that isn't loaded.
     fn wanted(&self) -> Vec<(String, nettai_extract::Game)> {
         self.list
             .iter()
             .filter_map(|e| {
+                e.pack.as_ref()?.own.as_ref()?;
                 let game = nettai_extract::Game::named(&e.id)?;
                 let missing = matches!(e.state, State::NoPack);
                 let stale = self.stale.contains(&e.id) && matches!(e.state, State::NotLoaded | State::Failed);
@@ -236,12 +287,13 @@ impl Games {
     pub fn extract(&mut self, id: &str) {
         let (Some(install), Some(game)) = (&self.source, nettai_extract::Game::named(id)) else { return };
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
+        let Some((tables, _)) = entry.pack.as_ref().and_then(|p| p.own.clone()) else { return };
         if !matches!(entry.state, State::Extractable) {
             return;
         }
         entry.state = State::Extracting(0.0);
         let roms: Vec<_> = install.roms().into_iter().filter(|r| r.game == game).collect();
-        let job = Job { id: id.to_string(), game, roms };
+        let job = Job::new(tables, roms);
         match &self.extractor {
             Some(extractor) => extractor.add(vec![job]),
             None => self.waiting.push(job),
@@ -265,20 +317,28 @@ impl Games {
         if !self.extracts || self.extractor.is_some() {
             return;
         }
-        let told: packs::Teller = Arc::new(|id: &str, told: Told| {
-            let id = id.to_string();
-            let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.shell.extracting(&id, told)));
+        let told: packs::Teller = Arc::new(|pack: &str, told: Told| {
+            let pack = pack.to_string();
+            let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.shell.extracting(&pack, told)));
         });
         let extractor = Extractor::new(self.packs.clone(), told);
         extractor.add(std::mem::take(&mut self.waiting));
         self.extractor = Some(extractor);
     }
 
-    /// The extraction of game `id` says how far it is, or that it ended. True if its pack landed (it can be
-    /// loaded now). A failure is told the player, and the game's old pack, if it has one, is loaded as it is.
-    pub fn extracting(&mut self, id: &str, told: Told) -> bool {
-        let has_pack = nettai_platform::fs::is_file(self.packs.join(id).join(nettai_content::pack::MANIFEST));
-        let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return false };
+    /// The extraction of the pack of folder `pack` says how far it is, or that it ended: the game whose pack it
+    /// is, if one is, and true if its pack landed (it can be loaded now). A failure is told the player, and the
+    /// game's old pack, if it has one, is loaded as it is.
+    pub fn extracting(&mut self, pack: &str, told: Told) -> Option<(String, bool)> {
+        let entry = self.list.iter_mut().find(|e| e.pack.as_ref().and_then(Pack::folder) == Some(pack))?;
+        let has_pack = entry.pack.as_ref().is_some_and(Pack::is_there);
+        let id = entry.id.clone();
+        let landed = Games::extracting_entry(entry, &mut self.stale, &mut self.notices, has_pack, told);
+        Some((id, landed))
+    }
+
+    fn extracting_entry(entry: &mut Entry, stale: &mut Vec<String>, notices: &mut Vec<Notice>, has_pack: bool, told: Told) -> bool {
+        let id = entry.id.clone();
         match told {
             Told::Progress(p) => {
                 if matches!(entry.state, State::Extracting(_)) {
@@ -288,13 +348,13 @@ impl Games {
             }
             Told::Done(Ok(())) => {
                 entry.state = State::NotLoaded;
-                self.stale.retain(|s| s != id);
+                stale.retain(|s| *s != id);
                 true
             }
             Told::Done(Err(_)) => {
                 // (Why is in the log: the extraction's thread wrote it.)
                 entry.state = if has_pack { State::NotLoaded } else { State::NoPack };
-                self.notices.push(Notice::ExtractFailed(id.to_string()));
+                notices.push(Notice::ExtractFailed(id));
                 false
             }
         }
@@ -302,8 +362,8 @@ impl Games {
 
     /// Game `id` is the one shown: if its pack waits to be extracted, it is extracted before the others waiting.
     pub fn prefer(&self, id: &str) {
-        if let Some(extractor) = &self.extractor {
-            extractor.first(id);
+        if let (Some(extractor), Some(pack)) = (&self.extractor, self.get(id).and_then(|e| e.pack.as_ref()?.folder())) {
+            extractor.first(pack);
         }
     }
 
@@ -328,7 +388,9 @@ impl Games {
             .into_iter()
             .map(|(id, loaded)| Entry {
                 id: id.to_string(),
+                content: loaded.game.dir.clone(),
                 state: State::Ready(Rc::new(Ready { loaded, graphics: Default::default(), runtime: false.into() })),
+                pack: None,
             })
             .collect();
         Games { list, notices: Vec::new(), packs: PathBuf::new(), extracts: false, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() }
@@ -366,7 +428,7 @@ impl Games {
         }
         entry.state = State::Loading(0.0);
         let (id, lang) = (id.to_string(), lang.to_string());
-        let options = game::Options { packs_dir: self.packs.clone(), ..game::Options::default() };
+        let options = self.options(&id);
         let told = Arc::new(told);
         let name = format!("loading {id}");
         let started = nettai_platform::thread::spawn(&name, move || {
@@ -397,6 +459,21 @@ impl Games {
         if let Err(why) = started {
             crate::errors::log(&format!("starting {name}"), &why);
         }
+    }
+
+    /// What game `id` loads with: its content directory, and its pack (with `$NETTAI_PACKS`, its folder's, by the
+    /// game each says; else its own, beside the others' that are there, whose backgrounds the background pool may
+    /// draw from); the background pool, every game's, each from its own content.
+    fn options(&self, id: &str) -> game::Options {
+        let content = self.get(id).map(|e| e.content.clone());
+        let pool = crate::contents::pool();
+        if !self.list.iter().any(|e| e.pack.as_ref().is_some_and(|p| p.own.is_some())) {
+            return game::Options { packs_dir: Some(self.packs.clone()), content, pool, ..game::Options::default() };
+        }
+        // (The game's own pack last: it stands in place of any other of its game.)
+        let mut packs: Vec<PathBuf> = self.list.iter().filter(|e| e.id != id).filter_map(|e| e.pack.as_ref()).filter(|p| p.is_there()).map(|p| p.dir.clone()).collect();
+        packs.extend(self.get(id).and_then(|e| e.pack.as_ref()).map(|p| p.dir.clone()));
+        game::Options { packs_dir: None, packs, content, pool, ..game::Options::default() }
     }
 
     /// A part of `id`'s loading ended: how far it is now, or the game (or why there is none: to the log).
@@ -594,7 +671,7 @@ mod tests {
     /// others stay.
     #[test]
     fn a_game_that_fails_to_load_is_told_once() {
-        let entry = |id: &str| Entry { id: id.to_string(), state: State::Loading(0.5) };
+        let entry = |id: &str| Entry::of(id, State::Loading(0.5));
         let mut games = Games::of(vec![entry("first"), entry("second")], PathBuf::new());
         assert_eq!(games.take_notice(), None);
         games.step("second", Step::Done(Err("its pack names no such sprite".into())));
@@ -603,6 +680,13 @@ mod tests {
         assert_eq!(games.take_notice(), None);
         games.step("first", Step::Progress(0.7));
         assert_eq!((games.playable(), games.take_notice()), (vec!["first".to_string()], None));
+    }
+
+    impl Entry {
+        /// Game `id` in `state`, with no content or pack of its own.
+        fn of(id: &str, state: State) -> Entry {
+            Entry { id: id.to_string(), state, content: PathBuf::new(), pack: None }
+        }
     }
 
     impl Games {
@@ -617,7 +701,7 @@ mod tests {
     /// nothing is extracted with no collection found.
     #[test]
     fn the_first_game_is_the_remembered_one_else_bn6() {
-        let entry = |id: &str, state: State| Entry { id: id.to_string(), state };
+        let entry = |id: &str, state: State| Entry::of(id, state);
         let mut games = Games::of(vec![entry("exe4", State::NotLoaded), entry("exe5", State::Extractable), entry("exe6", State::Extractable)], PathBuf::new());
         assert_eq!(games.first_choice(None).as_deref(), Some("exe6"));
         assert_eq!(games.first_choice(Some("exe5")).as_deref(), Some("exe5"));
@@ -635,18 +719,25 @@ mod tests {
         // (exe4's pack lands; exe5's extraction fails and it has another build's pack; exe6's fails and it has
         // none.)
         let packs = tempfile::tempdir().unwrap();
-        nettai_content::pack::write_file(packs.path(), "exe5/content.toml", b"").unwrap();
-        let entry = |id: &str| Entry { id: id.to_string(), state: State::Extracting(0.0) };
-        let mut games = Games::of(vec![entry("exe4"), entry("exe5"), entry("exe6")], packs.path().to_path_buf());
+        let content = nettai_content::index::content();
+        let games_of = |packs: &Path| Games::of(Vec::new(), packs.to_path_buf());
+        let entry = |games: &Games, id: &str| Entry { pack: games.own_pack(id, &content), ..Entry::of(id, State::Extracting(0.0)) };
+        let mut games = games_of(packs.path());
+        games.list = vec![entry(&games, "exe4"), entry(&games, "exe5"), entry(&games, "exe6")];
+        let folder = |id: &str| games.get(id).unwrap().pack.as_ref().unwrap().folder().unwrap().to_string();
+        let (four, five, six) = (folder("exe4"), folder("exe5"), folder("exe6"));
+        assert!(four.starts_with("exe4-") && four.len() == "exe4-".len() + 16, "{four}");
+        nettai_content::pack::write_file(packs.path(), &format!("{five}/content.toml"), b"").unwrap();
         games.stale.push("exe5".into());
         assert_eq!(games.playable(), ["exe4", "exe5", "exe6"]);
         assert!(games.wanted().is_empty(), "nothing is wanted while it is extracted");
-        assert!(!games.extracting("exe4", Told::Progress(0.4)));
+        assert_eq!(games.extracting(&four, Told::Progress(0.4)), Some(("exe4".to_string(), false)));
         assert_eq!(games.progress("exe4"), 0.4);
-        assert!(games.extracting("exe4", Told::Done(Ok(()))));
+        assert_eq!(games.extracting(&four, Told::Done(Ok(()))), Some(("exe4".to_string(), true)));
         assert!(matches!(games.get("exe4").unwrap().state, State::NotLoaded));
-        assert!(!games.extracting("exe5", Told::Done(Err("the disk is full".into()))));
-        assert!(!games.extracting("exe6", Told::Done(Err("the archive doesn't read".into()))));
+        assert_eq!(games.extracting("exe4-0123456789abcdef", Told::Done(Ok(()))), None, "no game's pack");
+        assert_eq!(games.extracting(&five, Told::Done(Err("the disk is full".into()))), Some(("exe5".to_string(), false)));
+        assert_eq!(games.extracting(&six, Told::Done(Err("the archive doesn't read".into()))), Some(("exe6".to_string(), false)));
         assert!(matches!(games.get("exe5").unwrap().state, State::NotLoaded), "its old pack, as it is");
         assert!(games.is_stale("exe5") && !games.is_stale("exe4"));
         assert_eq!(games.playable(), ["exe4", "exe5"]);

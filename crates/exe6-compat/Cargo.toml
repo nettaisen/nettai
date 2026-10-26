@@ -17,11 +17,16 @@ toml = "0.8"
 nettai-match = { path = "../nettai-match" }
 
 [features]
+# This repository's content/exe6/compat compiled in (`Compat::exe6`), for tools and tests: the app reads the compat of
+# the content it plays at run time (`Compat::of_content`), and builds without content/.
+builtin = []
 # Recorded battles (golden traces): reading them, replaying them through
 # the engine, and comparing it with them.
-trace = ["dep:serde_json"]
+trace = ["dep:serde_json", "builtin"]
 
 [dev-dependencies]
+# The tests' compat: this repository's, built in.
+exe6-compat = { path = ".", features = ["builtin"] }
 nettai-battle = { workspace = true, features = ["test-content"] }
 # content/exe6 itself, for the test of what its forms say of each other
 # (tests/forms.rs).

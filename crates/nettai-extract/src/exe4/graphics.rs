@@ -12,6 +12,7 @@
 use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, speeding_scroll, tiles};
 use crate::exe4::rom::{Place, Rom, Roms, Source, Version};
 use nettai_assets::*;
+use exe4_compat::Compat;
 use nettai_content::names::AssetNames;
 
 /// The language the Japanese ROMs' lettering is.
@@ -53,8 +54,8 @@ const TEXT_END: u8 = 0xE5;
 
 /// The version chips (compat/chips.toml's `version`): a version's own giga
 /// chip, its art from its own version's ROM.
-fn version_of(id: u16) -> Option<Version> {
-    exe4_compat::Compat::exe4().chip_key(id).and_then(|k| exe4_compat::Compat::exe4().chip_entry(k)).and_then(|e| e.version).map(
+fn version_of(c: &Compat, id: u16) -> Option<Version> {
+    c.chip_key(id).and_then(|k| c.chip_entry(k)).and_then(|e| e.version).map(
         |v| match v {
             exe4_compat::Version::RedSun => Version::RedSun,
             exe4_compat::Version::BlueMoon => Version::BlueMoon,
@@ -63,8 +64,9 @@ fn version_of(id: u16) -> Option<Version> {
 }
 
 /// Everything the pack draws with that EXE4's ROMs give: `names` gives the
-/// chips their keys and the fonts their characters.
-pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
+/// chips their keys and the fonts their characters, and the content's
+/// compat `c` the chips' versions, the text's controls and the panels.
+pub fn bundle(roms: &Roms, names: &AssetNames, c: &Compat) -> Bundle {
     // What the four ROMs have alike (the sprites, the backgrounds, the
     // field and most of the HUD and the custom screen) is whichever ROM's
     // is there.
@@ -74,17 +76,17 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
         sprites.extend(portraits(art, names));
     }
     sprites.sort_by_key(|s| (s.category, s.index));
-    let mut hud = super::hud::hud(roms, names, chip_icons(roms, names));
+    let mut hud = super::hud::hud(roms, names, c, chip_icons(roms, names, c));
     // (The Japanese games place the chatbox's text themselves: code, the
     // same with or without their ROMs.)
-    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering(roms, &hud, names) };
+    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering(roms, &hud, names, c) };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
-    let mut custom = super::custom::custom(roms, chip_art(roms, names));
+    let mut custom = super::custom::custom(roms, chip_art(roms, names, c));
     let lettering = super::custom::lettering(roms, &custom);
     custom.languages.push((LANGUAGE.to_string(), lettering));
     let backgrounds = if art.is_present() { backgrounds(art) } else { Vec::new() };
-    let field = if art.is_present() { field(art) } else { Field::default() };
+    let field = if art.is_present() { field(art, c) } else { Field::default() };
     Bundle { sprites, field, backgrounds, hud, custom }
 }
 
@@ -102,8 +104,7 @@ const PANEL_BLOCKS: Place = Place::pointer(0x0800_944C, 0x0800_9418);
 const PANEL_TYPES: u8 = 12;
 
 /// EXE4's panel types' names by number (compat/panels.toml).
-pub fn panel_names() -> Vec<String> {
-    let c = exe4_compat::Compat::exe4();
+pub fn panel_names(c: &Compat) -> Vec<String> {
     (0..PANEL_TYPES).map(|n| c.panel_name(n).unwrap_or_else(|e| panic!("EXE4 panel {n}: {e}")).to_string()).collect()
 }
 /// The highlighted panel block (0x0800948A, EXE6 `sub_800C0BA`'s): one,
@@ -133,9 +134,9 @@ const PANEL_PALETTE_TICKS: u8 = 14;
 
 /// The field: its panel blocks by EXE4's numbers, each type by the name
 /// content gives that number (compat/panels.toml).
-fn field(src: Source) -> Field {
+fn field(src: Source, c: &Compat) -> Field {
     let rom = src.rom;
-    let panel_types = panel_names();
+    let panel_types = panel_names(c);
     let palette_anims = PANEL_PALETTE_ANIMS
         .iter()
         .enumerate()
@@ -287,9 +288,9 @@ pub(super) fn dialogue_font(src: Source, encoding: (&[String], &[String])) -> Di
 
 /// A source's HUD text lines: a line with anything but glyphs in it (a
 /// text command) is cut there.
-pub(super) fn texts(src: Source) -> Vec<Vec<u16>> {
+pub(super) fn texts(src: Source, c: &Compat) -> Vec<Vec<u16>> {
     let (rom, at) = (src.rom, src.at(TEXTS));
-    let first_control = exe4_compat::Compat::exe4().text.first_control;
+    let first_control = c.text.first_control;
     let offset = |i: u32| rom.u16(at + 2 * i) as u32;
     (0..offset(0) / 2)
         .map(|i| {
@@ -327,7 +328,7 @@ pub(super) fn placeholder_font(encoding: (&[String], &[String])) -> (Tiles, Vec<
 /// lines, its banners and "BUSY...". Placeholders without one, but what has
 /// no words and is the pack's own (`base`): the gauge's tiles ("CUSTOM" in
 /// every ROM) and the banners' palette.
-fn lettering(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
+fn lettering(roms: &Roms, base: &Hud, names: &AssetNames, c: &Compat) -> HudLettering {
     let (cell, dialogue) = names.language_glyphs.get(LANGUAGE).cloned().unwrap_or_default();
     let encoding = (cell.as_slice(), dialogue.as_slice());
     let own = |l: HudLettering| HudLettering {
@@ -346,7 +347,7 @@ fn lettering(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
         font,
         font_chars,
         dialogue_font: dialogue_font(jp, encoding),
-        texts: texts(jp),
+        texts: texts(jp, c),
         // The banners whose words differ, each where it starts (a longer
         // name further left); not what kind of banner it is.
         banners: base
@@ -373,8 +374,8 @@ fn lettering(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
 /// there. An e-Reader card's chip's record points at RAM for them: its
 /// icon is the ROM's all the same, its picture the extractor's own
 /// (cards.rs).
-fn chip_media(roms: &Roms, id: u16) -> (Picture, Tiles) {
-    let src = roms.preferring(version_of(id).unwrap_or(Version::RedSun));
+fn chip_media(roms: &Roms, c: &Compat, id: u16) -> (Picture, Tiles) {
+    let src = roms.preferring(version_of(c, id).unwrap_or(Version::RedSun));
     if !src.is_present() {
         return (Picture::default(), Tiles::default());
     }
@@ -395,15 +396,15 @@ fn chip_media(roms: &Roms, id: u16) -> (Picture, Tiles) {
 
 /// The chips' pictures, each under its chip's key; a version's own chip's
 /// marked with its version.
-fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
+fn chip_art(roms: &Roms, names: &AssetNames, c: &Compat) -> Vec<ChipArt> {
     names
         .chips
         .keys()
-        .map(|&id| ChipArt { key: names.chip_icon(id), picture: chip_media(roms, id).0, version: version_of(id).map(|v| v.name().into()) })
+        .map(|&id| ChipArt { key: names.chip_icon(id), picture: chip_media(roms, c, id).0, version: version_of(c, id).map(|v| v.name().into()) })
         .collect()
 }
 
 /// The chips' icons, each under its chip's key.
-fn chip_icons(roms: &Roms, names: &AssetNames) -> Vec<ChipIcon> {
-    names.chips.keys().map(|&id| ChipIcon { key: names.chip_icon(id), tiles: chip_media(roms, id).1 }).collect()
+fn chip_icons(roms: &Roms, names: &AssetNames, c: &Compat) -> Vec<ChipIcon> {
+    names.chips.keys().map(|&id| ChipIcon { key: names.chip_icon(id), tiles: chip_media(roms, c, id).1 }).collect()
 }

@@ -666,7 +666,7 @@ fn main() {
         (None, None, None) => unreachable!("argument parsing requires a match file, a replay or a trace"),
     };
     // The game's content.
-    let loaded = Game::load(&found, args.content.as_deref(), &game).unwrap_or_else(|e| load_failed(e));
+    let loaded = Game::load(&found, args.content.as_deref(), &game, &[]).unwrap_or_else(|e| load_failed(e));
     show(&loaded.report);
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
         eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.packs[loaded.own.index()].display());
