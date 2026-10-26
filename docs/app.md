@@ -3246,8 +3246,9 @@ presses the way there. It never hears the player's buttons, and like any dummy b
 the custom screen (the player does). The Levels are the weights' own knobs: Easy reacts in 24 ticks (0.4 s) and
 samples widely, a random action a tenth of the time; Normal in 16 (0.27 s), sampling its policy; Hard in 10
 (0.17 s), taking its best action. No network is built in: the nettai-ai repository
-(github.com/nettaisen/nettai-ai) keeps one for each of nettai's minor versions (`<line>/nettai-ai.safetensors`,
-"0.11" what nettai 0.11.x plays; its `index.json` each line's SHA-256 alone), so a better one reaches players
+(github.com/nettaisen/nettai-ai) publishes them as releases by nettai minor version ("0.11" what nettai 0.11.x
+plays), and its site (https://nettai.n1gp.net/nettai-ai/) serves each line's newest: `index.json`, each line's
+SHA-256 alone, and `weights/<sha256>.safetensors`. So a better one reaches players
 without a release, and a version
 that changes what the network sees waits for one trained for it (docs/design/training-ai.md §10.5). It is asked for
 when Fights is first picked in a run (`screens/practice/weights.rs`, `Weights::wanted`), then shared by every

@@ -79,7 +79,7 @@ builds and favors them in evaluation builds.
 3. Start a run: `nettai/training/cloud/run.sh first --config configs/cloud.toml` (tmux session `train-first`,
    TensorBoard on the machine's localhost:6006; `ssh -L 6006:localhost:6006 HOST` to see it).
 4. Locally, fetch checkpoints and logs: `training/cloud/sync.sh HOST nettai first`.
-5. Publish the best checkpoint (by evaluate's Elo) for the app, to a checkout of github.com/nettaisen/nettai-ai
+5. Publish the best checkpoint (by evaluate's Elo) for the app as a release of github.com/nettaisen/nettai-ai
    (docs/design/training-ai.md §10.5): `uv run python -m nettai_ai.publish runs/first/checkpoints/ckpt_NNNNNNN.pt
-   --repo ../../nettai-ai`, then push there. (`NETTAI_AI_WEIGHTS=<file>` plays an exported file in the app without
-   publishing it.)
+   --release` (the GitHub CLI signed in); the repository's Pages workflow puts it on the site the app reads.
+   (`NETTAI_AI_WEIGHTS=<file>` plays an exported file in the app without publishing it.)

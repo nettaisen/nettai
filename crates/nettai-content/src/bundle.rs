@@ -90,9 +90,13 @@ impl<'de> Deserialize<'de> for BundleId {
     }
 }
 
+/// The nettaisen organization's Pages domain. Its github.io addresses redirect here, without the cross-origin header a
+/// browser needs on a redirect, so the app asks this domain directly.
+pub const SITES: &str = "https://nettai.n1gp.net";
+
 /// Where game `game`'s bundles are published: its repository's site (§4).
 pub fn site(game: &str) -> String {
-    format!("https://nettaisen.github.io/{game}")
+    format!("{SITES}/{game}")
 }
 
 /// Game `game`'s index on its site.
@@ -455,7 +459,7 @@ mod tests {
         // A later index's fields an app doesn't know are skipped.
         let later = json.replace("\"size\":1234", "\"size\":1234,\"notes\":\"new\"");
         assert_eq!(serde_json::from_str::<Index>(&later).unwrap(), index);
-        assert_eq!(bundle_url("exe6", BundleId([0; 32])), format!("https://nettaisen.github.io/exe6/bundles/{}.tar.gz", "0".repeat(64)));
+        assert_eq!(bundle_url("exe6", BundleId([0; 32])), format!("https://nettai.n1gp.net/exe6/bundles/{}.tar.gz", "0".repeat(64)));
     }
 
     #[test]

@@ -1,9 +1,9 @@
 //! The network the dummy that fights plays with (docs/design/training-ai.md §10.5). None is built in: the nettai-ai
-//! repository (github.com/nettaisen/nettai-ai) keeps one for each of nettai's minor versions,
-//! `<line>/nettai-ai.safetensors` ("0.11": what nettai 0.11.x plays), its `index.json` giving each line's SHA-256
-//! (so a check for a new one is a small file, not the network), so a better network reaches players
-//! without a release of the app, and a release that changes what the network sees (a new minor version) waits for
-//! one trained for it.
+//! repository (github.com/nettaisen/nettai-ai) publishes them as releases, one line at a time ("0.11": what nettai
+//! 0.11.x plays), and its site serves each line's newest: `index.json` gives each line's SHA-256 (so a check for a
+//! new one is a small file, not the network) and `weights/<sha256>.safetensors` the network. So a better network
+//! reaches players without a release of the app, and a release that changes what the network sees (a new minor
+//! version) waits for one trained for it.
 //!
 //! It is asked for when Fights is first picked in a run ([`Weights::wanted`]), then the same for every dummy that
 //! fights. The data folder keeps the last one downloaded (`ai/<line>/nettai-ai.safetensors`): where it is the
@@ -23,8 +23,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/// Where the repository's files are read from.
-const RAW: &str = "https://raw.githubusercontent.com/nettaisen/nettai-ai/main";
+/// The nettai-ai repository's site (its Pages workflow puts the releases there).
+const SITE: &str = "https://nettai.n1gp.net/nettai-ai";
 /// The most a network's file may be (they are about 11 MB), and the index's.
 const MAX_BYTES: u64 = 64 << 20;
 const MAX_INDEX: u64 = 1 << 20;
@@ -52,7 +52,7 @@ fn line() -> String {
     line_of(env!("CARGO_PKG_VERSION"))
 }
 
-/// A line's weights: their file, under the repository's root (the line's own folder), and its SHA-256 (hex).
+/// A line's weights: their file on the site (named by its SHA-256), and its SHA-256 (hex).
 #[derive(Clone, Debug, PartialEq)]
 struct Entry {
     file: String,
@@ -64,7 +64,7 @@ struct Entry {
 fn entry(body: &[u8], line: &str) -> Result<Entry, String> {
     let index: HashMap<String, String> = serde_json::from_slice(body).map_err(|e| format!("the AI's index: {e}"))?;
     let sha256 = index.get(line).cloned().ok_or_else(|| format!("the AI's index has no weights for nettai {line} yet"))?;
-    Ok(Entry { file: format!("{line}/nettai-ai.safetensors"), sha256 })
+    Ok(Entry { file: format!("weights/{sha256}.safetensors"), sha256 })
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -113,7 +113,7 @@ async fn network() -> Result<Arc<Net>, String> {
         return read(&std::fs::read(&path).map_err(|e| format!("{OVERRIDE}, {}: {e}", path.display()))?);
     }
     let kept = kept();
-    let entry = match nettai_platform::http::get(&format!("{RAW}/index.json"), MAX_INDEX).await.and_then(|body| entry(&body, &line())) {
+    let entry = match nettai_platform::http::get(&format!("{SITE}/index.json"), MAX_INDEX).await.and_then(|body| entry(&body, &line())) {
         Ok(entry) => entry,
         Err(why) => {
             return match nettai_platform::fs::read(&kept) {
@@ -130,7 +130,7 @@ async fn network() -> Result<Arc<Net>, String> {
     {
         return read(&bytes);
     }
-    let bytes = nettai_platform::http::get(&format!("{RAW}/{}", entry.file), MAX_BYTES).await?;
+    let bytes = nettai_platform::http::get(&format!("{SITE}/{}", entry.file), MAX_BYTES).await?;
     let net = checked(&bytes, &entry)?;
     let written = kept.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|_| nettai_platform::fs::write(&kept, &bytes));
     if let Err(why) = written {
@@ -151,18 +151,18 @@ mod tests {
         assert_eq!(line(), line_of(env!("CARGO_PKG_VERSION")));
     }
 
-    /// The index gives each line's SHA-256, its file the line's own; a line it hasn't is said so, and an index that
+    /// The index gives each line's SHA-256, its file named by it; a line it hasn't is said so, and an index that
     /// isn't one is refused.
     #[test]
     fn the_index_gives_a_lines_weights() {
         let body = br#"{"0.11": "ab", "0.12": "cd"}"#;
-        assert_eq!(entry(body, "0.11"), Ok(Entry { file: "0.11/nettai-ai.safetensors".into(), sha256: "ab".into() }));
+        assert_eq!(entry(body, "0.11"), Ok(Entry { file: "weights/ab.safetensors".into(), sha256: "ab".into() }));
         assert!(entry(body, "0.13").unwrap_err().contains("no weights for nettai 0.13"));
         assert!(entry(b"<html>", "0.11").is_err());
     }
 
-    /// The repository serves this line's weights: downloaded, checked and kept, then read from the copy kept. Not
-    /// run unless asked (`--ignored`): it needs the network, and the repository to have this line's.
+    /// The site serves this line's weights: downloaded, checked and kept, then read from the copy kept. Not run
+    /// unless asked (`--ignored`): it needs the network, and a release of this line's.
     #[test]
     #[ignore]
     fn the_repository_serves_this_lines_weights() {
@@ -191,7 +191,7 @@ mod tests {
     fn downloaded_weights_must_be_the_indexs() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-training/tests/fixtures/net.safetensors");
         let bytes = std::fs::read(path).unwrap();
-        let entry = Entry { file: "0.11/nettai-ai.safetensors".into(), sha256: sha256(&bytes) };
+        let entry = Entry { file: format!("weights/{}.safetensors", sha256(&bytes)), sha256: sha256(&bytes) };
         assert!(checked(&bytes, &entry).is_ok());
         let other = Entry { sha256: sha256(b"other"), ..entry };
         assert!(checked(&bytes, &other).err().is_some_and(|why| why.contains("aren't the index's")));
