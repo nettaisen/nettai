@@ -2065,8 +2065,8 @@ takes and measures them with the pixel fonts) and draws them into the 240x160 fr
   the pack's glyphs always; the fonts' own glyphs there are other things.
 - A string is never narrowed: its box is as wide as its text (§14.4). The chip window's name has the original's
   eight cells, which its clip keeps: five hanzi fit (13 pixels each, the last column blank), a longer name is cut
-  at the box (MEGA加农炮, 小小热水壶1: 22 of EXE6's 354 chip names, 22 of EXE4's, 28 of EXE5's). How to show those
-  is the user's to choose.
+  at the box (MEGA加农炮, 小小热水壶1: 22 of EXE6's 354 chip names, 22 of EXE4's, 28 of EXE5's). The user chose that
+  from four mocked in real frames (cut, a 10px font, squeezed to the box, run past it): "keep cutting".
 
 The telop's text rides on blank sprite parts (so it is as deep as they are, and the sprite budget counts them):
 they were one a glyph of the pack's for the name, so a name of which the pack has no glyph (双重野兽, DblBeast's)
