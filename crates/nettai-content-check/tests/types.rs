@@ -213,3 +213,36 @@ fn misuse_of_the_core_api_is_a_type_error() {
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
     }
 }
+
+/// A check of some packs (a game and its support packs, as
+/// `nettai-content publish` makes) answers for them alone: their type
+/// errors and requires, and not another game's problems or a stray folder.
+#[test]
+fn a_check_of_some_packs_answers_for_them_alone() {
+    let dir = std::env::temp_dir().join(format!("nettai-check-some-{}", std::process::id()));
+    let write = |path: &str, text: &str| {
+        let p = dir.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    };
+    write("nettai/core.d.luau", "declare level: number\n");
+    write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
+    write("g/init.luau", "local lib = require(\"@lib/x\")\nlocal n: number = level\nlocal s: string = level\nreturn {}\n");
+    write("g/there.luau", "require(\"@self/gone\")\nreturn {}\n");
+    write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n");
+    write("lib/x.luau", "return {}\n");
+    write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
+    write("h/x.luau", "local s: string = 1\nreturn {}\n");
+    write("stray/x.luau", "return {}\n");
+    let (checked, problems) = nettai_content_check::check_packs(&dir, &["g", "lib"]).unwrap();
+    assert_eq!(checked, 3, "g's two modules and lib's: {problems:#?}");
+    assert!(problems.iter().any(|p| p.starts_with("g/init.luau:3:")), "g's type error: {problems:#?}");
+    assert!(problems.iter().any(|p| p.contains("require(\"@self/gone\")")), "g's require of no module: {problems:#?}");
+    assert!(!problems.iter().any(|p| p.contains("h/") || p.contains("stray")), "only g's and lib's: {problems:#?}");
+    let (_, problems) = nettai_content_check::check_packs(&dir, &["k"]).unwrap();
+    assert!(problems.iter().any(|p| p.contains("no pack k")), "{problems:#?}");
+    // The whole content's check still answers for all of it.
+    let (_, problems) = nettai_content_check::check_content(&dir).unwrap();
+    assert!(problems.iter().any(|p| p.starts_with("h/")) && problems.iter().any(|p| p.contains("stray")), "{problems:#?}");
+    std::fs::remove_dir_all(&dir).ok();
+}

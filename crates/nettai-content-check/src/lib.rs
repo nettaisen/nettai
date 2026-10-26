@@ -91,7 +91,14 @@ pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
 /// and a require across packs that the packs refuse (`packs::find`, as a
 /// load finds a module); each with the path that names it.
 pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
+    reach_of(dir, None)
+}
+
+/// [`reach`], of packs `only` (by id) alone when given: what content/
+/// holds besides them isn't theirs to answer for.
+fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
     use nettai_content_api::{keys, packs};
+    let named = |id: &str| only.is_none_or(|o| o.contains(&id));
     let mut problems = Vec::new();
     let mut all = std::collections::BTreeMap::new();
     let mut entries: Vec<std::path::PathBuf> =
@@ -107,18 +114,22 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
                 Ok(m) => {
                     all.insert(name, m);
                 }
+                Err(_) if !named(&name) => {}
                 Err(e) => problems.push(if entry.join(packs::MANIFEST).is_file() {
                     e
                 } else {
                     format!("{name}/: no {}; a folder of content/ is a pack", packs::MANIFEST)
                 }),
             }
-        } else if name.ends_with(".luau") {
+        } else if only.is_none() && name.ends_with(".luau") {
             problems.push(format!("{name}: a module belongs to a pack (content/<pack>/...)"));
         }
     }
     let files = packs::Dirs::of_content(dir, all.keys().map(String::as_str));
-    for p in all.values() {
+    if let Some(missing) = only.into_iter().flatten().find(|id| !all.contains_key(**id)) {
+        problems.push(format!("no pack {missing} in {}", dir.display()));
+    }
+    for p in all.values().filter(|p| named(&p.id)) {
         if let Err(e) = packs::with_depends(&all, &p.id) {
             problems.push(e);
         }
@@ -154,8 +165,21 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
 /// declarations, and lint it: every script of every pack, each named by
 /// its path; then what the packs refuse or can't find ([`reach`]).
 pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
+    check(dir, None)
+}
+
+/// [`check_content`] of packs `only` of content `dir`, by id (a game and
+/// the support packs it depends on: what a bundle of it holds,
+/// docs/design/content-deployment.md §3): their modules, and what they
+/// refuse or can't find. The rest of `dir` isn't looked at but for the
+/// manifests a require across packs is judged by.
+pub fn check_packs(dir: &Path, only: &[&str]) -> Result<(usize, Vec<Problem>), String> {
+    check(dir, Some(only))
+}
+
+fn check(dir: &Path, only: Option<&[&str]>) -> Result<(usize, Vec<Problem>), String> {
     let (mut n, mut problems) = (0, Vec::new());
-    for p in nettai_content_api::packs::packs(dir)? {
+    for p in nettai_content_api::packs::packs(dir)?.into_iter().filter(|p| only.is_none_or(|o| o.contains(&p.id.as_str()))) {
         let mut checker = PackChecker::new(&definitions(dir, &p.id)?)?;
         let name = &p.id;
         for (path, source) in modules(&dir.join(name)).map_err(|e| e.to_string())? {
@@ -166,6 +190,6 @@ pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
             n += 1;
         }
     }
-    problems.extend(reach(dir)?);
+    problems.extend(reach_of(dir, only)?);
     Ok((n, problems))
 }
