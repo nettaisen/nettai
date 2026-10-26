@@ -39,71 +39,85 @@ A **bundle** is what a game plays: the game pack and the support packs it depend
 
 - **Its files:** `bundle.toml`, then each pack's folder under its id (`exe6/`, `exelib/`), with every file the pack's
   repo tracks.
-- **`bundle.toml`:** the game; the engine line it is for (`line = "0.12"`); its revision (the game's publish count:
-  `r1`, `r2`, ..., what a player sees); and each pack's commit.
+- **`bundle.toml`:** the game; the engine line it is for (`line = "0.11"`); its revision (the game's publish count
+  within the line: `r1`, `r2`, ..., what a player sees); and each pack's commit.
 - **Its form:** a deterministic tar (paths sorted, mode 0644, no owner, time 0), gzipped.
-- **Its id:** the SHA-256 of the tar, in hex. It names the bundle everywhere: the store, replays, the lobby.
 
-**Support packs.** A support pack isn't published on its own. A game's repo locks the commits of the support packs it
-depends on (`depends.lock`: `exelib = "<commit>"`), and publishing the game takes them from their repos at those
-commits. The engine repo's check refuses a game whose lock differs from its exelib submodule's commit, so what the
-engine tests is what gets published.
+**Two identities.**
+
+- **The bundle id** is the SHA-256 of the tar, in hex. It names the files: the store keeps a bundle by it, a site
+  serves it under it, and a download is checked against it.
+- **The content hash** (`Content::hash`, what replays and the lobby already compare) says what a bundle plays. It is a
+  hash of the content as the engine defines it with the game's asset pack, so only the engine computes it, and two
+  bundles that differ only where play doesn't look (another language's text) share it.
+
+Within a minor line every engine computes the same content hash for the same bundle and asset pack: anything netplay
+compares is a minor-version change (docs/design/rollback.md).
+
+**Support packs.** A support pack isn't published on its own. The engine checkout a game is published from pins it
+(its submodule's commit), and `bundle.toml` records that commit.
 
 ## 4. Publishing
 
 Each game's repo serves on Pages, from its `gh-pages` branch, to which publishing only adds:
 
-- `index.json`: the pack and, by engine line, its bundles in publish order (id, revision, commits, date, size).
+- `index.json`: by engine line, the game's bundles in publish order. Each entry gives the id, the content hash, the
+  revision, the packs' commits, the date and the size.
 - `bundles/<id>.tar.gz`: each bundle.
 
-**The workflow.** `publish.yml`, run by hand on main with the engine line, does four things in order:
+**Publishing runs locally**, not in CI: computing the content hash needs the game's asset pack, which comes from the
+ROMs, and no ROM goes to CI. `nettai-content publish <game>`, run in the engine checkout of the line, does six things
+in order:
 
-1. It builds the bundle with the support packs at their locked commits.
-2. It checks the bundle with the content SDK of that line. Each engine release attaches the SDK: the content checker
-   and `content/nettai`'s declarations.
-3. It refuses a bundle whose id is already the line's newest.
-4. It commits the bundle and the new index to `gh-pages`.
+1. It refuses unless the game's and its support packs' submodules are clean and their commits are on their repos'
+   main branches.
+2. It type-checks the content.
+3. It builds the bundle from the submodules.
+4. It computes the content hash with the local asset pack.
+5. It refuses a bundle whose content hash and id are already the line's newest.
+6. It adds the bundle and the new index entry to the game repo's `gh-pages` branch, then commits and pushes.
 
-A new engine line gets each game's content published for it, the same commit or a newer one.
+A new engine line gets each game's content published for it, from the same commits or newer ones.
 
 ## 5. The app
 
-**The store.** Bundles are kept unpacked in the data folder's `content/<id>/`. The app also ships the newest bundle
-of each game for its line, so it plays offline from the first start.
+**The store.** Bundles are kept unpacked in the data folder's `content/<id>/`, with a note of each one's content hash.
+The app also ships the newest bundle of each game for its line, so it plays offline from the first start.
 
 **Updates.** At start the app reads each game's `index.json`, unless Settings turned content updates off. It
-downloads the newest bundle of its line on a thread, checks its id, and unpacks it. New matches use it once it is
-down.
+downloads the newest bundle of its line on a thread, checks its id, unpacks it, and checks that the content hash it
+computes is the index's. New matches use it once it is down.
 
-**Replays.** The replay's head names the game's bundle id beside the content hash. To play one, the app needs:
+**Replays.** A replay names its content hash, as now. To play one, the app needs:
 
 - an engine of the replay's line (as now);
-- the bundle from the store, or downloaded by its id from the game's site.
+- a bundle with that content hash: from the store, or found in the game's index and downloaded by its id.
 
-If the bundle can't be had, the replays screen says which one is missing.
+If there's none, the replays screen says the content isn't available.
 
-**Netplay.** The lobby's compatibility fields carry the bundle id. Peers whose ids differ both play the newer
-revision: the peer without it downloads it. If it can't be had, the lobby refuses with that reason.
+**Netplay.** The lobby compares content hashes, as now. Peers whose hashes differ both play the newer revision: the
+peer without it finds it in the index by the other's content hash and downloads it. If it can't be had, the lobby
+refuses with that reason.
 
 **Asset packs.** Packs are kept by the asset fingerprint the bundle's names give (`packs/<game>-<fingerprint>/`). A
 bundle whose fingerprint has no pack has it extracted from the Legacy Collection when the game first loads. The
 extractor reads the names from the bundle (`compat/assets.toml` and the tables it names), not from tables compiled
 into it.
 
-**Development.** A build run from the repository plays the submodules' content as now. Its bundle id is the same
-function's, over those folders, so a replay made there names an id no site has. `$NETTAI_CONTENT` still names
+**Development.** A build run from the repository plays the submodules' content as now. `$NETTAI_CONTENT` still names
 another content directory.
 
 **The browser.** The store is in the origin private file system, and bundles come from the sites. The page ships the
 newest bundles as the desktop app does, in place of today's `content.tar`.
 
+None of this changes the replay format or the lobby's messages: an app with the store is a patch release of its line.
+
 ## 6. Steps
 
 1. The four repos with their history, pushed.
 2. The engine repo on submodules; CI, worktrees and the verification workspace's scripts initialize them.
-3. The bundle (`nettai-content bundle`), its id, `depends.lock` and the engine's lock check; the content SDK in the
-   engine's release; `publish.yml` and Pages in each game's repo.
-4. The app: the store, content updates, the replay head's bundle id, the lobby's, packs by fingerprint, the
-   extractor's names from the bundle, the browser's store.
-5. `release.yml` ships the downloaded bundles; the first bundles are published for the line that step 4 starts (a
-   new minor version: the replay head and the lobby change).
+3. The bundle format and id (`nettai_content::bundle`), `nettai-content publish`, and Pages on each game's repo.
+4. The app: the store, content updates, replays and the lobby finding bundles by content hash, packs by fingerprint,
+   the extractor's names from the bundle, the browser's store.
+5. `release.yml` ships the newest published bundles instead of `content/`; each game's content is published for the
+   line.
