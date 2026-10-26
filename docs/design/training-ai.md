@@ -676,7 +676,13 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     from all of the exploiter's snapshots at once: 28 within 40 minutes, more networks than the cache held, read
     from disk again and again, and its rollouts took 200 s instead of 35. Both runs share the main run's machine
     (each update's minibatch in parts, `ppo.accumulate`, to fit the GPU); the exploiter keeps a snapshot every 50
-    updates.
+    updates. **It found nothing:** warm-started from the large run's update 2,450, in 1,600 updates (about 52 M
+    decisions, five hours) its win rate against the large run's latest network stayed between 42 and 55% (50% at
+    the end), and the large run's against its snapshots at 50%; the large run's update 2,750 against its 2,450 (the
+    last before the exploiter), over duplicate deals at Hard, won 69 deals both ways to 56 (Elo 1,183 to 1,177),
+    within the noise, as its 2,450 had been even with its 2,000 (65 to 61). So it was stopped (2026-10-26), the
+    large run back on its own league shares with its learning rate cut (`ppo.lr` 1.15e-4 from update 2,850: 1.0e-4
+    there, falling as before, where the schedule had it at 2.6e-4).
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The
