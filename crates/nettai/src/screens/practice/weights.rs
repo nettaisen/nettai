@@ -1,7 +1,8 @@
 //! The network the dummy that fights plays with (docs/design/training-ai.md §10.5). None is built in: the nettai-ai
 //! repository (github.com/nettaisen/nettai-ai) publishes them as releases, one line at a time ("0.11": what nettai
-//! 0.11.x plays), and its site serves each line's newest: `index.json` gives each line's SHA-256 (so a check for a
-//! new one is a small file, not the network) and `weights/<sha256>.safetensors` the network. So a better network
+//! 0.11.x plays), and its site serves each line's newest: its `index.json`, whose address the catalog
+//! (`bundle::catalog_url`) gives, lists each line's SHA-256 (so a check for a new one is a small file, not the
+//! network) and the network's full address. So a better network
 //! reaches players without a release of the app, and a release that changes what the network sees (a new minor
 //! version) waits for one trained for it.
 //!
@@ -24,8 +25,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/// The nettai-ai repository's site (its Pages workflow puts the releases there).
-const SITE: &str = "https://nettai.n1gp.net/nettai-ai";
 /// The most a network's file may be (they are about 11 MB), and the index's.
 const MAX_BYTES: u64 = 64 << 20;
 const MAX_INDEX: u64 = 1 << 20;
@@ -61,19 +60,31 @@ fn line() -> String {
     line_of(env!("CARGO_PKG_VERSION"))
 }
 
-/// A line's weights: their file on the site (named by its SHA-256), and its SHA-256 (hex).
-#[derive(Clone, Debug, PartialEq)]
+/// A line's weights, as the index lists them: their full address and their SHA-256 (hex).
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 struct Entry {
-    file: String,
+    url: String,
     sha256: String,
 }
 
-/// `line`'s entry in the index `body` (each line's SHA-256, by line). Err: an index that can't be read, or none for
+/// `line`'s entry in the index `body` (each line's weights, by line). Err: an index that can't be read, or none for
 /// the line.
 fn entry(body: &[u8], line: &str) -> Result<Entry, String> {
-    let index: HashMap<String, String> = serde_json::from_slice(body).map_err(|e| format!("the AI's index: {e}"))?;
-    let sha256 = index.get(line).cloned().ok_or_else(|| format!("the AI's index has no weights for nettai {line} yet"))?;
-    Ok(Entry { file: format!("weights/{sha256}.safetensors"), sha256 })
+    let mut index: HashMap<String, Entry> = serde_json::from_slice(body).map_err(|e| format!("the AI's index: {e}"))?;
+    index.remove(line).ok_or_else(|| format!("the AI's index has no weights for nettai {line} yet"))
+}
+
+/// The AI's index's address in the catalog `body`. Err: a catalog that can't be read, or lists no AI.
+fn index_address(body: &[u8]) -> Result<String, String> {
+    let catalog: nettai_content::bundle::Catalog = serde_json::from_slice(body).map_err(|e| format!("the catalog: {e}"))?;
+    catalog.ai.ok_or_else(|| "the catalog lists no AI".to_string())
+}
+
+/// This line's entry: the catalog, then the AI's index it names.
+async fn listed() -> Result<Entry, String> {
+    let catalog = nettai_platform::http::get(&nettai_content::bundle::catalog_url(), MAX_INDEX).await?;
+    let index = nettai_platform::http::get(&index_address(&catalog)?, MAX_INDEX).await?;
+    entry(&index, &line())
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -87,7 +98,7 @@ fn read(bytes: &[u8]) -> Result<Arc<Net>, String> {
 /// Weights downloaded for `entry`: refused unless they are its, by its SHA-256.
 fn checked(bytes: &[u8], entry: &Entry) -> Result<Arc<Net>, String> {
     if sha256(bytes) != entry.sha256 {
-        return Err(format!("the AI's weights ({}) aren't the index's: another SHA-256", entry.file));
+        return Err(format!("the AI's weights ({}) aren't the index's: another SHA-256", entry.url));
     }
     read(bytes)
 }
@@ -122,7 +133,7 @@ async fn network() -> Result<Arc<Net>, String> {
         return off_thread("ai-weights", move || read(&std::fs::read(&path).map_err(|e| format!("{OVERRIDE}, {}: {e}", path.display()))?)).await?;
     }
     let kept = kept();
-    let entry = match nettai_platform::http::get(&format!("{SITE}/index.json"), MAX_INDEX).await.and_then(|body| entry(&body, &line())) {
+    let entry = match listed().await {
         Ok(entry) => entry,
         Err(why) => {
             return off_thread("ai-weights", move || match nettai_platform::fs::read(&kept) {
@@ -140,7 +151,7 @@ async fn network() -> Result<Arc<Net>, String> {
     if let Some(net) = off_thread("ai-weights", move || nettai_platform::fs::read(&k).ok().filter(|bytes| sha256(bytes) == sha).map(|bytes| read(&bytes))).await? {
         return net;
     }
-    let bytes = nettai_platform::http::get(&format!("{SITE}/{}", entry.file), MAX_BYTES).await?;
+    let bytes = nettai_platform::http::get(&entry.url, MAX_BYTES).await?;
     off_thread("ai-weights", move || {
         let net = checked(&bytes, &entry)?;
         let written = kept.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|_| nettai_platform::fs::write(&kept, &bytes));
@@ -164,14 +175,17 @@ mod tests {
         assert_eq!(line(), line_of(env!("CARGO_PKG_VERSION")));
     }
 
-    /// The index gives each line's SHA-256, its file named by it; a line it hasn't is said so, and an index that
-    /// isn't one is refused.
+    /// The index gives each line's SHA-256 and address; a line it hasn't is said so, and an index that isn't one is
+    /// refused. The catalog gives the index's address.
     #[test]
     fn the_index_gives_a_lines_weights() {
-        let body = br#"{"0.11": "ab", "0.12": "cd"}"#;
-        assert_eq!(entry(body, "0.11"), Ok(Entry { file: "weights/ab.safetensors".into(), sha256: "ab".into() }));
+        let body = br#"{"0.11": {"sha256": "ab", "url": "https://example.org/w/ab.safetensors"}, "0.12": {"sha256": "cd", "url": "https://example.org/w/cd.safetensors"}}"#;
+        assert_eq!(entry(body, "0.11"), Ok(Entry { url: "https://example.org/w/ab.safetensors".into(), sha256: "ab".into() }));
         assert!(entry(body, "0.13").unwrap_err().contains("no weights for nettai 0.13"));
         assert!(entry(b"<html>", "0.11").is_err());
+        let catalog = br#"{"games": {}, "ai": "https://example.org/ai/index.json"}"#;
+        assert_eq!(index_address(catalog).as_deref(), Ok("https://example.org/ai/index.json"));
+        assert!(index_address(br#"{"games": {}}"#).unwrap_err().contains("no AI"));
     }
 
     /// The site serves this line's weights: downloaded, checked and kept, then read from the copy kept. Not run
@@ -202,7 +216,7 @@ mod tests {
     fn downloaded_weights_must_be_the_indexs() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-training/tests/fixtures/net.safetensors");
         let bytes = std::fs::read(path).unwrap();
-        let entry = Entry { file: format!("weights/{}.safetensors", sha256(&bytes)), sha256: sha256(&bytes) };
+        let entry = Entry { url: format!("https://example.org/w/{}.safetensors", sha256(&bytes)), sha256: sha256(&bytes) };
         assert!(checked(&bytes, &entry).is_ok());
         let other = Entry { sha256: sha256(b"other"), ..entry };
         assert!(checked(&bytes, &other).err().is_some_and(|why| why.contains("aren't the index's")));

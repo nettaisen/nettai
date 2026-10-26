@@ -666,9 +666,9 @@ mod tests {
         };
         let mut checked = 0;
         let catalog: bundle::Catalog = serde_json::from_slice(&fetch(&bundle::catalog_url())).unwrap();
-        for (game, entry) in &catalog.games {
+        for (game, index) in &catalog.games {
             let game = game.as_str();
-            let index: bundle::Index = serde_json::from_slice(&fetch(&entry.index)).unwrap();
+            let index: bundle::Index = serde_json::from_slice(&fetch(index)).unwrap();
             assert_eq!(index.game, game);
             let Some(published) = index.lines.get(&line) else {
                 eprintln!("{game}: nothing for {line} yet");

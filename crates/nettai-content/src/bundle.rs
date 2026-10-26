@@ -95,25 +95,22 @@ impl<'de> Deserialize<'de> for BundleId {
 /// browser needs on a redirect, so the app asks this domain directly.
 pub const SITES: &str = "https://nettai.n1gp.net";
 
-/// The catalog of games: the organization's site's `games.json` (the nettaisen.github.io repository), the one
-/// address the app starts from (§5). Every other address comes from what it reads: the catalog gives each game's
-/// index, and each index entry its bundle.
+/// The catalog: the organization's site's `catalog.json` (the nettaisen.github.io repository), the one address the
+/// app starts from (§5). Every other address comes from what it reads: the catalog gives each game's index and the
+/// AI's, and each index entry its file.
 pub fn catalog_url() -> String {
-    format!("{SITES}/games.json")
+    format!("{SITES}/catalog.json")
 }
 
-/// The catalog: the games published, by pack id. (Fields an app doesn't know are skipped, so a later catalog still
-/// reads.)
+/// The catalog: the published games' indexes and the practice dummy's network's, each by its full address. (Fields
+/// an app doesn't know are skipped, so a later catalog still reads.)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Catalog {
-    pub games: BTreeMap<String, CatalogGame>,
-}
-
-/// A game in the catalog: where its index is.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CatalogGame {
-    /// Its site's `index.json`, in full.
-    pub index: String,
+    /// Each game's site's `index.json`, by pack id.
+    pub games: BTreeMap<String, String>,
+    /// The nettai-ai repository's site's `index.json`: the network the practice dummy that fights plays.
+    #[serde(default)]
+    pub ai: Option<String>,
 }
 
 /// A game's site's `index.json`: its published bundles by engine line, each line's in publish order. (Fields an
@@ -489,9 +486,12 @@ mod tests {
     #[test]
     fn the_catalog_lists_games() {
         let catalog: Catalog =
-            serde_json::from_str(r#"{"games": {"exe6": {"index": "https://example.org/exe6/index.json", "later": 2}}, "later": 1}"#).unwrap();
-        assert_eq!(catalog.games["exe6"], CatalogGame { index: "https://example.org/exe6/index.json".into() });
-        assert_eq!(catalog_url(), "https://nettai.n1gp.net/games.json");
+            serde_json::from_str(r#"{"games": {"exe6": "https://example.org/exe6/index.json"}, "ai": "https://example.org/ai/index.json", "later": 1}"#)
+                .unwrap();
+        assert_eq!(catalog.games["exe6"], "https://example.org/exe6/index.json");
+        assert_eq!(catalog.ai.as_deref(), Some("https://example.org/ai/index.json"));
+        assert_eq!(serde_json::from_str::<Catalog>(r#"{"games": {}}"#).unwrap().ai, None);
+        assert_eq!(catalog_url(), "https://nettai.n1gp.net/catalog.json");
     }
 
     #[test]

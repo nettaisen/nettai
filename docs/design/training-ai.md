@@ -962,8 +962,10 @@ incompatible"). The repository github.com/nettaisen/nettai-ai (public) publishes
 `nettai-ai.safetensors`; the networks aren't in git (2026-10-26, the user: "can you also switch nettai-ai to a
 workflow?"). Its Pages workflow (pages.yml) rebuilds the site, https://nettai.n1gp.net/nettai-ai/ (the
 organization's Pages domain), when a release is published: `index.json` giving each line's newest network's
-SHA-256 (a check for a new one is that small file, not the network), and `weights/<sha256>.safetensors` those
-networks, named by their SHA-256 so a cached index never points at a file that changed. Nothing else is published (the user: "don't expose unnecessary
+SHA-256 (a check for a new one is that small file, not the network) and full address, and
+`weights/<sha256>.safetensors` those networks, named by their SHA-256 so a cached index never points at a file that
+changed. The app finds the index through the catalog, https://nettai.n1gp.net/catalog.json (its `ai`), its one
+built-in address (docs/design/content-deployment.md §5). Nothing else is published (the user: "don't expose unnecessary
 metadata ... i don't know why you need anything other than just the tensors"): the file's metadata is only what
 nettai reads to play it (`publish.PLAYED`: the format, the spec hash, the architecture, the levels' knobs, k and
 the screen's decision limit, which let a network of another size or timing be published without a release of the
