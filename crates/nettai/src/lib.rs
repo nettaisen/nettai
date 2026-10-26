@@ -90,6 +90,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
         backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
     }
     backend.select()?;
+    lang::register_fonts();
     let ui = AppWindow::new()?;
     #[cfg(target_arch = "wasm32")]
     ui.global::<nettai_ui::Theme>().set_web(true);

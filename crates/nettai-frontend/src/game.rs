@@ -321,6 +321,14 @@ pub struct Loaded {
 }
 
 impl Loaded {
+    /// The enhanced mode's font for text in `lang`: the bundled font's cut of
+    /// it (Noto Sans CJK's: the Chinese have their own hanzi), or a font file
+    /// of the player's as it is; none where none was loaded.
+    pub fn font_in(&self, lang: &str) -> Option<Arc<VectorFont>> {
+        let font = self.font.as_ref()?;
+        Some(if font.is_bundled() { nettai_render::vfont::bundled_font(nettai_render::vfont::Cut::of(lang)).clone() } else { font.clone() })
+    }
+
     /// A renderer of the game's graphics, the text as it was asked for.
     pub fn renderer(&self) -> Renderer {
         let mut renderer = self.graphics.renderer(self.mode, self.font.clone());
@@ -552,7 +560,7 @@ mod tests {
         // A font file that isn't there.
         let Err(e) = font(GraphicsMode::Enhanced, Some(&dir.join("no.ttf")), "en") else { panic!("read a font that isn't there") };
         assert!(matches!(&e.what, Failed::Font(why) if why.starts_with("can't read the font")), "{e}");
-        assert!(font(GraphicsMode::Original, Some(&dir.join("no.ttf"))).unwrap().is_none());
+        assert!(font(GraphicsMode::Original, Some(&dir.join("no.ttf")), "en").unwrap().is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
 }

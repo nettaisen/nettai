@@ -397,9 +397,9 @@ language = "ja"
 "groundcross" = { name = "グランドクロス", description = "ブレイクチップが攻撃力+10\nブレイクタメうちでらくせき!\nスーパーアーマーがON!" }
 "heatcross" = { name = "ヒートクロス", description = "炎チップの攻撃力が+50!\nバスター攻撃力が+1!" }
 "slashcross" = { name = "スラッシュクロス", description = "ソードチップの攻撃力が+50\nソードチップをタメうちすると\nとんでいくようになる!" }
-"spoutcross" = { name = "アクアクロス", description = "水チップタメうちで攻撃力✕2\n水チップでHPかいふく" }
+"spoutcross" = { name = "アクアクロス", description = "水チップタメうちで攻撃力×2\n水チップでHPかいふく" }
 "tengucross" = { name = "テングクロス", description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
-"tomahawkcross" = { name = "トマホーククロス", description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
+"tomahawkcross" = { name = "トマホーククロス", description = "木チップタメうちで攻撃力×2\nマヒやこんらんなどにならない\nステータスガード!" }
 
 # The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
 # tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
@@ -600,7 +600,7 @@ language = "ja"
 "air_shoes" = "エアシューズ"
 "attack_add" = "アタック+{amount}"
 "attack_sub" = "アタック-{amount}"
-"attack_times" = "アタック✕{amount}"
+"attack_times" = "アタック×{amount}"
 "b_button.patch-cards/b-sword" = "Bソード"
 "b_button.patch-cards/beetle/b-button" = "Bミニボム"
 "b_button.patch-cards/mettfire/b-button" = "Bメテオ1"

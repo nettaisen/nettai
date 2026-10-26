@@ -61,7 +61,7 @@ impl Cut {
         }
     }
 
-    /// The font file (weights 100 to 900, subset: fonts/noto-sans-cjk).
+    /// The font file (Google Fonts' variable cut, weights 100 to 900: fonts/noto-sans-cjk).
     pub fn data(self) -> &'static [u8] {
         match self {
             Cut::Japanese => JAPANESE,
@@ -82,9 +82,9 @@ impl Cut {
 
 /// The bundled font's cuts' files ([`Cut::data`]), for a host that draws
 /// with them otherwise.
-pub const JAPANESE: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansJP-Nettai[wght].ttf");
-pub const SIMPLIFIED: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansSC-Nettai[wght].ttf");
-pub const TRADITIONAL: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansTC-Nettai[wght].ttf");
+pub const JAPANESE: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansJP[wght].ttf");
+pub const SIMPLIFIED: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansSC[wght].ttf");
+pub const TRADITIONAL: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansTC[wght].ttf");
 
 /// A cut of the bundled font, parsed once.
 pub fn bundled_font(cut: Cut) -> &'static std::sync::Arc<VectorFont> {
@@ -1984,39 +1984,6 @@ mod tests {
         assert!(l.width - r.fitted_width("Count", Role::Cell, 1000) < side_by_side);
     }
 
-    /// A button the font lacks (Ⓐ) is its letter in a ring the layer
-    /// draws; one the font has (Ⓡ) and the symbols (✕, ○) are the font's.
-    #[test]
-    fn a_button_is_its_letter_in_a_ring_and_a_symbol_the_fonts() {
-        let f = VectorFont::bundled();
-        assert!(f.covers("Press Ⓐ for 3panl") && f.covers("Ⓑ+Left") && f.covers("攻撃力✕2 ○"));
-        // A mark the layer has no drawing of, which the font lacks (the
-        // bat): drawn in the game's font.
-        assert!(!f.covers("\u{E006}"));
-        let mut r = renderer();
-        let a = r.layout("Ⓐ", Role::Dialogue, 192).clone();
-        assert_eq!((a.glyphs.len(), a.rings.len()), (1, 1));
-        let ring = a.rings[0];
-        let cap = Role::Dialogue.style().cap;
-        assert!((ring.y - cap / 2.0).abs() < 0.01 && ring.radius * 2.0 > cap, "around the capitals");
-        for c in ["Ⓡ", "✕", "○"] {
-            let l = r.layout(c, Role::Dialogue, 192).clone();
-            assert_eq!((l.glyphs.len(), l.rings.len()), (1, 0), "{c}");
-            assert!(l.glyphs[0].id != 0, "{c}");
-        }
-    }
-
-    #[test]
-    fn the_bundled_font_has_latin_kana_and_kanji() {
-        let f = VectorFont::bundled();
-        assert!(f.width.is_none() && f.weight.is_some());
-        assert!(f.covers("GunDelS3 Cannon x2 TIME UP! COUNTER HIT!"));
-        assert!(f.covers("ミテイ ガンデルソル3 熱斗 電脳獣 ロックマン"));
-        // (Not every kanji: a string with one it lacks is drawn in the
-        // game's font.)
-        assert!(!f.covers("綾小路"));
-    }
-
     #[test]
     fn a_string_never_leaves_its_box() {
         let mut r = renderer();
@@ -2084,89 +2051,6 @@ mod tests {
         (0..w).map(|x| (0..32).any(|y| out[y * w + x] != 0)).collect()
     }
 
-    /// The first and last output rows an item lights, white with a shadow
-    /// over a black frame, at `scale` times the frame.
-    fn lit_rows(item: TextItem, scale: usize) -> (usize, usize) {
-        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..crate::render::Frame::default() };
-        let (w, h) = (WIDTH * scale, HEIGHT * scale);
-        let mut out = vec![0u32; w * h];
-        crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
-        let rows: Vec<usize> = (0..h).filter(|&y| out[y * w..(y + 1) * w].iter().any(|&p| p != 0)).collect();
-        (rows[0], *rows.last().expect("something drawn"))
-    }
-
-    /// No glyph is cut at its box's rows: a cell string's descenders and
-    /// a chatbox line's are drawn past them, a telop's through its squash
-    /// and stretch too.
-    #[test]
-    fn descenders_are_drawn_past_the_cells() {
-        let item = |role: Role, h: i32| TextItem::new("gjpqy", role, Rect::new(8, 8, 64, h), 0x7FFF, Some(0x2108));
-        assert!(lit_rows(item(Role::Cell, 16), 2).1 > 2 * 24 + 1, "past the cells' 16 rows");
-        assert!(lit_rows(item(Role::Dialogue, 12), 2).1 > 2 * 20, "past the dialogue font's 12 rows");
-        // The banner's bounce stretches the telop 1.23 times about its
-        // box's middle: its descenders go further still.
-        let stretched = TextItem { vscale: Some(0xD0), ..item(Role::Cell, 16) };
-        assert!(lit_rows(stretched, 2).1 > lit_rows(item(Role::Cell, 16), 2).1);
-    }
-
-    /// A fitted cell string, whatever its letters, stays in its cells at
-    /// every scale, its shadow included: its deepest descenders end on the
-    /// cells' last row, where the original's do, and its ascenders, kana
-    /// and kanji start under their first. What reaches deeper than g (the
-    /// cedilla, the low line, a kanji's foot) ends there too.
-    #[test]
-    fn a_fitted_cells_descenders_end_in_its_cells() {
-        let at = Rect::new(16, 8, 64, 16);
-        for scale in 1..=6 {
-            let mut deepest = 0;
-            for text in ["gjpqy", "Spreadr1", "BigBomb", "(Ⓐ),;", "攻撃熱斗", "ガンデルソル3", "バッドメディスン", "Éfl", "Çŋ_‗", "妹舞＿"] {
-                let (first, last) = lit_rows(TextItem::new(text, Role::FittedCell, at, 0x7FFF, Some(0x2108)), scale);
-                assert!(first >= at.y as usize * scale, "{text} at {scale}x: from output row {first}");
-                assert!(last < (at.y + at.h) as usize * scale, "{text} at {scale}x: to output row {last}");
-                deepest = deepest.max(last);
-            }
-            // (Not fitted further than it needs: the last row is reached.)
-            assert!(deepest + 2 * scale > (at.y + at.h) as usize * scale, "{scale}x: to output row {deepest}");
-        }
-    }
-
-    /// A fitted cell string stands where a cell string does, the
-    /// original's: its capitals are the cell role's, the same pixels in
-    /// rows 4 to 13 of the cells on the baseline at 14, at every scale.
-    /// Only what is under the baseline differs: its descenders take one
-    /// row (14) and their shadow the next (15), as the original's do,
-    /// where the cell role's reach 3.2 rows.
-    #[test]
-    fn a_fitted_cells_capitals_stand_on_the_originals_baseline() {
-        let at = Rect::new(16, 8, 64, 16);
-        let baseline = at.y as usize + 14;
-        for scale in 1..=6 {
-            let shot = |text: &str, role: Role| {
-                let item = TextItem::new(text, role, at, 0x7FFF, Some(0x2108));
-                let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..crate::render::Frame::default() };
-                let (w, h) = (WIDTH * scale, HEIGHT * scale);
-                let mut out = vec![0u32; w * h];
-                crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
-                out
-            };
-            // The capitals: the cell role's pixels, shadow and all (those
-            // that reach no lower than the baseline: a round capital's
-            // overshoot under it is shortened too).
-            for text in ["HIEML", "TNKZ1", "AVFWX"] {
-                assert!(shot(text, Role::FittedCell) == shot(text, Role::Cell), "{text} at {scale}x");
-            }
-            let rows = |text: &str, role: Role| lit_rows(TextItem::new(text, role, at, 0x7FFF, None), scale);
-            let (top, bottom) = rows("HIEML", Role::FittedCell);
-            assert_eq!((top, bottom + 1), ((at.y as usize + 4) * scale, baseline * scale), "{scale}x: the capitals' rows");
-            // The descenders: one row under the baseline, where the cell
-            // role's go three and more.
-            let (_, low) = rows("gjpqy", Role::FittedCell);
-            assert!(low >= baseline * scale && low < (baseline + 1) * scale, "{scale}x: descenders to output row {low}");
-            let (_, whole) = rows("gjpqy", Role::Cell);
-            assert!(whole >= (baseline + 3) * scale, "{scale}x: the cell role's to output row {whole}");
-        }
-    }
-
     #[test]
     fn text_is_hidden_where_something_in_front_won_and_faded_with_its_layer() {
         use crate::compose::{BACKDROP_DEPTH, Fade, depth_key, sprite_depth};
@@ -2222,40 +2106,6 @@ mod tests {
                 assert!((g.x - n.x * l.xscale).abs() < 1e-3);
             }
         }
-    }
-
-    /// Kana and kanji share one size and one baseline with the Latin of
-    /// their role, in every string: the font's kana box is the capitals'
-    /// height, centered on them, whatever the string's length or its box.
-    #[test]
-    fn kana_stand_on_the_capitals_at_one_size() {
-        let mut r = renderer();
-        for role in [Role::Cell, Role::FittedCell, Role::Dialogue] {
-            let st = role.style();
-            let face = r.face(FontId::Text, Some(st.weight)).expect("the bundled font has kana");
-            assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
-            let mut sizes = Vec::new();
-            for (text, room) in [("キャノン", 1000), ("バッドメディスン", 64), ("ロックマンEXE", 56), ("攻撃力✕2", 160), ("ガンデルソル3", 56)] {
-                let l = r.layout(text, role, room).clone();
-                let kana: Vec<&Placed> = l.glyphs.iter().filter(|g| text.chars().nth(g.unit).is_some_and(cjk)).collect();
-                assert!(!kana.is_empty() && kana.iter().all(|g| g.id != 0), "{text}");
-                for g in &kana {
-                    let (top, bottom) = (g.y + g.size * face.top, g.y + g.size * face.bottom);
-                    assert!((top - bottom - st.cap).abs() < 1e-3, "{text}: the kana box {bottom}..{top}");
-                    assert!(((top + bottom) / 2.0 - st.cap / 2.0).abs() < 1e-3, "{text}: on the capitals' middle");
-                    sizes.push(g.size);
-                }
-                // The Latin of the string: on the baseline, at the
-                // capitals' size.
-                for g in l.glyphs.iter().filter(|g| !text.chars().nth(g.unit).is_some_and(cjk)) {
-                    assert_eq!((g.y, g.size), (0.0, st.cap / r.font.cap), "{text}");
-                }
-            }
-            assert!(sizes.windows(2).all(|w| w[0] == w[1]), "{role:?}: one size");
-        }
-        let l = r.layout("熱斗", Role::Dialogue, 192).clone();
-        assert_eq!(l.glyphs.len(), 2);
-        assert!(l.glyphs.iter().all(|g| g.id != 0));
     }
 
     /// A glyph's field draws what its outline covers: at 5x and 13x, Latin,

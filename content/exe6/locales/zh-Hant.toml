@@ -69,9 +69,9 @@ language = "zh-Hant"
 "bugbomb" = { name = "BUG炸彈", description = "向前方3格投擲\nBUG炸彈\n使對手發生BUG" }
 "bugfix" = { name = "BUG修正", description = "修正並移除\n領航員的BUG狀態\n" }
 "bugrswrd" = { name = "BUG化劍", description = "Ⓑ集氣攻擊變成\n消耗BUG碎片的\n黑暗劍!" }
-"burnsqr1" = { name = "四方燃燒1", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2✕2" }
-"burnsqr2" = { name = "四方燃燒2", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2✕2" }
-"burnsqr3" = { name = "四方燃燒3", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2✕2" }
+"burnsqr1" = { name = "四方燃燒1", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2×2" }
+"burnsqr2" = { name = "四方燃燒2", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2×2" }
+"burnsqr3" = { name = "四方燃燒3", description = "以Ⓐ停止準星\n並施展火焰攻擊\n範圍為2×2" }
 "busterup" = { name = "子彈強化", description = "該場戰鬥中\n子彈的\n攻擊力等級提升1!" }
 "cannon" = { name = "加農砲", description = "攻擊前方1名敵人\n\n" }
 "chrgeman" = { name = "衝鋒人", description = "向前方突進!\n若後方格子是空的\n會連著車廂一同突進" }
@@ -392,9 +392,9 @@ language = "zh-Hant"
 "groundcross" = { name = "地面交錯", description = "破防晶片攻擊力+10\n破防集氣攻擊產生落石!\n開啟超級裝甲!" }
 "heatcross" = { name = "高熱交錯", description = "火晶片攻擊力+50!\n子彈攻擊力+1!" }
 "slashcross" = { name = "利爪交錯", description = "劍晶片攻擊力+50\n劍晶片集氣攻擊時\n斬擊會向前飛出!" }
-"spoutcross" = { name = "水之交錯", description = "水晶片集氣攻擊使攻擊力✕2\n水晶片能回復HP" }
+"spoutcross" = { name = "水之交錯", description = "水晶片集氣攻擊使攻擊力×2\n水晶片能回復HP" }
 "tengucross" = { name = "天狗交錯", description = "風晶片攻擊力+10!\n開啟飛行鞋!\n按下Ⓑ+左來吸引!" }
-"tomahawkcross" = { name = "戰斧交錯", description = "木晶片集氣攻擊使攻擊力✕2\n並加上不會受到麻痺及混亂效果\n所影響的狀態異常防護!" }
+"tomahawkcross" = { name = "戰斧交錯", description = "木晶片集氣攻擊使攻擊力×2\n並加上不會受到麻痺及混亂效果\n所影響的狀態異常防護!" }
 
 [backgrounds]
 "acdc-area" = { name = "秋原區域" }
@@ -590,7 +590,7 @@ language = "zh-Hant"
 "air_shoes" = "飛行鞋"
 "attack_add" = "攻擊+{amount}"
 "attack_sub" = "攻擊-{amount}"
-"attack_times" = "攻擊✕{amount}"
+"attack_times" = "攻擊×{amount}"
 "b_button.patch-cards/b-sword" = "Ⓑ劍"
 "b_button.patch-cards/beetle/b-button" = "Ⓑ迷你炸彈"
 "b_button.patch-cards/mettfire/b-button" = "Ⓑ流星1"

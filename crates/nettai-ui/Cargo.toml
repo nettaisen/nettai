@@ -12,7 +12,7 @@ description = "The nettai app's UI: its Slint files compiled to Rust, with its f
 [dependencies]
 # Slint on winit, drawn with femtovg (OpenGL): the one renderer that tells the app when it draws, which is the
 # app's clock (docs/app.md §1). `unstable-winit-030` lets the app hear winit's events before Slint does.
-slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030"] }
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030", "unstable-fontique-011"] }
 
 [build-dependencies]
 slint-build = "1.18"

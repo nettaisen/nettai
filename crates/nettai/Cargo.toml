@@ -22,7 +22,7 @@ nettai-content-api = { path = "../nettai-content-api" }
 # The audio device (`Output`: the `playback` feature, cpal).
 nettai-audio = { path = "../nettai-audio" }
 # The window's types (the features are nettai-ui's).
-slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030"] }
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030", "unstable-fontique-011"] }
 # Gamepads: SDL3's, behind one small API (the user's choice; Cargo.lock pins the revision).
 gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade" }
 # gamepad-facade says what goes wrong through `log`: it goes to the app's log file.
