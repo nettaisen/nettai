@@ -1,23 +1,22 @@
 """Publish (§10.5): a checkpoint's network as the weights nettai's dummy that fights downloads.
 
-    uv run python -m nettai_ai.publish runs/NAME/checkpoints/ckpt_0002000.pt --repo ../../nettai-ai [--line 0.11] [--push]
+    uv run python -m nettai_ai.publish runs/NAME/checkpoints/ckpt_0002000.pt [--line 0.11] [--out FILE] [--release]
 
-No weights are built into nettai: the nettai-ai repository (github.com/nettaisen/nettai-ai) keeps one network for
-each of nettai's minor versions, and the app downloads its own line's (crates/nettai/src/screens/practice/weights.rs).
-This exports the checkpoint (`nettai_ai.export`, with its own check that the file rebuilds the network), keeps of
-its metadata only what nettai reads to play it ([`PLAYED`]: nothing of the run it came from), checks the file plays
-in nettai (the tests that need trained weights, run on it: `NETTAI_AI_WEIGHTS` names it), then writes it to the
-repository checkout `--repo` as `<line>/nettai-ai.safetensors` and its SHA-256 in `index.json` (by line), and
-commits there; `--push` pushes too. The line is nettai's major and minor version, the workspace's by default: weights for a line
-are played by every nettai of it, so a change to what the network sees (the observation spec) comes with a new
-minor version and a network trained for it.
+No weights are built into nettai: the nettai-ai repository (github.com/nettaisen/nettai-ai) publishes networks as
+releases, tagged <line>-r<revision>, and its Pages workflow serves each line's newest, which the app downloads
+(crates/nettai/src/screens/practice/weights.rs). This exports the checkpoint (`nettai_ai.export`, with its own check
+that the file rebuilds the network), keeps of its metadata only what nettai reads to play it ([`PLAYED`]: nothing of
+the run it came from), checks the file plays in nettai (the tests that need trained weights, run on it:
+`NETTAI_AI_WEIGHTS` names it), and writes it to `--out`. With `--release` it then publishes the file as the line's
+next release of the repository (the GitHub CLI, signed in), which rebuilds the site. The line is nettai's major and
+minor version, the workspace's by default: weights for a line are played by every nettai of it, so a change to what
+the network sees (the observation spec) comes with a new minor version and a network trained for it.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import re
 import subprocess
@@ -32,6 +31,7 @@ from .export import export
 
 ROOT = Path(__file__).resolve().parents[2]  # the nettai repository
 FILE = "nettai-ai.safetensors"
+REPO = "nettaisen/nettai-ai"
 
 # The metadata nettai reads to play a network (net.rs, `Net::from_safetensors`): the rest of the export's (the
 # commit, the update and decisions it is from) isn't published.
@@ -61,19 +61,24 @@ def check(weights: Path) -> None:
             raise SystemExit(f"publish: the check failed: {' '.join(cmd)}")
 
 
+def next_revision(line: str) -> int:
+    """The line's next release revision: one past its releases' highest (`<line>-r<N>`)."""
+    out = subprocess.run(["gh", "release", "list", "-R", REPO, "--limit", "1000", "--json", "tagName", "--jq", ".[].tagName"],
+                         capture_output=True, text=True, check=True).stdout
+    revisions = [int(m[1]) for tag in out.split() if (m := re.fullmatch(rf"{re.escape(line)}-r(\d+)", tag))]
+    return max(revisions, default=0) + 1
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("checkpoint", help="a checkpoint file or a run directory (its latest checkpoint)")
-    ap.add_argument("--repo", required=True, help="a checkout of the nettai-ai repository")
     ap.add_argument("--line", default=None, help="the nettai minor version it is for (default: the workspace's)")
-    ap.add_argument("--push", action="store_true", help="push the commit too")
+    ap.add_argument("--out", default=FILE, help=f"where the checked file is written (default: {FILE})")
+    ap.add_argument("--release", action="store_true", help="publish it as the line's next release of the repository")
     a = ap.parse_args()
     line = a.line or workspace_line()
     if not re.fullmatch(r"\d+\.\d+", line):
         raise SystemExit(f"publish: --line {line!r} isn't a major.minor version")
-    repo = Path(a.repo).resolve()
-    if not (repo / ".git").exists():
-        raise SystemExit(f"publish: {repo} isn't a checkout of the nettai-ai repository")
     ckpt = Path(a.checkpoint).resolve()
     with tempfile.TemporaryDirectory() as tmp:
         exported = Path(tmp) / "exported.safetensors"
@@ -84,20 +89,22 @@ def main() -> None:
         save_file(load_file(str(exported)), str(out), metadata={k: meta[k] for k in PLAYED})
         check(out)
         data = out.read_bytes()
-    (repo / line).mkdir(exist_ok=True)
-    (repo / line / FILE).write_bytes(data)
-    index_path = repo / "index.json"
-    index = json.loads(index_path.read_text()) if index_path.exists() else {}
-    index[line] = hashlib.sha256(data).hexdigest()
-    index_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
-    print(f"publish: {repo / line / FILE} ({len(data):,} bytes), index.json's {line}")
-    subprocess.run(["git", "add", f"{line}/{FILE}", "index.json"], cwd=repo, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", f"nettai {line}: new weights"], cwd=repo, check=True)
-    if a.push:
-        subprocess.run(["git", "push", "-q"], cwd=repo, check=True)
-        print("publish: pushed")
-    else:
-        print(f"publish: committed in {repo}; push it to publish (git -C {repo} push)")
+    out = Path(a.out).resolve()
+    out.write_bytes(data)
+    sha = hashlib.sha256(data).hexdigest()
+    print(f"publish: {out} ({len(data):,} bytes), SHA-256 {sha}")
+    if not a.release:
+        print("publish: not released (--release publishes it)")
+        return
+    tag = f"{line}-r{next_revision(line)}"
+    with tempfile.TemporaryDirectory() as tmp:
+        # (The release's file must be named FILE, whatever --out was.)
+        asset = Path(tmp) / FILE
+        asset.write_bytes(data)
+        notes = f"The network nettai {line}'s practice dummy plays.\n\nSHA-256 {sha}"
+        subprocess.run(["gh", "release", "create", tag, str(asset), "-R", REPO, "--target", "main", "--title", f"{line} {tag.split('-')[1]}",
+                        "--notes", notes], check=True)
+    print(f"publish: released {tag}; the repository's Pages workflow puts it on the site")
 
 
 if __name__ == "__main__":

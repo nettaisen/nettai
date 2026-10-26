@@ -957,9 +957,13 @@ main thread; no worker is needed.
 
 **Published apart from the app** (2026-10-26, the user: "pull the model out into its own repo so the model can be
 updated by nettai without having to pull a new release of nettai, unless the minor version of nettai is
-incompatible"). The repository github.com/nettaisen/nettai-ai (public) keeps one network for each nettai **line**,
-its major and minor version: `<line>/nettai-ai.safetensors`, and `index.json` giving each line's SHA-256 (a check
-for a new one is that small file, not the network). Nothing else is published (the user: "don't expose unnecessary
+incompatible"). The repository github.com/nettaisen/nettai-ai (public) publishes each network as a release for a nettai
+**line**, its major and minor version, tagged `<line>-r<revision>` (`0.11-r1`) and holding
+`nettai-ai.safetensors`; the networks aren't in git (2026-10-26, the user: "can you also switch nettai-ai to a
+workflow?"). Its Pages workflow (pages.yml) rebuilds the site, https://nettai.n1gp.net/nettai-ai/ (the
+organization's Pages domain), when a release is published: `index.json` giving each line's newest network's
+SHA-256 (a check for a new one is that small file, not the network), and `weights/<sha256>.safetensors` those
+networks, named by their SHA-256 so a cached index never points at a file that changed. Nothing else is published (the user: "don't expose unnecessary
 metadata ... i don't know why you need anything other than just the tensors"): the file's metadata is only what
 nettai reads to play it (`publish.PLAYED`: the format, the spec hash, the architecture, the levels' knobs, k and
 the screen's decision limit, which let a network of another size or timing be published without a release of the
@@ -972,18 +976,20 @@ version and a network trained for it, published under its own line, the older li
   index's, else the line's downloaded (`nettai_platform::http::get`, its `http` feature: reqwest, async, run as a
   `nettai_platform::task` that is cancelled when dropped: tokio's runtime on the desktop, `fetch` in the browser
   (the user: "use reqwest instead of ureq? ureq isn't cancellable or async"),
-  from raw.githubusercontent.com, which a page may fetch), checked and kept; with no index, the copy kept. The AI
+  from the site, which a page may fetch: the domain itself, since its github.io address redirects there without
+  the cross-origin header), checked and kept; with no index, the copy kept. The AI
   plugged in meanwhile is `ai::WaitingAi` on an `ai::Arriving`: till the network arrives it waits as a decision
   waits for a fingerprint (its custom screen held), then it is that network's `NetAi`; one that arrives as an error
   stops it, said in the log. `NETTAI_AI_WEIGHTS=<file>` (the desktop's) plays that file instead (the user: "can
   you also let me override the weights locally for testing?"). No weights are built in, and none are in this
   repository but the test fixture's (crates/nettai-training/tests/fixtures/net.safetensors, small and random),
   which the tests play.
-- **Publishing**: `uv run python -m nettai_ai.publish <checkpoint> --repo <nettai-ai checkout> [--line 0.11]
-  [--push]` exports it, keeps of its metadata what nettai reads, runs the tests that need trained weights on the file (`NETTAI_AI_WEIGHTS` naming it:
-  nettai-training's `weights_to_publish_play_at_three_levels`, nettai's `the_dummy_that_fights_takes_hp_away`, both
-  `#[ignore]`d otherwise), writes it and its SHA-256 and commits there ("nettai <line>: new weights"). The first published is the large run's
-  update 2,000 (line 0.11), the network the app had built in.
+- **Publishing**: `uv run python -m nettai_ai.publish <checkpoint> [--line 0.11] [--out FILE] [--release]`
+  exports it, keeps of its metadata what nettai reads, runs the tests that need trained weights on the file
+  (`NETTAI_AI_WEIGHTS` naming it: nettai-training's `weights_to_publish_play_at_three_levels`, nettai's
+  `the_dummy_that_fights_takes_hp_away`, both `#[ignore]`d otherwise) and writes it; `--release` publishes it as the
+  line's next release (`gh release create`), which rebuilds the site. The first published is the large run's update
+  2,000 (release 0.11-r1), the network the app had built in.
 
 Reading a network is a copy of its floats (a few ms); every `NetAi` of the app's shares one `Arc<Net>`.
 

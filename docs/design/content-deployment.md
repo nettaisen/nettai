@@ -6,10 +6,10 @@ with.
 
 ## 1. Decisions (the user, 2026-10-26)
 
-- **One repo per pack**, named as the pack, with the pack's history: `nettaisen/exe4`, `exe5`, `exe6` and `exelib`
-  (sites at `nettaisen.github.io/exe6/` and so on). The engine's API declarations (`content/nettai`) and
-  `content/.luaurc` stay in the engine repo:
-  they are the engine's.
+- **One repo per pack**, named as the pack, with the pack's history: `nettaisen/exe4`, `exe5`, `exe6` and `exelib`.
+  Their sites are at `https://nettai.n1gp.net/exe6/` and so on: the organization's Pages domain, which its github.io
+  addresses redirect to (without the cross-origin header a browser needs, so the app asks the domain directly). The
+  engine's API declarations (`content/nettai`) and `content/.luaurc` stay in the engine repo: they are the engine's.
 - **The engine repo has them as git submodules** (`content/exe4`, `content/exe5`, `content/exe6`, `content/exelib`)
   for development, tests and tools. **An app release downloads the published bundles** and ships those.
 - **Published on GitHub Pages**, each content repo its own site: static files, which the desktop app and the browser
