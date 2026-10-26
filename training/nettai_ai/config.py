@@ -79,6 +79,7 @@ class EnvConfig:
     # Threads that only make builds ahead (the pool's `builders`); 0: the stepping workers make them as they wait,
     # which leaves a step short-handed while a full build (up to 130 ms) is being made.
     builders: int = 4
+    mirror: bool = False  # both sides play side 0's build (evaluation's --mirror: play alone decides)
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 

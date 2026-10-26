@@ -384,12 +384,15 @@ def main() -> None:
     ap.add_argument("--hp", type=int, default=1000)
     ap.add_argument("--fake", action="store_true", help="play FakePool instead of nettai_gym")
     ap.add_argument("--duplicate", action="store_true", help="each deal twice, the seats swapped (pool.set_deal)")
+    ap.add_argument("--mirror", action="store_true", help="both sides play side 0's build: with --duplicate, play alone decides")
     ap.add_argument("--records", default=None, help="write every counted round's record here (JSON lines)")
     ap.add_argument("--device", default="cpu")
     a = ap.parse_args()
     device = torch.device(a.device)
     main_player, state = load_player(a.checkpoint, device)
     cfg = config_from_dict(state["config"])
+    if a.mirror:
+        cfg.env.mirror = True
     games = a.games.split(",") if a.games else list(cfg.env.games)
     bots = [] if a.no_bots else [b for b in a.bots.split(",") if b]
     level = LEVELS[a.level]

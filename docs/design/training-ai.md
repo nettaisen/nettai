@@ -792,7 +792,9 @@ All of these run in Rust on the pool, fast, and print a table:
   first round is dropped, since seats, delays and k change from the next round. `--duplicate` plays each deal
   twice with the seats swapped (`pool.set_deal`: an env and one of the same pairing the other way round share a
   key) and counts the deals each player won both times, lost both times, or split (the deal decided: 50% if the
-  deal didn't matter between even players, 100% if it decided every round); `--records` writes every counted
+  deal didn't matter between even players, 100% if it decided every round); `--mirror` gives both sides side 0's
+  build (`env.mirror`), so with `--duplicate` neither the builds nor the chip draws decide, play alone (what a
+  player who beats a scripted one every time beats it at); `--records` writes every counted
   round's record (JSON lines). It prints a table (wins, draws,
   losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
   (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it

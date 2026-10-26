@@ -99,6 +99,10 @@ pub struct Config {
     /// The chance a random folder is seeded with a pair of chips that work
     /// together (a setup and its payoff, from the fingerprints, §6.2).
     pub combos: f64,
+    /// Both sides play side 0's build (its navi, folder, NaviCust...): with
+    /// duplicate deals, a round is decided by play alone (evaluation's
+    /// `--mirror`).
+    pub mirror: bool,
 }
 
 impl Default for Config {
@@ -116,6 +120,7 @@ impl Default for Config {
             randomize: 0.75,
             full_lists: crate::builds::FULL_SHARE,
             combos: 0.3,
+            mirror: false,
         }
     }
 }
@@ -1056,8 +1061,12 @@ impl EnvBuilds {
 impl RoundMade {
     fn new(game: &Game, picks: &mut Picks, builds: &EnvBuilds, g: usize, cfg: &Config) -> Result<RoundMade, String> {
         let builds = [builds.next(g)?, builds.next(g)?];
-        let pairs = [builds[0].pair, builds[1].pair];
-        let sides = builds.map(|b| b.side);
+        let mut pairs = [builds[0].pair, builds[1].pair];
+        let mut sides = builds.map(|b| b.side);
+        if cfg.mirror {
+            sides[1] = sides[0].clone();
+            pairs[1] = pairs[0];
+        }
         let hp = cfg.hp.map(|(lo, hi)| draw(picks, lo, hi));
         let seed = picks.next() as u32;
         let m = game.maker.round_with(sides, hp, seed)?;

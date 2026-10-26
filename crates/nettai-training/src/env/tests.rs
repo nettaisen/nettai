@@ -545,3 +545,23 @@ fn the_rules_buttons_without_uses_can_be_pressed() {
         assert!(seen.iter().any(|k| k.contains(wanted) && k != "darksoul"), "{game}: no {wanted} form taken: {seen:?}");
     }
 }
+
+/// With `mirror`, both sides play side 0's build: the same navi and the
+/// same max HP every round, where random builds differ.
+#[test]
+fn mirrored_rounds_give_both_sides_one_build() {
+    for mirror in [false, true] {
+        let seats = [Controller::Bot(BotKind::Masher), Controller::Bot(BotKind::Masher)];
+        let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 1200, seats, mirror, ..Config::default() }, 12).unwrap();
+        while env.ended.len() < 12 {
+            env.step([0, 0]).unwrap_or_else(|e| panic!("{e}"));
+        }
+        let same = env.ended.iter().filter(|r| r.navis[0] == r.navis[1] && r.max_hp[0] == r.max_hp[1]).count();
+        println!("mirror {mirror}: {same} of {} rounds with one navi and max HP", env.ended.len());
+        if mirror {
+            assert_eq!(same, env.ended.len());
+        } else {
+            assert!(same < env.ended.len(), "random builds always alike");
+        }
+    }
+}
