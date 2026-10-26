@@ -9,8 +9,8 @@
 //! nothing else.
 //!
 //! The part exported is a range of the replay's ticks, shown on the viewer's bar between two handles: the whole
-//! match at first; a round, or the whole match again, by the Range's list; or any part by the handles (dragged,
-//! nudged by a frame or a second, or set where the viewer is). The range is always whole: its start before its end,
+//! match at first; a round, or the whole match again, by the Range's list; or any part by the handles (dragged, or
+//! set where the viewer is: SET START HERE, SET END HERE, the brackets, the shoulders). The range is always whole: its start before its end,
 //! both within the replay ([`moved`], [`set_here`]). One that is no round and not the whole match is the player's
 //! own (Custom), and the Range's list keeps the last such to go back to.
 
@@ -34,6 +34,9 @@ use std::sync::{Arc, Mutex};
 /// (docs/frontend.md §8, "Video").
 const SIZES: [u32; 3] = [2, 4, 6];
 const FIRST_SIZE: usize = 1;
+
+/// The export mode's controls' scope (`Nav::open`): the keys go through them alone while it is on.
+const SCOPE: &str = "export.";
 
 /// The sides offered, in the Sides switch's order: One, Both (on one screen), Side by side.
 const SIDES: [Sides; 3] = [Sides::One, Sides::Both, Sides::SideBySide];
@@ -101,7 +104,7 @@ pub struct Export {
 }
 
 /// `range` with its start (or, `end`, its end) moved to `tick` and held there: the start a tick before the end at
-/// least, both within the replay's `length` ticks. (A handle dragged or nudged stops at the other.)
+/// least, both within the replay's `length` ticks. (A handle dragged stops at the other.)
 pub fn moved(range: &Range<u32>, length: u32, end: bool, tick: u32) -> Range<u32> {
     let length = length.max(1);
     let (start, stop) = (range.start.min(length - 1), range.end.clamp(1, length));
@@ -202,12 +205,16 @@ impl Export {
         export.name(shell);
         export.show(shell);
         shell.ui().global::<ReplaysView>().set_exporting(true);
+        // (Its controls are the keys' alone, as a dialog's are, the focus on SET START HERE: the viewer under it has no
+        // focus, its keys its own.)
+        shell.nav.open(SCOPE, crate::nav::Key::new("export.start-here", 0));
         export
     }
 
     /// End the export mode: an export under way is stopped.
     pub fn close(self, shell: &mut Shell) {
         shell.ui().global::<ReplaysView>().set_exporting(false);
+        shell.nav.close(SCOPE);
     }
 
     /// Whether an export is under way.
@@ -274,21 +281,11 @@ impl Export {
         if end { self.range.end } else { self.range.start }
     }
 
-    /// A handle dragged or nudged to `tick`, held by the other and the replay's ends: where it is then (none while it
-    /// exports, when the range can't change).
+    /// A handle dragged to `tick`, held by the other and the replay's ends: where it is then (none while it exports,
+    /// when the range can't change).
     pub fn drag(&mut self, shell: &mut Shell, end: bool, tick: u32) -> Option<u32> {
         let range = moved(&self.range, self.length(), end, tick);
         self.set_range(shell, range).then(|| self.handle(end))
-    }
-
-    /// A handle nudged by `by` ticks (refused, and heard so, while it exports).
-    pub fn nudge(&mut self, shell: &mut Shell, end: bool, by: i32) -> Option<u32> {
-        let tick = self.handle(end).saturating_add_signed(by);
-        let to = self.drag(shell, end, tick);
-        if to.is_none() {
-            shell.sound.play(crate::sound::Cue::Refused);
-        }
-        to
     }
 
     /// A handle set at `tick`, where the viewer is (SET START HERE, SET END HERE): the other goes to the replay's
@@ -625,7 +622,7 @@ mod tests {
         assert_eq!(shown(path, true), "2026-10-11 someone round 2.mp4");
     }
 
-    /// A handle dragged or nudged is held: the start stays a tick before the end at least, and both stay within the
+    /// A handle dragged is held: the start stays a tick before the end at least, and both stay within the
     /// replay, however far it is taken.
     #[test]
     fn a_handle_is_held_by_the_other_and_the_ends() {
@@ -642,7 +639,7 @@ mod tests {
         // Past the replay's ends: at them.
         assert_eq!(moved(&range, length, true, 5000), 100..1000);
         assert_eq!(moved(&range, length, false, 0), 0..500);
-        // (A range already at an end, nudged on: as it was.)
+        // (A range already at an end, taken on: as it was.)
         assert_eq!(moved(&(0..1000), length, true, 1001), 0..1000);
         assert_eq!(moved(&(999..1000), length, false, 1000), 999..1000);
         // (Nothing makes it empty or reversed, whatever is asked.)

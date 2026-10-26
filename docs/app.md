@@ -2293,9 +2293,13 @@ tells the app where it is in the window and takes its clicks. From those rectang
   where the focused one does. A setting (a stepper, a segmented control, a slider: `NavKind.stepper`) is
   walked past too until Enter takes it (`Nav::grabbed`); then Left and Right change it, Enter or Esc lets it go,
   and anything else lets it go and does what it does (docs/design/app-ui.md §2.77). Nothing changes with the arrows
-  alone: a replay's seek bar is a setting too, and a phone's build box and Practice's rows that open a list are
-  selects (Enter opens the list).
+  alone: a phone's build box and Practice's rows that open a list are selects (Enter opens the list). (A replay's
+  viewer has no focus at all: below, `Screen::claim`.)
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
+- **A view whose keys are its own** (a replay's viewer: docs/design/app-ui.md §2.100) takes the menus' actions before
+  the shell does anything with them (`Screen::claim`, asked in `App::act` after a field's edit or a setting taken is
+  left, while nothing is open over the screen): the keyboard's and the pad's alike, held arrows repeating. Its view
+  shows no cursor (`Nav::bare`, set as it is entered): the cursor shows only over a scope opened on it.
 - **A screen may route a move itself** where the places don't say it (`Screen::route`, asked before the nav for
   an arrow or Tab while nothing is open over the screen): Play's Right from its list goes past the overview,
   which takes no focus, to EDIT (`Nav::focus_first`), and its Tab goes zone by zone (`Nav::tab_in`, the
@@ -2576,9 +2580,9 @@ days and kinds of match (fifteen files), with three that aren't played beside th
 content's, no replay at all). The steps: the list; the actions beside it (a pair: the focus a step along); a
 search; the Online filter; a file that doesn't read, selected as the screen arrives from the main menu (its box
 empty, nothing of the menu's reel in it: §1); the delete question, and then a delete carried out, of a
-file made for it; the viewer's export mode from the list (E), as it begins and with its start's handle a second on
-(a pair), as an export under way looks and as a failed one does (both set on the view: no export runs); the two
-cards; the viewer held a little way into the second round (a pair a focus move apart, and a pair a second of
+file made for it; the viewer's export mode from the list (E), as it begins and with its start set a second on
+(Shift+Right, then the bracket: a pair), as an export under way looks and as a failed one does (both set on the view: no export runs); the two
+cards; the viewer held a little way into the second round (a pair a speed's badge apart, Up, and a pair a second of
 playback apart); five seconds on; the other console; both builds over it; the ⋯ menu, the playback speed's menu,
 and the speed's badge at 2×; the export mode from the viewer (its start set where the viewer is; both sides); the
 viewer of a match whose setups weren't open (BUILDS unavailable); a replay that
@@ -3382,9 +3386,14 @@ screen runs the ticks due, presents the picture into the window's texture if one
   (`TransportButtons`), the speed's badge while it isn't 1× (`ReplaysView.speed`, "2×", in the cursor's color:
   `Watching::show_speed`), the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button
   (below), and ⋯ (`more`, an `IconButton` of three dots, as Play's build's ⋯). The footer's status counts the
-  rounds. The focus starts on the bar, which Enter takes, Left and Right then going five seconds (a setting, as a
-  slider is: §11). Space plays and pauses, comma and period step a frame (and pause; no button does), the brackets
-  (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list. At its end a replay
+  rounds. The viewer has no focus to move (docs/design/app-ui.md §2.100; `Nav::bare`: no cursor): its keys are
+  `Replays::claim`'s, the menus' actions, the keyboard's and the pad's alike, and `Replays::key`'s, the letters and
+  what no action is. Left and Right go five seconds (`SKIP`; Shift: one, `key`), Space, Enter, the pad's A and north
+  play and pause, comma and period step a frame (and pause; no button does), the brackets and the shoulders (the
+  keys bound to L and R) go a round, Up and Down change the speed a step (refused past the ends), M and the pad's
+  START open the ⋯ menu (`Replays::open_more`), Q the popup up next, N the queue's next, B (Select), I and P as
+  their rows, E the export mode; Tab, the pages and Delete are taken and do nothing; Esc goes back to the list.
+  The bar is still a `Focusable` (`seek`) for its place, which the preview and the tour go by. At its end a replay
   stops with the transport there; play starts it again. The viewer marks no clip outside the export mode (below).
 - *The ⋯ menu* is the app's picker as a menu whose rows have marks (`Shell::pick_marked`; the UI's `PickMark`
   each row: `check`, drawn at its right; `dim`; `line`, over a group's first; `value`, a choice's value at its right
@@ -3570,23 +3579,24 @@ screen runs the ticks due, presents the picture into the window's texture if one
   placed by `Theme.phone`), since two under an `if` each cost more (§14).
 
 **The export** (`Export`) is the viewer's export mode (docs/design/app-ui.md §2.96; until then a dialog over the
-list or the viewer). The ⋯ menu's EXPORT VIDEO begins it (`Replays::enter_export`: the builds put away, the focus on
-the range's start); the list's EXPORT VIDEO (and E, the pad's north button, a row's menu, a phone's sheet) watches
+list or the viewer). The ⋯ menu's EXPORT VIDEO (and E) begins it (`Replays::enter_export`: the builds put away); its
+controls are a scope of the keys (`Nav::open("export.")` in `Export::open`, closed by `Export::close`, the focus on
+SET START HERE), through which Up, Down, Tab and Enter go, where Left and Right still seek and Space plays; the
+list's EXPORT VIDEO (and E, the pad's north button, a row's menu, a phone's sheet) watches
 the replay with `export` set (`Replays::watch`, `export_due`), and the viewer, as it is shown, is paused at its
 start and begins it. `ReplaysView.exporting` says it is on; it holds the controls shown (`Replays::follow_viewer`).
 Playing, pausing, stepping and seeking work as they do outside it.
 
 - *The range* is `Export::range`, ticks always whole: its start a tick before its end at least, both within the
-  replay (`export::moved` for a handle dragged or nudged, which stops at the other and at the ends;
+  replay (`export::moved` for a handle dragged, which stops at the other and at the ends;
   `export::set_here` for SET START HERE and SET END HERE, which put one at the viewer's tick, `Watching::shown`, the
   other going to the replay's edge where it would pass it; both tested). The bar draws it as a band in the code
-  color between two handles (`range-start`, `range-end`, 0 to 1), each a `Focusable` of its own
-  (`export.handle`, 0 the start, 1 the end) under the bar's `TouchArea`, which takes the pointer: pressed within 8
-  of a handle it drags the nearer (`export.handle` while held, `export.handle-done` let go, each with the place of
-  10,000), elsewhere it seeks as before. The picture follows a dragged handle (`Watching::drag_to`: the kept states
-  while held, exactly where let go). On a focused handle Left and Right nudge it a tick, with Shift a second
-  (`Screen::key`); a pad's d-pad a tick (`Screen::route`) and its shoulders a second (`Screen::action`); each goes to
-  where it is then, paused (`Watching::go_to`), as Enter on a handle does. A range that is no round and not the
+  color between two handles (`range-start`, `range-end`, 0 to 1), no controls of the focus's (§2.100), under the
+  bar's `TouchArea`, which takes the pointer: pressed within 8 of a handle it drags the nearer (`export.handle`
+  while held, `export.handle-done` let go, `index` 0 the start and 1 the end, each with the place of 10,000),
+  elsewhere it seeks as before. The picture follows a dragged handle (`Watching::drag_to`: the kept states while
+  held, exactly where let go). The keys set a handle where the viewer is: SET START HERE and SET END HERE, the
+  brackets and the shoulders (`Replays::set_here`). A range that is no round and not the
   whole match is kept as Custom (`Export::custom`), the last such, which the Range's list offers after the whole
   match and the rounds; the list's value is the range's (`export-part`: "Custom · 0:12"), and its times are said
   beside it (`export-range`).

@@ -47,7 +47,7 @@ use export::Export;
 use queue::Queue;
 use nettai_battle::{BattleResult, Content};
 use nettai_frontend::game::GraphicsMode;
-use nettai_frontend::player::{tick_at, time_of};
+use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{ENGINE, Info, MatchKind, Outcome};
 use nettai_render::Frame;
 use nettai_render::vfont::TextRenderer;
@@ -70,6 +70,9 @@ const SEARCH_LENGTH: usize = 24;
 /// How long the viewer's controls stay over a replay playing after the last thing the player did (a key, a pad's
 /// button, the pointer moved): then they fade.
 const HUD_IDLE: Duration = Duration::from_millis(2500);
+
+/// How far Left and Right seek in the viewer, in seconds (Shift: one).
+const SKIP: i32 = 5;
 
 /// How long a replay of the queue stays at its end before the next starts, with Autoplay next on.
 const NEXT_AFTER: Duration = Duration::from_secs(2);
@@ -914,8 +917,8 @@ impl Replays {
     }
 
     /// The viewer into its export mode (docs/design/app-ui.md §2.96): the range the whole match, its options over the
-    /// transport, the focus on the range's start. The replay goes on as it was (the builds are put away: the options
-    /// are where they end).
+    /// transport, its controls the keys' (`Export::open`). The replay goes on as it was (the builds are put away: the
+    /// options are where they end).
     fn enter_export(&mut self, shell: &mut Shell) {
         let Some(w) = &mut self.watching else { return };
         if self.export.is_some() {
@@ -927,15 +930,26 @@ impl Replays {
         let (path, side) = (w.path().to_path_buf(), w.side());
         self.export = Some(Export::open(shell, &path, summary, side, w.both()));
         self.hud = None;
-        shell.nav.focus("export.handle", 0);
     }
 
-    /// Out of the export mode (an export under way is stopped), the focus back on the bar.
+    /// Out of the export mode (an export under way is stopped).
     fn leave_export(&mut self, shell: &mut Shell) {
         if let Some(e) = self.export.take() {
             e.close(shell);
-            shell.nav.focus("seek", 0);
         }
+    }
+
+    /// The transport's ⋯ menu (its button, M, the pad's START).
+    fn open_more(&mut self, shell: &mut Shell) {
+        let Some(w) = &self.watching else { return };
+        let rows = w.menu(&shell.ui().global::<ReplaysView>(), self.export.is_some());
+        shell.pick_marked("more", 0, &Key::new("more", 0), rows);
+    }
+
+    /// The export's range's start (or its `end`) set where the viewer is: SET START HERE, SET END HERE, the brackets
+    /// and the shoulders in the export mode.
+    fn set_here(&mut self, shell: &mut Shell, end: bool) {
+        self.export_with_viewer(shell, if end { "end-here" } else { "start-here" }, 0, None);
     }
 
     /// The export mode's handles, buttons and settings that the viewer has a part in (their names after `export.`):
@@ -966,20 +980,6 @@ impl Replays {
             _ => return false,
         }
         true
-    }
-
-    /// A handle nudged by `by` ticks, the picture going to where it is then.
-    fn nudge(&mut self, shell: &mut Shell, end: bool, by: i32) {
-        let (Some(w), Some(e)) = (&mut self.watching, &mut self.export) else { return };
-        if let Some(to) = e.nudge(shell, end, by) {
-            w.go_to(to);
-        }
-    }
-
-    /// The handle the focus is on, in the export mode: false the start, true the end.
-    fn handle_focused(&self, shell: &Shell) -> Option<bool> {
-        let key = shell.nav.focused().filter(|k| k.id == "export.handle" && self.export.is_some())?;
-        Some(key.index == 1)
     }
 
     fn close_sheet(&mut self, shell: &mut Shell) {
@@ -1090,7 +1090,10 @@ impl Screen for Replays {
         self.still.asked = None;
         self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font_in(shell.i18n.code).filter(|_| shell.settings.enhanced)).map(TextRenderer::new);
         if let Some(w) = &mut self.watching {
+            // (The viewer's keys are its own, `claim`'s: it shows no cursor but over its export mode and what opens
+            // over it.)
             shell.nav.enter(VIEWER, "seek");
+            shell.nav.bare();
             shell.lock_game(true);
             // (Opened in its export mode, from the list: paused at its start.)
             let export = std::mem::take(&mut self.export_due);
@@ -1150,6 +1153,7 @@ impl Screen for Replays {
                 "upnext.close" => return self.close_up_next(shell),
                 "upnext.next" => return self.next_in_queue(shell),
                 "upnext.autoplay" => return set_autoplay(shell, !autoplay(shell)),
+                "more" => return self.open_more(shell),
                 // (A row up next: its replay, the ones before it passed; one that is missing is refused.)
                 UP_NEXT_ROW => {
                     let at = index.max(0) as usize + self.current as usize;
@@ -1164,10 +1168,6 @@ impl Screen for Replays {
                 "round-start" => w.round(-1),
                 "next-round" => w.round(1),
                 "builds.sheet" => w.toggle_builds(shell),
-                "more" => {
-                    let rows = w.menu(&shell.ui().global::<ReplaysView>(), self.export.is_some());
-                    shell.pick_marked("more", 0, &Key::new("more", 0), rows);
-                }
                 _ => {}
             }
             return;
@@ -1228,7 +1228,7 @@ impl Screen for Replays {
             return;
         }
         match (&mut self.watching, id) {
-            (Some(w), "seek") => w.skip(5 * by),
+            (Some(w), "seek") => w.skip(SKIP * by),
             (None, "kind") => {
                 self.online_only = by > 0;
                 self.fill(shell);
@@ -1359,13 +1359,6 @@ impl Screen for Replays {
     /// Right from the list goes to the chosen replay's pane, its first button that can be pressed (the pane's other
     /// controls are far below the row, and the All/Online switch over the list nearer by place).
     fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
-        // (A handle of the export's range, on a pad: Left and Right nudge it a frame. The keys' own are `key`'s.)
-        if let Some(end) = self.handle_focused(shell)
-            && matches!(action, Action::Left | Action::Right)
-        {
-            self.nudge(shell, end, if action == Action::Left { -1 } else { 1 });
-            return true;
-        }
         let list = shell.nav.focused().map(|k| k.id.clone());
         if action != Action::Right || self.watching.is_some() || shell.scale.phone {
             return false;
@@ -1377,57 +1370,61 @@ impl Screen for Replays {
         }
     }
 
+    /// The viewer's letters and the keys no action is (the menus' actions are `claim`'s, the keyboard's and the pad's
+    /// alike), and the list's E.
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
         if self.sheet {
             return false;
         }
-        // (On a handle of the export's range, Left and Right nudge it a frame, with Shift a second.)
-        if let Some(end) = self.handle_focused(shell)
-            && matches!(key.code, KeyCode::ArrowLeft | KeyCode::ArrowRight)
-        {
-            let by = if key.shift { tick_at(Duration::from_secs(1)) as i32 } else { 1 };
-            self.nudge(shell, end, if key.code == KeyCode::ArrowLeft { -by } else { by });
-            return true;
-        }
-        // (N the queue's next replay, while it plays: its popup open or not.)
-        if self.watching.is_some() && key.code == KeyCode::KeyN {
-            if !key.repeat {
-                self.next_in_queue(shell);
+        if self.watching.is_none() {
+            // E exports the selected replay (but in the search, where it is a letter).
+            if key.code == KeyCode::KeyE && !self.queue_tab && !shell.nav.on_field() && !key.repeat {
+                if self.playable(shell) {
+                    self.act(shell, "export");
+                } else {
+                    shell.sound.play(Cue::Refused);
+                }
+                return true;
             }
-            return true;
-        }
-        if self.up_next {
             return false;
         }
-        if let Some(w) = &mut self.watching {
-            match key.code {
-                KeyCode::Space if !key.repeat => w.toggle(),
-                KeyCode::Space => {}
-                KeyCode::Comma => w.step(-1),
-                KeyCode::Period => w.step(1),
-                KeyCode::BracketLeft if !key.repeat => w.round(-1),
-                KeyCode::BracketRight if !key.repeat => w.round(1),
-                KeyCode::BracketLeft | KeyCode::BracketRight => {}
-                KeyCode::KeyB if !key.repeat => w.toggle_builds(shell),
-                // (I for the input display; P for the other console's picture in the corner: a picture in the
-                // picture.)
-                KeyCode::KeyI if !key.repeat => w.toggle_inputs(shell),
-                KeyCode::KeyP if !key.repeat => w.toggle_inset(shell),
-                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP => {}
-                _ => return false,
-            }
-            return true;
-        }
-        // E exports the selected replay (but in the search, where it is a letter).
-        if key.code == KeyCode::KeyE && !self.queue_tab && !shell.nav.on_field() && !key.repeat {
-            if self.playable(shell) {
-                self.act(shell, "export");
+        // (N the queue's next replay, Q its popup of what is up next: with the popup open or not.)
+        if matches!(key.code, KeyCode::KeyN | KeyCode::KeyQ) {
+            if key.repeat {
+            } else if key.code == KeyCode::KeyN {
+                self.next_in_queue(shell);
             } else {
-                shell.sound.play(Cue::Refused);
+                self.toggle_up_next(shell);
             }
             return true;
         }
-        false
+        // (The popup's keys are its own, and a setting of the export's taken has the arrows.)
+        if self.up_next || shell.nav.grabbed() {
+            return false;
+        }
+        let exporting = self.export.is_some();
+        let Some(w) = &mut self.watching else { return false };
+        match key.code {
+            // (Shift: a second. The arrows alone are `claim`'s.)
+            KeyCode::ArrowLeft | KeyCode::ArrowRight if key.shift => w.skip(if key.code == KeyCode::ArrowLeft { -1 } else { 1 }),
+            KeyCode::Comma => w.step(-1),
+            KeyCode::Period => w.step(1),
+            KeyCode::Space | KeyCode::BracketLeft | KeyCode::BracketRight | KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP | KeyCode::KeyM | KeyCode::KeyE if key.repeat => {}
+            KeyCode::Space => w.toggle(),
+            // (In the export mode the brackets, the handles' shape, set the range's start and end where the viewer is.)
+            KeyCode::BracketLeft | KeyCode::BracketRight if exporting => self.set_here(shell, key.code == KeyCode::BracketRight),
+            KeyCode::BracketLeft => w.round(-1),
+            KeyCode::BracketRight => w.round(1),
+            KeyCode::KeyB => w.toggle_builds(shell),
+            // (I for the input display; P for the other console's picture in the corner: a picture in the picture.)
+            KeyCode::KeyI => w.toggle_inputs(shell),
+            KeyCode::KeyP => w.toggle_inset(shell),
+            KeyCode::KeyM => self.open_more(shell),
+            KeyCode::KeyE if exporting => {}
+            KeyCode::KeyE => self.enter_export(shell),
+            _ => return false,
+        }
+        true
     }
 
     fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
@@ -1442,26 +1439,9 @@ impl Screen for Replays {
     }
 
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if self.up_next {
+        // (The viewer's are `claim`'s.)
+        if self.up_next || self.watching.is_some() {
             return false;
-        }
-        // (On a handle of the export's range, the shoulders nudge it a second.)
-        if let Some(end) = self.handle_focused(shell)
-            && matches!(action, Action::Previous | Action::Next)
-        {
-            let by = tick_at(Duration::from_secs(1)) as i32;
-            self.nudge(shell, end, if action == Action::Previous { -by } else { by });
-            return true;
-        }
-        if let Some(w) = &mut self.watching {
-            // The shoulders go a round; the pad's north button plays and pauses.
-            match action {
-                Action::Previous => w.round(-1),
-                Action::Next => w.round(1),
-                Action::Alternate => w.toggle(),
-                _ => return false,
-            }
-            return true;
         }
         match action {
             // (In the Queue tab Delete takes the entry out of the queue: its file stays.)
@@ -1469,6 +1449,42 @@ impl Screen for Replays {
             Action::Delete if !shell.nav.on_field() && self.selected.is_some() => self.ask_delete(shell),
             Action::Alternate if !self.queue_tab && self.playable(shell) => self.act(shell, "export"),
             _ => return false,
+        }
+        true
+    }
+
+    /// The viewer has no focus to move (docs/design/app-ui.md §2.100): Left and Right always seek, five seconds; Enter,
+    /// Space and the pad's A and north play and pause; the shoulders (and the keys bound to L and R) go a round; Up
+    /// and Down change the speed; the pad's START opens the ⋯ menu. In the export mode its controls are a scope the
+    /// keys go through (Up, Down, Tab, Enter: `Export::open`), and the shoulders set the range's start and end; Left
+    /// and Right still seek. Back is the shell's; the popup up next has its own keys.
+    fn claim(&mut self, shell: &mut Shell, action: Action) -> bool {
+        if self.up_next {
+            return false;
+        }
+        let exporting = self.export.is_some();
+        let Some(w) = &mut self.watching else { return false };
+        match action {
+            Action::Back => return false,
+            Action::Left => w.skip(-SKIP),
+            Action::Right => w.skip(SKIP),
+            Action::Alternate => w.toggle(),
+            Action::Menu => self.open_more(shell),
+            Action::Previous | Action::Next if exporting => self.set_here(shell, action == Action::Next),
+            Action::Previous => w.round(-1),
+            Action::Next => w.round(1),
+            _ if exporting => return false,
+            Action::Confirm => w.toggle(),
+            Action::Up | Action::Down => {
+                let at = w.speed() + if action == Action::Up { 1 } else { -1 };
+                if (0..4).contains(&at) {
+                    w.choose_speed(shell, at);
+                } else {
+                    shell.sound.play(Cue::Refused);
+                }
+            }
+            // (Tab, the pages, Delete: nothing, with no focus to move.)
+            _ => {}
         }
         true
     }

@@ -147,6 +147,13 @@ pub trait Screen {
         false
     }
 
+    /// Any of the menus' actions, before the shell does anything with it (after a field's edit or a setting taken
+    /// is left, and never while a dialog or a list of choices is over the screen): for a view whose keys are its own,
+    /// with no focus to move (a replay's viewer: the arrows seek, Enter plays). True if the screen took it.
+    fn claim(&mut self, _shell: &mut Shell, _action: Action) -> bool {
+        false
+    }
+
     /// An arrow or Tab (Shift+Tab), before the nav finds where it goes by the controls' places (docs/app.md
     /// §11): true if the screen moved the focus itself, where those places don't say it (Play's: Right from its
     /// list goes past the overview, which takes no focus, to EDIT; Tab goes through its zones in their order).

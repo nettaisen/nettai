@@ -191,6 +191,10 @@ msgstr "播放/暂停"
 msgid "Step a frame"
 msgstr "逐帧播放"
 
+# The viewer's Left and Right: five seconds back or ahead (Shift: one).
+msgid "Seek"
+msgstr "快退/快进"
+
 msgid "Previous or next round"
 msgstr "上/下一回合"
 
@@ -223,8 +227,8 @@ msgstr "播放队列中没有其他录像。"
 # ---- The export mode ----
 
 # The viewer's export mode: the part of the replay exported is between two handles on the bar (滑块), which the
-# pointer drags and the arrows move (the footer's hint); the buttons set the range's start or its end where the
-# replay is shown (the playback position); the Range's list (the whole match, a round, Custom: the player's own) is
+# pointer drags; the buttons, and the brackets (the footer's hint, "Set start or end"), set the range's start or its
+# end where the replay is shown (the playback position); the Range's list (the whole match, a round, Custom: the player's own) is
 # under the same words as before. The line under the options says what to do while nothing is exporting.
 msgid "Set start here"
 msgstr "设为起点"
@@ -232,8 +236,8 @@ msgstr "设为起点"
 msgid "Set end here"
 msgstr "设为终点"
 
-msgid "Move a handle"
-msgstr "移动滑块"
+msgid "Set start or end"
+msgstr "设置起点/终点"
 
 msgid "Drag the handles on the bar to choose the part to export."
 msgstr "拖动进度条两端的滑块，选择要导出的片段。"

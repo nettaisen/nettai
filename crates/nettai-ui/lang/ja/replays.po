@@ -191,6 +191,10 @@ msgstr "再生/一時停止"
 msgid "Step a frame"
 msgstr "コマ送り"
 
+# The viewer's Left and Right: five seconds back or ahead (Shift: one).
+msgid "Seek"
+msgstr "巻き戻し/早送り"
+
 msgid "Previous or next round"
 msgstr "前/次のラウンド"
 
@@ -224,8 +228,8 @@ msgstr "再生キューに次のリプレイはありません。"
 # ---- The export mode ----
 
 # The viewer's export mode: the part of the replay exported is between two handles on the bar (つまみ), which the
-# pointer drags and the arrows move (the footer's hint); the buttons set the range's start or its end where the
-# replay is shown (the playback position); the Range's list (the whole match, a round, Custom: the player's own) is
+# pointer drags; the buttons, and the brackets (the footer's hint, "Set start or end"), set the range's start or its
+# end where the replay is shown (the playback position); the Range's list (the whole match, a round, Custom: the player's own) is
 # under the same words as before. The line under the options says what to do while nothing is exporting.
 msgid "Set start here"
 msgstr "ここを開始点に"
@@ -233,8 +237,8 @@ msgstr "ここを開始点に"
 msgid "Set end here"
 msgstr "ここを終了点に"
 
-msgid "Move a handle"
-msgstr "つまみを動かす"
+msgid "Set start or end"
+msgstr "開始点/終了点を設定"
 
 msgid "Drag the handles on the bar to choose the part to export."
 msgstr "バーの両端のつまみをドラッグして、書き出す範囲を選びます。"

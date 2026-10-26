@@ -1270,6 +1270,14 @@ impl App {
         }
         let ui = self.shell.ui();
         let over = self.shell.dialog.is_some() || self.shell.picking.is_some();
+        // (A view whose keys are its own takes them first: `Screen::claim`.)
+        if !over && !self.shell.nav.grabbed() {
+            let hearer = self.hearer();
+            if self.call(hearer, |s, shell| s.claim(shell, action)).unwrap_or(false) {
+                self.settle();
+                return;
+            }
+        }
         // (A page that scrolls with nothing in it to move to is the screen's to scroll: `Screen::scroll`.)
         if !over && matches!(action, Action::Up | Action::Down | Action::PageUp | Action::PageDown | Action::Home | Action::End) {
             let hearer = self.hearer();

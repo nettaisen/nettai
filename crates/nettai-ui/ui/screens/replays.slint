@@ -953,9 +953,9 @@ component ListPage inherits Page {
 // that fill's end (the picture follows a drag in steps, and lands where it is let go); taken (Enter), Left and Right
 // go five seconds.
 // The pointer over it shows a preview of the battle at the time under it, above it (docs/design/app-ui.md §2.96).
-// In the export mode the range is a band in the code color between two handles, brackets taller than the playhead,
-// each a control of its own (`export.handle`, 0 the start, 1 the end: Left and Right nudge it); the pointer pressed
-// within 8 of one drags it (the nearer), anywhere else the bar.
+// In the export mode the range is a band in the code color between two handles, brackets taller than the playhead
+// (`export.handle`, 0 the start, 1 the end, to the app; no control of the focus's: the keys set them where the viewer
+// is); the pointer pressed within 8 of one drags it (the nearer), anywhere else the bar.
 component SeekBar inherits Rectangle {
     property <length> at: self.width * clamp(ReplaysView.position, 0, 1);
     property <bool> range: ReplaysView.exporting;
@@ -964,30 +964,10 @@ component SeekBar inherits Rectangle {
     // What the pointer holds: 0 nothing, 1 the bar, 2 the start's handle, 3 the end's.
     property <int> held;
     height: 24px;
+    // (The bar's place, which the preview and the ⋯ menu go by. The viewer's keys are its own: no focus comes here.)
     Focusable {
         nav: "seek";
         kind: NavKind.stepper;
-    }
-
-    // (The handles' places for the focus; the pointer's presses are the bar's, over them.)
-    Focusable {
-        x: root.from - 8px;
-        y: -2px;
-        width: 16px;
-        height: 28px;
-        nav: "export.handle";
-        nav-index: 0;
-        enabled: root.range;
-    }
-
-    Focusable {
-        x: root.to - 8px;
-        y: -2px;
-        width: 16px;
-        height: 28px;
-        nav: "export.handle";
-        nav-index: 1;
-        enabled: root.range;
     }
 
     Rectangle {
@@ -1611,23 +1591,29 @@ component ViewerPage inherits Rectangle {
         title: root.phone ? I18n.upper(@tr("Replay")) : ReplaysView.title;
         back: I18n.upper(@tr("Replays"));
         status: @tr("{n} round" | "{n} rounds" % ReplaysView.rounds);
-        // (B and Select show both builds, where they may be. In the export mode the arrows move a handle the focus is
-        // on, and Back leaves the mode.)
+        // (The viewer's keys are its own, none moving a focus (docs/design/app-ui.md §2.100): the arrows seek, M and
+        // START open the ⋯ menu, B and Select show both builds where they may be. In the export mode the brackets
+        // and the shoulders set the range's ends, and Back leaves the mode.)
         hints: ReplaysView.exporting ? [
             { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: "←", key2: "→", pad: PadButton.move, text: @tr("Seek") },
             { key: ",", key2: ".", text: @tr("Step a frame") },
-            { key: "←", key2: "→", pad: PadButton.move, text: @tr("Move a handle") },
+            { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Set start or end") },
             { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Cancel") },
         ] : ReplaysView.builds-open ? [
-            { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: "Space", pad: Shell.pad-a, text: @tr("Play or pause") },
+            { key: "←", key2: "→", pad: PadButton.move, text: @tr("Seek") },
             { key: ",", key2: ".", text: @tr("Step a frame") },
             { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
             { key: "B", pad: PadButton.select, text: @tr("Builds") },
+            { key: "M", pad: PadButton.start, text: @tr("Menu") },
             { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         ] : [
-            { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+            { key: "Space", pad: Shell.pad-a, text: @tr("Play or pause") },
+            { key: "←", key2: "→", pad: PadButton.move, text: @tr("Seek") },
             { key: ",", key2: ".", text: @tr("Step a frame") },
             { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+            { key: "M", pad: PadButton.start, text: @tr("Menu") },
             { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         ];
         Arrive {

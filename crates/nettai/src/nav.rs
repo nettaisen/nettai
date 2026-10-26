@@ -444,6 +444,8 @@ pub struct Nav {
     held: bool,
     /// The presses of Enter on a control, counted for the UI (the control flashes, the cursor snaps in).
     presses: i32,
+    /// The view shown keeps no cursor of its own ([`Nav::bare`]).
+    bare: bool,
 }
 
 impl Default for Nav {
@@ -475,6 +477,7 @@ impl Nav {
             edit_due: false,
             held: false,
             presses: 0,
+            bare: false,
         }
     }
 
@@ -511,10 +514,17 @@ impl Nav {
             self.memory.insert(std::mem::take(&mut self.view), key);
         }
         self.scopes.clear();
+        self.bare = false;
         self.view = view.to_string();
         self.main = Some(Key::new(main, 0));
         self.focus = None;
         self.wanted = self.memory.get(view).cloned().or_else(|| self.main.clone());
+    }
+
+    /// The view just entered shows no cursor of its own (a replay's viewer, whose keys are all its own:
+    /// `Screen::claim`): the cursor shows only over a scope opened on it (a menu, a dialog, the export mode).
+    pub fn bare(&mut self) {
+        self.bare = true;
     }
 
     /// A scope opens over the screen (`prefix`: what its controls' names begin with), the focus on `main`.
@@ -719,7 +729,8 @@ impl Nav {
         }
         // The cursor: toward the focus's place, or there at once where it wasn't showing.
         const GLIDE: f32 = 0.032;
-        let target = self.told.as_ref().map(|(_, rect)| *rect).filter(|_| self.shown);
+        let shown = self.shown && !(self.bare && self.scopes.is_empty());
+        let target = self.told.as_ref().map(|(_, rect)| *rect).filter(|_| shown);
         let drawn = match (self.drawn, target) {
             (Some((at, last)), Some(to)) if glide => {
                 let share = 1.0 - (-now.saturating_duration_since(last).as_secs_f32() / GLIDE).exp();
@@ -737,7 +748,7 @@ impl Nav {
             nav.set_h(rect.h);
         }
         self.drawn = drawn.map(|rect| (rect, now));
-        nav.set_shown(self.shown);
+        nav.set_shown(shown);
         nav.set_pad(self.pad);
         nav.set_editing(self.edit.is_some());
         nav.set_grabbed(self.grabbed());

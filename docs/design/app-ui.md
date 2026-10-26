@@ -1273,7 +1273,8 @@ Each is settled unless the user changes it.
       says ←→ Change and Enter Done.
     - *Everywhere* (the user, of the three first left changing at once: "you should have confirm to change everywhere
       instead of having some controls that don't do that"): a replay's seek bar is a setting (taken, Left and Right
-      seek 5 seconds; Space and the pad's north still play and pause); a phone's build box and Practice's menu's rows
+      seek 5 seconds; Space and the pad's north still play and pause; until §2.100, when the viewer's keys became its
+      own and Left and Right always seek); a phone's build box and Practice's menu's rows
       that open a list (the Dummy's build, Arena, Background, Music) are selects, Enter opening the list; its other
       rows are settings.
     - A click or a tap on a setting's arrow or segment changes it as before.
@@ -1620,7 +1621,8 @@ Each is settled unless the user changes it.
       never empty or reversed. Each handle is a control: the focus starts on the start's as the mode begins, Tab and
       the arrows' Up and Down move through them and the buttons, and on one Left and Right nudge it a frame (with
       Shift a second; on a pad the d-pad a frame and the shoulders a second), the picture going to where it is, paused;
-      Enter on one goes to it.
+      Enter on one goes to it. (Since §2.100 the handles are no controls of the focus: the keys set them where the
+      viewer is.)
     - *The transport in the mode:* to the round's start, play or pause, the next round (and the speed's badge); then,
       in the round shown's place, SET START HERE and SET END HERE (each puts its handle where the viewer is; where
       that passes the other handle, the other goes to the match's edge, so that the range keeps the time set), the
@@ -1717,6 +1719,32 @@ Each is settled unless the user changes it.
       scrolls, in its place under the header, by the wheel and a drag over it, a thumb (4 wide, in the line's color)
       in the gutter at its right saying where it is; a new build starts at its top. The keys don't scroll it: Play's
       focus passes the overview by, as before. The frame is the size it was.
+100. **The viewer's keys are its own** (2026-10-26). The user: "the replay viewer controls should not require focus
+     shifting etc like the rest of the ui, e.g. left and right should always move the seek bar and then there should
+     be dedicated keys for exiting or pulling up menus etc". The viewer has no focus and draws no cursor: each key does
+     one thing, wherever the focus would have been, as a video player's keys do.
+     - *The keys:* Left and Right five seconds back or on (Shift: one second; held, they repeat); Space and Enter play
+       and pause; comma and period step a frame; the brackets go a round; Up and Down the playback speed a step (½×,
+       1×, 2×, 4×; past the ends refused); M opens the ⋯ menu; Q the popup up next while the queue plays (N, the
+       queue's next, as before); B, I and P as before; E the export mode (as E on the list); Esc back (the builds put
+       away first, then to the list). Tab and the pages do nothing.
+     - *The pad:* the D-pad's Left and Right seek and its Up and Down change the speed; A and the north button play
+       and pause; the shoulders go a round; START opens the ⋯ menu; Select shows both builds; B goes back.
+     - *What opens over it* has keys of its own, as before: the ⋯ menu and the speeds', the popup up next, a dialog,
+       each with the cursor on it, Esc closing it.
+     - *The export mode* is a form, and keeps one: its controls (SET START HERE, SET END HERE, the Range, CANCEL,
+       EXPORT, the options) are a scope the keys go through alone, as a dialog's are, the cursor on them, the focus
+       starting on SET START HERE: Up, Down and Tab move, Enter (the pad's A) presses, and a setting is taken to change
+       as everywhere (§2.77). Left and Right still seek; Space and the pad's north play and pause; the brackets and the
+       shoulders set the range's start and end where the viewer is, the handles being brackets. The handles are no
+       controls of the focus any more, and nothing nudges them: the pointer drags them, and the keys set them at the
+       playhead (seek, step a frame, then a bracket).
+     - *The footer:* Space Play or pause, the arrows Seek, comma and period Step a frame, the brackets Previous or next
+       round, B Builds (where they may be shown), M Menu, Esc Back; in the export mode Space, Seek, Step a frame, the
+       brackets "Set start or end", and Esc as Cancel. A pad's Play or pause is A (the north button in the export mode,
+       where A presses).
+     - *Japanese:* Seek 巻き戻し/早送り; "Set start or end" 開始点/終了点を設定 (zh-Hans 快退/快进 and 设置起点/终点; zh-Hant
+       倒轉/快轉 and 設定起點/終點). "Move a handle" is gone from the catalogs.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2286,8 +2314,9 @@ DUPLICATE and DELETE.
   and the round shown ("Round 2 of 3"); at the right, while the queue plays, the queue's button with the count up
   next (its popup: NEXT, N, and Autoplay next, on at first, over the entries up next: §2.92), and ⋯. The pointer
   over the bar shows a preview above it: the battle at the time under the pointer, the frame's size, that time under
-  it (§2.96). Space plays, the bar taken (Enter) Left and Right seek 5 seconds, comma and period step a frame, the
-  brackets go a round. The ⋯ menu has the side shown (P1, P2, the one shown checked); BUILDS (B; dim where the
+  it (§2.96). The viewer's keys are its own, with no focus or cursor (§2.100): Left and Right seek 5 seconds (Shift:
+  1), Space and Enter play, comma and period step a frame, the brackets go a round, Up and Down the speed, M the ⋯
+  menu, Q the popup up next, E the export mode; a pad's D-pad, A, shoulders and START the same. The ⋯ menu has the side shown (P1, P2, the one shown checked); BUILDS (B; dim where the
   setups weren't open) and two toggles, each off at first and checked while on (the user: "add support for input
   view and picture in picture in replay viewer"): INPUT DISPLAY (I), Practice's, both players' buttons in the
   picture's top right corner; and OTHER SIDE'S PICTURE (P), the other console's, small in the bottom right corner of
@@ -2299,9 +2328,8 @@ DUPLICATE and DELETE.
   list (EXPORT VIDEO, E, the pad's north button, a row's menu), which opens the viewer in it, paused at the start.
   The picture stays, and playing and seeking work as before. The part exported (the user: "add the ability to
   export a clip in the replay viewer") is a range on the bar, shaded in the code color between two handles,
-  brackets taller than the playhead, the whole match at first: a handle is dragged (the picture following it), or,
-  focused, nudged by Left and Right a frame (Shift: a second; a pad's shoulders a second); SET START HERE and SET
-  END HERE put one where the viewer is (the other going to the match's edge where it would pass it). The transport's
+  brackets taller than the playhead, the whole match at first: a handle is dragged (the picture following it); SET
+  START HERE and SET END HERE (and the brackets, a pad's shoulders: §2.100) put one where the viewer is (the other going to the match's edge where it would pass it). The transport's
   row has those two, the Range's list (the whole match; each round where there is more than one; Custom, the last
   range of the player's own, "Custom · 0:12"), the range's times ("00:41–00:53"), CANCEL (CLOSE once saved) and
   EXPORT. Over the transport a panel of the options: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
@@ -2312,7 +2340,8 @@ DUPLICATE and DELETE.
   track 2 should be right player audio"), Save as;
   under them the progress bar and its line, which says to drag the handles while nothing exports. A range of the
   player's own names the file "… part 01.02–01.15". Esc or B stops an export under way, else leaves the mode; while
-  it is on the controls stay shown. On a phone the range's rows are under the transport's buttons and the options
+  it is on the controls stay shown. Its controls are a scope of the keys (Up, Down, Tab, Enter), and Left and Right
+  still seek. On a phone the range's rows are under the transport's buttons and the options
   under the transport. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".

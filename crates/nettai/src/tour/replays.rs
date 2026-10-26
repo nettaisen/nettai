@@ -1,7 +1,7 @@
 //! The screenshot pass's steps through Replays (docs/app.md §13): the list, the selected replay, a search, a
 //! file that doesn't read (selected as the screen arrives from the menu), the delete question, the viewer's export
-//! mode from the list (idle, a handle nudged, under way, failed), the two cards, the viewer (a focus move and a
-//! second of playback apart, each a pair), the other console, the input display with the other console's picture in
+//! mode from the list (idle, its start set a second on, under way, failed), the two cards, the viewer (a speed's
+//! badge and a second of playback apart, each a pair), the other console, the input display with the other console's picture in
 //! the corner, the ⋯ menu, the playback speed's menu and its badge, the export mode from the viewer (one side, both
 //! sides), a replay that fails as it is watched, and on a phone the selected replay's sheet.
 //!
@@ -423,16 +423,17 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     add(SETTLE, act(Action::Back));
     delete(add, until);
 
-    // The viewer's export mode, from the list (E): paused at the start, the range the whole match, the focus on its
-    // start's handle; the handle a second on (Shift+Right, the picture following it); as an export under way and a
-    // failed one look (set on the view: no export runs here); then the mode left, and the viewer.
+    // The viewer's export mode, from the list (E): paused at the start, the range the whole match, the focus on SET
+    // START HERE; the start set a second on (Shift+Right, then [); as an export under way and a failed one look (set
+    // on the view: no export runs here); then the mode left, and the viewer.
     add(SETTLE, focus("list", 0));
     add(SETTLE, until(|view| view.get_still()));
     add(SETTLE, key(KeyCode::KeyE, 1));
     add(SETTLE, until(|view| view.get_watching() && view.get_exporting()));
-    add(SETTLE * 2, focus("export.handle", 0));
+    add(SETTLE * 2, focus("export.start-here", 0));
     shot(add, "replays-export", Pair::First, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| { s.key(shell, &KeyPress { code: KeyCode::ArrowRight, text: None, repeat: false, shift: true }); })));
+    add(SETTLE, key(KeyCode::BracketLeft, 1));
     shot(add, "replays-export-handle", Pair::Second, Also::Playback);
     add(
         SETTLE,
@@ -487,16 +488,15 @@ fn steps_to_queue(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'st
     add(SETTLE, until(|view| view.get_watching()));
     add(SETTLE * 2, focus("seek", 0));
     shot(add, "viewer", Pair::First, Also::Nothing);
-    add(SETTLE, act(Action::Down));
+    // (The viewer's keys are its own: Up a speed faster, its badge; Down back.)
+    add(SETTLE, act(Action::Up));
     shot(add, "viewer-focus", Pair::Second, Also::Nothing);
-    add(SETTLE, focus("seek", 0));
+    add(SETTLE, act(Action::Down));
     shot(add, "viewer-at", Pair::First, Also::Nothing);
     add(SETTLE, key(KeyCode::Period, 60));
     shot(add, "viewer-second-on", Pair::Second, Also::Playback);
-    // (The bar is a setting: taken, stepped, let go.)
-    add(SETTLE, act(Action::Confirm));
+    // (Right: five seconds on, with no focus to move.)
     add(SETTLE, act(Action::Right));
-    add(SETTLE, act(Action::Confirm));
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
     // (The ⋯ menu's rows, chosen as a click on them is heard: PLAYER is its first, opening P1 and P2; EXPORT VIDEO its
     // last.)
