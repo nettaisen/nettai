@@ -246,3 +246,47 @@ fn a_check_of_some_packs_answers_for_them_alone() {
     assert!(problems.iter().any(|p| p.starts_with("h/")) && problems.iter().any(|p| p.contains("stray")), "{problems:#?}");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// Each game's lock (depends.lock) names the commits its support packs'
+/// submodules are at: a game goes with the exelib it was checked against.
+/// (Where the support packs are no git checkouts, there's nothing to see.)
+#[test]
+fn the_games_go_with_the_support_packs_checked_out() {
+    let (problems, notes) = nettai_content_check::locks(&pack(), None).unwrap();
+    assert!(problems.is_empty(), "locks:\n{}", problems.join("\n"));
+    if notes.is_empty() {
+        assert!(nettai_content_api::packs::read_lock(&pack(), "exe6").unwrap().contains_key("exelib"), "exe6 locks exelib");
+    }
+}
+
+/// A lock that names another commit than the support pack's checkout is
+/// refused with both commits; a support pack that is no git checkout (a
+/// bundle's folder) is a note, and its locks aren't judged.
+#[test]
+fn a_lock_on_another_commit_is_refused() {
+    let dir = std::env::temp_dir().join(format!("nettai-check-lock-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let write = |path: &str, text: &str| {
+        let p = dir.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    };
+    write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
+    write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n");
+    write("g/depends.lock", &format!("lib = \"{}\"\n", "a".repeat(40)));
+    let (problems, notes) = nettai_content_check::locks(&dir, None).unwrap();
+    assert!(problems.is_empty() && notes.len() == 1 && notes[0].starts_with("lib/: no git checkout"), "{problems:?} {notes:?}");
+    let git = |args: &[&str]| assert!(std::process::Command::new("git").arg("-C").arg(dir.join("lib")).args(args).status().unwrap().success());
+    git(&["init", "-q"]);
+    git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"]);
+    let head = String::from_utf8(std::process::Command::new("git").arg("-C").arg(dir.join("lib")).args(["rev-parse", "HEAD"]).output().unwrap().stdout).unwrap();
+    let (problems, notes) = nettai_content_check::locks(&dir, None).unwrap();
+    assert!(notes.is_empty(), "{notes:?}");
+    assert!(
+        problems.len() == 1 && problems[0].contains(&format!("locks lib at {}, and lib is at {}", "a".repeat(40), head.trim())),
+        "{problems:?}"
+    );
+    write("g/depends.lock", &format!("lib = \"{}\"\n", head.trim()));
+    assert_eq!(nettai_content_check::locks(&dir, None).unwrap(), (Vec::new(), Vec::new()));
+    std::fs::remove_dir_all(&dir).ok();
+}

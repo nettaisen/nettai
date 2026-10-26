@@ -5,10 +5,12 @@
 //! Run in the engine checkout of the line, it does six things in order:
 //!
 //! 1. It refuses unless the game's submodule and its support packs' are clean, at the commits the engine's HEAD pins,
-//!    and on their repositories' main branches (fetched first).
+//!    and on their repositories' main branches (fetched first), and the game's lock (`depends.lock`) names the
+//!    support packs' commits.
 //! 2. It type-checks those packs (`nettai-content-check --pack ...`, run with cargo: that crate's Luau can't be
 //!    linked beside this one's).
-//! 3. It builds the bundle from the submodules' folders, numbered after the line's releases.
+//! 3. It builds the bundle from the submodules' folders (the support packs at the locked commits), numbered after
+//!    the line's releases.
 //! 4. It unpacks the bundle and loads it with the game's asset pack, for its content hash.
 //! 5. It refuses a bundle that is the line's newest again: the same id, or the same content hash and pack commits.
 //! 6. It creates the release: tag `<line>-r<revision>` on the game pack's commit, with the bundle (`<id>.tar.gz`)
@@ -92,12 +94,22 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
     let repo = format!("{OWNER}/{}", o.game);
 
     say(&format!("1. the packs' repositories ({})", members.join(", ")));
-    let mut commits = BTreeMap::new();
+    let mut heads = BTreeMap::new();
     for id in &members {
         let commit = pack_commit(&root, id)?;
         eprintln!("   {id} at {commit}");
-        commits.insert(id.clone(), commit);
+        heads.insert(id.clone(), commit);
     }
+    // The support packs go in at the commits the game's lock names, which must be the submodules'.
+    let supports = packs::locked(&all, &o.game)?;
+    let lock = packs::read_lock(&content, &o.game)?;
+    let problems = packs::lock_problems(&o.game, &supports, &lock, &heads);
+    if !problems.is_empty() {
+        return Err(problems.join("\n"));
+    }
+    let mut commits: BTreeMap<String, String> = supports.iter().map(|id| (id.clone(), lock[id].clone())).collect();
+    commits.insert(o.game.clone(), heads[&o.game].clone());
+    eprintln!("   {} locks {}", o.game, supports.iter().map(|id| format!("{id} at {}", lock[id])).collect::<Vec<_>>().join(", "));
 
     say("2. the type check");
     type_check(&root, &members)?;
@@ -186,6 +198,48 @@ fn quoted(arg: &OsStr) -> String {
     } else {
         format!("'{}'", s.replace('\'', r"'\''"))
     }
+}
+
+pub const LOCK_USAGE: &str = "  nettai-content lock [game ...]                   rewrite the games' depends.lock (default: every
+                                                   game's) to their support packs' submodules' commits,
+                                                   once the games are checked against them";
+
+/// `nettai-content lock [game ...]`: rewrite each game's lock (`depends.lock`, content-deployment.md §3) to the
+/// commits its support packs' submodules are at, for after the games are checked against a new support pack. It
+/// only writes the files: each is committed in its game's repository.
+pub fn lock(args: impl Iterator<Item = String>) -> Result<(), String> {
+    let mut games: Vec<String> = Vec::new();
+    for arg in args {
+        if arg.starts_with("--") {
+            return Err(format!("unknown option {arg}\nusage:\n{LOCK_USAGE}"));
+        }
+        games.push(arg);
+    }
+    let root = engine_root()?;
+    let content = root.join("content");
+    let all: BTreeMap<String, packs::PackManifest> = packs::packs(&content)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    if games.is_empty() {
+        games = all.values().filter(|p| p.kind == PackKind::Game).map(|p| p.id.clone()).collect();
+    }
+    for game in &games {
+        match all.get(game) {
+            Some(p) if p.kind == PackKind::Game => {}
+            Some(_) => return Err(format!("{game} is a support pack: only games are locked")),
+            None => return Err(format!("{} has no pack {game}", content.display())),
+        }
+        let mut lock = BTreeMap::new();
+        for pack in packs::locked(&all, game)? {
+            let commit = git(&content.join(&pack), &["rev-parse", "HEAD"])?;
+            lock.insert(pack, commit);
+        }
+        let path = content.join(game).join(packs::LOCK);
+        let before = std::fs::read_to_string(&path).unwrap_or_default();
+        let text = packs::lock_text(&lock);
+        std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let what = lock.iter().map(|(p, c)| format!("{p} at {c}")).collect::<Vec<_>>().join(", ");
+        eprintln!("{game}/{}: {}{what}", packs::LOCK, if before == text { "unchanged, " } else { "" });
+    }
+    Ok(())
 }
 
 fn say(what: &str) {

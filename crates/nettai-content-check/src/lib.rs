@@ -193,3 +193,49 @@ fn check(dir: &Path, only: Option<&[&str]>) -> Result<(usize, Vec<Problem>), Str
     problems.extend(reach_of(dir, only)?);
     Ok((n, problems))
 }
+
+/// The games' locks (`depends.lock`, docs/design/content-deployment.md §3)
+/// against the support packs checked out: what keeps a game of content
+/// `dir` (of packs `only`, when given) from going with them
+/// (`packs::lock_problems`), and, as notes, the support packs that are no
+/// git checkout of their own (as a bundle's folders aren't), whose commits
+/// can't be seen, so the locks on them aren't checked.
+pub fn locks(dir: &Path, only: Option<&[&str]>) -> Result<(Vec<Problem>, Vec<String>), String> {
+    use nettai_content_api::{PackKind, packs};
+    let all: std::collections::BTreeMap<String, packs::PackManifest> = packs::packs(dir)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    let (mut problems, mut notes) = (Vec::new(), Vec::new());
+    let mut heads = std::collections::BTreeMap::new();
+    for game in all.values().filter(|p| p.kind == PackKind::Game && only.is_none_or(|o| o.contains(&p.id.as_str()))) {
+        // (A manifest's depends that can't be followed is reach's to report.)
+        let Ok(wanted) = packs::locked(&all, &game.id) else { continue };
+        for pack in &wanted {
+            if heads.contains_key(pack) || notes.iter().any(|n: &String| n.starts_with(&format!("{pack}/"))) {
+                continue;
+            }
+            match checkout(&dir.join(pack)) {
+                Ok(commit) => {
+                    heads.insert(pack.clone(), commit);
+                }
+                Err(why) => notes.push(format!("{pack}/: {why}; the locks on it ({}) aren't checked", packs::LOCK)),
+            }
+        }
+        match packs::read_lock(dir, &game.id) {
+            Ok(lock) => problems.extend(packs::lock_problems(&game.id, &wanted, &lock, &heads)),
+            Err(e) => problems.push(e),
+        }
+    }
+    Ok((problems, notes))
+}
+
+/// The commit checked out in folder `dir`, if it is a git checkout of its
+/// own (a submodule's or a clone's, with its own `.git`); else why not.
+fn checkout(dir: &Path) -> Result<String, String> {
+    if !dir.join(".git").exists() {
+        return Err("no git checkout of its own".to_string());
+    }
+    let out = std::process::Command::new("git").arg("-C").arg(dir).args(["rev-parse", "HEAD"]).output().map_err(|e| format!("git can't be run ({e})"))?;
+    if !out.status.success() {
+        return Err(format!("git rev-parse HEAD: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}

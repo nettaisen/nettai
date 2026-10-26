@@ -6,6 +6,7 @@
 //!     nettai-content aseprite-export <pack> [NAME ...]
 //!     nettai-content aseprite-import <pack> [NAME ...]
 //!     nettai-content publish <game> [--packs DIR] [--dry-run]
+//!     nettai-content lock [game ...]
 //!
 //! A pack exported from a ROM (`nettai-extract exe6`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
@@ -44,7 +45,7 @@ const USAGE: &str = "usage:
 ";
 
 fn parse() -> Result<Args, String> {
-    let usage = || format!("{USAGE}{}", publish::USAGE);
+    let usage = || format!("{USAGE}{}\n{}", publish::USAGE, publish::LOCK_USAGE);
     let mut it = std::env::args().skip(1);
     let command = it.next().ok_or_else(usage)?;
     let pack = PathBuf::from(it.next().ok_or_else(usage)?);
@@ -82,6 +83,10 @@ fn print_report(r: &Report, verbose: bool) {
 fn main() {
     if std::env::args().nth(1).as_deref() == Some("publish") {
         publish::run(std::env::args().skip(2)).unwrap_or_else(|e| fail(e));
+        return;
+    }
+    if std::env::args().nth(1).as_deref() == Some("lock") {
+        publish::lock(std::env::args().skip(2)).unwrap_or_else(|e| fail(e));
         return;
     }
     let a = parse().unwrap_or_else(|e| fail(e));
@@ -127,7 +132,7 @@ fn main() {
         }
         "verify" => verify_packs(&a),
         "aseprite-export" | "aseprite-import" => aseprite(&a),
-        _ => fail(format!("{USAGE}{}", publish::USAGE)),
+        _ => fail(format!("{USAGE}{}\n{}", publish::USAGE, publish::LOCK_USAGE)),
     }
 }
 
