@@ -79,6 +79,8 @@ Copy-Item $program "$app\nettai.exe"
 if (-not $Ffmpeg) { $Ffmpeg = Get-FfmpegFile 'ffmpeg-windows-x86_64.exe' }
 Copy-Item $Ffmpeg "$app\ffmpeg.exe"
 Copy-Item -Recurse "$root\content" "$app\content"
+# (Without the content submodules' .git files.)
+Get-ChildItem -Path "$app\content" -Recurse -Force -Filter .git | Remove-Item -Recurse -Force
 Copy-Item "$root\LICENSE" "$app\LICENSE.txt"
 Copy-Item $notices "$app\THIRD-PARTY-NOTICES.txt"
 Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"

@@ -35,8 +35,8 @@ cargo +nightly build --locked --target wasm32-unknown-unknown -p nettai-web --pr
 mkdir -p "$out"
 wasm-bindgen --target web --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unknown/$dir/nettai_web.wasm"
 cp crates/nettai-web/web/index.html docs/logo/nettai-icon.svg docs/logo/nettai-logotype.svg "$out/"
-# The content: content/'s Luau and its tables, without the platform's litter.
-tar --exclude .DS_Store -cf "$out/content.tar" -C content .
+# The content: content/'s Luau and its tables, without the platform's litter or the submodules' .git files.
+tar --exclude .DS_Store --exclude .git -cf "$out/content.tar" -C content .
 
 # A release's module optimized and without its names and debug information (a dev build keeps its function names,
 # for the console's stack traces): binaryen's wasm-opt, with the features the build has.

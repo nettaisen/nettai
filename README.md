@@ -6,9 +6,13 @@ Battle Network games are meant to follow on the same core ([multi-game.md](docs/
 what that takes).
 
 The engine is a content-independent core with EXE6's ruleset on it. The game's content (chips, navis and their
-forms, weapons, stages, the rule tables) is Luau in [`content/`](content), committed here and named by
-keys rather than the original's numbers, in packs: the game packs content/exe6 and content/exe5, each with a manifest
-listing its definitions, and the support pack content/exelib that both use. The graphics and sound are not in this
+forms, weapons, stages, the rule tables) is Luau in [`content/`](content), named by keys rather than the original's
+numbers, in packs: the game packs content/exe4, content/exe5 and content/exe6, each with a manifest listing its
+definitions, and the support pack content/exelib that they use. Each pack is its own repository
+([exe4](https://github.com/nettaisen/exe4), [exe5](https://github.com/nettaisen/exe5),
+[exe6](https://github.com/nettaisen/exe6), [exelib](https://github.com/nettaisen/exelib)), checked out here as a git
+submodule: clone with `git clone --recursive`, or run `git submodule update --init` in a clone or a new worktree
+(docs/design/content-deployment.md). The graphics and sound are not in this
 repository: you extract them
 from a ROM you own into a content pack.
 

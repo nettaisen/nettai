@@ -54,6 +54,8 @@ jobs:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons
@@ -107,6 +109,8 @@ jobs:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons
@@ -177,6 +181,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons

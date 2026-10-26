@@ -24,10 +24,11 @@ build_app() { # [target]
     [ -n "$program" ] || { echo "the build named no program" >&2; return 1; }
 }
 
-# The repository's content/, into <dest-dir>.
+# The repository's content/, into <dest-dir>, without the submodules' .git files.
 copy_content() { # <dest-dir>
     mkdir -p "$1"
     cp -R "$root/content" "$1/"
+    find "$1/content" -name .git -prune -exec rm -rf {} +
 }
 
 # The ffmpeg every package bundles beside the program, for the replay export (docs/app.md §19): a release of

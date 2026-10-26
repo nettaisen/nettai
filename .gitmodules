@@ -1,0 +1,12 @@
+[submodule "content/exe4"]
+	path = content/exe4
+	url = https://github.com/nettaisen/exe4.git
+[submodule "content/exe5"]
+	path = content/exe5
+	url = https://github.com/nettaisen/exe5.git
+[submodule "content/exe6"]
+	path = content/exe6
+	url = https://github.com/nettaisen/exe6.git
+[submodule "content/exelib"]
+	path = content/exelib
+	url = https://github.com/nettaisen/exelib.git
