@@ -11,7 +11,8 @@ opponent's is EXTERNAL + its index).
 External opponents (`external`, `external_dir`) are another run's networks: the weight files in a directory (a
 snapshot's state dict, or a checkpoint with its "model"), rescanned before each rollout and read again when a file
 changes. An exploiter (§8) plays only the main run's latest network so; the main run plays the exploiter's
-snapshots so, picked by PFSP as its own are.
+snapshots so, picked by PFSP as its own are, and bounded as its own are: new rounds draw from `active` of them, at
+most `draining` dropped ones still playing.
 """
 
 from __future__ import annotations
@@ -86,8 +87,10 @@ class League:
             raise ValueError("league: an external share with no external_dir")
         if cfg.bots > 0 and not cfg.bot_names:
             raise ValueError("league: a bot share with no bot_names")
-        if cfg.cache < cfg.active + cfg.draining:
-            raise ValueError(f"league: cache {cfg.cache} holds fewer than active + draining ({cfg.active + cfg.draining})")
+        # Snapshots and external opponents each have active + draining in play.
+        need = (cfg.active + cfg.draining) * (2 if cfg.external > 0 else 1)
+        if cfg.cache < need:
+            raise ValueError(f"league: cache {cfg.cache} holds fewer than the networks that can be in play ({need})")
         self.cfg = cfg
         self.pool = pool
         self.E = envs
@@ -99,6 +102,7 @@ class League:
         self.active: list[int] = []
         self.cache: OrderedDict[int, Model] = OrderedDict()
         self.externals: list[External] = []
+        self.ext_active: list[int] = []
         self.ext_dir = Path(cfg.external_dir) if cfg.external_dir else None
         self.ratings: dict[str, float] = {"learner": 1000.0}
         for b in cfg.bot_names:
@@ -157,11 +161,10 @@ class League:
                 else:
                     self.kind[e] = SELF
             elif self.kind[e] == EXT:
-                x = self._draw_external()
-                if x is None:
-                    self.kind[e] = SELF
+                if self.ext_active:
+                    self.opp[e] = self.ext_active[self.rng.integers(len(self.ext_active))]
                 else:
-                    self.opp[e] = x
+                    self.kind[e] = SELF
             ls, os_ = 2 * e + self.seat[e], 2 * e + 1 - self.seat[e]
             self.ctrl[ls] = LEARNER
             k = int(self.kind[e])
@@ -227,11 +230,16 @@ class League:
                 self.externals[i].mtime = mtime
                 self.cache.pop(EXTERNAL + i, None)
 
-    def _draw_external(self) -> int | None:
-        """An external opponent whose file is there, by PFSP weight (None: there is none)."""
-        if self.ext_dir is None:
-            return None
-        cands = [i for i, x in enumerate(self.externals) if (self.ext_dir / x.name).exists()]
+    def ext_in_play(self) -> set[int]:
+        """The external opponents playing a current round."""
+        return {int(o) for o in self.opp[self.kind == EXT]}
+
+    def _ext_there(self, i: int) -> bool:
+        return self.ext_dir is not None and (self.ext_dir / self.externals[i].name).exists()
+
+    def _draw_external(self, exclude: set[int]) -> int | None:
+        """An external opponent whose file is there, outside `exclude`, by PFSP weight (None: there is none)."""
+        cands = [i for i in range(len(self.externals)) if i not in exclude and self._ext_there(i)]
         if not cands:
             return None
         w = np.array([(1.0 - self.externals[i].winrate()) ** self.cfg.pfsp_power for i in cands]) + 1e-6
@@ -262,20 +270,28 @@ class League:
         return cands[int(self.rng.choice(len(cands), p=w / w.sum()))].id
 
     def refresh(self) -> None:
-        """Before each rollout: the external directory rescanned; fill the active set (the snapshots new rounds draw from) to `active`, then turn
-        its longest-serving slot over to a new PFSP draw if fewer than `draining` dropped snapshots still play.
-        So no more than active + draining snapshots are ever in play (LeagueConfig.active)."""
+        """Before each rollout: the external directory rescanned, then for the snapshots and the external opponents
+        each, fill the active set (those new rounds draw from) to `active` and turn its longest-serving slot over
+        to a new PFSP draw if fewer than `draining` dropped ones still play. So no more than active + draining of
+        each are ever in play (LeagueConfig.active). An external opponent whose file is gone leaves its active set."""
         self._scan_externals()
-        draining = self.in_play() - set(self.active)
-        while len(self.active) < self.cfg.active:
-            sid = self._draw(set(self.active) | draining)
+        self.active = self._rotate(self.active, self.in_play(), self._draw)
+        self.ext_active = self._rotate([i for i in self.ext_active if self._ext_there(i)], self.ext_in_play(), self._draw_external)
+
+    def _rotate(self, active: list[int], in_play: set[int], draw: Callable[[set[int]], int | None]) -> list[int]:
+        draining = in_play - set(active)
+        active = list(active)
+        # (An active one dropped for its file still plays out its rounds: it counts as draining.)
+        while len(active) < self.cfg.active and len(active) + len(draining) < self.cfg.active + self.cfg.draining:
+            sid = draw(set(active) | draining)
             if sid is None:
-                return
-            self.active.append(sid)
+                return active
+            active.append(sid)
         if len(draining) < self.cfg.draining:
-            sid = self._draw(set(self.active) | draining)
+            sid = draw(set(active) | draining)
             if sid is not None:
-                self.active = self.active[1:] + [sid]
+                active = active[1:] + [sid]
+        return active
 
     def add_snapshot(self, model: Model, update: int) -> Snapshot:
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -332,6 +348,7 @@ class League:
         }
         if self.externals:
             out["league/externals"] = len(self.externals)
+            out["league/externals_in_play"] = len(self.ext_in_play())
             out["league/external_winrate"] = float(np.mean([x.winrate() for x in self.externals]))
         for b in self.cfg.bot_names:
             wr, cnt = self.bot_winrate(b)

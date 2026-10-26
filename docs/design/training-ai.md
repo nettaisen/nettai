@@ -671,8 +671,12 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     snapshots in `league.external` of its rounds (0.15, taken from self-play and its own snapshots), picked by
     PFSP as its own are, so it must answer what the exploiter finds. External opponents are another run's weight
     files (a snapshot's state dict or a checkpoint), the directory rescanned each rollout and a changed file read
-    again (`League._scan_externals`). Both runs share the main run's machine (each update's minibatch in parts,
-    `ppo.accumulate`, to fit the GPU).
+    again (`League._scan_externals`), and bounded in play as snapshots are: new rounds draw from `active` of
+    them, at most `draining` dropped ones still playing (the cache holds both sets). Unbounded, the main run drew
+    from all of the exploiter's snapshots at once: 28 within 40 minutes, more networks than the cache held, read
+    from disk again and again, and its rollouts took 200 s instead of 35. Both runs share the main run's machine
+    (each update's minibatch in parts, `ppo.accumulate`, to fit the GPU); the exploiter keeps a snapshot every 50
+    updates.
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The

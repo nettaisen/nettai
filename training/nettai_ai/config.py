@@ -167,7 +167,7 @@ class LeagueConfig:
     # out their rounds. One active slot turns over a rollout while fewer than `draining` are draining.
     active: int = 2  # snapshots new snapshot rounds draw from, by PFSP weight
     draining: int = 2  # dropped from the active set, still in rounds begun before
-    cache: int = 8  # snapshot networks kept loaded on the device (at least active + draining)
+    cache: int = 8  # snapshot networks kept loaded on the device (active + draining, twice with an external share)
     # Snapshots kept on disk: past this, the one the learner beats most is deleted (its record stays, its
     # PFSP weight is near zero anyway). Neither an active nor an in-play one.
     keep: int = 200

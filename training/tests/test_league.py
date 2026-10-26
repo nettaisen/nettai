@@ -92,7 +92,7 @@ def test_external_opponents_are_another_runs_networks(tmp_path: Path):
     net = torch.nn.Linear(2, 2)
     torch.save(net.state_dict(), ext / "snap_00000.pt")
     torch.save({"model": net.state_dict(), "update": 7}, ext / "main.pt")
-    cfg = LeagueConfig(self_play=0.2, snapshots=0.0, bots=0.0, external=0.8, external_dir=str(ext), cache=4)
+    cfg = LeagueConfig(self_play=0.2, snapshots=0.0, bots=0.0, external=0.8, external_dir=str(ext), cache=8)
     rng = np.random.default_rng(5)
     league = League(cfg, SeatsOnly(), E, tmp_path / "run", torch.device("cpu"), lambda: torch.nn.Linear(2, 2), rng)
     league.start()
@@ -125,6 +125,48 @@ def test_external_opponents_are_another_runs_networks(tmp_path: Path):
     again = League(cfg, SeatsOnly(), E, tmp_path / "run", torch.device("cpu"), lambda: torch.nn.Linear(2, 2), rng)
     again.load_state_dict(league.state_dict())
     assert [(x.name, list(x.scores)) for x in again.externals] == [(x.name, list(x.scores)) for x in league.externals]
+
+
+def test_external_opponents_in_play_stay_bounded_and_turn_over(tmp_path: Path):
+    """Another run's snapshots, many and growing, are bounded in play as the run's own are (active + draining),
+    turn over, and one whose file goes away leaves the active set."""
+    from nettai_ai.league import EXT
+
+    E = 256
+    ext = tmp_path / "other"
+    ext.mkdir()
+    cfg = LeagueConfig(self_play=0.4, snapshots=0.0, bots=0.0, external=0.6, external_dir=str(ext), active=2, draining=2, cache=8)
+    rng = np.random.default_rng(4)
+    league = League(cfg, SeatsOnly(), E, tmp_path / "run", torch.device("cpu"), lambda: torch.nn.Linear(2, 2), rng)
+    league.start()
+    net = torch.nn.Linear(2, 2)
+    played: set[int] = set()
+    left = rng.geometric(0.15, E)
+    for k in range(400):
+        if k % 5 == 0:
+            torch.save(net.state_dict(), ext / f"snap_{k // 5:05d}.pt")
+        if k == 200:
+            for i in list(league.ext_active):
+                (ext / league.externals[i].name).unlink()
+            gone = set(league.ext_active)
+        league.refresh()
+        if k == 200:
+            assert not gone & set(league.ext_active)
+        playing = league.ext_in_play()
+        assert len(playing) <= cfg.active + cfg.draining
+        played |= playing
+        left -= 1
+        done = np.flatnonzero(left <= 0)
+        if len(done):
+            result = np.zeros((E, 2), np.int64)
+            result[done, 0] = rng.choice([-1, 1], len(done))
+            result[done, 1] = -result[done, 0]
+            league.round_end(done, result, np.zeros(E, np.int64), np.zeros(E, bool))
+            left[done] = rng.geometric(0.15, len(done))
+    assert len(league.externals) == 80
+    # It turns over: far more have played than fit in play at once.
+    assert len(played) >= 16, played
+    assert (league.kind == EXT).any()
 
 
 def test_a_run_plays_external_opponents(tmp_path: Path):
