@@ -25,10 +25,11 @@ netplay needs.
 - `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
 - `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
 - `nettai-content`: loads the content's game packs (by their manifests) and the asset packs into the engine; the
-  asset packs' open formats.
+  asset packs' open formats; content bundles, and publishing them (below).
 - `nettai-content-check`: type-checks each pack of the content against its declarations (the engine's API,
   `content/nettai/core.d.luau`, then its support packs' and its own), lints it, and checks that its manifests and
-  requires name only modules that exist and that a pack requires only itself and the support packs it uses.
+  requires name only modules that exist, that a pack requires only itself and the support packs it uses, and that
+  each game's `depends.lock` names its support packs' commits.
 - `nettai-assets`: the battle graphics in typed form, for drawing.
 - `nettai-audio`: plays the engine's sound cues through the M4A driver.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
@@ -195,6 +196,29 @@ To check every module with import resolution, regenerate the definitions and run
 
     luau-lsp analyze --platform=standard --flag:LuauSolverV2=true \
       --definitions=.zed/luau-globals.d.luau --ignore='**/*.d.luau' content
+
+## Publishing content
+
+The app downloads each game's content from the game's site (`https://nettai.n1gp.net/exe6/` and so on), not from
+this repository: the content is released apart from the app, and a replay finds the content it was made with
+([content-deployment.md](docs/design/content-deployment.md)). To publish a game's content for this engine's line,
+once the game's and exelib's repositories have the commits on main and this checkout's submodules are at them:
+
+    cargo run --release -p nettai-content -- publish exe6 --dry-run   # check, bundle and hash it; show the release
+    cargo run --release -p nettai-content -- publish exe6             # make the release
+
+It needs the game's asset pack (`data/exe6`, or `--packs DIR`) for the content hash, and `gh` signed in with write
+access to nettaisen/exe6. The release, `0.11-r1` and on, holds the bundle; the repository's Pages workflow then puts
+it on the site. Publishing refuses a dirty or unpushed submodule, content that doesn't type-check, and the line's
+newest bundle again.
+
+Each game's repository locks the exelib it goes with (`depends.lock`), and `nettai-content-check` refuses a game
+whose lock isn't `content/exelib`'s commit. To change exelib: push the change to exelib's main, move
+`content/exelib` here, check the games against it, then
+
+    cargo run -p nettai-content -- lock   # each game's depends.lock to content/exelib's commit
+
+commit each game's `depends.lock` in its repository and push it, and move the game submodules here with exelib's.
 
 ## Builds
 
