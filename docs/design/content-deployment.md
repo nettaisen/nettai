@@ -6,8 +6,9 @@ with.
 
 ## 1. Decisions (the user, 2026-10-26)
 
-- **One repo per pack**, with the pack's history: `nettaisen/nettai-exe4`, `nettai-exe5`, `nettai-exe6` and
-  `nettai-exelib`. The engine's API declarations (`content/nettai`) and `content/.luaurc` stay in the engine repo:
+- **One repo per pack**, named as the pack, with the pack's history: `nettaisen/exe4`, `exe5`, `exe6` and `exelib`
+  (sites at `nettaisen.github.io/exe6/` and so on). The engine's API declarations (`content/nettai`) and
+  `content/.luaurc` stay in the engine repo:
   they are the engine's.
 - **The engine repo has them as git submodules** (`content/exe4`, `content/exe5`, `content/exe6`, `content/exelib`)
   for development, tests and tools. **An app release downloads the published bundles** and ships those.
