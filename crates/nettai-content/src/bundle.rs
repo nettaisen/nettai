@@ -95,19 +95,25 @@ impl<'de> Deserialize<'de> for BundleId {
 /// browser needs on a redirect, so the app asks this domain directly.
 pub const SITES: &str = "https://nettai.n1gp.net";
 
-/// Where game `game`'s bundles are published: its repository's site (§4).
-pub fn site(game: &str) -> String {
-    format!("{SITES}/{game}")
+/// The catalog of games: the organization's site's `games.json` (the nettaisen.github.io repository), the one
+/// address the app starts from (§5). Every other address comes from what it reads: the catalog gives each game's
+/// index, and each index entry its bundle.
+pub fn catalog_url() -> String {
+    format!("{SITES}/games.json")
 }
 
-/// Game `game`'s index on its site.
-pub fn index_url(game: &str) -> String {
-    format!("{}/index.json", site(game))
+/// The catalog: the games published, by pack id. (Fields an app doesn't know are skipped, so a later catalog still
+/// reads.)
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Catalog {
+    pub games: BTreeMap<String, CatalogGame>,
 }
 
-/// Bundle `id` of game `game` on its site.
-pub fn bundle_url(game: &str, id: BundleId) -> String {
-    format!("{}/bundles/{id}.tar.gz", site(game))
+/// A game in the catalog: where its index is.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CatalogGame {
+    /// Its site's `index.json`, in full.
+    pub index: String,
 }
 
 /// A game's site's `index.json`: its published bundles by engine line, each line's in publish order. (Fields an
@@ -133,6 +139,17 @@ pub struct Published {
     pub date: String,
     /// The size of its `.tar.gz`, in bytes.
     pub size: u64,
+    /// Where its `.tar.gz` is, in full: the site's index states it (its Pages workflow, which puts the bundle
+    /// there); a release's `bundle.json`, written before the site has it, doesn't.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+impl Published {
+    /// Where its `.tar.gz` is: an index entry without the address is refused.
+    pub fn url(&self) -> Result<&str, String> {
+        self.url.as_deref().ok_or_else(|| format!("bundle {} is listed without its address", self.id))
+    }
 }
 
 impl Index {
@@ -448,6 +465,7 @@ mod tests {
             packs: [("exe6".to_string(), "aaaa".to_string())].into(),
             date: "2026-10-26".into(),
             size: 1234,
+            url: Some(format!("https://example.org/exe6/bundles/{}.tar.gz", BundleId([id; 32]))),
         };
         let index = Index { game: "exe6".into(), lines: [("0.11".to_string(), vec![entry(1, 1, 0xA), entry(2, 2, 0xB), entry(3, 3, 0xA)])].into() };
         let json = serde_json::to_string(&index).unwrap();
@@ -461,7 +479,19 @@ mod tests {
         // A later index's fields an app doesn't know are skipped.
         let later = json.replace("\"size\":1234", "\"size\":1234,\"notes\":\"new\"");
         assert_eq!(serde_json::from_str::<Index>(&later).unwrap(), index);
-        assert_eq!(bundle_url("exe6", BundleId([0; 32])), format!("https://nettai.n1gp.net/exe6/bundles/{}.tar.gz", "0".repeat(64)));
+        assert!(back.newest("0.11").unwrap().url().unwrap().ends_with(&format!("{}.tar.gz", BundleId([3; 32]))));
+        // A release's bundle.json has no address, and writes none.
+        let release = Published { url: None, ..entry(1, 1, 0xA) };
+        assert!(!serde_json::to_string(&release).unwrap().contains("url"));
+        assert!(release.url().unwrap_err().contains("without its address"));
+    }
+
+    #[test]
+    fn the_catalog_lists_games() {
+        let catalog: Catalog =
+            serde_json::from_str(r#"{"games": {"exe6": {"index": "https://example.org/exe6/index.json", "later": 2}}, "later": 1}"#).unwrap();
+        assert_eq!(catalog.games["exe6"], CatalogGame { index: "https://example.org/exe6/index.json".into() });
+        assert_eq!(catalog_url(), "https://nettai.n1gp.net/games.json");
     }
 
     #[test]
