@@ -31,6 +31,10 @@ use std::sync::Arc;
 
 /// Where a game is.
 pub enum State {
+    /// Its content is being downloaded (the store has none of it yet: `crate::contents`): how far, 0 to 1.
+    Downloading(f32),
+    /// There is no content of it: the download failed (why is in the log), or its site has none of the line.
+    NoContent,
     /// No asset pack of it is found (and none is being extracted).
     NoPack,
     /// Its pack is missing, or another build's, and the Legacy Collection found has its ROMs: it is extracted
@@ -124,6 +128,33 @@ pub enum Notice {
     ExtractFailed(String),
     /// A game has no pack, and no Legacy Collection is found to extract it from.
     NoSource,
+    /// The game's content couldn't be downloaded (the store has none of it).
+    DownloadFailed(String),
+}
+
+/// The games' content being downloaded (`crate::contents`), shared with the future that downloads it on the
+/// window's loop: the catalog of games, read first (once a run), then the games to fetch, in turn, the one shown
+/// first; how far the one being fetched is; and what came of each since [`Games::poll_downloads`] last looked.
+#[derive(Default)]
+struct Downloads {
+    /// The catalog is being read; what came of it, once it has been.
+    reading_catalog: bool,
+    catalog: Option<Result<Vec<String>, String>>,
+    /// Each game that has content is checked for a newer revision too (Settings' "Check for updates").
+    newer: bool,
+    queue: std::collections::VecDeque<String>,
+    progress: Option<(String, f32)>,
+    done: Vec<(String, Result<bool, String>)>,
+    /// The future is running.
+    running: bool,
+}
+
+impl Downloads {
+    fn enqueue(&mut self, game: &str) {
+        if !self.queue.iter().any(|g| g == game) {
+            self.queue.push_back(game.to_string());
+        }
+    }
 }
 
 /// The games there are, and how far each is loaded.
@@ -144,6 +175,16 @@ pub struct Games {
     /// The extraction, once the window's loop runs ([`Games::start`]); the jobs asked for before it does.
     extractor: Option<Extractor>,
     waiting: Vec<Job>,
+    /// The folder the settings name the Legacy Collection in, looked in again when a game's first content arrives
+    /// with a pack to make.
+    chosen: Option<PathBuf>,
+    /// The games whose newer content arrived while they were loaded or loading: each is played from it once
+    /// [`Games::apply_arrived`] says (at the main menu).
+    arrived: Vec<String>,
+    /// The games' content being downloaded, and whether the catalog was asked for this run, and couldn't be read.
+    downloads: Rc<std::cell::RefCell<Downloads>>,
+    catalog_asked: bool,
+    catalog_failed: bool,
 }
 
 impl Games {
@@ -152,8 +193,7 @@ impl Games {
     /// `chosen` (the settings') or through Steam: it is, when it is first loaded ([`Games::extract`]).
     pub fn find(chosen: Option<&Path>, may_extract: bool) -> Games {
         let (packs, own) = packs::dir();
-        let mut games =
-            Games { list: Vec::new(), notices: Vec::new(), packs, extracts: own && may_extract, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() };
+        let mut games = Games { packs, extracts: own && may_extract, chosen: chosen.map(Path::to_path_buf), ..Games::read_of(Vec::new()) };
         if games.extracts {
             packs::tidy(&games.packs);
         }
@@ -177,7 +217,11 @@ impl Games {
             }
         };
         for id in ids {
-            let Some(content) = crate::contents::dir(&id) else { continue };
+            // (A game the store has no content of yet: it is downloaded, `Games::download`.)
+            let Some(content) = crate::contents::dir(&id) else {
+                games.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), pack: None });
+                continue;
+            };
             let pack = if own {
                 games.own_pack(&id, &content)
             } else {
@@ -199,20 +243,26 @@ impl Games {
             .filter(|e| e.pack.as_ref().and_then(|p| p.own.as_ref()).is_some_and(|(_, print)| packs::kept(&games.packs, &e.id, print) == Kept::Stale))
             .map(|e| e.id.clone())
             .collect();
-        if games.wanted().is_empty() {
-            return games;
+        games.seek_source();
+        games
+    }
+
+    /// Look for the Legacy Collection (in the folder chosen, else through Steam), where a game's pack is wanted and
+    /// none is found yet: the games it has the ROMs of can be extracted. None found is told the player.
+    fn seek_source(&mut self) {
+        if !self.extracts || self.source.is_some() || self.wanted().is_empty() {
+            return;
         }
-        match Install::find(chosen) {
+        match Install::find(self.chosen.as_deref()) {
             Some(install) => {
-                games.found(install);
+                self.found(install);
             }
             None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen"),
             None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
         }
-        if games.list.iter().any(|e| matches!(e.state, State::NoPack) && nettai_extract::Game::named(&e.id).is_some()) {
-            games.notices.push(Notice::NoSource);
+        if self.list.iter().any(|e| matches!(e.state, State::NoPack) && nettai_extract::Game::named(&e.id).is_some()) && !self.notices.contains(&Notice::NoSource) {
+            self.notices.push(Notice::NoSource);
         }
-        games
     }
 
     /// Game `id`'s own pack, for its content `content`: the one its content's tables name, among the app's packs
@@ -365,6 +415,12 @@ impl Games {
         if let (Some(extractor), Some(pack)) = (&self.extractor, self.get(id).and_then(|e| e.pack.as_ref()?.folder())) {
             extractor.first(pack);
         }
+        // (And downloaded first, if its content waits to be.)
+        let mut downloads = self.downloads.borrow_mut();
+        if let Some(at) = downloads.queue.iter().position(|g| g == id) {
+            let game = downloads.queue.remove(at).expect("it is there");
+            downloads.queue.push_front(game);
+        }
     }
 
     /// Whether game `id`'s pack is another build's (it couldn't be made again).
@@ -381,8 +437,8 @@ impl Games {
         self.read(id).filter(|r| r.runtime.get())
     }
 
-    /// Games of `loaded`, each by its id, its parts read (a test's: no pack, no extraction).
-    #[cfg(test)]
+    /// Games of `loaded`, each by its id, its parts read (a test's: no pack, no extraction; with none, the empty
+    /// list games start from).
     pub(crate) fn read_of(loaded: Vec<(&str, Loaded)>) -> Games {
         let list = loaded
             .into_iter()
@@ -393,7 +449,22 @@ impl Games {
                 pack: None,
             })
             .collect();
-        Games { list, notices: Vec::new(), packs: PathBuf::new(), extracts: false, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() }
+        Games {
+            list,
+            notices: Vec::new(),
+            packs: PathBuf::new(),
+            extracts: false,
+            stale: Vec::new(),
+            found_source: false,
+            source: None,
+            extractor: None,
+            waiting: Vec::new(),
+            chosen: None,
+            arrived: Vec::new(),
+            downloads: Default::default(),
+            catalog_asked: false,
+            catalog_failed: false,
+        }
     }
 
     /// Game `id`, if its parts are read (its runtime may yet be to load: [`Games::load_runtime`]).
@@ -406,13 +477,13 @@ impl Games {
 
     /// The games that can be played or may yet be: those with a pack that hasn't failed to load.
     pub fn playable(&self) -> Vec<String> {
-        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed)).map(|e| e.id.clone()).collect()
+        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed | State::NoContent)).map(|e| e.id.clone()).collect()
     }
 
     /// How far `id`'s loading is, 0 to 1 (1: it is ready); while its pack is extracted, how far that is.
     pub fn progress(&self, id: &str) -> f32 {
         match self.get(id).map(|e| &e.state) {
-            Some(State::Loading(p)) | Some(State::Extracting(p)) => *p,
+            Some(State::Loading(p)) | Some(State::Extracting(p)) | Some(State::Downloading(p)) => *p,
             Some(State::Ready(r)) if r.runtime.get() => 1.0,
             Some(State::Ready(_)) => READ,
             _ => 0.0,
@@ -437,11 +508,14 @@ impl Games {
                 let _ = slint::invoke_from_event_loop(move || told(id, step));
             };
             let loaded = (|| {
+                let said = |e: game::LoadError| format!("{e}\n{}", e.report);
                 let mut loading = game::Loading::new(&id, options);
-                while loading.step()? {
+                while loading.step().map_err(said)? {
                     tell(Step::Progress(loading.fraction() * READ * 0.9));
                 }
                 let loaded = loading.finish().expect("every part is loaded");
+                // What it plays is what it is published as (a stored bundle's, the first time it is loaded).
+                crate::contents::verify(&loaded.game.dir, loaded.game.content.hash())?;
                 // The language shown, where the content has it and it isn't its own.
                 let other = (lang != locale::OWN && locale::languages(&loaded.game.dir).iter().any(|l| *l == lang)).then(|| loaded.game.graphics(&lang));
                 let other = match other {
@@ -454,7 +528,7 @@ impl Games {
                 };
                 Ok((loaded, other))
             })();
-            tell(Step::Done(loaded.map(Box::new).map_err(|e: game::LoadError| format!("{e}\n{}", e.report))));
+            tell(Step::Done(loaded.map(Box::new)));
         });
         if let Err(why) = started {
             crate::errors::log(&format!("starting {name}"), &why);
@@ -487,11 +561,206 @@ impl Games {
             }
             Step::Done(Err(why)) => {
                 crate::errors::log(&format!("loading {id}"), &why);
+                // (A bundle that wasn't what it is published as is out of the store: the game's newest is
+                // another, which it loads instead. Else it can't be played.)
+                if crate::contents::dir(id).is_some_and(|dir| dir != entry.content) {
+                    self.retarget(id);
+                    return;
+                }
                 self.notices.push(Notice::LoadFailed(id.to_string()));
                 State::Failed
             }
         };
     }
+
+    /// Game `id` plays from its content as it is now (`crate::contents::dir`: the newest bundle of its line): its
+    /// entry is pointed at it and its pack, to be loaded again (or its pack extracted first). True if its content
+    /// changed. A game the list hadn't yet (its first content arrived) is added.
+    pub fn retarget(&mut self, id: &str) -> bool {
+        let Some(content) = crate::contents::dir(id) else { return false };
+        if self.get(id).is_some_and(|e| e.content == content) {
+            return false;
+        }
+        let (_, own) = packs::dir();
+        let pack = if own { self.own_pack(id, &content) } else { self.get(id).and_then(|e| e.pack.clone()) };
+        let there = pack.as_ref().is_some_and(Pack::is_there);
+        let stale = self.extracts && pack.as_ref().and_then(|p| p.own.as_ref()).is_some_and(|(_, print)| packs::kept(&self.packs, id, print) == Kept::Stale);
+        let entry = Entry { id: id.to_string(), state: if there { State::NotLoaded } else { State::NoPack }, content, pack };
+        match self.list.iter_mut().find(|e| e.id == id) {
+            Some(old) => *old = entry,
+            None => {
+                self.list.push(entry);
+                self.list.sort_by(|a, b| a.id.cmp(&b.id));
+            }
+        }
+        self.stale.retain(|s| s != id);
+        if stale {
+            self.stale.push(id.to_string());
+        }
+        // (Its pack to be made, where the collection found has its ROMs; looked for now if it wasn't.)
+        self.seek_source();
+        if let Some(install) = self.source.clone()
+            && self.wanted().iter().any(|(wanted, _)| wanted == id)
+        {
+            let game = nettai_extract::Game::named(id);
+            if install.roms().iter().any(|r| Some(r.game) == game)
+                && let Some(entry) = self.list.iter_mut().find(|e| e.id == id)
+            {
+                entry.state = State::Extractable;
+            }
+        }
+        true
+    }
+
+    /// Newer content of game `id` arrived in the store: a game that isn't loaded or loading plays from it at once
+    /// ([`Games::retarget`]); one that is, from when [`Games::apply_arrived`] says.
+    pub fn arrived(&mut self, id: &str) {
+        match self.get(id).map(|e| &e.state) {
+            Some(State::Ready(_) | State::Loading(_) | State::Extracting(_)) => {
+                if !self.arrived.iter().any(|a| a == id) {
+                    self.arrived.push(id.to_string());
+                }
+            }
+            _ => {
+                self.retarget(id);
+            }
+        }
+    }
+
+    /// The games whose content arrived while they were loaded play from it now (the main menu shows, nothing over
+    /// it: no match is being played, made or watched): each is loaded again when it is next shown. Those whose
+    /// content changed. (One still loading or extracting waits for its end.)
+    pub fn apply_arrived(&mut self) -> Vec<String> {
+        let mut changed = Vec::new();
+        for id in std::mem::take(&mut self.arrived) {
+            if matches!(self.get(&id).map(|e| &e.state), Some(State::Loading(_) | State::Extracting(_))) {
+                self.arrived.push(id);
+            } else if self.retarget(&id) {
+                changed.push(id);
+            }
+        }
+        changed
+    }
+
+    /// Download the games' content, on the window's loop: the catalog of games read first, once a run
+    /// (`crate::contents::fetch_catalog`), then each game's newest bundle where the store hasn't it
+    /// (`crate::contents::fetch_newest`), one after the other, the one shown first: every game the store has no
+    /// content of, whatever the settings say, and, with `newer` (Settings' "Check for updates"), each game that has
+    /// some, where its index has a newer revision. Development's content downloads nothing.
+    pub fn download(&mut self, newer: bool) {
+        if crate::contents::development() {
+            return;
+        }
+        let read_catalog = !std::mem::replace(&mut self.catalog_asked, true);
+        let mut downloads = self.downloads.borrow_mut();
+        downloads.newer |= newer;
+        for e in &self.list {
+            if matches!(e.state, State::Downloading(_)) || (newer && !e.content.as_os_str().is_empty()) {
+                downloads.enqueue(&e.id);
+            }
+        }
+        if downloads.running || (downloads.queue.is_empty() && !read_catalog) {
+            return;
+        }
+        downloads.running = true;
+        downloads.reading_catalog = read_catalog;
+        drop(downloads);
+        let shared = self.downloads.clone();
+        let started = slint::spawn_local(async move {
+            if read_catalog {
+                let read = crate::contents::fetch_catalog().await;
+                let mut downloads = shared.borrow_mut();
+                if let Ok(games) = &read {
+                    for game in games {
+                        if crate::contents::dir(game).is_none() || downloads.newer {
+                            downloads.enqueue(game);
+                        }
+                    }
+                }
+                downloads.catalog = Some(read);
+                downloads.reading_catalog = false;
+            }
+            loop {
+                let Some(game) = shared.borrow_mut().queue.pop_front() else { break };
+                let (told, id) = (shared.clone(), game.clone());
+                let done = crate::contents::fetch_newest(&game, move |p| told.borrow_mut().progress = Some((id.clone(), p))).await;
+                shared.borrow_mut().done.push((game, done));
+            }
+            shared.borrow_mut().running = false;
+        });
+        if let Err(why) = started {
+            crate::errors::log("downloading the games' content", &why);
+            let mut downloads = self.downloads.borrow_mut();
+            downloads.running = false;
+            downloads.reading_catalog = false;
+            let why = format!("the download couldn't start: {why}");
+            if read_catalog {
+                downloads.catalog = Some(Err(why.clone()));
+            }
+            let failed: Vec<String> = downloads.queue.drain(..).collect();
+            downloads.done.extend(failed.into_iter().map(|game| (game, Err(why.clone()))));
+        }
+    }
+
+    /// The catalog of games is being read, and no game is known yet: there is nothing to show but that.
+    pub fn reading_catalog(&self) -> bool {
+        self.list.is_empty() && self.downloads.borrow().reading_catalog
+    }
+
+    /// No game has content, and none can have: the catalog couldn't be read and none was kept, or every game's
+    /// download failed.
+    pub fn no_content(&self) -> bool {
+        !self.reading_catalog() && (self.list.is_empty() && self.catalog_failed || !self.list.is_empty() && self.list.iter().all(|e| matches!(e.state, State::NoContent)))
+    }
+
+    /// What the downloads did since the last frame: how far the game being downloaded is; a game whose content
+    /// arrived plays from it ([`Games::arrived`]); one with no content whose download failed has none (the player
+    /// is told), and one that has some keeps it (the log says why).
+    pub fn poll_downloads(&mut self) {
+        let (catalog, progress, done) = {
+            let mut downloads = self.downloads.borrow_mut();
+            (downloads.catalog.take(), downloads.progress.take(), std::mem::take(&mut downloads.done))
+        };
+        // The catalog's games this app plays: each one the list hasn't yet is to be downloaded (the future has it
+        // waiting), or has content already (the store kept it from a catalog of before).
+        match catalog {
+            Some(Ok(games)) => {
+                for id in games {
+                    if self.get(&id).is_some() {
+                        continue;
+                    }
+                    if !self.retarget(&id) {
+                        self.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), pack: None });
+                        self.list.sort_by(|a, b| a.id.cmp(&b.id));
+                    }
+                }
+            }
+            Some(Err(why)) => {
+                crate::errors::log("reading the catalog of games", &why);
+                self.catalog_failed = true;
+            }
+            None => {}
+        }
+        if let Some((id, p)) = progress
+            && let Some(entry) = self.list.iter_mut().find(|e| e.id == id && matches!(e.state, State::Downloading(_)))
+        {
+            entry.state = State::Downloading(p);
+        }
+        for (id, done) in done {
+            match done {
+                Ok(true) => self.arrived(&id),
+                Ok(false) => {}
+                Err(why) => {
+                    crate::errors::log(&format!("downloading {id}'s content"), &why);
+                    if let Some(entry) = self.list.iter_mut().find(|e| e.id == id && matches!(e.state, State::Downloading(_))) {
+                        entry.state = State::NoContent;
+                        self.notices.push(Notice::DownloadFailed(id));
+                    }
+                }
+            }
+        }
+    }
+
 
     /// Load `id`'s runtime on this thread, the window's, if its parts are read and it hasn't it: about a
     /// second, the window still. True if the game is ready after it.
@@ -690,10 +959,52 @@ mod tests {
     }
 
     impl Games {
+        fn with(mut self, list: Vec<Entry>) -> Games {
+            self.list = list;
+            self
+        }
+
         /// Games of `list`, their own packs in `packs`, with no extraction under way.
         fn of(list: Vec<Entry>, packs: PathBuf) -> Games {
-            Games { list, notices: Vec::new(), packs, extracts: true, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() }
+            Games { packs, extracts: true, ..Games::read_of(Vec::new()) }.with(list)
         }
+    }
+
+    /// As the downloads go: the catalog's games the list hasn't are added, each to be downloaded (one whose
+    /// content is there already plays it); the one being downloaded says how far it is; one whose download failed
+    /// has no content, and is told the player once; and when no game has content, that is what the loading screen
+    /// says. Until the catalog is read, with no game known, there is nothing to show but that.
+    #[test]
+    fn games_come_as_their_content_is_downloaded() {
+        let mut games = Games::read_of(Vec::new());
+        games.downloads.borrow_mut().reading_catalog = true;
+        assert!(games.reading_catalog() && !games.no_content());
+        {
+            let mut downloads = games.downloads.borrow_mut();
+            downloads.reading_catalog = false;
+            // (exe6 has content here, the repository's; "exe9" has none anywhere.)
+            downloads.catalog = Some(Ok(vec!["exe6".into(), "exe9".into()]));
+            downloads.progress = Some(("exe9".into(), 0.25));
+        }
+        games.poll_downloads();
+        assert_eq!(games.list.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), ["exe6", "exe9"]);
+        assert!(!matches!(games.get("exe6").unwrap().state, State::Downloading(_)), "its content is there");
+        assert_eq!(games.progress("exe9"), 0.25);
+        assert!(games.playable().contains(&"exe9".to_string()), "a game being downloaded can be stepped to");
+        games.downloads.borrow_mut().done.push(("exe9".into(), Err("no connection".into())));
+        games.poll_downloads();
+        assert!(matches!(games.get("exe9").unwrap().state, State::NoContent));
+        assert!(!games.playable().contains(&"exe9".to_string()));
+        assert_eq!(games.take_notice(), Some(Notice::DownloadFailed("exe9".into())));
+        assert_eq!(games.take_notice(), None);
+        assert!(!games.no_content(), "exe6 has content");
+        games.list.retain(|e| e.id == "exe9");
+        assert!(games.no_content());
+        // (The catalog that couldn't be read, and none kept: nothing to play.)
+        let mut games = Games::read_of(Vec::new());
+        games.downloads.borrow_mut().catalog = Some(Err("no connection".into()));
+        games.poll_downloads();
+        assert!(games.no_content() && games.list.is_empty());
     }
 
     /// The game opened on is the one remembered if it can be played, else BN6, else the first that can; a game

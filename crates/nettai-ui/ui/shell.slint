@@ -166,9 +166,13 @@ export global Shell {
     in property <bool> loading;
     in property <float> loading-progress;
     in property <bool> extracting;
+    // `downloading`: its content is being downloaded first (the app has none of it yet), and the bar is that.
+    in property <bool> downloading;
     // No game can be played, and where a pack is looked for. `extracts`: the app extracts its packs itself (no
-    // `$NETTAI_PACKS`), so what is missing is the Legacy Collection, and its folder can be chosen.
+    // `$NETTAI_PACKS`), so what is missing is the Legacy Collection, and its folder can be chosen. `no-content`:
+    // what is missing is the games' content, which couldn't be downloaded.
     in property <bool> no-games;
+    in property <bool> no-content;
     in property <string> packs-folder;
     in property <bool> extracts;
 
@@ -314,6 +318,8 @@ export enum ErrorKind {
     // No pack of a game, and no Legacy Collection to extract it from.
     no-legacy-collection,
     extract-failed,
+    // A game's content couldn't be downloaded (the app has none of it). With no game named: no game's could.
+    download-failed,
     other,
 }
 
@@ -427,6 +433,12 @@ export global Errors {
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
         }
+        if kind == ErrorKind.download-failed {
+            if detail == "" {
+                return @tr("The games' content couldn't be downloaded. Check your connection, then start nettai again.");
+            }
+            return @tr("{}'s content couldn't be downloaded. Check your connection, then start nettai again.", detail);
+        }
         return @tr("Something went wrong. Details are in the log file.");
     }
     // A dialog's title for it, and its message under the title.
@@ -515,6 +527,9 @@ export global Errors {
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted", detail);
         }
+        if kind == ErrorKind.download-failed {
+            return @tr("{}'s content couldn't be downloaded", detail);
+        }
         return @tr("Something went wrong");
     }
     public pure function body(kind: ErrorKind, detail: string) -> string {
@@ -601,6 +616,9 @@ export global Errors {
                 return @tr("In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }
             return @tr("Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window.");
+        }
+        if kind == ErrorKind.download-failed {
+            return @tr("Check your connection, then start nettai again.");
         }
         return @tr("Details are in the log file.");
     }

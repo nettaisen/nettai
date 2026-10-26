@@ -8,7 +8,9 @@ description = "What the app asks of the system, the same on the desktop and in a
 [dependencies]
 # Files over HTTP(S) (`http`): reqwest, hyper and rustls on the desktop (no provider of its own: ring's, given),
 # the browser's fetch there.
-reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "stream"] }
+# A body taken as it comes, for its progress (`http::get_reporting`).
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # What goes wrong, said as a warning: the app keeps them in its log.
 log = "0.4"
 # Work done off the window's thread, awaited (`task::off_thread`).

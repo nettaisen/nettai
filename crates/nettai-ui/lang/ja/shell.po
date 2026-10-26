@@ -63,6 +63,9 @@ msgstr "{} を読み込み中"
 # A game's pack being extracted from the Legacy Collection: {} is the game, as the header shows it.
 msgid "Extracting {}"
 msgstr "{} を抽出中"
+# A game's content being downloaded (the app has none of it yet): {} is the game, as the header shows it.
+msgid "Downloading {}"
+msgstr "{} をダウンロード中"
 
 msgid "Loading"
 msgstr "読み込み中"
@@ -346,6 +349,16 @@ msgid "{}'s data couldn't be extracted. Details are in the log file."
 msgstr "{} のデータを抽出できませんでした。詳しくはログファイルをご覧ください。"
 msgid "{}'s data couldn't be extracted"
 msgstr "{} のデータを抽出できませんでした"
+# A game's content couldn't be downloaded: {} is the game, as the header shows it (the first: no game named,
+# none could be).
+msgid "The games' content couldn't be downloaded. Check your connection, then start nettai again."
+msgstr "ゲームのコンテンツをダウンロードできませんでした。接続を確認してから、nettai をもう一度起動してください。"
+msgid "{}'s content couldn't be downloaded. Check your connection, then start nettai again."
+msgstr "{} のコンテンツをダウンロードできませんでした。接続を確認してから、nettai をもう一度起動してください。"
+msgid "{}'s content couldn't be downloaded"
+msgstr "{} のコンテンツをダウンロードできませんでした"
+msgid "Check your connection, then start nettai again."
+msgstr "接続を確認してから、nettai をもう一度起動してください。"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"

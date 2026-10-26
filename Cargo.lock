@@ -1327,6 +1327,7 @@ dependencies = [
 name = "exe4-compat"
 version = "0.1.0"
 dependencies = [
+ "exe4-compat",
  "nettai-battle",
  "nettai-content-api",
  "nettai-match",
@@ -1340,6 +1341,7 @@ dependencies = [
 name = "exe5-compat"
 version = "0.1.0"
 dependencies = [
+ "exe5-compat",
  "nettai-battle",
  "nettai-content-api",
  "nettai-match",
@@ -1353,6 +1355,7 @@ dependencies = [
 name = "exe6-compat"
 version = "0.1.0"
 dependencies = [
+ "exe6-compat",
  "nettai-battle",
  "nettai-content-api",
  "nettai-match",
@@ -3487,6 +3490,7 @@ dependencies = [
  "arboard",
  "futures-channel",
  "futures-executor",
+ "futures-util",
  "js-sys",
  "log",
  "reqwest",
@@ -4746,6 +4750,7 @@ dependencies = [
  "base64",
  "bytes",
  "futures-core",
+ "futures-util",
  "http",
  "http-body",
  "http-body-util",
@@ -4762,12 +4767,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
 ]
 
@@ -5960,6 +5967,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-util"
+version = "0.7.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "494815d09bf52b5548659851081238f0ca39ff638363907596da739561c62c52"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "toml"
 version = "0.8.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6608,6 +6628,19 @@ name = "wasm-bindgen-test-shared"
 version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31d56021e873866c968588ed85ccdf56db5c426e44afdb4618c39895104b920"
+
+[[package]]
+name = "wasm-streams"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d1ec4f6517c9e11ae630e200b2b65d193279042e28edd4a2cda233e46670bbb"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
 
 [[package]]
 name = "wayland-backend"

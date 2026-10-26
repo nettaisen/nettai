@@ -406,6 +406,23 @@ impl Shell {
         self.select_game_from(&next, by.signum());
     }
 
+    /// The main menu shows with nothing over it (`screens::menu`): a loaded game whose newer content arrived plays
+    /// it from now on (`Games::apply_arrived`), loaded again when it is next shown (the selected one at once, behind
+    /// the bar).
+    pub fn content_at_menu(&mut self) {
+        if self.dialog.is_some() || self.battle.is_some() {
+            return;
+        }
+        let changed = self.games.apply_arrived();
+        if changed.is_empty() {
+            return;
+        }
+        if self.game.as_ref().is_some_and(|g| changed.contains(g)) {
+            self.announced = None;
+        }
+        self.name_games();
+    }
+
     /// Start loading a game on its thread.
     fn load(&mut self, id: &str) {
         self.games.load(id, self.i18n.code, |id, step| crate::with_app(|app| app.shell.games.step(&id, step)));
@@ -994,6 +1011,10 @@ impl App {
         shell.set_packs_folder(self.shell.games.packs.display().to_string().into());
         shell.set_extracts(self.shell.games.extracts);
         self.shell.games.start();
+        // (The games' content the store hasn't is downloaded whatever the settings say: there is nothing to play
+        // without it. A newer revision of what it has is looked for unless Settings turned that off.)
+        let newer = self.shell.settings.check_updates && !self.shell.still;
+        self.shell.games.download(newer);
         // (An installed app asks for an update, unless Settings turned that off; the screenshot pass never does.)
         if self.shell.settings.check_updates && !self.shell.still {
             self.shell.updates.check();
@@ -1852,10 +1873,11 @@ impl App {
     fn follow_games(&mut self) {
         let ui = self.shell.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        self.shell.games.poll_downloads();
         // What the player is to be told of a game, once, by the game's name (the others go on loading, and
         // play): a pack that couldn't be loaded or extracted; no Legacy Collection to extract one from (where a
-        // game can be played: else the loading screen says it, with the way to its folder). Not over another
-        // dialog, nor over a battle.
+        // game can be played: else the loading screen says it, with the way to its folder); content that couldn't
+        // be downloaded (likewise). Not over another dialog, nor over a battle.
         if self.shell.dialog.is_none()
             && self.shell.battle.is_none()
             && !self.shell.loading_battle()
@@ -1868,6 +1890,10 @@ impl App {
                 Notice::ExtractFailed(game) => self.shell.fail(UserError::ExtractFailed { game: Shell::game_name(&game) }),
                 Notice::NoSource if !self.shell.games.playable().is_empty() => self.shell.ask_for_source(),
                 Notice::NoSource => {}
+                Notice::DownloadFailed(game) if !self.shell.games.playable().is_empty() => {
+                    self.shell.fail(UserError::DownloadFailed { game: Shell::game_name(&game) })
+                }
+                Notice::DownloadFailed(_) => {}
             }
         }
         if let Some(held) = self.shell.hold_loading {
@@ -1879,14 +1905,23 @@ impl App {
             // (A game that can be played since: a pack to extract from a folder just chosen.)
             match self.shell.games.first_choice(self.shell.settings.game.as_deref()) {
                 Some(first) => self.shell.select_game(&first),
+                // (The first start: the catalog of games is being read, and no game is known yet.)
+                None if self.shell.games.reading_catalog() => {
+                    shell.set_no_games(false);
+                    shell.set_downloading(true);
+                    shell.set_loading(true);
+                    shell.set_loading_progress(0.0);
+                }
                 None => {
                     shell.set_no_games(true);
+                    shell.set_no_content(self.shell.games.no_content());
                     shell.set_loading(true);
                 }
             }
             return;
         };
         shell.set_extracting(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Extracting(_) | State::Extractable)));
+        shell.set_downloading(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Downloading(_))));
         match self.shell.games.get(&id).map(|e| &e.state) {
             // Loaded for the first time with no pack of its own yet: its pack is extracted now, the others' when
             // they are first loaded.
@@ -1895,7 +1930,7 @@ impl App {
                 shell.set_loading(true);
                 shell.set_loading_progress(0.0);
             }
-            Some(State::Extracting(_)) => {
+            Some(State::Extracting(_)) | Some(State::Downloading(_)) => {
                 shell.set_loading(true);
                 shell.set_loading_progress(self.shell.games.progress(&id));
             }
@@ -1925,15 +1960,19 @@ impl App {
                     self.settle();
                 }
             }
-            state @ (Some(State::Failed) | Some(State::NoPack) | None) => {
-                // It can't be played: the next that can. One whose pack couldn't be loaded or extracted is told
-                // above, by its name; one asked for that has no pack at all, as something gone wrong.
-                let told = matches!(state, Some(State::Failed)) || (matches!(state, Some(State::NoPack)) && self.shell.games.extracts);
+            state @ (Some(State::Failed) | Some(State::NoPack) | Some(State::NoContent) | None) => {
+                // It can't be played: the next that can. One whose pack couldn't be loaded or extracted, or whose
+                // content couldn't be downloaded, is told above, by its name; one asked for that has no pack at all,
+                // as something gone wrong.
+                let told = matches!(state, Some(State::Failed) | Some(State::NoContent)) || (matches!(state, Some(State::NoPack)) && self.shell.games.extracts);
                 let games = self.shell.games.playable();
                 self.shell.game = None;
                 match games.first() {
                     Some(next) => self.shell.select_game(&next.clone()),
-                    None => shell.set_no_games(true),
+                    None => {
+                        shell.set_no_games(true);
+                        shell.set_no_content(self.shell.games.no_content());
+                    }
                 }
                 if !told {
                     self.shell.fail(UserError::Other);

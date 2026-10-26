@@ -77,6 +77,9 @@ pub enum UserError {
     /// A game's pack couldn't be extracted from the Legacy Collection (its archives didn't read, or the
     /// extraction failed): `game` is the game, as shown.
     ExtractFailed { game: String },
+    /// A game's content couldn't be downloaded, and the app has none of it (docs/design/content-deployment.md
+    /// §5): `game` is the game, as shown.
+    DownloadFailed { game: String },
     /// Anything else: the details are in the log.
     Other,
 }
@@ -112,6 +115,7 @@ impl UserError {
             UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
             UserError::NoLegacyCollection => (ErrorKind::NoLegacyCollection, ""),
             UserError::ExtractFailed { game } => (ErrorKind::ExtractFailed, game),
+            UserError::DownloadFailed { game } => (ErrorKind::DownloadFailed, game),
             UserError::Other => (ErrorKind::Other, ""),
         }
     }
