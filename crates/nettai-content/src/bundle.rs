@@ -78,6 +78,84 @@ pub struct Manifest {
     pub packs: BTreeMap<String, String>,
 }
 
+impl Serialize for BundleId {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for BundleId {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<BundleId, D::Error> {
+        String::deserialize(d)?.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+/// Where game `game`'s bundles are published: its repository's site (§4).
+pub fn site(game: &str) -> String {
+    format!("https://nettaisen.github.io/{game}")
+}
+
+/// Game `game`'s index on its site.
+pub fn index_url(game: &str) -> String {
+    format!("{}/index.json", site(game))
+}
+
+/// Bundle `id` of game `game` on its site.
+pub fn bundle_url(game: &str, id: BundleId) -> String {
+    format!("{}/bundles/{id}.tar.gz", site(game))
+}
+
+/// A game's site's `index.json`: its published bundles by engine line, each line's in publish order. (Fields an
+/// app doesn't know are skipped, so a later index still reads.)
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Index {
+    pub game: String,
+    pub lines: BTreeMap<String, Vec<Published>>,
+}
+
+/// A published bundle, as its game's index lists it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Published {
+    pub id: BundleId,
+    /// What it plays (`Content::hash` with the game's asset pack), as 16 hex digits.
+    #[serde(with = "content_hash_hex")]
+    pub content_hash: nettai_battle::ContentHash,
+    /// Its revision within the line (1 for `r1`).
+    pub revision: u32,
+    /// Each pack's commit, by pack id (its manifest's).
+    pub packs: BTreeMap<String, String>,
+    /// The day it was published (YYYY-MM-DD).
+    pub date: String,
+    /// The size of its `.tar.gz`, in bytes.
+    pub size: u64,
+}
+
+impl Index {
+    /// Line `line`'s newest bundle.
+    pub fn newest(&self, line: &str) -> Option<&Published> {
+        self.lines.get(line)?.last()
+    }
+
+    /// Line `line`'s newest bundle that plays `hash`.
+    pub fn playing(&self, line: &str, hash: nettai_battle::ContentHash) -> Option<&Published> {
+        self.lines.get(line)?.iter().rev().find(|p| p.content_hash == hash)
+    }
+}
+
+mod content_hash_hex {
+    use nettai_battle::ContentHash;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(h: &ContentHash, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&format!("{:016x}", h.0))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<ContentHash, D::Error> {
+        let s = String::deserialize(d)?;
+        u64::from_str_radix(&s, 16).map(ContentHash).map_err(|_| serde::de::Error::custom(format!("a content hash is 16 hex digits, not {s:?}")))
+    }
+}
+
 /// A bundle: its tar and what names it.
 #[derive(Clone, Debug)]
 pub struct Bundle {
@@ -353,6 +431,31 @@ mod tests {
         let err = build(manifest(), &[("exe6", &game)]).unwrap_err();
         assert!(err.contains("manifest names the packs"), "{err}");
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn an_index_reads_back_and_finds_by_content_hash() {
+        let entry = |rev: u32, id: u8, hash: u64| Published {
+            id: BundleId([id; 32]),
+            content_hash: nettai_battle::ContentHash(hash),
+            revision: rev,
+            packs: [("exe6".to_string(), "aaaa".to_string())].into(),
+            date: "2026-10-26".into(),
+            size: 1234,
+        };
+        let index = Index { game: "exe6".into(), lines: [("0.11".to_string(), vec![entry(1, 1, 0xA), entry(2, 2, 0xB), entry(3, 3, 0xA)])].into() };
+        let json = serde_json::to_string(&index).unwrap();
+        assert!(json.contains("\"content_hash\":\"000000000000000a\""), "{json}");
+        let back: Index = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, index);
+        assert_eq!(back.newest("0.11").unwrap().revision, 3);
+        assert_eq!(back.playing("0.11", nettai_battle::ContentHash(0xB)).unwrap().revision, 2);
+        assert_eq!(back.playing("0.11", nettai_battle::ContentHash(0xA)).unwrap().revision, 3);
+        assert!(back.playing("0.12", nettai_battle::ContentHash(0xA)).is_none());
+        // A later index's fields an app doesn't know are skipped.
+        let later = json.replace("\"size\":1234", "\"size\":1234,\"notes\":\"new\"");
+        assert_eq!(serde_json::from_str::<Index>(&later).unwrap(), index);
+        assert_eq!(bundle_url("exe6", BundleId([0; 32])), format!("https://nettaisen.github.io/exe6/bundles/{}.tar.gz", "0".repeat(64)));
     }
 
     #[test]
