@@ -629,6 +629,10 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
 - **Rewards' weights.** The result 1; the HP difference from 1 down to 0.2 over the first 3,000 updates.
   `hp_gain` is a fraction of the round's max HP (the coordinator, 2026-10-23), so the shaping for a KO is the
   same at any HP of the curriculum.
+- **A minibatch in parts** (`ppo.accumulate`, default 1). A network whose minibatch doesn't fit the GPU's memory in
+  one pass (the extra-large run's on a 32 GB card at 2,048 envs and 64 chunks) takes it in that many parts, each
+  adding its share of the minibatch's mean losses (the advantages normalized over the whole minibatch) before the one
+  clipped step: the same step as one pass (a test, in 1, 2 and 3 parts).
 - **The rollout's slices and their bootstrap.** A rollout is 128 pool steps. A stream's last decision in it is
   still open: its reward and the next state's value come later. It is carried into the next rollout as that
   rollout's first decision and trained once it closes; the decision before it is bootstrapped from its value. A

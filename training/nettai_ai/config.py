@@ -90,6 +90,9 @@ class PPOConfig:
     # Chunks per minibatch: 64 (8,192 decision slots) gives the GPU more per call, 1.7× the update's speed of 16
     # on the cloud's RTX 3090 (§11).
     minibatch_chunks: int = 64
+    # Each minibatch's passes, its gradients added before the one step: the same step in parts, for a network whose
+    # minibatch doesn't fit the GPU's memory in one pass (the extra-large run's on 32 GB).
+    accumulate: int = 1
     lr: float = 3e-4
     lr_final: float = 0.1  # the learning rate falls linearly to lr × lr_final over run.updates
     adam_eps: float = 1e-5

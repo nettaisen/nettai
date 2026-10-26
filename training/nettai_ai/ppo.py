@@ -138,55 +138,67 @@ def ppo_update(
         perm = torch.randperm(n_chunks, generator=generator, device="cpu")
         for start in range(0, n_chunks, cfg.minibatch_chunks):
             mb = perm[start : start + cfg.minibatch_chunks]
-            sc = cs[mb][:, None].expand(-1, L)  # [B, L]
-            tc = tclamp[cw[mb]]
-            vc = ro.closed[sc, tc] & in_range[cw[mb]]
-            obs = ro.obs(sc, tc, vc)
-            idx = up(torch.stack([sc, tc, vc.to(torch.int64)]))
-            s, t, valid = idx[0], idx[1], idx[2].bool()
-            h0 = ro.h_in[s[:, 0], t[:, 0]]
-            reset = reset_d[s, t]
-            fight, screen, value, _ = model.sequence(obs, h0, reset, previous_d[s, t])
-            phase = phase_d[s, t].to(torch.int64)
-            is_f = valid & (phase == 1)
-            is_s = valid & (phase == 2)
-            # Only a row's own head is read; the other head's logits are replaced by zeros so nothing is NaN.
-            lf = torch.where(is_f.unsqueeze(-1), mask_logits(fight, legal_f[s, t]), 0.0)
-            ls = torch.where(is_s.unsqueeze(-1), mask_logits(screen, legal_s[s, t]), 0.0)
-            logp_f = F.log_softmax(lf, -1)
-            logp_s = F.log_softmax(ls, -1)
-            a = action_d[s, t]
-            lp = torch.where(
-                is_f,
-                logp_f.gather(-1, a.clamp(0, fa - 1).unsqueeze(-1)).squeeze(-1),
-                logp_s.gather(-1, a.clamp(0, sa - 1).unsqueeze(-1)).squeeze(-1),
-            )
-            ent = torch.where(is_f, _entropy(logp_f), _entropy(logp_s))
-            nvalid = valid.sum().clamp(min=1)
-            vmean = lambda x: (x * valid).sum() / nvalid
-            log_ratio = torch.where(valid, lp - logp_d[s, t], 0.0)
-            ratio = log_ratio.exp()
-            A = adv_d[s, t]
-            mu = vmean(A)
-            sd = torch.sqrt(vmean((A - mu) ** 2) + 1e-8)
-            A = (A - mu) / sd
-            pg = -torch.minimum(ratio * A, ratio.clamp(1 - cfg.clip, 1 + cfg.clip) * A)
-            old_v = value_d[s, t]
-            R = ret_d[s, t]
-            v_clip = old_v + (value - old_v).clamp(-cfg.value_clip, cfg.value_clip)
-            vl = 0.5 * torch.maximum((value - R) ** 2, (v_clip - R) ** 2)
-            loss_pg, loss_v, entropy = vmean(pg), vmean(vl), vmean(ent)
-            loss = loss_pg + cfg.value_coef * loss_v - cfg.entropy * entropy
+            sc_all = cs[mb][:, None].expand(-1, L)  # [B, L]
+            tc_all = tclamp[cw[mb]]
+            vc_all = ro.closed[sc_all, tc_all] & in_range[cw[mb]]
+            idx = up(torch.stack([sc_all, tc_all, vc_all.to(torch.int64)]))
+            s_all, t_all, valid_all = idx[0], idx[1], idx[2].bool()
+            # The minibatch's sizes and its advantages' normalization, over all of it: each part of it (cfg.accumulate)
+            # adds its share of the minibatch's mean losses, so the step is the one a single pass would take.
+            nvalid = valid_all.sum().clamp(min=1)
+            A_all = adv_d[s_all, t_all]
+            mu = (A_all * valid_all).sum() / nvalid
+            sd = torch.sqrt((((A_all - mu) ** 2) * valid_all).sum() / nvalid + 1e-8)
             opt.zero_grad(set_to_none=True)
-            loss.backward()
+            sums = torch.zeros(7, device=dev)  # policy, value, entropy, KL, clipped, ratio, (unused)
+            B = len(mb)
+            parts = max(1, min(cfg.accumulate, B))
+            for k in range(parts):
+                part = slice(k * B // parts, (k + 1) * B // parts)
+                sc, tc, vc = sc_all[part], tc_all[part], vc_all[part]
+                s, t, valid = s_all[part], t_all[part], valid_all[part]
+                obs = ro.obs(sc, tc, vc)
+                h0 = ro.h_in[s[:, 0], t[:, 0]]
+                reset = reset_d[s, t]
+                fight, screen, value, _ = model.sequence(obs, h0, reset, previous_d[s, t])
+                phase = phase_d[s, t].to(torch.int64)
+                is_f = valid & (phase == 1)
+                is_s = valid & (phase == 2)
+                # Only a row's own head is read; the other head's logits are replaced by zeros so nothing is NaN.
+                lf = torch.where(is_f.unsqueeze(-1), mask_logits(fight, legal_f[s, t]), 0.0)
+                ls = torch.where(is_s.unsqueeze(-1), mask_logits(screen, legal_s[s, t]), 0.0)
+                logp_f = F.log_softmax(lf, -1)
+                logp_s = F.log_softmax(ls, -1)
+                a = action_d[s, t]
+                lp = torch.where(
+                    is_f,
+                    logp_f.gather(-1, a.clamp(0, fa - 1).unsqueeze(-1)).squeeze(-1),
+                    logp_s.gather(-1, a.clamp(0, sa - 1).unsqueeze(-1)).squeeze(-1),
+                )
+                ent = torch.where(is_f, _entropy(logp_f), _entropy(logp_s))
+                vsum = lambda x: (x * valid).sum()
+                log_ratio = torch.where(valid, lp - logp_d[s, t], 0.0)
+                ratio = log_ratio.exp()
+                A = (adv_d[s, t] - mu) / sd
+                pg = -torch.minimum(ratio * A, ratio.clamp(1 - cfg.clip, 1 + cfg.clip) * A)
+                old_v = value_d[s, t]
+                R = ret_d[s, t]
+                v_clip = old_v + (value - old_v).clamp(-cfg.value_clip, cfg.value_clip)
+                vl = 0.5 * torch.maximum((value - R) ** 2, (v_clip - R) ** 2)
+                part_pg, part_v, part_ent = vsum(pg), vsum(vl), vsum(ent)
+                loss = (part_pg + cfg.value_coef * part_v - cfg.entropy * part_ent) / nvalid
+                loss.backward()
+                with torch.no_grad():
+                    kl = vsum((ratio - 1) - log_ratio)
+                    clip = vsum(((ratio - 1).abs() > cfg.clip).float())
+                    sums += torch.stack([part_pg, part_v, part_ent, kl, clip, vsum(ratio), torch.zeros((), device=dev)])
             gn = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)
             opt.step()
             with torch.no_grad():
-                kl = vmean((ratio - 1) - log_ratio)
-                clip = vmean(((ratio - 1).abs() > cfg.clip).float())
+                loss_pg, loss_v, entropy, kl, clip, mean_ratio = (sums[:6] / nvalid).unbind()
                 acc += torch.stack([loss_pg, loss_v, entropy, kl, clip, gn.to(acc.dtype)])
                 if epoch == 0:
-                    first += torch.stack([vmean(ratio), kl])
+                    first += torch.stack([mean_ratio, kl])
                     first_mbs += 1
             mbs += 1
     out = dict(zip(names, (acc / mbs).tolist()))
