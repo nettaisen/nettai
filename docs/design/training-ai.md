@@ -676,7 +676,7 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     from all of the exploiter's snapshots at once: 28 within 40 minutes, more networks than the cache held, read
     from disk again and again, and its rollouts took 200 s instead of 35. Both runs share the main run's machine
     (each update's minibatch in parts, `ppo.accumulate`, to fit the GPU); the exploiter keeps a snapshot every 50
-    updates. **It found nothing:** warm-started from the large run's update 2,450, in 1,600 updates (about 52 M
+    updates. **It found nothing:** warm-started from the large run's update 2,450, in 2,050 updates (about 66 M
     decisions, five hours) its win rate against the large run's latest network stayed between 42 and 55% (50% at
     the end), and the large run's against its snapshots at 50%; the large run's update 2,750 against its 2,450 (the
     last before the exploiter), over duplicate deals at Hard, won 69 deals both ways to 56 (Elo 1,183 to 1,177),
