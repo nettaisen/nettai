@@ -3191,7 +3191,7 @@ dependencies = [
 
 [[package]]
 name = "nettai"
-version = "0.10.3"
+version = "0.11.0"
 dependencies = [
  "chrono",
  "console_log",
@@ -3317,7 +3317,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-frontend"
-version = "0.10.3"
+version = "0.11.0"
 dependencies = [
  "m4a",
  "nettai-assets",
@@ -3482,7 +3482,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-web"
-version = "0.10.3"
+version = "0.11.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
