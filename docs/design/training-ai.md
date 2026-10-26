@@ -958,8 +958,8 @@ rules' buttons pressable since 5,000: EXE5's Souls, EXE6's Beast Out), which bea
 (33 to 10). Then, for the user to try, the large network's update 700 (run large1, 2.7 M parameters, 274 M
 decisions from scratch; its update 500 had beaten the fourth run's update 500 over duplicate deals 100 to 66), then
 its update 1,000 (390 M decisions; its update 750 had beaten its 500 93 to 44), then its update 1,500 (585 M; within
-14 Elo of the fourth run's update 5,250 over duplicate deals, 57 deals won both ways to 72, ahead in EXE6). A better
-one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
+14 Elo of the fourth run's update 5,250 over duplicate deals, 57 deals won both ways to 72, ahead in EXE6), then its
+update 2,000 (about 780 M decisions; even with 5,250, 73 to 67, Elo 1,188 to 1,183). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
 that it plays.
