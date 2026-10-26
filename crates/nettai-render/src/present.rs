@@ -195,26 +195,6 @@ fn draw_picture(frame: &Frame, place: &Placement, out: &mut [u32], w: usize) {
     }
 }
 
-/// Draw a frame's text items into its own picture, at the frame's
-/// resolution, and leave it none: the original mode's strings in a
-/// language its pack has no fonts for (`Renderer::render`). A pixel no
-/// item covers keeps its color.
-pub fn draw_text(frame: &mut Frame, text: &mut TextRenderer) {
-    if frame.text.is_empty() {
-        return;
-    }
-    let before: Vec<u32> = frame.pixels.iter().map(|&p| to_rgb(p)).collect();
-    let mut out = before.clone();
-    text.draw(&frame.text, &frame.depth, &Placement::fit(WIDTH, HEIGHT), &mut out, WIDTH);
-    for ((p, was), now) in frame.pixels.iter_mut().zip(&before).zip(&out) {
-        if was != now {
-            let five = |shift: u32| ((now >> (shift + 3)) & 0x1F) as u16;
-            *p = five(16) | five(8) << 5 | five(0) << 10;
-        }
-    }
-    frame.text.clear();
-}
-
 /// Write a frame as an RGB PNG, scaled up by an integer factor, with its
 /// text items drawn at that scale by `text` ([`present`]).
 pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut TextRenderer>) -> std::io::Result<()> {
@@ -455,24 +435,5 @@ mod tests {
             present(&frame(sub), None, &mut out, w, h);
             assert_eq!(out[w..w + row.len()].to_vec(), row.iter().map(|&c| to_rgb(c)).collect::<Vec<_>>(), "at {scale} times");
         }
-    }
-
-    /// The original mode's strings in a language the pack has no fonts for
-    /// are drawn into the frame itself: its pixels take the text in the
-    /// item's colors within the item's box, nothing else changes, and the
-    /// frame carries no item for a window to draw again.
-    #[test]
-    fn text_drawn_into_the_frame_leaves_none_to_draw() {
-        use crate::textlayer::{Rect, TextItem};
-        use crate::vfont::{Role, VectorFont};
-        let (face, shadow) = (0x7FFF, 0x2108);
-        let item = TextItem::new("Cannon", Role::Cell, Rect::new(16, 8, 64, 16), face, Some(shadow));
-        let mut frame = Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..Frame::default() };
-        draw_text(&mut frame, &mut TextRenderer::new(std::sync::Arc::new(VectorFont::bundled())));
-        assert!(frame.text.is_empty());
-        let changed: Vec<usize> = (0..WIDTH * HEIGHT).filter(|&i| frame.pixels[i] != 0x1234).collect();
-        assert!(changed.len() > 40, "the text is drawn ({} pixels)", changed.len());
-        assert!(changed.iter().all(|&i| (16..16 + 64 + 2).contains(&(i % WIDTH)) && (8..8 + 16 + 2).contains(&(i / WIDTH))));
-        assert!(frame.pixels.contains(&face), "the face's color, whole where a glyph covers a pixel");
     }
 }

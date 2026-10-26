@@ -10,19 +10,36 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// The fonts the UI and the battle's drawing bundle, each with its license and its license file (from the
-/// workspace's root). The digit and chip code fonts are nettai's own (the game's digits and codes traced: their
-/// folders' READMEs), under the repository's license.
-const FONTS: [(&str, &str, &str); 9] = [
-    ("Bungee", "OFL-1.1", "crates/nettai-render/fonts/bungee/OFL.txt"),
-    ("Chakra Petch", "OFL-1.1", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
-    ("Corporate Logo", "OFL-1.1", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
-    ("M PLUS 1 Code", "OFL-1.1", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
-    ("Noto Sans CJK", "OFL-1.1", "crates/nettai-render/fonts/noto-sans-cjk/OFL.txt"),
-    ("Nettai Banner Digits", "MPL-2.0", "LICENSE"),
-    ("Nettai Chip Codes", "MPL-2.0", "LICENSE"),
-    ("Nettai Digits", "MPL-2.0", "LICENSE"),
-    ("Nettai Slot Codes", "MPL-2.0", "LICENSE"),
+/// The fonts the UI and the battle's drawing bundle, each with its license and its license files (from the
+/// workspace's root: its own, then the notices of the fonts it is made from, which come with it). The digit and
+/// chip code fonts are nettai's own (the game's digits and codes traced: their folders' READMEs), under the
+/// repository's license.
+const FONTS: [(&str, &str, &[&str]); 11] = [
+    ("Bungee", "OFL-1.1", &["crates/nettai-render/fonts/bungee/OFL.txt"]),
+    ("Chakra Petch", "OFL-1.1", &["crates/nettai-ui/fonts/chakra-petch/OFL.txt"]),
+    ("Corporate Logo", "OFL-1.1", &["crates/nettai-ui/fonts/corporate-logo/OFL.txt"]),
+    ("Fusion Pixel", "OFL-1.1", &FUSION_PIXEL),
+    ("Fusion Pixel Bold", "OFL-1.1", &FUSION_PIXEL_BOLD),
+    ("M PLUS 1 Code", "OFL-1.1", &["crates/nettai-render/fonts/mplus1code/OFL.txt"]),
+    ("Noto Sans CJK", "OFL-1.1", &["crates/nettai-render/fonts/noto-sans-cjk/OFL.txt"]),
+    ("Nettai Banner Digits", "MPL-2.0", &["LICENSE"]),
+    ("Nettai Chip Codes", "MPL-2.0", &["LICENSE"]),
+    ("Nettai Digits", "MPL-2.0", &["LICENSE"]),
+    ("Nettai Slot Codes", "MPL-2.0", &["LICENSE"]),
+];
+
+/// Fusion Pixel's license, and the notices of the fonts it is stitched from (its release's LICENSES).
+const FUSION_PIXEL: [&str; 4] = [
+    "crates/nettai-render/fonts/fusion-pixel/OFL.txt",
+    "crates/nettai-render/fonts/fusion-pixel/LICENSES/ark-pixel/OFL.txt",
+    "crates/nettai-render/fonts/fusion-pixel/LICENSES/cubic-11/OFL.txt",
+    "crates/nettai-render/fonts/fusion-pixel/LICENSES/galmuri/LICENSE.txt",
+];
+const FUSION_PIXEL_BOLD: [&str; 4] = [
+    "crates/nettai-render/fonts/fusion-bold-pixel/OFL.txt",
+    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/ark-pixel/OFL.txt",
+    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/cubic-11/OFL.txt",
+    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/galmuri/LICENSE.txt",
 ];
 
 /// A package's license files: by name, in its folder, in a `LICENSES` folder, or in a folder of its own (a
@@ -80,7 +97,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", root.join("Cargo.lock").display());
     println!("cargo:rerun-if-changed={}", manifest.join("Cargo.toml").display());
-    for (_, _, file) in FONTS {
+    for file in FONTS.iter().flat_map(|(_, _, files)| files.iter()) {
         println!("cargo:rerun-if-changed={}", root.join(file).display());
     }
 
@@ -149,10 +166,18 @@ fn main() {
     list.sort_by(|a, b| a.name.to_ascii_lowercase().cmp(&b.name.to_ascii_lowercase()).then_with(|| a.version.cmp(&b.version)));
     let fonts: Vec<Package> = FONTS
         .iter()
-        .map(|(name, license, file)| {
-            let text = std::fs::read_to_string(root.join(file)).unwrap_or_else(|e| panic!("can't read {file}: {e}"));
-            let shown = Path::new(file).file_name().map_or_else(|| file.to_string(), |n| n.to_string_lossy().into_owned());
-            Package { name: name.to_string(), version: String::new(), license: license.to_string(), repository: String::new(), texts: vec![(shown, text_of(text))] }
+        .map(|(name, license, files)| {
+            // (Each file by its path in the font's folder: OFL.txt, LICENSES/galmuri/LICENSE.txt.)
+            let folder = Path::new(files[0]).parent().unwrap_or(Path::new(""));
+            let texts = files
+                .iter()
+                .map(|file| {
+                    let text = std::fs::read_to_string(root.join(file)).unwrap_or_else(|e| panic!("can't read {file}: {e}"));
+                    let shown = Path::new(file).strip_prefix(folder).map_or_else(|_| file.to_string(), |p| p.to_string_lossy().into_owned());
+                    (shown, text_of(text))
+                })
+                .collect();
+            Package { name: name.to_string(), version: String::new(), license: license.to_string(), repository: String::new(), texts }
         })
         .collect();
 

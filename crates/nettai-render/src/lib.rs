@@ -24,6 +24,7 @@ pub mod lookups;
 pub mod objects;
 pub mod packs;
 pub mod pictures;
+pub mod pixeltext;
 pub mod rasters;
 pub mod present;
 pub mod render;

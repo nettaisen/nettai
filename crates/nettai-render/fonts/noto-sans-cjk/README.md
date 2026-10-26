@@ -1,8 +1,8 @@
 # Noto Sans CJK
 
-The font every language's dynamic text is drawn in, in the battle (the enhanced mode's text and lettering, and the
-original mode's strings where a pack has no font for the language: Chinese) and in the app's body text, which the
-app registers from these files at its start (`lang::register_fonts`). The user (2026-10-25): "you should use one
+The font every language's dynamic text is drawn in, in the battle (the enhanced mode's text and lettering; the
+original mode's strings where a pack has no font for the language are Fusion Pixel's, `../fusion-pixel`) and in
+the app's body text, which the app registers from these files at its start (`lang::register_fonts`). The user (2026-10-25): "you should use one
 unified font for all languages so it's not inconsistent", then chose Noto Sans CJK from a specimen of candidates,
 and "just use noto sans cjk without subsetting it".
 
@@ -14,4 +14,4 @@ notosansjp, notosanssc, notosanstc; weights 100 to 900), whole:
 - `NotoSansSC[wght].ttf`, family "Noto Sans SC": Simplified Chinese (zh-Hans).
 - `NotoSansTC[wght].ttf`, family "Noto Sans TC": Traditional Chinese (zh-Hant, Taiwan's forms).
 
-Licence: SIL Open Font License 1.1 (OFL.txt).
+License: SIL Open Font License 1.1 (OFL.txt).

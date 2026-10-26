@@ -941,8 +941,8 @@ the 16 rows. It kept the descenders' shape at the cost of the names' place and s
 font, and the 15 states below rendered in `--text original` are byte for byte the same with main's frontend and this
 one; with short descenders, the 16 states of the shots below in both languages (32 frames at 3x) in `--text
 original` are byte for byte the same with the first fit's frontend and this one. (The stand-in for a pack with no
-lettering in the language shown, which draws the vector font into the frame in the original mode,
-`Renderer::render`, lays strings out by these roles too, so its names follow them; no comparison uses it.)
+lettering in the language shown, which draws pixel fonts into the frame in the original mode (§15),
+lays strings out by these roles too; no comparison uses it.)
 
 **Looked at**, headless at 3x, before and after: the chip window (EXE6's Spreadr1 and BigBomb, EXE5's and EXE4's
 Magnum, スプレッドガン1), the enemy names (SpoutMan, GyroMan, アクアマン), the hand window (Spreadr1, Magnum,
@@ -1115,8 +1115,8 @@ the US's (the user's choice).
   chosen one: its pictures with words (the banners, the gauge's word, the chip window's pictures, the Crosses' names,
   the waiting words) are the language it has them in, never placeholders. Its fonts are that language's too, without
   most of the chosen language's characters (the US font has no kana; the Japanese fonts have 36 and 26 of the 62
-  Latin letters and digits), so the strings are drawn with the vector font in either mode: the enhanced mode as
-  always, and the original mode into the 240x160 frame at its resolution (`Renderer::render`, `present::draw_text`),
+  Latin letters and digits), so the strings are drawn in other fonts in either mode: the enhanced mode's vector font
+  as always, and in the original mode pixel fonts into the 240x160 frame (§15: `Renderer::render`, `pixeltext`),
   rather than in the other language's glyphs. The frame comparison has nothing to compare there: no console draws a
   language its ROM has no font for.
 - The places that draw content's text (hud.rs, custom.rs, chatbox.rs) ask the frame's `TextSink` for it
@@ -2008,7 +2008,7 @@ collection's Chinese art: the banners stay English with the Japanese games' name
 telops are; "Cstmzing..." is 改装中… (改裝中…); the Cross window's names are the Crosses' Chinese names (高热交错);
 the chip window's help pictures keep their English titles over Chinese words. No pack has Chinese pictures or a
 Chinese pixel font (no GBA ROM has either), so a Chinese battle's pictures are its pack's own language's and its
-strings are drawn by the vector font in either mode (§10.3, the original's at the frame's resolution).
+strings are drawn by the vector font in the enhanced mode and by pixel fonts in the original mode (§15).
 
 The app's catalogs (crates/nettai-ui/lang/zh-Hans, zh-Hant) have every string, in the collection's terms (芯片/晶片,
 文件夹/資料夾, 领航员/領航員, 个人化装置/個人化裝置); docs/app.md §3.
@@ -2028,3 +2028,63 @@ A chip's name, the other player's chip's telop, the custom screen's enemy names 
 text layer, as many cells as their text at its own width (`fonts::box_cells`), in every language: nothing is
 narrowed into the original's glyphs' cells (§9.4's rule stays for the boxes the original fixes: the chatbox's). The
 enemy names are right-aligned, ending at column 30 as the original's do.
+
+## 15. The original mode's pixel fonts (as built, 2026-10-25)
+
+The user: "for chinese in original mode, is it possible to use a pixel font instead?", then from specimens of
+candidates drawn into battle frames "Fusion Pixel 12px looks good for the dialog box font, but i think the telop
+and enemy name and chip name font needs to be different and thicker", "is there a font that is like less ugly" and
+"Fusion Pixel Bold 12px is perfect"; then, of what it drew, "telop for double beast doesn't seem to be showing up in
+chinese", "there appears to be misalignment on the enemy name" and "why are the numbers so small in fusion pixel
+font?".
+
+### 15.1 What draws what
+
+Where a pack can't spell the language shown (Chinese, which no GBA ROM has a font for; a pack of one region shown
+in the other's language), the original mode lays the strings out as the enhanced mode does (a `TextSink` that
+takes and measures them with the pixel fonts) and draws them into the 240x160 frame (`pixeltext`, at the end of
+`Renderer::render`), in place of the vector font shrunk to the frame's pixels that it drew before:
+
+- **Fusion Pixel Bold 12px** for the 8x16 font's strings (chip names, the enemy's name, the telop, the Program
+  Advance's names, the HUD's seconds) and **Fusion Pixel 12px** for the chatbox's: TakWolf's fonts, release
+  2026.10.25, whole, in three cuts by `Cut::of` (ja for English and Japanese, zh_hans, zh_tw), under the OFL with
+  the notices of the fonts they are stitched from (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen
+  lists both). About 30 MB of the program.
+- A glyph's outline lies on a grid of 100 units a pixel, so at 12 pixels an em each of its pixels is a frame's
+  (swash rasterizes it; coverage of half or more is ink).
+- In the item's face color, with the 8x16 font's shadow (right, below and both) in its shadow color, faded as the
+  item is, hidden where something in front won the pixel (the depth key), cut by its clip; the chatbox printing
+  shows its first characters; the telop's squash maps the box's rows as the original's sprite rows step
+  (`compose`'s formula).
+- The hanzi's ink ends on the row the role's capitals end on: row 13 of the 8x16 font's 16, so a name sits in its
+  bar (rows 3 to 13) as the original's letters do; row 10 of the chatbox's 12. (Centered on the capitals, the
+  first build's hung a row under the enemy name's bar.)
+- What the pack's own font has of a string's plain characters (ASCII's digits, Latin letters and signs) is the
+  pack's glyph, as tall as the original's: the pixel fonts' are half-width and some 7 rows, the original's 10
+  ("攻击+10" ends in the game's "+10"). The game's marks (the stacked EX, SP, DS: the Private Use Area, §10.5) are
+  the pack's glyphs always; the fonts' own glyphs there are other things.
+- A string is never narrowed: its box is as wide as its text (§14.4). The chip window's name has the original's
+  eight cells, which its clip keeps: five hanzi fit (13 pixels each, the last column blank), a longer name is cut
+  at the box (MEGA加农炮, 小小热水壶1: 22 of EXE6's 354 chip names, 22 of EXE4's, 28 of EXE5's). How to show those
+  is the user's to choose.
+
+The telop's text rides on blank sprite parts (so it is as deep as they are, and the sprite budget counts them):
+they were one a glyph of the pack's for the name, so a name of which the pack has no glyph (双重野兽, DblBeast's)
+had none and wasn't drawn, in either mode. They are now one a cell of the text's box.
+
+### 15.2 Choosing
+
+Three rounds of specimens, real EXE6 frames in the original mode with each font drawn in at the frame's pixels:
+Fusion Pixel 12px and 10px, Ark Pixel 12px (lacks 35 Simplified and 77 Traditional characters), Cubic 11,
+Boutique Bitmap 9x9 and GNU Unifont 16px; then those strokes doubled; then Fusion Pixel's bold build, outlined
+variants, ChillBitmap 16px doubled, ZLabs Pixel 12px and MuzaiPixel 8x12. Left out: Zpix (its license costs money
+and forbids changes), Ark Pixel 10px (almost no hanzi), and the collection's own Chinese 8x16 font (smooth
+high-resolution lettering, not pixel art).
+
+### 15.3 Checked
+
+The renderer's tests (pixeltext's: a string drawn into the frame in its colors round its box; boxes as wide as the
+text, the bold the wider; a mark from the pack; depth, clip and printing), the About screen's; headless frames of
+EXE6 in zh-Hans and zh-Hant: the custom screen with a chip's description, the chip in hand with its damage, the
+other player's telop (Atk+10), DblBeast's telop, the enemy name on its bar, and chip names too long for the chip
+window. Packs with the language shown never reach it: the frame comparisons are unchanged.

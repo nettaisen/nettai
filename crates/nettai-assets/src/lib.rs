@@ -701,17 +701,24 @@ impl DialogueFont {
     /// the box's white, around strokes in 3. What a text drawn in another
     /// font in the glyphs' place takes for its color.
     pub fn ink(&self) -> u8 {
-        let n = Self::WIDTH * Self::HEIGHT;
-        let mut corners = [0usize; 16];
-        for glyph in self.pixels.chunks(n) {
-            corners[glyph[0] as usize & 15] += 1;
-        }
-        let ground = (0..16).max_by_key(|&i| (corners[i], std::cmp::Reverse(i))).unwrap_or(0);
+        let ground = self.ground() as usize;
         let mut counts = [0usize; 16];
         for &p in &self.pixels {
             counts[p as usize & 15] += 1;
         }
         (1..16).filter(|&i| i != ground).max_by_key(|&i| (counts[i], std::cmp::Reverse(i))).unwrap_or(1) as u8
+    }
+
+    /// The palette index of the glyphs' cells around their strokes: the
+    /// commonest in their top left corners (0, clear, in EXE6's and EXE5's
+    /// fonts; 1, the box's white, in EXE4's).
+    pub fn ground(&self) -> u8 {
+        let n = Self::WIDTH * Self::HEIGHT;
+        let mut corners = [0usize; 16];
+        for glyph in self.pixels.chunks(n) {
+            corners[glyph[0] as usize & 15] += 1;
+        }
+        (0..16).max_by_key(|&i| (corners[i], std::cmp::Reverse(i))).unwrap_or(0) as u8
     }
 
     /// The glyphs of a string, each glyph's longest name first, and the

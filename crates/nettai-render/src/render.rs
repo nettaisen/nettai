@@ -146,8 +146,9 @@ pub struct Renderer {
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
     /// What the original mode draws strings with where the pack has no
-    /// lettering in the language shown (`render`): made when first needed.
-    stand_in: Option<(Arc<VectorFont>, std::cell::RefCell<crate::vfont::TextRenderer>)>,
+    /// lettering in the language shown (`render`): the pixel fonts in that
+    /// language's cut, made when first needed.
+    stand_in: Option<std::cell::RefCell<crate::pixeltext::PixelText>>,
     /// The player's language's strings table (`--lang`), if not the
     /// content's own.
     strings: Option<Arc<nettai_content::locale::Strings>>,
@@ -231,7 +232,7 @@ impl Renderer {
     /// own.
     pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
         self.strings = strings;
-        // (The original mode's stand-in font is the language's cut: made again for the new one.)
+        // (The original mode's pixel fonts are the language's cut: made again for the new one.)
         self.stand_in = None;
         self.problems.recheck();
     }
@@ -246,8 +247,8 @@ impl Renderer {
     /// the text layer (without a font it draws them as the original does). The
     /// original mode draws every string into the frame in the pack's
     /// fonts, and with a pack that has no lettering in the language shown
-    /// (its fonts are another language's) in `font`, else the font the
-    /// frontend comes with, at the frame's resolution (`render`).
+    /// (its fonts are another language's) in the pixel fonts, at the
+    /// frame's resolution (`render`, `pixeltext`).
     pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
         self.mode = mode;
         self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
@@ -452,23 +453,26 @@ impl Renderer {
         // own (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown
         // language's characters. The original mode then lays the strings
-        // out as the enhanced mode does and draws them with the vector font
-        // into the frame, at the frame's resolution: the frame still
-        // carries all its text.
+        // out as the enhanced mode does, in boxes as wide as the text, and
+        // draws them into the frame in pixel fonts (`pixeltext`): the frame
+        // still carries all its text.
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
         let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
-            let font = self.font.clone().unwrap_or_else(|| crate::vfont::bundled_font(crate::vfont::Cut::of(shown)).clone());
-            self.stand_in = Some((font.clone(), std::cell::RefCell::new(crate::vfont::TextRenderer::new(font))));
+            self.stand_in = Some(std::cell::RefCell::new(crate::pixeltext::PixelText::new(crate::vfont::Cut::of(shown))));
         }
-        let (mode, font, measure) = match &self.stand_in {
-            Some((font, measure)) if stand_in => (GraphicsMode::Enhanced, Some(&**font), Some(measure)),
-            _ => (self.mode, self.font.as_deref(), self.measure.as_ref()),
+        let pixels = self.stand_in.as_ref().filter(|_| stand_in);
+        if let Some(p) = pixels {
+            p.borrow_mut().use_pack(&own_game.hud);
+        }
+        let (mode, font, measure) = match pixels {
+            Some(_) => (GraphicsMode::Enhanced, None, None),
+            None => (self.mode, self.font.as_deref(), self.measure.as_ref()),
         };
         // (The game-style lettering only in the enhanced mode: the original
         // mode draws its pictures whatever draws its strings.)
         let lettering = self.mode == GraphicsMode::Enhanced;
-        let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref()).with_lettering(lettering);
+        let mut text = TextSink::new(mode, font).measuring(measure).with_pixels(pixels).with_language(self.strings.as_deref()).with_lettering(lettering);
         // (The consoles whose pieces the frame draws, each with its HUD's
         // state: the local one's, and on a screen of both the other's.)
         let seats = Seat::of(self.consoles, b);
@@ -673,8 +677,8 @@ impl Renderer {
         });
         let drawings = (!Vec::is_empty(&text)).then(|| self.drawings.clone());
         let mut frame = Frame { pixels, depth, text, glide, nudge: None, lift: None, overlays, drawings };
-        if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
-            crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
+        if let Some(p) = self.stand_in.as_ref().filter(|_| stand_in) {
+            p.borrow_mut().draw(&mut frame);
         }
         frame
     }

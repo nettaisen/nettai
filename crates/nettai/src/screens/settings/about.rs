@@ -232,7 +232,10 @@ mod tests {
     fn the_list_holds_the_fonts_and_slint_with_their_licenses() {
         // (The UI's and the battle's drawing's: build.rs's list, in its order.)
         let names: Vec<&str> = FONTS.iter().map(|f| f.name).collect();
-        assert_eq!(names, ["Bungee", "Chakra Petch", "Corporate Logo", "M PLUS 1 Code", "Noto Sans CJK", "Nettai Banner Digits", "Nettai Chip Codes", "Nettai Digits", "Nettai Slot Codes"]);
+        assert_eq!(
+            names,
+            ["Bungee", "Chakra Petch", "Corporate Logo", "Fusion Pixel", "Fusion Pixel Bold", "M PLUS 1 Code", "Noto Sans CJK", "Nettai Banner Digits", "Nettai Chip Codes", "Nettai Digits", "Nettai Slot Codes"]
+        );
         // (The bought-in fonts under the OFL; the digit and chip code fonts nettai's own, under its license.)
         assert!(FONTS.iter().all(|f| !f.texts.is_empty() && f.license == if f.name.starts_with("Nettai") { "MPL-2.0" } else { "OFL-1.1" }));
         let slint = PACKAGES.iter().find(|p| p.name == "slint").expect("Slint is built in");

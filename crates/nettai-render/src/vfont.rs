@@ -311,6 +311,13 @@ impl Role {
         self.style().cap
     }
 
+    /// Its baseline, in frame pixels down from its box's top: its capitals
+    /// end on the row above it (where the original mode's pixel fonts end
+    /// their hanzi: `pixeltext`).
+    pub fn baseline(self) -> f32 {
+        self.style().baseline
+    }
+
     /// Whether it is drawn in the lettering font.
     pub fn lettering(self) -> bool {
         matches!(self, Role::Lettering(_))

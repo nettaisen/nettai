@@ -2474,8 +2474,11 @@ fn name_parts<'a>(
         .collect();
     let after = x + 8 * cells as i32;
     let glyphs = if font { 0 } else { name.len() };
-    for c in name {
-        let (tiles, first) = if font { (&*BLANK_GLYPH, 0) } else { fonts::cell_glyph(hud, c) };
+    // (With the words on the text layer, blank parts in the cells they take:
+    // the group has parts, and so its items their depth, however few of
+    // the words the pack's font has glyphs for, none of a Chinese name's.)
+    let parts: Vec<(&Tiles, usize)> = if font { vec![(&*BLANK_GLYPH, 0); cells] } else { name.iter().map(|&c| fonts::cell_glyph(hud, c)).collect() };
+    for (tiles, first) in parts {
         out.push(SpritePart { first_tile: first, ..glyph(tiles, 0, pal, x, y, 0, vscale) });
         x += 8;
     }

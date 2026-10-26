@@ -115,7 +115,8 @@ Chinese), bundled under the SIL Open Font License in `crates/nettai-render/fonts
 font, and its numbers and the custom window's labels in Bungee, bundled beside it. The game's words in English,
 Japanese and Chinese are Mega Man Battle Network Legacy Collection's ([text-rendering.md](docs/design/text-rendering.md) §14). Settings' battle text draws them in
 the game's own fonts and pictures instead, exactly as the original does
-([text-rendering.md](docs/design/text-rendering.md) §9, §12).
+([text-rendering.md](docs/design/text-rendering.md) §9, §12); where the game has no font for the language
+(Chinese), its words are drawn there in pixel fonts, Fusion Pixel and Fusion Pixel Bold (§15).
 
 To play another player (the app's Play screen, not built yet; the library and the link under it are), both choose
 the same game and meet in a room of the signaling server by its code (the first in hosts, the left navi), through

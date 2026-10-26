@@ -2107,7 +2107,8 @@ docs/design/app-ui.md §4 is the look; this is where it lives.
 
 **The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, Corporate Logo 700
 for Japanese display text, M PLUS 1 Code, and Noto Sans CJK, all under the SIL Open Font License, each with its
-license beside it in `fonts/`, M PLUS 1 Code's and Noto Sans CJK's in nettai-render's, which draws battles with them;
+license beside it in `fonts/`, M PLUS 1 Code's and Noto Sans CJK's in nettai-render's, which draws battles with them
+(and with Fusion Pixel and its bold build, the original mode's Chinese: text-rendering.md §15);
 Noto Sans CJK registered by the app at its start, §3), the metrics, and the durations. A screen uses these and writes no color, size or duration
 of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
 Petch, 700 for both in Corporate Logo, which is bundled at that weight alone).
@@ -3836,7 +3837,7 @@ is open (`screens/settings/about.rs`: `About::open`, `close`, and a screen's `sh
 
 **What it shows.** At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
 repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
-and under MADE WITH, a list of the software the app is made of: the nine fonts it bundles (Bungee, Chakra Petch, Corporate Logo, M PLUS 1 Code, Noto Sans CJK, and its own Nettai Banner Digits, Nettai Chip Codes, Nettai Digits and Nettai Slot Codes), then every package built into it, by name, each row its name, its version and its
+and under MADE WITH, a list of the software the app is made of: the eleven fonts it bundles (Bungee, Chakra Petch, Corporate Logo, Fusion Pixel, Fusion Pixel Bold, M PLUS 1 Code, Noto Sans CJK, and its own Nettai Banner Digits, Nettai Chip Codes, Nettai Digits and Nettai Slot Codes), then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
 and repository, and its license files as its package ships them, each file's name over its text in the monospaced
 face, scrolling. The footer counts them ("… packages · 9 fonts"). On a phone the list is the page, and a

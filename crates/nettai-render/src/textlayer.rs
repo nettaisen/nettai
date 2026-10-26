@@ -8,8 +8,9 @@
 //! string is drawn into the 240x160 frame in the game's fonts, as the
 //! comparison with the original needs. (With a pack that has no lettering
 //! in the language shown, whose fonts are another language's, the original
-//! mode draws the strings with the vector font into the frame, at the
-//! frame's resolution: `Renderer::render`.) In the enhanced mode
+//! mode lays the strings out here and draws them into the frame in pixel
+//! fonts, at the frame's resolution: `pixeltext`, `Renderer::render`.) In
+//! the enhanced mode
 //! ([`GraphicsMode::Enhanced`]) the places that draw text ask a
 //! [`TextSink`] first: for a string the font can draw they leave the glyphs
 //! out of the frame and hand the sink a [`TextItem`] in the original's box
@@ -229,6 +230,10 @@ pub struct TextSink<'f> {
     pub mode: GraphicsMode,
     font: Option<&'f VectorFont>,
     measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
+    /// The original mode's pixel fonts, where its pack can't spell the
+    /// language shown: what takes the strings and measures them
+    /// (`pixeltext`).
+    pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>,
     items: Vec<(Plane, TextItem)>,
     next_tag: u32,
     /// The display text the frame shows for content: the player's
@@ -242,7 +247,7 @@ pub struct TextSink<'f> {
 impl<'f> TextSink<'f> {
     pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
         let lettering = mode == GraphicsMode::Enhanced && font.is_some();
-        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering }
+        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering }
     }
 
     /// With the game-style lettering left to the pictures however the
@@ -328,9 +333,19 @@ impl<'f> TextSink<'f> {
         TextSink { measure, ..self }
     }
 
+    /// With the original mode's pixel fonts taking and measuring the
+    /// strings (its pack can't spell the language shown).
+    pub fn with_pixels(self, pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>) -> TextSink<'f> {
+        TextSink { pixels, ..self }
+    }
+
     /// How wide, in frame pixels, the text layer draws `text` in a box
-    /// `room` wide (None without a measurer).
+    /// `room` wide (None without a measurer). The pixel fonts never narrow
+    /// a string: its own width.
     pub fn fitted_width(&self, text: &str, role: Role, room: i32) -> Option<f32> {
+        if let Some(p) = self.pixels {
+            return Some(p.borrow_mut().width(text, role) as f32);
+        }
         self.measure.map(|m| m.borrow_mut().fitted_width(text, role, room))
     }
 
@@ -338,6 +353,9 @@ impl<'f> TextSink<'f> {
     /// first glyph's pen (`TextRenderer::ink_extent`; None without a
     /// measurer, or no ink).
     pub fn ink_extent(&self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
+        if let Some(p) = self.pixels {
+            return p.borrow_mut().ink_extent(text, role);
+        }
         self.measure.and_then(|m| m.borrow_mut().ink_extent(text, role, room))
     }
 
@@ -347,11 +365,11 @@ impl<'f> TextSink<'f> {
     }
 
     /// Whether `text` goes to the text layer: in the enhanced mode, when the
-    /// font has every character of it (else the whole string is drawn in
-    /// the game's font, as in the original mode: a string never mixes two
-    /// fonts).
+    /// font (or the original mode's pixel fonts) has every character of it
+    /// (else the whole string is drawn in the game's font, as in the
+    /// original mode: a string never mixes two fonts).
     pub fn takes(&self, text: &str) -> bool {
-        self.mode == GraphicsMode::Enhanced && self.font.is_some_and(|f| f.covers(text))
+        self.mode == GraphicsMode::Enhanced && (self.font.is_some_and(|f| f.covers(text)) || self.pixels.is_some_and(|p| p.borrow().covers(text)))
     }
 
     /// A new tag for the sprite parts an item stands in for.
