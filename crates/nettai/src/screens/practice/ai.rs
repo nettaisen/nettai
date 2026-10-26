@@ -1,13 +1,15 @@
-//! The dummy that fights (its Action Fights, at a Level): nettai-training's player on the shipped network, plugged
+//! The dummy that fights (its Action Fights, at a Level): nettai-training's player on the network of the nettai-ai
+//! repository ([`super::weights`]: downloaded when Fights is first picked, or `NETTAI_AI_WEIGHTS`'s file), plugged
 //! into the practice battle's live play, with its chips' fingerprints made on threads of their own. The `ai`
 //! feature's: a build without it has no Fights and no Level (`ACTIONS`, [`shown_rows`](super::shown_rows)).
 
+use super::weights::Weights;
 use super::{LEVEL_COUNT, Session};
 use crate::screens::ScreenId;
 use crate::shell::Shell;
 use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent};
 use nettai_match::Set;
-use nettai_training::ai::{Fingerprinter, Level, NetAi, Status, Stopped};
+use nettai_training::ai::{Arriving, Fingerprinter, Level, Status, Stopped, WaitingAi};
 use nettai_ui::{GettingReady, PracticeView};
 use slint::ComponentHandle;
 use std::path::PathBuf;
@@ -15,23 +17,26 @@ use std::path::PathBuf;
 /// How well the dummy fights (its Action Fights: the AI's), in the Level row's order; Normal at first.
 pub(super) const LEVELS: [Level; LEVEL_COUNT] = [Level::Easy, Level::Normal, Level::Hard];
 
-/// The AI plugged into the dummy's live play ([`plug`]): its level (its place in [`LEVELS`]), the chips'
-/// fingerprints it plays with, and why it stopped, if it did; `out`, taken out since ([`watch`]: the dummy
-/// stands still).
+/// The AI plugged into the dummy's live play ([`plug`]): its level (its place in [`LEVELS`]), its network (on its
+/// way, maybe), the chips' fingerprints it plays with and the most it was seen to be making, and why it stopped, if
+/// it did; `out`, taken out since ([`watch`]: the dummy stands still).
 pub(crate) struct Plugged {
     pub(crate) level: usize,
+    pub(crate) net: Arriving,
     pub(crate) fingerprints: Fingerprinter,
+    chips: usize,
     pub(crate) stopped: Stopped,
     out: bool,
 }
 
-/// The dummy's AI as its Action needs it: while it fights, nettai-training's `NetAi` at `level` (a new one for
-/// another level), on the shipped network (read once: `nettai_training::ai::shipped`), its draws from `seed`, the
-/// fingerprints of its game's chips made on threads of their own and kept in `cache` (the app's: [`fingerprints_folder`]),
-/// both builds' folders' chips asked for at once, so they are made while the round opens; none otherwise.
-/// `plugged`: the one plugged in now, if any. What is plugged in after. One that can't be made (weights this
-/// encoder can't play) is said in the log, and none is plugged in: the dummy stands still.
-pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed: u32, plugged: Option<Plugged>, cache: Option<PathBuf>) -> Option<Plugged> {
+/// The dummy's AI as its Action needs it: while it fights, nettai-training's `WaitingAi` at `level` (a new one for
+/// another level) on the network `net` gives (asked for then: the app's [`Weights::wanted`]; till it arrives the
+/// dummy waits, its custom screen held), its draws from `seed`, the fingerprints of its game's chips made on threads
+/// of their own and kept in `cache` (the app's: [`fingerprints_folder`]), both builds' folders' chips asked for at
+/// once, so they are made while the round opens; none otherwise. `plugged`: the one plugged in now, if any. What is
+/// plugged in after. One whose network can't be had, or is weights this encoder can't play, stops: [`watch`] says
+/// why in the log and takes it out, and the dummy stands still.
+pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed: u32, plugged: Option<Plugged>, cache: Option<PathBuf>, net: impl FnOnce() -> Arriving) -> Option<Plugged> {
     let wanted = (opponent.in_fight == InFight::Ai || opponent.on_custom_screen == OnCustomScreen::Ai).then_some(level);
     if wanted == plugged.as_ref().map(|p| p.level) {
         return plugged;
@@ -43,23 +48,17 @@ pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed
     let content = live.set().content().clone();
     let fingerprints = Fingerprinter::start(&content, fingerprint_threads(), cache);
     fingerprints.want(nettai_training::ai::setup_chips(&content, live.set().first()));
-    match nettai_training::ai::shipped().and_then(|net| NetAi::of(net, LEVELS[level], seed as u64, fingerprints.clone())) {
-        Ok(ai) => {
-            let plugged = Plugged { level, fingerprints, stopped: ai.stopped(), out: false };
-            live.set_ai(Some(Box::new(ai)));
-            Some(plugged)
-        }
-        Err(why) => {
-            crate::errors::log("making the dummy's AI", &why);
-            live.set_ai(None);
-            None
-        }
-    }
+    let net = net();
+    let ai = WaitingAi::new(net.clone(), LEVELS[level], seed as u64, fingerprints.clone());
+    let plugged = Plugged { level, net, fingerprints, chips: 0, stopped: ai.stopped(), out: false };
+    live.set_ai(Some(Box::new(ai)));
+    Some(plugged)
 }
 
-/// The session's dummy's AI as its Action and Level now have it, on `live` (the session's battle's).
-pub(super) fn replug(live: &mut LivePlayer, session: &mut Session) {
-    session.ai = plug(live, session.opponent, session.level, session.seed, session.ai.take(), Some(fingerprints_folder()));
+/// The session's dummy's AI as its Action and Level now have it, on `live` (the session's battle's), its network
+/// the process's (`weights`).
+pub(super) fn replug(live: &mut LivePlayer, session: &mut Session, weights: &mut Weights) {
+    session.ai = plug(live, session.opponent, session.level, session.seed, session.ai.take(), Some(fingerprints_folder()), || weights.wanted());
 }
 
 /// A new set (another arena, or the dummy's build): the dummy's AI, if one is plugged in, has its chips'
@@ -83,21 +82,36 @@ fn fingerprint_threads() -> usize {
     std::thread::available_parallelism().map_or(4, |n| n.get().saturating_sub(1)).clamp(1, 4)
 }
 
-/// The dummy's AI as it goes, after the frame's ticks: one that stopped (its fingerprints couldn't be made, or it
-/// had nothing it could do) is said in the log and taken out, the dummy standing still; and while its chips'
-/// fingerprints are being made, the corner over the battle says it is getting ready, with how many are made of
-/// those asked for (`PracticeView.getting-ready`, told as it changes).
+/// The dummy's AI as it goes, after the frame's ticks: one that stopped (its network couldn't be had or played,
+/// its fingerprints couldn't be made, or it had nothing it could do) is said in the log and taken out, the dummy
+/// standing still; and while its network is on its way or its chips' fingerprints are being made, the corner over
+/// the battle says it is getting ready, with how many of those are done (the network one of them:
+/// `PracticeView.getting-ready`, told as it changes).
 pub(super) fn watch(shell: &mut Shell) {
     let Some(session) = shell.practice.session.as_mut() else { return };
     let mut ready = GettingReady::default();
     let mut take_out = false;
     if let Some(ai) = session.ai.as_mut().filter(|ai| !ai.out) {
-        if let Some(why) = ai.stopped.why() {
+        let failed = match ai.net.get() {
+            Some(Err(why)) => Some(why.clone()),
+            _ => ai.stopped.why(),
+        };
+        if let Some(why) = failed {
             crate::errors::log("the dummy's AI", &why);
             ai.out = true;
             take_out = true;
-        } else if let Status::Making { done, of } = ai.fingerprints.status() {
-            ready = GettingReady { shown: true, made: done as i32, asked: of as i32 };
+        } else {
+            let (done, of) = match ai.fingerprints.status() {
+                Status::Making { done, of } => {
+                    ai.chips = ai.chips.max(of);
+                    (done, of)
+                }
+                _ => (ai.chips, ai.chips),
+            };
+            let arrived = ai.net.get().is_some();
+            if done < of || !arrived {
+                ready = GettingReady { shown: true, made: (done + arrived as usize) as i32, asked: (of + 1) as i32 };
+            }
         }
     }
     let told = (session.getting_ready != ready).then(|| {
@@ -120,6 +134,12 @@ mod tests {
     use super::super::NORMAL;
     use super::*;
 
+    /// nettai-training's fixture network (small, its parameters random), arrived.
+    pub(crate) fn fixture() -> Arriving {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-training/tests/fixtures/net.safetensors");
+        Arriving::arrived(nettai_training::net::Net::from_safetensors(&std::fs::read(path).unwrap()).map(std::sync::Arc::new))
+    }
+
     /// The Level row's values, in its order.
     #[test]
     fn the_levels_are_easy_normal_and_hard() {
@@ -128,7 +148,7 @@ mod tests {
     }
 
     /// The dummy's AI is plugged in while its Action or its custom screen is the AI's, at the level chosen (a
-    /// new one for another level), and taken out otherwise.
+    /// new one for another level), and taken out otherwise; its network is asked for only as one is plugged in.
     #[test]
     fn the_dummys_ai_is_plugged_in_while_its_choices_are_the_ais() {
         let content = nettai_match::testing::exe6_content();
@@ -138,9 +158,10 @@ mod tests {
         let fights = Opponent { in_fight: InFight::Ai, ..still };
         let picks = Opponent { on_custom_screen: OnCustomScreen::Ai, ..still };
         let level = |p: &Option<Plugged>| p.as_ref().map(|p| p.level);
-        let plugged = plug(&mut live, still, NORMAL, 3, None, None);
+        let unasked = || -> Arriving { panic!("a network asked for with no AI") };
+        let plugged = plug(&mut live, still, NORMAL, 3, None, None, unasked);
         assert_eq!(level(&plugged), None);
-        let plugged = plug(&mut live, fights, NORMAL, 3, plugged, None);
+        let plugged = plug(&mut live, fights, NORMAL, 3, plugged, None, fixture);
         assert_eq!(level(&plugged), Some(NORMAL));
         // (Both builds' folders' chips asked for as it is plugged in.)
         let asked = |p: &Option<Plugged>| match p.as_ref().unwrap().fingerprints.status() {
@@ -149,11 +170,11 @@ mod tests {
             other => panic!("{other:?}"),
         };
         assert!(asked(&plugged) > 10, "{}", asked(&plugged));
-        let plugged = plug(&mut live, fights, 2, 3, plugged, None);
+        let plugged = plug(&mut live, fights, 2, 3, plugged, None, fixture);
         assert_eq!(level(&plugged), Some(2), "another level: another AI");
-        let plugged = plug(&mut live, picks, 2, 3, plugged, None);
+        let plugged = plug(&mut live, picks, 2, 3, plugged, None, unasked);
         assert_eq!(level(&plugged), Some(2), "the custom screen alone");
-        let plugged = plug(&mut live, still, 2, 3, plugged, None);
+        let plugged = plug(&mut live, still, 2, 3, plugged, None, unasked);
         assert_eq!(level(&plugged), None, "taken out");
     }
 }

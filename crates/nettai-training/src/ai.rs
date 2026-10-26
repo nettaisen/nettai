@@ -29,8 +29,11 @@
 //!   without one waits for it (in the fight the action held goes on, its
 //!   custom screen waits); the network never sees a chip whose fingerprint
 //!   isn't made, and the battle's thread never waits for one.
-//! - **Its weights.** The app's are the shipped file ([`WEIGHTS`]), read
-//!   once ([`shipped`]), every `NetAi` sharing the network ([`NetAi::of`]).
+//! - **Its weights.** The host's: a network it has read ([`NetAi::of`],
+//!   every `NetAi` of one sharing it), or one still arriving ([`Arriving`]:
+//!   the app downloads its from the nettai-ai repository, or reads the file
+//!   `NETTAI_AI_WEIGHTS` names), which [`WaitingAi`] waits for. None is
+//!   built in.
 //!
 //! Nothing here names a game.
 
@@ -50,17 +53,31 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
-/// The trained network the app plays with (docs/design/training-ai.md
-/// §10.5): the trainer's export (`nettai_ai.export`), the same on the
-/// desktop and in a browser, replaced by a better one as it is trained.
-pub const WEIGHTS: &[u8] = include_bytes!("../model/nettai-ai.safetensors");
+/// A network a host plays with that may still be on its way (the app's is
+/// downloaded: docs/design/training-ai.md §10.5): it arrives once, from
+/// whichever thread has it ([`Arriving::arrive`]), and every AI waiting on it
+/// shares it ([`WaitingAi`]). Err: why there is none (it couldn't be had, or
+/// this encoder can't play it).
+#[derive(Clone, Default)]
+pub struct Arriving(Arc<OnceLock<Result<Arc<Net>, String>>>);
 
-/// The network of [`WEIGHTS`], read once in a process: every [`NetAi`] of
-/// the app's shares it ([`NetAi::of`]). Err: why this encoder can't play
-/// them (the same each time).
-pub fn shipped() -> Result<Arc<Net>, String> {
-    static NET: OnceLock<Result<Arc<Net>, String>> = OnceLock::new();
-    NET.get_or_init(|| Net::from_safetensors(WEIGHTS).map(Arc::new)).clone()
+impl Arriving {
+    /// One that has arrived already.
+    pub fn arrived(net: Result<Arc<Net>, String>) -> Arriving {
+        let arriving = Arriving::default();
+        arriving.arrive(net);
+        arriving
+    }
+
+    /// It arrives (once: what comes after is dropped).
+    pub fn arrive(&self, net: Result<Arc<Net>, String>) {
+        let _ = self.0.set(net);
+    }
+
+    /// The network, once it has arrived (or why there is none).
+    pub fn get(&self) -> Option<&Result<Arc<Net>, String>> {
+        self.0.get()
+    }
 }
 
 /// How well it plays: one of the levels the weights carry knobs for (their
@@ -706,6 +723,78 @@ impl Ai for NetAi {
         self.mem.reset();
         self.error = None;
         *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = None;
+    }
+}
+
+/// [`NetAi`] on a network that may still be arriving ([`Arriving`]): till it
+/// has, a decision waits as one waits for a chip's fingerprint (in the fight
+/// it presses nothing, its custom screen waits); then it is that network's
+/// `NetAi` at its level. One that arrives as an error, or without the level,
+/// stops it, which its host reads ([`WaitingAi::stopped`]).
+pub struct WaitingAi {
+    net: Arriving,
+    level: Level,
+    seed: u64,
+    fingerprints: Fingerprinter,
+    ai: Option<NetAi>,
+    error: Option<String>,
+    told: Arc<Mutex<Option<String>>>,
+}
+
+impl WaitingAi {
+    /// The AI of the network `net` will bring, at `level`, its draws from
+    /// `seed`, the game's chips' fingerprints from `fingerprints`.
+    pub fn new(net: Arriving, level: Level, seed: u64, fingerprints: Fingerprinter) -> WaitingAi {
+        WaitingAi { net, level, seed, fingerprints, ai: None, error: None, told: Default::default() }
+    }
+
+    /// What its host reads of it once it has given it away: why it stopped,
+    /// if it did ([`NetAi::stopped`]; its network's arriving as an error
+    /// too).
+    pub fn stopped(&self) -> Stopped {
+        Stopped { why: self.told.clone(), fingerprints: self.fingerprints.clone() }
+    }
+
+    /// Why it stopped playing, if it did.
+    pub fn error(&self) -> Option<String> {
+        self.ai.as_ref().and_then(NetAi::error).or_else(|| self.error.clone()).or_else(|| self.fingerprints.error())
+    }
+
+    /// Its `NetAi`, once its network has arrived (made then).
+    fn ai(&mut self) -> Option<&mut NetAi> {
+        if self.ai.is_none() && self.error.is_none() {
+            let made = match self.net.get()? {
+                Ok(net) => NetAi::of(net.clone(), self.level, self.seed, self.fingerprints.clone()),
+                Err(why) => Err(why.clone()),
+            };
+            match made {
+                Ok(mut ai) => {
+                    ai.told = self.told.clone();
+                    self.ai = Some(ai);
+                }
+                Err(why) => {
+                    *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
+                    self.error = Some(why);
+                }
+            }
+        }
+        self.ai.as_mut()
+    }
+}
+
+impl Ai for WaitingAi {
+    fn fight(&mut self, b: &Battle, side: u8, theirs: u16) -> u16 {
+        self.ai().map_or(0, |ai| ai.fight(b, side, theirs))
+    }
+
+    fn custom_screen(&mut self, b: &Battle, side: u8) -> u16 {
+        self.ai().map_or(0, |ai| ai.custom_screen(b, side))
+    }
+
+    fn reset(&mut self) {
+        if let Some(ai) = &mut self.ai {
+            ai.reset();
+        }
     }
 }
 

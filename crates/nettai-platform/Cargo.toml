@@ -3,7 +3,7 @@ name = "nettai-platform"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "What the app asks of the system, the same on the desktop and in a browser: files, threads, time, dialogs, the clipboard, files dropped"
+description = "What the app asks of the system, the same on the desktop and in a browser: files, threads, time, dialogs, the clipboard, files dropped, files over HTTP"
 
 [dependencies]
 # What goes wrong, said as a warning: the app keeps them in its log.
@@ -11,11 +11,17 @@ log = "0.4"
 # Time: std's on the desktop, the browser's `performance.now()` there (std's panics).
 web-time = "1"
 
+[features]
+# Files over HTTP(S) (`http::get`): the app's dummy that fights downloads its network with it.
+http = ["dep:ureq"]
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The system's file dialogs.
 rfd = "0.15"
 # The system's clipboard.
 arboard = { version = "3", default-features = false }
+# Files over HTTPS (`http`, its feature): ureq with rustls, the crate the app's updates (Velopack) fetch with.
+ureq = { version = "3", optional = true }
 
 # The browser's: its workers, dialogs, downloads and clipboard.
 [target.'cfg(target_arch = "wasm32")'.dependencies]

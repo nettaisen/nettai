@@ -54,6 +54,7 @@ variables are for development:
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
+| `NETTAI_AI_WEIGHTS=<file>` | In a build with the `ai` feature, the practice dummy that fights plays these weights (a `nettai_ai.export` file) instead of downloading the nettai-ai repository's ("The dummy that fights"). |
 | `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe; `NETTAI_TOUR_ONLY=replays` one screen's steps alone. A build with the `tour` feature's alone (`--features tour`): a player's has none of it. |
 
 ## 1. The battle in a Slint window
@@ -3244,11 +3245,19 @@ before, and holds that action till the next; on its custom screen it points at a
 presses the way there. It never hears the player's buttons, and like any dummy but a second pad it never opens
 the custom screen (the player does). The Levels are the weights' own knobs: Easy reacts in 24 ticks (0.4 s) and
 samples widely, a random action a tenth of the time; Normal in 16 (0.27 s), sampling its policy; Hard in 10
-(0.17 s), taking its best action. The network is the shipped weights,
-`crates/nettai-training/model/nettai-ai.safetensors` (built in with `include_bytes!`, the same on the desktop and
-the web; the first are update 1000 of the first cloud run, early in training, and a better file replaces it as
-one is trained), read once a process and shared by every `NetAi` (`nettai_training::ai::shipped`). It thinks on
-the battle's own thread, inline (a decision costs about 0.2 ms here, under a millisecond in the browser).
+(0.17 s), taking its best action. No network is built in: the nettai-ai repository
+(github.com/nettaisen/nettai-ai) keeps one for each of nettai's minor versions (`<line>/nettai-ai.safetensors`,
+"0.11" what nettai 0.11.x plays; its `index.json` each line's SHA-256 alone), so a better one reaches players
+without a release, and a version
+that changes what the network sees waits for one trained for it (docs/design/training-ai.md §10.5). It is asked for
+when Fights is first picked in a run (`screens/practice/weights.rs`, `Weights::wanted`), then shared by every
+dummy that fights: the data folder's copy (`ai/<line>/nettai-ai.safetensors`) where that is the index's, else the
+index's downloaded (`nettai_platform::http`), checked by its SHA-256 and kept; with no index (no connection, or no
+weights for the line yet) the copy kept plays, if there is one. Till it has arrived the dummy waits as it waits for
+its fingerprints (`WaitingAi`: its custom screen held), and the corner's count below counts it as one more thing
+to make ready; one that can't be had, or weights this encoder can't play, is said in the log and the dummy stands
+still. `NETTAI_AI_WEIGHTS=<file>` plays that file instead, nothing downloaded (testing weights; the desktop's). It
+thinks on the battle's own thread, inline (a decision costs about 0.2 ms here, under a millisecond in the browser).
 
 It reads a chip by its fingerprint (what the chip does, made by running it in a sandbox battle: §3.1 of the
 design), so it must have the fingerprints of the chips it can see before it decides on a view that shows them.

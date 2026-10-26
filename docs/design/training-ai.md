@@ -64,7 +64,8 @@ crates/nettai-training      Rust, no Python:
 training/                   Python (uv), never built with the app:
   bridge/                   pyo3 module `nettai_gym` over nettai-training's pool (its own Cargo workspace), smoke.py
   nettai_ai/                model, PPO, league, evaluation, export
-crates/nettai-training/model/nettai-ai.safetensors   the shipped network, a few MB
+github.com/nettaisen/nettai-ai   the published networks, one for each nettai minor version (§10.5), which the app
+                                 downloads; none is in this repository but the test fixture's
 ```
 
 The bridge has its own Cargo workspace, so `cargo build` of the app never needs Python or pyo3. nettai-training
@@ -954,11 +955,39 @@ main thread; no worker is needed.
 
 ### 10.5 Weights
 
-One file, `model/nettai-ai.safetensors`, built into the crate (`include_bytes!`), the same on desktop and web. It is
-replaced only when a better one is trained. Reading it is a copy of its floats (a few ms for 1.13 M parameters);
-the app reads it once and gives each `NetAi` the same `Arc<Net>` (`NetAi::of`).
+**Published apart from the app** (2026-10-26, the user: "pull the model out into its own repo so the model can be
+updated by nettai without having to pull a new release of nettai, unless the minor version of nettai is
+incompatible"). The repository github.com/nettaisen/nettai-ai (public) keeps one network for each nettai **line**,
+its major and minor version: `<line>/nettai-ai.safetensors`, and `index.json` giving each line's SHA-256 (a check
+for a new one is that small file, not the network). Nothing else is published (the user: "don't expose unnecessary
+metadata ... i don't know why you need anything other than just the tensors"): the file's metadata is only what
+nettai reads to play it (`publish.PLAYED`: the format, the spec hash, the architecture, the levels' knobs, k and
+the screen's decision limit, which let a network of another size or timing be published without a release of the
+app), nothing of the run it came from. A nettai of 0.11.x plays the 0.11
+line's; a change to what the network sees (the observation spec, §3) comes with a new minor
+version and a network trained for it, published under its own line, the older lines' left as they are.
 
-As built: crates/nettai-training/model/nettai-ai.safetensors (`ai::WEIGHTS`, read once by `ai::shipped`). The first
+- **The app** (the `ai` feature; `screens/practice/weights.rs`) asks for it when Fights is first picked in a run
+  (the user's choice: not at start), then shares it: the data folder's copy (`ai/<line>/`) where its SHA-256 is the
+  index's, else the line's downloaded (`nettai_platform::http::get`, its `http` feature: ureq on the desktop,
+  `fetch` in the browser,
+  from raw.githubusercontent.com, which a page may fetch), checked and kept; with no index, the copy kept. The AI
+  plugged in meanwhile is `ai::WaitingAi` on an `ai::Arriving`: till the network arrives it waits as a decision
+  waits for a fingerprint (its custom screen held), then it is that network's `NetAi`; one that arrives as an error
+  stops it, said in the log. `NETTAI_AI_WEIGHTS=<file>` (the desktop's) plays that file instead (the user: "can
+  you also let me override the weights locally for testing?"). No weights are built in, and none are in this
+  repository but the test fixture's (crates/nettai-training/tests/fixtures/net.safetensors, small and random),
+  which the tests play.
+- **Publishing**: `uv run python -m nettai_ai.publish <checkpoint> --repo <nettai-ai checkout> [--line 0.11]
+  [--push]` exports it, keeps of its metadata what nettai reads, runs the tests that need trained weights on the file (`NETTAI_AI_WEIGHTS` naming it:
+  nettai-training's `weights_to_publish_play_at_three_levels`, nettai's `the_dummy_that_fights_takes_hp_away`, both
+  `#[ignore]`d otherwise), writes it and its SHA-256 and commits there ("nettai <line>: new weights"). The first published is the large run's
+  update 2,000 (line 0.11), the network the app had built in.
+
+Reading a network is a copy of its floats (a few ms); every `NetAi` of the app's shares one `Arc<Net>`.
+
+Until then the weights were built into nettai-training (`model/nettai-ai.safetensors`, `ai::WEIGHTS`, read once by
+`ai::shipped`). The first
 is update 1000 of the first cloud run (runs/first, 177 M decisions; 4.56 MB), weak as early weights are. With the
 previous action (§7) it was exported again (4.68 MB) from that checkpoint warm-started (`model.warm_start`: the
 previous action's columns zero), its metadata the checkpoint's (update, decisions, commit): it plays as it did
@@ -982,10 +1011,8 @@ rules' buttons pressable since 5,000: EXE5's Souls, EXE6's Beast Out), which bea
 decisions from scratch; its update 500 had beaten the fourth run's update 500 over duplicate deals 100 to 66), then
 its update 1,000 (390 M decisions; its update 750 had beaten its 500 93 to 44), then its update 1,500 (585 M; within
 14 Elo of the fourth run's update 5,250 over duplicate deals, 57 deals won both ways to 72, ahead in EXE6), then its
-update 2,000 (about 780 M decisions; even with 5,250, 73 to 67, Elo 1,188 to 1,183). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
-crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
-`ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
-that it plays (`cargo test -p nettai --features ai`).
+update 2,000 (about 780 M decisions; even with 5,250, 73 to 67, Elo 1,188 to 1,183), which became the nettai-ai
+repository's first (line 0.11).
 
 The app has the dummy that fights only when built with its `ai` feature (2026-10-26, the user: "have practice
 mode ai be a compile time feature flag that's off by default"): nettai-training is an optional dependency of

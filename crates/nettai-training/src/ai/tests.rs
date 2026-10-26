@@ -28,13 +28,13 @@ fn fingerprints(game: &str) -> Fingerprinter {
 /// the AI side 1, its fight buttons without L and R as live play strips
 /// them (`theirs`: what it is told the player holds). The AI's buttons, a
 /// tick each, and the battle after.
-fn play(game: &str, seed: u32, ai: &mut NetAi, ticks: u32, theirs: u16) -> (Vec<u16>, Battle) {
+fn play(game: &str, seed: u32, ai: &mut dyn Ai, ticks: u32, theirs: u16) -> (Vec<u16>, Battle) {
     let (pressed, _, b) = play_fight(game, seed, ai, ticks, theirs);
     (pressed, b)
 }
 
 /// The same, and whether the fight ran on each tick.
-fn play_fight(game: &str, seed: u32, ai: &mut NetAi, ticks: u32, theirs: u16) -> (Vec<u16>, Vec<bool>, Battle) {
+fn play_fight(game: &str, seed: u32, ai: &mut dyn Ai, ticks: u32, theirs: u16) -> (Vec<u16>, Vec<bool>, Battle) {
     let c = content(game);
     let maker = crate::builds::Maker::new(&c).unwrap();
     let mut picks = Picks::new(seed);
@@ -220,14 +220,10 @@ fn fingerprints_of_another_content_are_refused() {
     assert_eq!((ai.error(), stopped.why()), (None, None));
 }
 
-/// The shipped weights are this encoder's, with the three levels, Easy the
-/// slowest to react and Hard the quickest, taking its best action; read once,
-/// one network every player shares. They play EXE6 through its custom
-/// screens.
-#[test]
-fn the_shipped_weights_play_at_three_levels() {
-    let net = shipped().unwrap();
-    assert!(Arc::ptr_eq(&net, &shipped().unwrap()), "read once");
+/// The weights carry the three levels, Easy the slowest to react and Hard
+/// the quickest, taking its best action (an export's, the fixture's too);
+/// and they play EXE6 through its custom screens at Hard.
+fn plays_at_three_levels(net: Arc<Net>) {
     let knobs = Level::ALL.map(|l| net.level(l.name()).cloned().unwrap_or_else(|| panic!("{l:?}")));
     let [easy, normal, hard] = &knobs;
     assert!(easy.delay > normal.delay && normal.delay > hard.delay, "{knobs:?}");
@@ -237,6 +233,57 @@ fn the_shipped_weights_play_at_three_levels() {
     let (_, _, b) = play_fight("exe6", 9, &mut ai, 2400, 0);
     assert_eq!(ai.error(), None);
     assert!(b.round.turn >= 2, "it got through {} custom screens", b.round.turn);
+}
+
+#[test]
+fn the_fixtures_weights_play_at_three_levels() {
+    plays_at_three_levels(net());
+}
+
+/// Weights to publish (the file `NETTAI_AI_WEIGHTS` names: the publishing
+/// step's check, `nettai_ai.publish`) are this encoder's and play at the
+/// three levels. Not run unless asked (`--ignored`): no weights are in the
+/// repository but the fixture's.
+#[test]
+#[ignore]
+fn weights_to_publish_play_at_three_levels() {
+    let path = std::env::var("NETTAI_AI_WEIGHTS").expect("NETTAI_AI_WEIGHTS: the weights to check");
+    plays_at_three_levels(Arc::new(Net::from_safetensors(&std::fs::read(&path).unwrap()).unwrap()));
+}
+
+/// A waiting AI presses nothing while its network hasn't arrived, its
+/// custom screen held; once it has, it plays as that network's `NetAi`
+/// does from there, every AI waiting on it sharing it.
+#[test]
+fn a_waiting_ai_waits_for_its_network_then_plays() {
+    let game = "exe6";
+    let arriving = Arriving::default();
+    let mut waiting = WaitingAi::new(arriving.clone(), Level::Easy, 5, fingerprints(game));
+    let (pressed, b) = play(game, 4, &mut waiting, 900, 0);
+    assert!(pressed.iter().all(|&h| h == 0));
+    assert_eq!(b.round.mode, mode::CUSTOM, "the custom screen waits for it");
+    assert_eq!((waiting.error(), waiting.stopped().why()), (None, None));
+    arriving.arrive(Ok(net()));
+    let mut ai = NetAi::of(net(), Level::Easy, 5, fingerprints(game)).unwrap();
+    let mut arrived = WaitingAi::new(arriving.clone(), Level::Easy, 5, fingerprints(game));
+    let (one, _) = play(game, 4, &mut ai, 1500, 0);
+    let (two, _) = play(game, 4, &mut arrived, 1500, 0);
+    assert_eq!(one, two, "the network's NetAi");
+    assert!(one.iter().any(|&h| h != 0));
+    let (_, b) = play(game, 4, &mut waiting, 1500, 0);
+    assert!(b.round.turn >= 1 && waiting.error().is_none(), "the first one plays too: turn {}", b.round.turn);
+}
+
+/// A network that arrives as an error, or one without the level, stops a
+/// waiting AI with the reason, which its host reads too.
+#[test]
+fn a_network_that_arrives_as_an_error_stops_it() {
+    let mut ai = WaitingAi::new(Arriving::arrived(Err("no connection".into())), Level::Hard, 5, fingerprints("exe6"));
+    let stopped = ai.stopped();
+    let (pressed, _) = play("exe6", 4, &mut ai, 300, 0);
+    assert!(pressed.iter().all(|&h| h == 0));
+    assert_eq!(ai.error().as_deref(), Some("no connection"));
+    assert_eq!(stopped.why().as_deref(), Some("no connection"), "the host's");
 }
 
 /// Fingerprints made on threads of their own (the host's, here std's) as

@@ -995,11 +995,13 @@ mod tests {
     }
 
     /// The dummy that fights, plugged in as Practice plugs it (its Action Fights at Hard, its custom screen the AI's,
-    /// on the shipped weights): against a player who only gets through their custom screen, it takes HP away, the
-    /// battle stepped as the shell steps a practice battle once its chips' fingerprints are made (made here on
-    /// threads of their own, kept nowhere).
+    /// on the weights `NETTAI_AI_WEIGHTS` names: those to publish, the publishing step's check, `nettai_ai.publish`):
+    /// against a player who only gets through their custom screen, it takes HP away, the battle stepped as the shell
+    /// steps a practice battle once its chips' fingerprints are made (made here on threads of their own, kept
+    /// nowhere). Not run unless asked (`--ignored`): no trained weights are in the repository.
     #[cfg(feature = "ai")]
     #[test]
+    #[ignore]
     fn the_dummy_that_fights_takes_hp_away() {
         use nettai_battle::battle::mode;
         use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
@@ -1008,7 +1010,11 @@ mod tests {
         let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
         let mut b = practice(&content, &m, 11, opponent);
         let live = b.stage.player.live_mut().expect("live play");
-        let plugged = crate::screens::practice::ai::plug(live, opponent, 2, 11, None, None).expect("plugged in");
+        let plugged = crate::screens::practice::ai::plug(live, opponent, 2, 11, None, None, || {
+            let path = std::env::var("NETTAI_AI_WEIGHTS").expect("NETTAI_AI_WEIGHTS: the weights to check");
+            nettai_training::ai::Arriving::arrived(nettai_training::net::Net::from_safetensors(&std::fs::read(path).unwrap()).map(std::sync::Arc::new))
+        })
+        .expect("plugged in");
         assert_eq!(plugged.level, 2);
         // (The fingerprints of both folders' chips, made before the battle steps: the shell's frames go on while
         // they are made, the dummy waiting on its custom screen.)

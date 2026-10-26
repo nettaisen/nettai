@@ -1,0 +1,204 @@
+//! The network the dummy that fights plays with (docs/design/training-ai.md §10.5). None is built in: the nettai-ai
+//! repository (github.com/nettaisen/nettai-ai) keeps one for each of nettai's minor versions,
+//! `<line>/nettai-ai.safetensors` ("0.11": what nettai 0.11.x plays), its `index.json` giving each line's SHA-256
+//! (so a check for a new one is a small file, not the network), so a better network reaches players
+//! without a release of the app, and a release that changes what the network sees (a new minor version) waits for
+//! one trained for it.
+//!
+//! It is asked for when Fights is first picked in a run ([`Weights::wanted`]), then the same for every dummy that
+//! fights. The data folder keeps the last one downloaded (`ai/<line>/nettai-ai.safetensors`): where it is the
+//! index's, it is read from there; else the index's is downloaded, checked against its SHA-256 and kept. With no
+//! index (no connection, or no line for this version), the one kept plays if there is one.
+//!
+//! `NETTAI_AI_WEIGHTS=<file>` (the desktop's) names weights to play instead, for testing them: nothing is
+//! downloaded. Weights this encoder can't play are refused either way (`Net::from_safetensors`: the observation
+//! spec they were trained on), and the dummy stands still, the reason in the log.
+
+use nettai_training::ai::Arriving;
+use nettai_training::net::Net;
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+/// Where the repository's files are read from.
+const RAW: &str = "https://raw.githubusercontent.com/nettaisen/nettai-ai/main";
+/// The most a network's file may be (they are about 11 MB), and the index's.
+const MAX_BYTES: u64 = 64 << 20;
+const MAX_INDEX: u64 = 1 << 20;
+/// The variable naming weights to play instead (the desktop's).
+pub(crate) const OVERRIDE: &str = "NETTAI_AI_WEIGHTS";
+
+/// The process's network, once asked for.
+#[derive(Default)]
+pub(crate) struct Weights(Option<Arriving>);
+
+impl Weights {
+    /// The network the dummy that fights plays with: asked for the first time this is called (on its way after),
+    /// the same one every time after.
+    pub(crate) fn wanted(&mut self) -> Arriving {
+        self.0.get_or_insert_with(fetch).clone()
+    }
+}
+
+/// The weights' line, nettai's major and minor version ("0.11" for 0.11.2): weights are made for one.
+fn line_of(version: &str) -> String {
+    version.split('.').take(2).collect::<Vec<_>>().join(".")
+}
+
+fn line() -> String {
+    line_of(env!("CARGO_PKG_VERSION"))
+}
+
+/// A line's weights: their file, under the repository's root (the line's own folder), and its SHA-256 (hex).
+#[derive(Clone, Debug, PartialEq)]
+struct Entry {
+    file: String,
+    sha256: String,
+}
+
+/// `line`'s entry in the index `body` (each line's SHA-256, by line). Err: an index that can't be read, or none for
+/// the line.
+fn entry(body: &[u8], line: &str) -> Result<Entry, String> {
+    let index: HashMap<String, String> = serde_json::from_slice(body).map_err(|e| format!("the AI's index: {e}"))?;
+    let sha256 = index.get(line).cloned().ok_or_else(|| format!("the AI's index has no weights for nettai {line} yet"))?;
+    Ok(Entry { file: format!("{line}/nettai-ai.safetensors"), sha256 })
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn read(bytes: &[u8]) -> Result<Arc<Net>, String> {
+    Net::from_safetensors(bytes).map(Arc::new).map_err(|why| format!("the AI's weights: {why}"))
+}
+
+/// Weights downloaded for `entry`: refused unless they are its, by its SHA-256.
+fn checked(bytes: &[u8], entry: &Entry) -> Result<Arc<Net>, String> {
+    if sha256(bytes) != entry.sha256 {
+        return Err(format!("the AI's weights ({}) aren't the index's: another SHA-256", entry.file));
+    }
+    read(bytes)
+}
+
+/// Where the data folder keeps the line's weights.
+fn kept() -> PathBuf {
+    crate::paths::data().join("ai").join(line()).join("nettai-ai.safetensors")
+}
+
+/// The network asked for: `NETTAI_AI_WEIGHTS`'s file if it names one, else the repository's for this line (the
+/// copy kept where it is that one).
+fn fetch() -> Arriving {
+    let arriving = Arriving::default();
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(path) = std::env::var_os(OVERRIDE).map(PathBuf::from) {
+        ::log::info!(target: "nettai", "the dummy's AI plays {} ({OVERRIDE})", path.display());
+        let done = arriving.clone();
+        let started = nettai_platform::thread::spawn("ai-weights", move || {
+            done.arrive(std::fs::read(&path).map_err(|e| format!("{OVERRIDE}, {}: {e}", path.display())).and_then(|bytes| read(&bytes)));
+        });
+        if let Err(why) = started {
+            arriving.arrive(Err(format!("reading the AI's weights: {why}")));
+        }
+        return arriving;
+    }
+    let done = arriving.clone();
+    let asked = nettai_platform::http::get(&format!("{RAW}/index.json"), MAX_INDEX, move |index| {
+        let kept = kept();
+        let entry = match index.and_then(|body| entry(&body, &line())) {
+            Ok(entry) => entry,
+            Err(why) => {
+                return done.arrive(match nettai_platform::fs::read(&kept) {
+                    Ok(bytes) => {
+                        ::log::warn!(target: "nettai", "{why}: the dummy's AI plays the weights kept ({})", kept.display());
+                        read(&bytes)
+                    }
+                    Err(_) => Err(why),
+                });
+            }
+        };
+        if let Ok(bytes) = nettai_platform::fs::read(&kept)
+            && sha256(&bytes) == entry.sha256
+        {
+            return done.arrive(read(&bytes));
+        }
+        let url = format!("{RAW}/{}", entry.file);
+        let arrived = done.clone();
+        let asked = nettai_platform::http::get(&url, MAX_BYTES, move |body| {
+            arrived.arrive(body.and_then(|bytes| {
+                let net = checked(&bytes, &entry)?;
+                let written = kept.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|_| nettai_platform::fs::write(&kept, &bytes));
+                if let Err(why) = written {
+                    crate::errors::log("keeping the AI's weights", &format!("{}: {why}", kept.display()));
+                }
+                Ok(net)
+            }));
+        });
+        if let Err(why) = asked {
+            done.arrive(Err(format!("downloading the AI's weights: {why}")));
+        }
+    });
+    if let Err(why) = asked {
+        arriving.arrive(Err(format!("downloading the AI's index: {why}")));
+    }
+    arriving
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A version's line is its major and minor version.
+    #[test]
+    fn a_versions_line_is_its_major_and_minor() {
+        assert_eq!(line_of("0.11.0"), "0.11");
+        assert_eq!(line_of("1.2.13"), "1.2");
+        assert_eq!(line(), line_of(env!("CARGO_PKG_VERSION")));
+    }
+
+    /// The index gives each line's SHA-256, its file the line's own; a line it hasn't is said so, and an index that
+    /// isn't one is refused.
+    #[test]
+    fn the_index_gives_a_lines_weights() {
+        let body = br#"{"0.11": "ab", "0.12": "cd"}"#;
+        assert_eq!(entry(body, "0.11"), Ok(Entry { file: "0.11/nettai-ai.safetensors".into(), sha256: "ab".into() }));
+        assert!(entry(body, "0.13").unwrap_err().contains("no weights for nettai 0.13"));
+        assert!(entry(b"<html>", "0.11").is_err());
+    }
+
+    /// The repository serves this line's weights: downloaded, checked and kept, then read from the copy kept. Not
+    /// run unless asked (`--ignored`): it needs the network, and the repository to have this line's.
+    #[test]
+    #[ignore]
+    fn the_repository_serves_this_lines_weights() {
+        let data = tempfile::tempdir().unwrap();
+        // (Alone in its process when asked for: `--ignored` with its name.)
+        unsafe {
+            std::env::set_var("NETTAI_DATA", data.path());
+            std::env::remove_var(OVERRIDE);
+        }
+        let arrived = |arriving: Arriving| {
+            let asked = std::time::Instant::now();
+            while arriving.get().is_none() {
+                assert!(asked.elapsed().as_secs() < 300, "nothing arrived");
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            assert!(arriving.get().unwrap().is_ok(), "{:?}", arriving.get().unwrap().as_ref().err());
+        };
+        arrived(fetch());
+        let kept = std::fs::read(kept()).expect("kept");
+        arrived(fetch());
+        assert_eq!(std::fs::read(super::kept()).unwrap(), kept, "read from the copy kept");
+    }
+
+    /// Downloaded weights are played only when they are the index's, by SHA-256.
+    #[test]
+    fn downloaded_weights_must_be_the_indexs() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-training/tests/fixtures/net.safetensors");
+        let bytes = std::fs::read(path).unwrap();
+        let entry = Entry { file: "0.11/nettai-ai.safetensors".into(), sha256: sha256(&bytes) };
+        assert!(checked(&bytes, &entry).is_ok());
+        let other = Entry { sha256: sha256(b"other"), ..entry };
+        assert!(checked(&bytes, &other).err().is_some_and(|why| why.contains("aren't the index's")));
+    }
+}

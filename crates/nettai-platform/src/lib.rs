@@ -9,10 +9,13 @@
 //! - [`clipboard`]: text copied;
 //! - [`page`]: the page the app is in (a browser's), whose size its window follows;
 //! - [`text_entry`]: a field's text typed (in the browser an HTML input laid over it, for its input method);
+//! - `http` (its feature): a file fetched over HTTP(S) (ureq's on a thread; in the browser its `fetch`);
 
 pub mod clipboard;
 pub mod dialog;
 pub mod fs;
+#[cfg(feature = "http")]
+pub mod http;
 pub mod page;
 pub mod text_entry;
 pub mod thread;

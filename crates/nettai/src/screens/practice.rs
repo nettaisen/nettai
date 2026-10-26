@@ -51,6 +51,8 @@ use nettai_platform::time::Instant;
 
 #[cfg(feature = "ai")]
 pub(crate) mod ai;
+#[cfg(feature = "ai")]
+mod weights;
 mod thumbs;
 
 // ---- A practice session, which any screen may start ----------------------------------------------------------
@@ -162,6 +164,9 @@ pub struct Shared {
     /// What the menu of a session another screen started was left at when that screen stopped it for a while
     /// ([`stop`]: a phone's STOP PRACTICE): its next session in the same wait starts on it. [`end`] forgets it.
     waiting: Option<Kept>,
+    /// The network the dummy that fights plays with: asked for when Fights is first picked, the same after.
+    #[cfg(feature = "ai")]
+    weights: weights::Weights,
 }
 
 /// A session's choices, kept from one to the next of the same wait ([`Shared::waiting`]).
@@ -686,7 +691,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         .with_training(start.options)
         .with_input_delay(shell.settings.input_delay);
     #[cfg(feature = "ai")]
-    ai::replug(&mut driver, &mut session);
+    ai::replug(&mut driver, &mut session, &mut shell.practice.weights);
     view.set_getting_ready(GettingReady::default());
     shell.start_battle(BattleStart {
         owner: ScreenId::Practice,
@@ -1340,7 +1345,7 @@ impl Practice {
                 b.stage.player.set_training(session.options);
                 #[cfg(feature = "ai")]
                 if let Some(live) = b.stage.player.live_mut() {
-                    ai::replug(live, &mut session);
+                    ai::replug(live, &mut session, &mut shell.practice.weights);
                 }
             }
             // (The row's own value: its stepper slides to it. Then the rows its Action has under it.)
