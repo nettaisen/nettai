@@ -495,7 +495,7 @@ impl Replays {
                 if !made && self.still.asked.as_ref() != Some(&entry.path) {
                     self.still.asked = Some(entry.path.clone());
                     let mode = shell.settings.graphics();
-                    let look = Look { graphics: ready.graphics(shell.i18n.code), mode, font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced) };
+                    let look = Look { graphics: ready.graphics(shell.i18n.code), mode, font: ready.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced) };
                     self.library.still(&entry, s.info.side, content, look);
                 }
                 view.set_still(made);
@@ -1088,7 +1088,7 @@ impl Screen for Replays {
         // The game or the language may have changed under it: the stills are drawn anew.
         self.still.frame = None;
         self.still.asked = None;
-        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font.clone().filter(|_| shell.settings.enhanced)).map(TextRenderer::new);
+        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font_in(shell.i18n.code).filter(|_| shell.settings.enhanced)).map(TextRenderer::new);
         if let Some(w) = &mut self.watching {
             shell.nav.enter(VIEWER, "seek");
             shell.lock_game(true);

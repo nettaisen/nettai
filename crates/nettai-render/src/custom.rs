@@ -1107,9 +1107,11 @@ impl Window {
             // The face's color on each of its rows, the outline's.
             let fill: Vec<u16> = found.fill.iter().map(|&c| palette[c as usize & 15]).collect();
             let rim = Some(palette[found.rim as usize & 15]);
-            // One font for both languages (the user: "i would prefer the same
+            // One font for every language (the user: "i would prefer the same
             // font for the cross names in en and jp", then "yes do that use
-            // murecho"), as wide and as tall as the picture's letters.
+            // murecho"; since, the bundled Noto Sans CJK, the text font: "you
+            // should use one unified font for all languages"), as wide and as
+            // tall as the picture's letters.
             if !text.lettering_in(words, CROSS_NAME_FONT, || format!("form {key:?}'s name"), problems) {
                 continue;
             }

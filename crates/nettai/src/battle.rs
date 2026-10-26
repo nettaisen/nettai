@@ -212,7 +212,7 @@ impl Shell {
                 let size = (nettai_render::compose::WIDTH * fit.density as usize, nettai_render::compose::HEIGHT * fit.density as usize);
                 let mode = self.settings.graphics();
                 let graphics = ready.graphics(self.i18n.code);
-                let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
+                let font = ready.loaded.font_in(self.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
                 let mut renderer = graphics.renderer(mode, font.clone());
                 renderer.reduce_motion = self.reduces_motion();
                 // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:

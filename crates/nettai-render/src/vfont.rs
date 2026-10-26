@@ -5,21 +5,24 @@
 //! field, made once whatever the output's size (swash's outlines, `sdf`).
 //! docs/design/text-rendering.md, "As built".
 //!
-//! The bundled font is Murecho (fonts/murecho, SIL Open Font License 1.1):
-//! a sans with Latin, Greek, Cyrillic, kana and some 2,300 kanji, in one
-//! variable file with a weight axis. A role's text has one size (`Role`):
-//! a string too wide for the original's box is narrowed to it, never made
-//! smaller; a font with a width axis (`--font`) draws it in a narrower cut
-//! of itself before narrowing it.
+//! The bundled font is Noto Sans CJK (fonts/noto-sans-cjk, SIL Open Font
+//! License 1.1), one design for every language with each region's hanzi
+//! forms, in three cuts ([`Cut`]: Japanese for English and Japanese,
+//! Simplified and Traditional Chinese), each one variable file with a weight
+//! axis (the user, 2026-10-25: "you should use one unified font for all
+//! languages so it's not inconsistent"). A role's text has one size
+//! (`Role`): a string too wide for the original's box is narrowed to it,
+//! never made smaller; a font with a width axis (`--font`) draws it in a
+//! narrower cut of itself before narrowing it.
 //!
 //! The game-style lettering (the banners, the HUD's labels, the chip
 //! window's help pictures, the damage numbers: [`Role::Lettering`]) is drawn
-//! in a second bundled font, M PLUS 1 Code (fonts/mplus1code, SIL Open Font
-//! License 1.1), whose square capitals, narrowed, are near the game's; it
-//! has kana and kanji too. Its strings take the original's paint
-//! ([`Ink`](crate::textlayer::Ink)): a fill that changes down the capitals,
-//! a rim. A drawing of a frame ([`Drawn`](crate::textlayer::Drawn)) is
-//! filled with analytic coverage, its shapes one over another.
+//! in the same family, bold and narrowed (it was M PLUS 1 Code, which has no
+//! Chinese), in the cut of the text's language ([`lettering_font_of`]). Its
+//! strings take the original's paint ([`Ink`](crate::textlayer::Ink)): a
+//! fill that changes down the capitals, a rim. A drawing of a frame
+//! ([`Drawn`](crate::textlayer::Drawn)) is filled with analytic coverage,
+//! its shapes one over another.
 //! docs/design/text-rendering.md §12.
 
 use crate::compose::{Fade, HEIGHT, WIDTH, apply_fade, to_rgb};
@@ -34,21 +37,72 @@ use swash::shape::ShapeContext;
 use swash::zeno::Vector;
 use swash::{CacheKey, FontRef, GlyphId, Setting};
 
-/// Murecho, its variable cut (weights 100 to 900; 1.4 MB): the font file,
-/// for a host that draws with it otherwise.
-pub const BUNDLED: &[u8] = include_bytes!("../fonts/murecho/Murecho-VariableFont_wght.ttf");
+/// A cut of the bundled font, Noto Sans CJK: the forms of the hanzi a
+/// language writes (its Latin and kana are the same in each).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Cut {
+    /// Noto Sans JP: English and Japanese.
+    #[default]
+    Japanese,
+    /// Noto Sans SC: Simplified Chinese.
+    Simplified,
+    /// Noto Sans TC: Traditional Chinese (Taiwan's forms).
+    Traditional,
+}
 
-/// M PLUS 1 Code, its variable cut (weights 100 to 700; 3.9 MB): the
-/// game-style lettering's font ([`Role::Lettering`]).
-pub const LETTERING: &[u8] = include_bytes!("../fonts/mplus1code/MPLUS1Code-VariableFont_wght.ttf");
+impl Cut {
+    /// The cut a language's text is drawn in, by its code (`zh-Hans`,
+    /// `zh-Hant`; any other, English's and Japanese's, the Japanese cut).
+    pub fn of(language: &str) -> Cut {
+        match language {
+            "zh-Hans" => Cut::Simplified,
+            "zh-Hant" => Cut::Traditional,
+            _ => Cut::Japanese,
+        }
+    }
 
-/// The game-style lettering's font, parsed once.
-pub fn lettering_font() -> &'static std::sync::Arc<VectorFont> {
-    static FONT: std::sync::LazyLock<std::sync::Arc<VectorFont>> = std::sync::LazyLock::new(|| {
-        let font = VectorFont::from_data(Cow::Borrowed(LETTERING), "M PLUS 1 Code (bundled)".into());
-        std::sync::Arc::new(font.expect("the bundled lettering font parses"))
+    /// The font file (weights 100 to 900, subset: fonts/noto-sans-cjk).
+    pub fn data(self) -> &'static [u8] {
+        match self {
+            Cut::Japanese => JAPANESE,
+            Cut::Simplified => SIMPLIFIED,
+            Cut::Traditional => TRADITIONAL,
+        }
+    }
+
+    /// Its family's name.
+    pub fn family(self) -> &'static str {
+        match self {
+            Cut::Japanese => "Noto Sans JP",
+            Cut::Simplified => "Noto Sans SC",
+            Cut::Traditional => "Noto Sans TC",
+        }
+    }
+}
+
+/// The bundled font's cuts' files ([`Cut::data`]), for a host that draws
+/// with them otherwise.
+pub const JAPANESE: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansJP-Nettai[wght].ttf");
+pub const SIMPLIFIED: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansSC-Nettai[wght].ttf");
+pub const TRADITIONAL: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansTC-Nettai[wght].ttf");
+
+/// A cut of the bundled font, parsed once.
+pub fn bundled_font(cut: Cut) -> &'static std::sync::Arc<VectorFont> {
+    static FONTS: std::sync::LazyLock<[std::sync::Arc<VectorFont>; 3]> = std::sync::LazyLock::new(|| {
+        [Cut::Japanese, Cut::Simplified, Cut::Traditional].map(|c| std::sync::Arc::new(VectorFont::bundled_cut(c)))
     });
-    &FONT
+    &FONTS[cut as usize]
+}
+
+/// The game-style lettering's font ([`Role::Lettering`]) where the text is
+/// in `cut`: the bundled font's same cut.
+pub fn lettering_font_of(cut: Cut) -> &'static std::sync::Arc<VectorFont> {
+    bundled_font(cut)
+}
+
+/// The game-style lettering's font of English and Japanese text.
+pub fn lettering_font() -> &'static std::sync::Arc<VectorFont> {
+    lettering_font_of(Cut::Japanese)
 }
 
 /// The narrowest width a font with a width axis condenses a name to
@@ -62,7 +116,7 @@ fn cjk(c: char) -> bool {
 }
 
 /// The letters whose ink a role with short descenders measures the font's
-/// deepest descender from ([`Shorten`]; Murecho's: g, 0.235 em).
+/// deepest descender from ([`Shorten`]).
 const DESCENDERS: &str = "gjpqy";
 /// The full-size katakana whose ink the font's kana box is measured from
 /// ([`Face`]): no voiced, small or long forms.
@@ -102,7 +156,7 @@ pub enum Role {
     /// The 8x16 font's strings with nothing of the original's under their
     /// cells (the telop, the Program Advance's names, the HUD's lines): a
     /// cell 16 rows high whose capitals, digits and kana take rows 4 to
-    /// 13; bold, with a shadow. A descender (Murecho's reach 3.2 pixels
+    /// 13; bold, with a shadow. A descender (the text font's reach 3 pixels
     /// under the baseline, the original's 1) is drawn past the cells.
     Cell,
     /// The 8x16 font's strings whose cells end where something else starts
@@ -143,10 +197,12 @@ pub struct Lettering {
 /// The font a picture's lettering is drawn in ([`Lettering::font`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum LetteringFont {
-    /// The lettering font ([`lettering_font`]: M PLUS 1 Code).
+    /// The lettering font ([`lettering_font_of`]: the bundled font's cut of
+    /// the text's language).
     #[default]
     Display,
-    /// The text font (the text layer's own: Murecho, or `--font`'s).
+    /// The text font (the text layer's own: the bundled font's cut of the
+    /// language, or `--font`'s).
     Text,
     /// The numbers' font (`numbers::font`: Bungee), whose capitals the HUD's
     /// small labels are drawn in (the window's labels, CUSTOM).
@@ -177,7 +233,9 @@ impl Lettering {
     /// game's capitals are tall and narrow (the user's audition,
     /// 2026-10-18: "ok do that").
     pub const NARROW: u8 = 78;
-    /// The weight of the game's display lettering (the font's heaviest).
+    /// The weight of the game's display lettering: bold (M PLUS 1 Code's
+    /// heaviest, which the lettering was drawn in until the bundled font
+    /// took it).
     pub const BOLD: u16 = 700;
 
     /// Bold and narrowed, capitals `cap` rows high from row `top`.
@@ -229,7 +287,7 @@ impl Role {
         match self {
             Role::Cell => plain,
             // The original's descenders take row 14, their shadow row 15:
-            // Murecho's g, 3.2 pixels deep at this size, is drawn 1 deep
+            // A g, some 3 pixels deep at this size, is drawn 1 deep
             // (the test `a_fitted_cells_descenders_end_in_its_cells`).
             Role::FittedCell => Style { descender: Some(1.0), ..plain },
             // (The chatbox's lines are cut where its sprites end, which
@@ -262,7 +320,7 @@ impl Role {
 /// Where a font's kana stand, at a weight: the median top and bottom of
 /// the ink of its full-size katakana ([`KANA`]), over the em, up from the
 /// baseline. A Japanese font draws its kana and kanji in its em box, which
-/// sits lower than its capitals and is taller (Murecho's bold kana are 1.1
+/// sits lower than its capitals and is taller (the text font's bold kana are some 1.1
 /// times its capitals' height and reach 0.05 em under the baseline), where
 /// the original's fonts draw kana in their capitals' rows; the text layer
 /// draws them at the size that makes this box the capitals' height,
@@ -292,6 +350,8 @@ pub struct VectorFont {
     /// Capital height over the em.
     cap: f32,
     pub name: String,
+    /// The bundled font's cut it is (none: a font file of the player's).
+    cut: Option<Cut>,
 }
 
 impl std::fmt::Debug for VectorFont {
@@ -301,9 +361,33 @@ impl std::fmt::Debug for VectorFont {
 }
 
 impl VectorFont {
-    /// The font the frontend comes with.
+    /// The font the frontend comes with, its Japanese cut (English's and
+    /// Japanese's).
     pub fn bundled() -> VectorFont {
-        VectorFont::from_data(Cow::Borrowed(BUNDLED), "Murecho (bundled)".into()).expect("the bundled font parses")
+        VectorFont::bundled_cut(Cut::Japanese)
+    }
+
+    /// The font the frontend comes with, the cut of the language `language`
+    /// (its code: `ja`, `zh-Hans`).
+    pub fn bundled_for(language: &str) -> VectorFont {
+        VectorFont::bundled_cut(Cut::of(language))
+    }
+
+    fn bundled_cut(cut: Cut) -> VectorFont {
+        let font = VectorFont::from_data(Cow::Borrowed(cut.data()), format!("{} (bundled)", cut.family()));
+        VectorFont { cut: Some(cut), ..font.expect("the bundled font parses") }
+    }
+
+    /// The bundled font's cut it is, or the one whose lettering goes with it
+    /// (a font of the player's: the Japanese).
+    pub fn cut(&self) -> Cut {
+        self.cut.unwrap_or_default()
+    }
+
+    /// Whether it is the bundled font (a cut of it), not a font file of the
+    /// player's.
+    pub fn is_bundled(&self) -> bool {
+        self.cut.is_some()
     }
 
     /// A TrueType or OpenType font file (its first face).
@@ -342,7 +426,7 @@ impl VectorFont {
         if f.charmap().map(probe) == 0 {
             return Err(format!("{name} has no {what}"));
         }
-        Ok(VectorFont { data, offset, key, width, weight, cap, name })
+        Ok(VectorFont { data, offset, key, width, weight, cap, name, cut: None })
     }
 
     pub(crate) fn font(&self) -> FontRef<'_> {
@@ -593,8 +677,8 @@ pub struct Made {
 impl TextRenderer {
     pub fn new(font: std::sync::Arc<VectorFont>) -> TextRenderer {
         TextRenderer {
-            font,
-            lettering: lettering_font().clone(),
+            font: font.clone(),
+            lettering: lettering_font_of(font.cut()).clone(),
             numbers: crate::numbers::font().clone(),
             scaler: ScaleContext::new(),
             shaper: ShapeContext::new(),
@@ -2148,7 +2232,7 @@ mod tests {
         let mut r = renderer();
         for role in [Role::Cell, Role::FittedCell, Role::Dialogue] {
             let st = role.style();
-            let face = r.face(FontId::Text, Some(st.weight)).expect("Murecho has kana");
+            let face = r.face(FontId::Text, Some(st.weight)).expect("the bundled font has kana");
             assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
             let mut sizes = Vec::new();
             for (text, room) in [("キャノン", 1000), ("バッドメディスン", 64), ("ロックマンEXE", 56), ("攻撃力✕2", 160), ("ガンデルソル3", 56)] {
@@ -2175,7 +2259,7 @@ mod tests {
     }
 
     /// A glyph's field draws what its outline covers: at 5x and 13x, Latin,
-    /// kana and kanji (Murecho's e and kanji are overlapping contours),
+    /// kana and kanji (an e and kanji can be overlapping contours),
     /// each pixel's coverage is the outline's rasterized (zeno's), but for
     /// a little at corners.
     #[test]

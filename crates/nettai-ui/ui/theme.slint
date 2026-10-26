@@ -8,7 +8,9 @@ import "../fonts/chakra-petch/ChakraPetch-SemiBold.ttf";
 import "../fonts/chakra-petch/ChakraPetch-Bold.ttf";
 import "../fonts/corporate-logo/Corporate-Logo-Bold-ver3.otf";
 import "../../nettai-render/fonts/mplus1code/MPLUS1Code-VariableFont_wght.ttf";
-import "../../nettai-render/fonts/murecho/Murecho-VariableFont_wght.ttf";
+import "../../nettai-render/fonts/noto-sans-cjk/NotoSansJP-Nettai[wght].ttf";
+import "../../nettai-render/fonts/noto-sans-cjk/NotoSansSC-Nettai[wght].ttf";
+import "../../nettai-render/fonts/noto-sans-cjk/NotoSansTC-Nettai[wght].ttf";
 
 // What a backdrop's pattern is drawn of (the ground: shell.slint's `Backdrop`).
 export enum PatternKind {
@@ -127,15 +129,21 @@ export global Theme {
     out property <color> piece-held: #ffffff;
 
     // Type. Headings, buttons and labels are Chakra Petch; a language it has no letters for (`cjk`, set by the
-    // app with the language) has them in Corporate Logo at 700, whatever the game: squared kana, closer to Chakra
-    // Petch's. Everything else is Murecho. Codes, numbers and times are M PLUS 1 Code, whose digits are one width.
+    // app with the language) has them in its own display face (`cjk-display`, set with it: Corporate Logo at 700
+    // for Japanese, squared kana closer to Chakra Petch's; the Chinese have theirs), whatever the game. Everything
+    // else is Noto Sans CJK, one design for every language, in the language's cut (`body-face`: Noto Sans JP for
+    // English and Japanese, Noto Sans SC and TC for Chinese, whose hanzi have their own forms; the battle's text is
+    // drawn in the same: nettai-render's vfont). Codes, numbers and times are M PLUS 1 Code, whose digits are one
+    // width.
     in property <bool> cjk;
-    out property <string> display: cjk ? "Corporate Logo ver3" : "Chakra Petch";
+    in property <string> cjk-display: "Corporate Logo ver3";
+    in property <string> body-face: "Noto Sans JP";
+    out property <string> display: cjk ? root.cjk-display : "Chakra Petch";
     // The display face's weights: its bold (a title, the main action) and its semibold (a label, a button). Corporate
     // Logo is bundled at 700 alone.
     out property <int> display-bold: 700;
     out property <int> display-semibold: cjk ? 700 : 600;
-    out property <string> body: "Murecho";
+    out property <string> body: root.body-face;
     out property <string> mono: "M PLUS 1 Code";
     // A label's capitals are tracked 0.18em; a script set solid nearly not.
     out property <length> label-tracking: cjk ? 0.4px : 2px;

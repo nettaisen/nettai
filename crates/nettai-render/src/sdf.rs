@@ -10,7 +10,7 @@
 //! of the outline's edge, computed for the texels within [`SPREAD`] of each
 //! segment only. So the distances are exact to the segments, at a cost of
 //! the outline's length times the spread. A variable font's contours
-//! overlap (Murecho's e is a bowl and a bar): where they do, the parts of
+//! overlap (an e can be a bowl and a bar): where they do, the parts of
 //! its segments inside the glyph are found (cut where they cross another
 //! segment, each piece kept if it has the glyph on one side only) and left
 //! out of the distances.

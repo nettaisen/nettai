@@ -263,9 +263,9 @@ impl Sound {
 }
 
 /// The font the `text` mode draws with: the file at `path`, else the one
-/// the library comes with; none in the original mode, which draws
-/// the pack's own fonts.
-pub fn font(mode: GraphicsMode, path: Option<&Path>) -> Result<Option<Arc<VectorFont>>, LoadError> {
+/// the library comes with, its cut of `lang` (Noto Sans CJK's: `vfont::Cut`);
+/// none in the original mode, which draws the pack's own fonts.
+pub fn font(mode: GraphicsMode, path: Option<&Path>, lang: &str) -> Result<Option<Arc<VectorFont>>, LoadError> {
     if mode != GraphicsMode::Enhanced {
         return Ok(None);
     }
@@ -274,7 +274,7 @@ pub fn font(mode: GraphicsMode, path: Option<&Path>) -> Result<Option<Arc<Vector
             Ok(f) => Ok(Some(Arc::new(f))),
             Err(e) => Err(LoadError { what: Failed::Font(e), report: Report::default() }),
         },
-        None => Ok(Some(Arc::new(VectorFont::bundled()))),
+        None => Ok(Some(nettai_render::vfont::bundled_font(nettai_render::vfont::Cut::of(lang)).clone())),
     }
 }
 
@@ -482,7 +482,7 @@ impl Loading {
                 let graphics = game.graphics(&self.options.lang).map_err(|e| after(&reports, e))?;
                 self.graphics = Some(graphics);
             }
-            Part::Font => self.font = font(self.options.mode, self.options.font.as_deref()).map_err(|e| after(&reports, e))?,
+            Part::Font => self.font = font(self.options.mode, self.options.font.as_deref(), &self.options.lang).map_err(|e| after(&reports, e))?,
             Part::Sound => {
                 let Some(game) = &self.game else { loaded("content") };
                 let sound = game.sound().map_err(|e| after(&reports, e))?;
@@ -550,7 +550,7 @@ mod tests {
         let Err(e) = load("exe6", &options) else { panic!("read a pack that isn't there") };
         assert_eq!(e.what, Failed::Packs);
         // A font file that isn't there.
-        let Err(e) = font(GraphicsMode::Enhanced, Some(&dir.join("no.ttf"))) else { panic!("read a font that isn't there") };
+        let Err(e) = font(GraphicsMode::Enhanced, Some(&dir.join("no.ttf")), "en") else { panic!("read a font that isn't there") };
         assert!(matches!(&e.what, Failed::Font(why) if why.starts_with("can't read the font")), "{e}");
         assert!(font(GraphicsMode::Original, Some(&dir.join("no.ttf"))).unwrap().is_none());
         let _ = std::fs::remove_dir_all(dir);

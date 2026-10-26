@@ -184,7 +184,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    draws it all as the original does, the text in the game's
                    own fonts into the frame (what the frame comparison uses)
   --font PATH      the enhanced mode's font (a TrueType or OpenType file) instead
-                   of the bundled one (Murecho)
+                   of the bundled one (Noto Sans CJK, its cut of the language)
   --lang LANG      the language of the battle's text: en (default, the
                    content's own) or ja (the content's locales/ja.toml, and
                    the pack's fonts and pictures with text)";
@@ -700,7 +700,7 @@ fn main() {
     load_time("graphics", t);
     // The enhanced mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
-    let font = nettai_frontend::game::font(args.mode, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
+    let font = nettai_frontend::game::font(args.mode, args.font.as_deref(), &args.lang).unwrap_or_else(|e| load_failed(e));
     let mut renderer = graphics.renderer(args.mode, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
     renderer.consoles = args.consoles;

@@ -488,7 +488,7 @@ impl Shell {
         if let Some(b) = &mut self.battle
             && let Some(ready) = self.games.ready(&b.game)
         {
-            let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
+            let font = ready.loaded.font_in(self.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
             b.stage.player.set_mode(mode, font);
             b.stage.surface.stale = true;
         }
@@ -500,6 +500,7 @@ impl Shell {
             && let Some(ready) = self.games.ready(&b.game)
         {
             b.stage.player.set_language(&ready.graphics(self.i18n.code));
+            b.stage.player.set_font(ready.loaded.font_in(self.i18n.code));
             b.stage.surface.stale = true;
         }
         self.refresh();

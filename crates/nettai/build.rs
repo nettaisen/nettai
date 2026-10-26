@@ -18,7 +18,7 @@ const FONTS: [(&str, &str, &str); 9] = [
     ("Chakra Petch", "OFL-1.1", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
     ("Corporate Logo", "OFL-1.1", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
     ("M PLUS 1 Code", "OFL-1.1", "crates/nettai-render/fonts/mplus1code/OFL.txt"),
-    ("Murecho", "OFL-1.1", "crates/nettai-render/fonts/murecho/OFL.txt"),
+    ("Noto Sans CJK", "OFL-1.1", "crates/nettai-render/fonts/noto-sans-cjk/OFL.txt"),
     ("Nettai Banner Digits", "MPL-2.0", "LICENSE"),
     ("Nettai Chip Codes", "MPL-2.0", "LICENSE"),
     ("Nettai Digits", "MPL-2.0", "LICENSE"),

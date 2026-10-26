@@ -231,6 +231,8 @@ impl Renderer {
     /// own.
     pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
         self.strings = strings;
+        // (The original mode's stand-in font is the language's cut: made again for the new one.)
+        self.stand_in = None;
         self.problems.recheck();
     }
 
@@ -456,7 +458,7 @@ impl Renderer {
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
         let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
-            let font = self.font.clone().unwrap_or_else(|| Arc::new(VectorFont::bundled()));
+            let font = self.font.clone().unwrap_or_else(|| crate::vfont::bundled_font(crate::vfont::Cut::of(shown)).clone());
             self.stand_in = Some((font.clone(), std::cell::RefCell::new(crate::vfont::TextRenderer::new(font))));
         }
         let (mode, font, measure) = match &self.stand_in {

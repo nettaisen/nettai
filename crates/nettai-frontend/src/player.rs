@@ -572,6 +572,18 @@ impl Player {
         self.renderer.set_strings(graphics.strings.clone());
     }
 
+    /// Draw the enhanced mode's text in `font` from the next frame (another
+    /// language's: the bundled font's cut of it, `Loaded::font_in`), its text
+    /// renderer made again for it; nothing in the original mode.
+    pub fn set_font(&mut self, font: Option<Arc<VectorFont>>) {
+        let mode = self.renderer.mode();
+        if mode != GraphicsMode::Enhanced {
+            return;
+        }
+        self.renderer.set_mode(mode, font.clone());
+        self.text = font.map(TextRenderer::new);
+    }
+
     /// Draw the battle in `mode` from the next frame (`font`: the enhanced
     /// mode's, [`crate::game::font`]; none in the original's), its text
     /// renderer made again for it. As with [`Player::set_language`], only the

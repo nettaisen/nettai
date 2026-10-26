@@ -193,7 +193,7 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
 fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
     let mode = shell.settings.graphics();
     let graphics = ready.graphics(shell.i18n.code);
-    let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
+    let font = ready.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
     let mut renderer = graphics.renderer(mode, font.clone());
     renderer.reduce_motion = shell.reduces_motion();
     Player::with(renderer, font.map(TextRenderer::new), None, driver)

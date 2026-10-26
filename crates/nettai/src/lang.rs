@@ -18,11 +18,23 @@ pub fn offered(shown: &str) -> Vec<(&'static str, &'static str)> {
     LANGUAGES.iter().copied().filter(|(code, _)| *code != PSEUDO || shown == PSEUDO).collect()
 }
 
-/// The language the system asks for, if it is bundled (by its primary subtag: `ja-JP` is `ja`), else English.
+/// The language the system asks for, if it is bundled (by its primary subtag: `ja-JP` is `ja`; Chinese by its
+/// script, `zh-Hant-TW`, or its region, `zh-TW`, `zh-HK` and `zh-MO` Traditional, the rest Simplified), else English.
 pub fn system() -> &'static str {
-    let wanted = sys_locale::get_locale().unwrap_or_default();
-    let primary = wanted.split(['-', '_']).next().unwrap_or("").to_ascii_lowercase();
-    bundled(&primary).filter(|code| *code != PSEUDO).unwrap_or("en")
+    of_locale(&sys_locale::get_locale().unwrap_or_default())
+}
+
+fn of_locale(wanted: &str) -> &'static str {
+    let tags: Vec<String> = wanted.split(['-', '_', '.', '@']).map(str::to_ascii_lowercase).collect();
+    let primary = tags.first().map_or("", String::as_str);
+    let code = if primary == "zh" {
+        let traditional = tags[1..].iter().any(|t| matches!(t.as_str(), "hant" | "tw" | "hk" | "mo"));
+        let simplified = tags[1..].iter().any(|t| t == "hans");
+        if traditional && !simplified { "zh-Hant" } else { "zh-Hans" }
+    } else {
+        primary
+    };
+    bundled(code).filter(|code| *code != PSEUDO).unwrap_or("en")
 }
 
 /// The bundled language of code `code`, if there is one.
@@ -92,7 +104,10 @@ pub fn select(ui: &nettai_ui::AppWindow, code: &'static str) -> std::rc::Rc<I18n
     ui_i18n.on_joined(move |items| rules.list(&slint::Model::iter(&items).collect::<Vec<_>>()).into());
     // (English is the source: it has no catalog.)
     let _ = slint::select_bundled_translation(if code == "en" { "" } else { code });
-    ui.global::<nettai_ui::Theme>().set_cjk(cjk(code));
+    let theme = ui.global::<nettai_ui::Theme>();
+    theme.set_cjk(cjk(code));
+    theme.set_body_face(nettai_render::vfont::Cut::of(code).family().into());
+    theme.set_cjk_display(display_face(code).into());
     // (Everything set in capitals or listed is set again by the new rules: the words the app gave too, which no
     // `@tr` brings back. The user: "fix the turkish issue".)
     ui_i18n.set_language(ui_i18n.get_language().wrapping_add(1));
@@ -100,9 +115,18 @@ pub fn select(ui: &nettai_ui::AppWindow, code: &'static str) -> std::rc::Rc<I18n
 }
 
 /// Whether `code`'s script is one the display face (Chakra Petch) has no letters for, and that is set solid:
-/// its headings are in Murecho, and its labels' tracking is nearly none.
+/// its headings are in its own display face ([`display_face`]), and its labels' tracking is nearly none.
 pub fn cjk(code: &str) -> bool {
-    matches!(code, "ja" | "zh" | "ko")
+    matches!(code, "ja" | "zh-Hans" | "zh-Hant" | "ko")
+}
+
+/// The display face of a language Chakra Petch has no letters for: Corporate Logo for Japanese; for Chinese, whose
+/// hanzi it lacks, the body's family at its heaviest (Noto Sans SC, TC).
+pub fn display_face(code: &str) -> &'static str {
+    match code {
+        "zh-Hans" | "zh-Hant" => nettai_render::vfont::Cut::of(code).family(),
+        _ => "Corporate Logo ver3",
+    }
 }
 
 /// The language's own name.
@@ -168,5 +192,22 @@ mod tests {
         assert_eq!(first(Some(PSEUDO), None), PSEUDO);
         assert_ne!(first(None, Some(PSEUDO)), PSEUDO);
         assert_eq!(first(None, Some("ja")), "ja");
+    }
+
+    /// The system's locale names a bundled language by its primary subtag, a Chinese one by its script or its
+    /// region (Taiwan's, Hong Kong's and Macau's Traditional, the rest Simplified); one not bundled is English.
+    #[test]
+    fn the_systems_language() {
+        assert_eq!(of_locale("ja-JP"), "ja");
+        assert_eq!(of_locale("zh-CN"), "zh-Hans");
+        assert_eq!(of_locale("zh-Hans-CN"), "zh-Hans");
+        assert_eq!(of_locale("zh_SG"), "zh-Hans");
+        assert_eq!(of_locale("zh"), "zh-Hans");
+        assert_eq!(of_locale("zh-TW"), "zh-Hant");
+        assert_eq!(of_locale("zh-Hant-HK"), "zh-Hant");
+        assert_eq!(of_locale("zh_MO"), "zh-Hant");
+        assert_eq!(of_locale("en-US"), "en");
+        assert_eq!(of_locale("fr-FR"), "en");
+        assert!(cjk("zh-Hans") && cjk("zh-Hant") && cjk("ja") && !cjk("en"));
     }
 }

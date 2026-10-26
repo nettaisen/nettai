@@ -255,10 +255,15 @@ impl<'f> TextSink<'f> {
 
     /// Whether a picture's lettering that says `text` goes to the text
     /// layer: in the enhanced mode, when the lettering font draws every
-    /// character of it ([`crate::vfont::lettering_font`]); else the
-    /// picture is drawn as the original draws it.
+    /// character of it ([`crate::vfont::lettering_font_of`] the text font's
+    /// cut); else the picture is drawn as the original draws it.
     pub fn takes_lettering(&self, text: &str) -> bool {
-        self.lettering && !text.is_empty() && crate::vfont::lettering_font().covers(text)
+        self.lettering && !text.is_empty() && self.lettering_font().covers(text)
+    }
+
+    /// The lettering's font: the bundled font's cut of the text font's.
+    fn lettering_font(&self) -> &'static crate::vfont::VectorFont {
+        crate::vfont::lettering_font_of(self.font.map(|f| f.cut()).unwrap_or_default())
     }
 
     /// Whether `text` is drawn as lettering in `font` (the enhanced mode's,
@@ -292,7 +297,7 @@ impl<'f> TextSink<'f> {
         use crate::vfont::LetteringFont;
         let covers: &dyn Fn(&str) -> bool = match font {
             _ if !self.lettering => return None,
-            LetteringFont::Display => &|c| crate::vfont::lettering_font().covers(c),
+            LetteringFont::Display => &|c| self.lettering_font().covers(c),
             LetteringFont::Numbers => &|c| crate::numbers::font().covers(c),
             LetteringFont::Text => &|c| self.font.is_some_and(|f| f.covers(c)),
         };

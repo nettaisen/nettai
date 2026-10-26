@@ -66,7 +66,7 @@ fn run() -> Result<String, String> {
     let found = Found::find(&nettai_content::pack::packs_dir(), &[]).map_err(said)?;
     let game = Game::load(&found, None, &name).map_err(said)?;
     let (first, other) = (game.graphics(&from).map_err(said)?, game.graphics(&to).map_err(said)?);
-    let font = game::font(text, None).map_err(said)?;
+    let font = game::font(text, None, &to).map_err(said)?;
     let m = nettai_match::pick::live(&game.content, &name, seed, None)?;
     let player = |graphics: &Graphics| {
         let driver = LivePlayer::new(nettai_match::Set::of(&game.content, &m, seed));
