@@ -33,7 +33,7 @@ use nettai_content_api::{PackKind, packs};
 /// program's, so the line is the one it was built at.
 const WORKSPACE: &str = include_str!("../../../Cargo.toml");
 
-/// Whom the content repositories belong to (the sites' owner, [`bundle::site`]).
+/// Whom the content repositories belong to.
 const OWNER: &str = "nettaisen";
 
 /// The branch a published commit must be on.
@@ -135,7 +135,7 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
     let hash = content_hash(&gz, built.id, &unpacked, &assets, &o.game);
     let _ = std::fs::remove_dir_all(&unpacked);
     let hash = hash?;
-    let published = Published { id: built.id, content_hash: hash, revision, packs: commits, date: today(), size: gz.len() as u64 };
+    let published = Published { id: built.id, content_hash: hash, revision, packs: commits, date: today(), size: gz.len() as u64, url: None };
     eprintln!("   {:016x} (with {})", hash.0, assets.display());
 
     say("5. the line's newest");
@@ -186,7 +186,7 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
     say(&format!("6. the release {title}, by\n{command}"));
     let url = run_tool("gh", None, &args)?;
     eprintln!("   {url}");
-    eprintln!("   the site builds from it: {} and {}", bundle::index_url(&o.game), bundle::bundle_url(&o.game, built.id));
+    eprintln!("   the game's Pages workflow puts it on its site, and lists it with its address in the site's index.json");
     Ok(())
 }
 
@@ -504,6 +504,7 @@ mod tests {
             packs: [("exe6".to_string(), exe6.to_string()), ("exelib".to_string(), "bbbb".to_string())].into(),
             date: "2026-10-26".into(),
             size: 1234,
+            url: None,
         }
     }
 
@@ -664,8 +665,10 @@ mod tests {
             out.stdout
         };
         let mut checked = 0;
-        for game in ["exe4", "exe5", "exe6"] {
-            let index: bundle::Index = serde_json::from_slice(&fetch(&bundle::index_url(game))).unwrap();
+        let catalog: bundle::Catalog = serde_json::from_slice(&fetch(&bundle::catalog_url())).unwrap();
+        for (game, entry) in &catalog.games {
+            let game = game.as_str();
+            let index: bundle::Index = serde_json::from_slice(&fetch(&entry.index)).unwrap();
             assert_eq!(index.game, game);
             let Some(published) = index.lines.get(&line) else {
                 eprintln!("{game}: nothing for {line} yet");
@@ -673,7 +676,7 @@ mod tests {
             };
             assert_eq!(published.iter().map(|p| p.revision).collect::<Vec<_>>(), (1..=published.len() as u32).collect::<Vec<_>>());
             for p in published {
-                let gz = fetch(&bundle::bundle_url(game, p.id));
+                let gz = fetch(p.url().unwrap());
                 assert_eq!(gz.len() as u64, p.size, "{game} r{}", p.revision);
                 let dest = std::env::temp_dir().join(format!("nettai-site-{game}-{}", std::process::id()));
                 let _ = std::fs::remove_dir_all(&dest);
