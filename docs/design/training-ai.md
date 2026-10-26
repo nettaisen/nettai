@@ -802,7 +802,10 @@ All of these run in Rust on the pool, fast, and print a table:
   key) and counts the deals each player won both times, lost both times, or split (the deal decided: 50% if the
   deal didn't matter between even players, 100% if it decided every round); `--mirror` gives both sides side 0's
   build (`env.mirror`), so with `--duplicate` neither the builds nor the chip draws decide, play alone (what a
-  player who beats a scripted one every time beats it at); `--records` writes every counted
+  player who beats a scripted one every time beats it at; the large run's update 2,000, mirrored, won 75, 70
+  and 86% of rounds against the masher in EXE4, EXE5 and EXE6, 79, 76 and 83% against the shooter, 97–99%
+  against a player who does nothing: about what it wins with two random builds, so its losses are its play,
+  not the builds); `--records` writes every counted
   round's record (JSON lines). It prints a table (wins, draws,
   losses, and every numeric measure of `round_stats()` per minute) and Elo by Bradley–Terry over every round
   (a small prior keeps a perfect record finite; the scripted players' mean is 1000). From `round_stats()` it
