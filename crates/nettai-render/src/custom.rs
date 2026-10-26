@@ -2210,9 +2210,9 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
     let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
     let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
-    // (On the text layer, where the pack's font lacks the language's, as
-    // wide as the name is: it still ends at column 30.)
-    let len = if text.takes(name) { fonts::box_cells(text, v.hud, name, glyphs.len(), ENEMY_NAME_CELLS, Role::FittedCell) } else { glyphs.len() };
+    // (On the text layer as wide as the name is, which still ends at column
+    // 30: right-aligned in its cells.)
+    let len = if text.takes(name) { fonts::box_cells(text, name, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
     let name_col = 0x1E - len as i32;
     let palette = &w.palettes[13];
     // The bar: the slanted end, then one cell a glyph (eight at most; a
@@ -2246,7 +2246,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
             }
         }
     }
-    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * name_col, 0), (Role::FittedCell, Align::Left));
+    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * name_col, 0), (Role::FittedCell, Align::Right));
     Rect::new(8 * name_col, 0, crate::compose::WIDTH as i32 - 8 * name_col, 16)
 }
 

@@ -1471,9 +1471,8 @@ fn draw_chip_name(
 ) -> i32 {
     let words = text.strings.chip_name(&b.content, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
-    // (The text layer's box: the cells its glyphs take, or the name's own
-    // width where the pack's font lacks the language's.)
-    let cells = if text.takes(words) { fonts::box_cells(text, hud, words, name.len(), name.len().max(8), Role::FittedCell) } else { name.len() };
+    // (The text layer's box: the name's own width.)
+    let cells = if text.takes(words) { fonts::box_cells(text, words, name.len(), Role::FittedCell) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
     // the enhanced mode after the name as the text layer draws it.
@@ -1592,7 +1591,7 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, at: T
         return;
     }
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
-    let cells = if text.takes(&seconds) { fonts::box_cells(text, hud, &seconds, glyphs.len(), 4, Role::FittedCell) } else { glyphs.len() };
+    let cells = if text.takes(&seconds) { fonts::box_cells(text, &seconds, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
     let x = match at {
         TimeAt::Corner(seat) => seat.x(width - 8 * cells as i32, 8 * cells as i32),
         TimeAt::Between => (width - 8 * cells as i32) / 2,
@@ -2458,7 +2457,7 @@ fn name_parts<'a>(
         d => (digits(d), if bonus_value != 0 { std::iter::once(style.plus).chain(digits(bonus_value)).collect() } else { Vec::new() }, doubled),
     };
     let font = !words.is_empty() && text.takes(words);
-    let cells = if font { fonts::box_cells(text, hud, words, name.len(), 8, Role::Cell) } else { name.len() };
+    let cells = if font { fonts::box_cells(text, words, name.len(), Role::Cell) } else { name.len() };
     let width = (cells + damage.len() + bonus.len()) as i32;
     let mut x = (style.at.0 as i32 + (15 - width) * 4) & 0xFF;
     if remote && doubled {
