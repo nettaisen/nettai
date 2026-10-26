@@ -95,6 +95,19 @@ impl<'de> Deserialize<'de> for BundleId {
 /// browser needs on a redirect, so the app asks this domain directly.
 pub const SITES: &str = "https://nettai.n1gp.net";
 
+/// The catalog of games: the organization's site's `games.json` (the nettaisen.github.io repository), the one
+/// address the app starts from (§5).
+pub fn catalog_url() -> String {
+    format!("{SITES}/games.json")
+}
+
+/// The catalog: the games published, each by its pack id, whose own sites say the rest (their bundles by line, and
+/// the bundles what they need to run). (Fields an app doesn't know are skipped, so a later catalog still reads.)
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Catalog {
+    pub games: Vec<String>,
+}
+
 /// Where game `game`'s bundles are published: its repository's site (§4).
 pub fn site(game: &str) -> String {
     format!("{SITES}/{game}")
@@ -462,6 +475,13 @@ mod tests {
         let later = json.replace("\"size\":1234", "\"size\":1234,\"notes\":\"new\"");
         assert_eq!(serde_json::from_str::<Index>(&later).unwrap(), index);
         assert_eq!(bundle_url("exe6", BundleId([0; 32])), format!("https://nettai.n1gp.net/exe6/bundles/{}.tar.gz", "0".repeat(64)));
+    }
+
+    #[test]
+    fn the_catalog_lists_games() {
+        let catalog: Catalog = serde_json::from_str(r#"{"games": ["exe4", "exe5", "exe6"], "later": 1}"#).unwrap();
+        assert_eq!(catalog.games, ["exe4", "exe5", "exe6"]);
+        assert_eq!(catalog_url(), "https://nettai.n1gp.net/games.json");
     }
 
     #[test]
