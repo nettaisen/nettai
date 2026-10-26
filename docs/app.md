@@ -660,12 +660,22 @@ each_game_is_named_in_its_languages` holds the three games to their names in bot
 **Adding a language** is adding its folder: copy `lang/ja/` to `lang/<code>/`, translate each `msgstr`, and
 build; the build lists what is left. `msgfmt --check -o /dev/null` validates a file.
 
+**The languages bundled:** English (the source), Japanese, Simplified Chinese (`zh-Hans`, 简体中文) and Traditional
+Chinese (`zh-Hant`, 繁體中文, Taiwan's wording), each with the content's strings tables of the same code
+(text-rendering.md §14: the games' words are the Legacy Collection's, its Chinese among them). The system's locale
+picks one by its primary subtag, a Chinese one by its script or region (`lang::system`: zh-TW, zh-HK, zh-MO and
+zh-Hant Traditional, the rest Simplified). The catalogs use the collection's terms (芯片/晶片, 文件夹/資料夾,
+领航员/領航員, 个人化装置/個人化裝置, 改造卡, 交错/交錯, 野兽出笼/野獸出籠).
+
 **Typography.** Headings, buttons and labels are Chakra Petch, which has Latin alone; a language set in another
-script (`lang::cjk`: Chinese, Japanese, Korean) has them in Corporate Logo at 700 (the user's choice: docs/design/app-ui.md
-§2.51), with the labels' tracking nearly none, in every game. Body text is Murecho in either. Corporate Logo and
-Murecho cover Latin and Japanese. For a script they lack, Slint falls back to the system's fonts on the desktop; the web has
-none and a phone's may lack one, so such a language needs its font bundled (imported in theme.slint beside the
-others).
+script (`lang::cjk`: Japanese, Chinese, Korean) has them in its own display face (`Theme.cjk-display`, `lang::display_face`):
+Corporate Logo at 700 for Japanese (the user's choice: docs/design/app-ui.md §2.51), the body's cut for Chinese until one
+like it is chosen ("app text for chinese can use a different font in a similar style"), with the labels' tracking
+nearly none, in every game. Body text is Noto Sans CJK, one design for every language (the user: "you should use one
+unified font for all languages"), in the language's cut (`Theme.body-face`: Noto Sans JP for English and Japanese,
+SC and TC for Chinese). The program holds its files once: nettai-render embeds them for the battle, and the app
+registers the same bytes with Slint's shared font collection at its start (`lang::register_fonts`, slint's
+`unstable-fontique-011`), also as every face's fallback for hanzi and kana, on the desktop and the web alike.
 
 ## 4. Netplay
 
@@ -2096,8 +2106,9 @@ difference between one multiple and the next (a window 780 of the display's pixe
 docs/design/app-ui.md §4 is the look; this is where it lives.
 
 **The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, Corporate Logo 700
-for Japanese display text, M PLUS 1 Code and Murecho, all under the SIL Open Font License, each with its license
-beside it in `fonts/`, M PLUS 1 Code's and Murecho's in nettai-render's, which draws battles with them), the metrics, and the durations. A screen uses these and writes no color, size or duration
+for Japanese display text, M PLUS 1 Code, and Noto Sans CJK, all under the SIL Open Font License, each with its
+license beside it in `fonts/`, M PLUS 1 Code's and Noto Sans CJK's in nettai-render's, which draws battles with them;
+Noto Sans CJK registered by the app at its start, §3), the metrics, and the durations. A screen uses these and writes no color, size or duration
 of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
 Petch, 700 for both in Corporate Logo, which is bundled at that weight alone).
 
@@ -3825,7 +3836,7 @@ is open (`screens/settings/about.rs`: `About::open`, `close`, and a screen's `sh
 
 **What it shows.** At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
 repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
-and under MADE WITH, a list of the software the app is made of: the nine fonts it bundles (Bungee, Chakra Petch, Corporate Logo, M PLUS 1 Code, Murecho, and its own Nettai Banner Digits, Nettai Chip Codes, Nettai Digits and Nettai Slot Codes), then every package built into it, by name, each row its name, its version and its
+and under MADE WITH, a list of the software the app is made of: the nine fonts it bundles (Bungee, Chakra Petch, Corporate Logo, M PLUS 1 Code, Noto Sans CJK, and its own Nettai Banner Digits, Nettai Chip Codes, Nettai Digits and Nettai Slot Codes), then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
 and repository, and its license files as its package ships them, each file's name over its text in the monospaced
 face, scrolling. The footer counts them ("… packages · 9 fonts"). On a phone the list is the page, and a

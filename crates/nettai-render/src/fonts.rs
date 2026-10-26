@@ -66,11 +66,18 @@ pub fn cell_glyph(hud: &Hud, glyph: u16) -> (&Tiles, usize) {
 }
 
 /// The cells a string of the 8x16 font has in the enhanced mode: as many as
-/// the original's glyphs of it take (`glyphs`), or one a character up to
-/// `room` when the pack's font has no glyph for some.
-pub fn box_cells(hud: &Hud, text: &str, glyphs: usize, room: usize) -> usize {
+/// the original's glyphs of it take (`glyphs`, one a character up to `room`);
+/// where the pack's font has no glyph for some of its characters (a language
+/// it has no font for: Chinese), as many as the text takes at its own width
+/// in `role` (the user: "don't force anything into any fixed cells"), so
+/// that nothing narrows it.
+pub fn box_cells(sink: &TextSink, hud: &Hud, text: &str, glyphs: usize, room: usize, role: Role) -> usize {
     let (g, missing) = hud.glyphs(text);
-    glyphs.max((g.len() + missing.len()).min(room))
+    if missing.is_empty() {
+        return glyphs.max(g.len().min(room));
+    }
+    let natural = sink.fitted_width(text, role, i32::MAX).unwrap_or(8.0 * (g.len() + 2 * missing.len()) as f32);
+    glyphs.max((natural / 8.0).ceil() as usize)
 }
 
 /// A string of the 8x16 font on a tile layer: as [`draw_cell_text`] draws
@@ -91,7 +98,7 @@ pub fn layer_text(
     (role, align): (Role, Align),
 ) {
     if sink.takes(text) {
-        let n = box_cells(hud, text, glyphs.len().min(cells), cells) as i32;
+        let n = box_cells(sink, hud, text, glyphs.len().min(cells), cells, role) as i32;
         let item = TextItem::new(text, role, Rect::new(x, y, 8 * n, 16), palette[1], Some(palette[2]));
         sink.push(plane, TextItem { align, ..item });
     } else {

@@ -2210,10 +2210,9 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
     let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
     let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
-    // (On the text layer, a character a cell where the pack's font lacks
-    // the language's: the name still ends at column 30.)
-    let len = if text.takes(name) { fonts::box_cells(v.hud, name, glyphs.len(), ENEMY_NAME_CELLS) } else { glyphs.len() };
-    let len = len.min(ENEMY_NAME_CELLS);
+    // (On the text layer, where the pack's font lacks the language's, as
+    // wide as the name is: it still ends at column 30.)
+    let len = if text.takes(name) { fonts::box_cells(text, v.hud, name, glyphs.len(), ENEMY_NAME_CELLS, Role::FittedCell) } else { glyphs.len() };
     let name_col = 0x1E - len as i32;
     let palette = &w.palettes[13];
     // The bar: the slanted end, then one cell a glyph (eight at most; a

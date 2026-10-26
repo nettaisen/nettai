@@ -1231,18 +1231,20 @@ ROMs alone has that release's words only (`hud.json`'s `language` and
 stay its own, and the strings are drawn with the vector font in either
 text mode, the original's into the frame (text-rendering.md §10.3).
 
-The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
-Open Font License 1.1, its license beside it): Latin, kana and some 2,300
-kanji, weight 700 for the 8x16 font's strings and 300 for the chatbox's.
+The bundled font is Noto Sans CJK (`crates/nettai-render/fonts/noto-sans-cjk`,
+SIL Open Font License 1.1, its license beside it), Google Fonts' whole
+variable files: one design for every language, in the cut of the language
+shown (`vfont::Cut`: Noto Sans JP for English and Japanese, SC and TC for
+Chinese), weight 700 for the 8x16 font's strings and 300 for the chatbox's.
 Each of the two has one size: kana and kanji as tall as the capitals and
 centered on them, as the original's fonts draw them, on the capitals'
 baseline. A string too wide for its box is narrowed to it, never made
 smaller (text-rendering.md §9.4); it never leaves its box, and its layout
 never reaches the simulation. The battle's lettered pictures (the banners,
-the HUD's labels, the chip window's help pictures) are drawn in M PLUS 1
-Code, every number, the custom window's labels and the chip codes in
-Bungee, both bundled beside Murecho, and EXE6's Cross names in Murecho
-(text-rendering.md §12).
+the HUD's labels, the chip window's help pictures) are drawn in the same
+font, bold and narrowed, every number, the custom window's labels and the
+chip codes in Bungee, bundled beside it, and EXE6's Cross names in the text
+font (text-rendering.md §12, §14).
 
 **Enhanced and original** (`GraphicsMode`, `Renderer::set_mode`). A
 renderer draws a battle in one of two modes. **Original** draws it exactly

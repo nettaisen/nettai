@@ -108,10 +108,12 @@ NaviCust and what its save brings to the stats (the rules build the rest); its o
 RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
 
 The picture keeps whole pixels at any window size. Chip names, telops, the chatbox's descriptions and messages and
-the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art: Murecho (Latin
-and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. The battle's lettered
-pictures (the banners, with their bar, the HUD's labels, the chip window's help pictures) are drawn there too, in
-M PLUS 1 Code, and its numbers and the custom window's labels in Bungee, both bundled beside it. Settings' battle text draws them in
+the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art: Noto Sans CJK,
+one design for every language (its Japanese cut for English and Japanese, its Simplified and Traditional cuts for
+Chinese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. The battle's lettered pictures
+(the banners, with their bar, the HUD's labels, the chip window's help pictures) are drawn there too, in the same
+font, and its numbers and the custom window's labels in Bungee, bundled beside it. The game's words in English,
+Japanese and Chinese are Mega Man Battle Network Legacy Collection's ([text-rendering.md](docs/design/text-rendering.md) §14). Settings' battle text draws them in
 the game's own fonts and pictures instead, exactly as the original does
 ([text-rendering.md](docs/design/text-rendering.md) §9, §12).
 
