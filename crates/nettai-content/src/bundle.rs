@@ -21,8 +21,9 @@ use sha2::{Digest, Sha256};
 /// A bundle's manifest's name in the bundle.
 pub const MANIFEST: &str = "bundle.toml";
 
-/// Files a pack's folder may hold that are no part of it.
-const LITTER: [&str; 2] = [".git", ".DS_Store"];
+/// Files a pack's folder may hold that are no part of it: git's, the Finder's, and the repository's workflows
+/// (`.github/`, which build the game's site: content-deployment.md §4).
+const LITTER: [&str; 3] = [".git", ".DS_Store", ".github"];
 
 /// A bundle's name: the SHA-256 of its tar.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -169,7 +170,7 @@ pub struct Bundle {
 }
 
 /// Bundle `manifest` with each pack's folder (`packs`: the pack's id and its folder), which must be the manifest's
-/// packs. Every file of the folders goes in, but `.git` and `.DS_Store`.
+/// packs. Every file of the folders goes in, but `.git`, `.DS_Store` and `.github/` at any depth.
 pub fn build(manifest: Manifest, packs: &[(&str, &Path)]) -> Result<Bundle, String> {
     let named: Vec<&str> = manifest.packs.keys().map(String::as_str).collect();
     let mut given: Vec<&str> = packs.iter().map(|(id, _)| *id).collect();
@@ -347,6 +348,7 @@ mod tests {
         put(&game, "chips/cannon/init.luau", "return {}\n");
         put(&game, ".DS_Store", "litter");
         put(&game, ".git", "gitdir: ../../.git/modules/content/exe6\n");
+        put(&game, ".github/workflows/pages.yml", "name: Pages\n");
         put(&lib, "manifest.toml", "id = \"exelib\"\n");
         put(&lib, "a/very/long/path/that/goes/on/and/on/past/a/hundred/characters/of/tar/header/name/room/regions.luau", "x");
         (game, lib)
@@ -373,7 +375,7 @@ mod tests {
         let bundle = build(manifest(), &[("exe6", &game), ("exelib", &lib)]).unwrap();
         let (m, files) = read(&bundle.tar).unwrap();
         assert_eq!(m, manifest());
-        assert!(files.keys().all(|p| !p.contains(".DS_Store") && !p.ends_with("/.git")), "{:?}", files.keys());
+        assert!(files.keys().all(|p| !p.contains(".DS_Store") && !p.ends_with("/.git") && !p.contains(".github")), "{:?}", files.keys());
         let dest = root.join("store").join(bundle.id.to_string());
         let m = unpack(&gzip(&bundle.tar), bundle.id, &dest).unwrap();
         assert_eq!(m, manifest());

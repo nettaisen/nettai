@@ -38,7 +38,7 @@ checked out: `git submodule update --init` first.
 A **bundle** is what a game plays: the game pack and the support packs it depends on, at fixed commits.
 
 - **Its files:** `bundle.toml`, then each pack's folder under its id (`exe6/`, `exelib/`), with every file the pack's
-  repo tracks.
+  repo tracks but its workflows (`.github/`, which build the site, §4).
 - **`bundle.toml`:** the game; the engine line it is for (`line = "0.11"`); its revision (the game's publish count
   within the line: `r1`, `r2`, ..., what a player sees); and each pack's commit.
 - **Its form:** a deterministic tar (paths sorted, mode 0644, no owner, time 0), gzipped.
@@ -54,30 +54,70 @@ A **bundle** is what a game plays: the game pack and the support packs it depend
 Within a minor line every engine computes the same content hash for the same bundle and asset pack: anything netplay
 compares is a minor-version change (docs/design/rollback.md).
 
-**Support packs.** A support pack isn't published on its own. The engine checkout a game is published from pins it
-(its submodule's commit), and `bundle.toml` records that commit.
+**Support packs.** A support pack isn't published on its own: a bundle holds it at the commit its game locks.
+
+- **`depends.lock`**, at the root of each game's repo, names the commit of each support pack the game goes with, the
+  one it was checked against: one line per support pack it depends on (and theirs), with the full commit
+  (`exelib = "a73907b5ec9bfdb63116ae0ed025ad9550403a92"`). It is no content: nothing loads it, and it goes in the
+  game's bundle with the pack's other files. `bundle.toml` records the same commits.
+- **The check.** `nettai-content-check` refuses a game whose lock isn't the commit its support packs' submodules are
+  at, naming both commits and the fix; where a support pack is no git checkout of its own (an unpacked bundle's
+  folder) it says so and leaves the lock unchecked. Publishing refuses such a game too, so a game is never bundled
+  with an exelib it wasn't checked against.
+
+**Changing exelib.**
+
+1. Commit the change in exelib's repo, and push it to main.
+2. Move the engine's `content/exelib` submodule to it.
+3. Check each game against it (`cargo run -p nettai-content-check`, the tests). The check names every game's lock
+   as stale until step 4; the rest of its report is the games' with the new exelib.
+4. `nettai-content lock` (or `lock exe6` for one game) rewrites each game's `depends.lock` to `content/exelib`'s
+   commit. It only writes the files: commit each in its game's repo, and push it to main.
+5. Move the engine's game submodules to those commits, in one engine commit with exelib's.
 
 ## 4. Publishing
 
-Each game's repo serves on Pages, from its `gh-pages` branch, to which publishing only adds:
+A game's bundles are **releases of its repo**, and its site is built from them. No bundle enters git history: every
+engine checkout's submodule clone fetches all of a repo's branches, so a branch of bundles would reach every
+developer's disk.
 
-- `index.json`: by engine line, the game's bundles in publish order. Each entry gives the id, the content hash, the
-  revision, the packs' commits, the date and the size.
-- `bundles/<id>.tar.gz`: each bundle.
+- **A release** is tagged `<line>-r<revision>` (`0.11-r1`) on the game pack's commit the bundle holds, titled
+  `exe6 r1 for 0.11`, with two files: `<id>.tar.gz`, the bundle, and `bundle.json`, its index entry
+  (`bundle::Published`: the id, the content hash, the revision, the packs' commits, the date and the size).
+- **The site** (`https://nettai.n1gp.net/exe6/`, §1) is built from all the repo's releases by its Pages workflow,
+  `.github/workflows/pages.yml` (the same in each game's repo), each time a release is published:
+  - `index.json` (`bundle::Index`): the game, and its bundles by engine line, each line's in revision order, from
+    the releases' `bundle.json`;
+  - `bundles/<id>.tar.gz`: each bundle, checked against its id (the SHA-256 of its tar) and its entry's size. A
+    release that fails a check fails the build, and the site stays as it was.
+
+  Pages' source is GitHub Actions. The site deploys from main alone (the `github-pages` environment's rule), and a
+  release's run is on its tag, so that run only starts the workflow again on main (`gh workflow run`), which builds
+  and deploys. A release's run is the workflow its tagged commit holds, so a release of a commit without
+  `pages.yml` starts nothing; `gh workflow run pages.yml -R nettaisen/<game>` builds the site by hand.
 
 **Publishing runs locally**, not in CI: computing the content hash needs the game's asset pack, which comes from the
-ROMs, and no ROM goes to CI. `nettai-content publish <game>`, run in the engine checkout of the line, does six things
-in order:
+ROMs, and no ROM goes to CI. `nettai-content publish <game> [--packs DIR] [--dry-run]`, run in the engine checkout
+of the line with `gh` signed in, does six things in order:
 
-1. It refuses unless the game's and its support packs' submodules are clean and their commits are on their repos'
-   main branches.
-2. It type-checks the content.
-3. It builds the bundle from the submodules.
-4. It computes the content hash with the local asset pack.
-5. It refuses a bundle whose content hash and id are already the line's newest.
-6. It adds the bundle and the new index entry to the game repo's `gh-pages` branch, then commits and pushes.
+1. It refuses unless the game's and its support packs' submodules are clean (nothing untracked or ignored either: a
+   bundle holds the folder), at the commits the engine's HEAD pins, and on their repos' main branches (fetched
+   first), and unless the game's lock names its support packs' commits.
+2. It type-checks the game and its support packs and checks the lock: `nettai-content-check --pack exe6 --pack
+   exelib`, run with cargo (its Luau can't be linked beside the engine's).
+3. It builds the bundle from the submodules, the support packs at the locked commits. The line is the engine's major
+   and minor version (the workspace's; the program and the checkout must share it). The revision is one past the
+   count of the line's releases, which must be r1 to rN.
+4. It computes the content hash: it unpacks the bundle as the app's store does and loads it with the game's asset
+   pack (`--packs DIR`; the checkout's `data/<game>` by default).
+5. It refuses a bundle that is the line's newest again: the same id, or the same content hash from the same commits
+   (the newest release's `bundle.json`). The same content from other commits is a new revision.
+6. It creates the release (`gh release create`), showing the command first. `--dry-run` does all but run it, and
+   leaves the release's files in `target/publish/<game>/<tag>/` for the command it shows.
 
-A new engine line gets each game's content published for it, from the same commits or newer ones.
+A release stays: replays made with its content find it by its content hash. A mistake is mended by the next
+revision. A new engine line gets each game's content
+published for it, from the same commits or newer ones.
 
 ## 5. The app
 

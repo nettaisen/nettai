@@ -482,9 +482,104 @@ pub fn declarations(dir: &Path, all: &BTreeMap<String, PackManifest>, id: &str) 
     Ok(out)
 }
 
+/// A game pack's lock, in its folder (docs/design/content-deployment.md
+/// §3): the commit of each support pack it goes with, the ones it was
+/// checked against, one line each (`exelib = "a73907b5..."`). It is no
+/// content (nothing loads it), and travels in the game's bundle with the
+/// pack's other files.
+pub const LOCK: &str = "depends.lock";
+
+/// The support packs game `id`'s lock names: those it depends on, and
+/// theirs (what a bundle of it holds besides it), by id.
+pub fn locked(all: &BTreeMap<String, PackManifest>, id: &str) -> Result<Vec<String>, String> {
+    let mut out: Vec<String> = with_depends(all, id)?.into_iter().filter(|p| p.id != id).map(|p| p.id.clone()).collect();
+    out.sort();
+    Ok(out)
+}
+
+/// Game `id`'s lock in content `dir`: each support pack's commit (40 hex
+/// digits), by id; none when the game has no lock.
+pub fn read_lock(dir: &Path, id: &str) -> Result<BTreeMap<String, String>, String> {
+    let path = dir.join(id).join(LOCK);
+    if !nettai_platform::fs::exists(&path) {
+        return Ok(BTreeMap::new());
+    }
+    let at = format!("{id}/{LOCK}");
+    let text = nettai_platform::fs::read_to_string(&path).map_err(|e| format!("{at}: {e}"))?;
+    let lock: BTreeMap<String, String> = toml::from_str(&text).map_err(|e| format!("{at}: {e}"))?;
+    if let Some((pack, commit)) = lock.iter().find(|(_, c)| c.len() != 40 || !c.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))) {
+        return Err(format!("{at}: {pack}'s commit is 40 lowercase hex digits, not {commit:?}"));
+    }
+    Ok(lock)
+}
+
+/// A lock's text: one line per support pack, in id order.
+pub fn lock_text(lock: &BTreeMap<String, String>) -> String {
+    lock.iter().map(|(pack, commit)| format!("{pack} = \"{commit}\"\n")).collect()
+}
+
+/// What keeps game `id` from going with the support packs checked out:
+/// its lock (`lock`) against support packs `wanted` ([`locked`]) and the
+/// commits they are at (`heads`, by id). Each names the commits and the
+/// fix.
+pub fn lock_problems(id: &str, wanted: &[String], lock: &BTreeMap<String, String>, heads: &BTreeMap<String, String>) -> Vec<String> {
+    let at = format!("{id}/{LOCK}");
+    let fix = format!("check {id} against it, then `nettai-content lock {id}` and commit {LOCK} in {id}'s repository");
+    let mut problems = Vec::new();
+    for pack in wanted {
+        match (lock.get(pack), heads.get(pack)) {
+            (None, Some(head)) => problems.push(format!("{at}: locks no commit of {pack}, which is at {head}: {fix}")),
+            (Some(locked), Some(head)) if locked != head => {
+                problems.push(format!("{at}: locks {pack} at {locked}, and {pack} is at {head}: {fix}, or check out {pack} at {locked}"))
+            }
+            _ => {}
+        }
+    }
+    for pack in lock.keys().filter(|p| !wanted.contains(p)) {
+        problems.push(format!("{at}: locks {pack}, which {id} doesn't depend on: `nettai-content lock {id}` writes what it does"));
+    }
+    problems
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_games_lock_names_its_support_packs_and_their_commits() {
+        let all: BTreeMap<String, PackManifest> =
+            [pack("g", PackKind::Game, &["lib"]), pack("lib", PackKind::Support, &["base"]), pack("base", PackKind::Support, &[])].into();
+        assert_eq!(locked(&all, "g").unwrap(), ["base", "lib"]);
+        let (a, b) = ("a".repeat(40), "b".repeat(40));
+        let lock: BTreeMap<String, String> = [("base".to_string(), a.clone()), ("lib".to_string(), a.clone())].into();
+        assert_eq!(lock_text(&lock), format!("base = \"{a}\"\nlib = \"{a}\"\n"));
+        assert_eq!(toml::from_str::<BTreeMap<String, String>>(&lock_text(&lock)).unwrap(), lock);
+        let wanted = locked(&all, "g").unwrap();
+        assert!(lock_problems("g", &wanted, &lock, &lock).is_empty());
+        // A support pack at another commit than the lock's: both commits and the fix.
+        let heads: BTreeMap<String, String> = [("base".to_string(), a.clone()), ("lib".to_string(), b.clone())].into();
+        let p = lock_problems("g", &wanted, &lock, &heads);
+        assert!(p.len() == 1 && p[0].contains(&format!("locks lib at {a}, and lib is at {b}")) && p[0].contains("nettai-content lock g"), "{p:?}");
+        // A support pack unlocked, and one locked that the game doesn't depend on.
+        let lock: BTreeMap<String, String> = [("lib".to_string(), b.clone()), ("other".to_string(), b.clone())].into();
+        let p = lock_problems("g", &wanted, &lock, &heads);
+        assert!(p.iter().any(|p| p.contains("locks no commit of base")) && p.iter().any(|p| p.contains("locks other, which g doesn't")), "{p:?}");
+        // A support pack whose checkout can't be seen isn't judged.
+        assert!(lock_problems("g", &wanted, &lock, &BTreeMap::new()).iter().all(|p| p.contains("other")));
+    }
+
+    #[test]
+    fn a_lock_reads_back_and_its_commits_are_full() {
+        let dir = std::env::temp_dir().join(format!("nettai-lock-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("g")).unwrap();
+        assert!(read_lock(&dir, "g").unwrap().is_empty(), "no lock");
+        let c = "0123456789abcdef0123456789abcdef01234567";
+        std::fs::write(dir.join("g").join(LOCK), format!("exelib = \"{c}\"\n")).unwrap();
+        assert_eq!(read_lock(&dir, "g").unwrap(), [("exelib".to_string(), c.to_string())].into());
+        std::fs::write(dir.join("g").join(LOCK), "exelib = \"a73907b5\"\n").unwrap();
+        assert!(read_lock(&dir, "g").unwrap_err().contains("40 lowercase hex digits"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     fn pack(id: &str, kind: PackKind, depends: &[&str]) -> (String, PackManifest) {
         (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), text: Vec::new() })
