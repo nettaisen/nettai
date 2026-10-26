@@ -1,6 +1,6 @@
-//! A file over HTTP(S) ([`get`], the `http` feature): reqwest's, async, the same call on both sides: hyper and
-//! rustls (ring) on the desktop, the browser's `fetch` there. Run it with [`crate::task::spawn`] (on the desktop its
-//! futures need that runtime); dropping it, or its task, cancels the request.
+//! A file over HTTP(S) ([`get`]): reqwest's, async, the same call on both sides: hyper and
+//! rustls (ring) on the desktop, the browser's `fetch` there. Await it where tokio's context is (on the desktop the
+//! app's window's thread, the program running under tokio: [`crate::task`]); dropping it cancels the request.
 
 /// GET `url`, at most `limit` bytes of it: the body, or why there is none (no connection, a status other than a
 /// success, a body over `limit`).

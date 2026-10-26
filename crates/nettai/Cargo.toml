@@ -60,6 +60,9 @@ nettai-extract = { path = "../nettai-extract" }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
+# window's loop runs can use reqwest (`nettai_platform::http`).
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
 # releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
 # release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
@@ -94,7 +97,7 @@ tour = ["dep:png", "nettai-rtc/testing"]
 # (docs/design/training-ai.md §10), downloaded from the nettai-ai repository when Fights is first picked (or
 # `NETTAI_AI_WEIGHTS`'s file). Off by default: a build without it offers the dummy's other Actions alone.
 # `cargo run -p nettai --features ai`.
-ai = ["dep:nettai-training", "dep:serde_json", "dep:sha2", "nettai-platform/http"]
+ai = ["dep:nettai-training", "dep:serde_json", "dep:sha2"]
 
 [build-dependencies]
 # What the app is built from, for its About screen (build.rs: `cargo metadata`'s JSON).

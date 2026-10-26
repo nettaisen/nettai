@@ -91,7 +91,14 @@ pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
 /// and a require across packs that the packs refuse (`packs::find`, as a
 /// load finds a module); each with the path that names it.
 pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
+    reach_of(dir, None)
+}
+
+/// [`reach`], of packs `only` (by id) alone when given: what content/
+/// holds besides them isn't theirs to answer for.
+fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
     use nettai_content_api::{keys, packs};
+    let named = |id: &str| only.is_none_or(|o| o.contains(&id));
     let mut problems = Vec::new();
     let mut all = std::collections::BTreeMap::new();
     let mut entries: Vec<std::path::PathBuf> =
@@ -107,18 +114,22 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
                 Ok(m) => {
                     all.insert(name, m);
                 }
+                Err(_) if !named(&name) => {}
                 Err(e) => problems.push(if entry.join(packs::MANIFEST).is_file() {
                     e
                 } else {
                     format!("{name}/: no {}; a folder of content/ is a pack", packs::MANIFEST)
                 }),
             }
-        } else if name.ends_with(".luau") {
+        } else if only.is_none() && name.ends_with(".luau") {
             problems.push(format!("{name}: a module belongs to a pack (content/<pack>/...)"));
         }
     }
     let files = packs::Dirs::of_content(dir, all.keys().map(String::as_str));
-    for p in all.values() {
+    if let Some(missing) = only.into_iter().flatten().find(|id| !all.contains_key(**id)) {
+        problems.push(format!("no pack {missing} in {}", dir.display()));
+    }
+    for p in all.values().filter(|p| named(&p.id)) {
         if let Err(e) = packs::with_depends(&all, &p.id) {
             problems.push(e);
         }
@@ -154,8 +165,21 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
 /// declarations, and lint it: every script of every pack, each named by
 /// its path; then what the packs refuse or can't find ([`reach`]).
 pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
+    check(dir, None)
+}
+
+/// [`check_content`] of packs `only` of content `dir`, by id (a game and
+/// the support packs it depends on: what a bundle of it holds,
+/// docs/design/content-deployment.md §3): their modules, and what they
+/// refuse or can't find. The rest of `dir` isn't looked at but for the
+/// manifests a require across packs is judged by.
+pub fn check_packs(dir: &Path, only: &[&str]) -> Result<(usize, Vec<Problem>), String> {
+    check(dir, Some(only))
+}
+
+fn check(dir: &Path, only: Option<&[&str]>) -> Result<(usize, Vec<Problem>), String> {
     let (mut n, mut problems) = (0, Vec::new());
-    for p in nettai_content_api::packs::packs(dir)? {
+    for p in nettai_content_api::packs::packs(dir)?.into_iter().filter(|p| only.is_none_or(|o| o.contains(&p.id.as_str()))) {
         let mut checker = PackChecker::new(&definitions(dir, &p.id)?)?;
         let name = &p.id;
         for (path, source) in modules(&dir.join(name)).map_err(|e| e.to_string())? {
@@ -166,6 +190,52 @@ pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
             n += 1;
         }
     }
-    problems.extend(reach(dir)?);
+    problems.extend(reach_of(dir, only)?);
     Ok((n, problems))
+}
+
+/// The games' locks (`depends.lock`, docs/design/content-deployment.md §3)
+/// against the support packs checked out: what keeps a game of content
+/// `dir` (of packs `only`, when given) from going with them
+/// (`packs::lock_problems`), and, as notes, the support packs that are no
+/// git checkout of their own (as a bundle's folders aren't), whose commits
+/// can't be seen, so the locks on them aren't checked.
+pub fn locks(dir: &Path, only: Option<&[&str]>) -> Result<(Vec<Problem>, Vec<String>), String> {
+    use nettai_content_api::{PackKind, packs};
+    let all: std::collections::BTreeMap<String, packs::PackManifest> = packs::packs(dir)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    let (mut problems, mut notes) = (Vec::new(), Vec::new());
+    let mut heads = std::collections::BTreeMap::new();
+    for game in all.values().filter(|p| p.kind == PackKind::Game && only.is_none_or(|o| o.contains(&p.id.as_str()))) {
+        // (A manifest's depends that can't be followed is reach's to report.)
+        let Ok(wanted) = packs::locked(&all, &game.id) else { continue };
+        for pack in &wanted {
+            if heads.contains_key(pack) || notes.iter().any(|n: &String| n.starts_with(&format!("{pack}/"))) {
+                continue;
+            }
+            match checkout(&dir.join(pack)) {
+                Ok(commit) => {
+                    heads.insert(pack.clone(), commit);
+                }
+                Err(why) => notes.push(format!("{pack}/: {why}; the locks on it ({}) aren't checked", packs::LOCK)),
+            }
+        }
+        match packs::read_lock(dir, &game.id) {
+            Ok(lock) => problems.extend(packs::lock_problems(&game.id, &wanted, &lock, &heads)),
+            Err(e) => problems.push(e),
+        }
+    }
+    Ok((problems, notes))
+}
+
+/// The commit checked out in folder `dir`, if it is a git checkout of its
+/// own (a submodule's or a clone's, with its own `.git`); else why not.
+fn checkout(dir: &Path) -> Result<String, String> {
+    if !dir.join(".git").exists() {
+        return Err("no git checkout of its own".to_string());
+    }
+    let out = std::process::Command::new("git").arg("-C").arg(dir).args(["rev-parse", "HEAD"]).output().map_err(|e| format!("git can't be run ({e})"))?;
+    if !out.status.success() {
+        return Err(format!("git rev-parse HEAD: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }

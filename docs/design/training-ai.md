@@ -973,9 +973,11 @@ version and a network trained for it, published under its own line, the older li
 
 - **The app** (the `ai` feature; `screens/practice/weights.rs`) asks for it when Fights is first picked in a run
   (the user's choice: not at start), then shares it: the data folder's copy (`ai/<line>/`) where its SHA-256 is the
-  index's, else the line's downloaded (`nettai_platform::http::get`, its `http` feature: reqwest, async, run as a
-  `nettai_platform::task` that is cancelled when dropped: tokio's runtime on the desktop, `fetch` in the browser
-  (the user: "use reqwest instead of ureq? ureq isn't cancellable or async"),
+  index's, else the line's downloaded (`nettai_platform::http::get`: reqwest, async, in a future on the window's
+  loop, `slint::spawn_local`, aborted if the app quits first; on the desktop the program runs under
+  `#[tokio::main]` with Slint's loop in `block_in_place`, as Slint's docs ask, so reqwest's futures have tokio's
+  context; `fetch` in the browser; the files read, hashed and written off the window's thread,
+  `nettai_platform::task::off_thread`; every build has tokio and reqwest),
   from the site, which a page may fetch: the domain itself, since its github.io address redirects there without
   the cross-origin header), checked and kept; with no index, the copy kept. The AI
   plugged in meanwhile is `ai::WaitingAi` on an `ai::Arriving`: till the network arrives it waits as a decision
