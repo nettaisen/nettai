@@ -1,0 +1,384 @@
+# Simplified Chinese: what every screen shares (the header, the footer, the dialogs, the errors), the loading screens,
+# the main menu and the battle's own. A screen's strings are in the file of its name.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# The language's own name, as Settings lists it.
+msgctxt "language"
+msgid "English"
+msgstr "简体中文"
+
+# ---- The main menu ----
+
+msgid "Play"
+msgstr "对战"
+
+msgid "Practice"
+msgstr "练习"
+
+msgid "Replays"
+msgstr "录像"
+
+msgid "Demo"
+msgstr "演示"
+
+msgid "vs"
+msgstr "vs"
+
+# ---- The header and the key hints ----
+
+msgid "Menu"
+msgstr "菜单"
+
+msgid "Select"
+msgstr "选择"
+
+msgid "Open"
+msgstr "确定"
+
+msgid "Back"
+msgstr "返回"
+
+# A text field's own hints, while it is typed in: Enter finishes it, Esc leaves it as it was.
+msgid "Done"
+msgstr "完成"
+
+# A setting taken (Enter on it): Left and Right change it.
+msgid "Change"
+msgstr "更改"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Change game"
+msgstr "切换游戏"
+
+# ---- Loading ----
+
+msgid "Loading {}"
+msgstr "正在加载 {}"
+# A game's pack being extracted from the Legacy Collection: {} is the game, as the header shows it.
+msgid "Extracting {}"
+msgstr "正在提取 {}"
+
+msgid "Loading"
+msgstr "加载中"
+
+msgid "No game data was found. Put a game's pack in {}."
+msgstr "未找到游戏数据。请将游戏的数据包放入 {}。"
+
+msgid "VS"
+msgstr "VS"
+
+# ---- The battle ----
+
+msgid "Reconnecting {} s"
+msgstr "正在重新连接 {} 秒"
+
+msgid "{} ms"
+msgstr "{} ms"
+
+# The link panel the connection's corner opens. The figures in frames (the input delay, a rollback's depth,
+# the skew, the lead) are bare numbers.
+msgid "Connection"
+msgstr "连接状况"
+
+msgid "Round trip"
+msgstr "往返时间"
+
+msgid "Jitter"
+msgstr "抖动"
+
+# The share of the other player's packets lost: {} is the number, to a tenth.
+msgid "Loss"
+msgstr "丢包率"
+
+msgid "{}%"
+msgstr "{}%"
+
+msgid "Reconnects"
+msgstr "重连次数"
+
+# Clock sync's skew: how far this player runs ahead of the other (+) or behind (-), in frames.
+msgid "Skew"
+msgstr "时钟偏差"
+
+# This player's inputs the other's haven't matched yet, in frames.
+msgid "Lead"
+msgstr "领先"
+
+msgid "Rollbacks"
+msgstr "回滚次数"
+
+msgid "Last rollback"
+msgstr "上次回滚"
+
+# The deepest rollback of the match, in frames.
+msgid "Deepest"
+msgstr "最深回滚"
+
+msgid "Frames waited"
+msgstr "等待帧数"
+
+msgid "Sent"
+msgstr "发送"
+
+msgid "Received"
+msgstr "接收"
+
+msgid "{} packets · {} KB"
+msgstr "{} 个数据包 · {} KB"
+
+# ---- What can go wrong ----
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Can't reach the server. Check your connection."
+msgstr "无法连接到服务器。请检查网络连接。"
+
+msgid "Can't reach the server"
+msgstr "无法连接到服务器"
+
+msgid "Check your connection."
+msgstr "请检查网络连接。"
+
+msgid "No match with that code."
+msgstr "找不到该邀请码的对战。"
+
+msgid "No match with that code"
+msgstr "找不到该邀请码的对战"
+
+msgid "That match is full."
+msgstr "该对战人数已满。"
+
+msgid "That match is full"
+msgstr "该对战人数已满"
+
+msgid "Your opponent has a different version of nettai. You both need the latest."
+msgstr "对手的 nettai 版本与你不同。双方都需要更新到最新版本。"
+
+msgid "Different versions"
+msgstr "版本不同"
+
+msgid "This build can't be used: {}."
+msgstr "此构筑无法使用：{}。"
+
+msgid "This build can't be used"
+msgstr "此构筑无法使用"
+
+msgid "No build"
+msgstr "没有构筑"
+
+msgid "{}."
+msgstr "{}。"
+
+msgid "This version of nettai is too old for the server. Get the latest."
+msgstr "此 nettai 版本过旧，服务器不再支持。请更新到最新版本。"
+
+msgid "This version of nettai is too old for the server"
+msgstr "此 nettai 版本过旧，服务器不再支持"
+
+msgid "Get the latest."
+msgstr "请更新到最新版本。"
+
+msgid "Your opponent is on {}. Pick the same game."
+msgstr "对手选择了{}。请选择相同的游戏。"
+
+msgid "Your opponent is on {}"
+msgstr "对手选择了{}"
+
+msgid "Pick the same game."
+msgstr "请选择相同的游戏。"
+
+msgid "This build can't be used."
+msgstr "此构筑无法使用。"
+
+msgid "Make a build first."
+msgstr "请先创建构筑。"
+
+msgid "Your opponent's build can't be used."
+msgstr "对手的构筑无法使用。"
+
+msgid "Your opponent's build can't be used"
+msgstr "对手的构筑无法使用"
+
+msgid "Your opponent left."
+msgstr "对手已离开。"
+
+msgid "Your opponent left"
+msgstr "对手已离开"
+
+msgid "No answer from your opponent."
+msgstr "对手没有响应。"
+
+msgid "No answer from your opponent"
+msgstr "对手没有响应"
+
+msgid "Couldn't connect to your opponent."
+msgstr "无法连接到对手。"
+
+msgid "Couldn't connect to your opponent"
+msgstr "无法连接到对手"
+
+msgid "That isn't an address. Use host:port."
+msgstr "这不是有效的地址。请使用 host:port 格式。"
+
+msgid "That isn't an address"
+msgstr "这不是有效的地址"
+
+msgid "Use host:port."
+msgstr "请使用 host:port 格式。"
+
+msgid "That port is already in use."
+msgstr "该端口已被占用。"
+
+msgid "That port is already in use"
+msgstr "该端口已被占用"
+
+msgid "Connection lost. The match has ended."
+msgstr "连接已断开。对战已结束。"
+
+msgid "Connection lost"
+msgstr "连接已断开"
+
+msgid "The match has ended."
+msgstr "对战已结束。"
+
+msgid "This replay is from a different version and can't be played."
+msgstr "此录像来自不同的版本，无法播放。"
+
+msgid "Different version"
+msgstr "版本不同"
+
+msgid "That file isn't a replay."
+msgstr "该文件不是录像。"
+
+msgid "That file isn't a replay"
+msgstr "该文件不是录像"
+
+msgid "This replay is damaged and can't be played."
+msgstr "此录像已损坏，无法播放。"
+
+msgid "This replay is damaged"
+msgstr "此录像已损坏"
+
+msgid "It can't be played."
+msgstr "无法播放。"
+
+msgid "This is a {} replay. Pick {} to watch it."
+msgstr "这是{}的录像。选择{}即可播放。"
+
+msgid "This is a {} replay"
+msgstr "这是{}的录像"
+
+msgid "Pick {} to watch it."
+msgstr "选择{}即可播放。"
+
+msgid "Video export needs ffmpeg. Install it, then try again."
+msgstr "导出视频需要 ffmpeg。请安装后重试。"
+
+msgid "Video export needs ffmpeg"
+msgstr "导出视频需要 ffmpeg"
+
+msgid "Install it, then try again."
+msgstr "请安装后重试。"
+
+msgid "The video's file couldn't be written. Check the folder and the space left."
+msgstr "无法写入视频文件。请检查文件夹和剩余空间。"
+
+msgid "The video's file couldn't be written"
+msgstr "无法写入视频文件"
+
+msgid "Check the folder and the space left."
+msgstr "请检查文件夹和剩余空间。"
+
+msgid "The video couldn't be made. Details are in the log file."
+msgstr "无法生成视频。详情请查看日志文件。"
+
+msgid "The video couldn't be made"
+msgstr "无法生成视频"
+
+msgid "Not a {} save."
+msgstr "这不是{}的存档。"
+
+# (A dialog's title: it has a phone's dialog's width, 310, at 20.)
+msgid "Not a {} save"
+msgstr "不是{}的存档"
+
+# A file chosen to import as a ruleset that isn't one of the game's: {} is the game, as the header shows it.
+msgid "Not a {} ruleset."
+msgstr "这不是{}的规则。"
+
+msgid "Not a {} ruleset"
+msgstr "不是{}的规则"
+
+# A game whose pack is there and can't be loaded: {} is the game, as the header shows it.
+msgid "{}'s data is out of date. Extract it again."
+msgstr "{}的数据已过期。请重新提取。"
+
+msgid "{}'s data is out of date"
+msgstr "{}的数据已过期"
+
+msgid "Extract it again."
+msgstr "请重新提取。"
+# No game's pack, and the Legacy Collection not found: by its Chinese name (洛克人EXE 合集), and how to drag its folder onto the
+# window from Steam (Steam's own menu words, as its Simplified Chinese client has them: 管理 → 浏览本地文件); the
+# button opens the system's folder dialog, to choose the folder it is installed in.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window."
+msgstr "nettai 需要《洛克人EXE 合集 Vol.2》。请从 Steam 安装，然后在库中右键点击它，选择「管理」→「浏览本地文件」，并将 exe 文件夹拖到此窗口。"
+msgid "nettai needs Battle Network Legacy Collection Vol. 2"
+msgstr "nettai 需要《洛克人EXE 合集 Vol.2》"
+msgid "Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window."
+msgstr "请从 Steam 安装，然后在库中右键点击它，选择「管理」→「浏览本地文件」，并将 exe 文件夹拖到此窗口。"
+# The same in a browser (nettai-web), which has no Steam to install it from.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
+msgstr "nettai 需要《洛克人EXE 合集 Vol.2》。请在 Steam 库中右键点击它，选择「管理」→「浏览本地文件」，并将 exe 文件夹拖到此页面。"
+msgid "In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
+msgstr "请在 Steam 库中右键点击它，选择「管理」→「浏览本地文件」，并将 exe 文件夹拖到此页面。"
+msgid "Choose folder"
+msgstr "选择文件夹"
+# A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
+msgid "{}'s data couldn't be extracted. Details are in the log file."
+msgstr "无法提取{}的数据。详情请查看日志文件。"
+msgid "{}'s data couldn't be extracted"
+msgstr "无法提取{}的数据"
+
+msgid "Something went wrong. Details are in the log file."
+msgstr "出现错误。详情请查看日志文件。"
+
+msgid "Something went wrong"
+msgstr "出现错误"
+
+msgid "Details are in the log file."
+msgstr "详情请查看日志文件。"
+
+# The battle music list's first choice (Play's lobby, Practice): the battle's game's own music.
+msgid "Game's own"
+msgstr "游戏原曲"
+
+# ---- An update of the app: the question at the main menu, and the footer's lines while it downloads ----
+
+msgid "nettai {} is out"
+msgstr "nettai {} 已发布"
+
+msgid "Update now? It downloads while you play, and nettai restarts into it at the main menu."
+msgstr "现在更新吗？更新会在你游玩时下载，nettai 会在回到主菜单时重启并完成更新。"
+
+msgid "Later"
+msgstr "稍后"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Downloading the update… {}%"
+msgstr "正在下载更新… {}%"
+
+msgid "Update ready: nettai restarts into it at the main menu."
+msgstr "更新已就绪：nettai 会在回到主菜单时重启并完成更新。"
+
+msgid "The update couldn't be downloaded. It's tried again next start."
+msgstr "无法下载更新。下次启动时将重试。"

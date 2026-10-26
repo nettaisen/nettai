@@ -118,7 +118,7 @@ language = "en"
 "darkwide" = { name = "DarkWide", description = "WIDE SHOT\nPIERCES\nTHE ENMY" }
 "dbldream" = { name = "DblDream", description = "" }
 "dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
-"deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
+"deltaray" = { name = "DeltaRay", description = "A power up\nby 3 swrd\n" }
 "dethphnx" = { name = "DethPhnx", description = "Fire Atk!\nRecycle\nNavi too" }
 "dicebons" = { name = "DiceBons", description = "" }
 "discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
@@ -259,7 +259,7 @@ language = "en"
 "otenko" = { name = "Otenko", description = "Put Otnko\nto raise\natk pwr" }
 "panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
 "parabom" = { name = "ParaBom", description = "Bomb\nparalyzes\n3sq ahead" }
-"phoenix" = { name = "Phoenix", description = "Fire Atk!\nRecover\nHP,too!" }
+"phoenix" = { name = "Phoenix", description = "Fire Atk!\nRecover\nHP, too!" }
 "piledrvr" = { name = "PileDrvr", description = "Places a\nPileDrvr\nto attack" }
 "pithoky" = { name = "PitHoky", description = "Reflect\nhockey\nattack" }
 "pnkcapsl" = { name = "PnkCapsl", description = "Add an\neffect:\nRecovery" }
@@ -292,9 +292,9 @@ language = "en"
 "redwave" = { name = "RedWave", description = "RedWave\nout of\nLava sq" }
 "resetbom" = { name = "ResetBom", description = "Reduces\npower\n3sq ahead" }
 "rockcube" = { name = "RockCube", description = "Place a\nrock cube\nin front" }
-"roll" = { name = "Roll", description = "Attack an\nenmy,then\nheals you" }
-"roll-ds" = { name = "Roll\uE008", description = "Attack an\nenmy,then\nheals you" }
-"roll-sp" = { name = "Roll\uE003", description = "Attack an\nenmy,then\nheals you" }
+"roll" = { name = "Roll", description = "Attack an\nenmy, then\nheals you" }
+"roll-ds" = { name = "Roll\uE008", description = "Attack an\nenmy, then\nheals you" }
+"roll-sp" = { name = "Roll\uE003", description = "Attack an\nenmy, then\nheals you" }
 "rush" = { name = "Rush", description = "" }
 "s-melody" = { name = "S-Melody", description = "Sing and\nparalyze\nthe enemy" }
 "satelity" = { name = "Satelity", description = "Stp cursr\nfor laser\nattack" }
@@ -319,7 +319,7 @@ language = "en"
 "skully1" = { name = "Skully1", description = "Confuses\nenemy if\nit hits" }
 "skully2" = { name = "Skully2", description = "Confuses\nenemy if\nit hits" }
 "skully3" = { name = "Skully3", description = "Confuses\nenemy if\nit hits" }
-"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held" }
+"slasher" = { name = "Slasher", description = "Cut while\nA is held!\n" }
 "slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
 "snake" = { name = "Snake", description = "Call snak\nfrom hole\nin area" }
 "snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
@@ -349,9 +349,9 @@ language = "en"
 "timebom2" = { name = "TimeBom2", description = "Explodes\n3 seconds\nlater" }
 "timebom3" = { name = "TimeBom3", description = "Explodes\n3 seconds\nlater" }
 "timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
-"tmhwkman" = { name = "TmhwkMan", description = "Slice 2sq\nside,3sq\nvertical" }
-"tmhwkmn-ds" = { name = "TmhwkMn\uE008", description = "Slice 2sq\nside,3sq\nvertical" }
-"tmhwkmn-sp" = { name = "TmhwkMn\uE003", description = "Slice 2sq\nside,3sq\nvertical" }
+"tmhwkman" = { name = "TmhwkMan", description = "Slice 2sq\nside, 3sq\nvertical" }
+"tmhwkmn-ds" = { name = "TmhwkMn\uE008", description = "Slice 2sq\nside, 3sq\nvertical" }
+"tmhwkmn-sp" = { name = "TmhwkMn\uE003", description = "Slice 2sq\nside, 3sq\nvertical" }
 "toadman" = { name = "ToadMan", description = "Sing and\nparalyze\nthe enemy" }
 "toadman-ds" = { name = "ToadMan\uE008", description = "Sing and\nparalyze\nthe enemy" }
 "toadman-sp" = { name = "ToadMan\uE003", description = "Sing and\nparalyze\nthe enemy" }
@@ -381,17 +381,17 @@ language = "en"
 "yelcapsl" = { name = "YelCapsl", description = "Add an\neffect:\nConfuse" }
 "yoyo" = { name = "YoYo", description = "Yoyo atk\nreaches\n3sq ahead" }
 "yoyomode" = { name = "YoYoMode", description = "ミテイ" }
-"z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
+"z-saver" = { name = "Z Saber", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
 "colonel" = { name = "Colonel", run_message = "This is not the time\nto run away!" }
-"gyroman" = { name = "GyroMan", run_message = "Hey,this ain't the\ntime to run away!" }
-"knightman" = { name = "KnightMn", long_name = "KnightMan", run_message = "Master,surely this\nis no time to\nretreat!" }
+"gyroman" = { name = "GyroMan", run_message = "Hey, this ain't the\ntime to run away!" }
+"knightman" = { name = "KnightMn", long_name = "KnightMan", run_message = "Master, surely this\nis no time to\nretreat!" }
 "magnetman" = { name = "MagnetMn", long_name = "MagnetMan", run_message = "This is no time to\nrun away!" }
-"meddy" = { name = "Meddy", run_message = "Hey,this isn't the\ntime to run away!" }
-"megaman" = { name = "MegaMan", variant_name = "BCMegaMn", run_message = "Lan,this is no time\nto run away!" }
+"meddy" = { name = "Meddy", run_message = "Hey, this isn't the\ntime to run away!" }
+"megaman" = { name = "MegaMan", variant_name = "BCMegaMn", run_message = "Lan, this is no time\nto run away!" }
 "napalmman" = { name = "NapalmMn", long_name = "NapalmMan", run_message = "I ain't runnin' from\nthis fight! Let me\nat 'em!" }
-"numberman" = { name = "NumbrMan", long_name = "NumberMan", run_message = "I'm scared,too,but\nWe can't run away\nfrom this one!" }
+"numberman" = { name = "NumbrMan", long_name = "NumberMan", run_message = "I'm scared, too, but\nWe can't run away\nfrom this one!" }
 "protoman" = { name = "ProtoMan", run_message = "This is no time to\nrun away!" }
 "searchman" = { name = "SerchMan", long_name = "SearchMan", run_message = "We'd be wise to not\nrun away here! We\nmust fight!" }
 "shadowman" = { name = "ShadoMan", long_name = "ShadowMan", run_message = "This isn't the time\nto be running away⋯" }
@@ -445,7 +445,7 @@ language = "en"
 "autorun" = { name = "AutoRun", description = "Run\nwithout\nusing B" }
 "battery" = { name = "Battery", description = "Attracts\nElec\nViruses!" }
 "beat" = { name = "Beat", description = "VS only!\nSnatches\nMegachps!" }
-"bodypack" = { name = "BodyPack", description = "Armr,Sht\nFlot,Air\n4-pc set" }
+"bodypack" = { name = "BodyPack", description = "Armr, Sht\nFlot, Air\n4-pc set" }
 "bugstop" = { name = "BugStop", description = "Prevents\nbugs" }
 "bustpack" = { name = "BustPack", description = "Atk/speed\n/charge\n+3 each!" }
 "charge-1" = { name = "Charge+1", description = "MegaBstr\nCharge\n+1" }
@@ -465,7 +465,7 @@ language = "en"
 "hp-50" = { name = "HP+50", description = "Max HP\n+50!" }
 "hp-500" = { name = "HP+500", description = "Max HP\n+500!" }
 "hubbatc" = { name = "HubBatc", description = "Maximize\nyour\nability" }
-"humor" = { name = "Humor", description = "Install\nand try\nL Btn" }
+"humor" = { name = "Humor", description = "Install\nand try\nL" }
 "jungle" = { name = "Jungle", description = "Attracts\nWood\nViruses!" }
 "megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
 "megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
@@ -553,7 +553,7 @@ language = "en"
 "froshell" = { name = "Froshell" }
 "gaia" = { name = "Gaia" }
 "gateman" = { name = "GateMan" }
-"ghost" = { name = "Ghost" }
+"ghost" = { name = "Spooky" }
 "gospel" = { name = "Gospel" }
 "gutsman" = { name = "GutsMan" }
 "gyroman" = { name = "GyroMan" }
@@ -579,7 +579,7 @@ language = "en"
 "mushy" = { name = "Mushy" }
 "n-o" = { name = "N.O" }
 "nebula-gray" = { name = "Nebula-\nGray" }
-"ninjoy" = { name = "Ninjoy" }
+"ninjoy" = { name = "NinJoy" }
 "null" = { name = "Null" }
 "pengi" = { name = "Pengi" }
 "piranha" = { name = "Piranha" }
@@ -604,7 +604,7 @@ language = "en"
 "spikey" = { name = "Spikey" }
 "swordy" = { name = "Swordy" }
 "tmhkman" = { name = "TmhkMan" }
-"toras-tactics" = { name = "Tora's\nTactics" }
+"toras-tactics" = { name = "Tora's\nTech" }
 "volgear" = { name = "VolGear" }
 "weather" = { name = "Weather" }
 "whirly" = { name = "Whirly" }

@@ -71,7 +71,7 @@ language = "ja"
 "boomer1" = { name = "ブーメラン1", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "boomer2" = { name = "ブーメラン2", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "boomer3" = { name = "ブーメラン3", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
-"repair" = { name = "リペア-", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
+"repair" = { name = "リペアー", description = "キューブなどの\nおきもののHPを\nかいふくさせる" }
 "fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
 "ligtnin1" = { name = "ライトニング1", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
 "ligtnin2" = { name = "ライトニング2", description = "しょうがいぶつに\nらくらい!まわりの\nてきにもかんでん!" }
@@ -100,7 +100,7 @@ language = "ja"
 "protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "protom-sp" = { name = "ブルースSP", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "protom-ds" = { name = "ブルースDS", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
-"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAでさいこう3だん\nのソード攻撃" }
 "elemflar" = { name = "エレメントフレア", description = "よこ3マスの攻撃\nマグマの上だと\nパワーアップ!" }
 "elemice" = { name = "エレメントアイス", description = "よこ3マスの攻撃\nこおりの上だと\nパワーアップ!" }
 "elemleaf" = { name = "エレメントリーフ", description = "よこ3マスの攻撃\nくさむらの上だと\nパワーアップ!" }
@@ -197,7 +197,7 @@ language = "ja"
 "grabbnsh" = { name = "スチールパニシュ", description = "ぬすまれたパネルの\nかずだけ あいてに\nてんばつがくだる!" }
 "custswrd" = { name = "カスタムソード", description = "カスタムゲージが\nマンタンにちかい\nほど攻撃力アップ!" }
 "muramasa" = { name = "ムラマサブレード", description = "あんこくチップ!\nへっているHP分が\n攻撃力になる" }
-"slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
+"slasher" = { name = "イアイフォーム", description = "Aをおしている間に\n入ってくるてきを\nきる!" }
 "suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
 "hole" = { name = "ダークホール", description = "目の前のマスに\nダークホールを\nしゅつげんさせる!" }
 "pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
@@ -423,7 +423,7 @@ language = "ja"
 "hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
 "hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
 "hubbatc" = { name = "サイトバッチ", description = "せんざいのうりょくを\n100%ひきだす\nキケンなプログラム" }
-"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
+"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLで\nはなしてみてください" }
 "jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
 "megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
 "megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
@@ -440,139 +440,139 @@ language = "ja"
 "undersht" = { name = "アンダーシャツ", description = "ちしりょうのダメージ\nをうけてもHP1で\nとりあえずたえる!" }
 
 [patch_cards]
-"001-max-hp-up" = { name = "マックスHPを強化" }
-"002-max-hp-up" = { name = "マックスHPを強化" }
-"003-max-hp-up" = { name = "マックスHPを強化" }
-"004-max-hp-up" = { name = "マックスHPを強化" }
-"005-max-hp-up" = { name = "マックスHPを強化" }
-"006-max-hp-up" = { name = "マックスHPを強化" }
-"007-max-hp-up" = { name = "マックスHPを強化" }
-"008-max-hp-up" = { name = "マックスHPを強化" }
-"009-max-hp-up" = { name = "マックスHPを強化" }
-"010-max-hp-up" = { name = "マックスHPを強化" }
-"011-first-barrier-100" = { name = "ファーストバリア100" }
-"012-buster-patch" = { name = "バスターを改造" }
-"013-buster-patch" = { name = "バスターを改造" }
-"014-panel-change" = { name = "パネルチェンジ" }
-"015-panel-change" = { name = "パネルチェンジ" }
-"016-panel-change" = { name = "パネルチェンジ" }
-"017-custom2" = { name = "カスタム2" }
-"018-megafolder2" = { name = "メガフォルダ2" }
-"019-buster-attack-10" = { name = "バスター攻撃力10" }
-"020-charge-shot-switch" = { name = "チャージ武器を変更" }
-"021-charge-shot-switch" = { name = "チャージ武器を変更" }
-"022-charge-shot-switch" = { name = "チャージ武器を変更" }
-"023-charge-shot-switch" = { name = "チャージ武器を変更" }
-"024-charge-shot-switch" = { name = "チャージ武器を変更" }
-"025-charge-shot-switch" = { name = "チャージ武器を変更" }
-"026-charge-shot-switch" = { name = "チャージ武器を変更" }
-"027-charge-shot-switch" = { name = "チャージ武器を変更" }
-"028-pet-menu-color-change" = { name = "PET画面カラー変更" }
-"029-pet-menu-color-change" = { name = "PET画面カラー変更" }
-"030-pet-menu-color-change" = { name = "PET画面カラー変更" }
-"031-max-hp-up" = { name = "マックスHPを強化" }
-"032-max-hp-up" = { name = "マックスHPを強化" }
-"033-max-hp-up" = { name = "マックスHPを強化" }
-"034-max-hp-up" = { name = "マックスHPを強化" }
-"035-max-hp-up" = { name = "マックスHPを強化" }
-"036-max-hp-up" = { name = "マックスHPを強化" }
-"037-max-hp-up" = { name = "マックスHPを強化" }
-"038-max-hp-up" = { name = "マックスHPを強化" }
-"039-b-left-ability-activation" = { name = "B+左で技発動" }
-"040-b-left-ability-activation" = { name = "B+左で技発動" }
-"041-b-left-ability-activation" = { name = "B+左で技発動" }
-"042-b-left-ability-activation" = { name = "B+左で技発動" }
-"043-buster-patch" = { name = "バスターを改造" }
-"044-buster-patch" = { name = "バスターを改造" }
+"001-max-hp-up" = { name = "マックスHP+100" }
+"002-max-hp-up" = { name = "マックスHP+100" }
+"003-max-hp-up" = { name = "マックスHP+150" }
+"004-max-hp-up" = { name = "マックスHP+150" }
+"005-max-hp-up" = { name = "マックスHP+200" }
+"006-max-hp-up" = { name = "マックスHP+200" }
+"007-max-hp-up" = { name = "マックスHP+250" }
+"008-max-hp-up" = { name = "マックスHP+250" }
+"009-max-hp-up" = { name = "マックスHP+300" }
+"010-max-hp-up" = { name = "マックスHP+300" }
+"011-first-barrier-100" = { name = "ファーストバリア100\nバグあり" }
+"012-buster-patch" = { name = "ブラインドバスター\nバグあり" }
+"013-buster-patch" = { name = "クサムラバスター" }
+"014-panel-change" = { name = "パネルチェンジ:メタル" }
+"015-panel-change" = { name = "パネルチェンジ:ヒビ" }
+"016-panel-change" = { name = "パネルチェンジ:アナ" }
+"017-custom2" = { name = "カスタム2\nバグあり" }
+"018-megafolder2" = { name = "メガフォルダ2\nバグあり" }
+"019-buster-attack-10" = { name = "バスター攻撃力10\nバグあり" }
+"020-charge-shot-switch" = { name = "チャージガッツマシンガン" }
+"021-charge-shot-switch" = { name = "チャージキャノン" }
+"022-charge-shot-switch" = { name = "チャージミニボム" }
+"023-charge-shot-switch" = { name = "チャージヒートショット" }
+"024-charge-shot-switch" = { name = "チャージバブルショット" }
+"025-charge-shot-switch" = { name = "チャージサンダーボール1" }
+"026-charge-shot-switch" = { name = "チャージソード" }
+"027-charge-shot-switch" = { name = "チャージスプレッドガン" }
+"028-pet-menu-color-change" = { name = "PET画面カラー:ブルー" }
+"029-pet-menu-color-change" = { name = "PET画面カラー:ピンク" }
+"030-pet-menu-color-change" = { name = "PET画面カラー:グリーン" }
+"031-max-hp-up" = { name = "マックスHP+350" }
+"032-max-hp-up" = { name = "マックスHP+350" }
+"033-max-hp-up" = { name = "マックスHP+400" }
+"034-max-hp-up" = { name = "マックスHP+400" }
+"035-max-hp-up" = { name = "マックスHP+450\nバグあり" }
+"036-max-hp-up" = { name = "マックスHP+450\nバグあり" }
+"037-max-hp-up" = { name = "マックスHP+500" }
+"038-max-hp-up" = { name = "マックスHP+500\nバグあり" }
+"039-b-left-ability-activation" = { name = "B+左でエアシュート" }
+"040-b-left-ability-activation" = { name = "B+左でランダムトラップ" }
+"041-b-left-ability-activation" = { name = "B+左でバグボム" }
+"042-b-left-ability-activation" = { name = "B+左でクラックアウト" }
+"043-buster-patch" = { name = "クラックバスター" }
+"044-buster-patch" = { name = "ポイズンバスター" }
 "045-default-full-synchro" = { name = "デフォルトフルシンクロ" }
-"046-first-barrier200" = { name = "ファーストバリア200" }
-"047-weapon-change" = { name = "ウェポンチェンジ" }
-"048-weapon-change" = { name = "ウェポンチェンジ" }
-"049-buster-attack-15" = { name = "バスター攻撃力15" }
-"050-gigafolder1" = { name = "ギガフォルダ1" }
-"051-charge-shot-switch" = { name = "チャージ武器を変更" }
-"052-charge-shot-switch" = { name = "チャージ武器を変更" }
-"053-charge-shot-switch" = { name = "チャージ武器を変更" }
-"054-charge-shot-switch" = { name = "チャージ武器を変更" }
-"055-charge-shot-switch" = { name = "チャージ武器を変更" }
-"056-charge-shot-switch" = { name = "チャージ武器を変更" }
-"057-charge-shot-switch" = { name = "チャージ武器を変更" }
-"058-charge-shot-switch" = { name = "チャージ武器を変更" }
-"059-megaman-color-change" = { name = "ロックマンカラーを変更" }
-"060-megaman-color-change" = { name = "ロックマンカラーを変更" }
-"061-max-hp-up" = { name = "マックスHPを強化" }
-"062-max-hp-up" = { name = "マックスHPを強化" }
-"063-max-hp-up" = { name = "マックスHPを強化" }
-"064-max-hp-up" = { name = "マックスHPを強化" }
-"065-max-hp-up" = { name = "マックスHPを強化" }
-"066-max-hp-up" = { name = "マックスHPを強化" }
-"067-max-hp-up" = { name = "マックスHPを強化" }
-"068-b-left-ability-activation" = { name = "B+左で技発動" }
-"069-b-left-ability-activation" = { name = "B+左で技発動" }
-"070-b-left-ability-activation" = { name = "B+左で技発動" }
-"071-b-left-ability-activation" = { name = "B+左で技発動" }
-"072-b-left-ability-activation" = { name = "B+左で技発動" }
-"073-b-left-ability-activation" = { name = "B+左で技発動" }
+"046-first-barrier200" = { name = "ファーストバリア200\nバグあり" }
+"047-weapon-change" = { name = "バスターメットガード1" }
+"048-weapon-change" = { name = "バスタークラックアウト" }
+"049-buster-attack-15" = { name = "バスター攻撃力15\nバグあり" }
+"050-gigafolder1" = { name = "ギガフォルダ1\nバグあり" }
+"051-charge-shot-switch" = { name = "チャージコピーダメージ" }
+"052-charge-shot-switch" = { name = "チャージワイドショット1" }
+"053-charge-shot-switch" = { name = "チャージブリザード" }
+"054-charge-shot-switch" = { name = "チャージヒートブレス" }
+"055-charge-shot-switch" = { name = "チャージエレキショック" }
+"056-charge-shot-switch" = { name = "チャージウッディパウダー" }
+"057-charge-shot-switch" = { name = "チャージパネルリターン" }
+"058-charge-shot-switch" = { name = "チャージワイドソード" }
+"059-megaman-color-change" = { name = "ロックマンカラー:レッド" }
+"060-megaman-color-change" = { name = "ロックマンカラー:イエロー" }
+"061-max-hp-up" = { name = "マックスHP+550" }
+"062-max-hp-up" = { name = "マックスHP+550" }
+"063-max-hp-up" = { name = "マックスHP+600" }
+"064-max-hp-up" = { name = "マックスHP+600" }
+"065-max-hp-up" = { name = "マックスHP+650" }
+"066-max-hp-up" = { name = "マックスHP+650\nバグあり" }
+"067-max-hp-up" = { name = "マックスHP+700\nバグあり" }
+"068-b-left-ability-activation" = { name = "B+左でメガエナジーボム" }
+"069-b-left-ability-activation" = { name = "B+左でリカバリー10" }
+"070-b-left-ability-activation" = { name = "B+左でパネルリターン" }
+"071-b-left-ability-activation" = { name = "B+左でスーパーキタカゼ" }
+"072-b-left-ability-activation" = { name = "B+左でバンブーランス" }
+"073-b-left-ability-activation" = { name = "B+左でダブルクラック" }
 "074-triple-supporter-1-2" = { name = "トリプルサポーター1/2" }
 "075-triple-supporter-2-2" = { name = "トリプルサポーター2/2" }
-"076-all-guard-1-2" = { name = "オールガード1/2" }
-"077-all-guard-2-2" = { name = "オールガード1/2" }
-"078-first-life-aura" = { name = "ファーストドリームオーラ" }
-"079-charge-shot-switch" = { name = "チャージ武器を変更" }
-"080-charge-shot-switch" = { name = "チャージ武器を変更" }
-"081-charge-shot-switch" = { name = "チャージ武器を変更" }
-"082-charge-shot-switch" = { name = "チャージ武器を変更" }
-"083-charge-shot-switch" = { name = "チャージ武器を変更" }
-"084-charge-shot-switch" = { name = "チャージ武器を変更" }
-"085-charge-shot-switch" = { name = "チャージ武器を変更" }
-"086-charge-shot-switch" = { name = "チャージ武器を変更" }
-"087-charge-shot-switch" = { name = "チャージ武器を変更" }
-"088-pet-menu-color-change" = { name = "PET画面カラー変更" }
-"089-megaman-color-change" = { name = "ロックマンカラーを変更" }
-"090-megaman-color-change" = { name = "ロックマンカラーを変更" }
-"091-max-hp-up" = { name = "マックスHPを強化" }
-"092-max-hp-up" = { name = "マックスHPを強化" }
-"093-max-hp-up" = { name = "マックスHPを強化" }
-"094-max-hp-up" = { name = "マックスHPを強化" }
-"095-max-hp-up" = { name = "マックスHPを強化" }
-"096-max-hp-up" = { name = "マックスHPを強化" }
-"097-max-hp-up" = { name = "マックスHPを強化" }
-"098-max-hp-up" = { name = "マックスHPを強化" }
-"099-max-hp-up" = { name = "マックスHPを強化" }
-"100-max-hp-up" = { name = "マックスHPを強化" }
-"101-max-hp-up" = { name = "マックスHPを強化" }
-"102-buster-patch" = { name = "バスターを改造" }
-"103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2" }
-"104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2" }
-"105-panel-change" = { name = "パネルチェンジ" }
-"106-weapon-change" = { name = "ウェポンチェンジ" }
-"107-weapon-change" = { name = "ウェポンチェンジ" }
-"108-weapon-change" = { name = "ウェポンチェンジ" }
-"109-megafolder3" = { name = "メガフォルダ3" }
-"110-custom3" = { name = "カスタム3" }
+"076-all-guard-1-2" = { name = "オールガード1/2\nバグあり" }
+"077-all-guard-2-2" = { name = "オールガード2/2\nバグあり" }
+"078-first-life-aura" = { name = "ファーストドリームオーラ\nバグあり" }
+"079-charge-shot-switch" = { name = "チャージダークホール" }
+"080-charge-shot-switch" = { name = "チャージワイドショット2" }
+"081-charge-shot-switch" = { name = "チャージラビリング" }
+"082-charge-shot-switch" = { name = "チャージサンドリング" }
+"083-charge-shot-switch" = { name = "チャージエナジーボム" }
+"084-charge-shot-switch" = { name = "チャージサンダーボール2" }
+"085-charge-shot-switch" = { name = "チャージリペアー" }
+"086-charge-shot-switch" = { name = "チャージトリプルクラック" }
+"087-charge-shot-switch" = { name = "チャージロングソード" }
+"088-pet-menu-color-change" = { name = "PET画面カラー:ブラック" }
+"089-megaman-color-change" = { name = "ロックマンカラー:ホワイト" }
+"090-megaman-color-change" = { name = "ロックマンカラー:グリーン" }
+"091-max-hp-up" = { name = "マックスHP+700\nバグあり" }
+"092-max-hp-up" = { name = "マックスHP+750" }
+"093-max-hp-up" = { name = "マックスHP+750\nバグあり" }
+"094-max-hp-up" = { name = "マックスHP+800" }
+"095-max-hp-up" = { name = "マックスHP+800\nバグあり" }
+"096-max-hp-up" = { name = "マックスHP+850" }
+"097-max-hp-up" = { name = "マックスHP+850\nバグあり" }
+"098-max-hp-up" = { name = "マックスHP+900" }
+"099-max-hp-up" = { name = "マックスHP+900\nバグあり" }
+"100-max-hp-up" = { name = "マックスHP+950\nバグあり" }
+"101-max-hp-up" = { name = "マックスHP+1000" }
+"102-buster-patch" = { name = "アイスバスター" }
+"103-fullcustom-charge-1-2" = { name = "チャージフルカスタム1/2\nバグあり" }
+"104-fullcustom-charge-2-2" = { name = "チャージフルカスタム2/2\nバグあり" }
+"105-panel-change" = { name = "パネルチェンジ:ホーリー\nバグあり" }
+"106-weapon-change" = { name = "バスターリフレクト\nバグあり" }
+"107-weapon-change" = { name = "バスターフラワー" }
+"108-weapon-change" = { name = "バスターミズデッポウ" }
+"109-megafolder3" = { name = "メガフォルダ3\nバグあり" }
+"110-custom3" = { name = "カスタム3\nバグあり" }
 "111-gigafolder1" = { name = "ギガフォルダ1" }
-"112-b-left-ability-activation" = { name = "B+左で技発動" }
-"113-charge-shot-switch" = { name = "チャージ武器を変更" }
-"114-charge-shot-switch" = { name = "チャージ武器を変更" }
-"115-charge-shot-switch" = { name = "チャージ武器を変更" }
-"116-charge-shot-switch" = { name = "チャージ武器を変更" }
-"117-charge-shot-switch" = { name = "チャージ武器を変更" }
-"118-charge-shot-switch" = { name = "チャージ武器を変更" }
-"119-charge-shot-switch" = { name = "チャージ武器を変更" }
-"120-charge-shot-switch" = { name = "チャージ武器を変更" }
-"121-roll-soul" = { name = "ロールソウル" }
-"122-guts-soul" = { name = "ガッツソウル" }
-"123-wind-soul" = { name = "ウインドソウル" }
-"124-search-soul" = { name = "サーチソウル" }
-"125-fire-soul" = { name = "ファイアソウル" }
-"126-thunder-soul" = { name = "サンダーソウル" }
-"127-proto-soul" = { name = "ブルースソウル" }
-"128-number-soul" = { name = "ナンバーソウル" }
-"129-metal-soul" = { name = "メタルソウル" }
-"130-junk-soul" = { name = "ジャンクソウル" }
-"131-aqua-soul" = { name = "アクアソウル" }
-"132-wood-soul" = { name = "ウッドソウル" }
-"133-weapon-change" = { name = "ウェポンチェンジ" }
+"112-b-left-ability-activation" = { name = "B+左でトリプルクラック" }
+"113-charge-shot-switch" = { name = "チャージワイドショット3" }
+"114-charge-shot-switch" = { name = "チャージサンダーボール3" }
+"115-charge-shot-switch" = { name = "チャージフウジンラケット" }
+"116-charge-shot-switch" = { name = "チャージメガエナジーボム" }
+"117-charge-shot-switch" = { name = "チャージホウガン" }
+"118-charge-shot-switch" = { name = "チャージバグボム" }
+"119-charge-shot-switch" = { name = "チャージワイドブレード\nバグあり" }
+"120-charge-shot-switch" = { name = "チャージロングブレード\nバグあり" }
+"121-roll-soul" = { name = "ロールソウル\nバグあり" }
+"122-guts-soul" = { name = "ガッツソウル\nバグあり" }
+"123-wind-soul" = { name = "ウインドソウル\nバグあり" }
+"124-search-soul" = { name = "サーチソウル\nバグあり" }
+"125-fire-soul" = { name = "ファイアソウル\nバグあり" }
+"126-thunder-soul" = { name = "サンダーソウル\nバグあり" }
+"127-proto-soul" = { name = "ブルースソウル\nバグあり" }
+"128-number-soul" = { name = "ナンバーソウル\nバグあり" }
+"129-metal-soul" = { name = "メタルソウル\nバグあり" }
+"130-junk-soul" = { name = "ジャンクソウル\nバグあり" }
+"131-aqua-soul" = { name = "アクアソウル\nバグあり" }
+"132-wood-soul" = { name = "ウッドソウル\nバグあり" }
+"133-weapon-change" = { name = "バスターミニボム" }
 
 # The bugs' names (en.toml's `[bugs]` says what they are): where EXE5's or EXE6's patch cards name the same bug,
 # that effect's line, which the Japanese cards already write in full; the rest the content's own.

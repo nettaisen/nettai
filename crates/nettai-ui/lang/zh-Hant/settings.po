@@ -1,0 +1,175 @@
+# Traditional Chinese: Settings (ui/screens/settings.slint), and About, its subscreen (ui/screens/settings/about.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hant\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Move"
+msgstr "移動"
+
+msgid "A · Pad confirms"
+msgstr "A · 手把確認"
+
+msgid "B · Pad goes back"
+msgstr "B · 手把返回"
+
+msgid "Next"
+msgstr "下一個"
+
+# The groups: in the list at the left, and as each group's title on the page.
+
+msgid "General"
+msgstr "一般"
+
+msgid "Video"
+msgstr "影像"
+
+msgid "Audio"
+msgstr "音訊"
+
+msgid "Online"
+msgstr "線上"
+
+msgid "Controls"
+msgstr "操作"
+
+msgid "About"
+msgstr "關於"
+
+msgid "Name"
+msgstr "名稱"
+
+msgid "Shown to your opponent."
+msgstr "會顯示給對手。"
+
+msgid "Language"
+msgstr "語言"
+
+msgid "Picture size"
+msgstr "畫面大小"
+
+msgid "Largest that fits"
+msgstr "符合視窗"
+
+msgid "Full screen"
+msgstr "全螢幕"
+
+msgid "Reduce motion"
+msgstr "減少動態效果"
+
+msgid "Battle graphics"
+msgstr "戰鬥畫面"
+
+msgid "Enhanced"
+msgstr "增強"
+
+msgid "Original"
+msgstr "原版"
+
+msgid "Enhanced adds sharp text and smooth motion."
+msgstr "「增強」會讓文字更清晰、動作更流暢。"
+
+msgid "Music"
+msgstr "音樂"
+
+msgid "Sound effects"
+msgstr "音效"
+
+msgid "Input delay"
+msgstr "輸入延遲"
+
+msgid "In frames. Lower feels faster; higher rolls back less."
+msgstr "單位為影格。越低反應越快，越高則回溯越少。"
+
+msgid "Key"
+msgstr "鍵盤"
+
+msgid "Pad"
+msgstr "手把"
+
+msgid "Up"
+msgstr "上"
+
+msgid "Down"
+msgstr "下"
+
+msgid "Left"
+msgstr "左"
+
+msgid "Right"
+msgstr "右"
+
+msgid "Press a key"
+msgstr "請按下按鍵"
+
+msgid "Press a button"
+msgstr "請按下按鈕"
+
+msgid "Reset controls"
+msgstr "重設操作設定"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Your files"
+msgstr "檔案位置"
+
+msgid "Show folder"
+msgstr "開啟資料夾"
+
+# The About group's last row: it opens About.
+msgid "Made with"
+msgstr "使用的軟體"
+
+msgid "Show licenses"
+msgstr "顯示授權"
+
+# ---- About ----
+
+# The app's line under its name: its version, then its license.
+msgid "{} · Mozilla Public License 2.0"
+msgstr "{} · Mozilla Public License 2.0"
+
+# Over the list of the fonts and the packages the app is made of.
+msgctxt "heading"
+msgid "Made with"
+msgstr "使用的軟體"
+
+# The footer: how many of each the list has. (One form: Chinese has no plural, nplurals=1.)
+msgid "{n} package"
+msgid_plural "{n} packages"
+msgstr[0] "{n} 個套件"
+
+msgid "{n} font"
+msgid_plural "{n} fonts"
+msgstr[0] "{n} 種字型"
+
+msgid "Read"
+msgstr "閱讀"
+
+# A font's row: in the place of a package's version.
+msgid "font"
+msgstr "字型"
+
+msgid "Font"
+msgstr "字型"
+
+msgid "No license stated"
+msgstr "未載明授權"
+
+msgid "Its package comes with no license file. Its license is the one named above."
+msgstr "此套件未附授權檔案。其授權即上方所列的授權。"
+
+msgid "Check for updates"
+msgstr "檢查更新"
+
+# The party battle's two navi changes (EXE5 DS's Y and X: the party panel's left and right buttons).
+msgid "Navi change left"
+msgstr "領航員變更（左）"
+
+msgid "Navi change right"
+msgstr "領航員變更（右）"

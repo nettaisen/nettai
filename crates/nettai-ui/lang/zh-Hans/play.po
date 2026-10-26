@@ -1,0 +1,231 @@
+# Simplified Chinese: Play (ui/screens/play.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ---- The builds, the chosen build, and what is done with it ----
+
+msgid "+ New build"
+msgstr "+ 新建构筑"
+
+msgctxt "title"
+msgid "New build"
+msgstr "新建构筑"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Duplicate"
+msgstr "复制"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete {}?"
+msgstr "删除{}？"
+
+msgid "Save files"
+msgstr "存档文件"
+
+# A new build, and a build's new name.
+
+msgid "New build"
+msgstr "新构筑"
+
+# After what a new build of a version starts with, in the game's own words ("Starts with the version's Crosses and
+# Beast Out.").
+msgid "{} They can be changed later in the editor."
+msgstr "{}之后可在编辑器中更改。"
+
+msgid "Create build"
+msgstr "创建构筑"
+
+# The NEW BUILD dialog's other way to start one: a save file chosen in the system's dialog.
+msgid "From a save file…"
+msgstr "从存档文件导入…"
+
+# The band under the builds: HOST, JOIN's field (an invite's code) and JOIN, and DIRECT CONNECT.
+
+msgid "Host"
+msgstr "创建房间"
+
+msgid "Join"
+msgstr "加入"
+
+msgid "Direct connect"
+msgstr "直接连接"
+
+# JOIN's field's placeholder, and the dialog of the code's six boxes (a pad can't type one).
+msgid "Invite code"
+msgstr "邀请码"
+
+msgid "Connecting…"
+msgstr "连接中…"
+
+msgid "Choose"
+msgstr "选择"
+
+# ---- A direct connection ----
+
+msgid "Direct connection"
+msgstr "直接连接"
+
+msgid "Copy"
+msgstr "复制"
+
+# Under this machine's address in the dialog, and under it while a direct host waits.
+msgid "Send this address to your opponent."
+msgstr "请将此地址发送给对手。"
+
+msgid "address:port"
+msgstr "地址:端口"
+
+msgid "Connect"
+msgstr "连接"
+
+# ---- Waiting for the other player ----
+
+msgid "Your address"
+msgstr "你的地址"
+
+msgid "Copy code"
+msgstr "复制邀请码"
+
+msgid "Copy address"
+msgstr "复制地址"
+
+msgid "Stop practice"
+msgstr "停止练习"
+
+msgid "Cancel invite"
+msgstr "取消邀请"
+
+msgid "Stop hosting"
+msgstr "关闭房间"
+
+msgid "Waiting for opponent"
+msgstr "等待对手"
+
+msgid "The lobby opens when they join."
+msgstr "对手加入后即进入房间。"
+
+msgid "Practice menu"
+msgstr "练习菜单"
+
+msgid "Fight"
+msgstr "战斗"
+
+# ---- The lobby ----
+
+msgid "Lobby"
+msgstr "房间"
+
+msgid "You"
+msgstr "你"
+
+msgid "Opponent"
+msgstr "对手"
+
+msgid "Ready"
+msgstr "准备就绪"
+
+msgid "Not ready"
+msgstr "未准备"
+
+msgid "First to"
+msgstr "先胜"
+
+msgctxt "first to"
+msgid "{}"
+msgstr "{} 回合"
+
+# The match's ruleset (docs/design/app-ui.md §2.59), and the joiner's button that opens it to read.
+msgid "Ruleset"
+msgstr "规则"
+
+msgctxt "ruleset"
+msgid "View"
+msgstr "查看"
+
+msgid "Leave the lobby?"
+msgstr "离开房间？"
+
+msgid "Open setups"
+msgstr "公开构筑"
+
+# The lobby's two groups: the match's settings (the host's), and what is this player's own (the input delay, the
+# connection).
+msgid "Match settings"
+msgstr "对战设置"
+
+msgid "Your connection"
+msgstr "你的连接"
+
+# The custom screen's time limit (nettai's own): its seconds, or none.
+msgid "Custom timer"
+msgstr "改装时限"
+
+msgctxt "custom timer"
+msgid "{}s"
+msgstr "{} 秒"
+
+msgid "Ping"
+msgstr "Ping"
+
+msgid "Change build"
+msgstr "更换构筑"
+
+msgid "Leave"
+msgstr "离开"
+
+msgid "Waiting for you to ready up."
+msgstr "等待你准备。"
+
+msgid "Waiting for your opponent to ready up."
+msgstr "等待对手准备。"
+
+# A failure's button, back to Play's first part.
+msgid "Back to play"
+msgstr "返回对战菜单"
+
+# ---- In a match ----
+
+msgid "Back to match"
+msgstr "返回对战"
+
+# The match menu's footer: Tab (Select on a pad) held shows both builds.
+msgid "Show builds"
+msgstr "查看构筑"
+
+msgid "Leave match"
+msgstr "退出对战"
+
+msgid "The match keeps running"
+msgstr "对战不会暂停"
+
+# ---- After a match ----
+
+msgid "Win"
+msgstr "胜利"
+
+msgid "Lose"
+msgstr "失败"
+
+msgid "Draw"
+msgstr "平局"
+
+msgid "Rounds"
+msgstr "回合"
+
+msgid "Time"
+msgstr "时间"
+
+msgid "Continue"
+msgstr "继续"
+
+# The footer: how many builds the game has.
+msgid "{n} build"
+msgid_plural "{n} builds"
+msgstr[0] "{n} 个构筑"

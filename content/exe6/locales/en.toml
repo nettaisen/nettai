@@ -16,9 +16,9 @@ language = "en"
 
 [chips]
 "airhocky" = { name = "AirHocky", description = "Bounce \nthe puck\noff walls" }
-"airraid1" = { name = "AirRaid1", description = "Attk enmy\nw/flying\nFgtrPlne." }
-"airraid2" = { name = "AirRaid2", description = "Attk enmy\nw/flying\nFgtrPlne." }
-"airraid3" = { name = "AirRaid3", description = "Attk enmy\nw/flying\nFgtrPlne." }
+"airraid1" = { name = "AirRaid1", description = "Attk enmy\nw/flying\nFitrPlne." }
+"airraid2" = { name = "AirRaid2", description = "Attk enmy\nw/flying\nFitrPlne." }
+"airraid3" = { name = "AirRaid3", description = "Attk enmy\nw/flying\nFitrPlne." }
 "airshot" = { name = "AirShot", description = "Knock\nenmy back\n1 square" }
 "airspin1" = { name = "AirSpin1", description = "Spits out\nhurricane\nattack" }
 "airspin2" = { name = "AirSpin2", description = "Spits out\nhurricane\nattack" }
@@ -113,7 +113,7 @@ language = "en"
 "dblhero" = { name = "DblHero", description = "Attk with\nBtlNwk1's\nProtoMan" }
 "dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
 "delecswd" = { name = "DElecSwd", description = "Dash fwd\nand slash\nw/ElecSwd" }
-"deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
+"deltaray" = { name = "DeltaRay", description = "Ⓐpower up\nby 3 swrd\n" }
 "destpuls" = { name = "DestPuls", description = "Fire puls\nthat caus\nstrg bug!" }
 "discord" = { name = "Discord", description = "Confuses \nenemies\nw/music" }
 "diveman" = { name = "DiveMan", description = "Snd giant\nwave acrs\narea 2pnl" }
@@ -201,7 +201,7 @@ language = "en"
 "heatman" = { name = "HeatMan", description = "Burn with\na radial\nfire attk" }
 "heatman-ex" = { name = "HeatMan\uE002", description = "Burn with\na radial\nfire attk" }
 "heatman-sp" = { name = "HeatMan\uE003", description = "Burn with\na radial\nfire attk" }
-"heatpres" = { name = "HeatPres", description = "Sprd fire\nattk with\nDpad.3pnl" }
+"heatpres" = { name = "HeatPres", description = "Sprd plus\nshap fire\nattk.3pnl" }
 "hiboomer" = { name = "HiBoomer", description = "Boomerang\nthat circ\nbtl field" }
 "hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
 "hidden" = { name = "????", description = "ミテイ" }
@@ -284,9 +284,9 @@ language = "en"
 "rlnglog2" = { name = "RlngLog2", description = "Send out\n2 logs\n2panl fwd" }
 "rlnglog3" = { name = "RlngLog3", description = "Send out\n2 logs\n2panl fwd" }
 "rockcube" = { name = "RockCube", description = "Place a\nRockCube\nin front" }
-"roll" = { name = "Roll", description = "Attacks\nenmy,then\nheals you" }
-"roll2" = { name = "Roll2", description = "Attacks\nenmy,then\nheals you" }
-"roll3" = { name = "Roll3", description = "Attacks\nenmy,then\nheals you" }
+"roll" = { name = "Roll", description = "Attacks\nenmy, then\nheals you" }
+"roll2" = { name = "Roll2", description = "Attacks\nenmy, then\nheals you" }
+"roll3" = { name = "Roll3", description = "Attacks\nenmy, then\nheals you" }
 "rskyhny1" = { name = "RskyHny1", description = "Bees attk\nwhle hive\ndefending" }
 "rskyhny2" = { name = "RskyHny2", description = "Bees attk\nwhle hive\ndefending" }
 "rskyhny3" = { name = "RskyHny3", description = "Bees attk\nwhle hive\ndefending" }
@@ -306,9 +306,9 @@ language = "en"
 "snake" = { name = "Snake", description = "Call snke\nfrom hole\nin area." }
 "snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 "sonicbom" = { name = "SonicBom", description = "ミテイ" }
-"spoutman" = { name = "SpoutMan", description = "Watr atk!\nBhnd 2row\npower-up" }
-"spoutmn-ex" = { name = "SpoutMn\uE002", description = "Watr atk!\nBhnd 2row\npower-up" }
-"spoutmn-sp" = { name = "SpoutMn\uE003", description = "Watr atk!\nBhnd 2row\npower-up" }
+"spoutman" = { name = "AquaMan", description = "Watr atk!\nBhnd 2row\npower-up" }
+"spoutmn-ex" = { name = "AquaMan\uE002", description = "Watr atk!\nBhnd 2row\npower-up" }
+"spoutmn-sp" = { name = "AquaMan\uE003", description = "Watr atk!\nBhnd 2row\npower-up" }
 "spreadr1" = { name = "Spreadr1", description = "Spreads \ndamg to \nadj panls" }
 "spreadr2" = { name = "Spreadr2", description = "Spreads \ndamg to \nadj panls" }
 "spreadr3" = { name = "Spreadr3", description = "Spreads \ndamg to \nadj panls" }
@@ -338,9 +338,9 @@ language = "en"
 "timebom2" = { name = "TimeBom2", description = "Explodes\n3 seconds\nlater" }
 "timebom3" = { name = "TimeBom3", description = "Explodes\n3 seconds\nlater" }
 "timpani" = { name = "Timpani", description = "Stop enmy\nfeet with\nmusic" }
-"tmhkman" = { name = "TmhkMan", description = "Slice 2sq\nside,3sq\nvertical" }
-"tmhkman-ex" = { name = "TmhkMan\uE002", description = "Slice 2sq\nside,3sq\nvertical" }
-"tmhkman-sp" = { name = "TmhkMan\uE003", description = "Slice 2sq\nside,3sq\nvertical" }
+"tmhkman" = { name = "TmhkMan", description = "Slice 2sq\nside, 3sq\nvertical" }
+"tmhkman-ex" = { name = "TmhkMan\uE002", description = "Slice 2sq\nside, 3sq\nvertical" }
+"tmhkman-sp" = { name = "TmhkMan\uE003", description = "Slice 2sq\nside, 3sq\nvertical" }
 "tornado" = { name = "Tornado", description = "8hit strm\n2 squares\nahead" }
 "trnarrw1" = { name = "TrnArrw1", description = "Hits enmy\nw/arrow.\nUse dstnc" }
 "trnarrw2" = { name = "TrnArrw2", description = "Hits enmy\nw/arrow.\nUse dstnc" }
@@ -369,7 +369,7 @@ language = "en"
 "windrack" = { name = "WindRack", description = "Blow enmy\nin front!\nRange: 3" }
 "wooddrgn" = { name = "WoodDrgn", description = "Drgn near\nclst enmy\nHit 2rows" }
 "yoyo" = { name = "YoYo", description = "YoYo atk\nreaches\n3sq ahead" }
-"z-saver" = { name = "Z Saver", description = "Add an\neffect:\nBlind" }
+"z-saver" = { name = "Z Saber", description = "Add an\neffect:\nBlind" }
 
 [navis]
 "chargeman" = { name = "ChrgeMan", run_message = "Chug-a-chug-a!!\nNo time to steam on\noutta here!" }
@@ -378,10 +378,10 @@ language = "en"
 "eraseman" = { name = "EraseMan", run_message = "Why are you running\naway!? I've got\nmore erasing to do!" }
 "groundman" = { name = "GrndMan", run_message = "Don't be a fool!!\nYou can't be runnin'\naway!!" }
 "heatman" = { name = "HeatMan", run_message = "This is no time to\nrun out of here!!" }
-"megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
+"megaman" = { name = "MegaMan", run_message = "Lan, this is no time\nto run away!" }
 "protoman" = { name = "ProtoMan", run_message = "Don't run away now!" }
 "slashman" = { name = "SlashMan", run_message = "Now's not the time\nto cut and run!\nKeep slashing!!" }
-"spoutman" = { name = "SpoutMan", run_message = "Don't run away now,\ndrip!" }
+"spoutman" = { name = "AquaMan", run_message = "Don't run away now,\ndrip!" }
 "tenguman" = { name = "TenguMan", run_message = "Don't turn your\nback..." }
 "tomahawkman" = { name = "TmhkMan", run_message = "Strange to be\nrunning away now!" }
 
@@ -395,9 +395,9 @@ language = "en"
 "groundcross" = { name = "GroundCross", description = "BrkChip Atk+10\nChrg Brk:Fall\nRck!SuprArmrOn" }
 "heatcross" = { name = "HeatCross", description = "Fire Chip Attk\n+50! Buster \nAttk +1!" }
 "slashcross" = { name = "SlashCross", description = "Swrd Chip Attk\n+50! Chrg Swrd\nChip: WaveAttk" }
-"spoutcross" = { name = "SpoutCross", description = "Chrg WatrChip:\nAtk x2! Watr\nChip = HP Rcvr" }
+"spoutcross" = { name = "AquaCross", description = "Chrg WatrChip:\nAtk x2! Watr\nChip = HP Rcvr" }
 "tengucross" = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\nⒷ+Left:SuckIn" }
-"tomahawkcross" = { name = "TomahawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
+"tomahawkcross" = { name = "TmhawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
 
 # The backgrounds' names by asset name: the game's menus' names of their areas (the verification's
 # tools/backgrounds/names.tsv, which its areas.py --check holds to the US and the Japanese ROMs).
@@ -426,9 +426,9 @@ language = "en"
 
 [patch_cards]
 "airman" = { name = "AirMan" }
-"amonicul" = { name = "Amonicul" }
+"amonicul" = { name = "Ammonicl" }
 "armadill" = { name = "Armadill" }
-"bass-cross-megaman" = { name = "Bass-Cross MegaMan" }
+"bass-cross-megaman" = { name = "Bass-\nCross\nMegaMan" }
 "bassbx" = { name = "BassBX" }
 "beastman" = { name = "BeastMan" }
 "beetle" = { name = "Beetle" }
@@ -438,8 +438,8 @@ language = "en"
 "bombcorn" = { name = "BombCorn" }
 "bomboy" = { name = "BomBoy" }
 "bowlman" = { name = "BowlMan" }
-"burnrman" = { name = "BurnrMan" }
-"canguard" = { name = "CanGuard" }
+"burnrman" = { name = "BurnMan" }
+"canguard" = { name = "CanGard" }
 "canodumb" = { name = "Canodumb" }
 "chrgeman" = { name = "ChrgeMan" }
 "cloudman" = { name = "CloudMan" }
@@ -452,7 +452,7 @@ language = "en"
 "cutman" = { name = "CutMan" }
 "cybeast-falzar" = { name = "Cybeast Falzar" }
 "cybeast-gregar" = { name = "Cybeast Gregar" }
-"dark-megaman" = { name = "Dark MegaMan" }
+"dark-megaman" = { name = "DarkMega" }
 "darkman" = { name = "DarkMan" }
 "darkmech" = { name = "DarkMech" }
 "desertmn" = { name = "DesertMn" }
@@ -465,17 +465,17 @@ language = "en"
 "elmntman" = { name = "ElmntMan" }
 "eraseman" = { name = "EraseMan" }
 "erthdrgn" = { name = "ErthDrgn" }
-"famous-custom" = { name = "Famous' Custom" }
-"fgtrplne" = { name = "FgtrPlne" }
+"famous-custom" = { name = "Mr.Fam's\nCustom" }
+"fgtrplne" = { name = "FitrPlne" }
 "flashy" = { name = "Flashy" }
 "freezemn" = { name = "FreezeMn" }
 "gridman" = { name = "GridMan" }
 "grndman" = { name = "GrndMan" }
 "gunner" = { name = "Gunner" }
-"handy" = { name = "Handy" }
+"handy" = { name = "Handi" }
 "heavy" = { name = "Heavy" }
 "hntdcndl" = { name = "HntdCndl" }
-"honybomr" = { name = "HonyBomr" }
+"honybomr" = { name = "HonyBmbr" }
 "iceman" = { name = "IceMan" }
 "japanman" = { name = "JapanMan" }
 "jelly" = { name = "Jelly" }
@@ -483,23 +483,23 @@ language = "en"
 "kendoman" = { name = "KendoMan" }
 "kettle" = { name = "Kettle" }
 "kilby" = { name = "Kilby" }
-"kilplant" = { name = "KilPlant" }
-"knigtman" = { name = "KnigtMan" }
+"kilplant" = { name = "KillPlnt" }
+"knigtman" = { name = "KnightMn" }
 "larkman" = { name = "LarkMan" }
 "magneakr" = { name = "Magneakr" }
-"magntman" = { name = "MagntMan" }
+"magntman" = { name = "MagnetMn" }
 "magtect" = { name = "MagTect" }
 "marina" = { name = "Marina" }
-"megalian" = { name = "Megalian" }
-"megaman-zero" = { name = "MegaMan-Zero" }
+"megalian" = { name = "Heady" }
+"megaman-zero" = { name = "Zero" }
 "metrid" = { name = "Metrid" }
-"mettfire" = { name = "MettFire" }
+"mettfire" = { name = "MetFire" }
 "miney" = { name = "Miney" }
 "mistman" = { name = "MistMan" }
 "momogra" = { name = "Momogra" }
 "napalmmn" = { name = "NapalmMn" }
 "needler" = { name = "Needler" }
-"nghtmare" = { name = "NghtMare" }
+"nghtmare" = { name = "Nghtmare" }
 "number" = { name = "Number" }
 "numbrman" = { name = "NumbrMan" }
 "octon" = { name = "Octon" }
@@ -513,21 +513,21 @@ language = "en"
 "punk" = { name = "Punk" }
 "satella" = { name = "Satella" }
 "scarcrow" = { name = "ScarCrow" }
-"searchmn" = { name = "SearchMn" }
+"searchmn" = { name = "SerchMan" }
 "shadoman" = { name = "ShadoMan" }
 "shadow" = { name = "Shadow" }
 "sharkman" = { name = "SharkMan" }
-"shelgeek" = { name = "ShelGeek" }
+"shelgeek" = { name = "Shlgeek" }
 "shrubby" = { name = "Shrubby" }
 "skarab" = { name = "Skarab" }
 "skullman" = { name = "SkullMan" }
 "slashman" = { name = "SlashMan" }
-"slimey" = { name = "Slimey" }
+"slimey" = { name = "Slimer" }
 "snakearm" = { name = "SnakeArm" }
-"soul-battlrs-custom" = { name = "Soul Battlr's Custom" }
-"sparky" = { name = "Sparky" }
+"soul-battlrs-custom" = { name = "SBatlr's\nCustom" }
+"sparky" = { name = "Shakey" }
 "spidy" = { name = "Spidy" }
-"starfish" = { name = "Starfish" }
+"starfish" = { name = "StarFish" }
 "starman" = { name = "StarMan" }
 "stoneman" = { name = "StoneMan" }
 "tenguman" = { name = "TenguMan" }
@@ -551,7 +551,7 @@ language = "en"
 "autoheal" = { name = "AutoHeal", description = "HP recv\nafter\nbattle" }
 "battery" = { name = "Battery", description = "Attracts\nElec\nViruses!" }
 "beat" = { name = "Beat", description = "VS only!\nSnatches\nMegaChps" }
-"bodypack" = { name = "BodyPack", description = "Armr,Sht\nFlot,Air\n4-pc set" }
+"bodypack" = { name = "BodyPack", description = "Armr, Sht\nFlot, Air\n4-pc set" }
 "bugstop" = { name = "BugStop", description = "Prevents\nbugs" }
 "bustpack" = { name = "BustPack", description = "Atk/Spd\n/Charge\n+3 each!" }
 "charge-1" = { name = "Charge+1", description = "MegaBstr\nCharge\n+1" }
@@ -572,7 +572,7 @@ language = "en"
 "hp-400" = { name = "HP+400", description = "Max HP\n+400!" }
 "hp-50" = { name = "HP+50", description = "Max HP\n+50!" }
 "hp-500" = { name = "HP+500", description = "Max HP\n+500!" }
-"humor" = { name = "Humor", description = "Install\nand try\nL Button" }
+"humor" = { name = "Humor", description = "Install\nand try\nⓁ" }
 "jungle" = { name = "Jungle", description = "Attracts\nWood\nViruses!" }
 "megfldr1" = { name = "MegFldr1", description = "MegaChip\n+1" }
 "megfldr2" = { name = "MegFldr2", description = "MegaChip\n+2" }
@@ -599,20 +599,20 @@ language = "en"
 "attack_add" = "Attack+{amount}"
 "attack_sub" = "Attack-{amount}"
 "attack_times" = "Attack×{amount}"
-"b_button.patch-cards/b-sword" = "B-Sword"
-"b_button.patch-cards/beetle/b-button" = "B-Bomb"
-"b_button.patch-cards/mettfire/b-button" = "B-Metr1"
-"b_button.patch-cards/planetmn/b-button" = "B-Crack"
+"b_button.patch-cards/b-sword" = "Ⓑ-Sword"
+"b_button.patch-cards/beetle/b-button" = "Ⓑ-Bomb"
+"b_button.patch-cards/mettfire/b-button" = "Ⓑ-Metr1"
+"b_button.patch-cards/planetmn/b-button" = "Ⓑ-Crack"
 "b_button.patch-cards/triple-buster" = "TriBustr"
-"back_special" = "B+←"
-"back_special.megaman/anti-damage" = "B+←AntiD"
-"back_special.megaman/reflect" = "B+←Reflc"
-"back_special.megaman/shield" = "B+←Shld"
-"back_special.patch-cards/darkmech/back-special" = "B+←MchnS"
-"back_special.patch-cards/dustman/back-special" = "B+←Fan"
-"back_special.patch-cards/honybomr/back-special" = "B+←RskyH"
-"back_special.patch-cards/magntman/back-special" = "B+←MagF"
-"back_special.patch-cards/metrid/back-special" = "B+←Metr3"
+"back_special" = "Ⓑ+←"
+"back_special.megaman/anti-damage" = "Ⓑ+←AntiD"
+"back_special.megaman/reflect" = "Ⓑ+←Reflc"
+"back_special.megaman/shield" = "Ⓑ+←Shld"
+"back_special.patch-cards/darkmech/back-special" = "Ⓑ+←MaSwd"
+"back_special.patch-cards/dustman/back-special" = "Ⓑ+←Fan"
+"back_special.patch-cards/honybomr/back-special" = "Ⓑ+←RsHny"
+"back_special.patch-cards/magntman/back-special" = "Ⓑ+←Mgntz"
+"back_special.patch-cards/metrid/back-special" = "Ⓑ+←Metr3"
 "beat" = "Beat"
 "body.aqua" = "AquaBody"
 "body.elec" = "ElecBody"
@@ -625,68 +625,68 @@ language = "en"
 "buster_shot.shot/grass" = "GrasBust"
 "buster_shot.shot/ice" = "IceBust"
 "buster_shot.shot/poisoning" = "SwmpBust"
-"buster_shot.shot/pushing" = "Push1Bst"
-"buster_shot.shot/shoving" = "PushBust"
+"buster_shot.shot/pushing" = "Bst1sqrR"
+"buster_shot.shot/shoving" = "BstREdge"
 "charge_add" = "Charge+{amount}"
 "charge_shot_kind.shot/breaking" = "CSbreak"
 "charge_shot_kind.shot/charged" = "CSeffect"
 "charge_shot_kind.shot/charged-bubbling" = "CSbubble"
 "charge_shot_kind.shot/charged-confusing" = "CSconfus"
 "charge_shot_kind.shot/charged-freezing" = "CSfreeze"
-"charge_shot_kind.shot/charged-grass" = "CSgrass"
+"charge_shot_kind.shot/charged-grass" = "CSgras"
 "charge_shot_kind.shot/charged-hp-bug" = "CSHPbug"
-"charge_shot_kind.shot/charged-hp-bug-marked" = "CSdelete"
+"charge_shot_kind.shot/charged-hp-bug-marked" = "CSinsdlt"
 "charge_shot_kind.shot/charged-ice" = "CSice"
 "charge_shot_kind.shot/charged-paralyzing" = "CSstun"
-"charge_shot_kind.shot/charged-pulling" = "CSmagnet"
-"charge_shot_kind.shot/charged-road" = "CSCominR"
-"charge_shot_kind.shot/charged-road-back" = "CSGoingR"
+"charge_shot_kind.shot/charged-pulling" = "CSlmove"
+"charge_shot_kind.shot/charged-road" = "CSlarrow"
+"charge_shot_kind.shot/charged-road-back" = "CSrarrow"
 "charge_shot_kind.shot/chip-destruction" = "CSchpdst"
 "charge_sub" = "Charge-{amount}"
-"charged_shot.patch-cards/airman/charge" = "B↓Trnado"
-"charged_shot.patch-cards/bass-cross-megaman/charge" = "B↓HelzR"
-"charged_shot.patch-cards/beastman/charge" = "B↓StepS"
-"charged_shot.patch-cards/bighat/charge" = "B↓FlshBm"
-"charged_shot.patch-cards/blizman/charge" = "B↓BlizB"
-"charged_shot.patch-cards/bombcorn/charge" = "B↓Cshot"
+"charged_shot.patch-cards/airman/charge" = "Ⓑ↓Trnado"
+"charged_shot.patch-cards/bass-cross-megaman/charge" = "Ⓑ↓HelzR"
+"charged_shot.patch-cards/beastman/charge" = "Ⓑ↓StpSwd"
+"charged_shot.patch-cards/bighat/charge" = "Ⓑ↓FlshBm"
+"charged_shot.patch-cards/blizman/charge" = "Ⓑ↓Blzrd"
+"charged_shot.patch-cards/bombcorn/charge" = "Ⓑ↓CornSh"
 "charged_shot.patch-cards/bowlman/charge" = "B↓Vulcan"
 "charged_shot.patch-cards/canguard/charge" = "B↓Cannon"
 "charged_shot.patch-cards/canodumb/charge" = "B↓M.Cann"
-"charged_shot.patch-cards/chrgs" = "B↓ChrgS"
-"charged_shot.patch-cards/cloudman/charge" = "B↓Thundr"
-"charged_shot.patch-cards/coldbear/charge" = "B↓IceC"
-"charged_shot.patch-cards/count/charge" = "B↓B.Rain"
-"charged_shot.patch-cards/cutman/charge" = "B↓YoYo"
-"charged_shot.patch-cards/dark-megaman/charge" = "B↓DarkS"
-"charged_shot.patch-cards/darkman/charge" = "B↓Vdoll"
-"charged_shot.patch-cards/diveman/charge" = "B↓Wshot"
-"charged_shot.patch-cards/django/charge" = "B↓GunSol"
-"charged_shot.patch-cards/grndman/charge" = "B↓DrlArm"
-"charged_shot.patch-cards/gunner/charge" = "B↓MachGn"
-"charged_shot.patch-cards/handy/charge" = "B↓TBom1"
-"charged_shot.patch-cards/iceman/charge" = "B↓IceSed"
-"charged_shot.patch-cards/invisible-charge" = "B↓Invis"
-"charged_shot.patch-cards/judgeman/charge" = "B↓GrabB"
-"charged_shot.patch-cards/kendoman/charge" = "B↓BambS"
-"charged_shot.patch-cards/kettle/charge" = "B↓Spread"
-"charged_shot.patch-cards/kilby/charge" = "B↓Lance"
-"charged_shot.patch-cards/kilplant/charge" = "B↓GrsSed"
-"charged_shot.patch-cards/megaman-zero/charge" = "B↓Zsaber"
-"charged_shot.patch-cards/napalmmn/charge" = "B↓BigBom"
-"charged_shot.patch-cards/oldstov/charge" = "B↓FireB"
-"charged_shot.patch-cards/puffy/charge" = "B↓BublSp"
-"charged_shot.patch-cards/pulsbulb/charge" = "B↓Epuls"
+"charged_shot.patch-cards/chrgs" = "Ⓑ↓ChrgS"
+"charged_shot.patch-cards/cloudman/charge" = "Ⓑ↓Thundr"
+"charged_shot.patch-cards/coldbear/charge" = "Ⓑ↓IceCbe"
+"charged_shot.patch-cards/count/charge" = "Ⓑ↓BlRain"
+"charged_shot.patch-cards/cutman/charge" = "Ⓑ↓YoYo"
+"charged_shot.patch-cards/dark-megaman/charge" = "Ⓑ↓DrkSwd"
+"charged_shot.patch-cards/darkman/charge" = "Ⓑ↓VDoll"
+"charged_shot.patch-cards/diveman/charge" = "Ⓑ↓Wshot"
+"charged_shot.patch-cards/django/charge" = "Ⓑ↓GunDel"
+"charged_shot.patch-cards/grndman/charge" = "Ⓑ↓DrlArm"
+"charged_shot.patch-cards/gunner/charge" = "Ⓑ↓MchGun"
+"charged_shot.patch-cards/handy/charge" = "Ⓑ↓TimeBm"
+"charged_shot.patch-cards/iceman/charge" = "Ⓑ↓IceSd"
+"charged_shot.patch-cards/invisible-charge" = "Ⓑ↓Invis"
+"charged_shot.patch-cards/judgeman/charge" = "Ⓑ↓GrBnsh"
+"charged_shot.patch-cards/kendoman/charge" = "Ⓑ↓BamSwd"
+"charged_shot.patch-cards/kettle/charge" = "Ⓑ↓Spread"
+"charged_shot.patch-cards/kilby/charge" = "Ⓑ↓Lance"
+"charged_shot.patch-cards/kilplant/charge" = "Ⓑ↓GrasSd"
+"charged_shot.patch-cards/megaman-zero/charge" = "Ⓑ↓ZSaber"
+"charged_shot.patch-cards/napalmmn/charge" = "Ⓑ↓BigBmb"
+"charged_shot.patch-cards/oldstov/charge" = "Ⓑ↓FireBn"
+"charged_shot.patch-cards/puffy/charge" = "Ⓑ↓BblSpr"
+"charged_shot.patch-cards/pulsbulb/charge" = "Ⓑ↓ElePls"
 "charged_shot.patch-cards/rapid-buster" = "B↓Sbustr"
-"charged_shot.patch-cards/scarcrow/charge" = "B↓Dthdr"
-"charged_shot.patch-cards/searchmn/charge" = "B↓CircG"
-"charged_shot.patch-cards/shadoman/charge" = "B↓LongS"
-"charged_shot.patch-cards/slashman/charge" = "B↓WideS"
-"charged_shot.patch-cards/slimey/charge" = "B↓PanlG"
-"charged_shot.patch-cards/snakearm/charge" = "B↓SandW"
+"charged_shot.patch-cards/scarcrow/charge" = "Ⓑ↓DThndr"
+"charged_shot.patch-cards/searchmn/charge" = "Ⓑ↓CircG"
+"charged_shot.patch-cards/shadoman/charge" = "Ⓑ↓LongS"
+"charged_shot.patch-cards/slashman/charge" = "Ⓑ↓WideS"
+"charged_shot.patch-cards/slimey/charge" = "Ⓑ↓PnlGrb"
+"charged_shot.patch-cards/snakearm/charge" = "Ⓑ↓SndWrm"
 "charged_shot.patch-cards/soul-battlrs-custom/charge" = "B↓SuperV"
-"charged_shot.patch-cards/tenguman/charge" = "B↓WindR"
-"charged_shot.patch-cards/thunman/charge" = "B↓ElecS"
-"charged_shot.patch-cards/volcano/charge" = "B↓BlkBom"
+"charged_shot.patch-cards/tenguman/charge" = "Ⓑ↓WndRac"
+"charged_shot.patch-cards/thunman/charge" = "Ⓑ↓EleSwd"
+"charged_shot.patch-cards/volcano/charge" = "Ⓑ↓BlkBom"
 "chip_recovery" = "ChpRecov"
 "chip_shuffle" = "ChpShufl"
 "custom_add" = "Custom+{amount}"
@@ -728,7 +728,7 @@ language = "en"
 "step_bug" = "MoveBug"
 "super_armor" = "SprArmr"
 "tango" = "Tango"
-"undershirt" = "Undersht"
+"undershirt" = "UnderSht"
 
 # The bugs' names, for a tool that lists a build's bugs with their levels (nettai-match's `build`): every bug the
 # NaviCust or a patch card can bring, each a full name, written out. A bug a patch card can bring is keyed as its

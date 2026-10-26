@@ -1,0 +1,671 @@
+# Traditional Chinese: Builds' editor (ui/screens/builds.slint, ui/screens/builds/*.slint), and what any screen shows of a build
+# (ui/build.slint: the overview, a build's row, the words of a typed problem).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hant\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ---- A build's row: its navi and whether it is ready.
+
+msgid "{} · ready"
+msgstr "{} · 就緒"
+
+msgid "{} · {n} problem"
+msgid_plural "{} · {n} problems"
+msgstr[0] "{} · {n} 個問題"
+
+msgid "Can't be read"
+msgstr "無法讀取"
+
+# The ruleset a build is made for, at its row's right end, where it is no longer there (the player's own, deleted).
+msgid "{} (missing)"
+msgstr "{}（找不到）"
+
+# A save made a build: the preset it was put on, then the navi ("Imported as Dark MegaMan").
+msgid "Imported as {} {}"
+msgstr "已匯入為{}{}"
+
+# ---- The build overview.
+
+msgid "Stats"
+msgstr "狀態"
+
+msgid "HP"
+msgstr "HP"
+
+msgid "Attack"
+msgstr "攻擊"
+
+msgid "Rapid"
+msgstr "連射"
+
+msgid "Charge"
+msgstr "集氣"
+
+msgid "Custom"
+msgstr "改裝"
+
+msgid "Mega chips"
+msgstr "MEGA晶片"
+
+msgid "Giga chips"
+msgstr "GIGA晶片"
+
+msgid "Regular memory"
+msgstr "常規容量"
+
+msgid "Regular"
+msgstr "常規"
+
+msgid "Abilities"
+msgstr "能力"
+
+msgid "Bugs"
+msgstr "BUG"
+
+msgid "None"
+msgstr "無"
+
+# The navi, then the presets of the build's choices ("MegaMan · Light").
+msgid "{} · {}"
+msgstr "{} · {}"
+
+# A NaviCust program, then how many copies of it in its color ("Attck+1 ×3").
+msgid "{} ×{}"
+msgstr "{} ×{}"
+
+msgid "FOLDER · {n} CHIP"
+msgid_plural "FOLDER · {n} CHIPS"
+msgstr[0] "資料夾 · {n} 枚"
+
+# A bug's level, and the amount a card writes of how many ("4 of 16").
+
+msgid "Lv {}"
+msgstr "Lv {}"
+
+msgid "{} of {}"
+msgstr "{}/{}"
+
+msgid "+{} more"
+msgstr "還有 {} 項"
+
+msgid "{} MB"
+msgstr "{} MB"
+
+# ---- The editor.
+
+msgid "Navi"
+msgstr "領航員"
+
+msgid "Folder"
+msgstr "資料夾"
+
+msgid "NaviCust"
+msgstr "個人化裝置"
+
+msgid "Patch cards"
+msgstr "改造卡"
+
+msgid "Auto battle"
+msgstr "自動戰鬥"
+
+msgid "Tab"
+msgstr "分頁"
+
+# ---- The Navi tab.
+
+msgid "Choose"
+msgstr "選擇"
+
+msgid "{n} navi"
+msgid_plural "{n} navis"
+msgstr[0] "{n} 位領航員"
+
+msgid "Element"
+msgstr "屬性"
+
+# The game's own navi's name goes in ("MegaMan").
+msgid "NaviCust and patch cards are {} only."
+msgstr "個人化裝置與改造卡僅限{}使用。"
+
+# A list of forms' (souls, Crosses) put all in, or take all out: a version's group's, at its head's end.
+msgid "All"
+msgstr "全部"
+
+# A pane's header's word, its dialog's button and the footer's hint: that part of the build emptied at once.
+msgid "Clear"
+msgstr "清空"
+
+msgid "Clear the folder?"
+msgstr "要清空資料夾嗎？"
+
+msgid "Clear the NaviCust?"
+msgstr "要清空個人化裝置嗎？"
+
+msgid "Clear the patch cards?"
+msgstr "要清空改造卡嗎？"
+
+msgid "Clear the auto battle data?"
+msgstr "要清空自動戰鬥資料嗎？"
+
+# ---- The Folder tab.
+
+# The footer: the folder's chips of its size.
+msgid "{} of {} chips"
+msgstr "晶片 {}/{}"
+
+msgid "Pick"
+msgstr "選擇"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Tag"
+msgstr "配組"
+
+msgid "Chips"
+msgstr "晶片"
+
+msgid "Mega"
+msgstr "MEGA"
+
+msgid "Giga"
+msgstr "GIGA"
+
+msgid "Reg"
+msgstr "常規"
+
+msgid "Library"
+msgstr "資料庫"
+
+msgid "Search chips"
+msgstr "搜尋晶片"
+
+msgid "Search programs"
+msgstr "搜尋程式"
+
+msgid "Sort"
+msgstr "排序"
+
+msgid "Library order"
+msgstr "資料庫順序"
+
+msgid "Name"
+msgstr "名稱"
+
+msgid "Code"
+msgstr "代碼"
+
+msgid "MB"
+msgstr "MB"
+
+# The Party tab's library sorted by a PartyCust program's slots; the strip's stat of a navi's gauge, the slots its
+# PartyCust holds (PartyCust's word for its capacity and a program's cost, 插槽; NaviCust's pieces stay blocks).
+msgid "Slots"
+msgstr "插槽"
+
+# The sort by a chip's attack power (the overview's "Attack" is the buster's).
+msgctxt "sort"
+msgid "Attack"
+msgstr "攻擊力"
+
+# Over the library while a row of the build's is dragged there: let go, it is taken out.
+msgid "Drop to remove"
+msgstr "放開以移除"
+
+# ---- The NaviCust tab.
+
+msgid "Pick up"
+msgstr "拿起"
+
+# A program of the list taken in hand.
+msgid "Take"
+msgstr "取出"
+
+msgid "Take off"
+msgstr "卸下"
+
+msgid "Move piece"
+msgstr "移動零件"
+
+msgid "Turn"
+msgstr "旋轉"
+
+msgid "Compress"
+msgstr "壓縮"
+
+msgid "Uncompress"
+msgstr "解除壓縮"
+
+msgid "Place"
+msgstr "放置"
+
+# The piece in hand put away into the list.
+msgid "Put away"
+msgstr "收回"
+
+# Over the list while a piece is in hand: a click there puts it away into the list.
+msgid "Click to put away"
+msgstr "點擊以收回"
+
+msgid "{n} program"
+msgid_plural "{n} programs"
+msgstr[0] "{n} 個程式"
+
+msgid "Programs"
+msgstr "程式"
+
+# Where a program of the list is: on the board, in hand (being moved), on the board and over its ring.
+msgid "Placed"
+msgstr "已放置"
+
+# A program placed more than once: how many copies of it are on the board.
+msgid "Placed ×{}"
+msgstr "已放置 ×{}"
+
+msgid "In hand"
+msgstr "移動中"
+
+msgid "Out of bounds"
+msgstr "超出範圍"
+
+msgid "Effects"
+msgstr "效果"
+
+# The key under the board.
+msgid "Board"
+msgstr "方格"
+
+msgid "Command line"
+msgstr "命令列"
+
+msgid "Plus part"
+msgstr "加成零件"
+
+# The strip: the program's compressed shape, then its whole one, each over its word; then the colors it comes in.
+msgid "Compressed"
+msgstr "壓縮"
+
+msgid "Uncompressed"
+msgstr "未壓縮"
+
+msgid "Colors"
+msgstr "顏色"
+
+# A program's row: Left and Right choose the color whose part Enter takes.
+msgid "Color"
+msgstr "選擇顏色"
+
+# ---- The Patch cards tab.
+
+msgid "Add"
+msgstr "加入"
+
+msgid "Move up or down"
+msgstr "上下移動"
+
+msgid "Put in"
+msgstr "放入"
+
+# A slot with no card (and a list's room for one more).
+msgid "Empty"
+msgstr "空位"
+
+# The key hint: empty a slot.
+msgctxt "verb"
+msgid "Empty"
+msgstr "清除"
+
+msgctxt "move"
+msgid "Up"
+msgstr "上移"
+
+msgctxt "move"
+msgid "Down"
+msgstr "下移"
+
+msgid "{n} card"
+msgid_plural "{n} cards"
+msgstr[0] "{n} 張卡片"
+
+msgid "{} of {} cards"
+msgstr "卡片 {}/{}"
+
+msgid "Cards"
+msgstr "卡片"
+
+msgid "Slots"
+msgstr "插槽"
+
+# A card's number ("No. 074").
+msgid "No. {}"
+msgstr "No. {}"
+
+# The slot a card belongs in ("Slot 0C").
+msgid "Slot {}"
+msgstr "插槽 {}"
+
+msgid "Search cards"
+msgstr "搜尋卡片"
+
+msgid "Number"
+msgstr "編號"
+
+msgid "Slot"
+msgstr "插槽"
+
+# Why a card can't go in now: it is in already; what it costs where the MB left is less.
+msgid "Installed"
+msgstr "已安裝"
+
+msgid "Needs {} MB"
+msgstr "需要 {} MB"
+
+# ---- The Auto battle tab.
+
+msgid "{} of {} places"
+msgstr "{}/{} 處"
+
+# How many of the auto battle data's places hold the chip (a library row's note).
+msgid "In {n} place"
+msgid_plural "In {n} places"
+msgstr[0] "放在 {n} 處"
+
+# A chip the auto battle data can't hold: its navi can't play it.
+msgid "{} can't be played in auto battle"
+msgstr "{}無法在自動戰鬥中使用"
+
+# A chip in a list of the auto battle data that holds another class of chip: the chip's name, then the list's, as
+# the game's strings have it ("Cannon can't be in the Mega list").
+msgid "{} can't be in the {} list"
+msgstr "{}無法放入{}清單"
+
+# What the NaviCust changes of a number, the change put in ("HP +100").
+msgid "HP {}"
+msgstr "HP {}"
+
+msgid "Attack {}"
+msgstr "攻擊 {}"
+
+msgid "Rapid {}"
+msgstr "連射 {}"
+
+msgid "Charge {}"
+msgstr "集氣 {}"
+
+msgid "Custom {}"
+msgstr "改裝 {}"
+
+msgid "Mega chips {}"
+msgstr "MEGA晶片 {}"
+
+msgid "Giga chips {}"
+msgstr "GIGA晶片 {}"
+
+msgid "Regular memory {}"
+msgstr "常規容量 {}"
+
+# The strip: a chip's class and its facts.
+
+msgid "Standard"
+msgstr "標準"
+
+# A Program Advance's class (in the auto battle data's strip).
+msgid "Program Advance"
+msgstr "程式強化"
+
+msgid "Dark"
+msgstr "黑暗"
+
+msgid "{} attack"
+msgstr "攻擊力 {}"
+
+msgid "{} in folder"
+msgstr "資料夾中 {} 枚"
+
+# ---- Why a chip can't go into the folder now: the end of its library row.
+
+# A card with variants: the card's name, then its variant's, a version's ("Bass-Cross MegaMan (Gregar)").
+msgid "{} ({})"
+msgstr "{}（{}）"
+
+msgid "Folder full"
+msgstr "資料夾已滿"
+
+msgid "{n} copy at most"
+msgid_plural "{n} copies at most"
+msgstr[0] "最多 {n} 枚"
+
+msgid "Giga limit reached"
+msgstr "GIGA已達上限"
+
+msgid "Mega limit reached"
+msgstr "MEGA已達上限"
+
+msgid "Dark limit reached"
+msgstr "黑暗晶片已達上限"
+
+msgid "Limit reached"
+msgstr "已達上限"
+
+# ---- What is wrong with a build, each kind with its numbers.
+
+msgid "{} chips, a folder has {}"
+msgstr "晶片 {} 枚（資料夾為 {} 枚）"
+
+msgid "{} can't be in a folder"
+msgstr "{}無法放入資料夾"
+
+msgid "{} has no code {}"
+msgstr "{}沒有代碼 {}"
+
+# How many, a chip's name, the most a folder holds ("5 Cannon, limit 4").
+msgid "{} {}, limit {}"
+msgstr "{1}：{0} 枚（上限 {2} 枚）"
+
+msgid "{} Giga chips, limit {}"
+msgstr "GIGA晶片 {} 枚（上限 {} 枚）"
+
+msgid "{} Mega chips, limit {}"
+msgstr "MEGA晶片 {} 枚（上限 {} 枚）"
+
+msgid "{} Dark chips, limit {}"
+msgstr "黑暗晶片 {} 枚（上限 {} 枚）"
+
+msgid "{} chips, limit {}"
+msgstr "晶片 {} 枚（上限 {} 枚）"
+
+msgid "{} is {} MB, Regular memory is {} MB"
+msgstr "{}為 {} MB（常規容量 {} MB）"
+
+msgid "Tag chips are {} MB, Tag memory is {} MB"
+msgstr "配組晶片為 {} MB（配組容量 {} MB）"
+
+msgid "The Regular chip's slot is empty"
+msgstr "常規晶片的欄位是空的"
+
+msgid "Tag chips are two slots with a chip"
+msgstr "配組晶片須為兩個有晶片的欄位"
+
+msgid "The Regular chip can't be a tag chip"
+msgstr "常規晶片不能是配組晶片"
+
+msgid "This game has no tag chips"
+msgstr "這款遊戲沒有配組晶片"
+
+msgid "{} is outside {} to {}"
+msgstr "{} 超出 {} 至 {} 的範圍"
+
+msgid "This navi can't use it"
+msgstr "此領航員無法使用此項目"
+
+msgid "Something is there twice"
+msgstr "有重複的項目"
+
+msgid "{} MB, limit {}"
+msgstr "{} MB（上限 {} MB）"
+
+msgid "A piece is off the board"
+msgstr "有零件超出方格"
+
+msgid "Two pieces overlap"
+msgstr "有零件重疊"
+
+# A card's name, then its slot's ("Roll belongs in slot 0C").
+msgid "{} belongs in slot {}"
+msgstr "{}應放在插槽 {}"
+
+msgid "Made for another game"
+msgstr "其他遊戲的配置"
+
+msgid "Something isn't chosen"
+msgstr "有未選擇的項目"
+
+msgid "the folder"
+msgstr "資料夾"
+
+msgid "the NaviCust"
+msgstr "個人化裝置"
+
+msgid "the patch cards"
+msgstr "改造卡"
+
+msgid "the auto battle data"
+msgstr "自動戰鬥資料"
+
+msgid "This navi has no level"
+msgstr "此領航員沒有等級"
+
+msgid "This navi doesn't change form"
+msgstr "此領航員無法變身"
+
+msgid "This navi can't use {}"
+msgstr "此領航員無法使用{}"
+
+msgid "No navi chosen"
+msgstr "未選擇領航員"
+
+msgid "No form chosen"
+msgstr "未選擇形態"
+
+msgid "No level chosen"
+msgstr "未選擇等級"
+
+msgid "Something in {} isn't chosen"
+msgstr "{}中有未選擇的項目"
+
+msgid "Something in {} is there twice"
+msgstr "{}中有重複的項目"
+
+msgid "This navi isn't {}'s"
+msgstr "這不是 {} 的領航員"
+
+msgid "A form isn't {}'s"
+msgstr "有不屬於 {} 的形態"
+
+msgid "A chip in the folder isn't {}'s"
+msgstr "資料夾中有不屬於 {} 的晶片"
+
+msgid "Something in {} isn't {}'s"
+msgstr "{0}中有不屬於 {1} 的項目"
+
+msgid "Something here isn't {}'s"
+msgstr "含有不屬於 {} 的項目"
+
+msgid "This navi can't be used"
+msgstr "無法使用此領航員"
+
+msgid "This form can't be used"
+msgstr "無法使用此形態"
+
+msgid "This level can't be used"
+msgstr "無法使用此等級"
+
+msgid "Something in {} can't be used"
+msgstr "{}中有無法使用的項目"
+
+msgid "Something here can't be used"
+msgstr "含有無法使用的項目"
+
+msgid "It couldn't be checked. Details are in the log file"
+msgstr "無法檢查。詳細資訊請見記錄檔"
+
+# ---- The ruleset the build is made for (docs/design/app-ui.md §2.59, §2.73): the editor's select (its note where the
+# ruleset is no longer there), and what it doesn't allow.
+
+msgid "(missing)"
+msgstr "（找不到）"
+
+msgid "{} isn't allowed"
+msgstr "{}不可使用"
+
+msgid "Not allowed"
+msgstr "不可使用"
+
+# A build of two versions' things under one version per build.
+msgid "Mixed versions"
+msgstr "版本混用"
+
+# ---- The Party tab (a game whose builds have a party: EXE5's party battle, EXE5 DS's パーティバトル, which has no Chinese
+# release: 隊伍 for the party). A partner's
+# programs fill slots of its gauge (PartyCust: パーティカスタマイザー).
+
+msgid "Party"
+msgstr "隊伍"
+
+msgid "Search navis"
+msgstr "搜尋領航員"
+
+# Why a navi can't go into the party's slot: it is in the party already.
+msgid "In party"
+msgstr "已在隊伍中"
+
+msgid "the party"
+msgstr "隊伍"
+
+
+
+
+
+
+
+msgid "Programs fill {} slots, the gauge has {}"
+msgstr "程式佔 {} 個插槽，計量表只有 {} 個"
+
+
+# The Party tab as the user chose it (D9): the navis to pick from, the partners, PROGRAMS.
+msgid "Partners"
+msgstr "夥伴"
+
+msgid "Navi changes"
+msgstr "領航員變更"
+
+
+
+
+
+
+
+msgid "{n} slot free"
+msgid_plural "{n} slots free"
+msgstr[0] "剩餘 {n} 個插槽"
+
+msgid "Clear the party?"
+msgstr "要清空隊伍嗎？"
+
+
+
+
+msgid "Fits: {n} slot free"
+msgid_plural "Fits: {n} slots free"
+msgstr[0] "可放入：剩餘 {n} 個插槽"
+
+msgid "Needs {n} slot"
+msgid_plural "Needs {n} slots"
+msgstr[0] "需要 {n} 個插槽"
+
+msgid "{n} slot"
+msgid_plural "{n} slots"
+msgstr[0] "{n} 個插槽"
+

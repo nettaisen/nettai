@@ -1,0 +1,300 @@
+# Traditional Chinese: Replays (ui/screens/replays.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hant\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ---- The list ----
+
+msgid "Search by opponent"
+msgstr "依對手搜尋"
+
+# A row's opponent.
+msgid "vs {}"
+msgstr "vs {}"
+
+# The footer: how many replays the game has. (One form: Chinese has no plural, nplurals=1.)
+msgid "{n} replay"
+msgid_plural "{n} replays"
+msgstr[0] "{n} 個重播"
+
+msgid "No replays yet. Every online match is recorded."
+msgstr "還沒有重播。每場線上對戰都會被記錄下來。"
+
+msgid "No replays found."
+msgstr "找不到重播。"
+
+msgid "Watch"
+msgstr "播放"
+
+msgid "Export"
+msgstr "匯出"
+
+msgid "Delete"
+msgstr "刪除"
+
+# ---- The selected replay ----
+
+msgid "Played"
+msgstr "對戰時間"
+
+msgid "Result"
+msgstr "結果"
+
+msgid "Length"
+msgstr "長度"
+
+msgctxt "verb"
+msgid "Export video"
+msgstr "匯出影片"
+
+msgid "Show file"
+msgstr "顯示檔案"
+
+msgid "Save replay"
+msgstr "儲存重播"
+
+msgid "Delete replay?"
+msgstr "要刪除重播嗎？"
+
+# ---- The play queue: replays lined up to be watched one after another, each leaving it once watched (its tab,
+# WATCH's arrow and a replay's menu, an entry's) ----
+
+msgid "Queue"
+msgstr "播放佇列"
+
+msgid "Add to queue"
+msgstr "加入播放佇列"
+
+# Put a replay at the queue's start: what plays next.
+msgid "Play next"
+msgstr "下一個播放"
+
+msgid "Watch from here"
+msgstr "從這裡播放"
+
+msgid "Move up"
+msgstr "上移"
+
+msgid "Move down"
+msgstr "下移"
+
+msgid "Clear the queue?"
+msgstr "要清空播放佇列嗎？"
+
+# A queue entry whose file is gone: its file's name.
+msgid "Missing: {}"
+msgstr "找不到：{}"
+
+# Watch: WATCH's own word (播放); the arrow beside it opens Add to queue and Play next.
+msgid "The queue is empty. Add replays to it with the arrow beside Watch."
+msgstr "播放佇列是空的。可用「播放」旁的箭頭加入重播。"
+
+# The players of a replay, the one whose console is shown first.
+msgid "{} vs {}"
+msgstr "{} vs {}"
+
+# A player a replay has no name for: the first, the second.
+msgid "P1"
+msgstr "P1"
+
+msgid "P2"
+msgstr "P2"
+
+# ---- Dates: a month's short name, a day of a month ({0} the month, {1} the day), and with its year ({2}) ----
+
+msgid "Jan"
+msgstr "1月"
+
+msgid "Feb"
+msgstr "2月"
+
+msgid "Mar"
+msgstr "3月"
+
+msgid "Apr"
+msgstr "4月"
+
+msgid "May"
+msgstr "5月"
+
+msgid "Jun"
+msgstr "6月"
+
+msgid "Jul"
+msgstr "7月"
+
+msgid "Aug"
+msgstr "8月"
+
+msgid "Sep"
+msgstr "9月"
+
+msgid "Oct"
+msgstr "10月"
+
+msgid "Nov"
+msgstr "11月"
+
+msgid "Dec"
+msgstr "12月"
+
+msgctxt "date"
+msgid "{0} {1}"
+msgstr "{0}{1}日"
+
+msgctxt "date"
+msgid "{0} {1}, {2}"
+msgstr "{2}年{0}{1}日"
+
+# ---- How a set went: a row's letter with the rounds won and lost, and the same in words ----
+
+msgctxt "score"
+msgid "W {}–{}"
+msgstr "勝 {}–{}"
+
+msgctxt "score"
+msgid "L {}–{}"
+msgstr "敗 {}–{}"
+
+msgctxt "score"
+msgid "D {}–{}"
+msgstr "平 {}–{}"
+
+msgid "Won {}–{}"
+msgstr "獲勝 {}–{}"
+
+msgid "Lost {}–{}"
+msgstr "落敗 {}–{}"
+
+msgid "Draw {}–{}"
+msgstr "平手 {}–{}"
+
+msgid "Not finished · {}–{}"
+msgstr "未分勝負 · {}–{}"
+
+# ---- The viewer ----
+
+msgid "Replay"
+msgstr "重播"
+
+msgid "Round {} of {}"
+msgstr "第 {}/{} 回合"
+
+msgid "Player"
+msgstr "玩家"
+
+msgid "Play or pause"
+msgstr "播放/暫停"
+
+msgid "Step a frame"
+msgstr "逐格播放"
+
+msgid "Previous or next round"
+msgstr "上/下一回合"
+
+# The viewer's footer: how many rounds the replay has.
+msgid "{n} round"
+msgid_plural "{n} rounds"
+msgstr[0] "{n} 回合"
+
+# The transport's ⋯ menu: the side whose console is shown (P1, P2), both builds (Builds), the input display (Input
+# display, Practice's), the other side's console small in the picture's corner, the playback speed (its row says the
+# speed set, ½× to 4×, and opens the four) and Export video.
+msgid "Other side's picture"
+msgstr "對方的畫面"
+
+msgid "Playback speed"
+msgstr "播放速度"
+
+# The viewer's play queue (the replays lined up in the Queue tab, watched one after another): its popup of the
+# entries still to watch after the one watched, with NEXT (Next, 下一個: skip to the next replay) and whether the next
+# one starts by itself at the end of one (the words by its switch) at its top, and what is said when there are none.
+msgid "Autoplay next"
+msgstr "自動播放下一個"
+
+msgid "Up next"
+msgstr "接下來播放"
+
+msgid "Nothing else is in the queue."
+msgstr "播放佇列中沒有其他重播。"
+
+# ---- The export mode ----
+
+# The viewer's export mode: the part of the replay exported is between two handles on the bar (控點), which the
+# pointer drags and the arrows move (the footer's hint); the buttons set the range's start or its end where the
+# replay is shown (the playback position); the Range's list (the whole match, a round, Custom: the player's own) is
+# under the same words as before. The line under the options says what to do while nothing is exporting.
+msgid "Set start here"
+msgstr "設為起點"
+
+msgid "Set end here"
+msgstr "設為終點"
+
+msgid "Move a handle"
+msgstr "移動控點"
+
+msgid "Drag the handles on the bar to choose the part to export."
+msgstr "拖曳進度條上的控點，選擇要匯出的範圍。"
+
+msgid "Size"
+msgstr "大小"
+
+# The consoles a video shows: the view's alone, both on one screen (the view's at the left; also the viewer's
+# side menu's third), or both side by side (the view's at the left, heard).
+msgid "Sides"
+msgstr "畫面"
+
+msgctxt "sides"
+msgid "One"
+msgstr "單方"
+
+msgctxt "sides"
+msgid "Both"
+msgstr "雙方"
+
+msgctxt "sides"
+msgid "Side by side"
+msgstr "並排"
+
+msgid "Save as"
+msgstr "儲存位置"
+
+msgid "Whole match · {}"
+msgstr "整場對戰 · {}"
+
+msgid "Round {} · {}"
+msgstr "第 {} 回合 · {}"
+
+msgid "Custom · {}"
+msgstr "自訂 · {}"
+
+# A round's chapter in an exported video.
+msgid "Round {}"
+msgstr "第 {} 回合"
+
+msgid "Exporting round {} of {} · {}%"
+msgstr "正在匯出第 {}/{} 回合 · {}%"
+
+msgid "Saved."
+msgstr "已儲存。"
+
+msgid "Export canceled."
+msgstr "已取消匯出。"
+
+msgctxt "verb"
+msgid "Export"
+msgstr "匯出"
+
+msgid "Close"
+msgstr "關閉"
+
+# What the system's save dialog calls the file.
+msgid "MP4 video"
+msgstr "MP4 影片"
+
+# The viewer: both builds, over the picture (B, Select). Over each one's name: YOU (Training's), OPPONENT.
+msgid "Builds"
+msgstr "配置"
+

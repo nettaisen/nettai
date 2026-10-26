@@ -68,9 +68,9 @@ language = "ja"
 "bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
 "bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
 "bugrswrd" = { name = "バグライズソード", description = "Bためうちがバグの\nかけらをしょうひす\nるダークソードに!" }
-"burnsqr1" = { name = "バーンスクエア1", description = "4マス四方の\nサイトをAボタンで\nとめて 炎攻撃!" }
-"burnsqr2" = { name = "バーンスクエア2", description = "4マス四方の\nサイトをAボタンで\nとめて 炎攻撃!" }
-"burnsqr3" = { name = "バーンスクエア3", description = "4マス四方の\nサイトをAボタンで\nとめて 炎攻撃!" }
+"burnsqr1" = { name = "バーンスクエア1", description = "4マス四方の\nサイトをAでとめて\n炎攻撃!" }
+"burnsqr2" = { name = "バーンスクエア2", description = "4マス四方の\nサイトをAでとめて\n炎攻撃!" }
+"burnsqr3" = { name = "バーンスクエア3", description = "4マス四方の\nサイトをAでとめて\n炎攻撃!" }
 "busterup" = { name = "バスターアップ", description = "そのバトル中\nバスターの攻撃力を\n1アップさせる!" }
 "cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "chrgeman" = { name = "チャージマン", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
@@ -111,7 +111,7 @@ language = "ja"
 "dblhero" = { name = "ダブルヒーロー", description = "エグゼ1リスペクト\nブルースといっしょ\nにてきを攻撃する!" }
 "dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
 "delecswd" = { name = "Dエレキソード", description = "前方へダッシュして\nてきをみつけると\nエレキソードできる" }
-"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAでさいこう3だん\nのソード攻撃" }
 "destpuls" = { name = "デストロイパルス", description = "あいてにひどいバグ\nをひきおこすパルス\nをはなつ!" }
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "diveman" = { name = "ダイブマン", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
@@ -143,13 +143,13 @@ language = "ja"
 "elecswrd" = { name = "エレキソード", description = "目の前のたて3マス\nをきりつける\n電気のソード!" }
 "elemswrd" = { name = "エレメントソード", description = "くさむら、こおり、\n火口パネルのうえに\nいるてきをきる!" }
 "elemtrap" = { name = "エレメントラップ", description = "てきにワナをはる\nあいてが属性攻撃を\nつかうとはつどう!" }
-"elmntman" = { name = "エレメントマン", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
-"elmntmn-ex" = { name = "エレメントマン\uE002", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
-"elmntmn-sp" = { name = "エレメントマン\uE003", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
+"elmntman" = { name = "エレメントマン", description = "いろがかわるのを\nAでとめて\nその属性の攻撃!" }
+"elmntmn-ex" = { name = "エレメントマン\uE002", description = "いろがかわるのを\nAでとめて\nその属性の攻撃!" }
+"elmntmn-sp" = { name = "エレメントマン\uE003", description = "いろがかわるのを\nAでとめて\nその属性の攻撃!" }
 "energbom" = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
-"eraseman" = { name = "キラーマン", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
-"erasemn-ex" = { name = "キラーマン\uE002", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
-"erasemn-sp" = { name = "キラーマン\uE003", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
+"eraseman" = { name = "キラーマン", description = "3方向にうごく\nサイトをAでとめて\nビーム攻撃" }
+"erasemn-ex" = { name = "キラーマン\uE002", description = "3方向にうごく\nサイトをAでとめて\nビーム攻撃" }
+"erasemn-sp" = { name = "キラーマン\uE003", description = "3方向にうごく\nサイトをAでとめて\nビーム攻撃" }
 "etomahwk" = { name = "Eトマホーク", description = "前方1れつを\n攻撃する大オノを\nふりおろす!" }
 # (The ROMs print a gift's text here, kept in the save: an `FF 01 nn` script. This is the
 # text Tango's Japanese netplay saves hold: tango-gamesupport-bn6 saves/f_jp.raw, offset 0x83A.)
@@ -389,7 +389,7 @@ language = "ja"
 
 [forms]
 "chargecross" = { name = "チャージクロス", description = "炎チップタメうちで攻撃力UP\nターンがすすむごとに\nえらべるチップがふえていく" }
-"dustcross" = { name = "ダストクロス", description = "カスタム画面でチップをすてる\nB+左でモノをすいこみ\nBボタンではっしゃできる!" }
+"dustcross" = { name = "ダストクロス", description = "カスタム画面でチップをすてる\nB+左でモノをすいこみ\nBではっしゃできる!" }
 "eleccross" = { name = "エレキクロス", description = "電気チップの攻撃力が+50!\n無属性チップをタメうちすると\nマヒこうかがつく!" }
 "erasecross" = { name = "キラークロス", description = "HPに4のすうじがあると\n無属性チップでそくしこうか!\nカーソルチップ攻撃力が+30" }
 "falzar-beast" = { name = "Fビースト" }
@@ -574,14 +574,14 @@ language = "ja"
 "hp-400" = { name = "HP+400", description = "マックスHPが\n400ふえる!" }
 "hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
 "hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
-"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
+"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLで\nはなしてみてください" }
 "jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
 "megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
 "megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
 "millions" = { name = "ミリオネア", description = "ランダムミステリー\nデータからゼニー\nばかりが手に入る!" }
 "numbropn" = { name = "ナンバーオープン", description = "カスタム画面で\nえらべるチップが\n10枚になる!" }
 "oilbody" = { name = "オイルボディ", description = "炎属性ウイルスが\n大スキなオイルをぬり\nねらわれやすくなる!" }
-"poem" = { name = "リズミカルポエム", description = "Lボタンでナビが\n5・7・5のリズムで\nココロのうちをうたう" }
+"poem" = { name = "リズミカルポエム", description = "Lでナビが\n5・7・5のリズムで\nココロのうちをうたう" }
 "reflect" = { name = "リフレクト", description = "B+左のコマンドで\n攻撃をはねかえす\nリフレクト!" }
 "rush" = { name = "ラッシュサポート", description = "たいせんせんよう!\nきえたあいてのニオイ\nをかぎつけとびかかる" }
 "shield" = { name = "シールド", description = "B+左のコマンドで\nほとんどの攻撃を\nふせぐシールド!" }
@@ -601,20 +601,20 @@ language = "ja"
 "attack_add" = "アタック+{amount}"
 "attack_sub" = "アタック-{amount}"
 "attack_times" = "アタック✕{amount}"
-"b_button.patch-cards/b-sword" = "Bボタンソード"
-"b_button.patch-cards/beetle/b-button" = "Bボタンミニボム"
-"b_button.patch-cards/mettfire/b-button" = "Bボタンメテオ1"
-"b_button.patch-cards/planetmn/b-button" = "Bボタンクラック"
+"b_button.patch-cards/b-sword" = "Bソード"
+"b_button.patch-cards/beetle/b-button" = "Bミニボム"
+"b_button.patch-cards/mettfire/b-button" = "Bメテオ1"
+"b_button.patch-cards/planetmn/b-button" = "Bクラック"
 "b_button.patch-cards/triple-buster" = "トリプルバスター"
-"back_special" = "B+左"
-"back_special.megaman/anti-damage" = "B+左でカワリミ"
-"back_special.megaman/reflect" = "B+左リフレクト"
-"back_special.megaman/shield" = "B+左でシールド"
-"back_special.patch-cards/darkmech/back-special" = "B+左でMソード"
-"back_special.patch-cards/dustman/back-special" = "B+左でスイコミ"
-"back_special.patch-cards/honybomr/back-special" = "B+左でRハニー"
-"back_special.patch-cards/magntman/back-special" = "B+左であしどめ"
-"back_special.patch-cards/metrid/back-special" = "B+左でメテオ3"
+"back_special" = "B+←"
+"back_special.megaman/anti-damage" = "B+←でカワリミ"
+"back_special.megaman/reflect" = "B+←リフレクト"
+"back_special.megaman/shield" = "B+←でシールド"
+"back_special.patch-cards/darkmech/back-special" = "B+←でMソード"
+"back_special.patch-cards/dustman/back-special" = "B+←でスイコミ"
+"back_special.patch-cards/honybomr/back-special" = "B+←でRハニー"
+"back_special.patch-cards/magntman/back-special" = "B+←であしどめ"
+"back_special.patch-cards/metrid/back-special" = "B+←でメテオ3"
 "beat" = "ビートサポート"
 "body.aqua" = "アクアボディ"
 "body.elec" = "エレキボディ"

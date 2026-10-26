@@ -100,7 +100,7 @@ language = "en"
 "protoman" = { name = "ProtoMan", description = "Rush up\nto enemy\nand slice" }
 "protom-sp" = { name = "ProtoMSP", description = "Rush up\nto enemy\nand slice" }
 "protom-ds" = { name = "ProtoMDS", description = "Rush up\nto enemy\nand slice" }
-"deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
+"deltaray" = { name = "DeltaRay", description = "A power up\nby 3 swrd\n" }
 "elemflar" = { name = "ElemFlar", description = "3-sq atk\nPowerful\non magma!" }
 "elemice" = { name = "ElemIce", description = "3-sq atk\nPowerful\non ice" }
 "elemleaf" = { name = "ElemLeaf", description = "3-sq atk\nPowerful\non grass" }
@@ -197,7 +197,7 @@ language = "en"
 "grabbnsh" = { name = "GrabBnsh", description = "Retaliate\nstolen\npanels!" }
 "custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
 "muramasa" = { name = "Muramasa", description = "EvilChip!\nPower=\nHP lost" }
-"slasher" = { name = "Slasher", description = "Cut while\nA Button\nis held!" }
+"slasher" = { name = "Slasher", description = "Cut while\nA is held!\n" }
 "suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
 "hole" = { name = "Hole", description = "Appears\nHole\nin front" }
 "pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
@@ -242,7 +242,7 @@ language = "en"
 "aquamn-sp" = { name = "AquaMnSP", description = "Water Gun\nsprays\n2sq ahead" }
 "aquamn-ds" = { name = "AquaMnDS", description = "Water Gun\nsprays\n2sq ahead" }
 "sandring" = { name = "SandRing", description = "Opens a\npitfall\ntrap" }
-"z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
+"z-saver" = { name = "Z Saber", description = "Repliroid\nswrd cuts\n3 times" }
 "gutpnch1" = { name = "GutPnch1", description = "Launches\nGutPunch\nahead" }
 "gutpnch2" = { name = "GutPnch2", description = "Launches\nGutStrgt\nahead" }
 "gutpnch3" = { name = "GutPnch3", description = "Launches\nGutImpct\nahead" }
@@ -400,7 +400,7 @@ language = "en"
 
 [navicust_programs]
 "airshoes" = { name = "AirShoes", description = "Walk even\nif no\npanels!" }
-"antimagc" = { name = "AntiMagc", description = "When hit,\nB + Left\nhurl star" }
+"antimagc" = { name = "AntiMagc", description = "When hit,\nB+Left\nhurl star" }
 "attack-1" = { name = "Attack+1", description = "MegBuster\nAttack+1!" }
 "attckmax" = { name = "AttckMAX", description = "MegBuster\nAttckMAX!" }
 "battery" = { name = "Battery", description = "Attracts\nElec\nviruses!" }
@@ -424,14 +424,14 @@ language = "en"
 "hp-50" = { name = "HP+50", description = "MAX HP\n+50!" }
 "hp-500" = { name = "HP+500", description = "MAX HP\n+500!" }
 "hubbatc" = { name = "HubBatc", description = "Maximizes\nyour\npotential" }
-"humor" = { name = "Humor", description = "Install\nand try\nL Button!" }
+"humor" = { name = "Humor", description = "Install\nand try\nL!" }
 "jungle" = { name = "Jungle", description = "Attracts\nWood\nviruses!" }
 "megfldr1" = { name = "MegFldr1", description = "1 more\nMegaChip\nin folder" }
 "megfldr2" = { name = "MegFldr2", description = "2 more\nMegaChips\nin folder" }
 "oilbody" = { name = "OilBody", description = "Attracts\nFire\nviruses!" }
-"reflect" = { name = "Reflect", description = "Return\ndmg with\nB + Left!" }
+"reflect" = { name = "Reflect", description = "Return\ndmg with\nB+Left!" }
 "rush" = { name = "Rush", description = "VS only!\nFind an\nopponent" }
-"shield" = { name = "Shield", description = "Zero dmg\nwith\nB + Left!" }
+"shield" = { name = "Shield", description = "Zero dmg\nwith\nB+Left!" }
 "sneakrun" = { name = "SneakRun", description = "Weak enmy\nstop\nappearing" }
 "soulclen" = { name = "SoulClen", description = "Cleanses\nevil\nthoughts" }
 "speed-1" = { name = "Speed+1", description = "MegBuster\nSpeed+1!" }
@@ -441,139 +441,139 @@ language = "en"
 "undersht" = { name = "UnderSht", description = "Keep 1HP\neven on\nfatal hit" }
 
 [patch_cards]
-"001-max-hp-up" = { name = "Max HP Up" }
-"002-max-hp-up" = { name = "Max HP Up" }
-"003-max-hp-up" = { name = "Max HP Up" }
-"004-max-hp-up" = { name = "Max HP Up" }
-"005-max-hp-up" = { name = "Max HP Up" }
-"006-max-hp-up" = { name = "Max HP Up" }
-"007-max-hp-up" = { name = "Max HP Up" }
-"008-max-hp-up" = { name = "Max HP Up" }
-"009-max-hp-up" = { name = "Max HP Up" }
-"010-max-hp-up" = { name = "Max HP Up" }
-"011-first-barrier-100" = { name = "First Barrier 100" }
-"012-buster-patch" = { name = "Buster Patch" }
-"013-buster-patch" = { name = "Buster Patch" }
-"014-panel-change" = { name = "Panel Change" }
-"015-panel-change" = { name = "Panel Change" }
-"016-panel-change" = { name = "Panel Change" }
-"017-custom2" = { name = "Custom2" }
-"018-megafolder2" = { name = "MegaFolder2" }
-"019-buster-attack-10" = { name = "Buster Attack 10" }
-"020-charge-shot-switch" = { name = "Charge Shot Switch" }
-"021-charge-shot-switch" = { name = "Charge Shot Switch" }
-"022-charge-shot-switch" = { name = "Charge Shot Switch" }
-"023-charge-shot-switch" = { name = "Charge Shot Switch" }
-"024-charge-shot-switch" = { name = "Charge Shot Switch" }
-"025-charge-shot-switch" = { name = "Charge Shot Switch" }
-"026-charge-shot-switch" = { name = "Charge Shot Switch" }
-"027-charge-shot-switch" = { name = "Charge Shot Switch" }
-"028-pet-menu-color-change" = { name = "PET Menu Color Change" }
-"029-pet-menu-color-change" = { name = "PET Menu Color Change" }
-"030-pet-menu-color-change" = { name = "PET Menu Color Change" }
-"031-max-hp-up" = { name = "Max HP Up" }
-"032-max-hp-up" = { name = "Max HP Up" }
-"033-max-hp-up" = { name = "Max HP Up" }
-"034-max-hp-up" = { name = "Max HP Up" }
-"035-max-hp-up" = { name = "Max HP Up" }
-"036-max-hp-up" = { name = "Max HP Up" }
-"037-max-hp-up" = { name = "Max HP Up" }
-"038-max-hp-up" = { name = "Max HP Up" }
-"039-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"040-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"041-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"042-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"043-buster-patch" = { name = "Buster Patch" }
-"044-buster-patch" = { name = "Buster Patch" }
-"045-default-full-synchro" = { name = "Default Full Synchro" }
-"046-first-barrier200" = { name = "First Barrier200" }
-"047-weapon-change" = { name = "Weapon Change" }
-"048-weapon-change" = { name = "Weapon Change" }
-"049-buster-attack-15" = { name = "Buster Attack 15" }
-"050-gigafolder1" = { name = "GigaFolder1" }
-"051-charge-shot-switch" = { name = "Charge Shot Switch" }
-"052-charge-shot-switch" = { name = "Charge Shot Switch" }
-"053-charge-shot-switch" = { name = "Charge Shot Switch" }
-"054-charge-shot-switch" = { name = "Charge Shot Switch" }
-"055-charge-shot-switch" = { name = "Charge Shot Switch" }
-"056-charge-shot-switch" = { name = "Charge Shot Switch" }
-"057-charge-shot-switch" = { name = "Charge Shot Switch" }
-"058-charge-shot-switch" = { name = "Charge Shot Switch" }
-"059-megaman-color-change" = { name = "MegaMan Color Change" }
-"060-megaman-color-change" = { name = "MegaMan Color Change" }
-"061-max-hp-up" = { name = "Max HP Up" }
-"062-max-hp-up" = { name = "Max HP Up" }
-"063-max-hp-up" = { name = "Max HP Up" }
-"064-max-hp-up" = { name = "Max HP Up" }
-"065-max-hp-up" = { name = "Max HP Up" }
-"066-max-hp-up" = { name = "Max HP Up" }
-"067-max-hp-up" = { name = "Max HP Up" }
-"068-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"069-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"070-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"071-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"072-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"073-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"074-triple-supporter-1-2" = { name = "Triple Supporter 1/2" }
-"075-triple-supporter-2-2" = { name = "Triple Supporter 2/2" }
-"076-all-guard-1-2" = { name = "All Guard 1/2" }
-"077-all-guard-2-2" = { name = "All Guard 2/2" }
-"078-first-life-aura" = { name = "First Life Aura" }
-"079-charge-shot-switch" = { name = "Charge Shot Switch" }
-"080-charge-shot-switch" = { name = "Charge Shot Switch" }
-"081-charge-shot-switch" = { name = "Charge Shot Switch" }
-"082-charge-shot-switch" = { name = "Charge Shot Switch" }
-"083-charge-shot-switch" = { name = "Charge Shot Switch" }
-"084-charge-shot-switch" = { name = "Charge Shot Switch" }
-"085-charge-shot-switch" = { name = "Charge Shot Switch" }
-"086-charge-shot-switch" = { name = "Charge Shot Switch" }
-"087-charge-shot-switch" = { name = "Charge Shot Switch" }
-"088-pet-menu-color-change" = { name = "PET Menu Color Change" }
-"089-megaman-color-change" = { name = "MegaMan Color Change" }
-"090-megaman-color-change" = { name = "MegaMan Color Change" }
-"091-max-hp-up" = { name = "Max HP Up" }
-"092-max-hp-up" = { name = "Max HP Up" }
-"093-max-hp-up" = { name = "Max HP Up" }
-"094-max-hp-up" = { name = "Max HP Up" }
-"095-max-hp-up" = { name = "Max HP Up" }
-"096-max-hp-up" = { name = "Max HP Up" }
-"097-max-hp-up" = { name = "Max HP Up" }
-"098-max-hp-up" = { name = "Max HP Up" }
-"099-max-hp-up" = { name = "Max HP Up" }
-"100-max-hp-up" = { name = "Max HP Up" }
-"101-max-hp-up" = { name = "Max HP Up" }
-"102-buster-patch" = { name = "Buster Patch" }
-"103-fullcustom-charge-1-2" = { name = "FullCustom Charge 1/2" }
-"104-fullcustom-charge-2-2" = { name = "FullCustom Charge 2/2" }
-"105-panel-change" = { name = "Panel Change" }
-"106-weapon-change" = { name = "Weapon Change" }
-"107-weapon-change" = { name = "Weapon Change" }
-"108-weapon-change" = { name = "Weapon Change" }
-"109-megafolder3" = { name = "MegaFolder3" }
-"110-custom3" = { name = "Custom3" }
-"111-gigafolder1" = { name = "GigaFolder1" }
-"112-b-left-ability-activation" = { name = "B+Left Ability Activation" }
-"113-charge-shot-switch" = { name = "Charge Shot Switch" }
-"114-charge-shot-switch" = { name = "Charge Shot Switch" }
-"115-charge-shot-switch" = { name = "Charge Shot Switch" }
-"116-charge-shot-switch" = { name = "Charge Shot Switch" }
-"117-charge-shot-switch" = { name = "Charge Shot Switch" }
-"118-charge-shot-switch" = { name = "Charge Shot Switch" }
-"119-charge-shot-switch" = { name = "Charge Shot Switch" }
-"120-charge-shot-switch" = { name = "Charge Shot Switch" }
-"121-roll-soul" = { name = "Roll Soul" }
-"122-guts-soul" = { name = "Guts Soul" }
-"123-wind-soul" = { name = "Wind Soul" }
-"124-search-soul" = { name = "Search Soul" }
-"125-fire-soul" = { name = "Fire Soul" }
-"126-thunder-soul" = { name = "Thunder Soul" }
-"127-proto-soul" = { name = "Proto Soul" }
-"128-number-soul" = { name = "Number Soul" }
-"129-metal-soul" = { name = "Metal Soul" }
-"130-junk-soul" = { name = "Junk Soul" }
-"131-aqua-soul" = { name = "Aqua Soul" }
-"132-wood-soul" = { name = "Wood Soul" }
-"133-weapon-change" = { name = "Weapon Change" }
+"001-max-hp-up" = { name = "MAX HP+100" }
+"002-max-hp-up" = { name = "MAX HP+100" }
+"003-max-hp-up" = { name = "MAX HP+150" }
+"004-max-hp-up" = { name = "MAX HP+150" }
+"005-max-hp-up" = { name = "MAX HP+200" }
+"006-max-hp-up" = { name = "MAX HP+200" }
+"007-max-hp-up" = { name = "MAX HP+250" }
+"008-max-hp-up" = { name = "MAX HP+250" }
+"009-max-hp-up" = { name = "MAX HP+300" }
+"010-max-hp-up" = { name = "MAX HP+300" }
+"011-first-barrier-100" = { name = "FstBarr100\nw/Bug" }
+"012-buster-patch" = { name = "BlindBuster\nw/Bug" }
+"013-buster-patch" = { name = "GrassBuster" }
+"014-panel-change" = { name = "Pnl:Metl" }
+"015-panel-change" = { name = "Pnl:Crak" }
+"016-panel-change" = { name = "Pnl:Pit" }
+"017-custom2" = { name = "Custom2\nw/Bug" }
+"018-megafolder2" = { name = "MegFldr2\nw/Bug" }
+"019-buster-attack-10" = { name = "BusterAtk10\nw/Bug" }
+"020-charge-shot-switch" = { name = "+GutsMG" }
+"021-charge-shot-switch" = { name = "+Cannon" }
+"022-charge-shot-switch" = { name = "+MiniBomb" }
+"023-charge-shot-switch" = { name = "+HeatShot" }
+"024-charge-shot-switch" = { name = "+Bubbler" }
+"025-charge-shot-switch" = { name = "+Thunder1" }
+"026-charge-shot-switch" = { name = "+Sword" }
+"027-charge-shot-switch" = { name = "+Spreader" }
+"028-pet-menu-color-change" = { name = "PETscrn clr:Blue" }
+"029-pet-menu-color-change" = { name = "PETscrn clr:Pink" }
+"030-pet-menu-color-change" = { name = "PETscrn clr:Green" }
+"031-max-hp-up" = { name = "MAX HP+350" }
+"032-max-hp-up" = { name = "MAX HP+350" }
+"033-max-hp-up" = { name = "MAX HP+400" }
+"034-max-hp-up" = { name = "MAX HP+400" }
+"035-max-hp-up" = { name = "MAX HP+450\nw/Bug" }
+"036-max-hp-up" = { name = "MAX HP+450\nw/Bug" }
+"037-max-hp-up" = { name = "MAX HP+500" }
+"038-max-hp-up" = { name = "MAX HP+500\nw/Bug" }
+"039-b-left-ability-activation" = { name = "B+Left:AirShot" }
+"040-b-left-ability-activation" = { name = "B+Left:RandomTrap" }
+"041-b-left-ability-activation" = { name = "B+Left:BugBomb" }
+"042-b-left-ability-activation" = { name = "B+Left:CrakOut" }
+"043-buster-patch" = { name = "CrakBuster" }
+"044-buster-patch" = { name = "PoisonBuster" }
+"045-default-full-synchro" = { name = "DFulSync" }
+"046-first-barrier200" = { name = "FstBarr200\nw/Bug" }
+"047-weapon-change" = { name = "BusterGuard1" }
+"048-weapon-change" = { name = "BusterCrakOut" }
+"049-buster-attack-15" = { name = "BusterAtk15\nw/Bug" }
+"050-gigafolder1" = { name = "GigFldr1\nw/Bug" }
+"051-charge-shot-switch" = { name = "+CopyDmg" }
+"052-charge-shot-switch" = { name = "+WideSht1" }
+"053-charge-shot-switch" = { name = "+Blizzard" }
+"054-charge-shot-switch" = { name = "+HeatBrth" }
+"055-charge-shot-switch" = { name = "+ElecShok" }
+"056-charge-shot-switch" = { name = "+WoodPwdr" }
+"057-charge-shot-switch" = { name = "+PnlRetrn" }
+"058-charge-shot-switch" = { name = "+WideSwrd" }
+"059-megaman-color-change" = { name = "MM color:Red" }
+"060-megaman-color-change" = { name = "MM color:Yellow" }
+"061-max-hp-up" = { name = "MAX HP+550" }
+"062-max-hp-up" = { name = "MAX HP+550" }
+"063-max-hp-up" = { name = "MAX HP+600" }
+"064-max-hp-up" = { name = "MAX HP+600" }
+"065-max-hp-up" = { name = "MAX HP+650" }
+"066-max-hp-up" = { name = "MAX HP+650\nw/Bug" }
+"067-max-hp-up" = { name = "MAX HP+700\nw/Bug" }
+"068-b-left-ability-activation" = { name = "B+Left:MegEnBom" }
+"069-b-left-ability-activation" = { name = "B+Left:Recov10" }
+"070-b-left-ability-activation" = { name = "B+Left:PnlRetrn" }
+"071-b-left-ability-activation" = { name = "B+Left:NrthWind" }
+"072-b-left-ability-activation" = { name = "B+Left:Lance" }
+"073-b-left-ability-activation" = { name = "B+Left:DublCrak" }
+"074-triple-supporter-1-2" = { name = "TripSupp 1/2" }
+"075-triple-supporter-2-2" = { name = "TripSupp 2/2" }
+"076-all-guard-1-2" = { name = "AllGuard 1/2\nw/Bug" }
+"077-all-guard-2-2" = { name = "AllGuard 2/2\nw/Bug" }
+"078-first-life-aura" = { name = "FstLifeAur\nw/Bug" }
+"079-charge-shot-switch" = { name = "+Hole" }
+"080-charge-shot-switch" = { name = "+WideSht2" }
+"081-charge-shot-switch" = { name = "+ZapRing" }
+"082-charge-shot-switch" = { name = "+SandRing" }
+"083-charge-shot-switch" = { name = "+EnergBom" }
+"084-charge-shot-switch" = { name = "+Thunder2" }
+"085-charge-shot-switch" = { name = "+Repair" }
+"086-charge-shot-switch" = { name = "+TripCrak" }
+"087-charge-shot-switch" = { name = "+LongSwrd" }
+"088-pet-menu-color-change" = { name = "PETscrn clr:Black" }
+"089-megaman-color-change" = { name = "MM color:White" }
+"090-megaman-color-change" = { name = "MM color:Green" }
+"091-max-hp-up" = { name = "MAX HP+700\nw/Bug" }
+"092-max-hp-up" = { name = "MAX HP+750" }
+"093-max-hp-up" = { name = "MAX HP+750\nw/Bug" }
+"094-max-hp-up" = { name = "MAX HP+800" }
+"095-max-hp-up" = { name = "MAX HP+800\nw/Bug" }
+"096-max-hp-up" = { name = "MAX HP+850" }
+"097-max-hp-up" = { name = "MAX HP+850\nw/Bug" }
+"098-max-hp-up" = { name = "MAX HP+900" }
+"099-max-hp-up" = { name = "MAX HP+900\nw/Bug" }
+"100-max-hp-up" = { name = "MAX HP+950\nw/Bug" }
+"101-max-hp-up" = { name = "MAX HP+1000" }
+"102-buster-patch" = { name = "IceBuster" }
+"103-fullcustom-charge-1-2" = { name = "+FullCust 1/2\nw/Bug" }
+"104-fullcustom-charge-2-2" = { name = "+FullCust 2/2\nw/Bug" }
+"105-panel-change" = { name = "Pnl:Holy\nw/Bug" }
+"106-weapon-change" = { name = "BusterReflect\nw/Bug" }
+"107-weapon-change" = { name = "BusterFlower" }
+"108-weapon-change" = { name = "BusterWaterGun" }
+"109-megafolder3" = { name = "MegFldr3\nw/Bug" }
+"110-custom3" = { name = "Custom3\nw/Bug" }
+"111-gigafolder1" = { name = "GigFldr1" }
+"112-b-left-ability-activation" = { name = "B+Left:TripCrak" }
+"113-charge-shot-switch" = { name = "+WideSht3" }
+"114-charge-shot-switch" = { name = "+Thunder3" }
+"115-charge-shot-switch" = { name = "+WindRack" }
+"116-charge-shot-switch" = { name = "+MegEnBom" }
+"117-charge-shot-switch" = { name = "+Ball" }
+"118-charge-shot-switch" = { name = "+BugBomb" }
+"119-charge-shot-switch" = { name = "+WideBlde\nw/Bug" }
+"120-charge-shot-switch" = { name = "+LongBlde\nw/Bug" }
+"121-roll-soul" = { name = "RollSoul\nw/Bug" }
+"122-guts-soul" = { name = "GutsSoul\nw/Bug" }
+"123-wind-soul" = { name = "WindSoul\nw/Bug" }
+"124-search-soul" = { name = "SrchSoul\nw/Bug" }
+"125-fire-soul" = { name = "FireSoul\nw/Bug" }
+"126-thunder-soul" = { name = "ThunSoul\nw/Bug" }
+"127-proto-soul" = { name = "ProtSoul\nw/Bug" }
+"128-number-soul" = { name = "NumSoul\nw/Bug" }
+"129-metal-soul" = { name = "MetlSoul\nw/Bug" }
+"130-junk-soul" = { name = "JunkSoul\nw/Bug" }
+"131-aqua-soul" = { name = "AquaSoul\nw/Bug" }
+"132-wood-soul" = { name = "WoodSoul\nw/Bug" }
+"133-weapon-change" = { name = "BusterMnBom" }
 
 # The bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool that lists a
 # build's bugs with their levels (nettai-match's `build`): every bug the NaviCust or a patch card can bring, each a

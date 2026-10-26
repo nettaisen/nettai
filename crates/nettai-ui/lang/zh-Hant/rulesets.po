@@ -1,0 +1,102 @@
+# Traditional Chinese: a ruleset's page (ui/ruleset.slint), which the lobby and the build editor open over themselves.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hant\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# Where its Back goes, and the tag a preset's name has.
+msgid "Editor"
+msgstr "編輯器"
+
+msgid "Preset"
+msgstr "內建"
+
+# Why the ruleset shown can't be changed here.
+msgid "A preset can't be changed. Duplicate it to make your own."
+msgstr "內建規則無法變更。複製後即可成為你自己的規則。"
+
+msgid "This is your opponent's choice. Duplicate it to make your own."
+msgstr "這是對手選擇的規則。複製後即可成為你自己的規則。"
+
+# How much a category allows.
+msgid "All allowed"
+msgstr "全部可用"
+
+msgid "None allowed"
+msgstr "全部禁用"
+
+msgid "{} of {} allowed"
+msgstr "可用 {}/{}"
+
+# The row of the name: Version exclusives, a build of one version's alone or of the versions' mixed.
+msgid "Version exclusives"
+msgstr "版本限定"
+
+msgid "One version"
+msgstr "單一版本"
+
+msgid "Mix versions"
+msgstr "混用版本"
+
+msgid "Search"
+msgstr "搜尋"
+
+# The key hint of an item's row.
+msgid "Allow or not"
+msgstr "可用／禁用"
+
+# The categories' panel's title.
+msgid "Categories"
+msgstr "類別"
+
+# The quick choice of every version's own items, beside the category's ALL and NONE.
+msgid "Both"
+msgstr "兩者"
+
+# The footer: how many items the category shown lists.
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} 個項目"
+
+# The page's buttons: a file of the ruleset shown, written out; a file read in as the player's own.
+msgctxt "verb"
+msgid "Export"
+msgstr "匯出"
+
+msgctxt "verb"
+msgid "Import"
+msgstr "匯入"
+
+# What the system's file dialogs ask for.
+msgid "Ruleset files"
+msgstr "規則檔案"
+
+# A paired category's page (the Party page: its navis, and their programs, every navi's and each one's own): how much
+# it allows and how many programs it holds back (in the categories' list, and in its head); a navi's own bans; the row
+# of every navi; the programs' title; a program every navi's ban holds back.
+msgid "{} of {} navis"
+msgstr "可用領航員 {}/{}"
+
+msgid "{} of {} navis, {n} program ban"
+msgid_plural "{} of {} navis, {n} program bans"
+msgstr[0] "可用領航員 {}/{}，禁用程式 {n} 個"
+
+msgid "{} of {} allowed, {n} program ban"
+msgid_plural "{} of {} allowed, {n} program bans"
+msgstr[0] "可用 {}/{}，禁用程式 {n} 個"
+
+msgid "{} banned"
+msgstr "禁用 {} 個"
+
+msgid "All navis"
+msgstr "所有領航員"
+
+msgid "Programs for all navis"
+msgstr "所有領航員的程式"
+
+msgid "{}'s programs"
+msgstr "{}的程式"
+
+msgid "Banned for all navis"
+msgstr "對所有領航員禁用"

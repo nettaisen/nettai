@@ -1,0 +1,136 @@
+# Traditional Chinese: Practice (ui/screens/practice.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-Hant\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ---- The practice menu's rows ----
+
+# The DUMMY group's: the dummy's build, one of the game's builds.
+msgid "Dummy's build"
+msgstr "假人的配置"
+
+# The STAGE group's: where each round is fought. Their choices are the content's arenas and backgrounds, after
+# Random (each round's picked from the seed).
+msgid "Arena"
+msgstr "場地"
+
+msgid "Background"
+msgstr "背景"
+
+msgid "Random"
+msgstr "隨機"
+
+# ---- Before the battle, and in it ----
+
+msgid "Dummy"
+msgstr "假人"
+
+# Beside MENU on a phone: {} is the round's number.
+msgid "Practice · Round {}"
+msgstr "練習 · 第 {} 回合"
+
+# ---- The practice menu ----
+
+# Under the menu's title: the two builds' names.
+msgid "{} vs {}"
+msgstr "{} vs {}"
+
+# The menu's groups: where the battle is fought (the arena, the background, the music), and the battle's options.
+msgid "Stage"
+msgstr "舞台"
+
+msgid "Options"
+msgstr "選項"
+
+msgid "Action"
+msgstr "行動"
+
+msgid "Stands still"
+msgstr "站著不動"
+
+msgid "Moves around"
+msgstr "四處移動"
+
+# The dummy fights as a player would, as well as its Level lets it.
+msgid "Fights"
+msgstr "戰鬥"
+
+# The dummy is played on a second connected gamepad.
+msgid "A second pad"
+msgstr "第二支手把"
+
+# How well the dummy fights: a row under the Action while it is Fights.
+msgid "Level"
+msgstr "強度"
+
+msgctxt "level"
+msgid "Easy"
+msgstr "簡單"
+
+msgctxt "level"
+msgid "Normal"
+msgstr "普通"
+
+msgctxt "level"
+msgid "Hard"
+msgstr "困難"
+
+# Battle, rows of two columns under the headings YOU and DUMMY, a value for each side: a side's HP stays as it
+# goes, or comes back full once a hit is over.
+msgid "HP"
+msgstr "HP"
+
+msgid "Normal"
+msgstr "正常"
+
+msgid "Refills"
+msgstr "自動回復"
+
+# Each side's navi held in one of the game's emotions (their words the content's), or as the game goes (Normal,
+# the HP row's word).
+msgid "Emotion"
+msgstr "情感"
+
+msgid "Custom gauge"
+msgstr "改裝計量表"
+
+msgid "Always full"
+msgstr "永遠全滿"
+
+# The order the custom screen deals the folder in: shuffled, or from the folder's top.
+msgid "Chip draw"
+msgstr "晶片抽取"
+
+msgid "Shuffled"
+msgstr "隨機順序"
+
+msgid "Folder order"
+msgstr "資料夾順序"
+
+msgid "Input display"
+msgstr "輸入顯示"
+
+msgid "Off"
+msgstr "關"
+
+msgid "On"
+msgstr "開"
+
+msgid "Resume"
+msgstr "繼續"
+
+msgid "Restart"
+msgstr "重新開始"
+
+# Ends the session: back to Practice's entry.
+msgid "Exit"
+msgstr "結束"
+
+# ---- Over the battle ----
+
+# In a corner over the battle, beside a count of chips ("34/58"): the dummy that fights is getting ready, its
+# chips being looked at before it can play (a few seconds, the first time a folder's chips are met).
+msgid "Getting ready"
+msgstr "準備中"

@@ -118,7 +118,7 @@ language = "ja"
 "darkwide" = { name = "ダークワイド", description = "タテ3マスノワイド\nショットガアイテヲ\nツラヌイテススム" }
 "dbldream" = { name = "ダブルドリーム", description = "" }
 "dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
-"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAでさいこう3だん\nのソード攻撃" }
 "dethphnx" = { name = "デスフェニックス", description = "フィールド中に\nヤミの炎、さらに\nナビをリサイクル!" }
 "dicebons" = { name = "サイコロプラス", description = "" }
 "discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
@@ -319,7 +319,7 @@ language = "ja"
 "skully1" = { name = "スカルチェーン1", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
 "skully2" = { name = "スカルチェーン2", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
 "skully3" = { name = "スカルチェーン3", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
-"slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
+"slasher" = { name = "イアイフォーム", description = "Aをおしている間に\n入ってくるてきを\nきる!" }
 "slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
 "snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
 "snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
@@ -442,7 +442,7 @@ language = "ja"
 "attck-1" = { name = "アタック+1", description = "ロックバスターの\n攻撃力が1アップ!" }
 "attckmax" = { name = "アタックMAX", description = "ロックバスターの\n攻撃力がMAXに!" }
 "autoheal" = { name = "セルフリカバリー", description = "バトルしゅうりょうご\nHPがすこしだけ\nかいふくする" }
-"autorun" = { name = "オートランニング", description = "Bボタンをおしながら\nじゃなくても ナビが\nはしるようになる" }
+"autorun" = { name = "オートランニング", description = "Bをおしながら\nじゃなくても ナビが\nはしるようになる" }
 "battery" = { name = "バッテリーモード", description = "バッテリーじょうたい\nで電気属性ウイルスが\nよってくるようになる" }
 "beat" = { name = "ビートサポート", description = "たいせんせんよう!\nメガクラスいじょうの\nチップをうばいさる" }
 "bodypack" = { name = "ボディパック", description = "アーマー、シャツ\nエア、フロートの\n4てんパック!" }
@@ -450,7 +450,7 @@ language = "ja"
 "bustpack" = { name = "バスターパック", description = "バスターのアタック、\nラピッド、チャージが\nそれぞれ+3!" }
 "charge-1" = { name = "チャージ+1", description = "ロックバスターの\nチャージ力が\n1アップ!" }
 "chargmax" = { name = "チャージMAX", description = "ロックバスターの\nチャージ力が\nMAXに!" }
-"chivalry" = { name = "ダンディズム", description = "おとこのびがくが\nわかるナビになる\nLボタンでかいわ!" }
+"chivalry" = { name = "ダンディズム", description = "おとこのびがくが\nわかるナビになる\nLでかいわ!" }
 "collect" = { name = "コレクターズアイ", description = "てきのざんがいから\nチップデータをみつけ\nだすがんりきがアップ" }
 "custom1" = { name = "カスタム1", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+1" }
 "custom2" = { name = "カスタム2", description = "カスタム画面で\nさいしょにえらべる\nチップ枚数が+2" }
@@ -465,7 +465,7 @@ language = "ja"
 "hp-50" = { name = "HP+50", description = "マックスHPが\n50ふえる!" }
 "hp-500" = { name = "HP+500", description = "マックスHPが\n500ふえる!" }
 "hubbatc" = { name = "サイトバッチ", description = "せんざいのうりょくを\n100%ひきだす\nキケンなプログラム" }
-"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLボタンで\nはなしてみてください" }
+"humor" = { name = "ユーモアセンス", description = "きまじめすぎるナビに\nくみこんでLで\nはなしてみてください" }
 "jungle" = { name = "ジャングルランド", description = "ジャングルのかおりを\nほうしゅつして木属性\nウイルスをひきつける" }
 "megfldr1" = { name = "メガフォルダ1", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+1" }
 "megfldr2" = { name = "メガフォルダ2", description = "フォルダに入れられる\nメガクラスチップの\n枚数が+2" }
@@ -634,15 +634,15 @@ language = "ja"
 "attack_sub" = "アタック-{amount}"
 "attack_times" = "アタック✕{amount}"
 "auto_heal" = "セルフリカバリー"
-"b_button.megaman/buster" = "Bボタンバスター"
-"b_button.megaman/crakout" = "Bボタンクラック"
-"b_button.megaman/minibomb" = "Bボタンミニボム"
-"b_button.megaman/sword" = "Bボタンソード"
+"b_button.megaman/buster" = "Bバスター"
+"b_button.megaman/crakout" = "Bクラック"
+"b_button.megaman/minibomb" = "Bミニボム"
+"b_button.megaman/sword" = "Bソード"
 "b_button.megaman/tri-buster" = "トリプルバスター"
-"back_special" = "B+左"
-"back_special.megaman/crsshld1" = "B+左でカースS"
-"back_special.megaman/guard1" = "B+左でメットG"
-"back_special.megaman/shield" = "B+左でシールド"
+"back_special" = "B+←"
+"back_special.megaman/crsshld1" = "B+←でカースS"
+"back_special.megaman/guard1" = "B+←でメットG"
+"back_special.megaman/shield" = "B+←でシールド"
 "beat" = "ビートサポート"
 "body.aqua" = "アクアボディ"
 "body.elec" = "エレキボディ"
