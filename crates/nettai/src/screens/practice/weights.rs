@@ -7,13 +7,15 @@
 //!
 //! It is asked for when Fights is first picked in a run ([`Weights::wanted`]), then the same for every dummy that
 //! fights. The data folder keeps the last one downloaded (`ai/<line>/nettai-ai.safetensors`): where it is the
-//! index's, it is read from there; else the index's is downloaded, checked against its SHA-256 and kept. With no
+//! index's, it is read from there; else the index's is downloaded (`nettai_platform::http`, reqwest's, on a task that
+//! is cancelled if the app quits first), checked against its SHA-256 and kept. With no
 //! index (no connection, or no line for this version), the one kept plays if there is one.
 //!
 //! `NETTAI_AI_WEIGHTS=<file>` (the desktop's) names weights to play instead, for testing them: nothing is
 //! downloaded. Weights this encoder can't play are refused either way (`Net::from_safetensors`: the observation
 //! spec they were trained on), and the dummy stands still, the reason in the log.
 
+use nettai_platform::task::Task;
 use nettai_training::ai::Arriving;
 use nettai_training::net::Net;
 use sha2::{Digest, Sha256};
@@ -29,15 +31,15 @@ const MAX_INDEX: u64 = 1 << 20;
 /// The variable naming weights to play instead (the desktop's).
 pub(crate) const OVERRIDE: &str = "NETTAI_AI_WEIGHTS";
 
-/// The process's network, once asked for.
+/// The process's network, once asked for, and the task bringing it (cancelled if this goes first: the app quits).
 #[derive(Default)]
-pub(crate) struct Weights(Option<Arriving>);
+pub(crate) struct Weights(Option<(Arriving, Option<Task>)>);
 
 impl Weights {
     /// The network the dummy that fights plays with: asked for the first time this is called (on its way after),
     /// the same one every time after.
     pub(crate) fn wanted(&mut self) -> Arriving {
-        self.0.get_or_insert_with(fetch).clone()
+        self.0.get_or_insert_with(fetch).0.clone()
     }
 }
 
@@ -86,62 +88,55 @@ fn kept() -> PathBuf {
     crate::paths::data().join("ai").join(line()).join("nettai-ai.safetensors")
 }
 
-/// The network asked for: `NETTAI_AI_WEIGHTS`'s file if it names one, else the repository's for this line (the
-/// copy kept where it is that one).
-fn fetch() -> Arriving {
+/// The network asked for, on its way: `NETTAI_AI_WEIGHTS`'s file if it names one, else the repository's for this
+/// line (the copy kept where it is that one), and the task bringing it (none: it couldn't start, and the network has
+/// arrived as that error).
+fn fetch() -> (Arriving, Option<Task>) {
     let arriving = Arriving::default();
+    let done = arriving.clone();
+    let task = nettai_platform::task::spawn(async move { done.arrive(network().await) });
+    match task {
+        Ok(task) => (arriving, Some(task)),
+        Err(why) => {
+            arriving.arrive(Err(format!("asking for the AI's weights: {why}")));
+            (arriving, None)
+        }
+    }
+}
+
+/// The network: `NETTAI_AI_WEIGHTS`'s file, else the repository's for this line, from the copy kept where it is the
+/// index's, else downloaded, checked and kept; with no index, the copy kept.
+async fn network() -> Result<Arc<Net>, String> {
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(path) = std::env::var_os(OVERRIDE).map(PathBuf::from) {
         ::log::info!(target: "nettai", "the dummy's AI plays {} ({OVERRIDE})", path.display());
-        let done = arriving.clone();
-        let started = nettai_platform::thread::spawn("ai-weights", move || {
-            done.arrive(std::fs::read(&path).map_err(|e| format!("{OVERRIDE}, {}: {e}", path.display())).and_then(|bytes| read(&bytes)));
-        });
-        if let Err(why) = started {
-            arriving.arrive(Err(format!("reading the AI's weights: {why}")));
-        }
-        return arriving;
+        return read(&std::fs::read(&path).map_err(|e| format!("{OVERRIDE}, {}: {e}", path.display()))?);
     }
-    let done = arriving.clone();
-    let asked = nettai_platform::http::get(&format!("{RAW}/index.json"), MAX_INDEX, move |index| {
-        let kept = kept();
-        let entry = match index.and_then(|body| entry(&body, &line())) {
-            Ok(entry) => entry,
-            Err(why) => {
-                return done.arrive(match nettai_platform::fs::read(&kept) {
-                    Ok(bytes) => {
-                        ::log::warn!(target: "nettai", "{why}: the dummy's AI plays the weights kept ({})", kept.display());
-                        read(&bytes)
-                    }
-                    Err(_) => Err(why),
-                });
-            }
-        };
-        if let Ok(bytes) = nettai_platform::fs::read(&kept)
-            && sha256(&bytes) == entry.sha256
-        {
-            return done.arrive(read(&bytes));
-        }
-        let url = format!("{RAW}/{}", entry.file);
-        let arrived = done.clone();
-        let asked = nettai_platform::http::get(&url, MAX_BYTES, move |body| {
-            arrived.arrive(body.and_then(|bytes| {
-                let net = checked(&bytes, &entry)?;
-                let written = kept.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|_| nettai_platform::fs::write(&kept, &bytes));
-                if let Err(why) = written {
-                    crate::errors::log("keeping the AI's weights", &format!("{}: {why}", kept.display()));
+    let kept = kept();
+    let entry = match nettai_platform::http::get(&format!("{RAW}/index.json"), MAX_INDEX).await.and_then(|body| entry(&body, &line())) {
+        Ok(entry) => entry,
+        Err(why) => {
+            return match nettai_platform::fs::read(&kept) {
+                Ok(bytes) => {
+                    ::log::warn!(target: "nettai", "{why}: the dummy's AI plays the weights kept ({})", kept.display());
+                    read(&bytes)
                 }
-                Ok(net)
-            }));
-        });
-        if let Err(why) = asked {
-            done.arrive(Err(format!("downloading the AI's weights: {why}")));
+                Err(_) => Err(why),
+            };
         }
-    });
-    if let Err(why) = asked {
-        arriving.arrive(Err(format!("downloading the AI's index: {why}")));
+    };
+    if let Ok(bytes) = nettai_platform::fs::read(&kept)
+        && sha256(&bytes) == entry.sha256
+    {
+        return read(&bytes);
     }
-    arriving
+    let bytes = nettai_platform::http::get(&format!("{RAW}/{}", entry.file), MAX_BYTES).await?;
+    let net = checked(&bytes, &entry)?;
+    let written = kept.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|_| nettai_platform::fs::write(&kept, &bytes));
+    if let Err(why) = written {
+        crate::errors::log("keeping the AI's weights", &format!("{}: {why}", kept.display()));
+    }
+    Ok(net)
 }
 
 #[cfg(test)]
@@ -177,7 +172,7 @@ mod tests {
             std::env::set_var("NETTAI_DATA", data.path());
             std::env::remove_var(OVERRIDE);
         }
-        let arrived = |arriving: Arriving| {
+        let arrived = |(arriving, _task): (Arriving, Option<Task>)| {
             let asked = std::time::Instant::now();
             while arriving.get().is_none() {
                 assert!(asked.elapsed().as_secs() < 300, "nothing arrived");

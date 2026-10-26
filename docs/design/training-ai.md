@@ -969,8 +969,9 @@ version and a network trained for it, published under its own line, the older li
 
 - **The app** (the `ai` feature; `screens/practice/weights.rs`) asks for it when Fights is first picked in a run
   (the user's choice: not at start), then shares it: the data folder's copy (`ai/<line>/`) where its SHA-256 is the
-  index's, else the line's downloaded (`nettai_platform::http::get`, its `http` feature: ureq on the desktop,
-  `fetch` in the browser,
+  index's, else the line's downloaded (`nettai_platform::http::get`, its `http` feature: reqwest, async, run as a
+  `nettai_platform::task` that is cancelled when dropped: tokio's runtime on the desktop, `fetch` in the browser
+  (the user: "use reqwest instead of ureq? ureq isn't cancellable or async"),
   from raw.githubusercontent.com, which a page may fetch), checked and kept; with no index, the copy kept. The AI
   plugged in meanwhile is `ai::WaitingAi` on an `ai::Arriving`: till the network arrives it waits as a decision
   waits for a fingerprint (its custom screen held), then it is that network's `NetAi`; one that arrives as an error

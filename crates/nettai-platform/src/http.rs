@@ -1,56 +1,34 @@
-//! A file over HTTP(S): [`get`]. On the desktop ureq's (with rustls: the same crate the app's updates fetch with), on
-//! a thread of its own; in the browser its `fetch`, on the page's event loop. Nothing waits: the body, or why there
-//! is none, goes to a callback.
+//! A file over HTTP(S) ([`get`], the `http` feature): reqwest's, async, the same call on both sides: hyper and
+//! rustls (ring) on the desktop, the browser's `fetch` there. Run it with [`crate::task::spawn`] (on the desktop its
+//! futures need that runtime); dropping it, or its task, cancels the request.
 
-/// GET `url`, at most `limit` bytes of it: `done` gets the body, or why there is none (no connection, a status
-/// other than 200, a body over `limit`), on another thread on the desktop and on the page's event loop in the
-/// browser. Err: the desktop's thread couldn't start (`done` dropped unasked).
-pub fn get(url: &str, limit: u64, done: impl FnOnce(Result<Vec<u8>, String>) + Send + 'static) -> std::io::Result<()> {
+/// GET `url`, at most `limit` bytes of it: the body, or why there is none (no connection, a status other than a
+/// success, a body over `limit`).
+pub async fn get(url: &str, limit: u64) -> Result<Vec<u8>, String> {
+    let said = |e: reqwest::Error| format!("{url}: {e}");
+    let response = client()?.get(url).send().await.map_err(said)?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("{url}: {status}"));
+    }
+    if response.content_length().is_some_and(|n| n > limit) {
+        return Err(format!("{url}: over {limit} bytes"));
+    }
+    let body = response.bytes().await.map_err(said)?;
+    if body.len() as u64 > limit {
+        return Err(format!("{url}: over {limit} bytes"));
+    }
+    Ok(body.to_vec())
+}
+
+/// A client: on the desktop with rustls's ring provider, installed as the process's the first time (reqwest has
+/// none of its own here: the tree's rustls is ring's, nettai-rtc's too).
+fn client() -> Result<reqwest::Client, String> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let url = url.to_string();
-        crate::thread::spawn("http-get", move || done(desktop::get(&url, limit)))
+        static PROVIDER: std::sync::Once = std::sync::Once::new();
+        // (Err: one is installed already, which serves as well.)
+        PROVIDER.call_once(|| drop(rustls::crypto::ring::default_provider().install_default()));
     }
-    #[cfg(target_arch = "wasm32")]
-    {
-        web::get(url, limit, Box::new(done));
-        Ok(())
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-mod desktop {
-    pub fn get(url: &str, limit: u64) -> Result<Vec<u8>, String> {
-        let mut response = ureq::get(url).call().map_err(|e| format!("{url}: {e}"))?;
-        // (ureq's own limit, 10 MB, is under a network's weights: the caller's instead.)
-        response.body_mut().with_config().limit(limit).read_to_vec().map_err(|e| format!("{url}: {e}"))
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-mod web {
-    use wasm_bindgen::prelude::*;
-
-    #[wasm_bindgen(inline_js = r#"
-export async function nettai_get(url, limit) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${url}: ${response.status} ${response.statusText}`);
-    const body = new Uint8Array(await response.arrayBuffer());
-    if (body.length > limit) throw new Error(`${url}: ${body.length} bytes, over ${limit}`);
-    return body;
-}
-"#)]
-    extern "C" {
-        fn nettai_get(url: &str, limit: f64) -> js_sys::Promise;
-    }
-
-    pub fn get(url: &str, limit: u64, done: Box<dyn FnOnce(Result<Vec<u8>, String>)>) {
-        let asked = nettai_get(url, limit as f64);
-        wasm_bindgen_futures::spawn_local(async move {
-            done(match wasm_bindgen_futures::JsFuture::from(asked).await {
-                Ok(body) => Ok(js_sys::Uint8Array::new(&body).to_vec()),
-                Err(why) => Err(why.as_string().or_else(|| js_sys::Error::from(why).message().as_string()).unwrap_or_else(|| "fetch failed".into())),
-            });
-        });
-    }
+    reqwest::Client::builder().build().map_err(|e| format!("an HTTP client: {e}"))
 }
