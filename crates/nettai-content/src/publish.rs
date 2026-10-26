@@ -14,7 +14,8 @@
 //! 6. It creates the release: tag `<line>-r<revision>` on the game pack's commit, with the bundle (`<id>.tar.gz`)
 //!    and its index entry (`bundle.json`, a [`Published`]).
 //!
-//! `--dry-run` does all but the last, and leaves the release's files in `target/publish/<game>/`.
+//! It shows the `gh release create` it runs; `--dry-run` does all but run it, and leaves the release's files in
+//! `target/publish/<game>/<tag>/`.
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -147,13 +148,6 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
     let entry = file(ENTRY, entry_json(&published).as_bytes())?;
     let notes = file("notes.md", notes(&o.game, &line, &published).as_bytes())?;
     let target = &published.packs[&o.game];
-    if o.dry_run {
-        say(&format!("6. (dry run) the release {title}, tag {tag} on {target}, of {}", release.display()));
-        eprint!("{}", entry_json(&published));
-        return Ok(());
-    }
-
-    say(&format!("6. the release {title}"));
     let args: Vec<&OsStr> = [
         OsStr::new("release"),
         OsStr::new("create"),
@@ -170,10 +164,28 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
         entry.as_os_str(),
     ]
     .into();
+    let command = std::iter::once(OsStr::new("gh")).chain(args.iter().copied()).map(quoted).collect::<Vec<_>>().join(" ");
+    eprint!("{}", entry_json(&published));
+    if o.dry_run {
+        say(&format!("6. (dry run) the release {title}, by\n{command}"));
+        return Ok(());
+    }
+
+    say(&format!("6. the release {title}, by\n{command}"));
     let url = run_tool("gh", None, &args)?;
     eprintln!("   {url}");
     eprintln!("   the site builds from it: {} and {}", bundle::index_url(&o.game), bundle::bundle_url(&o.game, built.id));
     Ok(())
+}
+
+/// `arg` as a POSIX shell reads it back: bare when it is only safe characters, else single-quoted.
+fn quoted(arg: &OsStr) -> String {
+    let s = arg.to_string_lossy();
+    if !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "-_./:=@+,".contains(c)) {
+        s.into_owned()
+    } else {
+        format!("'{}'", s.replace('\'', r"'\''"))
+    }
 }
 
 fn say(what: &str) {
@@ -516,6 +528,15 @@ mod tests {
     }
 
     #[test]
+    fn a_command_is_shown_as_a_shell_reads_it() {
+        assert_eq!(quoted(OsStr::new("0.11-r1")), "0.11-r1");
+        assert_eq!(quoted(OsStr::new("/x/target/publish/exe6/0.11-r1/bundle.json")), "/x/target/publish/exe6/0.11-r1/bundle.json");
+        assert_eq!(quoted(OsStr::new("exe6 r1 for 0.11")), "'exe6 r1 for 0.11'");
+        assert_eq!(quoted(OsStr::new("it's")), r"'it'\''s'");
+        assert_eq!(quoted(OsStr::new("")), "''");
+    }
+
+    #[test]
     fn only_litter_is_clean() {
         assert!(unclean("").is_empty());
         assert!(unclean("?? .DS_Store\n!! chips/.DS_Store\n").is_empty());
@@ -538,6 +559,35 @@ mod tests {
         assert!(parse(tags(&["exe6", "exe5"]).into_iter()).is_err());
         assert!(parse(tags(&["--dry-run"]).into_iter()).is_err());
         assert!(parse(tags(&["exe6", "--packs"]).into_iter()).is_err());
+    }
+
+    /// A bundle plays what the checkout's content plays: its content hash is the one a build run from the
+    /// repository computes for the same game. (Needs the asset packs: `NETTAI_PACKS`, default the checkout's data/.)
+    #[test]
+    #[ignore]
+    fn a_bundle_plays_what_the_checkout_plays() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let packs = std::env::var_os("NETTAI_PACKS").map_or_else(|| root.join("data"), PathBuf::from);
+        let content = root.join("content");
+        let all: BTreeMap<String, packs::PackManifest> = packs::packs(&content).unwrap().into_iter().map(|p| (p.id.clone(), p)).collect();
+        for game in ["exe4", "exe5", "exe6"] {
+            let members: Vec<String> = packs::with_depends(&all, game).unwrap().iter().map(|p| p.id.clone()).collect();
+            let manifest = Manifest {
+                game: game.into(),
+                line: "0.11".into(),
+                revision: 1,
+                packs: members.iter().map(|id| (id.clone(), "0".repeat(40))).collect(),
+            };
+            let folders: Vec<(&str, PathBuf)> = members.iter().map(|id| (id.as_str(), content.join(id))).collect();
+            let folders: Vec<(&str, &Path)> = folders.iter().map(|(id, dir)| (*id, dir.as_path())).collect();
+            let built = bundle::build(manifest, &folders).unwrap();
+            let dest = std::env::temp_dir().join(format!("nettai-plays-{game}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dest);
+            let hash = content_hash(&bundle::gzip(&built.tar), built.id, &dest, &packs.join(game), game);
+            let _ = std::fs::remove_dir_all(&dest);
+            let (checkout, _) = pack::load_battle(&content, &packs.join(game)).unwrap_or_else(|r| panic!("{game}: {r}"));
+            assert_eq!(hash.unwrap(), checkout.hash(), "{game}");
+        }
     }
 
     /// Each game's published site: its index reads, and the line's newest bundle downloads, has its id, unpacks and
