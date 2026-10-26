@@ -1084,6 +1084,8 @@ the US's (the user's choice).
 - **Another language's table is a frontend's alone.** It changes neither the battle nor `Content::hash()`, so two
   players can each read their own language in one netbattle. A translated description may have another number of
   lines than the own one; the battle keeps the own one's timing.
+- **Since 2026-10-25 the game's strings in every table are the Legacy Collection's** (§14): what follows here is
+  how the tables were first written, from the ROMs.
 - **`en.toml` is the US ROMs' strings** (written once from the definitions' former text, which was the US ROM's,
   but for what the content names itself: the chips the US release cut and named otherwise or not at all, Count's
   and Django's; the Crosses' names; the patch cards' names; the three Giga chips' descriptions, which no ROM has). **`ja.toml` is
@@ -1959,3 +1961,70 @@ the custom-screen labs of the three games and the replays finds none (§13.6 lis
   OK and SHUFFLE in their three looks, the help panel, the chatbox (message box, its corners), the Program Advance
   logo; EXE5's custom window, UNITE, the chatbox; EXE4's custom window and the description chatbox; the gauge's and the
   emotion window's drawings of EXE5 and EXE4 against their pictures.
+
+## 14. The Legacy Collection's words, Chinese, and one font (as built, 2026-10-25)
+
+The user: "can you extract simplified and traditional chinese translations for content from bnlc vol2 and use
+those? and also extract english and japanese and if there are differences use the bnlc translations. also add
+simplified chinese and traditional chinese locales for nettai with full translations", and along the way "can you
+make it generate directly from bnlc instead? instead of from the rom", "you should use one unified font for all
+languages so it's not inconsistent" (then Noto Sans CJK, from a specimen of candidates), "just use noto sans cjk
+without subsetting it", "don't force anything into any fixed cells like that" and "i don't think english and
+japanese should do that either".
+
+### 14.1 Where the words come from
+
+Mega Man Battle Network Legacy Collection Vol. 2 runs the Japanese ROMs and draws its own text in English,
+Japanese, Simplified and Traditional Chinese from message packs keyed by the Japanese ROMs' text archives, and
+its card reader's texts (the patch cards', EXE4's e-Reader chips'). bn6battle-verify's tools/bnlc reads them
+(bnlc.py: the formats) and places every table string in them (locales.py `places`, places/GAME.tsv: by the chip's
+number, by the table's string, near matches where the original wrote a button the collection draws as an icon,
+the area menu for backgrounds, the card reader). The game's strings of all four tables are the collection's
+(`apply`; `check` holds them to it): EXE5's gen_content.py and EXE4's chip_locales.py write the tables from the
+ROMs and then take the collection's in (`from_collection`); EXE6's gen-content no longer compares the strings with
+the ROMs, only that their fonts draw them.
+
+- Where the collection's English or Japanese differs from the ROMs', the tables now have it: EXE6 AquaMan for
+  SpoutMan (the navi, its chips, AquaCross), TmhawkCross, Z Saber, HeatPres's and AirRaid's descriptions, the patch
+  cards' official names and effect lines; EXE4's patch cards' official names (MAX HP+100); and others, about 450
+  strings in all.
+- English: the collection's dashes are hyphens and its full-width comma a comma and a space ("Lan, this is no
+  time"). A no-running message's characters per line time its chatbox (§10.3), so those messages are a character
+  longer than the US ROM's: a deliberate difference from the US games (gen-content's navi check counts the
+  content's string where it isn't the ROM's), and one of the content's hash.
+- The collection's button icons are Ⓐ Ⓑ Ⓛ where the language's GBA font has the marks (EXE6's US fonts, and the
+  Chinese, which the vector font draws), else the letters ("サイトをAでとめて": the Japanese fonts and EXE4's and
+  EXE5's US fonts have no marks); the D-pad as the original's words (Left, 左, いどう; 左, 方向键). The game's large
+  cross (✕) is ×, which every font has.
+- Not taken: the collection's stand-ins (ミテイ, a gift's text the save keeps), what it leaves empty, and the English
+  and Japanese of a place outside its field's archives (a JP-only chip named in a dialogue).
+
+### 14.2 The Chinese tables and the app
+
+`locales/zh-Hans.toml` and `zh-Hant.toml` of each game: the collection's Chinese for every game string, and the
+content's own strings (rulesets, battle themes, emotions, the bugs EXE4 lacks, the DS's party programs and chips,
+the content's patch card effect lines) translated by hand in its terms. The lettered pictures' words follow the
+collection's Chinese art: the banners stay English with the Japanese games' names (ROCKMAN, BLUES), as its
+telops are; "Cstmzing..." is 改装中… (改裝中…); the Cross window's names are the Crosses' Chinese names (高热交错);
+the chip window's help pictures keep their English titles over Chinese words. No pack has Chinese pictures or a
+Chinese pixel font (no GBA ROM has either), so a Chinese battle's pictures are its pack's own language's and its
+strings are drawn by the vector font in either mode (§10.3, the original's at the frame's resolution).
+
+The app's catalogs (crates/nettai-ui/lang/zh-Hans, zh-Hant) have every string, in the collection's terms (芯片/晶片,
+文件夹/資料夾, 领航员/領航員, 个人化装置/個人化裝置); docs/app.md §3.
+
+### 14.3 One font
+
+Every language's dynamic text, in the battle and in the app's body, is Noto Sans CJK: Google Fonts' variable Noto
+Sans JP (English and Japanese), SC and TC, whole (crates/nettai-render/fonts/noto-sans-cjk). `vfont::Cut::of`
+gives a language's cut; the lettering (the banners' words, the labels) is the same cut, bold and narrowed, in
+place of M PLUS 1 Code, which has no Chinese; Murecho is gone. The program holds the files once: the renderer
+embeds them and the app registers the same bytes with Slint's shared font collection (`lang::register_fonts`).
+The tests of the old font's metrics went with it.
+
+### 14.4 Boxes as wide as their text
+
+A chip's name, the other player's chip's telop, the custom screen's enemy names and the HUD's seconds take, on the
+text layer, as many cells as their text at its own width (`fonts::box_cells`), in every language: nothing is
+narrowed into the original's glyphs' cells (§9.4's rule stays for the boxes the original fixes: the chatbox's). The
+enemy names are right-aligned, ending at column 30 as the original's do.
