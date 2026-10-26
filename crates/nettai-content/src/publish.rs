@@ -143,7 +143,7 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
         return Err(why);
     }
     match &newest {
-        Some(n) => eprintln!("   r{}: {:016x}, another", n.revision, n.content_hash.0),
+        Some(n) => eprintln!("   r{}: {}, content hash {:016x}, from {}", n.revision, n.id, n.content_hash.0, commits_of(&n.packs)),
         None => eprintln!("   none: the line's first"),
     }
 
@@ -440,6 +440,11 @@ fn content_hash(gz: &[u8], id: BundleId, dest: &Path, assets: &Path, game: &str)
     }
 }
 
+/// Packs' commits, as `exe6 at 3163f547, exelib at a73907b5`.
+fn commits_of(packs: &BTreeMap<String, String>) -> String {
+    packs.iter().map(|(id, c)| format!("{id} at {}", &c[..c.len().min(8)])).collect::<Vec<_>>().join(", ")
+}
+
 /// A release's `bundle.json`: its index entry, pretty, in the entry's field order.
 fn entry_json(p: &Published) -> String {
     serde_json::to_string_pretty(p).expect("an entry is JSON") + "\n"
@@ -644,9 +649,10 @@ mod tests {
         }
     }
 
-    /// Each game's published site: its index reads, and the line's newest bundle downloads, has its id, unpacks and
-    /// loads with the main checkout's asset pack to the content hash the index gives. (Needs the network and the
-    /// asset packs: `NETTAI_PACKS`, a folder of them, default the checkout's data/.)
+    /// Each game's published site: its index reads, and each bundle of the line downloads, has its id, unpacks and
+    /// loads with the main checkout's asset pack to the content hash the index gives. Games with nothing published
+    /// for the line yet are passed over, but one must have it. (Needs the network and the asset packs:
+    /// `NETTAI_PACKS`, a folder of them, default the checkout's data/.)
     #[test]
     #[ignore]
     fn the_sites_serve_what_was_published() {
@@ -657,19 +663,27 @@ mod tests {
             assert!(out.status.success(), "{url}: {}", String::from_utf8_lossy(&out.stderr));
             out.stdout
         };
+        let mut checked = 0;
         for game in ["exe4", "exe5", "exe6"] {
             let index: bundle::Index = serde_json::from_slice(&fetch(&bundle::index_url(game))).unwrap();
             assert_eq!(index.game, game);
-            let lines = &index.lines[&line];
-            assert_eq!(lines.iter().map(|p| p.revision).collect::<Vec<_>>(), (1..=lines.len() as u32).collect::<Vec<_>>());
-            let newest = index.newest(&line).unwrap();
-            let gz = fetch(&bundle::bundle_url(game, newest.id));
-            assert_eq!(gz.len() as u64, newest.size, "{game}");
-            let dest = std::env::temp_dir().join(format!("nettai-site-{game}-{}", std::process::id()));
-            let _ = std::fs::remove_dir_all(&dest);
-            let hash = content_hash(&gz, newest.id, &dest, &packs.join(game), game);
-            let _ = std::fs::remove_dir_all(&dest);
-            assert_eq!(hash.unwrap(), newest.content_hash, "{game} r{}", newest.revision);
+            let Some(published) = index.lines.get(&line) else {
+                eprintln!("{game}: nothing for {line} yet");
+                continue;
+            };
+            assert_eq!(published.iter().map(|p| p.revision).collect::<Vec<_>>(), (1..=published.len() as u32).collect::<Vec<_>>());
+            for p in published {
+                let gz = fetch(&bundle::bundle_url(game, p.id));
+                assert_eq!(gz.len() as u64, p.size, "{game} r{}", p.revision);
+                let dest = std::env::temp_dir().join(format!("nettai-site-{game}-{}", std::process::id()));
+                let _ = std::fs::remove_dir_all(&dest);
+                let hash = content_hash(&gz, p.id, &dest, &packs.join(game), game);
+                let _ = std::fs::remove_dir_all(&dest);
+                assert_eq!(hash.unwrap(), p.content_hash, "{game} r{}", p.revision);
+                eprintln!("{game} r{}: {}, content hash {:016x}", p.revision, p.id, p.content_hash.0);
+                checked += 1;
+            }
         }
+        assert!(checked > 0, "no game has published for {line}");
     }
 }
