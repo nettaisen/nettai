@@ -232,7 +232,10 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         o.flip = owner_flip;
     }
     let alliance = o.alliance;
-    // The owner's color shader, white flash and mosaic, and its facing.
+    // The owner's color shader, white flash, mosaic and blending, and its
+    // facing. (The blending each action takes first: EXE6's `sub_80C461C`
+    // and `sub_80C464C`, EXE5's and EXE4's alike, so the Falzar beast head
+    // fades with a deleted navi.)
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
     if rules.palette_each_tick {
@@ -241,6 +244,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     look.color_shader = owner_look.color_shader;
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
+    look.alpha = owner_look.alpha;
     if rules.facing_each_tick {
         look.set_flip(alliance ^ owner_flip);
     }

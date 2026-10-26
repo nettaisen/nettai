@@ -684,8 +684,8 @@ pub enum PaletteFlashOrder {
 
 /// How a form overlay (actor object #0x57: EXE6's `sub_80C4530`, EXE5's
 /// 0x080C379C, EXE4's 0x080CC3D8) starts, and what it takes from its owner
-/// each tick besides its position, visibility, color shader, white flash
-/// and mosaic.
+/// each tick besides its position, visibility, color shader, white flash,
+/// mosaic and blending.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormOverlayRules {
