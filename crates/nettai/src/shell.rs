@@ -406,6 +406,19 @@ impl Shell {
         self.select_game_from(&next, by.signum());
     }
 
+    /// Game `game` plays its newest content in the store from now (the other player's, downloaded for an online
+    /// match: `screens::play`), loaded again at once, behind the bar. False if that is the content it plays.
+    pub fn play_newest(&mut self, game: &str) -> bool {
+        if !self.games.retarget(game) {
+            return false;
+        }
+        if self.game.as_deref() == Some(game) {
+            self.announced = None;
+        }
+        self.name_games();
+        true
+    }
+
     /// The main menu shows with nothing over it (`screens::menu`): a loaded game whose newer content arrived plays
     /// it from now on (`Games::apply_arrived`), loaded again when it is next shown (the selected one at once, behind
     /// the bar).

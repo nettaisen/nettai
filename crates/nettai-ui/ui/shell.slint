@@ -308,6 +308,8 @@ export enum ErrorKind {
     not-a-replay,
     replay-damaged,
     replay-other-game,
+    // A replay made on content that isn't in the store, nor listed by its game's index.
+    replay-content-missing,
     no-ffmpeg,
     cant-write-video,
     export-failed,
@@ -402,6 +404,9 @@ export global Errors {
         }
         if kind == ErrorKind.replay-other-game {
             return @tr("This is a {} replay. Pick {} to watch it.", detail, detail);
+        }
+        if kind == ErrorKind.replay-content-missing {
+            return @tr("The content this replay was made with isn't available, so it can't be played.");
         }
         if kind == ErrorKind.no-ffmpeg {
             return @tr("Video export needs ffmpeg. Install it, then try again.");
@@ -503,6 +508,9 @@ export global Errors {
         if kind == ErrorKind.replay-other-game {
             return @tr("This is a {} replay", detail);
         }
+        if kind == ErrorKind.replay-content-missing {
+            return @tr("Content not available");
+        }
         if kind == ErrorKind.no-ffmpeg {
             return @tr("Video export needs ffmpeg");
         }
@@ -592,6 +600,9 @@ export global Errors {
         }
         if kind == ErrorKind.replay-other-game {
             return @tr("Pick {} to watch it.", detail);
+        }
+        if kind == ErrorKind.replay-content-missing {
+            return @tr("The content this replay was made with isn't available, so it can't be played.");
         }
         if kind == ErrorKind.no-ffmpeg {
             return @tr("Install it, then try again.");

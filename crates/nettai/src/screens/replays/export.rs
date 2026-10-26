@@ -81,6 +81,8 @@ impl Drop for Running {
 
 /// The viewer's export mode.
 pub struct Export {
+    /// The game as the replay plays it, where it isn't the game's own (other content of it: the viewer's).
+    ready: Option<std::rc::Rc<crate::games::Ready>>,
     /// The replay's file, and what it says of itself.
     replay: PathBuf,
     summary: Summary,
@@ -187,8 +189,9 @@ pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) 
 impl Export {
     /// Begin the export mode for the replay at `replay`, shown from `side` (`both`: both consoles on one screen),
     /// the whole match chosen, the sides as the viewer shows them.
-    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, both: bool) -> Export {
+    pub fn open(shell: &mut Shell, replay: &Path, summary: &Summary, side: u8, both: bool, ready: Option<std::rc::Rc<crate::games::Ready>>) -> Export {
         let mut export = Export {
+            ready,
             replay: replay.to_path_buf(),
             summary: summary.clone(),
             size: FIRST_SIZE,
@@ -490,7 +493,7 @@ impl Export {
 
     /// The export started, written to `to` as it is made.
     fn begin(&mut self, shell: &mut Shell, to: Stream) {
-        let Some((_, ready)) = shell.ready() else { return };
+        let Some(ready) = self.ready.clone().or_else(|| shell.ready().map(|(_, ready)| ready)) else { return };
         let doing = format!("exporting {}", self.replay.display());
         let replay = match crate::replays::read(&self.replay) {
             Ok(replay) => replay,

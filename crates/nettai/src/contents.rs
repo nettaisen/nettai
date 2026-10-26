@@ -11,7 +11,7 @@
 //! extractor makes packs of. A game's newest bundle of the line is downloaded where the store has none of its line,
 //! the first start included; and, unless Settings turned "Check for updates" off, at each start where its index has
 //! a newer one (`crate::games` runs them: [`fetch_catalog`], [`fetch_newest`]). The catalog and the indexes last
-//! read are kept beside the bundles (`games.json`, `<game>.index.json`), so a start without a connection plays
+//! read are kept beside the bundles (`catalog.json`, `<game>.index.json`), so a start without a connection plays
 //! what the store has.
 //! A bundle is checked against its id as it is stored, and the content hash it plays against its index's the first
 //! time it is loaded with its game's pack ([`verify`]): one that differs is taken out of the store.
@@ -98,7 +98,6 @@ pub fn pool() -> Vec<(String, PathBuf)> {
 }
 
 /// The stored bundle content directory `dir` is, if it is one.
-#[allow(dead_code)] // (The lobby's, to come.)
 pub fn stored_at(dir: &Path) -> Option<Stored> {
     stored_in(&contents().store, dir)
 }
@@ -109,14 +108,12 @@ fn stored_in(store: &Store, dir: &Path) -> Option<Stored> {
 }
 
 /// Game `game`'s bundle of the line that plays `hash`, if the store has one.
-#[allow(dead_code)] // (The replays' and the lobby's, to come.)
 pub fn find(game: &str, hash: ContentHash) -> Option<Stored> {
     contents().store.playing(game, line(), hash)
 }
 
 /// The revision of game `game`'s content that plays `hash`, as far as is known: a stored bundle's, else its
 /// index's (as last read).
-#[allow(dead_code)] // (The lobby's, to come.)
 pub fn revision_of(game: &str, hash: ContentHash) -> Option<u32> {
     find(game, hash).map(|s| s.record.revision).or_else(|| published(game, hash).map(|p| p.revision))
 }
@@ -152,7 +149,7 @@ fn verify_in(store: &Store, dir: &Path, hash: ContentHash) -> Result<(), String>
 // ---- The catalog and the games' indexes ---------------------------------------------------------------------
 
 /// What was last read of the sites (the catalog, and each game's index), kept in the store's folder so that a start
-/// without a connection plays what the store has: `games.json` and `<game>.index.json`.
+/// without a connection plays what the store has: `catalog.json` and `<game>.index.json`.
 #[derive(Default)]
 struct Read {
     catalog: Option<Catalog>,
@@ -161,7 +158,7 @@ struct Read {
 
 /// Where the catalog read last is kept.
 fn catalog_file() -> PathBuf {
-    contents().store.dir.join("games.json")
+    contents().store.dir.join("catalog.json")
 }
 
 /// Where game `game`'s index read last is kept.
@@ -213,7 +210,6 @@ pub async fn fetch_catalog() -> Result<Vec<String>, String> {
 }
 
 /// Game `game`'s published bundle of the line that plays `hash`, in its index as last read.
-#[allow(dead_code)] // (The replays' and the lobby's, to come.)
 pub fn published(game: &str, hash: ContentHash) -> Option<Published> {
     nettai_platform::thread::lock(read()).ok()?.indexes.get(game)?.playing(line(), hash).cloned()
 }
@@ -223,7 +219,7 @@ pub async fn fetch_index(game: &str) -> Result<Index, String> {
     let url = {
         let read = nettai_platform::thread::lock(read()).map_err(|_| "the sites' lock was poisoned".to_string())?;
         let catalog = read.catalog.as_ref().ok_or_else(|| "no catalog of games has been read".to_string())?;
-        catalog.games.get(game).map(|g| g.index.clone()).ok_or_else(|| format!("the catalog of games has no {game}"))?
+        catalog.games.get(game).cloned().ok_or_else(|| format!("the catalog of games has no {game}"))?
     };
     let body = nettai_platform::http::get(&url, MAX_INDEX).await?;
     let index: Index = serde_json::from_slice(&body).map_err(|e| format!("{url}: an index that doesn't read: {e}"))?;
@@ -272,7 +268,6 @@ pub async fn fetch_newest(game: &str, progress: impl FnMut(f32)) -> Result<bool,
 
 /// Game `game`'s content that plays `hash`: the store's bundle, else its index's (read again where the one kept
 /// hasn't it), downloaded and stored. None: no bundle of the line plays it.
-#[allow(dead_code)] // (The replays' and the lobby's, to come.)
 pub async fn fetch_playing(game: &str, hash: ContentHash) -> Result<Option<Stored>, String> {
     if let Some(stored) = find(game, hash) {
         return Ok(Some(stored));
@@ -285,6 +280,30 @@ pub async fn fetch_playing(game: &str, hash: ContentHash) -> Result<Option<Store
         },
     };
     fetch(&published, |_| {}).await.map(Some)
+}
+
+/// What the tests put in the store and the indexes (the tests' own: a folder of their own).
+#[cfg(test)]
+pub(crate) mod testing {
+    use super::*;
+
+    /// A bundle of game `game` (one pack, holding `text`), stored as one that plays `hash`.
+    pub(crate) fn store(game: &str, text: &str, hash: ContentHash) -> Stored {
+        let src = contents().store.dir.with_file_name(format!("src-{game}-{}", hash.0));
+        nettai_platform::fs::create_dir_all(&src).unwrap();
+        nettai_platform::fs::write(src.join("manifest.toml"), format!("id = \"{game}\"\nkind = \"game\"\n")).unwrap();
+        nettai_platform::fs::write(src.join("init.luau"), text).unwrap();
+        let manifest = nettai_content::bundle::Manifest { game: game.into(), line: line().into(), revision: 1, packs: [(game.to_string(), "c0ffee".to_string())].into() };
+        let bundle = nettai_content::bundle::build(manifest, &[(game, &src)]).unwrap();
+        storing(|| contents().store.add(&nettai_content::bundle::gzip(&bundle.tar), bundle.id, Some(hash))).unwrap()
+    }
+
+    /// Game `game`'s index as last read: one bundle of the line, playing `hash`.
+    pub(crate) fn list(game: &str, hash: ContentHash) {
+        let published = Published { id: nettai_content::bundle::BundleId([hash.0 as u8; 32]), content_hash: hash, revision: 2, packs: Default::default(), date: "2026-10-26".into(), size: 1, url: None };
+        let index = Index { game: game.into(), lines: [(line().to_string(), vec![published])].into() };
+        nettai_platform::thread::lock(read()).unwrap().indexes.insert(game.to_string(), index);
+    }
 }
 
 #[cfg(test)]
@@ -327,7 +346,8 @@ mod tests {
 
     /// The sites, live (`cargo test -p nettai --lib -- --ignored the_sites_give_each_games_content`): the catalog
     /// read, and each game's newest bundle of the line downloaded, checked against its id and stored (into the
-    /// tests' store, a folder of their own); asked again, the store has it.
+    /// tests' store, a folder of their own); asked again, the store has it. With `NETTAI_PACKS` (a folder of each
+    /// game's pack, `nettai-extract`'s), each is loaded with its pack and plays its index's hash.
     #[test]
     #[ignore = "reads the live sites"]
     fn the_sites_give_each_games_content() {
@@ -344,6 +364,15 @@ mod tests {
                 assert!(!fetch_newest(game, |_| {}).await.unwrap(), "{game}: the store has it");
                 let hash = stored.content_hash().unwrap();
                 assert_eq!(fetch_playing(game, hash).await.unwrap().map(|s| s.id), Some(stored.id), "{game}: found by its hash");
+                // (With `NETTAI_PACKS`, a folder of each game's pack: the bundle loaded with it plays its index's hash,
+                // as a game's first load from it checks.)
+                if let Some(packs) = std::env::var_os("NETTAI_PACKS").map(PathBuf::from) {
+                    let (dir, id) = (stored.dir.clone(), game.clone());
+                    let computed = nettai_platform::task::off_thread("hashing", move || nettai_content::store::content_hash(&dir, &id, &packs.join(&id)).map_err(|r| r.to_string())).await.unwrap();
+                    let computed = computed.unwrap_or_else(|why| panic!("{why}"));
+                    assert_eq!(verify(&stored.dir, computed), Ok(()), "{game}");
+                    assert_eq!(contents().store.get(stored.id).unwrap().record.hash, Some(computed));
+                }
             }
         });
     }

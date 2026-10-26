@@ -77,6 +77,9 @@ pub struct BattleStart {
     pub kind: BattleKind,
     /// The game it is of (ready).
     pub game: String,
+    /// The game as it is drawn and heard, and its content played: other content of it than its own (a replay's,
+    /// made on another revision: `Games::other_ready`); none, the game's own.
+    pub ready: Option<std::rc::Rc<crate::games::Ready>>,
     /// The set played, and what plays it.
     pub set: Set,
     pub play: Play,
@@ -196,7 +199,7 @@ impl Shell {
     /// other side is, and the cards were up long enough to be seen. What its owner hears, once it is ready.
     pub(crate) fn load_battle(&mut self, now: Instant) -> Option<(ScreenId, BattleEvent)> {
         let mut loading = self.loading.take()?;
-        let Some(ready) = self.games.ready(&loading.start.game) else {
+        let Some(ready) = loading.start.ready.clone().or_else(|| self.games.ready(&loading.start.game)) else {
             crate::errors::log("starting a battle", &format_args!("{} isn't ready", loading.start.game));
             self.loading_failed();
             return None;

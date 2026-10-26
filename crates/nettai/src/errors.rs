@@ -58,6 +58,9 @@ pub enum UserError {
     ReplayDamaged,
     /// A replay is of another game than the one selected: `game` is its own, as shown.
     ReplayOtherGame { game: String },
+    /// A replay was made on content the app hasn't, and its game's index doesn't list (or it couldn't be made
+    /// ready): docs/design/content-deployment.md §5, "Replays".
+    ReplayContentMissing,
     /// A video can't be made because ffmpeg can't be started.
     NoFfmpeg,
     /// A video's file can't be written.
@@ -107,6 +110,7 @@ impl UserError {
             UserError::NotAReplay => (ErrorKind::NotAReplay, ""),
             UserError::ReplayDamaged => (ErrorKind::ReplayDamaged, ""),
             UserError::ReplayOtherGame { game } => (ErrorKind::ReplayOtherGame, game),
+            UserError::ReplayContentMissing => (ErrorKind::ReplayContentMissing, ""),
             UserError::NoFfmpeg => (ErrorKind::NoFfmpeg, ""),
             UserError::CantWriteVideo => (ErrorKind::CantWriteVideo, ""),
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),

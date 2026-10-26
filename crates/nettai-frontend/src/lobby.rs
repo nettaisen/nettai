@@ -892,6 +892,11 @@ pub struct Lobby {
     start: Option<Instant>,
     heard: Option<Instant>,
     timeout: Duration,
+    /// A peer whose content's hash isn't this one's (all else the same) is waited on rather than refused, its
+    /// hash told the host ([`Lobby::their_content`]): set by a host that can find content by its hash
+    /// ([`Lobby::wait_on_content`]).
+    waits_on_content: bool,
+    their_content: Option<ContentHash>,
 }
 
 impl Lobby {
@@ -944,7 +949,46 @@ impl Lobby {
             start: None,
             heard: None,
             timeout,
+            waits_on_content: false,
+            their_content: None,
         }
+    }
+
+    /// Wait on a peer whose content's hash isn't this one's, all else the same, instead of refusing it at once
+    /// (docs/design/content-deployment.md §5, "Netplay"): nothing of its lobby is taken while the hashes differ,
+    /// and its hash is told ([`Lobby::their_content`]), for the host to find which revision each plays. The host
+    /// then plays the other's ([`Lobby::replace_content`]), waits for the other to take this one's, or refuses
+    /// ([`Lobby::refuse_content`]). Nothing on the wire changes: each peer says its own content, as always, and a
+    /// peer that doesn't wait refuses as before.
+    pub fn wait_on_content(&mut self, wait: bool) {
+        self.waits_on_content = wait;
+    }
+
+    /// The other peer's content's hash, while it isn't this one's and this lobby waits on it.
+    pub fn their_content(&self) -> Option<ContentHash> {
+        self.their_content.filter(|_| matches!(self.phase, Phase::Lobby))
+    }
+
+    /// Refuse the other peer for its content (it can't be had, or the two can't agree on one), with `detail` for
+    /// the log: both lobbies fail, the other's player told the content differs.
+    pub fn refuse_content(&mut self, detail: &str) {
+        self.fail(Failure { reason: Reason::DifferentContent, detail: format!("can't play: {detail}") }, true);
+    }
+
+    /// Play `content` from now (the other peer's, which this host has taken: docs/design/content-deployment.md
+    /// §5), with the game's `rulesets` and this player's `side` as they are of it. Only in the lobby, before a
+    /// match is agreed; this player isn't ready any more, and says so.
+    pub fn replace_content(&mut self, content: &Arc<Content>, rulesets: Arc<Rulesets>, side: Side) {
+        if self.settled() {
+            return;
+        }
+        self.content = content.clone();
+        self.compat = Compat::new(content, self.compat.role);
+        self.rulesets = rulesets;
+        self.side = side;
+        self.their_content = None;
+        self.check();
+        self.change(false);
     }
 
     pub fn role(&self) -> Role {
@@ -1325,6 +1369,17 @@ impl Lobby {
     /// Their compatibility fields: refused (and this lobby failed) where
     /// this peer can't play with them.
     fn compatible(&mut self, theirs: &Compat) -> bool {
+        // (Content of another hash, all else the same, waited on where the host would.)
+        let other_content = theirs.protocol == self.compat.protocol
+            && netplay_line(&theirs.engine) == netplay_line(&self.compat.engine)
+            && theirs.game == self.compat.game
+            && theirs.role != self.compat.role
+            && theirs.content != self.compat.content;
+        if other_content && self.waits_on_content {
+            self.their_content = Some(theirs.content);
+            return false;
+        }
+        self.their_content = None;
         match self.compat.mismatch(theirs) {
             Some(mut failure) => {
                 failure.detail = format!("can't play: {}", failure.detail);
@@ -1853,6 +1908,47 @@ mod tests {
             Status::Failed(failure) => failure.clone(),
             _ => panic!("the lobby hasn't failed"),
         }
+    }
+
+    /// Peers whose content's hashes differ, each waiting on it, neither fail: each takes nothing of the other's
+    /// lobby and tells its host the other's hash, nothing on the wire but what each says always. The one that
+    /// takes the other's content agrees with it; a refusal ends both, as other content always did.
+    #[test]
+    fn peers_wait_on_each_others_content() {
+        let content = nettai_match::testing::exe6_content();
+        let s = settings(TRIPLE_BATTLE);
+        let now = Instant::now();
+        let fresh = || {
+            let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 1), side(&content, 2)]);
+            for l in lobbies.iter_mut() {
+                l.wait_on_content(true);
+            }
+            // (The joiner's content says another hash: another revision of the game's.)
+            lobbies[1].compat.content = ContentHash(lobbies[1].compat.content.0 ^ 1);
+            lobbies
+        };
+        let mut lobbies = fresh();
+        run(&mut lobbies, now, 10, &mut |_, _| {});
+        let [mine, theirs] = [lobbies[0].compat.content, lobbies[1].compat.content];
+        assert!(matches!(lobbies[0].poll(now), Status::Pending) && matches!(lobbies[1].poll(now), Status::Pending), "nobody fails, nothing is agreed");
+        assert_eq!((lobbies[0].their_content(), lobbies[1].their_content()), (Some(theirs), Some(mine)));
+        assert!(!lobbies[0].their_present() && !lobbies[1].their_present(), "nothing of the other's lobby is taken");
+        // The joiner takes the host's content (here, as it is): both agree once both are ready.
+        let rulesets = nettai_match::testing::rulesets("exe6");
+        lobbies[1].replace_content(&content, rulesets, side(&content, 2));
+        assert!(!lobbies[1].ready(), "a player isn't ready on content they weren't ready on");
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        assert_eq!((lobbies[0].their_content(), lobbies[1].their_content()), (None, None));
+        assert!(matches!(lobbies[0].poll(now), Status::Loading(_)) && matches!(lobbies[1].poll(now), Status::Loading(_)), "agreed");
+        // A refusal for the content: both fail, as with other content always.
+        let mut lobbies = fresh();
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        lobbies[1].refuse_content("the other side's content can't be had");
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        let [h, j] = [0, 1].map(|i| failed(&mut lobbies[i], now));
+        assert_eq!(j.reason, Reason::DifferentContent);
+        assert!(h.reason == Reason::DifferentContent && h.detail.contains("can't be had"), "{h:?}");
     }
 
     /// Each player's name goes to the other, cut to its length and without

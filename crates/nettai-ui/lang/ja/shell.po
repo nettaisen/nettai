@@ -257,6 +257,13 @@ msgstr "このリプレイは別のバージョンのもので、再生できま
 msgid "Different version"
 msgstr "別のバージョン"
 
+# A replay made on content the app hasn't, which its game's index doesn't list either.
+msgid "The content this replay was made with isn't available, so it can't be played."
+msgstr "このリプレイが作られたコンテンツがないため、再生できません。"
+
+msgid "Content not available"
+msgstr "コンテンツがありません"
+
 msgid "That file isn't a replay."
 msgstr "そのファイルはリプレイではありません。"
 

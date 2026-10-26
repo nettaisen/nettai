@@ -257,6 +257,13 @@ msgstr "此重播來自不同的版本，無法播放。"
 msgid "Different version"
 msgstr "版本不同"
 
+# A replay made on content the app hasn't, which its game's index doesn't list either.
+msgid "The content this replay was made with isn't available, so it can't be played."
+msgstr "找不到製作此重播時所用的內容，無法播放。"
+
+msgid "Content not available"
+msgstr "內容無法使用"
+
 msgid "That file isn't a replay."
 msgstr "該檔案不是重播。"
 

@@ -220,6 +220,9 @@ impl Session {
         };
         let mut lobby = Lobby::new(role, content, rulesets, settings, side, entropy, LOBBY_TIMEOUT);
         lobby.set_name(name);
+        // (Other content of the game, of the other player's, is waited on while the newer revision is found and
+        // taken: `Play::follow_content`. Development's content has no revision: other content is refused.)
+        lobby.wait_on_content(!crate::contents::development());
         self.lobby = Some(lobby);
         true
     }

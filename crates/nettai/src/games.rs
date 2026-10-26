@@ -185,7 +185,13 @@ pub struct Games {
     downloads: Rc<std::cell::RefCell<Downloads>>,
     catalog_asked: bool,
     catalog_failed: bool,
+    /// Content of a game other than the one it plays (a replay's, made on another revision), loaded to play: each
+    /// by its content directory, the last few asked for ([`Games::want_other`]).
+    others: Vec<Entry>,
 }
+
+/// How many other contents are kept loaded: a replay's and the next one's.
+const OTHERS: usize = 2;
 
 impl Games {
     /// The content's games, each with its asset pack if one is found. With the app's own packs (`extracts`), a
@@ -380,7 +386,14 @@ impl Games {
     /// is, if one is, and true if its pack landed (it can be loaded now). A failure is told the player, and the
     /// game's old pack, if it has one, is loaded as it is.
     pub fn extracting(&mut self, pack: &str, told: Told) -> Option<(String, bool)> {
-        let entry = self.list.iter_mut().find(|e| e.pack.as_ref().and_then(Pack::folder) == Some(pack))?;
+        let of = |e: &Entry| e.pack.as_ref().and_then(Pack::folder) == Some(pack);
+        // (Another content's entry with the same pack goes on with it, its failure told as the game's own is.)
+        for entry in self.others.iter_mut().filter(|e| of(e)) {
+            let has_pack = entry.pack.as_ref().is_some_and(Pack::is_there);
+            let mut notices = Vec::new();
+            Games::extracting_entry(entry, &mut Vec::new(), &mut notices, has_pack, told.clone());
+        }
+        let entry = self.list.iter_mut().find(|e| of(e))?;
         let has_pack = entry.pack.as_ref().is_some_and(Pack::is_there);
         let id = entry.id.clone();
         let landed = Games::extracting_entry(entry, &mut self.stale, &mut self.notices, has_pack, told);
@@ -464,6 +477,7 @@ impl Games {
             downloads: Default::default(),
             catalog_asked: false,
             catalog_failed: false,
+            others: Vec::new(),
         }
     }
 
@@ -498,55 +512,166 @@ impl Games {
             return;
         }
         entry.state = State::Loading(0.0);
-        let (id, lang) = (id.to_string(), lang.to_string());
-        let options = self.options(&id);
+        let options = self.options(id, None);
         let told = Arc::new(told);
-        let name = format!("loading {id}");
-        let started = nettai_platform::thread::spawn(&name, move || {
-            let tell = |step: Step| {
-                let (id, told) = (id.clone(), told.clone());
-                let _ = slint::invoke_from_event_loop(move || told(id, step));
-            };
-            let loaded = (|| {
-                let said = |e: game::LoadError| format!("{e}\n{}", e.report);
-                let mut loading = game::Loading::new(&id, options);
-                while loading.step().map_err(said)? {
-                    tell(Step::Progress(loading.fraction() * READ * 0.9));
-                }
-                let loaded = loading.finish().expect("every part is loaded");
-                // What it plays is what it is published as (a stored bundle's, the first time it is loaded).
-                crate::contents::verify(&loaded.game.dir, loaded.game.content.hash())?;
-                // The language shown, where the content has it and it isn't its own.
-                let other = (lang != locale::OWN && locale::languages(&loaded.game.dir).iter().any(|l| *l == lang)).then(|| loaded.game.graphics(&lang));
-                let other = match other {
-                    Some(Ok(graphics)) => Some((lang.clone(), graphics)),
-                    Some(Err(e)) => {
-                        crate::errors::log(&format!("loading {id} in {lang}"), &format_args!("{e}\n{}", e.report));
-                        None
-                    }
-                    None => None,
-                };
-                Ok((loaded, other))
-            })();
-            tell(Step::Done(loaded.map(Box::new)));
+        let named = id.to_string();
+        spawn_load(id, lang, options, move |step| {
+            let (id, told) = (named.clone(), told.clone());
+            let _ = slint::invoke_from_event_loop(move || told(id, step));
         });
-        if let Err(why) = started {
-            crate::errors::log(&format!("starting {name}"), &why);
+    }
+
+    /// Game `id`'s content in content directory `dir` (a stored bundle of another revision than it plays: a
+    /// replay's), to be played: its entry made where it hasn't one, and its next stretch started as the one before
+    /// ends: its pack extracted, where it is the Legacy Collection's to make; its parts read on a thread, in
+    /// `lang`; then its runtime, on this thread (a second, the window still). Asked each frame while it is wanted.
+    pub fn want_other(&mut self, id: &str, dir: &Path, lang: &str) {
+        if !self.others.iter().any(|e| e.content == dir) {
+            let (_, own) = packs::dir();
+            let pack = if own { self.own_pack(id, dir) } else { self.get(id).and_then(|e| e.pack.clone()) };
+            let state = if pack.as_ref().is_some_and(Pack::is_there) { State::NotLoaded } else { State::NoPack };
+            // (The oldest that isn't on its way goes, past the few kept.)
+            while self.others.len() >= OTHERS {
+                match self.others.iter().position(|e| !matches!(e.state, State::Loading(_) | State::Extracting(_))) {
+                    Some(at) => drop(self.others.remove(at)),
+                    None => break,
+                }
+            }
+            self.others.push(Entry { id: id.to_string(), state, content: dir.to_path_buf(), pack });
+        }
+        let at = self.others.iter().position(|e| e.content == dir).expect("made above");
+        match &self.others[at].state {
+            State::NoPack => {
+                // (Its pack is the Legacy Collection's to make, looked for if it wasn't.)
+                let wanted = self.others[at].pack.as_ref().is_some_and(|p| p.own.is_some());
+                if wanted && self.source.is_none() && self.extracts {
+                    let chosen = self.chosen.clone();
+                    if let Some(install) = Install::find(chosen.as_deref()) {
+                        self.found(install);
+                    }
+                }
+                let game = nettai_extract::Game::named(id);
+                let roms = self.source.as_ref().map(|i| i.roms().into_iter().filter(|r| Some(r.game) == game).collect::<Vec<_>>()).unwrap_or_default();
+                let tables = self.others[at].pack.as_ref().and_then(|p| p.own.as_ref()).map(|(t, _)| t.clone());
+                match tables {
+                    Some(tables) if !roms.is_empty() && self.extracts => {
+                        self.others[at].state = State::Extracting(0.0);
+                        let job = Job::new(tables, roms);
+                        match &self.extractor {
+                            Some(extractor) => extractor.add(vec![job]),
+                            None => self.waiting.push(job),
+                        }
+                    }
+                    _ => {
+                        crate::errors::log(&format!("loading {id} from {}", dir.display()), &"its pack isn't there, and there is nothing to extract it from");
+                        self.others[at].state = State::Failed;
+                    }
+                }
+            }
+            State::NotLoaded => {
+                self.others[at].state = State::Loading(0.0);
+                let options = self.options(id, Some(dir));
+                let dir = dir.to_path_buf();
+                spawn_load(id, lang, options, move |step| {
+                    let dir = dir.clone();
+                    let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.shell.games.step_other(&dir, step)));
+                });
+            }
+            State::Ready(ready) if !ready.runtime.get() => {
+                let ready = ready.clone();
+                if let Err(why) = nettai_frontend::preload::runtime(ready.content()) {
+                    crate::errors::log(&format!("loading {id}'s runtime from {}", dir.display()), &why);
+                    self.others[at].state = State::Failed;
+                } else {
+                    ready.runtime.set(true);
+                }
+            }
+            _ => {}
         }
     }
 
-    /// What game `id` loads with: its content directory, and its pack (with `$NETTAI_PACKS`, its folder's, by the
-    /// game each says; else its own, beside the others' that are there, whose backgrounds the background pool may
-    /// draw from); the background pool, every game's, each from its own content.
-    fn options(&self, id: &str) -> game::Options {
-        let content = self.get(id).map(|e| e.content.clone());
+    /// Game content `dir`'s ([`Games::want_other`]), once it is ready to play.
+    pub fn other_ready(&self, dir: &Path) -> Option<Rc<Ready>> {
+        match &self.others.iter().find(|e| e.content == dir)?.state {
+            State::Ready(ready) if ready.runtime.get() => Some(ready.clone()),
+            _ => None,
+        }
+    }
+
+    /// Whether game content `dir` couldn't be made ready (why is in the log).
+    pub fn other_failed(&self, dir: &Path) -> bool {
+        self.others.iter().any(|e| e.content == dir && matches!(e.state, State::Failed))
+    }
+
+    /// A part of other content `dir`'s loading ended.
+    pub fn step_other(&mut self, dir: &Path, step: Step) {
+        let Some(entry) = self.others.iter_mut().find(|e| e.content == dir) else { return };
+        entry.state = match step {
+            Step::Progress(p) => State::Loading(p),
+            Step::Done(Ok(done)) => {
+                let (loaded, other) = *done;
+                State::Ready(Rc::new(Ready { loaded, graphics: std::cell::RefCell::new(other.into_iter().collect()), runtime: false.into() }))
+            }
+            Step::Done(Err(why)) => {
+                crate::errors::log(&format!("loading {} from {}", entry.id, dir.display()), &why);
+                State::Failed
+            }
+        };
+    }
+}
+
+/// Read game `id`'s parts on a thread of their own, as `options` say, to be shown in `lang`, telling `tell` each
+/// part's end and then the game: what it plays checked against what it is published as.
+fn spawn_load(id: &str, lang: &str, options: game::Options, tell: impl Fn(Step) + Send + Sync + 'static) {
+    let (id, lang) = (id.to_string(), lang.to_string());
+    let name = format!("loading {id}");
+    let started = nettai_platform::thread::spawn(&name, move || {
+        let loaded = (|| {
+            let said = |e: game::LoadError| format!("{e}\n{}", e.report);
+            let mut loading = game::Loading::new(&id, options);
+            while loading.step().map_err(said)? {
+                tell(Step::Progress(loading.fraction() * READ * 0.9));
+            }
+            let loaded = loading.finish().expect("every part is loaded");
+            // What it plays is what it is published as (a stored bundle's, the first time it is loaded).
+            crate::contents::verify(&loaded.game.dir, loaded.game.content.hash())?;
+            // The language shown, where the content has it and it isn't its own.
+            let other = (lang != locale::OWN && locale::languages(&loaded.game.dir).iter().any(|l| *l == lang)).then(|| loaded.game.graphics(&lang));
+            let other = match other {
+                Some(Ok(graphics)) => Some((lang.clone(), graphics)),
+                Some(Err(e)) => {
+                    crate::errors::log(&format!("loading {id} in {lang}"), &format_args!("{e}\n{}", e.report));
+                    None
+                }
+                None => None,
+            };
+            Ok((loaded, other))
+        })();
+        tell(Step::Done(loaded.map(Box::new)));
+    });
+    if let Err(why) = started {
+        crate::errors::log(&format!("starting {name}"), &why);
+    }
+}
+
+impl Games {
+    /// What game `id` loads with: its content directory (`other`'s, other content of it, else its own), and its
+    /// pack (with `$NETTAI_PACKS`, its folder's, by the game each says; else the one its content names, beside the
+    /// other games' that are there, whose backgrounds the background pool may draw from); the background pool,
+    /// every game's, each from its own content.
+    fn options(&self, id: &str, other: Option<&Path>) -> game::Options {
+        let entry = match other {
+            Some(dir) => self.others.iter().find(|e| e.content == dir),
+            None => self.get(id),
+        };
+        let content = entry.map(|e| e.content.clone());
         let pool = crate::contents::pool();
-        if !self.list.iter().any(|e| e.pack.as_ref().is_some_and(|p| p.own.is_some())) {
+        if !self.list.iter().chain(&self.others).any(|e| e.pack.as_ref().is_some_and(|p| p.own.is_some())) {
             return game::Options { packs_dir: Some(self.packs.clone()), content, pool, ..game::Options::default() };
         }
         // (The game's own pack last: it stands in place of any other of its game.)
         let mut packs: Vec<PathBuf> = self.list.iter().filter(|e| e.id != id).filter_map(|e| e.pack.as_ref()).filter(|p| p.is_there()).map(|p| p.dir.clone()).collect();
-        packs.extend(self.get(id).and_then(|e| e.pack.as_ref()).map(|p| p.dir.clone()));
+        packs.extend(entry.and_then(|e| e.pack.as_ref()).map(|p| p.dir.clone()));
         game::Options { packs_dir: None, packs, content, pool, ..game::Options::default() }
     }
 

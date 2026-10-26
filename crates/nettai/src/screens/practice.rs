@@ -697,6 +697,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         owner: ScreenId::Practice,
         kind: BattleKind::Practice,
         game: start.game.clone(),
+        ready: None,
         set: set_of(content, &session.m, start.seed),
         play: Play::Drive(Box::new(driver)),
         viewer: 0,

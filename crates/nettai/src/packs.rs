@@ -205,7 +205,7 @@ impl Job {
 
 /// What the extraction tells the window's thread of a game: how far it is, 0 to 1, then that its pack is in
 /// place (or why it isn't, for the log).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Told {
     Progress(f32),
     Done(Result<(), String>),

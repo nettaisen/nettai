@@ -54,9 +54,13 @@ use nettai_render::vfont::TextRenderer;
 use nettai_ui::{BattleKind, ButtonKind, DialogButton, ReplayRow, ReplaysView, VersusCard};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
-use std::collections::HashMap;
+use crate::games::{Games, Ready};
+use nettai_battle::ContentHash;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 use nettai_platform::time::Instant;
 use viewer::{MENU, MenuItem, Overlays, Watching};
@@ -188,9 +192,48 @@ struct Still {
     asked: Option<PathBuf>,
 }
 
+/// Where a replay of the selected game plays, by its content's hash (docs/design/content-deployment.md §5,
+/// "Replays"): on the content the game plays; on a bundle of the store (a revision the game played before, or one
+/// downloaded for a replay); on a bundle the game's index lists, to be downloaded; or on none the app has or knows
+/// of.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Plays {
+    Here,
+    Stored(PathBuf),
+    Listed,
+    Nowhere,
+}
+
+/// What came of the downloads and the indexes read again for the replays (on the window's loop), since the screen
+/// last looked: that what the store or the indexes hold changed, and the hashes that couldn't be had.
+#[derive(Default)]
+struct Arrivals {
+    changed: bool,
+    failed: HashSet<u64>,
+}
+
+/// The other content the selected game's replays play on: where each hash's is, as found (kept until the store or
+/// the indexes change: [`Arrivals`]); the hashes being downloaded and the games whose index was read again, once a
+/// visit; the content asked for last (the selected replay's, made ready while it is selected); and the replay to
+/// watch once that is ready.
+#[derive(Default)]
+struct Elsewhere {
+    found: HashMap<(String, u64), Plays>,
+    arrivals: Rc<RefCell<Arrivals>>,
+    downloading: HashSet<u64>,
+    reread: HashSet<String>,
+    wanted: Option<(String, PathBuf)>,
+    was_ready: bool,
+    pending: Option<(PathBuf, Option<u8>, bool)>,
+}
+
 #[derive(Default)]
 pub struct Replays {
     library: Library,
+    /// The other content replays play on.
+    elsewhere: Elsewhere,
+    /// The game as the replay being made ready plays it, where it isn't the game's own (other content of it).
+    opening_ready: Option<Rc<Ready>>,
     /// The files listed, as places in the library's entries, in the list's order.
     rows: Vec<usize>,
     model: Rc<VecModel<ReplayRow>>,
@@ -200,8 +243,9 @@ pub struct Replays {
     selected: Option<PathBuf>,
     /// Why each file that isn't played isn't: found (and written to the log) once.
     reasons: HashMap<(PathBuf, Stamp), UserError>,
-    /// The selected game's content's hash (computing it walks all of the content: it is kept).
-    hash: Option<(String, u64)>,
+    /// The selected game's content's hash (computing it walks all of the content: it is kept), by the content it
+    /// is of.
+    hash: Option<(usize, u64)>,
     still: Still,
     watching: Option<Watching>,
     /// What was on over the last replay's picture (the input display, the other console's picture): the next
@@ -273,20 +317,153 @@ impl Replays {
         self.queues.get(shell.game()?)
     }
 
-    /// `game`'s content's hash.
-    fn hash(&mut self, game: &str, content: &Content) -> u64 {
+    /// `content`'s hash.
+    fn hash(&mut self, content: &Arc<Content>) -> u64 {
+        let of = Arc::as_ptr(content) as usize;
         match &self.hash {
-            Some((of, hash)) if of == game => *hash,
+            Some((was, hash)) if *was == of => *hash,
             _ => {
                 let hash = content.hash().0;
-                self.hash = Some((game.to_string(), hash));
+                self.hash = Some((of, hash));
                 hash
             }
         }
     }
 
-    /// Why `entry` isn't played on `content` (whose hash is `hash`), if it isn't, as far as is known.
-    fn reason(&mut self, entry: &Entry, content: &Content, hash: u64) -> Option<UserError> {
+    /// Where a replay of game `game` made on content `made` plays, the game's own content being `here` (its hash).
+    /// One the app has nowhere and its index as last read doesn't list has the index read again, once a visit.
+    fn plays_on(&mut self, games: &Games, game: &str, here: u64, made: u64) -> Plays {
+        if made == here {
+            return Plays::Here;
+        }
+        if let Some(found) = self.elsewhere.found.get(&(game.to_string(), made)) {
+            return match found {
+                Plays::Stored(dir) if games.other_failed(dir) => Plays::Nowhere,
+                found => found.clone(),
+            };
+        }
+        let hash = ContentHash(made);
+        let found = if self.elsewhere.arrivals.borrow().failed.contains(&made) {
+            Plays::Nowhere
+        } else if let Some(stored) = crate::contents::find(game, hash) {
+            Plays::Stored(stored.dir)
+        } else if crate::contents::published(game, hash).is_some() {
+            Plays::Listed
+        } else {
+            self.reread(game);
+            Plays::Nowhere
+        };
+        self.elsewhere.found.insert((game.to_string(), made), found.clone());
+        found
+    }
+
+    /// Read game `game`'s index again (once a visit), on the window's loop: it may list content its index as last
+    /// read didn't.
+    fn reread(&mut self, game: &str) {
+        if !self.elsewhere.reread.insert(game.to_string()) {
+            return;
+        }
+        let (arrivals, game) = (self.elsewhere.arrivals.clone(), game.to_string());
+        let started = slint::spawn_local(async move {
+            match crate::contents::fetch_catalog().await.and(Ok(())) {
+                Ok(()) => match crate::contents::fetch_index(&game).await {
+                    Ok(_) => arrivals.borrow_mut().changed = true,
+                    Err(why) => crate::errors::log(&format!("reading {game}'s index for a replay's content"), &why),
+                },
+                Err(why) => crate::errors::log(&format!("reading the catalog for {game}'s replays"), &why),
+            }
+        });
+        if let Err(why) = started {
+            crate::errors::log("reading an index for a replay's content", &why);
+        }
+    }
+
+    /// Download game `game`'s content that plays `made` (listed by its index), once, on the window's loop.
+    fn download(&mut self, game: &str, made: u64) {
+        if !self.elsewhere.downloading.insert(made) {
+            return;
+        }
+        let (arrivals, game) = (self.elsewhere.arrivals.clone(), game.to_string());
+        let started = slint::spawn_local(async move {
+            let doing = format!("downloading {game}'s content for a replay");
+            match crate::contents::fetch_playing(&game, ContentHash(made)).await {
+                Ok(Some(_)) => arrivals.borrow_mut().changed = true,
+                Ok(None) => {
+                    crate::errors::log(&doing, &format_args!("no bundle of the line plays {made:016x}"));
+                    arrivals.borrow_mut().failed.insert(made);
+                }
+                Err(why) => {
+                    crate::errors::log(&doing, &why);
+                    arrivals.borrow_mut().failed.insert(made);
+                }
+            }
+            arrivals.borrow_mut().changed = true;
+        });
+        if let Err(why) = started {
+            crate::errors::log("downloading a replay's content", &why);
+            self.elsewhere.arrivals.borrow_mut().failed.insert(made);
+        }
+    }
+
+    /// The game as replay `entry` plays it, and its content's hash: the game's own (`ready`, whose hash is
+    /// `here`), or the content it was made on, once that is ready. None: it isn't, or doesn't play here.
+    fn ready_for(&mut self, games: &Games, game: &str, ready: &Rc<Ready>, here: u64, entry: &Entry) -> Option<(Rc<Ready>, u64)> {
+        let s = entry.read.as_ref().ok()?;
+        s.head.require(ENGINE, game, s.head.content).ok()?;
+        let made = s.head.content;
+        match self.plays_on(games, game, here, made) {
+            Plays::Here => Some((ready.clone(), here)),
+            Plays::Stored(dir) => games.other_ready(&dir).map(|other| (other, made)),
+            Plays::Listed | Plays::Nowhere => None,
+        }
+    }
+
+    /// The content replay `entry` was made on is asked for while it is selected, where it isn't the game's own:
+    /// downloaded (where its index lists it), then made ready ([`Replays::follow_elsewhere`]).
+    fn ask_for_content(&mut self, games: &Games, game: &str, here: u64, entry: &Entry) {
+        let Some(made) = entry.read.as_ref().ok().filter(|s| s.head.require(ENGINE, game, s.head.content).is_ok()).map(|s| s.head.content) else {
+            return;
+        };
+        match self.plays_on(games, game, here, made) {
+            Plays::Stored(dir) => {
+                if self.elsewhere.wanted.as_ref().is_none_or(|(_, wanted)| *wanted != dir) {
+                    self.elsewhere.was_ready = games.other_ready(&dir).is_some();
+                }
+                self.elsewhere.wanted = Some((game.to_string(), dir));
+            }
+            Plays::Listed => self.download(game, made),
+            Plays::Here | Plays::Nowhere => {}
+        }
+    }
+
+    /// Each frame: what the downloads and indexes read again brought (the list made again with it); the content
+    /// asked for made ready a stretch at a time, and, once it is, the selected replay shown with it and the replay
+    /// waiting to be watched watched.
+    fn follow_elsewhere(&mut self, shell: &mut Shell, listing: bool) {
+        if std::mem::take(&mut self.elsewhere.arrivals.borrow_mut().changed) {
+            self.elsewhere.found.clear();
+            self.reasons.retain(|_, why| *why != UserError::ReplayContentMissing);
+            if listing {
+                self.fill(shell);
+            }
+        }
+        let Some((game, dir)) = self.elsewhere.wanted.clone() else { return };
+        let lang = shell.i18n.code;
+        shell.games.want_other(&game, &dir, lang);
+        let ready = shell.games.other_ready(&dir).is_some() || shell.games.other_failed(&dir);
+        if ready && !self.elsewhere.was_ready {
+            if listing {
+                self.fill(shell);
+            }
+            if let Some((path, side, export)) = self.elsewhere.pending.take() {
+                self.watch(shell, &path, side, export);
+            }
+        }
+        self.elsewhere.was_ready = ready;
+    }
+
+    /// Why `entry` isn't played on game `game`, whose content's hash is `here`, if it isn't, as far as is known.
+    fn reason(&mut self, games: &Games, game: &str, entry: &Entry, here: u64) -> Option<UserError> {
         let key = (entry.path.clone(), entry.stamp);
         if let Some(known) = self.reasons.get(&key) {
             return Some(known.clone());
@@ -294,18 +471,28 @@ impl Replays {
         let doing = format!("listing {}", entry.path.display());
         let why = match &entry.read {
             Err(e) => UserError::of_replay_read(&doing, e),
-            Ok(s) => match (s.head.require(ENGINE, content.game(), hash), self.library.played(entry)) {
-                (Err(differs), _) => {
+            // (The game and the engine's line are the replay's to match; the content is the one it was made on,
+            // wherever that is.)
+            Ok(s) => match s.head.require(ENGINE, game, s.head.content) {
+                Err(differs) => {
                     crate::errors::log(&doing, &differs);
                     UserError::ReplayVersion
                 }
-                (Ok(()), Some(Err(refused))) => UserError::of_refusal(&doing, refused),
-                // (One that plays another battle than it recorded was made by another build of this version.)
-                (Ok(()), Some(Ok(Outcome { diverged: Some(differs), .. }))) => {
-                    crate::errors::log(&doing, differs);
-                    UserError::ReplayVersion
+                Ok(()) => {
+                    // (Content not to be had now may be later: not kept.)
+                    if self.plays_on(games, game, here, s.head.content) == Plays::Nowhere {
+                        return Some(UserError::ReplayContentMissing);
+                    }
+                    match self.library.played(entry) {
+                        Some(Err(refused)) => UserError::of_refusal(&doing, refused),
+                        // (One that plays another battle than it recorded was made by another build of this version.)
+                        Some(Ok(Outcome { diverged: Some(differs), .. })) => {
+                            crate::errors::log(&doing, differs);
+                            UserError::ReplayVersion
+                        }
+                        _ => return None,
+                    }
                 }
-                _ => return None,
             },
         };
         self.reasons.insert(key, why.clone());
@@ -313,12 +500,12 @@ impl Replays {
     }
 
     /// A row of the list.
-    fn row(&mut self, shell: &Shell, entry: &Entry, content: &Content, hash: u64) -> ReplayRow {
+    fn row(&mut self, shell: &Shell, game: &str, entry: &Entry, here: u64) -> ReplayRow {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
         let when = played(&view, entry.when);
         let mut row = ReplayRow { day: when.day.into(), time: when.time.into(), ..ReplayRow::default() };
-        if let Some(why) = self.reason(entry, content, hash) {
+        if let Some(why) = self.reason(&shell.games, game, entry, here) {
             row.reason = why.line(&ui).into();
             return row;
         }
@@ -344,8 +531,7 @@ impl Replays {
         self.rows.clear();
         let mut rows = Vec::new();
         if let Some((game, ready)) = &ready {
-            let content = ready.content();
-            let hash = self.hash(game, content);
+            let hash = self.hash(ready.content());
             // The game's replays: those whose head names it. (A file whose head doesn't read names no game: it is
             // listed with every one.)
             let of_game: Vec<usize> = (0..entries.len()).filter(|&i| entries[i].game.as_ref().is_none_or(|g| g == game)).collect();
@@ -365,10 +551,10 @@ impl Replays {
                 if !shown {
                     continue;
                 }
-                if entry.read.as_ref().is_ok_and(|s| s.head.require(ENGINE, content.game(), hash).is_ok()) {
-                    self.library.play(entry, content, hash);
+                if let Some((on, made)) = self.ready_for(&shell.games, game, ready, hash, entry) {
+                    self.library.play(entry, on.content(), made);
                 }
-                rows.push(self.row(shell, entry, content, hash));
+                rows.push(self.row(shell, game, entry, hash));
                 self.rows.push(i);
             }
         } else {
@@ -403,15 +589,14 @@ impl Replays {
         let paths = self.queue(shell).map(|q| q.paths.clone()).unwrap_or_default();
         let mut rows = Vec::new();
         if let Some((game, ready)) = &ready {
-            let content = ready.content();
-            let hash = self.hash(game, content);
+            let hash = self.hash(ready.content());
             for path in &paths {
                 match self.library.entries.iter().find(|e| e.path == *path).cloned() {
                     Some(entry) => {
-                        if entry.read.as_ref().is_ok_and(|s| s.head.require(ENGINE, content.game(), hash).is_ok()) {
-                            self.library.play(&entry, content, hash);
+                        if let Some((on, made)) = self.ready_for(&shell.games, game, ready, hash, &entry) {
+                            self.library.play(&entry, on.content(), made);
                         }
-                        rows.push(self.row(shell, &entry, content, hash));
+                        rows.push(self.row(shell, game, &entry, hash));
                     }
                     None => rows.push(ReplayRow { reason: view.invoke_missing(file_name(path).into()), ..ReplayRow::default() }),
                 }
@@ -461,12 +646,17 @@ impl Replays {
             }
             return;
         };
-        let content = ready.content();
-        let hash = self.hash(&game, content);
-        let reason = self.reason(&entry, content, hash);
+        let hash = self.hash(ready.content());
+        let reason = self.reason(&shell.games, &game, &entry, hash);
+        // (The content it was made on, where it isn't the game's own, is made ready while it is selected: it plays
+        // once that is.)
+        if reason.is_none() {
+            self.ask_for_content(&shell.games, &game, hash, &entry);
+        }
+        let on = self.ready_for(&shell.games, &game, &ready, hash, &entry);
         let when = played(&view, entry.when);
         view.set_selected(true);
-        view.set_playable(reason.is_none() && entry.read.is_ok());
+        view.set_playable(reason.is_none() && entry.read.is_ok() && on.is_some());
         view.set_played(format!("{} · {}", when.full, when.time).into());
         view.set_reason(reason.as_ref().map(|r| r.line(&ui)).unwrap_or_default().into());
         let (mut result, mut tone, mut length) = (String::new(), 0, String::new());
@@ -493,13 +683,13 @@ impl Replays {
         // Its still: the one made, or asked for now. Until its own is there the box is empty: the still of the
         // replay selected before is another replay's picture, however short the wait.
         let made = self.still.frame.as_ref().is_some_and(|(path, _)| *path == entry.path);
-        match &entry.read {
-            Ok(s) if reason.is_none() => {
+        match (&entry.read, &on) {
+            (Ok(s), Some((on, _))) if reason.is_none() => {
                 if !made && self.still.asked.as_ref() != Some(&entry.path) {
                     self.still.asked = Some(entry.path.clone());
                     let mode = shell.settings.graphics();
-                    let look = Look { graphics: ready.graphics(shell.i18n.code), mode, font: ready.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced) };
-                    self.library.still(&entry, s.info.side, content, look);
+                    let look = Look { graphics: on.graphics(shell.i18n.code), mode, font: on.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced) };
+                    self.library.still(&entry, s.info.side, on.content(), look);
                 }
                 view.set_still(made);
             }
@@ -555,9 +745,8 @@ impl Replays {
         let Some((game, ready)) = shell.ready() else { return };
         let Some(at) = self.rows.iter().position(|&i| self.library.entries[i].path == *path) else { return };
         let entry = self.library.entries[self.rows[at]].clone();
-        let content = ready.content();
-        let hash = self.hash(&game, content);
-        let row = self.row(shell, &entry, content, hash);
+        let hash = self.hash(ready.content());
+        let row = self.row(shell, &game, &entry, hash);
         self.model.set_row_data(at, row);
         if !self.queue_tab && self.selected.as_deref() == Some(path) {
             self.show_selected(shell);
@@ -573,6 +762,27 @@ impl Replays {
         let replay = match crate::replays::read(path) {
             Ok(replay) => replay,
             Err(why) => return shell.fail(UserError::of_replay_read(&doing, &why)),
+        };
+        // What it plays on: the game's own content, else the content it was made on, once that is ready (it is
+        // asked for, and watched as soon as it is).
+        let here = self.hash(ready.content());
+        let (ready, other) = match self.plays_on(&shell.games, &game, here, replay.head.content) {
+            Plays::Here => (ready, None),
+            Plays::Stored(dir) => match shell.games.other_ready(&dir) {
+                Some(other) => (other.clone(), Some(other)),
+                None => {
+                    self.elsewhere.wanted = Some((game.clone(), dir));
+                    self.elsewhere.was_ready = false;
+                    self.elsewhere.pending = Some((path.to_path_buf(), side, export));
+                    return;
+                }
+            },
+            Plays::Listed => {
+                self.download(&game, replay.head.content);
+                self.elsewhere.pending = Some((path.to_path_buf(), side, export));
+                return;
+            }
+            Plays::Nowhere => return shell.fail(UserError::ReplayContentMissing),
         };
         // (Its set is started to be checked: an engine that stops there is a failure, not a crash.)
         let set = match nettai_frontend::session::in_engine(|| nettai_frontend::replay::set_of(ready.content(), &replay)) {
@@ -594,10 +804,12 @@ impl Replays {
         let cards = [card(side), card(side ^ 1)];
         self.close_sheet(shell);
         self.opening = Some(path.to_path_buf());
+        self.opening_ready = other.clone();
         shell.start_battle(BattleStart {
             owner: ScreenId::Replays,
             kind: BattleKind::Replay,
             game,
+            ready: other,
             set,
             play: Play::Watch(Box::new(replay), Some(side)),
             viewer: side,
@@ -928,7 +1140,7 @@ impl Replays {
         let Ok(summary) = &entry.read else { return shell.sound.play(Cue::Refused) };
         w.hide_builds(shell);
         let (path, side) = (w.path().to_path_buf(), w.side());
-        self.export = Some(Export::open(shell, &path, summary, side, w.both()));
+        self.export = Some(Export::open(shell, &path, summary, side, w.both(), w.ready_of_replay()));
         self.hud = None;
     }
 
@@ -1574,7 +1786,7 @@ impl Screen for Replays {
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         let BattleEvent::Watching(viewer) = event else { return };
         let Some(path) = self.opening.take() else { return };
-        let mut watching = Watching::new(viewer, path, self.sides.take(), self.overlays);
+        let mut watching = Watching::new(viewer, path, self.sides.take(), self.overlays, self.opening_ready.take());
         if let Some(speed) = self.carry_speed.take() {
             watching.set_speed(speed);
         }
@@ -1589,6 +1801,11 @@ impl Screen for Replays {
             self.answer_env(shell);
         }
         self.take_found(shell, shown);
+        // (The content a replay was made on, where it isn't the game's own: on its way.)
+        if shell.ready().is_some() {
+            let listing = shown && self.watching.is_none() && !shell.loading_battle();
+            self.follow_elsewhere(shell, listing);
+        }
         if let Some(e) = &mut self.export {
             e.frame(shell);
         }
@@ -1638,6 +1855,24 @@ impl Screen for Replays {
 mod tests {
     use super::*;
     use nettai_frontend::replay::End;
+
+    /// A replay plays where the content it was made on is: the game's own, a bundle of the store that plays its
+    /// hash, one the game's index lists (to download); else nowhere, and its reason says so.
+    #[test]
+    fn a_replay_plays_where_its_content_is() {
+        let games = Games::read_of(Vec::new());
+        let mut replays = Replays::default();
+        // (The indexes as they are, not read again: a test has no window's loop to read them on.)
+        replays.elsewhere.reread.extend(["test".to_string(), "other".to_string()]);
+        assert_eq!(replays.plays_on(&games, "test", 7, 7), Plays::Here);
+        let stored = crate::contents::testing::store("test", "return 1", ContentHash(0xBEEF));
+        assert_eq!(replays.plays_on(&games, "test", 7, 0xBEEF), Plays::Stored(stored.dir));
+        crate::contents::testing::list("test", ContentHash(0xCAFE));
+        assert_eq!(replays.plays_on(&games, "test", 7, 0xCAFE), Plays::Listed);
+        assert_eq!(replays.plays_on(&games, "test", 7, 0xDEAD), Plays::Nowhere);
+        // (Another game's: nowhere.)
+        assert_eq!(replays.plays_on(&games, "other", 7, 0xBEEF), Plays::Nowhere);
+    }
 
     /// A length is minutes and seconds, the seconds always two digits; the viewer's has two for the minutes
     /// too, so its box keeps its width.

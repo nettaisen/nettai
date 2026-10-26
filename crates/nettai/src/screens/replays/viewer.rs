@@ -214,16 +214,29 @@ pub struct Watching {
     /// sides the two strips showed last (the console shown's, the other's while its picture is on).
     parties: [crate::battle::party::PartyState; 2],
     party_sides: Option<(u8, bool)>,
+    /// The game as the replay plays it, where it isn't the game's own: other content of it (the revision the
+    /// replay was made on, `Games::other_ready`).
+    ready: Option<std::rc::Rc<crate::games::Ready>>,
 }
 
 impl Watching {
     /// A viewer made ready, of the replay at `path`: playing from its start (the screenshot pass holds it
     /// still, a little way into its second round where it has one), with `overlays` on over its picture.
-    pub fn new(mut viewer: Box<Viewer>, path: PathBuf, sides: Option<Box<[Side; 2]>>, overlays: Overlays) -> Watching {
+    pub fn new(mut viewer: Box<Viewer>, path: PathBuf, sides: Option<Box<[Side; 2]>>, overlays: Overlays, ready: Option<std::rc::Rc<crate::games::Ready>>) -> Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, drag: None, indexing: IndexThread::Unstarted, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, drag: None, indexing: IndexThread::Unstarted, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), sides, builds: false, overlays, inset: Surface::new(), held: None, ended: None, thumbs: None, parties: Default::default(), party_sides: None, ready }
+    }
+
+    /// The game as the replay plays it, where it isn't the game's own (other content of it).
+    pub fn ready_of_replay(&self) -> Option<std::rc::Rc<crate::games::Ready>> {
+        self.ready.clone()
+    }
+
+    /// The game as the replay plays it: other content of it, else the game's own, loaded.
+    fn ready_in(&self, shell: &Shell) -> Option<std::rc::Rc<crate::games::Ready>> {
+        self.ready.clone().or_else(|| shell.ready().map(|(_, ready)| ready))
     }
 
     pub fn path(&self) -> &Path {
@@ -285,7 +298,7 @@ impl Watching {
     pub fn show(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
-        if let Some((_, ready)) = shell.ready() {
+        if let Some(ready) = self.ready_in(shell) {
             self.viewer.set_language(&ready.graphics(shell.i18n.code));
         }
         // (Settings' Music and Sound effects: the difference between the two is the viewer's, as a battle's.)
@@ -566,7 +579,7 @@ impl Watching {
         let view = ui.global::<ReplaysView>();
         view.set_thumb_time(clock(time_of(tick as u64), true).into());
         if self.thumbs.is_none() {
-            let Some((_, ready)) = shell.ready() else { return };
+            let Some(ready) = self.ready_in(shell) else { return };
             self.thumbs = Some(Thumbnails::start(game_for_thread(shell, &ready, false), self.path.clone()));
         }
         // (At the window's density, as the picture is: a whole multiple of the frame.)
@@ -702,7 +715,7 @@ impl Watching {
     /// end (each logged where it happens), the index stays where it got, and what plays is indexed as it plays.
     fn index(&mut self, shell: &Shell) {
         if matches!(self.indexing, IndexThread::Unstarted)
-            && let Some((_, ready)) = shell.ready()
+            && let Some(ready) = self.ready_in(shell)
         {
             let game = game_for_thread(shell, &ready, true);
             self.indexing = Indexing::start(game, self.path.clone()).map_or(IndexThread::Done, IndexThread::Going);
@@ -949,7 +962,7 @@ mod tests {
         let (replay, _) = recorded(&content, "exe6", 7);
         let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
         let viewer = Viewer::with(&content, &replay, None, renderer, None, None).unwrap();
-        let mut w = Watching::new(Box::new(viewer), PathBuf::new(), None, Overlays::default());
+        let mut w = Watching::new(Box::new(viewer), PathBuf::new(), None, Overlays::default(), None);
         let length = w.length();
         assert!(length > 3 * KEYFRAME_EVERY, "a set of {length} ticks");
         // (Nothing is indexed yet but the start.)
@@ -996,7 +1009,7 @@ mod tests {
             let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
             Viewer::with(&content, &replay, None, renderer, None, None).unwrap()
         };
-        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default());
+        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default(), None);
         let length = w.length();
         let (send, parts) = std::sync::mpsc::channel();
         w.indexing = IndexThread::Going(Indexing::of(parts));
@@ -1028,7 +1041,7 @@ mod tests {
         w.drag_to(length, true);
         assert!(w.viewer.at_end());
         // A thread that ends short: the index stays where it got.
-        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default());
+        let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default(), None);
         let (send, parts) = std::sync::mpsc::channel();
         w.indexing = IndexThread::Going(Indexing::of(parts));
         send.send(open().index_part(KEYFRAME_EVERY + 20)).unwrap();
