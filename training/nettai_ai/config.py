@@ -154,6 +154,10 @@ class LeagueConfig:
     self_play: float = 0.50
     snapshots: float = 0.35
     bots: float = 0.15
+    # Rounds against another run's networks (`external_dir`'s weight files, rescanned each rollout): an exploiter
+    # plays the main run's latest so (external 1); the main run plays the exploiter's snapshots so (§8).
+    external: float = 0.0
+    external_dir: str | None = None
     bot_names: list[str] = field(default_factory=lambda: ["still", "mover", "masher", "shooter", "dodger"])
     snapshot_every: int = 10  # updates
     pfsp_power: float = 2.0  # a snapshot's weight is (1 - learner's win rate against it) ** power

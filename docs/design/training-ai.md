@@ -664,7 +664,15 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   - About 15% against the scripted players, evenly.
   - The learner's seat is drawn each round, so the seats mirror.
   - Online Elo (K 16) for the learner, the snapshots and the scripted players, logged.
-  - Exploiters are not built. They come if the learner plateaus.
+  - **Exploiters** (2026-10-26, the user: "do 2 and 3", after the large network's gains slowed to about 25 Elo
+    a 500 updates): another run, warm-started from the main one, whose rounds are all against the main run's
+    latest network (`league.external` 1, its `external_dir` holding a copy of the main's checkpoint, refreshed
+    every half hour), so it learns what beats the main network as it is; and the main run plays the exploiter's
+    snapshots in `league.external` of its rounds (0.15, taken from self-play and its own snapshots), picked by
+    PFSP as its own are, so it must answer what the exploiter finds. External opponents are another run's weight
+    files (a snapshot's state dict or a checkpoint), the directory rescanned each rollout and a changed file read
+    again (`League._scan_externals`). Both runs share the main run's machine (each update's minibatch in parts,
+    `ppo.accumulate`, to fit the GPU).
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The

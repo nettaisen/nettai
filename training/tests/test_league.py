@@ -78,3 +78,77 @@ def test_a_run_resumed_without_its_snapshots_files_draws_none_of_them(tmp_path: 
     for _ in range(20):
         moved.refresh()
         assert moved.in_play() <= {moved.snapshots[3].id}
+
+
+def test_external_opponents_are_another_runs_networks(tmp_path: Path):
+    """An external share draws its opponents from another run's weight files (a snapshot's state dict, or a
+    checkpoint with its "model"), by PFSP: their streams are tagged EXTERNAL + index, model() loads them, results
+    land on them, a file written again is read again, and resuming keeps their records."""
+    from nettai_ai.league import EXT, EXTERNAL
+
+    E = 64
+    ext = tmp_path / "other" / "snapshots"
+    ext.mkdir(parents=True)
+    net = torch.nn.Linear(2, 2)
+    torch.save(net.state_dict(), ext / "snap_00000.pt")
+    torch.save({"model": net.state_dict(), "update": 7}, ext / "main.pt")
+    cfg = LeagueConfig(self_play=0.2, snapshots=0.0, bots=0.0, external=0.8, external_dir=str(ext), cache=4)
+    rng = np.random.default_rng(5)
+    league = League(cfg, SeatsOnly(), E, tmp_path / "run", torch.device("cpu"), lambda: torch.nn.Linear(2, 2), rng)
+    league.start()
+    league.refresh()
+    assert sorted(x.name for x in league.externals) == ["main.pt", "snap_00000.pt"]
+    # The first round is self-play; the ones after draw external opponents.
+    result = np.zeros((E, 2), np.int64)
+    result[:, 0], result[:, 1] = 1, -1
+    league.round_end(np.arange(E), result, np.zeros(E, np.int64), np.zeros(E, bool))
+    ext_envs = np.flatnonzero(league.kind == EXT)
+    assert len(ext_envs) > E // 2
+    tags = {int(league.ctrl[2 * e + 1 - league.seat[e]]) for e in ext_envs}
+    assert tags <= {EXTERNAL, EXTERNAL + 1} and len(tags) == 2
+    for t in tags:
+        m = league.model(t)
+        assert torch.equal(m.weight, net.weight)
+    league.round_end(ext_envs, result, np.zeros(E, np.int64), np.zeros(E, bool))
+    assert sum(len(x.scores) for x in league.externals) == len(ext_envs)
+    assert any(k.startswith("ext:") for k in league.ratings)
+    # A file written again is read again.
+    other = torch.nn.Linear(2, 2)
+    import os, time
+    torch.save({"model": other.state_dict()}, ext / "main.pt")
+    later = time.time() + 5
+    os.utime(ext / "main.pt", (later, later))
+    league.refresh()
+    i = [x.name for x in league.externals].index("main.pt")
+    assert torch.equal(league.model(EXTERNAL + i).weight, other.weight)
+    # Resuming keeps them.
+    again = League(cfg, SeatsOnly(), E, tmp_path / "run", torch.device("cpu"), lambda: torch.nn.Linear(2, 2), rng)
+    again.load_state_dict(league.state_dict())
+    assert [(x.name, list(x.scores)) for x in again.externals] == [(x.name, list(x.scores)) for x in league.externals]
+
+
+def test_a_run_plays_external_opponents(tmp_path: Path):
+    """End to end on the toy pool: a run with an external share plays another run's saved network (its checkpoint
+    in the external directory) and trains."""
+    from nettai_ai.config import load_config
+    from nettai_ai.train import Trainer
+
+    from conftest import TINY_MODEL
+
+    base = [
+        'env.games=["exe6"]', "env.envs=8", "env.threads=1", "ppo.steps=16", "ppo.chunk=8", "ppo.epochs=1",
+        "ppo.minibatch_chunks=4", "ppo.norm_warmup_steps=4", "run.checkpoint_every=2", "run.device='cpu'",
+        "run.updates=2",
+    ] + [f"model.{k}={v}" for k, v in TINY_MODEL.items()]
+    main = Trainer(load_config(None, base), tmp_path / "main", fake=True, log=False)
+    main.train()
+    ckpt = sorted((tmp_path / "main" / "checkpoints").glob("ckpt_*.pt"))[-1]
+    ext = tmp_path / "for_exploiter"
+    ext.mkdir()
+    (ext / "main.pt").write_bytes(ckpt.read_bytes())
+    over = base + ["league.self_play=0.0", "league.snapshots=0.0", "league.bots=0.0", "league.external=1.0", f"league.external_dir='{ext}'", "run.updates=3"]
+    exploiter = Trainer(load_config(None, over), tmp_path / "exploiter", fake=True, log=False)
+    rows = exploiter.train()
+    assert len(rows) == 3
+    assert [x.name for x in exploiter.league.externals] == ["main.pt"]
+    assert len(exploiter.league.externals[0].scores) > 0, "no round against the external opponent ended"
