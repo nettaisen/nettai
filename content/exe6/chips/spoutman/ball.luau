@@ -21,7 +21,9 @@ export type State = {
     cracks: boolean,
 }
 
-local SPRITE = asset.sprite("countdown-bomb")
+-- His effect sheet (sprite 0x10-0x23, as his throw's splash); the ball is
+-- its animation 1.
+local SPRITE = asset.sprite("spout-man-effect")
 local SOUND_SPOUT_BALL = asset.sound("spout-ball")
 
 -- Where it starts, ahead of its panel and above it; its speed forward
