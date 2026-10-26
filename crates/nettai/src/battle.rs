@@ -998,6 +998,7 @@ mod tests {
     /// on the shipped weights): against a player who only gets through their custom screen, it takes HP away, the
     /// battle stepped as the shell steps a practice battle once its chips' fingerprints are made (made here on
     /// threads of their own, kept nowhere).
+    #[cfg(feature = "ai")]
     #[test]
     fn the_dummy_that_fights_takes_hp_away() {
         use nettai_battle::battle::mode;
@@ -1007,7 +1008,7 @@ mod tests {
         let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
         let mut b = practice(&content, &m, 11, opponent);
         let live = b.stage.player.live_mut().expect("live play");
-        let plugged = crate::screens::practice::plug(live, opponent, 2, 11, None, None).expect("plugged in");
+        let plugged = crate::screens::practice::ai::plug(live, opponent, 2, 11, None, None).expect("plugged in");
         assert_eq!(plugged.level, 2);
         // (The fingerprints of both folders' chips, made before the battle steps: the shell's frames go on while
         // they are made, the dummy waiting on its custom screen.)

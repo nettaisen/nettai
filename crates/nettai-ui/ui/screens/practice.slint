@@ -94,6 +94,9 @@ export global PracticeView {
     in property <int> held-dummys;
     // The dummy that fights getting ready.
     in property <GettingReady> getting-ready;
+    // The dummy's Action offers Fights (the app built with its `ai` feature): its values are Stands still, Moves
+    // around, Fights and A second pad; without it, Stands still, Moves around and A second pad.
+    in property <bool> fights;
 
     // ---- What the Rust half says in words.
     // Who the two sides are: the two cards before a battle, and the menu's two columns' headings.
@@ -158,7 +161,7 @@ export global PracticeView {
     }
     pure public function value(option: PracticeOption, value: int) -> string {
         if option == PracticeOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : @tr("A second pad")));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 && PracticeView.fights ? @tr("Fights") : @tr("A second pad")));
         }
         if option == PracticeOption.level {
             return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));

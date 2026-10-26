@@ -38,7 +38,6 @@ use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_frontend::driver::{ChipDraw, InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
-use nettai_training::ai::{Fingerprinter, Level, NetAi, Status, Stopped};
 use nettai_match::build::Builds;
 use nettai_battle::Content;
 use nettai_battle::content::{ActorEntry, Emotion, EmotionWhen, StageData};
@@ -47,10 +46,11 @@ use nettai_match::{Match, RoundSettings, Set, Side};
 use nettai_ui::{BattleKind, GettingReady, PracticeOption, PracticeRow, PracticeView, VersusCard};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
-use std::path::PathBuf;
 use std::rc::Rc;
 use nettai_platform::time::Instant;
 
+#[cfg(feature = "ai")]
+pub(crate) mod ai;
 mod thumbs;
 
 // ---- A practice session, which any screen may start ----------------------------------------------------------
@@ -69,7 +69,7 @@ pub struct Start {
     /// The player's build, and the dummy's. Both can be played (`nettai_match::build::Checked::ready`).
     pub you: Build,
     pub dummy: Build,
-    /// What the dummy does at first, how well it fights (its place in [`LEVELS`]), and what the battle's
+    /// What the dummy does at first, how well it fights (its place among the Level row's values), and what the battle's
     /// options are; the practice menu changes them.
     pub opponent: Opponent,
     pub level: usize,
@@ -296,7 +296,7 @@ struct Session {
     /// The rows its starter added: the menu's first; and the menu's own shown under them ([`shown_rows`]).
     added: usize,
     rows: Vec<PracticeOption>,
-    /// What the dummy does, how well it fights (its place in [`LEVELS`]), the battle's options, and whether the
+    /// What the dummy does, how well it fights (its place among the Level row's values), the battle's options, and whether the
     /// input display is on.
     opponent: Opponent,
     level: usize,
@@ -305,9 +305,11 @@ struct Session {
     /// The game's emotions a side can be held in, in the menu's order, with their words ([`emotions_of`]): the
     /// Emotion row's values after Normal, each side's.
     emotions: Vec<(Emotion, String)>,
-    /// The AI plugged into the dummy's live play, while one is ([`plug`]); and what the corner over the battle was
-    /// last told of its getting ready ([`watch_ai`]).
-    ai: Option<Plugged>,
+    /// The AI plugged into the dummy's live play, while one is (`ai::plug`); and what the corner over the battle was
+    /// last told of its getting ready (`ai::watch`).
+    #[cfg(feature = "ai")]
+    ai: Option<ai::Plugged>,
+    #[cfg(feature = "ai")]
     getting_ready: GettingReady,
     /// The builds the Dummy's build row offers, and the one the dummy is on (none: the row isn't there).
     builds: Vec<Pick>,
@@ -399,7 +401,7 @@ fn values(option: PracticeOption, places: &Places, emotions: usize) -> usize {
         // builds: `Practice::change_option`.)
         PracticeOption::Music | PracticeOption::DummysBuild => 1,
         PracticeOption::Action => ACTIONS.len(),
-        PracticeOption::Level => LEVELS.len(),
+        PracticeOption::Level => LEVEL_COUNT,
         PracticeOption::Hp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
         PracticeOption::InputDelay => MAX_INPUT_DELAY as usize + 1,
         PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options | PracticeOption::Columns | PracticeOption::EditDummy => 0,
@@ -533,103 +535,20 @@ pub(crate) fn dummys_build(shell: &Shell) -> Option<usize> {
     shell.practice.session.as_ref().filter(|s| !s.builds.is_empty()).map(|s| s.dummys)
 }
 
-/// The dummy's Actions, in the row's order.
+/// The dummy's Actions, in the row's order (practice.slint words them by their place: `PracticeView.fights`
+/// says whether Fights is among them).
+#[cfg(feature = "ai")]
 const ACTIONS: [InFight; 4] = [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad];
+#[cfg(not(feature = "ai"))]
+const ACTIONS: [InFight; 3] = [InFight::StandsStill, InFight::MovesAround, InFight::SecondPad];
 
-/// How well the dummy fights (its Action Fights: the AI's), in the Level row's order; Normal at first.
-const LEVELS: [Level; 3] = [Level::Easy, Level::Normal, Level::Hard];
+/// The Level row's values (`ai::LEVELS`: Easy, Normal, Hard); Normal at first.
+const LEVEL_COUNT: usize = 3;
 const NORMAL: usize = 1;
 
 /// The dummy's level as this visit last left it in one of Practice's own sessions.
 fn kept_level(shell: &Shell) -> usize {
     shell.practice.visit.menu.level.unwrap_or(NORMAL)
-}
-
-/// The AI plugged into the dummy's live play ([`plug`]): its level (its place in [`LEVELS`]), the chips'
-/// fingerprints it plays with, and why it stopped, if it did; `out`, taken out since ([`watch_ai`]: the dummy
-/// stands still).
-pub(crate) struct Plugged {
-    pub(crate) level: usize,
-    pub(crate) fingerprints: Fingerprinter,
-    pub(crate) stopped: Stopped,
-    out: bool,
-}
-
-/// The dummy's AI as its Action needs it: while it fights, nettai-training's `NetAi` at `level` (a new one for
-/// another level), on the shipped network (read once: `nettai_training::ai::shipped`), its draws from `seed`, the
-/// fingerprints of its game's chips made on threads of their own and kept in `cache` (the app's: [`fingerprints_folder`]),
-/// both builds' folders' chips asked for at once, so they are made while the round opens; none otherwise.
-/// `plugged`: the one plugged in now, if any. What is plugged in after. One that can't be made (weights this
-/// encoder can't play) is said in the log, and none is plugged in: the dummy stands still.
-pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed: u32, plugged: Option<Plugged>, cache: Option<PathBuf>) -> Option<Plugged> {
-    let wanted = (opponent.in_fight == InFight::Ai || opponent.on_custom_screen == OnCustomScreen::Ai).then_some(level);
-    if wanted == plugged.as_ref().map(|p| p.level) {
-        return plugged;
-    }
-    let Some(level) = wanted else {
-        live.set_ai(None);
-        return None;
-    };
-    let content = live.set().content().clone();
-    let fingerprints = Fingerprinter::start(&content, fingerprint_threads(), cache);
-    fingerprints.want(nettai_training::ai::setup_chips(&content, live.set().first()));
-    match nettai_training::ai::shipped().and_then(|net| NetAi::of(net, LEVELS[level], seed as u64, fingerprints.clone())) {
-        Ok(ai) => {
-            let plugged = Plugged { level, fingerprints, stopped: ai.stopped(), out: false };
-            live.set_ai(Some(Box::new(ai)));
-            Some(plugged)
-        }
-        Err(why) => {
-            crate::errors::log("making the dummy's AI", &why);
-            live.set_ai(None);
-            None
-        }
-    }
-}
-
-/// Where the dummy's AI keeps its chips' fingerprints (by content: `fingerprints-<game>-<hash>.json`), so a chip
-/// is made once: the data folder's `fingerprints` (in the browser, the page's kept folder).
-fn fingerprints_folder() -> PathBuf {
-    crate::paths::data().join("fingerprints")
-}
-
-/// The threads the dummy's chips' fingerprints are made on: a core left to the battle, and four at most (EXE5's
-/// first wait about 3 s on four: docs/design/training-ai.md §10.3); four where the system doesn't say (a browser,
-/// whose are its workers).
-fn fingerprint_threads() -> usize {
-    std::thread::available_parallelism().map_or(4, |n| n.get().saturating_sub(1)).clamp(1, 4)
-}
-
-/// The dummy's AI as it goes, after the frame's ticks: one that stopped (its fingerprints couldn't be made, or it
-/// had nothing it could do) is said in the log and taken out, the dummy standing still; and while its chips'
-/// fingerprints are being made, the corner over the battle says it is getting ready, with how many are made of
-/// those asked for (`PracticeView.getting-ready`, told as it changes).
-fn watch_ai(shell: &mut Shell) {
-    let Some(session) = shell.practice.session.as_mut() else { return };
-    let mut ready = GettingReady::default();
-    let mut take_out = false;
-    if let Some(ai) = session.ai.as_mut().filter(|ai| !ai.out) {
-        if let Some(why) = ai.stopped.why() {
-            crate::errors::log("the dummy's AI", &why);
-            ai.out = true;
-            take_out = true;
-        } else if let Status::Making { done, of } = ai.fingerprints.status() {
-            ready = GettingReady { shown: true, made: done as i32, asked: of as i32 };
-        }
-    }
-    let told = (session.getting_ready != ready).then(|| {
-        session.getting_ready = ready.clone();
-        ready
-    });
-    if take_out
-        && let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice)
-        && let Some(live) = b.stage.player.live_mut()
-    {
-        live.set_ai(None);
-    }
-    if let Some(ready) = told {
-        shell.ui().global::<PracticeView>().set_getting_ready(ready);
-    }
 }
 
 /// The dummy's setup as this visit last left it in one of Practice's own sessions.
@@ -715,6 +634,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         let named = |name: &Option<String>| name.as_deref().and_then(|n| emotions.iter().map(|(e, _)| *e).find(|e| content.rules().emotion.name(*e) == n));
         start.options.emotions = [named(&shell.practice.visit.menu.emotions[0]), named(&shell.practice.visit.menu.emotions[1])];
     }
+    #[cfg_attr(not(feature = "ai"), allow(unused_mut))] // (the dummy's AI plugged in)
     let mut session = Session {
         from: start.from,
         exit: start.exit.is_some(),
@@ -733,7 +653,9 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         options: start.options,
         inputs,
         emotions,
+        #[cfg(feature = "ai")]
         ai: None,
+        #[cfg(feature = "ai")]
         getting_ready: GettingReady::default(),
         dummys: start.dummys.min(start.builds.len().saturating_sub(1)),
         builds: start.builds,
@@ -749,6 +671,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs, shell.settings.input_delay)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
+    view.set_fights(cfg!(feature = "ai"));
     view.set_leave(start.from.is_none() || start.exit.is_some());
     view.set_exit_word(start.exit.clone().unwrap_or_default().into());
     view.set_session_yours(start.you.name.as_str().into());
@@ -758,10 +681,12 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     view.set_held_dummys(0);
     // (The player's input delay netplay's, the one setting both change: the user, "practice mode should have the same
     // input delay as netplay and adjusting it should adjust the netplay delay".)
+    #[cfg_attr(not(feature = "ai"), allow(unused_mut))] // (the dummy's AI plugged in)
     let mut driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64)
         .with_training(start.options)
         .with_input_delay(shell.settings.input_delay);
-    session.ai = plug(&mut driver, session.opponent, session.level, session.seed, None, Some(fingerprints_folder()));
+    #[cfg(feature = "ai")]
+    ai::replug(&mut driver, &mut session);
     view.set_getting_ready(GettingReady::default());
     shell.start_battle(BattleStart {
         owner: ScreenId::Practice,
@@ -863,9 +788,8 @@ fn restart_set(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
     session.places.put(&mut session.m, session.place);
     let set = set_of(ready.content(), &session.m, session.seed);
-    if let Some(ai) = &session.ai {
-        ai.fingerprints.want(nettai_training::ai::setup_chips(set.content(), set.first()));
-    }
+    #[cfg(feature = "ai")]
+    ai::want_chips(session, &set);
     if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice)
         && let Some(live) = b.stage.player.live_mut()
     {
@@ -1414,8 +1338,9 @@ impl Practice {
             if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
                 b.stage.player.set_opponent(session.opponent);
                 b.stage.player.set_training(session.options);
+                #[cfg(feature = "ai")]
                 if let Some(live) = b.stage.player.live_mut() {
-                    session.ai = plug(live, session.opponent, session.level, session.seed, session.ai.take(), Some(fingerprints_folder()));
+                    ai::replug(live, &mut session);
                 }
             }
             // (The row's own value: its stepper slides to it. Then the rows its Action has under it.)
@@ -1634,7 +1559,8 @@ impl Screen for Practice {
     /// After the battle's ticks: the dummy's AI (one that stopped taken out; its getting ready shown), the round,
     /// for the line beside MENU on a phone, and with the input display on, the buttons each side holds.
     fn frame_end(&mut self, shell: &mut Shell, _now: Instant) {
-        watch_ai(shell);
+        #[cfg(feature = "ai")]
+        ai::watch(shell);
         let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Practice) else { return };
         let Some(session) = shell.practice.session.as_mut() else { return };
         let battle = b.stage.player.battle();
@@ -1662,36 +1588,6 @@ impl Screen for Practice {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// The dummy's AI is plugged in while its Action or its custom screen is the AI's, at the level chosen (a
-    /// new one for another level), and taken out otherwise.
-    #[test]
-    fn the_dummys_ai_is_plugged_in_while_its_choices_are_the_ais() {
-        let content = nettai_match::testing::exe6_content();
-        let m = nettai_match::pick::live(&content, "exe6", 3, None).unwrap();
-        let mut live = LivePlayer::new(Set::of(&content, &m, 3));
-        let still = Opponent::default();
-        let fights = Opponent { in_fight: InFight::Ai, ..still };
-        let picks = Opponent { on_custom_screen: OnCustomScreen::Ai, ..still };
-        let level = |p: &Option<Plugged>| p.as_ref().map(|p| p.level);
-        let plugged = plug(&mut live, still, NORMAL, 3, None, None);
-        assert_eq!(level(&plugged), None);
-        let plugged = plug(&mut live, fights, NORMAL, 3, plugged, None);
-        assert_eq!(level(&plugged), Some(NORMAL));
-        // (Both builds' folders' chips asked for as it is plugged in.)
-        let asked = |p: &Option<Plugged>| match p.as_ref().unwrap().fingerprints.status() {
-            Status::Making { of, .. } => of,
-            Status::Ready => nettai_training::ai::setup_chips(&content, live.set().first()).len(),
-            other => panic!("{other:?}"),
-        };
-        assert!(asked(&plugged) > 10, "{}", asked(&plugged));
-        let plugged = plug(&mut live, fights, 2, 3, plugged, None);
-        assert_eq!(level(&plugged), Some(2), "another level: another AI");
-        let plugged = plug(&mut live, picks, 2, 3, plugged, None);
-        assert_eq!(level(&plugged), Some(2), "the custom screen alone");
-        let plugged = plug(&mut live, still, 2, 3, plugged, None);
-        assert_eq!(level(&plugged), None, "taken out");
-    }
 
     /// Every row of the menu that steps has its values, each side's in a row of two columns, and each value of the
     /// dummy's choices is kept by a name of its own.
@@ -1721,10 +1617,15 @@ mod tests {
         let angry = Options { emotions: [None, Some(emotions[1].0)], ..options };
         assert_eq!(value(PracticeOption::Emotion, opponent, NORMAL, angry, false, [0; 2]), [0, 2]);
         assert_eq!(values(PracticeOption::InputDelay, &places), MAX_INPUT_DELAY as usize + 1, "0 to netplay's most");
-        assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
-        assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), [2, 0]);
+        #[cfg(feature = "ai")]
+        {
+            assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
+            assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), [2, 0]);
+        }
+        #[cfg(not(feature = "ai"))]
+        assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::SecondPad], "no Fights without the AI");
+        assert_eq!(value(PracticeOption::Action, dummy(InFight::SecondPad), NORMAL, options, false, [0; 2]), [ACTIONS.len() - 1, 0]);
         assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), [1, 0], "Normal at first");
-        assert_eq!(LEVELS, [Level::Easy, Level::Normal, Level::Hard]);
         assert_eq!(value(PracticeOption::Hp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), [0, 1]);
         assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), [1, 0]);
         assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), [2, 0]);

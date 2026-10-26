@@ -11,9 +11,9 @@ nettai-platform = { path = "../nettai-platform" }
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
-# The practice dummy's AI (its Action "Fights"): the trained network's player, plugged into live play, and its
-# chips' fingerprints made on threads of their own.
-nettai-training = { path = "../nettai-training", features = ["live"] }
+# The practice dummy's AI (its Action "Fights"; the `ai` feature): the trained network's player, plugged into live
+# play, and its chips' fingerprints made on threads of their own.
+nettai-training = { path = "../nettai-training", features = ["live"], optional = true }
 nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
 nettai-content = { path = "../nettai-content" }
@@ -87,6 +87,10 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 # through (`screens/play/tour.rs`). A player's build has none of it: `cargo run -p nettai --features tour`. The tests
 # compile the pass whatever the features (the same two dependencies are the tests' below).
 tour = ["dep:png", "nettai-rtc/testing"]
+# The practice dummy that fights: its Action "Fights" and its Level, played by the trained network
+# (docs/design/training-ai.md §10), whose weights are built into the program. Off by default: a build without it
+# offers the dummy's other Actions alone. `cargo run -p nettai --features ai`.
+ai = ["dep:nettai-training"]
 
 [build-dependencies]
 # What the app is built from, for its About screen (build.rs: `cargo metadata`'s JSON).

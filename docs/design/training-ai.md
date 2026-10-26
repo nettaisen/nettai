@@ -979,7 +979,13 @@ its update 1,000 (390 M decisions; its update 750 had beaten its 500 93 to 44), 
 update 2,000 (about 780 M decisions; even with 5,250, 73 to 67, Elo 1,188 to 1,183). A better one replaces it with the trainer's export, `uv run python -m nettai_ai.export <checkpoint> --out
 crates/nettai-training/model/nettai-ai.safetensors` (the parity fixture it writes beside it isn't committed); the
 `ai` tests check it is this encoder's with its three levels, and nettai's `the_dummy_that_fights_takes_hp_away`
-that it plays.
+that it plays (`cargo test -p nettai --features ai`).
+
+The app has the dummy that fights only when built with its `ai` feature (2026-10-26, the user: "have practice
+mode ai be a compile time feature flag that's off by default"): nettai-training is an optional dependency of
+nettai, the AI's code is `screens/practice/ai.rs`, and without the feature the dummy's Action has no Fights and the
+menu no Level (docs/app.md, "The dummy that fights"). `cargo run -p nettai --features ai` plays it; a release built
+as packaging/ builds it (`cargo build -p nettai`) has none.
 
 ### 10.6 The practice menu, with the first weights
 

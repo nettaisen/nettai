@@ -3114,7 +3114,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Dummy's build (a dropdown; Practice's own sessions) | the game's builds that can be played, the player's own first chosen | the set starts over with the dummy on it, the menu staying open: above |
 | Dummy: EDIT (a button; Practice's own sessions) | | the dummy's build in Builds' editor, and back: above |
-| Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
+| Dummy: Action | Stands still, Moves around, Fights (the `ai` feature's), A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`): below |
 | Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
@@ -3231,10 +3231,13 @@ reaches the battle on the custom screen alone, the menu being the player's), and
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
-**The dummy that fights** (Action Fights). Its AI is nettai-training's `NetAi`, the learned training AI
-(docs/design/training-ai.md §10), in the fight and on its custom screen; it is plugged into the session's live
-play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and taken out otherwise
-(`practice::plug`); another Level plugs in a new one, and as the set starts over (`LivePlayer::start`) it starts
+**The dummy that fights** (Action Fights). A build with the `ai` feature alone has it (`cargo run -p nettai
+--features ai`; off by default, so a player's build, the releases' and the browser's among them, has none: no
+nettai-training, no weights built in, and the Action is Stands still, Moves around and A second pad, practice.slint
+told so by `PracticeView.fights`); its code is `screens/practice/ai.rs`. Its AI is nettai-training's `NetAi`, the
+learned training AI (docs/design/training-ai.md §10), in the fight and on its custom screen; it is plugged into the
+session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and taken out otherwise
+(`practice::ai::plug`); another Level plugs in a new one, and as the set starts over (`LivePlayer::start`) it starts
 over too (`reset`). It plays as the trainer's environment plays a seat: it sees what its side's screen shows and no
 more (the engine's view for that side), decides every 4 ticks from what it saw its reaction time
 before, and holds that action till the next; on its custom screen it points at a chip or a key and its navigator
