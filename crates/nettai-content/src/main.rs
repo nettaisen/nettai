@@ -1,13 +1,16 @@
-//! `nettai-content`: check a content pack, compare it with another, and edit
-//! its sprites in Aseprite.
+//! `nettai-content`: check a content pack, compare it with another, edit
+//! its sprites in Aseprite, and publish a game's content.
 //!
 //!     nettai-content check <pack> [--content DIR]
 //!     nettai-content verify <pack> <reference-pack> [--seconds N]
 //!     nettai-content aseprite-export <pack> [NAME ...]
 //!     nettai-content aseprite-import <pack> [NAME ...]
+//!     nettai-content publish <game> [--packs DIR] [--dry-run]
 //!
 //! A pack exported from a ROM (`nettai-extract exe6`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
+
+mod publish;
 
 use nettai_content::report::{Level, Report};
 use nettai_content::{index, pack, timing, verify};
@@ -37,12 +40,14 @@ const USAGE: &str = "usage:
                                                    (graphics, sprite timing, sound as timelines and
                                                    as N seconds of PCM per song)
   nettai-content aseprite-export <pack> [NAME ...]   write sprites' Aseprite views
-  nettai-content aseprite-import <pack> [NAME ...]   read the views back into the sprites' files";
+  nettai-content aseprite-import <pack> [NAME ...]   read the views back into the sprites' files
+";
 
 fn parse() -> Result<Args, String> {
+    let usage = || format!("{USAGE}{}", publish::USAGE);
     let mut it = std::env::args().skip(1);
-    let command = it.next().ok_or(USAGE)?;
-    let pack = PathBuf::from(it.next().ok_or(USAGE)?);
+    let command = it.next().ok_or_else(usage)?;
+    let pack = PathBuf::from(it.next().ok_or_else(usage)?);
     let mut a = Args { command, pack, reference: None, content: index::content(), seconds: 60.0, only: Vec::new() };
     while let Some(flag) = it.next() {
         match flag.as_str() {
@@ -51,7 +56,7 @@ fn parse() -> Result<Args, String> {
                 let v = it.next().ok_or("--seconds needs a value")?;
                 a.seconds = v.parse().map_err(|_| "--seconds takes a number")?;
             }
-            f if f.starts_with("--") => return Err(format!("unknown option {f}\n{USAGE}")),
+            f if f.starts_with("--") => return Err(format!("unknown option {f}\n{}", usage())),
             f if a.command == "verify" && a.reference.is_none() => a.reference = Some(f.into()),
             f => a.only.push(f.to_string()),
         }
@@ -75,6 +80,10 @@ fn print_report(r: &Report, verbose: bool) {
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("publish") {
+        publish::run(std::env::args().skip(2)).unwrap_or_else(|e| fail(e));
+        return;
+    }
     let a = parse().unwrap_or_else(|e| fail(e));
     match a.command.as_str() {
         "check" => {
@@ -118,7 +127,7 @@ fn main() {
         }
         "verify" => verify_packs(&a),
         "aseprite-export" | "aseprite-import" => aseprite(&a),
-        _ => fail(USAGE),
+        _ => fail(format!("{USAGE}{}", publish::USAGE)),
     }
 }
 
