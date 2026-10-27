@@ -429,7 +429,7 @@ pub(crate) fn install(lua: &Lua, data: Data) -> LResult<()> {
         "anims",
         lua.create_function(|lua, (r, list, buffer): (mlua::UserDataRef<RomHandle>, f64, f64)| {
             let (list, buffer) = (word(list, "gfx.anims")?, word(buffer, "gfx.anims")?);
-            let anims = guarded("gfx.anims", || rom::located(here(lua), || crate::decode::gfx_anims(&r.rom, list, buffer)))?;
+            let anims = guarded("gfx.anims", || rom::located(here(lua), || crate::gfx::gfx_anims(&r.rom, list, buffer)))?;
             lua.create_sequence_from(anims.into_iter().map(GfxAnimHandle))
         })?,
     )?;

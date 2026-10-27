@@ -938,7 +938,7 @@ mod tests {
             let collection = collection_of(&content, FIELD).unwrap();
             let mut cards: Vec<((), EntryHandle)> = edit::of_game(&content, game, Registry::Entry, Some(&collection)).into_iter().map(|h| ((), EntryHandle(h))).collect();
             order.entries(&content, &collection, &mut cards);
-            let numbers: Vec<u8> = cards.iter().map(|(_, h)| crate::builds::import::card_number(&crate::builds::import::tests::tables(nettai_extract::Game::named(game).unwrap()), content.defs.entry(*h).id()).unwrap_or_else(|| panic!("{game}: {} has no number", content.defs.entry(*h).id()))).collect();
+            let numbers: Vec<u8> = cards.iter().map(|(_, h)| crate::builds::import::card_number(&crate::builds::import::tests::compat(game), content.defs.entry(*h).id()).unwrap_or_else(|| panic!("{game}: {} has no number", content.defs.entry(*h).id()))).collect();
             assert_eq!(numbers.len(), count, "{game}");
             assert!(numbers.windows(2).all(|w| w[0] <= w[1]), "{game}: the library's order is the numbers'");
             let mut distinct = numbers.clone();

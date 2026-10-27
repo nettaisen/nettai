@@ -59,7 +59,7 @@ pub struct Kit {
     /// The game's rulesets (read of its rules once).
     rulesets: OnceCell<Option<Arc<Rulesets>>>,
     /// The compat tables of the game's content (read once): a save's import, a card's number.
-    tables: OnceCell<Option<nettai_extract::Tables>>,
+    compat: OnceCell<Option<import::Compat>>,
 }
 
 impl Kit {
@@ -88,20 +88,19 @@ impl Kit {
     }
 
     /// The compat tables of the content the game is loaded from (`<content>/<game>/compat`), which a save's import
-    /// and a card's number read; none where they don't read (why is in the log).
-    pub fn tables(&self) -> Option<&nettai_extract::Tables> {
-        self.tables
+    /// and a card's number read; none where the game has none, or they don't read (why is in the log).
+    pub fn compat(&self) -> Option<&import::Compat> {
+        self.compat
             .get_or_init(|| {
-                let dir = &self.ready.loaded.game.dir;
-                let game = nettai_extract::Game::named(&self.game)?;
-                nettai_extract::Tables::of_content(game, dir).map_err(|why| crate::errors::log(&format!("reading {}'s compat tables", self.game), &why)).ok()
+                let read = import::Compat::of_content(&self.game, &self.ready.loaded.game.dir)?;
+                read.map_err(|why| crate::errors::log(&format!("reading {}'s compat tables", self.game), &why)).ok()
             })
             .as_ref()
     }
 
     /// The number patch card `id` is printed with (`import::card_number`), as the game's content's tables say.
     pub fn card_number(&self, id: &str) -> Option<u8> {
-        import::card_number(self.tables()?, id)
+        import::card_number(self.compat()?, id)
     }
 
     /// A version's (a group's) name, as the game's strings have it in `names`' language (its id where they have
@@ -170,7 +169,7 @@ pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
         order: order::Order::load(&ready.loaded.game.dir, game),
         auto_layout: OnceCell::new(),
         rulesets: OnceCell::new(),
-        tables: OnceCell::new(),
+        compat: OnceCell::new(),
     });
     KITS.with(|kits| kits.borrow_mut().insert(game.to_string(), kit.clone()));
     Some(kit)

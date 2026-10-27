@@ -8,7 +8,7 @@
 //!     nettai-content publish <game> [--packs DIR] [--dry-run]
 //!     nettai-content lock [game ...]
 //!
-//! A pack exported from a ROM (`nettai-extract exe6`) holds the game's own
+//! A pack exported from a ROM (`nettai-extract content/exe6`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
 
 mod publish;

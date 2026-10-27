@@ -12,9 +12,31 @@
 //! ([`Imported`], [`Refused`]).
 
 use nettai_battle::content::Content;
-use nettai_extract::{Compat, Tables};
 use nettai_match::Side;
 use nettai_match::build::{Builds, Taken};
+
+/// A game's compat tables (`<content>/<game>/compat`), as its compat crate reads them: what a save of the game is
+/// imported by, and the numbers its patch cards are printed with.
+#[derive(Clone, Debug)]
+pub enum Compat {
+    Exe4(Box<exe4_compat::Compat>),
+    Exe5(Box<exe5_compat::Compat>),
+    Exe6(Box<exe6_compat::Compat>),
+}
+
+impl Compat {
+    /// Game `game`'s compat tables in the content directory `content` (a bundle's, or the repository's content/),
+    /// read; none where the game has no compat crate (no save import).
+    pub fn of_content(game: &str, content: &std::path::Path) -> Option<Result<Compat, String>> {
+        let said = |e: String| format!("{game}'s compat tables in {}: {e}", content.display());
+        Some(match game {
+            exe4_compat::ROOT => exe4_compat::Compat::of_content(content).map(|c| Compat::Exe4(Box::new(c))).map_err(said),
+            exe5_compat::ROOT => exe5_compat::Compat::of_content(content).map(|c| Compat::Exe5(Box::new(c))).map_err(said),
+            exe6_compat::ROOT => exe6_compat::Compat::of_content(content).map(|c| Compat::Exe6(Box::new(c))).map_err(said),
+            _ => return None,
+        })
+    }
+}
 
 /// A save, made a build's side.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -34,8 +56,8 @@ pub enum Refused {
 }
 
 /// A side of game `game` from the save in `file` (a .sav's bytes, or a raw save image as Tango's netplay
-/// templates hold), as a build of the game is, by `tables`, the compat tables of the game's content.
-pub fn side_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &[u8]) -> Result<Imported, Refused> {
+/// templates hold), as a build of the game is, by `compat`, the compat tables of the game's content.
+pub fn side_of_save(compat: &Compat, content: &Content, builds: &Builds, file: &[u8]) -> Result<Imported, Refused> {
     let game = builds.game();
     let failed = |why: String| {
         crate::errors::log(&format!("importing a save of {game}"), &why);
@@ -44,7 +66,7 @@ pub fn side_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &
     let mut side = Side::fresh(content, game).map_err(failed)?;
     // What the save holds: its version is the facts it gives (docs/design/versions.md §2.4: the souls or Crosses it
     // owns, EXE6's Cybeast, a Bass-Cross MegaMan card's variant), which its compat crate states.
-    let notes = match tables.compat() {
+    let notes = match compat {
         Compat::Exe6(compat) if game == exe6_compat::ROOT => {
             let save = read(game, file, exe6_compat::import::read)?;
             exe6_compat::import::import(compat, content, &mut side, &save).map_err(failed)?
@@ -72,9 +94,9 @@ pub fn side_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &
 
 /// The auto battle data of the save in `file` alone, as `side`'s (its other facts kept).
 #[allow(dead_code)] // (The auto battle tab's, which isn't built yet.)
-pub fn auto_battle_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &[u8], side: &mut Side) -> Result<(), Refused> {
+pub fn auto_battle_of_save(compat: &Compat, content: &Content, builds: &Builds, file: &[u8], side: &mut Side) -> Result<(), Refused> {
     let game = builds.game();
-    let said = match tables.compat() {
+    let said = match compat {
         Compat::Exe5(compat) if game == exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(compat, content, game, file, side),
         _ => Err(format!("{game}'s saves keep no auto battle data")),
     };
@@ -94,10 +116,10 @@ pub fn auto_battle_of_save(tables: &Tables, content: &Content, builds: &Builds, 
 }
 
 /// The number patch card `id` (its key in the game's cards) is printed with and a save holds, as the game's compat
-/// tables state it (`tables`, its content's patch-cards.toml): what a screen shows as the card's number. None: a
+/// tables state it (`compat`, its content's patch-cards.toml): what a screen shows as the card's number. None: a
 /// game whose compat states no such card.
-pub fn card_number(tables: &Tables, id: &str) -> Option<u8> {
-    match tables.compat() {
+pub fn card_number(compat: &Compat, id: &str) -> Option<u8> {
+    match compat {
         Compat::Exe6(compat) => compat.patch_card_number(id),
         Compat::Exe5(compat) => compat.patch_card_number(id),
         Compat::Exe4(compat) => compat.patch_card_number(id),
@@ -119,8 +141,8 @@ pub(crate) mod tests {
     use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
 
     /// `game`'s compat tables, as the repository's content has them.
-    pub(crate) fn tables(game: nettai_extract::Game) -> Tables {
-        Tables::of_content(game, &nettai_content::index::content()).unwrap()
+    pub(crate) fn compat(game: &str) -> Compat {
+        Compat::of_content(game, &nettai_content::index::content()).expect("a game with a compat crate").unwrap()
     }
 
     /// A build from each version's group of EXE4 and EXE5 has the six souls that version's save can have (its
@@ -161,7 +183,7 @@ pub(crate) mod tests {
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
         let five = exe5_content();
         let builds = Builds::of(&five, "exe5").unwrap();
-        let imported = side_of_save(&tables(nettai_extract::Game::Exe5), &five, &builds, &image).unwrap();
+        let imported = side_of_save(&compat("exe5"), &five, &builds, &image).unwrap();
         let side = &imported.side;
         assert_eq!((side.facts.get(&five, "karma"), side.facts.get(&five, "hp")), (Some(Stated::Number(0)), Some(Stated::Number(997))));
         assert_eq!(imported.taken, [Taken { choice: "light_dark".into(), preset: "dark".into(), was: Some(100) }]);
@@ -171,6 +193,6 @@ pub(crate) mod tests {
         let checked = Checked::of(&five, "exe5", side);
         assert!(checked.problems.iter().all(|p| p.field.as_deref() == Some("folder")), "{:?}", checked.problems);
         let six = exe6_content();
-        assert_eq!(side_of_save(&tables(nettai_extract::Game::Exe6), &six, &Builds::of(&six, "exe6").unwrap(), &image), Err(Refused::NotThisGames));
+        assert_eq!(side_of_save(&compat("exe6"), &six, &Builds::of(&six, "exe6").unwrap(), &image), Err(Refused::NotThisGames));
     }
 }

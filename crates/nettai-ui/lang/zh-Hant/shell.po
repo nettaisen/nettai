@@ -351,6 +351,14 @@ msgid "In Steam, right-click it in your library, choose Manage > Browse local fi
 msgstr "請在 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此頁面。"
 msgid "Choose folder"
 msgstr "選擇資料夾"
+# A game has no pack, and the Legacy Collection found lacks some of its ROMs: {} is the game, as the header
+# shows it; by its Chinese name, and Steam's own name for checking a game's files (驗證遊戲檔案的完整性); the button opens the folder dialog again.
+msgid "The Legacy Collection's files are incomplete: some of {}'s are missing. Have Steam verify the collection's files, then choose its folder again."
+msgstr "《洛克人EXE 合集》的檔案不完整：{} 的部分檔案遺失。請讓 Steam 驗證遊戲檔案的完整性，然後重新選擇其資料夾。"
+msgid "The Legacy Collection's files are incomplete"
+msgstr "《洛克人EXE 合集》的檔案不完整"
+msgid "Some of {}'s files are missing. Have Steam verify the collection's files, then choose its folder again."
+msgstr "{} 的部分檔案遺失。請讓 Steam 驗證遊戲檔案的完整性，然後重新選擇其資料夾。"
 # A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
 msgid "{}'s data couldn't be extracted. Details are in the log file."
 msgstr "無法擷取 {} 的資料。詳細資訊請見記錄檔。"

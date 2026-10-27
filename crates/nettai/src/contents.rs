@@ -7,8 +7,8 @@
 //! newest bundle of the app's engine line ([`line`]) in the store: the highest revision.
 //!
 //! **Downloads.** The app ships no content, and knows one address: the catalog of games (`bundle::catalog_url`),
-//! which gives each game's index, whose entries give each bundle's address. The games are the catalog's that its
-//! extractor makes packs of. A game's newest bundle of the line is downloaded where the store has none of its line,
+//! which gives each game's index, whose entries give each bundle's address. The games are the catalog's: a bundle
+//! of the app's line has the recipe its pack is extracted by. A game's newest bundle of the line is downloaded where the store has none of its line,
 //! the first start included; and, unless Settings turned "Check for updates" off, at each start where its index has
 //! a newer one (`crate::games` runs them: [`fetch_catalog`], [`fetch_newest`]). An online match whose players'
 //! background pools differ takes every game's newest whatever Settings say ([`fetch_every_newest`], `screens::play`).
@@ -87,8 +87,8 @@ pub fn dir(game: &str) -> Option<PathBuf> {
     }
 }
 
-/// The games, by id: development's content's, else the catalog's as last read that this app plays (its extractor
-/// makes their packs): each one's content is in the store, or is to be downloaded.
+/// The games, by id: development's content's, else the catalog's as last read: each one's content is in the store,
+/// or is to be downloaded.
 pub fn games() -> Result<Vec<String>, String> {
     match &contents().development {
         Some(dir) => nettai_content::index::games(dir).map_err(|e| format!("{}: {e}", dir.display())),
@@ -250,10 +250,11 @@ impl Contents {
         Contents { development, store, catalog, read: Mutex::new(Read { catalog: kept, indexes }) }
     }
 
-    /// The games of the catalog as last read, that this app plays (its extractor makes their packs), by id.
+    /// The games of the catalog as last read, by id. (The app knows no game: a bundle of its line holds the
+    /// recipe the game's pack is extracted by.)
     fn catalog_games(&self) -> Vec<String> {
         let Ok(read) = nettai_platform::thread::lock(&self.read) else { return Vec::new() };
-        read.catalog.iter().flat_map(|c| c.games.keys()).filter(|game| nettai_extract::Game::named(game).is_some()).cloned().collect()
+        read.catalog.iter().flat_map(|c| c.games.keys()).cloned().collect()
     }
 
     /// Each game of the catalog as last read with its newest bundle of the line in the store: the background pool
@@ -262,7 +263,7 @@ impl Contents {
         self.catalog_games().into_iter().filter_map(|game| Some((game.clone(), self.store.newest(&game, line())?.dir))).collect()
     }
 
-    /// Read the catalog of games ([`Contents::catalog`]), and keep it: the games this app plays among them.
+    /// Read the catalog of games ([`Contents::catalog`]), and keep it: its games.
     async fn fetch_catalog(&self) -> Result<Vec<String>, String> {
         let url = &self.catalog;
         let body = nettai_platform::http::get(url, MAX_INDEX).await?;
@@ -494,13 +495,13 @@ mod tests {
             let lines = if entries.is_empty() { Default::default() } else { [(line().to_string(), entries)].into() };
             put(&format!("{game}/index.json"), serde_json::to_string(&Index { game: game.into(), lines }).unwrap().as_bytes());
         };
-        // exe6: one bundle; exe5: nothing for the line yet; exe1: a game this app doesn't play.
+        // exe6: one bundle; exe5: nothing for the line yet.
         let one = bundle("return 1", 1);
         let gz = gzip(&one.tar);
         put(&format!("exe6/bundles/{}.tar.gz", one.id), &gz);
         index("exe6", vec![entry(one.id, 0x6A, 1, gz.len(), format!("{url}/exe6/bundles/{}.tar.gz", one.id))]);
         index("exe5", Vec::new());
-        let games = [("exe1", "exe1"), ("exe5", "exe5"), ("exe6", "exe6")].map(|(g, at)| (g.to_string(), format!("{url}/{at}/index.json")));
+        let games = [("exe5", "exe5"), ("exe6", "exe6")].map(|(g, at)| (g.to_string(), format!("{url}/{at}/index.json")));
         put("catalog.json", serde_json::to_string(&Catalog { games: games.into(), ai: None }).unwrap().as_bytes());
         let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().unwrap();
         runtime.block_on(async {

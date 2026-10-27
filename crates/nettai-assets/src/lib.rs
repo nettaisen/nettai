@@ -1,6 +1,6 @@
 //! The graphics a battle frontend draws with, in typed form: what a
 //! content pack's graphics (nettai-content) load into. Nothing ROM-derived is
-//! checked in; `nettai-extract exe6` writes the pack from the user's copies
+//! checked in; `nettai-extract content/exe6` writes the pack from the user's copies
 //! of the games (both US ROMs).
 //!
 //! Colors are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index

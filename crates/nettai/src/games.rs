@@ -12,14 +12,15 @@
 //! Another language's graphics are loaded on a thread too ([`Games::load_language`]), never where they are
 //! first asked for. Why a game can't be listed or loaded goes to the log.
 //!
-//! Before all that, a game whose pack is missing, or was made by another build, has it extracted from the
-//! player's Legacy Collection, on a thread of the extraction's own (`crate::packs`; docs/app.md §17): the bar is
-//! that first, and the game loads as its pack lands. Its pack is the one its content's tables name
-//! (`packs/<game>-<fingerprint>`, `nettai_extract::Tables`), extracted by them.
+//! Before all that, a game whose pack is missing (or unfinished) has it extracted from the player's Legacy
+//! Collection, on a thread of the extraction's own (`crate::packs`; docs/app.md §17): the bar is that first, and the
+//! game loads as its pack lands. Its pack is the one its content's extraction recipe names
+//! (`packs/<game>-<fingerprint>`, `nettai_extract::Recipe`), extracted by it from every ROM the recipe declares: a
+//! collection that lacks one is told the player.
 
 use crate::bnlc::Install;
 use crate::packs::{self, Extractor, Job, Kept, Told};
-use nettai_extract::Tables;
+use nettai_extract::Recipe;
 use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
@@ -38,8 +39,8 @@ pub enum State {
     NoContent { unpublished: bool },
     /// No asset pack of it is found (and none is being extracted).
     NoPack,
-    /// Its pack is missing, or another build's, and the Legacy Collection found has its ROMs: it is extracted
-    /// when the game is first loaded (the user: "you should lazily extract games on first load").
+    /// Its pack is missing, or unfinished, and the Legacy Collection found has all its ROMs: it is extracted when
+    /// the game is first loaded (the user: "you should lazily extract games on first load").
     Extractable,
     /// Its pack is being extracted, or waits to be: how far it is, 0 to 1.
     Extracting(f32),
@@ -99,12 +100,12 @@ pub struct Entry {
     pack: Option<Pack>,
 }
 
-/// A game's asset pack: its folder, and, among the app's own packs, the content's tables it is extracted by and
-/// their fingerprint (its folder's name: `crate::packs::folder`).
+/// A game's asset pack: its folder, and, among the app's own packs, the content's recipe it is extracted by and
+/// its fingerprint (its folder's name: `crate::packs::folder`).
 #[derive(Clone)]
 struct Pack {
     dir: PathBuf,
-    own: Option<(Arc<Tables>, String)>,
+    own: Option<(Arc<Recipe>, String)>,
 }
 
 impl Pack {
@@ -129,6 +130,9 @@ pub enum Notice {
     ExtractFailed(String),
     /// A game has no pack, and no Legacy Collection is found to extract it from.
     NoSource,
+    /// A game has no pack, and the Legacy Collection found lacks some of its ROMs (its files are incomplete): the
+    /// game's id.
+    Incomplete(String),
     /// The game's content couldn't be downloaded (the store has none of it).
     DownloadFailed(String),
 }
@@ -167,12 +171,15 @@ pub struct Games {
     /// nothing is extracted).
     pub packs: PathBuf,
     pub extracts: bool,
-    /// The games whose pack another build made: it is extracted again, or, where it can't be, loaded as it is.
+    /// The games whose pack isn't stamped with its fingerprint (unfinished, or of a stamp before): it is extracted
+    /// again, or, where it can't be, loaded as it is.
     stale: Vec<String>,
     /// A Legacy Collection was found at start-up, or chosen since.
     pub found_source: bool,
     /// The Legacy Collection the packs are extracted from, once one is found or chosen.
     source: Option<Install>,
+    /// The games whose pack is wanted that the Legacy Collection last found or chosen lacks some ROMs of.
+    incomplete: Vec<String>,
     /// The extraction, once the window's loop runs ([`Games::start`]); the jobs asked for before it does.
     extractor: Option<Extractor>,
     waiting: Vec<Job>,
@@ -267,62 +274,82 @@ impl Games {
             None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen"),
             None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
         }
-        if self.list.iter().any(|e| matches!(e.state, State::NoPack) && nettai_extract::Game::named(&e.id).is_some()) && !self.notices.contains(&Notice::NoSource) {
+        // (A collection found that lacks a game's ROMs was said as it was found: `Games::found`.)
+        let unmade = self.list.iter().any(|e| matches!(e.state, State::NoPack) && e.pack.as_ref().is_some_and(|p| p.own.is_some()));
+        if unmade && self.source.is_none() && self.incomplete.is_empty() && !self.notices.contains(&Notice::NoSource) {
             self.notices.push(Notice::NoSource);
         }
     }
 
-    /// Game `id`'s own pack, for its content `content`: the one its content's tables name, among the app's packs
-    /// (none where the extractor makes no pack of the game, or its tables don't read: why is in the log).
+    /// Game `id`'s own pack, for its content `content`: the one its content's recipe names, among the app's packs
+    /// (none where its content declares no recipe, the recipe doesn't read, or it declares a ROM another game listed
+    /// before it declares: why is in the log).
     fn own_pack(&self, id: &str, content: &Path) -> Option<Pack> {
-        let game = nettai_extract::Game::named(id)?;
-        match Tables::of_content(game, content) {
-            Ok(tables) => {
-                let print = nettai_extract::fingerprint(&tables);
-                Some(Pack { dir: self.packs.join(packs::folder(id, &print)), own: Some((Arc::new(tables), print)) })
+        match Recipe::of_content(content, id) {
+            Ok(recipe) => {
+                let shared = self.list.iter().filter(|e| e.id != id).find_map(|e| {
+                    let (theirs, _) = e.pack.as_ref()?.own.as_ref()?;
+                    theirs.roms().iter().find(|code| recipe.roms().contains(code)).map(|code| (e.id.clone(), code.clone()))
+                });
+                if let Some((other, code)) = shared {
+                    crate::errors::log(&format!("reading {id}'s extraction recipe"), &format_args!("it declares {code}, which {other}'s declares: two games can't have one ROM"));
+                    return None;
+                }
+                let print = recipe.fingerprint();
+                Some(Pack { dir: self.packs.join(packs::folder(id, &print)), own: Some((Arc::new(recipe), print)) })
             }
             Err(why) => {
-                crate::errors::log(&format!("reading {id}'s compat tables"), &why);
+                crate::errors::log(&format!("reading {id}'s extraction recipe"), &why);
                 None
             }
         }
     }
 
-    /// The games whose pack is to be made: those the extractor makes a pack of with none, or with another
-    /// build's that isn't loaded.
-    fn wanted(&self) -> Vec<(String, nettai_extract::Game)> {
+    /// The games whose pack is to be made, with their recipes: those with a recipe and no pack, or one that isn't
+    /// stamped with its fingerprint and isn't loaded.
+    fn wanted(&self) -> Vec<(String, Arc<Recipe>)> {
         self.list
             .iter()
             .filter_map(|e| {
-                e.pack.as_ref()?.own.as_ref()?;
-                let game = nettai_extract::Game::named(&e.id)?;
+                let (recipe, _) = e.pack.as_ref()?.own.as_ref()?;
                 let missing = matches!(e.state, State::NoPack);
                 let stale = self.stale.contains(&e.id) && matches!(e.state, State::NotLoaded | State::Failed);
-                (missing || stale).then(|| (e.id.clone(), game))
+                (missing || stale).then(|| (e.id.clone(), recipe.clone()))
             })
             .collect()
     }
 
-    /// Whether a game's pack is wanted (missing, or another build's) and none is being made of it: the Legacy
+    /// Whether a game's pack is wanted (missing, or unstamped) and none is being made of it: the Legacy
     /// Collection's folder would be taken.
     pub fn wants_source(&self) -> bool {
         self.extracts && !self.wanted().is_empty()
     }
 
-    /// The Legacy Collection `install` is where the packs wanted come from: each game whose ROMs it has can be
-    /// extracted ([`State::Extractable`]) when it is first loaded. How many there are.
+    /// The Legacy Collection `install` is where the packs wanted come from: each game it has every ROM of (every
+    /// one its recipe declares) can be extracted ([`State::Extractable`]) when it is first loaded. How many there
+    /// are. A game it lacks ROMs of is said in the log, and told the player once ([`Notice::Incomplete`]): its
+    /// files are incomplete.
     pub fn found(&mut self, install: Install) -> usize {
-        let roms = install.roms();
         let mut count = 0;
-        for (id, game) in self.wanted() {
-            if !roms.iter().any(|r| r.game == game) {
-                crate::errors::log(&format!("extracting {id}"), &format_args!("{} has no ROM of it", install.data.display()));
+        self.incomplete.clear();
+        for (id, recipe) in self.wanted() {
+            if let Err((missing, _)) = install.roms(recipe.roms()) {
+                crate::errors::log(
+                    &format!("extracting {id}"),
+                    &format_args!("the Legacy Collection in {} is incomplete: it has no {} ROM", install.data.display(), missing.join(", no ")),
+                );
+                self.incomplete.push(id);
                 continue;
             }
             if let Some(entry) = self.list.iter_mut().find(|e| e.id == id) {
                 entry.state = State::Extractable;
                 count += 1;
             }
+        }
+        if let Some(id) = self.incomplete.first()
+            && !self.notices.iter().any(|n| matches!(n, Notice::Incomplete(_)))
+        {
+            self.notices.push(Notice::Incomplete(id.clone()));
         }
         if count > 0 {
             self.found_source = true;
@@ -342,15 +369,16 @@ impl Games {
     /// Extract game `id`'s pack, if it is [`State::Extractable`]: it is being loaded for the first time. (Until
     /// [`Games::start`], it waits for the extraction's thread.)
     pub fn extract(&mut self, id: &str) {
-        let (Some(install), Some(game)) = (&self.source, nettai_extract::Game::named(id)) else { return };
+        let Some(install) = &self.source else { return };
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
-        let Some((tables, _)) = entry.pack.as_ref().and_then(|p| p.own.clone()) else { return };
+        let Some((recipe, _)) = entry.pack.as_ref().and_then(|p| p.own.clone()) else { return };
         if !matches!(entry.state, State::Extractable) {
             return;
         }
         entry.state = State::Extracting(0.0);
-        let roms: Vec<_> = install.roms().into_iter().filter(|r| r.game == game).collect();
-        let job = Job::new(tables, roms);
+        // (Every ROM is there: `Games::found` made it extractable. One gone since fails the extraction, said.)
+        let roms = install.roms(recipe.roms()).unwrap_or_else(|(_, found)| found);
+        let job = Job::new(recipe, roms);
         match &self.extractor {
             Some(extractor) => extractor.add(vec![job]),
             None => self.waiting.push(job),
@@ -437,7 +465,12 @@ impl Games {
         }
     }
 
-    /// Whether game `id`'s pack is another build's (it couldn't be made again).
+    /// The first game whose pack is wanted that the Legacy Collection found lacks ROMs of, if one is.
+    pub fn incomplete(&self) -> Option<&str> {
+        self.incomplete.first().map(String::as_str)
+    }
+
+    /// Whether game `id`'s pack isn't stamped with its fingerprint (it couldn't be made again).
     pub fn is_stale(&self, id: &str) -> bool {
         self.stale.iter().any(|s| s == id)
     }
@@ -471,6 +504,7 @@ impl Games {
             stale: Vec::new(),
             found_source: false,
             source: None,
+            incomplete: Vec::new(),
             extractor: None,
             waiting: Vec::new(),
             chosen: None,
@@ -551,13 +585,12 @@ impl Games {
                         self.found(install);
                     }
                 }
-                let game = nettai_extract::Game::named(id);
-                let roms = self.source.as_ref().map(|i| i.roms().into_iter().filter(|r| Some(r.game) == game).collect::<Vec<_>>()).unwrap_or_default();
-                let tables = self.others[at].pack.as_ref().and_then(|p| p.own.as_ref()).map(|(t, _)| t.clone());
-                match tables {
-                    Some(tables) if !roms.is_empty() && self.extracts => {
+                let recipe = self.others[at].pack.as_ref().and_then(|p| p.own.as_ref()).map(|(r, _)| r.clone());
+                let roms = recipe.as_ref().zip(self.source.as_ref()).and_then(|(r, i)| i.roms(r.roms()).ok());
+                match (recipe, roms) {
+                    (Some(recipe), Some(roms)) if self.extracts => {
                         self.others[at].state = State::Extracting(0.0);
-                        let job = Job::new(tables, roms);
+                        let job = Job::new(recipe, roms);
                         match &self.extractor {
                             Some(extractor) => extractor.add(vec![job]),
                             None => self.waiting.push(job),
@@ -731,10 +764,9 @@ impl Games {
         // (Its pack to be made, where the collection found has its ROMs; looked for now if it wasn't.)
         self.seek_source();
         if let Some(install) = self.source.clone()
-            && self.wanted().iter().any(|(wanted, _)| wanted == id)
+            && let Some((_, recipe)) = self.wanted().into_iter().find(|(wanted, _)| wanted == id)
         {
-            let game = nettai_extract::Game::named(id);
-            if install.roms().iter().any(|r| Some(r.game) == game)
+            if install.roms(recipe.roms()).is_ok()
                 && let Some(entry) = self.list.iter_mut().find(|e| e.id == id)
             {
                 entry.state = State::Extractable;
@@ -1197,6 +1229,24 @@ mod tests {
         assert!(matches!(games.get("exe6").unwrap().state, State::Extractable), "no collection: nothing to extract from");
         games.list[2].state = State::NoPack;
         assert_eq!(games.first_choice(None).as_deref(), Some("exe4"));
+    }
+
+    /// A game's own pack is its content's recipe's, under the recipe's fingerprint; a game whose recipe declares a
+    /// ROM a game listed before it declares has none (two games can't have one ROM).
+    #[test]
+    fn two_games_cant_declare_one_rom() {
+        let (content, packs) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        for (id, roms) in [("g", "\"AAAA\", \"BBBB\""), ("h", "\"CCCC\", \"BBBB\""), ("i", "\"DDDD\"")] {
+            let manifest = format!("id = \"{id}\"\nkind = \"game\"\n[extract]\nroms = [{roms}]\nsize = 0x800000\n");
+            nettai_content::pack::write_file(content.path(), &format!("{id}/manifest.toml"), manifest.as_bytes()).unwrap();
+            nettai_content::pack::write_file(content.path(), &format!("{id}/extract/init.luau"), b"return function(set) return {} end\n").unwrap();
+        }
+        let mut games = Games::of(Vec::new(), packs.path().to_path_buf());
+        let g = games.own_pack("g", content.path()).expect("g's recipe");
+        assert!(g.folder().is_some_and(|f| f.starts_with("g-")));
+        games.list = vec![Entry { pack: Some(g), ..Entry::of("g", State::NoPack) }];
+        assert!(games.own_pack("h", content.path()).is_none(), "BBBB is g's");
+        assert!(games.own_pack("i", content.path()).is_some());
     }
 
     /// A game whose pack is extracted can be stepped to, its bar the extraction's, and loads once its pack lands;

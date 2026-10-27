@@ -527,11 +527,6 @@ impl Compat {
         self.panels.get(&n).map(|p| p.name.as_str()).ok_or_else(|| format!("panels.toml has no type {n}"))
     }
 
-    /// The sprites' names by (category, index).
-    pub fn sprite_names(&self) -> BTreeMap<(u8, u8), String> {
-        self.assets.sprites.iter().filter_map(|(name, id)| Some((parse_sprite(id)?, name.clone()))).collect()
-    }
-
     /// The stage whose layout and actor list a settings record of a
     /// console of `version` and region names: its id.
     pub fn stage(&self, layout: u8, actor_list: u32, version: Version, japanese: bool) -> Option<String> {
@@ -618,7 +613,7 @@ mod tests {
         let c = Compat::exe4();
         assert_eq!(c.chip_key(1), Some("cannon"));
         assert_eq!(c.chip_entry("bluemoon").map(|e| (e.id, e.version)), Some((0x135, Some(Version::BlueMoon))));
-        assert_eq!(c.sprite_names().get(&(0, 0)).map(String::as_str), Some("megaman"));
+        assert_eq!(c.assets.sprites.get("megaman").map(String::as_str), Some("00-00"));
         // The US fonts draw 0x00 to 0x6F; the Japanese encoding's second page
         // runs from 0xE4.
         assert_eq!((c.text.first_control, c.text.glyphs.len()), (0xE4, 0x70));

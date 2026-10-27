@@ -117,7 +117,6 @@ pub struct PackManifest {
 ///
 /// ```toml
 /// [extract]
-/// primitives = 1
 /// roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
 /// size = 0x800000
 /// reads = ["compat/assets.toml", "compat/chips.toml"]
@@ -125,9 +124,6 @@ pub struct PackManifest {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Extract {
-    /// The lowest primitives version the recipe runs on (the extractor's
-    /// `PRIMITIVES`).
-    pub primitives: u32,
     /// The game's ROMs by their header codes (the four bytes at 0xAC), every
     /// one required, in the order the recipe's places read an address by
     /// (a ROM's slot, from 1): the base version's US ROM, the other's, then
@@ -721,21 +717,21 @@ mod tests {
     fn a_recipe_is_declared() {
         let head = "id = \"exe6\"\nkind = \"game\"\n";
         let m = PackManifest::parse(
-            &format!("{head}[extract]\nprimitives = 1\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n"),
+            &format!("{head}[extract]\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n"),
             "exe6/manifest.toml",
         )
         .unwrap();
         let e = m.extract.unwrap();
-        assert_eq!((e.primitives, e.roms.len(), e.size, e.reads.as_slice()), (1, 2, 0x80_0000, ["compat/assets.toml".to_string()].as_slice()));
+        assert_eq!((e.roms.len(), e.size, e.reads.as_slice()), (2, 0x80_0000, ["compat/assets.toml".to_string()].as_slice()));
         assert_eq!(PackManifest::parse(head, "x").unwrap().extract, None, "a game without a recipe yet");
-        let refused = |extract: &str| PackManifest::parse(&format!("{head}[extract]\nprimitives = 1\nsize = 0x800000\n{extract}"), "x").unwrap_err();
+        let refused = |extract: &str| PackManifest::parse(&format!("{head}[extract]\nsize = 0x800000\n{extract}"), "x").unwrap_err();
         assert!(refused("roms = []\n").contains("no ROM"));
         assert!(refused("roms = [\"BR6E\", \"BR6E\"]\n").contains("twice"));
         assert!(refused("roms = [\"BR6\"]\n").contains("four letters"));
         assert!(refused("roms = [\"BR6E\"]\nreads = [\"../exe5/compat/assets.toml\"]\n").contains("no path in the pack"));
         assert!(refused("roms = [\"BR6E\"]\nreads = [\"extract/init.luau\"]\n").contains("inputs already"));
         assert!(refused("roms = [\"BR6E\"]\nunknown = 1\n").contains("unknown field"));
-        let support = PackManifest::parse("id = \"lib\"\nkind = \"support\"\n[extract]\nprimitives = 1\nroms = [\"BR6E\"]\nsize = 1\n", "lib").unwrap_err();
+        let support = PackManifest::parse("id = \"lib\"\nkind = \"support\"\n[extract]\nroms = [\"BR6E\"]\nsize = 1\n", "lib").unwrap_err();
         assert!(support.contains("support pack has no [extract]"), "{support}");
         assert!(is_extract_module("exe6:extract/hud") && is_extract_module("exelib:extract/place") && is_extract_module("exe6:extract"));
         assert!(!is_extract_module("exe6:extractor") && !is_extract_module("exe6:chips/extract/x"));

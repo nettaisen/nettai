@@ -178,7 +178,7 @@ fn bundle(files: &[(String, String)]) -> tempfile::TempDir {
     dir
 }
 
-const GAME: &str = "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n[extract]\nprimitives = 1\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n";
+const GAME: &str = "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n[extract]\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n";
 
 /// A synthetic game `g` and its support pack `lib`, the game's manifest `game`'s.
 fn synthetic(game: &str) -> Vec<(String, String)> {
@@ -202,7 +202,7 @@ fn a_recipe_is_its_inputs_and_its_fingerprint_digests_them() {
     let files = synthetic(GAME);
     let dir = bundle(&files);
     let recipe = Recipe::of_content(dir.path(), "g").unwrap();
-    assert_eq!((recipe.game(), recipe.roms(), recipe.primitives()), ("g", &["BR6E".to_string(), "BR5E".to_string()][..], 1));
+    assert_eq!((recipe.game(), recipe.roms()), ("g", &["BR6E".to_string(), "BR5E".to_string()][..]));
     let inputs: Vec<&String> = recipe.files.keys().collect();
     assert_eq!(
         inputs,
@@ -232,14 +232,10 @@ fn a_recipe_refuses_what_it_cannot_run() {
     let dir = bundle(&synthetic(GAME));
     let recipe = Recipe::of_content(dir.path(), "g").unwrap();
     // An incomplete set, before any Luau runs.
-    let mut roms = RomSet::default();
+    let mut roms = recipe.rom_set();
     roms.insert(image("BR6E", &[])).unwrap();
     let e = recipe.extract(&roms).err().unwrap().to_string();
     assert!(e.contains("incomplete") && e.contains("BR5E missing"), "{e}");
-    // A recipe that needs newer primitives.
-    let dir = bundle(&synthetic(&GAME.replace("primitives = 1", "primitives = 99")));
-    let e = Recipe::of_content(dir.path(), "g").unwrap().extract(&roms).err().unwrap().to_string();
-    assert!(e.contains("needs a newer nettai") && e.contains("primitives 99"), "{e}");
     // A file it reads that isn't there; a game with no recipe.
     let missing: Vec<(String, String)> = synthetic(GAME).into_iter().filter(|(p, _)| p != "g/compat/assets.toml").collect();
     assert!(Recipe::of_content(bundle(&missing).path(), "g").unwrap_err().to_string().contains("compat/assets.toml, which [extract] reads"));
@@ -255,4 +251,11 @@ fn a_named_asset_the_recipe_doesnt_give_is_an_error() {
     assert_eq!(complete(&mut g, &names).unwrap_err(), "sprite/megaman is named in the asset names and no ROM gave it");
     g.sprites.push(nettai_assets::SpriteSheet::default());
     assert_eq!(complete(&mut g, &names).unwrap_err(), "the recipe gave no field");
+}
+
+/// The fingerprint's line is the engine's version's major and minor numbers.
+#[test]
+fn the_line_is_the_versions_major_and_minor() {
+    assert_eq!((line("0.11.2"), line("1.0.0-rc.1"), line("2.3"), line("4")), ("0.11", "1.0", "2.3", "4"));
+    assert!(env!("CARGO_PKG_VERSION").starts_with(&format!("{LINE}.")), "{LINE}");
 }

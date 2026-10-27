@@ -412,6 +412,7 @@ impl Shell {
         let missing = self.games.no_content();
         shell.set_no_content(missing.is_some());
         shell.set_unpublished(missing == Some(true));
+        shell.set_incomplete(self.games.incomplete().map(Shell::game_name).unwrap_or_default().into());
     }
 
     /// Game `game` plays its newest content in the store from now (the other player's, downloaded for an online
@@ -470,11 +471,12 @@ impl Shell {
         }
     }
 
-    /// Say that a game has no pack and no Legacy Collection is found to extract it from: the error's dialog,
-    /// with the way to choose the collection's folder (`App::choose_source`).
-    pub fn ask_for_source(&mut self) {
+    /// Say that a game has no pack and no Legacy Collection is found to extract it from, or that the one found lacks
+    /// some of its ROMs (`why`: `UserError::NoLegacyCollection`, `UserError::IncompleteCollection`): the error's
+    /// dialog, with the way to choose the collection's folder (`App::choose_source`).
+    pub fn ask_for_source(&mut self, why: UserError) {
         let ui = self.ui();
-        let (title, message) = UserError::NoLegacyCollection.dialog(&ui);
+        let (title, message) = why.dialog(&ui);
         let errors = ui.global::<nettai_ui::Errors>();
         let buttons = vec![button(&errors.invoke_choose_folder(), ButtonKind::Main), button(&errors.invoke_ok(), ButtonKind::Normal)];
         self.sound.play(Cue::Refused);
@@ -1244,15 +1246,18 @@ impl App {
         });
     }
 
-    /// The Legacy Collection's folder chosen: kept and extracted from if it holds the collection, else said.
+    /// The Legacy Collection's folder chosen: kept and extracted from if it holds every ROM of a game wanted, else
+    /// said (a collection that lacks some is told as the games' notice: `Notice::Incomplete`).
     fn source_chosen(&mut self, folder: std::path::PathBuf) {
         let extracting = match crate::bnlc::Install::at(&folder) {
             Some(install) => self.shell.games.found(install),
             None => 0,
         };
         if extracting == 0 {
-            crate::errors::log("choosing the Legacy Collection's folder", &format_args!("{} holds no archive with a ROM of a game wanted", folder.display()));
-            self.shell.ask_for_source();
+            crate::errors::log("choosing the Legacy Collection's folder", &format_args!("{} holds no game wanted whole", folder.display()));
+            if self.shell.games.incomplete().is_none() {
+                self.shell.ask_for_source(UserError::NoLegacyCollection);
+            }
             return;
         }
         self.shell.settings.legacy_collection = Some(folder);
@@ -1917,11 +1922,15 @@ impl App {
         {
             match notice {
                 // (Another build's pack, which couldn't be made again for want of the collection.)
-                Notice::LoadFailed(game) if self.shell.games.is_stale(&game) && !self.shell.games.found_source => self.shell.ask_for_source(),
+                Notice::LoadFailed(game) if self.shell.games.is_stale(&game) && !self.shell.games.found_source => self.shell.ask_for_source(UserError::NoLegacyCollection),
                 Notice::LoadFailed(game) => self.shell.fail(UserError::GameOutdated { game: Shell::game_name(&game) }),
                 Notice::ExtractFailed(game) => self.shell.fail(UserError::ExtractFailed { game: Shell::game_name(&game) }),
-                Notice::NoSource if !self.shell.games.playable().is_empty() => self.shell.ask_for_source(),
+                Notice::NoSource if !self.shell.games.playable().is_empty() => self.shell.ask_for_source(UserError::NoLegacyCollection),
                 Notice::NoSource => {}
+                Notice::Incomplete(game) if !self.shell.games.playable().is_empty() => {
+                    self.shell.ask_for_source(UserError::IncompleteCollection { game: Shell::game_name(&game) })
+                }
+                Notice::Incomplete(_) => {}
                 Notice::DownloadFailed(game) if !self.shell.games.playable().is_empty() => {
                     self.shell.fail(UserError::DownloadFailed { game: Shell::game_name(&game) })
                 }

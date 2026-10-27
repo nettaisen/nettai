@@ -437,7 +437,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     );
     add(
         SETTLE,
-        Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source()),
+        Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source(UserError::NoLegacyCollection)),
     );
     shot(&mut add, "no-legacy-collection-dialog", Pair::None);
     add(SETTLE, act(Action::Back));

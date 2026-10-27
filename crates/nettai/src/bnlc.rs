@@ -21,9 +21,9 @@
 //! in a compatibility layer (CrossOver, Whisky) keeps it in a folder the player chooses.
 //!
 //! The ROMs are read into memory and handed to the extractor; none is written to disk. Which game a ROM is of is
-//! the extractor's to say, from its header (`nettai_extract::recognize`): the app names no game here.
+//! its content's to say: each game's recipe declares the game codes of its ROMs (`nettai_extract::Recipe::roms`),
+//! and a ROM is found by the code in its header (`nettai_extract::header_code`). The app names no game here.
 
-use nettai_extract::Game;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -44,15 +44,14 @@ pub struct Install {
     pub archives: Vec<PathBuf>,
 }
 
-/// A ROM in one of an install's archives: where it is, and the game and the game code its header says.
+/// A ROM in one of an install's archives: where it is, and the game code its header says.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rom {
     pub archive: PathBuf,
     /// Its entry's place in the archive, and its name there.
     pub entry: usize,
     pub name: String,
-    pub game: Game,
-    pub code: &'static str,
+    pub code: String,
 }
 
 impl Install {
@@ -71,23 +70,27 @@ impl Install {
         })
     }
 
-    /// Every ROM of a game the extractor takes, in every archive, as its header says: the first of each game
-    /// code (a copy of one is passed over). An archive that doesn't read is passed over, and said in the log.
-    pub fn roms(&self) -> Vec<Rom> {
-        let mut out: Vec<Rom> = Vec::new();
+    /// The ROMs of the game codes `codes` (a game's recipe's: every one required), in their order, from every
+    /// archive, as each one's header says: the first of each code (a copy of one is passed over). An archive that
+    /// doesn't read is passed over, and said in the log. Err: the codes no archive has a ROM of, with the ROMs
+    /// found (the Legacy Collection's files are incomplete).
+    pub fn roms(&self, codes: &[String]) -> Result<Vec<Rom>, (Vec<String>, Vec<Rom>)> {
+        let mut found: Vec<Rom> = Vec::new();
         for archive in &self.archives {
-            match scan(archive) {
+            match scan(archive, codes) {
                 Ok(roms) => {
                     for rom in roms {
-                        if !out.iter().any(|r| r.code == rom.code) {
-                            out.push(rom);
+                        if !found.iter().any(|r| r.code == rom.code) {
+                            found.push(rom);
                         }
                     }
                 }
                 Err(why) => crate::errors::log(&format!("reading {}", archive.display()), &why),
             }
         }
-        out
+        found.sort_by_key(|r| codes.iter().position(|c| *c == r.code));
+        let missing: Vec<String> = codes.iter().filter(|c| !found.iter().any(|r| r.code == **c)).cloned().collect();
+        if missing.is_empty() { Ok(found) } else { Err((missing, found)) }
     }
 }
 
@@ -119,8 +122,9 @@ fn archives(data: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// The ROMs in one archive, by their headers: each `.srl` entry's first bytes read, no more.
-fn scan(archive: &Path) -> Result<Vec<Rom>, String> {
+/// The ROMs of the game codes `codes` in one archive, by their headers: each `.srl` entry's first bytes read, no
+/// more.
+fn scan(archive: &Path, codes: &[String]) -> Result<Vec<Rom>, String> {
     let mut zip = open(archive)?;
     let mut out = Vec::new();
     for entry in 0..zip.len() {
@@ -132,8 +136,8 @@ fn scan(archive: &Path) -> Result<Vec<Rom>, String> {
         let name = name.to_string_lossy().into_owned();
         let mut header = Vec::with_capacity(nettai_extract::HEADER_LEN);
         (&mut file).take(nettai_extract::HEADER_LEN as u64).read_to_end(&mut header).map_err(|e| format!("{name}: {e}"))?;
-        if let Some((game, code)) = nettai_extract::recognize(&header) {
-            out.push(Rom { archive: archive.to_path_buf(), entry, name, game, code });
+        if let Some(code) = nettai_extract::header_code(&header).filter(|c| codes.iter().any(|d| d == c)) {
+            out.push(Rom { archive: archive.to_path_buf(), entry, name, code: code.to_string() });
         }
     }
     Ok(out)
@@ -198,9 +202,9 @@ pub mod tests {
         assert_eq!(Install::at(&empty.path().join("missing")), None);
     }
 
-    /// The ROMs are the archives' `.srl` entries a game's, by their headers, wherever in an archive they are;
-    /// anything else is passed over, and so is a second copy of one game code, and an archive that isn't one.
-    /// Each reads back whole.
+    /// The ROMs are the archives' `.srl` entries of the codes asked for, by their headers, wherever in an archive
+    /// they are, in the codes' order; anything else is passed over, and so is a second copy of one game code, and
+    /// an archive that isn't one. Codes no archive has are said, with the ROMs found. Each reads back whole.
     #[test]
     fn the_roms_are_found_by_their_headers_and_read_whole() {
         let dir = tempfile::tempdir().unwrap();
@@ -211,13 +215,16 @@ pub mod tests {
         nettai_platform::fs::write(data.join("exe5.dat"), b"not a zip").unwrap();
         let install = Install::at(dir.path()).unwrap();
         assert_eq!(install.archives.len(), 3);
-        let roms = install.roms();
-        let found: Vec<(&str, Game, &str)> = roms.iter().map(|r| (r.name.as_str(), r.game, r.code)).collect();
-        assert_eq!(found, [("exe6_rom_e.srl", Game::Exe6, "BR6E"), ("roms/exe6f_rom_f.srl", Game::Exe6, "BR5J")]);
-        assert_eq!(read(&roms[0]).unwrap(), us);
-        assert_eq!(read(&roms[1]).unwrap(), jp);
+        let codes = |c: &[&str]| c.iter().map(|c| c.to_string()).collect::<Vec<String>>();
+        let roms = install.roms(&codes(&["BR5J", "BR6E"])).unwrap();
+        let found: Vec<(&str, &str)> = roms.iter().map(|r| (r.name.as_str(), r.code.as_str())).collect();
+        assert_eq!(found, [("roms/exe6f_rom_f.srl", "BR5J"), ("exe6_rom_e.srl", "BR6E")]);
+        let (missing, some) = install.roms(&codes(&["BR6E", "BR5E", "BR6J", "BR5J"])).unwrap_err();
+        assert_eq!((missing, some.len()), (codes(&["BR5E", "BR6J"]), 2));
+        assert_eq!(read(&roms[1]).unwrap(), us);
+        assert_eq!(read(&roms[0]).unwrap(), jp);
         // An archive gone since: a failure to read, said in words for the log.
         nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
-        assert!(read(&roms[0]).unwrap_err().contains("exe6_rom_e.srl"));
+        assert!(read(&roms[1]).unwrap_err().contains("exe6_rom_e.srl"));
     }
 }

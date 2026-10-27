@@ -1,12 +1,11 @@
-//! Shared ROM access and GBA compression. An empty image represents an absent source;
-//! callers must test `is_present` before reading it.
+//! A ROM image: its reads (bounds checked by the primitives that make them, recorded while
+//! `record_reads` runs) and the GBA BIOS's LZ77.
 
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// One ROM image.
-#[derive(Default)]
 pub(crate) struct Rom(pub Vec<u8>);
 
 /// A range of a ROM the extraction read while reads were recorded
@@ -32,105 +31,6 @@ pub(crate) enum ReadKind {
     /// A span read whole for a parser that takes what it needs of it (an
     /// uncompressed sprite archive): how far the parser went isn't known.
     Open,
-}
-
-/// Where each of a game's four ROMs has a block: the address, in each, of
-/// the game's own pointer to it (a routine's literal, a load list's entry),
-/// in the order of the game's ROMs (`Game::codes`: its two US ROMs, then
-/// their Japanese ones). The block is where that word says, so every ROM
-/// is read the way its own code reaches the block, whatever moved in it.
-#[derive(Clone, Copy)]
-pub(crate) struct Place {
-    at: [u32; 4],
-}
-
-impl Place {
-    /// A pointer the two versions' code has at the same address: at `us`
-    /// in both US ROMs and at `jp` in both Japanese ones.
-    pub const fn pointer(us: u32, jp: u32) -> Place {
-        Place { at: [us, us, jp, jp] }
-    }
-
-    /// A pointer at an address of its own in each ROM (code past the first
-    /// of what the two versions have otherwise).
-    pub const fn pointer_in_each(at: [u32; 4]) -> Place {
-        Place { at }
-    }
-}
-
-/// One of a game's four ROMs to read from: the image, and which of the
-/// four it is (a `Place`'s pointer there). An image that isn't there is a
-/// source too (`is_present`): what is read of it is a placeholder.
-#[derive(Clone, Copy)]
-pub(crate) struct Source<'a> {
-    pub rom: &'a Rom,
-    which: usize,
-}
-
-impl<'a> Source<'a> {
-    pub fn is_present(&self) -> bool {
-        self.rom.is_present()
-    }
-
-    /// Where this ROM has the block at `place`: the pointer word there.
-    pub fn at(&self, place: Place) -> u32 {
-        self.rom.u32(place.at[self.which])
-    }
-}
-
-/// One of a game's two versions, which some of what a ROM holds is its
-/// own (each game's module has its own two).
-pub(crate) trait Version: Copy {
-    /// Whether it is the game's other version than its base (the second
-    /// of each release's two ROMs in `Game::codes`' order).
-    fn is_other(self) -> bool;
-}
-
-/// A game's four ROMs in `Game::codes`' order (its base version's US ROM,
-/// the other version's, then their Japanese ones), any of which may not be
-/// there. A pack has whatever one of those given holds: what the four have
-/// alike is read from whichever is there, a version's own from a ROM of
-/// that version, a language's words from a ROM of that release, the US
-/// ROM's before the Japanese one's wherever both have it.
-pub(crate) struct Roms<'a>(pub [&'a Rom; 4]);
-
-impl<'a> Roms<'a> {
-    /// The first of the ROMs `order` numbers that is there; the first of
-    /// `order` if none is.
-    fn first(&self, order: &[usize]) -> Source<'a> {
-        let which = order.iter().copied().find(|&k| self.0[k].is_present()).unwrap_or(order[0]);
-        Source { rom: self.0[which], which }
-    }
-
-    /// A ROM for what the four have alike.
-    pub fn any(&self) -> Source<'a> {
-        self.first(&[0, 1, 2, 3])
-    }
-
-    /// A US ROM: the English words.
-    pub fn us(&self) -> Source<'a> {
-        self.first(&[0, 1])
-    }
-
-    /// A Japanese ROM: the Japanese words, and what the US release cut.
-    pub fn jp(&self) -> Source<'a> {
-        self.first(&[2, 3])
-    }
-
-    /// A ROM of `version`, for what is the version's own in both releases.
-    pub fn of(&self, version: impl Version) -> Source<'a> {
-        let k = version.is_other() as usize;
-        self.first(&[k, k + 2])
-    }
-
-    /// A ROM of `version` if one is there, any otherwise: for what the two
-    /// versions' ROMs have otherwise at the same place and the pack has one
-    /// of.
-    pub fn preferring(&self, version: impl Version) -> Source<'a> {
-        let own = self.of(version);
-        if own.is_present() { own } else { self.any() }
-    }
-
 }
 
 static RECORDING: AtomicBool = AtomicBool::new(false);
@@ -171,10 +71,6 @@ pub(crate) fn record_reads<T>(f: impl FnOnce() -> T) -> (T, Vec<Read>) {
 }
 
 impl Rom {
-    pub fn is_present(&self) -> bool {
-        !self.0.is_empty()
-    }
-
     fn note(&self, a: u32, n: usize, kind: ReadKind) {
         if !RECORDING.load(Ordering::Relaxed) {
             return;

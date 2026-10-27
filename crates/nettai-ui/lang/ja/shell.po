@@ -351,6 +351,14 @@ msgid "In Steam, right-click it in your library, choose Manage > Browse local fi
 msgstr "Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこのページにドラッグしてください。"
 msgid "Choose folder"
 msgstr "フォルダを選ぶ"
+# A game has no pack, and the Legacy Collection found lacks some of its ROMs: {} is the game, as the header
+# shows it; by its Japanese name, and Steam's own name for checking a game's files (ゲームファイルの整合性を確認); the button opens the folder dialog again.
+msgid "The Legacy Collection's files are incomplete: some of {}'s are missing. Have Steam verify the collection's files, then choose its folder again."
+msgstr "アドバンスドコレクションのファイルが揃っていません（{} のファイルの一部が見つかりません）。Steam でゲームファイルの整合性を確認してから、もう一度フォルダを選んでください。"
+msgid "The Legacy Collection's files are incomplete"
+msgstr "アドバンスドコレクションのファイルが揃っていません"
+msgid "Some of {}'s files are missing. Have Steam verify the collection's files, then choose its folder again."
+msgstr "{} のファイルの一部が見つかりません。Steam でゲームファイルの整合性を確認してから、もう一度フォルダを選んでください。"
 # A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
 msgid "{}'s data couldn't be extracted. Details are in the log file."
 msgstr "{} のデータを抽出できませんでした。詳しくはログファイルをご覧ください。"

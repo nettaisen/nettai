@@ -18,7 +18,7 @@ mod prims;
 
 use crate::rom::Rom;
 use crate::shapes::{Drawings, SHAPES};
-use crate::{Error, Extraction, GRAPHICS_SHARE, RomRead, RomSet, elements};
+use crate::{Error, Extraction, RomRead, RomSet, elements};
 use nettai_content::{names::AssetNames, pack, sound::SongVersions};
 use nettai_content_api::packs::{self, Extract, Modules, PackKind, PackManifest};
 use nettai_content_api::keys;
@@ -28,10 +28,30 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 
-/// The primitives this nettai has (§3.12): rises with every release that
-/// adds a primitive, changes what one returns, or lets the codec take a
-/// field it didn't. A recipe declares the lowest it runs on.
-pub const PRIMITIVES: u32 = 1;
+/// The engine's line (`0.11`): its version's major and minor numbers. The primitives change only with a line, so a
+/// recipe's packs are named by it (its fingerprint), and a bundle is for one line.
+pub(crate) const LINE: &str = line(env!("CARGO_PKG_VERSION"));
+
+/// A version's major and minor numbers ("0.11" of "0.11.2").
+const fn line(version: &str) -> &str {
+    let bytes = version.as_bytes();
+    let (mut i, mut dots) = (0, 0);
+    while i < bytes.len() {
+        if bytes[i] == b'.' {
+            dots += 1;
+            if dots == 2 {
+                return version.split_at(i).0;
+            }
+        }
+        i += 1;
+    }
+    version
+}
+
+/// The share of an extraction's time its graphics take, the sound the rest ([`Recipe::extract_reporting`]). (Not
+/// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
+/// pack's writing, with its encoding, nearly all of its time.)
+const GRAPHICS_SHARE: f32 = 0.6;
 
 /// A game's extraction recipe, read from a content directory.
 #[derive(Clone, Debug)]
@@ -102,9 +122,10 @@ impl Recipe {
         &self.extract.roms
     }
 
-    /// The lowest primitives version it runs on ([`PRIMITIVES`]).
-    pub fn primitives(&self) -> u32 {
-        self.extract.primitives
+    /// An empty set of the game's ROMs, to give [`Recipe::extract`]: it takes the codes and the size the recipe
+    /// declares.
+    pub fn rom_set(&self) -> RomSet {
+        RomSet::new(&self.game, &self.extract.roms, self.extract.size)
     }
 
     /// The drawings it makes the frames with (its pack's `extract/shapes/`
@@ -115,10 +136,10 @@ impl Recipe {
     }
 
     /// What names the packs it makes (§5.2): SHA-256, its first 16 hex
-    /// digits, of the pack formats, this nettai's primitives, the game, its
-    /// `[extract]` and each input in path order, its path and its bytes.
-    /// The same bundle gives the same on every machine; a change to any
-    /// input gives another.
+    /// digits, of the pack formats, the engine's line ([`LINE`]: the
+    /// primitives change only with one), the game, its `[extract]` and each
+    /// input in path order, its path and its bytes. The same bundle gives
+    /// the same on every machine; a change to any input gives another.
     pub fn fingerprint(&self) -> String {
         use sha2::{Digest, Sha256};
         let mut h = Sha256::new();
@@ -128,9 +149,8 @@ impl Recipe {
         };
         put(b"nettai extraction recipe");
         put(format!("{:?}", pack::FORMATS).as_bytes());
-        put(&PRIMITIVES.to_le_bytes());
+        put(LINE.as_bytes());
         put(self.game.as_bytes());
-        put(&self.extract.primitives.to_le_bytes());
         put(&(self.extract.roms.len() as u64).to_le_bytes());
         for code in &self.extract.roms {
             put(code.as_bytes());
@@ -164,14 +184,16 @@ impl Recipe {
     }
 
     /// [`Recipe::extract`], and every range of the ROMs it read, in the
-    /// order read (`crate::extract_recording_reads`'), each with where in
-    /// the recipe it was read.
+    /// order read (reads of bytes that follow one another are one read),
+    /// each with where in the recipe it was read: for comparing what two
+    /// releases' ROMs hold where the recipe looks (the verification's
+    /// cross-ROM sweep). The sound bank's reads aren't in it.
     pub fn extract_recording_reads(&self, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
         crate::recording_reads(roms, || self.extract(roms))
     }
 
     /// The ROMs as the recipe is given them, in its declaration's order,
-    /// every one there and of the declared size.
+    /// every one there (`RomSet::insert` checked each one's size).
     fn set(&self, roms: &RomSet) -> Result<Vec<prims::RomHandle>, Error> {
         let missing: Vec<&str> = self.extract.roms.iter().filter(|c| !roms.contains(c)).map(String::as_str).collect();
         if !missing.is_empty() {
@@ -182,25 +204,12 @@ impl Recipe {
                 self.extract.roms.join(", ")
             )));
         }
-        let mut out = Vec::new();
-        for (i, code) in self.extract.roms.iter().enumerate() {
-            let rom = roms.rom(code).expect("checked above");
-            if rom.0.len() != self.extract.size as usize {
-                return Err(Error(format!("{code}: expected {} bytes, got {}", self.extract.size, rom.0.len())));
-            }
-            out.push(prims::RomHandle { rom, code: code.clone(), slot: i as u32 + 1 });
-        }
-        Ok(out)
+        let set = self.extract.roms.iter().enumerate();
+        Ok(set.map(|(i, code)| prims::RomHandle { rom: roms.rom(code).expect("checked above"), code: code.clone(), slot: i as u32 + 1 }).collect())
     }
 
     fn run(&self, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
         let game = &self.game;
-        if self.extract.primitives > PRIMITIVES {
-            return Err(Error(format!(
-                "{game}'s content needs a newer nettai: its recipe needs primitives {}, and this nettai has {PRIMITIVES}",
-                self.extract.primitives
-            )));
-        }
         let set = self.set(roms)?;
         let recipe = |e: String| Error(format!("{game}'s recipe: {e}"));
         let data = prims::Data {
@@ -247,9 +256,7 @@ impl Recipe {
             graphics,
             sound: sound_bank,
             sound_versions,
-            missing_roms: Vec::new(),
             warnings,
-            placeholders: Vec::new(),
             names,
         })
     }

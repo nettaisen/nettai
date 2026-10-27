@@ -177,6 +177,9 @@ export global Shell {
     in property <bool> unpublished;
     in property <string> packs-folder;
     in property <bool> extracts;
+    // The Legacy Collection found lacks some of a game's ROMs: the game, as shown (empty: it has them, or none was
+    // found). The note says so in place of asking for the collection.
+    in property <string> incomplete;
 
     // The two cards before a battle.
     in property <bool> versus;
@@ -321,6 +324,8 @@ export enum ErrorKind {
     game-outdated,
     // No pack of a game, and no Legacy Collection to extract it from.
     no-legacy-collection,
+    // A game has no pack, and the Legacy Collection found lacks some of its ROMs (its files are incomplete).
+    incomplete-legacy-collection,
     extract-failed,
     // A game's content couldn't be downloaded (the app has none of it). With no game named: no game's could.
     download-failed,
@@ -439,6 +444,9 @@ export global Errors {
             }
             return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window.");
         }
+        if kind == ErrorKind.incomplete-legacy-collection {
+            return @tr("The Legacy Collection's files are incomplete: some of {}'s are missing. Have Steam verify the collection's files, then choose its folder again.", detail);
+        }
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
         }
@@ -539,6 +547,9 @@ export global Errors {
         if kind == ErrorKind.no-legacy-collection {
             return @tr("nettai needs Battle Network Legacy Collection Vol. 2");
         }
+        if kind == ErrorKind.incomplete-legacy-collection {
+            return @tr("The Legacy Collection's files are incomplete");
+        }
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted", detail);
         }
@@ -634,6 +645,9 @@ export global Errors {
                 return @tr("In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }
             return @tr("Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window.");
+        }
+        if kind == ErrorKind.incomplete-legacy-collection {
+            return @tr("Some of {}'s files are missing. Have Steam verify the collection's files, then choose its folder again.", detail);
         }
         if kind == ErrorKind.download-failed {
             return @tr("Check your connection, then start nettai again.");

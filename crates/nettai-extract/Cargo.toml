@@ -1,9 +1,10 @@
 [package]
 name = "nettai-extract"
-version = "0.1.0"
+# The app's: its line (major.minor) is in each pack's fingerprint, the primitives changing only with one.
+version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Embeddable EXE4, EXE5 and EXE6 asset extraction and command-line tool"
+description = "Embeddable asset extraction by the games' recipes, and its command-line tool"
 
 [dependencies]
 # Files, threads, time and dialogs: the desktop's, or the browser's.
@@ -17,9 +18,6 @@ nettai-luau = { path = "../nettai-luau" }
 # A recipe's `data` (its compat TOML) and its fingerprint (SHA-256).
 toml = "0.8"
 sha2 = "0.10"
-exe4-compat = { path = "../exe4-compat" }
-exe5-compat = { path = "../exe5-compat" }
-exe6-compat = { path = "../exe6-compat" }
 
 [dev-dependencies]
 tempfile = "3"

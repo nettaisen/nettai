@@ -1,14 +1,13 @@
 //! The app's own packs (docs/app.md §17): each game's asset pack, extracted from the player's Legacy Collection
-//! (`crate::bnlc`) into the data folder's `packs/`, on a thread of its own, when it is missing or another
-//! version of nettai made it.
+//! (`crate::bnlc`) into the data folder's `packs/`, on a thread of its own, when it is missing.
 //!
-//! A pack is kept by the fingerprint of what its content's tables say of it (`nettai_extract::fingerprint`: the
-//! names its assets are written under, read from the content at run time, `nettai_extract::Tables`), in
-//! `packs/<game>-<fingerprint>` ([`folder`]): content that names its assets otherwise (another bundle of the game,
-//! docs/design/content-deployment.md §5) has a pack of its own, and two contents that name them alike share one.
-//! Each pack is stamped (`stamp.toml` in it) with the version of nettai that made it and that fingerprint: a pack
-//! whose stamp isn't this build's, or that has none, is extracted again. The pack's own files are the extractor's,
-//! as `nettai-extract` writes them; the stamp is the one file more.
+//! A pack is made by its content's extraction recipe (`nettai_extract::Recipe`), and kept by the recipe's
+//! fingerprint (`Recipe::fingerprint`: the engine's line, the pack formats and every file the recipe reads, its
+//! names among them), in `packs/<game>-<fingerprint>` ([`folder`]): content whose recipe or names differ (another
+//! bundle of the game, docs/design/content-deployment.md §5) has a pack of its own, and two contents whose recipes
+//! are the same share one. Each pack is stamped (`stamp.toml` in it) with that fingerprint once it is whole: a
+//! pack whose stamp isn't its folder's, or that has none, is extracted again. The pack's own files are the
+//! extractor's, as `nettai-extract` writes them; the stamp is the one file more.
 //!
 //! A pack is written into a folder of its own first (`packs/.new/<folder>`) and put in place by a rename once it
 //! is whole, the old one moved aside (`packs/.old/<folder>`) the moment before and deleted after: a crash leaves
@@ -21,7 +20,7 @@
 //! folder's, and nothing is looked for or extracted.
 
 use crate::bnlc::{self, Rom};
-use nettai_extract::{RomSet, Tables};
+use nettai_extract::Recipe;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -40,14 +39,13 @@ pub fn dir() -> (PathBuf, bool) {
     }
 }
 
-/// What made a pack: the version of nettai, and the fingerprint of its game's asset names.
+/// What made a pack: its recipe's fingerprint.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stamp {
-    pub nettai: String,
-    pub assets: String,
+    pub fingerprint: String,
 }
 
-/// The folder of the packs folder a pack of game `game` whose tables have fingerprint `fingerprint` is kept in:
+/// The folder of the packs folder a pack of game `game` whose recipe has fingerprint `fingerprint` is kept in:
 /// `<game>-<fingerprint>` (`exe6-1f3eed2364479361`).
 pub fn folder(game: &str, fingerprint: &str) -> String {
     format!("{game}-{fingerprint}")
@@ -59,9 +57,9 @@ fn is_folder(name: &str) -> bool {
 }
 
 impl Stamp {
-    /// The stamp this build gives a pack whose tables have fingerprint `fingerprint`.
+    /// The stamp of a pack whose recipe has fingerprint `fingerprint`.
     pub fn of(fingerprint: &str) -> Stamp {
-        Stamp { nettai: env!("CARGO_PKG_VERSION").to_string(), assets: fingerprint.to_string() }
+        Stamp { fingerprint: fingerprint.to_string() }
     }
 
     fn read(pack: &Path) -> Option<Stamp> {
@@ -70,7 +68,7 @@ impl Stamp {
 
     fn write(&self, pack: &Path) -> Result<(), String> {
         let text = format!(
-            "# What made this pack: nettai extracts it again when its version, or the names its assets are written under, differ\n# (docs/app.md §17).\n{}",
+            "# What made this pack: its recipe's fingerprint, which names its folder too (docs/app.md §17).\n{}",
             toml::to_string(self).map_err(|e| e.to_string())?
         );
         nettai_platform::fs::write(pack.join(STAMP), text).map_err(|e| format!("{}: {e}", pack.join(STAMP).display()))
@@ -82,13 +80,13 @@ impl Stamp {
 pub enum Kept {
     /// No pack.
     None,
-    /// One another build made (or that has no stamp).
+    /// One whose stamp isn't its fingerprint's, or that has none.
     Stale,
-    /// One this build made.
+    /// One stamped with its fingerprint.
     Current,
 }
 
-/// What the packs folder `dir` has of game `id` with tables of fingerprint `fingerprint`: its pack is
+/// What the packs folder `dir` has of game `id` whose recipe has fingerprint `fingerprint`: its pack is
 /// `<dir>/<id>-<fingerprint>` ([`folder`]).
 pub fn kept(dir: &Path, id: &str, fingerprint: &str) -> Kept {
     let pack = dir.join(folder(id, fingerprint));
@@ -187,19 +185,19 @@ pub fn replace(dir: &Path, id: &str, make: impl FnOnce(&Path) -> Result<(), Stri
     Ok(())
 }
 
-/// A game's pack to extract: its folder ([`folder`]: the game's id and the fingerprint of its tables), the tables
-/// of the content it is for (the names its assets are written under), and the game's ROMs in the install.
+/// A game's pack to extract: its folder ([`folder`]: the game's id and its recipe's fingerprint), the recipe of the
+/// content it is for, and the game's ROMs in the install.
 #[derive(Clone, Debug)]
 pub struct Job {
     pub pack: String,
-    pub tables: Arc<Tables>,
+    pub recipe: Arc<Recipe>,
     pub roms: Vec<Rom>,
 }
 
 impl Job {
-    /// A job for the pack of `tables`, from `roms`.
-    pub fn new(tables: Arc<Tables>, roms: Vec<Rom>) -> Job {
-        Job { pack: folder(tables.game().id(), &nettai_extract::fingerprint(&tables)), tables, roms }
+    /// A job for the pack of `recipe`, from `roms`.
+    pub fn new(recipe: Arc<Recipe>, roms: Vec<Rom>) -> Job {
+        Job { pack: folder(recipe.game(), &recipe.fingerprint()), recipe, roms }
     }
 }
 
@@ -222,29 +220,29 @@ const EXTRACTED: f32 = 0.15;
 pub fn extract(dir: &Path, job: &Job, progress: &mut dyn FnMut(f32)) -> Result<[f32; 3], String> {
     // (A pack is extracted from a whole collection alone: every ROM of the game, the US and the Japanese of both
     // versions. A set short of one is refused, on the desktop and in the browser alike, never made a smaller pack.)
-    let game = job.tables.game();
-    let missing: Vec<&str> = game.codes().into_iter().filter(|code| !job.roms.iter().any(|r| r.code == *code)).collect();
+    let recipe = &job.recipe;
+    let missing: Vec<&str> = recipe.roms().iter().filter(|code| !job.roms.iter().any(|r| r.code == **code)).map(String::as_str).collect();
     if !missing.is_empty() {
         return Err(format!(
             "the Legacy Collection's {} ROMs aren't all there ({} missing): a pack is extracted from every ROM of the game, the US and the Japanese of both versions",
-            game.id(),
+            recipe.game(),
             missing.join(", ")
         ));
     }
     let began = Instant::now();
-    let mut roms = RomSet::default();
+    let mut roms = recipe.rom_set();
     for (i, rom) in job.roms.iter().enumerate() {
         roms.insert(bnlc::read(rom)?).map_err(|e| format!("{} in {}: {e}", rom.name, rom.archive.display()))?;
         progress(READ * (i + 1) as f32 / job.roms.len() as f32);
     }
     let read = began.elapsed().as_secs_f32();
-    let extraction = nettai_extract::extract_reporting(&job.tables, &roms, &mut |f| progress(READ + (EXTRACTED - READ) * f)).map_err(|e| e.to_string())?;
+    let extraction = recipe.extract_reporting(&roms, &mut |f| progress(READ + (EXTRACTED - READ) * f)).map_err(|e| e.to_string())?;
     drop(roms);
     for warning in &extraction.warnings {
         crate::errors::log(&format!("extracting {}", job.pack), warning);
     }
     let extracted = began.elapsed().as_secs_f32();
-    let fingerprint = nettai_extract::fingerprint(&job.tables);
+    let fingerprint = recipe.fingerprint();
     replace(dir, &job.pack, |new| {
         extraction.write_reporting(new, &mut |f| progress(EXTRACTED + (1.0 - EXTRACTED) * f)).map_err(|e| e.to_string())?;
         Stamp::of(&fingerprint).write(new)
@@ -339,11 +337,15 @@ fn work(dir: &Path, queue: &Mutex<Queue>, told: &(dyn Fn(&str, Told) + Send + Sy
 mod tests {
     use super::*;
     use crate::bnlc::tests::{archive, fake_rom};
-    use nettai_extract::Game;
 
-    /// `game`'s tables, as the repository's content has them.
-    fn tables(game: Game) -> Arc<Tables> {
-        Arc::new(Tables::of_content(game, &nettai_content::index::content()).unwrap())
+    /// `game`'s recipe, as the repository's content has it.
+    fn recipe(game: &str) -> Arc<Recipe> {
+        Arc::new(Recipe::of_content(&nettai_content::index::content(), game).unwrap())
+    }
+
+    /// The ROMs of `recipe` in the install at `dir`, as many as there are.
+    fn roms(dir: &Path, recipe: &Recipe) -> Vec<Rom> {
+        crate::bnlc::Install::at(dir).unwrap().roms(recipe.roms()).unwrap_or_else(|(_, found)| found)
     }
 
     fn files(root: &Path) -> Vec<String> {
@@ -363,12 +365,12 @@ mod tests {
         out
     }
 
-    /// A pack is kept by its tables' fingerprint; one this build made is current; one with another stamp, or none,
+    /// A pack is kept by its recipe's fingerprint; one stamped with it is current; one with another stamp, or none,
     /// is stale; no manifest is no pack; and another fingerprint's is another pack.
     #[test]
     fn a_pack_is_current_by_its_stamp() {
         let dir = tempfile::tempdir().unwrap();
-        let print = nettai_extract::fingerprint(&tables(Game::Exe6));
+        let print = recipe("exe6").fingerprint();
         let pack = dir.path().join(folder("exe6", &print));
         assert_eq!(pack.file_name().unwrap().to_string_lossy(), format!("exe6-{print}"));
         assert_eq!(kept(dir.path(), "exe6", &print), Kept::None);
@@ -377,8 +379,8 @@ mod tests {
         assert_eq!(kept(dir.path(), "exe6", &print), Kept::Stale, "no stamp");
         Stamp::of(&print).write(&pack).unwrap();
         assert_eq!(kept(dir.path(), "exe6", &print), Kept::Current);
-        Stamp { nettai: "0.0.1".into(), ..Stamp::of(&print) }.write(&pack).unwrap();
-        assert_eq!(kept(dir.path(), "exe6", &print), Kept::Stale, "another version");
+        Stamp::of("0123456789abcdef").write(&pack).unwrap();
+        assert_eq!(kept(dir.path(), "exe6", &print), Kept::Stale, "another fingerprint's stamp");
         Stamp::of(&print).write(&pack).unwrap();
         assert_eq!(kept(dir.path(), "exe6", "0123456789abcdef"), Kept::None, "other asset names: another pack");
     }
@@ -441,7 +443,7 @@ mod tests {
         let data = install.path().join("exe/data");
         // (One ROM of the game's four: an incomplete collection, refused before anything is read.)
         archive(&data.join("exe6.dat"), &[("exe6_rom_e.srl", &fake_rom("BR6E", 0x1000))]);
-        let job = Job::new(tables(Game::Exe6), crate::bnlc::Install::at(install.path()).unwrap().roms());
+        let job = Job::new(recipe("exe6"), roms(install.path(), &recipe("exe6")));
         nettai_content::pack::write_file(packs.path(), &format!("{}/content.toml", job.pack), b"old").unwrap();
         let why = extract(packs.path(), &job, &mut |_| {}).unwrap_err();
         assert!(why.contains("aren't all there") && why.contains("BR5E, BR6J, BR5J"), "{why}");
@@ -449,10 +451,10 @@ mod tests {
         // (All four, and none a whole ROM.)
         let four = [("exe6_rom_e.srl", "BR6E"), ("exe6f_rom_e.srl", "BR5E"), ("exe6_rom_j.srl", "BR6J"), ("exe6f_rom_j.srl", "BR5J")].map(|(name, code)| (name, fake_rom(code, 0x1000)));
         archive(&data.join("exe6.dat"), &four.iter().map(|(name, rom)| (*name, rom.as_slice())).collect::<Vec<_>>());
-        let job = Job::new(tables(Game::Exe6), crate::bnlc::Install::at(install.path()).unwrap().roms());
+        let job = Job::new(recipe("exe6"), roms(install.path(), &recipe("exe6")));
         let mut said = Vec::new();
         let why = extract(packs.path(), &job, &mut |f| said.push(f)).unwrap_err();
-        assert!(why.contains("8 MiB"), "{why}");
+        assert!(why.contains("expected 0x800000 bytes"), "{why}");
         assert_eq!(files(packs.path()), [format!("{}/content.toml", job.pack)]);
         // An archive gone since it was looked in.
         nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
@@ -467,9 +469,8 @@ mod tests {
         let data = install.path().join("exe/data");
         archive(&data.join("exe4.dat"), &[("exe4_rom_e.srl", &fake_rom("B4WE", 0x100))]);
         archive(&data.join("exe5.dat"), &[("exe5_rom_e.srl", &fake_rom("BRBE", 0x100))]);
-        let roms = crate::bnlc::Install::at(install.path()).unwrap().roms();
-        let job = |game: Game| Job::new(tables(game), roms.iter().filter(|r| r.game == game).cloned().collect());
-        let (four, five) = (job(Game::Exe4).pack, job(Game::Exe5).pack);
+        let job = |game: &str| Job::new(recipe(game), roms(install.path(), &recipe(game)));
+        let (four, five) = (job("exe4").pack, job("exe5").pack);
         let (send, heard) = std::sync::mpsc::channel::<(String, bool)>();
         let send = Mutex::new(send);
         let told: Teller = Arc::new(move |id, told| {
@@ -479,7 +480,7 @@ mod tests {
         });
         let extractor = Extractor::new(packs.path().to_path_buf(), told);
         // (Both waiting before the thread starts, and the second asked for first.)
-        extractor.queue.lock().unwrap().jobs.extend([job(Game::Exe4), job(Game::Exe5)]);
+        extractor.queue.lock().unwrap().jobs.extend([job("exe4"), job("exe5")]);
         extractor.first(&five);
         extractor.add(Vec::new());
         let order: Vec<(String, bool)> = (0..2).map(|_| heard.recv_timeout(std::time::Duration::from_secs(30)).unwrap()).collect();
@@ -487,7 +488,7 @@ mod tests {
         while extractor.queue.lock().unwrap().running {
             std::thread::yield_now();
         }
-        extractor.add(vec![job(Game::Exe4)]);
+        extractor.add(vec![job("exe4")]);
         assert_eq!(heard.recv_timeout(std::time::Duration::from_secs(30)).unwrap(), (four, false));
     }
 }

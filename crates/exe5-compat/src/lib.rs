@@ -362,8 +362,9 @@ pub struct NaviCustNumbers {
 }
 
 
-/// EXE5's asset names (assets.toml): the names exe5-extract writes its
-/// assets under, by EXE6's names for what is EXE6's. Sprites as "cc-ii" (the
+/// EXE5's asset names (assets.toml): the names its pack's assets are
+/// written under (by its recipe, content/exe5/extract/), by EXE6's names
+/// for what is EXE6's. Sprites as "cc-ii" (the
 /// category's byte offset in the sprite list and the index), sounds by the
 /// song table's numbers, banners by banner id, backgrounds by number.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -381,7 +382,8 @@ pub struct AssetNames {
     /// number's picture under the name.
     #[serde(default)]
     pub backgrounds: BTreeMap<String, Numbers>,
-    /// The emotion window's faces by the number exe5-extract gives them.
+    /// The emotion window's faces by the number the recipe gives them
+    /// (content/exe5/extract/hud.luau).
     #[serde(default)]
     pub mugshots: BTreeMap<String, u8>,
 }
@@ -742,17 +744,6 @@ impl Compat {
     /// The name of background number `n` (a settings record's byte 4).
     pub fn background(&self, n: u8) -> Option<&str> {
         self.assets.backgrounds.iter().find(|(_, numbers)| numbers.all().contains(&n)).map(|(k, _)| k.as_str())
-    }
-
-    /// The backgrounds' names by the number the pack has each under (its
-    /// first).
-    pub fn background_names(&self) -> BTreeMap<u8, String> {
-        self.assets.backgrounds.iter().map(|(k, numbers)| (numbers.all()[0], k.clone())).collect()
-    }
-
-    /// The sprites' names by (category, index).
-    pub fn sprite_names(&self) -> BTreeMap<(u8, u8), String> {
-        self.assets.sprites.iter().filter_map(|(name, id)| Some((parse_sprite(id)?, name.clone()))).collect()
     }
 
     /// The original's action number for object `r`'s CurAction (+9), as the

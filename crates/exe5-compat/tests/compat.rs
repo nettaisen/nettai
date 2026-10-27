@@ -39,7 +39,7 @@ fn exe5_compat_reads() {
     assert_eq!(built_in.assets.sounds.get("own-hit"), Some(&0x6B));
     assert_eq!(built_in.assets.sounds.get("winner-1"), Some(&0x1F));
     assert_eq!(built_in.assets.banners.get("program-advance"), Some(&0x24));
-    assert_eq!(built_in.sprite_names().get(&(0x0C, 0x02)).map(String::as_str), Some("bomb"));
+    assert_eq!(built_in.assets.sprites.get("bomb").map(String::as_str), Some("0c-02"));
     // The statuses' bytes.
     assert_eq!(built_in.status(0x10).as_deref(), Some("paralyze-90"));
     assert_eq!(built_in.status(0x32).as_deref(), Some("blind-1200"));

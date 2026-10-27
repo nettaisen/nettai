@@ -77,6 +77,10 @@ pub enum UserError {
     /// A game has no pack, and there is no Legacy Collection to extract it from: none is found through Steam,
     /// nor in the folder the player chose (docs/app.md §17). Its dialog offers to choose the folder.
     NoLegacyCollection,
+    /// A game has no pack, and the Legacy Collection found lacks some of its ROMs (every one its recipe declares is
+    /// needed: docs/design/extraction-recipes.md §5.6): `game` is the game, as shown. Its dialog offers to choose
+    /// the folder again.
+    IncompleteCollection { game: String },
     /// A game's pack couldn't be extracted from the Legacy Collection (its archives didn't read, or the
     /// extraction failed): `game` is the game, as shown.
     ExtractFailed { game: String },
@@ -118,6 +122,7 @@ impl UserError {
             UserError::NotARuleset { game } => (ErrorKind::NotARuleset, game),
             UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
             UserError::NoLegacyCollection => (ErrorKind::NoLegacyCollection, ""),
+            UserError::IncompleteCollection { game } => (ErrorKind::IncompleteLegacyCollection, game),
             UserError::ExtractFailed { game } => (ErrorKind::ExtractFailed, game),
             UserError::DownloadFailed { game } => (ErrorKind::DownloadFailed, game),
             UserError::Other => (ErrorKind::Other, ""),
