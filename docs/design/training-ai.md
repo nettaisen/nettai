@@ -409,6 +409,13 @@ nettai-frontend's training session's (`Training`), done in the env on the battle
 Nothing else for behavior. Rewards for particular behaviors ("use chips", "don't pace") get exploited; strength comes from
 winning.
 
+One experiment against that, off by default: **`env.landed_bonus`** adds that much to a seat's gain each time one of its
+attack chips lands (the other navi loses HP within 120 ticks of its use: the `attacks_landed` stat). The large network
+at update 3,250 landed 29% of its attack chips, the masher 32%: its chip timing was no better than pressing at random,
+and a chip that misses barely changes the reward a round's HP and result give. The bonus is kept small next to a KO's
+1, and its known exploit is a chip used while the other is already being hit by something else; runs with it are
+judged by head-to-head play with runs without it, not by their own reward.
+
 ### 6.5 The pool
 
 - `Pool` runs N envs on persistent worker threads. A thread keeps its Luau runtimes (a game's takes about 1 s to

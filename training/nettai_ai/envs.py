@@ -47,6 +47,7 @@ def make_pool(
         cache=env.cache,
         mirror=env.mirror,
         fixed_builds=env.fixed_builds,
+        landed_bonus=env.landed_bonus,
     )
     if env.chip_holdout > 0:
         kwargs["chip_holdout"] = (env.chip_holdout, env.chip_holdout_seed, holdout_mode)

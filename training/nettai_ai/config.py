@@ -81,6 +81,7 @@ class EnvConfig:
     builders: int = 4
     mirror: bool = False  # both sides play side 0's build (evaluation's --mirror: play alone decides)
     fixed_builds: int = 0  # each game's builds drawn from this many, made once (0: random every round): a specialist's narrow matchups
+    landed_bonus: float = 0.0  # added to a seat's hp_gain each time its attack chip lands (weighted by reward.hp_*)
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 

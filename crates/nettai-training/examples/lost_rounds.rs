@@ -212,6 +212,10 @@ struct RoundOut {
     hits: Vec<Hit>,
     replay: Vec<u8>,
     replay_ended: bool,
+    /// Each side's attack chips used in the fight, and those that landed
+    /// (the other navi losing HP within `stats::LANDS` ticks), by side.
+    attack_chips: [u32; 2],
+    landed: [u32; 2],
 }
 
 /// An object followed from the tick it appeared.
@@ -417,7 +421,9 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let mut b = set.start();
     let mut ai = NetAi::of(s.net.clone(), Level::Normal, rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
     let (d, k) = (ai.knobs().delay as u32, s.net.k());
-    let mut bot = Bot::new(BotKind::Masher, rng.next_u64());
+    // (The masher, else the scripted player LOST_BOT names.)
+    let kind = std::env::var("LOST_BOT").ok().and_then(|n| BotKind::named(&n)).unwrap_or(BotKind::Masher);
+    let mut bot = Bot::new(kind, rng.next_u64());
     let mut nav = Navigator::default();
 
     // The replay, written as it is played.
@@ -439,7 +445,10 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         hits: Vec::new(),
         replay: Vec::new(),
         replay_ended: false,
+        attack_chips: [0; 2],
+        landed: [0; 2],
     };
+    let mut measure = nettai_training::stats::Measure::new(Default::default());
     let mut t: u32 = 0;
     let mut in_screen = false;
     let mut screen_ticks = 0;
@@ -503,6 +512,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         let went_on = env::step_battle(&mut b, [masher, mine]);
         let index = t as u64;
         t += 1;
+        measure.tick(&b, t);
         let ended = matches!(b.round_end(), Some(nettai_battle::RoundEnd::NextRound { .. } | nettai_battle::RoundEnd::Over(_)));
         let tick = nettai_replay::Tick {
             inputs: [masher as u32, mine as u32],
@@ -665,6 +675,8 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     };
     out.result = result.0 as i8;
     out.ending = result.1;
+    out.attack_chips = measure.stats.attack_chips;
+    out.landed = measure.stats.attacks_landed;
     out.ticks = t;
     out.hp_end = hp;
     // (The round played out to its end with no one pressing, so the replay
@@ -741,6 +753,9 @@ fn summary(s: &Shared, rounds: &[RoundOut], a: &Args, d: u32, k: u32) -> String 
     let _ = writeln!(o, "Age = ticks since the object appeared. seen = in the AI's view (visible_to side 1, or blinking); margin = ticks from the first AI decision whose (delayed) view held it to the hit.");
     let _ = writeln!(o);
 
+    let (used, landed) = rounds.iter().fold(([0u32; 2], [0u32; 2]), |(u, l), r| ([u[0] + r.attack_chips[0], u[1] + r.attack_chips[1]], [l[0] + r.landed[0], l[1] + r.landed[1]]));
+    let _ = writeln!(o, "attack chips used in the fight and landed (the other navi losing HP within {} ticks): side 0 (the scripted player) {} of {} ({}), side 1 (the AI) {} of {} ({})", nettai_training::stats::LANDS, landed[0], used[0], pct(landed[0] as usize, used[0] as usize), landed[1], used[1], pct(landed[1] as usize, used[1] as usize));
+    let _ = writeln!(o);
     let groups: [Group; 3] = [("lost", |r| r.result < 0), ("won", |r| r.result > 0), ("neither", |r| r.result == 0)];
     let _ = writeln!(o, "{:<8} {:>6} {:>7} {:>8} {:>6} {:>9} {:>10} {:>9} {:>11}", "rounds", "count", "share", "fight-min", "hits", "hits/min", "dmg/min", "dmg/hit", "dealt/min");
     for (name, f) in &groups {

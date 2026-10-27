@@ -107,6 +107,10 @@ pub struct Config {
     /// of its own (the same in every env); 0: every round's random. A
     /// narrow set of matchups (a specialist's training).
     pub fixed_builds: u32,
+    /// Added to a seat's gain (§6.4, in the HP-fraction units the trainer
+    /// weights) each time one of its attack chips lands: the other navi
+    /// losing HP within `stats::LANDS` ticks of its use. 0: none.
+    pub landed_bonus: f32,
 }
 
 impl Default for Config {
@@ -126,6 +130,7 @@ impl Default for Config {
             combos: 0.3,
             mirror: false,
             fixed_builds: 0,
+            landed_bonus: 0.0,
         }
     }
 }
@@ -809,8 +814,15 @@ impl Env {
         self.t += 1;
         self.profile.ticks += 1;
         self.log.push(&self.battle);
+        let landed = self.measure.stats.attacks_landed;
         self.measure.tick(&self.battle, self.t);
         self.gains();
+        if self.cfg.landed_bonus != 0.0 {
+            for s in 0..2 {
+                let more = self.measure.stats.attacks_landed[s].saturating_sub(landed[s]);
+                self.seats[s].gain += more as f32 * self.cfg.landed_bonus;
+            }
+        }
         // The observations later decisions will need.
         let names = &self.games[self.game].names;
         for s in 0..2 {

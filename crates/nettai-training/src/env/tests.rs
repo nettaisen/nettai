@@ -586,3 +586,97 @@ fn mirrored_rounds_give_both_sides_one_build() {
         }
     }
 }
+
+/// The duelist against the other scripted players, over EXE6 rounds of
+/// random builds, each pairing both ways round: its rounds won, lost and
+/// left undecided. Printed; it must beat each. (Long: `--ignored`.)
+#[test]
+#[ignore]
+fn the_duelist_beats_the_other_scripted_players() {
+    let rounds: usize = std::env::var("DUEL_ROUNDS").ok().and_then(|v| v.parse().ok()).unwrap_or(40);
+    let others: Vec<BotKind> = std::env::var("DUEL_VS").ok().map(|v| v.split(',').filter_map(BotKind::named).collect()).unwrap_or(vec![BotKind::Still, BotKind::Masher, BotKind::Shooter, BotKind::Dodger]);
+    for other in others {
+        let (mut won, mut lost, mut open) = (0, 0, 0);
+        for (seed, duelist_side) in [(21u64, 0usize), (22, 1)] {
+            let mut seats = [Controller::Bot(other); 2];
+            seats[duelist_side] = Controller::Bot(BotKind::Duelist);
+            let mut env = Env::new(games(&["exe6"]), Config { seats, hp: Some((1000, 1000)), ..Config::default() }, seed).unwrap();
+            while env.ended.len() < rounds / 2 {
+                env.step([0, 0]).unwrap_or_else(|e| panic!("{e}"));
+            }
+            let (mut mine, mut theirs, mut dealt, mut taken) = (0u32, 0u32, 0i64, 0i64);
+            for r in &env.ended {
+                mine += r.chips_used[duelist_side];
+                theirs += r.chips_used[duelist_side ^ 1];
+                taken += r.hp_lost[duelist_side] as i64;
+                dealt += r.hp_lost[duelist_side ^ 1] as i64;
+            }
+            println!("  duelist side {duelist_side}: chips used {mine} vs {theirs}; HP dealt {dealt}, taken {taken}");
+            for r in &env.ended {
+                match r.result[duelist_side] {
+                    1.. => won += 1,
+                    ..0 => lost += 1,
+                    0 => open += 1,
+                }
+            }
+        }
+        println!("duelist vs {}: won {won}, lost {lost}, undecided {open}", other.name());
+        assert!(won > lost, "duelist vs {}: won {won}, lost {lost}", other.name());
+    }
+}
+
+/// What a scripted player's lookahead costs: a battle copied, and ticks
+/// stepped on the copy. Printed. (`--ignored`.)
+#[test]
+#[ignore]
+fn lookahead_costs() {
+    let seats = [Controller::Bot(BotKind::Masher), Controller::Bot(BotKind::Masher)];
+    let mut env = Env::new(games(&["exe6"]), Config { seats, ..Config::default() }, 5).unwrap();
+    // (Into a fight, with a few objects about.)
+    for _ in 0..1500 {
+        env.step([0, 0]).unwrap();
+    }
+    let b = env.battle().clone();
+    let n = 2000;
+    let started = std::time::Instant::now();
+    for _ in 0..n {
+        std::hint::black_box(b.clone());
+    }
+    let clone = started.elapsed() / n;
+    let mut c = b.clone();
+    let started = std::time::Instant::now();
+    let mut ticks = 0;
+    for _ in 0..n {
+        if !crate::env::step_battle(&mut c, [keys::B, keys::B]) || c.is_battle_over() {
+            c = b.clone();
+        }
+        ticks += 1;
+    }
+    let tick = started.elapsed() / ticks;
+    println!("lookahead: clone {clone:?}, tick {tick:?} (objects {})", b.objects.in_order().count());
+}
+
+/// A landed attack chip adds `landed_bonus` to its seat's gain: two envs
+/// alike but for the bonus play the same rounds (bots ignore the reward),
+/// and each round's gains differ by the bonus times the attack chips each
+/// side landed in it.
+#[test]
+fn landed_attack_chips_add_the_bonus_to_their_seats_gain() {
+    let seats = [Controller::Bot(BotKind::Masher); 2];
+    let mut plain = Env::new(games(&["exe6"]), Config { seats, ..Config::default() }, 31).unwrap();
+    let mut bonus = Env::new(games(&["exe6"]), Config { seats, landed_bonus: 0.5, ..Config::default() }, 31).unwrap();
+    for _ in 0..20 {
+        // (With no policy seat, a step is a whole round.)
+        let (a, b) = (plain.step([0, 0]).unwrap(), bonus.step([0, 0]).unwrap());
+        let landed = bonus.ended.last().unwrap().attacks_landed;
+        assert_eq!(plain.ended.last().unwrap().attacks_landed, landed, "the two envs played differently");
+        for s in 0..2 {
+            let more = b.hp_gain[s] - a.hp_gain[s];
+            assert!((more - 0.5 * landed[s] as f32).abs() < 1e-3, "seat {s}: {more} more for {} landed", landed[s]);
+        }
+        if landed.iter().all(|&n| n >= 2) {
+            return;
+        }
+    }
+    panic!("no round with two attack chips landed by each side");
+}
