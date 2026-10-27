@@ -1,19 +1,29 @@
 #!/usr/bin/env bash
-# nettai.app, and Velopack's release of it, on macOS: target/package/macos/releases/ (nettai-osx-Portable.zip, the
-# app, which the player puts where they like, /Applications or anywhere, and which updates itself there; no installer
-# package: the user, "i don't want to ship a pkg file for mac"; and the update package and its feed the app's updater
-# reads from the GitHub release: nettai-<version>-osx-full.nupkg, releases.osx.json, assets.osx.json, RELEASES-osx).
+# nettai.app, and Velopack's release of it, on macOS, for one architecture: target/package/macos/<arch>/releases/
+# (nettai-<channel>-Portable.zip, the app, which the player puts where they like, /Applications or anywhere, and
+# which updates itself there; no installer package: the user, "i don't want to ship a pkg file for mac"; and the
+# update package and its feed the app's updater reads from the GitHub release: nettai-<version>-<channel>-full.nupkg,
+# releases.<channel>.json, assets.<channel>.json, RELEASES-<channel>).
 #
-#   packaging/macos/package.sh
+#   NETTAI_MACOS_ARCH=aarch64 packaging/macos/package.sh
+#
+# Each architecture is its own package on its own Velopack channel, named as Velopack names the runtime (`vpk pack
+# --runtime`, which the universal app has none of), so that each one's files and feed sit beside the others' in one
+# release:
+#
+#   aarch64     Apple silicon                              osx-arm64
+#   x86_64      Intel                                      osx-x64
+#   universal   both, the two programs joined by lipo      osx (a Mac's only package up to 0.12.0: the installs
+#                                                               from it update through it; docs/app.md §19)
 #
 # The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
 # ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
 # (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy.
 #
+# NETTAI_MACOS_ARCH      aarch64, x86_64 or universal (above); else this Mac's own architecture
 # NETTAI_VERSION         the version, if set; else the app crate's
-# NETTAI_UNIVERSAL=1     arm64 and x86_64 in one program (lipo), and in one ffmpeg; else the host's alone
-# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architectures built); else the release packaging/ffmpeg.sha256
-#                        pins, downloaded and checked
+# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architecture packaged); else the release
+#                        packaging/ffmpeg.sha256 pins, downloaded and checked
 # NETTAI_ICONS           a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # MACOS_SIGN_IDENTITY    a Developer ID Application identity in the keychain to sign the app with (vpk signs it);
 #                        else it is signed ad hoc here
@@ -25,21 +35,35 @@ set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
 source "$(dirname "$0")/../build.sh"
 
-out=$root/target/package/macos
+host=$(uname -m)
+arch=${NETTAI_MACOS_ARCH:-${host/arm64/aarch64}}
+# The slices the program is made of (Rust's target names), the channel, and Velopack's runtime.
+case $arch in
+    aarch64) slices=(aarch64) channel=osx-arm64 runtime=osx-arm64 ;;
+    x86_64) slices=(x86_64) channel=osx-x64 runtime=osx-x64 ;;
+    universal) slices=(aarch64 x86_64) channel=osx runtime= ;;
+    *) echo "NETTAI_MACOS_ARCH is aarch64, x86_64 or universal, not $arch" >&2; exit 1 ;;
+esac
+
+# One program of its slices': one alone as it is, two joined by lipo.
+join_slices() { # <output> <program>...
+    local output=$1
+    shift
+    if [ $# = 1 ]; then cp "$1" "$output"; else lipo -create -output "$output" "$@"; fi
+}
+
+out=$root/target/package/macos/$arch
 rm -rf "$out"
 mkdir -p "$out"
 
-if [ "${NETTAI_UNIVERSAL:-}" = 1 ]; then
-    arch=universal
-    build_app aarch64-apple-darwin
-    arm64=$program
-    build_app x86_64-apple-darwin
-    lipo -create -output "$out/nettai" "$arm64" "$program"
-else
-    arch=$(uname -m)
-    build_app
-    cp "$program" "$out/nettai"
-fi
+# Each slice built for its target, whichever package it is for: one packaged already, as the release workflow
+# packages each architecture before the universal app, is cargo's to reuse, and nothing is compiled twice.
+programs=()
+for slice in "${slices[@]}"; do
+    build_app "$slice-apple-darwin"
+    programs+=("$program")
+done
+join_slices "$out/nettai" "${programs[@]}"
 
 icons=${NETTAI_ICONS:-}
 if [ -z "$icons" ]; then
@@ -57,19 +81,19 @@ iconutil -c icns -o "$app/Contents/Resources/nettai.icns" "$icons/nettai.iconset
 cp "$root/LICENSE" "$app/Contents/Resources/LICENSE"
 cp "$notices" "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 
-# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg), the release's two
-# slices joined for a universal app; and its notice (GPL: what it is built from, where that source is).
+# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg): the release's program
+# for each slice (its arm64 is Rust's aarch64), joined as the app's are; and its notice (GPL: what it is built from,
+# where that source is).
 ffmpeg=$app/Contents/MacOS/ffmpeg
 if [ -n "${NETTAI_BUNDLE_FFMPEG:-}" ]; then
     cp "$NETTAI_BUNDLE_FFMPEG" "$ffmpeg"
-elif [ "$arch" = universal ]; then
-    fetch_ffmpeg ffmpeg-macos-arm64
-    arm64=$fetched
-    fetch_ffmpeg ffmpeg-macos-x86_64
-    lipo -create -output "$ffmpeg" "$arm64" "$fetched"
 else
-    fetch_ffmpeg "ffmpeg-macos-$arch"
-    cp "$fetched" "$ffmpeg"
+    ffmpegs=()
+    for slice in "${slices[@]}"; do
+        fetch_ffmpeg "ffmpeg-macos-${slice/aarch64/arm64}"
+        ffmpegs+=("$fetched")
+    done
+    join_slices "$ffmpeg" "${ffmpegs[@]}"
 fi
 chmod 755 "$ffmpeg"
 fetch_ffmpeg ffmpeg-NOTICE.txt
@@ -79,7 +103,8 @@ cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
 # hardened runtime, as notarizing asks; without one it is signed ad hoc here (an Apple silicon Mac runs nothing
 # unsigned; Gatekeeper still asks the player to allow it once).
 pack=(pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai --packDir "$app" --mainExe nettai
-    --icon "$app/Contents/Resources/nettai.icns" --noInst --outputDir "$out/releases")
+    --channel "$channel" --icon "$app/Contents/Resources/nettai.icns" --noInst --outputDir "$out/releases")
+[ -n "$runtime" ] && pack+=(--runtime "$runtime")
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
     pack+=(--signAppIdentity "$MACOS_SIGN_IDENTITY")
     [ -n "${MACOS_NOTARY_PROFILE:-}" ] && pack+=(--notaryProfile "$MACOS_NOTARY_PROFILE")

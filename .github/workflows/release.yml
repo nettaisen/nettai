@@ -1,6 +1,7 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
-# zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's
-# updates.rs). Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
+# zipped (Apple silicon's, Intel's, and the universal one the installs of 0.12.0 and before update through) and a Linux
+# AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's updates.rs).
+# Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
 # it packages the version Cargo.toml says, tags that commit `v<version>` and publishes the release, which the installed
 # apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
 # packages alone, as the run's artifacts. It runs on main, not on a tag, so that its Rust caches are main's, which
@@ -102,7 +103,7 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS disk image
+    name: macOS apps
     needs: icons
     runs-on: macos-latest
     env:
@@ -161,15 +162,32 @@ jobs:
             xcrun notarytool store-credentials nettai --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --keychain "$keychain"
             echo "MACOS_NOTARY_PROFILE=nettai" >> "$GITHUB_ENV"
           fi
+      # Each architecture's package on its channel (osx-arm64, osx-x64), then the universal one (osx), whose program
+      # and ffmpeg are the two architectures' joined: the slices are compiled once, and the universal app's build finds
+      # them built. Each package is signed and notarized, with the secrets above.
       - name: Package
         env:
-          NETTAI_UNIVERSAL: "1"
           NETTAI_ICONS: ${{ runner.temp }}/icons
-        run: packaging/macos/package.sh
+        run: |
+          for arch in aarch64 x86_64 universal; do
+            NETTAI_MACOS_ARCH=$arch packaging/macos/package.sh
+          done
+      # (An artifact each, so that the release job's download puts their files in one folder: one artifact of the
+      # three folders would keep them apart.)
       - uses: actions/upload-artifact@v7
         with:
-          name: nettai-macos
-          path: target/package/macos/releases/*
+          name: nettai-macos-aarch64
+          path: target/package/macos/aarch64/releases/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nettai-macos-x86_64
+          path: target/package/macos/x86_64/releases/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nettai-macos-universal
+          path: target/package/macos/universal/releases/*
           if-no-files-found: error
 
   linux:
@@ -261,15 +279,16 @@ jobs:
           dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
           if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
-      # Each platform's channel (win, osx, linux) goes up into the one release, a draft until all three are in (a run
-      # again merges into it); then it is published, the latest, and the installed apps see it.
+      # Each package's channel (win; osx-arm64, osx-x64 and the universal osx; linux) goes up into the one release, a
+      # draft until all are in (a run again merges into it); then it is published, the latest, and the installed apps
+      # see it.
       - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          for channel in win osx linux; do
+          for channel in win osx-arm64 osx-x64 osx linux; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done

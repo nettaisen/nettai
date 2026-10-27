@@ -8,7 +8,7 @@ use crate::shell::{Dialog, Shell, button};
 use nettai_ui::{ButtonKind, UpdateWords};
 use slint::ComponentHandle;
 use velopack::sources::GithubSource;
-use velopack::{UpdateCheck, UpdateInfo, UpdateManager};
+use velopack::{UpdateCheck, UpdateInfo, UpdateManager, UpdateOptions};
 
 /// Where the releases are.
 const REPO: &str = "https://github.com/nettaisen/nettai";
@@ -36,7 +36,21 @@ pub fn startup() {
 
 /// The installed app's update manager; none for an app that isn't installed.
 fn manager() -> Option<UpdateManager> {
-    UpdateManager::new(GithubSource::new(REPO, None, false), None, None).ok()
+    let options = options(std::env::consts::OS, std::env::consts::ARCH);
+    UpdateManager::new(GithubSource::new(REPO, None, false), Some(options), None).ok()
+}
+
+/// The channel the app asks for its updates on, when it isn't the one its package was made on (`vpk pack
+/// --channel`, which Velopack's manager asks otherwise): on a Mac, the architecture's (`osx-arm64`, `osx-x64`:
+/// packaging/macos), so that an app from the universal package (`osx`, a Mac's only one up to 0.12.0) takes its
+/// own at its next update, the slice it runs choosing (docs/app.md §19, "Updates").
+fn options(os: &str, arch: &str) -> UpdateOptions {
+    let channel = match (os, arch) {
+        ("macos", "aarch64") => Some("osx-arm64"),
+        ("macos", "x86_64") => Some("osx-x64"),
+        _ => None,
+    };
+    UpdateOptions { ExplicitChannel: channel.map(str::to_owned), ..UpdateOptions::default() }
 }
 
 /// Told on the event loop from a thread of this module's.
@@ -146,5 +160,106 @@ impl Shell {
             let _ = forward.join();
             tell(Told::Downloaded(done));
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::options;
+    use velopack::locator::VelopackLocatorConfig;
+    use velopack::sources::FileSource;
+    use velopack::{UpdateCheck, UpdateManager};
+
+    /// The full package an installed app of `version`, packaged on `channel` and running on `os`/`arch`, updates
+    /// to from a release's feeds (`releases.<channel>.json`, each channel's versions), if any: Velopack's own check,
+    /// with the app's options.
+    fn update_to(version: &str, channel: &str, (os, arch): (&str, &str), feeds: &[(&str, &[&str])]) -> Option<String> {
+        let dir = tempfile::tempdir().unwrap();
+        let app = dir.path().join("nettai.app");
+        let programs = app.join("Contents/MacOS");
+        let (packages, release) = (dir.path().join("packages"), dir.path().join("release"));
+        for folder in [&programs, &packages, &release] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        // (What `vpk pack` puts beside the program, where Velopack's locator reads them: the manifest and the updater.)
+        let manifest = programs.join("sq.version");
+        std::fs::write(
+            &manifest,
+            format!(
+                r#"<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd"><metadata>
+<id>nettai</id><version>{version}</version><channel>{channel}</channel><mainExe>nettai</mainExe>
+</metadata></package>"#
+            ),
+        )
+        .unwrap();
+        let updater = programs.join("UpdateMac");
+        std::fs::write(&updater, []).unwrap();
+        for (channel, versions) in feeds {
+            let assets: Vec<_> = versions
+                .iter()
+                .map(|version| {
+                    serde_json::json!({
+                        "PackageId": "nettai",
+                        "Version": version,
+                        "Type": "Full",
+                        "FileName": format!("nettai-{version}-{channel}-full.nupkg"),
+                    })
+                })
+                .collect();
+            let feed = serde_json::json!({ "Assets": assets }).to_string();
+            std::fs::write(release.join(format!("releases.{channel}.json")), feed).unwrap();
+        }
+        let locator = VelopackLocatorConfig {
+            RootAppDir: app,
+            UpdateExePath: updater,
+            PackagesDir: packages,
+            ManifestPath: manifest,
+            CurrentBinaryDir: programs,
+            IsPortable: true,
+        };
+        let manager = UpdateManager::new(FileSource::new(&release), Some(options(os, arch)), Some(locator)).unwrap();
+        match manager.check_for_updates().unwrap() {
+            UpdateCheck::UpdateAvailable(info) => Some(info.TargetFullRelease.FileName),
+            UpdateCheck::NoUpdateAvailable | UpdateCheck::RemoteIsEmpty => None,
+        }
+    }
+
+    /// The full package of a version on a channel, named as the feeds above name it.
+    fn full(version: &str, channel: &str) -> Option<String> {
+        Some(format!("nettai-{version}-{channel}-full.nupkg"))
+    }
+
+    const APPLE_SILICON: (&str, &str) = ("macos", "aarch64");
+    const INTEL_MAC: (&str, &str) = ("macos", "x86_64");
+
+    /// A release with the universal package beside the architectures' (the macOS job's three).
+    const RELEASE: &[(&str, &[&str])] = &[("osx", &["0.14.0"]), ("osx-arm64", &["0.14.0"]), ("osx-x64", &["0.14.0"])];
+
+    #[test]
+    fn a_universal_app_takes_its_architectures_package() {
+        assert_eq!(update_to("0.13.0", "osx", APPLE_SILICON, RELEASE), full("0.14.0", "osx-arm64"));
+        assert_eq!(update_to("0.13.0", "osx", INTEL_MAC, RELEASE), full("0.14.0", "osx-x64"));
+    }
+
+    #[test]
+    fn a_universal_app_waits_for_a_newer_version() {
+        // (The same version on its architecture's channel is no update: it moves at the next one.)
+        let same = &[("osx", &["0.13.0"][..]), ("osx-arm64", &["0.13.0"][..])];
+        assert_eq!(update_to("0.13.0", "osx", APPLE_SILICON, same), None);
+    }
+
+    #[test]
+    fn an_architectures_app_stays_on_its_channel() {
+        let newer = &[("osx-arm64", &["0.15.0"][..]), ("osx-x64", &["0.15.0"][..])];
+        assert_eq!(update_to("0.14.0", "osx-arm64", APPLE_SILICON, newer), full("0.15.0", "osx-arm64"));
+        assert_eq!(update_to("0.14.0", "osx-x64", INTEL_MAC, newer), full("0.15.0", "osx-x64"));
+    }
+
+    #[test]
+    fn other_systems_ask_their_packages_channel() {
+        let release = &[("win", &["0.14.0"][..]), ("linux", &["0.14.0"][..])];
+        assert_eq!(update_to("0.13.0", "win", ("windows", "x86_64"), release), full("0.14.0", "win"));
+        assert_eq!(update_to("0.13.0", "linux", ("linux", "x86_64"), release), full("0.14.0", "linux"));
     }
 }
