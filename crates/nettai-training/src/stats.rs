@@ -8,13 +8,19 @@
 use nettai_battle::Battle;
 use nettai_battle::battle::mode;
 use nettai_battle::custom::screen::Phase;
-use nettai_content_api::PanelPos;
+use nettai_content_api::{ChipHandle, PanelPos};
 
 /// The fight's undimmed ticks after an attack chip's use within which the
-/// other navi losing HP counts as it landing. Dimmed ticks don't count: a
-/// navi chip's whole sequence plays dimmed, often for longer than this, and
-/// lands in it.
+/// other navi losing HP counts as it landing. A dimming is the chip's that
+/// started it: a navi chip's whole sequence plays dimmed, often for longer
+/// than this, and lands in it. Each side's newest attack chip used from
+/// [`DIM_START`] ticks before a dimming began is the one its damage in the
+/// dimming lands for; the side's other chips in flight wait it out, its
+/// damage not theirs, their windows held.
 pub const LANDS: u32 = 120;
+/// The ticks before a dimming began within which an attack chip's use can
+/// have started it.
+pub const DIM_START: u32 = 30;
 /// The ticks within which a step back to the panel just left counts as
 /// pacing (a third of a second).
 pub const BACK: u32 = 20;
@@ -101,13 +107,30 @@ pub struct Measure {
     hand: [u8; 2],
     at: [Option<PanelPos>; 2],
     last_step: [Option<(PanelPos, PanelPos, u32)>; 2],
-    /// Attack chips in flight: the side, the undimmed ticks since its use,
-    /// and the other navi's HP then.
-    flying: Vec<(u8, u32, u16)>,
+    /// Attack chips in flight.
+    flying: Vec<Flying>,
+    /// The tick the dimming going on began, and by side the use (tick) of
+    /// the chip that can have started it (kept when it lands).
+    dimmed_from: Option<u32>,
+    starter: [Option<u32>; 2],
+    /// By side and attack chip, its uses and those that landed, where
+    /// asked for ([`Measure::by_chip`]; none in training).
+    pub chips: Option<[std::collections::HashMap<ChipHandle, (u32, u32)>; 2]>,
     closing: [bool; 2],
     custom: bool,
     in_form: [bool; 2],
     pairs: [PairWatch; 2],
+}
+
+/// An attack chip in flight: its side, the tick of its use, the undimmed
+/// ticks since, and the other navi's HP then (lowered by a dimming not its).
+#[derive(Clone, Copy, Debug)]
+struct Flying {
+    side: u8,
+    chip: ChipHandle,
+    used: u32,
+    ticks: u32,
+    other: u16,
 }
 
 /// Side `side`'s navi's HP: none before it is on the field, 0 once it has
@@ -123,6 +146,12 @@ impl Measure {
     /// A round starts.
     pub fn new(stats: RoundStats) -> Measure {
         Measure { stats, ..Measure::default() }
+    }
+
+    /// Tally each side's attack chips by chip too ([`Measure::chips`]).
+    pub fn by_chip(mut self) -> Measure {
+        self.chips = Some(Default::default());
+        self
     }
 
     /// Seat `seat`'s folder was seeded with `pair`, whose payoff's plain
@@ -173,13 +202,16 @@ impl Measure {
             if b.round.mode == mode::FIGHTING && hand < self.hand[i] {
                 s.chips_used[i] += 1;
                 let used = b.hands[i].ids[b.hands[i].cursor.saturating_sub(1) as usize];
-                if used.is_some_and(|c| {
+                if let Some(chip) = used.filter(|&c| {
                     let d = b.content.chip(c);
                     d.damage > 0 || d.formula.is_some()
                 }) {
                     s.attack_chips[i] += 1;
+                    if let Some(chips) = &mut self.chips {
+                        chips[i].entry(chip).or_default().0 += 1;
+                    }
                     if let Some(other) = navi_hp(b, side ^ 1, Some(0)) {
-                        self.flying.push((side, 0, other));
+                        self.flying.push(Flying { side, chip, used: t, ticks: 0, other });
                     }
                 }
             }
@@ -247,13 +279,39 @@ impl Measure {
                 *ticks < LANDS
             });
         }
-        self.flying.retain_mut(|(side, ticks, other)| {
-            if hp[(*side ^ 1) as usize].is_some_and(|now| now < *other) {
-                stats.attacks_landed[*side as usize] += 1;
+        // In a dimming, each side's chip that can have started it: its newest
+        // from DIM_START ticks before the dimming began.
+        self.dimmed_from = if undimmed { None } else { Some(self.dimmed_from.unwrap_or(t)) };
+        if let Some(from) = self.dimmed_from {
+            for f in &self.flying {
+                if f.used + DIM_START >= from {
+                    let s = &mut self.starter[f.side as usize];
+                    *s = Some(s.map_or(f.used, |u| u.max(f.used)));
+                }
+            }
+        } else {
+            self.starter = [None; 2];
+        }
+        let starter = self.starter;
+        let chips = &mut self.chips;
+        self.flying.retain_mut(|f| {
+            let now = hp[(f.side ^ 1) as usize];
+            if !undimmed && starter[f.side as usize] != Some(f.used) {
+                // (Another chip's dimming: what it does isn't this chip's.)
+                if let Some(now) = now {
+                    f.other = f.other.min(now);
+                }
+                return true;
+            }
+            if now.is_some_and(|now| now < f.other) {
+                stats.attacks_landed[f.side as usize] += 1;
+                if let Some(chips) = chips {
+                    chips[f.side as usize].entry(f.chip).or_default().1 += 1;
+                }
                 return false;
             }
-            *ticks += undimmed as u32;
-            *ticks < LANDS
+            f.ticks += undimmed as u32;
+            f.ticks < LANDS
         });
     }
 }

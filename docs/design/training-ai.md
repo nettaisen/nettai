@@ -417,14 +417,16 @@ Nothing else for behavior. Rewards for particular behaviors ("use chips", "don't
 winning.
 
 One experiment against that, off by default: **`env.landed_bonus`** adds that much to a seat's gain each time one of its
-attack chips lands (the other navi loses HP within 120 undimmed ticks of its use: the `attacks_landed` stat; a navi
-chip's dimmed sequence, longer than that, doesn't count against it). The large network
-at update 3,250 landed 29% of its attack chips, the masher 32%: its chip timing was no better than pressing at random,
-and a chip that misses barely changes the reward a round's HP and result give. The bonus is kept small next to a KO's
-1, and its known exploit is a chip used while the other is already being hit by something else; runs with it are
-judged by head-to-head play with runs without it, not by their own reward. Until 2026-10-27 the window counted dimmed
-ticks too, so navi chips never landed (EXE6 against a navi standing still: HeatMan 0 of 49, 30 of 49 over a 600-tick
-window) and the bonus paid for every chip but them; the 29% above is from that count.
+attack chips lands (the `attacks_landed` stat: the other navi loses HP within 120 undimmed ticks of its use; in a
+dimming, only the chip that started it, each side's newest from 30 ticks before, can land). It was tried at 0.05 and
+**turned off (2026-10-27): the stat is mostly coincidence.** A third of fight time is dimmed (about ten dimmings a
+round, 257 ticks each, mostly navi chips), and the other navi is hit by something every second or two, so a chip's
+window usually holds some hit: against the masher (EXE6, the specialist's four builds) chips that can't hit "land" about
+half the time (ComingRoad 13 of 22, ElemTrap 41 of 86), near the AI's 54% and the masher's 64%. The bonus was close to a
+reward for using chips. Two counting bugs came first: until 2026-10-27 the window counted dimmed ticks, so navi chips
+never landed (HeatMan 0 of 49 against a navi standing still) and the bonus paid for every chip but them; then, counted
+undimmed, a dimming's damage landed for every chip in flight. The 27–29% figures of earlier notes are from the first
+count. A true measure needs each hit traced to the chip whose objects dealt it, which the engine doesn't record.
 
 ### 6.5 The pool
 

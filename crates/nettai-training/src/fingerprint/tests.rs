@@ -265,3 +265,40 @@ fn attack_chips_that_hit_nothing_in_their_fingerprint() {
         println!("{game}: {} first hit in the last 30 ticks: {}", late.len(), late.join(", "));
     }
 }
+
+/// A dimming's damage lands for the chip that started it alone: a cannon
+/// that misses (the target a row above), then HeatMan, count two attack
+/// chips used and one landed, HeatMan's.
+#[test]
+fn a_dimming_lands_for_its_own_chip_alone() {
+    let c = content("exe6");
+    let pick = |k: &str| nettai_match::ids::chip(&c, "exe6", k).unwrap_or_else(|| panic!("EXE6 has {k}"));
+    let (cannon, heatman) = (pick("cannon"), pick("heatman"));
+    let sandbox = Sandbox::new(&c).unwrap_or_else(|e| panic!("{e}"));
+    let (mut b, _) = sandbox.prepared(1, Setup::Plain).expect("the target at its panel");
+    give(&mut b, 0, &[cannon, heatman]);
+    let mut m = crate::stats::Measure::new(Default::default()).by_chip();
+    m.tick(&b, 0);
+    let (mut pressed, mut seen_dimmed, mut undimmed_after) = (0, false, 0);
+    for t in 1..2000 {
+        // A for the cannon, then for HeatMan once the user stands idle again.
+        let press = (pressed == 0 || (pressed == 1 && t > 5 && idle(&b, 0))).then(|| pressed += 1).map_or(0, |_| nettai_battle::input::keys::A);
+        if !step_battle(&mut b, [press, 0]) {
+            break;
+        }
+        m.tick(&b, t);
+        seen_dimmed |= b.is_dimmed();
+        // (Past the cannon's whole window after the dimming.)
+        if seen_dimmed && !b.is_dimmed() {
+            undimmed_after += 1;
+            if undimmed_after > crate::stats::LANDS + 10 {
+                break;
+            }
+        }
+    }
+    assert!(seen_dimmed, "HeatMan never dimmed");
+    let chips = &m.chips.as_ref().unwrap()[0];
+    assert_eq!(chips.get(&cannon), Some(&(1, 0)), "the cannon: used once, landed never");
+    assert_eq!(chips.get(&heatman), Some(&(1, 1)), "HeatMan: used once, landed");
+    assert_eq!((m.stats.attack_chips[0], m.stats.attacks_landed[0]), (2, 1));
+}

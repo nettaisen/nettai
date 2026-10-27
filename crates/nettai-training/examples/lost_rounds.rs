@@ -218,6 +218,9 @@ struct RoundOut {
     landed: [u32; 2],
     /// The AI's attack chips by name: used, and landed (as `landed`).
     ai_chips: HashMap<String, (u32, u32)>,
+    /// Fight ticks dimmed, and the dimmings.
+    dimmed_ticks: u32,
+    dimmings: u32,
 }
 
 /// An object followed from the tick it appeared.
@@ -450,8 +453,11 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         attack_chips: [0; 2],
         landed: [0; 2],
         ai_chips: HashMap::new(),
+        dimmed_ticks: 0,
+        dimmings: 0,
     };
-    let mut measure = nettai_training::stats::Measure::new(Default::default());
+    let mut was_dimmed = false;
+    let mut measure = nettai_training::stats::Measure::new(Default::default()).by_chip();
     let mut t: u32 = 0;
     let mut in_screen = false;
     let mut screen_ticks = 0;
@@ -465,11 +471,6 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let mut panels: VecDeque<(Option<PanelPos>, Option<PanelPos>)> = VecDeque::new();
     let mut attacked: VecDeque<u64> = VecDeque::new();
     let mut masher_hand = 0u8;
-    // The AI's attack chips in flight: name, undimmed ticks since its use, the masher's HP then.
-    let mut ai_hand = 0u8;
-    let mut ai_flying: Vec<(String, u32, u16)> = Vec::new();
-    // (The window, LOST_LANDS undimmed ticks if set: stats' LANDS by default.)
-    let lands: u32 = std::env::var("LOST_LANDS").ok().and_then(|v| v.parse().ok()).unwrap_or(nettai_training::stats::LANDS);
     let mut masher_chip: Option<(String, u32)> = None;
 
     let result = loop {
@@ -521,6 +522,11 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         let index = t as u64;
         t += 1;
         measure.tick(&b, t);
+        if b.is_dimmed() {
+            out.dimmed_ticks += 1;
+            out.dimmings += !was_dimmed as u32;
+        }
+        was_dimmed = b.is_dimmed();
         let ended = matches!(b.round_end(), Some(nettai_battle::RoundEnd::NextRound { .. } | nettai_battle::RoundEnd::Over(_)));
         let tick = nettai_replay::Tick {
             inputs: [masher as u32, mine as u32],
@@ -569,31 +575,6 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
             masher_chip = Some((used.map_or("?".to_string(), |c| b.content.defs.chip(c).key.clone()), t));
         }
         masher_hand = hand;
-        // The AI's attack chips used, each landed or not (as stats' attacks_landed, by name).
-        let hand = b.hands[1].remaining();
-        if b.round.mode == mode::FIGHTING && hand < ai_hand {
-            if let Some(c) = b.hands[1].ids[b.hands[1].cursor.saturating_sub(1) as usize] {
-                let d = b.content.chip(c);
-                if d.damage > 0 || d.formula.is_some() {
-                    if let Some(other) = nettai_training::stats::navi_hp(&b, 0, Some(0)) {
-                        let key = b.content.defs.chip(c).key.clone();
-                        out.ai_chips.entry(key.clone()).or_default().0 += 1;
-                        ai_flying.push((key, 0, other));
-                    }
-                }
-            }
-        }
-        ai_hand = hand;
-        let masher_hp = nettai_training::stats::navi_hp(&b, 0, Some(0));
-        let undimmed = !b.is_dimmed();
-        ai_flying.retain_mut(|(key, ticks, other)| {
-            if masher_hp.is_some_and(|now| now < *other) {
-                out.ai_chips.entry(key.clone()).or_default().1 += 1;
-                return false;
-            }
-            *ticks += undimmed as u32;
-            *ticks < lands
-        });
 
         // The AI navi's HP, and a hit: read of the states before it.
         let now = navi_hp(&b, 1, hp[1]);
@@ -710,6 +691,9 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     out.ending = result.1;
     out.attack_chips = measure.stats.attack_chips;
     out.landed = measure.stats.attacks_landed;
+    for (&c, &n) in measure.chips.as_ref().map(|c| &c[1]).into_iter().flatten() {
+        out.ai_chips.insert(b.content.defs.chip(c).key.clone(), n);
+    }
     out.ticks = t;
     out.hp_end = hp;
     // (The round played out to its end with no one pressing, so the replay
@@ -788,6 +772,8 @@ fn summary(s: &Shared, rounds: &[RoundOut], a: &Args, d: u32, k: u32) -> String 
 
     let (used, landed) = rounds.iter().fold(([0u32; 2], [0u32; 2]), |(u, l), r| ([u[0] + r.attack_chips[0], u[1] + r.attack_chips[1]], [l[0] + r.landed[0], l[1] + r.landed[1]]));
     let _ = writeln!(o, "attack chips used in the fight and landed (the other navi losing HP within {} ticks): side 0 (the scripted player) {} of {} ({}), side 1 (the AI) {} of {} ({})", nettai_training::stats::LANDS, landed[0], used[0], pct(landed[0] as usize, used[0] as usize), landed[1], used[1], pct(landed[1] as usize, used[1] as usize));
+    let (dt, dn, ft) = rounds.iter().fold((0u64, 0u64, 0u64), |(a, n, f), r| (a + r.dimmed_ticks as u64, n + r.dimmings as u64, f + r.fight_ticks as u64));
+    let _ = writeln!(o, "dimmed: {dt} ticks in {dn} dimmings ({:.0} ticks each), against {ft} fight ticks", dt as f64 / dn.max(1) as f64);
     let mut by_chip: HashMap<&str, (u32, u32)> = HashMap::new();
     for r in rounds {
         for (k, (u, l)) in &r.ai_chips {
