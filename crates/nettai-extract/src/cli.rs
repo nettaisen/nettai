@@ -7,7 +7,8 @@ const USAGE: &str = "usage: nettai-extract <game> <pack-dir> ROM... [--reads <fi
 <game> is a game's pack folder (content/exe6) or an unpacked bundle of one game: its\n\
 recipe (extract/init.luau) is run on its ROMs, every one it states (a complete Legacy\n\
 Collection's), given in any order. The output must be a new or empty directory.\n\
---check also checks the pack has what the content names, its sprites as the content animates them.\n\
+--check also checks the pack has what the content names, its sprites as the content animates them,\n\
+and that the content times its sprites as the ROMs do.\n\
 --reads writes every range of the ROMs the extraction read, in order (tab-separated: the\n\
 ROM's code, the address, the length, `data`, `open` (a span a parser took what it needed\n\
 of) or the ROM address the word read holds, and where in the recipe the read was made):\n\
@@ -101,7 +102,13 @@ fn execute(args: Args) -> Result<(), Error> {
     assets.write(&args.output)?;
     if args.check {
         let (loaded, _) = nettai_content::pack::load_battle(&content, &game).map_err(|r| Error(format!("the content does not load:\n{r}")))?;
-        nettai_content::pack::pack_assets(&loaded, &args.output).map_err(|r| Error(format!("the pack can't draw the content:\n{r}")))?;
+        let (numbers, _) =
+            nettai_content::pack::pack_assets(&loaded, &args.output).map_err(|r| Error(format!("the pack can't draw the content:\n{r}")))?;
+        let differences = assets.timing_differences(&loaded.assets, &loaded.animations.sprites, &numbers);
+        if !differences.is_empty() {
+            return Err(Error(format!("the content times its sprites otherwise than the ROMs:\n{}", differences.join("\n"))));
+        }
+        eprintln!("checked: the pack has what the content names, and the content's {} sprites are timed as the ROMs time them", loaded.animations.sprites.len());
     }
     eprintln!(
         "wrote {}: {} sprites, {} songs (see extraction.txt)",

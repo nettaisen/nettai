@@ -22,11 +22,22 @@ pub fn archive(rom: &Rom, p: u32) -> Option<Vec<u8>> {
 /// The most palettes kept of a sprite's palette block.
 const MAX_PALETTES: usize = 64;
 
+/// A sheet as an archive has it: what its frames draw (the pack's), and
+/// their timing (`timing`, by animation then frame: the duration in ticks
+/// and the flag byte, 0x80 on the last frame, 0x40 with it where the
+/// animation loops). The content times the sprites; the timing is kept for
+/// the check that compares the two (`--check`), and is in no pack.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Sheet {
+    pub sheet: SpriteSheet,
+    pub timing: Vec<Vec<(u8, u8)>>,
+}
+
 /// A sprite archive's sheet. After a 4-byte header, offsets are relative to
 /// `BASE`: a table of animation offsets; each animation is 0x14-byte frames
 /// (tileset, palettes, mini-animation and part-table offsets, then the
 /// duration at +0x10 and the flags at +0x12, 0x80 ending it).
-pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
+pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<Sheet> {
     const BASE: usize = 4;
     let rd32 = |o: usize| {
         data.get(o..o + 4)
@@ -41,6 +52,7 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
         index,
         ..Default::default()
     };
+    let mut timing = Vec::new();
     // Where the archive's blocks start: a palette block runs up to the next.
     let mut blocks: Vec<usize> = Vec::new();
     for a in 0..count {
@@ -59,7 +71,7 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
     let mut parts: HashMap<usize, u16> = HashMap::new();
     for a in 0..count {
         let mut f = BASE + rd32(BASE + 4 * a)?;
-        let mut frames = Vec::new();
+        let (mut frames, mut times) = (Vec::new(), Vec::new());
         loop {
             let (t, p, m, o) = (rd32(f)?, rd32(f + 4)?, rd32(f + 8)?, rd32(f + 12)?);
             let (duration, flags) = (*data.get(f + 0x10)?, *data.get(f + 0x12)?);
@@ -113,24 +125,24 @@ pub fn sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
                 tileset,
                 palette_set,
                 parts: parts_index,
-                duration,
-                flags,
             });
+            times.push((duration, flags));
             if flags & 0x80 != 0 || frames.len() > 512 {
                 break;
             }
             f += 0x14;
         }
         sheet.animations.push(frames);
+        timing.push(times);
     }
-    Some(sheet)
+    Some(Sheet { sheet, timing })
 }
 
 /// A portrait's sheet (the chatbox's speaker: the archive loaded without
 /// the sprite flag 0x80, as EXE6's): one frame, whose mini-animations are
 /// its faces (still, idle, talking); each becomes an animation of the
 /// sheet, and each of its entries (part list, duration, flags) a frame.
-pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
+pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<Sheet> {
     const BASE: usize = 4;
     let rd32 = |o: usize| {
         data.get(o..o + 4)
@@ -155,9 +167,10 @@ pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteShee
     ));
     let (mini, table) = (BASE + m, BASE + o);
     let mut lists: HashMap<usize, u16> = HashMap::new();
+    let mut timing = Vec::new();
     for a in 0..(rd32(mini)? / 4).min(16) {
         let mut e = mini + rd32(mini + 4 * a)?;
-        let mut frames = Vec::new();
+        let (mut frames, mut times) = (Vec::new(), Vec::new());
         loop {
             let (list_index, duration, flags) =
                 (*data.get(e)? as usize, *data.get(e + 1)?, *data.get(e + 2)?);
@@ -175,17 +188,17 @@ pub fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteShee
                 tileset: 0,
                 palette_set: 0,
                 parts,
-                duration,
-                flags,
             });
+            times.push((duration, flags));
             if flags & 0x80 != 0 || frames.len() > 64 {
                 break;
             }
             e += 3;
         }
         sheet.animations.push(frames);
+        timing.push(times);
     }
-    Some(sheet)
+    Some(Sheet { sheet, timing })
 }
 
 /// A part list: five bytes a part (tile, x, y, size and flips, shape and

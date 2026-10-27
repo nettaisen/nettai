@@ -4,7 +4,7 @@
 //! ```text
 //! content.toml           the manifest
 //! assets.toml            the asset index: every asset by name (crate::names)
-//! graphics/              sprites (with the timing of their pictures), field, backgrounds, HUD
+//! graphics/              sprites (with the frames of their animations), field, backgrounds, HUD
 //! sound/                 songs, instruments, samples (see crate::sound)
 //! ```
 //!
@@ -37,10 +37,9 @@ pub const VERSION: u32 = 1;
 /// Every format a pack's files are written in, with its version: the
 /// manifest's, then its parts'. Each file says its own, and a reader refuses
 /// another (a note to extract the pack again).
-pub const FORMATS: [(&str, u32); 8] = [
+pub const FORMATS: [(&str, u32); 7] = [
     (FORMAT, VERSION),
     (sprite::FORMAT, sprite::VERSION),
-    (sprite::ANIMATIONS_FORMAT, sprite::VERSION),
     (sound::FORMAT, sound::VERSION),
     (custom::FORMAT, custom::VERSION),
     (hud::FORMAT, hud::VERSION),
@@ -332,7 +331,7 @@ fn battle_content_of(read: crate::index::Read, report: Report) -> Result<(nettai
 pub fn pack_assets(content: &nettai_battle::Content, pack: &Path) -> Result<(PackAssets, Report), Report> {
     let mut report = Report::default();
     let Some(index) = crate::names::read_index(pack, &mut report) else { return Err(report) };
-    let Some(timing) = crate::timing::load(pack, &mut report) else { return Err(report) };
+    let Some(frames) = sprite::frame_counts(pack, &mut report) else { return Err(report) };
     let at = pack.display().to_string();
     let numbers = match PackAssets::new(&content.assets, &index) {
         Ok(n) => n,
@@ -346,7 +345,7 @@ pub fn pack_assets(content: &nettai_battle::Content, pack: &Path) -> Result<(Pac
     for (h, name) in content.assets.sprites.iter().enumerate() {
         let ours: Vec<usize> = content.animations.sprites.get(h).map_or(Vec::new(), |d| d.animations.iter().map(|a| a.frames.len()).collect());
         let id = numbers.sprites[h];
-        let theirs: Vec<usize> = timing.sprites.get(&(id.category, id.index)).map_or(Vec::new(), |a| a.iter().map(Vec::len).collect());
+        let theirs: Vec<usize> = frames.get(&(id.category, id.index)).cloned().unwrap_or_default();
         if ours != theirs {
             report.error(
                 &at,
@@ -616,13 +615,11 @@ mod tests {
                 .animations
                 .iter()
                 .enumerate()
-                .map(|(i, a)| {
-                    let n = frames(name, i).unwrap_or(a.frames.len());
-                    (0..n).map(|f| serde_json::json!({ "ticks": 9, "tileset": 0, "layout": 0, "flags": if f + 1 == n { vec!["last"] } else { vec![] } })).collect()
-                })
+                .map(|(i, a)| (0..frames(name, i).unwrap_or(a.frames.len())).map(|_| serde_json::json!({ "tileset": 0, "layout": 0 })).collect())
                 .collect();
-            let doc = serde_json::json!({ "format": sprite::ANIMATIONS_FORMAT, "version": sprite::VERSION, "sprite": [id.category, id.index], "animations": animations });
-            write_file(&dir, &format!("graphics/sprites/{name}/animations.json"), doc.to_string().as_bytes()).unwrap();
+            // (The part of a sprite.json `sprite::frame_counts` reads.)
+            let doc = serde_json::json!({ "format": sprite::FORMAT, "version": sprite::VERSION, "sprite": [id.category, id.index], "animations": animations });
+            write_file(&dir, &format!("graphics/sprites/{name}/sprite.json"), doc.to_string().as_bytes()).unwrap();
         }
         dir
     }

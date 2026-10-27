@@ -1,11 +1,11 @@
 //! Graphics packs on a synthetic bundle (no game data): export, import back
-//! byte for byte, the run-time timing loader, the derived cache, and what
-//! the importer says about files ordinary tools damaged.
+//! byte for byte, the frame counts read without images, and what the
+//! importer says about files ordinary tools damaged.
 
 use nettai_assets::*;
 use nettai_content::image::Indexed;
 use nettai_content::report::{Level, Report};
-use nettai_content::{pack, timing};
+use nettai_content::{pack, sprite};
 use std::path::{Path, PathBuf};
 
 fn tiles(n: usize, seed: u8) -> Tiles {
@@ -26,15 +26,15 @@ fn part(tile: u16, x: i8, y: i8, w: u8, h: u8, hflip: bool, palette: u8) -> Spri
 
 /// A sprite with overlapping parts, flips, palette offsets, a shared tile
 /// set, colors with bit 15 set (as the game's trailing palette data has)
-/// and frame flags with a cue bit.
-fn sprite(category: u8, index: u8) -> SpriteSheet {
+/// and a frame of a second palette set.
+fn sheet(category: u8, index: u8) -> SpriteSheet {
     let mut pals: Vec<Palette> = (0..16).map(palette).collect();
     pals[15][3] |= 0x8000;
     SpriteSheet {
         category,
         index,
         tilesets: vec![tiles(4 + 16 + 2, 1), tiles(4 + 8, 2)],
-        palette_sets: vec![pals],
+        palette_sets: vec![pals, (16..20).map(palette).collect()],
         part_lists: vec![
             // Shadow, body, an arm over the body.
             vec![part(0, -16, -4, 32, 8, false, 0), part(4, -16, -32, 32, 32, false, 0), part(20, -4, -20, 16, 8, true, 1)],
@@ -42,11 +42,8 @@ fn sprite(category: u8, index: u8) -> SpriteSheet {
             vec![part(0, -16, -4, 32, 8, false, 0), part(4, -8, -32, 16, 16, false, 0)],
         ],
         animations: vec![
-            vec![SpriteFrame { tileset: 0, palette_set: 0, parts: 0, duration: 3, flags: 0x80 }],
-            vec![
-                SpriteFrame { tileset: 1, palette_set: 0, parts: 1, duration: 2, flags: 0x04 },
-                SpriteFrame { tileset: 1, palette_set: 0, parts: 2, duration: 250, flags: 0xC0 },
-            ],
+            vec![SpriteFrame { tileset: 0, palette_set: 0, parts: 0 }],
+            vec![SpriteFrame { tileset: 1, palette_set: 0, parts: 1 }, SpriteFrame { tileset: 1, palette_set: 1, parts: 2 }],
         ],
     }
 }
@@ -198,7 +195,7 @@ fn bundle() -> Bundle {
             },
         )],
     };
-    let mut b = Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() };
+    let mut b = Bundle { sprites: vec![sheet(0, 1), sheet(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() };
     // (With its pictures' letters as extraction reads them, whatever they
     // are in these made-up tiles: a lettered picture is written as its image
     // with the letters off and its letters beside.)
@@ -436,12 +433,14 @@ fn graphics_read_back_exactly() {
     let (back, report) = import(&dir);
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
     assert_eq!(back.unwrap(), b);
-    // The background map is a Tiled map; the sprite's timing a file of its own.
+    // The background map is a Tiled map; a sprite's animations' frames are
+    // its sprite.json's, one a line, with no timing.
     assert!(dir.join("graphics/backgrounds/background-00/map.tmj").is_file());
     assert!(!dir.join("graphics/backgrounds/background-01").exists());
-    let anims = std::fs::read_to_string(dir.join("graphics/sprites/sprite-00-01/animations.json")).unwrap();
-    assert!(anims.contains(r#"{"ticks":250,"flags":["last","loop"],"tileset":1,"layout":2}"#), "{anims}");
-    assert!(anims.contains(r#""flags":[4]"#));
+    let doc = std::fs::read_to_string(dir.join("graphics/sprites/sprite-00-01/sprite.json")).unwrap();
+    assert!(doc.contains("  \"animations\": [\n    [\n      {\"tileset\":0,\"layout\":0}\n    ],\n"), "{doc}");
+    assert!(doc.contains("      {\"tileset\":1,\"layout\":2,\"palettes\":1}\n"), "{doc}");
+    assert_eq!(std::fs::read_dir(dir.join("graphics/sprites/sprite-00-01")).unwrap().count(), 2, "an atlas and a sprite.json");
 }
 
 #[test]
@@ -515,17 +514,23 @@ fn the_asset_index_lists_every_asset_by_name() {
 }
 
 #[test]
-fn timing_loads_without_images() {
-    let dir = temp("timing");
+fn frame_counts_load_without_images() {
+    let dir = temp("frames");
     let b = bundle();
     write_pack(&dir, &b);
     for s in &b.sprites {
         std::fs::remove_file(dir.join(format!("graphics/sprites/sprite-{:02x}-{:02x}/atlas.png", s.category, s.index))).unwrap();
     }
     let mut r = Report::default();
-    let t = timing::load(&dir, &mut r).unwrap();
-    assert_eq!(t.animation(0x14, 0x3A, 1).unwrap().iter().map(|f| (f.ticks, f.flags)).collect::<Vec<_>>(), vec![(2, 0x04), (250, 0xC0)]);
-    assert!(nettai_content::verify::compare_timing(&t, &b).is_empty());
+    let counts = sprite::frame_counts(&dir, &mut r).unwrap();
+    assert_eq!(counts, [((0, 1), vec![1, 2]), ((0x14, 0x3A), vec![1, 2])].into());
+    // A sprite.json without animations is an older extractor's.
+    let file = dir.join("graphics/sprites/sprite-00-01/sprite.json");
+    let text = std::fs::read_to_string(&file).unwrap();
+    std::fs::write(&file, text[..text.find(",\n  \"animations\"").unwrap()].to_string() + "\n}\n").unwrap();
+    let mut r = Report::default();
+    assert_eq!(sprite::frame_counts(&dir, &mut r), None);
+    assert!(r.to_string().contains("extract the pack again"), "{r}");
 }
 
 #[test]
@@ -617,7 +622,7 @@ fn damaged_palettes_are_refused_with_a_reason() {
 #[test]
 fn an_aseprite_view_edits_whole_frames() {
     use nettai_content::aseprite::{self, AseFile, CelContent};
-    let s = sprite(0, 1);
+    let s = sheet(0, 1);
     let bytes = aseprite::export(&s);
     let mut r = Report::default();
     let back = aseprite::import(&bytes, &s, "view", &mut r).unwrap();
@@ -626,34 +631,27 @@ fn an_aseprite_view_edits_whole_frames() {
 
     let ase = AseFile::from_bytes(&bytes).unwrap();
     assert_eq!((ase.frames.len(), ase.layers.len(), ase.tags.len()), (3, 3, 2));
-    assert_eq!(ase.frames[2].duration_ms, 4186, "250 ticks");
+    // Every frame lasts a tick, and the tags only name the animations: the
+    // timing is the content's.
+    assert!(ase.frames.iter().all(|f| f.duration_ms == 17));
+    assert_eq!(ase.tags.iter().map(|t| (t.name.as_str(), t.repeat)).collect::<Vec<_>>(), [("anim 00", 0), ("anim 01", 0)]);
     // Frames 1 and 2 draw the same shadow from the same tiles: a linked cel.
     assert!(ase.frames[2].cels.iter().any(|c| c.layer == 0 && c.content == CelContent::Linked(1)));
 
     // Paint the shadow in frame 1: the shared tiles change for both frames.
+    // A frame's duration and a tag changed in the editor are ignored.
     let mut edited = ase.clone();
     let cel = edited.frames[1].cels.iter_mut().find(|c| c.layer == 0).unwrap();
     let CelContent::Image { pixels, .. } = &mut cel.content else { panic!() };
     pixels[0] = 0x0B;
-    // Frame 2 lasts 110 ms now, and animation 1 plays once (the tag's
-    // name says so; its repeat count is only the editor's preview).
-    assert_eq!(ase.tags[1].name, "anim 01 loop");
     edited.frames[2].duration_ms = 110;
-    edited.tags[1].name = "anim 01".into();
+    edited.tags[1].name = "anim 01 loop".into();
     edited.tags[1].repeat = 1;
     let mut r = Report::default();
     let back = aseprite::import(&edited.to_bytes(), &s, "view", &mut r).unwrap();
-    assert!(!r.has_errors() && r.count(Level::Warning) == 0, "{r}");
+    assert!(r.issues.is_empty(), "{r}");
     assert_eq!(back.tilesets[1].get(0).unwrap()[0], 0x0B);
-    assert_eq!((back.animations[1][1].duration, back.animations[1][1].flags), (7, 0x80));
-    assert!(r.issues.iter().any(|i| i.message.contains("110 ms is 7 ticks")));
-    // An editor that doesn't keep repeat counts (repeat 0 everywhere).
-    let mut old = ase.clone();
-    old.tags.iter_mut().for_each(|t| t.repeat = 0);
-    let mut r = Report::default();
-    let back = aseprite::import(&old.to_bytes(), &s, "view", &mut r).unwrap();
-    assert_eq!(back.animations[0][0].flags, 0x80, "still plays once");
-    assert!(r.issues.iter().any(|i| i.message.contains("its name decides")), "{r}");
+    assert_eq!(back.animations, s.animations);
 
     // Frames 1 and 2 also share the body's tiles in different shapes (not
     // linked): editing only one of them is refused.

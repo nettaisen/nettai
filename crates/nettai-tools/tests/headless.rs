@@ -20,7 +20,7 @@ fn solid(n: usize, index: u8) -> Tiles {
 }
 
 fn assets() -> Bundle {
-    // MegaMan's battle sprite: every animation is one looping frame of a
+    // MegaMan's battle sprite: every animation is one frame of a
     // 32x16 shadow and a 16x32 body standing on the anchor.
     let mut tiles = solid(8, 1);
     tiles.pixels.extend(solid(8, 2).pixels);
@@ -28,7 +28,7 @@ fn assets() -> Bundle {
     let mut palette = [0u16; 16];
     palette[1] = SHADOW;
     palette[2] = BODY;
-    let frame = SpriteFrame { tileset: 0, palette_set: 0, parts: 0, duration: 60, flags: 0xC0 };
+    let frame = SpriteFrame { tileset: 0, palette_set: 0, parts: 0 };
     let megaman = SpriteSheet {
         category: 0,
         index: 0,

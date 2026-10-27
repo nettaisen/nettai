@@ -177,7 +177,8 @@ pub struct SpriteSheet {
     pub animations: Vec<Vec<SpriteFrame>>,
 }
 
-/// One animation frame.
+/// One animation frame: what it draws. How long it shows, and whether its
+/// animation loops, are the content's (its sprite's definition).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SpriteFrame {
     /// Index into `tilesets`.
@@ -186,8 +187,6 @@ pub struct SpriteFrame {
     pub palette_set: u16,
     /// Index into `part_lists`.
     pub parts: u16,
-    pub duration: u8,
-    pub flags: u8,
 }
 
 /// One hardware sprite of a frame. The first part of every frame is the

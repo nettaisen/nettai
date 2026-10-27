@@ -61,7 +61,8 @@ pub struct Shown<'a> {
     /// In the enhanced mode, the lines for the text layer (their sprites'
     /// tiles are blank): each line's text and the units of it printed.
     lines: Option<Vec<(String, usize)>>,
-    portrait: Option<(&'a SpriteSheet, PortraitLook)>,
+    /// The portrait's sheet, look, and the frame of its animation it is at.
+    portrait: Option<(&'a SpriteSheet, PortraitLook, usize)>,
 }
 
 /// Side `side`'s player's chatbox, if one is up, with its text composed.
@@ -133,7 +134,11 @@ pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, packs: &crate::pack
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
                 note_true_face(b, navi, crate::custom::console_version(b, packs, side), problems);
             }
-            sheet.map(|sheet| (sheet, look))
+            // (Its animation timed as the content times its sprite.)
+            let timing: Vec<(u8, u8)> =
+                (0u16..).map_while(|f| b.content.animations.frame(id, look.anim, f)).map(|f| (f.duration, f.flags)).collect();
+            let frame = if timing.is_empty() { 0 } else { frame_after(&timing, look.updates) };
+            sheet.map(|sheet| (sheet, look, frame))
         }
         _ => None,
     };
@@ -298,8 +303,8 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
             None => list.insert_at(LAYER, FRONT_BUCKET, vec![arrow]),
         }
     }
-    if let Some((sheet, look)) = shown.portrait {
-        list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look));
+    if let Some((sheet, look, frame)) = shown.portrait {
+        list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look, frame));
     }
 }
 
@@ -376,13 +381,11 @@ fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], 
     }
 }
 
-/// The portrait's parts at its frame: its animation stepped as the
-/// sprite's updates step it (`sub_3006792`), drawn with its first
-/// palette plus the tint (`sub_8002818`), the last part in front.
-fn portrait_parts(sheet: &SpriteSheet, look: PortraitLook) -> Vec<SpritePart<'_>> {
-    let Some(frames) = sheet.animations.get(look.anim as usize).filter(|f| !f.is_empty()) else { return Vec::new() };
-    let k = frame_after(frames.iter().map(|f| (f.duration, f.flags)).collect::<Vec<_>>().as_slice(), look.updates);
-    let frame = frames[k];
+/// The portrait's parts at frame `k` of its animation (where the
+/// sprite's updates have stepped it, [`frame_after`]), drawn with its
+/// first palette plus the tint (`sub_8002818`), the last part in front.
+fn portrait_parts(sheet: &SpriteSheet, look: PortraitLook, k: usize) -> Vec<SpritePart<'_>> {
+    let Some(&frame) = sheet.animations.get(look.anim as usize).and_then(|f| f.get(k)) else { return Vec::new() };
     let (Some(parts), Some(tiles)) = (sheet.part_lists.get(frame.parts as usize), sheet.tilesets.get(frame.tileset as usize)) else {
         return Vec::new();
     };

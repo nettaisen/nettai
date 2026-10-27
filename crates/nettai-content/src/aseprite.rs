@@ -2,16 +2,19 @@
 //!
 //! `sprite.aseprite` shows every animation frame as it is drawn: one
 //! layer per hardware part (part 0, the shadow, at the bottom), one tag per
-//! animation, frame durations in milliseconds that convert back to the
-//! exact tick counts, indexed color with the sprite's 16 palette rows.
-//! Parts that show the same tiles at the same place are linked cels, so an
-//! edit reaches every frame that shares them, as on the hardware.
+//! animation, indexed color with the sprite's 16 palette rows. Parts that
+//! show the same tiles at the same place are linked cels, so an edit
+//! reaches every frame that shares them, as on the hardware. Every frame
+//! lasts one tick: a sprite's timing (its frames' durations, whether an
+//! animation loops) is the content's, edited in the sprite's Luau module
+//! (`asset.sprite(name, animations)`), not here.
 //!
 //! It is a view, synced by command: [`export`] writes it from the pack's
-//! files, [`import`] reads the pixels, palette, durations and loop flags
-//! back into a sprite whose layouts (part geometry) and structure come from
-//! sprite.json and animations.json. Pixels drawn outside a part's rectangle
-//! are reported, and tiles that frames share must stay the same in each.
+//! files, [`import`] reads the pixels and palette back into a sprite whose
+//! layouts (part geometry) and animations' frames come from sprite.json;
+//! it ignores the frames' durations and the tags. Pixels drawn outside a
+//! part's rectangle are reported, and tiles that frames share must stay
+//! the same in each.
 //!
 //! The file format follows Aseprite's published specification
 //! (ase-file-specs.md): header, frames of chunks (layers 0x2004, cels
@@ -21,18 +24,12 @@ use crate::report::Report;
 use nettai_assets::{Palette, SpriteSheet, Tiles};
 use std::collections::HashMap;
 
-/// Frames per second of the game (durations convert through it).
+/// Frames per second of the game.
 const FPS: f64 = 59.7275;
 
-pub fn ms_from_ticks(t: u8) -> u16 {
+/// Milliseconds of `t` ticks: a frame of the view lasts one.
+fn ms_from_ticks(t: u8) -> u16 {
     (t as f64 * 1000.0 / FPS).round() as u16
-}
-
-/// Ticks for a duration, and whether the duration was exactly a tick
-/// count's.
-pub fn ticks_from_ms(ms: u16) -> (u8, bool) {
-    let t = (ms as f64 * FPS / 1000.0).round().clamp(1.0, 255.0) as u8;
-    (t, ms_from_ticks(t) == ms)
 }
 
 // ---- The file format ---------------------------------------------------------------
@@ -439,16 +436,9 @@ pub fn export(s: &SpriteSheet) -> Vec<u8> {
                 };
                 cels.push(AseCel { layer: k as u16, x, y, content, text });
             }
-            frames.push(AseFrame { duration_ms: ms_from_ticks(f.duration), cels });
+            frames.push(AseFrame { duration_ms: ms_from_ticks(1), cels });
         }
-        let looping = anim.last().is_some_and(|f| f.flags & crate::sprite::FLAG_LOOP != 0);
-        tags.push(AseTag {
-            from,
-            to: frames.len().saturating_sub(1) as u16,
-            direction: 0,
-            repeat: if looping { 0 } else { 1 },
-            name: format!("anim {a:02}{}", if looping { " loop" } else { "" }),
-        });
+        tags.push(AseTag { from, to: frames.len().saturating_sub(1) as u16, direction: 0, repeat: 0, name: format!("anim {a:02}") });
     }
     let layers = (0..layers)
         .map(|k| AseLayer {
@@ -462,7 +452,7 @@ pub fn export(s: &SpriteSheet) -> Vec<u8> {
 }
 
 /// Read an Aseprite view back into `base` (the sprite as the pack's JSON
-/// files have it): pixels, palette set 0, frame durations and loop flags.
+/// files have it): pixels and palette set 0.
 pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report) -> Option<SpriteSheet> {
     let ase = match AseFile::from_bytes(bytes) {
         Ok(a) => a,
@@ -478,7 +468,7 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
     let (ax, ay, _, _) = canvas(base);
     let total: usize = base.animations.iter().map(Vec::len).sum();
     if ase.frames.len() != total {
-        report.error(file, format!("{} frames, but the animations have {total}: add or remove frames in animations.json first", ase.frames.len()));
+        report.error(file, format!("{} frames, but the animations have {total}: add or remove frames in sprite.json's animations first", ase.frames.len()));
         return None;
     }
     // Layers by part number, from their names (a layer can be moved).
@@ -524,8 +514,8 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
     let mut conflicts = 0;
     let mut outside = 0;
     let mut f = 0;
-    for (a, anim) in base.animations.iter().enumerate() {
-        for (i, fr) in anim.iter().enumerate() {
+    for anim in &base.animations {
+        for fr in anim {
             let frame = &ase.frames[f];
             // A linked cel shares the image and place of its frame's cel.
             let cel_of = |layer: u16| -> Option<&AseCel> {
@@ -579,40 +569,7 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
                     }
                 }
             }
-            // Duration and loop flag.
-            let (ticks, exact) = ticks_from_ms(frame.duration_ms);
-            if !exact {
-                report.note(file, format!("animation {a} frame {i}: {} ms is {ticks} ticks, rounded", frame.duration_ms));
-            }
-            out.animations[a][i].duration = ticks;
             f += 1;
-        }
-        // The tag's name says whether the animation loops ("anim NN loop");
-        // its repeat count only drives the editor's preview, and editors
-        // before Aseprite 1.3 (and LibreSprite) don't keep it.
-        let number = |t: &AseTag| t.name.split_whitespace().nth(1).and_then(|n| n.parse::<usize>().ok());
-        match ase.tags.iter().find(|t| t.name.starts_with("anim ") && number(t) == Some(a)) {
-            Some(tag) => {
-                let looping = tag.name.split_whitespace().nth(2) == Some("loop");
-                if looping != (tag.repeat == 0) {
-                    report.warn(
-                        file,
-                        format!(
-                            "tag {:?}: its name decides whether the animation loops ({}); its repeat setting ({}) disagrees",
-                            tag.name,
-                            if looping { "it does" } else { "it doesn't" },
-                            tag.repeat
-                        ),
-                    );
-                }
-                let last = out.animations[a].last_mut().unwrap();
-                if looping {
-                    last.flags |= crate::sprite::FLAG_LOOP;
-                } else {
-                    last.flags &= !crate::sprite::FLAG_LOOP;
-                }
-            }
-            None => report.warn(file, format!("no tag \"anim {a:02}\"; animation {a} keeps its loop flag")),
         }
     }
     if outside > 0 {
@@ -633,12 +590,10 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
 mod tests {
     use super::*;
 
+    /// A frame of the view lasts one tick of the game's.
     #[test]
-    fn durations_survive_milliseconds() {
-        for t in 1..=255u8 {
-            assert_eq!(ticks_from_ms(ms_from_ticks(t)), (t, true));
-        }
-        assert_eq!(ticks_from_ms(50), (3, true));
-        assert_eq!(ticks_from_ms(55), (3, false));
+    fn a_frame_lasts_a_tick() {
+        assert_eq!(ms_from_ticks(1), 17);
+        assert_eq!(ms_from_ticks(60), 1005);
     }
 }

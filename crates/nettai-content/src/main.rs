@@ -14,7 +14,7 @@
 mod publish;
 
 use nettai_content::report::{Level, Report};
-use nettai_content::{index, pack, timing, verify};
+use nettai_content::{index, pack, verify};
 use m4a::SongId;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -38,8 +38,8 @@ const USAGE: &str = "usage:
                                                    repository's), and check the pack has what it names
   nettai-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
-                                                   (graphics, sprite timing, sound as timelines and
-                                                   as N seconds of PCM per song)
+                                                   (graphics, sound as timelines and as N seconds of
+                                                   PCM per song)
   nettai-content aseprite-export <pack> [NAME ...]   write sprites' Aseprite views
   nettai-content aseprite-import <pack> [NAME ...]   read the views back into the sprites' files
 ";
@@ -212,21 +212,9 @@ fn verify_packs(a: &Args) {
     };
     let t = Instant::now();
     if let Some((x, y)) = both("graphics", pack::load_graphics, a) {
-        let same = format!("{} sprites, {} backgrounds, field, HUD, in {:.1?}", x.sprites.len(), x.backgrounds.iter().flatten().count(), t.elapsed());
+        let frames: usize = x.sprites.iter().flat_map(|s| &s.animations).map(Vec::len).sum();
+        let same = format!("{} sprites ({frames} frames), {} backgrounds, field, HUD, in {:.1?}", x.sprites.len(), x.backgrounds.iter().flatten().count(), t.elapsed());
         report("graphics", verify::compare_graphics(&y, &x), same);
-        // Sprite timing is read on its own too (without images); it must
-        // match the sprites' animations.
-        let mut r = Report::default();
-        match timing::load(&a.pack, &mut r) {
-            Some(t) => {
-                let frames: usize = t.sprites.values().flatten().map(Vec::len).sum();
-                report("timing", verify::compare_timing(&t, &x), format!("{} sprites, {frames} frames, read without images", t.sprites.len()));
-            }
-            None => {
-                failed = true;
-                print_report(&r, false);
-            }
-        }
     }
     if let Some((x, y)) = both("sound", pack::load_sound, a) {
         failed |= !verify_sound(Arc::new(y), Arc::new(x), a.seconds, &reference.display().to_string());

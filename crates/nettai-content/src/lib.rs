@@ -9,9 +9,8 @@
 //!   them ([`index`]), loaded alone into the engine's
 //!   `nettai_battle::Content` ([`pack::load_battle`]); what an asset pack
 //!   holds of it, for drawing and sound, is [`pack::pack_assets`].
-//! - Sprites: an indexed-PNG part atlas, part layouts (`sprite.json`) and
-//!   the pictures' animation timing (`animations.json`) per sprite
-//!   ([`sprite`]).
+//! - Sprites: an indexed-PNG part atlas, and part layouts and the frames
+//!   their animations draw (`sprite.json`) per sprite ([`sprite`]).
 //! - Field, backgrounds (Tiled maps), HUD, the custom screen: indexed PNGs
 //!   and JSON ([`stage`], [`hud`], [`custom`]).
 //! - Sound: songs as MIDI in mid2agb's conventions plus a TOML sidecar
@@ -33,8 +32,8 @@
 //!   unpacked ([`store`]; docs/design/content-deployment.md).
 //!
 //! [`pack`] ties them together and loads each part straight from its
-//! files; [`timing`] reads a pack's animation timing alone. Every import reports what
-//! it found in a [`report::Report`]; nothing is silently approximated.
+//! files. Every import reports what it found in a [`report::Report`];
+//! nothing is silently approximated.
 //!
 //! The graphics and sound modules know GBA-style data (4bpp tiles,
 //! 16-color palettes, OAM parts, M4A songs) but no EXE6 rule; only [`hud`],
@@ -63,6 +62,5 @@ pub mod stage;
 pub mod store;
 pub mod tiles;
 pub mod timeline;
-pub mod timing;
 pub mod verify;
 pub mod wav;

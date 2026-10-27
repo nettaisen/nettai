@@ -7,7 +7,7 @@
 //! declares them.
 
 use crate::rom::{self, Rom};
-use nettai_assets::{DialogueFont, GfxAnim, MapEntry, Palette, SpriteSheet, Tiles, palettes_from_bytes};
+use nettai_assets::{DialogueFont, GfxAnim, MapEntry, Palette, Tiles, palettes_from_bytes};
 use nettai_luau::mlua::{self, AnyUserData, Lua, MetaMethod, Table, UserData, UserDataFields, UserDataMethods, Value};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -269,13 +269,14 @@ fn palette_table(lua: &Lua, p: &Palette) -> LResult<Table> {
 
 // ---- Sprites, animations, fonts -------------------------------------------------------------------
 
-/// A sprite archive's sheet, placed in the model as it is.
-pub(crate) struct SheetHandle(pub SpriteSheet);
+/// A sprite archive's sheet, placed in the model as it is (with its
+/// timing, which the pack doesn't hold: `crate::sprite::Sheet`).
+pub(crate) struct SheetHandle(pub crate::sprite::Sheet);
 
 impl UserData for SheetHandle {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_meta_method(MetaMethod::Eq, |_, this, other: AnyUserData| Ok(other.borrow::<SheetHandle>().is_ok_and(|o| o.0 == this.0)));
-        methods.add_meta_method(MetaMethod::ToString, |_, this, ()| Ok(format!("Sheet({:02x}-{:02x})", this.0.category, this.0.index)));
+        methods.add_meta_method(MetaMethod::ToString, |_, this, ()| Ok(format!("Sheet({:02x}-{:02x})", this.0.sheet.category, this.0.sheet.index)));
     }
 }
 

@@ -33,8 +33,14 @@ type R<T> = Result<T, String>;
 pub(crate) struct Extracted {
     pub names: AssetNames,
     pub graphics: Bundle,
+    /// The sheets' timing as the ROMs have it, by sprite (`crate::sprite::Sheet`).
+    pub timing: SheetTiming,
     pub sound: SoundPlan,
 }
+
+/// Sheets' timing, by (category, index): by animation, each frame's
+/// duration and flag byte.
+pub(crate) type SheetTiming = BTreeMap<(u8, u8), Vec<Vec<(u8, u8)>>>;
 
 /// Which ROM the sound bank is read from, and which ROMs are versions of it
 /// (§3.8).
@@ -122,7 +128,7 @@ fn tiles(v: &Value, path: &str) -> R<Tiles> {
     handle(v, path, "Tiles", |t: &TilesHandle| t.0.clone())
 }
 
-fn sheet(v: &Value, path: &str) -> R<SpriteSheet> {
+fn sheet(v: &Value, path: &str) -> R<crate::sprite::Sheet> {
     handle(v, path, "Sheet", |s: &SheetHandle| s.0.clone())
 }
 
@@ -378,7 +384,8 @@ pub(crate) fn extracted(v: &Value) -> R<Extracted> {
     let graphics = f.take("graphics")?.ok_or("the recipe's result: no graphics")?;
     let sound = f.take("sound")?.ok_or("the recipe's result: no sound")?;
     f.finish()?;
-    Ok(Extracted { names: asset_names(&names.0, "names")?, graphics: bundle(&graphics.0, "graphics")?, sound: sound_plan(&sound.0, "sound")? })
+    let (graphics, timing) = bundle(&graphics.0, "graphics")?;
+    Ok(Extracted { names: asset_names(&names.0, "names")?, graphics, timing, sound: sound_plan(&sound.0, "sound")? })
 }
 
 fn asset_names(v: &Value, path: &str) -> R<AssetNames> {
@@ -432,14 +439,19 @@ fn sound_plan(v: &Value, path: &str) -> R<SoundPlan> {
     Ok(SoundPlan { from, base_version, versions })
 }
 
-fn bundle(v: &Value, path: &str) -> R<Bundle> {
-    record(v, path, |f, b: &mut Bundle| {
-        f.set("sprites", &mut b.sprites, |v, p| list(v, p, sheet))?;
+/// The graphics, and their sheets' timing apart.
+fn bundle(v: &Value, path: &str) -> R<(Bundle, SheetTiming)> {
+    let mut sheets = Vec::new();
+    let mut b = record(v, path, |f, b: &mut Bundle| {
+        f.set("sprites", &mut sheets, |v, p| list(v, p, sheet))?;
         f.set("field", &mut b.field, field)?;
         f.set("backgrounds", &mut b.backgrounds, |v, p| holey(v, p, background))?;
         f.set("hud", &mut b.hud, hud)?;
         f.set("custom", &mut b.custom, custom)
-    })
+    })?;
+    let timing = sheets.iter().map(|s| ((s.sheet.category, s.sheet.index), s.timing.clone())).collect();
+    b.sprites = sheets.into_iter().map(|s| s.sheet).collect();
+    Ok((b, timing))
 }
 
 // ---- Field and backgrounds -------------------------------------------------------------------

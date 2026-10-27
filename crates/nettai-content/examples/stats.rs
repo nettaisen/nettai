@@ -10,8 +10,6 @@ fn main() {
     let path = std::env::args().nth(1).expect("usage: stats <pack>");
     let (b, _) = nettai_content::pack::load_graphics(std::path::Path::new(&path)).unwrap_or_else(|r| panic!("{r}"));
     let mut n = BTreeMap::<&str, usize>::new();
-    let mut flags = BTreeMap::<u8, usize>::new();
-    let mut durations = BTreeMap::<u8, usize>::new();
     let mut palset_sizes = BTreeMap::<usize, usize>::new();
     let mut sizes = BTreeMap::<(u8, u8), usize>::new();
     for s in &b.sprites {
@@ -37,8 +35,6 @@ fn main() {
         for a in &s.animations {
             for f in a {
                 *n.entry("frames").or_default() += 1;
-                *flags.entry(f.flags).or_default() += 1;
-                *durations.entry(f.duration).or_default() += 1;
                 combos.insert((f.tileset, f.parts));
                 ts_lists.entry(f.tileset).or_default().insert(f.parts);
                 list_ts.entry(f.parts).or_default().insert(f.tileset);
@@ -168,8 +164,6 @@ fn main() {
     for (k, v) in &n {
         println!("{k:>60}: {v}");
     }
-    println!("flags: {flags:?}");
-    println!("durations: {durations:?}");
     println!("palette set sizes: {palset_sizes:?}");
     println!("part sizes: {sizes:?}");
     tiles_survey(&b);

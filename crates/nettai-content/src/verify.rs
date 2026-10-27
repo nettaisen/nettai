@@ -1,11 +1,10 @@
-//! Comparing what packs load into: graphics part by part, sprite timing
-//! frame for frame, songs command for command
-//! (as timelines) and sample for sample (rendered PCM). `nettai-content
-//! verify` uses these to check a pack against a reference pack (after an
-//! editor round trip, say); the extractor checks its own export.
+//! Comparing what packs load into: graphics part by part (sprites' frames
+//! among them), songs command for command (as timelines) and sample for
+//! sample (rendered PCM). `nettai-content verify` uses these to check a
+//! pack against a reference pack (after an editor round trip, say); the
+//! extractor checks its own export.
 
 use crate::timeline::{self, Timeline};
-use crate::timing::Timing;
 use nettai_assets::Bundle;
 use m4a::bank::{Song, SoundBank};
 use m4a::{Driver, SongId};
@@ -49,30 +48,6 @@ pub fn compare_graphics(a: &Bundle, b: &Bundle) -> Vec<String> {
     }
     if a.hud != b.hud {
         out.push("HUD differs".into());
-    }
-    out
-}
-
-/// Where a pack's timing table disagrees with a bundle's animations.
-pub fn compare_timing(t: &Timing, b: &Bundle) -> Vec<String> {
-    let mut out = Vec::new();
-    for s in &b.sprites {
-        let want: Vec<Vec<(u8, u8, u16)>> =
-            s.animations.iter().map(|a| a.iter().map(|f| (f.duration, f.flags, f.parts)).collect()).collect();
-        let got: Option<Vec<Vec<(u8, u8, u16)>>> = t
-            .sprites
-            .get(&(s.category, s.index))
-            .map(|a| a.iter().map(|fr| fr.iter().map(|f| (f.ticks, f.flags, f.layout)).collect()).collect());
-        if got.as_ref() != Some(&want) {
-            out.push(format!("sprite {:02x}-{:02x}: timing differs", s.category, s.index));
-        }
-        let want: Vec<Vec<[i8; 2]>> = s.part_lists.iter().map(|l| l.iter().map(|p| [p.x, p.y]).collect()).collect();
-        if t.layouts.get(&(s.category, s.index)) != Some(&want) {
-            out.push(format!("sprite {:02x}-{:02x}: part offsets differ", s.category, s.index));
-        }
-    }
-    if t.sprites.len() != b.sprites.len() {
-        out.push(format!("{} sprites with timing, {} in the graphics", t.sprites.len(), b.sprites.len()));
     }
     out
 }

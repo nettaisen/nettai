@@ -118,6 +118,9 @@ pub struct Extraction {
     pub sound_versions: SongVersions,
     pub warnings: Vec<String>,
     names: AssetNames,
+    /// Each sheet's timing as the ROMs have it (`sprite::Sheet`), by sprite: for
+    /// [`Extraction::timing_differences`] alone, in no file of the pack.
+    timing: BTreeMap<(u8, u8), Vec<Vec<(u8, u8)>>>,
 }
 
 /// A range of a ROM an extraction read ([`Recipe::extract_recording_reads`]).
@@ -201,6 +204,20 @@ impl Extraction {
             .filter(|(id, b)| b.is_some() && !self.names.backgrounds.contains_key(&(*id as u8)))
             .map(|(id, _)| format!("background/{}", self.names.background(id as u8)));
         sprites.chain(songs).chain(backgrounds).collect()
+    }
+
+    /// Where content times its sprites otherwise than the ROMs (`nettai-extract --check`): for every sprite it
+    /// defines (`sprites`, by handle, its names `names`, its numbers in this pack `numbers`), each animation's
+    /// frames' durations and whether it loops (the flag 0x40 on its last frame, 0x80 ending it), and the places of
+    /// the parts it states (`SpriteDef::parts`) against the sheet's layouts. Each difference names its sprite and
+    /// animation; none, the content is the ROMs' timing.
+    pub fn timing_differences(
+        &self,
+        names: &nettai_content_api::AssetNames,
+        sprites: &[nettai_content_api::SpriteDef],
+        numbers: &nettai_content_api::PackAssets,
+    ) -> Vec<String> {
+        timing_differences(&self.timing, &self.graphics, names, sprites, numbers)
     }
 
     /// Open-format pack files, relative paths and bytes, for an application's own
@@ -319,5 +336,116 @@ impl Extraction {
         }
         progress(1.0);
         Ok(())
+    }
+}
+
+/// [`Extraction::timing_differences`] of sheets timed `timing` (by sprite) whose graphics are `graphics`.
+fn timing_differences(
+    timing: &BTreeMap<(u8, u8), Vec<Vec<(u8, u8)>>>,
+    graphics: &nettai_assets::Bundle,
+    names: &nettai_content_api::AssetNames,
+    sprites: &[nettai_content_api::SpriteDef],
+    numbers: &nettai_content_api::PackAssets,
+) -> Vec<String> {
+    const LAST: u8 = 0x80;
+    const LOOP: u8 = 0x40;
+    // (The flags a frame has by its place: the last's 0x80, with 0x40 where its animation loops.)
+    fn flags(k: usize, n: usize, looping: bool) -> u8 {
+        match (k + 1 == n, looping) {
+            (false, _) => 0,
+            (true, false) => LAST,
+            (true, true) => LAST | LOOP,
+        }
+    }
+    fn ticks(d: impl Iterator<Item = u8>) -> String {
+        d.map(|t| t.to_string()).collect::<Vec<_>>().join(", ")
+    }
+    let mut out = Vec::new();
+    for (h, def) in sprites.iter().enumerate() {
+        let name = names.sprites.get(h).map_or("?", String::as_str);
+        let Some(id) = numbers.sprites.get(h) else { continue };
+        let Some(rom) = timing.get(&(id.category, id.index)) else {
+            out.push(format!("sprite {name}: no ROM gave its sheet"));
+            continue;
+        };
+        if def.animations.len() != rom.len() {
+            out.push(format!("sprite {name}: the content's {} animations, the ROM's {}", def.animations.len(), rom.len()));
+        }
+        for (a, (ours, theirs)) in def.animations.iter().zip(rom).enumerate() {
+            let n = ours.frames.len();
+            let same = n == theirs.len() && ours.frames.iter().zip(theirs).enumerate().all(|(k, (&d, &rom))| rom == (d, flags(k, n, ours.looping)));
+            if same {
+                continue;
+            }
+            let looping = theirs.last().is_some_and(|&(_, f)| f & LOOP != 0);
+            let mut rom_said = format!("{}{}", ticks(theirs.iter().map(|f| f.0)), if looping { " looping" } else { "" });
+            for (k, &(_, f)) in theirs.iter().enumerate() {
+                if f != flags(k, theirs.len(), looping) {
+                    rom_said += &format!(", frame {k}'s flags {f:#04x}");
+                }
+            }
+            out.push(format!(
+                "sprite {name} animation {a}: the content's {}{}, the ROM's {rom_said}",
+                ticks(ours.frames.iter().copied()),
+                if ours.looping { " looping" } else { "" }
+            ));
+        }
+        let Some(sheet) = graphics.sprite(id.category, id.index) else { continue };
+        for (&n, by_anim) in &def.parts {
+            if by_anim.len() != sheet.animations.len() {
+                out.push(format!("sprite {name}: part {n}'s places in {} animations, the sheet has {}", by_anim.len(), sheet.animations.len()));
+            }
+            for (a, (ours, frames)) in by_anim.iter().zip(&sheet.animations).enumerate() {
+                let theirs: Vec<Option<(i8, i8)>> =
+                    frames.iter().map(|f| sheet.part_lists.get(f.parts as usize)?.get(n as usize).map(|p| (p.x, p.y))).collect();
+                if ours.iter().copied().map(Some).collect::<Vec<_>>() != theirs {
+                    out.push(format!("sprite {name} animation {a}: part {n} is at {ours:?} in the content, and at {theirs:?} in the ROM's layouts"));
+                }
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_assets::{SpriteFrame, SpritePart, SpriteSheet};
+    use nettai_content_api::{PackAssets, PackSprite, SpriteAnimation, SpriteDef};
+
+    /// A sprite the content times otherwise than the ROMs is named, with the animation: its durations, its loop,
+    /// a flag the content can't state, and a part's place.
+    #[test]
+    fn content_timed_otherwise_than_the_roms_is_named() {
+        let part = |x, y| SpritePart { x, y, width: 8, height: 8, ..Default::default() };
+        let sheet = SpriteSheet {
+            category: 0x0C,
+            index: 2,
+            part_lists: vec![vec![part(0, 0), part(3, -4)]],
+            animations: vec![vec![SpriteFrame::default(); 2], vec![SpriteFrame::default()]],
+            ..Default::default()
+        };
+        let graphics = nettai_assets::Bundle { sprites: vec![sheet], ..Default::default() };
+        let timing = BTreeMap::from([((0x0C, 2), vec![vec![(3, 0), (4, 0xC0)], vec![(6, 0x80)]])]);
+        let names = nettai_content_api::AssetNames { sprites: vec!["bomb".into()], ..Default::default() };
+        let numbers = PackAssets { sprites: vec![PackSprite { category: 0x0C, index: 2 }], ..Default::default() };
+        let def = |animations: &[(&[u8], bool)], part: Vec<Vec<(i8, i8)>>| SpriteDef {
+            animations: animations.iter().map(|&(frames, looping)| SpriteAnimation { frames: frames.to_vec(), looping }).collect(),
+            parts: BTreeMap::from([(1, part)]),
+        };
+        let differences = |d: SpriteDef, t: &BTreeMap<_, _>| timing_differences(t, &graphics, &names, &[d], &numbers);
+        let same = def(&[(&[3, 4], true), (&[6], false)], vec![vec![(3, -4); 2], vec![(3, -4)]]);
+        assert_eq!(differences(same.clone(), &timing), Vec::<String>::new());
+        let other = def(&[(&[3, 5], true), (&[6], true)], vec![vec![(3, -4); 2], vec![(0, 0)]]);
+        assert_eq!(
+            differences(other, &timing),
+            [
+                "sprite bomb animation 0: the content's 3, 5 looping, the ROM's 3, 4 looping",
+                "sprite bomb animation 1: the content's 6 looping, the ROM's 6",
+                "sprite bomb animation 1: part 1 is at [(0, 0)] in the content, and at [Some((3, -4))] in the ROM's layouts",
+            ]
+        );
+        let cue = BTreeMap::from([((0x0C, 2), vec![vec![(3, 4), (4, 0xC0)], vec![(6, 0x80)]])]);
+        assert_eq!(differences(same, &cue), ["sprite bomb animation 0: the content's 3, 4 looping, the ROM's 3, 4 looping, frame 0's flags 0x04"]);
     }
 }

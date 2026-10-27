@@ -1,21 +1,23 @@
-//! Battle sprites as a part atlas, part layouts and animation timing.
+//! Battle sprites as a part atlas, part layouts and the frames their
+//! animations draw.
 //!
-//! A sprite is a folder (`graphics/sprites/CC-II/`, category and index in
-//! hex) of three files:
+//! A sprite is a folder (`graphics/sprites/NAME/`, under its name:
+//! `crate::names`) of two files:
 //!
 //! - `atlas.png`: every part image the sprite draws, once each, as an
 //!   8-bit indexed PNG. Its palette is the sprite's palette set (16 rows of
 //!   16 colors; `sprite_setPalette` picks the row). A part image is the
 //!   part's tiles as stored (unflipped); its pixels display in the row of
 //!   the palette offset it is first drawn with.
-//! - `sprite.json`: the tile sets (which atlas rectangle fills which tiles)
-//!   and the frame layouts (the hardware sprites a frame is built from:
-//!   first tile, size, offset from the object, flips, palette offset). The
-//!   first part of a layout is the object's shadow.
-//! - `animations.json`: per animation, its frames' durations in ticks and
-//!   flag bytes, and the tile set and layout each frame draws. This is the
-//!   simulation's data (effects and attacks end on it), readable without
-//!   touching any image ([`crate::timing`]).
+//! - `sprite.json`: the tile sets (which atlas rectangle fills which tiles),
+//!   the frame layouts (the hardware sprites a frame is built from: first
+//!   tile, size, offset from the object, flips, palette offset; the first
+//!   part of a layout is the object's shadow) and the animations: each its
+//!   frames, the tile set, layout and palette set each draws. How long a
+//!   frame shows, and whether an animation loops, is the content's (its
+//!   sprite module: `asset.sprite(name, animations)`), not the pack's; an
+//!   animation's frame count is its list's length, which the content's
+//!   must match ([`frame_counts`] reads them without any image).
 //!
 //! Parts are kept rather than baked into whole frames: in 40% of EXE6's
 //! frames parts overlap with different opaque pixels (an arm over a body),
@@ -27,12 +29,11 @@ use crate::report::Report;
 use crate::tiles;
 use nettai_assets::{Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/sprite";
-pub const ANIMATIONS_FORMAT: &str = "nettai-content/animations";
 pub const VERSION: u32 = 1;
 
 /// Atlas width in pixels (wider parts widen it).
@@ -75,6 +76,10 @@ pub struct SpriteDoc {
     pub extra_palette_sets: Vec<Vec<Vec<String>>>,
     pub tilesets: Vec<TilesetDoc>,
     pub layouts: Vec<Vec<PartDoc>>,
+    /// Per animation, its frames (none in a pack written before the frames
+    /// moved here: it is extracted again).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub animations: Option<Vec<Vec<FrameDoc>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -117,22 +122,9 @@ fn is_zero(v: &u8) -> bool {
     *v == 0
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AnimationsDoc {
-    pub format: String,
-    pub version: u32,
-    pub sprite: [u8; 2],
-    pub animations: Vec<Vec<FrameDoc>>,
-}
-
+/// An animation frame: what it draws.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FrameDoc {
-    /// How many ticks the frame shows.
-    pub ticks: u8,
-    /// Flag bits: "last" (0x80: the animation ends here), "loop" (0x40:
-    /// with "last", it starts over), other bits by value.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub flags: Vec<FlagDoc>,
     pub tileset: u16,
     pub layout: u16,
     #[serde(default, skip_serializing_if = "is_zero16")]
@@ -141,48 +133,6 @@ pub struct FrameDoc {
 
 fn is_zero16(v: &u16) -> bool {
     *v == 0
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(untagged)]
-pub enum FlagDoc {
-    Named(FlagName),
-    Bits(u8),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum FlagName {
-    Last,
-    Loop,
-}
-
-pub const FLAG_LAST: u8 = 0x80;
-pub const FLAG_LOOP: u8 = 0x40;
-
-pub fn flags_doc(flags: u8) -> Vec<FlagDoc> {
-    let mut out = Vec::new();
-    if flags & FLAG_LAST != 0 {
-        out.push(FlagDoc::Named(FlagName::Last));
-    }
-    if flags & FLAG_LOOP != 0 {
-        out.push(FlagDoc::Named(FlagName::Loop));
-    }
-    let rest = flags & !(FLAG_LAST | FLAG_LOOP);
-    if rest != 0 {
-        out.push(FlagDoc::Bits(rest));
-    }
-    out
-}
-
-pub fn flags_byte(flags: &[FlagDoc]) -> u8 {
-    flags.iter().fold(0, |acc, f| {
-        acc | match f {
-            FlagDoc::Named(FlagName::Last) => FLAG_LAST,
-            FlagDoc::Named(FlagName::Loop) => FLAG_LOOP,
-            FlagDoc::Bits(b) => *b,
-        }
-    })
 }
 
 // ---- Export ----------------------------------------------------------------
@@ -279,32 +229,15 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
             .map(|(t, regions)| TilesetDoc { tiles: t.len(), regions })
             .collect(),
         layouts: sheet.part_lists.iter().map(|l| l.iter().map(part_doc).collect()).collect(),
+        animations: Some(
+            sheet
+                .animations
+                .iter()
+                .map(|a| a.iter().map(|f| FrameDoc { tileset: f.tileset, layout: f.parts, palettes: f.palette_set }).collect())
+                .collect(),
+        ),
     };
-    let anims = AnimationsDoc {
-        format: ANIMATIONS_FORMAT.into(),
-        version: VERSION,
-        sprite: [sheet.category, sheet.index],
-        animations: sheet
-            .animations
-            .iter()
-            .map(|a| {
-                a.iter()
-                    .map(|f| FrameDoc {
-                        ticks: f.duration,
-                        flags: flags_doc(f.flags),
-                        tileset: f.tileset,
-                        layout: f.parts,
-                        palettes: f.palette_set,
-                    })
-                    .collect()
-            })
-            .collect(),
-    };
-    vec![
-        ("atlas.png".into(), atlas.to_png()),
-        ("sprite.json".into(), sprite_json(&doc).into_bytes()),
-        ("animations.json".into(), animations_json(&anims).into_bytes()),
-    ]
+    vec![("atlas.png".into(), atlas.to_png()), ("sprite.json".into(), sprite_json(&doc).into_bytes())]
 }
 
 fn part_doc(p: &SpritePart) -> PartDoc {
@@ -340,7 +273,6 @@ fn draw_region(atlas: &mut Indexed, tiles: &Tiles, r: &RegionDoc, row: u8) {
 
 /// JSON with one part, region or frame per line.
 fn sprite_json(d: &SpriteDoc) -> String {
-
     let mut s = String::new();
     s.push_str("{\n");
     writeln!(s, "  \"format\": {},", compact(&d.format)).unwrap();
@@ -365,32 +297,26 @@ fn sprite_json(d: &SpriteDoc) -> String {
         let comma = if i + 1 < d.tilesets.len() { "," } else { "" };
         writeln!(s, "    ] }}{comma}").unwrap();
     }
-    s.push_str("  ],\n  \"layouts\": [\n");
-    for (i, l) in d.layouts.iter().enumerate() {
-        s.push_str("    [\n");
-        list(&mut s, "      ", l);
-        let comma = if i + 1 < d.layouts.len() { "," } else { "" };
-        writeln!(s, "    ]{comma}").unwrap();
+    s.push_str("  ],\n  \"layouts\": ");
+    lists(&mut s, &d.layouts);
+    if let Some(animations) = &d.animations {
+        s.push_str(",\n  \"animations\": ");
+        lists(&mut s, animations);
     }
-    s.push_str("  ]\n}\n");
+    s.push_str("\n}\n");
     s
 }
 
-fn animations_json(d: &AnimationsDoc) -> String {
-    let mut s = String::new();
-    s.push_str("{\n");
-    writeln!(s, "  \"format\": {},", serde_json::to_string(&d.format).unwrap()).unwrap();
-    writeln!(s, "  \"version\": {},", d.version).unwrap();
-    writeln!(s, "  \"sprite\": {},", serde_json::to_string(&d.sprite).unwrap()).unwrap();
-    s.push_str("  \"animations\": [\n");
-    for (i, a) in d.animations.iter().enumerate() {
+/// A list of lists at the document's second level, one item per line.
+fn lists<T: Serialize>(s: &mut String, items: &[Vec<T>]) {
+    s.push_str("[\n");
+    for (i, l) in items.iter().enumerate() {
         s.push_str("    [\n");
-        list(&mut s, "      ", a);
-        let comma = if i + 1 < d.animations.len() { "," } else { "" };
+        list(s, "      ", l);
+        let comma = if i + 1 < items.len() { "," } else { "" };
         writeln!(s, "    ]{comma}").unwrap();
     }
-    s.push_str("  ]\n}\n");
-    s
+    s.push_str("  ]");
 }
 
 fn list<T: Serialize>(s: &mut String, indent: &str, items: &[T]) {
@@ -416,18 +342,14 @@ const SHAPES: [(u8, u8); 12] =
 pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet> {
     let file = |f: &str| format!("{name}/{f}");
     let doc: SpriteDoc = read_json(&dir.join("sprite.json"), &file("sprite.json"), report)?;
-    let anims: AnimationsDoc = read_json(&dir.join("animations.json"), &file("animations.json"), report)?;
     if doc.format != FORMAT || doc.version != VERSION {
         report.error(file("sprite.json"), format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
-    if anims.format != ANIMATIONS_FORMAT || anims.version != VERSION {
-        report.error(file("animations.json"), format!("not a {ANIMATIONS_FORMAT} file of version {VERSION} (extract the pack again)"));
+    let Some(anims) = &doc.animations else {
+        report.error(file("sprite.json"), "has no animations: a pack of an older extractor (extract the pack again)");
         return None;
-    }
-    if anims.sprite != doc.sprite {
-        report.error(file("animations.json"), "names a different sprite than sprite.json");
-    }
+    };
     let atlas = match Indexed::load(&dir.join(&doc.atlas)) {
         Ok(a) => a,
         Err(e) => {
@@ -556,30 +478,62 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
         part_lists.push(parts);
     }
     // Animations.
-    let mut animations = Vec::with_capacity(anims.animations.len());
-    for (a, frames) in anims.animations.iter().enumerate() {
+    let mut animations = Vec::with_capacity(anims.len());
+    for (a, frames) in anims.iter().enumerate() {
         let mut out = Vec::with_capacity(frames.len());
         for (i, f) in frames.iter().enumerate() {
-            let flags = flags_byte(&f.flags);
-            let last = i + 1 == frames.len();
-            if last && flags & FLAG_LAST == 0 {
-                report.warn(file("animations.json"), format!("animation {a}: the last frame has no \"last\" flag; the animation runs past its end"));
-            }
-            if !last && flags & FLAG_LAST != 0 {
-                report.warn(file("animations.json"), format!("animation {a} frame {i} has \"last\"; the frames after it never play"));
-            }
-            if f.ticks == 0 {
-                report.warn(file("animations.json"), format!("animation {a} frame {i} lasts 0 ticks"));
-            }
             if f.tileset as usize >= tilesets.len() || f.layout as usize >= part_lists.len() || f.palettes as usize >= palette_sets.len() {
-                report.error(file("animations.json"), format!("animation {a} frame {i} names a tileset, layout or palette set that doesn't exist"));
+                report.error(file("sprite.json"), format!("animation {a} frame {i} names a tileset, layout or palette set that doesn't exist"));
                 continue;
             }
-            out.push(SpriteFrame { tileset: f.tileset, palette_set: f.palettes, parts: f.layout, duration: f.ticks, flags });
+            out.push(SpriteFrame { tileset: f.tileset, palette_set: f.palettes, parts: f.layout });
         }
         animations.push(out);
     }
     Some(SpriteSheet { category: doc.sprite[0], index: doc.sprite[1], tilesets, palette_sets, part_lists, animations })
+}
+
+/// Every sprite's animations' frame counts in the pack at `pack`, by
+/// (category, index), read from the sprites' `sprite.json` without any
+/// image: what a frontend checks the content's sprites against
+/// (`crate::pack::pack_assets`: drawing takes the pack's frame by the
+/// content's animation and frame).
+pub fn frame_counts(pack: &Path, report: &mut Report) -> Option<BTreeMap<(u8, u8), Vec<usize>>> {
+    #[derive(Deserialize)]
+    struct Counts {
+        format: String,
+        version: u32,
+        sprite: [u8; 2],
+        animations: Option<Vec<Vec<serde::de::IgnoredAny>>>,
+    }
+    let dir = pack.join("graphics/sprites");
+    let mut entries: Vec<_> = match nettai_platform::fs::read_dir(&dir) {
+        Ok(read) => read.flatten().collect(),
+        Err(e) => {
+            report.error("graphics/sprites", format!("can't read: {e}"));
+            return None;
+        }
+    };
+    entries.sort_by_key(|e| e.file_name());
+    let mut out = BTreeMap::new();
+    for e in entries {
+        let path = e.path().join("sprite.json");
+        if !nettai_platform::fs::is_file(&path) {
+            continue;
+        }
+        let name = format!("graphics/sprites/{}/sprite.json", e.file_name().to_string_lossy());
+        let doc: Counts = read_json(&path, &name, report)?;
+        if doc.format != FORMAT || doc.version != VERSION {
+            report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
+            return None;
+        }
+        let Some(animations) = doc.animations else {
+            report.error(&name, "has no animations: a pack of an older extractor (extract the pack again)");
+            return None;
+        };
+        out.insert((doc.sprite[0], doc.sprite[1]), animations.iter().map(Vec::len).collect());
+    }
+    Some(out)
 }
 
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {

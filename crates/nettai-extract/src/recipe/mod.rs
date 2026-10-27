@@ -227,7 +227,7 @@ impl Recipe {
         let model::Declaration { extract, .. } = model::declaration(vm.entry()).map_err(recipe)?;
         let set = prims::rom_set(vm.lua(), set).map_err(|e| recipe(e.to_string()))?;
         let value: Value = extract.call(set).map_err(|e| recipe(e.to_string()))?;
-        let model::Extracted { names, mut graphics, sound } = model::extracted(&value).map_err(recipe)?;
+        let model::Extracted { names, mut graphics, timing, sound } = model::extracted(&value).map_err(recipe)?;
         drop((value, extract));
         drop(vm);
         complete(&mut graphics, &names).map_err(|e| Error(format!("{game}: {e}")))?;
@@ -262,6 +262,7 @@ impl Recipe {
             sound_versions,
             warnings,
             names,
+            timing,
         })
     }
 }
