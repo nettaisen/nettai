@@ -11,7 +11,8 @@ with.
   addresses redirect to (without the cross-origin header a browser needs, so the app asks the domain directly). The
   engine's API declarations (`content/nettai`) and `content/.luaurc` stay in the engine repo: they are the engine's.
 - **The engine repo has them as git submodules** (`content/exe4`, `content/exe5`, `content/exe6`, `content/exelib`)
-  for development, tests and tools. **An app release downloads the published bundles** and ships those.
+  for development, tests and tools. **An app release ships no content**: the app downloads the published bundles,
+  the first start included (§5; this replaced shipping the newest bundles with each release).
 - **Published on GitHub Pages**, each content repo its own site: static files, which the desktop app and the browser
   build both fetch (Pages serves them to any origin).
 - **Content names its assets.** The names the extractor writes a pack's assets under (`compat/assets.toml`, the
@@ -121,34 +122,70 @@ published for it, from the same commits or newer ones.
 
 ## 5. The app
 
-**The store.** Bundles are kept unpacked in the data folder's `content/<id>/`, with a note of each one's content hash.
-The app also ships the newest bundle of each game for its line, so it plays offline from the first start.
+**The catalog.** The app knows one address: the catalog, `https://nettai.n1gp.net/catalog.json`
+(`bundle::catalog_url`, `bundle::Catalog`), a map of each game's pack id to the full address of its site's
+`index.json` (and, as `ai`, nettai-ai's index). Every other address is data: the catalog gives each game's index, and
+each index entry the full address of its bundle (`Published::url`). The app's games are the catalog's that its
+extractor reads (`nettai_extract::Game`).
 
-**Updates.** At start the app reads each game's `index.json`, unless Settings turned content updates off. It
-downloads the newest bundle of its line on a thread, checks its id, unpacks it, and checks that the content hash it
-computes is the index's. New matches use it once it is down.
+**The store.** Bundles are kept unpacked in the data folder's `content/<id>/` (`nettai_content::store`), each with its
+record beside it, `content/<id>.toml`: its game, line and revision, the content hash its index gives it
+(`published`), and the one computed here (`hash`), recorded the first time the game is loaded from it. A folder
+without its record, a record without its folder, or a folder being unpacked (`<id>.part`) is what a storing cut short
+left, and goes as the app starts. Beside the bundles the store keeps the catalog and the indexes as last read
+(`catalog.json`, `<game>.index.json`), so a start without a connection plays what the store has. A game plays the
+newest revision of the app's line in the store.
 
-**Replays.** A replay names its content hash, as now. To play one, the app needs:
+**Downloads.** The app ships no content. At start, on the window's loop: the catalog is read, then each game's index,
+and the newest bundle of the line is downloaded where the store hasn't it, the game shown first; a download is checked
+against its id as it is unpacked. A game the store has no content of yet is downloaded whatever Settings say, the
+first start included: without it there is nothing to play. Settings' "Check for updates" off stops only the look for
+newer revisions of the games that have some. While a game's content downloads, the loading screen's bar is the
+download's ("DOWNLOADING BN6", where "EXTRACTING BN6" shows); a game whose download fails is a dialog ("BN6's content
+couldn't be downloaded. Check your connection, then start nettai again."), or the loading screen's note when no game
+has content. A game whose index has nothing for the line isn't listed, and where no game has content for that reason
+the note says none is out yet ("There's no game content for this version of nettai yet. Check back later."). A game
+that is loaded when its newer content arrives plays it from the next time the main menu shows with nothing over
+it.
 
-- an engine of the replay's line (as now);
-- a bundle with that content hash: from the store, or found in the game's index and downloaded by its id.
+**What a bundle plays.** The first time a game is loaded from a bundle, with its pack, the content hash computed is
+checked against the index's. A bundle that plays another is taken out of the store, the reason logged, and the game
+loads its next newest bundle (or, with none, can't be played, said as a load failure).
 
-If there's none, the replays screen says the content isn't available.
+**Replays.** A replay names its content hash, as before. The Replays screen plays one on the game's own content where
+the hashes match; else on the store's bundle that plays its hash, or on the bundle the game's index lists for it,
+downloaded while the replay is selected (the index is read again, once a visit, where it lists no such hash). The
+game is loaded on that content beside its own (its pack extracted where its fingerprint has none, its parts read on a
+thread, its runtime), and the replay's still, its play-out, the viewer, its thumbnails and its export use it. A replay
+whose content the store hasn't and no index lists shows "The content this replay was made with isn't available, so
+it can't be played." in its row.
 
-**Netplay.** The lobby compares content hashes, as now. Peers whose hashes differ both play the newer revision: the
-peer without it finds it in the index by the other's content hash and downloads it. If it can't be had, the lobby
-refuses with that reason.
+**Netplay.** The lobby compares content hashes, as before; but a lobby that waits on content (`Lobby::wait_on_content`:
+the app's, but development's) doesn't refuse other content at once. While the hashes differ it takes nothing of the
+other's lobby, and tells its host the other's hash (`Lobby::their_content`). Both play the newer revision: each side
+finds the other's revision in its store or the game's index (read again where it isn't listed). The side with the
+older one downloads the newer, loads the game again on it behind the bar, and gives the lobby the new content and the
+build made again of it (`Lobby::replace_content`); the side with the newer one waits. Content no index lists, the same
+revision of other content, or development's content (it has no revision) is refused for its content
+(`Lobby::refuse_content`: `Reason::DifferentContent` on both sides). Nothing on the wire changes: each peer says its
+own content as always, and a peer that doesn't wait refuses as before.
 
-**Asset packs.** Packs are kept by the asset fingerprint the bundle's names give (`packs/<game>-<fingerprint>/`). A
-bundle whose fingerprint has no pack has it extracted from the Legacy Collection when the game first loads. The
-extractor reads the names from the bundle (`compat/assets.toml` and the tables it names), not from tables compiled
-into it.
+**Asset packs.** Packs are kept by the fingerprint of what the content's tables say of them
+(`packs/<game>-<fingerprint>/`, `nettai_extract::fingerprint`): the names their assets are written under, and the
+numbers the extraction reads some by. Content whose fingerprint has no pack has it extracted from the Legacy
+Collection when the game first loads, and so does other content a replay plays on. The extractor reads the tables
+from the content (`<game>/compat`, `nettai_extract::Tables`), not from tables compiled into it: the compat crates'
+built-in tables are their `builtin` feature's, for tools and tests, and the app builds without the content
+submodules.
 
-**Development.** A build run from the repository plays the submodules' content as now. `$NETTAI_CONTENT` still names
-another content directory.
+**Development.** A build run from the repository plays every game from the submodules' content directory, as before,
+and downloads nothing for it; `$NETTAI_CONTENT` names another. Other content (a replay's) is found in the store and
+the sites all the same. `$NETTAI_CATALOG` names another catalog than the organization's (absent in normal use): a
+site of indexes and bundles served from elsewhere, as the tests serve one on the machine.
 
-**The browser.** The store is in the origin private file system, and bundles come from the sites. The page ships the
-newest bundles as the desktop app does, in place of today's `content.tar`.
+**The browser.** The page ships no content either: its store is the data folder's, which the page keeps in the origin
+private file system, and the bundles come from the sites (asked of the Pages domain directly, which serves them to any
+origin).
 
 None of this changes the replay format or the lobby's messages: an app with the store is a patch release of its line.
 
@@ -157,7 +194,8 @@ None of this changes the replay format or the lobby's messages: an app with the 
 1. The four repos with their history, pushed.
 2. The engine repo on submodules; CI, worktrees and the verification workspace's scripts initialize them.
 3. The bundle format and id (`nettai_content::bundle`), `nettai-content publish`, and Pages on each game's repo.
-4. The app: the store, content updates, replays and the lobby finding bundles by content hash, packs by fingerprint,
-   the extractor's names from the bundle, the browser's store.
-5. `release.yml` ships the newest published bundles instead of `content/`; each game's content is published for the
-   line.
+4. The app: the catalog, the store and its downloads, replays and the lobby finding bundles by content hash, packs by
+   fingerprint, the extractor's names from the content, the browser's store.
+5. The packages (`release.yml`, packaging/) and the browser's page (crates/nettai-web/build.sh) ship no content: the
+   app downloads each game's, the first start included, and the release's build jobs check out no submodules. Each
+   game's content is published for the line.

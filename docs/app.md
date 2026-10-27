@@ -29,10 +29,11 @@ Collection Vol. 2 (Steam's), into its data folder's `packs/`, and again when ano
 (§17). With
 `$NETTAI_PACKS` set, the packs are that folder's, found as nettai-tool finds them (each pack by the game it says;
 written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`), and nothing is looked for or extracted: for
-development and the screenshot pass. The game's content (its rules and data in Luau, docs/design/content-model-v2.md
-§4.0) is the `content/` folder beside the program, where a packaged app ships it; a build run from the repository
-finds none there and reads the repository's `content/`; `$NETTAI_CONTENT` names another. (A macOS app bundle
-ships it in its `Resources/`; a packaged build has no fallback to the repository's, §19.) A release build on Windows
+development and the screenshot pass. The games' content (their rules and data in Luau, docs/design/content-model-v2.md
+§4.0) isn't in the app: it downloads each game's from the game's site into its data folder's `content/`, the first
+start included (§20). A build run from the repository plays the repository's `content/` instead (its submodules),
+and `$NETTAI_CONTENT` names another; neither downloads anything (a packaged build plays its downloads alone, §19).
+A release build on Windows
 opens no console window (`windows_subsystem`); a development build keeps one, for what it prints. What the player
 makes is kept in the app's
 data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
@@ -54,6 +55,7 @@ variables are for development:
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
+| `NETTAI_CATALOG=<url>` | The catalog of games the content is downloaded by (§20), instead of `https://nettai.n1gp.net/catalog.json`: a site of indexes and bundles served from elsewhere, to test with. |
 | `NETTAI_AI_WEIGHTS=<file>` | In a build with the `ai` feature, the practice dummy that fights plays these weights (a `nettai_ai.export` file) instead of downloading the nettai-ai repository's ("The dummy that fights"). |
 | `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe; `NETTAI_TOUR_ONLY=replays` one screen's steps alone. A build with the `tour` feature's alone (`--features tour`): a player's has none of it. |
 
@@ -1227,10 +1229,12 @@ isolated (COOP and COEP), which a page with threads must be.
   is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
   queue's and the shapes' cache's, each held for moments.
 - **Files** are `nettai_platform::fs`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
-  page puts the data folder (`/data`: settings, builds, replays, packs) in it from the origin private file system
-  before the app starts, and writes back what changes, a few times a second: side by side, a pack's stamp last (a
-  page closed partway leaves no pack that looks whole), and nothing in a dot folder (`packs/.new`). The content
-  (`/content`) is one archive the page fetches (content.tar).
+  page puts the data folder (`/data`: settings, builds, replays, packs, the games' content) in it from the origin
+  private file system before the app starts, and writes back what changes, a few times a second: side by side, a
+  pack's stamp last (a page closed partway leaves no pack that looks whole), and nothing in a dot folder
+  (`packs/.new`). The page ships no content: the app downloads each game's from its site as the desktop app does
+  (§20), into the data folder's `content/`, which the page keeps with the rest (a bundle cut short by a page closed
+  partway has no record, and goes as the app starts).
 - **The Legacy Collection.** CHOOSE FOLDER opens the browser's folder dialog (Chromium's alone: Firefox and Safari
   have none), or the folder is dropped on the page (every browser: the File and Directory Entries API); of the
   folder (the install's own, its `exe` or its `exe/data`) the per-game archives are read into the app's files, and
@@ -3339,8 +3343,12 @@ its own, started when it first asks something, and takes what the thread found a
   window's resolution. The box is empty until the selected replay's own still has come: a still is never shown
   beside another replay than its own.
 
-**A replay that can't be played is a row, not a failure.** A file that doesn't read (`ReadError`), a replay
-whose head names another engine or other content, one the library refuses as it is played out (`Refused`) and
+**A replay made on other content** (another revision of the game's: its head's content hash isn't the game's
+own) plays on the content it was made on, found in the content store or downloaded while it is selected, and the
+game loaded on it beside its own (§20). **A replay that can't be played is a row, not a failure.** A file that
+doesn't read (`ReadError`), a replay whose head names another engine, one whose content the store hasn't and its
+game's index doesn't list ("The content this replay was made with isn't available, so it can't be played."), one
+the library refuses as it is played out (`Refused`) and
 one that plays another battle than it recorded each show their sentence in the row, in the error red, in
 place of the opponent, the score and the length (`UserError::of_replay_read`, `of_refusal`: §12), and beside
 the list with WATCH and EXPORT VIDEO unavailable; SHOW FILE and DELETE stay. Each is written to the log once.
@@ -3725,8 +3733,10 @@ Not tried: a player's menus themselves (QuickTime's, VLC's, mpv's).
 The user: "you should detect bnlc vol2 and extract all assets from there on startup if they are not extracted yet
 (and if nettai version changes, reextract assets). there is bnlc detection code in tango you can steal".
 
-**Where the packs are** (`packs.rs`). In the data folder's `packs/`, a folder a game (`packs/exe6`), which the app
-makes itself. `$NETTAI_PACKS` wins: when it is set the packs are that folder's, by the game each says, and nothing
+**Where the packs are** (`packs.rs`). In the data folder's `packs/`, a folder a game's content's tables
+(`packs/exe6-<fingerprint>`, below), which the app makes itself: content that names its assets otherwise (another
+revision of the game's, §20) has a pack of its own, and two contents that name them alike share one. A pack of the
+layout before fingerprints (`packs/exe6`) is removed as the app starts. `$NETTAI_PACKS` wins: when it is set the packs are that folder's, by the game each says, and nothing
 is looked for or extracted (development, and the screenshot pass, which never extracts: it keeps nothing of its
 own in the player's data folder).
 
@@ -3756,11 +3766,15 @@ missing, or was made by another build: each pack is stamped (`stamp.toml` in it)
     nettai = "0.1.0"
     assets = "1f3eed2364479361"
 
-the app's version, and the extractor's fingerprint of the game's asset names (`nettai_extract::fingerprint`: a
-digest of the versions of the pack's formats, `nettai_content::pack::FORMATS`, each 1, and of the names the
-pack's assets are written under, from the content's compat tables: `assets.toml`, a chip's icon by its id, a
-navi's emblem by its key, the fonts' glyphs). A pack whose stamp isn't this build's, or that has none (one
-`nettai-extract` wrote), is extracted again. The version is
+the app's version, and the extractor's fingerprint of the game's content's tables (`nettai_extract::fingerprint`: a
+digest of the versions of the pack's formats, `nettai_content::pack::FORMATS`, each 1, and of what the extraction
+reads of the content's compat tables, `<game>/compat`: the names the pack's assets are written under, `assets.toml`,
+a chip's icon by its id, a navi's emblem by its key, the fonts' glyphs; the panels' names; and the numbers it reads
+some assets by, EXE4's version chips and text controls, EXE5's backgrounds several numbers share). The tables are
+read from the content the game plays, at run time (`nettai_extract::Tables`), not compiled into the app: content
+that names a new asset has its pack extracted again with it, with no new build (the compat crates' built-in tables
+are their `builtin` feature's, the tools' and the tests'). The fingerprint names the pack's folder; a pack whose
+stamp isn't this build's, or that has none (one `nettai-extract` wrote), is extracted again. The version is
 the user's word; it doesn't change between builds while it stays 0.1.0, and two builds of it differ in their
 packs above all where the content names an asset the other's pack hasn't (a sprite added, a song named): the pack
 loads and the content can't find it, which is what `UserError::GameOutdated` told before. The fingerprint is
@@ -3915,9 +3929,9 @@ the pictures looked at; since, the steps are type-checked and not yet walked.
 The user: "start working on github actions workflows to make an installer for windows and i dunno dmg for macos
 and appimage for linux".
 
-A package is the program, the content (`content/`, as the repository has it), the license (LICENSE), the
-third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's `licenses.txt`, §18), and `ffmpeg` beside the program
-with its notice (ffmpeg-NOTICE.txt; below). No ROM and no extracted asset is in
+A package is the program, the license (LICENSE), the third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's
+`licenses.txt`, §18), and `ffmpeg` beside the program with its notice (ffmpeg-NOTICE.txt; below). No content is in
+it: the app downloads each game's (§20). No ROM and no extracted asset is in
 any of them, ever: the app extracts each game's pack from the player's own Legacy Collection into its data folder
 (§17). Each platform's script is in `packaging/`, runs on that platform alone, stages the app, and makes
 **Velopack's release** of it with `vpk pack` (`$VPK`, else `vpk` on the PATH; version 1.2.161, the one
@@ -3970,9 +3984,10 @@ larger than other apps in the Dock; nothing raster is committed. The Windows pro
 `$NETTAI_WINDOWS_ICON` names (build.rs, through winresource); without it, it has none. The window's icon is the
 SVG itself (`app.slint`).
 
-A package's build sets `NETTAI_PACKAGED`: its content lookup then has no fallback to the repository's `content/`
-(`nettai_content::index::content`), so that the program names no folder of the machine it was built on and reads
-only the content it ships. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
+A package's build sets `NETTAI_PACKAGED`: it then has no development content directory
+(`nettai_content::index::development`), so that the program names no folder of the machine it was built on and plays
+only the content it downloads into its store (§20). The app builds without the content submodules, and the
+workflow's build jobs check none out. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
 
 Besides Rust, a build needs CMake (SDL's, and libdatachannel's: nettai-rtc's WebRTC, C++ with Mbed TLS, its
 sources submodules of the facade's repository, which Cargo fetches with it) and libclang (bindgen, for
@@ -4007,3 +4022,72 @@ restarts into it (`apply_updates_and_restart`; the settings are written as each 
 failure is logged and said in the footer. `velopack` is taken from its repository at the commit after 1.2.161 that
 moved it to zip 9 (every release on crates.io asks for zip 8, all of whose versions are yanked), until its next
 release.
+
+## 20. The games' content
+
+The games' content (their rules and data in Luau) isn't in the app: each game's is published apart from it, as
+bundles on the game's site, and the app downloads it (docs/design/content-deployment.md §5, which this follows).
+
+**Where it is** (`contents.rs`). In the data folder's `content/`, the store (`nettai_content::store`): each bundle
+unpacked in a folder named by its id (`content/<id>/`, a content directory: `bundle.toml`, `exe6/`, `exelib/`), its
+record beside it (`content/<id>.toml`: its game, line and revision, the content hash its index gives it, and the
+one computed here), and the catalog and the indexes as last read (`catalog.json`, `<game>.index.json`). A game plays
+the newest revision of the app's engine line (`0.11`) in the store; its pack is the one its content's tables name
+(§17). A build run from the repository, or with `$NETTAI_CONTENT`, plays every game from that content directory
+instead, and downloads nothing for it.
+
+**Downloads** (`games.rs`, `contents.rs`). The one address the app knows is the catalog,
+`https://nettai.n1gp.net/catalog.json` (`$NETTAI_CATALOG` names another): each game's index by its full address.
+Every other address is what those say: an index entry gives its bundle's. The games are the catalog's that the
+extractor reads. At start, on the window's loop (`slint::spawn_local`; the files written off it,
+`nettai_platform::task::off_thread`): the catalog is read, then each game's index, and the newest bundle of the line
+downloaded where the store hasn't it, the game shown first, checked against its id as it is unpacked. A game the
+store has no content of is downloaded whatever Settings say, the first start included; Settings → General → Check
+for updates off stops only the look for newer revisions of the games that have some (the app's own updates, §19,
+the same). A start without a connection plays what the store has, by the catalog and the indexes kept.
+
+**What the player sees.** While a game's content downloads, the loading screen's bar is the download's,
+"DOWNLOADING BN6" and its percentage (where "EXTRACTING BN6" shows: the download, then the extraction, then the load).
+At the first start, until the catalog is read and no game is known, the bar alone. A game whose download fails is
+the dialog "BN6's content couldn't be downloaded" ("Check your connection, then start nettai again."), the others
+playing; where no game has content, the loading screen's note says it ("The games' content couldn't be downloaded.
+..."), or that none is out for this version yet ("There's no game content for this version of nettai yet. Check
+back later.": every index empty for the line), a game with none published for the line not being listed. A game
+that is loaded when its newer content arrives plays it from the next time the main menu shows with nothing over it,
+loaded again behind the bar.
+
+**What a bundle plays.** The first time a game is loaded from a bundle, the content hash it computes with its pack
+is checked against the one its index gave (`contents::verify`), and recorded. A bundle that plays another is taken
+out of the store (the reason in the log), and the game loads its next newest; with none, it can't be played.
+
+**Replays** (§16). A replay plays on the content its head names: the game's own where the hashes match, else the
+store's bundle that plays its hash, or the one the game's index lists for it, downloaded while the replay is
+selected (the index read again, once a visit, where it lists no such hash). The game is loaded on it beside its own
+(`Games::want_other`: the last two kept; its pack extracted where its tables' fingerprint has none, its parts read on
+a thread, its runtime on the window's thread, about a second with the window still), and the replay's still, its
+play-out, the viewer, its thumbnails, its index threads and its export are that load's. WATCH is unavailable until
+it is ready; a replay of the queue waits for it.
+
+**Online** (§4). The lobby compares content hashes, as before; but the app's lobby waits on other content
+(`Lobby::wait_on_content`; development's refuses it at once, as its content has no revision). While the hashes
+differ, neither takes the other's lobby, and each finds the other's revision (its store's, else the game's index,
+read again where it isn't listed). Both play the newer: the side with the older revision downloads the newer, its
+game loaded again on it behind the bar, and its lobby takes the new content and the player's build made again of it
+(`Lobby::replace_content`: not ready); the side with the newer waits. Content no index lists, the same revision of
+other content, or development's content is refused for its content (`Lobby::refuse_content`), each side told the
+content differs. Nothing on the wire changes, and an app of the line before the store refuses other content as it
+always did.
+
+**What has run.** Tests: the store (bundles kept by id and found by revision and hash, what a storing cut short
+leaves tidied); a bundle's hash checked against its index's; the download from a site of the tests' own, served on
+this machine (the catalog's games this app plays, a game with nothing published for the line, the newest bundle
+downloaded with its progress and stored with its index's hash, then had, found by its hash, a bundle that isn't its
+id and one that isn't there refused with nothing stored); the repository's exe6 as a bundle on such a site,
+downloaded and loaded from the store with its pack, playing its published hash (`--ignored a_real_bundle`, with
+`$NETTAI_PACKS`); the games as their content downloads (added from the catalog, the bar's progress, a failure told
+once, nothing published told as such); where a replay plays; two lobbies whose content differs waiting, one taking
+the other's and agreeing, a refusal ending both. The live sites (`--ignored the_sites_give_each_games_content`) ran
+while bundles were published for 0.11 (2026-10-26): each game's newest downloaded, loaded with the checkout's packs,
+and playing its index's hash. Not run: the app itself on a store (a packaged build), the browser, a lobby between two
+apps of different revisions, and a replay played on another revision's content in the window.
+

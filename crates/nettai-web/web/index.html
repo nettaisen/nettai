@@ -41,10 +41,10 @@
   <div class="line"><span class="what">Loading</span><span class="much"></span></div>
 </div>
 <script type="module">
-// The nettai app in a browser (crates/nettai-web). Before it starts, under the preload screen: the module and the
-// content's archive are downloaded, and the files the page keeps (the app's data folder, in the origin private file
-// system) are put in the app's files. After: what changed in the data folder is written back, in order, a few times
-// a second.
+// The nettai app in a browser (crates/nettai-web). Before it starts, under the preload screen: the module is
+// downloaded, and the files the page keeps (the app's data folder, in the origin private file system: the games'
+// content among them, which the app downloads from the games' sites) are put in the app's files. After: what changed
+// in the data folder is written back, in order, a few times a second.
 import init, * as nettai from "./nettai_web.js";
 
 // The canvas's size in device pixels, as winit reads it (`devicePixelContentBoxSize`), agrees with the pointer's
@@ -208,15 +208,15 @@ async function main() {
   if (!navigator.storage?.getDirectory) {
     return say("This browser has no origin private file system, where nettai keeps its files.");
   }
-  // The module and the content, downloaded: most of the wait (the bar's first 80%).
+  // The module, downloaded: most of the wait (the bar's first 80%).
   const sizes = await fetch("./sizes.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   show("Downloading", 0);
-  const [module, content] = await download(["nettai_web_bg.wasm", "content.tar"], sizes, (got, total) => {
+  const [module] = await download(["nettai_web_bg.wasm"], sizes, (got, total) => {
     show("Downloading", total ? 0.8 * got / total : 0, total ? `${megabytes(got)} / ${megabytes(total)} MB` : `${megabytes(got)} MB`);
   });
   show("Starting", 0.8);
   await init({ module_or_path: module });
-  // The files kept (the packs, the builds, the replays, the settings): the rest of the bar.
+  // The files kept (the packs, the games' content, the builds, the replays, the settings): the rest of the bar.
   const root = await navigator.storage.getDirectory();
   // (Kept, not cleared when the browser is short of room, where it allows.)
   navigator.storage.persist?.();
@@ -238,7 +238,7 @@ async function main() {
   }, 250);
 
   try {
-    nettai.start(content);
+    nettai.start();
   } catch (e) {
     // (winit leaves its start by an exception, its loop then the page's.)
     if (!String(e?.message ?? e).includes("Using exceptions for control flow")) throw e;

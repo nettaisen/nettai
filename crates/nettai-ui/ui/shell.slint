@@ -170,9 +170,11 @@ export global Shell {
     in property <bool> downloading;
     // No game can be played, and where a pack is looked for. `extracts`: the app extracts its packs itself (no
     // `$NETTAI_PACKS`), so what is missing is the Legacy Collection, and its folder can be chosen. `no-content`:
-    // what is missing is the games' content, which couldn't be downloaded.
+    // what is missing is the games' content: none is out for this version yet (`unpublished`), or it couldn't be
+    // downloaded.
     in property <bool> no-games;
     in property <bool> no-content;
+    in property <bool> unpublished;
     in property <string> packs-folder;
     in property <bool> extracts;
 
@@ -322,6 +324,8 @@ export enum ErrorKind {
     extract-failed,
     // A game's content couldn't be downloaded (the app has none of it). With no game named: no game's could.
     download-failed,
+    // No game's content is published for this version of nettai yet (the loading screen's note).
+    content-unpublished,
     other,
 }
 
@@ -437,6 +441,9 @@ export global Errors {
         }
         if kind == ErrorKind.extract-failed {
             return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
+        }
+        if kind == ErrorKind.content-unpublished {
+            return @tr("There's no game content for this version of nettai yet. Check back later.");
         }
         if kind == ErrorKind.download-failed {
             if detail == "" {

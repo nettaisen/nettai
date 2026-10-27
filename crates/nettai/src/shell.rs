@@ -406,6 +406,14 @@ impl Shell {
         self.select_game_from(&next, by.signum());
     }
 
+    /// The loading screen's note where no game can be played for want of content: none published for this line
+    /// yet, or none could be downloaded.
+    fn show_no_content(&self, shell: &nettai_ui::Shell) {
+        let missing = self.games.no_content();
+        shell.set_no_content(missing.is_some());
+        shell.set_unpublished(missing == Some(true));
+    }
+
     /// Game `game` plays its newest content in the store from now (the other player's, downloaded for an online
     /// match: `screens::play`), loaded again at once, behind the bar. False if that is the content it plays.
     pub fn play_newest(&mut self, game: &str) -> bool {
@@ -1927,7 +1935,7 @@ impl App {
                 }
                 None => {
                     shell.set_no_games(true);
-                    shell.set_no_content(self.shell.games.no_content());
+                    self.shell.show_no_content(&shell);
                     shell.set_loading(true);
                 }
             }
@@ -1973,18 +1981,18 @@ impl App {
                     self.settle();
                 }
             }
-            state @ (Some(State::Failed) | Some(State::NoPack) | Some(State::NoContent) | None) => {
+            state @ (Some(State::Failed) | Some(State::NoPack) | Some(State::NoContent { .. }) | None) => {
                 // It can't be played: the next that can. One whose pack couldn't be loaded or extracted, or whose
                 // content couldn't be downloaded, is told above, by its name; one asked for that has no pack at all,
                 // as something gone wrong.
-                let told = matches!(state, Some(State::Failed) | Some(State::NoContent)) || (matches!(state, Some(State::NoPack)) && self.shell.games.extracts);
+                let told = matches!(state, Some(State::Failed) | Some(State::NoContent { .. })) || (matches!(state, Some(State::NoPack)) && self.shell.games.extracts);
                 let games = self.shell.games.playable();
                 self.shell.game = None;
                 match games.first() {
                     Some(next) => self.shell.select_game(&next.clone()),
                     None => {
                         shell.set_no_games(true);
-                        shell.set_no_content(self.shell.games.no_content());
+                        self.shell.show_no_content(&shell);
                     }
                 }
                 if !told {

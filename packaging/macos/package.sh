@@ -6,9 +6,9 @@
 #
 #   packaging/macos/package.sh
 #
-# The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{content/, nettai.icns, LICENSE,
-# THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt}. No ROM and no extracted asset is in it: the app extracts each game's
-# pack from the player's own copy.
+# The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
+# ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
+# (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy.
 #
 # NETTAI_VERSION         the version, if set; else the app crate's
 # NETTAI_UNIVERSAL=1     arm64 and x86_64 in one program (lipo), and in one ffmpeg; else the host's alone
@@ -54,7 +54,6 @@ mv "$out/nettai" "$app/Contents/MacOS/nettai"
 sed -e "s/@VERSION@/$version/" -e "s/@SHORT_VERSION@/${version%%-*}/" "$root/packaging/macos/Info.plist" > "$app/Contents/Info.plist"
 printf 'APPL????' > "$app/Contents/PkgInfo"
 iconutil -c icns -o "$app/Contents/Resources/nettai.icns" "$icons/nettai.iconset"
-copy_content "$app/Contents/Resources"
 cp "$root/LICENSE" "$app/Contents/Resources/LICENSE"
 cp "$notices" "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 

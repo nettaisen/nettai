@@ -196,11 +196,20 @@ fn catalog_games() -> Vec<String> {
     read.catalog.iter().flat_map(|c| c.games.keys()).filter(|game| nettai_extract::Game::named(game).is_some()).cloned().collect()
 }
 
-/// Read the catalog of games from the organization's site (`bundle::catalog_url`, the one address the app knows),
-/// and keep it: the games this app plays among them.
+/// The catalog's address: `bundle::catalog_url`, the one address the app knows; `$NETTAI_CATALOG` names another
+/// (development and tests: a catalog of indexes and bundles served from elsewhere).
+fn catalog_url() -> String {
+    std::env::var("NETTAI_CATALOG").ok().filter(|url| !url.is_empty()).unwrap_or_else(bundle::catalog_url)
+}
+
+/// Read the catalog of games ([`catalog_url`]), and keep it: the games this app plays among them.
 pub async fn fetch_catalog() -> Result<Vec<String>, String> {
-    let url = bundle::catalog_url();
-    let body = nettai_platform::http::get(&url, MAX_INDEX).await?;
+    fetch_catalog_from(&catalog_url()).await
+}
+
+/// [`fetch_catalog`], from `url`.
+async fn fetch_catalog_from(url: &str) -> Result<Vec<String>, String> {
+    let body = nettai_platform::http::get(url, MAX_INDEX).await?;
     let catalog: Catalog = serde_json::from_slice(&body).map_err(|e| format!("{url}: a catalog that doesn't read: {e}"))?;
     keep(catalog_file(), &body);
     if let Ok(mut read) = nettai_platform::thread::lock(read()) {
@@ -250,20 +259,26 @@ pub async fn fetch(published: &Published, mut progress: impl FnMut(f32)) -> Resu
         .map_err(|why| format!("{url}: {why}"))
 }
 
+/// What a game's index has of the app's line: its newest bundle, downloaded now or had already; or nothing yet (no
+/// content of the game is published for this line).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Newest {
+    Downloaded,
+    Had,
+    Unpublished,
+}
+
 /// Game `game`'s newest bundle of the line, from its site where the store hasn't it (`progress` told how far it is
-/// downloaded): true if it was downloaded now, false if the store had it. An error where it can't be had, or the
-/// site has no content of the line.
-pub async fn fetch_newest(game: &str, progress: impl FnMut(f32)) -> Result<bool, String> {
+/// downloaded). An error where it can't be had.
+pub async fn fetch_newest(game: &str, progress: impl FnMut(f32)) -> Result<Newest, String> {
     let index = fetch_index(game).await?;
-    let Some(newest) = index.newest(line()) else {
-        return Err(format!("{game}'s index has no content for nettai {}", line()));
-    };
+    let Some(newest) = index.newest(line()) else { return Ok(Newest::Unpublished) };
     if contents().store.get(newest.id).is_some() {
-        return Ok(false);
+        return Ok(Newest::Had);
     }
     let stored = fetch(newest, progress).await?;
     crate::errors::log(&format!("downloading {game}'s content"), &format_args!("r{} (bundle {})", stored.record.revision, stored.id));
-    Ok(true)
+    Ok(Newest::Downloaded)
 }
 
 /// Game `game`'s content that plays `hash`: the store's bundle, else its index's (read again where the one kept
@@ -309,7 +324,7 @@ pub(crate) mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nettai_content::bundle::{Manifest, build, gzip};
+    use nettai_content::bundle::{Catalog, Manifest, build, gzip};
 
     /// A store in a folder of its own, with a bundle of `game` holding `text`.
     fn store_with(name: &str, published: Option<ContentHash>) -> (tempfile::TempDir, Store, Stored) {
@@ -344,6 +359,140 @@ mod tests {
         assert_eq!(verify_in(&store, Path::new("/somewhere/content"), ContentHash(1)), Ok(()), "development's");
     }
 
+    /// Folder `root` served over HTTP on this machine, on threads of its own, as long as the tests run: its address.
+    fn serve(root: PathBuf) -> String {
+        use std::io::{Read as _, Write as _};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = format!("http://{}", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for mut stream in listener.incoming().flatten() {
+                let root = root.clone();
+                std::thread::spawn(move || {
+                    let mut request = Vec::new();
+                    let mut byte = [0u8; 1];
+                    while !request.ends_with(b"\r\n\r\n") && stream.read(&mut byte).is_ok_and(|n| n == 1) {
+                        request.push(byte[0]);
+                    }
+                    let request = String::from_utf8_lossy(&request);
+                    let path = request.split_whitespace().nth(1).unwrap_or("/").trim_start_matches('/').to_string();
+                    let answer = match std::fs::read(root.join(&path)) {
+                        Ok(body) => [format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()).into_bytes(), body].concat(),
+                        Err(_) => b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec(),
+                    };
+                    let _ = stream.write_all(&answer);
+                });
+            }
+        });
+        address
+    }
+
+    /// A game's content comes from where the catalog and its index say (a site of the tests' own, served here:
+    /// `$NETTAI_CATALOG` names such a catalog to the app): the catalog's games this app plays; a game none of whose
+    /// content is published for the line yet; the newest bundle downloaded (how far told), checked and stored with
+    /// its index's hash, then had; found by its hash; and a bundle that isn't its id, or isn't there, is an error,
+    /// and nothing of it is stored.
+    #[test]
+    fn a_games_content_comes_from_its_index() {
+        let site = tempfile::tempdir().unwrap();
+        let url = serve(site.path().to_path_buf());
+        let put = |path: &str, bytes: &[u8]| {
+            let file = site.path().join(path);
+            nettai_platform::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            nettai_platform::fs::write(file, bytes).unwrap();
+        };
+        let bundle = |text: &str, revision: u32| {
+            let src = site.path().join("src").join(text);
+            nettai_platform::fs::create_dir_all(&src).unwrap();
+            nettai_platform::fs::write(src.join("manifest.toml"), "id = \"exe6\"\nkind = \"game\"\n").unwrap();
+            nettai_platform::fs::write(src.join("init.luau"), text).unwrap();
+            let manifest = Manifest { game: "exe6".into(), line: line().into(), revision, packs: [("exe6".to_string(), "c0ffee".to_string())].into() };
+            build(manifest, &[("exe6", &src)]).unwrap()
+        };
+        let entry = |id: nettai_content::bundle::BundleId, hash: u64, revision: u32, size: usize, url: String| Published {
+            id,
+            content_hash: ContentHash(hash),
+            revision,
+            packs: Default::default(),
+            date: "2026-10-26".into(),
+            size: size as u64,
+            url: Some(url),
+        };
+        let index = |game: &str, entries: Vec<Published>| {
+            let lines = if entries.is_empty() { Default::default() } else { [(line().to_string(), entries)].into() };
+            put(&format!("{game}/index.json"), serde_json::to_string(&Index { game: game.into(), lines }).unwrap().as_bytes());
+        };
+        // exe6: one bundle; exe5: nothing for the line yet; exe1: a game this app doesn't play.
+        let one = bundle("return 1", 1);
+        let gz = gzip(&one.tar);
+        put(&format!("exe6/bundles/{}.tar.gz", one.id), &gz);
+        index("exe6", vec![entry(one.id, 0x6A, 1, gz.len(), format!("{url}/exe6/bundles/{}.tar.gz", one.id))]);
+        index("exe5", Vec::new());
+        let games = [("exe1", "exe1"), ("exe5", "exe5"), ("exe6", "exe6")].map(|(g, at)| (g.to_string(), format!("{url}/{at}/index.json")));
+        put("catalog.json", serde_json::to_string(&Catalog { games: games.into(), ai: None }).unwrap().as_bytes());
+        let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().unwrap();
+        runtime.block_on(async {
+            assert_eq!(fetch_catalog_from(&format!("{url}/catalog.json")).await.unwrap(), ["exe5", "exe6"]);
+            assert_eq!(fetch_newest("exe5", |_| {}).await.unwrap(), Newest::Unpublished);
+            let mut said = Vec::new();
+            assert_eq!(fetch_newest("exe6", |p| said.push(p)).await.unwrap(), Newest::Downloaded);
+            assert!(said.windows(2).all(|w| w[0] <= w[1]) && said.last() == Some(&1.0), "{said:?}");
+            let stored = contents().store.get(one.id).expect("stored");
+            assert_eq!((stored.record.revision, stored.record.published, stored.record.hash), (1, Some(ContentHash(0x6A)), None));
+            assert_eq!(nettai_platform::fs::read_to_string(stored.dir.join("exe6/init.luau")).unwrap(), "return 1");
+            assert_eq!(fetch_newest("exe6", |_| {}).await.unwrap(), Newest::Had);
+            assert_eq!(fetch_playing("exe6", ContentHash(0x6A)).await.unwrap().map(|s| s.id), Some(one.id));
+            assert_eq!(fetch_playing("exe6", ContentHash(0x77)).await.unwrap(), None, "no bundle plays it");
+            // r2, whose file is another bundle's: refused by its id, nothing stored.
+            let (two, other) = (bundle("return 2", 2), bundle("return 3", 3));
+            let other_gz = gzip(&other.tar);
+            put(&format!("exe6/bundles/{}.tar.gz", two.id), &other_gz);
+            index("exe6", vec![entry(one.id, 0x6A, 1, gz.len(), format!("{url}/exe6/bundles/{}.tar.gz", one.id)), entry(two.id, 0x6B, 2, other_gz.len(), format!("{url}/exe6/bundles/{}.tar.gz", two.id))]);
+            let why = fetch_newest("exe6", |_| {}).await.unwrap_err();
+            assert!(why.contains("SHA-256"), "{why}");
+            assert!(contents().store.get(two.id).is_none());
+            // r3, not on the site.
+            index("exe6", vec![entry(other.id, 0x6C, 3, other_gz.len(), format!("{url}/exe6/bundles/gone.tar.gz"))]);
+            let why = fetch_newest("exe6", |_| {}).await.unwrap_err();
+            assert!(why.contains("404"), "{why}");
+            assert!(contents().store.get(other.id).is_none());
+        });
+    }
+
+    /// The repository's exe6 as a bundle (`NETTAI_PACKS=<packs> cargo test -p nettai --lib -- --ignored
+    /// a_real_bundle`: each game's pack, `nettai-extract`'s), published on a site of the tests' own with the content
+    /// hash its pack gives: downloaded, stored, and loaded from the store with the pack, it plays that hash, which
+    /// is recorded.
+    #[test]
+    #[ignore = "needs NETTAI_PACKS"]
+    fn a_real_bundle_plays_its_published_hash() {
+        let packs = PathBuf::from(std::env::var_os("NETTAI_PACKS").expect("NETTAI_PACKS"));
+        let repository = nettai_content::index::content();
+        let manifest = Manifest { game: "exe6".into(), line: line().into(), revision: 1, packs: [("exe6".to_string(), "a".to_string()), ("exelib".to_string(), "b".to_string())].into() };
+        let bundle = build(manifest, &[("exe6", &repository.join("exe6")), ("exelib", &repository.join("exelib"))]).unwrap();
+        let hash = nettai_content::store::content_hash(&repository, "exe6", &packs.join("exe6")).unwrap_or_else(|r| panic!("{r}"));
+        let site = tempfile::tempdir().unwrap();
+        let url = serve(site.path().to_path_buf());
+        let gz = gzip(&bundle.tar);
+        let put = |path: &str, bytes: &[u8]| {
+            let file = site.path().join(path);
+            nettai_platform::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            nettai_platform::fs::write(file, bytes).unwrap();
+        };
+        put(&format!("exe6/{}.tar.gz", bundle.id), &gz);
+        let entry = Published { id: bundle.id, content_hash: hash, revision: 1, packs: bundle.manifest.packs.clone(), date: "2026-10-26".into(), size: gz.len() as u64, url: Some(format!("{url}/exe6/{}.tar.gz", bundle.id)) };
+        put("exe6/index.json", serde_json::to_string(&Index { game: "exe6".into(), lines: [(line().to_string(), vec![entry])].into() }).unwrap().as_bytes());
+        put("catalog.json", serde_json::to_string(&Catalog { games: [("exe6".to_string(), format!("{url}/exe6/index.json"))].into(), ai: None }).unwrap().as_bytes());
+        let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().unwrap();
+        runtime.block_on(async {
+            fetch_catalog_from(&format!("{url}/catalog.json")).await.unwrap();
+            assert_ne!(fetch_newest("exe6", |_| {}).await.unwrap(), Newest::Unpublished);
+        });
+        let stored = contents().store.get(bundle.id).expect("stored");
+        let computed = nettai_content::store::content_hash(&stored.dir, "exe6", &packs.join("exe6")).unwrap_or_else(|r| panic!("{r}"));
+        assert_eq!(verify(&stored.dir, computed), Ok(()));
+        assert_eq!(contents().store.get(bundle.id).unwrap().record.hash, Some(hash));
+    }
+
     /// The sites, live (`cargo test -p nettai --lib -- --ignored the_sites_give_each_games_content`): the catalog
     /// read, and each game's newest bundle of the line downloaded, checked against its id and stored (into the
     /// tests' store, a folder of their own); asked again, the store has it. With `NETTAI_PACKS` (a folder of each
@@ -357,11 +506,13 @@ mod tests {
             assert!(!games.is_empty(), "the catalog gives games this app plays");
             for game in &games {
                 let mut said = Vec::new();
-                fetch_newest(game, |p| said.push(p)).await.unwrap_or_else(|why| panic!("{game}: {why}"));
+                if fetch_newest(game, |p| said.push(p)).await.unwrap_or_else(|why| panic!("{game}: {why}")) == Newest::Unpublished {
+                    continue;
+                }
                 let stored = contents().store.newest(game, line()).unwrap_or_else(|| panic!("{game}: nothing stored"));
                 assert!(stored.record.published.is_some(), "{game}: stored with its index's hash");
                 assert!(said.windows(2).all(|w| w[0] <= w[1]) && said.last().is_some_and(|p| *p > 0.99), "{game}: {said:?}");
-                assert!(!fetch_newest(game, |_| {}).await.unwrap(), "{game}: the store has it");
+                assert_eq!(fetch_newest(game, |_| {}).await.unwrap(), Newest::Had, "{game}: the store has it");
                 let hash = stored.content_hash().unwrap();
                 assert_eq!(fetch_playing(game, hash).await.unwrap().map(|s| s.id), Some(stored.id), "{game}: found by its hash");
                 // (With `NETTAI_PACKS`, a folder of each game's pack: the bundle loaded with it plays its index's hash,

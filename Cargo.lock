@@ -3609,7 +3609,6 @@ dependencies = [
  "js-sys",
  "nettai",
  "nettai-platform",
- "tar",
  "wasm-bindgen",
 ]
 

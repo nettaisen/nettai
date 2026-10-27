@@ -33,8 +33,9 @@ use std::sync::Arc;
 pub enum State {
     /// Its content is being downloaded (the store has none of it yet: `crate::contents`): how far, 0 to 1.
     Downloading(f32),
-    /// There is no content of it: the download failed (why is in the log), or its site has none of the line.
-    NoContent,
+    /// There is no content of it: its download failed (why is in the log), or none is published for the app's line
+    /// yet (`unpublished`).
+    NoContent { unpublished: bool },
     /// No asset pack of it is found (and none is being extracted).
     NoPack,
     /// Its pack is missing, or another build's, and the Legacy Collection found has its ROMs: it is extracted
@@ -144,7 +145,7 @@ struct Downloads {
     newer: bool,
     queue: std::collections::VecDeque<String>,
     progress: Option<(String, f32)>,
-    done: Vec<(String, Result<bool, String>)>,
+    done: Vec<(String, Result<crate::contents::Newest, String>)>,
     /// The future is running.
     running: bool,
 }
@@ -491,7 +492,7 @@ impl Games {
 
     /// The games that can be played or may yet be: those with a pack that hasn't failed to load.
     pub fn playable(&self) -> Vec<String> {
-        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed | State::NoContent)).map(|e| e.id.clone()).collect()
+        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed | State::NoContent { .. })).map(|e| e.id.clone()).collect()
     }
 
     /// How far `id`'s loading is, 0 to 1 (1: it is ready); while its pack is extracted, how far that is.
@@ -618,6 +619,11 @@ impl Games {
             }
         };
     }
+}
+
+/// The state of game `id` in `list`, if its content is being downloaded.
+fn waiting<'a>(list: &'a mut [Entry], id: &str) -> Option<&'a mut State> {
+    list.iter_mut().find(|e| e.id == id && matches!(e.state, State::Downloading(_))).map(|e| &mut e.state)
 }
 
 /// Read game `id`'s parts on a thread of their own, as `options` say, to be shown in `lang`, telling `tell` each
@@ -832,15 +838,29 @@ impl Games {
         self.list.is_empty() && self.downloads.borrow().reading_catalog
     }
 
-    /// No game has content, and none can have: the catalog couldn't be read and none was kept, or every game's
-    /// download failed.
-    pub fn no_content(&self) -> bool {
-        !self.reading_catalog() && (self.list.is_empty() && self.catalog_failed || !self.list.is_empty() && self.list.iter().all(|e| matches!(e.state, State::NoContent)))
+    /// No game has content, and none can have, and why: none is published for this line yet (true), or the
+    /// catalog couldn't be read and none was kept, or every game's download failed (false).
+    pub fn no_content(&self) -> Option<bool> {
+        if self.reading_catalog() {
+            return None;
+        }
+        if self.list.is_empty() {
+            return self.catalog_failed.then_some(false);
+        }
+        let mut unpublished = true;
+        for e in &self.list {
+            match e.state {
+                State::NoContent { unpublished: not_yet } => unpublished &= not_yet,
+                _ => return None,
+            }
+        }
+        Some(unpublished)
     }
 
     /// What the downloads did since the last frame: how far the game being downloaded is; a game whose content
     /// arrived plays from it ([`Games::arrived`]); one with no content whose download failed has none (the player
-    /// is told), and one that has some keeps it (the log says why).
+    /// is told), and one that has some keeps it (the log says why); one with none published for the line yet has
+    /// none (the loading screen says so where no game has any).
     pub fn poll_downloads(&mut self) {
         let (catalog, progress, done) = {
             let mut downloads = self.downloads.borrow_mut();
@@ -873,12 +893,18 @@ impl Games {
         }
         for (id, done) in done {
             match done {
-                Ok(true) => self.arrived(&id),
-                Ok(false) => {}
+                Ok(crate::contents::Newest::Downloaded) => self.arrived(&id),
+                Ok(crate::contents::Newest::Had) => {}
+                Ok(crate::contents::Newest::Unpublished) => {
+                    crate::errors::log(&format!("downloading {id}'s content"), &format_args!("none is published for nettai {} yet", crate::contents::line()));
+                    if let Some(state) = waiting(&mut self.list, &id) {
+                        *state = State::NoContent { unpublished: true };
+                    }
+                }
                 Err(why) => {
                     crate::errors::log(&format!("downloading {id}'s content"), &why);
-                    if let Some(entry) = self.list.iter_mut().find(|e| e.id == id && matches!(e.state, State::Downloading(_))) {
-                        entry.state = State::NoContent;
+                    if let Some(state) = waiting(&mut self.list, &id) {
+                        *state = State::NoContent { unpublished: false };
                         self.notices.push(Notice::DownloadFailed(id));
                     }
                 }
@@ -1103,7 +1129,7 @@ mod tests {
     fn games_come_as_their_content_is_downloaded() {
         let mut games = Games::read_of(Vec::new());
         games.downloads.borrow_mut().reading_catalog = true;
-        assert!(games.reading_catalog() && !games.no_content());
+        assert!(games.reading_catalog() && games.no_content().is_none());
         {
             let mut downloads = games.downloads.borrow_mut();
             downloads.reading_catalog = false;
@@ -1118,18 +1144,29 @@ mod tests {
         assert!(games.playable().contains(&"exe9".to_string()), "a game being downloaded can be stepped to");
         games.downloads.borrow_mut().done.push(("exe9".into(), Err("no connection".into())));
         games.poll_downloads();
-        assert!(matches!(games.get("exe9").unwrap().state, State::NoContent));
+        assert!(matches!(games.get("exe9").unwrap().state, State::NoContent { unpublished: false }));
         assert!(!games.playable().contains(&"exe9".to_string()));
         assert_eq!(games.take_notice(), Some(Notice::DownloadFailed("exe9".into())));
         assert_eq!(games.take_notice(), None);
-        assert!(!games.no_content(), "exe6 has content");
+        assert_eq!(games.no_content(), None, "exe6 has content");
         games.list.retain(|e| e.id == "exe9");
-        assert!(games.no_content());
+        assert_eq!(games.no_content(), Some(false), "it couldn't be downloaded");
+        // (A game none of whose content is published for the line yet: none, and no notice; nothing but such games,
+        // and the loading screen says it isn't out yet.)
+        games.list.push(Entry::of("exe8", State::Downloading(0.0)));
+        games.downloads.borrow_mut().done.push(("exe8".into(), Ok(crate::contents::Newest::Unpublished)));
+        games.poll_downloads();
+        assert!(matches!(games.get("exe8").unwrap().state, State::NoContent { unpublished: true }));
+        assert_eq!(games.take_notice(), None);
+        assert_eq!(games.no_content(), Some(false), "one couldn't be downloaded");
+        games.list.retain(|e| e.id == "exe8");
+        assert_eq!(games.no_content(), Some(true));
         // (The catalog that couldn't be read, and none kept: nothing to play.)
         let mut games = Games::read_of(Vec::new());
         games.downloads.borrow_mut().catalog = Some(Err("no connection".into()));
         games.poll_downloads();
-        assert!(games.no_content() && games.list.is_empty());
+        assert_eq!(games.no_content(), Some(false));
+        assert!(games.list.is_empty());
     }
 
     /// The game opened on is the one remembered if it can be played, else BN6, else the first that can; a game

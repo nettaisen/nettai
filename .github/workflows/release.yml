@@ -7,7 +7,9 @@
 # every later run can restore: a cache saved on a tag is that tag's alone, and each release started cold (the user:
 # "it looks like rust cache doesn't actually ever work"). Each package bundles the ffmpeg
 # packaging/ffmpeg.sha256 pins (nettaisen/ffmpeg-build's release, built by that repository's own workflow),
-# which the packaging scripts download and check.
+# which the packaging scripts download and check. No package holds the games' content: the app downloads it from
+# the games' sites (docs/design/content-deployment.md §5), and builds without the content submodules, so the jobs
+# check none out.
 name: Release
 
 on:
@@ -54,8 +56,6 @@ jobs:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons
@@ -109,8 +109,6 @@ jobs:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons
@@ -181,8 +179,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
       - uses: actions/download-artifact@v8
         with:
           name: icons

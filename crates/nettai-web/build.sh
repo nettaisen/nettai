@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The nettai app as a page: crates/nettai-web built for the browser with Wasm's atomics (its threads are Web
-# Workers on one shared memory), wasm-bindgen's shim, the page, and the content's archive, in one folder.
+# Workers on one shared memory), wasm-bindgen's shim and the page, in one folder. The page ships no content: the
+# app downloads each game's from the game's site, as the desktop app does (docs/design/content-deployment.md §5).
 #
 #   bash crates/nettai-web/build.sh [release|dev] [out]     (default: release, target/web/site)
 #   python3 crates/nettai-web/serve.py [out]                (serves it as a page with threads must be)
@@ -35,8 +36,6 @@ cargo +nightly build --locked --target wasm32-unknown-unknown -p nettai-web --pr
 mkdir -p "$out"
 wasm-bindgen --target web --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unknown/$dir/nettai_web.wasm"
 cp crates/nettai-web/web/index.html docs/logo/nettai-icon.svg docs/logo/nettai-logotype.svg "$out/"
-# The content: content/'s Luau and its tables, without the platform's litter or the submodules' .git files.
-tar --exclude .DS_Store --exclude .git -cf "$out/content.tar" -C content .
 
 # A release's module optimized and without its names and debug information (a dev build keeps its function names,
 # for the console's stack traces): binaryen's wasm-opt, with the features the build has.
@@ -51,11 +50,11 @@ if [ "$profile" = release ]; then
 fi
 
 # The sizes the page's preload screen counts its downloads against (as decoded: a server may send them compressed).
-printf '{"nettai_web_bg.wasm": %s, "content.tar": %s}\n' "$(wc -c < "$out/nettai_web_bg.wasm" | tr -d ' ')" "$(wc -c < "$out/content.tar" | tr -d ' ')" > "$out/sizes.json"
+printf '{"nettai_web_bg.wasm": %s}\n' "$(wc -c < "$out/nettai_web_bg.wasm" | tr -d ' ')" > "$out/sizes.json"
 
 # Each file compressed beside it, for a server that sends what the browser takes (serve.py does): brotli where
 # there is one, gzip.
-for file in "$out"/*.wasm "$out"/*.js "$out"/content.tar; do
+for file in "$out"/*.wasm "$out"/*.js; do
     rm -f "$file.br" "$file.gz"
     if command -v brotli >/dev/null; then brotli -q 9 -f -o "$file.br" "$file"; fi
     gzip -9 -k -f "$file"

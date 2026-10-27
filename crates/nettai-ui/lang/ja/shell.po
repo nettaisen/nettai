@@ -366,6 +366,9 @@ msgid "{}'s content couldn't be downloaded"
 msgstr "{} のコンテンツをダウンロードできませんでした"
 msgid "Check your connection, then start nettai again."
 msgstr "接続を確認してから、nettai をもう一度起動してください。"
+# No game's content is published for this version of nettai yet (the loading screen's note).
+msgid "There's no game content for this version of nettai yet. Check back later."
+msgstr "このバージョンの nettai 用のゲームコンテンツはまだありません。しばらくしてからもう一度ご確認ください。"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"

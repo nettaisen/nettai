@@ -3,15 +3,11 @@ name = "nettai-web"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "The nettai app in a browser: the module the page loads (its content, its kept files, the app started) and the page (web/; build.sh builds both)"
+description = "The nettai app in a browser: the module the page loads (its kept files, the app started) and the page (web/; build.sh builds both)"
 publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-[dependencies]
-# The page's content: one archive of content/, fetched (build.sh makes it).
-tar = { version = "0.4", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nettai = { path = "../nettai" }

@@ -5,11 +5,12 @@
 #
 #   packaging/linux/package.sh
 #
-# The app's folder, which vpk makes the AppImage of: nettai, ffmpeg and content/ (the content and ffmpeg beside the
-# program, where the app looks for them), and LICENSE, THIRD-PARTY-NOTICES.txt and ffmpeg-NOTICE.txt. vpk writes the
-# AppImage's entry, its desktop file and its icon. No ROM and no extracted asset is in it: the app extracts each
-# game's pack from the player's own copy. The system's libraries (glibc, ALSA, fontconfig, OpenGL, X11 or Wayland)
-# are the system's: build it on an old distribution (the workflow's is Ubuntu 22.04) to reach more.
+# The app's folder, which vpk makes the AppImage of: nettai and ffmpeg (beside the program, where the app looks for
+# it), and LICENSE, THIRD-PARTY-NOTICES.txt and ffmpeg-NOTICE.txt. vpk writes the AppImage's entry, its desktop file
+# and its icon. No content, no ROM and no extracted asset is in it: the app downloads each game's content
+# (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy. The system's
+# libraries (glibc, ALSA, fontconfig, OpenGL, X11 or Wayland) are the system's: build it on an old distribution (the
+# workflow's is Ubuntu 22.04) to reach more.
 #
 # NETTAI_VERSION   the version, if set; else the app crate's
 # NETTAI_ICONS     a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
@@ -37,7 +38,6 @@ mkdir -p "$app"
 # (The release profile keeps line tables for the log's backtraces; the program's symbols stay, its debug info goes.)
 cp "$program" "$app/nettai"
 strip --strip-debug "$app/nettai"
-copy_content "$app"
 cp "$root/LICENSE" "$app/LICENSE"
 cp "$notices" "$app/THIRD-PARTY-NOTICES.txt"
 # ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg); and its notice (GPL:

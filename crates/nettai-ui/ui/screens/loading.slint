@@ -99,7 +99,7 @@ export component LoadingScreen inherits Rectangle {
         vertical-alignment: TextVerticalAlignment.top;
         wrap: root.wants-folder || Shell.no-content ? word-wrap : char-wrap;
         visible: Shell.no-games;
-        text: Shell.no-content ? Errors.line(ErrorKind.download-failed, "") : root.wants-folder ? Errors.line(ErrorKind.no-legacy-collection, "") : @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
+        text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : root.wants-folder ? Errors.line(ErrorKind.no-legacy-collection, "") : @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
         horizontal-alignment: center;
     }
 

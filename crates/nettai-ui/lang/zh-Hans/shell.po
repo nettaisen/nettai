@@ -366,6 +366,9 @@ msgid "{}'s content couldn't be downloaded"
 msgstr "无法下载{}的内容"
 msgid "Check your connection, then start nettai again."
 msgstr "请检查网络连接，然后重新启动 nettai。"
+# No game's content is published for this version of nettai yet (the loading screen's note).
+msgid "There's no game content for this version of nettai yet. Check back later."
+msgstr "此版本的 nettai 还没有游戏内容。请稍后再来看看。"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "出现错误。详情请查看日志文件。"

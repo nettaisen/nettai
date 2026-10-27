@@ -4,10 +4,12 @@
 #
 #   pwsh packaging\windows\package.ps1 [-Version <version>] [-Icon <nettai.ico>] [-Ffmpeg <ffmpeg.exe>]
 #
-# The app: nettai.exe, ffmpeg.exe, content\, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No ROM and no
-# extracted asset is in it: the app extracts each game's pack from the player's own copy. The installer is the
+# The app: nettai.exe, ffmpeg.exe, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No content, no ROM and no
+# extracted asset is in it: the app downloads each game's content (docs/design/content-deployment.md §5) and extracts
+# each game's pack from the player's own copy. The installer is the
 # player's alone (%LOCALAPPDATA%\nettai, no administrator), with a Start menu and a desktop shortcut; uninstalling
-# leaves the player's data folder (%APPDATA%\nettai: builds, replays, settings, the extracted packs) as it is.
+# leaves the player's data folder (%APPDATA%\nettai: builds, replays, settings, the extracted packs, the downloaded
+# content) as it is.
 #
 # -Version   the version, if set; else $env:NETTAI_VERSION, else the app crate's
 # -Icon      the .ico packaging/icons.sh makes, for the program and the installer; without it neither has one
@@ -34,7 +36,8 @@ $app = "$out\nettai"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Force $app | Out-Null
 
-# The release build, for a packaged app (`NETTAI_PACKAGED`: it reads no content but the content it ships), with
+# The release build, for a packaged app (`NETTAI_PACKAGED`: it plays the games' content it downloads into its
+# store, none of the repository's), with
 # the icon. Cargo's messages name the program and build.rs's OUT_DIR, where it wrote the third-party notices.
 $env:NETTAI_PACKAGED = '1'
 if ($Icon) { $env:NETTAI_WINDOWS_ICON = (Resolve-Path $Icon).Path }
@@ -78,9 +81,6 @@ Copy-Item $program "$app\nettai.exe"
 # it is built from, where that source is).
 if (-not $Ffmpeg) { $Ffmpeg = Get-FfmpegFile 'ffmpeg-windows-x86_64.exe' }
 Copy-Item $Ffmpeg "$app\ffmpeg.exe"
-Copy-Item -Recurse "$root\content" "$app\content"
-# (Without the content submodules' .git files.)
-Get-ChildItem -Path "$app\content" -Recurse -Force -Filter .git | Remove-Item -Recurse -Force
 Copy-Item "$root\LICENSE" "$app\LICENSE.txt"
 Copy-Item $notices "$app\THIRD-PARTY-NOTICES.txt"
 Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"

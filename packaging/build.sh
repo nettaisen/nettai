@@ -6,8 +6,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # The version: $NETTAI_VERSION if set, else the workspace's (Cargo.toml).
 version=${NETTAI_VERSION:-$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -n 1)}
 
-# A release build of the app for a packaged app (`NETTAI_PACKAGED`: it reads no content but the content it
-# ships). With a target triple, for that target. Sets `notices` to the build's third-party notices
+# A release build of the app for a packaged app (`NETTAI_PACKAGED`: it plays the games' content it downloads into
+# its store, none of the repository's). With a target triple, for that target. Sets `notices` to the build's third-party notices
 # (crates/nettai/build.rs writes them to its OUT_DIR, which cargo's build-script-executed message names), and
 # `program` to the program built (its compiler-artifact message's executable).
 build_app() { # [target]
@@ -22,13 +22,6 @@ build_app() { # [target]
     program=$(sed -n 's/.*"reason":"compiler-artifact".*"executable":"\([^"]*\)".*/\1/p' <<<"$messages" | tail -n 1)
     [ -n "$notices" ] || { echo "the build named no licenses.txt (crates/nettai/build.rs)" >&2; return 1; }
     [ -n "$program" ] || { echo "the build named no program" >&2; return 1; }
-}
-
-# The repository's content/, into <dest-dir>, without the submodules' .git files.
-copy_content() { # <dest-dir>
-    mkdir -p "$1"
-    cp -R "$root/content" "$1/"
-    find "$1/content" -name .git -prune -exec rm -rf {} +
 }
 
 # The ffmpeg every package bundles beside the program, for the replay export (docs/app.md §19): a release of
