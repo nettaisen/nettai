@@ -3398,6 +3398,7 @@ dependencies = [
  "nettai-assets",
  "nettai-battle",
  "nettai-content-api",
+ "nettai-extract",
  "nettai-platform",
  "serde",
  "serde_json",

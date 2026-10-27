@@ -13,6 +13,8 @@ nettai-assets = { path = "../nettai-assets" }
 nettai-battle.workspace = true
 # The definitions the define phase reads (the lint of `nettai-content check`).
 nettai-content-api = { path = "../nettai-content-api" }
+# A game's assets, extracted from its ROMs, which `nettai-content check` checks against its content.
+nettai-extract = { path = "../nettai-extract" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

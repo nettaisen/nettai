@@ -156,17 +156,14 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    moves about at random and never attacks) or attacks (it
                    presses at random what a player fights with); on its
                    custom screen it picks the first chip it can
-  --audit-content  with --match FILE: check the game's assets, extracted from
-                   its ROMs, against its content: every asset the content
-                   names is there, each sprite with the content's animations
-                   and frames (else the game doesn't load), the content
-                   times its sprites as the ROMs do, the strings' backgrounds
-                   are the assets'; and make every lookup the drawing code and
-                   audio make for everything the content defines (every
-                   chip's icon, picture and name, every navi's and form's
-                   face, every asset the content names), in every language,
-                   and list what the assets don't have; exits 1 if there was
-                   any
+  --audit-content  with --match FILE: make every lookup the drawing code and
+                   audio make for everything the game's content defines
+                   (every chip's icon, picture and name, every navi's and
+                   form's face, every asset the content names), in every
+                   language, and list what its assets, extracted from its
+                   ROMs, don't have; exits 1 if there was any. (The assets
+                   against the content, their names, frames and timing:
+                   nettai-content check <game>.)
   --audit          run the traces (several at a time) making each frame's
                    lookups and checking each sound cue, and list what they
                    named that the assets don't have (a sprite, an animation, a
@@ -408,17 +405,11 @@ fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, path
     r
 }
 
-/// `--audit-content`: the game's assets against its content (as it loaded, every asset it names, each sprite with
-/// its animations and frames: `nettai_content::load::asset_numbers`), its sprites' timing against the ROMs', the
-/// strings' backgrounds against the assets'; then every lookup for everything the content defines, in each language
-/// the content has strings in; then exit.
+/// `--audit-content`: every lookup for everything the content defines, in each language the content has strings
+/// in, of the game's assets as they loaded (`nettai-content check` holds the assets to the content); then exit.
 fn audit_content(args: &Args, game: &Game) -> ! {
     let t = Instant::now();
     let (content, dir, games) = (&*game.content, &*game.dir, std::slice::from_ref(&game.name));
-    let mut problems: Vec<String> = game.timing_differences.iter().map(|d| format!("timing: {d}")).collect();
-    let mut strings = nettai_content::report::Report::default();
-    nettai_content::locale::check_games(dir, content, Some(&game.index), &mut strings);
-    problems.extend(strings.issues.iter().filter(|i| i.level == nettai_content::report::Level::Error).map(|i| format!("strings: {i}")));
     let bundles = vec![(*game.graphics).clone()];
     let banks: Option<Vec<Arc<m4a::SoundBank>>> = (!args.mute).then(|| sound_of(game).banks);
     let own_lang = nettai_content::locale::OWN;
@@ -428,8 +419,8 @@ fn audit_content(args: &Args, game: &Game) -> ! {
         languages.push((lang, strings.map(Arc::new)));
     }
     let found = nettai_tools::content_audit::audit(content, bundles, Default::default(), &game.numbers, banks.as_deref(), &languages);
-    problems.extend(found.problems.iter().cloned());
-    for p in &problems {
+    let problems = &found.problems;
+    for p in problems {
         println!("{p}");
     }
     if !found.untranslated.is_empty() {
@@ -445,13 +436,11 @@ fn audit_content(args: &Args, game: &Game) -> ! {
     }
     let assets: Vec<String> = found.assets.iter().map(|(k, n)| format!("{n} {k}s")).collect();
     eprintln!(
-        "audit-content: {} chips, {} navis, {} forms; the assets' {}; the content's {} sprites timed as the ROMs time them{}; {} lookups in {}{}; {} problems ({:.1?})",
+        "audit-content: {} chips, {} navis, {} forms; the assets' {}; {} lookups in {}{}; {} problems ({:.1?})",
         found.chips,
         found.navis,
         found.forms,
         assets.join(", "),
-        content.animations.sprites.len(),
-        if game.timing_differences.is_empty() { "" } else { " but for the differences above" },
         found.made.len(),
         found.languages.join(" and "),
         if banks.is_none() { ", no sound (--mute)" } else { "" },
