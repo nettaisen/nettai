@@ -3823,7 +3823,10 @@ collection is kept in the settings, and the games it has can be extracted from i
 again, and nothing is kept. A game whose pack another build made is loaded as it is while there is nothing to
 make it again from; if it doesn't load, that is the same error. A failure while reading the archives or
 extracting is `UserError::ExtractFailed` ("BN6's data couldn't be extracted. Details are in the log file."), the
-old pack kept where there is one; what went wrong is in the log alone.
+old pack kept where there is one; what went wrong is in the log alone. So is a collection that hasn't every ROM of
+the game, the US and the Japanese of both versions (a folder chosen, or dropped on the page, with some of them
+alone): a pack is extracted from a whole collection only, on the desktop and in the browser alike, never made
+smaller (`packs::extract`; the log names the ROMs missing).
 
 **How long it takes** (2026-10-13, a release build, each game's four ROMs, from the archives of the folder below,
 as the app's log said them; load average 17 to 35; the game the app opened on first):

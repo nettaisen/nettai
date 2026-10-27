@@ -220,6 +220,17 @@ const EXTRACTED: f32 = 0.15;
 /// Extract `job`'s pack into the packs folder `dir` (in place of the old one, once it is whole), telling
 /// `progress` how far it is. The time each stretch took.
 pub fn extract(dir: &Path, job: &Job, progress: &mut dyn FnMut(f32)) -> Result<[f32; 3], String> {
+    // (A pack is extracted from a whole collection alone: every ROM of the game, the US and the Japanese of both
+    // versions. A set short of one is refused, on the desktop and in the browser alike, never made a smaller pack.)
+    let game = job.tables.game();
+    let missing: Vec<&str> = game.codes().into_iter().filter(|code| !job.roms.iter().any(|r| r.code == *code)).collect();
+    if !missing.is_empty() {
+        return Err(format!(
+            "the Legacy Collection's {} ROMs aren't all there ({} missing): a pack is extracted from every ROM of the game, the US and the Japanese of both versions",
+            game.id(),
+            missing.join(", ")
+        ));
+    }
     let began = Instant::now();
     let mut roms = RomSet::default();
     for (i, rom) in job.roms.iter().enumerate() {
@@ -421,24 +432,31 @@ mod tests {
         assert_eq!(files(dir.path()), kept);
     }
 
-    /// A game whose ROMs don't read or aren't whole isn't extracted: the failure is said, the old pack stays,
-    /// and nothing is left half made. (Its ROMs are only moved here: fake bytes do, and the extractor refuses
-    /// them for being no whole ROM.)
+    /// A game whose collection hasn't all its ROMs, or whose ROMs don't read or aren't whole, isn't extracted: the
+    /// failure is said, the old pack stays, and nothing is left half made. (Its ROMs are only moved here: fake bytes
+    /// do, and the extractor refuses them for being no whole ROM.)
     #[test]
     fn an_extraction_that_fails_leaves_the_old_pack() {
         let (install, packs) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
         let data = install.path().join("exe/data");
+        // (One ROM of the game's four: an incomplete collection, refused before anything is read.)
         archive(&data.join("exe6.dat"), &[("exe6_rom_e.srl", &fake_rom("BR6E", 0x1000))]);
-        let roms = crate::bnlc::Install::at(install.path()).unwrap().roms();
-        let job = Job::new(tables(Game::Exe6), roms);
+        let job = Job::new(tables(Game::Exe6), crate::bnlc::Install::at(install.path()).unwrap().roms());
         nettai_content::pack::write_file(packs.path(), &format!("{}/content.toml", job.pack), b"old").unwrap();
+        let why = extract(packs.path(), &job, &mut |_| {}).unwrap_err();
+        assert!(why.contains("aren't all there") && why.contains("BR5E, BR6J, BR5J"), "{why}");
+        assert_eq!(files(packs.path()), [format!("{}/content.toml", job.pack)]);
+        // (All four, and none a whole ROM.)
+        let four = [("exe6_rom_e.srl", "BR6E"), ("exe6f_rom_e.srl", "BR5E"), ("exe6_rom_j.srl", "BR6J"), ("exe6f_rom_j.srl", "BR5J")].map(|(name, code)| (name, fake_rom(code, 0x1000)));
+        archive(&data.join("exe6.dat"), &four.iter().map(|(name, rom)| (*name, rom.as_slice())).collect::<Vec<_>>());
+        let job = Job::new(tables(Game::Exe6), crate::bnlc::Install::at(install.path()).unwrap().roms());
         let mut said = Vec::new();
         let why = extract(packs.path(), &job, &mut |f| said.push(f)).unwrap_err();
         assert!(why.contains("8 MiB"), "{why}");
         assert_eq!(files(packs.path()), [format!("{}/content.toml", job.pack)]);
         // An archive gone since it was looked in.
         nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
-        assert!(extract(packs.path(), &job, &mut |_| {}).unwrap_err().contains("exe6_rom_e.srl"));
+        assert!(extract(packs.path(), &job, &mut |_| {}).unwrap_err().contains(".srl"));
     }
 
     /// The extraction's thread takes the games in turn, the one asked for first, tells each one's end, and stops
