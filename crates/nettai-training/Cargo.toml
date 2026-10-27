@@ -13,7 +13,7 @@ nettai-content-api = { path = "../nettai-content-api" }
 nettai-match = { path = "../nettai-match" }
 # A tick's input from buttons (`standin::tick_input`), and the masher.
 nettai-netplay = { path = "../nettai-netplay" }
-# The packs a pool plays on (their timings: the battle's content).
+# A game's battle content, loaded from its Luau (`pack::load_battle`).
 nettai-content = { path = "../nettai-content" }
 # The chips' fingerprints kept on disk, by content hash.
 serde = { version = "1", features = ["derive"] }

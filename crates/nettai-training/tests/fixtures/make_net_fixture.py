@@ -5,7 +5,7 @@ from the real pool (`nettai_gym`), of the three games, each with the previous ac
 first, where the GRU state is reset), with what the network computes for them, step by step from h0
 (`nettai_ai.export.save_weights`, `save_fixture`).
 
-    cd training && NETTAI_PACKS=<packs> uv run --no-sync python \
+    cd training && uv run --no-sync python \
         ../crates/nettai-training/tests/fixtures/make_net_fixture.py [out dir] [--size small|default] [--cache dir]
 
 `small` (the default) is the committed fixture's: d 8, two heads, two layers, odd widths. `default` is the

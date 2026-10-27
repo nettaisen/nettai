@@ -2,7 +2,7 @@
 rollout of the real pool (or FakePool), the update's cost under variants run on the same data, and with --loop
 the overlapped loop itself.
 
-    NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench [--device cpu] [--envs 64] [--steps 128]
+    uv run --no-sync python -m nettai_ai.bench [--device cpu] [--envs 64] [--steps 128]
         [--variants base,epochs1,...] [--profile] [--loop N]
 
 Each variant starts from the same weights and optimizer state and reports learner decisions a second
