@@ -32,7 +32,6 @@
 pub mod cli;
 mod decode;
 mod elements;
-mod exe4;
 mod exe5;
 mod placeholders;
 mod recipe;
@@ -161,7 +160,7 @@ impl Tables {
     /// The names the pack's assets are written under.
     fn names(&self) -> AssetNames {
         match &self.compat {
-            Compat::Exe4(c) => exe4::names::asset_names(c),
+            Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (Tables::of_content)"),
             Compat::Exe5(c) => exe5::names::asset_names(c),
             Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
@@ -170,22 +169,18 @@ impl Tables {
     /// The field's panel types' names by number.
     fn panel_names(&self) -> Vec<String> {
         match &self.compat {
-            Compat::Exe4(c) => exe4::graphics::panel_names(c),
+            Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (Tables::of_content)"),
             Compat::Exe5(c) => exe5::graphics::panel_names(c),
             Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
     }
 
-    /// What else of them the extraction reads, which changes what a pack holds: EXE4's version chips and its
-    /// text's first control byte, EXE5's backgrounds by their numbers.
+    /// What else of them the extraction reads, which changes what a pack holds: EXE5's backgrounds by their
+    /// numbers.
     fn read_by_number(&self) -> String {
         match &self.compat {
-            Compat::Exe4(c) => {
-                let versions: Vec<(&String, &Option<exe4_compat::Version>)> = c.chips.iter().map(|(k, e)| (k, &e.version)).collect();
-                format!("{versions:?} {}", c.text.first_control)
-            }
             Compat::Exe5(c) => format!("{:?}", c.assets.backgrounds),
-            Compat::Exe6(_) => String::new(),
+            Compat::Exe4(_) | Compat::Exe6(_) => String::new(),
         }
     }
 }
@@ -376,7 +371,7 @@ pub fn extract_in_rust(tables: &Tables, roms: &RomSet) -> Result<Extraction, Err
 /// being compared with theirs).
 #[doc(hidden)]
 pub fn has_rust_extraction(game: Game) -> bool {
-    matches!(game, Game::Exe4 | Game::Exe5)
+    matches!(game, Game::Exe5)
 }
 
 fn extract_in_rust_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
@@ -418,7 +413,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
     let mut graphics = match &tables.compat {
-        Compat::Exe4(c) => exe4::graphics::bundle(&rom::Roms(sources), &names, c),
+        Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (has_rust_extraction)"),
         Compat::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
         Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (has_rust_extraction)"),
     };

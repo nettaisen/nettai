@@ -124,7 +124,7 @@ pub struct ChipEntry {
 /// sprite list and the index), sounds by the song table's numbers, battle
 /// backgrounds by the background loader's (0x08085430), banners by the
 /// banner block's (0x02037CE0's +1), the emotion window's faces by the
-/// number the extractor gives them (its exe4/hud.rs).
+/// number the recipe gives them (content/exe4/extract/hud.luau).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssetNames {

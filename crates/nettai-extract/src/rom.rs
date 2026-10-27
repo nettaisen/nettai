@@ -39,31 +39,22 @@ pub(crate) enum ReadKind {
 /// in the order of the game's ROMs (`Game::codes`: its two US ROMs, then
 /// their Japanese ones). The block is where that word says, so every ROM
 /// is read the way its own code reaches the block, whatever moved in it.
-/// A block no pointer of the game's reaches has its own address stated
-/// (`stated`).
 #[derive(Clone, Copy)]
 pub(crate) struct Place {
     at: [u32; 4],
-    pointer: bool,
 }
 
 impl Place {
     /// A pointer the two versions' code has at the same address: at `us`
     /// in both US ROMs and at `jp` in both Japanese ones.
     pub const fn pointer(us: u32, jp: u32) -> Place {
-        Place { at: [us, us, jp, jp], pointer: true }
+        Place { at: [us, us, jp, jp] }
     }
 
     /// A pointer at an address of its own in each ROM (code past the first
     /// of what the two versions have otherwise).
     pub const fn pointer_in_each(at: [u32; 4]) -> Place {
-        Place { at, pointer: true }
-    }
-
-    /// The block's own address in each ROM, for data a ROM holds and
-    /// nothing of its points at; 0 where a ROM doesn't have it so.
-    pub const fn stated(at: [u32; 4]) -> Place {
-        Place { at, pointer: false }
+        Place { at }
     }
 }
 
@@ -81,10 +72,9 @@ impl<'a> Source<'a> {
         self.rom.is_present()
     }
 
-    /// Where this ROM has the block at `place`.
+    /// Where this ROM has the block at `place`: the pointer word there.
     pub fn at(&self, place: Place) -> u32 {
-        let at = place.at[self.which];
-        if place.pointer { self.rom.u32(at) } else { at }
+        self.rom.u32(place.at[self.which])
     }
 }
 
