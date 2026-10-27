@@ -126,9 +126,9 @@ pub fn passed_x(new: i32, old: i32, target: i32, side: u8) -> bool {
 
 /// A sprite, as the engine names it: a handle, its place among the sprites
 /// the content defines (`AssetNames::sprites`, in byte order;
-/// docs/design/rules-in-luau.md §7.4). What a pack calls it (its category
-/// and index) is [`SpriteNumber`], which frontends read through a pack's
-/// assets (`AssetNumbers`); the simulation never does.
+/// docs/design/rules-in-luau.md §7.4). What the ROMs number it (its category
+/// and index) is [`SpriteNumber`], which frontends read through the asset
+/// numbers (`AssetNumbers`); the simulation never does.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct SpriteId(pub u16);
@@ -139,9 +139,8 @@ impl SpriteId {
     }
 }
 
-/// A sprite as its pack holds it: (category, index) into the game's
-/// sprite table. Written `"CC-II"` in hex, as its `sprite.json` in a
-/// content pack holds it (its folder there is its name).
+/// A sprite by its number: (category, index) into the game's sprite
+/// table. Written `"CC-II"` in hex.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SpriteNumber {
     pub category: u8,

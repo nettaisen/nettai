@@ -21,8 +21,9 @@ playback = ["dep:cpal"]
 
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
-# The examples load a content pack.
+# The examples extract a game's sound from its ROMs, by its recipe in the content.
 nettai-content = { path = "../nettai-content" }
+nettai-extract = { path = "../nettai-extract" }
 
 [[example]]
 name = "play_song"

@@ -14,8 +14,8 @@
 //! sprites.luau), and EXE6's that the EXE6 modules require, each defined in
 //! place of EXE6's module for it, all with the made-up timing of
 //! testdata/content/sprite_timing.luau. Its asset handles are the names its
-//! modules give; the numbers a frontend's test draws them by are a made-up
-//! pack's ([`asset_index`], [`asset_numbers`]).
+//! modules give; the numbers a frontend's test draws them by are made up
+//! ([`asset_index`], [`asset_numbers`]).
 //!
 //! Its scripts are this repository's EXE6 scripts (content/exe6, the source
 //! overlay), read from the repository, and its own modules
@@ -117,22 +117,21 @@ pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 /// The test stages' music's song (the asset `test-stage-music`).
 pub const STAGE_SONG: u16 = 0x16;
 
-/// The navi's sprite (base form), as the test pack holds it.
+/// The navi's sprite (base form), by its made-up number.
 pub const NAVI_SPRITE: SpriteNumber = SpriteNumber { category: 0, index: 0 };
 
-/// The test content's assets as its made-up pack numbers them ([`asset_index`]: EXE6's numbers where tests look at
-/// them, made-up ones for the rest): what a frontend's test draws them by.
+/// The test content's assets by their made-up numbers ([`asset_index`]: EXE6's numbers where tests look at them,
+/// made-up ones for the rest): what a frontend's test draws them by.
 pub fn asset_numbers(c: &Content) -> AssetNumbers {
-    AssetNumbers::new(&c.assets, &asset_index_of(c)).unwrap_or_else(|missing| panic!("the test pack has no {}", missing.join(", ")))
+    AssetNumbers::new(&c.assets, &asset_index_of(c)).unwrap_or_else(|missing| panic!("the test assets have no {}", missing.join(", ")))
 }
 
-/// Sprite `id` as the test pack holds it (several names may be one sprite of the pack: tests compare what the pack
-/// holds).
+/// Sprite `id`'s made-up number (several names may be one sprite: tests compare the numbers).
 pub fn sprite_number(c: &Content, id: SpriteId) -> SpriteNumber {
     asset_numbers(c).sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0))
 }
 
-/// The test pack's song `n` as the test content names it (its handle).
+/// The test assets' song `n` as the test content names it (its handle).
 pub fn sound(n: u16) -> crate::sound::SoundId {
     let c = content();
     let numbers = asset_numbers(&c);
@@ -441,7 +440,7 @@ pub fn strings() -> crate::content::strings::Strings {
     s
 }
 
-/// A made-up pack index for `modules`: every name they give an
+/// A made-up asset index for `modules`: every name they give an
 /// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
 /// ROM-derived).
 pub fn asset_index_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetIndex {
@@ -480,7 +479,7 @@ pub fn asset_index_used(modules: &std::collections::BTreeMap<String, String>) ->
     a
 }
 
-/// The test content's made-up pack's index: the EXE6 names its modules use
+/// The test content's made-up asset index: the EXE6 names its modules use
 /// (with EXE6's numbers where its tests look at them, made-up assets for
 /// the rest) and a few made-up ones for the test pack.
 pub fn asset_index() -> nettai_content_api::AssetIndex {
@@ -494,7 +493,7 @@ fn asset_index_of(c: &Content) -> nettai_content_api::AssetIndex {
     asset_index_with(&modules)
 }
 
-/// The test pack's index, with names of `modules` too.
+/// The test content's asset index, with names of `modules` too.
 fn asset_index_with(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetIndex {
     let mut a = numbered_assets();
     let used = asset_index_used(modules);

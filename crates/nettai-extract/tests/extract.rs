@@ -1,51 +1,32 @@
 mod common;
 
-use common::{content, full_set, games, recipe};
+use common::{content, full_set, games, recipe, roms};
 use nettai_content::{pack, report::Report};
 use nettai_extract::Recipe;
 use std::path::Path;
 use std::sync::Arc;
 
-/// What the content audit (nettai-tool's `--audit-content`) finds missing
-/// of `game`'s content drawn and heard with the pack at `dir`: every
-/// lookup a frontend makes of everything the content defines, in each
-/// language it has strings in.
-fn audit(game: &str, dir: &Path) -> Vec<String> {
-    use nettai_frontend::game::{Found, Game as Loaded};
-    // (A packs directory with no pack in it: the pack is the one given.)
-    let none = tempfile::tempdir().unwrap();
-    let found = Found::find(none.path(), &[dir.to_path_buf()]).unwrap_or_else(|e| panic!("{e}"));
-    let loaded = Loaded::load(&found, Some(&content()), game, &[]).unwrap_or_else(|e| panic!("{e}"));
-    let bundles = loaded.packs.iter().map(|p| pack::load_graphics(p).unwrap_or_else(|r| panic!("{r}")).0).collect();
-    let banks = loaded.sound().unwrap_or_else(|e| panic!("{e}")).banks;
-    let own = nettai_content::locale::OWN;
-    let mut languages = vec![(own.to_string(), None)];
-    for lang in nettai_content::locale::languages(&loaded.dir).into_iter().filter(|l| l != own) {
-        let strings = nettai_content::locale::load_for(&loaded.dir, std::slice::from_ref(&loaded.name), &lang).unwrap();
-        languages.push((lang, strings.map(Arc::new)));
-    }
-    nettai_tools::content_audit::audit(&loaded.content, bundles, loaded.own, &loaded.assets, Some(&banks), &languages).problems
-}
-
-/// Each game's pack of its full set, made by its recipe, loads with its content and answers every lookup the
-/// content audit makes: an asset the content names that the pack lacks fails it. And it has what the content names,
-/// each sprite with the content's animations (`pack::pack_assets`, the CLI's `--check`), and it is written as `write`
-/// writes it.
+/// Each game's assets, extracted from its full set by its recipe, load with its content (every asset the content
+/// names is there, each sprite with the content's animations and frames: `nettai_content::load::asset_numbers`), its
+/// content times its sprites as the ROMs do, and they answer every lookup the content audit (nettai-tool's
+/// `--audit-content`) makes, in each language the content has strings in.
 #[test]
-#[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
+#[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn full_sets_pass_the_content_audit() {
+    use nettai_frontend::game::Game;
     for game in games() {
-        let recipe = recipe(&game);
-        let assets = recipe.extract(&full_set(&recipe)).unwrap_or_else(|e| panic!("{e}"));
-        let dir = tempfile::tempdir().unwrap();
-        assets.write(dir.path()).unwrap();
-        let (loaded, _) = pack::load_battle(&content(), &game).unwrap_or_else(|e| panic!("{game}: {e}"));
-        let (_, report) = pack::pack_assets(&loaded, dir.path()).unwrap_or_else(|e| panic!("{game}: {e}"));
-        assert!(!report.has_errors(), "{game}: {report}");
-        let problems = audit(&game, dir.path());
-        assert!(problems.is_empty(), "{game}: {problems:#?}");
-        // Writing a second time cannot leave stale graphics from an earlier pack.
-        assert!(assets.write(dir.path()).unwrap_err().to_string().contains("not empty"));
+        let loaded = Game::load(&roms(), Some(&content()), &game, &[]).unwrap_or_else(|e| panic!("{game}: {e}\n{}", e.report));
+        assert!(!loaded.report.has_errors(), "{game}: {}", loaded.report);
+        assert_eq!(loaded.timing_differences, Vec::<String>::new(), "{game}: the content times its sprites otherwise than the ROMs");
+        let own = nettai_content::locale::OWN;
+        let mut languages = vec![(own.to_string(), None)];
+        for lang in nettai_content::locale::languages(&loaded.dir).into_iter().filter(|l| l != own) {
+            let strings = nettai_content::locale::load_for(&loaded.dir, std::slice::from_ref(&loaded.name), &lang).unwrap();
+            languages.push((lang, strings.map(Arc::new)));
+        }
+        let banks = [loaded.sound.clone()];
+        let found = nettai_tools::content_audit::audit(&loaded.content, vec![(*loaded.graphics).clone()], Default::default(), &loaded.numbers, Some(&banks), &languages);
+        assert!(found.problems.is_empty(), "{game}: {:#?}", found.problems);
     }
 }
 
@@ -85,24 +66,10 @@ fn a_roms_code_is_read_from_its_header() {
     assert_eq!(nettai_extract::header_code(&[0; nettai_extract::HEADER_LEN]), None, "no game code");
 }
 
-/// Each game's packs have a fingerprint of their own, the same each time it is asked for.
+/// A recipe is the content's, read from the folder given: a copy of the content's has the same ROMs, and one that
+/// doesn't load is an error that names the folder.
 #[test]
-fn each_game_has_its_own_fingerprint() {
-    let print = |game: &String| recipe(game).fingerprint();
-    let all = games();
-    let prints: Vec<String> = all.iter().map(print).collect();
-    assert!(prints.iter().all(|p| p.len() == 16 && p.chars().all(|c| c.is_ascii_hexdigit())), "{prints:?}");
-    assert_eq!(prints, all.iter().map(print).collect::<Vec<_>>());
-    for (i, p) in prints.iter().enumerate() {
-        assert!(!prints[..i].contains(p), "{prints:?}");
-    }
-}
-
-/// The names are the content's, read when the extraction runs: content whose `assets.toml` names an asset
-/// otherwise, or that has no `assets.toml`, has another fingerprint. A recipe that doesn't load is an error that
-/// names the folder.
-#[test]
-fn the_names_are_the_contents() {
+fn a_recipe_is_the_contents() {
     let copy = tempfile::tempdir().unwrap();
     // (What the recipe reads of the content: the game's compat/ and extract/, and exelib's extract/; the manifests
     // say which packs they are.)
@@ -126,57 +93,27 @@ fn the_names_are_the_contents() {
             }
         }
     }
-    let compat = copy.path().join("exe6/compat");
     let same = Recipe::of_content(copy.path(), "exe6").unwrap();
-    assert_eq!(same.fingerprint(), recipe("exe6").fingerprint());
-    let assets = compat.join("assets.toml");
-    let text = std::fs::read_to_string(&assets).unwrap().replacen("\ndummy-shield = ", "\nwooden-shield = ", 1);
-    std::fs::write(&assets, text).unwrap();
-    let renamed = Recipe::of_content(copy.path(), "exe6").unwrap();
-    assert_ne!(renamed.fingerprint(), same.fingerprint());
-    std::fs::remove_file(&assets).unwrap();
-    let gone = Recipe::of_content(copy.path(), "exe6").unwrap();
-    assert!(gone.fingerprint() != renamed.fingerprint() && gone.fingerprint() != same.fingerprint());
+    assert_eq!(same.roms(), recipe("exe6").roms());
     std::fs::write(copy.path().join("exe6/extract/names.luau"), "return {").unwrap();
     let e = Recipe::of_content(copy.path(), "exe6").unwrap_err().to_string();
     assert!(e.contains("syntax error") && e.contains(&copy.path().display().to_string()), "{e}");
 }
 
-/// The extraction and the writing say how far they are, from 0 to 1 and never back; and what the writing that
-/// reports writes is `write`'s, byte for byte.
+/// An extraction says how far it is, from 0 to 1 and never back.
 #[test]
-#[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
+#[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn an_extraction_reports_how_far_it_is() {
     let mut said = Vec::new();
     let six = recipe("exe6");
-    let assets = six.extract_reporting(&full_set(&six), &mut |f| said.push(f)).unwrap();
-    let (reported, plain) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-    assets.write_reporting(reported.path(), &mut |f| said.push(f + 1.0)).unwrap();
-    assets.write(plain.path()).unwrap();
+    six.extract_reporting(&full_set(&six), &mut |f| said.push(f)).unwrap();
     assert!(said.windows(2).all(|w| w[0] <= w[1]), "{said:?}");
-    assert!(said.iter().all(|f| (0.0..=2.0).contains(f)), "{said:?}");
-    assert!(said.contains(&1.0) && said.last() == Some(&2.0), "{said:?}");
-    fn files(root: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
-        let mut out = Vec::new();
-        let mut dirs = vec![root.to_path_buf()];
-        while let Some(dir) = dirs.pop() {
-            for entry in std::fs::read_dir(&dir).unwrap() {
-                let path = entry.unwrap().path();
-                if path.is_dir() {
-                    dirs.push(path);
-                } else {
-                    out.push((path.strip_prefix(root).unwrap().to_path_buf(), std::fs::read(&path).unwrap()));
-                }
-            }
-        }
-        out.sort();
-        out
-    }
-    let (a, b) = (files(reported.path()), files(plain.path()));
-    assert!(!a.is_empty());
-    assert!(a == b, "the two writings differ");
+    assert!(said.iter().all(|f| (0.0..=1.0).contains(f)), "{said:?}");
+    assert_eq!(said.last(), Some(&1.0), "{said:?}");
 }
 
+/// The graphics extracted are a pack's of the same ROMs as it imports (`NETTAI_EXTRACT_REFERENCE_PACKS`: a folder of
+/// packs a game each, `<folder>/<game>`, written by the extractor before extraction replaced packs).
 #[test]
 #[ignore = "requires original ROMs and existing reference packs"]
 fn full_sets_preserve_reference_graphics() {

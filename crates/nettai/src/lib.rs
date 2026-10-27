@@ -14,7 +14,6 @@
 mod awake;
 mod backgrounds;
 mod battle;
-mod bnlc;
 mod builds;
 mod contents;
 mod errors;
@@ -25,7 +24,6 @@ mod lang;
 mod look;
 mod music;
 mod nav;
-mod packs;
 mod paths;
 mod quit;
 mod replays;
@@ -107,7 +105,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     });
     // (The browser's page hears files and folders dropped on it, the Legacy Collection's archives read out of a
     // folder; the desktop's window has its own events for them.)
-    nettai_platform::dialog::take_drops(&crate::bnlc::ARCHIVES, |paths| {
+    nettai_platform::dialog::take_drops(&nettai_extract::source::ARCHIVES, |paths| {
         for path in paths {
             with_app(|app| app.dropped(&path));
         }

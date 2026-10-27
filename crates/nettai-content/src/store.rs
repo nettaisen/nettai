@@ -195,9 +195,9 @@ pub fn manifest(dir: &Path) -> Result<Manifest, String> {
 }
 
 /// The content hash of game `game` of content directory `content` (a bundle's folder): the content loaded and defined
-/// as a battle plays it (`crate::pack::load_battle`: the content alone), hashed (`Content::hash`).
+/// as a battle plays it (`crate::load::load_battle`: the content alone), hashed (`Content::hash`).
 pub fn content_hash(content: &Path, game: &str) -> Result<ContentHash, Report> {
-    let (content, _) = crate::pack::load_battle(content, game)?;
+    let (content, _) = crate::load::load_battle(content, game)?;
     Ok(content.hash())
 }
 

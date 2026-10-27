@@ -159,10 +159,10 @@ mod tests {
     }
 
     use nettai_battle::Content;
-    use nettai_frontend::game::{Found, Game, Loaded, Sound, GraphicsMode};
+    use nettai_frontend::game::{Game, Loaded, Sound, GraphicsMode};
     use std::sync::Arc;
 
-    /// Game `content` as it is read (content/'s, its pack made up: each asset numbered by its handle): its sound a
+    /// Game `content` as it is read (content/'s, its assets made up: each numbered by its handle): its sound a
     /// bank with a song at each of its sounds' numbers (the library's testing bank's songs), its battle's music and
     /// its themes held notes on the music player, every other a short note on another.
     fn loaded(content: Arc<Content>) -> Loaded {
@@ -179,24 +179,25 @@ mod tests {
                 bank.songs[at.id as usize] = held.clone();
             }
         }
+        let bank = Arc::new(bank);
         Loaded {
-            found: Found { dir: None, packs: Vec::new(), report: Default::default() },
             game: Game {
                 name: content.game().to_string(),
                 content: content.clone(),
                 dir: nettai_content::index::content(),
-                packs: Vec::new(),
-                own: Default::default(),
-                assets: Arc::new(assets),
+                graphics: Default::default(),
+                sound: bank.clone(),
+                numbers: Arc::new(assets),
                 index: Default::default(),
-                others: Vec::new(),
+                others: Default::default(),
+                timing_differences: Vec::new(),
                 report: Default::default(),
             },
             graphics: nettai_frontend::testing::graphics(&content, 0x7FFF),
             mode: GraphicsMode::Original,
             reduce_motion: false,
             font: None,
-            sound: Some(Sound { banks: vec![Arc::new(bank)], songs, report: Default::default() }),
+            sound: Some(Sound { banks: vec![bank], songs, report: Default::default() }),
         }
     }
 

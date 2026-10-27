@@ -71,19 +71,17 @@ pub enum UserError {
     WrongGameSave { game: String },
     /// A file isn't a ruleset of the game: `game` is the game, as shown. Why is in the log.
     NotARuleset { game: String },
-    /// A game's pack is there and can't be loaded (it was extracted for another version of the game's
-    /// content): `game` is the game, as shown. The other games play.
-    GameOutdated { game: String },
-    /// A game has no pack, and there is no Legacy Collection to extract it from: none is found through Steam,
-    /// nor in the folder the player chose (docs/app.md §17). Its dialog offers to choose the folder.
+    /// A game couldn't be loaded (its content, or its assets extracted from its ROMs: the archives didn't read, the
+    /// extraction failed, or what it extracted hasn't what the content names): `game` is the game, as shown. The other
+    /// games play.
+    LoadFailed { game: String },
+    /// There is no Legacy Collection to read the games' ROMs from: none is found through Steam, nor in the folder
+    /// the player chose (docs/app.md §17). Its dialog offers to choose the folder.
     NoLegacyCollection,
-    /// A game has no pack, and the Legacy Collection found lacks some of its ROMs (every one its recipe declares is
-    /// needed: docs/design/extraction-recipes.md §5.6): `game` is the game, as shown. Its dialog offers to choose
-    /// the folder again.
+    /// The Legacy Collection found lacks some of a game's ROMs (every one its recipe declares is needed:
+    /// docs/design/extraction-recipes.md §5.6): `game` is the game, as shown. Its dialog offers to choose the folder
+    /// again.
     IncompleteCollection { game: String },
-    /// A game's pack couldn't be extracted from the Legacy Collection (its archives didn't read, or the
-    /// extraction failed): `game` is the game, as shown.
-    ExtractFailed { game: String },
     /// A game's content couldn't be downloaded, and the app has none of it (docs/design/content-deployment.md
     /// §5): `game` is the game, as shown.
     DownloadFailed { game: String },
@@ -120,10 +118,9 @@ impl UserError {
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
             UserError::NotARuleset { game } => (ErrorKind::NotARuleset, game),
-            UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
+            UserError::LoadFailed { game } => (ErrorKind::LoadFailed, game),
             UserError::NoLegacyCollection => (ErrorKind::NoLegacyCollection, ""),
             UserError::IncompleteCollection { game } => (ErrorKind::IncompleteLegacyCollection, game),
-            UserError::ExtractFailed { game } => (ErrorKind::ExtractFailed, game),
             UserError::DownloadFailed { game } => (ErrorKind::DownloadFailed, game),
             UserError::Other => (ErrorKind::Other, ""),
         }

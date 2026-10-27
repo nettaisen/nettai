@@ -14,14 +14,14 @@
 //! cargo run -p nettai-frontend --example language -- --game exe6 --seed 7 [--from en] [--to ja] [--text original]
 //! ```
 //!
-//! The packs are found as the program finds them (`$NETTAI_PACKS`).
+//! The game's ROMs are read as the tools read them (`$NETTAI_ROMS`, else the Legacy Collection Steam installed).
 
 use nettai_battle::battle::mode;
 use nettai_battle::custom::Phase;
 use nettai_battle::input::keys;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
-use nettai_frontend::game::{self, Found, Game, Graphics, GraphicsMode};
+use nettai_frontend::game::{self, Game, Graphics, GraphicsMode, RomSource};
 use nettai_render::vfont::TextRenderer;
 
 /// The buttons held, by tick: R on the first custom screen opens the chip's
@@ -63,8 +63,8 @@ fn run() -> Result<String, String> {
 
     // The game, and its graphics in each language: the host loads what it offers.
     let said = |e: game::LoadError| format!("{}\n{e}", e.report);
-    let found = Found::find(&nettai_content::pack::packs_dir(), &[]).map_err(said)?;
-    let game = Game::load(&found, None, &name, &[]).map_err(said)?;
+    let roms = RomSource::from_env().map_err(|e| e.to_string())?;
+    let game = Game::load(&roms, None, &name, &[]).map_err(said)?;
     let (first, other) = (game.graphics(&from).map_err(said)?, game.graphics(&to).map_err(said)?);
     let font = game::font(text, None, &to).map_err(said)?;
     let m = nettai_match::pick::live(&game.content, &name, seed, None)?;

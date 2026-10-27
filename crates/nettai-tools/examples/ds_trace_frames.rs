@@ -1,11 +1,12 @@
 //! The engine's frames of a DS recording (EXE5 DS's party battle, a dslab
-//! recording: `"game": "exe5ds"`), drawn from the pack as exe5-compat
+//! recording: `"game": "exe5ds"`), drawn from EXE5's assets (extracted from
+//! its ROMs: `$NETTAI_ROMS`) as exe5-compat
 //! replays it, for a frame comparison with the DS's captures (the
 //! verification workspace's dslab `--frames`). The frontend's trace player
 //! doesn't play DS recordings; this replays them as the verification's
 //! exe5_replay does, up to the first difference.
 //!
-//!     cargo run -p nettai-tools --example ds_trace_frames -- PACK TRACE OUT [FIRST LAST]
+//!     cargo run -p nettai-tools --example ds_trace_frames -- TRACE OUT [FIRST LAST]
 //!
 //! Each battle frame from FIRST to LAST (the recording's frame numbers; all
 //! by default) is drawn (original graphics, 1x) as `OUT/nettai_NNNNN.png`,
@@ -18,18 +19,18 @@ use std::path::PathBuf;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: ds_trace_frames PACK TRACE OUT [FIRST LAST]";
-    if args.len() != 3 && args.len() != 5 {
+    let usage = "usage: ds_trace_frames TRACE OUT [FIRST LAST]";
+    if args.len() != 2 && args.len() != 4 {
         panic!("{usage}");
     }
-    let (pack, path, out) = (PathBuf::from(&args[0]), PathBuf::from(&args[1]), PathBuf::from(&args[2]));
-    let (first, last) = if args.len() == 5 {
-        (args[3].parse::<u32>().expect(usage), args[4].parse::<u32>().expect(usage))
+    let (path, out) = (PathBuf::from(&args[0]), PathBuf::from(&args[1]));
+    let (first, last) = if args.len() == 4 {
+        (args[2].parse::<u32>().expect(usage), args[3].parse::<u32>().expect(usage))
     } else {
         (0, u32::MAX)
     };
     std::fs::create_dir_all(&out).unwrap();
-    let options = Options { packs: vec![pack], mode: GraphicsMode::Original, sound: false, ..Options::default() };
+    let options = Options { mode: GraphicsMode::Original, sound: false, ..Options::default() };
     let loaded = load("exe5", &options).unwrap_or_else(|e| panic!("exe5: {e:?}"));
     let content = loaded.game.content.clone();
     let mut renderer = loaded.renderer();

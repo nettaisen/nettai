@@ -6,7 +6,7 @@
 //! nettai-demo's for the same.
 
 use nettai_frontend::driver::{Driver, InFight, LivePlayer, Opponent};
-use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
+use nettai_frontend::game::{Failed, Game, LoadError, RomSource, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
 use nettai_render::{Consoles, GraphicsMode};
@@ -18,8 +18,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 struct Args {
-    /// Packs given by directory, each in place of the found one of its game.
-    packs: Vec<PathBuf>,
     content: Option<PathBuf>,
     mute: bool,
     /// The trace (several with --audit).
@@ -81,13 +79,12 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
        nettai-tool [OPTIONS] --match FILE --audit-content
        nettai-tool [OPTIONS] --audit TRACE.jsonl...
 
-  The battles of one game, EXE6 or EXE5: a match file names its game, a
-  replay and a trace state their own. The game is played on its content
-  folder and the support folders it uses, drawn and heard from its pack
-  (written by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`), found in
-  the packs directory, $NETTAI_PACKS, else data, each pack by the game it
-  says. Nothing opens a window: a battle is played in a window by nettai.
-  --pack DIR       a pack's directory, in place of the found pack of its game
+  The battles of one game: a match file names its game, a replay and a
+  trace state their own. The game is played on its content folder and the
+  support folders it uses, drawn and heard from its assets, extracted from its
+  ROMs as it loads: $NETTAI_ROMS (the Legacy Collection's folder, or a
+  folder of its ROMs), else the Legacy Collection where Steam installed it.
+  Nothing opens a window: a battle is played in a window by nettai.
   --content DIR    the content directory (default: $NETTAI_CONTENT, else a
                    content/ beside the program, else this repository's)
   --mute           no sound in the audits (headless rendering plays none), and
@@ -159,14 +156,20 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    moves about at random and never attacks) or attacks (it
                    presses at random what a player fights with); on its
                    custom screen it picks the first chip it can
-  --audit-content  with --match FILE: make every lookup the drawing code
-                   and audio make for everything the content defines (every
+  --audit-content  with --match FILE: check the game's assets, extracted from
+                   its ROMs, against its content: every asset the content
+                   names is there, each sprite with the content's animations
+                   and frames (else the game doesn't load), the content
+                   times its sprites as the ROMs do, the strings' backgrounds
+                   are the assets'; and make every lookup the drawing code and
+                   audio make for everything the content defines (every
                    chip's icon, picture and name, every navi's and form's
                    face, every asset the content names), in every language,
-                   and list what the packs don't have; exits 1 if there was any
+                   and list what the assets don't have; exits 1 if there was
+                   any
   --audit          run the traces (several at a time) making each frame's
                    lookups and checking each sound cue, and list what they
-                   named that the packs don't have (a sprite, an animation, a
+                   named that the assets don't have (a sprite, an animation, a
                    palette, a chip's icon or name glyph, a banner, a song);
                    exits 1 if there was any
   --draw           with --audit: draw every frame and play every sound cue
@@ -187,11 +190,10 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    of the bundled one (Noto Sans CJK, its cut of the language)
   --lang LANG      the language of the battle's text: en (default, the
                    content's own) or ja (the content's locales/ja.toml, and
-                   the pack's fonts and pictures with text)";
+                   the game's fonts and pictures with text)";
 
 fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     let mut a = Args {
-        packs: Vec::new(),
         content: None,
         mute: false,
         traces: Vec::new(),
@@ -228,7 +230,6 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         let number = |v: String, name: &str| v.parse::<u64>().map_err(|_| format!("bad {name} {v:?}"));
         match arg.as_str() {
-            "--pack" => a.packs.push(value("--pack")?.into()),
             "--content" => a.content = Some(value("--content")?.into()),
             "--mute" => a.mute = true,
             "--round" => a.round = Some(number(value("--round")?, "--round")? as usize),
@@ -344,7 +345,7 @@ fn fail(msg: impl std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 
-/// Show what loading a pack found (warnings and errors).
+/// Show what loading the game found (warnings and errors).
 fn show(report: &nettai_content::report::Report) {
     for i in report.issues.iter().filter(|i| i.level != nettai_content::report::Level::Note) {
         eprintln!("{i}");
@@ -356,8 +357,8 @@ fn show(report: &nettai_content::report::Report) {
 fn load_failed(e: LoadError) -> ! {
     show(&e.report);
     fail(match &e.what {
-        Failed::Packs => format!("{e} (--pack)"),
-        Failed::Content { .. } => format!("{e} (--content, --pack)"),
+        Failed::Content { .. } => format!("{e} (--content)"),
+        Failed::Assets { .. } => format!("{e} ($NETTAI_ROMS)"),
         _ => e.to_string(),
     })
 }
@@ -366,23 +367,6 @@ fn load_failed(e: LoadError) -> ! {
 fn load_time(what: &str, since: Instant) {
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
         eprintln!("loaded the {what} in {:.1?}", since.elapsed());
-    }
-}
-
-/// Load one part of the pack, or stop with what is wrong with it (the
-/// content audit's own loading: every language's, none chosen).
-fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_content::report::Report), nettai_content::report::Report>) -> T {
-    let t = Instant::now();
-    match f(pack) {
-        Ok((v, r)) => {
-            show(&r);
-            load_time(what, t);
-            v
-        }
-        Err(r) => {
-            show(&r);
-            fail(format!("can't load the {what} of the content pack {} (extract it again: README.md, \"Getting started\")", pack.display()))
-        }
     }
 }
 
@@ -424,12 +408,18 @@ fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, path
     r
 }
 
-/// `--audit-content`: every lookup for everything the content defines, in
-/// each language the content has strings in; then exit.
+/// `--audit-content`: the game's assets against its content (as it loaded, every asset it names, each sprite with
+/// its animations and frames: `nettai_content::load::asset_numbers`), its sprites' timing against the ROMs', the
+/// strings' backgrounds against the assets'; then every lookup for everything the content defines, in each language
+/// the content has strings in; then exit.
 fn audit_content(args: &Args, game: &Game) -> ! {
     let t = Instant::now();
     let (content, dir, games) = (&*game.content, &*game.dir, std::slice::from_ref(&game.name));
-    let bundles = game.packs.iter().map(|p| load(p, "graphics", nettai_content::pack::load_graphics)).collect();
+    let mut problems: Vec<String> = game.timing_differences.iter().map(|d| format!("timing: {d}")).collect();
+    let mut strings = nettai_content::report::Report::default();
+    nettai_content::locale::check_games(dir, content, Some(&game.index), &mut strings);
+    problems.extend(strings.issues.iter().filter(|i| i.level == nettai_content::report::Level::Error).map(|i| format!("strings: {i}")));
+    let bundles = vec![(*game.graphics).clone()];
     let banks: Option<Vec<Arc<m4a::SoundBank>>> = (!args.mute).then(|| sound_of(game).banks);
     let own_lang = nettai_content::locale::OWN;
     let mut languages: Vec<nettai_tools::content_audit::Language> = vec![(own_lang.to_string(), None)];
@@ -437,8 +427,9 @@ fn audit_content(args: &Args, game: &Game) -> ! {
         let strings = nettai_content::locale::load_for(dir, games, &lang).unwrap_or_else(|e| fail(e));
         languages.push((lang, strings.map(Arc::new)));
     }
-    let found = nettai_tools::content_audit::audit(content, bundles, game.own, &game.assets, banks.as_deref(), &languages);
-    for p in &found.problems {
+    let found = nettai_tools::content_audit::audit(content, bundles, Default::default(), &game.numbers, banks.as_deref(), &languages);
+    problems.extend(found.problems.iter().cloned());
+    for p in &problems {
         println!("{p}");
     }
     if !found.untranslated.is_empty() {
@@ -454,18 +445,20 @@ fn audit_content(args: &Args, game: &Game) -> ! {
     }
     let assets: Vec<String> = found.assets.iter().map(|(k, n)| format!("{n} {k}s")).collect();
     eprintln!(
-        "audit-content: {} chips, {} navis, {} forms; the packs' {}; {} lookups in {}{}; {} problems ({:.1?})",
+        "audit-content: {} chips, {} navis, {} forms; the assets' {}; the content's {} sprites timed as the ROMs time them{}; {} lookups in {}{}; {} problems ({:.1?})",
         found.chips,
         found.navis,
         found.forms,
         assets.join(", "),
+        content.animations.sprites.len(),
+        if game.timing_differences.is_empty() { "" } else { " but for the differences above" },
         found.made.len(),
         found.languages.join(" and "),
         if banks.is_none() { ", no sound (--mute)" } else { "" },
-        found.problems.len(),
+        problems.len(),
         t.elapsed()
     );
-    std::process::exit(if found.problems.is_empty() { 0 } else { 1 })
+    std::process::exit(if problems.is_empty() { 0 } else { 1 })
 }
 
 /// `--audit TRACE...`: the traces' lookups, several traces at a time; then
@@ -647,10 +640,9 @@ fn main() {
             std::process::exit(2);
         }
     };
-    // The packs found in the packs directory (and given by --pack).
+    // The ROMs the game's assets are extracted from.
     let t = Instant::now();
-    let found = Found::find(&nettai_content::pack::packs_dir(), &args.packs).unwrap_or_else(|e| load_failed(e));
-    show(&found.report);
+    let roms = RomSource::from_env().unwrap_or_else(|e| fail(e));
     // The game played is the match file's, the replay's or the trace's own.
     let file_text = args.match_file.as_deref().map(match_text);
     let replay = args.replay.as_deref().map(|path| {
@@ -665,11 +657,11 @@ fn main() {
         (None, None, Some(trace)) => nettai_tools::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display()))),
         (None, None, None) => unreachable!("argument parsing requires a match file, a replay or a trace"),
     };
-    // The game's content.
-    let loaded = Game::load(&found, args.content.as_deref(), &game, &[]).unwrap_or_else(|e| load_failed(e));
+    // The game's content, and its assets extracted from its ROMs.
+    let loaded = Game::load(&roms, args.content.as_deref(), &game, &[]).unwrap_or_else(|e| load_failed(e));
     show(&loaded.report);
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
-        eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.packs[loaded.own.index()].display());
+        eprintln!("loaded the battle content and extracted its assets in {:.1?} ({roms})", t.elapsed());
     }
     let content = loaded.content.clone();
     // (The session reports an engine panic; the program keeps it off stderr.)
@@ -693,7 +685,7 @@ fn main() {
             return;
         }
     }
-    // The game's pack's graphics, in the language.
+    // The game's graphics, in the language.
     let t = Instant::now();
     let graphics = loaded.graphics(&args.lang).unwrap_or_else(|e| load_failed(e));
     show(&graphics.report);
@@ -799,10 +791,10 @@ mod tests {
     #[test]
     fn verifys_command_lines_parse() {
         for options in [
-            vec!["--text", "original", "--lang", "ja", "--mark", "sprite:megaman,chip-window-at-close", "--pack", "p", "t.jsonl", "--headless", "1-100000", "--out", "f"],
-            vec!["--pack", "p", "t.jsonl", "--audit"],
-            vec!["--pack", "p", "--draw", "--audit", "a.jsonl", "b.jsonl", "--lookups", "l.tsv"],
-            vec!["--match", "exe6.toml", "--pack", "p", "--audit-content", "--lookups", "s.tsv"],
+            vec!["--text", "original", "--lang", "ja", "--mark", "sprite:megaman,chip-window-at-close", "t.jsonl", "--headless", "1-100000", "--out", "f"],
+            vec!["t.jsonl", "--audit"],
+            vec!["--draw", "--audit", "a.jsonl", "b.jsonl", "--lookups", "l.tsv"],
+            vec!["--match", "exe6.toml", "--audit-content", "--lookups", "s.tsv"],
             vec!["--match", "m.toml", "--mute", "--headless", "100,300", "--out", "o", "--keys", "100:a"],
             vec!["--match", "m.toml", "--headless", "1-600", "--opponent", "attacks", "--record", "set.nettaireplay"],
             vec!["--replay", "set.nettaireplay", "--headless", "1-60", "--side", "right"],

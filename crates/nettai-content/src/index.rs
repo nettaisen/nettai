@@ -27,7 +27,7 @@
 //! only its own pack's and those of the support packs its pack depends on
 //! (`packs::check_require`). [`read_all`] loads every game. The assets the
 //! definitions name (`asset.sprite("bomb")`) come from the extracted packs'
-//! asset indices; `crate::pack::load_battle` puts the two together.
+//! asset indices; `crate::load::load_battle` puts the two together.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

@@ -1,7 +1,7 @@
 //! The nettai app in a browser: what the page calls (web/index.html).
 //!
 //! The page, before the app starts: it puts the files it keeps (the data folder: the settings, the builds, the
-//! replays, the packs, the games' content as downloaded) in the app's files with [`preload`], then [`start`]s it,
+//! replays, the games' content as downloaded) in the app's files with [`preload`], then [`start`]s it,
 //! which downloads each game's content from the game's site as the desktop app does (nettai's `contents.rs`: the
 //! page ships none). After:
 //! it takes what changed in the data folder ([`changes`]) now and then, and writes it to its storage (the origin
@@ -42,8 +42,7 @@ mod page {
                 nettai_platform::fs::Change::Remove(path) => ("remove", path, None),
             };
             let Ok(path) = path.strip_prefix(super::DATA) else { continue };
-            // (A folder whose name starts with a dot is the app's scratch, as a pack is made in packs/.new and
-            // moved into place: what is kept is the pack, once, as it lands.)
+            // (A folder whose name starts with a dot is the app's scratch: what is kept is what lands in place.)
             if path.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')) {
                 continue;
             }

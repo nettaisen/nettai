@@ -23,7 +23,7 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let game = args.next().expect("usage: definitions <game> [--keys]");
     let keys = args.next().is_some_and(|a| a == "--keys");
-    let (content, _) = nettai_content::pack::load_battle(&nettai_content::index::content(), &game).unwrap_or_else(|r| panic!("{r}"));
+    let (content, _) = nettai_content::load::load_battle(&nettai_content::index::content(), &game).unwrap_or_else(|r| panic!("{r}"));
     let defs = &content.defs.definitions.defs;
     let mut by_registry: BTreeMap<String, (usize, u64)> = BTreeMap::new();
     let mut all = 0xCBF2_9CE4_8422_2325u64;

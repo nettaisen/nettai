@@ -2,7 +2,7 @@
 //! [`exe5_content`], [`exe4_content`]), each game alone as a match loads it,
 //! with their own strings, every sprite timed as the test content's navi is
 //! (short, the same for every sprite, as the tests here reason about it; a
-//! game's own timing is its content's, which `nettai_content::pack::load_battle`
+//! game's own timing is its content's, which `nettai_content::load::load_battle`
 //! loads).
 
 use nettai_battle::Content;

@@ -224,7 +224,7 @@ pub struct Pool {
 /// sprites' timing too: no asset pack, picture or sound).
 pub fn load_game(content: Option<&Path>, game: &str) -> Result<Arc<Content>, String> {
     let dir = content.map(Path::to_path_buf).unwrap_or_else(nettai_content::index::content);
-    let (content, _) = nettai_content::pack::load_battle(&dir, game).map_err(|r| format!("{game}: {r}"))?;
+    let (content, _) = nettai_content::load::load_battle(&dir, game).map_err(|r| format!("{game}: {r}"))?;
     Ok(Arc::new(content))
 }
 

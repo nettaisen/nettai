@@ -27,7 +27,7 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let game = args.next().expect("usage: define_cost <game> [runs]");
     let runs: usize = args.next().map_or(10, |n| n.parse().expect("a number of runs"));
-    let (content, _) = nettai_content::pack::battle_content(&nettai_content::index::content(), &game).unwrap_or_else(|r| panic!("{r}"));
+    let (content, _) = nettai_content::load::battle_content(&nettai_content::index::content(), &game).unwrap_or_else(|r| panic!("{r}"));
     let mut defined = content.clone();
     defined.define().expect("the pack defines");
     println!("{} modules, {} definitions, best of {runs} runs:", content.scripts.modules.len(), defined.defs.definitions.defs.len());

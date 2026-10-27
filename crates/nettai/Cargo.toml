@@ -56,10 +56,9 @@ exe4-compat = { path = "../exe4-compat" }
 # The builds' and the settings' files.
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-# Each game's pack, extracted from the player's Legacy Collection on start-up (`packs.rs`; docs/app.md §17).
+# The Legacy Collection found (or a folder chosen), and each game's recipe, whose ROMs the games' loading extracts
+# (`games.rs`; docs/app.md §17).
 nettai-extract = { path = "../nettai-extract" }
-# The collection's archives (`bnlc.rs`, ported from Tango's).
-zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
@@ -71,9 +70,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
-# The Legacy Collection's install, found through Steam, and its ROMs read out of its archives (`bnlc.rs`, ported
-# from Tango's, with the crates it uses).
-steamlocate = "2"
 
 # The log on the browser's console.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -120,5 +116,6 @@ nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A short set and graphics with no pack, for a battle played to its end.
 nettai-frontend = { path = "../nettai-frontend", features = ["testing"] }
-# The extraction's tests: their own archives and packs, in folders of their own.
+# The games' tests: content and archives of their own, in folders of their own.
 tempfile = "3"
+nettai-extract = { path = "../nettai-extract", features = ["testing"] }

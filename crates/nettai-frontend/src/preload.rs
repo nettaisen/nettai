@@ -83,7 +83,7 @@ pub struct Late {
     /// (`Behaviors::loads`): each a wait of about a second.
     pub runtimes: u64,
     /// Parts of a pack or of the content this thread read from disk since
-    /// (`nettai_content::pack::reads`).
+    /// (`nettai_content::load::reads`).
     pub reads: u64,
     /// Strings its text was laid out for, and glyphs' distance fields made
     /// from the font, each for the first time, since (the enhanced

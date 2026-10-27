@@ -1,7 +1,7 @@
 // Loading (docs/design/app-ui.md §6): the logo (the icon over the name) and one bar while the selected game loads, as the app starts and
-// whenever the player steps to a game that isn't ready yet; before that, while its content is downloaded, or its
-// pack extracted from the Legacy Collection, the bar is the download's or the extraction's. The bar has one width and the percentage fixed-width digits, so
-// nothing moves as it fills.
+// whenever the player steps to a game that isn't ready yet (its assets are extracted from the Legacy Collection's ROMs as
+// it loads); before that, while its content is downloaded, the bar is the download's. The bar has one width and the
+// percentage fixed-width digits, so nothing moves as it fills.
 
 import { Theme, I18n } from "../theme.slint";
 import { Shell, Errors, ErrorKind } from "../shell.slint";
@@ -17,7 +17,7 @@ export component LoadingScreen inherits Rectangle {
     property <length> top: (self.height - 158px - root.steps - root.mark - root.mark-gap) / 2 + root.mark + root.mark-gap;
     // No game, and the Legacy Collection not found: its error's line, and the way to its folder. (No game for want
     // of the games' content: that error's line alone.)
-    property <bool> wants-folder: Shell.no-games && Shell.extracts && !Shell.no-content;
+    property <bool> wants-folder: Shell.no-games && !Shell.no-content;
     // The room the line's steps from Steam take below what the bar's would (two lines more).
     property <length> steps: root.wants-folder ? 32px : 0px;
     // The logo settles into place as the app starts.
@@ -75,7 +75,7 @@ export component LoadingScreen inherits Rectangle {
         height: 16px;
         // (No game known yet: the catalog of games is being read, the bar alone.)
         visible: !Shell.no-games && Shell.game != "";
-        text: Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : Shell.extracting ? I18n.upper(@tr("Extracting {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
+        text: Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
     }
 
     Mono {
@@ -88,18 +88,17 @@ export component LoadingScreen inherits Rectangle {
         horizontal-alignment: right;
     }
 
-    // No game has a pack: what to do about it. With the app's own packs, the Legacy Collection is what is missing
-    // (the error's own line with the steps to drag the folder in from Steam: five lines on a phone in Japanese, down
-    // to the button's top less 4). Else the packs
-    // folder named (`$NETTAI_PACKS`), which starts a line of its own and breaks where it must.
+    // No game can be played: what to do about it. The Legacy Collection is what is missing (the error's own line with
+    // the steps to drag the folder in from Steam: five lines on a phone in Japanese, down to the button's top less
+    // 4), or the games' content.
     Note {
         y: root.top + 116px;
         width: root.column;
         height: root.wants-folder ? 64px + root.steps : 88px;
         vertical-alignment: TextVerticalAlignment.top;
-        wrap: root.wants-folder || Shell.no-content ? word-wrap : char-wrap;
+        wrap: word-wrap;
         visible: Shell.no-games;
-        text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : root.wants-folder ? (Shell.incomplete != "" ? Errors.line(ErrorKind.incomplete-legacy-collection, Shell.incomplete) : Errors.line(ErrorKind.no-legacy-collection, "")) : @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
+        text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : Shell.incomplete != "" ? Errors.line(ErrorKind.incomplete-legacy-collection, Shell.incomplete) : Errors.line(ErrorKind.no-legacy-collection, "");
         horizontal-alignment: center;
     }
 

@@ -461,18 +461,8 @@ impl Shell {
         self.games.load(id, self.i18n.code, |id, step| crate::with_app(|app| app.shell.games.step(&id, step)));
     }
 
-    /// The extraction of the pack of folder `pack` says how far it is, or that it ended (`crate::packs`). A pack
-    /// that lands behind the menu is loaded there; the selected game's loads as `App::follow_games` sees it.
-    pub fn extracting(&mut self, pack: &str, told: crate::packs::Told) {
-        if let Some((id, true)) = self.games.extracting(pack, told)
-            && self.announced.is_some()
-        {
-            self.load(&id);
-        }
-    }
-
-    /// Say that a game has no pack and no Legacy Collection is found to extract it from, or that the one found lacks
-    /// some of its ROMs (`why`: `UserError::NoLegacyCollection`, `UserError::IncompleteCollection`): the error's
+    /// Say that no Legacy Collection is found to read a game's ROMs from, or that the one found lacks some of its
+    /// ROMs (`why`: `UserError::NoLegacyCollection`, `UserError::IncompleteCollection`): the error's
     /// dialog, with the way to choose the collection's folder (`App::choose_source`).
     pub fn ask_for_source(&mut self, why: UserError) {
         let ui = self.ui();
@@ -975,7 +965,7 @@ impl App {
         let mut sound = if still { Sound::silent() } else { Sound::open() };
         sound.set_levels(settings.music, settings.effects);
         let bindings = settings.bindings();
-        // (The screenshot pass extracts nothing: it keeps nothing of its own in the player's data folder.)
+        // (The screenshot pass leaves the player's data folder as it is.)
         let games = Games::find(settings.legacy_collection.as_deref(), !still);
         let looks = crate::look::Looks::new(ui, games.list.iter().map(|g| g.id.as_str()));
         let shell = Shell {
@@ -1042,9 +1032,6 @@ impl App {
         let shell = ui.global::<nettai_ui::Shell>();
         shell.set_version(format!("v{}", env!("CARGO_PKG_VERSION")).into());
         shell.set_player(self.shell.settings.name.as_str().into());
-        shell.set_packs_folder(self.shell.games.packs.display().to_string().into());
-        shell.set_extracts(self.shell.games.extracts);
-        self.shell.games.start();
         // (The games' content the store hasn't is downloaded whatever the settings say: there is nothing to play
         // without it. A newer revision of what it has is looked for unless Settings turned that off.)
         let newer = self.shell.settings.check_updates && !self.shell.still;
@@ -1234,26 +1221,26 @@ impl App {
     }
 
     /// The player chooses the Legacy Collection's folder, in the system's dialog (the app's frames wait while it
-    /// is up). A folder that holds the collection is kept in the settings, and the packs wanted are extracted
-    /// from it; one that doesn't is said, and nothing is kept.
+    /// is up). A folder that holds the collection is kept in the settings, and the games whose ROMs it has are
+    /// played from it; one that doesn't is said, and nothing is kept.
     fn choose_source(&mut self) {
         // (Heard once this call is done: the browser's dialog answers later, its archives read into the app's
         // files first.)
-        nettai_platform::dialog::open_folder(&crate::bnlc::ARCHIVES, |folder| {
+        nettai_platform::dialog::open_folder(&nettai_extract::source::ARCHIVES, |folder| {
             if let Some(folder) = folder {
                 let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.source_chosen(folder)));
             }
         });
     }
 
-    /// The Legacy Collection's folder chosen: kept and extracted from if it holds every ROM of a game wanted, else
-    /// said (a collection that lacks some is told as the games' notice: `Notice::Incomplete`).
+    /// The Legacy Collection's folder chosen: kept and played from if it holds every ROM of a game whose ROMs
+    /// aren't found, else said (a collection that lacks some is told as the games' notice: `Notice::Incomplete`).
     fn source_chosen(&mut self, folder: std::path::PathBuf) {
-        let extracting = match crate::bnlc::Install::at(&folder) {
-            Some(install) => self.shell.games.found(install),
+        let playable = match nettai_extract::Install::at(&folder) {
+            Some(install) => self.shell.games.found(nettai_extract::RomSource::Collection(install)),
             None => 0,
         };
-        if extracting == 0 {
+        if playable == 0 {
             crate::errors::log("choosing the Legacy Collection's folder", &format_args!("{} holds no game wanted whole", folder.display()));
             if self.shell.games.incomplete().is_none() {
                 self.shell.ask_for_source(UserError::NoLegacyCollection);
@@ -1912,19 +1899,16 @@ impl App {
         let shell = ui.global::<nettai_ui::Shell>();
         self.shell.games.poll_downloads();
         // What the player is to be told of a game, once, by the game's name (the others go on loading, and
-        // play): a pack that couldn't be loaded or extracted; no Legacy Collection to extract one from (where a
-        // game can be played: else the loading screen says it, with the way to its folder); content that couldn't
-        // be downloaded (likewise). Not over another dialog, nor over a battle.
+        // play): one that couldn't be loaded; no Legacy Collection to read its ROMs from, or one that lacks some
+        // (where a game can be played: else the loading screen says it, with the way to its folder); content that
+        // couldn't be downloaded (likewise). Not over another dialog, nor over a battle.
         if self.shell.dialog.is_none()
             && self.shell.battle.is_none()
             && !self.shell.loading_battle()
             && let Some(notice) = self.shell.games.take_notice()
         {
             match notice {
-                // (Another build's pack, which couldn't be made again for want of the collection.)
-                Notice::LoadFailed(game) if self.shell.games.is_stale(&game) && !self.shell.games.found_source => self.shell.ask_for_source(UserError::NoLegacyCollection),
-                Notice::LoadFailed(game) => self.shell.fail(UserError::GameOutdated { game: Shell::game_name(&game) }),
-                Notice::ExtractFailed(game) => self.shell.fail(UserError::ExtractFailed { game: Shell::game_name(&game) }),
+                Notice::LoadFailed(game) => self.shell.fail(UserError::LoadFailed { game: Shell::game_name(&game) }),
                 Notice::NoSource if !self.shell.games.playable().is_empty() => self.shell.ask_for_source(UserError::NoLegacyCollection),
                 Notice::NoSource => {}
                 Notice::Incomplete(game) if !self.shell.games.playable().is_empty() => {
@@ -1943,7 +1927,7 @@ impl App {
             return;
         }
         let Some(id) = self.shell.game.clone() else {
-            // (A game that can be played since: a pack to extract from a folder just chosen.)
+            // (A game that can be played since: its ROMs in a folder just chosen.)
             match self.shell.games.first_choice(self.shell.settings.game.as_deref()) {
                 Some(first) => self.shell.select_game(&first),
                 // (The first start: the catalog of games is being read, and no game is known yet.)
@@ -1961,17 +1945,9 @@ impl App {
             }
             return;
         };
-        shell.set_extracting(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Extracting(_) | State::Extractable)));
         shell.set_downloading(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Downloading(_))));
         match self.shell.games.get(&id).map(|e| &e.state) {
-            // Loaded for the first time with no pack of its own yet: its pack is extracted now, the others' when
-            // they are first loaded.
-            Some(State::Extractable) => {
-                self.shell.games.extract(&id);
-                shell.set_loading(true);
-                shell.set_loading_progress(0.0);
-            }
-            Some(State::Extracting(_)) | Some(State::Downloading(_)) => {
+            Some(State::Downloading(_)) => {
                 shell.set_loading(true);
                 shell.set_loading_progress(self.shell.games.progress(&id));
             }
@@ -2001,11 +1977,11 @@ impl App {
                     self.settle();
                 }
             }
-            state @ (Some(State::Failed) | Some(State::NoPack) | Some(State::NoContent { .. }) | None) => {
-                // It can't be played: the next that can. One whose pack couldn't be loaded or extracted, or whose
-                // content couldn't be downloaded, is told above, by its name; one asked for that has no pack at all,
+            state @ (Some(State::Failed) | Some(State::NoRoms) | Some(State::NoContent { .. }) | None) => {
+                // It can't be played: the next that can. One that couldn't be loaded, whose ROMs aren't found, or
+                // whose content couldn't be downloaded, is told above, by its name; one asked for that isn't there,
                 // as something gone wrong.
-                let told = matches!(state, Some(State::Failed) | Some(State::NoContent { .. })) || (matches!(state, Some(State::NoPack)) && self.shell.games.extracts);
+                let told = state.is_some();
                 let games = self.shell.games.playable();
                 self.shell.game = None;
                 match games.first() {
@@ -2052,8 +2028,7 @@ impl App {
         self.settle();
     }
 
-    /// A file or folder was dropped on the window. While a game's pack is wanted and there is no Legacy
-    /// Collection to extract it from, a folder is the collection's, as if chosen in the dialog (its question, if
+    /// A file or folder was dropped on the window. While a game's ROMs aren't found, a folder is the collection's, as if chosen in the dialog (its question, if
     /// open, closes: what comes of it is said as for the dialog's). Else the screen shown may want it (a save,
     /// for a build of it).
     pub fn dropped(&mut self, path: &std::path::Path) {

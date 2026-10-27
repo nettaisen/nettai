@@ -171,7 +171,6 @@ fn shown(path: &Path, phone: bool) -> String {
 pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) -> Loaded {
     let mode = shell.settings.graphics();
     Loaded {
-        found: ready.loaded.found.clone(),
         game: ready.loaded.game.clone(),
         graphics: ready.graphics(shell.i18n.code),
         mode,

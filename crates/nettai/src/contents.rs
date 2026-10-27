@@ -8,14 +8,14 @@
 //!
 //! **Downloads.** The app ships no content, and knows one address: the catalog of games (`bundle::catalog_url`),
 //! which gives each game's index, whose entries give each bundle's address. The games are the catalog's: a bundle
-//! of the app's line has the recipe its pack is extracted by. A game's newest bundle of the line is downloaded where the store has none of its line,
+//! of the app's line has the recipe its assets are extracted from its ROMs by. A game's newest bundle of the line is downloaded where the store has none of its line,
 //! the first start included; and, unless Settings turned "Check for updates" off, at each start where its index has
 //! a newer one (`crate::games` runs them: [`fetch_catalog`], [`fetch_newest`]). An online match whose players'
 //! background pools differ takes every game's newest whatever Settings say ([`fetch_every_newest`], `screens::play`).
 //! The catalog and the indexes last read are kept beside the bundles (`catalog.json`, `<game>.index.json`), so a start
 //! without a connection plays what the store has.
 //! A bundle is checked against its id as it is stored, and the content hash it plays against its index's the first
-//! time it is loaded with its game's pack ([`verify`]): one that differs is taken out of the store.
+//! time it is loaded ([`verify`]): one that differs is taken out of the store.
 //!
 //! **Development.** A build run from the repository, or with `$NETTAI_CONTENT`, plays every game from that one
 //! content directory (`nettai_content::index::development`), and nothing is downloaded for it; other content (a
@@ -251,7 +251,7 @@ impl Contents {
     }
 
     /// The games of the catalog as last read, by id. (The app knows no game: a bundle of its line holds the
-    /// recipe the game's pack is extracted by.)
+    /// recipe the game's assets are extracted from its ROMs by.)
     fn catalog_games(&self) -> Vec<String> {
         let Ok(read) = nettai_platform::thread::lock(&self.read) else { return Vec::new() };
         read.catalog.iter().flat_map(|c| c.games.keys()).cloned().collect()

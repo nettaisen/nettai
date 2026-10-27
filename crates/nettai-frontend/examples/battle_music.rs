@@ -1,7 +1,7 @@
-//! The battle themes, heard without listening, on real packs: for each game's battle, with each theme of every
+//! The battle themes, heard without listening, on the games' real assets: for each game's battle, with each theme of every
 //! game (and the game's own music), a live match is played a few seconds with the sound made, and what plays is
-//! checked: the music player of the theme's own pack's driver plays the theme's song (its number in that pack's
-//! song table, which its asset name gives), the battle's own pack's music player plays none (another game's
+//! checked: the music player of the theme's own game's driver plays the theme's song (its number in that game's
+//! song table, which its asset name gives), the battle's own game's music player plays none (another game's
 //! theme) or the theme (its own), and the samples aren't silence; and the battle is the same, tick for tick, as
 //! with its own music. Then each theme is changed to while the battle runs (as Practice's menu changes it:
 //! `Player::set_sound_parts`) and back to the game's own, each checked the same way. It prints a line for each.
@@ -10,7 +10,7 @@
 //! cargo run -p nettai-frontend --example battle_music
 //! ```
 //!
-//! The packs are found as the tool finds them (`$NETTAI_PACKS`); a game whose pack isn't there is left out. It
+//! The games' ROMs are read as the tools read them (`$NETTAI_ROMS`); a game whose ROMs aren't there is left out. It
 //! fails (status 1) on a theme that doesn't play as it should.
 
 use nettai_audio::m4a::SongId;
@@ -24,7 +24,7 @@ use nettai_frontend::game::{Loaded, Options, GraphicsMode};
 const TICKS: u32 = 300;
 
 /// What a battle of `game` sounds like played as `parts` say, each a stretch of ticks with its music (none: the
-/// game's own), the first from its start and each other changed to as it runs: each pack's music player's song
+/// game's own), the first from its start and each other changed to as it runs: each bank's music player's song
 /// at the end, the last two seconds' loudness (RMS), and the battle's digest.
 fn play(game: &Loaded, parts: &[(u32, Option<&Theme>)]) -> Result<(Vec<Option<SongId>>, f32, u64), String> {
     let content = game.game.content.clone();
@@ -71,8 +71,8 @@ fn run() -> Result<bool, String> {
         let content = &game.game.content;
         let own_name = &game.game.name;
         let (own, own_rms, digest) = play(game, &[(TICKS, None)])?;
-        // The song the round starts as the game's own, by its pack's number.
-        let own_song = content.battle_music().iter().filter_map(|h| game.game.assets.sound(h.0)).map(SongId).collect::<Vec<_>>();
+        // The song the round starts as the game's own, by its number in the game's song table.
+        let own_song = content.battle_music().iter().filter_map(|h| game.game.numbers.sound(h.0)).map(SongId).collect::<Vec<_>>();
         let ok = own.len() == 1 && own[0].is_some_and(|s| own_song.contains(&s)) && own_rms > 0.001;
         say(ok, format!("{own_name} battle, its own music: {own:?} (rms {own_rms:.4})"));
         for of in &games {
@@ -80,7 +80,7 @@ fn run() -> Result<bool, String> {
                 let theme = of.theme(song).ok_or(format!("{}'s theme {song} has no song", of.game.name))?;
                 let same_game = std::ptr::eq(of, game);
                 let expected: Vec<Option<SongId>> = if same_game { vec![Some(SongId(theme.song))] } else { vec![None, Some(SongId(theme.song))] };
-                let named = format!("{own_name} battle, {}:{song} (song {:#05x} of {}'s pack)", of.game.name, theme.song, of.game.name);
+                let named = format!("{own_name} battle, {}:{song} (song {:#05x} of {}'s)", of.game.name, theme.song, of.game.name);
                 let same = |d: u64| if d == digest { "the same" } else { "DIFFERS" };
                 // From the start.
                 let (playing, rms, d) = play(game, &[(TICKS, Some(&theme))])?;

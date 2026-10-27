@@ -161,22 +161,17 @@ export global Shell {
     in property <string> player;
     in property <string> version;
 
-    // The selected game isn't loaded: the bar, in place of the screen. `extracting`: its pack is being extracted
-    // from the Legacy Collection first, and the bar is that.
+    // The selected game isn't loaded: the bar, in place of the screen.
     in property <bool> loading;
     in property <float> loading-progress;
-    in property <bool> extracting;
     // `downloading`: its content is being downloaded first (the app has none of it yet), and the bar is that.
     in property <bool> downloading;
-    // No game can be played, and where a pack is looked for. `extracts`: the app extracts its packs itself (no
-    // `$NETTAI_PACKS`), so what is missing is the Legacy Collection, and its folder can be chosen. `no-content`:
-    // what is missing is the games' content: none is out for this version yet (`unpublished`), or it couldn't be
+    // No game can be played: what is missing is the Legacy Collection, whose folder can be chosen; or, with
+    // `no-content`, the games' content: none is out for this version yet (`unpublished`), or it couldn't be
     // downloaded.
     in property <bool> no-games;
     in property <bool> no-content;
     in property <bool> unpublished;
-    in property <string> packs-folder;
-    in property <bool> extracts;
     // The Legacy Collection found lacks some of a game's ROMs: the game, as shown (empty: it has them, or none was
     // found). The note says so in place of asking for the collection.
     in property <string> incomplete;
@@ -321,12 +316,12 @@ export enum ErrorKind {
     wrong-game-save,
     // A file that isn't a ruleset of the game (it doesn't read, is another game's, or names what the game hasn't).
     not-a-ruleset,
-    game-outdated,
-    // No pack of a game, and no Legacy Collection to extract it from.
+    // A game couldn't be loaded: its content, or its assets extracted from its ROMs.
+    load-failed,
+    // No Legacy Collection to read the games' ROMs from.
     no-legacy-collection,
-    // A game has no pack, and the Legacy Collection found lacks some of its ROMs (its files are incomplete).
+    // The Legacy Collection found lacks some of a game's ROMs (its files are incomplete).
     incomplete-legacy-collection,
-    extract-failed,
     // A game's content couldn't be downloaded (the app has none of it). With no game named: no game's could.
     download-failed,
     // No game's content is published for this version of nettai yet (the loading screen's note).
@@ -432,8 +427,8 @@ export global Errors {
         if kind == ErrorKind.not-a-ruleset {
             return @tr("Not a {} ruleset.", detail);
         }
-        if kind == ErrorKind.game-outdated {
-            return @tr("{}'s data is out of date. Extract it again.", detail);
+        if kind == ErrorKind.load-failed {
+            return @tr("{}'s data couldn't be loaded. Details are in the log file.", detail);
         }
         if kind == ErrorKind.no-legacy-collection {
             // (How to drag its folder in from Steam, which shows where it is installed: the install's `exe` folder,
@@ -446,9 +441,6 @@ export global Errors {
         }
         if kind == ErrorKind.incomplete-legacy-collection {
             return @tr("The Legacy Collection's files are incomplete: some of {}'s are missing. Have Steam verify the collection's files, then choose its folder again.", detail);
-        }
-        if kind == ErrorKind.extract-failed {
-            return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
         }
         if kind == ErrorKind.content-unpublished {
             return @tr("There's no game content for this version of nettai yet. Check back later.");
@@ -541,17 +533,14 @@ export global Errors {
         if kind == ErrorKind.not-a-ruleset {
             return @tr("Not a {} ruleset", detail);
         }
-        if kind == ErrorKind.game-outdated {
-            return @tr("{}'s data is out of date", detail);
+        if kind == ErrorKind.load-failed {
+            return @tr("{}'s data couldn't be loaded", detail);
         }
         if kind == ErrorKind.no-legacy-collection {
             return @tr("nettai needs Battle Network Legacy Collection Vol. 2");
         }
         if kind == ErrorKind.incomplete-legacy-collection {
             return @tr("The Legacy Collection's files are incomplete");
-        }
-        if kind == ErrorKind.extract-failed {
-            return @tr("{}'s data couldn't be extracted", detail);
         }
         if kind == ErrorKind.download-failed {
             return @tr("{}'s content couldn't be downloaded", detail);
@@ -636,9 +625,6 @@ export global Errors {
         }
         if kind == ErrorKind.not-a-ruleset {
             return "";
-        }
-        if kind == ErrorKind.game-outdated {
-            return @tr("Extract it again.");
         }
         if kind == ErrorKind.no-legacy-collection {
             if Theme.web {

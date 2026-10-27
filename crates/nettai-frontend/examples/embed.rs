@@ -17,7 +17,7 @@
 //! cargo run -p nettai-frontend --example embed -- --game exe6 --seed 7 --frames DIR
 //! ```
 //!
-//! The packs are found as the tool finds them (`$NETTAI_PACKS`).
+//! The game's assets are extracted from its ROMs as the tools find them (`$NETTAI_ROMS`).
 
 use nettai_audio::BattleAudio;
 use nettai_battle::input::keys;

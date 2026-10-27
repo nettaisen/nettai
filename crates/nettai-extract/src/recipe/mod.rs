@@ -5,16 +5,16 @@
 //! header codes) and the function that reads them (`extract`) through the
 //! primitives (`prims`) and returns the model (`model`): the graphics, the
 //! asset names and which ROMs the sound is read from. The host here runs it,
-//! in a VM of its own (`nettai_luau::tool`), then makes the pack as every
-//! extraction does: the check that every named asset is there, the letters,
-//! the element icons' frame, the hand-drawn frames, the sound bank, the
-//! files.
+//! in a VM of its own (`nettai_luau::tool`), then finishes the assets as
+//! every extraction does: the check that every named asset is there, the
+//! letters, the element icons' frame, the hand-drawn frames, the sound bank,
+//! the index of names.
 //!
 //! A recipe is read from a content directory (a bundle's, or the
 //! repository's content/) whole: its inputs (every file under its game's
 //! `extract/` and `compat/` and under its support packs' `extract/`) are
-//! held in memory, so what it runs on is what its fingerprint digests. Its
-//! ROMs' codes come from its table when it is read, before any ROM is.
+//! held in memory, so what it runs on is what it was read as. Its ROMs'
+//! codes come from its table when it is read, before any ROM is.
 
 mod model;
 mod prims;
@@ -22,7 +22,7 @@ mod prims;
 use crate::rom::Rom;
 use crate::shapes::{Drawings, SHAPES};
 use crate::{Error, Extraction, RomRead, RomSet, elements};
-use nettai_content::{names::AssetNames, pack, sound::SongVersions};
+use nettai_content::{names::AssetNames, sound::SongVersions};
 use nettai_content_api::packs::{self, Modules, PackKind, PackManifest};
 use nettai_content_api::keys;
 use nettai_luau::mlua::Value;
@@ -31,33 +31,12 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// The engine's line (`0.11`): its version's major and minor numbers. The primitives change only with a line, so a
-/// recipe's packs are named by it (its fingerprint), and a bundle is for one line.
-pub(crate) const LINE: &str = line(env!("CARGO_PKG_VERSION"));
-
-/// A version's major and minor numbers ("0.11" of "0.11.2").
-const fn line(version: &str) -> &str {
-    let bytes = version.as_bytes();
-    let (mut i, mut dots) = (0, 0);
-    while i < bytes.len() {
-        if bytes[i] == b'.' {
-            dots += 1;
-            if dots == 2 {
-                return version.split_at(i).0;
-            }
-        }
-        i += 1;
-    }
-    version
-}
-
 /// The folder of a game's pack whose files its recipe reads with `data` (docs/design/extraction-recipes.md §3.9):
 /// its compat tables, the original's numbers (docs/design/content-model-v2.md §4.0).
 const COMPAT: &str = "compat";
 
 /// The share of an extraction's time its graphics take, the sound the rest ([`Recipe::extract_reporting`]). (Not
-/// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
-/// pack's writing, with its encoding, nearly all of its time.)
+/// measured apart: the whole is about a tenth of a second for a game's four ROMs in a release build.)
 const GRAPHICS_SHARE: f32 = 0.6;
 
 /// A game's extraction recipe, read from a content directory.
@@ -142,33 +121,8 @@ impl Recipe {
         Drawings::new(&self.game, files.filter_map(|(p, b)| Some((p.clone(), String::from_utf8(b.clone()).ok()?))))
     }
 
-    /// What names the packs it makes (§5.2): SHA-256, its first 16 hex
-    /// digits, of the pack formats, the engine's line ([`LINE`]: the
-    /// primitives change only with one), the game, and each input in path
-    /// order, its path and its bytes (its ROMs are its `extract/init.luau`'s).
-    /// The same bundle gives the same on every machine; a change to any
-    /// input gives another.
-    pub fn fingerprint(&self) -> String {
-        use sha2::{Digest, Sha256};
-        let mut h = Sha256::new();
-        let mut put = |b: &[u8]| {
-            h.update((b.len() as u64).to_le_bytes());
-            h.update(b);
-        };
-        put(b"nettai extraction recipe");
-        put(format!("{:?}", pack::FORMATS).as_bytes());
-        put(LINE.as_bytes());
-        put(self.game.as_bytes());
-        put(&(self.files.len() as u64).to_le_bytes());
-        for (path, bytes) in self.files.iter() {
-            put(path.as_bytes());
-            put(bytes);
-        }
-        h.finalize()[..8].iter().map(|b| format!("{b:02x}")).collect()
-    }
-
     /// Extract the game's assets from `roms`, which hold every ROM the
-    /// recipe declares.
+    /// recipe declares ([`crate::RomSource::read`] reads them), in memory.
     pub fn extract(&self, roms: &RomSet) -> Result<Extraction, Error> {
         self.extract_reporting(roms, &mut |_| {})
     }
@@ -254,12 +208,15 @@ impl Recipe {
         }
         progress(0.95);
         sound_bank.validate().map_err(|e| Error(e.to_string()))?;
+        let songs = sound_bank.songs.iter().enumerate().filter(|(_, s)| s.is_some()).map(|(i, _)| i as u16).collect();
+        let index = names.index(&graphics, &songs);
         progress(1.0);
         Ok(Extraction {
             game: game.clone(),
             graphics,
             sound: sound_bank,
             sound_versions,
+            index,
             warnings,
             names,
             timing,

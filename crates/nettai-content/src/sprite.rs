@@ -15,9 +15,7 @@
 //!   part of a layout is the object's shadow) and the animations: each its
 //!   frames, the tile set, layout and palette set each draws. How long a
 //!   frame shows, and whether an animation loops, is the content's (its
-//!   sprite module: `asset.sprite(name, animations)`), not the pack's; an
-//!   animation's frame count is its list's length, which the content's
-//!   must match ([`frame_counts`] reads them without any image).
+//!   sprite module: `asset.sprite(name, animations)`), not the pack's.
 //!
 //! Parts are kept rather than baked into whole frames: in 40% of EXE6's
 //! frames parts overlap with different opaque pixels (an arm over a body),
@@ -29,7 +27,7 @@ use crate::report::Report;
 use crate::tiles;
 use nettai_assets::{Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
@@ -491,49 +489,6 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
         animations.push(out);
     }
     Some(SpriteSheet { category: doc.sprite[0], index: doc.sprite[1], tilesets, palette_sets, part_lists, animations })
-}
-
-/// Every sprite's animations' frame counts in the pack at `pack`, by
-/// (category, index), read from the sprites' `sprite.json` without any
-/// image: what a frontend checks the content's sprites against
-/// (`crate::pack::pack_assets`: drawing takes the pack's frame by the
-/// content's animation and frame).
-pub fn frame_counts(pack: &Path, report: &mut Report) -> Option<BTreeMap<(u8, u8), Vec<usize>>> {
-    #[derive(Deserialize)]
-    struct Counts {
-        format: String,
-        version: u32,
-        sprite: [u8; 2],
-        animations: Option<Vec<Vec<serde::de::IgnoredAny>>>,
-    }
-    let dir = pack.join("graphics/sprites");
-    let mut entries: Vec<_> = match nettai_platform::fs::read_dir(&dir) {
-        Ok(read) => read.flatten().collect(),
-        Err(e) => {
-            report.error("graphics/sprites", format!("can't read: {e}"));
-            return None;
-        }
-    };
-    entries.sort_by_key(|e| e.file_name());
-    let mut out = BTreeMap::new();
-    for e in entries {
-        let path = e.path().join("sprite.json");
-        if !nettai_platform::fs::is_file(&path) {
-            continue;
-        }
-        let name = format!("graphics/sprites/{}/sprite.json", e.file_name().to_string_lossy());
-        let doc: Counts = read_json(&path, &name, report)?;
-        if doc.format != FORMAT || doc.version != VERSION {
-            report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
-            return None;
-        }
-        let Some(animations) = doc.animations else {
-            report.error(&name, "has no animations: a pack of an older extractor (extract the pack again)");
-            return None;
-        };
-        out.insert((doc.sprite[0], doc.sprite[1]), animations.iter().map(Vec::len).collect());
-    }
-    Some(out)
 }
 
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {

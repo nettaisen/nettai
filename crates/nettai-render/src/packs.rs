@@ -1,12 +1,13 @@
-//! The engine's assets as their packs hold them (docs/design/rules-in-luau.md
+//! The engine's assets as the game's graphics hold them (docs/design/rules-in-luau.md
 //! §7.4). The engine knows an asset by its handle over the names the
 //! content gives; the frontend draws a sprite, banner, mugshot or
-//! background by the game's pack's own number for it ([`AssetNumbers`], which
-//! the loader made when it checked the pack against the content), from that
-//! pack's graphics ([`Packs`]). A round may
-//! be drawn on another game's background (the content's background pool:
-//! docs/app.md §1, "The battle's background"), which its own game's pack
-//! holds: those are [`OtherBackgrounds`], beside the packs.
+//! background by the game's own number for it ([`AssetNumbers`], which
+//! the loader made when it checked the game's extracted assets against the
+//! content), from the game's graphics ([`Packs`]: a name from when they were
+//! asset packs, by `PackId`, of which a host loads one). A round may be drawn
+//! on another game's background (the content's background pool: docs/app.md
+//! §1, "The battle's background"), extracted from that game's ROMs: those are
+//! [`OtherBackgrounds`], beside the game's graphics.
 
 use nettai_assets::{Background, Bundle, Hud, SpriteSheet};
 use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, AssetNumbers, PackId, SpriteId};
@@ -91,8 +92,8 @@ impl PackGraphics {
         PackGraphics { others, ..self }
     }
 
-    /// These graphics, drawing the content's assets as the game's pack
-    /// numbers them (`nettai_content::pack::pack_assets`).
+    /// These graphics, drawing the content's assets as the game's assets
+    /// number them (`nettai_content::load::asset_numbers`).
     pub fn with_assets(self, assets: Arc<AssetNumbers>) -> PackGraphics {
         PackGraphics { assets, ..self }
     }

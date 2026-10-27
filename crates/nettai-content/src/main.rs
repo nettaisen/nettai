@@ -1,15 +1,16 @@
-//! `nettai-content`: check a content pack, compare it with another, edit
-//! its sprites in Aseprite, and publish a game's content.
+//! `nettai-content`: check a game's content, compare two asset packs, edit
+//! a pack's sprites in Aseprite, and publish a game's content.
 //!
-//!     nettai-content check <pack> [--content DIR]
+//!     nettai-content check <game> [--content DIR]
 //!     nettai-content verify <pack> <reference-pack> [--seconds N]
 //!     nettai-content aseprite-export <pack> [NAME ...]
 //!     nettai-content aseprite-import <pack> [NAME ...]
-//!     nettai-content publish <game> [--packs DIR] [--dry-run]
+//!     nettai-content publish <game> [--dry-run]
 //!     nettai-content lock [game ...]
 //!
-//! A pack exported from a ROM (`nettai-extract content/exe6`) holds the game's own
-//! data: keep it out of version control (data/ is ignored).
+//! A game's assets against its content (extracted from its ROMs) are checked by
+//! `nettai-tool --audit-content` (nettai-tools): nettai-extract reads this
+//! crate, so this command can't extract.
 
 mod publish;
 
@@ -22,6 +23,7 @@ use std::time::Instant;
 
 struct Args {
     command: String,
+    /// The game (`check`), or the pack (the others).
     pack: PathBuf,
     reference: Option<PathBuf>,
     /// The content root whose definitions `check` loads with the pack.
@@ -32,10 +34,11 @@ struct Args {
 }
 
 const USAGE: &str = "usage:
-  nettai-content check <pack> [--content DIR]         read every file and report what it finds, define
-                                                   the content of the pack's game (default: $NETTAI_CONTENT,
+  nettai-content check <game> [--content DIR]         define the game's content (default: $NETTAI_CONTENT,
                                                    else a content/ beside the program, else this
-                                                   repository's), and check the pack has what it names
+                                                   repository's) and check its definitions, strings,
+                                                   library order and look (its assets against it:
+                                                   nettai-tool --match FILE --audit-content)
   nettai-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
                                                    (graphics, sound as timelines and as N seconds of
@@ -93,18 +96,13 @@ fn main() {
     match a.command.as_str() {
         "check" => {
             let mut r = Report::default();
-            let m = pack::read_manifest(&a.pack, &mut r).unwrap_or_else(|| fail(&r));
-            // The define phase: every module of the pack's game loads, and
-            // what the modules define fits together; and the pack has what
-            // the content names, its sprites as the content animates them.
+            let game = a.pack.to_string_lossy().into_owned();
+            // The define phase: every module of the game loads, and what the
+            // modules define fits together.
             let t = std::time::Instant::now();
-            match pack::load_battle(&a.content, &m.game) {
+            match nettai_content::load::load_battle(&a.content, &game) {
                 Ok((c, loaded)) => {
                     r.issues.extend(loaded.issues);
-                    if let Err(failed) = pack::pack_assets(&c, &a.pack) {
-                        r.issues.extend(failed.issues);
-                    }
-                    let index = nettai_content::names::read_index(&a.pack, &mut r);
                     r.note(
                         a.content.display().to_string(),
                         format!(
@@ -116,19 +114,13 @@ fn main() {
                     );
                     nettai_content::lint::definitions(&c, &mut r);
                     // The strings tables, against the definitions.
-                    nettai_content::locale::check_games(&a.content, &c, index.as_ref(), &mut r);
+                    nettai_content::locale::check_games(&a.content, &c, None, &mut r);
                     // The library order, against the definitions.
                     nettai_content::library::check_games(&a.content, &c, &mut r);
                     // The look the app draws the game's menus in.
                     nettai_content::look::check_games(&a.content, &c, &mut r);
                 }
                 Err(failed) => r.issues.extend(failed.issues),
-            }
-            if m.graphics.is_some() {
-                pack::import_graphics(&a.pack, &mut r);
-            }
-            if m.sound.is_some() {
-                pack::import_sound(&a.pack, &mut r);
             }
             print_report(&r, true);
             if r.has_errors() {

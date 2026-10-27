@@ -11,7 +11,7 @@
 //! (a sprite's category and index, a sound's number, a banner's,
 //! background's or mugshot's id); placeholders are listed too (content may
 //! not use one, §6.3). A frontend finds the assets the content names in it
-//! (`crate::pack::pack_assets`: each content handle's number in the pack);
+//! (`crate::load::asset_numbers`: each content handle's number);
 //! the battle needs none of it.
 
 use crate::report::Report;

@@ -143,10 +143,10 @@ impl Sound {
             self.leaving = Some((old.music, self.fade));
         }
         self.fade = 0.0;
-        // (The title music is no sound of the content's: its pack's song, one more sound past the content's.)
+        // (The title music is no sound of the content's: the game's song, one more sound past the content's.)
         let mut music = sound.songs.clone();
         let title = game.game.index.sounds.get(TITLE_MUSIC).map(|&id| {
-            music.0.push(nettai_battle::content::InPack { pack: game.game.own, id });
+            music.0.push(nettai_battle::content::InPack { pack: Default::default(), id });
             SoundCue::Music(SoundId(music.0.len() as u16 - 1))
         });
         self.menu = Some(Menu {

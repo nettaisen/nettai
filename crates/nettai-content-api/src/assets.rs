@@ -5,17 +5,16 @@
 //! names are the content's alone: a sprite is the one its module defines
 //! (`asset.sprite("bomb", { { 3, 3, 3 } })`: its name, and the timing of
 //! its animations, [`SpriteDef`]), any other asset the one a module names
-//! (`asset.sound("throw")`). So a battle needs no asset pack: which assets
+//! (`asset.sound("throw")`). So a battle needs no assets: which assets
 //! there are, their handles and the sprites' timing are all content.
 //!
-//! A name is also what the game's asset pack holds the asset under (a
-//! match plays one game, so a name is its game's: docs/design/
-//! content-model-v2.md §4.0). What the pack calls each (a sprite's
-//! category and index, a sound's song-table entry) is the pack's index
-//! ([`AssetIndex`], its `assets.toml`), and [`AssetNumbers`] gives each of a
-//! content's handles its number in a pack, for whoever draws or plays them:
-//! the frontends and the audio. The engine knows an asset by its handle
-//! alone.
+//! A name is also what the game's assets, extracted from its ROMs, have the
+//! asset under (a match plays one game, so a name is its game's:
+//! docs/design/content-model-v2.md §4.0). What the ROMs number each (a
+//! sprite's category and index, a sound's song-table entry) is the assets'
+//! index ([`AssetIndex`]), and [`AssetNumbers`] gives each of a content's
+//! handles its number there, for whoever draws or plays them: the frontends
+//! and the audio. The engine knows an asset by its handle alone.
 
 use std::collections::BTreeMap;
 
@@ -168,8 +167,8 @@ pub struct DefinedAssets {
     pub sprites: Vec<SpriteDef>,
 }
 
-/// One pack's own index: its assets by unqualified name (as its
-/// `assets.toml` holds them), each with the pack's number for it.
+/// A game's assets by unqualified name, each with its number (the extracted
+/// assets' index: every asset there is, named or not).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AssetIndex {
     pub sprites: BTreeMap<String, SpriteNumber>,
@@ -180,7 +179,7 @@ pub struct AssetIndex {
 }
 
 impl AssetIndex {
-    /// The pack's number for `kind` asset `name` (a sprite's category and
+    /// The number of `kind` asset `name` (a sprite's category and
     /// index as one, `0xCCII`).
     pub fn number(&self, kind: AssetKind, name: &str) -> Option<u16> {
         match kind {
@@ -193,8 +192,8 @@ impl AssetIndex {
     }
 }
 
-/// A content's assets as a pack holds them: each handle's number in the
-/// pack, by kind (a sprite's category and index, a sound's song-table
+/// A content's assets as the game's assets number them: each handle's
+/// number, by kind (a sprite's category and index, a sound's song-table
 /// entry, a banner's, background's or mugshot's id). What a frontend draws
 /// and the audio plays by; the simulation never reads it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -207,7 +206,7 @@ pub struct AssetNumbers {
 }
 
 impl AssetNumbers {
-    /// Content `names`' assets in the pack whose index is `index`; the
+    /// Content `names`' assets in the assets whose index is `index`; the
     /// names it hasn't, each as `kind name`, when there are any.
     pub fn new(names: &AssetNames, index: &AssetIndex) -> Result<AssetNumbers, Vec<String>> {
         let mut missing = Vec::new();
@@ -235,7 +234,7 @@ impl AssetNumbers {
         Ok(AssetNumbers { sprites, sounds, banners, backgrounds, mugshots })
     }
 
-    /// Sprite handle `h`'s sprite in the pack.
+    /// Sprite handle `h`'s sprite.
     pub fn sprite(&self, h: u16) -> Option<SpriteNumber> {
         self.sprites.get(h as usize).copied()
     }
@@ -245,7 +244,7 @@ impl AssetNumbers {
         self.sounds.get(h as usize).copied()
     }
 
-    /// `kind` asset `h`'s number in the pack (a sprite's category and index
+    /// `kind` asset `h`'s number (a sprite's category and index
     /// as one, `0xCCII`).
     pub fn number(&self, kind: AssetKind, h: u16) -> Option<u16> {
         let i = h as usize;
@@ -264,7 +263,7 @@ mod tests {
     use super::*;
 
     /// A kind's handles are its names' places in byte order, each name
-    /// once; a pack gives each its number, and a name it hasn't is said.
+    /// once; the assets' index gives each its number, and a name it hasn't is said.
     #[test]
     fn handles_are_the_names_places() {
         let names = AssetNames::of([
@@ -283,9 +282,9 @@ mod tests {
         index.sprites.insert("unused".into(), SpriteNumber { category: 0x10, index: 9 });
         assert_eq!(AssetNumbers::new(&names, &index), Err(vec!["sound throw".to_string()]));
         index.sounds.insert("throw".into(), 0xB2);
-        let pack = AssetNumbers::new(&names, &index).unwrap();
-        assert_eq!(pack.sprite(1), Some(SpriteNumber { category: 0x0C, index: 2 }));
-        assert_eq!(pack.number(AssetKind::Sprite, 0), Some(0x1001));
-        assert_eq!(pack.sound(0), Some(0xB2));
+        let numbers = AssetNumbers::new(&names, &index).unwrap();
+        assert_eq!(numbers.sprite(1), Some(SpriteNumber { category: 0x0C, index: 2 }));
+        assert_eq!(numbers.number(AssetKind::Sprite, 0), Some(0x1001));
+        assert_eq!(numbers.sound(0), Some(0xB2));
     }
 }

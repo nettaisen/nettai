@@ -110,7 +110,7 @@ pub fn load(pack: &Path, lang: &str) -> Result<Option<Strings>, String> {
 /// frontend's other language for what it loaded); `None` when none has
 /// one.
 pub fn load_for(dir: &Path, packs: &[String], lang: &str) -> Result<Option<Strings>, String> {
-    crate::pack::read_a_part();
+    crate::load::read_a_part();
     let mut out: Option<Strings> = None;
     for p in packs {
         if let Some(s) = load(&dir.join(p), lang)? {
@@ -418,14 +418,14 @@ pub fn check_emotions(s: &Strings, emotions: &[&str], own: bool) -> Vec<String> 
 /// `c`: each language's table of the game's pack (a chip the game's
 /// init.luau doesn't require yet, its folder `chips/<key>/` there without
 /// a use, may have its strings before it loads), and the own language's
-/// present; the backgrounds' against the backgrounds of the game's asset
-/// pack, whose index is `pack`. With no pack, only that the own language
-/// names every background the content's modules name (whether the pack has
-/// the others the tables name is the pack's to say).
-pub fn check_games(dir: &Path, c: &nettai_battle::Content, pack: Option<&nettai_content_api::AssetIndex>, r: &mut crate::report::Report) {
+/// present; the backgrounds' against the backgrounds of the game's assets,
+/// extracted from its ROMs, whose index is `assets`. With none, only that the
+/// own language names every background the content's modules name (whether
+/// the assets have the others the tables name is theirs to say).
+pub fn check_games(dir: &Path, c: &nettai_battle::Content, assets: Option<&nettai_content_api::AssetIndex>, r: &mut crate::report::Report) {
     use nettai_content_api::{AssetKind, AssetNames};
     let own_names = load(&dir.join(c.game()), OWN).ok().flatten().map(|s| s.backgrounds.keys().cloned().collect::<Vec<_>>()).unwrap_or_default();
-    let backgrounds: Vec<&str> = match pack {
+    let backgrounds: Vec<&str> = match assets {
         Some(p) => p.backgrounds.keys().map(String::as_str).filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect(),
         None => c.assets.backgrounds.iter().chain(&own_names).map(String::as_str).collect(),
     };

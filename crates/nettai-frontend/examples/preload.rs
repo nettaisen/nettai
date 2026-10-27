@@ -1,7 +1,7 @@
-//! Loading and preloading, held to what they say, on a real pack: a game is
-//! loaded a part at a time (`game::Loading`), a match of it made ready a
-//! step at a time (`preload::Preload`), and then **the pack and the content
-//! are deleted from disk** before the match is played. A match that read
+//! Loading and preloading, held to what they say, on a game's real assets: a
+//! game is loaded a part at a time (`game::Loading`, its assets extracted from
+//! its ROMs), a match of it made ready a step at a time (`preload::Preload`),
+//! and then **the content is deleted from disk** before the match is played. A match that read
 //! or decoded a file on the way would stop or draw nothing; this one plays
 //! to its last tick with every picture presented and every sample taken,
 //! each the same as a player's made without the preload, and its player's
@@ -17,14 +17,14 @@
 //! cargo run --release -p nettai-frontend --example preload -- --game exe6
 //! ```
 //!
-//! The packs are found as the tool finds them (`$NETTAI_PACKS`); the game's
-//! pack and the content directory are copied to the system's temporary
-//! directory, and the copies are what is loaded and deleted.
+//! The ROMs are read as the tools read them (`$NETTAI_ROMS`), as the game
+//! loads and never after; the content directory is copied to the system's
+//! temporary directory, and the copy is what is loaded and deleted.
 
 use nettai_battle::battle::mode;
 use nettai_frontend::Player;
 use nettai_frontend::driver::{InFight, LivePlayer, Opponent, bot_buttons};
-use nettai_frontend::game::{Found, Loading, Options};
+use nettai_frontend::game::{Loading, Options};
 use nettai_frontend::preload::{self, Part, Preload};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -115,17 +115,14 @@ fn run() -> Result<(), String> {
     }
     let name = name.ok_or("say which game: --game exe6, exe5 or exe4")?;
 
-    // Copies of the game's pack and of the content, to load and then delete.
-    let found = Found::find(&nettai_content::pack::packs_dir(), &[]).map_err(|e| format!("{}\n{e}", e.report))?;
-    let pack = found.packs.iter().find(|p| p.game == name).ok_or(format!("no pack of {name} in {}", nettai_content::pack::packs_dir().display()))?;
+    // A copy of the content, to load and then delete.
     let scratch = std::env::temp_dir().join(format!("nettai-preload-{}", std::process::id()));
-    let copies: (PathBuf, PathBuf) = (scratch.join("pack"), scratch.join("content"));
-    let copied = copy_dir(&pack.dir, &copies.0).and_then(|a| Ok(a + copy_dir(&nettai_content::index::content(), &copies.1)?));
-    let copied = copied.map_err(|e| format!("can't copy the pack and the content to {}: {e}", scratch.display()))?;
-    println!("{name}: {copied} files of its pack and the content copied to {}", scratch.display());
+    let copy: PathBuf = scratch.join("content");
+    let copied = copy_dir(&nettai_content::index::content(), &copy).map_err(|e| format!("can't copy the content to {}: {e}", scratch.display()))?;
+    println!("{name}: {copied} files of the content copied to {}", scratch.display());
 
     // The game, a part at a time.
-    let options = Options { packs_dir: None, packs: vec![copies.0.clone()], content: Some(copies.1.clone()), ..Options::default() };
+    let options = Options { content: Some(copy.clone()), ..Options::default() };
     let mut loading = Loading::new(&name, options);
     let started = Instant::now();
     while let Some(part) = loading.next() {
@@ -165,12 +162,12 @@ fn run() -> Result<(), String> {
         return Err(format!("the match can't start: {why}"));
     }
     let missing = preload.missing();
-    println!("  what the pack hasn't of it: {}", if missing.is_empty() { "nothing".to_string() } else { format!("{} things:\n    {}", missing.len(), missing.join("\n    ")) });
+    println!("  what the game's assets haven't of it: {}", if missing.is_empty() { "nothing".to_string() } else { format!("{} things:\n    {}", missing.len(), missing.join("\n    ")) });
 
-    // The pack and the content go; the match is played without them.
+    // The content goes; the match is played without it.
     std::fs::remove_dir_all(&scratch).map_err(|e| format!("can't delete {}: {e}", scratch.display()))?;
-    if copies.0.exists() || copies.1.exists() {
-        return Err("the copies are still there".into());
+    if copy.exists() {
+        return Err("the copy is still there".into());
     }
     let mut player = preload.player(driver(&set));
     let mut plain = Player::new(&game, driver(&set));
@@ -178,7 +175,7 @@ fn run() -> Result<(), String> {
     let (tick, picture) = play(&mut player, &mut plain, ticks, size)?;
     let late = player.late();
     println!(
-        "  {} ticks played with the pack and the content deleted, in {:.1?}, each picture and sound the same as a player's made without the preload: \
+        "  {} ticks played with the content deleted, in {:.1?}, each picture and sound the same as a player's made without the preload: \
          the longest tick {tick:.1?}, the longest picture ({}x{}) {picture:.1?}; {}",
         player.ticks(),
         started.elapsed(),

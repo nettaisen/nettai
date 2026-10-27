@@ -1,14 +1,14 @@
-//! Content packs: a game's graphics and sound in open formats that ordinary
-//! tools edit, loaded exactly into the data the engine, the frontend and the
-//! audio use; and the battle content, the content directory's packs
-//! ([`index`]: content/'s game packs and the support packs they depend on), which
-//! name the asset packs' assets and define the sprites' timing.
+//! The battle content, the content directory's packs ([`index`]: content/'s
+//! game packs and the support packs they depend on), which name a game's
+//! assets and define the sprites' timing; and the asset pack format, a
+//! game's graphics and sound in open formats (`pack`; no longer what any
+//! game's assets load from: they are extracted from its ROMs, `nettai_extract`).
 //!
 //! - Battle content: the Luau modules that define the chips, navis, forms,
 //!   weapons, stages, rules and sprites' timing, and the code that runs
 //!   them ([`index`]), loaded alone into the engine's
-//!   `nettai_battle::Content` ([`pack::load_battle`]); what an asset pack
-//!   holds of it, for drawing and sound, is [`pack::pack_assets`].
+//!   `nettai_battle::Content` ([`load::load_battle`]); what a game's assets
+//!   hold of it, for drawing and sound, is [`load::asset_numbers`].
 //! - Sprites: an indexed-PNG part atlas, and part layouts and the frames
 //!   their animations draw (`sprite.json`) per sprite ([`sprite`]).
 //! - Field, backgrounds (Tiled maps), HUD, the custom screen: indexed PNGs
@@ -31,9 +31,8 @@
 //!   named by its SHA-256 ([`bundle`]), and an app's store of them,
 //!   unpacked ([`store`]; docs/design/content-deployment.md).
 //!
-//! [`pack`] ties them together and loads each part straight from its
-//! files. Every import reports what it found in a [`report::Report`];
-//! nothing is silently approximated.
+//! [`pack`] ties the formats together. Every import reports what it found in
+//! a [`report::Report`]; nothing is silently approximated.
 //!
 //! The graphics and sound modules know GBA-style data (4bpp tiles,
 //! 16-color palettes, OAM parts, M4A songs) but no EXE6 rule; only [`hud`],
@@ -47,6 +46,7 @@ pub mod image;
 pub mod letters;
 pub mod library;
 pub mod lint;
+pub mod load;
 pub mod locale;
 pub mod look;
 pub mod midi;

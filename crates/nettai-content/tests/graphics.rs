@@ -1,11 +1,11 @@
 //! Graphics packs on a synthetic bundle (no game data): export, import back
-//! byte for byte, the frame counts read without images, and what the
+//! byte for byte, and what the
 //! importer says about files ordinary tools damaged.
 
 use nettai_assets::*;
 use nettai_content::image::Indexed;
 use nettai_content::report::{Level, Report};
-use nettai_content::{pack, sprite};
+use nettai_content::pack;
 use std::path::{Path, PathBuf};
 
 fn tiles(n: usize, seed: u8) -> Tiles {
@@ -511,26 +511,6 @@ fn the_asset_index_lists_every_asset_by_name() {
     let mut r = Report::default();
     assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), None);
     assert!(r.has_errors(), "{r}");
-}
-
-#[test]
-fn frame_counts_load_without_images() {
-    let dir = temp("frames");
-    let b = bundle();
-    write_pack(&dir, &b);
-    for s in &b.sprites {
-        std::fs::remove_file(dir.join(format!("graphics/sprites/sprite-{:02x}-{:02x}/atlas.png", s.category, s.index))).unwrap();
-    }
-    let mut r = Report::default();
-    let counts = sprite::frame_counts(&dir, &mut r).unwrap();
-    assert_eq!(counts, [((0, 1), vec![1, 2]), ((0x14, 0x3A), vec![1, 2])].into());
-    // A sprite.json without animations is an older extractor's.
-    let file = dir.join("graphics/sprites/sprite-00-01/sprite.json");
-    let text = std::fs::read_to_string(&file).unwrap();
-    std::fs::write(&file, text[..text.find(",\n  \"animations\"").unwrap()].to_string() + "\n}\n").unwrap();
-    let mut r = Report::default();
-    assert_eq!(sprite::frame_counts(&dir, &mut r), None);
-    assert!(r.to_string().contains("extract the pack again"), "{r}");
 }
 
 #[test]

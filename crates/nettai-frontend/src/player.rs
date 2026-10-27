@@ -158,7 +158,7 @@ fn made_so_far(renderer: &Renderer, text: Option<&TextRenderer>) -> Late {
     let made = text.map(TextRenderer::made).unwrap_or_default();
     Late {
         runtimes: nettai_battle::behavior::Behaviors::loads(),
-        reads: nettai_content::pack::reads(),
+        reads: nettai_content::load::reads(),
         layouts: made.layouts + renderer.layouts_made(),
         glyphs: made.glyphs,
         rasters: made.rasters,

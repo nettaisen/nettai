@@ -1,10 +1,10 @@
 [package]
 name = "nettai-extract"
-# The app's: its line (major.minor) is in each pack's fingerprint, the primitives changing only with one.
+# The app's: the primitives change only with its line (major.minor).
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Embeddable asset extraction by the games' recipes, and its command-line tool"
+description = "A game's assets extracted from its ROMs in memory by the game's recipe, the ROMs found where they are (the Legacy Collection installed, or ROM files)"
 
 [dependencies]
 # Files, threads, time and dialogs: the desktop's, or the browser's.
@@ -15,13 +15,27 @@ nettai-content = { path = "../nettai-content" }
 nettai-content-api = { path = "../nettai-content-api" }
 # The recipes' VM (`nettai_luau::tool`) and its binding.
 nettai-luau = { path = "../nettai-luau" }
-# A recipe's `data` (its compat TOML) and its fingerprint (SHA-256).
+# A recipe's `data` (its compat TOML).
 toml = "0.8"
-sha2 = "0.10"
+# The Legacy Collection's archives (`source.rs`, ported from Tango's).
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# What finding the ROMs passes over (an archive or a file that doesn't read): the host's log.
+log = "0.4"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The Legacy Collection's install, found through Steam (`source.rs`, ported from Tango's, with the crates it uses).
+steamlocate = "2"
+
+[features]
+# ROMs and archives of made-up bytes, for the tests of the crates over this one (`source::testing`).
+testing = []
 
 [dev-dependencies]
 tempfile = "3"
-# The content audit of a pack (tests/extract.rs): the lookups a frontend
-# makes of everything the content defines.
+# The content audit of the extracted assets (tests/extract.rs): a game loaded as
+# a frontend loads it, and the lookups it makes of everything the content
+# defines.
 nettai-frontend = { path = "../nettai-frontend" }
 nettai-tools = { path = "../nettai-tools" }
+# The digests of the files a baseline's packs hold (tests/recipes.rs).
+sha2 = "0.10"

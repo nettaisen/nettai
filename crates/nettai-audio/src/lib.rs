@@ -1,7 +1,6 @@
 //! Battle audio: plays nettai-battle's sound cues with the game's own sound
-//! driver (the `m4a` crate) and sound data (a content pack's sound, which
-//! nettai-content loads into an `m4a::SoundBank`; `nettai-extract content/exe6` writes
-//! the pack from the user's ROM).
+//! driver (the `m4a` crate) and sound data (an `m4a::SoundBank`, which
+//! nettai-extract extracts from the user's ROMs).
 //!
 //! - [`Songs`]: what each of the engine's sounds (a handle over the loaded
 //!   packs' sounds) is in its pack's song table; [`Songs::cue`] turns a

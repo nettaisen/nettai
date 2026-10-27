@@ -1,42 +1,39 @@
-//! Extract a game's assets from its ROMs, without launching a process.
+//! A game's assets, extracted from its ROMs in memory: its graphics, its sound and the index of their names, for a
+//! frontend to draw and play them (docs/design/extraction-recipes.md).
 //!
-//! A game's content says how its assets are extracted (docs/design/extraction-recipes.md): its recipe in Luau
-//! (`extract/`) states its ROMs, every one required (a complete Battle Network Legacy Collection's), reads them
-//! through the primitives here and returns the assets in typed form; the host here makes the pack of them
-//! ([`Recipe`]). ROMs are told by the game code in their headers ([`header_code`]), in any order. The same API
-//! drives the `nettai-extract` command.
-//!
-//! A ROM is given as its bytes ([`RomSet::insert`]), from wherever the host has it: nettai reads its ROMs out of an
-//! installed Legacy Collection's archives into memory and writes none to disk. [`Recipe::extract_reporting`] and
-//! [`Extraction::write_reporting`] say how far they are as they go; [`Recipe::fingerprint`] names the packs a
-//! recipe makes.
+//! A game's content says how its assets are extracted: its recipe in Luau (`extract/`) states its ROMs, every one
+//! required (a complete Battle Network Legacy Collection's), reads them through the primitives here and returns the
+//! assets in typed form; the host here finishes them ([`Recipe`]). ROMs are told by the game code in their headers
+//! ([`header_code`]), in any order, and read from where they are ([`RomSource`]: the Legacy Collection installed, or
+//! ROM files); none is written anywhere. [`extract`] is the whole of it in one call:
 //!
 //! ```no_run
-//! use nettai_extract::Recipe;
-//! let recipe = Recipe::of_content(std::path::Path::new("content"), "exe6")?;
-//! let mut roms = recipe.rom_set();
-//! for rom in ["falzar.gba", "gregar.gba", "falzar-jp.gba", "gregar-jp.gba"] {
-//!     roms.insert(nettai_platform::fs::read(rom)?)?;
-//! }
-//! let assets = recipe.extract(&roms)?;
-//! // Use assets.graphics / assets.sound directly, or embed the open-format files.
-//! let files = assets.files()?;
-//! assets.write(std::path::Path::new("new-pack"))?;
+//! use nettai_extract::{RomSource, extract};
+//! let roms = RomSource::from_env()?; // $NETTAI_ROMS, else the Legacy Collection where Steam installed it
+//! let assets = extract(std::path::Path::new("content"), "exe6", &roms)?;
+//! // assets.graphics (a nettai_assets::Bundle), assets.sound (an m4a::SoundBank), assets.index (names to numbers)
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
+//!
+//! Its steps are public too: [`Recipe::of_content`], [`RomSource::read`] (the recipe's ROMs into a [`RomSet`]),
+//! [`Recipe::extract`]. A frontend loads a game with it (nettai-frontend's `game::Game::load`), and checks the assets
+//! against the content (`nettai_content::load::asset_numbers`, [`Extraction::timing_differences`]: `nettai-tool
+//! --audit-content`). The crate is a library alone.
 
-pub mod cli;
 mod elements;
 mod gfx;
 mod recipe;
 mod rom;
 pub mod shapes;
 mod sound;
+pub mod source;
 mod sprite;
 
 pub use recipe::Recipe;
+pub use source::{Install, RomSource};
 
 use nettai_content::{names::AssetNames, pack, report::Report, sound::SongVersions};
+use nettai_content_api::AssetIndex;
 use rom::Rom;
 use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
 
@@ -109,17 +106,29 @@ impl RomSet {
     }
 }
 
-/// Decoded data and diagnostics. Extraction itself performs no filesystem writes.
+/// Game `game`'s assets, extracted from `roms` by its recipe in the content directory `content` (a bundle's, or the
+/// repository's content/): [`Recipe::of_content`], [`RomSource::read`] and [`Recipe::extract`] in one call.
+pub fn extract(content: &Path, game: &str, roms: &RomSource) -> Result<Extraction, Error> {
+    let recipe = Recipe::of_content(content, game)?;
+    recipe.extract(&roms.read(&recipe)?)
+}
+
+/// A game's assets, extracted from its ROMs ([`Recipe::extract`]), in memory: nothing is written anywhere.
 pub struct Extraction {
     /// The game's id (`exe6`).
     pub game: String,
     pub graphics: nettai_assets::Bundle,
     pub sound: m4a::SoundBank,
+    /// The songs each version of the game has its own of (EXE5's Team Colonel's).
     pub sound_versions: SongVersions,
+    /// Every asset by its name, with its number in `graphics` and `sound`: what content names its assets by
+    /// (`nettai_content::load::asset_numbers`).
+    pub index: AssetIndex,
+    /// What extraction noticed that isn't wrong enough to fail it.
     pub warnings: Vec<String>,
     names: AssetNames,
     /// Each sheet's timing as the ROMs have it (`sprite::Sheet`), by sprite: for
-    /// [`Extraction::timing_differences`] alone, in no file of the pack.
+    /// [`Extraction::timing_differences`] alone (the content times its sprites).
     timing: BTreeMap<(u8, u8), Vec<Vec<(u8, u8)>>>,
 }
 
@@ -179,7 +188,7 @@ pub fn songs_played_otherwise(a: &[u8], b: &[u8]) -> Result<Vec<u16>, Error> {
 }
 
 impl Extraction {
-    /// The sprites, songs and backgrounds the pack has under a number
+    /// The sprites, songs and backgrounds the assets have under a number
     /// (`sprite-cc-ii`, `sound-nnn`, `background-nn`): those
     /// compat/assets.toml names none of.
     pub fn unnamed(&self) -> Vec<String> {
@@ -206,8 +215,8 @@ impl Extraction {
         sprites.chain(songs).chain(backgrounds).collect()
     }
 
-    /// Where content times its sprites otherwise than the ROMs (`nettai-extract --check`): for every sprite it
-    /// defines (`sprites`, by handle, its names `names`, its numbers in this pack `numbers`), each animation's
+    /// Where content times its sprites otherwise than the ROMs (the `nettai-extract` check): for every sprite it
+    /// defines (`sprites`, by handle, its names `names`, its numbers here `numbers`), each animation's
     /// frames' durations and whether it loops (the flag 0x40 on its last frame, 0x80 ending it), and the places of
     /// the parts it states (`SpriteDef::parts`) against the sheet's layouts. Each difference names its sprite and
     /// animation; none, the content is the ROMs' timing.
@@ -236,17 +245,7 @@ impl Extraction {
             return Err(Error(format!("cannot export songs: {failures:?}")));
         }
         files.extend(sound);
-        let songs = self
-            .sound
-            .songs
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| s.is_some())
-            .map(|(i, _)| i as u16)
-            .collect();
-        files.push(nettai_content::names::index_file(
-            &self.names.index(&self.graphics, &songs),
-        ));
+        files.push(nettai_content::names::index_file(&self.index));
         let mut diagnostics = self.warnings.join("\n");
         // The assets written under a number, which no name in compat/assets.toml
         // gives them yet (content may not use them).
@@ -299,15 +298,7 @@ impl Extraction {
         }
         let index = nettai_content::names::read_index(root, &mut report)
             .ok_or_else(|| Error(format!("index does not load:\n{report}")))?;
-        let songs = self
-            .sound
-            .songs
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| s.is_some())
-            .map(|(i, _)| i as u16)
-            .collect();
-        if index != self.names.index(&self.graphics, &songs) {
+        if index != self.index {
             return Err(Error("asset index reads back differently".into()));
         }
         let (bank, versions) = pack::import_sound_versions(root, &mut report)
@@ -411,7 +402,7 @@ fn timing_differences(
 mod tests {
     use super::*;
     use nettai_assets::{SpriteFrame, SpritePart, SpriteSheet};
-    use nettai_content_api::{AssetNumbers, SpriteNumber, SpriteAnimation, SpriteDef};
+    use nettai_content_api::{AssetNumbers, SpriteAnimation, SpriteDef, SpriteNumber};
 
     /// A sprite the content times otherwise than the ROMs is named, with the animation: its durations, its loop,
     /// a flag the content can't state, and a part's place.

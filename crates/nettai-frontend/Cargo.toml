@@ -18,8 +18,10 @@ nettai-audio = { path = "../nettai-audio", default-features = false }
 # Live play against another player: rollback (getgud) over the rennet
 # protocol, on UDP.
 nettai-netplay = { path = "../nettai-netplay" }
-# The packs: a game's content, graphics, strings and sound.
+# A game's content and strings, and the check of its assets against it.
 nettai-content = { path = "../nettai-content" }
+# A game's assets (graphics, sound, their index), extracted from its ROMs by its content's recipe as it loads.
+nettai-extract = { path = "../nettai-extract" }
 # A match: the setup a set is played from, checked; live play's random pick
 # of one; how a set goes on.
 nettai-match = { path = "../nettai-match" }
@@ -40,6 +42,8 @@ testing = []
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
+# A folder of no ROMs, for the loading's failures.
+tempfile = "3"
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A set played over WebRTC links that drop and come back (the library
 # itself has no transport).

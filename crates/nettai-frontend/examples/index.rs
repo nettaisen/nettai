@@ -18,8 +18,8 @@
 //! cargo run --release -p nettai-frontend --example index -- set.nettaireplay
 //! ```
 //!
-//! The replay's game is loaded with its sound from the packs found as the
-//! program finds them (`$NETTAI_PACKS`).
+//! The replay's game is loaded with its sound, extracted from its ROMs as the
+//! tools find them (`$NETTAI_ROMS`).
 
 use nettai_frontend::game::{self, Loaded, Options};
 use nettai_frontend::replay::Replay;

@@ -60,18 +60,12 @@ msgstr "切換遊戲"
 
 msgid "Loading {}"
 msgstr "正在載入 {}"
-# A game's pack being extracted from the Legacy Collection: {} is the game, as the header shows it.
-msgid "Extracting {}"
-msgstr "正在擷取 {}"
 # A game's content being downloaded (the app has none of it yet): {} is the game, as the header shows it.
 msgid "Downloading {}"
 msgstr "正在下載 {}"
 
 msgid "Loading"
 msgstr "載入中"
-
-msgid "No game data was found. Put a game's pack in {}."
-msgstr "找不到遊戲資料。請將遊戲的資料包放進 {}。"
 
 msgid "VS"
 msgstr "VS"
@@ -326,16 +320,15 @@ msgstr "這不是 {} 的規則。"
 msgid "Not a {} ruleset"
 msgstr "這不是 {} 的規則"
 
-# A game whose pack is there and can't be loaded: {} is the game, as the header shows it.
-msgid "{}'s data is out of date. Extract it again."
-msgstr "{} 的資料已過期。請重新擷取。"
+# A game that couldn't be loaded (its content, or its assets extracted from its ROMs): {} is the game, as the header
+# shows it.
+msgid "{}'s data couldn't be loaded. Details are in the log file."
+msgstr "無法載入 {} 的資料。詳細資訊請見記錄檔。"
 
-msgid "{}'s data is out of date"
-msgstr "{} 的資料已過期"
+msgid "{}'s data couldn't be loaded"
+msgstr "無法載入 {} 的資料"
 
-msgid "Extract it again."
-msgstr "請重新擷取。"
-# No game's pack, and the Legacy Collection not found: by its Chinese name (洛克人EXE 合集), and how to drag its folder onto the
+# The Legacy Collection not found: by its Chinese name (洛克人EXE 合集), and how to drag its folder onto the
 # window from Steam (Steam's own menu words, as its Traditional Chinese client has them: 收藏庫, 管理 → 瀏覽本機檔案); the
 # button opens the system's folder dialog, to choose the folder it is installed in.
 msgid "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window."
@@ -351,7 +344,7 @@ msgid "In Steam, right-click it in your library, choose Manage > Browse local fi
 msgstr "請在 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此頁面。"
 msgid "Choose folder"
 msgstr "選擇資料夾"
-# A game has no pack, and the Legacy Collection found lacks some of its ROMs: {} is the game, as the header
+# The Legacy Collection found lacks some of a game's ROMs: {} is the game, as the header
 # shows it; by its Chinese name, and Steam's own name for checking a game's files (驗證遊戲檔案的完整性); the button opens the folder dialog again.
 msgid "The Legacy Collection's files are incomplete: some of {}'s are missing. Have Steam verify the collection's files, then choose its folder again."
 msgstr "《洛克人EXE 合集》的檔案不完整：{} 的部分檔案遺失。請讓 Steam 驗證遊戲檔案的完整性，然後重新選擇其資料夾。"
@@ -359,11 +352,6 @@ msgid "The Legacy Collection's files are incomplete"
 msgstr "《洛克人EXE 合集》的檔案不完整"
 msgid "Some of {}'s files are missing. Have Steam verify the collection's files, then choose its folder again."
 msgstr "{} 的部分檔案遺失。請讓 Steam 驗證遊戲檔案的完整性，然後重新選擇其資料夾。"
-# A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
-msgid "{}'s data couldn't be extracted. Details are in the log file."
-msgstr "無法擷取 {} 的資料。詳細資訊請見記錄檔。"
-msgid "{}'s data couldn't be extracted"
-msgstr "無法擷取 {} 的資料"
 # A game's content couldn't be downloaded: {} is the game, as the header shows it (the first: no game named,
 # none could be).
 msgid "The games' content couldn't be downloaded. Check your connection, then start nettai again."

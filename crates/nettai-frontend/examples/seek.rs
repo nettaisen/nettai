@@ -30,7 +30,8 @@
 //!
 //! `--ticks` stops the recording after that many (default 18000: five
 //! minutes), `--save` keeps the replay (for `nettai-tool --replay`). The
-//! packs are found as the program finds them (`$NETTAI_PACKS`).
+//! game's assets are extracted from its ROMs as the tools find them
+//! (`$NETTAI_ROMS`).
 
 use nettai_battle::battle::mode;
 use nettai_frontend::Player;

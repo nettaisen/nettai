@@ -1,5 +1,5 @@
 //! The host on synthetic data (docs/design/extraction-recipes.md §4.5: CI has no ROMs): the primitives, the codec,
-//! the recipe's table, the fingerprint and the refusals.
+//! the recipe's table, its inputs and the refusals.
 
 use super::*;
 use crate::rom;
@@ -207,7 +207,7 @@ fn synthetic(recipe: &str) -> Vec<(String, String)> {
 }
 
 #[test]
-fn a_recipe_is_its_inputs_and_its_fingerprint_digests_them() {
+fn a_recipe_is_its_inputs() {
     let files = synthetic(RECIPE);
     let dir = bundle(&files);
     let recipe = Recipe::of_content(dir.path(), "g").unwrap();
@@ -217,27 +217,10 @@ fn a_recipe_is_its_inputs_and_its_fingerprint_digests_them() {
         inputs,
         ["g/compat/assets.toml", "g/extract/init.luau", "g/extract/shapes/hud/hp-box.same", "lib/extract/place.luau", "lib/extract/shapes/hud/hp-box.svg"]
     );
-    let print = recipe.fingerprint();
-    assert!(print.len() == 16 && print.chars().all(|c| c.is_ascii_hexdigit()), "{print}");
-    assert_eq!(Recipe::of_content(dir.path(), "g").unwrap().fingerprint(), print, "the same bundle, the same fingerprint");
     assert_eq!(recipe.drawings().game(), "g");
-    // A byte changed in any input changes it; a change outside them (the manifests, the content) doesn't.
-    for (path, _) in &files {
-        let changed: Vec<(String, String)> = files.iter().map(|(p, t)| (p.clone(), if p == path { format!("{t} ") } else { t.clone() })).collect();
-        let again = Recipe::of_content(bundle(&changed).path(), "g").unwrap().fingerprint();
-        if path.ends_with("manifest.toml") || path == "g/rules/init.luau" {
-            assert_eq!(again, print, "{path} isn't an input");
-        } else {
-            assert_ne!(again, print, "{path} is an input");
-        }
-    }
-    // Every compat file is, read or not; and the ROMs the recipe states are its table's.
-    let mut more = files.clone();
-    more.push(("g/compat/chips.toml".into(), "[chips]\n".into()));
-    assert_ne!(Recipe::of_content(bundle(&more).path(), "g").unwrap().fingerprint(), print);
+    // The ROMs the recipe states are its table's.
     let other = Recipe::of_content(bundle(&synthetic(&RECIPE.replace("\"BR5E\"", "\"BR5J\""))).path(), "g").unwrap();
     assert_eq!(other.roms(), ["BR6E".to_string(), "BR5J".to_string()]);
-    assert_ne!(other.fingerprint(), print);
 }
 
 #[test]
@@ -279,11 +262,4 @@ fn a_named_asset_the_recipe_doesnt_give_is_an_error() {
     assert_eq!(complete(&mut g, &names).unwrap_err(), "sprite/megaman is named in the asset names and no ROM gave it");
     g.sprites.push(nettai_assets::SpriteSheet::default());
     assert_eq!(complete(&mut g, &names).unwrap_err(), "the recipe gave no field");
-}
-
-/// The fingerprint's line is the engine's version's major and minor numbers.
-#[test]
-fn the_line_is_the_versions_major_and_minor() {
-    assert_eq!((line("0.11.2"), line("1.0.0-rc.1"), line("2.3"), line("4")), ("0.11", "1.0", "2.3", "4"));
-    assert!(env!("CARGO_PKG_VERSION").starts_with(&format!("{LINE}.")), "{LINE}");
 }

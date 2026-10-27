@@ -8,7 +8,7 @@
 //! shared between battles and their snapshots through an `Arc`:
 //!
 //! ```ignore
-//! let (content, _report) = nettai_content::pack::load_battle(&content_dir, "exe6")?;
+//! let (content, _report) = nettai_content::load::load_battle(&content_dir, "exe6")?;
 //! let content = Arc::new(content);
 //! let setup = RoundSetup { content: content.hash(), ..setup };
 //! let battle = Battle::new(setup, content.clone());

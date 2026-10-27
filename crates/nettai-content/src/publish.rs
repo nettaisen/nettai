@@ -25,7 +25,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use nettai_content::bundle::{self, BundleId, Manifest, Published};
-use nettai_content::pack;
 use nettai_content::report::Level;
 use nettai_content_api::{PackKind, packs};
 
@@ -417,7 +416,7 @@ fn content_hash(gz: &[u8], id: BundleId, dest: &Path, game: &str) -> Result<nett
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
     bundle::unpack(gz, id, dest)?;
-    match pack::load_battle(dest, game) {
+    match nettai_content::load::load_battle(dest, game) {
         Ok((c, loaded)) => {
             for i in loaded.issues.iter().filter(|i| i.level != Level::Note) {
                 eprintln!("   {i}");
@@ -632,7 +631,7 @@ mod tests {
             let _ = std::fs::remove_dir_all(&dest);
             let hash = content_hash(&bundle::gzip(&built.tar), built.id, &dest, game);
             let _ = std::fs::remove_dir_all(&dest);
-            let (checkout, _) = pack::load_battle(&content, game).unwrap_or_else(|r| panic!("{game}: {r}"));
+            let (checkout, _) = nettai_content::load::load_battle(&content, game).unwrap_or_else(|r| panic!("{game}: {r}"));
             assert_eq!(hash.unwrap(), checkout.hash(), "{game}");
         }
     }

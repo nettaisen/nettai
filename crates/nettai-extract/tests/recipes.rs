@@ -1,14 +1,14 @@
 //! The recipes held to the packs the Rust extraction made before them (docs/design/extraction-recipes.md §6.5):
-//! each game's full set extracted by its recipe, in memory (`Extraction::files`, no writes), its files compared with
+//! each game's full set extracted by its recipe, in memory, its pack's files (`Extraction::files`, no writes) compared with
 //! a baseline's digests (`NETTAI_EXTRACT_BASELINE`: a folder of the verification workspace's
 //! `data/extract-baseline/<commit>/`), `extraction.txt` among them, and its ROM reads with the baseline's, as ranges
 //! per ROM after merging. A later change to a recipe, to exelib's code or to a primitive is held to them, until a
 //! change meant to alter a pack records a new baseline. Each game's time is said.
 //!
-//! The ROMs come from a folder, recognized by their headers (`NETTAI_EXTRACT_ROM_DIR`, any file names); the games
-//! are `NETTAI_EXTRACT_GAMES`'s, else every game with a recipe:
+//! The ROMs are where the tools find them (`$NETTAI_ROMS`: a folder of them, any file names, or the Legacy
+//! Collection's); the games are `NETTAI_EXTRACT_GAMES`'s, else every game with a recipe:
 //!
-//!     NETTAI_EXTRACT_ROM_DIR=~/Documents/Tango/roms NETTAI_EXTRACT_GAMES=exe6 \
+//!     NETTAI_ROMS=~/Documents/Tango/roms NETTAI_EXTRACT_GAMES=exe6 \
 //!     NETTAI_EXTRACT_BASELINE=../bn6battle-verify/data/extract-baseline/fac5b936a \
 //!     cargo test --release -p nettai-extract --test recipes -- --ignored --nocapture
 
@@ -100,7 +100,7 @@ fn digests_difference(a: &BTreeMap<String, String>, baseline: &BTreeMap<String, 
 }
 
 #[test]
-#[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR and a baseline via NETTAI_EXTRACT_BASELINE"]
+#[ignore = "requires the original ROMs ($NETTAI_ROMS) and a baseline via NETTAI_EXTRACT_BASELINE"]
 fn the_recipes_make_the_baselines_packs() {
     let baseline = PathBuf::from(std::env::var_os("NETTAI_EXTRACT_BASELINE").expect("NETTAI_EXTRACT_BASELINE: a baseline's folder"));
     let mut wrong = Vec::new();

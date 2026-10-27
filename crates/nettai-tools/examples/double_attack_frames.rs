@@ -1,8 +1,9 @@
 //! The frames of one of EXE5's Double Attacks (the DS's party battle:
-//! content/exe5/double_attacks), drawn from the pack, for a frame comparison
-//! with the DS's captures (the verification workspace's dslab `--frames`).
+//! content/exe5/double_attacks), drawn from EXE5's assets (extracted from its
+//! ROMs: `$NETTAI_ROMS`), for a frame comparison with the DS's captures (the
+//! verification workspace's dslab `--frames`).
 //!
-//!     cargo run -p nettai-tools --example double_attack_frames -- PACK OUT KEY PARTNER [PARTNER] [--key-a TICK...]
+//!     cargo run -p nettai-tools --example double_attack_frames -- OUT KEY PARTNER [PARTNER] [--key-a TICK...]
 //!
 //! A round of MegaMan (side 0, with the partners in his party) against
 //! MegaMan (both light, the value 1000, as the DS lab's saves) on the first
@@ -38,18 +39,18 @@ const FOLDER: [&str; 30] = [
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: double_attack_frames PACK OUT KEY PARTNER [PARTNER] [--key-a TICK...]";
+    let usage = "usage: double_attack_frames OUT KEY PARTNER [PARTNER] [--key-a TICK...]";
     let split = args.iter().position(|a| a == "--key-a").unwrap_or(args.len());
     let (main, key_a) = args.split_at(split);
     let key_a: Vec<i64> = key_a.iter().skip(1).map(|t| t.parse().expect(usage)).collect();
-    if main.len() < 4 || main.len() > 5 {
+    if main.len() < 3 || main.len() > 4 {
         panic!("{usage}");
     }
-    let (pack, out, key) = (PathBuf::from(&main[0]), PathBuf::from(&main[1]), main[2].clone());
-    let partners: Vec<&str> = main[3..].iter().map(String::as_str).collect();
+    let (out, key) = (PathBuf::from(&main[0]), main[1].clone());
+    let partners: Vec<&str> = main[2..].iter().map(String::as_str).collect();
     std::fs::create_dir_all(&out).unwrap();
 
-    let options = Options { packs: vec![pack], mode: GraphicsMode::Original, sound: false, ..Options::default() };
+    let options = Options { mode: GraphicsMode::Original, sound: false, ..Options::default() };
     let loaded = load("exe5", &options).unwrap_or_else(|e| panic!("exe5: {e:?}"));
     let content = loaded.game.content.clone();
     let mut renderer = loaded.renderer();

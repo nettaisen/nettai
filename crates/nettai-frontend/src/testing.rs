@@ -1,7 +1,7 @@
 //! What tests of a set played back are made from, for this crate's tests
 //! and those of the crates over it (nettai-video's; the `testing`
 //! feature): a short set recorded on content the caller brings (the
-//! repository's test content), graphics that draw a field without a pack,
+//! repository's test content), graphics that draw a field of their own,
 //! and a sound bank that makes a sound of every cue. Nothing here comes
 //! from a ROM.
 
@@ -91,7 +91,7 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
     }
 }
 
-/// A made-up pack's numbers for `content`'s assets: each its handle (as
+/// Made-up numbers for `content`'s assets: each its handle (as
 /// [`audio`]'s songs are).
 pub fn numbered_by_handle(content: &Content) -> nettai_battle::content::AssetNumbers {
     let a = &content.assets;
