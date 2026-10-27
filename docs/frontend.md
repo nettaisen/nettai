@@ -28,17 +28,18 @@ a match waits for before its first tick: §9.)
   (`hud`), the custom screen (`custom`) and the chatbox (`chatbox`); the
   strings in the game's fonts or as the text layer's items (`fonts`,
   `textlayer`, `strings`) and the vector font that draws those
-  (`vfont`); each pack's graphics (`packs`); the lookups a frame makes of
-  the packs and the content (`lookups`), each noted and checked once a run
+  (`vfont`); the game's graphics, with other games' backgrounds beside
+  them (`graphics`); the lookups a frame makes of the graphics and the
+  content (`lookups`), each noted and checked once a run
   (`audit`); `Renderer`, which draws a frame, and `present`, which scales
   one to an output of any size, or writes it as a PNG; and a chip's
   pictures on their own (`pictures`, which the build creator shows). It has
   no window, sound, network, netplay or command line.
 - **nettai-frontend** plays a battle for a host to show, as a library: it
   has no window, no audio device and no command line, and nothing in it
-  prints or exits (§7). It loads a game (`game`: the packs found, the
-  content, the graphics and strings in a language, the text's font, the
-  sound, each step a `Result`); its player (`player`) owns the session
+  prints or exits (§7). It loads a game (`game`: the content, its assets
+  extracted from its ROMs, the graphics and strings in a language, the
+  text's font, the sound, each step a `Result`); its player (`player`) owns the session
   (`session`), the renderer and the audio, and gives a host the picture and
   the sound as it is driven; what drives a session is a driver (`driver`:
   live play of a set from the GBA button mask; `netplay`: another player,
@@ -51,73 +52,69 @@ A third crate is over them: **nettai-video** writes a replay as video, an
 MP4 encoded by ffmpeg on the desktop and by the browser's own encoder in a
 browser (§8, "Video").
 
-## 1. The content pack
+## 1. The content and the ROMs
 
 The battle content the engine runs on is this repository's content/ (its
-packs: the game packs content/exe6 and content/exe5 and the support pack
-content/exelib, docs/design/content-model-v2.md §4.0; `--content <dir>` or
-`$NETTAI_CONTENT` for another content directory). What the
-frontend shows and plays comes from a content pack made from your own ROMs
-(the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and `MEGAMAN6_GXXBR5E`, and the
-Japanese Falzar and Gregar, `ROCKEXE6_RXXBR6J` and `ROCKEXE6_GXXBR5J`, which
-have what the US release cut), never checked in: the graphics and the
-sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
-`docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
-names the content gives them. Extract it once:
+packs: the game packs content/exe6, content/exe5 and content/exe4 and the
+support pack content/exelib, docs/design/content-model-v2.md §4.0; `--content
+<dir>` or `$NETTAI_CONTENT` for another content directory). What the
+frontend shows and plays is extracted from your own ROMs as the game loads,
+in memory, by the game's recipe in its content (`nettai_extract`;
+docs/design/extraction-recipes.md): the graphics and the sound, by the
+names the content gives them. Nothing of them is written anywhere, and
+nothing is checked in. A game's ROMs are every one of the collection's for
+it (EXE6's: the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and
+`MEGAMAN6_GXXBR5E`, and the Japanese Falzar and Gregar, `ROCKEXE6_RXXBR6J`
+and `ROCKEXE6_GXXBR5J`, which have what the US release cut): a complete
+Legacy Collection's. They are where `nettai_extract::RomSource` finds them:
+the tools read `$NETTAI_ROMS`, a folder that is the Legacy Collection's
+install or holds the twelve ROM files (any names: each file's header says
+which ROM it is), else the collection where Steam installed it
+(`RomSource::from_env`); the app finds the collection itself (docs/app.md
+§17).
 
-    cargo run -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
+**You play one game**, EXE6, EXE5 or EXE4: a match is of one game (§6),
+which a match file names (`game = "exe6"`) and a trace states (its setup
+line's `"game"`: one that states none is refused; nothing takes a
+recording for a game it doesn't name). There is no default game: the
+frontend requires a build, a match file, a replay or a trace. The battle is
+that game's content, drawn and heard from its own assets: there is no
+mixing of games, no other game's chip, navi or field art (a round may be
+drawn on another game's background: "The battle backgrounds" below).
 
-ROMs can be in any order, and every one of the game's four is required (a complete Legacy Collection's).
-The output directory must be new or empty. (`data/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
-is of one game (§6), which a match file names (`game = "exe6"`) and a
-trace states (its setup line's `"game"`: one that states none is refused;
-nothing takes a recording for a game it doesn't name). There is no default
-game: the frontend requires a build, a match file, a replay or a trace. The battle is that
-game's content, drawn and heard from its pack: there is no mixing of games,
-no other game's chip, navi or field art. The frontend
-finds at start-up
-**every pack in the packs directory**, `$NETTAI_PACKS`, else
-`data`: each folder with a pack manifest, by the game the manifest
-says (`nettai_content::pack::find`); `nettai-extract content/exe5` writes EXE5's into
-`data/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
-place of the found one of its game, and can be given again for another
-game's. Two packs of one game in the directory are an error. A pack is of
-the format's one version, 1 (each file says it): another is refused, with
-a note to extract it again. Each pack loads straight from its files: its asset
-index, which gives the content's assets their numbers in the pack, the
-graphics through nettai-content's importer, and, when a window opens, the
-sound. `NETTAI_LOAD_TIMES=1` prints
-how long each part took. Each sprite, banner, mugshot, background and sound
-comes from its own pack, and the HUD, the custom screen and the field from
-the match's game's (see "Field and background" below).
+`nettai_frontend::game` loads a game (`load`, or `Loading` a part at a
+time: §9): `--content <dir>` names the content directory (so does
+`$NETTAI_CONTENT`); without it, a content/ beside the program (a packaged
+app's), else this repository's content/. A match plays one game: the
+frontend loads that game's pack (its top module, init.luau, and what it
+requires, with the support packs it depends on, exelib), then extracts its
+assets from its ROMs (`Game::load`, `Options::roms`: none, `$NETTAI_ROMS`'s
+or Steam's), nothing else; `nettai_content::index::games` lists the games
+the content has. A game's chips without a use yet (a port's unwritten
+chips) aren't required by its init.luau, so they don't load. Every loader
+does the same (the editor, the tools' `load_battle`, the EXE5 replays, the
+static audit), and the content then is what loaded: its hash, which
+netplay's handshake compares, covers exactly that. The battle is the
+content's alone: the assets it names, their handles and its sprites' timing
+are its own (docs/design/content-model-v2.md §6.3), so a headless host
+(`nettai_content::load::load_battle`: the tools' battles, the training pool)
+reads no ROM, and the hash is the same whatever draws it. A frontend checks
+the assets against the content as it loads the game
+(`nettai_content::load::asset_numbers`): they have every asset the content
+names, and each sprite the content defines with as many animations, each of
+as many frames (drawing takes the graphics' frame by the simulation's
+animation and frame; the content's timing times the battle), else the load
+fails naming the sprite or the asset; what the game numbers each asset is
+then what it draws and plays by (`AssetNumbers`). Where the content times a
+sprite otherwise than the ROMs do, the game says so
+(`Game::timing_differences`; `nettai-content check <game>` fails on it:
+docs/tools.md). A game whose ROMs can't be found or read can't load
+(`Failed::Assets`, the reason in its report). `NETTAI_LOAD_TIMES=1` prints
+how long each part took.
 
-The content goes with the packs (`nettai_content::pack::load_game`;
-docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
-directory (so does `$NETTAI_CONTENT`); without it, a content/ beside the
-program (a packaged app's), else this repository's content/. A match plays one game: the frontend loads that game's pack (its
-top module, init.luau, and what it requires, with the support packs it
-depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
-lists the games it can offer, each with its asset pack or the command that
-writes one. A game's chips without a use yet (a port's unwritten chips)
-aren't required by its init.luau, so they don't load. Every loader does the same (the
-editor, the tools' `load_battle`, the EXE5 replays, the static audit), and
-the content then is what loaded: its hash, which netplay's handshake
-compares, covers exactly that. The battle is the content's alone: the
-assets it names, their handles and its sprites' timing are its own
-(docs/design/content-model-v2.md §6.3), so a headless host
-(`pack::load_battle`: the tools' battles, the training pool) reads no pack,
-and the hash is the same whatever pack draws it. A frontend checks the pack
-against the content as it loads the game (`pack::pack_assets`): the pack
-has every asset the content names, and each sprite the content defines with
-as many animations, each of as many frames (drawing takes the pack's frame
-by the simulation's animation and frame; the durations may differ, the
-content's timing the battle), else the load fails naming the sprite or the
-asset; what the pack numbers each asset is then what it draws and plays
-by (`PackAssets`). A game the content must load whose pack isn't found is
-an error naming the extract command.
-
-The graphics load into the types of the `nettai-assets` crate, decoded
-(tiles as palette indices, colors as BGR555):
+The graphics are extracted into the types of the `nettai-assets` crate
+(tiles as palette indices, colors as BGR555), and the sound into an
+`m4a::SoundBank`:
 
 - **Sprites**: every battle sprite (categories 0x00..=0x14 of
   `SpritePointersList`), per animation frame its tileset, palette set and
@@ -138,14 +135,14 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   objects, the emotion window's faces and count boxes, the link navis'
   faces (each mugshot under its name), the HUD's text lines, banner layouts
   and glyphs, "Cstmzing...", "PAUSE", the warning marker's arrow.
-- **The custom screen** (`graphics/custom`): the window's tiles, maps and
-  patches, each chip's picture (`chip-art/<chip>.png`; for a chip whose
+- **The custom screen**: the window's tiles, maps and
+  patches, each chip's picture (under the chip's key; for a chip whose
   palette no ROM holds, the Gregar and Falzar chips, its definition's
   `art_palette` colors it) and the buttons',
   chip codes, element icons and their colors, damage digits, the slots'
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
   frame.
-- **The chatbox** (in `graphics/hud`, and its portraits as sprites): the
+- **The chatbox** (in the HUD's graphics, and its portraits as sprites): the
   dialogue font with its advances, the box's tiles and maps, the key-wait
   arrow, the text's palette; each run message's speaker's portrait, the
   true face from whichever ROM has it.
@@ -153,7 +150,7 @@ The graphics load into the types of the `nettai-assets` crate, decoded
 What the HUD shows of the content comes from the content: a chip's name is
 its definition's, spelled with the font's glyphs (`Hud::glyphs`), or in the
 enhanced mode drawn with the bundled font (§3, "Text"); its icon
-is the pack's image under the chip's key; whether its damage shows is its
+is the graphics' image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
 (`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
@@ -191,8 +188,8 @@ twelve characters cut short spelled as the game's dialogue spells it (`robot-con
 - Two backgrounds of one area are told apart by a story state (`mr-weather-comp-storm`), or by a part's number
   where they differ.
 - Numbers whose load data, scroll callbacks and animations are the same are one background (EXE5's liberation
-  maps' numbers and their areas': `acdc-area` is 0x08 and 0x0C), named for its area: one key, one picture in the
-  pack (the first number's), and compat/assets.toml lists every number (`acdc-area = [0x08, 0x0c]`). EXE6 and
+  maps' numbers and their areas': `acdc-area` is 0x08 and 0x0C), named for its area: one key, one picture
+  extracted (the first number's), and compat/assets.toml lists every number (`acdc-area = [0x08, 0x0c]`). EXE6 and
   EXE4 have none such (verify's `areas.py --check` compares the numbers a name lists in the ROM).
 - EXE5 has two that no menu name gives: the VisionBursts' maps, which the menu leaves blank and their own
   dialogue names (`visionburst`), and one no map draws, named for the battles whose settings state it
@@ -210,8 +207,15 @@ tables.
 (docs/app.md §1, "The battle's background"): `Content::background_pool`, each game's own language's
 `[backgrounds]` keys (below), read with any game's content. A round's background (`BackgroundId`) is a handle
 over the game's own, at their handles, then the pool's others; the renderer draws another game's from that
-game's pack (`nettai_render::packs::OtherBackgrounds`, which `Game::graphics` reads from the other packs found),
-and a round on one whose pack isn't there on its stage's own (`Packs::round_background`). Every background of
+game's own backgrounds, extracted from its own ROMs by its own content's recipe
+(`nettai_render::graphics::OtherBackgrounds`: an `OtherGame` a game). They are extracted the first time something
+draws one, on a thread of their own, and kept for the run, shared by every game loaded, so a game is extracted once
+(`nettai_frontend::game::others`; a game's own are given as it loads): a `Preload` asks for the other games' its
+set's rounds are drawn on as it is made and waits for them before the first picture (§9), a replay's `Viewer`
+before its first frame, and a still or a thumbnail on its own thread; a page's main thread never waits (it asks
+`backgrounds_ready` between its frames). A round on one that isn't there (a game whose ROMs aren't found, or not
+extracted yet) is drawn on its stage's own (`Graphics::round_background`). Lobbies and replays agree on the pool by
+its names alone: no pixels are needed to compare or record it. Every background of
 the three games draws from tile 1 below the field's tiles (163 on) in background palette 0 alone, so any draws
 in any game's battle.
 
@@ -298,11 +302,11 @@ flag): each draws 0x15 until its typhoon virus is beaten, then 0x10.
 - A liberation's map (group 0x86) draws its area's picture again: the same load data, scroll callbacks and
   animations as the area's other parts (0x0C as 0x08, 0x0D as 0x09, 0x0E as 0x0A, 0x12 and 0x14 as 0x0F, 0x1A as
   0x18, 0x1C as 0x19), so its number is its area's background (`acdc-area`, `oran-area`, `scilab-area`,
-  `end-area`, `undernet`, `nebula-area`). The extractor checks that they are the same and writes the first's.
+  `end-area`, `undernet`, `nebula-area`). The extractor checks that they are the same and keeps the first's.
 - While its liberation runs, such a map draws another picture. The loader (0x0808C2C8) takes the load data from a
   second table (0x0808C500, where the usual one is 0x0808C578) when the map is the running mission's (0x08051982)
-  and the battle isn't a link battle; the two tables differ for those seven numbers alone. The pack has the usual
-  table's pictures, which are a link battle's.
+  and the battle isn't a link battle; the two tables differ for those seven numbers alone. The extraction takes the
+  usual table's pictures, which are a link battle's.
 - 0x1B and 0x1C are not among a link battle's (0x1C's picture is 0x19's, which a link battle draws). The chip
   lab draws 0x1B by patching the link pick's table on both consoles (backgrounds/0x1b, 0x1b-turns): its picture
   speeds down from the battle's first frame (§3, "Field and background").
@@ -842,8 +846,8 @@ host calls, in order:
   30 seconds ends everything: that error is the link's
   (`ErrorKind::ConnectionLost`), which the host sees from the link.
 
-**Sound**: the player renders each tick's sound cues with the pack's sound
-(nettai-audio's `BattleAudio`), and the host plays the samples
+**Sound**: the player renders each tick's sound cues with the game's sound,
+its bank (`Sound { bank, songs }`; nettai-audio's `BattleAudio`), and the host plays the samples
 (nettai's through the audio device, `nettai_audio::Output`; headless
 rendering never plays sound). In netplay the player renders the cue actions
 of each frame (plays, and cancels of cues played on a wrong prediction).
@@ -851,8 +855,10 @@ A host may play another song as the battle's music, a battle theme the
 player picked (docs/app.md §1, "The battle's music"): `Sound::parts(content,
 theme)` gives the parts a player's audio is made of with the theme's song in
 place of the songs the round starts (`Content::battle_music`), and
-`Loaded::theme` gives a game's theme with its own pack's bank, which plays on
-a driver of its own (`nettai_audio::with_theme`); `Player::set_sound_parts`
+`Loaded::theme` gives a game's theme with its own game's bank, which plays on
+a driver of its own (`nettai_audio::with_theme`: the battle's banks by
+`BankId`, a sound's song a `BankSong`, the game's own bank first and a theme's
+of another game one more); `Player::set_sound_parts`
 changes it while the battle runs (`BattleAudio::set_songs`: the battle's own
 music playing starts again as the new song at once, the low-HP switch kept;
 the result's music stays, and the next round starts with the new song).
@@ -884,7 +890,7 @@ The drawing is nettai-render's; the modules this section names are its.
 Layers, back to front: the backdrop color, the background (priority 3),
 the field (priority 2), sprites of priority 2, the HUD layer (priority 1),
 sprites of priority 0 (banners), and BG0 (priority 0: the custom screen's
-enemy names). The HUD layer's priority is the game's (its pack's
+enemy names). The HUD layer's priority is the game's (its graphics'
 `hud_priority`, BG3's): EXE6's and EXE5's 1, EXE4's 0, so EXE4's HP numbers
 (priority 1) are under its HP box and custom screen, as EXE6's (priority 2)
 are under its. The custom screen's sprites (cursors, element, emblem, the
@@ -951,11 +957,11 @@ picture by the counter's whole pixels) runs on the background's clock, or,
 
 The chip lab's backgrounds/0x1b and 0x1b-turns (EXE5) and backgrounds/0x17
 and 0x17-turns (EXE4) show them, the link pick's table patched to that
-background on both consoles. The field is the match's game's pack's: a match is of one game,
+background on both consoles. The field is the match's game's: a match is of one game,
 so its field draws its panels. `FieldArt` says, for each panel type and
-highlight, whether the field draws it (field.json's `panel_types`); one it
+highlight, whether the field draws it (the field's `panel_types`); one it
 doesn't is the owner's normal panel,
-tinted halfway to magenta, never a hole and never another pack's. A tinted
+tinted halfway to magenta, never a hole and never another game's. A tinted
 panel is said in the audits, not counted.
 
 **HUD** (`hud.rs`), by the original's HUD tasks:
@@ -994,7 +1000,7 @@ panel is said in the audits, not counted.
   show beside that one); the chip the other
   player just used, named for a second (`Battle::used_chip_for`). Where
   the game loads the banners' and the telops' glyphs into sprite tiles
-  they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
+  they share, and one palette (the HUD's `layout.telop.tiles`: EXE4's),
   each shows what the other loaded last: `HudState` follows the loads as
   the pieces start (`SharedLoads`), and `hud::shared_glyphs` makes up the
   glyphs whose tiles another load took (a deletion banner over the other
@@ -1030,7 +1036,7 @@ neither shows while the battle holds it (`objects::palette_flash`).
 **The custom screen** (`custom.rs`): the local player's screen as the
 original draws it on its console (`sub_8026A28` and its states), from the
 engine's `Screen` and its presentation state (`Screen::look`,
-docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
+docs/engine/custom-screen.md §9) and the game's custom screen graphics:
 
 - the window on the HUD layer: the original's 15x20 map (with or without
   the Cross tab) and its patches, composed from the tile numbers the map
@@ -1065,7 +1071,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   so every pick shows its code;
 - the scrap and the re-deal: the column losing the scrapped picks, the
   slots dealt again, the emblem and the Regular chip's frame throughout;
-- a button's look is the pack's, by the name its content registers the
+- a button's look is the game's, by the name its content registers the
   button under (`lookups::button`; asset-formats.md, "Buttons"): its tiles
   by set and which set a state shows, the cursor over it, its picture in
   the chip window, its uses left and the chip it holds; its tiles a set are
@@ -1077,13 +1083,13 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   form's icon in the column and its picture in its second palette for the
   alternate offer, EXE5's soul button; one whose picture is a chip's too
   gives the BeastOut chip its picture, EXE6's Beast Out button);
-- the navi's emblem is the pack's under the navi's key (`lookups::emblem`),
+- the navi's emblem is the game's under the navi's key (`lookups::emblem`),
   its palette sprite palette 11 (the cursor's and the Regular chip's
   frame's too); a navi with none shows none;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
-  Beast, the pack's `-gregar` assets); a form's name and colors in the
+  Beast, the `-gregar` assets); a form's name and colors in the
   form list's window (EXE6's Cross window) are its own version's
-  (`custom::form_name_picture`: the pack's pictures of the form's
+  (`custom::form_name_picture`: the graphics' pictures of the form's
   `version`, numbered by the form's place among that version's forms in
   its navi's list, `forms.<version>.form_list`, which is the original's
   order; the forms offered are the view's, `FormList::forms`: the
@@ -1126,8 +1132,8 @@ far it has printed and the rest the engine's chatbox
 (docs/engine/custom-screen.md §3.5).
 
 **An EXE5 console.** In an EXE5 match the HUD, the custom screen and the
-chatbox are EXE5's pack's: its HP box, gauge, fonts, banners, emotion
-window, window and chatbox, by the pack's own tile numbers and layout
+chatbox are EXE5's: its HP box, gauge, fonts, banners, emotion
+window, window and chatbox, by its own tile numbers and layout
 (docs/design/asset-formats.md §4, "Another game's HUD and custom screen").
 What an EXE5 console does otherwise, by data, not by game:
 
@@ -1135,21 +1141,21 @@ What an EXE5 console does otherwise, by data, not by game:
   (MegaMan's five, Team Colonel's), and a soul's face shows the soul's
   turns left beside it (`Battle::form_turns`: the turns the rules keep for
   the button that offers a form);
-- the custom screen: the special slot's button is drawn by the pack's look
+- the custom screen: the special slot's button is drawn by the game's look
   of its name (Soul Unison's, its picture in the chip
   window in Chaos Unison's palette for Chaos, as a button whose view is
   `form_offer`), the cursor over OK and over
-  the button where the pack puts them; the soul choice (the window whose
+  the button where the graphics put them; the soul choice (the window whose
   view is `offer_flight`, EXE5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
   (`Battle::offer` and `Battle::offer_flight`: the offer, a soul's form, and
   the window's step, typed reads of what the view shows of the rules'
   state; the icon is the offered form's place
   in the navi's form list that holds it, the alternate's (Chaos Unison's)
-  the one after the list's, `custom::offer_icon`: a pack's soul icons are in
+  the one after the list's, `custom::offer_icon`: the game's soul icons are in
   the order the navi lists its souls, the original's soul numbers'), in the
   palette of the soul's own version on any console (Team Colonel's icons
-  have another outline color, the pack's `icon_versions`; the form's
+  have another outline color, the graphics' `icon_versions`; the form's
   version is its own `version`, which a ruleset's groups read too:
   `icon_palette_row`; §5);
 - what a soul adds to the screen, drawn by what the engine's screen says,
@@ -1163,7 +1169,7 @@ What an EXE5 console does otherwise, by data, not by game:
     frame); R describes the chip; its mix (the window whose view is
     `chip_flight`, `Battle::chip_flight`) flies the chip's icon as the
     soul's choice flies the soul's;
-  - the button look `arm_change` (ColonelSoul's Arm Change: the pack's
+  - the button look `arm_change` (ColonelSoul's Arm Change: the game's
     look of that name, its second tile set for unavailable
     alone) with the chip it holds as a sprite over it in the HUD's icon
     palette, on the ticks the engine draws it (`Drawn::held`: while
@@ -1171,7 +1177,7 @@ What an EXE5 console does otherwise, by data, not by game:
     when the column hides the icon); the column cell the chip left stays
     drawn for the tick it leaves (`ScreenLook::column_kept`);
   - the re-deal button's uses left, a digit in the chip window's damage
-    cells, where the pack's look says (`uses_digit`: EXE5's Shuffle;
+    cells, where the game's look says (`uses_digit`: EXE5's Shuffle;
     EXE6's ChpShufl shows none);
 - the intro fades in from black in every game, as EXE5's does (EXE6's and
   EXE4's first battle of a set faded in from white: the user, "remove the
@@ -1190,7 +1196,7 @@ What an EXE5 console does otherwise, by data, not by game:
 - a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
   its own version's ROM's icon and picture on either console (§5; the
   console's version is `Renderer::console_version`, which an EXE5 recording
-  names; live play, the pack's first version).
+  names; live play, the graphics' first version).
 
 The frame comparison against EXE5's consoles (verification's
 tools/frontend-compare/exe5.txt, chiplab's library-exe5) and what still
@@ -1223,7 +1229,7 @@ font, whole.
 
 **Languages** (docs/design/text-rendering.md §10). `--lang ja` shows
 the battle's text as the Japanese games do, in either mode: the
-pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
+graphics' Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
 their encoding, the HUD's lines in their glyphs, the banners whose words
 differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
 OK, the re-deal and scrap, the Cross window's names) swapped in for the
@@ -1238,13 +1244,13 @@ prints in step with it (a description's whole lines in the proportion of
 the own lines printed, a message's characters in the proportion of the own
 characters), so two players of different languages play one battle. The
 program's own text (what it prints: folder listings, a match's
-description) is the content's own strings. Every pack has both releases'
-words, English and Japanese (its recipe reads all four ROMs; `hud.json`'s
-`language` and `languages` say so); Chinese, which no pack has a font
-for, keeps the pack's own pictures with words, and its strings are drawn
+description) is the content's own strings. Every game's graphics have both releases'
+words, English and Japanese (its recipe reads all four ROMs; the HUD's
+`language` and `languages` say so); Chinese, which no game has a font
+for, keeps the graphics' own pictures with words, and its strings are drawn
 in other fonts: the vector font in the enhanced mode, and in the original
 mode pixel fonts into the frame, Fusion Pixel Bold 12px for the 8x16
-font's strings and Fusion Pixel 12px for the chatbox's, with the pack's
+font's strings and Fusion Pixel 12px for the chatbox's, with the game's
 own glyphs for digits, Latin letters and the game's marks
 (text-rendering.md §10.3, §15).
 
@@ -1270,7 +1276,7 @@ renderer draws a battle in one of two modes. **Original** draws it exactly
 as the original does: the text in the game's own fonts into the frame and
 nothing moved that the game holds still. **Enhanced** draws the text with
 the vector font (above), the HUD's and the custom screen's frames, buttons
-and panels as the pack's drawings at the output's resolution, in the palettes
+and panels as the game's drawings at the output's resolution, in the palettes
 the pictures are drawn in at the moment (text-rendering.md §13), and, unless
 `Renderer::reduce_motion` says otherwise, draws smoothly what the original
 itself moves; its text and its frames stay either way. It smooths only motion the original has, over the same frames,
@@ -1390,7 +1396,7 @@ so it has no in-between places, and stays as the game draws it.
   and the frame's own pixels elsewhere: what is in front of the background
   keeps its place, and text is drawn over as ever. The frame itself (its
   240x160 pixels, as `Player::frame` gives it) is unchanged. The rates, in
-  pixels a frame (the packs' `background.json`): most areas' and
+  pixels a frame (the backgrounds' scrolls as extracted): most areas' and
   computers' ½ across and ¼ up or down (-8, -4 in sixteenths), several
   ½ across alone (EXE6's aquarium-comp and judgetree-comp, EXE5's
   drill-comp, EXE4's air-stadium, colosseum, lans-hp and stadium), a few ¼
@@ -1449,7 +1455,7 @@ a replay's video the app exports (as its settings say; a replay's still in
 the list is drawn at rest); nettai-tools in its default mode (`--text
 enhanced`, or `font`: headless frames, `--mp4`); and a host that
 loads with the frontend's `Options::default()`. Off: `Renderer::new` and
-`Renderer::with_packs` (Original until told otherwise), so the tests;
+`Renderer::with_graphics` (Original until told otherwise), so the tests;
 `--text original`, which the frame comparisons against mGBA, the lab and
 trace replays and the identity checks use; and every frame in the original
 mode, byte for byte as before the mode had motion.
@@ -1485,7 +1491,7 @@ by its digits' count).
   their cells' mirrored place; the emotion windows under them, the right's
   face and box flipped so the face looks toward the middle, its count
   upright (in Original, the count's box picture flipped with its digits put
-  back upright in the mirrored place of their box: the pack's count letters
+  back upright in the mirrored place of their box: the graphics' count letters
   say where they are).
 - The next chip's name at the bottom left and, right-aligned, at the bottom
   right; each navi's chip icons over it, as its own console draws its own
@@ -1532,7 +1538,7 @@ for both: `seat::Shows`):
   window with its box, which mirrors as frame about its middle, or in its
   place EXE6's Cross window's bars, each Cross's face and name upright as a
   chip's picture and name are; the hand, the buttons, OK, the labels'
-  letters, by the columns the pack says they take, so that a tab's arrow
+  letters, by the columns the graphics say they take, so that a tab's arrow
   beside them mirrors with the frame (EXE6's CROSSSELECT), the picked
   column's icons, the screen's own emblem, the Program Advance's names, the
   enemy names) moved whole to their mirrored places (a part laid with a
@@ -1675,7 +1681,7 @@ console is the known difference above.
 chiplab's library-exe5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
 Soul and Chaos Unison and the auto-battling navi's Chaos among them, compared
-with `--text original`, EXE5's pack loaded beside EXE6's): of 7,964 frames,
+with `--text original`, EXE5's assets loaded beside EXE6's): of 7,964 frames,
 7,914 are pixel-exact, the navis included, and 12 scenarios wholly: the
 HUD, the emotion window (a dark chip user's flicker too, now that the
 console's RNG1 is the engine's: the dark chip offer, exe5-map.md §15.3
@@ -1732,14 +1738,14 @@ them).
   ProtoMan and its own version's five link navis, and its table gives the
   other version's five the same pictures in their own colors (`sub_802812C`:
   a Falzar console's HeatMan has SpoutMan's emblem in HeatMan's palette).
-  The pack has each navi's own, from the ROM that has it, so a frame of the
+  The extraction takes each navi's own, from the ROM that has it, so a frame of the
   custom screen with a link navi of the other version on the console
   differs at the emblem on purpose; it is listed as known (`known.tsv`: the
   emblem sprite's 32x32). EXE5's ROMs are the same (MegaMan's and their own
   team's six navis', 0x08023F68), for the team navis the content has.
 - **Deliberate: one presentation, whatever the console's region** (the
   user's: "nettai should not have any region specific code").
-  The pack has the Japanese ROMs' art where the US ROMs have a placeholder
+  The extraction takes the Japanese ROMs' art where the US ROMs have a placeholder
   (six sprites, fifteen chips' pictures: asset-formats.md §4) and the US
   ROMs' where both releases have their own (the user's, 2026-10-12: "you
   should use the US assets where regions differ": a pixel or two of
@@ -1754,7 +1760,7 @@ them).
   differ (EXE5's background 0x05 as bubbles in the dark, HeatMan's flames
   in his throw, the two pictures' pixels); an EXE4 Blue Moon console draws rows 12 and 13 of
   four chips' icons (Blizzard, HeatBrth, ElecShok, WoodPwdr) as a dark bar,
-  where the pack has one icon a chip, Red Sun's. No part of the frontend
+  where the graphics have one icon a chip, Red Sun's. No part of the frontend
   knows a console's region or which of these it shows: the verification's
   frame comparison does (its table, consoles.tsv, by game, region and
   version), and asks the headless frontend to mark where it draws those
@@ -1778,7 +1784,7 @@ them).
   ROM); EXE5's five a version and its phoenix (Team ProtoMan's ROM draws
   MetrKnuk and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook,
   BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
-  The pack has each chip's picture and icon once, from its own version's
+  The graphics have each chip's picture and icon once, from its own version's
   ROM (the one whose library lists it), marked with that version
   (`ChipArt::version`), and the frontend and the build creator show it on either
   console (the user's choice: a version's chips show that version's art
@@ -1800,7 +1806,7 @@ them).
   (`custom::OTHER_VERSIONS_ICON`), as is a MeddySoul capsule's icon, which
   flies in the same palette.
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
-  has one picture for both chips, its own beast; the pack has each chip's
+  has one picture for both chips, its own beast; the graphics have each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
   Falzar ROM), on either console. A Japanese Falzar console's Gregar chip
   (and a Gregar console's Falzar chip) is a known difference, the
@@ -1813,7 +1819,7 @@ them).
   the Gregar chip's description differs on a Falzar console (and the
   Falzar chip's, presumably, on a Gregar console). Not listed as known: no
   content says which chips copy that buffer.
-- An EXE5 console in Japanese: the EXE5 pack has the US ROMs' lettering
+- An EXE5 console in Japanese: EXE5's graphics have the US ROMs' lettering
   alone (docs/design/exe5-map.md §11), so `--lang ja --text original`
   draws its Japanese names in the US font (the enhanced mode draws them); the
   static audit says so, not counted.
@@ -1879,7 +1885,7 @@ custom_screen_time = 60                    # optional: the custom screen's time 
 
 [[round]]                                  # the set's rounds, a table each, in order: 2n - 1 for a set first to n
 stage = "netbattle-43"                     # (n 1 to 10; one: a single battle; three: the triple battle). A round's stage (a
-background = "lans-hp"                     # link battle stage of the game's) and background (of its pack); a part
+background = "lans-hp"                     # link battle stage of the game's) and background (of its game); a part
                                            # left out is picked from the seed, as the game picks a link battle's
 [[round]]                                  # (or with `backgrounds = "pool"` at the top, a background from every
 stage = "netbattle-12"                     # game's: the background pool)
@@ -2323,7 +2329,7 @@ offer arrives (the same `check_side`), and live in the build creator; each probl
 is said with where it is:
 
 - the game is one the content has, and every name names a definition of
-  the game's (a stage, a background of its pack, a navi, a
+  the game's (a stage, a background of its game, a navi, a
   Cross, a patch card, a chip, a NaviCust program, a soul, a weapon, a
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
@@ -2455,15 +2461,16 @@ setting) measured no better than the default (vsync) and may tear.
 (Hardware key events skip a subscription's hop now, which the probe, a
 subscription itself, doesn't measure.)
 
-**Loading a game** is one call, `game::load(name, &Options)`: the packs found
-(in `Options::packs_dir`, by default where the program looks), the game's
-content, its graphics and strings in the language asked for, the text's font
-and, unless `sound` is off, its sound. It gives a `Loaded` or a `LoadError`
-that says which step failed (`Failed::Packs`, `Content`, `NoPack`, `Part`,
-`Language`, `Font`) and carries what the loaders reported up to there; a
-`Loaded` carries their warnings too (`Loaded::report`). The steps are public
-one by one for a host that wants them apart (`Found::find`, `Game::load`,
-`Game::graphics`, `font`, `Game::sound`), as nettai-tool does, which loads no
+**Loading a game** is one call, `game::load(name, &Options)`: the game's
+content, its assets extracted from its ROMs (`Options::roms`, a
+`nettai_extract::RomSource`: none, `RomSource::from_env`'s), its graphics and
+strings in the language asked for, the text's font and, unless `sound` is off,
+its sound. It gives a `Loaded` or a `LoadError` that says which step failed
+(`Failed::Content`, `Assets`, `Language`, `Font`) and carries what the loaders
+reported up to there; a `Loaded` carries their warnings too
+(`Loaded::report`). The steps are public one by one for a host that wants them
+apart (`Game::load(roms, content, name, pool)`, `Game::graphics`, `font`,
+`Game::sound`), as nettai-tool does, which loads no
 sound for frames it only writes. `game::Loading` is the same call a part at
 a time, with how far it is, for a host's loading bar; and `preload` makes a
 match ready before its first tick (the content's runtime on the thread that
@@ -2598,7 +2605,7 @@ renderer, the enhanced mode's text renderer and the battle's audio:
 - `set_language(&graphics)` shows the battle in another language from the
   next frame: the host loads the game's graphics in each language it offers
   (`Game::graphics(lang)`) and keeps them. Only the drawing changes (the
-  pack's lettering, the content's strings); the battle doesn't know its
+  graphics' lettering, the content's strings); the battle doesn't know its
   language, and the HUD's rolling numbers and timers carry on.
   `examples/language.rs` checks it on a game's
   real graphics: after a change, every picture is the one a player shown in
@@ -2634,7 +2641,7 @@ kept (who won, the score) but the ticks a round and the set ended on, and the
 battle's digest now and then, to tell a replay that reproduces from one that
 doesn't. A replay plays only on the content it was made with and an engine
 of the same minor version (`nettai_replay::line`: a patch release plays it);
-it names them, and another minor version or pack refuses it with what differs.
+it names them, and another minor version or content refuses it with what differs.
 
 **Recording.** nettai records the sets it plays to its
 replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
@@ -2817,19 +2824,19 @@ parts in order); once all have, `part.into_part()` is the `IndexPart` a
 viewer making its own sound makes, for `take_index` as before. The parts go
 from one thread to the next as they are made, so the threads run at once,
 and the index goes as fast as the slowest of them: the battle's share alone (a silent viewer's) on EXE5's
-packs, a console's sound on EXE6's, whose battle is lighter. Checked by
+assets, a console's sound on EXE6's, whose battle is lighter. Checked by
 `an_index_made_on_threads_is_the_one_made_on_one` (the threads wired as
 a host wires them, from the other side and in parts of another length: each
 state's ticks, battle, HUDs and session against `index_part`'s, each
 console's sound by the samples it makes over the two seconds after, sample
 for sample; and seeks from the states taken in against straight playback,
-the picture and the sound included), and on a game's packs by
+the picture and the sound included), and on a game's assets by
 `examples/seek.rs`, whose seeks are the viewer's that took the states in,
 and `examples/index.rs`, which makes a replay's index both ways and checks
 each state's battle and both consoles' sound after it. The app does this
 (docs/app.md §16).
 
-**What it costs**, measured on EXE6's own packs by `examples/seek.rs` in a
+**What it costs**, measured on EXE6's own assets by `examples/seek.rs` in a
 release build, in processor time (the machine was busy with other builds),
 on a set of 16,506 ticks (4 minutes 36 seconds, two rounds, both navis
 mashing):
@@ -2862,7 +2869,7 @@ mashing):
   silent viewer: 3.8 to 4.0 s). (Busier, in four runs more: 3.7 to 6.1 s
   against 7.5 to 10.2 s.) The two indexes were the same: at each of the
   297 states, the same battle, and both consoles' sound over the half
-  second after it the same, sample for sample. On EXE6's packs, whose
+  second after it the same, sample for sample. On EXE6's assets, whose
   battle is lighter (`examples/seek.rs`, a set of 18,000 ticks, both navis
   mashing): 0.46 s, 38,800 ticks a second, where a viewer indexing itself
   took 68.7 µs a tick of processor time; there each console's sound, a
@@ -2921,9 +2928,9 @@ on.
 
 **The match** (nettai-match's `binary`, which the netplay offer uses too) is
 read against the content the head names: definitions by their handles (the
-pack's index, the same on every load of content of that hash), and nothing by
+same on every load of content of that hash), and nothing by
 name but a round's background, which may be any game's (the background pool),
-by its game and its name in its game's pack:
+by its game and its name in that game's content:
 
 ```text
 place := stage (u16: its handle), background (string: `<game>:<name>`)
@@ -2943,7 +2950,7 @@ a place's the engine's. A replay keeps every round's place, whatever the match
 left to its seed. A random EXE6 side's offer with three stated rounds is
 about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
 match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
-past the content's, a background neither the game's pack nor the pool has and a value no fact may hold,
+past the content's, a background neither the game's content nor the pool has and a value no fact may hold,
 saying where; the match's checks then judge what it read, as for a match file.
 
 ### Video
@@ -3238,28 +3245,27 @@ The user asked for "a loading screen to load assets before starting the game to 
 docs/design/app-ui.md, "Loading"). This is what there is to load, when, what it costs, and how a host shows it.
 
 **A game loads whole, and a match reads nothing.** `game::load` reads everything a battle of the game can use:
-its content (every Luau module, defined), its pack's graphics (every sprite, the field, the backgrounds, the HUD
-and the custom screen, decoded into memory), the language's strings, the text's font and the pack's sound (every
-song, instrument and sample). Nothing is loaded by asset, so there is nothing to load by match: after the game's
-load no tick, picture or sound reads or decodes a file. `nettai_content::pack::reads()` counts the parts a thread
-has read (a pack's graphics, its sound, a game's content, a language's strings), and it stays where it was through
-a match. EXE6's pack is 3,293 files, 21 MB (310 sprites, 6.5 MB; the sound 9.8 MB).
+its content (every Luau module, defined), its assets extracted from its ROMs into memory (every sprite, the field,
+the backgrounds, the HUD and the custom screen, and every song, instrument and sample: §1), the language's strings
+and the text's font. Nothing is loaded by asset, so there is nothing to load by match: after the game's load no
+tick, picture or sound reads or decodes a file. `nettai_content::load::reads()` counts the parts of the content a
+thread has read (a game's content, a language's strings), and it stays where it was through a match. The one thing
+a match may still wait for that isn't its game's is another game's background its rounds are drawn on (the
+background pool's, §1): those are extracted the first time one is wanted, and a `Preload` waits for them (below).
 
 **`game::Loading`** is `game::load` a part at a time, for a start-up bar: `Loading::new(name, options)`, then
 `step()` until it says there is no more, `fraction()` meanwhile, `next()` for what the coming step loads, and
-`finish()` for the `Loaded`. The parts and their shares of the whole (`game::Part::share`), with their times
-(2026-10-12: a release build, on a machine with a load average of 250 to 390 on ten cores, so each is more than
-an idle machine's and the spread is the machine's; EXE6's from three runs of the example below, EXE5's and EXE4's
-from one):
+`finish()` for the `Loaded`. The parts and their shares of the whole (`game::Part::share`, estimated, not
+measured: the content's times are 2026-10-12's, a release build on a busy machine; a game's extraction, its four
+ROMs read and its recipe run, about two tenths of a second, 2026-10-27):
 
-| Part | What | EXE6 | EXE5 | EXE4 | Share |
-|---|---|---|---|---|---|
-| `Packs` | the packs directory read for manifests | 0.4 to 6 ms | 0.2 ms | 0.3 ms | 1 |
-| `Content` | the game's Luau read and its define phase run | 1.7 to 3.3 s | 1.8 s | 1.3 s | 62 |
-| `Graphics` | the pack's graphics (its sprites on every core), the language's strings | 0.27 to 0.69 s | 0.30 s | 0.26 s | 11 |
-| `Font` | the text's font (the bundled one is in the program) | 1.5 ms | under 0.1 ms | under 0.1 ms | 1 |
-| `Sound` | the pack's sound (left out, with its share, when a host wants none) | 0.64 to 1.5 s | 0.70 s | 0.71 s | 25 |
-| | all of it | 2.7 to 4.6 s | 2.8 s | 2.2 s | 100 |
+| Part | What | Share |
+|---|---|---|
+| `Content` | the game's Luau read and its define phase run (EXE6 1.7 to 3.3 s, EXE5 1.8 s, EXE4 1.3 s) | 62 |
+| `Assets` | the game's assets extracted from its ROMs and checked against the content (`asset_numbers`, the timing compared) | 30 |
+| `Graphics` | the graphics in the language (a copy with its lettering swapped in), the language's strings | 5 |
+| `Font` | the text's font (the bundled one is in the program) | 1 |
+| `Sound` | the content's songs in the bank (left out, with its share, when a host wants none) | 2 |
 
 Each step runs one part to its end, so the bar moves in five jumps and the content's step is seconds long. A host
 with threads steps the loading on one of them and its window stays live (nettai's `games.rs` does, with
@@ -3299,18 +3305,20 @@ waits, the window stalled (the wait is the runtime's above; it wasn't timed in t
   - **`Part::Match`**, the match's own: the thread's runtime (the long step, and a step of no length once the
     thread has it), the round's first battle, its first picture as the viewer's console draws it (the arena, the
     background, both navis, the HUD: every lookup the frame makes, and its text laid out at the host's size),
-    and the sound's drivers;
+    the other games' backgrounds its set's rounds are drawn on (`Backgrounds`: asked for as the preload is made,
+    each game's extracted on a thread of its own while the rest is made ready, and done once they are; it asks
+    and doesn't wait, so a page's main thread can step it), and the sound's drivers;
   - **`Part::Side(0)` and `Part::Side(1)`**, each side's: its navi (face, emblem, name), every form its navi
     lists (its face for each emotion, its name and description where the game lists forms in a window) and each
     chip of its folder in each code it is there in (icon, picture, name, the chip window's colors, description).
-    These are looked up in the pack that is already in memory, by the lookups a frame draws through
+    These are looked up in the graphics already in memory, by the lookups a frame draws through
     (nettai-render's `lookups`), so a side's steps take microseconds and need no runtime: what they give is a
     bar a side and `missing()`.
 
   `step_of(part)` runs one part's next step alone and `fraction_of(part)` is that part's bar, so a loading screen
   with a bar a player fills each from its side's steps; the match's own part is where the time is (EXE6's
   match: 84 steps, 16 ms in all once the thread has its runtime). `missing()`
-  lists what the steps looked up that the pack doesn't have (one line each, as the content audit words them),
+  lists what the steps looked up that the game's assets don't have (one line each, as the content audit words them),
   for a host to say before the match rather than have a picture missing in it; `stopped()` says why the round
   can't start, if the runtime didn't load or the engine stopped making the first battle.
 - `preload.player(driver)` is the `Player`, made with the renderer and the text the steps used (so the first
@@ -3334,7 +3342,7 @@ seconds reads as a dropped connection on the other side (docs/design/rollback.md
 late.
 
 **Held to it.** `Player::late()` says what a player made on the way since it was made (`preload::Late`):
-runtimes loaded on its thread (`Behaviors::loads`), parts read from disk on it (`pack::reads`), and its text's
+runtimes loaded on its thread (`Behaviors::loads`), parts read from disk on it (`nettai_content::load::reads`), and its text's
 strings laid out and glyphs' distance fields made for the first time. A player a preload made has loaded no
 runtime and read nothing however long it plays; one made without has loaded one. The text's counts go up as new
 strings show: a string's layout depends on its box, and its strings are an open set (damage numbers), so layouts
@@ -3348,23 +3356,25 @@ before).
   custom screens and fights, with a picture a tick: `late()` is no runtime and no read.
   `a_match_that_was_not_preloaded_loads_its_runtime_late` is the same match without: one runtime, as its player
   is made.
-- `cargo run --release -p nettai-frontend --example preload -- --game exe6` does it on a real pack: it copies
-  the pack and the content, loads the copies with `Loading` (printing each part's time), preloads a match
-  (printing its steps), **deletes the copies from disk**, and then plays 3,000 ticks with every picture
+- `cargo run --release -p nettai-frontend --example preload -- --game exe6` does it on a real game's assets: it
+  copies the content, loads the copy with `Loading` (its assets extracted from `$NETTAI_ROMS`, printing each part's
+  time), preloads a match (printing its steps), **deletes the copy from disk**, and then plays 3,000 ticks with every picture
   presented and every sample taken, beside a player of the same match made without the preload and given the
   same buttons. A file read lazily would be missing; the match plays to its last tick, every picture (its pixels
   and its text) and every tick's sound the same as the other player's, and the example fails unless `late()` is
   no runtime and no read. It then makes the same match's player on a thread that preloaded nothing and prints
-  what that waits for (the runtime, from memory: the files are gone). All three games' packs pass it
-  (2026-10-12).
+  what that waits for (the runtime, from memory: the files are gone). All three games passed it with packs
+  (2026-10-12), before the assets were extracted at each load.
+- `a_set_on_another_games_background_waits_for_it` (`preload::tests`): a set on another game's background has
+  that game's backgrounds extracted once, while it is made ready, and before the preload is done.
 
 **What isn't done, and what it would take.**
 
-- *Loading by asset* (a match loading only its navis', chips' and arena's sprites and sounds). The pack would
-  have to load a sprite or a song on demand (`Bundle` and `SoundBank` are plain data every lookup borrows from),
-  and the content would have to say what a chip can summon or play: the assets its modules name
-  (`asset.sprite`, at load only) and those of every module they require. With 21 MB loaded in a second behind
-  the start-up bar there is nothing to gain yet but memory.
+- *Extracting by asset* (a match extracting only its navis', chips' and arena's sprites and sounds). The recipe
+  would have to extract a sprite or a song on demand (`Bundle` and `SoundBank` are plain data every lookup borrows
+  from), and the content would have to say what a chip can summon or play: the assets its modules name
+  (`asset.sprite`, at load only) and those of every module they require. With a game's assets extracted in a few
+  tenths of a second behind the start-up bar there is nothing to gain yet but memory.
 - *The runtime in steps, or off the window's thread.* It is one load of every module. A host can keep the
   window live through it by running its `Player` on a thread of its own (a battle and its snapshots are `Send`;
   the runtime is whichever thread's steps it), which nettai doesn't.

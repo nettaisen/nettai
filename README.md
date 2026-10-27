@@ -13,8 +13,8 @@ definitions, and the support pack content/exelib that they use. Each pack is its
 [exe6](https://github.com/nettaisen/exe6), [exelib](https://github.com/nettaisen/exelib)), checked out here as a git
 submodule: clone with `git clone --recursive`, or run `git submodule update --init` in a clone or a new worktree
 (docs/design/content-deployment.md). The graphics and sound are not in this
-repository: you extract them
-from a ROM you own into a content pack.
+repository, nor written anywhere: each game's are extracted from the ROMs of your own copy of Battle Network
+Legacy Collection Vol. 2 as the game loads, in memory, by the game's recipe in its content.
 
 A battle is deterministic and cloneable, and the players' inputs are its only input, which is what rollback
 netplay needs.
@@ -24,8 +24,9 @@ netplay needs.
 - `nettai-battle`: the engine: the simulation core, EXE6's ruleset, and the content model it runs on.
 - `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
 - `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
-- `nettai-content`: loads the content's game packs (by their manifests) and the asset packs into the engine; the
-  asset packs' open formats; content bundles, and publishing them (below).
+- `nettai-content`: loads the content's game packs (by their manifests) into the engine, and checks a game's
+  assets, extracted from its ROMs, against them (`nettai-content check`); content bundles, and publishing them
+  (below).
 - `nettai-content-check`: type-checks each pack of the content against its declarations (the engine's API,
   `content/nettai/core.d.luau`, then its support packs' and its own), lints it, and checks that its manifests and
   requires name only modules that exist, that a pack requires only itself and the support packs it uses, and that
@@ -40,7 +41,7 @@ netplay needs.
   [datachannel-facade](https://github.com/tangobattle/datachannel-facade) (libdatachannel natively, the browser's
   on wasm32), met in a room of the signaling server or directly, made again when they drop.
 - `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
-  engine state and the packs' graphics; no window, sound or network.
+  engine state and the game's graphics; no window, sound or network.
 - `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
   line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
   network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
@@ -61,43 +62,44 @@ netplay needs.
   ([docs/tools.md](docs/tools.md)).
 - `nettai-match`: match files and their sides (a build is one), everything a round needs by content key, checked;
   live play's random pick.
-- `nettai-extract`: shared EXE5/EXE6 asset extraction library and CLI, including placeholders for missing ROMs.
+- `nettai-extract`: a game's assets extracted from its ROMs in memory, by the game's recipe in its content; the ROMs
+  found where they are (the Legacy Collection installed, a folder of ROM files). A library alone.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
 
 ## Getting started
 
-You need Rust with edition 2024. Extract assets from your own copy of Battle Network Legacy Collection Vol. 2 into a
-new or empty pack directory (the directories below are gitignored). Each game needs all four of its ROMs (both
-versions, US and Japanese: a complete Legacy Collection's), in any order; the first argument is the game's pack
-folder, whose extraction recipe (its `extract/`) the extractor runs:
+You need Rust with edition 2024, and your own copy of Battle Network Legacy Collection Vol. 2: each game is played
+from all four of its ROMs (both versions, US and Japanese: a complete Legacy Collection's), which its recipe (its
+content's `extract/`) extracts the graphics and sound from as the game loads, in memory, at every start. Nothing
+is written: there is no extraction step to run. The app finds the collection where Steam installed it, or in a
+folder you choose or drop on its window (docs/app.md §17). The command line, the tests and development read
+`$NETTAI_ROMS`: a folder that is the collection's install, or one that holds the twelve ROM files (any names: each
+file's header says which ROM it is). Unset, they look where Steam installed the collection:
 
-    cargo run --release -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
-    cargo run --release -p nettai-extract -- content/exe5 data/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
-    cargo run --release -p nettai-extract -- content/exe4 data/exe4 <redsun-us> <bluemoon-us> <redsun-jp> <bluemoon-jp>
+    export NETTAI_ROMS=~/Documents/Tango/roms    # or the Legacy Collection's folder
 
-A ROM missing is an error, as is an asset the recipe can't find. The pack includes `extraction.txt` with what the
-extraction noticed. Add `--check` to check the game's definitions against the written pack.
+A ROM missing is an error, as is an asset the recipe can't find. `nettai-content check <game>` extracts a game's
+assets and checks them against its content (every asset it names, each sprite's frames, its sprites' timing
+against the ROMs'):
 
-Applications can embed the same extractor without launching a process or writing files:
+    cargo run --release -p nettai-content -- check exe6
+
+Applications embed the extractor as a library, reading nothing but the ROMs and writing nothing:
 
 ```rust
-use nettai_extract::Recipe;
+use nettai_extract::{RomSource, extract};
 
-let recipe = Recipe::of_content(std::path::Path::new("content"), "exe6")?;
-let mut roms = recipe.rom_set();
-roms.insert(rom_bytes)?; // Vec<u8>, identified by the ROM header; each of the game's four
-let assets = recipe.extract(&roms)?;
-// Use assets.graphics and assets.sound directly, or serialize the pack:
-let files = assets.files()?; // Vec<(relative_path, bytes)>
+let roms = RomSource::from_env()?; // $NETTAI_ROMS, else the Legacy Collection where Steam installed it
+let assets = extract(std::path::Path::new("content"), "exe6", &roms)?;
+// assets.graphics (a nettai_assets::Bundle), assets.sound (an m4a::SoundBank), assets.index (names to numbers)
 ```
 
 The [extractor documentation](crates/nettai-extract/README.md) describes the recipes, diagnostics and the API.
 
-The app and the command line find the packs in `data` (or the directory `$NETTAI_PACKS` names), each by the
-game it says, with no options: an EXE5 pack written there (`nettai-extract content/exe5`) sits beside EXE6's. You play one game
-at a time, EXE6 or EXE5: a build and a match file name their game and a trace states its own (there is no default
-game), and the battle is that game's content on its pack. Then run the app:
+You play one game at a time, EXE6, EXE5 or EXE4: a build and a match file name their game and a trace states its
+own (there is no default game), and the battle is that game's content, drawn and heard from its own assets. Then
+run the app:
 
     cargo run --release -p nettai
 
@@ -138,7 +140,7 @@ Cloudflare account:
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
 One player asks the signaling server for a room, the server picks its code, and the other joins by that code.
-Both need the same engine, game and content pack (the lobby checks, and each is told what differs). Each brings
+Both need the same engine, game and content (the lobby checks, and each is told what differs). Each brings
 their build (or a random side), which stays their own until the match: the lobby says nothing of it. The match's
 settings (the round wins its set is first to, whether builds are closed) are both players', and the two agree them in the lobby; each
 commits to its half of the seed and its side before either reveals them, and the battle's RNG comes from both
@@ -158,8 +160,8 @@ from either console; a replay plays only on the engine and content it was made w
 ([frontend.md](docs/frontend.md) §8).
 
 The command line, `nettai-tool` ([docs/tools.md](docs/tools.md)), has no window: it renders chosen frames to PNGs,
-audits the content and the traces, says a match's setup and checks a replay. `--pack DIR` names a pack elsewhere,
-in place of the found one of its game, and `--help` lists the options:
+audits the content and the traces, says a match's setup and checks a replay. It reads the ROMs `$NETTAI_ROMS`
+names, and `--help` lists the options:
 
     cargo run --release -p nettai-tools -- --match match.toml --headless 1-120 --out <dir>   # render frames to PNG
     cargo run --release -p nettai-tools -- <trace.jsonl> --headless 150,300 --out <dir>      # a recorded match's
@@ -210,8 +212,8 @@ once the game's and exelib's repositories have the commits on main and this chec
     cargo run --release -p nettai-content -- publish exe6 --dry-run   # check, bundle and hash it; show the release
     cargo run --release -p nettai-content -- publish exe6             # make the release
 
-It needs the game's asset pack (`data/exe6`, or `--packs DIR`) for the content hash, and `gh` signed in with write
-access to nettaisen/exe6. The release, `0.11-r1` and on, holds the bundle; the repository's Pages workflow then puts
+It needs `gh` signed in with write access to nettaisen/exe6 (the content hash is the content's alone: no ROM is
+read). The release, `0.11-r1` and on, holds the bundle; the repository's Pages workflow then puts
 it on the site. Publishing refuses a dirty or unpushed submodule, content that doesn't type-check, and the line's
 newest bundle again.
 
@@ -246,7 +248,7 @@ A whole match file (both sides and the rounds) is written by hand, or by `nettai
 
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
   ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
-  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, the NaviCust
+  ([content-migration.md](docs/design/content-migration.md)), scripting, the content root, rollback, the NaviCust
   ([navicust.md](docs/design/navicust.md)), what other games would need
   ([multi-game.md](docs/design/multi-game.md)), and where Rust ends and a game's Luau begins
   ([rust-and-luau.md](docs/design/rust-and-luau.md)).

@@ -18,7 +18,7 @@ pixel-for-pixel comparison with the original, and what I recommended.
 The measurements in §8 were throwaway spikes outside the repository.
 
 Related: [frontend.md](../frontend.md) (what is drawn and how it is verified), [asset-formats.md](asset-formats.md)
-§4 (the HUD's files), [content-model-v2.md](content-model-v2.md) §3.1 and §6 (names and descriptions in the
+§4 (the HUD's assets), [content-model-v2.md](content-model-v2.md) §3.1 and §6 (names and descriptions in the
 definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation under rollback),
 [../engine/custom-screen.md](../engine/custom-screen.md) §3.5 (the chatbox).
 
@@ -79,8 +79,8 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
 
 The text encoding is one table, `compat/text.toml` (what each byte below 0xE0 draws, as UTF-8). Glyphs with no
 character of their own had bracketed names: `[EX]`, `[SP]`, `[RV]`, `[BX]`, `[FZ]`, the button marks `[A]`, `[B]`,
-`[L]`, `[R]`, `[bat]`, `[z]` (since 2026-10-02 each is a character: §10.5). The extractor writes the same table into
-`hud.json` as `font_chars`.
+`[L]`, `[R]`, `[bat]`, `[z]` (since 2026-10-02 each is a character: §10.5). The extraction puts the same table in
+the HUD as `font_chars` (`Hud::font_chars`).
 
 ### 1.2 Every place text is drawn, or would be
 
@@ -94,8 +94,8 @@ it today.
 | A hidden telop, "????" | a literal in the frontend (the original shows the name of chip 0x171) | four `?` of the 8x16 font | as a telop | as a telop | yes |
 | The chip the other player just used | `Battle::used_chips`, then the definition's `name` | the 8x16 font as sprite parts | laid out as a telop at the right-hand place, without the squash, for 60 ticks | as a telop | yes |
 | "????" beside the mugshot and at the right edge (a defensive chip is set) | nothing: it is a picture | HUD layer tiles 0x1CC and 0x1CD | 4x2 cells at column 6 or 26, rows 2 and 3 | HUD tile layer | yes |
-| The turn countdown and "TIME UP!" | the pack's `hud.json` `texts` (lines 3 to 13 of the ROM's HUD text script, as glyph numbers; the seconds are lines like `"    5   "`) | the 8x16 font | 8 glyphs from column 11, rows 0 and 1; the padding spaces in the line center it | HUD tile layer, HP box palette | yes |
-| The HUD message line, "COUNTER HIT!" | `Battle::message` picks the line; the text is the pack's `texts` line 14 | the 8x16 font | 17 glyphs from column 7, rows 2 and 3; padded with spaces | HUD tile layer, HP box palette | yes |
+| The turn countdown and "TIME UP!" | the HUD's `texts` (lines 3 to 13 of the ROM's HUD text script, as glyph numbers; the seconds are lines like `"    5   "`) | the 8x16 font | 8 glyphs from column 11, rows 0 and 1; the padding spaces in the line center it | HUD tile layer, HP box palette | yes |
+| The HUD message line, "COUNTER HIT!" | `Battle::message` picks the line; the text is the HUD's `texts` line 14 | the 8x16 font | 17 glyphs from column 7, rows 2 and 3; padded with spaces | HUD tile layer, HP box palette | yes |
 | The other HUD lines: "DOUBLE DELETE!", "TRIPLE", "QUADRUPLE", "PENALTY!!", "SHUFFLE!", "LEFT 0" | the pack's `texts` | the 8x16 font | as the message line | HUD tile layer | no (virus battles and the custom screen's) |
 | "VS" between the judge's numbers | the frontend's literal (the pack's `texts` line 2 holds it too) | the 8x16 font | columns 14 and 15, rows 5 and 6 | HUD tile layer | yes |
 | The chip's name on the custom screen | the definition's `name` | the 8x16 font through the fixed-cell renderer (`sub_8027D10` picks the text, `renderTextGfx_8045F8C` draws 8 cells) | 8 cells in the chip window at the top left | a tile layer of the custom screen | no |
@@ -143,7 +143,7 @@ So a mod's "Épée", a long name, or a Japanese name with kanji draws wrong toda
 
 - **In the content definitions (UTF-8, committed, part of the content hash)**: a chip's `name` and
   `description`, a navi's `name`.
-- **In the pack, as glyph numbers**: the HUD's text lines (`hud.json` `texts`). These are game text rather than
+- **In the graphics, as glyph numbers**: the HUD's text lines (`Hud::texts`, extracted from the ROMs). These are game text rather than
   media, and under content model v2 they belong with the content (§4.2).
 - **In the frontend, as literals**: "????" and "VS".
 - **Nowhere**: the run message's words.
@@ -373,8 +373,8 @@ have the same number of lines, because nothing in the simulation reads it.
 
 ### 4.4 What should stay out of content
 
-- Pixel positions, cell sizes and font sizes of EXE6's HUD: that is the frontend's EXE6 layout (`hud.json` and
-  `hud.rs`).
+- Pixel positions, cell sizes and font sizes of EXE6's HUD: that is the frontend's EXE6 layout (the HUD's
+  `layout` and `hud.rs`).
 - The text mode and the user's font choice: a preference.
 - Rasterizer settings, the fallback order beyond what a pack names, the shadow's shape.
 - The digit pictures and the labels of §1.3.
@@ -1100,8 +1100,9 @@ the US's (the user's choice).
   the rest read off the fonts; the verification workspace's tools/jp/locale/textjp.py). The extractor writes the
   Japanese fonts' charmaps with it; gen-content decodes the Japanese text with it and checks that every Japanese chip
   name encodes back to the ROM's bytes.
-- **Pictures with text, and the fonts, are assets**: the pack's lettering in another language, extracted from the
-  Japanese ROMs as `-ja` files (asset-formats.md §4, "Languages"; exe6-extract `lettering`).
+- **Pictures with text, and the fonts, are assets**: the graphics' lettering in another language, extracted from the
+  Japanese ROMs (asset-formats.md §4, "Languages"; exe6-extract `lettering`; since 2026-10-27 in memory, no `-ja`
+  files: there is no pack).
 - **The HUD's lines stay the pack's text script** (§4.2 is still open): the Japanese ROMs' are the same English
   words, which the Japanese font draws with the same pictures.
 
@@ -1110,8 +1111,9 @@ the US's (the user's choice).
 - `--lang ja` loads the pack's graphics, swaps the Japanese lettering into the HUD's and the custom screen's fields
   (`Bundle::for_language`; nothing that draws them changed), and loads `locales/ja.toml`. A language the content
   root has no table of stops the frontend with what there is.
-- **A pack without the language's lettering** (Chinese's, which no pack has: every recipe reads both releases' ROMs,
-  so every pack has English's and Japanese's; a pack states the languages it has, asset-formats.md "Languages") is
+- **A pack without the language's lettering** (Chinese's, which no game's graphics have: every recipe reads both
+  releases' ROMs, so every game's have English's and Japanese's; the graphics state the languages they have,
+  asset-formats.md "Languages") is
   drawn in its own language, the content's strings still in the chosen one: its pictures with words (the banners, the
   gauge's word, the chip window's pictures, the Crosses' names, the waiting words) are the language it has them in,
   never placeholders. Its fonts are that language's too, without the hanzi the chosen language is written in, so the
@@ -1187,7 +1189,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
   built-in charmap and the verification workspace's tools/jp/locale/textjp.py. The battle's strings use Ⓐ, Ⓑ, ✕,
   U+E002 and U+E003; the others are in the encoding only.
 - **The original mode** draws the same pixels as before: the charmaps (`font_chars` and the dialogue font's `chars`
-  in `hud.json`, written from compat/text.toml by the extractor) map the characters to the same glyph numbers.
+  in the HUD, from compat/text.toml by the extraction) map the characters to the same glyph numbers.
 - **The enhanced mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
   draws (`vfont::mark`): a button as its letter at 68% of the size, centered in an antialiased ring 1.15 times the
   capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half
@@ -1591,7 +1593,7 @@ in the table (the US Program Advance's logo) is drawn as a picture.
 
 ### 12.6 The window's labels
 
-The pack says where they are (`custom.json` `labels`, asset-formats.md: each one's name, its tiles, its letters' rows
+The graphics say where they are (`CustomScreen::labels`, asset-formats.md: each one's name, its tiles, its letters' rows
 and colors; the extractor's EXE6 BATTLE CHIP, CHIP SELECT, CROSS SELECT twice and B:EXIT, EXE5's BATTLE CHIP and CHIP
 SELECT, EXE4's CHIP SELECT). Where the window's map shows those tiles the letters' pixels are taken off (each the
 color nearest it on its row that isn't a letter's: the frame's or the strip's own) and the words drawn where they
@@ -1691,15 +1693,15 @@ The user: "can you statically extract all assets and avoid detection at runtime?
 at run time, and the Japanese トマホーク and スラッシュ quietly stayed pictures where their last letter's outline touched
 the bar's edge).
 
-- **Extraction reads every picture once** (`nettai_content::letters::read`, from `nettai-extract` after the graphics
-  are made, in each language the pack has): the number sets (the HP box's, the enemies' three, the damage digits, '+'
+- **Extraction reads every picture once** (`nettai_extract::letters::read`, after the graphics are made, in each
+  language they have): the number sets (the HP box's, the enemies' three, the damage digits, '+'
   and "x2", the banners', a game's own telops', the chip window's), the emotion window's counts and their blank box,
   "PAUSE", the waiting label, the gauge's CUSTOM and both frames of L or R, FINAL TURN, the banners (their bars, their
   letters, their letters' columns either side of the number as one digit and as two), the chip codes of both sets, the
   window's labels, the chip window's lettered pictures (OK's, each button's, each version's own) and the form list
-  names (each look, by its first look's letters). The pack keeps what it found (`nettai_assets::letters`, `letters` in
-  `hud.json` and `custom.json`, asset-formats.md) and each lettered picture as its base with the letters off and a layer
-  of its letters (§12.13). A frontend puts the look in the palette of the moment and the base's tiles in place; it reads
+  names (each look, by its first look's letters). The graphics keep what it found (`nettai_assets::letters`, the HUD's
+  and the custom screen's letters, asset-formats.md) and each lettered picture as its base with the letters off and a
+  layer of its letters (§12.13). A frontend puts the look in the palette of the moment and the base's tiles in place; it reads
   no picture.
 - **What isn't found is said.** Extraction writes a line to `extraction.txt` for anything every game has that it
   can't find (a number set with no face, a code glyph with no letter, a form list name whose letters aren't enclosed,
@@ -1777,7 +1779,7 @@ stretched to its box, then "chip code and chip window damage should probably be 
   their own widths, narrowed alike only where the set's widest would overrun the box, each centered in its box: a 1
   stands thin, the pitch is the cell's. The signs too. The chip window's code and damage are one family, narrowed
   alike (`Fitted::family`); no other sets share a line and a height.
-- **One picture, one base.** The pack keeps a lettered picture as a base all its languages share and a layer each
+- **One picture, one base.** The graphics keep a lettered picture as a base all its languages share and a layer each
   (asset-formats.md, "Lettered pictures"; `letters::shared_base`). The Japanese blanks that looked janky were the
   Japanese pictures' blanks written for viewing in the English pictures' palettes: the chip window's pictures are bit
   planes, the palette picks the plane, so the other words showed. The data was right (the frames were); with no blank
@@ -1838,12 +1840,14 @@ its size and that every color it names is one the picture uses, and notes the sh
 at their centers (words' boxes aside), calling out any under 85%: it is a check that the drawing is of that picture,
 not a target (the drawings are 91 to 100%, the gauge's full shimmer in EXE6 72 to 78% by design). It is the one input
 of the extractor's that isn't a ROM (asset-formats.md, "Frames as shapes"). `cargo run -p nettai-extract --example
-shapes_check -- <game> <pack> [out] [--recolor]` checks them against a pack without extracting it again, writes each
-picture beside its drawing with `out`, and with `--recolor` sets the files' viewing fills.
+shapes_check -- <game> [out] [--recolor] [--content DIR]` checks them against the pictures extracted from the ROMs
+(`$NETTAI_ROMS`), writes each picture beside its drawing with `out`, and with `--recolor` sets the files' viewing
+fills.
 
 ### 13.2 What a pack holds and how it is drawn
 
-The pack keeps each drawing as its SVG (`shapes/`, asset-formats.md) and the JSON what SVG can't say: which cells of a
+The graphics keep each drawing as its SVG (`nettai_assets::shapes`, asset-formats.md) and beside it what SVG can't
+say: which cells of a
 map each drawing stands in for (the custom window's maps, the Cross window's, the gauge's frame, the chatbox's boxes:
 `nettai_assets::shapes::MapDrawing`, each cell drawn by the first drawing, the map's own then the others most like
 it, that draws there and was drawn for the same pixels), and which of a set each is. The renderer (`shapes.rs`) turns a

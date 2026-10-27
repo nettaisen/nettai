@@ -1,1149 +1,350 @@
-# Asset formats: open, editable, exact
+# The game's assets: extracted from its ROMs, in memory
 
-A battle's graphics and sound come from a **content pack**: a folder of
-widely supported files that ordinary tools edit, which loads into exactly the
-data the frontend and the audio use. This document describes the graphics and
-sound formats; the pack's battle data (chips, navis, rules, sprite timing:
-what the engine runs on) is described in [content-pack.md](content-pack.md).
-A pack is the only form this data takes: `nettai-extract content/exe6` writes it
-from the user's ROM, and everything loads it straight from its files.
+A battle's graphics and sound are a game's **assets**: extracted from the game's ROMs by its content's recipe as
+the game loads (`nettai_extract`, [extraction-recipes.md](extraction-recipes.md)), in memory, into typed values a
+frontend draws and plays: nettai-assets' `Bundle` (the sprites, the field, the backgrounds, the HUD and the custom
+screen), m4a's `SoundBank`, and the index of their names (`AssetIndex`). Nothing of them is written to disk. The
+battle data (chips, navis, rules, the sprites' timing: what the engine runs on) is the content's, described in
+[content-pack.md](content-pack.md).
 
-The code is the `nettai-content` crate, `nettai-extract content/exe6`, and pack
-loading in `nettai-frontend` (`game`) and the audio examples. Everything below was
-checked on the game's full battle graphics and all of its songs; the in-repo
-tests use synthetic assets.
+Until 2026-10-27 the assets were kept as a **pack**: a folder of open-format files (indexed PNGs with JSON, Tiled
+maps, an Aseprite view, MIDI songs with TOML sidecars, WAV samples) that `nettai-extract` wrote and every frontend
+loaded. The pack and its formats are gone (docs/app.md §17). This document now describes what the extraction makes:
+the model and the choices behind it, and the one input of extraction that isn't a ROM, the frames drawn by hand as
+shapes (§4, "Frames as shapes").
 
 ## 0. Summary
 
-| Asset | Format | Editors | Fidelity |
-|---|---|---|---|
-| Battle data (chips, navis, rules...) | TOML by owner ([content-pack.md](content-pack.md)) | text editor | exact (equal to the engine's former compiled tables) |
-| Sprites: pixels and palettes | 8-bit indexed PNG part atlas, the palette set as 16 palette rows | Aseprite, GIMP, LibreSprite, Pillow, any indexed editor | byte-exact |
-| Sprites: frame layouts | `sprite.json` (OAM parts: first tile, size, offset, flips, palette offset) | text editor | byte-exact |
-| Sprites: animation timing | `animations.json` (ticks and flag bits per frame), read without images | text editor | exact (checked against the engine's table) |
-| Sprites: whole-frame editing | optional `sprite.aseprite` view: a layer per part, a tag per animation, linked cels for shared tiles | Aseprite | byte-exact after a re-save by Aseprite |
-| Field panels | indexed PNG + `field.json` (map entries as `tile:palette[:flip]`) | image editor, text editor | byte-exact |
-| Backgrounds | indexed PNG + Tiled map (`map.tmj`) + `background.json` (scroll, animations) | Tiled, image editor | byte-exact, also after a Tiled re-export |
-| HUD | indexed PNGs laid out as drawn (glyphs, icons, mugshots) + `hud.json` | image editor | byte-exact |
-| Custom screen | indexed PNGs laid out as drawn (the window's tiles, chip pictures, codes, icons) + `custom.json` | image editor, text editor | byte-exact |
-| Songs | Standard MIDI file in mid2agb's conventions + TOML sidecar | DAW or MIDI editor | every song plays sample for sample the same |
-| Instruments | voicegroups, key maps, PSG waves as TOML | text editor | exact |
-| Samples | 8-bit mono WAV with a `smpl` loop chunk + `samples.toml` | Audacity, sox, any audio editor | exact, also after tools drop the loop chunk |
-
-Results (§6): the graphics a pack loads are identical to the graphics
-decoded from the ROM; rendered trace frames are pixel-identical; sprite
-timing matches the engine's former compiled table for all 3,176 animations;
-all 397 songs
-have identical timelines and render bit-identical PCM (60 s each, 780 million
-stereo samples), and the battle music with all 18 battle effects mixed in is
-bit-identical. Nothing in EXE6's data needed an approximation. §7 lists
-precisely what a format can't carry and how each case is handled.
+| Asset | In memory | From |
+|---|---|---|
+| Sprites: tiles, palettes, frame layouts | `SpriteSheet`: tile sets, OAM parts by layout, palette sets, each animation's frames | the ROMs' sprite archives |
+| Sprites: timing | the content's (`asset.sprite`: content-model-v2.md §6.3); the ROMs' kept beside, for the check | the content; the ROMs |
+| Field panels | `Field`: tiles, the panel blocks by the game's panel type names, edges, highlights, cycling palettes | the ROMs |
+| Backgrounds | `Background`: tiles, map, palette, scroll, animations | the ROMs |
+| HUD | `Hud`: fonts, digits, chip icons, mugshots, banners, the chatbox, its layout, its letters, its shapes | the ROMs; the drawings |
+| Custom screen | `CustomScreen`: the window's maps and tiles, chip pictures, elements, emblems, buttons, its letters, its shapes | the ROMs; the drawings |
+| Another language's lettering | `HudLettering`, `CustomLettering` (`Bundle::for_language`) | the other release's ROMs |
+| Sound | `SoundBank`: songs, voicegroups, key maps, PSG waves, samples, mixer, players | the ROMs |
+| A version's own songs | `nettai_extract::SongVersions` | the other version's ROM |
+| Names | `AssetIndex`: every asset by kind and name, with the game's number for it | the content's compat/assets.toml |
 
 ## 1. Principles
 
-- **The pack is the only form.** The frontend, the audio and the engine
-  load a pack straight from its files; nothing derived from it is stored
-  (§9).
-- **Open formats first.** Every file is a PNG, JSON, TOML, MIDI, WAV or a
-  Tiled or Aseprite document. Where a format can't hold a detail, the detail
-  goes in a small text sidecar rather than in a private binary.
-- **Exact by construction, then proved.** Export writes a file, and for songs
-  immediately reads it back and compares, refusing anything that wouldn't
-  return the same. `nettai-extract content/exe6` reads the asset data back before it
-  finishes, and `nettai-content verify` checks a whole pack against another.
-- **Imports explain, never guess silently.** An import returns a report of
-  errors (the pack can't be built as it is), warnings (it builds, but likely
-  not as intended) and notes, each naming the file and what to do.
-- **Stamps tell untouched files from edited ones.** Sidecars keep a hash of
-  what was exported (a PNG palette's fingerprint, a WAV's or MIDI file's
-  bytes, a summary of a song's commands). An untouched file takes the exact
-  values from its sidecar; an edited one is read for what it says, and the
-  importer points out what an editor probably damaged.
-- **Game-independent formats.** The format modules know GBA-shaped data
-  (4bpp tiles, 16-color palettes, OAM parts, tile maps, M4A songs and
-  voicegroups) and no EXE6 rule. Only the HUD layout and the field's panel
-  tables are EXE6-shaped. They can sit under the core that the content sits
-  on (see `docs/design/core-content-boundary.md`).
+- **The ROMs are the input.** A game's assets are extracted from every ROM of the game (a complete Legacy
+  Collection's: no partial sets), each block read through the game's own pointer to it. The one other input is the
+  recipe's own files, its drawings among them (§4, "Frames as shapes").
+- **Extraction explains.** What it notices that isn't wrong enough to fail it is said (`Extraction::warnings`: a
+  picture with no drawing, a drawing far off its picture, a set of digits with no face); what is wrong fails it, with
+  the reason.
+- **Checked against the content.** The content names every asset it uses and times every sprite; as a game loads,
+  its assets are checked against it (`nettai_content::load::asset_numbers`: every asset named is there, each sprite
+  with as many animations and frames), and `nettai-content check <game>` holds them to it besides: the content's
+  timing against the ROMs', the strings' backgrounds against the assets'.
+- **Game-independent model.** The model knows GBA-shaped data (4bpp tiles, 16-color palettes, OAM parts, tile
+  maps, M4A songs and voicegroups) and no game's rule; what a game lays out otherwise is in its layouts (`HudLayout`,
+  `CustomLayout`), which its recipe fills.
 
-## 2. Pack layout
+## 2. Names
 
-```text
-content.toml                         manifest: format, version, name, what it holds
-chips/ navis/ objects/ rules/ registries/   the battle data (content-pack.md)
-graphics/
-  sprites/NAME/                      one folder per sprite, under its name (compat/assets.toml;
-                                     sprite-CC-II without one); sprite.json holds its id
-    atlas.png                        part images; palette = the sprite's palette set
-    sprite.json                      tile sets (atlas regions) and frame layouts
-    animations.json                  timing: ticks and flags per frame
-    sprite.aseprite                  optional whole-frame view (§3.5)
-  field/
-    tiles.png                        panel tiles; palette rows = background palette slots
-    field.json                       panel types, blocks, edges, highlights, cycling palettes
-  backgrounds/NAME/                   one folder per background (background.json holds its id)
-    tiles.png  map.tmj  background.json  anim-K.png
-  hud/
-    hud.json  layer.png  gauge.png  font.png  enemy-digits.png  counts.png
-    banner-digits.png  waiting.png  pause.png  navi-box.png  warning.png
-    hidden-icon.png  chip-icons/CHIP.png  mugshots/NAME.png  banners/NAME.png
-    dialogue-font.png  chatbox.png  chatbox-arrow.png
-  custom/
-    custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
-    codes.png  elements.png  element-frame.png  digits.png  slot-codes.png
-    empty-icon.png
-    cursor.png  form-list-cursor.png  regular.png
-    chip-art/CHIP.png  emblems/NAVI.png  pictures/NAME.png
-    buttons/BUTTON.png  pictures/BUTTON.png  buttons/BUTTON-icons.png
-    (a button by the name its content registers it under: redeal, scrap, soul)
-    form-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
-    (V: falzar, gregar; a version's own look of a button: beast_out;
-    EXE6's names as layers: form-names-bar.png  form-names-V-portraits.png
-    form-names-V-letters.png)
-    (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
-    (and another language's lettering, L: ja)
-    hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
-    custom/pictures/NAME-L.png  form-names-V-L.png
-    (the frames as shapes, SVG: hud/shapes/NAME.svg  hud/shapes/banners/NAME.svg
-    custom/shapes/NAME.svg  hud/mugshots/frame.png, the emotion window's ring)
-sound/
-  sound.toml                         mixer, music players, song table size
-  samples.toml                       per sample: file, exact rate, loop start, stamp
-  samples/smp-NNN.wav
-  waves.toml                         PSG wave shapes
-  keymaps.toml                       key splits
-  voicegroups/vg-NNN.toml            instruments (drum kits and split groups too)
-  songs/NAME.mid                     a song, under its name (sound-XXX without one)
-  songs/NAME.toml                    its header (with its song id) and stamps
-```
-
-EXE6's pack is 2,759 files, 10.6 MiB (468 of the files, about 2 MiB, are
-the battle data). Writing it from the ROM takes about 1 s.
+The index (`AssetIndex`, made by the extraction: `nettai_extract`'s names) lists every sprite, sound, banner,
+background and mugshot by name, with the game's number for it (a sprite's category and index, a sound's song-table
+number, a banner's, background's or mugshot's id): every name the game's compat/assets.toml gives, and the other
+assets under placeholders (`sprite-0c-2d`, `sound-10e`), which content may not use (`Extraction::unnamed` lists
+them). Content names its assets (`asset.sprite("bomb")`), never their numbers; a frontend finds each handle's
+number in the index as the game loads (`AssetNumbers`).
 
 ## 3. Sprites
 
 ### 3.1 The data
 
-A battle sprite has animations; each frame names a tile set (a block of 8x8
-tiles the game copies to video memory for that frame), a palette set, a
-layout (the hardware sprites, "parts", the frame is built from) and a duration
-with flag bits. EXE6's battle sprites: 298 sprites, 3,176 animations, 8,329
-frames each with its own layout, 2,005 tile sets (1,147 of them shared by
-several frames), 56,033 tiles, 35,645 parts in the 12 hardware sizes, one
-palette set per sprite (16 rows of 16 colors, of which the object picks one
-with `sprite_setPalette`; a part's palette offset is added).
+A battle sprite has animations; each frame names a tile set (a block of 8x8 tiles the game copies to video memory
+for that frame), a palette set, a layout (the hardware sprites, "parts", the frame is built from) and a duration
+with flag bits. EXE6's battle sprites: 298 sprites, 3,176 animations, 8,329 frames each with its own layout, 2,005
+tile sets (1,147 of them shared by several frames), 56,033 tiles, 35,645 parts in the 12 hardware sizes, one palette
+set per sprite (16 rows of 16 colors, of which the object picks one with `sprite_setPalette`; a part's palette offset
+is added).
 
 ### 3.2 Parts, not flattened frames
 
-Flattening each frame into one picture is what artists would like, but it
-loses data: in 4,086 layouts parts overlap, and in 3,335 frames (40%) the
-overlapping parts have different opaque pixels (an arm over a body). A
-flattened frame keeps only the front pixel, while the hidden ones show when a
-part is hidden (`Look::hidden_parts`), culled, or when the first part (the
-shadow) is drawn on the ground apart from the body. Tiles are also shared:
-813 layouts reuse a tile within a frame, and most tile sets serve several
-frames. Parts are therefore kept exactly, and whole-frame editing is offered
-as a layered view (§3.5) in which each part is a layer.
+Flattening each frame into one picture loses data: in 4,086 layouts parts overlap, and in 3,335 frames (40%) the
+overlapping parts have different opaque pixels (an arm over a body). A flattened frame keeps only the front pixel,
+while the hidden ones show when a part is hidden (`Look::hidden_parts`), culled, or when the first part (the shadow)
+is drawn on the ground apart from the body. Tiles are also shared: 813 layouts reuse a tile within a frame, and most
+tile sets serve several frames. Parts are therefore kept exactly (`SpriteSheet`).
 
-### 3.3 Files
+### 3.3 Timing
 
-**`atlas.png`**: every part image once, as an 8-bit indexed PNG. A part image
-is the part's tiles as stored (unflipped), `width x height` pixels. Each tile
-set starts a new row of the atlas, so a row reads as one pose's pieces.
+The battle is timed by the content: each sprite's animations, each frame's duration and whether it loops, are its
+module's (`asset.sprite`, content-model-v2.md §6.3). A frame drawn is looked up by the battle's animation and frame,
+so the sheet has the frames each animation draws and no timing. The extraction keeps the ROMs' timing beside the
+sheets, for one use: `Extraction::timing_differences` compares the content's with it (each frame's duration, the
+loop on the last frame, flags the content can't state, the parts a sprite states), and `nettai-content check <game>`
+fails on any difference.
 
-- The PNG palette (PLTE) is palette set 0: 16 rows of 16 colors, 256
-  entries. A pixel's value is `row * 16 + index`: `index` is the GBA color
-  index (0 = transparent) and `row` the palette row the part is first drawn
-  with, so the atlas shows the right colors. Only `index` is data; the
-  importer takes each pixel modulo 16. Entry 0 of every row is marked
-  transparent (tRNS).
-- Colors are BGR555 widened as `v << 3 | v >> 2`, the renderer's own
-  conversion, so every GBA color has exactly one RGB value and back.
+## 4. Field, backgrounds, HUD and the custom screen
 
-**`sprite.json`**:
+Tiles are 8x8 and 4bpp, a tile block a run of them as the game loads it to video memory (tile number n at place n,
+from the block's first tile number); palettes are 16 BGR555 colors (widened as `v << 3 | v >> 2`, the renderer's
+own conversion); a map entry is a tile, its flips and its palette.
 
-```json
-{
-  "format": "nettai-content/sprite", "version": 1,
-  "sprite": [0, 0],
-  "atlas": "atlas.png",
-  "palette_rows": 16,
-  "palette_fingerprint": "99011b43f293a39d-085de07e49759465",
-  "palette_high_bits": [[15, 3]],
-  "tilesets": [
-    { "tiles": 30, "regions": [
-      {"tile": 0, "size": [32, 16], "at": [0, 0]},
-      {"tile": 8, "size": [32, 32], "at": [40, 0]}
-    ] }
-  ],
-  "layouts": [
-    [
-      {"tile": 0, "size": [32, 16], "offset": [-16, -8]},
-      {"tile": 8, "size": [32, 32], "offset": [-16, -40], "flip": "h", "palette": 1}
-    ]
-  ]
-}
-```
+**Field** (`Field`): its tiles with the panel palettes; the panel types it draws, by its game's names (its rules'
+`panels.numbers`: `"normal"`, `"cracked"`, ..., `"magnet"`, `"lava"`, `"sea"`), in the order of their blocks, the
+game's (EXE6's 13, EXE5's 11, EXE4's 12; a panel type the field doesn't draw is drawn tinted:
+docs/design/rules-in-luau.md §7.4); six blocks for each (5x3 map entries, by owner and row); the two front edges;
+one highlight or two (EXE6 has two; EXE5 draws one block for both); the cycling panel palettes.
 
-- `tilesets[t].regions`: which atlas rectangle fills tiles `tile..` of tile
-  set `t`, row by row as a sprite of that size reads them. Every tile of a
-  tile set is in some region (tiles no part draws get an 8x8 region of their
-  own, so nothing is lost; EXE6 has none). If two regions cover the same tile
-  they must agree.
-- `layouts[l]`: the parts of layout `l`, first part the shadow. `flip` is
-  `h`, `v` or `hv`; `palette` is the part's palette offset (omitted when 0).
-- `palette_fingerprint`: hashes of the atlas palette as exported, in order and
-  sorted, to tell a re-sorted or truncated palette from an edited one.
-- `palette_rows` counts the rows the atlas palette holds: an indexed image
-  has 256 colors, 16 rows. A palette set with more (MegaMan's has 43: the
-  palettes his Crosses use come after his own) lists the rest in
-  `more_palette_rows`, each row 16 BGR555 colors in hex. An object picks a
-  row by number (`palette`), so the order is the data.
-- `palette_high_bits`: palette entries whose BGR555 value has bit 15 set.
-  The hardware ignores that bit and a PNG can't hold it. EXE6 has 16,020 such
-  entries, all in palette-set rows past the real palettes (the extractor keeps
-  16 rows because the game reads whatever follows a palette).
-- `extra_palette_sets`: palette sets after the first, as BGR555 hex (none in
-  EXE6).
+**Backgrounds** (`Background`, by the battle settings' background id): tiles and map; whether it has its own
+palette; its scroll, in 1/16 pixel a frame, or a scroll that speeds up (`Speeding`: its speed's step a frame and its
+top, from the battle's first frame, EXE5's background 0x1B, else from the background's load, EXE4's 0x17); its
+animations: tile frames, palette frames, and palette shifts (palettes shown lightened or darkened by a color a
+frame: EXE4's background 0x09).
 
-**`animations.json`**: the pictures' animations (the simulation's timing is
-the content's since 2026-10-27, content-model-v2.md §6.3; a frontend checks
-that each sprite the content defines has as many animations and frames here):
+**HUD** (`Hud`): the HP box and the custom gauge with their palettes; the 8x16 font and what each glyph draws
+(`font_chars`: a chip's name is spelled with them, the game's marks as characters, Ⓐ for the A button, U+E002 for
+the stacked EX: text-rendering.md §10.5); the digits; each chip's icon under its chip's key; the mugshots and the
+link navis' faces; the count boxes; the banners' layouts; the HUD's text lines as glyphs ("TIME UP!", the turn
+timer's seconds, "COUNTER HIT!"); "Cstmzing..."; "PAUSE"; the warning marker; the dialogue font, each glyph's advance
+and what it draws (the 8x16 font's characters, then the two-byte codes' kana and kanji: `compat/text.toml`'s
+`dialogue_glyphs`); and the chatbox's box (its maps by kind and opening step) and key-wait arrow. The chatbox's
+portraits are sprites (category 0x20, `mugshotSpritePtrs`): the speaker's faces are their animations. Each US ROM has
+a black placeholder in place of the other game's link navis' portraits; the extraction takes each from the ROM that
+has it.
 
-```json
-{
-  "format": "nettai-content/animations", "version": 1,
-  "sprite": [0, 0],
-  "animations": [
-    [ {"ticks": 2, "flags": ["last"], "tileset": 0, "layout": 0} ],
-    [ {"ticks": 4, "tileset": 1, "layout": 1},
-      {"ticks": 3, "flags": ["last", "loop"], "tileset": 0, "layout": 8} ]
-  ]
-}
-```
+**Custom screen** (`CustomScreen`): the window's tiles, maps (15x20, without and with the form list's tab) and
+patches, and its palettes by the chip under the cursor's class (standard, Mega, Giga, dark); the form list window's
+maps (EXE6's Cross window); each chip's picture (7x6 tiles, with its palette) under its chip's key; the element
+icons with each element's colors (below, "Frames as shapes": their shared frame taken apart); each navi's emblem
+under the navi's key, whose palette is the cursor's and the Regular chip's frame's too while that navi's console
+has the screen up; the codes, digits and slot codes; the cursors; the Program Advance animation's name colors; the
+buttons (below). A navi's emblem is its own on any console: the extraction takes each from the ROM that has it
+(EXE6's ROMs each have MegaMan's, ProtoMan's and their own version's five link navis'; EXE5's MegaMan's and their
+own team's six), under the key the game's compat gives the navi's number. The original has no picture for the other
+version's navis and shows its own counterpart's in the navi's colors (docs/frontend.md §5).
 
-- `ticks`: how many ticks the frame shows (1..=255).
-- `flags`: the flag byte, spelled out: `"last"` (0x80, the animation ends
-  here), `"loop"` (0x40, with `last`: it starts over), and any other bits as
-  numbers (`[4]`), which attack code reads as cues. Omitted when 0. Nothing is
-  derived: the byte is exactly what the list says. (In EXE6 only the last frame
-  of each animation has flags, 0x80 or 0xC0.) The importer warns when an
-  animation's last frame lacks `last` or an earlier one has it.
-- `tileset`, `layout`, `palettes`: which tile set, layout and palette set the
-  frame draws; the simulation ignores them.
+**Buttons** (`CustomScreen::buttons`): a button of the rules on the custom screen is drawn by the game's look of the
+name its content registers it under (EXE6's `redeal`, `scrap` and `beast_out`; EXE5's `soul`, `redeal` and
+`arm_change`); the frontend has no look of its own. A button's look (`ButtonPictures`) has its tiles among the
+slots' (a cell's tiles: a slot's 2x3 or the special slot's own; a set its cells', set after set), which set a state
+shows (one a state; the second for unavailable and picked; the second for unavailable alone), the set its slot shows
+while the button isn't there (EXE6's Beast Out's fourth; none: the window's fill), the cursor over it (its place and
+each frame's four corners), its picture in the chip window with its palettes, its own first, whether the chip window
+shows its uses left (EXE5's Shuffle) and where the chip it holds is drawn (EXE5's Arm Change). EXE5's `soul` has the
+souls' 2x2 icons besides, with their sprite palette, which the soul choice flies onto the column (the game versions
+whose consoles fly the icon in a palette of their own: Team Colonel's). A version's own look of a button is its
+version's (EXE6's `beast_out`), and a language's own tiles or picture of one its language's (EXE5's soul button,
+"uni son" for "UNITE"; the re-deal's picture).
 
-Timing is kept apart from pixels: `nettai_content::timing::load` reads every
-`animations.json` without opening an image (298 files in 10-50 ms), for the
-frontend's check of the pack against the content and for `nettai-content
-verify`. (Until 2026-10-27 the battle data's loader put it in the engine's
-`Content::animations`; the content's sprite modules state it now.)
+**Letters** (`nettai_assets::letters`: `HudLetters`, `CustomLetters`, `PictureLetters`, and each language's): how
+the pictures' letters and digits look, which the enhanced graphics draw their words and numbers in fonts by
+(text-rendering.md §12.12). The extraction reads them off the pictures (`nettai_extract::letters::read`); a frontend
+reads no picture. Values are palette indices and pixels of the picture: a number set's face box (x, y, width, height
+in its 8x16 cells) and paint (its fill down the rows, a rim or a shadow); a word's letters (the fill, the outline and
+whether it is heavier right and down, else even, the capitals' top and height, the letters' span of columns); a
+banner's (by banner) with its letters' columns either side of its number (one digit, two digits; its bar is a
+drawing, "Frames as shapes" below); the gauge's word's cells and how it stands in them; the emotion window's counts'
+digit boxes; the chip codes (a glyph's face box and paint, by code); the window's labels' letters and rows; the chip
+window's lettered pictures' lines (OK's, OK-picked's, the other slot's, each button's, each version's); the form
+list names' face (by look) and the box all of them are centered in.
 
-### 3.4 Editing
+**Frames as shapes** (`nettai_assets::shapes`: `HudShapes`, `CustomShapes`, a banner's bar; text-rendering.md §13):
+the HUD's and the custom screen's frames as filled shapes, which the enhanced graphics draw at the output's
+resolution in place of their pictures (a banner with no bar, a logo: the whole picture). Each is an SVG file
+(`shapes::from_svg` reads it), its `viewBox` the picture's size in frame pixels, read and drawn by usvg and resvg
+(the version Slint builds into the app), so any SVG a drawing needs works: shapes, paths with curves, strokes, groups,
+transforms, `use`, clip paths. Its colors are the palette's at the time it is drawn: each shape (or a group round it)
+names its fill's palette index as `data-color` and its stroke's as `data-stroke`, and, where the picture is laid in
+several palettes (a window map's), the row as `data-palette` on it or round it; a gradient's stops name theirs as
+`data-stop-color` (the custom gauge's fill), and a shape it paints names none; every other shape outside `defs` and
+clip paths names its paint so (`fill="none"` where it has none). The file's own `fill` and `stroke` are those colors
+in the picture's first palette, for viewing only. A `text` element with `data-words` is words written on the
+drawing, drawn by the text layer, not as the file's: the string's key in the game's strings (`data-words`), the box
+its capitals fill (`data-box`: x y width height; lines one under another share its height), its face's color
+(`data-color`), its outline's and shadow's (`data-rim`, `data-shadow`), the outline's width (`data-rim-width`,
+pixels; 1 if not given), its slant (`data-slant`) and font (`data-font`); its position, size and contents are for
+viewing. What SVG can't say is the drawing's place in the model: which cells of a map a drawing stands in for (a
+window map's, the gauge's frame, the chatbox's boxes: its parts, each a drawing and its cells, the first drawing
+whose pixels a cell has), and which of a set each is (the gauge's cells and full frames, the cursors, the Regular
+chip's frame, each button's sets by name, the chip window's pictures by name, a language's own).
 
-- **Pixels**: open `atlas.png` in any editor that keeps indexed color. Paint
-  with the colors of the part's own palette row; only the index within a row
-  counts.
-- **Palettes and palette swaps**: edit the PNG's palette. Row n is what
-  `sprite_setPalette(n)` shows.
-- **Layouts and timing**: edit the JSON. A new part needs a new atlas region
-  and a layout entry; a new animation needs frames in `animations.json`.
-
-### 3.5 The Aseprite view
-
-`nettai-content aseprite-export <pack> [NAME ...]` writes
-`graphics/sprites/NAME/sprite.aseprite`; `aseprite-import` reads it back. It
-exists because whole frames are what artists want to see, and Aseprite can
-show them without flattening:
-
-- **Frames**: every animation frame in order, drawn whole. **Layers**: one
-  per part number (`part 0 (shadow)` at the bottom, then `part 1`, ... in
-  drawing order). A part's cel is the part as displayed (flipped as drawn),
-  in the palette row of its offset.
-- **Tags**: one per animation, `anim NN`, or `anim NN loop` when the last
-  frame has the loop flag. The name decides; the tag's repeat count (0 for
-  loops, 1 otherwise) only drives Aseprite's preview, because the field is
-  from Aseprite 1.3 and older versions and LibreSprite don't keep it. A
-  disagreement is reported.
-- **Durations**: milliseconds, `round(ticks * 1000 / 59.7275)`. Every tick
-  count 1..=3,999 converts to milliseconds and back exactly, and a frame
-  duration field reaches 3,914 ticks, so Aseprite's durations hold ticks
-  exactly. A duration typed by hand is rounded to the nearest tick, with a
-  note.
-- **Linked cels = shared tiles**: parts that show the same tiles at the same
-  place in several frames are linked cels, so an edit reaches every frame that
-  shares them, as it would on the hardware. Shared tiles that can't be linked
-  (a different shape or place) must be edited the same way everywhere; the
-  importer refuses diverging copies and says how many pixels differ.
-- **Palette**: indexed color mode, the 256-color palette = palette set 0.
-- The view edits pixels, palettes, durations and loop flags. Part geometry
-  stays in `sprite.json`: pixels painted outside a part's rectangle are
-  reported and dropped, and adding or removing frames is refused (change
-  `animations.json` first).
-- The file is written and read by our own code from Aseprite's published
-  specification (layers 0x2004, cels 0x2005 with zlib images or links,
-  palette 0x2019, tags 0x2018, user data 0x2020); no Aseprite is needed to
-  build a pack. Cel user data names each part's tile, size and flips, for the
-  artist; the importer doesn't rely on it.
-
-Why a view and not the canonical format: Aseprite is a paid (source-available)
-program, LibreSprite follows an older version of the format (no repeat counts
-or user data), and the engine's timing loader shouldn't parse Aseprite
-files. The atlas and JSON stay the source any
-tool can edit; the view is a synced editing workflow.
-
-## 4. Field, backgrounds and HUD
-
-All three store tiles the same way: an indexed PNG in which tile number n sits
-at place n (a grid 16 tiles wide; tiles below the first loaded one are blank,
-and anything drawn there is reported as ignored), the PNG palette's rows being
-the palettes. A `TileImage` entry in the JSON names the file, the layout, the
-tile count, which palette rows are data (`palettes: [first, count]`; other rows
-only color the image for viewing) and the palette fingerprint.
-
-**Field** (`graphics/field/`): `tiles.png` with palette rows 1..=8 the panel
-palettes (row numbers = background palette slots, so a map entry's palette is
-the row it shows in). `field.json` holds:
-
-- `panel_types`: the panel types the field draws, by its game's names (its
-  rules' `panels.numbers`: `"normal"`, `"cracked"`, ..., `"magnet"`, `"lava"`,
-  `"sea"`), in the order of their blocks, the game's: EXE6's pack lists its
-  13, EXE5's its 11, EXE4's its 12. A panel type a field doesn't list is
-  drawn tinted (docs/design/rules-in-luau.md §7.4).
-- the panel blocks, six for each listed type (5x3 map entries, the block of
-  type `k` (its place in `panel_types`) for an owner and a row at
-  `6 * k + 3 * owner + row - 1`): EXE6's 78, EXE5's 66.
-- the two front edges;
-- one highlight or two (EXE6 has two; EXE5 draws one block for both, which its
-  pack writes twice);
-- the cycling panel palettes (slot, start timer, frames of `ticks` and 16
-  colors).
-
-A map entry is text, `tile:palette` with `:h`, `:v` or `:hv` when flipped;
-a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
-hold.
-
-The reader takes the format as the extractors write it today, and nothing older: every file's version is the
-format's own, 1 (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen
-(with its `layout`, its game's own: no pack leaves it to another game's), the warning marker, the chatbox and the
-dialogue font are required, and so are the manifest's `game` and the asset index.
-
-**Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
-JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
-`tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
-any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
-`background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
-or `speeding`, a scroll that speeds up: its speed's `step` a frame and its
-`top`, x then y, in 1/65536 pixel a frame, and `from_battle` where it waits
-for the battle's first frame, EXE5's background 0x1B, else from the
-background's load, EXE4's 0x17; animations). A tile
-animation's frames are `anim-K.png`, one block of tiles a
-frame; a palette animation's frames are color lists; a palette shift's
-(`brightens` or `darkens`: palettes shown lightened or darkened, per channel,
-by a color a frame, EXE4's background 0x09) are one `shift` color each. Tiled's rotation bit is
-refused (the GBA only flips), and so are infinite maps and compressed layers,
-each with the setting to change.
-
-**HUD** (`graphics/hud/`): one PNG per tile block, laid out as the game draws
-it: 8x16 glyphs for the fonts and digits, 2x2 chip icons, 4x2 mugshots, banner
-glyph rows. Each palette belongs to one image (the HP box palettes to
-`layer.png`, each mugshot's to its own file, and so on); images drawn with
-another's palette show it for viewing, and color edits there are ignored with
-a note. `hud.json` holds the map entries, what each glyph of the font draws
-(`font_chars`: the frontend spells a chip's name, which its definition
-gives, with them), each chip icon's chip (its key in the content), the link
-navis' mugshots and which one a navi shows, the HUD's text lines as glyph
-numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
-layouts and the form emotions.
-
-The HUD holds the chatbox's graphics. `dialogue-font.png`
-is the dialogue font: 16x12 cells, 32 a row, palette index 0 clear (its
-palette only colors it for viewing: the chatbox draws it with the text's);
-`hud.json`'s `dialogue_font` gives each glyph's advance and what it draws
-(the 8x16 font's characters for the one-byte glyphs, then the two-byte
-codes' kana and kanji, `compat/text.toml`'s `dialogue_glyphs`), so a string
-is spelled as the font's. `chatbox.png` is the box's tiles with its
-palette, `chatbox-arrow.png` the key-wait arrow's three 16x16 frames with
-the palette the text draws with; `hud.json`'s `chatbox` holds the box's
-maps (30x8 entries, a row of text each, the tiles counted from the image's
-first) by kind (the message box, the description box) and opening step (0
-to 3, open).
-
-`font_chars` and the dialogue font's `chars` write the game's marks as
-characters (Ⓐ for the A button, U+E002
-for the stacked EX: `compat/text.toml`'s, text-rendering.md §10.5), so that
-content's strings are spelled in them.
-
-The chatbox's portraits are sprites (`graphics/sprites/NAME/`, category
-0x20, `mugshotSpritePtrs`): their animations are the speaker's faces (still,
-idle with its blinks, talking), the original's mini-animations of the
-portrait's one frame. Each US ROM has a black placeholder in place of the
-other game's link navis' portraits; the extractor takes each from the ROM
-that has it.
-
-**Custom screen** (`graphics/custom/`): the same scheme.
-`window.png` holds the window frame's tiles with the window's four palettes
-(by the chip under the cursor's class: standard, Mega, Giga, dark), each
-chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
-`elements.png` a palette row per element whose colors 10-15 are the ones
-the element brings, each icon its symbol alone on a clear ground, no frame
-round it (`element-frame.png`: the frame they share, 2x2 tiles with its
-ground, viewed in the first element's row; the frame with an icon over it
-is the game's icon), each navi's emblem (`emblems/NAVI.png`, 2x2 tiles,
-under the navi's key) its own palette, which is the cursor's and the
-Regular chip's frame's too while that navi's console has the screen up,
-`form-list-cursor.png`
-the form list window's cursor (EXE6's Cross window's: its corner and its
-edge, two frames) with sprite palette 14. `custom.json` holds the window's
-maps (15x20, without and with the form list's tab) and the form list
-window's (`form_list_maps`: three opening steps, then the window with one
-to five forms; `form_list_patches`), their patch lists (a block of consecutive tile
-numbers at a cell, row or column first, in a palette), the three palettes
-no image owns as color lists, and the Program
-Advance animation's three sets of name colors; each chip's picture by
-its chip's key, with the `version` of a version's own chip's (below);
-each navi's emblem by its navi's key; and the buttons
-(below). The frontend composes the tile numbers the maps name from
-these blocks, as the original's VRAM holds them.
-
-A navi's emblem is its own on any console: the extractor takes each from
-the ROM that has it (EXE6's ROMs each have MegaMan's, ProtoMan's and their
-own version's five link navis'; EXE5's MegaMan's and their own team's
-six), under the key the game's compat gives the navi's number; a navi
-without a key has none. The original has no picture for the other
-version's navis and shows its own counterpart's in the navi's colors
-(docs/frontend.md §5).
-
-**Buttons** (`buttons` in `custom.json`): a button of the rules on the custom
-screen is drawn by the pack's look of the name its content registers it
-under (EXE6's `redeal`, `scrap` and `beast_out`; EXE5's `soul`, `redeal`
-and `arm_change`); the frontend has no look of its own. An entry has the
-button's tiles among the slots' (`buttons/BUTTON.png`: `size` tiles a
-cell, a slot's 2x3 or the special slot's own; a set its cells', set after
-set), which set a state shows (`sets`: `each`, one a state; `other`, the
-second for unavailable and picked; `unavailable`, the second for
-unavailable alone), the set its slot shows while the button isn't there
-(`hidden`: EXE6's Beast Out's fourth; left out, the window's fill), the
-cursor over it (`cursor`: its place and each frame's four corners), its
-picture in the chip window with its palettes as rows, its own first
-(`pictures/BUTTON.png`), whether the chip window shows its uses left
-(`uses_digit`: EXE5's Shuffle) and where the chip it holds is drawn
-(`held_at`: EXE5's Arm Change). EXE5's `soul` has the souls' 2x2 icons
-besides (`buttons/soul-icons.png`, with their sprite palette, which the
-soul choice flies onto the column; `icon_versions` names the game versions
-whose consoles fly the icon in a palette of their own, the image's rows
-after the first: Team Colonel's). A version's own look of a button is in
-its version's entry (EXE6's `beast_out`: `buttons/beast_out-V.png`,
-`pictures/beast_out-V.png`), and a language's own tiles or picture of one
-in its language's (`buttons/soul-ja.png`, `pictures/redeal-ja.png`).
-
-**Letters** (`letters` in `hud.json` and `custom.json`, and in each of their
-languages' entries): how the pictures' letters and digits look, which the
-enhanced graphics draw their words and numbers in fonts by
-(text-rendering.md §12.12). Extraction reads them off the pictures
-(`nettai_content::letters::read`); a frontend reads no picture. Values are
-palette indices and pixels of the picture: a number set's face box (x, y,
-width, height in its 8x16 cells) and paint (`fill` down the rows, `rim` or
-`shadow`); a word's letters (`fill`, the outline and whether it is
-`heavier` right and down, else even, the capitals' `top` and `cap`, the
-letters' `span` of columns); a banner's (by banner, as `banners`) with its
-letters' columns either side of its number (`one_digit`, `two_digits`; its
-bar is a drawing, "Frames as shapes" below); the gauge's word's cells and how it
-stands in them (`align`); the emotion window's counts' digit boxes; the chip
-codes (`codes`, `slot_codes`: a glyph's face box and paint, by code); the
-window's labels' letters and rows (as `labels`); the chip window's lettered
-pictures' lines (`ok`, `ok_picked`, `other`, each button's, each version's);
-the form list names' face (by look, as the names' images) and the box all
-of them are centered in (`form_name_box`).
-
-**Frames as shapes** (`shapes` in `hud.json` and `custom.json`, a banner's
-`bar`; text-rendering.md §13): the HUD's and the custom screen's frames as
-filled shapes, which the enhanced graphics draw at the output's resolution
-in place of their pictures (a banner with no bar, a logo: its `logo`, the
-whole picture). Each is an SVG file under `shapes/` beside the
-pictures: its `viewBox` the picture's size in frame pixels, read and drawn
-by usvg and resvg (the version Slint builds into the app), so any SVG a
-drawing needs works: shapes, paths with curves, strokes, groups,
-transforms, `use`, clip paths. Its colors are the palette's at the time it
-is drawn: each shape (or a group round it) names its fill's palette index
-as `data-color` and its stroke's as `data-stroke`, and, where the picture
-is laid in several palettes (a window map's), the row as `data-palette` on
-it or round it; a gradient's stops name theirs as `data-stop-color` (the
-custom gauge's fill), and a shape it paints names none; every other shape
-outside `defs` and clip paths names its paint so (`fill="none"` where it
-has none). The file's own `fill` and `stroke`
-are those colors in the picture's first palette, for viewing only. A
-`text` element with `data-words` is words written on the drawing, drawn
-by the text layer, not as the file's: the string's key in the game's
-strings (`data-words`), the box its capitals fill (`data-box`: x y width
-height; lines one under another share its height), its face's color
-(`data-color`), its outline's and shadow's (`data-rim`, `data-shadow`),
-the outline's width (`data-rim-width`, pixels; 1 if not given), its slant
-(`data-slant`) and font (`data-font`); its position, size and contents are
-for viewing. The JSON says what SVG can't: which cells of a map a drawing
-stands in for (a window map's, the gauge's frame, the chatbox's boxes:
-`parts`, each a file and its cells, the first drawing whose pixels a cell
-has), and which of a set each file is (the gauge's cells and full frames,
-the cursors, the Regular chip's frame, each button's sets by name, the chip window's pictures by
-name, a language's own as `NAME-L`). The emotion window's faces are kept
-without the ring round them (`mugshot_frame`: the ring as a picture, each
-face's ring color; none where a face covers its ring and keeps it); the
-import puts the ring back. The element icons are taken apart at extraction
-(the user: "make the extract element icons transparent and borderless"):
-the frame they share is a picture (`element-frame.png`: each pixel the
-index most of the icons share, the rest of it the ground, its most common
-index) and a drawing (`element_frame`, 16x16: the ring and the ground in
-it, nothing round the ring, checked against the picture without the ground
-there); each icon in `elements.png`
-is its pixels that aren't the frame's, clear elsewhere: its symbol, and
-where an icon draws a pixel of the frame its own way (EXE6's and EXE5's
-fourth icon's inner corners, their no-element icon's top right), that
-pixel, so the original graphics draw the frame with the icon over it as
-the game's. The enhanced graphics and the app draw the frame's drawing
-with only the symbol's pixels inside the frame's ring over it (its ground
-there, not joined to its edge by ground). (EXE5's two icons no chip shows,
-the Program Advance's and the special family's, leave pixels clear where
+The emotion window's faces are kept without the ring round them (`MugshotFrame`: the ring as a picture, each face's
+ring color; none where a face covers its ring and keeps it). The element icons are taken apart at extraction (the
+user: "make the extract element icons transparent and borderless"): the frame they share is a picture (each pixel
+the index most of the icons share, the rest of it the ground, its most common index) and a drawing (16x16: the ring
+and the ground in it, nothing round the ring, checked against the picture without the ground there); each icon is
+its pixels that aren't the frame's, clear elsewhere: its symbol, and where an icon draws a pixel of the frame its own
+way (EXE6's and EXE5's fourth icon's inner corners, their no-element icon's top right), that pixel, so the original
+graphics draw the frame with the icon over it as the game's. The enhanced graphics and the app draw the frame's
+drawing with only the symbol's pixels inside the frame's ring over it (its ground there, not joined to its edge by
+ground). (EXE5's two icons no chip shows, the Program Advance's and the special family's, leave pixels clear where
 the frame has them: over the frame, they aren't the game's.)
 
-The drawings are drawn by hand, not read off the ROM: they live in each
-game's content (`<game>/extract/shapes/`, a game's file or a `.same`
-naming one exelib's `extract/shapes/` holds), and extraction copies each into the
-pack after checking it against the ROM's picture (its size, its colors
-among the picture's, its share of the picture's pixels: noted, and called
-out under 85%). They are the one exception to "the extractor's inputs are
-ROMs only": what they say is how the art is meant (a round holder, a
-rounded corner), which no ROM holds; they are the extractor's, like its
-code, the same in every pack it makes, and a picture with no drawing is
-drawn as it is.
+The drawings are drawn by hand, not read off the ROM: they live in each game's content (`<game>/extract/shapes/`, a
+game's file or a `.same` naming one exelib's `extract/shapes/` holds), and the extraction lays each picture as the
+screen lays it and checks the drawing against it (`nettai_extract::shapes`: its size, its colors among the
+picture's, its share of the picture's pixels: noted, and called out under 85%). They are the one exception to "the
+extractor's inputs are ROMs only": what they say is how the art is meant (a round holder, a rounded corner), which no
+ROM holds; they are the recipe's, like its code, the same for every set of ROMs it reads, and a picture with no
+drawing is drawn as it is.
 
-**Lettered pictures** are kept once: the image at the picture's own path
-is its **base**, the picture with every language's letters taken off, and
-`NAME-letters.png` beside it (`letters`) is a layer of its letters: each
-pixel where the picture differs from the base, its palette index as the
-image's are, and elsewhere the entry after the palette's last ("none",
-magenta for viewing). The letters are its words and their ink (the user:
-"it doesn't seem like it's a pure text extraction"), with the few pixels
-where a panel picture's own panel departs from the shared one (a body a
-column wider, a letter's outline drawn in the panel's colors, EXE4's taller
-Japanese panel; the user: "fold them into the letters layer"). Another
-picture of the same base (another language's, another panel picture's) has
-its letters at its own path (`pictures/ok-ja.png`, in that picture's
-palette; `base` in its entry: the base's file). The loader composes each
-picture as its letters over the base (what the original mode draws) and
-the picture as the enhanced mode shows it (the base).
+**Lettered pictures** are kept once: as the picture with every language's letters taken off (its **base**), and a
+layer of its letters over it: each pixel where the picture differs from the base. The letters are its words and their
+ink (the user: "it doesn't seem like it's a pure text extraction"), with the few pixels where a panel picture's own
+panel departs from the shared one (a body a column wider, a letter's outline drawn in the panel's colors, EXE4's
+taller Japanese panel; the user: "fold them into the letters layer"). Another picture of the same base (another
+language's, another panel picture's) has its letters as a layer of its own, in that picture's palette. The
+extraction settles each picture so (`nettai_extract::letters::settle`): the original mode draws its letters over the
+base, and the enhanced mode shows the base, with its words drawn in a font.
 
-The chip window's pictures are bit planes, their palettes picking the
-plane, so a panel picture's tiles hold the other pictures' words in index
-values its palette shows in the panel's own colors. Those pixels take the
-shared panel's index (the user: "why do the -own images look like that?
-can you not remove them?"): extraction checks every palette the picture is
-drawn in (its own; a button's others) shows the two alike, and says how
-many it made so (EXE5's 2,638, EXE6's 2,647, EXE4's none) and, as a
-problem, any some palette shows otherwise. So a picture composes to the
-ROM's colors in every palette it is drawn in, and to its indices
-everywhere else. Kept so: the window's tiles (its labels), the codes and the slots'
-codes, FINAL TURN, the gauge (CUSTOM, L or R), the counts and the chip
-window's lettered pictures. A picture with no letters in any language (a
-button's art: EXE6's TRASH CHUTE and DUST SHOOT) is each language's own
-image, drawn as it is.
+The chip window's pictures are bit planes, their palettes picking the plane, so a panel picture's tiles hold the
+other pictures' words in index values its palette shows in the panel's own colors. Those pixels take the shared
+panel's index (the user: "why do the -own images look like that? can you not remove them?"): extraction checks every
+palette the picture is drawn in (its own; a button's others) shows the two alike, and says how many it made so
+(EXE5's 2,638, EXE6's 2,647, EXE4's none) and, as a problem, any some palette shows otherwise. So a picture shows the
+ROM's colors in every palette it is drawn in. Kept so: the window's tiles (its labels), the codes and the slots'
+codes, FINAL TURN, the gauge (CUSTOM, L or R), the counts and the chip window's lettered pictures. A picture with no
+letters in any language (a button's art: EXE6's TRASH CHUTE and DUST SHOOT) is each language's own, drawn as it is.
 
-The chip window's **panels** with words (OK's, OK-picked's, the other
-slot's, the buttons' that are panels, as the re-deal's; in every language)
-share one base, `pictures/ok.png` (the user: "ok/other/redeal actually share
-the same background"), recovered from the pictures themselves: each pixel
-the color most of them show there, of those whose letters are no nearer
-than a pixel's gap (an outline in the panel's colors lies beside them);
-where as many show one color as another, of all whose letters miss it,
-then its left neighbor's (EXE4's right edge had taken the Japanese OK's
-own taller body from one picture against one); where every picture's letters cover it
-(8 pixels in EXE5's and EXE6's, none in EXE4's), its row's nearest such
-pixel's. A picture's letters are wherever its color differs from the
-panel's, its outline and any of its panel that differs with them (EXE5's
-and EXE6's CHIP DATA TRANSMISSION and BLOCKING! widen the panel's body a
-column each side; EXE4's Japanese OK pictures are drawn on a taller one),
-so the enhanced mode shows the one panel under every picture's words. The
-extraction notes how many pixels the panels differ at, by picture.
+The chip window's **panels** with words (OK's, OK-picked's, the other slot's, the buttons' that are panels, as the
+re-deal's; in every language) share one base (the user: "ok/other/redeal actually share the same background"),
+recovered from the pictures themselves: each pixel the color most of them show there, of those whose letters are no
+nearer than a pixel's gap (an outline in the panel's colors lies beside them); where as many show one color as
+another, of all whose letters miss it, then its left neighbor's (EXE4's right edge had taken the Japanese OK's own
+taller body from one picture against one); where every picture's letters cover it (8 pixels in EXE5's and EXE6's,
+none in EXE4's), its row's nearest such pixel's. A picture's letters are wherever its color differs from the panel's,
+its outline and any of its panel that differs with them (EXE5's and EXE6's CHIP DATA TRANSMISSION and BLOCKING!
+widen the panel's body a column each side; EXE4's Japanese OK pictures are drawn on a taller one), so the enhanced
+mode shows the one panel under every picture's words. The extraction notes how many pixels the panels differ at, by
+picture.
 
-The **form list's names** (EXE6's Cross window) are layers: the bar every
-name of both versions lies on (`form-names-bar.png`, each version's
-`form_names`: one name's 9x2 tiles, in every look alike, the yellow bar
-with its orange streaks, and the frame; the user: "falzar and gregar should
-have the same bar"); each name's portrait over it (`form-names-V-portraits.png`, every look's
-names, the portrait's own pixels and none elsewhere; its palette's rows are
-the names' palettes by look, `form_name_portraits`); and the letters over
-all (`form-names-V-letters.png`, `form_name_letters`; another language's at
-its own path, `form-names-V-ja.png`), with the few pixels where a name
-shows the bar otherwise among them (a streak ending a pixel sooner or
-later, as the English SPOUT's does where its Japanese art's doesn't:
-Falzar's English 2, Gregar's English 1 and Japanese 6, each in both looks;
-the user chose "fold into letters"). The loader lays them in that order for
-the original mode; the enhanced mode draws a name in a font over its
-portrait and the shared bar. The bar is what the names show beside their portraits and
-letters (each pixel the value most of them show, every version, look and
-language;
-where as many show one value as another, the streak's: its left
-neighbor's); a portrait is the pixels joined to the name's left edge
-through pixels of no color of the bar's and no letter's; what shows through
-a letter in the bar's colors is the bar's; a language's letters are all its
-pixels that differ from its portraits over the bar: its letters and their
-outline (one of gray ヒート's is the ROM's index 1) and those few. The bar's pixels no
-name shows (behind every portrait, or under letters or portraits in every
-name) are filled from their rows; the extraction notes how many.
+The **form list's names** (EXE6's Cross window) are layers: the bar every name of both versions lies on (one name's
+9x2 tiles, in every look alike, the yellow bar with its orange streaks, and the frame; the user: "falzar and gregar
+should have the same bar"); each name's portrait over it (every look's names, the portrait's own pixels and none
+elsewhere, with the names' palettes by look); and the letters over all (another language's its own), with the few
+pixels where a name shows the bar otherwise among them (a streak ending a pixel sooner or later, as the English
+SPOUT's does where its Japanese art's doesn't: Falzar's English 2, Gregar's English 1 and Japanese 6, each in both
+looks; the user chose "fold into letters"). The original mode lays them in that order; the enhanced mode draws a name
+in a font over its portrait and the shared bar. The bar is what the names show beside their portraits and letters
+(each pixel the value most of them show, every version, look and language; where as many show one value as another,
+the streak's: its left neighbor's); a portrait is the pixels joined to the name's left edge through pixels of no
+color of the bar's and no letter's; what shows through a letter in the bar's colors is the bar's; a language's
+letters are all its pixels that differ from its portraits over the bar: its letters and their outline (one of gray
+ヒート's is the ROM's index 1) and those few. The bar's pixels no name shows (behind every portrait, or under letters
+or portraits in every name) are filled from their rows; the extraction notes how many.
 
-A window **label**'s letters (BATTLE CHIP, CHIP SELECT, the CROSSSELECT tab
-and header, B:EXIT) are taken off its strip as every pixel, from a pixel
-before its letters' first column to one past their last, that isn't the
-row's ground (the color most of the row's other pixels there are): a letter's
-lighter dot (EXE6's CHIP SELECT's P) goes with it.
+A window **label**'s letters (BATTLE CHIP, CHIP SELECT, the CROSSSELECT tab and header, B:EXIT) are taken off its
+strip as every pixel, from a pixel before its letters' first column to one past their last, that isn't the row's
+ground (the color most of the row's other pixels there are): a letter's lighter dot (EXE6's CHIP SELECT's P) goes
+with it.
 
-**Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
-use the same files, with optional fields where its game lays them out
-otherwise; an EXE6 pack writes none of them and is byte-identical to before:
+**Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11; EXE4's, exe4-map.md §14) are the same
+model, with the parts its game lays out otherwise in its layouts:
 
-- `hud.json`: the tile numbers count from the HUD layer's and the gauge's
-  first tiles (`first_tile`, `gauge_first_tile`: EXE5's 0x180 and 0x202,
-  EXE6's 0x1A0 and 0x222). `mugshot_boxes` gives a face that brings its own
-  2x2 box beside it (`mugshots/NAME-box.png`: EXE5's MegaMan, dark MegaMan
-  and Team Colonel's faces), by mugshot number; `no_count_box` says the
-  game has no box without a count (EXE5's souls' faces show their turns
-  left: `counts.png`, by count). Its `layout` (EXE4's) says "PAUSE"'s place,
-  the HP numbers' priority and the HUD layer's (`hud_priority`: EXE4's BG3
-  is 0, EXE6's 1), a message's place, the damage judge's timing, the
-  chatbox's text and arrows, and the telops' own look, with `telop.tiles`
-  where the game loads the telops' sprite tiles among the banners' (VRAM
-  tile numbers: a banner's first, each place's first name tile, the '×'
-  and '2' pieces'; whether "PAUSE" loads the banners' palette into the one
-  they share): EXE4's banners and telops show each other's loads.
-- `custom.json`: `layout` (every pack says its game's) puts the
-  window's parts at the game's tile numbers (the chip's name, picture,
-  code, element and digits, the slots, the column's icons and cells, the
-  turn limit, the name bar, the Cross names), says which tile a hidden slot
-  is filled with, and where the cursor stands over OK, with its corners.
-  `buttons` are the game's own (above: EXE5's special slot is the 3x2 soul
-  button, with a palette for Soul Unison and one for Chaos Unison; EXE6's
-  the 4x2 Beast Out). `labels` are the words the window's tiles draw
-  (BATTLE CHIP, CHIP SELECT, CROSS SELECT, B:EXIT), each its `name` (the
-  content's strings say its words: the game's `lettering` table,
-  `window.NAME`), its `tiles` (the first and the last, as the maps number
-  them), the `rows` of them its letters are on (the first and the last of
-  the eight) and the colors of its `letters`: the enhanced graphics take the
-  letters off and draw the words in a font (text-rendering.md §12).
-- EXE4's `custom.json` (docs/design/exe4-map.md §14) says what its screen
-  draws otherwise, each left out of the others': its layout's
-  `detail_blank` (the color a blank code or damage cell is, 7 where
-  EXE6's and EXE5's are 8), `turn_limit_palette` (the "FINAL TURN" block's
-  palette, 14 where EXE6's and EXE5's are 9) and `empty_palette` (the empty
-  icon's palette in a slot or cell without a chip, 9); `element_sprite` (the element icon
-  drawn as a 16x16 sprite at a place and in a palette of its own, not as
-  window tiles in palette 11 with `elements.png`'s colors); `cursor_palette`
-  (the cursor's and the Regular chip's frame's own sprite palette, not a
-  navi emblem's); `window_emblem` (the orb over the picked column drawn on
-  the window's map: `window-emblem.png` at `first_tile`, its frames' map
-  entries, and the steps of its turn after a pick, a frame or a hold each);
-  and a button's `place` ([column, row, first tile, palette]: the UNITE
-  button's own cells on the window's map, not among the slots').
-- A version's own chip (EXE5's and EXE6's version Giga chips, EXE5's Phoenix
-  and DethPhnx), which the other version's ROM draws as its counterpart,
-  has its icon and picture once, under the chip's key, from its own
-  version's ROM, the picture with that `version`: the frontend shows it on
-  either console, and a console of the other version's is a known
-  difference there (docs/frontend.md §5).
+- The HUD: its tile numbers count from the HUD layer's and the gauge's first tiles (EXE5's 0x180 and 0x202, EXE6's
+  0x1A0 and 0x222). A face may bring its own 2x2 box beside it (`mugshot_boxes`: EXE5's MegaMan, dark MegaMan and Team
+  Colonel's faces), by mugshot number; a game may have no box without a count (EXE5's souls' faces show their turns
+  left, by count). Its `layout` (EXE4's) says "PAUSE"'s place, the HP numbers' priority and the HUD layer's (EXE4's
+  BG3 is 0, EXE6's 1), a message's place, the damage judge's timing, the chatbox's text and arrows, and the telops'
+  own look, with their tiles where the game loads the telops' sprite tiles among the banners' (VRAM tile numbers: a
+  banner's first, each place's first name tile, the '×' and '2' pieces'; whether "PAUSE" loads the banners' palette
+  into the one they share): EXE4's banners and telops show each other's loads.
+- The custom screen: its `layout` (every game's its own) puts the window's parts at the game's tile numbers (the
+  chip's name, picture, code, element and digits, the slots, the column's icons and cells, the turn limit, the name
+  bar, the Cross names), says which tile a hidden slot is filled with, and where the cursor stands over OK, with its
+  corners. Its buttons are the game's own (above: EXE5's special slot is the 3x2 soul button, with a palette for Soul
+  Unison and one for Chaos Unison; EXE6's the 4x2 Beast Out). Its labels are the words the window's tiles draw
+  (BATTLE CHIP, CHIP SELECT, CROSS SELECT, B:EXIT), each its name (the content's strings say its words: the game's
+  `lettering` table, `window.NAME`), its tiles (the first and the last, as the maps number them), the rows of them its
+  letters are on and the colors of its letters: the enhanced graphics take the letters off and draw the words in a
+  font (text-rendering.md §12).
+- EXE4's custom screen draws some things otherwise: a blank code or damage cell's color (7 where EXE6's and EXE5's
+  are 8), the "FINAL TURN" block's palette (14 where EXE6's and EXE5's are 9), the empty icon's palette in a slot or
+  cell without a chip (9); the element icon drawn as a 16x16 sprite at a place and in a palette of its own, not as
+  window tiles in palette 11 with the elements' colors; the cursor's and the Regular chip's frame's own sprite
+  palette, not a navi emblem's; the orb over the picked column drawn on the window's map (its tiles, its frames' map
+  entries, and the steps of its turn after a pick); and a button's own place on the window's map (the UNITE button's
+  cells, not among the slots').
+- A version's own chip (EXE5's and EXE6's version Giga chips, EXE5's Phoenix and DethPhnx), which the other version's
+  ROM draws as its counterpart, has its icon and picture once, under the chip's key, from its own version's ROM, the
+  picture with that version: the frontend shows it on either console, and a console of the other version's is a
+  known difference there (docs/frontend.md §5).
 
-**Four ROMs, and what differs by version and region.** An EXE6 pack is made
-from the two US ROMs and the two Japanese ones (`nettai-extract content/exe6 <pack>
-<falzar-us> <gregar-us> <falzar-jp> <gregar-jp>`, all four, in any order,
-identified by game code: BR6E, BR5E, BR6J, BR5J), by EXE6's extraction
-recipe (content/exe6/extract/): what the four have alike from the Falzar US
-ROM, what a version's ROMs alone have right or of their own from a ROM of
-that version (the recipe's `versions.luau`), each release's words from a ROM
-of that release, what the US release cut from a Japanese ROM (`jp.luau`),
-and the US ROM's wherever both releases have their own. Each
-block is read through the game's own pointer to it (a routine's literal, a
-load list's entry: the extractor's `rom::Place`), which each ROM has where
-its code is:
+**Four ROMs, and what differs by version and region.** EXE6's assets are extracted from the two US ROMs and the two
+Japanese ones (all four, in any order, identified by game code: BR6E, BR5E, BR6J, BR5J), by EXE6's recipe
+(content/exe6/extract/): what the four have alike from the Falzar US ROM, what a version's ROMs alone have right or of
+their own from a ROM of that version (the recipe's `versions.luau`), each release's words from a ROM of that release,
+what the US release cut from a Japanese ROM (`jp.luau`), and the US ROM's wherever both releases have their own. Each
+block is read through the game's own pointer to it (a routine's literal, a load list's entry: the extractor's
+`rom::Place`), which each ROM has where its code is:
 
-- **What differs by version** is two assets, each named with its version:
-  `form-names-falzar` and `form-names-gregar` (nettai-assets
-  `Versioned`, whose halves the names find; an asset no version has its
-  own of has no suffix). On the custom screen these are the Beast Out
-  button, the version's Beast's (`buttons/beast_out-V`, four sets of 4x2:
-  selectable, unavailable, battle mode 1's, the hidden slot's), with its
-  picture in the chip window (`pictures/beast_out-V`, which the BeastOut
-  chip shows too) and the form list window's (the Cross window's)
-  names, 9x2 tiles each, the five on the cursor's row then on the others',
-  with background palette 10 for the Cross under the cursor
-  (`form-names-V`; the layout's `form_names` places them). `custom.json` lists the base's (`own`, its version in
-  `base_version`) and the others' (`versions`). A console shows its
-  version's, except a Cross's name, which is the Cross's own game's.
-- **Gregar's own faces**: the Falzar ROM has none for Gregar's Crosses,
-  its Beast and its link navis (its tables show the Falzar counterpart's).
-  The pack has the Gregar ROM's as faces of their own (`mugshots/heatcross`
-  and the others: numbers 0x17 to 0x28 after the Falzar ROM's emotion
-  pictures, 0x86 to 0x8A after its link navis'), and Gregar's forms and
-  navis name them: every form shows its true face on either console.
-- **Five chips' pictures and icons** the Falzar ROM has wrong (Bass,
-  BigHook, DeltaRay, ColForce, BugRSwrd: the other five Giga chips'
-  copied in): the pack has the Gregar ROM's, on either console.
-- **The Cybeasts' sprites**: a ROM has its own version's (Gregar's in
-  slot 08-14, `gregar-cybeast`; Falzar's in 08-15, `falzar-cybeast`) and a placeholder archive in
-  the other's slot. The pack has each from a ROM of its version.
-- **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
-  six sprites the US ROMs fill with a placeholder archive (`count`,
-  `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
-  from a Japanese ROM (every other sheet is a US ROM's where one
-  is given: the flames HeatMan wears differ in one animation between the
-  releases), and the pictures of fifteen chips the US ROMs
-  give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
-  DblBeast, Gregar, Falzar, and BatCan1 to BatCan4, which the US release
-  kept), from a Japanese ROM, Gregar's from the Japanese Gregar ROM and
-  Falzar's from the Japanese Falzar one (a Japanese console shows its own beast in
-  both chips; the pack has each chip's own). Every other chip's icon and
-  picture are its version's US ROM's where there is one: the Japanese
-  ROMs' differ in one pixel of the Falzar ROMs' BassAnly icon and two of
-  the Gregar ROMs' Beast Out picture (docs/engine/jp-differences.md §4.4). The pack keeps no region: a
-  pack has one picture of each thing, the US games' where both releases
-  have their own and the Japanese games' where the US release has none
-  (a pack of no US ROM has the Japanese games' throughout), and what a
-  console of the other region shows there is the verification's to know
-  (docs/frontend.md §5).
-  Three of the pictures' palettes are EWRAM in the original, which a link
-  gift (an e-Reader card's) fills and the save keeps: DblBeast's, the
-  card's, is also orphaned in the Japanese ROMs, and the pack has it; the
-  Gregar and Falzar chips' are in no ROM, and the pack's pictures have a
-  black one, which their definitions' `art_palette` replaces when drawn.
+- **What differs by version** is held as `Versioned` (the base's, its version, and each other version's own): a
+  console shows its version's. On the custom screen these are the Beast Out button, the version's Beast's (four sets
+  of 4x2: selectable, unavailable, battle mode 1's, the hidden slot's), with its picture in the chip window (which the
+  BeastOut chip shows too), and the form list window's (the Cross window's) names, 9x2 tiles each, the five on the
+  cursor's row then on the others', with background palette 10 for the Cross under the cursor. A Cross's name is the
+  Cross's own game's on either console.
+- **Gregar's own faces**: the Falzar ROM has none for Gregar's Crosses, its Beast and its link navis (its tables show
+  the Falzar counterpart's). The assets have the Gregar ROM's as faces of their own (numbers 0x17 to 0x28 after the
+  Falzar ROM's emotion pictures, 0x86 to 0x8A after its link navis'), and Gregar's forms and navis name them: every
+  form shows its true face on either console.
+- **Five chips' pictures and icons** the Falzar ROM has wrong (Bass, BigHook, DeltaRay, ColForce, BugRSwrd: the
+  other five Giga chips' copied in): the assets have the Gregar ROM's, on either console.
+- **The Cybeasts' sprites**: a ROM has its own version's (Gregar's in slot 08-14, `gregar-cybeast`; Falzar's in
+  08-15, `falzar-cybeast`) and a placeholder archive in the other's slot. The assets have each from a ROM of its
+  version.
+- **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5): six sprites the US ROMs fill with a
+  placeholder archive (`count`, `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`), from a
+  Japanese ROM (every other sheet is a US ROM's: the flames HeatMan wears differ in one animation between the
+  releases), and the pictures of fifteen chips the US ROMs give a placeholder picture (GunDelEX, Otenko, Count
+  (HackJack) ×3, Django ×3, DblBeast, Gregar, Falzar, and BatCan1 to BatCan4, which the US release kept), from a
+  Japanese ROM, Gregar's from the Japanese Gregar ROM and Falzar's from the Japanese Falzar one (a Japanese console
+  shows its own beast in both chips; the assets have each chip's own). Every other chip's icon and picture are its
+  version's US ROM's: the Japanese ROMs' differ in one pixel of the Falzar ROMs' BassAnly icon and two of the Gregar
+  ROMs' Beast Out picture (docs/engine/jp-differences.md §4.4). The assets keep no region: one picture of each thing,
+  the US games' where both releases have their own and the Japanese games' where the US release has none, and what a
+  console of the other region shows there is the verification's to know (docs/frontend.md §5). Three of the
+  pictures' palettes are EWRAM in the original, which a link gift (an e-Reader card's) fills and the save keeps:
+  DblBeast's, the card's, is also orphaned in the Japanese ROMs, and the extraction has it; the Gregar and Falzar
+  chips' are in no ROM, and their pictures have a black one, which their definitions' `art_palette` replaces when
+  drawn.
 
-**Languages.** The words a battle's pictures and fonts show are the pack's
-own language's (`language` in `hud.json`: "en" for a pack with a US ROM,
-"ja" for one of Japanese ROMs alone) and, for another language the pack
-has (nettai-assets `lettering`), that language's own files, named with it.
-A pack has the words of the releases its ROMs are of and no others:
-`language` and the keys of `languages` are the statement (a pack of all
-four ROMs: "en" with `languages.ja`; of US ROMs alone: "en" and no
-`languages`; of Japanese ROMs alone: "ja" and no `languages`). A
-frontend set to a language the pack lacks draws the pack's own pictures
-with words (`Bundle::for_language`) and the content's strings in its
-own language (docs/frontend.md, "Languages"), so a language a pack lacks
-is no set of placeholders. The other language's files: `hud.json`'s `languages.ja` holds the
-Japanese 8x16 font (`font-ja.png`) and what each glyph draws, the dialogue
-font (`dialogue-font-ja.png`, its advances and characters), the HUD's text
-lines in its glyphs, the banners whose words differ (`banners/NAME-ja.png`,
-each with its place: a longer name starts further left; null for the
-others), "Cstmzing..." as wide as its words (`waiting-ja.png`: カスタム中…,
-seven tiles where the US's are eight), the gauge (`gauge-ja.png`, its "L
-or R") and, where the language's games place the chatbox's text otherwise
-than the pack's own (`layout.chatbox_text`), its place (`chatbox_text`:
-EXE4's Japanese games', twelve pixels left of the US games' and one up);
-`custom.json`'s `languages.ja` the chip window's pictures for OK,
-the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
-in Japanese), the form list window's names by version
-(`form-names-falzar-ja.png`, `form-names-gregar-ja.png`) and, under
-`buttons`, a named button's tiles where they say something
-(`buttons/soul-ja.png`: EXE5's soul button, "uni son" for "UNITE"). They
-come from the Japanese ROMs (exe6-extract's and exe5-extract's
-`lettering`); the fonts' characters from compat/text.toml's `[jp]`, the
-Japanese ROMs' encoding. Everything else a battle shows is the same
-pictures in a game's four ROMs. A frontend in that
-language swaps them in (`Bundle::for_language`). The content's display text
-(names, descriptions, messages) is no asset: it is the content root's strings
-(`locales/<lang>.toml`, docs/design/text-rendering.md §10).
-
-Tiled was considered for the field's panel blocks too, but a panel tile is
-drawn in different palettes for each side, which a Tiled tileset can't show
-without duplicating tiles; the text entries are exact and short.
+**Languages.** The words a battle's pictures and fonts show are the graphics' own language's (`Hud::language`: "en",
+the US release's) and the other language's they have (`Hud::languages`, `CustomScreen::languages`: "ja", from the
+Japanese ROMs). Every game's assets have English's and Japanese's: they are extracted from a complete collection.
+The other language's lettering is the Japanese 8x16 font and what each glyph draws, the dialogue font (its advances
+and characters), the HUD's text lines in its glyphs, the banners whose words differ (each with its place: a longer
+name starts further left), "Cstmzing..." as wide as its words (カスタム中…, seven tiles where the US's are eight), the
+gauge's "L or R" and, where the language's games place the chatbox's text otherwise (`layout.chatbox_text`), its
+place (EXE4's Japanese games', twelve pixels left of the US games' and one up); on the custom screen the chip
+window's pictures for OK, the re-deal and scrap ("chip data transmission" in Japanese), the form list window's names
+by version and a named button's tiles where they say something (EXE5's soul button, "uni son" for "UNITE"). The
+fonts' characters come from compat/text.toml's `[jp]`, the Japanese ROMs' encoding. Everything else a battle shows is
+the same pictures in a game's four ROMs. A frontend in that language swaps them in (`Bundle::for_language`); one set
+to a language the graphics lack (Chinese) draws their own pictures with words and the content's strings in its own
+language (docs/frontend.md, "Languages"). The content's display text (names, descriptions, messages) is no asset: it
+is the content's strings (`locales/<lang>.toml`, docs/design/text-rendering.md §10).
 
 ## 5. Sound
 
-### 5.1 Songs: the timeline
+A game's sound is one `SoundBank` (the `m4a` crate's): the song table, every song as its tracks' commands, the
+voicegroups (drum kits and split groups too), the key maps, the PSG waves, the Direct Sound samples (with their
+exact rates and loop starts), the mixer's settings and the music players. The `m4a` driver plays it as the game's own
+sound driver does: every song renders sample for sample as the original's.
 
-An M4A track is a command stream with control flow: GOTO, pattern calls
-(PATT/PEND, nested up to three deep), REPT, FINE, and optional note arguments
-that repeat the previous key or velocity. MIDI is a timeline. The pivot is
-`timeline::linearize`, which plays a track's control flow exactly as the driver
-does (the pattern stack, the shared repeat counter, the depth limit) and
-records every other command at its tick, with keys and velocities made
-explicit, until the track ends or its state (position, call stack, repeat
-counter, last key, last velocity) repeats. That point is the loop. Two tracks
-with equal timelines are indistinguishable to the driver; `encode` turns a
-timeline back into a straight-line track.
+A game's versions may have songs of their own (EXE5's Team Colonel's): what a version's ROM plays otherwise than the
+base version's at the same number, or has alone. The extraction brings each into the base's bank as that version's
+own, its voicegroups, samples, waves and key maps matched to the bank's or added to it (`nettai_extract::SongVersions`,
+made by the extraction's `own_songs`); two songs play alike when their notes play alike, not when their bytes are
+equal. No frontend
+plays a version's own songs yet: a console plays the bank's.
 
-A loop is then moved to a whole tick: `Timeline::loop_from` finds the earliest
-tick from which everything repeats with the loop's period, and `with_loop`
-re-cuts the timeline there. A song's tracks all get one loop: from the latest
-track's earliest start (rounded up to an eighth note) over the common period.
-In EXE6, 26 of the 32 looping songs have tracks whose repeats settle at
-different points (a note that takes its key from the pass before), and every
-song has one period.
+## 6. Checks
 
-### 5.2 Songs: the MIDI mapping
-
-Format 1, 24 ticks a quarter note (one MIDI tick = one M4A tick). Track 0 is
-the conductor: the song's name, a 4/4 time signature (for editors only), the
-tempo and the loop markers. M4A track n is MIDI track n + 1 on channel n; its
-commands keep their order on each tick.
-
-| M4A | MIDI |
-|---|---|
-| N01..N96 (gate), TIE .. EOT | note on / note off; 96 ticks or less = gated note, longer = tie (mid2agb's rule) |
-| VOICE | program change |
-| VOL, PAN, MOD | CC 7, 10, 1 |
-| BEND | pitch bend, the high 7 bits |
-| BENDR, LFOS, MODT, TUNE, LFODL | CC 20, 21, 22, 24, 26 (mid2agb) |
-| PRIO | CC 33 (mid2agb; 39 also read) |
-| XCMD 8, 9 (pseudo-echo volume, length) | CC 30 = 8 or 9, then CC 29 = value (mid2agb; 31 also read) |
-| TEMPO (BPM / 2) | tempo meta event; in the conductor when it opens its tick on track 0, else on its own track |
-| the loop | markers `[` and `]` in the conductor (mid2agb; `loopStart`, `loopEnd` also read) |
-| FINE | the track's end-of-track event |
-
-What MIDI can't say, and how it is said (extensions use controllers General
-MIDI leaves undefined; mid2agb ignores them):
-
-| Case | Carried by | In EXE6 |
-|---|---|---|
-| KEYSH (key shift; sounding notes follow it) | CC 102 = shift + 64 | 602 (one KEYSH 0 per track, mid2agb's boilerplate) |
-| a tie of 96 ticks or less; a gated note over 96 | CC 103 = 1 or 2 just before the note | none |
-| EOT with no tie of its key sounding | CC 104 = key | none |
-| FINE before a note's end (the note is cut) | marker `fine` on the track | none |
-| a tie that ends in the loop's next pass | its note off after `]` (note offs after `]` only end notes that cross the loop's end) | 6 tracks |
-| same-tick order (VOICE, PRIO, LFODL or echo before or after a note differ) | the order of events in the track | always controls before notes |
-| where TEMPO sits among track 0's commands | conductor tempo goes after the tick's KEYSH, else it stays on its track | all 397 open tick 0 after KEYSH |
-| song header: player, priority, reverb, voicegroup | sidecar | |
-
-The sidecar (`NAME.toml`):
-
-```toml
-midi = "song-015.mid"
-player = 31
-priority = 20
-reverb = 40
-voicegroup = "vg-001"
-tracks = 6
-midi_stamp = "2a4ef49c07410705"
-
-[exported]
-loop = [204, 2508]
-
-[exported.commands]
-bend = 31
-key_shift = 6
-note = 1476
-pan = 112
-voice = 26
-# ...
-```
-
-`[exported]` is only for checking: when an edit loses the loop markers, moves
-a track's end, or drops every command of a kind, the importer warns (§8).
-
-Export writes the file and reads it straight back; a song whose file wouldn't
-read back as the same timelines isn't written (none in EXE6). The importer
-pairs note on and note off first in, first out per key, as most MIDI software
-does, and accepts any division that is a multiple of 24 (DAWs save at 480 or
-960); events between the 24-a-beat grid are refused with their positions.
-
-**mid2agb compatibility.** The controller meanings, the loop markers, the
-tie rule and the tempo conversion are mid2agb's (pret's decompilation tool),
-so the files build with it: pret's mid2agb reads the exported battle theme and
-writes a looping six-track song with every controller (it re-compresses
-repeats into PATT/PEND on its own). Differences: mid2agb quantizes
-velocities through its table (ours are exact), rounds gates unless given `-E`,
-re-sorts events on a tick by type, and ignores the extension controllers
-(harmless for EXE6, which uses only KEYSH 0).
-
-**Compared with the arranger's song document.** bnmusic's arranger stores a
-song as a Protocol Buffers `.song` file: per track, notes (tick, key with
-KEYSH folded in, velocity, gate, voice) and control changes, one loop tick for
-all tracks, and optional "breaks" for byte-identical re-encoding. It is
-lossless for what it models, but it is our own binary format (readable only
-through its schema), it fixes the order of controls on a tick (controls
-before notes, VOICE derived from notes), folds KEYSH into keys (though a
-KEYSH change also moves sounding notes), and its MIDI export is documented as
-lossy. The MIDI mapping here is exact on the driver's own terms (timelines,
-PCM), keeps same-tick order and KEYSH as commands, and puts the song in a
-format every sequencer opens. What the arranger has that this doesn't: section
-markers, titles and meter for editors (MIDI markers and time signatures could
-carry them), and byte-identical re-encoding of the original command stream
-(§7).
-
-### 5.3 Instruments and samples
-
-**Voicegroups** (`voicegroups/vg-NNN.toml`), one inline table per voice,
-voice n = program n:
-
-```toml
-voices = [
-  { type = "square1", duty = 2, key = 60, attack = 0, decay = 0, sustain = 15, release = 0 }, # 0
-  { type = "direct_sound_fixed", sample = "smp-000", key = 60, attack = 255, decay = 0, sustain = 255, release = 0 }, # 1
-  { type = "drums", kit = "vg-004", key = 60, attack = 0, decay = 0, sustain = 0, release = 0 }, # 2
-]
-```
-
-Types: `direct_sound` (a sample, pitched by key), `direct_sound_fixed` (played
-at the mixing rate), `square1`, `square2` (`duty` 0..=3), `wave` (a PSG
-wave), `noise` (`narrow`: the 7-bit LFSR), `drums` (`kit`: a voicegroup whose
-voice k plays key k at its own `key` and `pan`), `split` (`group` and
-`keymap`), `silent`. Envelopes are the driver's bytes: Direct Sound steps
-per frame, PSG frames per level. This is the pret decompilations'
-`voice_*` macro set, as data.
-
-**Key maps** (`keymaps.toml`): `km-NNN = [[first key, last key, voice], ...]`.
-**Waves** (`waves.toml`): `wave-NNN = "0123456789abcdeffedcba9876543210"`, 32
-steps of 0..=15.
-
-**Samples** (`samples/smp-NNN.wav`): 8-bit unsigned mono PCM (the GBA's signed
-PCM shifted by 128, exact), with a `smpl` chunk: unity key 60 and the loop
-(start, and the last sample as end, since M4A loops to the end). The WAV
-header's sample rate is whole Hz; the GBA's rate is Hz in 1/1024 steps, so
-`samples.toml` keeps the exact value:
-
-```toml
-[samples.smp-000]
-file = "samples/smp-000.wav"
-rate_hz = 10512.0
-loop_start = 1234
-stamp = "3d93ae4c4b7462a4"
-```
-
-An untouched WAV (stamp matches) takes rate and loop from `samples.toml`. An
-edited one is read for what it says: its data (16-bit detail is rounded to 8
-bits, with a warning), its rate (if the header's whole-Hz rate is the rounded
-exact rate, the exact one is kept; otherwise the new rate counts, with a
-warning), its loop from `smpl` (samples after the loop end are cut, since M4A
-can't play them), or, if an editor dropped `smpl`, the loop start from
-`samples.toml` with a warning. A unity key other than 60 converts the rate.
-Stereo and floating-point files are refused with what to do.
-
-**Mixer and players** (`sound.toml`): mixing rate, Direct Sound channels,
-master volume, reverb, and each music player's track limit, priority rule and
-track order.
-
-### 5.4 SF2 and SFZ: listening only
-
-SoundFont 2 and SFZ can't reproduce the driver, confirming the premise:
-
-- **Envelopes.** M4A's Direct Sound envelope is integer arithmetic per frame:
-  attack adds a constant up to 255, decay and release multiply by `d/256` and
-  truncate (so they reach 0 in finite time, faster than an exponential near
-  the bottom), sustain is a level. SF2's volume envelope is linear in
-  amplitude for attack and linear in decibels for decay and release, in
-  timecents; the shapes differ and the truncation can't be expressed. PSG
-  envelopes step through 16 levels every n frames; SF2 and SFZ are smooth.
-- **Pseudo-echo** (XCMD 8/9) holds a note at a level for n frames after its
-  release: no SF2 or SFZ stage does that.
-- **Channels and mixing.** Four Direct Sound channels mix at 13,379 Hz into
-  an 8-bit buffer with the driver's ring-buffer reverb, then are held up to
-  32,768 Hz beside the PSG; notes steal channels by priority across all music
-  players. A synthesizer mixes at full precision with its own polyphony,
-  reverb and interpolation.
-- **Volume and velocity** are linear products in M4A; SF2's default velocity
-  curve is concave (a custom modulator can linearize it).
-- **PSG voices** (square duty, wave, LFSR noise with the driver's frequency
-  table) would have to be sampled.
-
-An SF2 or SFZ export is still useful for auditioning songs in a DAW, and is a
-reasonable next step, but only as a listening aid; the pack's TOML and WAV
-files are the instruments.
-
-## 6. Fidelity results
-
-On EXE6 (US Falzar), everything exported, imported and compared with the data
-it came from, the data decoded from the ROM:
-
-| Check | Result |
-|---|---|
-| Graphics loaded from the pack | identical to the ROM's (298 sprites, 21 backgrounds, field, HUD) |
-| Frontend, 9 trace frames (headless), from the ROM's graphics and from the pack | pixel-identical PNGs |
-| Timing loaded from `animations.json` vs the engine's former compiled table | identical: 298 sprites, 3,176 animations, 8,329 frames |
-| Battle data loaded from the pack vs the engine's former compiled tables | identical: 5,841 checks over 67 tables ([content-pack.md](content-pack.md) §7) |
-| Frontend, all 2,405 frames of the machgun trace, from the pack vs before the engine loaded packs | pixel-identical |
-| Aseprite views written and read back | identical sprites |
-| Aseprite views re-saved by Aseprite 1.3.2, then read back | identical sprites (all 298) |
-| Instruments, samples, key maps, waves, mixer, players | identical |
-| Songs as timelines | 397 of 397 identical (186 also command for command) |
-| PCM, each song alone, 60 s | 397 of 397 bit-identical, 780,391,634 stereo samples, the 4 battle songs and 18 battle effects included |
-| PCM, battle music with every battle effect started over it, pairs at once | bit-identical, 727,476 samples |
-
-A frame drawn from a pack in which one pixel block was painted in Aseprite
-(via its scripting interface, then `aseprite-import`) shows the change on
-both navis: edits reach the game through the pipeline.
-
-## 7. Lossy spots
-
-None were hit by EXE6's data. What the formats can't carry, precisely:
-
-**Graphics**
-
-- A PNG can't hold BGR555 bit 15: carried in `palette_high_bits`.
-- Colors edited to values off the 5-bit grid are rounded (warning).
-- A pixel painted with a color from another palette row keeps only its index
-  within the row; its tile then uses the part's row (warning when a tile mixes
-  rows).
-- Two atlas regions, or two Aseprite cels, covering the same tile must agree;
-  they can't hold different pixels for one tile (error).
-- The Aseprite view can't change part geometry or the number of frames; those
-  edits go to the JSON files.
-- 3.2: a flattened frame would lose hidden pixels, which is why parts are
-  kept.
-
-**Songs** (export refuses these with the reason; none occur in EXE6)
-
-- Command values of 128 and up (VOL, PAN, LFOS, PRIO, ...: bytes in M4A, 7
-  bits in MIDI). Would need a high-bit controller.
-- Notes with velocity 0 (a MIDI note on with velocity 0 is a note off).
-- Two ties on one key at once on a track (MIDI note pairing is ambiguous).
-- Songs in which some tracks loop and others end (one loop per song); and
-  loops that only line up after 2^20 ticks.
-- Tempos under 4 BPM (a MIDI tempo can't be that slow).
-
-**Songs, when edited** (the importer rounds and warns)
-
-- Tempos that aren't a whole even BPM are rounded to M4A's BPM / 2.
-- Pitch bends using MIDI's low 7 bits are rounded to M4A's 128 steps.
-- Events off the 24-a-beat grid are refused.
-- Same-tick order matters for VOICE, PRIO, LFODL and echo before or after a
-  note, and for notes competing for channels. Software that re-sorts events
-  on a tick can change what plays; nothing in the file tells an intended order
-  from a re-sorted one.
-- A round trip gives the same timelines, not the same command bytes: patterns
-  and repeats are unrolled, keys and velocities written out, and the loop may
-  start later than the original's (by up to a pass, when a track's key state
-  settles late). The driver can't tell the difference. (186 of 397 songs are
-  identical even command for command: the effects, which have no control
-  flow.)
-
-**Samples**
-
-- The exact rate (1/1024 Hz) and the loop live in `samples.toml` when an
-  editor rewrites the WAV header or drops `smpl`; a resampled file takes its
-  new whole-Hz rate.
-- 16-bit detail is rounded to 8 bits; stereo is refused.
-
-## 8. Tooling
-
-Tested on EXE6's pack (each tool re-saved every file of its kind in a copy of
-the pack, then `nettai-content check` and `verify`):
-
-| Tool | What it did | Result |
-|---|---|---|
-| Aseprite 1.3.2 | PNG to .aseprite and back, all 366 PNGs | exact |
-| Aseprite 1.3.2 | re-saved all 298 sprite views | exact |
-| GIMP 3.0.4 (batch export) | keeps the palette; rewrites transparent pixels of other rows to index 0 | exact (only the index within a row counts) |
-| Pillow 12.3 | re-save | exact |
-| ImageMagick 7.1 (default save) | drops unused palette entries (256 to 24), re-sorts palettes | refused: "the editor dropped entries ... indices have shifted" / "the editor re-sorted it" |
-| Tiled 1.11 (`--export-map`) | re-exported all 21 maps; its renderer draws them | exact |
-| sox | re-save, 8-bit and 16-bit | drops `smpl` from all 27 looped samples; loop recovered from `samples.toml` with a warning; exact |
-| ffmpeg 9 | re-save | same as sox; exact |
-| MuseScore 4 | MIDI import and export of the battle theme | drops every M4A controller, KEYSH, all 31 pitch bends and the loop markers, cuts 112 pan changes to 10 and 26 program changes to 10, re-times 1,475 events, saves at 480 per quarter: refused ("events fall between M4A's 24 ticks a beat") |
-| pret's mid2agb | builds the exported battle theme | a looping six-track song with every controller |
-
-Which editor for what:
-
-- **Sprites**: Aseprite (the whole-frame view, or the atlas), LibreSprite or
-  GIMP (the atlas; keep indexed mode and the palette's order). Tiled has no
-  part/OAM notion and isn't suited.
-- **Backgrounds**: Tiled for maps, any indexed editor for tiles.
-- **Songs**: a DAW or sequencer that keeps all controllers and markers
-  (REAPER, Cakewalk, Domino, MidiEditor; untested here, but most DAWs save at
-  480 or 960 per quarter and move tempo to the first track, which the importer
-  expects). Not notation programs (MuseScore re-times notes and drops
-  controllers).
-- **Samples**: Audacity or any audio editor. General audio editors drop
-  `smpl` loop points (sox and ffmpeg did here; Audacity is known to), and the
-  importer restores them from `samples.toml` as long as the length doesn't
-  change. Moving a loop needs a sample editor that writes `smpl`, or an edit
-  of `loop_start`.
-- **Polyphone** and other SoundFont editors: only for an SF2 export for
-  listening (§5.4), not for the pack's instruments.
-- **Instruments**: a text editor.
-
-What breaks with an ordinary tool, and what the importer says:
-
-| Damage | Detected by | Message |
-|---|---|---|
-| palette re-sorted | palette fingerprint (same colors, other order) | error: "re-sorted ... undo the save or turn off palette sorting" |
-| unused palette entries dropped | fewer entries than the image needs | error: "dropped entries ... re-export" |
-| saved as RGB | PNG color type | error: "re-save it in indexed mode with the original palette" |
-| colors off the GBA grid | per entry | warning, rounded |
-| colors from another palette row | per tile | warning |
-| a sprite view converted to RGB | Aseprite color depth | error: "convert it back (Sprite > Color Mode > Indexed)" |
-| a Tiled map rotated, infinite, compressed | the map's fields | error naming the setting |
-| MIDI off the M4A grid | per event | error with bar.beat.tick positions |
-| loop markers lost | `[exported] loop` | warning: "the song now plays once and stops" |
-| M4A controllers dropped | `[exported.commands]` | warning per kind: "all N key_shift commands are gone" |
-| tracks padded or merged (FINE moved) | `[exported] ends` | warning with old and new ends |
-| tempo not a whole even BPM | per event | warning, rounded |
-| WAV loop chunk dropped | missing `smpl` | warning, loop from `samples.toml` |
-| WAV resampled | header rate | warning, new rate used |
-| WAV stereo, float | format | error |
-| any file edited | stamps | note: "edited since export" |
-
-`nettai-content check <pack>` runs every import and prints the report.
-
-## 9. Loading
-
-**Straight from the files.** `nettai_content::pack::load_battle(content, game)`
-reads a game's battle data from the content alone; `load_graphics(pack)` and
-`load_sound(pack)` read a pack's graphics and sound through the importers,
-each with a report of what it found. Nothing derived is stored: an edit shows up the next time the pack
-loads, and there is no cache to go stale.
-
-**What it costs.** EXE6's full pack loads in about 0.75 s in a release
-build (three runs: 0.75, 0.76, 0.86 s): the battle data in 45-150 ms (the
-sprite timing is 10-100 ms of it), the graphics in 60-110 ms and the sound
-in 520-640 ms. Sound dominates: its MIDI songs are parsed and checked
-against their sidecars, and its WAV samples read. The frontend loads the
-sound only when it plays it (not headless, not with `--mute`). Should the
-total ever pass about a second, the sound import is where to look first.
-
-**The engine.** The simulation reads its sprite timing from the content's
-sprite modules (`asset.sprite(name, animations)`: content-model-v2.md §6.3),
-defined with the rest of the battle data into `Content::animations`; no pack
-is read for a battle, and nothing is compiled into the engine.
-
-**From the ROMs.** `nettai-extract content/exe6 <dir> ROM...` writes a pack in one step from the
-game's four ROMs, every one required, by the game's extraction recipe (the graphics
-extraction, the sound extraction, the exporters, then reading it all back),
-a few seconds. It is the only extraction.
-
-## 10. Commands
-
-    cargo run -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
-    cargo run -p nettai-tools -- <trace.jsonl> --headless 100 --out <dir>   # a frame, from every pack in data
-    cargo run -p nettai-content -- check data/exe6            # lint every file
-    cargo run -p nettai-content -- verify data/exe6 <reference-pack> [--seconds N]
-    cargo run -p nettai-content -- aseprite-export data/exe6 [NAME ...]
-    cargo run -p nettai-content -- aseprite-import data/exe6 [NAME ...]
-    cargo run -p nettai-content --example midi_summary -- a.mid b.mid
-    cargo run -p nettai-content --example stats -- data/exe6
-    cargo run -p nettai-content --example audio_stats -- data/exe6
-
-`verify` compares what two packs load: the battle data record by record,
-the graphics part by part, the sprite timing frame by frame, and the sound
-as instruments, as song timelines and as rendered PCM (each song for
-`--seconds`, default 60, and the battle music with every battle effect).
-Use it after a round trip through an editor, against a pack exported
-before.
-
-`data/` is ignored by version control: a pack exported from the ROM
-holds the game's graphics and recordings and is never committed.
-
-## 11. Open problems
-
-- **Structural edits in the Aseprite view**: adding frames, moving or resizing
-  parts, and auto-splitting a new whole-frame drawing into hardware parts (a
-  packing problem; the original's own splits come from the data). Today those
-  edits go to the JSON files.
-- **New content without an original**: an importer path that takes a plain
-  flattened frame and chooses parts, for sprites that don't need hidden
-  pixels.
-- **Songs with some tracks looping and others ending**, command values of
-  128 and up, velocity 0 and overlapping same-key ties: each needs a small
-  extension (per-track loop markers, a high-bit controller, ...); none occurs
-  in EXE6.
-- **Same-tick order under DAWs**: a DAW that re-sorts events on a tick can
-  change which note gets a channel. A lint could compare against the
-  exported order when the notes are otherwise unchanged.
-- **DAWs untested**: REAPER, Logic, Cakewalk round trips should be run by
-  hand; the importer's expectations (multiples of 24 per quarter, tempo in
-  the first track, controllers kept) come from their documentation.
-- **The HUD layout and chip names** are EXE6 schema; a game-independent HUD
-  would describe its elements as data.
-- **SF2/SFZ export** for auditioning songs outside the game.
-- **Field panels in Tiled** would need one tile per (tile, palette) pair.
+- **As a game loads**: its assets against its content (`nettai_content::load::asset_numbers`): every asset the
+  content names, each sprite the content defines with as many animations, each of as many frames. A game whose assets
+  aren't so doesn't load.
+- **`nettai-content check <game>`**: the same, the content's sprite timing against the ROMs'
+  (`Extraction::timing_differences`), and the strings' backgrounds against the assets'.
+- **`nettai-tool --match FILE --audit-content`**: every lookup the drawing code and the audio make for everything the
+  content defines, in every language (docs/tools.md).
+- **Frames and sound**: the verification workspace compares frames drawn from the extracted assets with mGBA's, and
+  the battle's sound with the original's (docs/frontend.md).

@@ -3,10 +3,12 @@
 The design for moving nettai-extract's per-game knowledge (where each asset is in each ROM, which ROM it is read
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
-the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); being built:
-the baseline (step 0), the host (step 1), the recipes of EXE6 (step 2), EXE5 (step 3) and EXE4 (step 4), the
-removal of the Rust recipe path (step 5) and the verification workspace's tools (step 6) are done; §9 says what
-building changed.
+the series' binary formats and the asset model (and, until 2026-10-27, the pack writer). Status: decided 2026-10-26
+(§8); built: the baseline (step 0), the host (step 1), the recipes of EXE6 (step 2), EXE5 (step 3) and EXE4 (step
+4), the removal of the Rust recipe path (step 5) and the verification workspace's tools (step 6); §9 says what
+building changed. Since 2026-10-27 there are no packs: a game's assets are extracted from its ROMs by its recipe in
+memory, each time the game loads, and nothing is written (§5; §9, "No packs"). What this document says of packs,
+their fingerprint and their files is how it was built before that.
 
 Decided (2026-10-26):
 
@@ -21,10 +23,11 @@ Decided (2026-10-26):
 The rule it follows: Rust is the machine, Luau is the game, and Rust names no game feature
 ([rust-and-luau.md](rust-and-luau.md), [core-content-boundary.md](core-content-boundary.md)).
 
-Related: [content-deployment.md](content-deployment.md) (bundles, the store, packs by fingerprint),
-[asset-formats.md](asset-formats.md) (the pack's files), [content-model-v2.md](content-model-v2.md) (packs, compat),
-[scripting.md](scripting.md) (the Luau runtime), [text-rendering.md](text-rendering.md) §12–13 (the letters and the
-hand-drawn frames read as a pack is made), crates/nettai-extract/README.md (the extractor as it is).
+Related: [content-deployment.md](content-deployment.md) (bundles, the store),
+[asset-formats.md](asset-formats.md) (the model the assets are extracted into), [content-model-v2.md](content-model-v2.md)
+(packs, compat), [scripting.md](scripting.md) (the Luau runtime), [text-rendering.md](text-rendering.md) §12–13 (the
+letters and the hand-drawn frames read as the assets are extracted), crates/nettai-extract/README.md (the extractor
+as it is).
 
 Words:
 
@@ -32,20 +35,21 @@ Words:
   `extract/` (§4);
 - a **primitive** is a Rust function a recipe calls (§3);
 - the **host** is nettai-extract after the change: it loads a bundle's recipe, gives it the ROMs and the primitives,
-  takes back the asset model, and runs the fixed steps that make the pack (§3.10);
-- the **model** is what a pack holds in typed form: `nettai_assets::Bundle` (the graphics: sprites, field,
+  takes back the asset model, and runs the fixed steps that finish the assets (§3.10; until 2026-10-27, that made a
+  pack);
+- the **model** is the assets in typed form: `nettai_assets::Bundle` (the graphics: sprites, field,
   backgrounds, HUD, custom screen), the sound bank with its versions, and the asset names (`AssetNames`);
 - a game's **ROMs** are its four: two versions, US and Japanese, as a Legacy Collection install holds them. They are
   always all given (§8, decision 5).
 
 ## 0. Summary
 
-- **A recipe returns the model; the host makes the pack.** A recipe reads the ROMs through primitives and returns one
+- **A recipe returns the model; the host finishes it.** A recipe reads the ROMs through primitives and returns one
   table: the graphics in the model's shape, the asset names, and which ROMs its sound is read from. Everything after
   that is the host's and unchanged: the check that every named asset is there, the letters, the element icons'
-  frame, the hand-drawn frames, the sound bank, the asset index, the files, the read-back check (`extract_inner` and
-  `Extraction::files` today, from `placeholders::complete` on). The pack's encoders don't move, which is what makes
-  byte-identical output reachable.
+  frame, the hand-drawn frames, the sound bank, the asset index (and, while there were packs, the files and the
+  read-back check: `extract_inner` and `Extraction::files`, from `placeholders::complete` on). The pack's encoders
+  didn't move, which is what made byte-identical output reachable.
 - **The line.** Rust keeps the GBA's formats (ROM reads, LZ77, 4bpp tiles, 15-bit palettes, BG map entries, OBJ
   shapes, the M4A sound driver) and the series' bulk formats that decode straight into the model's own types (sprite
   archives, GFX animation lists), the per-pixel work, the model's codec and the writer. Luau gets every address, every
@@ -68,16 +72,15 @@ Words:
   place of the battle's, one budget for the whole run, on the extraction thread, the same on the desktop and in the
   browser. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor, the
   boundary, and nothing in the battle content can require them nor they it (§2.4).
-- **Fingerprint.** A pack is named by a digest of the pack formats, the engine's line and the bytes of every file the
-  recipe can read (§5.2), computed from the bundle without ROMs. A bundle whose recipe or names change gets a new
-  pack; one whose rules alone change keeps its pack; an app update keeps the packs unless it is of a new line or
-  changes the formats (the stamp before re-extracted on every app version).
+- **No fingerprint now.** While there were packs, a pack was named by a digest of the pack formats, the engine's line
+  and the bytes of every file the recipe can read (§5.2), computed from the bundle without ROMs. Since 2026-10-27 a
+  game's assets are extracted at each load by the recipe of the content it plays, so nothing names them and nothing
+  is extracted again for a change: the next load runs the new recipe.
 - **Primitives change only with a line** (a minor version), as the simulation does, and a bundle is published for one
   line: there is no separate primitives version (§5.3).
 - **The content hash is untouched by the move.** It covers no recipe (§5.5), and since 2026-10-27 no pack either: the
   asset names and the sprites' timing are the content's own, so a bundle's hash is the bundle's alone.
-- **Publishing extracts** the pack it hashes with, from the bundle's own recipe and the publisher's Legacy Collection
-  (§5.7).
+- **Publishing reads no ROM**: the content hash is the content's alone (§5.5, §5.7).
 - **Verification.** Both paths live in one build while a game moves: the old Rust recipe and the new Luau one extract
   the game's full set, and their files, `extraction.txt` and ROM reads must be identical (§6), with a baseline of the
   three games' full-set packs recorded before anything changes. Only then is the game's Rust deleted.
@@ -100,7 +103,7 @@ under `catch_unwind`:
    mugshot, chip picture, chip icon and emblem no ROM given holds, and the field if none.
 4. The languages: with US and Japanese ROMs both, as built; Japanese alone,
    `in_language("ja").without_language("en")`; no Japanese ROM, `without_language("ja")`.
-5. `nettai_content::letters::read`, `elements::split`, `shapes::read`: the passes the enhanced graphics need (the
+5. `letters::read`, `elements::split`, `shapes::read`: the passes the enhanced graphics need (the
    pictures' letters, the element icons apart from their frame, the hand-drawn frames checked against the pictures).
 6. The sound: `m4a::rom::extract` of the first ROM given in `Game::codes` order; for EXE5 with both US ROMs,
    `sound::colonel_songs` brings Team Colonel's own songs in as a version; `placeholders::songs` fills the songs no ROM
@@ -172,10 +175,10 @@ Three tests, in order:
    word and twenty pointers, a patch list six bytes a patch, a text line a few dozen bytes; Luau reads them through
    `rom:u32` and passes the addresses to the bulk primitives.
 
-What the frontend draws by stays Rust's: the model (`nettai_assets`), the pack formats (`nettai_content::pack`), and
-the passes that read the model for the enhanced graphics (`letters::read`, `elements::split`, the shape checks),
-which state of themselves that nothing in them is a game's (letters.rs: "Nothing here is a game's: every look is the
-pack's pictures'"). The recipe fills the model; it doesn't change it. A field the model lacks is a model change in
+What the frontend draws by stays Rust's: the model (`nettai_assets`), the pack formats (`nettai_content::pack`, until
+the packs went on 2026-10-27), and the passes that read the model for the enhanced graphics (`letters::read`,
+`elements::split`, the shape checks), which state of themselves that nothing in them is a game's (letters.rs:
+"Nothing here is a game's: every look is the game's pictures'"). The recipe fills the model; it doesn't change it. A field the model lacks is a model change in
 Rust first, as now.
 
 ### 2.2 Every module and function, and its fate
@@ -552,12 +555,15 @@ only a partial set needs (the placeholders and the language trimming):
 2. `letters::read`, `elements::split`, `shapes::read` with the drawings from the bundle (§2.3), each line prefixed as
    now;
 3. the sound (§3.8); progress 0.95; `SoundBank::validate`; 1.0;
-4. `Extraction` as now: `files`, `write_reporting`, the read-back.
+4. `Extraction`: the assets, in memory, with the warnings (while there were packs, `files`, `write_reporting` and the
+   read-back wrote and checked one).
 
 ### 3.11 Performance
 
-Today a game's graphics take 0.02–0.04 s of an extraction's 1.1–1.8 s on the desktop (2–3 s in a browser worker);
-encoding, writing and reading back are the rest (docs/app.md §17). The recipe adds:
+Before the recipes, a game's graphics took 0.02–0.04 s of an extraction's 1.1–1.8 s on the desktop (2–3 s in a
+browser worker); encoding, writing and reading back a pack were the rest. (Since 2026-10-27 nothing is encoded or
+written: a game's extraction by its recipe is about a tenth of a second, and reading its four ROMs out of the
+archives about as long, in a release build; docs/app.md §17.) The recipe adds:
 
 - **the VM and the modules**: some 1,000 lines a game plus 500 of exelib's, compiled once, a few milliseconds;
 - **the calls**: a few tens of thousands a game (411 chip records read three words each, twice; the sprite lists'
@@ -574,7 +580,8 @@ both paths (§6.3). Over it, the fix is a coarser primitive, not a faster bindin
 
 There is no primitives version. A primitive is added, or what one returns changes, or the codec takes a field it
 didn't, only with a new minor version of the engine (a new line), and a bundle is published for one line, so every
-app that runs a bundle's recipe has the primitives it was written for. The fingerprint digests the line (§5.2).
+app that runs a bundle's recipe has the primitives it was written for. (The fingerprint digested the line while there
+were packs: §5.2.)
 
 ## 4. Recipes in a game's repo
 
@@ -642,8 +649,8 @@ return recipe
   (`bnlc::Install::roms`), `RomSet`'s checks, the CLI, the harness. Loading runs only the modules' top level, which
   defines functions and constants; the extraction loads them again in a VM of its own and calls `extract`.
 - **What it reads**: with `data`, any file of the game's own `compat/`, by its path in the pack
-  (`compat/assets.toml`). The fingerprint covers all of them (§5.2), so none needs naming; a path outside it is
-  refused (and the content check refuses a literal one, §4.5).
+  (`compat/assets.toml`). None needs naming (the fingerprint covered all of them while there were packs, §5.2); a
+  path outside it is refused (and the content check refuses a literal one, §4.5).
 - `PackManifest` (`deny_unknown_fields`) is the pack's `id`, `kind` and `depends` alone: a manifest with `[extract]`
   is refused. exelib's `extract/` is reached through the games' recipes.
 
@@ -699,8 +706,8 @@ The crates stay for save import, traces and gen-content.
 - **Lints**: a content module may not require under `extract/`, nor an `extract/` module outside it; a literal
   `data` path is a file of the game's `compat/`.
 - **Runs need the ROMs.** A recipe runs only on its full set: in the verification harness (§6.3), in the full-set
-  content audit (§6.4), when publishing (§5.7) and in the app. CI has no ROMs: there, the recipes are type-checked and
-  the primitives, the codec, the declaration and the fingerprint are unit-tested on synthetic data. (Today's no-ROM
+  content audit (§6.4), in `nettai-content check <game>` and in the app. CI has no ROMs: there, the recipes are
+  type-checked and the primitives, the codec and the declaration are unit-tested on synthetic data. (Today's no-ROM
   tests, `empty_sets_*`, extract placeholder packs, which no longer exist.) nettai-content-check couldn't run a recipe
   anyway: it can't link nettai-luau (the two Luau builds' symbols collide).
 
@@ -739,7 +746,11 @@ local function drawn(rom, h)
 end
 ```
 
-## 5. The bundle and the pack
+## 5. The bundle and the assets
+
+As built 2026-10-27, after the packs went (§9, "No packs"). Until then the app extracted a game's pack once, into
+its data folder, named by the recipe's fingerprint, and extracted it again when the fingerprint changed; what follows
+says what replaced each part.
 
 ### 5.1 What a bundle carries
 
@@ -747,31 +758,13 @@ Nothing new in its form: a bundle holds every file its packs' repos track (bundl
 `compat/` are in it already. What a game's bundle must have to be extracted is its recipe, `extract/init.luau`
 and what it requires, and the `compat/` files it reads.
 
-### 5.2 The fingerprint
+### 5.2 No fingerprint
 
-`fingerprint(&Recipe)`: SHA-256, its first 16 hex digits (the pack's folder, `packs/exe6-<fingerprint>/`, as the
-content-app branch names them), of:
-
-- `pack::FORMATS` (the pack's formats, as now);
-- the engine's line (its major and minor version: the primitives change only with one, §3.12);
-- the game's id;
-- each recipe input, in path order, its path and its bytes: every file under the game's `extract/` and its `compat/`,
-  and under each of its support packs' `extract/` (with theirs, `with_depends`). The ROMs' codes are in
-  `extract/init.luau` (§4.2); the manifest is no input.
-
-It is computed from the bundle's files alone, without ROMs, so the app knows a bundle's pack before it extracts, and
-publishing records it (§5.7).
-
-| A change to | Changes the fingerprint |
-|---|---|
-| a recipe module, a drawing, exelib's `extract/` | yes: a new pack |
-| any file of the game's `compat/` (assets.toml, chips.toml, kinds.toml...) | yes: names may differ |
-| rules, chips' behavior, locales, look.toml, a manifest | no: the pack is kept |
-| the pack formats (`FORMATS`) or the engine's line (a minor version) | yes |
-| the app's patch version alone | no (the stamp before re-extracted on every version) |
-
-It over-approximates, on purpose: a recipe comment re-extracts (a second or two, once), and nothing that changes a
-pack's bytes can leave a stale one.
+A game's assets are extracted from its ROMs by the recipe of the content it plays each time the game loads, in
+memory, and nothing of them is kept: there is nothing to name and nothing to extract again. A recipe changed in a
+new bundle is run the next time its game loads. (The fingerprint, `Recipe::fingerprint`, was SHA-256's first 16 hex
+digits of the pack formats, the engine's line, the game's id and every recipe input, path and bytes; it named the
+pack's folder, `packs/<game>-<fingerprint>/`, and its stamp. It went with the packs, and so did `pack::FORMATS`.)
 
 ### 5.3 Primitives and the line
 
@@ -782,65 +775,67 @@ index entry says more, and no app of a line meets a recipe its primitives can't 
 the content hash looked (a sprite's frames and parts, the asset index) was simulation surface for the same reason,
 until the content took them over (§5.5).
 
-### 5.4 When the app extracts again
+### 5.4 When the app extracts
 
-The stamp (`stamp.toml` in the pack) becomes the fingerprint alone; the app version leaves it.
+As each game loads (nettai-frontend's `game::Loading`, its `Assets` part, on the game's loading thread): its ROMs
+read out of the collection's archives into memory, its recipe run on them, and what it extracted checked against the
+content (`nettai_content::load::asset_numbers`), about two tenths of a second a game. Another game's backgrounds (the
+background pool's) are extracted, by that game's own recipe, the first time a round or a picture wants one, on a
+thread of their own, once a run (docs/frontend.md §1). An incomplete Legacy Collection extracts nothing: the player
+sees why (§5.6). The packs folder an earlier app kept (`packs/` in the data folder) is deleted once, as the app
+starts (docs/app.md §17).
 
-- **No pack for the bundle's fingerprint**: a new bundle whose recipe or names changed, a new line, a new pack
-  format. Lazily, when the game first loads (at once in the browser, where the Legacy Collection's files are
-  there only while the page is), as now.
-- **A pack that won't load** (a format refused): as now.
-- **An incomplete Legacy Collection**: nothing is extracted; the player sees why (§5.6). A pack already made stays.
-- **Packs no stored bundle names** are removed (the content-app branch keeps every fingerprint's; in the browser every
-  pack in the origin's file system loads into memory at each start).
+### 5.5 The content hash and the assets
 
-### 5.5 The content hash and the asset pack
-
-As built 2026-10-27: `Content::hash` covers no pack. The asset handles are the names the content's modules give and
+As built 2026-10-27: `Content::hash` covers no asset. The asset handles are the names the content's modules give and
 each sprite's timing is its module's definition (content-model-v2.md §6.3), so the hash is the content's alone: a
-battle, the training pool and a bundle's publishing read no pack, and a pack is only what a frontend draws and plays
-with, checked against the content as a game loads (`nettai_content::pack::pack_assets`: every asset the content names,
-each sprite with the content's animations and frames). The pack's `animations.json` keeps its frames' durations for
-what only the frontend animates; bn6battle-verify's `tools/content/sprite_timing.py check` keeps the content's timing
-equal to the extracted packs', so a drift from the ROM is seen. What follows is how it was before.
+battle, the training pool and a bundle's publishing read no ROM, and the assets are only what a frontend draws and
+plays with, checked against the content as a game loads (`nettai_content::load::asset_numbers`: every asset the
+content names, each sprite with the content's animations and frames). The content's timing is held to the ROMs' by
+`nettai-content check <game>` (`Extraction::timing_differences`: each frame's duration, the loop on the last frame,
+the flags and the part offsets a sprite states; each difference an error), and a frontend notes a difference as it
+loads (`Game::timing_differences`). What follows is how it was before.
 
 `Content::hash` covered the pack's asset index (`assets.toml`: names to numbers) and its sprites' animations (each
 frame's duration and flags, the parts' places and sizes: `timing::load` of `animations.json` and `sprite.json`), and
 through them what the define phase resolved. Not pixels, palettes, sound, icons, emblems, glyphs or `extraction.txt`;
 not compat (tools' data, never loaded as content); not `extract/` (outside the require walk).
 
-So, after the change:
+So, while the hash covered the pack:
 
-- **A recipe moves the content hash only through the pack**: by naming an asset otherwise, or decoding a sprite's
-  timing or parts otherwise. A bundle with its recipe and a byte-identical pack has the content hash today's content
-  has, and replays and the lobby see no change.
-- **The primitives that feed it are simulation surface**: `sprite.sheet`, `sprite.portrait` and the index's making.
+- **A recipe moved the content hash only through the pack**: by naming an asset otherwise, or decoding a sprite's
+  timing or parts otherwise. A bundle with its recipe and a byte-identical pack had the content hash the content
+  before it had, and replays and the lobby saw no change.
+- **The primitives that fed it were simulation surface**: `sprite.sheet`, `sprite.portrait` and the index's making.
   Their output changes only with a line (minor version), as the simulation's does (docs/design/rollback.md).
-- **Every pack comes from a full set**, so two apps of a line with the same bundle compute the same hash. (A pack
-  of fewer ROMs indexed fewer unnamed sprites and timed its placeholder sprites otherwise; no such pack is made now.)
+- **Every pack came from a full set**, so two apps of a line with the same bundle computed the same hash.
 
 ### 5.6 Finding the ROMs
 
-`crates/nettai/src/bnlc.rs` stays the app's: it finds the Legacy Collection (Steam's app 1798020 or a chosen folder),
-opens its `exe?*.dat` archives and reads each `.srl` entry's header. What changes:
-
-- it knows no game: `scan` matches each header's code against the installed bundles' declarations, and
-  `bnlc::Rom.code` is a `String`;
-- a game whose declared ROMs aren't all there isn't extracted: the player sees that the Legacy Collection's files are
-  incomplete (a new `UserError`, its words in the four locales), the log names the missing codes, and on the desktop
-  the dialog to choose the folder again offers itself as for no Legacy Collection; in the browser, a folder given
-  without every archive the game needs is refused the same way;
-- the catalog's games are those whose bundles this app can extract (the content-app branch filters by `Game::named`).
+nettai-extract's `source.rs` (the app's `bnlc.rs` until 2026-10-27, ported from Tango's) finds the Legacy Collection
+(Steam's app 1798020, or a folder chosen), opens its `exe?*.dat` archives and reads each `.srl` entry's header:
+`RomSource::Collection`. `RomSource::Files` is a folder of ROM files, and `RomSource::from_env` the tools' and
+development's choice (`$NETTAI_ROMS`, else Steam's). It knows no game: `RomSource::find` matches each header's code
+against a recipe's declarations (`Recipe::roms`), and `Rom::code` is a `String`. A game whose declared ROMs aren't all
+there can't be played: the player sees that the Legacy Collection's files are incomplete (`UserError::
+IncompleteCollection`, its words in the four locales), the log names the missing codes, and the dialog to choose the
+folder again offers itself as for no Legacy Collection. A browser keeps copies of the ROMs of a folder chosen once
+(`RomSource::Copies`: each ROM's archive entry as it was, compressed, in a zip of its own named by its game code,
+stowed in the page's storage and read in as a game wants it; docs/app.md §6), so a later visit needs no folder.
 
 ### 5.7 Publishing
 
-`nettai-content publish` hashes the bundle with a pack (step 4, content-deployment.md §4), today `--packs DIR`,
-`data/<game>` by default, unchecked against the bundle. It extracts the pack instead, from the bundle it publishes and
-the publisher's Legacy Collection (`--collection DIR`, Steam's install by default; §8, decision 4): the hash is then
-always the recipe's. It refuses a bundle whose recipe fails or whose pack's fingerprint isn't the one the bundle
-names.
+`nettai-content publish` hashes the bundle's content alone (step 4, content-deployment.md §4): no ROM is read and no
+asset extracted. (Before 2026-10-27 it hashed with a pack, `--packs DIR`; the plan was to extract that pack from the
+bundle's recipe and the publisher's collection, which the content's taking over the asset names and timing made
+needless.) A recipe is held to its game's content by `nettai-content check <game>`, which extracts the game's assets
+and checks them (docs/tools.md).
 
 ## 6. Verification
+
+(This is how the move was verified while there were packs. Since 2026-10-27 the harness and the baseline's digests
+are gone with the packs (§9, "No packs"); a recipe is held to its content by `nettai-content check <game>` and the
+full-set content audit.)
 
 ### 6.1 The bar
 
@@ -898,9 +893,10 @@ ROMs where the tools keep them (~/Documents/Tango/roms) serve as they are, and f
 
 ### 6.5 After the Rust is gone
 
-The baseline stays the reference: the harness compares the recipe path with the recorded digests, so a later
-refactor of a recipe, of exelib's code or of a primitive is held to the packs the Rust made until a change meant to
-alter them records a new baseline (with the commit that does).
+The baseline stayed the reference while there were packs: the harness compared the recipe path with the recorded
+digests, so a later refactor of a recipe, of exelib's code or of a primitive was held to the packs the Rust made until
+a change meant to alter them recorded a new baseline (with the commit that did). The packs went on 2026-10-27, and
+the harness with them.
 
 ### 6.6 The verification workspace
 
@@ -971,7 +967,8 @@ The questions this design left open, with the answers (2026-10-26).
    is published for one line, and every app of the line runs its recipe; the fingerprint digests the line. (Decided
    first as a primitives version a patch release could raise; revised the same day, §9 step 5.)
 4. **Publishing extracts the pack it hashes with** (§5.7), from the bundle's own recipe and the publisher's Legacy
-   Collection, never a pack left in `data/<game>`.
+   Collection, never a pack left in `data/<game>`. (Superseded 2026-10-27: the content hash is the content's alone,
+   and publishing reads no ROM.)
 5. **Only a complete Legacy Collection install is supported**, every ROM of the game (both versions, US and
    Japanese), on the desktop and in the browser alike. A recipe may assume its full set; every declared ROM is
    required; a missing one is an error the player sees ("the Legacy Collection's files are incomplete", §5.6), not a
@@ -1228,3 +1225,26 @@ baseline's byte for byte (the harness, now the recipes against the baseline only
 - *The verification workspace.* tools/content/index.py writes a manifest's header comment, `id`, `kind` and
   `depends`, nothing else; tools/cross-rom's sweep.py takes the ROM order from the recipe's `roms`. exelib's
   place.luau points at the recipe's `roms`, and every game's depends.lock follows exelib.
+
+**No packs** (2026-10-27). The user, asked whether the app should read the ROMs at each start instead of keeping
+packs: "no packs at all", everywhere. A game's assets are extracted from its ROMs by its recipe as it loads, in
+memory, and nothing of them is written:
+
+- *The format went* with everything that read or wrote it: nettai-content's pack, sprite, Aseprite, image, Tiled,
+  HUD, custom screen, stage, song (MIDI), sound (WAV), timeline and verify modules, the report's file stamps, its
+  `verify` and `aseprite-export`/`-import` commands; `Extraction::files`, `write` and `write_reporting`, and
+  `pack::FORMATS`; the fingerprint (§5.2) and the stamp; the `nettai-extract` command (the crate is a library alone:
+  `--reads` is `Recipe::extract_recording_reads`, `songs` `songs_played_otherwise`); and the tests that held a
+  recipe to packs: the harness (`tests/recipes.rs`, against the baseline's digests: §6.3, §6.5) and
+  `full_sets_preserve_reference_graphics`. The letters, the drawings' SVG reading and the asset names stayed, the
+  letters and the names in nettai-extract and the SVG in nettai-assets' `shapes`.
+- *What checks a recipe now* is the content: `nettai-content check <game>` extracts the game's assets and holds them
+  to it (every asset it names, each sprite's animations and frames, the sprites' timing against the ROMs', the
+  strings' backgrounds), and the full-set content audit (`full_sets_pass_the_content_audit`, ignored) makes every
+  lookup a frontend makes. A recipe change that draws something new is frame-compared, as any drawing change is.
+- *Where the ROMs are* is nettai-extract's `source.rs` (`RomSource`, §5.6): `$NETTAI_ROMS` for the tools, the tests
+  and development (it replaced `NETTAI_EXTRACT_ROM_DIR` and `$NETTAI_PACKS`), the collection for the app, and in a
+  browser the copies it keeps of a collection chosen once.
+- *Checked* (2026-10-27, the twelve ROMs): each game loads with its assets extracted, the content times its 175,
+  229 and 240 sprites as the ROMs do, and a battle of each draws its frames and plays its sound the same as before
+  the packs went.

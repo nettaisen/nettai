@@ -750,7 +750,8 @@ The field's rules follow the stage's game (§2.3); its art does too.
 1. **The field's art is the stage's game's**, like its rules: the panel tiles, their palettes and palette cycles,
    the highlights, the front edges and the background all come from the arena's pack. Both viewers see the same
    field.
-2. **Every pack declares which panel types it draws** (field.json's `panel_types`). EXE5's field has 11 panel types
+2. **Every pack declares which panel types it draws** (its field's `panel_types`; since 2026-10-27 the field
+   extracted from the ROMs: no pack). EXE5's field has 11 panel types
    (EXE6's 13) and one highlight block (EXE6's two).
 3. **A panel type the arena's field doesn't draw** (an EXE5 chip making EXE5's sea in an EXE6 arena):
    - the simulation runs it by the type's own definition, so the rules never depend on the art (P1): a type the
@@ -1662,12 +1663,14 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 
 - **A pack says which panel types its field draws.**
   - `nettai_assets::Field::panel_types`: each type's engine number, in the order of its blocks.
-  - field.json's `panel_types` lists them by the engine's names (docs/design/asset-formats.md §4).
+  - The field's `panel_types` lists them by the game's names (docs/design/asset-formats.md §4; written to a pack's
+    field.json until 2026-10-27, extracted in memory since).
   - exe6-extract writes EXE6's 13 in the engine's order. exe5-extract writes EXE5's 11 in EXE5's order (magnet 5,
     lava 8, holy 9, sea 10: content/exe5/compat/panels.toml).
   - A field may have one highlight or two. EXE5 draws its one highlight block for both, so its pack keeps that
     block twice.
-  - The list is required: a field.json without it doesn't load (docs/design/asset-formats.md).
+  - The list is required: the extraction fills it from the game's rules (until 2026-10-27, a pack's field.json
+    without it didn't load).
 - **The stage draws the field from the arena's game's pack.** It was the content's own pack's before.
 - **`nettai_render::stage::FieldArt`** says which pack's field draws each panel type and each highlight:
   1. the arena's field, if it draws the type;
@@ -1694,7 +1697,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - without twin's pack, the sea and highlight 2 are tinted.
 
   `the_field_is_audited_for_the_panel_types_its_game_names` covers the static audit, and
-  `an_older_field_without_panel_types_still_loads` covers a field.json from before `panel_types`.
+  `an_older_field_without_panel_types_still_loads` covered a field.json from before `panel_types` (gone with the
+  pack format, 2026-10-27: a field is extracted from the ROMs as the game loads).
 - **Seen.** An EXE6 arena (exe6:netbattle-35) drawn headless with EXE5's sea, lava and magnet set on six panels and
   both highlights shown:
   - on an EXE5 pack extracted again: EXE5's own sea, lava and magnet, with EXE6's highlights;
@@ -2114,7 +2118,8 @@ is the only namespace its lookups see.
   - `PlayerSetup::set_rule`, `set_rule_elem`, `rule_block` and `set_fact` take the match's ruleset (none: the
     stock one) where they took a game.
   - exe6-compat's `Unlocks::write` takes the ruleset too.
-- **Loading** (`nettai_content::pack`).
+- **Loading** (`nettai_content::pack`, as it was then: since 2026-10-27 there is no pack, and a game loads with
+  `nettai_content::load` and its assets extracted from its ROMs, `nettai_extract`).
   - New: `games(content, found)` gives the game packs by id, each a `GameChoice` with its asset pack, or why not.
     `load_game(content, game, found)` gives a `Loaded` with one `content`, `game`, `pack` and `dir`.
   - `load_battle` loads the asset pack's game.

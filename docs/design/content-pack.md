@@ -1,40 +1,42 @@
-# Content packs and the content root
+# The content root
 
 A battle runs on **content**: chips, navis and their forms, weapons, stages, the ruleset's tables, object kinds,
 actions, effects, sparks, regions, collision types, statuses, lock-on modes and identities, every sprite's
 animation timing, and the Luau code that runs them. The engine holds it as one typed value,
 `nettai_battle::Content`, and reads it from nowhere else: no ROM, no tables or scripts compiled into the engine. It
-comes from the first of two places, and is drawn and heard from the second:
+comes from the **content root**, a checkout's folder of Luau modules that *define* the content, the sprites' timing
+too (since 2026-10-27, content-model-v2.md §6.3), in packs: each game's (content/exe6 in this repository: people own
+it, and the verification workspace checks it against the ROM, §3) and the support packs games depend on (exelib).
 
-- the **content root**, a checkout's folder of Luau modules that *define* the content, the sprites' timing too
-  (since 2026-10-27, content-model-v2.md §6.3). EXE6's is content/exe6 in this repository: people own it, and the
-  verification workspace checks it against the ROM (§3);
-- a **content pack**, a folder of open-format assets that `nettai-extract content/exe6` writes from the user's ROM:
-  graphics (with the pictures' animation timing) and sound, each under its name, and the asset index that lists
-  them. The definitions name the pack's assets (`asset.sound("bomb-hit")`), never their numbers; a battle reads none
-  of it.
+What a battle is drawn and heard from is the game's **assets**, its graphics and sound, extracted from its ROMs by
+its content's recipe as the game loads (`nettai_extract`, [extraction-recipes.md](extraction-recipes.md)), in memory:
+the definitions name the assets (`asset.sound("bomb-hit")`), never their numbers, and a battle reads none of them.
+Until 2026-10-27 the assets were a folder of open-format files, a pack `nettai-extract` wrote; there is no such
+folder now (docs/app.md §17).
 
-This document describes the two and how they load, and the `Content` API the engine and other layers use. The
-pack's graphics and sound formats are in [asset-formats.md](asset-formats.md); what a definition is and how to
-write one in [content-migration.md](content-migration.md); the runtime in [scripting.md](scripting.md); the design
-record, with the reasons and the as-built notes, in [content-model-v2.md](content-model-v2.md).
+This document describes the content root, how it loads, and the `Content` API the engine and other layers use. The
+assets as they are extracted are in [asset-formats.md](asset-formats.md); what a definition is and how to write one
+in [content-migration.md](content-migration.md); the runtime in [scripting.md](scripting.md); the design record, with
+the reasons and the as-built notes, in [content-model-v2.md](content-model-v2.md).
 
 ## 0. Summary
 
-- **One extraction, of assets.** `nettai-extract content/exe6 <pack> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>` (US Falzar, US Gregar, JP Falzar and JP Gregar, in any order) writes the graphics, the sound and the asset
-  index, and reads the graphics, sound structure and index back to check them. `--check` also checks
-  that battle definitions load. Every ROM is required: a ROM missing is an error. The engine, the frontend, the audio, netplay and the verification workspace all load
-  the content root with a pack.
+- **Content and assets apart.** The content root defines the battle; a game's assets are extracted from its ROMs
+  (`nettai_extract::extract`) by the recipe in its content (`extract/`), every ROM required (a complete Legacy
+  Collection's). The engine, the frontend, the audio, netplay and the verification workspace all load the content
+  root, and extract the assets from the ROMs where they draw or play.
 - **Content is definitions.** A game's top module returns its root: what a match names, by id (chips, navis,
   forms, stages, patch cards, NaviCust programs), and its rules. What the root reaches is what the game has; a
   table only code reaches says what it is with a tag constructor (`new.kind { ... }`). The engine has no chip,
   weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or identity by number, and no
   navi or form: it holds handles, and content passes definitions.
 - **The original's numbers are compat's.** content/exe6/compat maps keys to the original's numbers for the tools
-  that need them (the trace harness, save and link-data codecs, the extractor's asset names, `gen-content
+  that need them (the trace harness, save and link-data codecs, the extraction's asset names, `gen-content
   check`). The engine never reads it (a test guards the dependency), and content can't load it.
 - **Exact.** What the definitions build equals the ROM's data, field by field (`gen-content check`), and every
-  golden trace, the sound calls and the chip lab hold.
+  golden trace, the sound calls and the chip lab hold. `nettai-content check <game>` holds a game's extracted assets
+  to its content: every asset it names, each sprite's animations and frames, its sprites' timing against the ROMs',
+  its strings' backgrounds (§3).
 - **Shared and immutable.** A battle holds its content in an `Arc<Content>`: snapshots share it and the state
   digest leaves it out. Its identity, `Content::hash()`, is part of the round's setup (`RoundSetup::content`), so
   netplay peers can check they run the same content.
@@ -75,31 +77,27 @@ file). Nothing registers a module: the engine runs what the definitions hold.
 
 The folder is named as its game (content/exe6), and every id its modules, compat and locales write is in full,
 `exe6:minibomb`, as is every asset name, `asset.sprite("exe6:bomb")` (rules-in-luau.md §7.2: the content is one
-namespace). `nettai_content::root::read(dir)` reads a folder: every module, by its path without `.luau`;
-`read_all(content)` every folder of a content directory, content/nettai (the engine's declarations) aside.
-`nettai_content::root::content()` is the content directory: `$NETTAI_CONTENT`, else this repository's content/.
+namespace). `nettai_content::index::read(dir, games, report)` reads what a load of games starts from: the packs
+they load (the support packs they depend on, then the games), every module by its path without `.luau`, and the
+games' own language's strings; `read_all(dir, report)` every game of a content directory.
+`nettai_content::index::content()` is the content directory: `$NETTAI_CONTENT`, else this repository's content/.
 
-## 2. The pack
+## 2. The assets
 
-```text
-content.toml                              the manifest ([graphics], [sound])
-assets.toml                               the asset index: every asset content can name, by kind and name
-graphics/sprites/NAME/                    a sprite: parts, layouts, animation timing (animations.json)
-graphics/...  sound/...                   see asset-formats.md
-```
-
-The index lists every sprite, sound, banner, background and mugshot by name, with the engine's identity for it:
-every name compat/assets.toml gives, and the pack's other assets under their placeholders (`sprite-0c-2d`),
-which content may not use (`nettai-content-check` flags one: name the asset in compat/assets.toml first). The pack
-holds the game's own data: it is written outside version control (data/ is ignored).
+A game's assets are no files of the content root's: they are extracted from the game's ROMs, in memory, by the
+recipe in its content's `extract/` (with exelib's), and checked against the content as the game loads
+(`nettai_content::load::asset_numbers`, §3). The extraction's index lists every sprite, sound, banner, background and
+mugshot by name, with the game's number for it: every name compat/assets.toml gives, and the other assets under
+placeholders (`sprite-0c-2d`), which content may not use (`nettai-content-check` flags one: name the asset in
+compat/assets.toml first). Nothing of them is written anywhere (asset-formats.md).
 
 ## 3. Loading
 
-`nettai_content::pack::load_battle(content, game)` reads the content root's game and runs the define phase
+`nettai_content::load::load_battle(content, game)` reads the content root's game and runs the define phase
 (`Content::define`), which also makes the asset names (`Content::assets`) and the sprites' timing
 (`Content::animations`) from what the modules name and define (content-model-v2.md §6.3; until 2026-10-27 both came
-from the pack's asset index and `animations.json`). No pack is read: a frontend checks one against the content as it
-loads the game (`pack::pack_assets`).
+from the pack's asset index and `animations.json`). No asset is read: a frontend checks the assets it extracts
+against the content as it loads the game (`load::asset_numbers`).
 
 1. every module loads once, in a VM of its own, and what the modules define is read back as data: the
    canonical tree, definitions sorted by registry and key, with references between definitions by key and
@@ -112,12 +110,16 @@ loads the game (`pack::pack_assets`).
    definition and path, and the state layouts.
 
 A definition that doesn't read is a content error naming its module: a missing field, a reference to the wrong
-registry, two definitions with one key, a chip without exactly one use, an asset name the pack's index doesn't
-have. `nettai_content::pack::battle_content` is the same before the define phase.
+registry, two definitions with one key, a chip without exactly one use. `nettai_content::load::battle_content` is
+the same before the define phase.
 
-`nettai-content check <pack> [--content DIR]` runs every import and the define phase, and reports on the
-definitions: roles the content hasn't filled, kinds under `objects/` that one owner alone uses, collision types
-defined twice. `nettai-content-check <content>` type-checks every module against core.d.luau and lints the source
+`nettai-content check <game> [--content DIR] [--roms DIR]` runs the define phase and reports on the definitions:
+roles the content hasn't filled, kinds under `objects/` that one owner alone uses, collision types defined twice;
+the strings, the library order and the look. It then extracts the game's assets from its ROMs (the folder given:
+the Legacy Collection's, or one of ROM files; else `$NETTAI_ROMS`, else the collection where Steam installed it) and
+holds them to the content: every asset the content names is there, each sprite with as many animations and frames,
+the content times its sprites as the ROMs do (each difference an error), and the strings' backgrounds are the
+assets'. ROMs that aren't found or don't extract are an error. `nettai-content-check <content>` type-checks every module against core.d.luau and lints the source
 (scripting.md §3.3).
 
 The verification workspace's `gen-content check <rom> <content>` defines the content root with compat's asset
@@ -134,7 +136,7 @@ rendering, `--mute`) skips the sound.
 through the battle, by handle:
 
 ```rust
-let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::index::content(), "exe6")?.0);
+let content: Arc<Content> = Arc::new(nettai_content::load::load_battle(&nettai_content::index::content(), "exe6")?.0);
 let setup = RoundSetup { content: content.hash(), settings, navi_stats, ... };
 let mut b = Battle::new(setup, content.clone());
 
@@ -192,5 +194,5 @@ for the tests alone. The engine, netplay, audio and frontend tests run on them; 
 content/exe6 with made-up assets.
 
 Tests about EXE6's actual data (effect lifetimes, GunDelSol's 480 HP in the sun, the stages' rocks, the golden
-traces, the chip lab) live in the verification workspace, which loads content/exe6 with the EXE6 pack it extracts
-to `data/exe6`.
+traces, the chip lab) live in the verification workspace, which loads content/exe6 and extracts its assets from the
+ROMs `$NETTAI_ROMS` names.

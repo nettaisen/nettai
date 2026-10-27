@@ -3,8 +3,8 @@
 The engine plays no sound. Each tick it reports the sound calls the
 original makes at that point as typed cues (`nettai_battle::sound`); a
 frontend plays them. `nettai-audio` does, with the game's own sound driver
-(the `m4a` crate) and sound data (the sound of a content pack extracted
-from the user's ROM). Cues are output only: nothing in the simulation reads them.
+(the `m4a` crate) and sound data (the game's sound, extracted from the
+user's ROMs as the game loads). Cues are output only: nothing in the simulation reads them.
 
 ## 1. Cues
 
@@ -23,10 +23,10 @@ the start of every tick).
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up. The engine names none: the ruleset plays what content's roles
 name (`sounds` and `music` in rules/roles.luau).
-Content names its sounds: `asset.sound("exe6:cannon")` is the song the
-EXE6 pack's asset index (`assets.toml`) lists under `cannon`, resolved when the
-content loads (a name the pack doesn't list is a load error), so a content
-sound is a song of whatever pack is loaded.
+Content names its sounds: `asset.sound("exe6:cannon")` is the song EXE6's
+extracted assets' index lists under `cannon`, resolved when the game loads
+(a name the index doesn't list is a load error), so a content sound is a
+song of the game's own sound.
 
 Effects the engine emits, by routine: navi fade-in 0x94 (`sub_80163B4`);
 hit 0x6B on the local player's navi, else 0x6D (`applyDamageToPlayer_801ba12`);
@@ -194,18 +194,18 @@ with the command named.
 
 ## 4. Sound data
 
-`nettai-extract content/exe6 <dir> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>` reads the Falzar ROM's M4A data
+A game's extraction (`nettai_extract`, by its recipe) reads the Falzar ROM's M4A data
 (`m4a::rom::extract`) into a typed `m4a::SoundBank` (songs as command
 lists with running status resolved and jumps as command indices,
 voicegroups, drum kits, key splits, samples and PSG waves, the mixer
-settings and the player table) and writes it into the content pack as
-open, editable files: songs as MIDI in mid2agb's conventions, voicegroups
-as TOML, samples as WAV (`docs/design/asset-formats.md`). nettai-content reads
-them straight back into a `SoundBank` (`nettai_content::pack::load_sound`),
-and every song renders the same samples from them as from the ROM.
+settings and the player table), in memory, as the game loads
+(`docs/design/asset-formats.md` §5). Until 2026-10-27 it was written to a
+pack as open files (songs as MIDI in mid2agb's conventions, voicegroups as
+TOML, samples as WAV) and read back from them, every song rendering the same
+samples from them as from the ROM; there is no pack now.
 `SoundBank::validate` checks every reference in a bank before the driver
-trusts it. The pack holds the game's recordings, so it is never committed
-(`data/` is gitignored), and nothing reads the ROM at run time.
+trusts it. The bank is the game's recordings, so nothing of it is written
+anywhere, and it is extracted from the player's ROMs at each start.
 
 Every EXE6 song reads (399). The sound files carry what the
 exact driver needs: a PSG voice's sweep, its fixed
@@ -213,21 +213,19 @@ frequency bit and length, the byte after a sample's data (one EXE6 sample
 has another than the usual), and the DAC's resolution. MEMACC's set, add and
 subtract are mid2agb's controllers (CC 13 the operation, CC 14 the
 address, CC 12 the operand, which runs it); a conditional MEMACC jumps on
-what the game wrote, so a song with one can't be a timeline and is left
-out of a pack (EXE6 has none). A track whose running status would depend on
+what the game wrote, so a song with one couldn't be a pack's timeline and was
+left out of one (EXE6 has none; since 2026-10-27 the bank keeps every song). A track whose running status would depend on
 the path into a jump target is refused at extraction (none in EXE6).
 
 ## 5. Hearing it
 
-    cargo run -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
-    cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/exe6
-    cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/exe6 --wav out.wav --frames 600
-    cargo run -p nettai-audio --example play_song -- data/exe6 0x15,0x94 --every 120
+    NETTAI_ROMS=<roms> cargo run -p nettai-audio --example play_song -- exe6 0x15,0x94 --every 120
+    NETTAI_ROMS=<roms> cargo run -p nettai-audio --example play_song -- exe6 0x15 --wav out.wav
 
-`trace_audio` replays a golden trace's rounds with their recorded inputs,
-on the pack's battle data, prints each cue with its frame and plays them in real time (or renders a
-WAV). A round stops where the engine leaves the recording (with
-`--keep-going`, where it panics on something not implemented yet).
+`play_song` extracts the game's sound from its ROMs and plays song-table
+entries in real time, or renders them into a WAV. (A trace's rounds with
+their cues are nettai-tool's: `--audit` checks each cue's song, and a
+replay's video carries its sound.)
 
 ## 6. Verified
 
@@ -248,7 +246,7 @@ sounds included.
   rumble and the burners' roar included, with the attack's count above).
   This comparison is a standing gate of the chip lab: a new recording
   carries its calls, and a sound that differs fails it.
-- Every sound the content names (148 names) is in the pack's index,
+- Every sound the content names (148 names) is in the assets' index,
   has a song, starts on the driver and makes sound; so does every number
   the engine's own routines play.
 - Under rollback (the golden traces replayed through rollback peers at
@@ -300,4 +298,4 @@ In this repo, tests cover the cue plumbing on a battle built in code, the
 driver on synthesized songs (priorities, channel stealing, controls, the
 sequencer) and the ROM reader on a synthesized ROM image. The frontend's
 `--audit` plays a trace's every cue into nothing and reports a cue whose
-song the pack doesn't have.
+song the game's sound doesn't have.

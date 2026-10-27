@@ -223,18 +223,18 @@ going on and its scenery moving as the game's pause moves it (§15).
 **The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
 
 - The menus' sounds are the selected game's own custom screen sounds, through its rules' sound roles
-  (`custom_cursor`, `custom_pick`, `custom_back`, `refused`): the app names no sound of a pack. Every move of the
+  (`custom_cursor`, `custom_pick`, `custom_back`, `refused`): the app names no sound of a game. Every move of the
   cursor, confirm, back and refusal has one. Entering a battle (the jack-in, §10) plays the game's own encounter
   sound, the role `encounter`: what every battle's start plays in the original as the screen breaks into it, a
   random encounter's too, song 0x78 in all three games (EXE6's `SOUND_BATTLE_START`, played by
   `gameState_8005BC8`, the battle's game state's entry; EXE5's same routine, 0x080054F6, and its same song;
   EXE4's 0x08005490, 0x080054EE and 0x08005520, which its walking encounter and its scripts enter by). It is a
   sound effect of 0.7 s (one note) on an effects player of its own, so it plays over the battle's music, which
-  starts at once. No rule plays it; the packs name it `encounter` (`compat/assets.toml`). (EXE5's and EXE6's song
+  starts at once. No rule plays it; the games' contents name it `encounter` (`compat/assets.toml`). (EXE5's and EXE6's song
   0x0F, `transmission`, was looked at first and isn't used: the user, "it shouldn't be the transmission sound, it
   should be the encounter sound".)
-- The title music is the selected game's too: the song its pack names `title-screen` (no sound of the content's:
-  the pack's index gives its number, and it plays as one sound more past the content's), on a driver of its own. It
+- The title music is the selected game's too: the song its assets name `title-screen` (no sound of the content's:
+  the assets' index gives its number, and it plays as one sound more past the content's), on a driver of its own. It
   plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
   screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
@@ -291,7 +291,7 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   in EXE4 a single battle's `link_battle_single` (`virus-battle`, 0x14) or a set's `link_battle` (`boss-battle`,
   0x15), as its battle start picks by the battle's type. The stage's own music is a battle's outside a link (none
   the app plays). The round's end stops it (`StopMusic`), and the result plays the winner's or the loser's music.
-- *The themes* are each game's content: its rules' `battle_themes`, songs of its pack in the order the list shows
+- *The themes* are each game's content: its rules' `battle_themes`, songs of its own in the order the list shows
   them, named in its locales' text table `battle_themes` by the song's asset name (docs/design/content-model-v2.md
   §3.8). Each is the music the original's battle settings records start for a kind of battle (their music byte,
   found by the records' shape in each ROM, the same in every ROM of a game):
@@ -311,13 +311,13 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   | BN6 Crossover Battle | EXE6 0x22 `crossover-battle` | one (record 0); the disassembly's name for the song |
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
-  トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
+  トーナメントバトル"). The app names no song and no game: it lists what the games' contents state.
 - *The pick* is the player's own and one: the practice menu over the battle (§15) shows and changes it (Play's
   lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "Game's own" (the user, "going
   into practice should reset all the arena settings, there's no reason for it to remember the last settings";
   docs/design/app-ui.md §2.40): nothing of it is in the settings. The list is "Game's own", then the themes of every game whose parts are read
-  (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
-  isn't there offers none, and a pick of one is played as the game's own until its game is read.
+  (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose ROMs
+  aren't found offers none, and a pick of one is played as the game's own until its game is read.
 - *Which battles play it* (`BattleStart::music`, `BattleMusic`): Practice's own sessions play the pick (the
   user: "why does the music setting carry over from practice mode into pvp mode? huh?"); an online match, a replay
   watched and a replay's video (§16) play the game's own ("for pvp it should use the game's default for now");
@@ -327,14 +327,14 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   place of the battle's own music (the content's `battle_music`: the link battle's music roles and the stages'
   own), with its own game's bank on a driver of its own (`nettai_audio::with_theme`: its own voice groups and
   samples, its own mixer; one of the battle's own game is played on the game's own driver, as its music is). The
-  battle stays its game's, one game a match: its effects and its result's music are its own pack's, and the
+  battle stays its game's, one game a match: its effects and its result's music are its own bank's, and the
   result's music stops the theme as it would the game's. The battle, its cues, a replay and the wire are the same
   whatever plays: nothing of the pick is sent, and each player of an online match hears their own.
 - *What the engine does to the music applies to the theme*, being the music: the round's end stops it, a new
   round starts it again, the result's music replaces it; BN6's low HP (`Pinch`: a semitone up and tempo 0x11A
   while the console's navi is at a quarter of its HP or less) is the battle's rule, so a BN6 battle plays any
   theme so and a BN4 or BN5 battle none (their rules have no low-HP music); the custom screen's hover over a dark
-  chip turns the music player down and back (`Volume`, set in every pack's driver as one driver's would be).
+  chip turns the music player down and back (`Volume`, set in every bank's driver as one driver's would be).
   Rollback takes a theme's change back as the game's own: a result's music played on a wrong prediction stops,
   and the theme starts again on its own driver.
 - *A difference from the original:* a theme of another game has a mixer of its own, so the battle's effects don't
@@ -352,22 +352,22 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Stage rows (Battle rows until docs/design/app-ui.md §2.56) have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
-  music is playing, the new song starts from its beginning on its own pack's driver (the one before stops, that
+  music is playing, the new song starts from its beginning on its own bank's driver (the one before stops, that
   song alone: the effects play on), with BN6's low-HP speed-up kept on where it is on; where the result's music is
   playing, or the round's end has stopped the music, nothing changes then, and the next round starts with the new
-  song. A pack the battle hadn't is added at Settings' levels. The battle, its cues and its rollback are the same.
-  (A volume the custom screen's hover over a dark chip set before the change isn't carried to a pack the change
-  adds; the next one the screen sets is every pack's.)
+  song. A bank the battle hadn't is added at Settings' levels (nettai-audio's `BankId`). The battle, its cues and its
+  rollback are the same. (A volume the custom screen's hover over a dark chip set before the change isn't carried
+  to a bank the change adds; the next one the screen sets is every bank's.)
 
 **The battle's background** (`backgrounds.rs`; docs/design/app-ui.md §2.31). The user: "is it possible to use
 e.g. exe4 backgrounds in exe5? as in if they all came from the same pool of backgrounds?", then "sure do that";
 and of whether it stays the match's or becomes each player's own, "Shared, as now".
 
 - *The pool* is every background of every game the content has, each by its game and its name in its game's
-  pack (`Content::background_pool`: EXE4's 27, EXE5's 22, EXE6's 21, the games in their order and each game's
+  content (`Content::background_pool`: EXE4's 27, EXE5's 22, EXE6's 21, the games in their order and each game's
   by name). It is read from the content alone, each game's own language's `[backgrounds]` (which names every
-  background its pack has, and none it hasn't: the content check holds it to that), so it is the same for every
-  player whatever packs they have. No tick reads a background, so it is left out of the content's hash (as the
+  background its game's assets have, and none they haven't: the content check holds it to that), so it is the same
+  for every player whatever ROMs they have. No tick reads a background, so it is left out of the content's hash (as the
   strings are) and a game's content is the same whatever other games stand beside it; two peers compare their
   pools on their own (below).
 - *Its names*: the game's name in the language shown, then the background's from that game's locales ("BN4 ACDC
@@ -390,23 +390,25 @@ and of whether it stays the match's or becomes each player's own, "Shared, as no
   game's newest content first, the app's lobby waiting while they do (§20), and are refused only where they still
   differ (`Reason::DifferentContent`). A replay keeps each round's background by its game and its
   name (docs/frontend.md §8).
-- *Drawing it*: the renderer draws another game's background from that game's own pack (`OtherBackgrounds`,
-  read with the game's graphics from the other packs found: a few kilobytes each). In all three games a
+- *Drawing it*: the renderer draws another game's background from that game's own backgrounds, extracted from its
+  own ROMs by its own content's recipe the first time a round or a picture wants one, on a thread of their own, and
+  kept for the run (`OtherBackgrounds`, an `OtherGame` a game; a battle's preload waits for those its rounds are
+  drawn on: §17, docs/frontend.md §1). In all three games a
   background's tiles start at tile 1 and end below the field's (163 on), and its map, its palette and every
   palette animation and shift use background palette 0 alone (the field's are 1 to 8): so another game's
   draws in any battle as in its own, its scroll and its animations its own data's, and the battle's dimming
   (palettes 0 to 8 a quarter down) and palette flash (the stage's nine palettes white, before or after the fades
   as the arena game's rules order it) take it as they take the game's own. A round on another game's
-  background whose pack the player hasn't is drawn on its stage's own background, the one the arena game
-  itself would draw (`Packs::round_background`). Looked at: an EXE5 battle on EXE4's ACDC Area (its tile
+  background whose game's ROMs the player hasn't is drawn on its stage's own background, the one the arena game
+  itself would draw (`Graphics::round_background`). Looked at: an EXE5 battle on EXE4's ACDC Area (its tile
   animation over frames, EXE4's own battle beside it, the same picture and colors) through Colonel's dimming
-  and flash, and with EXE4's pack taken away (EXE5's own `comp`); an EXE6 battle on EXE5's
+  and flash, and with EXE4's assets taken away (EXE5's own `comp`); an EXE6 battle on EXE5's
   NebulaGray (its speeding scroll and palette animation) through EXE6's Colonel.
 
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
-1. Everything read from disk (the content, the pack's graphics and sound, the text's font, and the strings and
-   lettering of the language shown) is read on a thread of the game's own, a part at a time (the library's
+1. Everything read from disk (the content, the ROMs and the assets extracted from them, the text's font, and the
+   strings and lettering of the language shown) is read on a thread of the game's own, a part at a time (the library's
    `game::Loading`), so the window stays live. This is four fifths of the bar.
 2. The content's Luau runtime is loaded on the window's thread, the one that runs the battles and checks the
    builds (`preload::runtime`): about a second with the window still. It is done the moment the selected game's
@@ -651,11 +653,11 @@ content's own names.
 **A game's name is its own, in the language shown**: BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in
 Japanese (docs/design/app-ui.md §2.22). Each game states it in its locales, in the text table `game`
 (`"name" = "BN6"`), and `nettai_content::locale::game_name(dir, game, lang)` reads it from the content
-alone (a language with no table, the pseudo-locale, has the game's own language's), so a game with no pack, or
-one whose pack fails to load, is named too. The shell reads every game's at start-up and when the language
+alone (a language with no table, the pseudo-locale, has the game's own language's), so a game whose ROMs aren't
+found, or that fails to load, is named too. The shell reads every game's at start-up and when the language
 changes (`Shell::name_games`), and `Shell::game_name(id)` gives it to whoever names a game: the header's
 selector, the loading screen, "Not a BN6 save", "This navi isn't BN6's", a lobby's or a replay's other game, a
-pack that is out of date. The header's name changes with the language at once. A game whose locales can't be
+game that couldn't be loaded. The header's name changes with the language at once. A game whose locales can't be
 read at all is shown by its id in capitals (EXE6); Rust and Slint name no game. `locale::tests::
 each_game_is_named_in_its_languages` holds the three games to their names in both languages.
 
@@ -1216,8 +1218,9 @@ isolated (COOP and COEP), which a page with threads must be.
   `text_entry` and `page` (the window is the page's whole, following its size). A dialog answers through a
   callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
-  read as far as the app names its files (the collection's archives: `bnlc::ARCHIVES`); a file saved is
-  downloaded.
+  read as far as the app names its files (the collection's archives: `nettai_extract::source::ARCHIVES`); a file
+  saved is downloaded. Large files the page keeps but doesn't load as it starts are stowed (`fs::stow`,
+  `fs::stowed`, `fs::fetch`: below).
 - **Luau on longjmp.** Slint's and winit's web backends rule out `-C panic=unwind` (wasm-bindgen then asks every
   closure to be `UnwindSafe`, and winit has no `run_app` with Rust's `exception-handling` feature), so Luau is built
   with `LUA_USE_LONGJMP` (Wasm exception handling's setjmp/longjmp, in C alone), and the module is `panic=abort`:
@@ -1226,30 +1229,40 @@ isolated (COOP and COEP), which a page with threads must be.
   `nettai_platform::thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
   stack (`spawn_async`: a future on the worker's event loop, for WebCodecs). A worker's own threads are started by
   the page, which it asks: a worker's workers start only while its event loop runs, and it may be busy. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
-  is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the extraction
-  queue's and the shapes' cache's, each held for moments.
+  is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the
+  stowed files' list, the other games' backgrounds' and the shapes' cache's, each held for moments. What a thread
+  of its own makes and the window's thread wants (another game's backgrounds) is asked for there between frames,
+  never waited for (docs/frontend.md §1, §9).
 - **Files** are `nettai_platform::fs`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
-  page puts the data folder (`/data`: settings, builds, replays, packs, the games' content) in it from the origin
-  private file system before the app starts, and writes back what changes, a few times a second: side by side, a
-  pack's stamp last (a page closed partway leaves no pack that looks whole), and nothing in a dot folder
-  (`packs/.new`). The page ships no content: the app downloads each game's from its site as the desktop app does
-  (§20), into the data folder's `content/`, which the page keeps with the rest (a bundle cut short by a page closed
-  partway has no record, and goes as the app starts).
+  page puts the data folder (`/data`: settings, builds, replays, the games' content) in it from the origin
+  private file system before the app starts, and writes back what changes, a few times a second, side by side, and
+  nothing in a dot folder. The **stowed** files, the data folder's `.stowed/` (`fs::STOWED`), are kept there too but
+  not put in the app's files as the page starts: the page lists them (`stowed`), the app reads one in when it wants it
+  (`fs::fetch`: a thread of its own reads the page's storage while the one asking waits, which only a thread other
+  than the page's main one does), and writes one itself (`fs::stow`: into the app's files and, by a thread of its
+  own, the page's storage). The page ships no content: the app downloads each game's from its site as the desktop
+  app does (§20), into the data folder's `content/`, which the page keeps with the rest (a bundle cut short by a page
+  closed partway has no record, and goes as the app starts). The packs folder an earlier app kept goes as the app
+  starts (§17), and the page removes it from its storage as it hears.
 - **The Legacy Collection.** CHOOSE FOLDER opens the browser's folder dialog (Chromium's alone: Firefox and Safari
   have none), or the folder is dropped on the page (every browser: the File and Directory Entries API); of the
-  folder (the install's own, its `exe` or its `exe/data`) the per-game archives are read into the app's files, and
-  each game's assets extracted from them as it loads, as on the desktop (§17). The archives are the page's only
-  while it is open, so for now the folder is chosen at each visit (keeping the ROMs in the origin private file
-  system is the next step). Measured before, in headless Chrome with an install-shaped folder of the twelve ROMs
-  (2026-10-20), extracting and writing packs: BN6 2.0 s, BN4 3.0 s, BN5 1.9 s, on a worker, the window live.
+  folder (the install's own, its `exe` or its `exe/data`) the per-game archives are read into the app's files. The
+  page can't read the player's folder again without asking, so the folder is chosen once: copies of the ROMs of
+  every game it has, each ROM's archive entry as it was, compressed (about 51 MB for the twelve), are stowed
+  (`.stowed/roms/<CODE>.zip`, a zip of the one entry named by its game code: `Games::keep_copies`,
+  `nettai_extract::RomSource::Copies`), and the archives are let go. From then on, and at each visit after, the games
+  are found in the copies by their names, none read, and a game's are read into memory as it loads (on its loading
+  thread), its assets extracted from them as on the desktop (§17). Measured before the copies, in headless Chrome
+  with an install-shaped folder of the twelve ROMs (2026-10-20), extracting and writing packs: BN6 2.0 s, BN4 3.0 s,
+  BN5 1.9 s, on a worker, the window live.
 - **Sound** is cpal 0.18's AudioWorklet on the shared memory, started again on each click or key (a page's sound
   starts only then). **Time** is web-time's. The log is the console as well (console_log).
 - **No direct connect** (the user: "web should not support direct connect"): the browser has no sockets, and
   its button isn't there (`Theme.web`); netplay is WebRTC through the signaling server. Nor does it say anything
   of Steam: the missing collection's words are "choose its folder".
-- **The collection's folder isn't remembered** past the page: a folder handle kept in IndexedDB could be read
-  again only after a click and the browser's permission prompt, and every game is extracted as the folder is
-  chosen, so it would matter only when a new version extracts again.
+- **The collection's folder isn't remembered** past the page (a folder handle kept in IndexedDB could be read
+  again only after a click and the browser's permission prompt); its ROMs are, as the copies above, so no visit
+  after the first asks for it.
 - **A replay's video** is nettai-video's on both platforms: the playing's frames to the platform's encoder to one
   MP4 (`mp4`: its samples written to any `std::io::Write` a chunk at a time as they come, and its head, the
   `moov` indexing them, made last and put first), its sound tracks titled and its rounds chapters. No fragmented
@@ -1280,8 +1293,7 @@ isolated (COOP and COEP), which a page with threads must be.
 - **Size.** A release's module is optimized without its names (binaryen's wasm-opt, if installed: `brew install
   binaryen`), 49.6 MB to 38.5, and every file is compressed beside it, which serve.py sends: the page is 12.7 MB
   over the wire (the module 11.3 with brotli, the content 1.4). Of the module's 38 MB, 18 are the UI's embedded
-  data (its fonts above all). A pack the page didn't finish keeping (no stamp) is removed as the app starts, and
-  extracted again once the folder is chosen.
+  data (its fonts above all).
 
 ## 7. Android and iOS
 
@@ -1299,8 +1311,8 @@ Not built. What it would take:
   platform-specific.
 - **Files:**
   - The content embedded in the app.
-  - The pack imported by the user (Android's Storage Access Framework, iOS's document picker) into the app's
-    storage. Or the ROMs imported and extracted on the device, as on the web.
+  - The ROMs imported by the user (Android's Storage Access Framework, iOS's document picker) into the app's
+    storage, as the web keeps copies of them (§6), and each game's assets extracted from them as it loads.
   - Replays in the app's storage, shared with the system's share sheet.
 - **Sound:** cpal plays through AAudio/Oboe on Android and CoreAudio on iOS.
 - **Input:**
@@ -2406,7 +2418,7 @@ isn't played here) and `of_export` (nettai-video's) each write the detail and gi
 holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
 last in its export mode's line (§16); a replay that fails as it is opened or as it plays is a dialog
 over the list (§16), with the replay's own still or nothing in its box (§1). What breaks a build's rules is
-nettai-match's `Wrong`, which the builds' words (`builds::words`) say in their own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
+nettai-match's `Wrong`, which the builds' words (`builds::words`) say in their own catalog and hands to `UserError::BuildUnusable` as the reason. A game that
 can't be loaded is `UserError::LoadFailed`, with the game's name as shown (§1). No Legacy Collection to extract the
 games' assets from is `UserError::NoLegacyCollection`, whose dialog has the way to the collection's folder, and one
 that lacks some of a game's ROMs is `UserError::IncompleteCollection`, by the game's name (§17).
@@ -2574,8 +2586,8 @@ and what is cut. Two things went unseen that way, and each now has its check.
   Builds' steps ask the view which tab is shown (`on_tab`) and report a picture that is of another, counted
   against it as a cut text is.
 - *A game that doesn't load is passed over, and the pass goes on with another.* The shell selects the next
-  game that can be played, and the pass then walks that one and ends well: `NETTAI_TOUR_GAME=exe6` with a pack
-  the content doesn't load (a sprite the content names and the pack hasn't) gives a clean report of EXE4's
+  game that can be played, and the pass then walks that one and ends well: `NETTAI_TOUR_GAME=exe6` with content
+  whose assets don't load (a sprite the content names and the assets haven't) gives a clean report of EXE4's
   screens. The log says so (`loading exe6: can't load ...`) and the pictures' headers name the game shown; the
   report doesn't. Read one before trusting a run.
 
@@ -2973,7 +2985,7 @@ back from the editor, keeps what the player set. None of it is in the settings.
   the box's height less 12 wide, before its name; Random a question mark), and Enter, a click or a tap opens the
   grid of every choice's picture (`Shell::pick_grid`, below); Left and Right still step it, around from the last
   to Random. Each is the visit's (above): Random as a visit starts, kept through it, a choice of another game's
-  Random (a match names a background by the name it writes, the game's own by its name in the pack, another
+  Random (a match names a background by the name it writes, the game's own by its name in its content, another
   game's with its game, `exe4:acdc-area`).
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
@@ -3318,7 +3330,7 @@ docs/design/app-ui.md §6, "Replays". The screen is `ui/screens/replays.slint` a
 `src/replays.rs`. The library under all of
 it is docs/frontend.md §8: the file, the viewer and its seeking, the video. A replay keeps each round's
 background by its game and its name (any game's: §1, "The battle's background"), and a viewer draws it as the
-match did, or its stage's own where the player hasn't that game's pack. The file is of layout 1
+match did, or its stage's own where the player hasn't that game's ROMs. The file is of layout 1
 (`nettai_replay::LAYOUT`); one of another layout is refused as another version's.
 
 **Nothing of the folder is read on the window's thread** (`crate::replays::Library`). The screen has a thread of
@@ -3516,10 +3528,10 @@ screen runs the ticks due, presents the picture into the window's texture if one
   at its next part once the one after it has (the replay left closes the last's channel). The three index as fast
   as the slowest of them: on the user's 19:42 EXE5 replay (70,623 ticks) in a release build, 3.8 to 4.0 s, about
   18,000 ticks a second (54 to 57 µs a tick; the battle alone, silent, took as long), measured by docs/frontend.md
-  §8's `examples/index.rs` with the machine busy with other builds; on EXE6's packs, whose battle is lighter and a
+  §8's `examples/index.rs` with the machine busy with other builds; on EXE6's assets, whose battle is lighter and a
   console's sound the slowest, 38,800 ticks a second (five minutes in 0.46 s, `examples/seek.rs`). Until 2026-10-22 one thread indexed, a viewer making
   its own sound as it went (`Viewer::index_part`): 7.1 to 7.4 s on that replay (about 9,700 ticks a second, 101 to
-  104 µs a tick), and 10,190 ticks a second in the `dev` build on EXE6's packs (five minutes in 1.8 s, 9,000
+  104 µs a tick), and 10,190 ticks a second in the `dev` build on EXE6's assets (five minutes in 1.8 s, 9,000
   ticks). Until 2026-10-21 the window's thread indexed, a slice a frame (`Viewer::index`, each slice as many ticks
   as the last one's time said fit a budget of 1.5 ms while the replay played, 5 ms while nothing did): about 1,300
   ticks a second while the replay played in the `dev` build (§5), five minutes in 14 s, and 5,900 while it
@@ -3720,7 +3732,7 @@ NUT streams, both sides and each alone, decoded by ffmpeg: each half byte for by
 halves different in every frame, the sound the left side's sample for sample (before it was a track a side).
 
 The tracks and the chapters ran through `nettai-tool --mp4` with the bundled ffmpeg (ffmpeg-9.0.2-1's
-macos-arm64 binary, by `NETTAI_FFMPEG`) on EXE6's packs, a two-round set of 962 ticks recorded headless:
+macos-arm64 binary, by `NETTAI_FFMPEG`) on EXE6's assets, a two-round set of 962 ticks recorded headless:
 two-sided with the right side at the left, ffprobe read H.264, then AAC "Chaud" (the default), then AAC
 "Lan", then the chapter text track, and the chapters "Round 1" (0 to 7.986 s) and "Round 2" (7.986 to
 16.106 s: frame 477, the second round's first picture); one-sided, one AAC track "Lan" and the same
@@ -3736,7 +3748,8 @@ The user: "you should detect bnlc vol2 and extract all assets from there on star
 everywhere.
 
 **No packs.** A game's assets (its graphics and sound, and the index of their names) are extracted from its ROMs as
-the game loads, in memory, at every start, and nothing of them is kept on disk: no pack, no stamp, no export. The
+the game loads, in memory, at every start, and nothing of them is kept on disk: no pack, no stamp, no export (a
+browser keeps the ROMs themselves, copies of their archive entries, as its folder can't be read again: §6). The
 packs folder the app kept before (`packs/<game>-<fingerprint>` in the data folder, with `.new` and `.old`) is
 deleted as the app starts, each pack in it and then the folder (`games::remove_packs`; not by the screenshot pass,
 which leaves the data folder as it is), to give the disk space back. If a game's ROMs can't be read, it can't be
@@ -3747,7 +3760,8 @@ played, and the player is told why; there is no other way to its assets.
 `zip`). `$NETTAI_ROMS` wins (development, the screenshot pass): a folder that is the collection's install, or that
 holds its ROM files (any names; each file's header says which ROM it is), as nettai-tool reads them. Else the folder
 the player chose is looked in (the settings' `legacy_collection`: the install's own folder, its `exe` or its
-`exe/data`, whichever was chosen), then Steam, for the app id of Vol. 2, 1798020. `steamlocate` finds Steam on
+`exe/data`, whichever was chosen), then Steam, for the app id of Vol. 2, 1798020. (In a browser, the copies of a
+folder chosen before: §6.) `steamlocate` finds Steam on
 Windows by the registry's `InstallPath` (`HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, else `SOFTWARE\Valve\Steam`), on
 macOS at `~/Library/Application Support/Steam`, and on Linux in each of Flatpak's, the usual (`$XDG_DATA_HOME/Steam`,
 `~/.steam/steam`, `~/.steam/root`, `~/.steam/debian-installation`) and Snap's folders that has a `steamapps` folder;
@@ -3767,14 +3781,19 @@ game whose recipe's ROMs are all there can be played; one with any missing can't
 (nettai-frontend's `game::Loading`, the part `Assets`): its ROMs are read out of their archives into memory (none is
 written to disk) and its content's recipe extracts them (`nettai_extract::Recipe`; docs/design/extraction-recipes.md):
 the recipe is read from the content the game plays, at run time, not compiled into the app, so content that names a
-new asset, or extracts one otherwise, is played with it at once. The background pool's other games (a few
-backgrounds from each, §1) are extracted on threads of their own beside it, by their own contents' recipes, and only
-those backgrounds kept. The assets are then checked against the content (§20, "Assets that can't draw it"), and the
-content's sprite timing compared with the ROMs' (a difference is said in the log). The extractor's rule stands: its
+new asset, or extracts one otherwise, is played with it at once. The assets are then checked against the content
+(§20, "Assets that can't draw it"), and the content's sprite timing compared with the ROMs' (a difference is said in
+the log). The background pool's other games (a few backgrounds from each, §1) aren't extracted with it: each other
+game's backgrounds are extracted, by its own content's recipe, the first time a round or a picture wants one (a
+practice set's round on one, Practice's Background grid), on a thread of their own, and kept for the run, shared by
+every game loaded, so no game is extracted twice in a run (`nettai_render::graphics::OtherGame`;
+`nettai_frontend::game::others`; a game's own given as it loads). The battle's preload asks for those its rounds are
+drawn on and waits for them before the first picture, between frames (docs/frontend.md §9); a replay's still, its
+export and Practice's pictures wait on their own threads. Lobbies and replays agree on the pool by its names alone. The extractor's rule stands: its
 inputs are ROMs alone, and the recipe's files (its hand-drawn frames among them, asset-formats.md "Frames as
 shapes"); a game's assets are extracted from every ROM of the game. Extracting a game takes about a tenth of a
 second, and reading its four ROMs out of the archives about as long (a release build, 2026-10-27); a pack's load
-took 0.3 to 0.4 s.
+took 0.3 to 0.4 s, before.
 
 **What the player sees.** The loading screen's bar is the load's, "LOADING BN6": extracting is a part of it. As the
 app starts, the collection is found, and each game it has the ROMs of can be stepped to; the game opened on (the
@@ -3789,8 +3808,8 @@ folder, or `exe/data`, is taken as well. Where some game can be played, it is a 
 OK; where none can, the loading screen shows the line and CHOOSE FOLDER. Either opens the system's folder dialog;
 or a folder is dropped on the window, which while a game's ROMs aren't found is taken as the one chosen
 (`App::dropped`; the dialog closes), on any screen but a battle's. A folder that holds the collection is kept in
-the settings, and the games it has can be played from it; one that doesn't says the error again, and nothing is
-kept. A collection that hasn't every ROM a game's recipe declares (the US and the Japanese of both versions) can't
+the settings (in a browser, copies of its ROMs are kept instead: §6), and the games it has can be played from it;
+one that doesn't says the error again, and nothing is kept. A collection that hasn't every ROM a game's recipe declares (the US and the Japanese of both versions) can't
 play that game: its assets are extracted from a whole collection only, on the desktop and in the browser alike.
 That is `UserError::IncompleteCollection`, said as the first is, a dialog with CHOOSE FOLDER and OK, or the loading
 screen's line where no game can be played: "The Legacy Collection's files are incomplete: some of BN6's are
@@ -3804,10 +3823,14 @@ their own in temporary folders, the ROMs fake bytes where the code only moves th
 its three folders; the ROMs found by their headers wherever in an archive they are, other entries and a second copy
 passed over, an archive that isn't one passed over, each ROM read back whole; a folder of ROM files, other files
 passed over; a game playable once a folder with its every ROM is found, one lacking some told once as incomplete, a
-folder with no game whole not taken. With the twelve ROMs (`$NETTAI_ROMS`, a folder of them; 2026-10-27): each game
-loaded with its assets extracted, `nettai-tool --audit-content` (every asset the content names, each sprite's
-frames, the content's timing equal to the ROMs' in all three games), and a battle of each drawn and heard
-(nettai-frontend's `embed` example: its frames the same as nettai-tool's, its sound the cues'). **What waits on a
+folder with no game whole not taken; the copies a browser keeps, made of an install's ROMs and of ROM files, found
+by their names and read back whole (`copies_of_the_roms_kept_read_back_whole`); another game's backgrounds extracted
+once, when first wanted, and a preload waiting for those its set is drawn on (nettai-render's and nettai-frontend's
+tests). With the twelve ROMs (`$NETTAI_ROMS`, a folder of them; 2026-10-27): each game loaded with its assets
+extracted, `nettai-content check` (every asset the content names, each sprite's frames, the content's timing equal to
+the ROMs' in all three games), a battle of each drawn and heard (nettai-frontend's `embed` example: its frames the
+same as nettai-tool's, its sound the cues'), and an EXE6 match on an EXE4 background drawn with EXE4's. Not run:
+the browser's copies in a browser (the module type-checks; its tests are the desktop's). **What waits on a
 real install:** Steam finding it (on Windows, and on Linux under Proton); the real archives' layout and compression
 (Tango reads them as zip archives with `.srl` entries wherever they are, as this does; the app reads deflate and
 stored entries, and another method is a load failure with the method in the log); the real folder's name, for the
@@ -4039,7 +4062,7 @@ that is loaded when its newer content arrives plays it from the next time the ma
 loaded again behind the bar.
 
 **What a bundle plays.** The first time a game is loaded from a bundle, the content hash it computes (the bundle's
-alone: no pack is read for it) is checked against the one its index gave (`contents::verify`), and recorded. A bundle
+alone: no ROM is read for it) is checked against the one its index gave (`contents::verify`), and recorded. A bundle
 that plays another is taken out of the store (the reason in the log), and the game loads its next newest; with none,
 it can't be played.
 
@@ -4049,6 +4072,8 @@ against the content (`nettai_content::load::asset_numbers`): they have every ass
 the content defines with as many animations, each of as many frames (a frame is drawn by the battle's animation and
 frame). Assets that haven't are a load failure naming the sprite or asset (content whose recipe doesn't extract what
 it names). Where the content times a sprite otherwise than the ROMs do, the log says so (the content's timing plays).
+Before a bundle is published, `nettai-content check <game>` holds the same to it, and fails on a timing that isn't
+the ROMs' (docs/tools.md, "The content check").
 
 **Replays** (§16). A replay plays on the content its head names: the game's own where the hashes match, else the
 store's bundle that plays its hash, or the one the game's index lists for it, downloaded while the replay is
@@ -4086,8 +4111,8 @@ leaves tidied); a bundle's hash checked against its index's; the download from a
 this machine (the catalog's games this app plays, a game with nothing published for the line, the newest bundle
 downloaded with its progress and stored with its index's hash, then had, found by its hash, a bundle that isn't its
 id and one that isn't there refused with nothing stored); the repository's exe6 as a bundle on such a site,
-downloaded and loaded from the store with its pack, playing its published hash (`--ignored a_real_bundle`, with
-`$NETTAI_PACKS`); the games as their content downloads (added from the catalog, the bar's progress, a failure told
+downloaded, stored and hashed from the store, playing its published hash (`--ignored a_real_bundle`; it loaded the
+game with a pack when it first ran, and hashes the content alone since); the games as their content downloads (added from the catalog, the bar's progress, a failure told
 once, nothing published told as such); where a replay plays; two lobbies whose content differs waiting, one taking
 the other's and agreeing, a refusal ending both; two lobbies whose pools differ waiting, the one that took the newest
 and changed nothing waiting on, the other playing the same pool and both agreeing, a pool that changes told again, a
@@ -4095,8 +4120,8 @@ side that couldn't have something refusing for it; and the same between two play
 own, served on this machine (`contents::tests`): pools that differ through BN5's revision, the side without it
 downloading it and its game's pool rebuilt, both agreeing, and a side whose download fails refused, the reason
 naming BN5's bundle. The live sites (`--ignored the_sites_give_each_games_content`) ran
-while bundles were published for 0.11 (2026-10-26): each game's newest downloaded, loaded with the checkout's packs,
-and playing its index's hash. Not run: the app itself on a store (a packaged build), the browser, a lobby between two
+while bundles were published for 0.11 (2026-10-26): each game's newest downloaded, loaded with the checkout's packs
+(then), and playing its index's hash. Not run: the app itself on a store (a packaged build), the browser, a lobby between two
 apps of different revisions or pools (the window's part, `Play::follow_content`: the game loaded again behind the
 bar), and a replay played on another revision's content in the window.
 

@@ -21,7 +21,8 @@ crates.
 Related: [core-content-boundary.md](core-content-boundary.md) (the core, ruleset and content layers as built),
 [content-model-v2.md](content-model-v2.md) (content by name, compat apart), [scripting.md](scripting.md) §6–§7
 (the Luau runtime's cost), [rollback.md](rollback.md) (snapshots, digest, perspective),
-[content-pack.md](content-pack.md) and [asset-formats.md](asset-formats.md) (packs).
+[content-pack.md](content-pack.md) (the content root) and [asset-formats.md](asset-formats.md) (the assets, extracted
+from the ROMs; until 2026-10-27, packs).
 
 ## Decided (2026-10-01)
 
