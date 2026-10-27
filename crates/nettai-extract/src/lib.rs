@@ -215,7 +215,7 @@ impl Extraction {
         &self,
         names: &nettai_content_api::AssetNames,
         sprites: &[nettai_content_api::SpriteDef],
-        numbers: &nettai_content_api::PackAssets,
+        numbers: &nettai_content_api::AssetNumbers,
     ) -> Vec<String> {
         timing_differences(&self.timing, &self.graphics, names, sprites, numbers)
     }
@@ -345,7 +345,7 @@ fn timing_differences(
     graphics: &nettai_assets::Bundle,
     names: &nettai_content_api::AssetNames,
     sprites: &[nettai_content_api::SpriteDef],
-    numbers: &nettai_content_api::PackAssets,
+    numbers: &nettai_content_api::AssetNumbers,
 ) -> Vec<String> {
     const LAST: u8 = 0x80;
     const LOOP: u8 = 0x40;
@@ -411,7 +411,7 @@ fn timing_differences(
 mod tests {
     use super::*;
     use nettai_assets::{SpriteFrame, SpritePart, SpriteSheet};
-    use nettai_content_api::{PackAssets, PackSprite, SpriteAnimation, SpriteDef};
+    use nettai_content_api::{AssetNumbers, SpriteNumber, SpriteAnimation, SpriteDef};
 
     /// A sprite the content times otherwise than the ROMs is named, with the animation: its durations, its loop,
     /// a flag the content can't state, and a part's place.
@@ -428,7 +428,7 @@ mod tests {
         let graphics = nettai_assets::Bundle { sprites: vec![sheet], ..Default::default() };
         let timing = BTreeMap::from([((0x0C, 2), vec![vec![(3, 0), (4, 0xC0)], vec![(6, 0x80)]])]);
         let names = nettai_content_api::AssetNames { sprites: vec!["bomb".into()], ..Default::default() };
-        let numbers = PackAssets { sprites: vec![PackSprite { category: 0x0C, index: 2 }], ..Default::default() };
+        let numbers = AssetNumbers { sprites: vec![SpriteNumber { category: 0x0C, index: 2 }], ..Default::default() };
         let def = |animations: &[(&[u8], bool)], part: Vec<Vec<(i8, i8)>>| SpriteDef {
             animations: animations.iter().map(|&(frames, looping)| SpriteAnimation { frames: frames.to_vec(), looping }).collect(),
             parts: BTreeMap::from([(1, part)]),

@@ -25,7 +25,7 @@ use crate::names::AssetNames;
 use crate::report::Report;
 use crate::{custom, hud, sound, sprite, stage};
 use nettai_assets::Bundle;
-use nettai_content_api::PackAssets;
+use nettai_content_api::AssetNumbers;
 use m4a::SoundBank;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -328,12 +328,12 @@ fn battle_content_of(read: crate::index::Read, report: Report) -> Result<(nettai
 /// the content's time the battle, and a content can be changed as a mod
 /// is); and every other asset the content names must be the pack's. A pack
 /// that isn't so is an error naming each asset it lacks or has otherwise.
-pub fn pack_assets(content: &nettai_battle::Content, pack: &Path) -> Result<(PackAssets, Report), Report> {
+pub fn pack_assets(content: &nettai_battle::Content, pack: &Path) -> Result<(AssetNumbers, Report), Report> {
     let mut report = Report::default();
     let Some(index) = crate::names::read_index(pack, &mut report) else { return Err(report) };
     let Some(frames) = sprite::frame_counts(pack, &mut report) else { return Err(report) };
     let at = pack.display().to_string();
-    let numbers = match PackAssets::new(&content.assets, &index) {
+    let numbers = match AssetNumbers::new(&content.assets, &index) {
         Ok(n) => n,
         Err(missing) => {
             for m in missing {
@@ -470,11 +470,11 @@ pub struct Loaded {
     /// Its asset pack's directory: the frontend's graphics and sound.
     pub pack: PathBuf,
     /// What the pack holds of the content's assets ([`pack_assets`]).
-    pub assets: PackAssets,
+    pub assets: AssetNumbers,
     /// The pack's own index: every asset it has, by its name there (what a
     /// frontend plays of the pack that no content names: the app's title
     /// music).
-    pub index: nettai_content_api::PackIndex,
+    pub index: nettai_content_api::AssetIndex,
     /// The content directory it came from (its game pack's strings tables
     /// are a frontend's other languages: `crate::locale::load_for`).
     pub dir: PathBuf,
@@ -606,7 +606,7 @@ mod tests {
     fn pack_of(test: &str, c: &nettai_battle::Content, frames: impl Fn(&str, usize) -> Option<usize>) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
         let _ = nettai_platform::fs::remove_dir_all(&dir);
-        let index = nettai_battle::content::testing::pack_index();
+        let index = nettai_battle::content::testing::asset_index();
         let (name, text) = crate::names::index_file(&index);
         write_file(&dir, &name, &text).unwrap();
         for (h, name) in c.assets.sprites.iter().enumerate() {
@@ -636,13 +636,13 @@ mod tests {
         let (assets, report) = pack_assets(&c, &dir).unwrap_or_else(|r| panic!("{r}"));
         assert!(!report.has_errors(), "{report}");
         assert_eq!(assets.sprite(navi), Some(nettai_battle::content::testing::NAVI_SPRITE));
-        assert_eq!(assets, nettai_battle::content::testing::pack_assets(&c));
+        assert_eq!(assets, nettai_battle::content::testing::asset_numbers(&c));
         // A sprite whose animation has another number of frames.
         let other = pack_of("pack-frames", &c, |name, i| (name == "test-navi" && i == 3).then_some(5));
         let r = pack_assets(&c, &other).unwrap_err();
         assert!(r.to_string().contains("sprite test-navi: the content's animations have"), "{r}");
         // An asset the pack hasn't.
-        let mut index = nettai_battle::content::testing::pack_index();
+        let mut index = nettai_battle::content::testing::asset_index();
         index.sounds.remove("test-stage-music");
         let (name, text) = crate::names::index_file(&index);
         write_file(&other, &name, &text).unwrap();

@@ -127,8 +127,8 @@ pub fn passed_x(new: i32, old: i32, target: i32, side: u8) -> bool {
 /// A sprite, as the engine names it: a handle, its place among the sprites
 /// the content defines (`AssetNames::sprites`, in byte order;
 /// docs/design/rules-in-luau.md §7.4). What a pack calls it (its category
-/// and index) is [`PackSprite`], which frontends read through a pack's
-/// assets (`PackAssets`); the simulation never does.
+/// and index) is [`SpriteNumber`], which frontends read through a pack's
+/// assets (`AssetNumbers`); the simulation never does.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct SpriteId(pub u16);
@@ -143,38 +143,38 @@ impl SpriteId {
 /// sprite table. Written `"CC-II"` in hex, as its `sprite.json` in a
 /// content pack holds it (its folder there is its name).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PackSprite {
+pub struct SpriteNumber {
     pub category: u8,
     pub index: u8,
 }
 
-impl std::fmt::Display for PackSprite {
+impl std::fmt::Display for SpriteNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:02x}-{:02x}", self.category, self.index)
     }
 }
 
-impl std::str::FromStr for PackSprite {
+impl std::str::FromStr for SpriteNumber {
     type Err = String;
-    fn from_str(s: &str) -> Result<PackSprite, String> {
+    fn from_str(s: &str) -> Result<SpriteNumber, String> {
         let bad = || format!("{s:?} is not a sprite id (CC-II in hex)");
         let (c, i) = s.split_once('-').ok_or_else(bad)?;
         if c.len() != 2 || i.len() != 2 {
             return Err(bad());
         }
         let hex = |t: &str| u8::from_str_radix(t, 16).map_err(|_| bad());
-        Ok(PackSprite { category: hex(c)?, index: hex(i)? })
+        Ok(SpriteNumber { category: hex(c)?, index: hex(i)? })
     }
 }
 
-impl serde::Serialize for PackSprite {
+impl serde::Serialize for SpriteNumber {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         s.collect_str(self)
     }
 }
 
-impl<'de> serde::Deserialize<'de> for PackSprite {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<PackSprite, D::Error> {
+impl<'de> serde::Deserialize<'de> for SpriteNumber {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<SpriteNumber, D::Error> {
         let s = <String as serde::Deserialize>::deserialize(d)?;
         s.parse().map_err(serde::de::Error::custom)
     }

@@ -422,7 +422,7 @@ pub fn check_emotions(s: &Strings, emotions: &[&str], own: bool) -> Vec<String> 
 /// pack, whose index is `pack`. With no pack, only that the own language
 /// names every background the content's modules name (whether the pack has
 /// the others the tables name is the pack's to say).
-pub fn check_games(dir: &Path, c: &nettai_battle::Content, pack: Option<&nettai_content_api::PackIndex>, r: &mut crate::report::Report) {
+pub fn check_games(dir: &Path, c: &nettai_battle::Content, pack: Option<&nettai_content_api::AssetIndex>, r: &mut crate::report::Report) {
     use nettai_content_api::{AssetKind, AssetNames};
     let own_names = load(&dir.join(c.game()), OWN).ok().flatten().map(|s| s.backgrounds.keys().cloned().collect::<Vec<_>>()).unwrap_or_default();
     let backgrounds: Vec<&str> = match pack {

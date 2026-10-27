@@ -475,7 +475,7 @@ impl Compat {
         use nettai_content_api::AssetKind;
         let a = &self.assets;
         match kind {
-            AssetKind::Sprite => a.sprites.get(name).and_then(|s| s.parse::<nettai_content_api::PackSprite>().ok()).map(|s| u16::from_be_bytes([s.category, s.index])),
+            AssetKind::Sprite => a.sprites.get(name).and_then(|s| s.parse::<nettai_content_api::SpriteNumber>().ok()).map(|s| u16::from_be_bytes([s.category, s.index])),
             AssetKind::Sound => a.sounds.get(name).copied(),
             AssetKind::Banner => a.banners.get(name).map(|&n| n as u16),
             AssetKind::Background => a.backgrounds.get(name).map(|&n| n as u16),
@@ -494,7 +494,7 @@ impl Compat {
             AssetKind::Sprite => a
                 .sprites
                 .iter()
-                .find(|(_, v)| v.parse::<nettai_content_api::PackSprite>().is_ok_and(|s| u16::from_be_bytes([s.category, s.index]) == n))
+                .find(|(_, v)| v.parse::<nettai_content_api::SpriteNumber>().is_ok_and(|s| u16::from_be_bytes([s.category, s.index]) == n))
                 .map(|(k, _)| k.as_str()),
             AssetKind::Sound => a.sounds.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.as_str()),
             AssetKind::Banner => find(&a.banners, n),

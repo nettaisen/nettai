@@ -494,7 +494,7 @@ fn the_asset_index_lists_every_asset_by_name() {
     // A banner the HUD doesn't draw is named all the same.
     names.banners.insert(0xA0, "heatman-win".into());
     let index = names.index(&b, &[0, 1, 2].into());
-    assert_eq!(index.sprites["bomb"], nettai_content_api::PackSprite { category: first.category, index: first.index });
+    assert_eq!(index.sprites["bomb"], nettai_content_api::SpriteNumber { category: first.category, index: first.index });
     assert_eq!(index.sprites.len(), b.sprites.len());
     let sounds: Vec<(&str, u16)> = index.sounds.iter().map(|(k, &v)| (k.as_str(), v)).collect();
     assert_eq!(sounds, [("no-music", 0x63), ("sound-000", 0), ("sound-002", 2), ("throw", 1)]);

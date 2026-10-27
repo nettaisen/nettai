@@ -1,7 +1,7 @@
 //! The engine's assets as their packs hold them (docs/design/rules-in-luau.md
 //! §7.4). The engine knows an asset by its handle over the names the
 //! content gives; the frontend draws a sprite, banner, mugshot or
-//! background by the game's pack's own number for it ([`PackAssets`], which
+//! background by the game's pack's own number for it ([`AssetNumbers`], which
 //! the loader made when it checked the pack against the content), from that
 //! pack's graphics ([`Packs`]). A round may
 //! be drawn on another game's background (the content's background pool:
@@ -9,7 +9,7 @@
 //! holds: those are [`OtherBackgrounds`], beside the packs.
 
 use nettai_assets::{Background, Bundle, Hud, SpriteSheet};
-use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackAssets, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, AssetNumbers, PackId, SpriteId};
 use nettai_battle::setup::BattleSettings;
 use nettai_content_api::AssetKind;
 use std::collections::BTreeMap;
@@ -55,7 +55,7 @@ pub struct PackGraphics {
     bundles: Vec<Arc<Bundle>>,
     own: PackId,
     others: Arc<OtherBackgrounds>,
-    assets: Arc<PackAssets>,
+    assets: Arc<AssetNumbers>,
 }
 
 impl PackGraphics {
@@ -93,12 +93,12 @@ impl PackGraphics {
 
     /// These graphics, drawing the content's assets as the game's pack
     /// numbers them (`nettai_content::pack::pack_assets`).
-    pub fn with_assets(self, assets: Arc<PackAssets>) -> PackGraphics {
+    pub fn with_assets(self, assets: Arc<AssetNumbers>) -> PackGraphics {
         PackGraphics { assets, ..self }
     }
 
     /// The game's pack's numbers for the content's assets.
-    pub fn assets(&self) -> &Arc<PackAssets> {
+    pub fn assets(&self) -> &Arc<AssetNumbers> {
         &self.assets
     }
 
@@ -112,7 +112,7 @@ impl PackGraphics {
 static NO_OTHERS: std::sync::LazyLock<OtherBackgrounds> = std::sync::LazyLock::new(OtherBackgrounds::default);
 
 /// No asset's number.
-static NO_ASSETS: std::sync::LazyLock<PackAssets> = std::sync::LazyLock::new(PackAssets::default);
+static NO_ASSETS: std::sync::LazyLock<AssetNumbers> = std::sync::LazyLock::new(AssetNumbers::default);
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
 /// order), and the match's game's pack's (the frontend's own), which draws
@@ -124,7 +124,7 @@ pub struct Packs<'a> {
     /// Other games' backgrounds (the background pool's).
     others: &'a OtherBackgrounds,
     /// The game's pack's numbers for the content's assets.
-    assets: &'a PackAssets,
+    assets: &'a AssetNumbers,
     /// The console's version (`Renderer::console_version`): a chip of
     /// another version's shows that version's ROM's art, which this console
     /// draws otherwise (`ChipArt::version`).
@@ -151,12 +151,12 @@ impl<'a> Packs<'a> {
 
     /// These packs, drawing the content's assets as the game's pack numbers
     /// them.
-    pub fn with_assets(self, assets: &'a PackAssets) -> Packs<'a> {
+    pub fn with_assets(self, assets: &'a AssetNumbers) -> Packs<'a> {
         Packs { assets, ..self }
     }
 
     /// The game's pack's numbers for the content's assets.
-    pub fn assets(&self) -> &'a PackAssets {
+    pub fn assets(&self) -> &'a AssetNumbers {
         self.assets
     }
 
@@ -309,7 +309,7 @@ mod tests {
         let c = content();
         let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
         let a = bundle(1, keys::local(&chip));
-        let assets = testing::pack_assets(&c);
+        let assets = testing::asset_numbers(&c);
         let packs = Packs::one(&a).with_assets(&assets);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
         assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test-navi"))), 1);
@@ -328,7 +328,7 @@ mod tests {
         let mut c = content();
         let stage = c.stage_by_key(testing::LINK_BATTLE);
         let own = c.stage(stage).background;
-        let assets = testing::pack_assets(&c);
+        let assets = testing::asset_numbers(&c);
         let number = assets.number(AssetKind::Background, own.0).expect("the stage's background's number") as usize;
         c.background_pool = nettai_battle::content::BackgroundPool::new([("zzz".to_string(), "far-area".to_string()), ("zzz".to_string(), "gone".to_string())]);
         let far = c.background_handle("zzz", "far-area").unwrap();

@@ -47,7 +47,7 @@ pub use api::{
 pub use api::AfterimageSpec;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 pub use api::{ObstacleHold, ObstaclePush, WindSource};
-pub use assets::{AssetKind, AssetNames, DefinedAssets, PackAssets, PackIndex, SpriteAnimation, SpriteDef};
+pub use assets::{AssetIndex, AssetKind, AssetNames, AssetNumbers, DefinedAssets, SpriteAnimation, SpriteDef};
 pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions, GAME_LISTS};
 pub use packs::{PackKind, PackManifest};
@@ -64,4 +64,4 @@ pub use state::{
     Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_ARRAY, MAX_LIST, Place, ROLE_MARK, SMALL_BLOCK, Schema, SmallBlock, StateArena, StateId,
     StateMut, StateRef, Value, is_code, is_collection_name,
 };
-pub use types::{CANONICAL_SIDE, InPack, ObjectRef, PackId, PackSprite, PanelPos, Pool, SpriteId, Vec3, passed, passed_x, side_sign};
+pub use types::{CANONICAL_SIDE, InPack, ObjectRef, PackId, PanelPos, Pool, SpriteId, SpriteNumber, Vec3, passed, passed_x, side_sign};

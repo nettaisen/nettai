@@ -12,7 +12,7 @@
 //! match plays one game, so a name is its game's: docs/design/
 //! content-model-v2.md §4.0). What the pack calls each (a sprite's
 //! category and index, a sound's song-table entry) is the pack's index
-//! ([`PackIndex`], its `assets.toml`), and [`PackAssets`] gives each of a
+//! ([`AssetIndex`], its `assets.toml`), and [`AssetNumbers`] gives each of a
 //! content's handles its number in a pack, for whoever draws or plays them:
 //! the frontends and the audio. The engine knows an asset by its handle
 //! alone.
@@ -20,7 +20,7 @@
 use std::collections::BTreeMap;
 
 use crate::keys;
-use crate::types::PackSprite;
+use crate::types::SpriteNumber;
 
 /// A kind of asset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -171,15 +171,15 @@ pub struct DefinedAssets {
 /// One pack's own index: its assets by unqualified name (as its
 /// `assets.toml` holds them), each with the pack's number for it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PackIndex {
-    pub sprites: BTreeMap<String, PackSprite>,
+pub struct AssetIndex {
+    pub sprites: BTreeMap<String, SpriteNumber>,
     pub sounds: BTreeMap<String, u16>,
     pub banners: BTreeMap<String, u8>,
     pub backgrounds: BTreeMap<String, u8>,
     pub mugshots: BTreeMap<String, u8>,
 }
 
-impl PackIndex {
+impl AssetIndex {
     /// The pack's number for `kind` asset `name` (a sprite's category and
     /// index as one, `0xCCII`).
     pub fn number(&self, kind: AssetKind, name: &str) -> Option<u16> {
@@ -198,18 +198,18 @@ impl PackIndex {
 /// entry, a banner's, background's or mugshot's id). What a frontend draws
 /// and the audio plays by; the simulation never reads it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PackAssets {
-    pub sprites: Vec<PackSprite>,
+pub struct AssetNumbers {
+    pub sprites: Vec<SpriteNumber>,
     pub sounds: Vec<u16>,
     pub banners: Vec<u8>,
     pub backgrounds: Vec<u8>,
     pub mugshots: Vec<u8>,
 }
 
-impl PackAssets {
+impl AssetNumbers {
     /// Content `names`' assets in the pack whose index is `index`; the
     /// names it hasn't, each as `kind name`, when there are any.
-    pub fn new(names: &AssetNames, index: &PackIndex) -> Result<PackAssets, Vec<String>> {
+    pub fn new(names: &AssetNames, index: &AssetIndex) -> Result<AssetNumbers, Vec<String>> {
         let mut missing = Vec::new();
         let mut each = |kind: AssetKind| -> Vec<u16> {
             names
@@ -223,7 +223,7 @@ impl PackAssets {
                 })
                 .collect()
         };
-        let sprites = each(AssetKind::Sprite).into_iter().map(|n| PackSprite { category: (n >> 8) as u8, index: n as u8 }).collect();
+        let sprites = each(AssetKind::Sprite).into_iter().map(|n| SpriteNumber { category: (n >> 8) as u8, index: n as u8 }).collect();
         let sounds = each(AssetKind::Sound);
         let narrow = |v: Vec<u16>| v.into_iter().map(|n| n as u8).collect();
         let banners = narrow(each(AssetKind::Banner));
@@ -232,11 +232,11 @@ impl PackAssets {
         if !missing.is_empty() {
             return Err(missing);
         }
-        Ok(PackAssets { sprites, sounds, banners, backgrounds, mugshots })
+        Ok(AssetNumbers { sprites, sounds, banners, backgrounds, mugshots })
     }
 
     /// Sprite handle `h`'s sprite in the pack.
-    pub fn sprite(&self, h: u16) -> Option<PackSprite> {
+    pub fn sprite(&self, h: u16) -> Option<SpriteNumber> {
         self.sprites.get(h as usize).copied()
     }
 
@@ -277,14 +277,14 @@ mod tests {
         assert_eq!(names.handle(AssetKind::Sprite, "bomb"), Some(1));
         assert_eq!(names.handle(AssetKind::Sound, "bomb"), None);
         assert_eq!(names.name(AssetKind::Sound, 0), Some("throw"));
-        let mut index = PackIndex::default();
-        index.sprites.insert("bomb".into(), PackSprite { category: 0x0C, index: 2 });
-        index.sprites.insert("aqua-tower".into(), PackSprite { category: 0x10, index: 1 });
-        index.sprites.insert("unused".into(), PackSprite { category: 0x10, index: 9 });
-        assert_eq!(PackAssets::new(&names, &index), Err(vec!["sound throw".to_string()]));
+        let mut index = AssetIndex::default();
+        index.sprites.insert("bomb".into(), SpriteNumber { category: 0x0C, index: 2 });
+        index.sprites.insert("aqua-tower".into(), SpriteNumber { category: 0x10, index: 1 });
+        index.sprites.insert("unused".into(), SpriteNumber { category: 0x10, index: 9 });
+        assert_eq!(AssetNumbers::new(&names, &index), Err(vec!["sound throw".to_string()]));
         index.sounds.insert("throw".into(), 0xB2);
-        let pack = PackAssets::new(&names, &index).unwrap();
-        assert_eq!(pack.sprite(1), Some(PackSprite { category: 0x0C, index: 2 }));
+        let pack = AssetNumbers::new(&names, &index).unwrap();
+        assert_eq!(pack.sprite(1), Some(SpriteNumber { category: 0x0C, index: 2 }));
         assert_eq!(pack.number(AssetKind::Sprite, 0), Some(0x1001));
         assert_eq!(pack.sound(0), Some(0xB2));
     }

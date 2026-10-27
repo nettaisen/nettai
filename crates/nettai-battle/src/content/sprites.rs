@@ -4,9 +4,9 @@
 use serde::{Deserialize, Serialize};
 
 /// A sprite: its handle over the sprites the content defines (what a pack
-/// calls it, a `PackSprite`, is the pack's: `PackAssets`; docs/design/
+/// calls it, a `SpriteNumber`, is the pack's: `AssetNumbers`; docs/design/
 /// rules-in-luau.md §7.4). The asset types come along for the frontends.
-pub use nettai_content_api::{AssetNames, InPack, PackAssets, PackId, PackIndex, PackSprite, SpriteAnimation, SpriteDef, SpriteId};
+pub use nettai_content_api::{AssetNames, InPack, AssetNumbers, PackId, AssetIndex, SpriteNumber, SpriteAnimation, SpriteDef, SpriteId};
 
 /// One animation frame's timing, as the sprite steps it: how long it
 /// shows, and its flags (`object::sprite::FRAME_LAST` on an animation's last

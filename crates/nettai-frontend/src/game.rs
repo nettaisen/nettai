@@ -14,7 +14,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{PackAssets, PackId};
+use nettai_battle::content::{AssetNumbers, PackId};
 use nettai_content::locale::{self, Strings};
 use nettai_content::pack;
 pub use nettai_content::report::Report;
@@ -112,9 +112,9 @@ pub struct Game {
     pub own: PackId,
     /// What the game's pack holds of the content's assets (checked against
     /// the content as it loaded: `nettai_content::pack::pack_assets`).
-    pub assets: Arc<PackAssets>,
+    pub assets: Arc<AssetNumbers>,
     /// The game's pack's own index: every asset it has, by its name there.
-    pub index: Arc<nettai_content_api::PackIndex>,
+    pub index: Arc<nettai_content_api::AssetIndex>,
     /// The other games' packs found beside its own, which the background
     /// pool's other backgrounds are drawn from ([`Game::graphics`]).
     pub others: Vec<pack::Found>,
@@ -254,7 +254,7 @@ pub struct Graphics {
     /// The game's own pack.
     pub own: PackId,
     /// What the game's pack holds of the content's assets.
-    pub assets: Arc<PackAssets>,
+    pub assets: Arc<AssetNumbers>,
     pub report: Report,
 }
 

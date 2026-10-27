@@ -15,7 +15,7 @@
 //! place of EXE6's module for it, all with the made-up timing of
 //! testdata/content/sprite_timing.luau. Its asset handles are the names its
 //! modules give; the numbers a frontend's test draws them by are a made-up
-//! pack's ([`pack_index`], [`pack_assets`]).
+//! pack's ([`asset_index`], [`asset_numbers`]).
 //!
 //! Its scripts are this repository's EXE6 scripts (content/exe6, the source
 //! overlay), read from the repository, and its own modules
@@ -118,24 +118,24 @@ pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 pub const STAGE_SONG: u16 = 0x16;
 
 /// The navi's sprite (base form), as the test pack holds it.
-pub const NAVI_SPRITE: PackSprite = PackSprite { category: 0, index: 0 };
+pub const NAVI_SPRITE: SpriteNumber = SpriteNumber { category: 0, index: 0 };
 
-/// The test content's assets as its made-up pack numbers them ([`pack_index`]: EXE6's numbers where tests look at
+/// The test content's assets as its made-up pack numbers them ([`asset_index`]: EXE6's numbers where tests look at
 /// them, made-up ones for the rest): what a frontend's test draws them by.
-pub fn pack_assets(c: &Content) -> PackAssets {
-    PackAssets::new(&c.assets, &pack_index_of(c)).unwrap_or_else(|missing| panic!("the test pack has no {}", missing.join(", ")))
+pub fn asset_numbers(c: &Content) -> AssetNumbers {
+    AssetNumbers::new(&c.assets, &asset_index_of(c)).unwrap_or_else(|missing| panic!("the test pack has no {}", missing.join(", ")))
 }
 
 /// Sprite `id` as the test pack holds it (several names may be one sprite of the pack: tests compare what the pack
 /// holds).
-pub fn pack_sprite(c: &Content, id: SpriteId) -> PackSprite {
-    pack_assets(c).sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0))
+pub fn sprite_number(c: &Content, id: SpriteId) -> SpriteNumber {
+    asset_numbers(c).sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0))
 }
 
 /// The test pack's song `n` as the test content names it (its handle).
 pub fn sound(n: u16) -> crate::sound::SoundId {
     let c = content();
-    let numbers = pack_assets(&c);
+    let numbers = asset_numbers(&c);
     crate::sound::SoundId(numbers.sounds.iter().position(|&s| s == n).unwrap_or_else(|| panic!("the test content names no song {n:#x}")) as u16)
 }
 
@@ -444,9 +444,9 @@ pub fn strings() -> crate::content::strings::Strings {
 /// A made-up pack index for `modules`: every name they give an
 /// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
 /// ROM-derived).
-pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
+pub fn asset_index_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetIndex {
     use nettai_content_api::AssetKind;
-    let mut a = nettai_content_api::PackIndex::default();
+    let mut a = nettai_content_api::AssetIndex::default();
     let mut n = 0u16;
     for source in modules.values() {
         for kind in AssetKind::ALL {
@@ -458,7 +458,7 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
                 let id = n;
                 match kind {
                     AssetKind::Sprite => {
-                        a.sprites.entry(name.into()).or_insert(PackSprite { category: 0x7F, index: id as u8 });
+                        a.sprites.entry(name.into()).or_insert(SpriteNumber { category: 0x7F, index: id as u8 });
                     }
                     AssetKind::Sound => {
                         // (Past the song tables' numbers, which tests look sounds up by.)
@@ -483,21 +483,21 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
 /// The test content's made-up pack's index: the EXE6 names its modules use
 /// (with EXE6's numbers where its tests look at them, made-up assets for
 /// the rest) and a few made-up ones for the test pack.
-pub fn pack_index() -> nettai_content_api::PackIndex {
-    pack_index_with(&scripts().available())
+pub fn asset_index() -> nettai_content_api::AssetIndex {
+    asset_index_with(&scripts().available())
 }
 
-/// [`pack_index`] for content `c` (a test content with modules of its own).
-fn pack_index_of(c: &Content) -> nettai_content_api::PackIndex {
+/// [`asset_index`] for content `c` (a test content with modules of its own).
+fn asset_index_of(c: &Content) -> nettai_content_api::AssetIndex {
     let mut modules = c.scripts.available();
     modules.extend(c.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
-    pack_index_with(&modules)
+    asset_index_with(&modules)
 }
 
 /// The test pack's index, with names of `modules` too.
-fn pack_index_with(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
+fn asset_index_with(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetIndex {
     let mut a = numbered_assets();
-    let used = pack_index_used(modules);
+    let used = asset_index_used(modules);
     for (name, id) in used.sprites {
         a.sprites.entry(name).or_insert(id);
     }
@@ -616,8 +616,8 @@ const ROLE_BANNERS: &[(&str, u8)] = &[
 ];
 
 /// The test content's assets with EXE6's numbers.
-fn numbered_assets() -> nettai_content_api::PackIndex {
-    let mut a = nettai_content_api::PackIndex::default();
+fn numbered_assets() -> nettai_content_api::AssetIndex {
+    let mut a = nettai_content_api::AssetIndex::default();
     for (role, id) in ROLE_SOUNDS {
         a.sounds.insert(format!("test-sound-{role}"), *id);
     }
@@ -625,7 +625,7 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
         a.sounds.insert(format!("test-music-{role}"), *id);
     }
     for (role, (category, index)) in ROLE_SPRITES {
-        a.sprites.insert(format!("test-sprite-{role}"), PackSprite { category: *category, index: *index });
+        a.sprites.insert(format!("test-sprite-{role}"), SpriteNumber { category: *category, index: *index });
     }
     for (role, id) in ROLE_BANNERS {
         a.banners.insert(format!("test-banner-{role}"), *id);
@@ -634,11 +634,11 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
     a.sounds.insert("test-stage-music".into(), STAGE_SONG);
     a.backgrounds.insert("test-background".into(), 0);
     // The test navis' (testdata/content/navis/test.luau).
-    a.sprites.insert("test-megaman".into(), PackSprite { category: 8, index: 0 });
+    a.sprites.insert("test-megaman".into(), SpriteNumber { category: 8, index: 0 });
     a.sprites.insert("test-navi".into(), NAVI_SPRITE);
     a.banners.insert("test-win".into(), 0x40);
     a.banners.insert("test-deleted".into(), 0x44);
-    let sprite = |c, i| PackSprite { category: c, index: i };
+    let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
         ("test-burst", sprite(0x14, 0)),
         ("test-spark", sprite(0x14, 1)),
@@ -856,8 +856,8 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
 
 /// The asset names MegaMan's weapon definitions and the forms' kinds use
 /// (content model v2, step 8e), with EXE6's numbers.
-fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
-    let sprite = |c, i| PackSprite { category: c, index: i };
+fn form_weapon_assets(a: &mut nettai_content_api::AssetIndex) {
+    let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
         ("aqua-surge", sprite(0x10, 0x2E)),
         ("whirlwind", sprite(0x10, 0x44)),
@@ -894,8 +894,8 @@ fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
 
 /// The asset names the standard chip actions' modules use (content model
 /// v2, step 8g), with EXE6's numbers.
-fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
-    let sprite = |c, i| PackSprite { category: c, index: i };
+fn standard_chip_assets(a: &mut nettai_content_api::AssetIndex) {
+    let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
         ("gust", sprite(0x0C, 0x2E)),
         ("wind-rack", sprite(0x0C, 0x27)),
@@ -922,8 +922,8 @@ fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
 
 /// The asset names the navi chips' modules use (content model v2), with
 /// EXE6's numbers.
-fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
-    let sprite = |c, i| PackSprite { category: c, index: i };
+fn navi_chip_assets(a: &mut nettai_content_api::AssetIndex) {
+    let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
         ("bass-anly", sprite(0x08, 0x13)),
         ("lightning", sprite(0x14, 0x14)),

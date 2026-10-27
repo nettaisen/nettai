@@ -50,7 +50,7 @@ pub struct Songs(pub Vec<nettai_battle::content::InPack<u16>>);
 impl Songs {
     /// A content's sounds' songs in its game's pack (`assets`: what the
     /// pack holds of the content's assets), the pack the first loaded.
-    pub fn of(assets: &nettai_battle::content::PackAssets) -> Songs {
+    pub fn of(assets: &nettai_battle::content::AssetNumbers) -> Songs {
         Songs(assets.sounds.iter().map(|&id| nettai_battle::content::InPack { pack: Default::default(), id }).collect())
     }
 

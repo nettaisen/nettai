@@ -2,13 +2,13 @@
 //! checked once a run as the drawing code's are (`nettai_render::lookups`,
 //! `nettai_render::audit`), in the same `Problems`.
 
-use nettai_battle::content::{Content, PackAssets};
+use nettai_battle::content::{Content, AssetNumbers};
 use nettai_battle::{Battle, SoundCue};
 use nettai_content_api::AssetKind;
 use nettai_render::audit::{Lookup, Problems};
 
 /// Check that the pack's sound has the song a cue starts.
-pub fn check_cue(b: &Battle, assets: &PackAssets, banks: &[std::sync::Arc<m4a::SoundBank>], cue: SoundCue, problems: &mut Problems) {
+pub fn check_cue(b: &Battle, assets: &AssetNumbers, banks: &[std::sync::Arc<m4a::SoundBank>], cue: SoundCue, problems: &mut Problems) {
     match cue {
         SoundCue::Effect(id) => sound(&b.content, assets, banks, id.0, false, problems),
         SoundCue::Music(id) => sound(&b.content, assets, banks, id.0, true, problems),
@@ -20,7 +20,7 @@ pub fn check_cue(b: &Battle, assets: &PackAssets, banks: &[std::sync::Arc<m4a::S
 /// `PackId`; `assets`, the pack's numbers for the content's assets), for an
 /// effect or music (`music`: the no-music song stops the music and has
 /// none).
-pub fn sound(c: &Content, assets: &PackAssets, banks: &[std::sync::Arc<m4a::SoundBank>], h: u16, music: bool, problems: &mut Problems) {
+pub fn sound(c: &Content, assets: &AssetNumbers, banks: &[std::sync::Arc<m4a::SoundBank>], h: u16, music: bool, problems: &mut Problems) {
     if !problems.lookup(Lookup::Sound(h)) {
         return;
     }

@@ -193,7 +193,7 @@ pub struct Content {
     /// its module defines it), whose places are their handles: made by
     /// [`Content::define`] (docs/design/content-model-v2.md §6.3). No pack
     /// is read: what a pack numbers each is a frontend's
-    /// (`nettai_content_api::PackAssets`).
+    /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,

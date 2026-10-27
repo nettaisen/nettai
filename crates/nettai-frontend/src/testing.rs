@@ -93,11 +93,11 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
 
 /// A made-up pack's numbers for `content`'s assets: each its handle (as
 /// [`audio`]'s songs are).
-pub fn numbered_by_handle(content: &Content) -> nettai_battle::content::PackAssets {
+pub fn numbered_by_handle(content: &Content) -> nettai_battle::content::AssetNumbers {
     let a = &content.assets;
     let small = |n: usize| (0..n).map(|h| h as u8).collect();
-    nettai_battle::content::PackAssets {
-        sprites: (0..a.sprites.len()).map(|h| nettai_battle::content::PackSprite { category: (h >> 8) as u8, index: h as u8 }).collect(),
+    nettai_battle::content::AssetNumbers {
+        sprites: (0..a.sprites.len()).map(|h| nettai_battle::content::SpriteNumber { category: (h >> 8) as u8, index: h as u8 }).collect(),
         sounds: (0..a.sounds.len() as u16).collect(),
         banners: small(a.banners.len()),
         backgrounds: small(a.backgrounds.len()),

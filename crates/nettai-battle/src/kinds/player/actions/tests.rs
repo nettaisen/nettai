@@ -590,7 +590,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     // The sword's blade (lib/swords/parts: the sword sprite).
     let blade = b.objects.get(p0).related[0].expect("the blade");
     assert_eq!(b.local_kind_key(blade), "attachment");
-    assert_eq!(b.objects.sprite(blade).id.map(|s| crate::content::testing::pack_sprite(&b.content, s)), Some(nettai_content_api::PackSprite { category: 0x0C, index: 0x00 }));
+    assert_eq!(b.objects.sprite(blade).id.map(|s| crate::content::testing::sprite_number(&b.content, s)), Some(nettai_content_api::SpriteNumber { category: 0x0C, index: 0x00 }));
     // Tick 8: two more afterimages: the navi's and the blade's.
     run_to(&mut b, p, &mut t, 8, 0);
     assert_eq!(effects(&b, "engine/afterimage").len(), 3);
@@ -601,7 +601,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     run_to(&mut b, p, &mut t, 12, 0);
     // The swords' wide slash (the sword-slash sprite's first animation).
     let look = effect_look(&b, effects(&b, "engine/effect")[0]);
-    assert_eq!((crate::content::testing::pack_sprite(&b.content, look.sprite), look.anim), (nettai_content_api::PackSprite { category: 0x0C, index: 0x14 }, 0));
+    assert_eq!((crate::content::testing::sprite_number(&b.content, look.sprite), look.anim), (nettai_content_api::SpriteNumber { category: 0x0C, index: 0x14 }, 0));
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
 
@@ -817,7 +817,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     let o = b.objects.get(slash);
     assert_eq!((&o.params[1..], o.pos.x, o.pos.y), (&[0, 2 + 7, 0][..], x, y));
     let wide = effect_look(&b, slash);
-    assert_eq!((crate::content::testing::pack_sprite(&b.content, wide.sprite), wide.anim, wide.palette), (nettai_content_api::PackSprite { category: 0x0C, index: 0x14 }, 0, 0));
+    assert_eq!((crate::content::testing::sprite_number(&b.content, wide.sprite), wide.anim, wide.palette), (nettai_content_api::SpriteNumber { category: 0x0C, index: 0x14 }, 0, 0));
     run_to(&mut b, p, &mut t, 11, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
     // Idle on tick 28.
@@ -2365,8 +2365,8 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
     // The effect is the definition's look, and the sound the asset's.
     let burst = b.objects.in_order().find(|&o| defs.engine_kind(b.objects.get(o).kind) == Some(crate::kinds::EngineKind::Effect));
     let burst = burst.expect("the burst");
-    assert_eq!(b.objects.sprite(burst).id.map(|s| crate::content::testing::pack_sprite(&b.content, s)), Some(nettai_content_api::PackSprite { category: 0x14, index: 0 }));
-    assert!(b.sound_cues().iter().any(|c| matches!(c, crate::sound::SoundCue::Effect(s) if crate::content::testing::pack_assets(&b.content).sound(s.0) == Some(0x1A6))));
+    assert_eq!(b.objects.sprite(burst).id.map(|s| crate::content::testing::sprite_number(&b.content, s)), Some(nettai_content_api::SpriteNumber { category: 0x14, index: 0 }));
+    assert!(b.sound_cues().iter().any(|c| matches!(c, crate::sound::SoundCue::Effect(s) if crate::content::testing::asset_numbers(&b.content).sound(s.0) == Some(0x1A6))));
     // The collision types and region are the definitions'.
     let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
     assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);

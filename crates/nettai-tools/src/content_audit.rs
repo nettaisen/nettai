@@ -32,7 +32,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackAssets, PackId, SoundRole, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, AssetNumbers, PackId, SoundRole, SpriteId};
 use nettai_battle::field::PanelType;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use nettai_render::audit::{Lookup, Problems};
@@ -80,7 +80,7 @@ pub fn audit(
     c: &Content,
     mut bundles: Vec<Bundle>,
     own: PackId,
-    assets: &PackAssets,
+    assets: &AssetNumbers,
     banks: Option<&[Arc<m4a::SoundBank>]>,
     languages: &[Language],
 ) -> ContentAudit {
@@ -440,7 +440,7 @@ mod tests {
         for d in &c.defs.chips {
             b.hud.chip_icons.push(ChipIcon { key: name(&d.key), tiles: Tiles { pixels: vec![1; 4 * Tiles::TILE] } });
         }
-        let found = audit(&c, vec![b], PackId(0), &testing::pack_assets(&c), None, &[("en".into(), None)]);
+        let found = audit(&c, vec![b], PackId(0), &testing::asset_numbers(&c), None, &[("en".into(), None)]);
         found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
     }
 
@@ -450,7 +450,7 @@ mod tests {
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
         let missing = |c: &Content| {
-            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::pack_assets(c), None, &[("en".into(), None)]);
+            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::asset_numbers(c), None, &[("en".into(), None)]);
             found.problems.iter().filter(|p| p.contains("doesn't draw panel type")).count()
         };
         let numbered = c.rules().panels.types.len();
@@ -469,7 +469,7 @@ mod tests {
     fn a_navi_without_its_no_running_message_is_listed() {
         let mut c = (*testing::content()).clone();
         let silent = |c: &Content| {
-            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::pack_assets(c), None, &[("en".into(), None)]);
+            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::asset_numbers(c), None, &[("en".into(), None)]);
             found.problems.into_iter().filter(|p| p.contains("has no no-running message")).collect::<Vec<_>>()
         };
         // (The test content's navis that say nothing are listed already.)
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn another_games_pack_is_audited_as_its_console_draws_it() {
         let c = testing::content();
-        let assets = testing::pack_assets(&c);
+        let assets = testing::asset_numbers(&c);
         let others = |bundles: Vec<Bundle>| {
             let found = audit(&c, bundles, PackId(0), &assets, None, &[("en".into(), None)]);
             found.problems.into_iter().filter(|p| p.starts_with("(pack 1)")).collect::<Vec<_>>()
