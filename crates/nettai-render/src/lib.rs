@@ -14,6 +14,7 @@
 //! run a battle are nettai-frontend's and its host's (nettai, nettai-tools).
 
 pub mod audit;
+pub mod bundled;
 pub mod chatbox;
 pub mod compose;
 pub mod custom;

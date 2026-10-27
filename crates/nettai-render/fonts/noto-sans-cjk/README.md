@@ -2,7 +2,8 @@
 
 The font every language's dynamic text is drawn in, in the battle (the enhanced mode's text and lettering; the
 original mode's strings where a pack has no font for the language are Fusion Pixel's, `../fusion-pixel`) and in
-the app's body text, which the app registers from these files at its start (`lang::register_fonts`). The user (2026-10-25): "you should use one
+the app's body text, which the app registers from these files at its start (`lang::register_fonts`). The program
+holds them packed, all three in one zstd frame, and unpacks them once (`bundled`, the crate's build.rs). The user (2026-10-25): "you should use one
 unified font for all languages so it's not inconsistent", then chose Noto Sans CJK from a specimen of candidates,
 and "just use noto sans cjk without subsetting it".
 

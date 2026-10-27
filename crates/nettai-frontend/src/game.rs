@@ -143,10 +143,11 @@ impl Game {
     /// in it (fonts, HUD lines, pictures with words) and the content's
     /// strings table, if the language isn't the content's own
     /// (`nettai_content::locale::OWN`). A pack that has no lettering in
-    /// `lang` (one made from the other release's ROMs alone) is drawn in
-    /// its own language: its pictures with words are the ones it has, and
-    /// the strings are still `lang`'s, which the renderer draws with the
-    /// vector font in either mode (`Renderer::set_mode`). With them, the
+    /// `lang` (Chinese: every pack has English's and Japanese's) is drawn
+    /// in its own language: its pictures with words are the ones it has,
+    /// and the strings are still `lang`'s, which the renderer draws with
+    /// the vector font in the enhanced mode and pixel fonts in the
+    /// original (`Renderer::set_mode`, `pixeltext`). With them, the
     /// background pool's others (another game's backgrounds a round may be
     /// drawn on: [`Game::other_backgrounds`]).
     pub fn graphics(&self, lang: &str) -> Result<Graphics, LoadError> {

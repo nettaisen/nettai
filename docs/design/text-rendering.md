@@ -1110,15 +1110,14 @@ the US's (the user's choice).
 - `--lang ja` loads the pack's graphics, swaps the Japanese lettering into the HUD's and the custom screen's fields
   (`Bundle::for_language`; nothing that draws them changed), and loads `locales/ja.toml`. A language the content
   root has no table of stops the frontend with what there is.
-- **A pack without the language's lettering** (one made from the other release's ROMs alone: a pack states the
-  languages it has, asset-formats.md "Languages") is drawn in its own language, the content's strings still in the
-  chosen one: its pictures with words (the banners, the gauge's word, the chip window's pictures, the Crosses' names,
-  the waiting words) are the language it has them in, never placeholders. Its fonts are that language's too, without
-  most of the chosen language's characters (the US font has no kana; the Japanese fonts have 36 and 26 of the 62
-  Latin letters and digits), so the strings are drawn in other fonts in either mode: the enhanced mode's vector font
-  as always, and in the original mode pixel fonts into the 240x160 frame (§15: `Renderer::render`, `pixeltext`),
-  rather than in the other language's glyphs. The frame comparison has nothing to compare there: no console draws a
-  language its ROM has no font for.
+- **A pack without the language's lettering** (Chinese's, which no pack has: every recipe reads both releases' ROMs,
+  so every pack has English's and Japanese's; a pack states the languages it has, asset-formats.md "Languages") is
+  drawn in its own language, the content's strings still in the chosen one: its pictures with words (the banners, the
+  gauge's word, the chip window's pictures, the Crosses' names, the waiting words) are the language it has them in,
+  never placeholders. Its fonts are that language's too, without the hanzi the chosen language is written in, so the
+  strings are drawn in other fonts in either mode: the enhanced mode's vector font as always, and in the original mode
+  pixel fonts into the 240x160 frame (§15: `Renderer::render`, `pixeltext`), rather than in the other language's
+  glyphs. The frame comparison has nothing to compare there: no console draws a language its ROM has no font for.
 - The places that draw content's text (hud.rs, custom.rs, chatbox.rs) ask the frame's `TextSink` for it
   (`strings.rs`, `DisplayText`): the language's string, else the content's own, else the key; `--audit` lists what
   the language's table lacks. The frontend's own text (live play's status line, folder listings) is the content's own
@@ -2019,8 +2018,9 @@ The app's catalogs (crates/nettai-ui/lang/zh-Hans, zh-Hant) have every string, i
 Every language's dynamic text, in the battle and in the app's body, is Noto Sans CJK: Google Fonts' variable Noto
 Sans JP (English and Japanese), SC and TC, whole (crates/nettai-render/fonts/noto-sans-cjk). `vfont::Cut::of`
 gives a language's cut; the lettering (the banners' words, the labels) is the same cut, bold and narrowed, in
-place of M PLUS 1 Code, which has no Chinese; Murecho is gone. The program holds the files once: the renderer
-embeds them and the app registers the same bytes with Slint's shared font collection (`lang::register_fonts`).
+place of M PLUS 1 Code, which has no Chinese; Murecho is gone. The program holds the files once, packed (§16):
+the renderer unpacks them and the app registers the same bytes with Slint's shared font collection
+(`lang::register_fonts`).
 The tests of the old font's metrics went with it.
 
 ### 14.4 Boxes as wide as their text
@@ -2041,16 +2041,17 @@ font?".
 
 ### 15.1 What draws what
 
-Where a pack can't spell the language shown (Chinese, which no GBA ROM has a font for; a pack of one region shown
-in the other's language), the original mode lays the strings out as the enhanced mode does (a `TextSink` that
+Where a pack can't spell the language shown (Chinese, which no GBA ROM has a font for; every pack has both releases'
+fonts, English's and Japanese's), the original mode lays the strings out as the enhanced mode does (a `TextSink` that
 takes and measures them with the pixel fonts) and draws them into the 240x160 frame (`pixeltext`, at the end of
 `Renderer::render`), in place of the vector font shrunk to the frame's pixels that it drew before:
 
 - **Fusion Pixel Bold 12px** for the 8x16 font's strings (chip names, the enemy's name, the telop, the Program
   Advance's names, the HUD's seconds) and **Fusion Pixel 12px** for the chatbox's: TakWolf's fonts, release
-  2026.10.25, whole, in three cuts by `Cut::of` (ja for English and Japanese, zh_hans, zh_tw), under the OFL with
-  the notices of the fonts they are stitched from (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen
-  lists both). About 30 MB of the program.
+  2026.10.25, whole, in two cuts by `Cut::of` (zh_hans, zh_tw; the ja cut went on 2026-10-27, as every pack spells
+  English and Japanese in its own fonts), under the OFL with the notices of the fonts they are stitched from
+  (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen lists both). About 20 MB, which the program holds
+  packed in 1.8 MB (§16).
 - A glyph's outline lies on a grid of 100 units a pixel, so at 12 pixels an em each of its pixels is a frame's
   (swash rasterizes it; coverage of half or more is ink).
 - In the item's face color, with the 8x16 font's shadow (right, below and both) in its shadow color, faded as the
@@ -2089,3 +2090,50 @@ text, the bold the wider; a mark from the pack; depth, clip and printing), the A
 EXE6 in zh-Hans and zh-Hant: the custom screen with a chip's description, the chip in hand with its damage, the
 other player's telop (Atk+10), DblBeast's telop, the enemy name on its bar, and chip names too long for the chip
 window. Packs with the language shown never reach it: the frame comparisons are unchanged.
+
+## 16. The bundled fonts packed (as built, 2026-10-27)
+
+The program built its fonts in as they are (`include_bytes!`): Noto Sans CJK's three cuts (39.3 MB), Fusion Pixel's
+six (29.8 MB), M PLUS 1 Code (3.9 MB) and Corporate Logo (2.8 MB), and Noto Sans CJK's twice, as `pub const` slices
+copied where they were used: 115 MB of the 188 MB program. Fusion Pixel's ja cuts went (§15.1), and the big files
+are packed:
+
+- **Packed as the program is built** (nettai-render's build.rs): each group of files in one zstd frame, at level 19
+  with long-distance matching over the whole group. A group's files share most of their glyphs (the cuts' common
+  hanzi, the regular and bold builds' Latin), which a window over all of them finds:
+
+  | Group | Unpacked | Packed | Packed file by file |
+  |---|---|---|---|
+  | Noto Sans CJK (JP, SC, TC) | 39.30 MB | 14.26 MB | 19.69 MB |
+  | Fusion Pixel and its bold build (zh_hans, zh_tw) | 19.85 MB | 1.79 MB | 3.14 MB |
+  | M PLUS 1 Code | 3.93 MB | 1.84 MB | 1.84 MB |
+  | All | 63.08 MB | 17.89 MB | 24.67 MB |
+
+- **Unpacked once** (`bundled`): the first time one of a group's files is wanted, the group is unpacked into memory
+  and kept for the program's life, and what draws with a file borrows its bytes from there (a `OnceLock`, filled
+  under a lock taken through `nettai_platform::thread::lock`, as the browser's page may take it). The files are the
+  fonts' own, byte for byte, so everything draws as before (`bundled`'s tests compare them with the folders').
+  ruzstd unpacks (zstd's decoder in Rust, which the browser's build runs too); zstd's own library packs, a build
+  dependency only, optimized in every profile (the workspace's Cargo.toml).
+- **At the app's start** it registers Noto Sans CJK, as before, and M PLUS 1 Code, no longer theme.slint's import
+  (`lang::register_fonts`): unpacking the two groups takes 172 ms on the development machine (an Apple Silicon Mac,
+  release build), Noto Sans CJK's 154 ms of it. The pixel fonts' group takes 22 ms more, the first time the original
+  mode draws Chinese. Unpacked, the fonts are memory the program holds, where before the system read in only the
+  pages of the program that were used.
+- **Left in theme.slint** (Slint builds an imported font in as it is): Corporate Logo (2.83 MB), whose CFF outlines
+  zstd packs only to 2.23 MB, too little for another 19 ms at every start; Chakra Petch (three files, 78 KB each).
+
+The program went from 188.4 MB to 93.3 MB (macOS, `cargo build --release -p nettai`; 178.4 MB without the ja cuts
+alone), and deflated, as a zip of it is, from 84.7 MB to 43.6 MB.
+
+**Why zstd.** The decoders in Rust measured on these files (release build, each group unpacked whole):
+
+| | Noto Sans CJK, packed | unpacked in | Fusion Pixel, packed | unpacked in |
+|---|---|---|---|---|
+| zstd (ruzstd), level 19, long window | 14.26 MB | 140 ms | 1.79 MB | 20 ms |
+| brotli (brotli-decompressor), quality 11 | 14.23 MB | 189 ms | 1.52 MB | 20 ms |
+| xz (lzma-rs), -9e | 13.15 MB | 1110 ms | 1.43 MB | 178 ms |
+
+and file by file, the nine with Corporate Logo: deflate (miniz_oxide) 33.7 MB in 183 ms, LZ4 (lz4_flex) 37.2 MB in 45
+ms, zstd 26.9 MB in 265 ms. Deflate's and LZ4's windows (32 KB, 64 KB) never reach the files' shared glyphs. Brotli
+packs as small but unpacks Noto Sans CJK a third slower, at every start; xz is 1.6 MB smaller and eight times slower.

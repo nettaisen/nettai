@@ -21,6 +21,14 @@ png = "0.17"
 # The text layer's vector font: shaping with kerning, outlines rasterized with
 # antialiasing (docs/design/text-rendering.md).
 swash = "0.2"
+# The bundled fonts' packed files unpacked (`bundled`): zstd's decoder in Rust,
+# which the browser's build runs too.
+ruzstd = { version = "0.8", default-features = false, features = ["std"] }
+
+[build-dependencies]
+# The bundled fonts packed (build.rs): zstd's own library, for its strongest
+# levels and its long-distance matching.
+zstd = { version = "0.13", default-features = false }
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
