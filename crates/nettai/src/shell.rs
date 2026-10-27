@@ -1975,6 +1975,9 @@ impl App {
                     let ready = ready.clone();
                     self.shell.announced = Some(id.clone());
                     self.shell.sound.use_game(&id, &ready.loaded);
+                    // In the look of the content it plays: content downloaded after the game was shown, or a newer
+                    // revision of it, may state another (the same look changes nothing).
+                    self.shell.looks.show(&ui, Some(&id), 0);
                     self.shell.refresh();
                     // The others' parts, behind it.
                     for other in self.shell.games.playable() {
