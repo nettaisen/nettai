@@ -319,7 +319,7 @@ pub fn matching(grid: &Grid, d: &Drawing) -> f32 {
 /// A picture's pixels (holes magenta) and its drawing beside, as an SVG.
 fn beside(name: &str, g: &Grid, d: Option<&Drawing>, view: &dyn Fn(&str, u8, u8) -> u16) -> String {
     let color = |p: u8, c: u8| {
-        let [r, gg, b] = nettai_content::image::rgb(view(name, p, c));
+        let [r, gg, b] = nettai_assets::rgb(view(name, p, c));
         format!("#{r:02x}{gg:02x}{b:02x}")
     };
     let (w, h) = (g.w, g.h);

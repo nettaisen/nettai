@@ -1060,10 +1060,11 @@ mod tests {
     fn content_of(games: &[(&str, &str)]) -> tempfile::TempDir {
         let content = tempfile::tempdir().unwrap();
         for (id, roms) in games {
-            let manifest = format!("id = \"{id}\"\nkind = \"game\"\n");
-            nettai_content::pack::write_file(content.path(), &format!("{id}/manifest.toml"), manifest.as_bytes()).unwrap();
+            let dir = content.path().join(id);
+            std::fs::create_dir_all(dir.join("extract")).unwrap();
+            std::fs::write(dir.join("manifest.toml"), format!("id = \"{id}\"\nkind = \"game\"\n")).unwrap();
             let recipe = format!("return {{ roms = {{ {roms} }}, extract = function(set) return {{}} end }}\n");
-            nettai_content::pack::write_file(content.path(), &format!("{id}/extract/init.luau"), recipe.as_bytes()).unwrap();
+            std::fs::write(dir.join("extract/init.luau"), recipe).unwrap();
         }
         content
     }

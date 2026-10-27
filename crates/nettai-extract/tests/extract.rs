@@ -1,7 +1,6 @@
 mod common;
 
 use common::{content, full_set, games, recipe, roms};
-use nettai_content::{pack, report::Report};
 use nettai_extract::Recipe;
 use std::path::Path;
 use std::sync::Arc;
@@ -110,26 +109,4 @@ fn an_extraction_reports_how_far_it_is() {
     assert!(said.windows(2).all(|w| w[0] <= w[1]), "{said:?}");
     assert!(said.iter().all(|f| (0.0..=1.0).contains(f)), "{said:?}");
     assert_eq!(said.last(), Some(&1.0), "{said:?}");
-}
-
-/// The graphics extracted are a pack's of the same ROMs as it imports (`NETTAI_EXTRACT_REFERENCE_PACKS`: a folder of
-/// packs a game each, `<folder>/<game>`, written by the extractor before extraction replaced packs).
-#[test]
-#[ignore = "requires original ROMs and existing reference packs"]
-fn full_sets_preserve_reference_graphics() {
-    let packs = std::path::PathBuf::from(std::env::var_os("NETTAI_EXTRACT_REFERENCE_PACKS").expect("NETTAI_EXTRACT_REFERENCE_PACKS"));
-    for game in games() {
-        let recipe = recipe(&game);
-        let a = recipe.extract(&full_set(&recipe)).unwrap();
-        if game == "exe6" {
-            assert!(a.sound.songs[0x63].is_none(), "stop-music is intentionally empty");
-        }
-        let mut report = Report::default();
-        let b = pack::import_graphics(&packs.join(&game), &mut report).unwrap_or_else(|| panic!("{report}"));
-        assert!(a.graphics.sprites == b.sprites, "{game} sprites");
-        assert!(a.graphics.field == b.field, "{game} field");
-        assert!(a.graphics.backgrounds == b.backgrounds, "{game} backgrounds");
-        assert!(a.graphics.hud == b.hud, "{game} HUD");
-        assert!(a.graphics.custom == b.custom, "{game} custom screen");
-    }
 }

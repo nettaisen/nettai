@@ -16,7 +16,6 @@ use nettai_assets::letters::{
     HudLetters, HudWords, LabelLetters, Letters, PictureLetters, VersionLetters, WordLetters,
 };
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Tiles, VersionPictures, Versioned, WindowLabel};
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// A picture's palette indices, `w` by `h`, row by row.
@@ -1980,135 +1979,19 @@ fn fold_planes(c: &mut CustomScreen) -> (usize, Vec<String>) {
 /// A language's HUD words with their blanks read off the gauge as the
 /// enhanced mode shows it (`shown`).
 fn settled_words(w: &HudWords, gauge: &Tiles, first: u16, frame: &[MapEntry]) -> HudWords {
-    let doc = words_doc(w);
-    words_from_doc(&doc, gauge, first, frame)
-}
-
-/// How the pack writes the letters (`hud.json`'s and `custom.json`'s
-/// `letters`, and each language's): the plain values as they are. The
-/// pictures with their letters taken off are no files of their own: a
-/// lettered picture's image is that, with its letters in a layer of their
-/// own beside it (`TileImage::letters`), and the blanks here are read off
-/// those images ([`gauge_base`], [`counts_base`], `CustomBases`).
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct HudLettersDoc {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hp_digits: Option<Digits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub damage_digits: Option<Digits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub plus: Option<Digits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub times: Option<Digits>,
-    pub enemy_digits: [Option<Digits>; 3],
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub banner_digits: Option<Digits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub telop: Option<[Digits; 3]>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pause: Option<Letters>,
-    /// Each count's digits in the emotion window's box.
-    pub counts: Vec<Option<CountDigits>>,
-    pub words: HudWordsDoc,
-}
-
-/// `HudWords`.
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct HudWordsDoc {
-    pub banners: Vec<Option<BannerLetters>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub waiting: Option<Letters>,
-    pub l_or_r: [Option<Letters>; 2],
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub gauge: Option<GaugeWordDoc>,
-}
-
-/// `GaugeWord`.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct GaugeWordDoc {
-    pub cells: Vec<u8>,
-    pub letters: Letters,
-    pub align: TextAlign,
-}
-
-/// `CustomLetters`.
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CustomLettersDoc {
-    pub codes: Vec<Option<Digits>>,
-    pub slot_codes: Vec<Option<Digits>>,
-    /// The boxes all the codes', and all the slots' codes', faces fill.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codes_face: Option<[u8; 4]>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slot_codes_face: Option<[u8; 4]>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub digits: Option<Digits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub turn_limit: Option<Letters>,
-    pub labels: Vec<Option<LabelLetters>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub form_name_box: Option<[u8; 2]>,
-    pub pictures: PictureLettersDoc,
-}
-
-/// `PictureLetters`: each picture's lines; the versions' with the base's
-/// first.
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct PictureLettersDoc {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ok: Option<Vec<HelpLine>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ok_picked: Option<Vec<HelpLine>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Vec<HelpLine>>,
-    pub buttons: Vec<NamedLinesDoc>,
-    pub versions: Vec<VersionLettersDoc>,
-}
-
-/// A button's picture's lines, by the button's name.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NamedLinesDoc {
-    pub name: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lines: Option<Vec<HelpLine>>,
-}
-
-/// `VersionLetters`, by its version's name.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct VersionLettersDoc {
-    pub version: String,
-    pub buttons: Vec<NamedLinesDoc>,
-    pub form_names: Vec<Option<FormNameLetters>>,
-}
-
-/// The HUD's letters as the pack writes them.
-pub fn hud_doc(l: &HudLetters) -> HudLettersDoc {
-    HudLettersDoc {
-        hp_digits: l.hp_digits.clone(),
-        damage_digits: l.damage_digits.clone(),
-        plus: l.plus.clone(),
-        times: l.times.clone(),
-        enemy_digits: l.enemy_digits.clone(),
-        banner_digits: l.banner_digits.clone(),
-        telop: l.telop.clone(),
-        pause: l.pause.clone(),
-        counts: l.counts.counts.clone(),
-        words: words_doc(&l.words),
-    }
-}
-
-/// A language's HUD words as the pack writes them.
-pub fn words_doc(w: &HudWords) -> HudWordsDoc {
-    HudWordsDoc {
-        banners: w.banners.clone(),
-        waiting: w.waiting.clone(),
-        l_or_r: [0, 1].map(|k| w.l_or_r[k].as_ref().map(|l| l.letters.clone())),
-        gauge: w.gauge.as_ref().map(|g| GaugeWordDoc { cells: g.cells.clone(), letters: g.letters.clone(), align: g.align }),
-    }
+    let tiles = |ks: &mut dyn Iterator<Item = usize>| Tiles { pixels: ks.flat_map(|k| gauge.get(k).unwrap_or(&[0; Tiles::TILE]).to_vec()).collect() };
+    let l_or_r = [0usize, 1].map(|f| {
+        w.l_or_r[f].as_ref().map(|l| WordLetters { letters: l.letters.clone(), blank: tiles(&mut (0..4).map(|i| Hud::GAUGE_L_OR_R as usize + 4 * f + i)) })
+    });
+    let word = w.gauge.as_ref().map(|g| {
+        let ks: Vec<usize> = g.cells.iter().filter_map(|&c| frame.get(c as usize)?.tile.checked_sub(first)).map(usize::from).collect();
+        GaugeWord { cells: g.cells.clone(), blank: tiles(&mut ks.into_iter()), letters: g.letters.clone(), align: g.align }
+    });
+    HudWords { banners: w.banners.clone(), waiting: w.waiting.clone(), l_or_r, gauge: word }
 }
 
 /// The gauge's tiles (`Hud::gauge_tiles`, from tile number `first`) with
-/// the letters of its words taken off: the gauge's image in the pack.
+/// the letters of its words taken off.
 pub fn gauge_base(gauge: &Tiles, first: u16, frame: &[MapEntry], w: &HudWords) -> Tiles {
     let mut base = gauge.clone();
     for (k, blank) in gauge_word_tiles(first, frame, w) {
@@ -2142,140 +2025,11 @@ fn gauge_word_tiles<'w>(first: u16, frame: &[MapEntry], w: &'w HudWords) -> Vec<
     out
 }
 
-/// A language's HUD words from the pack: their blanks from the gauge's
-/// image (`gauge_base`, from tile number `first`).
-pub fn words_from_doc(d: &HudWordsDoc, gauge_base: &Tiles, first: u16, frame: &[MapEntry]) -> HudWords {
-    let tiles = |ks: &mut dyn Iterator<Item = usize>| Tiles { pixels: ks.flat_map(|k| gauge_base.get(k).unwrap_or(&[0; Tiles::TILE]).to_vec()).collect() };
-    let l_or_r = [0usize, 1].map(|f| {
-        d.l_or_r[f].as_ref().map(|letters| WordLetters { letters: letters.clone(), blank: tiles(&mut (0..4).map(|i| Hud::GAUGE_L_OR_R as usize + 4 * f + i)) })
-    });
-    let gauge = d.gauge.as_ref().map(|g| {
-        let ks: Vec<usize> = g.cells.iter().filter_map(|&c| frame.get(c as usize)?.tile.checked_sub(first)).map(usize::from).collect();
-        GaugeWord { cells: g.cells.clone(), blank: tiles(&mut ks.into_iter()), letters: g.letters.clone(), align: g.align }
-    });
-    HudWords { banners: d.banners.clone(), waiting: d.waiting.clone(), l_or_r, gauge }
-}
-
-/// The emotion window's counts with their digits taken off: the counts'
-/// image in the pack (each a count's box with no digits where the count
-/// has digits, the count's picture otherwise).
+/// The emotion window's counts with their digits taken off (each a count's
+/// box with no digits where the count has digits, the count's picture
+/// otherwise).
 pub fn counts_base(counts: &[Tiles], l: &CountLetters) -> Vec<Tiles> {
     counts.iter().enumerate().map(|(n, t)| if l.counts.get(n).is_some_and(Option::is_some) { l.blank.clone() } else { t.clone() }).collect()
-}
-
-/// The HUD's letters from the pack: the gauge's words' blanks from the
-/// gauge's image (`gauge_base`), the counts' blank box from the counts'
-/// image (`counts_base`: a count with digits).
-pub fn hud_from_doc(d: &HudLettersDoc, gauge_base: &Tiles, first: u16, frame: &[MapEntry], counts_base: &[Tiles]) -> HudLetters {
-    let blank = d.counts.iter().position(Option::is_some).and_then(|n| counts_base.get(n)).cloned().unwrap_or_default();
-    HudLetters {
-        hp_digits: d.hp_digits.clone(),
-        damage_digits: d.damage_digits.clone(),
-        plus: d.plus.clone(),
-        times: d.times.clone(),
-        enemy_digits: d.enemy_digits.clone(),
-        banner_digits: d.banner_digits.clone(),
-        telop: d.telop.clone(),
-        pause: d.pause.clone(),
-        counts: CountLetters { blank, counts: d.counts.clone() },
-        words: words_from_doc(&d.words, gauge_base, first, frame),
-    }
-}
-
-/// The custom screen's letters as the pack writes them.
-pub fn custom_doc(l: &CustomLetters) -> CustomLettersDoc {
-    CustomLettersDoc {
-        codes: l.codes.glyphs.clone(),
-        slot_codes: l.slot_codes.glyphs.clone(),
-        codes_face: l.codes.face,
-        slot_codes_face: l.slot_codes.face,
-        digits: l.digits.clone(),
-        turn_limit: l.turn_limit.as_ref().map(|w| w.letters.clone()),
-        labels: l.labels.clone(),
-        form_name_box: l.form_name_box,
-        pictures: pictures_doc(&l.pictures),
-    }
-}
-
-/// A language's lettered pictures as the pack writes them.
-pub fn pictures_doc(p: &PictureLetters) -> PictureLettersDoc {
-    let lines = |h: &Option<HelpLetters>| h.as_ref().map(|h| h.lines.clone());
-    let buttons = |b: &[(String, Option<HelpLetters>)]| b.iter().map(|(name, h)| NamedLinesDoc { name: name.clone(), lines: lines(h) }).collect();
-    let version = |name: &str, v: &VersionLetters| VersionLettersDoc { version: name.to_string(), buttons: buttons(&v.buttons), form_names: v.form_names.clone() };
-    let vs = &p.versioned;
-    PictureLettersDoc {
-        ok: lines(&p.ok),
-        ok_picked: lines(&p.ok_picked),
-        other: lines(&p.other),
-        buttons: buttons(&p.buttons),
-        versions: std::iter::once(version(&vs.base_version, &vs.base)).chain(vs.versions.iter().map(|(n, v)| version(n, v))).collect(),
-    }
-}
-
-/// The custom screen's lettered images in the pack, their letters taken
-/// off: what the letters' blanks are read from.
-pub struct CustomBases<'a> {
-    pub codes: &'a Tiles,
-    pub slot_codes: &'a Tiles,
-    pub window: &'a Tiles,
-    pub turn_limit: &'a Tiles,
-    pub pictures: PictureBases<'a>,
-}
-
-/// A language's lettered pictures' images, their letters taken off (its
-/// own where it has them, else the pack's): the chip window's pictures,
-/// the buttons' (by name), each version's buttons' and form list names.
-pub struct PictureBases<'a> {
-    pub ok: &'a Tiles,
-    pub ok_picked: &'a Tiles,
-    pub other: &'a Tiles,
-    pub buttons: Vec<(&'a str, &'a Tiles)>,
-    pub versions: Vec<(&'a str, Vec<(&'a str, &'a Tiles)>, &'a Tiles)>,
-}
-
-/// The custom screen's letters from the pack.
-pub fn custom_from_doc(d: &CustomLettersDoc, b: &CustomBases) -> CustomLetters {
-    CustomLetters {
-        codes: GlyphLetters { face: d.codes_face, glyphs: d.codes.clone(), blank: b.codes.clone() },
-        slot_codes: GlyphLetters { face: d.slot_codes_face, glyphs: d.slot_codes.clone(), blank: b.slot_codes.clone() },
-        digits: d.digits.clone(),
-        turn_limit: d.turn_limit.as_ref().map(|l| WordLetters { letters: l.clone(), blank: b.turn_limit.clone() }),
-        labels: d.labels.clone(),
-        window_blank: b.window.clone(),
-        form_name_box: d.form_name_box,
-        pictures: pictures_from_doc(&d.pictures, &b.pictures),
-    }
-}
-
-/// A language's lettered pictures from the pack.
-pub fn pictures_from_doc(d: &PictureLettersDoc, b: &PictureBases) -> PictureLetters {
-    let help = |lines: &Option<Vec<HelpLine>>, base: Option<&Tiles>| {
-        lines.as_ref().map(|lines| HelpLetters { lines: lines.clone(), blank: base.cloned().unwrap_or_default() })
-    };
-    fn find<'a>(list: &[(&str, &'a Tiles)], name: &str) -> Option<&'a Tiles> {
-        list.iter().find(|(n, _)| *n == name).map(|(_, t)| *t)
-    }
-    let buttons = |doc: &[NamedLinesDoc], bases: &[(&str, &Tiles)]| -> Vec<(String, Option<HelpLetters>)> {
-        doc.iter().map(|n| (n.name.clone(), help(&n.lines, find(bases, &n.name)))).collect()
-    };
-    let mut versions = d.versions.iter().map(|v| {
-        let own = b.versions.iter().find(|(n, _, _)| *n == v.version);
-        let letters = VersionLetters {
-            buttons: buttons(&v.buttons, own.map_or(&[][..], |o| &o.1[..])),
-            form_names: v.form_names.clone(),
-            form_names_blank: own.map(|o| o.2.clone()).unwrap_or_default(),
-            form_name_portraits: Tiles::default(),
-        };
-        (v.version.clone(), letters)
-    });
-    let (base_version, base) = versions.next().unwrap_or_default();
-    PictureLetters {
-        ok: help(&d.ok, Some(b.ok)),
-        ok_picked: help(&d.ok_picked, Some(b.ok_picked)),
-        other: help(&d.other, Some(b.other)),
-        buttons: buttons(&d.buttons, &b.buttons),
-        versioned: Versioned { base, base_version, versions: versions.collect() },
-    }
 }
 
 #[cfg(test)]

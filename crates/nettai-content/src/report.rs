@@ -75,15 +75,3 @@ impl fmt::Display for Report {
         )
     }
 }
-
-/// A 64-bit FNV-1a hash, written as 16 hex digits: the stamps packs keep
-/// to tell an untouched exported file from an edited one. (Stable across
-/// builds and platforms, unlike std's hasher.)
-pub fn stamp(bytes: &[u8]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for &b in bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    format!("{h:016x}")
-}

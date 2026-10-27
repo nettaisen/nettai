@@ -19,6 +19,29 @@ use m4a::bank::{
 };
 use std::collections::{BTreeMap, HashMap};
 
+/// The songs each version of a game has its own of: the base version's
+/// name (the bank's own songs are its), and each other version's songs that
+/// play otherwise than the bank's at the same number, or that only it has,
+/// by number, playing with the bank's voicegroups. A console of a version
+/// plays its own, else the bank's.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SongVersions {
+    pub base_version: String,
+    pub versions: Vec<(String, BTreeMap<u16, Song>)>,
+}
+
+impl SongVersions {
+    /// Whether some version has its own song `id`.
+    pub fn has(&self, id: u16) -> bool {
+        self.versions.iter().any(|(_, songs)| songs.contains_key(&id))
+    }
+
+    /// The version's own song `id`, if it has one.
+    pub fn song(&self, version: &str, id: u16) -> Option<&Song> {
+        self.versions.iter().find(|(v, _)| v == version).and_then(|(_, songs)| songs.get(&id))
+    }
+}
+
 /// A version's own songs: those `other` (its bank) plays otherwise than
 /// `bank` (the base version's) at the same number, or has alone, brought
 /// into `bank`: what `bank` needs for them (voicegroups, samples, waves,

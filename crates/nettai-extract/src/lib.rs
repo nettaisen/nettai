@@ -30,9 +30,10 @@ pub mod source;
 mod sprite;
 
 pub use recipe::Recipe;
+pub use sound::SongVersions;
 pub use source::{Install, RomSource};
 
-use nettai_content::{names::AssetNames, pack, report::Report, sound::SongVersions};
+use nettai_content::names::AssetNames;
 use nettai_content_api::AssetIndex;
 use rom::Rom;
 use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
@@ -227,106 +228,6 @@ impl Extraction {
         numbers: &nettai_content_api::AssetNumbers,
     ) -> Vec<String> {
         timing_differences(&self.timing, &self.graphics, names, sprites, numbers)
-    }
-
-    /// Open-format pack files, relative paths and bytes, for an application's own
-    /// storage. This does not create directories or invoke the CLI.
-    pub fn files(&self) -> Result<pack::Files, Error> {
-        let mut files = vec![pack::manifest(
-            &format!("{} battle assets", self.game),
-            &self.game,
-            Some(&self.graphics),
-            true,
-        )];
-        files.extend(pack::export_graphics(&self.graphics, &self.names));
-        let (sound, failures) =
-            pack::export_sound_versions(&self.sound, &self.sound_versions, &self.names);
-        if !failures.is_empty() {
-            return Err(Error(format!("cannot export songs: {failures:?}")));
-        }
-        files.extend(sound);
-        files.push(nettai_content::names::index_file(&self.index));
-        let mut diagnostics = self.warnings.join("\n");
-        // The assets written under a number, which no name in compat/assets.toml
-        // gives them yet (content may not use them).
-        for name in self.unnamed() {
-            diagnostics.push_str(&format!("\nunnamed: {name}"));
-        }
-        files.push(("extraction.txt".into(), diagnostics.into_bytes()));
-        let mut paths = std::collections::HashSet::new();
-        for (path, _) in &files {
-            if !paths.insert(path) {
-                return Err(Error(format!("duplicate output path: {path}")));
-            }
-        }
-        Ok(files)
-    }
-
-    /// Write to a new or empty directory and verify the graphics, index and sound
-    /// read back. Refuses nonempty directories so stale assets cannot survive a
-    /// later extraction. Use `files` for custom overwrite policies.
-    pub fn write(&self, root: &Path) -> Result<(), Error> {
-        self.write_reporting(root, &mut |_| {})
-    }
-
-    /// [`Extraction::write`], telling `progress` how far it is as it goes (a fraction, 0 to 1: the files made,
-    /// each written, then read back), for a host that shows a bar. What it writes is `write`'s, byte for byte.
-    pub fn write_reporting(&self, root: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), Error> {
-        if nettai_platform::fs::exists(root) && nettai_platform::fs::read_dir(root)?.next().is_some() {
-            return Err(Error(format!(
-                "{} is not empty; choose a new pack directory",
-                root.display()
-            )));
-        }
-        let files = self.files()?;
-        // (The share of the time the files' making (their encoding) and their writing take, their reading back
-        // the rest: about 40, 30 and 30 of 100 for each game's four ROMs, in a release build.)
-        let (made, written) = (0.4, 0.7);
-        progress(made);
-        let total = files.iter().map(|(_, data)| data.len() as u64).sum::<u64>().max(1);
-        let mut done = 0;
-        for (path, data) in &files {
-            pack::write_file(root, path, data)?;
-            done += data.len() as u64;
-            progress(made + (written - made) * (done as f64 / total as f64) as f32);
-        }
-        let mut report = Report::default();
-        let back = pack::import_graphics(root, &mut report)
-            .ok_or_else(|| Error(format!("graphics do not load:\n{report}")))?;
-        if back != self.graphics {
-            return Err(Error("graphics read back differently".into()));
-        }
-        let index = nettai_content::names::read_index(root, &mut report)
-            .ok_or_else(|| Error(format!("index does not load:\n{report}")))?;
-        if index != self.index {
-            return Err(Error("asset index reads back differently".into()));
-        }
-        let (bank, versions) = pack::import_sound_versions(root, &mut report)
-            .ok_or_else(|| Error(format!("sound does not load:\n{report}")))?;
-        let ids = |v: &SongVersions| {
-            v.versions
-                .iter()
-                .map(|(n, songs)| (n.clone(), songs.keys().copied().collect::<Vec<_>>()))
-                .collect::<Vec<_>>()
-        };
-        let song_ids = |b: &m4a::SoundBank| {
-            b.songs
-                .iter()
-                .enumerate()
-                .filter_map(|(id, s)| s.as_ref().map(|_| id))
-                .collect::<Vec<_>>()
-        };
-        if song_ids(&bank) != song_ids(&self.sound)
-            || bank.mixer != self.sound.mixer
-            || bank.players != self.sound.players
-            || bank.voicegroups.len() != self.sound.voicegroups.len()
-            || ids(&versions) != ids(&self.sound_versions)
-            || versions.base_version != self.sound_versions.base_version
-        {
-            return Err(Error("sound structure reads back differently".into()));
-        }
-        progress(1.0);
-        Ok(())
     }
 }
 

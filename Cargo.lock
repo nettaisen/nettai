@@ -3363,9 +3363,6 @@ dependencies = [
 [[package]]
 name = "nettai-assets"
 version = "0.1.0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "nettai-audio"
@@ -3395,13 +3392,10 @@ name = "nettai-content"
 version = "0.1.0"
 dependencies = [
  "flate2",
- "m4a",
- "miniz_oxide 0.8.9",
  "nettai-assets",
  "nettai-battle",
  "nettai-content-api",
  "nettai-platform",
- "png 0.17.16",
  "resvg",
  "serde",
  "serde_json",

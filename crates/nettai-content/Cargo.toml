@@ -3,24 +3,21 @@ name = "nettai-content"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Content packs: the battle data, graphics and sound in open, editable formats (TOML, indexed PNG + JSON, MIDI + TOML + WAV), loaded exactly into the engine's data"
+description = "The battle content: a game's Luau, strings, library order and look, loaded into the engine's data; its bundles and their store"
 
 [dependencies]
 # Files, threads, time and dialogs: the desktop's, or the browser's.
 nettai-platform = { path = "../nettai-platform" }
 nettai-assets = { path = "../nettai-assets" }
-# The battle data model the pack's battle files load into.
+# The battle data model the content loads into.
 nettai-battle.workspace = true
 # The definitions the define phase reads (the lint of `nettai-content check`).
 nettai-content-api = { path = "../nettai-content-api" }
-m4a.workspace = true
-png = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
 # Writing TOML with hex ids and flag words (the version toml uses).
 toml_edit = "0.22"
-miniz_oxide = "0.8"
 # Content bundles (bundle.rs): the deterministic tar, its gzip, and its SHA-256 id.
 tar = { version = "0.4", default-features = false }
 flate2 = "1"

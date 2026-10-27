@@ -143,6 +143,12 @@ pub fn palettes_from_bytes(data: &[u8]) -> Vec<Palette> {
         .collect()
 }
 
+/// A BGR555 color as RGB.
+pub fn rgb(c: u16) -> [u8; 3] {
+    let w = |v: u16| ((v << 3) | (v >> 2)) as u8;
+    [w(c & 31), w((c >> 5) & 31), w((c >> 10) & 31)]
+}
+
 /// A background map entry: which tile, flipped how, in which palette.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MapEntry {

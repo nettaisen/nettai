@@ -1,27 +1,18 @@
-//! The names a pack's assets are written under (docs/design/
-//! content-model-v2.md §6.3): sprites, backgrounds and songs by name, the
-//! HUD's mugshots, banners and chip icons by name. The extractor fills
-//! them from EXE6's compat/assets.toml; what they don't name is written
-//! under a placeholder (`sprite-0c-2d`, `sound-10e`), so nothing is lost.
-//! Every file also holds its number (a sprite's `sprite.json`, a song's
-//! header...), which the importers read: a pack's names are free.
+//! The names a game's assets are known by (docs/design/content-model-v2.md
+//! §6.3): sprites, backgrounds and songs by name, the HUD's mugshots,
+//! banners and chip icons by name. The recipe fills them from the game's
+//! compat/assets.toml; what they don't name is known by a placeholder
+//! (`sprite-0c-2d`, `sound-10e`), so nothing is lost.
 //!
-//! The pack's asset index ([`INDEX`], `assets.toml` at its root) lists
-//! every asset of the pack by kind and name, with the pack's number for it
-//! (a sprite's category and index, a sound's number, a banner's,
-//! background's or mugshot's id); placeholders are listed too (content may
-//! not use one, §6.3). A frontend finds the assets the content names in it
-//! (`crate::load::asset_numbers`: each content handle's number);
-//! the battle needs none of it.
+//! The asset index ([`AssetNames::index`]) lists every asset extracted by
+//! kind and name, with the game's number for it (a sprite's category and
+//! index, a sound's number, a banner's, background's or mugshot's id);
+//! placeholders are listed too (content may not use one, §6.3). A frontend
+//! finds the assets the content names in it (`nettai_content::load::asset_numbers`:
+//! each content handle's number); the battle needs none of it.
 
-use crate::report::Report;
 use nettai_assets::Bundle;
 use std::collections::BTreeMap;
-use std::fmt::Write as _;
-use std::path::Path;
-
-/// The asset index's file in a pack.
-pub const INDEX: &str = "assets.toml";
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AssetNames {
@@ -38,14 +29,14 @@ pub struct AssetNames {
     /// Chip icons, by chip id: the chip's key.
     pub chips: BTreeMap<u16, String>,
     /// Navis by their number in the game: the navi's key, which its emblem
-    /// is written under. A navi without one has no emblem in the pack.
+    /// is known by. A navi without one has no emblem.
     pub navis: BTreeMap<u8, String>,
     /// What each glyph of the game's text font draws (the game's text
     /// encoding), for the HUD's font; and what the dialogue font draws past
     /// them.
     pub glyphs: Vec<String>,
     pub dialogue_glyphs: Vec<String>,
-    /// The same for the fonts of other languages the pack has lettering in
+    /// The same for the fonts of other languages the graphics have lettering in
     /// (`nettai_assets::HudLettering`), by language: (the 8x16 font's, the
     /// dialogue font's past them).
     pub language_glyphs: BTreeMap<String, (Vec<String>, Vec<String>)>,
@@ -76,11 +67,11 @@ impl AssetNames {
         self.chips.get(&chip).cloned().unwrap_or_else(|| format!("chip-{chip:03x}"))
     }
 
-    /// The asset index of a pack with these graphics and these song-table
-    /// entries: every asset these names name (whether or not the pack has
-    /// its image or song: a banner the HUD doesn't draw is still the
-    /// engine's banner), and the pack's other sprites, backgrounds,
-    /// banners, mugshots and songs under their placeholders.
+    /// The asset index of these graphics and these song-table entries:
+    /// every asset these names name (whether or not the graphics have its
+    /// image or the bank its song: a banner the HUD doesn't draw is still
+    /// the engine's banner), and the other sprites, backgrounds, banners,
+    /// mugshots and songs under their placeholders.
     pub fn index(&self, graphics: &Bundle, songs: &std::collections::BTreeSet<u16>) -> nettai_content_api::AssetIndex {
         let mut a = nettai_content_api::AssetIndex::default();
         let sprites = self.sprites.keys().copied().chain(graphics.sprites.iter().map(|s| (s.category, s.index)));
@@ -105,87 +96,4 @@ impl AssetNames {
         }
         a
     }
-}
-
-/// The asset index's file.
-pub fn index_file(index: &nettai_content_api::AssetIndex) -> (String, Vec<u8>) {
-    let mut s = String::from(
-        "# The pack's assets by name (docs/design/content-model-v2.md §6.3): what content\n\
-         # names (asset.sprite(\"bomb\")) and what the engine knows it as. Sprites are\n\
-         # \"category-index\" in hex; sounds are song-table numbers; banners, backgrounds and\n\
-         # mugshots their ids. Numbered placeholders (sprite-0c-2d) are assets nobody has\n\
-         # named yet.\n",
-    );
-    let key = |k: &str| if k.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') { k.to_string() } else { format!("{k:?}") };
-    s += "\n[sprites]\n";
-    for (name, id) in &index.sprites {
-        let _ = writeln!(s, "{} = \"{:02x}-{:02x}\"", key(name), id.category, id.index);
-    }
-    let numbers = |s: &mut String, table: &str, m: &BTreeMap<String, u16>, digits: usize| {
-        let _ = write!(s, "\n[{table}]\n");
-        for (name, n) in m {
-            let _ = writeln!(s, "{} = 0x{n:0digits$X}", key(name));
-        }
-    };
-    let wide = |m: &BTreeMap<String, u8>| m.iter().map(|(k, &v)| (k.clone(), v as u16)).collect::<BTreeMap<_, _>>();
-    numbers(&mut s, "sounds", &index.sounds, 3);
-    numbers(&mut s, "banners", &wide(&index.banners), 2);
-    numbers(&mut s, "backgrounds", &wide(&index.backgrounds), 2);
-    numbers(&mut s, "mugshots", &wide(&index.mugshots), 2);
-    (INDEX.to_string(), s.into_bytes())
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct IndexFile {
-    #[serde(default)]
-    sprites: BTreeMap<String, String>,
-    #[serde(default)]
-    sounds: BTreeMap<String, u16>,
-    #[serde(default)]
-    banners: BTreeMap<String, u8>,
-    #[serde(default)]
-    backgrounds: BTreeMap<String, u8>,
-    #[serde(default)]
-    mugshots: BTreeMap<String, u8>,
-}
-
-/// A pack's asset index (its own names, unqualified).
-pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api::AssetIndex> {
-    let path = root.join(INDEX);
-    let text = match nettai_platform::fs::read_to_string(&path) {
-        Ok(t) => t,
-        Err(e) => {
-            report.error(INDEX, format!("can't read: {e}"));
-            return None;
-        }
-    };
-    let f: IndexFile = match toml::from_str(&text) {
-        Ok(f) => f,
-        Err(e) => {
-            report.error(INDEX, format!("invalid: {e}"));
-            return None;
-        }
-    };
-    let mut a = nettai_content_api::AssetIndex {
-        sounds: f.sounds,
-        banners: f.banners,
-        backgrounds: f.backgrounds,
-        mugshots: f.mugshots,
-        sprites: Default::default(),
-    };
-    let mut ok = true;
-    for (name, id) in f.sprites {
-        let parse = |s: &str| u8::from_str_radix(s, 16).ok();
-        match id.split_once('-').and_then(|(c, i)| Some((parse(c)?, parse(i)?))) {
-            Some((category, index)) => {
-                a.sprites.insert(name, nettai_content_api::SpriteNumber { category, index });
-            }
-            None => {
-                report.error(INDEX, format!("sprite {name} is {id:?}, not \"category-index\" in hex"));
-                ok = false;
-            }
-        }
-    }
-    ok.then_some(a)
 }

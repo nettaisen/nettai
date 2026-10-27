@@ -1,8 +1,8 @@
 //! How the battle's pictures with letters and digits look, for the
 //! enhanced graphics to draw their words and numbers in fonts in their
 //! place (docs/design/text-rendering.md §12): read off the pictures once,
-//! as a pack is made (`nettai_content::letters::read`), and kept in the
-//! pack beside them. A frontend only applies what is here: where the
+//! as the game's graphics are extracted (`nettai_extract`'s letters), and
+//! kept beside them. A frontend only applies what is here: where the
 //! letters stand, their colors as palette indices (the palette is the
 //! one the picture is drawn in at the time), and the picture's tiles with
 //! the letters taken off. A picture with nothing here is drawn as it is.
@@ -13,7 +13,6 @@
 //! read off (`Bundle::in_language`).
 
 use crate::{Tiles, Versioned};
-use serde::{Deserialize, Serialize};
 
 /// How a picture's letters look, as palette indices: the face's color on
 /// each of the capitals' rows (top to bottom), the outline's color all
@@ -21,12 +20,10 @@ use serde::{Deserialize, Serialize};
 /// or right and down of it (a shadow), the capitals' first row and how many
 /// rows they take, and the letters' columns with their outline (the first,
 /// one past the last).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Letters {
     pub fill: Vec<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
     pub top: u8,
     pub cap: u8,
@@ -36,13 +33,11 @@ pub struct Letters {
 /// How a set of the game's number glyphs (8x16 each) looks: the box its
 /// faces fill in their cells (x, y, width, height: all the set's glyphs'
 /// together) and their paint, as palette indices.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Digits {
     pub face: [u8; 4],
     pub fill: Vec<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
 }
 
@@ -54,12 +49,10 @@ pub type CellLetter = Digits;
 /// drawn as shapes, `BannerLayout::bar`), and the columns its letters take, whole and, for
 /// a numbered banner, either side of its number as one digit and as two
 /// (`[before, after]`; none: no letters there).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BannerLetters {
     pub letters: Letters,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_digit: Option<[Option<[i16; 2]>; 2]>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub two_digits: Option<[Option<[i16; 2]>; 2]>,
 }
 
@@ -86,8 +79,7 @@ pub struct GaugeWord {
 /// two pixels of each other), else from their left edge (a label's mark
 /// before its words, CROSS SELECT's triangle, stands in its left margin);
 /// from their right edge is for a picture that says so.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TextAlign {
     Left,
     #[default]
@@ -106,13 +98,11 @@ impl TextAlign {
 
 /// The emotion window's count's digits in its box (16x16): each digit's
 /// box, and their paint.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CountDigits {
     pub glyphs: Vec<[u8; 4]>,
     pub fill: Vec<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<u8>,
 }
 
@@ -127,7 +117,7 @@ pub struct CountLetters {
 /// A line of a lettered picture's words: its first row, the row under its
 /// letters' baseline, its columns (the first, one past the last), and its
 /// color (a palette index).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct HelpLine {
     pub top: u8,
     pub baseline: u8,
@@ -147,7 +137,7 @@ pub struct HelpLetters {
 /// columns and rows their face takes (the first, the last), the face's
 /// color on each of those rows, and the outline's (even, a pixel all
 /// round).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FormNameLetters {
     pub columns: [u8; 2],
     pub rows: [u8; 2],
@@ -158,7 +148,7 @@ pub struct FormNameLetters {
 /// A window label's letters: their look (`WindowLabel::letters`' colors
 /// alone; their columns, `span`, in the label's tiles) and the rows of the
 /// label's tiles their ink takes (the first, the last).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LabelLetters {
     pub letters: Letters,
     pub rows: [u8; 2],
