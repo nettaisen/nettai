@@ -34,7 +34,6 @@ mod decode;
 mod elements;
 mod exe4;
 mod exe5;
-mod exe6;
 mod placeholders;
 mod recipe;
 mod rom;
@@ -126,6 +125,14 @@ impl Tables {
         let manifest = nettai_content_api::packs::read(content, game.id()).map_err(|e| Error(format!("{}: {e}", content.display())))?;
         let recipe = match manifest.extract {
             Some(_) => Some(Recipe::of_content(content, game.id())?),
+            None if !has_rust_extraction(game) => {
+                return Err(Error(format!(
+                    "{}/{}: no [extract]: this nettai extracts {} only by the recipe its content declares",
+                    content.join(game.id()).display(),
+                    nettai_content_api::packs::MANIFEST,
+                    game.id()
+                )));
+            }
             None => None,
         };
         let drawings = shapes::Drawings::of_content(content, game.id()).map_err(|e| Error(format!("{}'s drawings in {}: {e}", game.id(), content.display())))?;
@@ -156,7 +163,7 @@ impl Tables {
         match &self.compat {
             Compat::Exe4(c) => exe4::names::asset_names(c),
             Compat::Exe5(c) => exe5::names::asset_names(c),
-            Compat::Exe6(c) => exe6::names::asset_names(c),
+            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
     }
 
@@ -165,7 +172,7 @@ impl Tables {
         match &self.compat {
             Compat::Exe4(c) => exe4::graphics::panel_names(c),
             Compat::Exe5(c) => exe5::graphics::panel_names(c),
-            Compat::Exe6(_) => exe6::graphics::panel_names(),
+            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
     }
 
@@ -369,11 +376,14 @@ pub fn extract_in_rust(tables: &Tables, roms: &RomSet) -> Result<Extraction, Err
 /// being compared with theirs).
 #[doc(hidden)]
 pub fn has_rust_extraction(game: Game) -> bool {
-    matches!(game, Game::Exe4 | Game::Exe5 | Game::Exe6)
+    matches!(game, Game::Exe4 | Game::Exe5)
 }
 
 fn extract_in_rust_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
     let game = tables.game();
+    if !has_rust_extraction(game) {
+        return Err(Error(format!("{} is extracted by its recipe alone", game.id())));
+    }
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| extract_inner(tables, roms, progress))).map_err(|panic| {
         let detail = panic
             .downcast_ref::<String>()
@@ -410,7 +420,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
     let mut graphics = match &tables.compat {
         Compat::Exe4(c) => exe4::graphics::bundle(&rom::Roms(sources), &names, c),
         Compat::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
-        Compat::Exe6(_) => exe6::graphics::bundle(&rom::Roms(sources), &names),
+        Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (has_rust_extraction)"),
     };
     let panel_names = tables.panel_names();
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);

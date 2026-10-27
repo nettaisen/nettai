@@ -4,7 +4,7 @@ The design for moving nettai-extract's per-game knowledge (where each asset is i
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
 the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); being built:
-the baseline (step 0) and the host (step 1) are done, §9 says what building changed.
+the baseline (step 0), the host (step 1) and EXE6's recipe (step 2) are done, §9 says what building changed.
 
 Decided (2026-10-26):
 
@@ -1014,4 +1014,22 @@ with changes. The baseline of fac5b936a: EXE4 3,076 files, EXE5 3,040, EXE6 3,41
   `the_names_are_the_contents` and `rejects_unknown_truncated_and_duplicate_roms`. `an_extraction_reports_how_far_it_is`
   runs on a full set now (ignored), and `full_sets_pass_the_content_audit` (ignored) loads each game's full-set pack
   with its content, a battle's definitions and the audit's lookups.
+
+**Step 2.** EXE6's recipe is content/exe6/extract/ (init, names, hud, custom, lettering, sprites, stage, versions,
+jp: about 1,200 lines with the comments the Rust had), ported statement by statement. Its pack is the Rust's byte
+for byte, `extraction.txt` included, and the baseline's (3,413 files); it reads the same ranges, and in the same
+order but for the dialogue font's advances pointer, which `font.dialogue` reads before the glyphs where the Rust read
+it after (twice: the English font and the Japanese). Where a ROM is chosen, the choice is the full set's (§2.3):
+BR6E for what the four have alike and Falzar's own, BR5E for Gregar's own, BR6J for the Japanese words and what the
+US release cut, BR5J for Gregar's Japanese form names and Gregar chip's picture. In a release build the recipe and
+the codec take 0.04 to 0.06 s; the whole extraction in memory 0.11 to 0.12 s, the Rust's 0.06 to 0.07 s.
+
+- `Tables::of_content` refuses a game this nettai extracts only by a recipe (`has_rust_extraction`: EXE6 now) whose
+  content declares none; `Roms::us_of` and `jp_of`, which only EXE6's Rust used, went with src/exe6/.
+- The reads log's fifth column is the innermost line of the game's own modules (where exelib's `place.at` reads a
+  pointer for EXE6, the line of EXE6's that named the place), else the innermost line.
+- The full-set content audit passes every asset lookup for EXE6's pack; it reports only the zh-Hans and zh-Hant
+  lettering problems (a font without a character of a translated word, a picture's line count) that the Rust-made
+  EXE4 and EXE5 packs report too, which are the content's and its fonts', not the extraction's. A battle's
+  definitions load against the pack, and a headless match plays on it.
 

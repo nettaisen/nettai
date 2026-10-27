@@ -141,15 +141,6 @@ impl<'a> Roms<'a> {
         if own.is_present() { own } else { self.any() }
     }
 
-    /// The US ROM of `version`: the version's own English words.
-    pub fn us_of(&self, version: impl Version) -> Source<'a> {
-        self.first(&[version.is_other() as usize])
-    }
-
-    /// The Japanese ROM of `version`.
-    pub fn jp_of(&self, version: impl Version) -> Source<'a> {
-        self.first(&[version.is_other() as usize + 2])
-    }
 }
 
 static RECORDING: AtomicBool = AtomicBool::new(false);

@@ -38,20 +38,35 @@ fn count(n: f64, what: &str) -> LResult<usize> {
     Ok(int(n, what, 0, 1 << 26)? as usize)
 }
 
+/// The modules of the game whose recipe runs (`exe6:`), which the reads
+/// log names a read's line in.
+struct OwnModules(String);
+
 /// Where the running recipe is (`exe6:extract/hud.luau:212`), while reads
-/// are recorded: the reads log's fifth column.
+/// are recorded: the reads log's fifth column. The innermost line of the
+/// game's own modules (where a support pack's maker reads for it, the line
+/// that called the maker: the place a read is of), else the innermost.
 fn here(lua: &Lua) -> Option<Arc<str>> {
     if !rom::recording() {
         return None;
     }
-    (1..8).find_map(|level| {
-        lua.inspect_stack(level, |d| {
-            let source = d.source().source?.trim_start_matches('@').to_string();
-            Some(format!("{source}:{}", d.current_line()?))
-        })
-        .flatten()
-    })
-    .map(Arc::from)
+    let own = lua.app_data_ref::<OwnModules>().map(|o| o.0.clone()).unwrap_or_default();
+    let mut first = None;
+    for level in 1.. {
+        let Some(frame) = lua.inspect_stack(level, |d| {
+            let source = d.source().source.map(|s| s.trim_start_matches('@').to_string());
+            source.zip(d.current_line())
+        }) else {
+            break;
+        };
+        let Some((source, line)) = frame else { continue };
+        let at = format!("{source}:{line}");
+        if source.starts_with(&own) {
+            return Some(at.into());
+        }
+        first.get_or_insert(at);
+    }
+    first.map(Arc::from)
 }
 
 // ---- ROMs ------------------------------------------------------------------------------------
@@ -299,6 +314,7 @@ pub(crate) struct Data {
 /// Install the primitives' libraries (`gba`, `bytes`, `sprite`, `gfx`,
 /// `font`) and `data` as globals of `lua`.
 pub(crate) fn install(lua: &Lua, data: Data) -> LResult<()> {
+    lua.set_app_data(OwnModules(format!("{}:", data.game)));
     let g = lua.globals();
 
     let gba = lua.create_table()?;
