@@ -22,6 +22,8 @@
 
 mod elements;
 mod gfx;
+pub mod letters;
+mod names;
 mod recipe;
 mod rom;
 pub mod shapes;
@@ -33,7 +35,7 @@ pub use recipe::Recipe;
 pub use sound::SongVersions;
 pub use source::{Install, RomSource};
 
-use nettai_content::names::AssetNames;
+use crate::names::AssetNames;
 use nettai_content_api::AssetIndex;
 use rom::Rom;
 use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};

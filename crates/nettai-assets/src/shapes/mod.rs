@@ -2,18 +2,21 @@
 //! at the output's resolution (docs/design/text-rendering.md §13): the
 //! banners' bars, the HUD's boxes and gauge, the emotion window's frame,
 //! the enemy names' bar, the custom window's frame, its column's cells, its
-//! slots' boxes and its cursors. Each is drawn by hand from its picture
-//! (nettai-extract's `shapes/`), checked against the ROM's picture as a pack
-//! is made and kept in the pack as an SVG file beside it. A frontend fills
-//! the shapes, one over another in order, in the palette the picture is
-//! drawn in at the time, where the picture would be; a picture with no
-//! shapes here is drawn as it is.
+//! slots' boxes and its cursors. Each is drawn by hand from its picture, an
+//! SVG file in the game's content (nettai-extract's `shapes/`), and checked
+//! against the ROM's picture as the game's graphics are extracted. A
+//! frontend fills the shapes, one over another in order, in the palette the
+//! picture is drawn in at the time, where the picture would be ([`paint`],
+//! [`Parsed`]); a picture with no shapes here is drawn as it is.
 
 use crate::Tiles;
 
+mod svg;
+pub use svg::{Parsed, Raster, Share, coverage, from_svg, labels, paint, recolor, tiny_skia, work_done};
+
 /// A picture as shapes: its size in frame pixels, the SVG file it is (its
 /// shapes drawn one over another as SVG draws them, each naming its color
-/// as a palette entry: nettai-content's `shapes`), the palette entries its
+/// as a palette entry: [`from_svg`]), the palette entries its
 /// shapes name (palette row, index; each once, in the file's order), and
 /// the words written on it (over its shapes).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

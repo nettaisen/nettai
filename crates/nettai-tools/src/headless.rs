@@ -103,7 +103,7 @@ pub fn time_frames(player: &mut Player, wanted: &BTreeSet<u32>, scale: usize, ke
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     let (mut made, mut shown, mut most, mut n) = (0f64, 0f64, 0f64, 0u32);
     let mut after_first = None;
-    let start = nettai_content::shapes::work_done();
+    let start = nettai_assets::shapes::work_done();
     while player.tick(keys.held(player.ticks() as u32 + 1)) {
         let Some(f) = player.session().frame else { continue };
         if wanted.contains(&f) {
@@ -117,14 +117,14 @@ pub fn time_frames(player: &mut Player, wanted: &BTreeSet<u32>, scale: usize, ke
             most = most.max(t1 + t2);
             n += 1;
             if after_first.is_none() {
-                after_first = Some(nettai_content::shapes::work_done());
+                after_first = Some(nettai_assets::shapes::work_done());
             }
         }
         if f >= last {
             break;
         }
     }
-    let end = nettai_content::shapes::work_done();
+    let end = nettai_assets::shapes::work_done();
     let first = after_first.unwrap_or(end);
     let n = n.max(1) as f64;
     log(&format!(

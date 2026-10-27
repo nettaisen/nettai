@@ -1,4 +1,4 @@
-//! Reading the battle's pictures' letters and digits as a pack is made
+//! Reading the battle's pictures' letters and digits as they are extracted
 //! (`nettai_assets::letters`, docs/design/text-rendering.md §12): where a
 //! picture's letters stand, how they look (palette indices: the face's
 //! colors down the capitals, a rim all round or a shadow right and down),
@@ -6,7 +6,7 @@
 //! letters taken off. Extraction runs [`read`] once; a frontend applies
 //! what it found and reads no picture itself.
 //!
-//! Nothing here is a game's: every look is the pack's pictures', so a game
+//! Nothing here is a game's: every look is the game's pictures', so a game
 //! whose pictures look otherwise is read otherwise. What [`read`] doesn't
 //! find where every game has letters (a set of digits with no face, a Cross
 //! name whose letters it can't find) it says, one line each.
@@ -561,7 +561,7 @@ pub fn read(bundle: &mut Bundle) -> Vec<String> {
     let languages: Vec<String> = bundle.hud.languages.iter().map(|(l, _)| l.clone()).collect();
     for lang in languages {
         let Ok(other) = bundle.clone().in_language(&lang) else {
-            say(&lang, "the pack's lettering in this language doesn't swap in".into());
+            say(&lang, "the graphics' lettering in this language doesn't swap in".into());
             continue;
         };
         let words = hud_words(&other.hud, &mut |w| say(&lang, w));
@@ -583,7 +583,7 @@ pub fn read(bundle: &mut Bundle) -> Vec<String> {
         .flat_map(|v| v.form_names.iter().flatten().map(|f| f.columns))
         .collect();
     c.letters.form_name_box = spans.iter().map(|s| s[0]).min().zip(spans.iter().map(|s| s[1]).max()).map(|(a, b)| [a, b]);
-    // (The blanks as the pack keeps them: one base a picture.)
+    // (The blanks as the enhanced mode shows them: one base a picture.)
     let (notes, found) = settle(bundle);
     problems.extend(found);
     problems.extend(notes.into_iter().map(|n| format!("note: {n}")));
@@ -652,8 +652,8 @@ pub fn hud_words(h: &Hud, say: &mut dyn FnMut(String)) -> HudWords {
     }
     let l_or_r = [0u16, 1].map(|frame| {
         let first = Hud::GAUGE_L_OR_R as usize + 4 * frame as usize;
-        // (The gauge's own tiles: the pack keeps them with the letters
-        // taken off, `gauge_base`.)
+        // (The gauge's own tiles, its letters on them: `gauge_base` takes
+        // them off.)
         let tiles: Vec<&[u8]> = (0..4).filter_map(|i| h.gauge_tiles.get(first + i)).collect();
         if tiles.len() != 4 {
             return None;
@@ -689,8 +689,8 @@ fn gauge_word(h: &Hud) -> Option<GaugeWord> {
     if cells.is_empty() || cells.windows(2).any(|w| w[1] != w[0] + 1) {
         return None;
     }
-    // (The gauge's own tiles: the pack keeps them with the letters taken
-    // off, `gauge_base`.)
+    // (The gauge's own tiles, its letters on them: `gauge_base` takes them
+    // off.)
     let tiles: Vec<&[u8]> = cells.iter().map(|&i| h.gauge_tiles.get(top[i].tile.checked_sub(h.gauge_first_tile)? as usize)).collect::<Option<_>>()?;
     let picture = Picture { w: 8 * tiles.len(), h: 8, pixels: tiles_row(&tiles) };
     // (The word is what its cells draw over the frame's line: each cell is
@@ -1139,7 +1139,7 @@ fn form_name(picture: &Picture, first_look: &Picture) -> Option<(FormNameLetters
 }
 
 /// A picture with letters in it in one language, for its shared base
-/// ([`shared_base`]): its file in the pack, its tiles, its tiles with its
+/// ([`shared_base`]): its name (`gauge.png`), its tiles, its tiles with its
 /// letters taken off (as read: its blank), and the color its palette gives
 /// index `v` at pixel `i` (in tile order).
 pub struct Variant<'a> {
@@ -1149,10 +1149,9 @@ pub struct Variant<'a> {
     pub color: Box<dyn Fn(usize, u8) -> u16 + 'a>,
 }
 
-/// How the pack keeps one language's picture of a lettered picture: the
-/// base all its languages share, the file that holds it (none: this
-/// picture's own, the first language's), and which of its pixels are its
-/// letters (`tiles::Layered`).
+/// One language's picture of a lettered picture as layers: the base all
+/// its languages share, the picture that holds it (none: this picture's
+/// own, the first language's), and which of its pixels are its letters.
 #[derive(Clone, Debug)]
 pub struct LayeredPicture {
     pub base: Tiles,
@@ -1171,8 +1170,8 @@ pub struct LayeredPicture {
 /// pixel, or one that shows each language that has letters there as its
 /// blank does, in its own palette, if one does; where only another language
 /// has letters, that language's blank's. Each picture is then the base and
-/// a layer of its letters, its pixels where they differ
-/// (`tiles::export_layered`), and the enhanced mode shows the base: its
+/// a layer of its letters, its pixels where they differ, and the enhanced
+/// mode shows the base: its
 /// blank, but where two languages' letters cross on a pixel no one index
 /// shows as both blanks (those pixels, by language, are counted: the second
 /// value). A language whose picture is another size
@@ -1412,12 +1411,12 @@ fn grown(mask: &[bool], columns: usize) -> Vec<bool> {
         .collect()
 }
 
-/// A version's form list names as the pack keeps them (the user: "for the
+/// A version's form list names as layers (the user: "for the
 /// cross bar, you should mask out the cross portrait then superimpose it
 /// over the yellow bar"): the bar every name lies on (one name's tiles,
 /// every look's alike); each name's portrait over it (its own pixels, none
 /// off it: the names' tiles, every look's); and each language's own
-/// ([`NameLayers`], the pack's first, named "").
+/// ([`NameLayers`], the graphics' own first, named "").
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FormNameLayers {
     pub bar: Tiles,
@@ -1456,7 +1455,7 @@ pub fn lay(tiles: &mut Tiles, layer: &[Option<u8>]) {
 }
 
 /// A version's form list names as layers ([`FormNameLayers`]), from
-/// `names`: in each language (the pack's first), its name, the names'
+/// `names`: in each language (the graphics' own first), its name, the names'
 /// tiles and their blank as read (where they differ are its letters with
 /// their outline; what shows through a letter in the bar's colors is the
 /// bar's). The bar is what the names show beside their portraits and
@@ -1621,7 +1620,7 @@ pub fn form_name_layers(names: &[(usize, &str, &Tiles, &Tiles)]) -> Result<(Vec<
     Ok((out, notes))
 }
 
-/// The pictures with letters in them, by file, as the pack keeps them:
+/// The pictures with letters in them, by name, as layers:
 /// each alone, the window's (its labels), the codes', FINAL TURN's; one
 /// panel under the chip window's panels with words in every language
 /// (OK's, the buttons' that are panels: `shared_panel`); and with a base
@@ -1737,7 +1736,7 @@ pub fn form_names_layered(c: &CustomScreen) -> (Vec<(String, FormNameLayers)>, V
     let named = |n: String| -> String {
         let mut n = n;
         for (k, v) in versions.iter().enumerate() {
-            n = n.replace(&format!("version {k} "), &format!("{v} ")).replace(&format!("{v} language \"\""), &format!("{v} (the pack's language)"));
+            n = n.replace(&format!("version {k} "), &format!("{v} ")).replace(&format!("{v} language \"\""), &format!("{v} (the graphics' own language)"));
         }
         n.replace(" language \"", " \"")
     };
@@ -1753,8 +1752,8 @@ pub fn form_names_layered(c: &CustomScreen) -> (Vec<(String, FormNameLayers)>, V
     }
 }
 
-/// The HUD's pictures with letters in them, by file, as the pack keeps
-/// them (`shared_base`): the gauge's (its words), its languages sharing
+/// The HUD's pictures with letters in them, by name, as layers
+/// (`shared_base`): the gauge's (its words), its languages sharing
 /// its base, and the counts' (their digits); with the pixels where two
 /// languages' letters cross on no shared index, by file.
 pub fn hud_layered(h: &Hud) -> (BTreeMap<String, LayeredPicture>, Vec<(String, usize)>) {
@@ -1794,11 +1793,10 @@ pub fn shown(tiles: &Tiles, l: &LayeredPicture) -> Tiles {
     l.base.clone()
 }
 
-/// The pictures' blanks as the pack keeps them (`custom_layered`,
-/// `hud_layered`: one base a picture for its languages; the form list's
-/// names, `form_names_layered`: their portraits over their bar), so that a
-/// bundle read is the bundle written: each one the picture as the enhanced
-/// mode shows it (`shown`). What it found doing so, as notes (the pixels
+/// The pictures' blanks laid as layers (`custom_layered`, `hud_layered`:
+/// one base a picture for its languages; the form list's names,
+/// `form_names_layered`: their portraits over their bar), each one then
+/// the picture as the enhanced mode shows it (`shown`). What it found doing so, as notes (the pixels
 /// where two languages' letters cross and no index shows as both blanks,
 /// by picture; the panel's and the bars' recovery), and problems.
 pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
@@ -1879,7 +1877,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
             match lettering.buttons.iter().find(|(n, _)| n == name).and_then(|(_, b)| b.picture.as_ref()) {
                 // (Its own picture: its layer over the shared base.)
                 Some(picture) => set(h, &picture.tiles, &format!("pictures/{name}-{lang}.png")),
-                // (The pack's picture: as the pack's shows.)
+                // (The graphics' own picture: as it shows.)
                 None => {
                     if let (Some(h), Some((_, Some(own)))) = (h.as_mut(), own_buttons.iter().find(|(n, _)| n == name)) {
                         h.blank = own.blank.clone();
@@ -1908,7 +1906,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
 /// a picture's tiles hold the other pictures' words in its panel's own
 /// colors), each made the panel's index where every palette the picture is
 /// drawn in shows the two alike (its own; a button's others, EXE5's soul's
-/// Chaos Unison's), so the pack keeps no layer of them (the user: "why do
+/// Chaos Unison's), so no layer of them is kept (the user: "why do
 /// the -own images look like that? can you not remove them?"); its blank
 /// alike. How many it made so, and, as problems, any such pixel some
 /// palette of the picture's shows otherwise (kept: in its letters).

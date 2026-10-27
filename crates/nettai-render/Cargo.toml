@@ -27,3 +27,5 @@ wuff = { version = "0.2.9", default-features = false, features = ["brotli"] }
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
+# A HUD's letters read off its font as extraction reads them (hud.rs's tests).
+nettai-extract = { path = "../nettai-extract" }

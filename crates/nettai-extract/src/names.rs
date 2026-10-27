@@ -63,10 +63,6 @@ impl AssetNames {
         self.banners.get(&id).cloned().unwrap_or_else(|| format!("banner-{id:02x}"))
     }
 
-    pub fn chip_icon(&self, chip: u16) -> String {
-        self.chips.get(&chip).cloned().unwrap_or_else(|| format!("chip-{chip:03x}"))
-    }
-
     /// The asset index of these graphics and these song-table entries:
     /// every asset these names name (whether or not the graphics have its
     /// image or the bank its song: a banner the HUD doesn't draw is still

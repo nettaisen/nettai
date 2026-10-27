@@ -2629,7 +2629,7 @@ mod tests {
             ..Hud::default()
         };
         // (Its glyphs' letters and digits, as a pack has them.)
-        hud.letters = nettai_content::letters::hud_letters(&hud, &mut |_| {});
+        hud.letters = nettai_extract::letters::hud_letters(&hud, &mut |_| {});
         hud
     }
 

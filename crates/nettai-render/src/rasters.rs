@@ -9,7 +9,7 @@
 //! kept while the colors hold. A drawing is laid at whole output pixels.
 
 use nettai_assets::shapes::Drawing;
-use nettai_content::shapes::{Parsed, Raster};
+use nettai_assets::shapes::{Parsed, Raster};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
@@ -307,7 +307,7 @@ mod tests {
     use super::*;
 
     fn square() -> Drawing {
-        nettai_content::shapes::from_svg("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 8 8\"><rect width=\"8\" height=\"8\" data-color=\"1\"/><rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" data-color=\"2\"/></svg>").unwrap()
+        nettai_assets::shapes::from_svg("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 8 8\"><rect width=\"8\" height=\"8\" data-color=\"1\"/><rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" data-color=\"2\"/></svg>").unwrap()
     }
 
     /// Rasterized once, colored in the colors of the moment; at a new scale

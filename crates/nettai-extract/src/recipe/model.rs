@@ -22,7 +22,7 @@
 use super::prims::{FontHandle, GfxAnimHandle, MapHandle, RomHandle, SheetHandle, TilesHandle};
 use crate::rom::Rom;
 use nettai_assets::*;
-use nettai_content::names::AssetNames;
+use crate::names::AssetNames;
 use nettai_luau::mlua::{Function, Table, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;

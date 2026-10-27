@@ -1,9 +1,8 @@
 //! The battle's frames as shapes, drawn by hand (each game's
 //! `extract/shapes/` in its content, and its support packs' for the
 //! drawings games share: SVG files in frame pixels, each shape naming its
-//! palette entry; [`Drawings`]) and checked against the ROM's pictures as a
-//! pack is made
-//! (`nettai_assets::shapes`, docs/design/text-rendering.md §13): the banners'
+//! palette entry; [`Drawings`]) and checked against the ROM's pictures as
+//! the graphics are extracted (`nettai_assets::shapes`, docs/design/text-rendering.md §13): the banners'
 //! bars, the HUD's HP box, its gauge's frame and cells, the emotion window's
 //! boxes and its frame apart from the faces, the enemy names' bar, and the
 //! custom window's frame (each map's), its column's cells, its slots' boxes
@@ -28,7 +27,7 @@ use std::path::Path;
 /// Where a pack's drawings are, in its folder (docs/design/extraction-recipes.md §2.3).
 pub const SHAPES: &str = "extract/shapes";
 
-/// The hand-drawn files a game's pack is made with, by path in its bundle:
+/// The hand-drawn files a game's graphics are extracted with, by path in its bundle:
 /// its own (`exe6/extract/shapes/hud/hp-box.svg`) and its support packs'
 /// (`exelib/extract/shapes/banners/bar-104.svg`), the drawings games share.
 /// A drawing of the game's is its `NAME.svg`, or the file a `NAME.same`
@@ -189,10 +188,10 @@ impl Shaper {
                 return None;
             }
         };
-        // (Its fills its colors in the picture's first palette, as the pack
-        // keeps it, and read so.)
-        let colored = nettai_content::shapes::recolor(&text, &|p, k| self.views.color(name, p, k));
-        let d = match nettai_content::shapes::from_svg(&text).and_then(|_| nettai_content::shapes::from_svg(&colored)) {
+        // (Its fills its colors in the picture's first palette, as the
+        // graphics keep it, and read so.)
+        let colored = nettai_assets::shapes::recolor(&text, &|p, k| self.views.color(name, p, k));
+        let d = match nettai_assets::shapes::from_svg(&text).and_then(|_| nettai_assets::shapes::from_svg(&colored)) {
             Ok(d) => d,
             Err(e) => {
                 self.notes.push(format!("{path}: {e}: it stays a picture"));
@@ -263,7 +262,7 @@ impl Shaper {
 
 /// `d` drawn at the centers of its pixels: each one's palette entry.
 fn raster(d: &Drawing) -> Vec<Label> {
-    nettai_content::shapes::labels(d).into_iter().map(|l| l.map_or(Label::Clear, |(p, c)| Label::Color(p, c))).collect()
+    nettai_assets::shapes::labels(d).into_iter().map(|l| l.map_or(Label::Clear, |(p, c)| Label::Color(p, c))).collect()
 }
 
 /// Whether pixel `at` (its center) is under words written on `d` (their
@@ -344,7 +343,7 @@ fn beside(name: &str, g: &Grid, d: Option<&Drawing>, view: &dyn Fn(&str, u8, u8)
     }
     if let Some(d) = d {
         // (Its file's contents, in the view's colors.)
-        let svg = nettai_content::shapes::recolor(&d.source, &|p, c| view(name, p, c));
+        let svg = nettai_assets::shapes::recolor(&d.source, &|p, c| view(name, p, c));
         let inner = svg.find("<svg").and_then(|i| svg[i..].find('>').map(|e| i + e + 1)).zip(svg.rfind("</svg>")).map_or("", |(a, b)| &svg[a..b]);
         out += &format!("<g transform=\"translate({} 0)\">\n{inner}\n</g>\n", w + 1);
     }
@@ -415,7 +414,7 @@ pub fn read(bundle: &mut Bundle, drawings: &Drawings, banner_name: &dyn Fn(usize
             if b.glyphs.is_empty() || banner_grid(b).is_some() || sh.file(&file).is_none() {
                 return None;
             }
-            let picture = nettai_content::letters::Picture::glyphs(&b.glyphs, 0, b.glyphs.len() / 2);
+            let picture = crate::letters::Picture::glyphs(&b.glyphs, 0, b.glyphs.len() / 2);
             let mut c = Canvas::new(picture.w, picture.h, Label::Clear);
             for (i, &v) in picture.pixels.iter().enumerate() {
                 c.cells[i] = if v != 0 { Label::Color(0, v) } else { Label::Clear };
@@ -530,11 +529,11 @@ pub fn view(bundle: &Bundle, name: &str, p: u8, k: u8) -> u16 {
     Views::of(bundle).color(name, p, k)
 }
 
-/// A banner's bar's picture ([`nettai_content::letters::bar_colors`]: none
+/// A banner's bar's picture ([`crate::letters::bar_colors`]: none
 /// where its picture has none): its picture with its letters off, each
 /// letter pixel the bar's color nearest it on its row.
 fn banner_grid(b: &nettai_assets::BannerLayout) -> Option<Grid> {
-    use nettai_content::letters::{Picture, bar_colors, erased};
+    use crate::letters::{Picture, bar_colors, erased};
     if b.glyphs.is_empty() {
         return None;
     }
@@ -554,7 +553,7 @@ fn banner_grid(b: &nettai_assets::BannerLayout) -> Option<Grid> {
 pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (HudShapes, Option<MugshotFrame>, Option<MugshotBoxFrame>) {
     let mut s = HudShapes::default();
     // A HUD layer's tile by its number, the gauge's with its letters off.
-    let gauge_base = nettai_content::letters::gauge_base(&h.gauge_tiles, h.gauge_first_tile, &h.gauge_frame, &h.letters.words);
+    let gauge_base = crate::letters::gauge_base(&h.gauge_tiles, h.gauge_first_tile, &h.gauge_frame, &h.letters.words);
     let layer_tile = |tile: u16| -> Option<&[u8]> {
         match tile.checked_sub(h.gauge_first_tile).filter(|&i| (i as usize) < gauge_base.len()) {
             Some(i) => gauge_base.get(i as usize),
@@ -678,7 +677,7 @@ fn gauge_cells(h: &Hud, base: &Tiles, sh: &mut Shaper, say: &mut dyn FnMut(Strin
     let empty = sh.tiles("hud/gauge-empty", base, 0, 1, 1);
     let filled = sh.tiles("hud/gauge-filled", base, Hud::GAUGE_FILLED as usize, 1, 1);
     let full: Vec<Option<Drawing>> = (0..4).map(|k| sh.tiles(&format!("hud/gauge-full-{k}"), base, (Hud::GAUGE_FULL + k) as usize, 1, 1)).collect();
-    // L or R: its letters off where the pack has them.
+    // L or R: its letters off where the graphics have them.
     let l_or_r: Vec<Option<Drawing>> = (0..2)
         .map(|f| {
             let blank = h.letters.words.l_or_r[f].as_ref().map(|w| w.blank.clone());
@@ -857,7 +856,7 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         for k in 0.. {
             let file = format!("custom/button-{name}-{k}");
             let Some((_, text)) = sh.file(&file) else { break };
-            let cells = nettai_content::shapes::from_svg(&text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
+            let cells = nettai_assets::shapes::from_svg(&text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
             let mut canvas = Canvas::new(8 * w * cells, 8 * h, Label::Clear);
             let mut whole = true;
             for j in 0..cells {
@@ -886,7 +885,7 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
             s.buttons.push((name.clone(), sets));
         }
     }
-    // The chip window's pictures with their letters off, the pack's own
+    // The chip window's pictures with their letters off, the graphics' own
     // language's and each other language's.
     let langs = std::iter::once((String::new(), &c.letters.pictures)).chain(c.languages.iter().map(|(l, x)| (format!("-{l}"), &x.letters)));
     for (suffix, p) in langs {
@@ -904,13 +903,13 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     }
     // The bar the form list's names lie on (every version's, where the
     // names come apart into it, their portraits and their letters).
-    if let Some((_, layers)) = nettai_content::letters::form_names_layered(c).0.first() {
+    if let Some((_, layers)) = crate::letters::form_names_layered(c).0.first() {
         s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form-name-bar", g));
     }
     // The Regular chip's frame, its frames (32x32 each).
     let regular: Vec<Option<Drawing>> = (0..c.regular.len() / 16).map(|k| sh.tiles(&format!("custom/regular-{k}"), &c.regular, 16 * k, 4, 4)).collect();
     s.regular = all(regular);
-    // (By name, as a pack keeps them.)
+    // (By name.)
     s.buttons.sort_by(|a, b| a.0.cmp(&b.0));
     s.pictures.sort_by(|a, b| a.0.cmp(&b.0));
     // The enemy names' bar: its end (the bar's cells right of it), its

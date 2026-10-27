@@ -115,7 +115,7 @@ pub fn element_icon_svg(packs: &Packs, c: &Content, family: nettai_battle::conte
             x = end;
         }
     }
-    let frame = nettai_content::shapes::recolor(&d.source, &|_, k| palette[k as usize & 15]);
+    let frame = nettai_assets::shapes::recolor(&d.source, &|_, k| palette[k as usize & 15]);
     let end = frame.rfind("</svg>")?;
     Some(format!("{}<g shape-rendering=\"crispEdges\">{rects}</g>\n{}", &frame[..end], &frame[end..]))
 }

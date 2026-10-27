@@ -30,7 +30,7 @@ fn main() {
         let drawings = nettai_extract::shapes::Drawings::of_content(&content, game).unwrap_or_else(|e| panic!("{e}"));
         let root = content.join(game).join(nettai_extract::shapes::SHAPES);
         for (name, text) in drawings.own_svgs() {
-            let colored = nettai_content::shapes::recolor(text, &|pp, c| nettai_extract::shapes::view(&extracted.graphics, name, pp, c));
+            let colored = nettai_assets::shapes::recolor(text, &|pp, c| nettai_extract::shapes::view(&extracted.graphics, name, pp, c));
             std::fs::write(root.join(format!("{name}.svg")), colored).unwrap();
         }
     }

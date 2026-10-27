@@ -1,18 +1,17 @@
-//! The battle's frames as shapes in a pack (`nettai_assets::shapes`): an SVG
-//! file a drawing (`shapes/NAME.svg` beside the pictures), read and drawn
-//! by usvg and resvg, in frame pixels from the drawing's top left, the
-//! `viewBox` the picture's size. Its colors are the palette's at the time
-//! it is drawn: each shape (or a group round it) names its fill as data,
-//! `data-color`, the palette index, and its outline's, `data-stroke`, with
-//! `data-palette`, the palette row where the picture is laid in several (a
-//! window map's), on it or round it; the file's own `fill` and `stroke` are
-//! those colors in the picture's first palette, so the file looks as the
-//! picture does where it is opened, and are for viewing only. A `text` with
-//! `data-words` is words written on it (`Words`), drawn by the text layer,
-//! not as the file's. What SVG can't say (which cells of a map a drawing
-//! stands in for) is in `hud.json` and `custom.json`.
+//! A drawing's SVG file, read and drawn by usvg and resvg: in frame pixels
+//! from the drawing's top left, the `viewBox` the picture's size. Its colors
+//! are the palette's at the time it is drawn: each shape (or a group round
+//! it) names its fill as data, `data-color`, the palette index, and its
+//! outline's, `data-stroke`, with `data-palette`, the palette row where the
+//! picture is laid in several (a window map's), on it or round it; the
+//! file's own `fill` and `stroke` are those colors in the picture's first
+//! palette, so the file looks as the picture does where it is opened, and
+//! are for viewing only. A `text` with `data-words` is words written on it
+//! (`Words`), drawn by the text layer, not as the file's. What SVG can't say
+//! (which cells of a map a drawing stands in for) is the drawing's place in
+//! `HudShapes` and `CustomShapes`.
 
-use nettai_assets::shapes::{Drawing, Words};
+use super::{Drawing, Words};
 pub use resvg::tiny_skia;
 use resvg::usvg::{self, roxmltree};
 
@@ -155,8 +154,8 @@ pub fn paint(d: &Drawing, rgb: &dyn Fn(u8, u8) -> [u8; 3], transform: tiny_skia:
 }
 
 /// SVG files read into trees ([`Parsed::of`]) and drawings rasterized
-/// ([`Parsed::raster`]) in this process: a frontend does both when a pack is
-/// loaded (and rasterizes again when its output's scale changes), never
+/// ([`Parsed::raster`]) in this process: a frontend does both when a game
+/// is loaded (and rasterizes again when its output's scale changes), never
 /// while it plays.
 pub fn work_done() -> (u64, u64) {
     (PARSES.load(std::sync::atomic::Ordering::Relaxed), RASTERS.load(std::sync::atomic::Ordering::Relaxed))
@@ -357,7 +356,7 @@ fn words_of(node: roxmltree::Node) -> Result<Words, String> {
 pub fn recolor(text: &str, view: &dyn Fn(u8, u8) -> u16) -> String {
     let Ok(doc) = roxmltree::Document::parse(text) else { return text.to_string() };
     let hex = |p: u8, c: u8| {
-        let [r, g, b] = nettai_assets::rgb(view(p, c));
+        let [r, g, b] = crate::rgb(view(p, c));
         format!("#{r:02x}{g:02x}{b:02x}")
     };
     // (Each element's start tag, rewritten.)

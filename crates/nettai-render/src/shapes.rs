@@ -35,7 +35,7 @@ pub fn coverage(d: &Drawing) -> std::sync::Arc<Vec<bool>> {
     if let Some(c) = nettai_platform::thread::lock(made).ok().and_then(|m| m.get(&d.hash).cloned()) {
         return c;
     }
-    let c = Arc::new(nettai_content::shapes::coverage(d));
+    let c = Arc::new(nettai_assets::shapes::coverage(d));
     if let Ok(mut m) = nettai_platform::thread::lock(made) {
         m.insert(d.hash, c.clone());
     }
@@ -168,7 +168,7 @@ mod tests {
     use super::*;
 
     fn square(color: u8) -> Drawing {
-        nettai_content::shapes::from_svg(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 8 8\"><rect width=\"4\" height=\"8\" data-color=\"{color}\"/></svg>")).unwrap()
+        nettai_assets::shapes::from_svg(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 8 8\"><rect width=\"4\" height=\"8\" data-color=\"{color}\"/></svg>")).unwrap()
     }
 
     /// A drawing in its palette, flipped, cut, and joined with another moved.

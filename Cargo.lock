@@ -3363,6 +3363,9 @@ dependencies = [
 [[package]]
 name = "nettai-assets"
 version = "0.1.0"
+dependencies = [
+ "resvg",
+]
 
 [[package]]
 name = "nettai-audio"
@@ -3396,7 +3399,6 @@ dependencies = [
  "nettai-battle",
  "nettai-content-api",
  "nettai-platform",
- "resvg",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3435,7 +3437,6 @@ dependencies = [
  "nettai-luau",
  "nettai-platform",
  "nettai-tools",
- "sha2 0.10.9",
  "steamlocate",
  "tempfile",
  "toml 0.8.23",
@@ -3522,6 +3523,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-extract",
  "nettai-platform",
  "png 0.17.16",
  "swash",

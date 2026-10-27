@@ -22,8 +22,8 @@ mod prims;
 use crate::rom::Rom;
 use crate::shapes::{Drawings, SHAPES};
 use crate::{Error, Extraction, RomRead, RomSet, elements};
+use crate::names::AssetNames;
 use crate::sound::SongVersions;
-use nettai_content::names::AssetNames;
 use nettai_content_api::packs::{self, Modules, PackKind, PackManifest};
 use nettai_content_api::keys;
 use nettai_luau::mlua::Value;
@@ -188,7 +188,7 @@ impl Recipe {
         complete(&mut graphics, &names).map_err(|e| Error(format!("{game}: {e}")))?;
         progress(GRAPHICS_SHARE);
         let mut warnings = Vec::new();
-        warnings.extend(nettai_content::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
+        warnings.extend(crate::letters::read(&mut graphics).into_iter().map(|p| format!("letters: {p}")));
         warnings.extend(elements::split(&mut graphics.custom).into_iter().map(|p| format!("element icons: {p}")));
         warnings.extend(crate::shapes::read(&mut graphics, &self.drawings(), &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));
         let bank = |(code, rom): &(String, Arc<Rom>)| -> Result<m4a::SoundBank, Error> {

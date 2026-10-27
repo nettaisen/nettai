@@ -6,3 +6,6 @@ license.workspace = true
 description = "The battle graphics in typed form: what a game's graphics are extracted into and nettai-render draws with"
 
 [dependencies]
+# Reading and drawing the frames' drawings (`shapes`, SVG): the version
+# Slint builds into the app, so the build has one copy.
+resvg = { version = "=0.48.1", default-features = false }

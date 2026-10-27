@@ -25,13 +25,10 @@
 
 pub mod bundle;
 pub mod index;
-pub mod letters;
 pub mod library;
 pub mod lint;
 pub mod load;
 pub mod locale;
 pub mod look;
-pub mod names;
 pub mod report;
-pub mod shapes;
 pub mod store;

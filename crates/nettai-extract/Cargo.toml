@@ -11,7 +11,6 @@ description = "A game's assets extracted from its ROMs in memory by the game's r
 nettai-platform = { path = "../nettai-platform" }
 m4a.workspace = true
 nettai-assets = { path = "../nettai-assets" }
-nettai-content = { path = "../nettai-content" }
 nettai-content-api = { path = "../nettai-content-api" }
 # The recipes' VM (`nettai_luau::tool`) and its binding.
 nettai-luau = { path = "../nettai-luau" }
@@ -37,5 +36,6 @@ tempfile = "3"
 # defines.
 nettai-frontend = { path = "../nettai-frontend" }
 nettai-tools = { path = "../nettai-tools" }
-# The digests of the files a baseline's packs hold (tests/recipes.rs).
-sha2 = "0.10"
+# The content's languages (tests/extract.rs) and the repository's content
+# directory (examples/shapes_check.rs).
+nettai-content = { path = "../nettai-content" }
