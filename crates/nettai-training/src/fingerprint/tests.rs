@@ -192,3 +192,76 @@ fn a_chip_that_arrives_through_a_form_is_in_no_folder() {
     }
     assert!(found >= 12, "EXE4's twelve souls' chips: {found}");
 }
+
+/// A navi chip counts as landed (`stats::Measure`) wherever it hits: its
+/// sequence plays dimmed, past `stats::LANDS` ticks from its use, and the
+/// window counts only undimmed ticks. Its fingerprint is printed beside it.
+#[test]
+fn a_navi_chip_counts_as_landed_when_it_hits() {
+    let c = content("exe6");
+    let chip = nettai_match::ids::chip(&c, "exe6", "heatman").expect("EXE6 has HeatMan");
+    let sandbox = Sandbox::new(&c).unwrap_or_else(|e| panic!("{e}"));
+    let (mut hits, mut late) = (0, 0);
+    for target in 0..targets().len() {
+        let Some((mut b, _)) = sandbox.prepared(target, Setup::Plain) else { continue };
+        give(&mut b, 0, &[chip]);
+        let mut m = crate::stats::Measure::new(Default::default());
+        m.tick(&b, 0);
+        let hp0 = hp(&b, 1);
+        let (mut first_hit, mut dimmed) = (None, 0);
+        for t in 1..1200 {
+            let press = if t == 1 { nettai_battle::input::keys::A } else { 0 };
+            if !step_battle(&mut b, [press, 0]) {
+                break;
+            }
+            m.tick(&b, t);
+            dimmed += b.is_dimmed() as u32;
+            if first_hit.is_none() && hp(&b, 1) < hp0 {
+                first_hit = Some(t);
+                break;
+            }
+        }
+        println!("target {target} {:?}: first hit at tick {first_hit:?}, {dimmed} ticks dimmed before", targets()[target]);
+        assert_eq!(m.stats.attack_chips[0], 1, "target {target}: the chip's use wasn't counted");
+        if let Some(t) = first_hit {
+            hits += 1;
+            late += (t > crate::stats::LANDS) as u32;
+            assert_eq!(m.stats.attacks_landed[0], 1, "target {target}: hit at tick {t} ({dimmed} dimmed) not counted as landed");
+        }
+    }
+    assert!(hits > 0, "HeatMan hit no target panel");
+    assert!(late > 0, "no hit came later than LANDS ticks: the test doesn't cover the dimmed sequence");
+    let fp = Fingerprints::compute(&c, &[chip], 1).unwrap_or_else(|e| panic!("{e}"));
+    let f = fp.of(chip).expect("HeatMan's fingerprint");
+    println!("HeatMan's fingerprint: runs {:?} best {:?}", f.runs.iter().map(|r| r.0).collect::<Vec<_>>(), f.best);
+}
+
+/// The real games' attack chips (a damage) whose fingerprint hit nothing,
+/// and those whose first hit came in the last 30 of [`RUN_TICKS`]: a chip
+/// whose sequence outlasts the run is described as hitting nothing. Needs
+/// the packs (`NETTAI_PACKS`); `FP_CACHE` names a fingerprints folder.
+#[test]
+#[ignore]
+fn attack_chips_that_hit_nothing_in_their_fingerprint() {
+    let packs = nettai_content::pack::packs_dir();
+    let cache = std::env::var_os("FP_CACHE").map(std::path::PathBuf::from);
+    for game in ["exe6", "exe5", "exe4"] {
+        let c = crate::pool::load_game(None, &packs, game).unwrap_or_else(|e| panic!("{e}"));
+        let fp = Fingerprints::for_game(&c, 8, cache.as_deref()).unwrap_or_else(|e| panic!("{e}"));
+        let (mut none, mut late) = (Vec::new(), Vec::new());
+        for chip in game_chips(&c) {
+            if c.chip(chip).damage == 0 {
+                continue;
+            }
+            let Some(f) = fp.of(chip) else { continue };
+            let key = c.defs.chip(chip).key.clone();
+            match f.best {
+                None => none.push(key),
+                Some(_) if f.effect.first_hit.is_some_and(|t| t + 30 > RUN_TICKS) => late.push(format!("{key}@{}", f.effect.first_hit.unwrap())),
+                Some(_) => {}
+            }
+        }
+        println!("{game}: {} attack chips hit nothing: {}", none.len(), none.join(", "));
+        println!("{game}: {} first hit in the last 30 ticks: {}", late.len(), late.join(", "));
+    }
+}

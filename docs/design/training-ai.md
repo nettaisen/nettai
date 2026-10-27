@@ -149,6 +149,13 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
   alone, the target (the other navi, pressing nothing) walked to each of the nine panels of its area in turn, 1 to 3
   columns ahead, a row above, level or below. The user presses A; the run lasts until it is quiet (the user idle, none
   of the chip's attacks left, not dimmed) or 180 ticks.
+  - **Known gap (2026-10-27): 180 ticks cut many navi chips off before they hit.** A navi chip's sequence plays dimmed
+    and often lands later: with the real packs, EXE6's Gregar, TenguMan, SlashMan, ElecMan, BlastMan, ChargeMan,
+    Colonel, DiveMan, DustMan, ElementMan, EraseMan, SpoutMan, TomahawkMan and others (and their EX and SP chips)
+    come out as hitting nothing, and HeatMan (161), JudgeMan (163) and Django (152) only just hit; EXE5 and EXE4 have
+    lists of the same kind (the ignored test `attack_chips_that_hit_nothing_in_their_fingerprint` prints them). The
+    app makes fingerprints the same way, so a longer run changes what a published network sees: it belongs with a
+    minor version and a network trained for it.
 - **Damage net of the setup.** Every run's damage is the target's HP lost less what the same setup costs it with no
   chip used (a control run, made once a setup and panel per thread): a poison panel's own damage, the first chip's
   that goes on, isn't the chip's.
@@ -410,11 +417,14 @@ Nothing else for behavior. Rewards for particular behaviors ("use chips", "don't
 winning.
 
 One experiment against that, off by default: **`env.landed_bonus`** adds that much to a seat's gain each time one of its
-attack chips lands (the other navi loses HP within 120 ticks of its use: the `attacks_landed` stat). The large network
+attack chips lands (the other navi loses HP within 120 undimmed ticks of its use: the `attacks_landed` stat; a navi
+chip's dimmed sequence, longer than that, doesn't count against it). The large network
 at update 3,250 landed 29% of its attack chips, the masher 32%: its chip timing was no better than pressing at random,
 and a chip that misses barely changes the reward a round's HP and result give. The bonus is kept small next to a KO's
 1, and its known exploit is a chip used while the other is already being hit by something else; runs with it are
-judged by head-to-head play with runs without it, not by their own reward.
+judged by head-to-head play with runs without it, not by their own reward. Until 2026-10-27 the window counted dimmed
+ticks too, so navi chips never landed (EXE6 against a navi standing still: HeatMan 0 of 49, 30 of 49 over a 600-tick
+window) and the bonus paid for every chip but them; the 29% above is from that count.
 
 ### 6.5 The pool
 
