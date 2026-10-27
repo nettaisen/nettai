@@ -820,7 +820,7 @@ fn fingerprint(names: &Names, fp: &crate::fingerprint::Fingerprint, row: &mut [f
     for (i, &(damage, first)) in fp.runs.iter().enumerate().take(9) {
         row[f::positions + 3 * i] = flag(damage > 0);
         row[f::positions + 3 * i + 1] = clip(damage as f32 / 400.0, 0.0, 4.0);
-        row[f::positions + 3 * i + 2] = first.map_or(0.0, |t| t as f32 / crate::fingerprint::RUN_TICKS as f32);
+        row[f::positions + 3 * i + 2] = first.map_or(0.0, |t| t as f32 / crate::fingerprint::TIME_SCALE as f32);
     }
     for k in 0..STATUSES {
         row[f::statuses + k] = flag(fp.statuses & (1 << k) != 0);
@@ -838,8 +838,8 @@ fn fingerprint(names: &Names, fp: &crate::fingerprint::Fingerprint, row: &mut [f
     row[f::left] = e.left as f32 / 4.0;
     row[f::left + 1] = e.left_own as f32 / 4.0;
     row[f::left + 2] = e.left_other as f32 / 4.0;
-    row[f::left + 3] = e.longest.map_or(0.0, |(_, t)| t as f32 / crate::fingerprint::RUN_TICKS as f32);
-    row[f::duration] = e.ticks as f32 / crate::fingerprint::RUN_TICKS as f32;
+    row[f::left + 3] = e.longest.map_or(0.0, |(_, t)| t as f32 / crate::fingerprint::TIME_SCALE as f32);
+    row[f::duration] = e.ticks as f32 / crate::fingerprint::TIME_SCALE as f32;
     for i in 0..18 {
         row[f::changed + i] = flag(e.changed & (1 << i) != 0);
         row[f::owner_changed + i] = flag(e.owner_changed & (1 << i) != 0);

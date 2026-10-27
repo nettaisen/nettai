@@ -148,14 +148,14 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
   the rules' normal type, three columns a side; the user (side 0) on its front column's middle panel holding the chip
   alone, the target (the other navi, pressing nothing) walked to each of the nine panels of its area in turn, 1 to 3
   columns ahead, a row above, level or below. The user presses A; the run lasts until it is quiet (the user idle, none
-  of the chip's attacks left, not dimmed) or 180 ticks.
-  - **Known gap (2026-10-27): 180 ticks cut many navi chips off before they hit.** A navi chip's sequence plays dimmed
-    and often lands later: with the real packs, EXE6's Gregar, TenguMan, SlashMan, ElecMan, BlastMan, ChargeMan,
-    Colonel, DiveMan, DustMan, ElementMan, EraseMan, SpoutMan, TomahawkMan and others (and their EX and SP chips)
-    come out as hitting nothing, and HeatMan (161), JudgeMan (163) and Django (152) only just hit; EXE5 and EXE4 have
-    lists of the same kind (the ignored test `attack_chips_that_hit_nothing_in_their_fingerprint` prints them). The
-    app makes fingerprints the same way, so a longer run changes what a published network sees: it belongs with a
-    minor version and a network trained for it.
+  of the chip's attacks left, not dimmed) or 600 ticks (`RUN_TICKS`). It was 180 until 2026-10-27 (nettai 0.13): a navi
+  chip's sequence plays dimmed and often lands later, so most navi chips came out as hitting nothing (EXE6's Gregar,
+  TenguMan, SlashMan, ElecMan, BlastMan, ChargeMan, Colonel, DiveMan, DustMan, ElementMan, EraseMan, SpoutMan,
+  TomahawkMan and their EX and SP chips), and networks before 0.13 saw them so. At 600 every EXE6 navi chip hits; what
+  still hits nothing is mostly what can't hit a navi standing still (traps, guards, anti-chips, attack-ups, mines; the
+  ignored test `attack_chips_that_hit_nothing_in_their_fingerprint` lists them). The observation's times of a run (the
+  first hit, the longest-lived object, the run's length) stay in units of 180 ticks (`TIME_SCALE`), so the chips that
+  fitted read as before. Fingerprinting the three games went from 39 to 64 s on 8 threads.
 - **Damage net of the setup.** Every run's damage is the target's HP lost less what the same setup costs it with no
   chip used (a control run, made once a setup and panel per thread): a poison panel's own damage, the first chip's
   that goes on, isn't the chip's.

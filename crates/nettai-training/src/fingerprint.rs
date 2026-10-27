@@ -57,8 +57,14 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 
-/// The ticks a run lasts at most after the press.
-pub const RUN_TICKS: u32 = 180;
+/// The ticks a run lasts at most after the press: long enough for a navi
+/// chip's dimmed sequence to land (EXE6's take up to about 400 ticks; at
+/// 180 most of them hit nothing).
+pub const RUN_TICKS: u32 = 600;
+/// The ticks the observation's times of a run are in (`observe`: the first
+/// hit, the longest-lived object, the run's length): the first limit's, so
+/// the chips that fitted in it read as they did.
+pub const TIME_SCALE: u32 = 180;
 /// The ticks a run goes on at least.
 const MIN_TICKS: u32 = 20;
 /// A condition raising a payoff's damage by this ratio makes a pair.
@@ -221,7 +227,7 @@ pub struct Fingerprints {
 
 /// The sandbox's version: a change to how chips are run makes the
 /// fingerprints kept on disk another's.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 /// Handles as numbers in the file.
 mod chip {
