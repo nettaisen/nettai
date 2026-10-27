@@ -19,7 +19,10 @@
 -- Nothing is named by one of the original's numbers: content names
 -- content by its definitions and assets by name. The original's numbers
 -- are compat's (content/exe6/compat), which only the tools outside the
--- engine read (the trace harness, save import).
+-- engine read (the trace harness, save import), and the extraction
+-- recipes (a game's extract/, extract.d.luau): the extractor is the
+-- boundary. A recipe runs in a VM of its own, and no module checked
+-- against this file requires one.
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and

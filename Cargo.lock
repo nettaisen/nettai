@@ -3426,9 +3426,12 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-frontend",
+ "nettai-luau",
  "nettai-platform",
  "nettai-tools",
+ "sha2 0.10.9",
  "tempfile",
+ "toml 0.8.23",
 ]
 
 [[package]]

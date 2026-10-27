@@ -90,7 +90,7 @@ impl Scripts {
             modules.insert(packs::INIT.to_string(), init);
         }
         self.add_dir(game, modules);
-        self.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends, text: Vec::new() });
+        self.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends, ..Default::default() });
     }
 
     /// Support pack `id` in folder `dir` (content/exelib): its manifest,
@@ -960,7 +960,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let on_disk = || {
             let mut c = stated();
             c.scripts.add_support_dir("lib", dir.join("lib"));
-            c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, depends: vec!["lib".into()], text: Vec::new() });
+            c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, depends: vec!["lib".into()], ..Default::default() });
             c.scripts.read_from("game", dir.join("game"));
             c
         };

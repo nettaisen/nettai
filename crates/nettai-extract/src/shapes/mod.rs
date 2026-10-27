@@ -1,6 +1,8 @@
-//! The battle's frames as shapes, drawn by hand (`shapes/GAME/` beside this
-//! crate's sources: SVG files in frame pixels, each shape naming its
-//! palette entry) and checked against the ROM's pictures as a pack is made
+//! The battle's frames as shapes, drawn by hand (each game's
+//! `extract/shapes/` in its content, and its support packs' for the
+//! drawings games share: SVG files in frame pixels, each shape naming its
+//! palette entry; [`Drawings`]) and checked against the ROM's pictures as a
+//! pack is made
 //! (`nettai_assets::shapes`, docs/design/text-rendering.md §13): the banners'
 //! bars, the HUD's HP box, its gauge's frame and cells, the emotion window's
 //! boxes and its frame apart from the faces, the enemy names' bar, and the
@@ -20,10 +22,76 @@
 
 use nettai_assets::shapes::{CustomShapes, Drawing, GaugeCells, HudShapes, MapDrawing, MugshotBoxFrame, MugshotFrame};
 use nettai_assets::{Bundle, Chatbox, CustomScreen, Hud, MapEntry, PatchList, Tiles};
+use std::collections::BTreeMap;
+use std::path::Path;
 
-/// The hand-drawn SVG files (`shapes/`), by path from there.
-mod drawn {
-    include!(concat!(env!("OUT_DIR"), "/drawings.rs"));
+/// Where a pack's drawings are, in its folder (docs/design/extraction-recipes.md §2.3).
+pub const SHAPES: &str = "extract/shapes";
+
+/// The hand-drawn files a game's pack is made with, by path in its bundle:
+/// its own (`exe6/extract/shapes/hud/hp-box.svg`) and its support packs'
+/// (`exelib/extract/shapes/banners/bar-104.svg`), the drawings games share.
+/// A drawing of the game's is its `NAME.svg`, or the file a `NAME.same`
+/// names by its path in the bundle.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Drawings {
+    game: String,
+    files: BTreeMap<String, String>,
+}
+
+impl Drawings {
+    /// Game `game`'s drawings: `files`, by path in the bundle.
+    pub fn new(game: &str, files: impl IntoIterator<Item = (String, String)>) -> Drawings {
+        Drawings { game: game.to_string(), files: files.into_iter().collect() }
+    }
+
+    /// Game `game`'s drawings in the content directory `content` (a bundle's, or the repository's content/):
+    /// the SVG files and links under its pack's `extract/shapes/` and each of its support packs'.
+    pub fn of_content(content: &Path, game: &str) -> Result<Drawings, String> {
+        use nettai_content_api::packs;
+        let all = packs::packs(content)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+        let mut files = BTreeMap::new();
+        for pack in packs::with_depends(&all, game)? {
+            let root = content.join(&pack.id).join(SHAPES);
+            let mut dirs = vec![root.clone()];
+            while let Some(dir) = dirs.pop() {
+                let Ok(entries) = nettai_platform::fs::read_dir(&dir) else { continue };
+                for path in entries.flatten().map(|e| e.path()) {
+                    if path.is_dir() {
+                        dirs.push(path);
+                    } else if path.extension().is_some_and(|x| x == "svg" || x == "same") {
+                        let rel = path.strip_prefix(&root).expect("walked under the root");
+                        let rel = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
+                        let text = nettai_platform::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                        files.insert(format!("{}/{SHAPES}/{rel}", pack.id), text);
+                    }
+                }
+            }
+        }
+        Ok(Drawings::new(game, files))
+    }
+
+    /// The game they are for.
+    pub fn game(&self) -> &str {
+        &self.game
+    }
+
+    /// The drawing of `name` for the game (`GAME/extract/shapes/NAME.svg`), else the one its
+    /// `NAME.same` names: its path in the bundle and its text.
+    fn file(&self, name: &str) -> Option<(String, String)> {
+        let own = format!("{}/{SHAPES}/{name}", self.game);
+        if let Some(t) = self.files.get(&format!("{own}.svg")) {
+            return Some((format!("{own}.svg"), t.clone()));
+        }
+        let same = self.files.get(&format!("{own}.same"))?.trim().to_string();
+        self.files.get(&same).map(|t| (same.clone(), t.clone()))
+    }
+
+    /// Each of its own SVG files (not the support packs'), by name (`hud/hp-box`): for a tool that rewrites them.
+    pub fn own_svgs(&self) -> impl Iterator<Item = (&str, &str)> {
+        let prefix = format!("{}/{SHAPES}/", self.game);
+        self.files.iter().filter_map(move |(p, t)| Some((p.strip_prefix(&prefix)?.strip_suffix(".svg")?, t.as_str())))
+    }
 }
 
 /// What a pixel of a picture is.
@@ -90,7 +158,7 @@ const MATCH: f32 = 0.85;
 
 /// The drawings of one game read and checked, and what was found.
 pub struct Shaper {
-    game: String,
+    drawings: Drawings,
     views: Views,
     notes: Vec<String>,
     /// (With `NETTAI_SHAPES_SOURCES` set to a folder: each picture written
@@ -101,22 +169,14 @@ pub struct Shaper {
 }
 
 impl Shaper {
-    pub fn new(game: &str, views: Views) -> Shaper {
+    pub fn new(drawings: &Drawings, views: Views) -> Shaper {
         let sources = std::env::var_os("NETTAI_SHAPES_SOURCES").map(std::path::PathBuf::from);
-        Shaper { game: game.to_string(), views, notes: Vec::new(), sources, kept: Vec::new() }
+        Shaper { drawings: drawings.clone(), views, notes: Vec::new(), sources, kept: Vec::new() }
     }
 
-    /// The hand-drawn file of `name` for this game (`GAME/NAME.svg`), else
-    /// one another game's file says is the same (`GAME/NAME.same`, naming
-    /// it).
-    fn file(&self, name: &str) -> Option<(String, &'static str)> {
-        let own = format!("{}/{name}", self.game);
-        let find = |path: &str| drawn::DRAWINGS.iter().find(|(p, _)| *p == path).map(|(_, t)| *t);
-        if let Some(t) = find(&format!("{own}.svg")) {
-            return Some((format!("{own}.svg"), t));
-        }
-        let same = find(&format!("{own}.same"))?.trim().to_string();
-        find(&same).map(|t| (same.clone(), t))
+    /// The hand-drawn file of `name` for this game ([`Drawings`]).
+    fn file(&self, name: &str) -> Option<(String, String)> {
+        self.drawings.file(name)
     }
 
     /// `name`'s drawing read, its size and colors checked against its
@@ -131,8 +191,8 @@ impl Shaper {
         };
         // (Its fills its colors in the picture's first palette, as the pack
         // keeps it, and read so.)
-        let colored = nettai_content::shapes::recolor(text, &|p, k| self.views.color(name, p, k));
-        let d = match nettai_content::shapes::from_svg(text).and_then(|_| nettai_content::shapes::from_svg(&colored)) {
+        let colored = nettai_content::shapes::recolor(&text, &|p, k| self.views.color(name, p, k));
+        let d = match nettai_content::shapes::from_svg(&text).and_then(|_| nettai_content::shapes::from_svg(&colored)) {
             Ok(d) => d,
             Err(e) => {
                 self.notes.push(format!("{path}: {e}: it stays a picture"));
@@ -327,13 +387,13 @@ impl Shaper {
     }
 }
 
-/// Read the frames of `bundle` (of `game`, `exe6`...) as shapes into its
-/// `shapes` (the banners' bars into their layouts, by their names in
-/// `banner_name`; and the emotion window's frame apart from its faces:
+/// Read the frames of `bundle` as shapes into its `shapes`, with its
+/// game's `drawings` (the banners' bars into their layouts, by their names
+/// in `banner_name`; and the emotion window's frame apart from its faces:
 /// `Hud::mugshot_frame`, and the faces' boxes' apart from the boxes:
 /// `Hud::mugshot_box_frame`), and say what was found.
-pub fn read(bundle: &mut Bundle, game: &str, banner_name: &dyn Fn(usize) -> String) -> Vec<String> {
-    let mut sh = Shaper::new(game, Views::of(bundle));
+pub fn read(bundle: &mut Bundle, drawings: &Drawings, banner_name: &dyn Fn(usize) -> String) -> Vec<String> {
+    let mut sh = Shaper::new(drawings, Views::of(bundle));
     let mut problems = Vec::new();
     if !bundle.hud.tiles.is_empty() {
         // The banners' bars, in each language's pictures (a bar the same as
@@ -797,7 +857,7 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         for k in 0.. {
             let file = format!("custom/button-{name}-{k}");
             let Some((_, text)) = sh.file(&file) else { break };
-            let cells = nettai_content::shapes::from_svg(text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
+            let cells = nettai_content::shapes::from_svg(&text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
             let mut canvas = Canvas::new(8 * w * cells, 8 * h, Label::Clear);
             let mut whole = true;
             for j in 0..cells {

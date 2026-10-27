@@ -3,13 +3,15 @@ use crate::{Error, Game, RomSet, Tables, extract, extract_recording_reads, songs
 use std::{ffi::OsString, path::PathBuf, process::ExitCode};
 
 const USAGE: &str = "usage: nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...] [--content <dir>] [--reads <file>]\n\
-ROMs may be supplied in any order. Missing ROMs generate placeholders.\n\
-The output must be a new or empty directory. The names the assets are written under are the\n\
-content's (its game's compat tables): --content's, else the repository's content/ ($NETTAI_CONTENT);\n\
+ROMs may be supplied in any order. A game whose content declares an extraction recipe\n\
+needs every ROM it declares; the others make placeholders for the ROMs missing.\n\
+The output must be a new or empty directory. The names the assets are written under, and\n\
+the recipe, are the content's: --content's, else the repository's content/ ($NETTAI_CONTENT);\n\
 --content also checks the battle definitions load with the pack.\n\
 --reads writes every range of the ROMs the extraction read, in order (tab-separated: the\n\
 ROM's code, the address, the length, and `data`, `open` (a span a parser took what it\n\
-needed of) or the ROM address the word read holds): for comparing ROMs where it looks.\n\
+needed of) or the ROM address the word read holds; with a recipe, where in it the read\n\
+was made): for comparing ROMs where it looks.\n\
 \n\
        nettai-extract songs <ROM> <ROM>\n\
 The numbers of the songs the two ROMs' sound banks play otherwise, or only one has.";
@@ -104,7 +106,10 @@ fn execute(args: Args) -> Result<(), Error> {
                     (None, true) => "open".into(),
                     (None, false) => "data".into(),
                 };
-                out += &format!("{}\t{:08X}\t{:X}\t{kind}\n", r.rom, r.address, r.len);
+                match &r.at {
+                    Some(at) => out += &format!("{}\t{:08X}\t{:X}\t{kind}\t{at}\n", r.rom, r.address, r.len),
+                    None => out += &format!("{}\t{:08X}\t{:X}\t{kind}\n", r.rom, r.address, r.len),
+                }
             }
             std::fs::write(path, out).map_err(|e| Error(format!("{}: {e}", path.display())))?;
             assets

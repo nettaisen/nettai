@@ -2296,6 +2296,13 @@ write ids and names without their game.) The resolved value is a handle into the
 
 - **Luau can't.** Compat is TOML. The loader discovers modules by `.luau`, `require` resolves modules only, and the
   define phase never exposes compat. No Luau API returns an original number (the numeric API is removed, §7.6).
+
+  *The exception: the extraction recipes* (docs/design/extraction-recipes.md §2.4). A game's `extract/` modules
+  hold the original's numbers (ROM addresses, chip numbers, sprite categories) and read compat's TOML (`data`, the
+  files their manifest's `[extract] reads` names), for the reason compat holds them: the extractor is the boundary.
+  They run in a VM of their own (`nettai_luau::tool`) with the extraction's libraries and none of the battle's, and
+  require only `extract/` modules; no content module requires one (nettai-content-check refuses both), so they are
+  in no `Content` and no content hash. What crosses is the asset model and the names, as from the Rust extractor.
 - **The engine can't.** `exe6-compat` depends on `nettai-battle`; a dependency the other way is a cycle. `Content`
   has no compat fields at any step: the validator maps the engine's handles to the original's numbers, and no
   bridge carries them into the engine (§7.3, the user's decision). A test in `exe6-compat` asserts `nettai-battle`'s

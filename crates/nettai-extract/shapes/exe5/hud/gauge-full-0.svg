@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The full gauge shimmering, frame 1 of 4: a capsule slanting up to the right, its ends cut at 45 degrees, an even rim a pixel wide round a bright core cut parallel. -->
-<rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
-<rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
-<path d="M0 4.5 L3.5 1 L7 1 L7 3.5 L3.5 7 L0 7 Z" fill="#00a500" data-color="11"/>
-<path d="M1 4.914 L3.914 2 L6 2 L6 3.086 L3.086 6 L1 6 Z" fill="#00ff00" data-color="3"/>
-</svg>

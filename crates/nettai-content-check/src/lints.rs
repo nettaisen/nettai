@@ -223,6 +223,23 @@ pub fn game_context(source: &str) -> Vec<(usize, String)> {
     out
 }
 
+/// The files a recipe module's literal `data("...")` calls read, each with
+/// its line (docs/design/extraction-recipes.md §4.5: what a recipe reads is
+/// what its manifest's `[extract] reads` names).
+pub fn data_reads(source: &str) -> Vec<(usize, String)> {
+    let s = Scanned::new(source);
+    let mut out = Vec::new();
+    for at in s.find("data") {
+        let after = s.code[at + "data".len()..].trim_start();
+        let Some(arg) = after.strip_prefix('(') else { continue };
+        let quote = s.code.len() - arg.trim_start().len();
+        if let Some(path) = s.string_at(quote) {
+            out.push((s.line(at), path.to_string()));
+        }
+    }
+    out
+}
+
 /// The lints for module `path` (relative to the pack root, with `.luau`).
 pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     let mut out = Vec::new();
@@ -296,6 +313,12 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_recipes_data_reads_are_found() {
+        let src = "local assets = data(\"compat/assets.toml\")\n-- data(\"compat/x.toml\")\nlocal t = metadata(\"no\")\nlocal c = data( 'compat/chips.toml' )\n";
+        assert_eq!(data_reads(src), [(1, "compat/assets.toml".to_string()), (4, "compat/chips.toml".to_string())]);
+    }
 
     #[test]
     fn comments_and_strings_are_not_code() {

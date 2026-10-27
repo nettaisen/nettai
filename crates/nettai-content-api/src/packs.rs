@@ -67,6 +67,17 @@ pub const INIT: &str = "init";
 /// declarations every pack's modules check against first.
 pub const ENGINE: &str = "nettai";
 
+/// A pack's extraction recipe's folder (docs/design/extraction-recipes.md
+/// §4.1): the Luau that says how the game's assets are extracted from its
+/// ROMs, with the drawings it reads. Its modules run in a VM of their own
+/// and require only modules under it (its own pack's and its support
+/// packs'); no other module requires one of them (§2.4).
+pub const EXTRACT: &str = "extract";
+
+/// The engine's declarations of the recipes' API, in [`ENGINE`]: what an
+/// [`EXTRACT`] module checks against, and no other module.
+pub const EXTRACT_DECLARATIONS: &str = "extract.d.luau";
+
 /// What a pack is.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -95,6 +106,71 @@ pub struct PackManifest {
     /// here is the locales' check's to refuse.
     #[serde(default)]
     pub text: Vec<String>,
+    /// How a game's assets are extracted ([`Extract`]); none: a support pack,
+    /// or a game whose recipe isn't written yet.
+    #[serde(default)]
+    pub extract: Option<Extract>,
+}
+
+/// A game's extraction recipe, as its manifest declares it (`[extract]`,
+/// docs/design/extraction-recipes.md §4.2), read without running anything:
+///
+/// ```toml
+/// [extract]
+/// primitives = 1
+/// roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
+/// size = 0x800000
+/// reads = ["compat/assets.toml", "compat/chips.toml"]
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Extract {
+    /// The lowest primitives version the recipe runs on (the extractor's
+    /// `PRIMITIVES`).
+    pub primitives: u32,
+    /// The game's ROMs by their header codes (the four bytes at 0xAC), every
+    /// one required, in the order the recipe's places read an address by
+    /// (a ROM's slot, from 1): the base version's US ROM, the other's, then
+    /// their Japanese ones.
+    pub roms: Vec<String>,
+    /// Every ROM's size in bytes.
+    pub size: u32,
+    /// The files outside `extract/` the recipe reads (`data`), by path in
+    /// its pack.
+    #[serde(default)]
+    pub reads: Vec<String>,
+}
+
+impl Extract {
+    /// What makes the declaration unusable, said with `at` (the manifest).
+    pub fn check(&self, at: &str) -> Result<(), String> {
+        if self.roms.is_empty() {
+            return Err(format!("{at}: [extract] declares no ROM"));
+        }
+        for (i, code) in self.roms.iter().enumerate() {
+            if code.len() != 4 || !code.bytes().all(|b| b.is_ascii_graphic()) {
+                return Err(format!("{at}: [extract] ROM code {code:?} isn't four letters (a header's code at 0xAC)"));
+            }
+            if self.roms[..i].contains(code) {
+                return Err(format!("{at}: [extract] declares {code} twice"));
+            }
+        }
+        if self.size == 0 {
+            return Err(format!("{at}: [extract] size is 0"));
+        }
+        for (i, path) in self.reads.iter().enumerate() {
+            if path.is_empty() || path.starts_with('/') || path.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
+                return Err(format!("{at}: [extract] reads {path:?}, which is no path in the pack"));
+            }
+            if path.split('/').next() == Some(EXTRACT) {
+                return Err(format!("{at}: [extract] reads {path:?}: the recipe's own files are its inputs already"));
+            }
+            if self.reads[..i].contains(path) {
+                return Err(format!("{at}: [extract] reads {path} twice"));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl PackManifest {
@@ -112,6 +188,12 @@ impl PackManifest {
             if m.depends[..i].contains(u) {
                 return Err(format!("{at}: depends on {u} twice"));
             }
+        }
+        if let Some(e) = &m.extract {
+            if m.kind == PackKind::Support {
+                return Err(format!("{at}: a support pack has no [extract]: its extract/ is reached through the games' recipes"));
+            }
+            e.check(at)?;
         }
         Ok(m)
     }
@@ -453,33 +535,69 @@ pub fn requires(source: &str) -> Vec<String> {
     out
 }
 
-/// The API declarations pack `id`'s modules check against: the engine's
-/// (nettai/), then each support pack it depends on (in load order), then its own;
-/// each folder's `.d.luau` files in path order. (A declaration is global
-/// to the modules checked against it; Luau's .luaurc names none.)
+/// The API declarations pack `id`'s content modules check against: the
+/// engine's (nettai/, but its [`EXTRACT_DECLARATIONS`]), then each support
+/// pack it depends on (in load order), then its own; each folder's
+/// `.d.luau` files in path order, but those under its [`EXTRACT`] folder.
+/// (A declaration is global to the modules checked against it; Luau's
+/// .luaurc names none.)
 pub fn declarations(dir: &Path, all: &BTreeMap<String, PackManifest>, id: &str) -> Result<Vec<PathBuf>, String> {
-    fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
-        let Ok(entries) = nettai_platform::fs::read_dir(dir) else { return Ok(()) };
-        let mut entries: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
-        entries.sort();
-        for path in entries {
-            if path.is_dir() {
-                walk(root, &path, out)?;
-            } else if path.to_string_lossy().ends_with(".d.luau") {
-                out.push(path);
-            }
-        }
-        Ok(())
-    }
-    let mut out = Vec::new();
-    walk(dir, &dir.join(ENGINE), &mut out)?;
+    let mut out: Vec<PathBuf> = declaration_files(&dir.join(ENGINE)).into_iter().filter(|f| !is_extract_declarations(f)).collect();
     if out.is_empty() {
         return Err(format!("{}: the engine's declarations ({ENGINE}/core.d.luau) aren't there", dir.display()));
     }
     for q in with_depends(all, id)? {
-        walk(dir, &dir.join(&q.id), &mut out)?;
+        let root = dir.join(&q.id);
+        out.extend(declaration_files(&root).into_iter().filter(|f| !f.starts_with(root.join(EXTRACT))));
     }
     Ok(out)
+}
+
+/// The API declarations pack `id`'s [`EXTRACT`] modules (its recipe's)
+/// check against: the engine's [`EXTRACT_DECLARATIONS`], then the `.d.luau`
+/// files under the `extract/` folder of each support pack it depends on (in
+/// load order) and of its own, in path order: the recipes' API and none of
+/// the battle's (docs/design/extraction-recipes.md §4.5).
+pub fn extract_declarations(dir: &Path, all: &BTreeMap<String, PackManifest>, id: &str) -> Result<Vec<PathBuf>, String> {
+    let engine = dir.join(ENGINE).join(EXTRACT_DECLARATIONS);
+    if !nettai_platform::fs::is_file(&engine) {
+        return Err(format!("{}: the engine's declarations of the recipes ({ENGINE}/{EXTRACT_DECLARATIONS}) aren't there", dir.display()));
+    }
+    let mut out = vec![engine];
+    for q in with_depends(all, id)? {
+        out.extend(declaration_files(&dir.join(&q.id).join(EXTRACT)));
+    }
+    Ok(out)
+}
+
+/// Whether `file` is the engine's declarations of the recipes.
+fn is_extract_declarations(file: &Path) -> bool {
+    file.file_name().is_some_and(|n| n == EXTRACT_DECLARATIONS)
+}
+
+/// The `.d.luau` files under `dir`, in path order.
+fn declaration_files(dir: &Path) -> Vec<PathBuf> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = nettai_platform::fs::read_dir(dir) else { return };
+        let mut entries: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for path in entries {
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.to_string_lossy().ends_with(".d.luau") {
+                out.push(path);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(dir, &mut out);
+    out
+}
+
+/// Whether module `name` (`exe6:extract/hud`) is a recipe's: under its
+/// pack's [`EXTRACT`] folder.
+pub fn is_extract_module(name: &str) -> bool {
+    name.split_once(keys::SEPARATOR).is_some_and(|(_, path)| path == EXTRACT || path.starts_with(&format!("{EXTRACT}/")))
 }
 
 /// A game pack's lock, in its folder (docs/design/content-deployment.md
@@ -582,7 +700,7 @@ mod tests {
     }
 
     fn pack(id: &str, kind: PackKind, depends: &[&str]) -> (String, PackManifest) {
-        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), text: Vec::new() })
+        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), ..Default::default() })
     }
 
     #[test]
@@ -597,6 +715,48 @@ mod tests {
         assert!(e.starts_with("x/manifest.toml: ") && e.contains("unknown field `definitions`"), "{e}");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\nweapons = []\n", "x").is_err(), "no other field");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
+    }
+
+    #[test]
+    fn a_recipe_is_declared() {
+        let head = "id = \"exe6\"\nkind = \"game\"\n";
+        let m = PackManifest::parse(
+            &format!("{head}[extract]\nprimitives = 1\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n"),
+            "exe6/manifest.toml",
+        )
+        .unwrap();
+        let e = m.extract.unwrap();
+        assert_eq!((e.primitives, e.roms.len(), e.size, e.reads.as_slice()), (1, 2, 0x80_0000, ["compat/assets.toml".to_string()].as_slice()));
+        assert_eq!(PackManifest::parse(head, "x").unwrap().extract, None, "a game without a recipe yet");
+        let refused = |extract: &str| PackManifest::parse(&format!("{head}[extract]\nprimitives = 1\nsize = 0x800000\n{extract}"), "x").unwrap_err();
+        assert!(refused("roms = []\n").contains("no ROM"));
+        assert!(refused("roms = [\"BR6E\", \"BR6E\"]\n").contains("twice"));
+        assert!(refused("roms = [\"BR6\"]\n").contains("four letters"));
+        assert!(refused("roms = [\"BR6E\"]\nreads = [\"../exe5/compat/assets.toml\"]\n").contains("no path in the pack"));
+        assert!(refused("roms = [\"BR6E\"]\nreads = [\"extract/init.luau\"]\n").contains("inputs already"));
+        assert!(refused("roms = [\"BR6E\"]\nunknown = 1\n").contains("unknown field"));
+        let support = PackManifest::parse("id = \"lib\"\nkind = \"support\"\n[extract]\nprimitives = 1\nroms = [\"BR6E\"]\nsize = 1\n", "lib").unwrap_err();
+        assert!(support.contains("support pack has no [extract]"), "{support}");
+        assert!(is_extract_module("exe6:extract/hud") && is_extract_module("exelib:extract/place") && is_extract_module("exe6:extract"));
+        assert!(!is_extract_module("exe6:extractor") && !is_extract_module("exe6:chips/extract/x"));
+    }
+
+    #[test]
+    fn content_and_recipes_check_against_declarations_of_their_own() {
+        let dir = std::env::temp_dir().join(format!("nettai-declarations-{}", std::process::id()));
+        let file = |path: &str| {
+            let p = dir.join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(&p, "").unwrap();
+        };
+        for f in ["nettai/core.d.luau", "nettai/extract.d.luau", "lib/types.d.luau", "lib/extract/place.d.luau", "g/types.d.luau", "g/extract/own.d.luau"] {
+            file(f);
+        }
+        let all: BTreeMap<String, PackManifest> = [pack("lib", PackKind::Support, &[]), pack("g", PackKind::Game, &["lib"])].into();
+        let names = |files: Vec<PathBuf>| files.iter().map(|f| f.strip_prefix(&dir).unwrap().to_string_lossy().replace('\\', "/")).collect::<Vec<_>>();
+        assert_eq!(names(declarations(&dir, &all, "g").unwrap()), ["nettai/core.d.luau", "lib/types.d.luau", "g/types.d.luau"]);
+        assert_eq!(names(extract_declarations(&dir, &all, "g").unwrap()), ["nettai/extract.d.luau", "lib/extract/place.d.luau", "g/extract/own.d.luau"]);
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     /// A module saved with CRLF line endings reads as the same source as

@@ -11,6 +11,14 @@
 //! Each module is checked on its own and `require` is typed `any`; an
 //! editor running luau-lsp with a `--definitions=` for each declaration
 //! resolves requires and checks across modules too.
+//!
+//! A pack's extraction recipe (its `extract/` modules,
+//! docs/design/extraction-recipes.md §4.5) checks against the recipes'
+//! declarations (nettai/extract.d.luau and the `.d.luau` files under its
+//! support packs' and its own `extract/`), the content against the rest:
+//! neither sees the other's API. A content module requires no recipe
+//! module, a recipe module nothing but recipe modules, and a recipe's
+//! `data` reads only what its manifest's `[extract]` names.
 
 pub mod lints;
 
@@ -72,13 +80,25 @@ pub fn modules(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
 
 /// The declarations pack `pack` of content `dir` checks against: the
 /// engine's, then the support packs' it depends on, then its own
-/// (`packs::declarations`).
+/// (`packs::declarations`), the recipes' aside.
 pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
     use nettai_content_api::packs;
     let all = packs::packs(dir)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    concatenated(&packs::declarations(dir, &all, pack)?)
+}
+
+/// The declarations pack `pack`'s recipe (its `extract/` modules) checks
+/// against (`packs::extract_declarations`).
+pub fn extract_definitions(dir: &Path, pack: &str) -> Result<String, String> {
+    use nettai_content_api::packs;
+    let all = packs::packs(dir)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    concatenated(&packs::extract_declarations(dir, &all, pack)?)
+}
+
+fn concatenated(files: &[std::path::PathBuf]) -> Result<String, String> {
     let mut defs = String::new();
-    for f in packs::declarations(dir, &all, pack)? {
-        defs += &std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))?;
+    for f in files {
+        defs += &std::fs::read_to_string(f).map_err(|e| format!("{}: {e}", f.display()))?;
         defs += "\n";
     }
     Ok(defs)
@@ -142,10 +162,36 @@ fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
         for (path, source) in modules(&dir.join(&p.id)).map_err(|e| e.to_string())? {
             let name = p.module(path.trim_end_matches(".luau"));
             let file = format!("{}/{path}", p.id);
+            let recipe = packs::is_extract_module(&name);
             for written in packs::requires(&source) {
-                if let Err(e) = packs::find(&files, &all, &name, &written) {
-                    problems.push(e);
+                match packs::find(&files, &all, &name, &written) {
+                    Err(e) => problems.push(e),
+                    Ok(target) if recipe && !packs::is_extract_module(&target) => problems.push(format!(
+                        "{file}: require({written:?}): {}.luau isn't a recipe's: an {}/ module requires only {}/ modules (its own pack's and its support packs')",
+                        keys::module_path(&target),
+                        packs::EXTRACT,
+                        packs::EXTRACT
+                    )),
+                    Ok(target) if !recipe && packs::is_extract_module(&target) => problems.push(format!(
+                        "{file}: require({written:?}): {}.luau is a recipe's: content requires no {}/ module (a recipe runs in a VM of its own)",
+                        keys::module_path(&target),
+                        packs::EXTRACT
+                    )),
+                    Ok(_) => {}
                 }
+            }
+            if recipe {
+                for (line, read) in lints::data_reads(&source) {
+                    let declared = p.extract.as_ref().is_some_and(|e| e.reads.iter().any(|r| r == &read));
+                    if p.kind == nettai_content_api::PackKind::Support {
+                        problems.push(format!(
+                            "{file}:{line}: data({read:?}): a support pack's recipe code reads no data of its own; the game's recipe passes it what it reads"
+                        ));
+                    } else if !declared {
+                        problems.push(format!("{file}:{line}: data({read:?}): {}/{} doesn't name it in [extract] reads", p.id, packs::MANIFEST));
+                    }
+                }
+                continue;
             }
             if p.kind == nettai_content_api::PackKind::Support {
                 for (line, what) in lints::game_context(&source) {
@@ -181,9 +227,20 @@ fn check(dir: &Path, only: Option<&[&str]>) -> Result<(usize, Vec<Problem>), Str
     let (mut n, mut problems) = (0, Vec::new());
     for p in nettai_content_api::packs::packs(dir)?.into_iter().filter(|p| only.is_none_or(|o| o.contains(&p.id.as_str()))) {
         let mut checker = PackChecker::new(&definitions(dir, &p.id)?)?;
+        // (The recipe's checker, made when the pack has a recipe module.)
+        let mut recipes: Option<PackChecker> = None;
         let name = &p.id;
         for (path, source) in modules(&dir.join(name)).map_err(|e| e.to_string())? {
             let full = format!("{name}/{path}");
+            if path.starts_with(&format!("{}/", nettai_content_api::packs::EXTRACT)) {
+                let recipe = match &mut recipes {
+                    Some(c) => c,
+                    None => recipes.insert(PackChecker::new(&extract_definitions(dir, &p.id)?)?),
+                };
+                problems.extend(recipe.check(&full, &source)?);
+                n += 1;
+                continue;
+            }
             problems.extend(checker.check(&full, &source)?);
             // (The lints read a module's path in its pack: rules/ holds a game's rules.)
             problems.extend(lints::lints(&path, &source).into_iter().map(|p| format!("{name}/{p}")));

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
-<!-- The count box with no digit: a dark outline round a plate, its right end's corners cut 45 degrees, open to the face on its left. -->
-<!-- The outline, a pixel wide, its right end's corners cut 45 degrees (legs 3.5) -->
-<path d="M-2 0 L10.5 0 L14 3.5 L14 12.5 L10.5 16 L-2 16 Z" fill="#18316b" data-color="14"/>
-<!-- The plate, the outline a pixel in, its cuts parallel -->
-<path d="M-2 1 L10.086 1 L13 3.914 L13 12.086 L10.086 15 L-2 15 Z" fill="#185abd" data-color="13"/>
-</svg>
