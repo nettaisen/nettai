@@ -32,9 +32,11 @@
 //   invite room and {"type":"welcome","peer":BOOL} in a reconnect room (the
 //   client's place, whether the other is there, the invite's code), then
 //   {"type":"peer","present":BOOL} whenever the other comes or goes.
-// - Every welcome has "iceServers":[...] too: the STUN and TURN servers the
-//   client's connections use, exactly those (as the browser's RTCIceServer:
-//   {"urls":[...],"username":...,"credential":...}). The user's words: "the
+// - Once both players are in the room, a client is given "iceServers":[...]:
+//   the STUN and TURN servers its connections use, exactly those (as the
+//   browser's RTCIceServer: {"urls":[...],"username":...,"credential":...}),
+//   in its welcome if the other is in the room already, or else in the peer
+//   message as the other comes. The user's words: "the
 //   signaling server should return stun and turn server credentials". With
 //   its Cloudflare TURN key (the secrets CLOUDFLARE_TURN_KEY_ID and
 //   CLOUDFLARE_TURN_KEY_API_TOKEN), the server asks Cloudflare's TURN
@@ -56,12 +58,13 @@
 // - TURN credentials cost the key's owner what is relayed on them, so they
 //   go only to a room with both its places taken (a room one client made
 //   alone is no match, and a socket opened to collect credentials gets
-//   none): a welcome before then gives STUN alone, and the client that
-//   waited is given its TURN credentials when the other comes, in that
-//   peer message ({"type":"peer","present":true,"iceServers":[...]}). And
-//   a client gets at most TURN_PER_MINUTE of them a minute (TURN_LIMIT, a
-//   rate limit binding, by its IP address, an IPv6 one's /64), past which
-//   STUN alone, logged.
+//   none): a welcome before then gives no servers (a client makes no
+//   connection before the other comes), and the client that waited is
+//   given its servers when the other comes, in that peer message
+//   ({"type":"peer","present":true,"iceServers":[...]}). And a client gets
+//   at most TURN_PER_MINUTE of them a minute (TURN_LIMIT, a rate limit
+//   binding, by its IP address, an IPv6 one's /64), past which STUN alone,
+//   logged.
 // - {"type":"signal","data":...} from one client goes to the other as it is
 //   (dropped if the other isn't there); {"type":"leave"} gives the
 //   client's place up.
@@ -143,7 +146,7 @@ const FORGET_AFTER_MS: Record<Kind, number> = { invite: 10 * 60 * 1000, reconnec
  * code in use is one in some 887 million a room). */
 const CODE_TRIES = 8;
 
-/** Cloudflare's public STUN server: what a welcome gives when there are no
+/** Cloudflare's public STUN server: what a client is given when there are no
  * TURN credentials. */
 const STUN: IceServer[] = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
 /** How long a welcome's TURN credentials last: a long sitting of matches
@@ -423,12 +426,12 @@ export class Room extends DurableObject<Env> {
 			return taken;
 		}
 		const { role, both } = taken;
-		// The servers the welcome gives (never failing, nor waiting long): TURN
-		// only once both players are in the room, for this client and for the
-		// other's socket (which waited with STUN alone, or comes back to it),
-		// each by its own country.
+		// The servers (never failing, nor waiting long): none until both
+		// players are in the room, then for this client and for the other's
+		// socket (which waited with none, or comes back to it), each by its
+		// own country.
 		const waiting = both ? this.ctx.getWebSockets(other(role)).map((ws) => ws.deserializeAttachment() as Attachment).find((a) => !a.replaced) : undefined;
-		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client, country), waiting ? iceServers(this.env, client, waiting.country) : STUN]) : [STUN, STUN];
+		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client, country), waiting ? iceServers(this.env, client, waiting.country) : undefined]) : [undefined, undefined];
 		const [socket, server] = Object.values(new WebSocketPair());
 		// The client's socket from before, if it is still here, goes.
 		for (const old of this.ctx.getWebSockets(role)) {
@@ -438,10 +441,11 @@ export class Room extends DurableObject<Env> {
 		this.ctx.acceptWebSocket(server, [role]);
 		server.serializeAttachment({ role, kind, country } satisfies Attachment);
 		const there = this.ctx.getWebSockets(other(role));
+		// (JSON leaves out an `iceServers` that is undefined: no servers yet.)
 		const welcome =
 			kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code, iceServers: ice } : { type: "welcome", peer: there.length > 0, iceServers: ice };
 		server.send(JSON.stringify(welcome));
-		const present = theirs === STUN ? { type: "peer", present: true } : { type: "peer", present: true, iceServers: theirs };
+		const present = { type: "peer", present: true, iceServers: theirs };
 		for (const ws of there) {
 			tell(ws, JSON.stringify(present));
 		}

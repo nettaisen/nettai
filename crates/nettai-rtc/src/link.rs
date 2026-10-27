@@ -56,14 +56,15 @@
 //!   `crate::native::direct`; one that doesn't open within
 //!   [`Config::dial_timeout`] is given up).
 //!
-//! **STUN and TURN** in a room are the server's: each welcome gives the
-//! servers the connections are made on (`crate::signal`), and the latest
-//! welcome's are what the next connection uses, so a reconnection has the
-//! credentials its reconnect room gave. The backend resolves their names
-//! itself, without waiting (libdatachannel on a thread of its own, the
-//! browser its own way). The welcome comes before anything the other side
-//! sends, so neither side starts ICE on servers it hasn't had. A direct
-//! link uses none.
+//! **STUN and TURN** in a room are the server's: once both players are in
+//! the room, it gives each the servers its connections are made on
+//! (`crate::signal`), in the welcome or, for the one that waited, in the
+//! peer message as the other comes, and the latest given are what the next
+//! connection uses, so a reconnection has the credentials its reconnect
+//! room gave. The backend resolves their names itself, without waiting
+//! (libdatachannel on a thread of its own, the browser its own way). The
+//! servers come before anything the other side sends, so neither side
+//! starts ICE on servers it hasn't had. A direct link uses none.
 //!
 //! A reconnect room's socket that doesn't open, or drops, is made again:
 //! the server being out of reach is no reason to stop sooner than the
@@ -631,8 +632,8 @@ impl Link {
                 self.peer_here(now, peer);
             }
             RoomEvent::Peer { present, ice_servers } => {
-                // (Servers only when the server gives others: the TURN
-                // credentials that wait for both players to be in the room.)
+                // (Servers as the other comes: a server gives them only once
+                // both players are in the room.)
                 if !ice_servers.is_empty() {
                     self.given(ice_servers);
                 }

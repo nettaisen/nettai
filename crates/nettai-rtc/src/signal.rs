@@ -37,31 +37,32 @@
 //! - `{"type":"welcome","role":"host"|"join","peer":BOOL,"code":CODE}` in an
 //!   invite room and `{"type":"welcome","peer":BOOL}` in a reconnect room:
 //!   this client's place, whether the other is there, and the invite's code;
-//!   in either, `"iceServers":[...]` too: the STUN and TURN servers the
-//!   client's connections use (as the browser's `RTCIceServer`s,
-//!   [`IceServer`]). The Worker's are Cloudflare's: its TURN service's STUN
-//!   and TURN servers, with credentials it asked for this client, which last
-//!   [`TURN_CREDENTIALS_LAST`]; without them (no TURN key set, or the
-//!   service didn't answer), Cloudflare's public STUN server alone. A client
-//!   in mainland China is given only the owner's own coturn there instead,
-//!   with credentials the Worker makes, which last as long. A
-//!   client uses exactly the servers a welcome gives (only a server that
-//!   gives none, such as [`crate::testing`]'s by default, leaves it to its
-//!   own, [`crate::Config::ice_servers`], none unless a caller names some);
-//!   the latest welcome's, so a reconnection has the credentials its
-//!   reconnect room gave. The welcome comes before
-//!   anything the other client sends, and a client makes no connection in a
-//!   room before it, so every connection has them;
-//!   A server may give TURN credentials only once both players are in the
-//!   room (the Worker does: they cost its owner what is relayed on them, so
-//!   a client that is alone has STUN alone); then
+//!   in either, once the other has come, `"iceServers":[...]` too: the STUN
+//!   and TURN servers the client's connections use (as the browser's
+//!   `RTCIceServer`s, [`IceServer`]). The Worker's are Cloudflare's: its TURN
+//!   service's STUN and TURN servers, with credentials it asked for this
+//!   client, which last [`TURN_CREDENTIALS_LAST`]; without them (no TURN key
+//!   set, or the service didn't answer), Cloudflare's public STUN server
+//!   alone. A client in mainland China is given only the owner's own coturn
+//!   there instead, with credentials the Worker makes, which last as long. A
+//!   server gives servers only once both players are in the room (the
+//!   Worker's cost its owner what is relayed on them), so a welcome before
+//!   then gives none; then
 //! - `{"type":"peer","present":BOOL}`: the other came, or its socket went;
-//!   when it came, `"iceServers":[...]` too if the server gives this client
-//!   other servers now, which the next connections are made on;
+//!   when it came, `"iceServers":[...]` too: this client's servers now;
 //! - `{"type":"signal","data":...}`: what the other sent;
 //! - `{"type":"error","reason":REASON,"message":"..."}`: refused, and the
 //!   socket closes. The reason is one of [`Refusal`]'s; the message is for a
 //!   log.
+//!
+//! A client uses exactly the servers it was given last, for each connection
+//! made after (a welcome that gives none, as before the other has come or
+//! from [`crate::testing`]'s server by default, leaves it to its own,
+//! [`crate::Config::ice_servers`], none unless a caller names some; a `peer`
+//! that gives none leaves them as they were), so a reconnection has the
+//! credentials its reconnect room gave. They come before anything the other
+//! client sends, and a client makes no connection in a room before the other
+//! is there, so every connection has them.
 //!
 //! A client says `{"type":"signal","data":...}` (to the other, if it is
 //! there; dropped if not) and `{"type":"leave"}` (it gives its place up; a

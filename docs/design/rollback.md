@@ -825,15 +825,15 @@ meets through `wss://matchmaking.nettai.n1gp.net` (`DEFAULT_SIGNAL`, where the a
 signaling server should return stun and turn server credentials"; and of the Google STUN server the clients had
 by default, "you don't even need a google default right? direct connect doesn't even need stun?" So:
 
-- Every welcome, in an invite room and a reconnect room alike, carries `iceServers`: the STUN and TURN servers
-  the client's connections use, as the browser's `RTCIceServer`s (`{"urls":[...],"username":...,
+- Once both players are in the room, in an invite room and a reconnect room alike, each is given `iceServers`:
+  the STUN and TURN servers its connections use, as the browser's `RTCIceServer`s (`{"urls":[...],"username":...,
   "credential":...}`, nettai-rtc's `IceServer`). With its TURN key, the Worker asks Cloudflare's TURN service
   (Cloudflare Realtime) for credentials for that client, `POST
   https://rtc.live.cloudflare.com/v1/turn/keys/{CLOUDFLARE_TURN_KEY_ID}/credentials/generate-ice-servers` with
   `Authorization: Bearer {CLOUDFLARE_TURN_KEY_API_TOKEN}` and `{"ttl":14400}`, and gives the servers it answers: its STUN
   server (`stun:stun.cloudflare.com:3478`) and its TURN servers (`turn:` over UDP and TCP, `turns:` over TLS,
   each with the username and credential). Without the key, or when the service answers with an error, gives no
-  server, or doesn't answer within 3 seconds, the welcome gives Cloudflare's public STUN server alone (a constant
+  server, or doesn't answer within 3 seconds, the client is given Cloudflare's public STUN server alone (a constant
   in the Worker): a room never waits on the service longer, nor fails for it. The failure is logged on the
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
@@ -853,10 +853,11 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Without those two secrets, a client in China is given Cloudflare's.
 - **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
   relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
-  open turn credentials as well"). So a welcome gives TURN credentials only once the room's two places are taken;
-  before, STUN alone. The client that waited alone (the host of an invite, the first to a reconnect room) is given
-  its TURN credentials as the other comes, in the peer message (`{"type":"peer","present":true,"iceServers":[...]}`),
-  which a client takes as a welcome's servers; a `peer` without them leaves the servers as they were. And one
+  open turn credentials as well"). So servers are given only once the room's two places are taken: a welcome
+  before then gives none (a client makes no connection before the other comes). The client that waited alone (the
+  host of an invite, the first to a reconnect room) is given its servers as the other comes, in the peer message
+  (`{"type":"peer","present":true,"iceServers":[...]}`), which a client takes as a welcome's servers; a `peer`
+  without them leaves the servers as they were. And one
   client, by its IP address (Cloudflare's `CF-Connecting-IP`; an IPv6 address by its /64), is given credentials at
   most 10 times a minute (the Worker's rate limit binding `TURN_LIMIT`, in `wrangler.toml`; a pairing is two, both
   counted against the client whose coming made it): past that, STUN alone, logged. The in-process test server gives
