@@ -546,6 +546,27 @@ fn the_rules_buttons_without_uses_can_be_pressed() {
     }
 }
 
+/// Fixed builds: every round's sides are of that many builds, made once
+/// (the same across envs).
+#[test]
+fn fixed_builds_draw_from_that_many() {
+    let seats = [Controller::Bot(BotKind::Masher), Controller::Bot(BotKind::Masher)];
+    let mut builds = std::collections::HashSet::new();
+    for seed in [12, 13] {
+        let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 600, seats, fixed_builds: 2, ..Config::default() }, seed).unwrap();
+        while env.ended.len() < 10 {
+            env.step([0, 0]).unwrap_or_else(|e| panic!("{e}"));
+        }
+        for r in &env.ended {
+            for side in 0..2 {
+                builds.insert((r.navis[side].clone(), r.max_hp[side]));
+            }
+        }
+    }
+    // (Two builds, in every env alike: the same at most two navis and max HPs across both envs' sides.)
+    assert!(builds.len() <= 2, "{builds:?}");
+}
+
 /// With `mirror`, both sides play side 0's build: the same navi and the
 /// same max HP every round, where random builds differ.
 #[test]

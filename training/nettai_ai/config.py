@@ -80,6 +80,7 @@ class EnvConfig:
     # which leaves a step short-handed while a full build (up to 130 ms) is being made.
     builders: int = 4
     mirror: bool = False  # both sides play side 0's build (evaluation's --mirror: play alone decides)
+    fixed_builds: int = 0  # each game's builds drawn from this many, made once (0: random every round): a specialist's narrow matchups
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 

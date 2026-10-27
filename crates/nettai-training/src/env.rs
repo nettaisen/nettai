@@ -103,6 +103,10 @@ pub struct Config {
     /// duplicate deals, a round is decided by play alone (evaluation's
     /// `--mirror`).
     pub mirror: bool,
+    /// Each game's builds drawn from this many, each made once from a seed
+    /// of its own (the same in every env); 0: every round's random. A
+    /// narrow set of matchups (a specialist's training).
+    pub fixed_builds: u32,
 }
 
 impl Default for Config {
@@ -121,6 +125,7 @@ impl Default for Config {
             full_lists: crate::builds::FULL_SHARE,
             combos: 0.3,
             mirror: false,
+            fixed_builds: 0,
         }
     }
 }
@@ -945,7 +950,12 @@ struct BuildSettings {
     randomize: f64,
     full: f64,
     combos: f64,
+    fixed: u32,
 }
+
+/// The first seed of the fixed builds ([`Config::fixed_builds`]): build `i`
+/// of each game is made from this plus `i`.
+const FIXED_BUILDS_SEED: u32 = 0x5EED_B11D;
 
 /// An env's builds (§6.5): each game's stream of draws, and the builds made
 /// ahead from it, by game, the oldest first. The pool's workers make them
@@ -978,7 +988,7 @@ struct BuildState {
 impl EnvBuilds {
     fn new(games: Arc<Vec<Game>>, streams: Vec<Picks>, cfg: &Config) -> EnvBuilds {
         let ready = streams.iter().map(|_| Default::default()).collect();
-        let settings = BuildSettings { holdout: cfg.holdout, randomize: cfg.randomize, full: cfg.full_lists, combos: cfg.combos };
+        let settings = BuildSettings { holdout: cfg.holdout, randomize: cfg.randomize, full: cfg.full_lists, combos: cfg.combos, fixed: cfg.fixed_builds };
         let state = BuildState { streams: streams.into_iter().map(Some).collect(), ready, settings, paused: false, generation: 0 };
         EnvBuilds { games, state: std::sync::Mutex::new(state), returned: std::sync::Condvar::new(), prepare: Default::default() }
     }
@@ -989,6 +999,11 @@ impl EnvBuilds {
 
     fn make(&self, g: usize, stream: &mut Picks, s: &BuildSettings) -> Result<crate::builds::Build, String> {
         let game = &self.games[g];
+        if s.fixed > 0 {
+            // (One of the game's fixed builds, the stream picking which: made again from its own seed.)
+            let mut own = Picks::new(FIXED_BUILDS_SEED.wrapping_add((stream.next() % s.fixed as u64) as u32));
+            return game.maker.random_with(&mut own, &s.holdout, s.randomize, s.full, combos(game, s.combos));
+        }
         game.maker.random_with(stream, &s.holdout, s.randomize, s.full, combos(game, s.combos))
     }
 

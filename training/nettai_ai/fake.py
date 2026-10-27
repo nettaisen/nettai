@@ -82,6 +82,7 @@ class FakePool:
         builders: int = 0,
         cache: str | None = None,
         mirror: bool = False,  # (no builds: taken and unused)
+        fixed_builds: int = 0,  # (the same)
         spec: dict[str, Any] | None = None,
     ):
         self.games = list(games)
