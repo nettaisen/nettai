@@ -634,7 +634,10 @@ host calls, in order:
   the same background pool (`Compat::backgrounds`, its identity: the hash
   leaves it out, and a round's background may be any of it), and
   refuse a mismatch on both sides, each with a reason its host can say
-  (`Reason::DifferentVersion`, `DifferentGame`, `DifferentContent`). Both
+  (`Reason::DifferentVersion`, `DifferentGame`, `DifferentContent`). A lobby
+  that waits on content (the app's: `Lobby::wait_on_content`) first has its
+  host bring other content of the game, or another pool, up to date on both
+  sides (docs/design/content-deployment.md §5, "Netplay"). Both
   play by the game's rules (a game has one ruleset). The language is each
   player's own, and so is each player's name, which the lobby carries to be
   shown.

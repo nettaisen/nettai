@@ -167,8 +167,29 @@ finds the other's revision in its store or the game's index (read again where it
 older one downloads the newer, loads the game again on it behind the bar, and gives the lobby the new content and the
 build made again of it (`Lobby::replace_content`); the side with the newer one waits. Content no index lists, the same
 revision of other content, or development's content (it has no revision) is refused for its content
-(`Lobby::refuse_content`: `Reason::DifferentContent` on both sides). Nothing on the wire changes: each peer says its
-own content as always, and a peer that doesn't wait refuses as before.
+(`Lobby::refuse_content`: `Reason::DifferentContent` on both sides).
+
+The background pool (every game's backgrounds, which a round may be drawn on: `Compat::backgrounds`, its identity)
+isn't in the hash, and comes from every game's content, not only the one played; peers must agree on it all the same.
+A waiting lobby doesn't refuse another pool at once either. While the pools differ (the hashes the same) it takes
+nothing of the other's lobby, and tells its host the other's pool (`Lobby::their_backgrounds`). Both sides then take
+every game's newest revision of the line, whatever Settings say (`contents::fetch_every_newest`: the catalog and each
+game's index read again, a bundle downloaded where the store hasn't it), as a game with no content, a replay's
+content and the played game's are; this covers a side whose "Check for updates" is off, or which started offline.
+Where that changed the played game's content or the pool, the game is loaded again on it behind the bar (the pool is
+read as a game loads) and the lobby given the new content and the build made again of it (`Lobby::replace_content`).
+Then the host tells the lobby what it couldn't have (`Lobby::updated_backgrounds`), and the lobby compares again. Both
+sides do this, so both come to the same pool without telling each other which game differs: the side that already had
+everything changes nothing and waits for the other. While the other's pool stays the one a side took the newest
+content against, that side waits for it (the other may still be downloading), refusing nothing; a pool of theirs that
+changes and still differs is taken against again (the sites may have published since). Where a side couldn't have
+something (the catalog, or a game's bundle) and the pools still differ, its lobby refuses for that, the reason
+naming what couldn't be had (`Reason::DifferentContent` on both sides). Two sides that each have every game's newest
+by their own reading of the sites and still differ (one read an index a cache hadn't caught up on) wait until a
+player leaves. Replays need none of this: each round's background is recorded by name.
+
+Nothing on the wire changes: each peer says its own content and pool as always, and a peer that doesn't wait refuses
+as before.
 
 **Asset packs.** Packs are kept by the fingerprint of what the content's tables say of them
 (`packs/<game>-<fingerprint>/`, `nettai_extract::fingerprint`): the names their assets are written under, and the

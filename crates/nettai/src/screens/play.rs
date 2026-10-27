@@ -212,9 +212,10 @@ enum Stage {
     Match { result: Option<Ended> },
 }
 
-/// What is done about the other player's content, where its hash isn't this side's (docs/design/
-/// content-deployment.md §5, "Netplay"): both play the newer revision, the side without it downloading it. Each
-/// state is of the other's content's hash.
+/// What is done about the other player's content, where it isn't this side's (docs/design/content-deployment.md
+/// §5, "Netplay"). Where its hash isn't this side's, both play the newer revision, the side without it downloading
+/// it: those states are of the other's content's hash. Where its background pool isn't this side's, both take
+/// every game's newest content: those are of the other's pool's identity.
 enum Switch {
     /// Their revision is looked for: their game's index read again; done once it has been.
     Finding(ContentHash, Rc<Cell<bool>>),
@@ -223,6 +224,11 @@ enum Switch {
     Reloading(ContentHash),
     /// Theirs is older: this side waits for them to take its own.
     Waiting(ContentHash),
+    /// Every game's newest content is being taken (what came of it, once it has), the catalog and the indexes read
+    /// again.
+    Updating(u64, Rc<RefCell<Option<crate::contents::Updated>>>),
+    /// Then the game is loaded again on it, with the pool as it is now; what couldn't be had is said once it is.
+    Rebuilding(u64, Option<String>),
 }
 
 /// A match's set is over: since when, and whether nettai's result is over the picture (`MatchResult`).
@@ -569,6 +575,8 @@ impl Play {
             }
         }
         self.stage = Stage::Idle;
+        // (What was being done about the other player's content is the link's: a later one starts anew.)
+        self.switch = None;
         self.agreed = None;
         self.waiting = None;
         self.wait_checked = None;
@@ -1330,27 +1338,39 @@ fn recorder(content: &std::sync::Arc<nettai_battle::Content>, agreed: &Agreement
 }
 
 impl Play {
-    /// The other player's content, where its hash isn't this side's (`Lobby::their_content`): both play the newer
-    /// revision. This side's revision is the bundle its game is loaded from; theirs is found in the store or the
-    /// game's index (read again where it isn't listed). Theirs newer: it is downloaded and the game loaded again on
-    /// it, and the lobby plays it ([`Lobby::replace_content`], the build made again of it); theirs older: this side
-    /// waits for them to take its own. Neither found, or the same revision of other content, or development's
-    /// content: the lobby refuses, the reason said to both.
+    /// The other player's content, where it isn't this side's.
+    ///
+    /// Its hash isn't this side's (`Lobby::their_content`): both play the newer revision. This side's revision is
+    /// the bundle its game is loaded from; theirs is found in the store or the game's index (read again where it
+    /// isn't listed). Theirs newer: it is downloaded and the game loaded again on it, and the lobby plays it
+    /// ([`Lobby::replace_content`], the build made again of it); theirs older: this side waits for them to take its
+    /// own. Neither found, or the same revision of other content, or development's content: the lobby refuses, the
+    /// reason said to both.
+    ///
+    /// Its background pool isn't this side's (`Lobby::their_backgrounds`): this side takes every game's newest
+    /// content, whatever Settings say (`contents::fetch_every_newest`), and where that changed its game's content or
+    /// the pool, loads the game again on it, behind the bar, for the lobby to play; then it tells the lobby what it
+    /// couldn't have (`Lobby::updated_backgrounds`), which waits for the other to do the same, or refuses for that.
+    /// Once under way, that goes on to its end whatever the lobby says meanwhile.
     fn follow_content(&mut self, shell: &mut Shell) {
-        let theirs = self.session.as_mut().and_then(Session::lobby).and_then(|l| l.their_content());
-        let (Some(theirs), Some(game)) = (theirs, shell.game().map(str::to_string)) else {
+        let game = shell.game().map(str::to_string);
+        match (self.switch.take(), &game) {
+            (Some(Switch::Updating(of, done)), Some(game)) => return self.updated(shell, game, of, done),
+            (Some(Switch::Rebuilding(of, failed)), Some(game)) => return self.rebuilt(shell, game, of, failed),
+            (other, _) => self.switch = other,
+        }
+        let lobby = self.session.as_mut().and_then(Session::lobby);
+        let (theirs, their_pool) = lobby.map_or((None, None), |l| (l.their_content(), l.their_backgrounds()));
+        if let (Some(pool), Some(game)) = (their_pool, &game) {
+            return self.update_every_game(game, pool);
+        }
+        let (Some(theirs), Some(game)) = (theirs, game) else {
             if !matches!(self.switch, Some(Switch::Reloading(_))) {
                 self.switch = None;
             }
             return;
         };
-        let refuse = |play: &mut Play, why: String| {
-            crate::errors::log(&format!("playing {game} with the other player's content {theirs}"), &why);
-            if let Some(lobby) = play.session.as_mut().and_then(Session::lobby) {
-                lobby.refuse_content(&why);
-            }
-            play.switch = None;
-        };
+        let refuse = |play: &mut Play, why: String| play.refuse_content(&format!("playing {game} with the other player's content {theirs}"), why);
         match self.switch.take() {
             Some(Switch::Finding(of, done)) if of == theirs => {
                 if !done.get() {
@@ -1382,21 +1402,103 @@ impl Play {
                 if ready.content().hash() != theirs {
                     return refuse(self, format!("{game} loaded on the content downloaded plays {}", ready.content().hash()));
                 }
-                // (The build, made again of the content it plays now.)
-                self.read_builds(shell, &game);
-                let (side, rulesets) = (self.side(shell, self.joining()), builds::kit(shell).and_then(|kit| kit.rulesets()));
-                match (side, rulesets, self.session.as_mut().and_then(Session::lobby)) {
-                    (Ok(side), Some(rulesets), Some(lobby)) => lobby.replace_content(ready.content(), rulesets, side),
-                    (Err(problem), _, _) => {
-                        refuse(self, "this player's build can't be played on the other's content".into());
-                        self.problem = Some(problem);
-                    }
-                    _ => refuse(self, "the game's rulesets can't be read".into()),
+                if let Err(why) = self.play_reloaded(shell, &game, ready.content(), "the other's content") {
+                    refuse(self, why);
                 }
-                self.show(shell);
             }
             Some(Switch::Waiting(of)) if of == theirs => self.switch = Some(Switch::Waiting(of)),
             _ => self.decide_content(shell, &game, theirs, true, &refuse),
+        }
+    }
+
+    /// Refuse the other player for their content (`Lobby::refuse_content`), `why` said to both and logged as of
+    /// `doing`; nothing more is done about it.
+    fn refuse_content(&mut self, doing: &str, why: String) {
+        crate::errors::log(doing, &why);
+        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+            lobby.refuse_content(&why);
+        }
+        self.switch = None;
+    }
+
+    /// Game `game`, loaded again on `content` (the other player's, or every game's newest): the lobby plays it from
+    /// now, with this player's build made again of it ([`Lobby::replace_content`]: not ready). Why it can't, if it
+    /// can't (`of` says what the content is, for that).
+    fn play_reloaded(&mut self, shell: &mut Shell, game: &str, content: &Arc<nettai_battle::Content>, of: &str) -> Result<(), String> {
+        self.read_builds(shell, game);
+        let (side, rulesets) = (self.side(shell, self.joining()), builds::kit(shell).and_then(|kit| kit.rulesets()));
+        let played = match (side, rulesets, self.session.as_mut().and_then(Session::lobby)) {
+            (Ok(side), Some(rulesets), Some(lobby)) => {
+                lobby.replace_content(content, rulesets, side);
+                Ok(())
+            }
+            (Err(problem), _, _) => {
+                self.problem = Some(problem);
+                Err(format!("this player's build can't be played on {of}"))
+            }
+            _ => Err("the game's rulesets can't be read".into()),
+        };
+        self.show(shell);
+        played
+    }
+
+    /// The other player's background pool, `theirs`, isn't this side's: every game's newest content is taken
+    /// ([`Play::follow_content`]).
+    fn update_every_game(&mut self, game: &str, theirs: u64) {
+        let done: Rc<RefCell<Option<crate::contents::Updated>>> = Rc::default();
+        let told = done.clone();
+        match slint::spawn_local(async move { *told.borrow_mut() = Some(crate::contents::fetch_every_newest().await) }) {
+            Ok(_) => self.switch = Some(Switch::Updating(theirs, done)),
+            Err(why) => self.refuse_content(&format!("taking every game's newest content for {game}'s match"), format!("the download couldn't start: {why}")),
+        }
+    }
+
+    /// Every game's newest content was being taken against the other's pool `of` ([`Play::update_every_game`]):
+    /// once it has been, the games whose content arrived play it (another game's once it is next shown, as its
+    /// update would), and game `game` is loaded again where its content or the pool changed; else the lobby is told.
+    fn updated(&mut self, shell: &mut Shell, game: &str, of: u64, done: Rc<RefCell<Option<crate::contents::Updated>>>) {
+        let Some(updated) = done.borrow_mut().take() else {
+            self.switch = Some(Switch::Updating(of, done));
+            return;
+        };
+        if let Some(why) = &updated.failed {
+            crate::errors::log("taking every game's newest content for an online match", why);
+        }
+        for other in updated.arrived.iter().filter(|g| *g != game) {
+            shell.games.arrived(other);
+        }
+        let current = shell.ready().is_some_and(|(_, ready)| {
+            crate::contents::dir(game).as_deref() == Some(ready.loaded.game.dir.as_path()) && ready.content().background_pool.identity() == updated.pool
+        });
+        if current {
+            if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+                lobby.updated_backgrounds(of, updated.failed);
+            }
+            return;
+        }
+        shell.reload_game(game);
+        self.switch = Some(Switch::Rebuilding(of, updated.failed));
+    }
+
+    /// Game `game` is being loaded again on every game's newest content ([`Play::updated`]): once it is ready, the
+    /// lobby plays it, and is told what couldn't be had (`failed`) against the other's pool `of`.
+    fn rebuilt(&mut self, shell: &mut Shell, game: &str, of: u64, failed: Option<String>) {
+        let doing = "taking every game's newest content for an online match";
+        let Some((_, ready)) = shell.ready() else {
+            if shell.games.playable().iter().any(|g| g == game) {
+                self.switch = Some(Switch::Rebuilding(of, failed));
+            } else {
+                self.refuse_content(doing, format!("{game} couldn't be loaded on its newest content"));
+            }
+            return;
+        };
+        match self.play_reloaded(shell, game, ready.content(), "every game's newest content") {
+            Ok(()) => {
+                if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+                    lobby.updated_backgrounds(of, failed);
+                }
+            }
+            Err(why) => self.refuse_content(doing, why),
         }
     }
 

@@ -743,6 +743,20 @@ impl Games {
         true
     }
 
+    /// Game `id` loaded again, on its content as it is now and the background pool as it is now (every game's
+    /// newest, which the pool is read from as the game loads): pointed at its newest content where that changed
+    /// ([`Games::retarget`]), else its parts read again.
+    pub fn reload(&mut self, id: &str) {
+        if self.retarget(id) {
+            return;
+        }
+        if let Some(entry) = self.list.iter_mut().find(|e| e.id == id)
+            && matches!(entry.state, State::Ready(_))
+        {
+            entry.state = State::NotLoaded;
+        }
+    }
+
     /// Newer content of game `id` arrived in the store: a game that isn't loaded or loading plays from it at once
     /// ([`Games::retarget`]); one that is, from when [`Games::apply_arrived`] says.
     pub fn arrived(&mut self, id: &str) {

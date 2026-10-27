@@ -387,8 +387,9 @@ and of whether it stays the match's or becomes each player's own, "Shared, as no
   engine's tests. Either draws one number for each round's background, so the arenas are the same whichever.
 - *Shared*: the lobby's settings carry what a background left to the seed is drawn from and a round's
   background by name; the seed (from both nonces) picks it alike on both peers; the lobby's compatibility
-  fields carry the pool's identity beside the content's hash, and two peers whose pools differ are refused as
-  other content are (`Reason::DifferentContent`). A replay keeps each round's background by its game and its
+  fields carry the pool's identity beside the content's hash. Two peers whose pools differ each take every
+  game's newest content first, the app's lobby waiting while they do (§20), and are refused only where they still
+  differ (`Reason::DifferentContent`). A replay keeps each round's background by its game and its
   name (docs/frontend.md §8).
 - *Drawing it*: the renderer draws another game's background from that game's own pack (`OtherBackgrounds`,
   read with the game's graphics from the other packs found: a few kilobytes each). In all three games a
@@ -4078,8 +4079,21 @@ read again where it isn't listed). Both play the newer: the side with the older 
 game loaded again on it behind the bar, and its lobby takes the new content and the player's build made again of it
 (`Lobby::replace_content`: not ready); the side with the newer waits. Content no index lists, the same revision of
 other content, or development's content is refused for its content (`Lobby::refuse_content`), each side told the
-content differs. Nothing on the wire changes, and an app of the line before the store refuses other content as it
-always did.
+content differs.
+
+The background pool (every game's backgrounds, §1) comes from every game's content, so two players of the same
+content may still differ in it: one has another game's newer revision. The app's lobby waits on that too
+(`Lobby::their_backgrounds`; development's refuses it at once). Each side takes every game's newest revision
+whatever Settings say (`contents::fetch_every_newest`: Check for updates off, or a start without a connection, as
+well), and where its game's content or the pool changed, its game is loaded again behind the bar, the same as for
+the other player's revision above, and its lobby takes the new content and the build made again of it (not ready).
+Then it tells the lobby what it couldn't have (`Lobby::updated_backgrounds`), and the lobby compares again: the side
+that had everything already waits for the other, and both come to the same pool. Only a side that couldn't have
+something (the catalog, or a game's bundle) refuses, once the pools still differ, the reason naming it (in the log of
+each side; each player is told the content differs). Two sides whose readings of the sites differ (a cache not
+caught up) wait until one leaves. Replays are untouched: each round's background is kept by name.
+
+Nothing on the wire changes, and an app of the line before the store refuses other content as it always did.
 
 **What has run.** Tests: the store (bundles kept by id and found by revision and hash, what a storing cut short
 leaves tidied); a bundle's hash checked against its index's; the download from a site of the tests' own, served on
@@ -4089,8 +4103,14 @@ id and one that isn't there refused with nothing stored); the repository's exe6 
 downloaded and loaded from the store with its pack, playing its published hash (`--ignored a_real_bundle`, with
 `$NETTAI_PACKS`); the games as their content downloads (added from the catalog, the bar's progress, a failure told
 once, nothing published told as such); where a replay plays; two lobbies whose content differs waiting, one taking
-the other's and agreeing, a refusal ending both. The live sites (`--ignored the_sites_give_each_games_content`) ran
+the other's and agreeing, a refusal ending both; two lobbies whose pools differ waiting, the one that took the newest
+and changed nothing waiting on, the other playing the same pool and both agreeing, a pool that changes told again, a
+side that couldn't have something refusing for it; and the same between two players with stores and sites of their
+own, served on this machine (`contents::tests`): pools that differ through BN5's revision, the side without it
+downloading it and its game's pool rebuilt, both agreeing, and a side whose download fails refused, the reason
+naming BN5's bundle. The live sites (`--ignored the_sites_give_each_games_content`) ran
 while bundles were published for 0.11 (2026-10-26): each game's newest downloaded, loaded with the checkout's packs,
 and playing its index's hash. Not run: the app itself on a store (a packaged build), the browser, a lobby between two
-apps of different revisions, and a replay played on another revision's content in the window.
+apps of different revisions or pools (the window's part, `Play::follow_content`: the game loaded again behind the
+bar), and a replay played on another revision's content in the window.
 

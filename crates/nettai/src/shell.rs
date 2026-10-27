@@ -427,6 +427,17 @@ impl Shell {
         true
     }
 
+    /// Game `game` loaded again at once, behind the bar, on its newest content in the store and the background
+    /// pool as the store has it now (every game's newest, taken for an online match whose backgrounds differ:
+    /// `screens::play`), whether or not its own content changed.
+    pub fn reload_game(&mut self, game: &str) {
+        self.games.reload(game);
+        if self.game.as_deref() == Some(game) {
+            self.announced = None;
+        }
+        self.name_games();
+    }
+
     /// The main menu shows with nothing over it (`screens::menu`): a loaded game whose newer content arrived plays
     /// it from now on (`Games::apply_arrived`), loaded again when it is next shown (the selected one at once, behind
     /// the bar).
