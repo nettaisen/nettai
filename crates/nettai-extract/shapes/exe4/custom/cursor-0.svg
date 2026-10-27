@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The chip cursor's corner (frame 1): an L three bands thick, a pixel each, its outer corner cut 45 degrees and the bands inside cut parallel to it, as EXE6's. -->
-<path d="M0 1.5 L1.5 0 L6 0 L6 3 L3 3 L3 6 L0 6 Z" fill="#b54239" data-color="7"/>
-<path d="M1 1.914 L1.914 1 L5 1 L5 2 L2 2 L2 5 L1 5 Z" fill="#ff8408" data-color="14"/>
-<path d="M2 2.328 L2.328 2 L6 2 L6 3 L3 3 L3 6 L2 6 Z" fill="#7b2129" data-color="8"/>
-</svg>

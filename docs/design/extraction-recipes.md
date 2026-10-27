@@ -3,7 +3,8 @@
 The design for moving nettai-extract's per-game knowledge (where each asset is in each ROM, which ROM it is read
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
-the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); not built.
+the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); being built:
+the baseline (step 0), the host (step 1) and EXE6's recipe (step 2) are done, §9 says what building changed.
 
 Decided (2026-10-26):
 
@@ -297,9 +298,11 @@ all recipe; `placeholder_font` and the screen without a ROM deleted.
   across games (EXE4's and EXE5's banners' bars to EXE6's `bar-NNN.svg`, EXE5's `mugshot-box-frame` to EXE4's). With
   one repo a game, a game's bundle holds its own pack and exelib only. The 33 drawings another game links to move to
   exelib's `extract/shapes/` (§8, decision 2); each game's own stay in its `extract/shapes/`; a `.same` file names a
-  path in the bundle (`exelib/extract/shapes/banners/bar-104.svg`). The host reads them from the bundle
-  (`Shaper::file`), not from `drawn::DRAWINGS`. `NETTAI_SHAPES_SOURCES` and `shapes_check` work as now, given a
-  content directory.
+  path in the bundle (`exelib/extract/shapes/banners/bar-104.svg`), and a moved drawing its own game names (all but
+  the eleven bars, which only links reach) gets a link in its game's folder: 22 more, 120 in all. The host reads
+  them from the bundle (`shapes::Drawings`, `Shaper::file`), not from `drawn::DRAWINGS`, on both paths: so every
+  game's drawings move in step 1 (§9). `NETTAI_SHAPES_SOURCES` and `shapes_check` work as now, given a content
+  directory (`--content`, the repository's content/ by default).
 - **The e-Reader cards' pictures** (EXE4's `cards.rs`: Duo and PrixPowr, 0x540 bytes each as hex) are the one input
   besides the drawings that no ROM holds: embedded data. They move to EXE4's recipe as they are (`extract/cards.luau`,
   hex strings, decoded by `gba.tiles` over `bytes.hex`; §8, decision 6).
@@ -504,7 +507,7 @@ The recipe (`extract/init.luau`) returns a function from the set to one table:
 
 ```luau
 return function(set: Set): Extracted
-    local names = require("./names")()
+    local names = require("@self/names")()
     return {
         names = names, -- AssetNames: sprites, songs, backgrounds, mugshots, banners, chips, navis, glyphs
         graphics = {
@@ -524,8 +527,11 @@ the sound plan. The tables use the model's own field names: an unknown field, or
 error naming its path (`graphics.hud.chatbox.boxes[2][1]: expected Map, got table`), as the rule sections'
 `SpecReader` does; a field left out takes the model's default, as the Rust's `..Default::default()` does now. Lists
 are arrays; a list with holes (`Vec<Option<Background>>`) is a table keyed by the game's number from 0 with its length
-(`{ n = 22, [0x00] = ..., [0x05] = ... }`); an enum is its variant's name (`sets = "other"`); `Versioned` is
-`{ base_version, base, versions = { {name, value} } }`. Keyed maps go into `BTreeMap`s, so the order Luau iterates
+(`{ n = 22, [0x00] = ..., [0x05] = ... }`); an enum is its variant's name (`sets = "other"`); a list of named things
+(`Vec<(String, T)>`: buttons, languages, a version's own) is `{ { name = ..., value = ... } }`, and `Versioned` is
+`{ base_version, base, versions = { { name = ..., value = ... } } }`; a tuple is an array (a place `{ x, y }`, a face
+`{ tiles, palette }`), but for the names' other languages' glyphs, `{ glyphs, dialogue_glyphs }` as `AssetNames`
+names them; a `Map` handle stands for a list of map entries. Keyed maps go into `BTreeMap`s, so the order Luau iterates
 them in never reaches a file. It is hand-written (the model has no serde and holds handles); about 800 lines.
 `plain_data` doesn't fit: it takes no userdata and goes 16 deep.
 
@@ -585,7 +591,8 @@ exe6/
 exelib/
   extract/
     place.luau  colors.luau  scroll.luau  banners.luau  patches.luau  texts.luau
-    field.luau  backgrounds.luau  sprites.luau  chatbox.luau  buttons.luau
+    field.luau  backgrounds.luau  sprites.luau  chatbox.luau  buttons.luau  names.luau
+    types.d.luau       the types the makers take (Place, FieldAddresses, ChatboxPlaces...)
     shapes/            the drawings two games or more share (§2.3)
 exe4/extract/cards.luau  the e-Reader cards' pictures
 ```
@@ -911,11 +918,11 @@ About 1,300 lines of Rust in all.
 | Step | What | Size |
 |---|---|---|
 | 0 | The baseline (§6.2) | a script in the verification workspace; three extractions |
-| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`, every ROM required), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs` and the full-set audit; the partial-set tests and the README's tables deleted; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, colors, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons) and the shared drawings; content-model-v2.md §6.4 and core.d.luau's header | Rust +2,000 (codec 800, primitives 450, runner 300, declaration and fingerprint 200, tests 250), −450 (tests); Luau +500 exelib, +330 declarations; 33 drawings to exelib, 98 links renamed |
-| 2 | EXE6's recipe, its manifest's `[extract]`, its drawings; the harness equal; then `src/exe6/` and `shapes/exe6/` deleted | Luau +1,050; Rust −1,500 |
+| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`, every ROM required), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs` and the full-set audit; the partial-set tests and the README's tables deleted; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, colors, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons, names) and the shared drawings; every game's drawings to its `extract/shapes/`, build.rs and the crate's `shapes/` deleted (§9); content-model-v2.md §6.4 and core.d.luau's header | Rust +2,000 (codec 800, primitives 450, runner 300, declaration and fingerprint 200, tests 250), −450 (tests); Luau +500 exelib, +330 declarations; 33 drawings to exelib, 98 links renamed, 22 added |
+| 2 | EXE6's recipe, its manifest's `[extract]`; the harness equal; then `src/exe6/` deleted | Luau +1,050; Rust −1,500 |
 | 3 | EXE5's, likewise | Luau +1,000; Rust −1,500 |
 | 4 | EXE4's, with `cards.luau` | Luau +1,000; Rust −1,450 |
-| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, build.rs and `shapes/`, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80 |
+| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80 |
 | 6 | The verification workspace (§6.6) | about 150 lines of Python and shell changed, two tools retired |
 | 7 | Each game published for the line (below) | three releases |
 
@@ -954,3 +961,75 @@ The questions this design left open, with the answers (2026-10-26).
    EXE4's two e-Reader pictures, which are embedded data. There are no placeholder primitives and no placeholder
    skeletons; placeholders.rs and the checkerboard are deleted (§7); an asset a recipe can't find in the full set is
    an extraction error naming it, which the harness and the content audit catch (§3.10, §6.4).
+
+## 9. As built
+
+What building showed, step by step, where it differs from the sections above or says what they leave open.
+
+**Step 0** (engine fac5b936a). The verification workspace's `tools/extract-baseline.sh <engine checkout> [ROM
+folder] [game...]` builds the checkout's nettai-extract, finds each game's four ROMs in the folder by their headers,
+extracts each full set, and writes `data/extract-baseline/<commit>/` in the workspace's main checkout (one baseline
+for every worktree; ignored by git): each pack whole, `<game>.sha256` (each file's digest, path by path),
+`<game>.reads` (the `--reads` log) and `commits` (the engine's and the content submodules'). It refuses a checkout
+with changes. The baseline of fac5b936a: EXE4 3,076 files, EXE5 3,040, EXE6 3,413.
+
+**Step 1.**
+
+- *The drawings moved whole.* The host reads the drawings from the bundle on both paths (`Tables` carries a game's
+  `shapes::Drawings` for the Rust one), as §6.2's baseline foresaw, so the crate's `shapes/` would have been dead
+  the moment the host changed: every game's drawings went to its `extract/shapes/` in step 1 (EXE4's 31 and 28
+  links, EXE5's 26 and 47, EXE6's 31 and 45, exelib's 33), and build.rs and the crate's `shapes/` were deleted
+  then, not in steps 2 to 5. The harness showed all three games' Rust packs equal to the baseline after the move.
+- *`Tables` until step 5.* The app's `Tables` became a struct: the game's compat (`Compat`, still the save import's),
+  its drawings, and its `Recipe` when its manifest declares `[extract]`. `extract`, `extract_reporting` and
+  `fingerprint` run the recipe for such a game, so the app extracts each game the way its content says with no
+  change but the import's `match tables.compat()`; step 5 takes the compat crates out of it. `Extraction::game` is
+  the game's id. `extract_in_rust` and `has_rust_extraction` (hidden) let the harness run the Rust path of a game
+  that has a recipe.
+- *The recipe's VM* is `nettai_luau::tool::open(modules, packs, entry, tree, options, install)`, its budget one
+  count of 2,000,000,000 interrupt checks for the run; `nettai_luau` re-exports `mlua` for the primitives.
+- *The reads.* `RomRead::at` (the recipe's `file:line`, from the Luau stack, only while recording) is `--reads`'s
+  fifth column on the recipe path; the Rust path's lines keep four. One recording runs at a time.
+- *The check* (§3.10, step 1) says `exe6: sprite/megaman is named in the asset names and no ROM gave it`, and
+  `the recipe gave no field`.
+- *The fingerprint* digests each part length-prefixed (the formats' `Debug` text, `PRIMITIVES`, the game, the
+  declaration's fields, then each input's path and bytes), hidden files left out of the inputs.
+- *Declarations.* extract.d.luau declares the model's types too, every field optional (the codec defaults what is
+  left out), so a recipe's misspelled field is a type error before it is a run-time one; exelib's makers' types
+  are `exelib/extract/types.d.luau`. `packs::declarations` leaves out `nettai/extract.d.luau` and every `.d.luau`
+  under an `extract/`; `packs::extract_declarations` is those.
+- *Lints.* A content module requiring an `extract/` module and an `extract/` module requiring outside them are
+  refused by the content check's reach pass; a recipe's literal `data("...")` must be in its manifest's `reads`,
+  and a support pack's recipe code calls no `data` (the game passes it what it reads). The content lints
+  (placeholder asset names, untyped table constants, owners' folders) don't apply to recipe modules.
+- *exelib's names.luau* holds what the three games' names share: assets.toml's "cc-ii" sprites, the inversion of a
+  table of name to number, the compat crates' one-number-one-name check with their messages, a key's own part.
+- *The harness* is `tests/recipes.rs`'s `the_recipes_make_the_rust_extractions_packs` (ignored): each game's full
+  set by its recipe and by the Rust, each path timed, and with `NETTAI_EXTRACT_BASELINE` (a baseline's folder)
+  each path's files against the baseline's digests and its reads against the baseline's, as ranges per ROM; it
+  says too whether the two paths' reads come in the same order. Its helpers (the ROMs by header from
+  `NETTAI_EXTRACT_ROM_DIR`, the games of `NETTAI_EXTRACT_GAMES`) are `tests/common`.
+- *Tests gone* (§6.4): `every_source_subset` with its census, `empty_sets_make_loadable_packs_and_language_variants`,
+  `an_empty_set_makes_an_exe4_pack`, `empty_sets_pass_the_content_audit`, `banner_kinds`; the empty-set halves of
+  `the_names_are_the_contents` and `rejects_unknown_truncated_and_duplicate_roms`. `an_extraction_reports_how_far_it_is`
+  runs on a full set now (ignored), and `full_sets_pass_the_content_audit` (ignored) loads each game's full-set pack
+  with its content, a battle's definitions and the audit's lookups.
+
+**Step 2.** EXE6's recipe is content/exe6/extract/ (init, names, hud, custom, lettering, sprites, stage, versions,
+jp: about 1,200 lines with the comments the Rust had), ported statement by statement. Its pack is the Rust's byte
+for byte, `extraction.txt` included, and the baseline's (3,413 files); it reads the same ranges, and in the same
+order but for the dialogue font's advances pointer, which `font.dialogue` reads before the glyphs where the Rust read
+it after (twice: the English font and the Japanese). Where a ROM is chosen, the choice is the full set's (§2.3):
+BR6E for what the four have alike and Falzar's own, BR5E for Gregar's own, BR6J for the Japanese words and what the
+US release cut, BR5J for Gregar's Japanese form names and Gregar chip's picture. In a release build the recipe and
+the codec take 0.04 to 0.06 s; the whole extraction in memory 0.11 to 0.12 s, the Rust's 0.06 to 0.07 s.
+
+- `Tables::of_content` refuses a game this nettai extracts only by a recipe (`has_rust_extraction`: EXE6 now) whose
+  content declares none; `Roms::us_of` and `jp_of`, which only EXE6's Rust used, went with src/exe6/.
+- The reads log's fifth column is the innermost line of the game's own modules (where exelib's `place.at` reads a
+  pointer for EXE6, the line of EXE6's that named the place), else the innermost line.
+- The full-set content audit passes every asset lookup for EXE6's pack; it reports only the zh-Hans and zh-Hant
+  lettering problems (a font without a character of a translated word, a picture's line count) that the Rust-made
+  EXE4 and EXE5 packs report too, which are the content's and its fonts', not the extraction's. A battle's
+  definitions load against the pack, and a headless match plays on it.
+

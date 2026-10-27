@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The full gauge shimmering, frame 2 of 4: a band sloping 1:2 across the cell, cut square by its edges at its ends, an even rim a pixel wide round a bright core. -->
-<rect x="0" y="0" width="8" height="7" fill="#292929" data-color="2"/>
-<rect x="0" y="7" width="8" height="1" fill="#39526b" data-color="12"/>
-<path d="M0 3.75 L5.5 1 L8 1 L8 3.25 L2.5 6 L0 6 Z" fill="#00a500" data-color="11"/>
-<path d="M1 4.368 L5.736 2 L7 2 L7 2.632 L2.264 5 L1 5 Z" fill="#00ff00" data-color="3"/>
-</svg>

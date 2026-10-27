@@ -500,9 +500,9 @@ there, not joined to its edge by ground). (EXE5's two icons no chip shows,
 the Program Advance's and the special family's, leave pixels clear where
 the frame has them: over the frame, they aren't the game's.)
 
-The drawings are drawn by hand, not read off the ROM: they live in the
-extractor's source (`crates/nettai-extract/shapes/<game>/`, a game's file
-or a `.same` naming another game's), and extraction copies each into the
+The drawings are drawn by hand, not read off the ROM: they live in each
+game's content (`<game>/extract/shapes/`, a game's file or a `.same`
+naming one exelib's `extract/shapes/` holds), and extraction copies each into the
 pack after checking it against the ROM's picture (its size, its colors
 among the picture's, its share of the picture's pixels: noted, and called
 out under 85%). They are the one exception to "the extractor's inputs are

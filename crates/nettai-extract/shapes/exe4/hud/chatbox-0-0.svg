@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="512" viewBox="0 0 240 64">
-<!-- The chatbox's box, the message box (opening, step 0 of 3): a dark outline, its corners cut 45 degrees, a light band inside it, the ground the text is written on; the outline's cuts as light as the art's, every layer's cuts parallel to them, each band as thick through a cut as along its edges. -->
-<!-- The outline, a pixel wide, its corners cut 45 degrees, as lightly as the art's -->
-<path d="M2 30.5 L3.5 29 L236.5 29 L238 30.5 L238 33.5 L236.5 35 L3.5 35 L2 33.5 Z" fill="#006bbd" data-color="13"/>
-<!-- The band, a pixel wide, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
-<path d="M3 30.914 L3.914 30 L236.086 30 L237 30.914 L237 33.086 L236.086 34 L3.914 34 L3 33.086 Z" fill="#94cee7" data-color="12"/>
-<!-- The ground, its cuts parallel to the outline's (smaller; square where it lies further in than a cut reaches) -->
-<path d="M4 31.328 L4.328 31 L235.672 31 L236 31.328 L236 32.672 L235.672 33 L4.328 33 L4 32.672 Z" fill="#f7fff7" data-color="11"/>
-</svg>

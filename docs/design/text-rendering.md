@@ -1829,10 +1829,11 @@ the pixels stack two, a shadow under what casts it), in frame pixels, in any SVG
 with curves, strokes of an even width, groups, transforms, `use`, clip paths: usvg reads it, resvg draws it). Each
 shape names its palette entry (`data-color` for its fill, `data-stroke` for its outline, `data-palette` for the row,
 on it or a group round it), never a color: the drawing is filled in the palette the picture is drawn in at that moment, so every palette effect (a
-fade, a dimming, a flash, a version's colors) reaches it as it reaches the picture. The files live in the extractor's
-source, `crates/nettai-extract/shapes/<game>/` (`hud/`, `custom/`, `banners/`), a game's own or a `.same` naming
-another game's where the art is the same (EXE5's and EXE4's HP box, gauge cells, emotion frame, banner bars, help
-panel; EXE5's column cells, cursor, code plate, name bar); `build.rs` embeds them. Extraction composes each picture
+fade, a dimming, a flash, a version's colors) reaches it as it reaches the picture. The files live in each game's content,
+`<game>/extract/shapes/` (`hud/`, `custom/`, `banners/`), a game's own or a `.same` naming by its path in the bundle
+one exelib's `extract/shapes/` holds where the art is the same in two games or more (EXE5's and EXE4's HP box, gauge
+cells, emotion frame, banner bars, help panel; EXE5's column cells, cursor, code plate, name bar); the extractor reads
+them from the bundle (docs/design/extraction-recipes.md §2.3). Extraction composes each picture
 from the ROM (a window map's cells, a set of tiles, a banner's bar with its letters off), reads the drawing, checks
 its size and that every color it names is one the picture uses, and notes the share of the picture's pixels it gives
 at their centers (words' boxes aside), calling out any under 85%: it is a check that the drawing is of that picture,

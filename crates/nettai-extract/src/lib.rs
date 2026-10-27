@@ -1,10 +1,11 @@
-//! Extract EXE4/EXE5/EXE6 assets without launching a process or reading a content tree.
+//! Extract EXE4/EXE5/EXE6 assets without launching a process.
 //!
-//! ROMs are identified by their headers, in any order. Missing sources produce
-//! checkerboard graphics and silent songs, with omissions recorded in the result.
-//! A pack has the lettering of the languages its ROMs have words in (English with
-//! a US ROM, Japanese with a Japanese one), its own language the first of them.
-//! The same API drives `nettai-extract` command.
+//! A game whose content declares an extraction recipe (its manifest's
+//! `[extract]`, docs/design/extraction-recipes.md) is extracted by its recipe
+//! in Luau ([`Recipe`]), from every ROM the recipe declares; the others still
+//! by the Rust here, which the recipes replace game by game. ROMs are
+//! identified by their headers, in any order. The same API drives the
+//! `nettai-extract` command.
 //!
 //! A ROM is given as its bytes (`RomSet::insert`), from wherever the host has it: nettai reads its ROMs out of
 //! an installed Legacy Collection's archives into memory and writes none to disk. [`recognize`] tells a ROM's
@@ -33,16 +34,18 @@ mod decode;
 mod elements;
 mod exe4;
 mod exe5;
-mod exe6;
 mod placeholders;
+mod recipe;
 mod rom;
 pub mod shapes;
 mod sound;
 mod sprite;
 
+pub use recipe::{PRIMITIVES, Recipe};
+
 use nettai_content::{names::AssetNames, pack, report::Report, sound::SongVersions};
 use rom::Rom;
-use std::{collections::BTreeMap, fmt, path::Path};
+use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Game {
@@ -89,65 +92,100 @@ pub fn recognize(header: &[u8]) -> Option<(Game, &'static str)> {
     Game::ALL.into_iter().find_map(|game| game.codes().into_iter().find(|c| c.as_bytes() == code).map(|c| (game, c)))
 }
 
-/// A game's compat tables, as its content has them (`<content>/<game>/compat`): what a pack of the game is
-/// written by. They give the names its assets are written under, which a frontend finds them by (`assets.toml`,
-/// a chip's icon by its id, a navi's emblem by its key, what each of the fonts' glyphs draws), and the numbers the
-/// extraction reads some by (the panels' types, a version's own chips, the backgrounds several numbers share).
+/// A game's compat tables (`<content>/<game>/compat`): what the Rust extraction of the game reads, the names its
+/// assets are written under, which a frontend finds them by (`assets.toml`, a chip's icon by its id, a navi's
+/// emblem by its key, what each of the fonts' glyphs draws), and the numbers it reads some by (the panels' types, a
+/// version's own chips, the backgrounds several numbers share). And what a save is imported by.
 #[derive(Clone, Debug)]
-pub enum Tables {
+pub enum Compat {
     Exe4(Box<exe4_compat::Compat>),
     Exe5(Box<exe5_compat::Compat>),
     Exe6(Box<exe6_compat::Compat>),
+}
+
+/// What a pack of a game is made by, as its content has it: its compat tables ([`Compat`]), its drawings
+/// ([`shapes::Drawings`], `<game>/extract/shapes/`), and its extraction recipe where its manifest declares one
+/// ([`Recipe`]), which the extraction then runs.
+#[derive(Clone, Debug)]
+pub struct Tables {
+    compat: Compat,
+    drawings: shapes::Drawings,
+    recipe: Option<Recipe>,
 }
 
 impl Tables {
     /// `game`'s tables in the content directory `content` (a bundle's, or the repository's content/), read.
     pub fn of_content(game: Game, content: &Path) -> Result<Tables, Error> {
         let said = |e: String| Error(format!("{}'s compat tables in {}: {e}", game.id(), content.display()));
-        Ok(match game {
-            Game::Exe4 => Tables::Exe4(Box::new(exe4_compat::Compat::of_content(content).map_err(said)?)),
-            Game::Exe5 => Tables::Exe5(Box::new(exe5_compat::Compat::of_content(content).map_err(said)?)),
-            Game::Exe6 => Tables::Exe6(Box::new(exe6_compat::Compat::of_content(content).map_err(said)?)),
-        })
+        let compat = match game {
+            Game::Exe4 => Compat::Exe4(Box::new(exe4_compat::Compat::of_content(content).map_err(said)?)),
+            Game::Exe5 => Compat::Exe5(Box::new(exe5_compat::Compat::of_content(content).map_err(said)?)),
+            Game::Exe6 => Compat::Exe6(Box::new(exe6_compat::Compat::of_content(content).map_err(said)?)),
+        };
+        let manifest = nettai_content_api::packs::read(content, game.id()).map_err(|e| Error(format!("{}: {e}", content.display())))?;
+        let recipe = match manifest.extract {
+            Some(_) => Some(Recipe::of_content(content, game.id())?),
+            None if !has_rust_extraction(game) => {
+                return Err(Error(format!(
+                    "{}/{}: no [extract]: this nettai extracts {} only by the recipe its content declares",
+                    content.join(game.id()).display(),
+                    nettai_content_api::packs::MANIFEST,
+                    game.id()
+                )));
+            }
+            None => None,
+        };
+        let drawings = shapes::Drawings::of_content(content, game.id()).map_err(|e| Error(format!("{}'s drawings in {}: {e}", game.id(), content.display())))?;
+        Ok(Tables { compat, drawings, recipe })
     }
 
     /// The game they are of.
     pub fn game(&self) -> Game {
-        match self {
-            Tables::Exe4(_) => Game::Exe4,
-            Tables::Exe5(_) => Game::Exe5,
-            Tables::Exe6(_) => Game::Exe6,
+        match self.compat {
+            Compat::Exe4(_) => Game::Exe4,
+            Compat::Exe5(_) => Game::Exe5,
+            Compat::Exe6(_) => Game::Exe6,
         }
+    }
+
+    /// The game's compat tables.
+    pub fn compat(&self) -> &Compat {
+        &self.compat
+    }
+
+    /// The game's extraction recipe, if its content declares one.
+    pub fn recipe(&self) -> Option<&Recipe> {
+        self.recipe.as_ref()
     }
 
     /// The names the pack's assets are written under.
     fn names(&self) -> AssetNames {
-        match self {
-            Tables::Exe4(c) => exe4::names::asset_names(c),
-            Tables::Exe5(c) => exe5::names::asset_names(c),
-            Tables::Exe6(c) => exe6::names::asset_names(c),
+        match &self.compat {
+            Compat::Exe4(c) => exe4::names::asset_names(c),
+            Compat::Exe5(c) => exe5::names::asset_names(c),
+            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
     }
 
     /// The field's panel types' names by number.
     fn panel_names(&self) -> Vec<String> {
-        match self {
-            Tables::Exe4(c) => exe4::graphics::panel_names(c),
-            Tables::Exe5(c) => exe5::graphics::panel_names(c),
-            Tables::Exe6(_) => exe6::graphics::panel_names(),
+        match &self.compat {
+            Compat::Exe4(c) => exe4::graphics::panel_names(c),
+            Compat::Exe5(c) => exe5::graphics::panel_names(c),
+            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
         }
     }
 
     /// What else of them the extraction reads, which changes what a pack holds: EXE4's version chips and its
     /// text's first control byte, EXE5's backgrounds by their numbers.
     fn read_by_number(&self) -> String {
-        match self {
-            Tables::Exe4(c) => {
+        match &self.compat {
+            Compat::Exe4(c) => {
                 let versions: Vec<(&String, &Option<exe4_compat::Version>)> = c.chips.iter().map(|(k, e)| (k, &e.version)).collect();
                 format!("{versions:?} {}", c.text.first_control)
             }
-            Tables::Exe5(c) => format!("{:?}", c.assets.backgrounds),
-            Tables::Exe6(_) => String::new(),
+            Compat::Exe5(c) => format!("{:?}", c.assets.backgrounds),
+            Compat::Exe6(_) => String::new(),
         }
     }
 }
@@ -160,6 +198,9 @@ impl Tables {
 /// that writes a format of another version, has another. (A change to how an asset is decoded that names nothing
 /// new doesn't change it.) A pack is kept under it (the app's `packs/<game>-<fingerprint>`).
 pub fn fingerprint(tables: &Tables) -> String {
+    if let Some(recipe) = &tables.recipe {
+        return recipe.fingerprint();
+    }
     let said = format!("{:?} {:?} {:?} {}", pack::FORMATS, tables.names(), tables.panel_names(), tables.read_by_number());
     // (FNV-1a, 64 bits: the same digest from every build and toolchain, which the standard library's hasher
     // doesn't promise.)
@@ -168,7 +209,7 @@ pub fn fingerprint(tables: &Tables) -> String {
 }
 
 #[derive(Debug)]
-pub struct Error(String);
+pub struct Error(pub(crate) String);
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)
@@ -186,7 +227,7 @@ impl From<std::io::Error> for Error {
 /// truncated images are errors; a missing ROM is represented by not inserting it.
 #[derive(Default)]
 pub struct RomSet {
-    roms: BTreeMap<String, Rom>,
+    roms: BTreeMap<String, Arc<Rom>>,
 }
 impl RomSet {
     pub fn insert(&mut self, bytes: Vec<u8>) -> Result<(), Error> {
@@ -211,7 +252,7 @@ impl RomSet {
         if self.roms.contains_key(code) {
             return Err(Error(format!("duplicate ROM for {code}")));
         }
-        self.roms.insert(code.to_string(), Rom(bytes));
+        self.roms.insert(code.to_string(), Arc::new(Rom(bytes)));
         Ok(())
     }
     pub fn contains(&self, code: &str) -> bool {
@@ -219,13 +260,18 @@ impl RomSet {
     }
     fn get(&self, code: &str) -> &Rom {
         static MISSING: Rom = Rom(Vec::new());
-        self.roms.get(code).unwrap_or(&MISSING)
+        self.roms.get(code).map_or(&MISSING, |r| r)
+    }
+    /// The ROM whose code is `code`, shared.
+    fn rom(&self, code: &str) -> Option<Arc<Rom>> {
+        self.roms.get(code).cloned()
     }
 }
 
 /// Decoded data and diagnostics. Extraction itself performs no filesystem writes.
 pub struct Extraction {
-    pub game: Game,
+    /// The game's id (`exe6`).
+    pub game: String,
     pub graphics: nettai_assets::Bundle,
     pub sound: m4a::SoundBank,
     pub sound_versions: SongVersions,
@@ -248,6 +294,9 @@ pub struct RomRead {
     /// A span read whole for a parser that takes what it needs of it (an
     /// uncompressed sprite archive): how far the parser went isn't known.
     pub open: bool,
+    /// Where in a recipe it was read (`exe6:extract/hud.luau:212`); none for
+    /// the Rust extraction's.
+    pub at: Option<String>,
 }
 
 /// `extract`, and with it every range of the ROMs the extraction read, in
@@ -256,7 +305,14 @@ pub struct RomRead {
 /// (the verification's cross-ROM sweep); the sound bank's reads aren't in
 /// it.
 pub fn extract_recording_reads(tables: &Tables, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
-    let (extraction, reads) = rom::record_reads(|| extract(tables, roms));
+    recording_reads(roms, || extract(tables, roms))
+}
+
+/// `f` (an extraction of `roms`), and every range of `roms` it read, in the order read (reads of bytes that
+/// follow one another are one read).
+#[doc(hidden)]
+pub fn recording_reads<T>(roms: &RomSet, f: impl FnOnce() -> Result<T, Error>) -> Result<(T, Vec<RomRead>), Error> {
+    let (extraction, reads) = rom::record_reads(f);
     let code = |at: usize| {
         roms.roms
             .iter()
@@ -275,6 +331,7 @@ pub fn extract_recording_reads(tables: &Tables, roms: &RomSet) -> Result<(Extrac
                     _ => None,
                 },
                 open: r.kind == rom::ReadKind::Open,
+                at: r.at.map(|a| a.to_string()),
             })
         })
         .collect();
@@ -302,7 +359,31 @@ pub fn extract(tables: &Tables, roms: &RomSet) -> Result<Extraction, Error> {
 /// [`extract`], telling `progress` how far it is as it goes (a fraction, 0 to 1, after each of its stretches:
 /// the graphics, the sound, the checks), for a host that shows a bar.
 pub fn extract_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
+    if let Some(recipe) = &tables.recipe {
+        return recipe.extract_reporting(roms, progress);
+    }
+    extract_in_rust_reporting(tables, roms, progress)
+}
+
+/// The Rust extraction of the game of `tables`, whether or not its content declares a recipe: for comparing the
+/// two while a game moves into Luau (tests/recipes.rs).
+#[doc(hidden)]
+pub fn extract_in_rust(tables: &Tables, roms: &RomSet) -> Result<Extraction, Error> {
+    extract_in_rust_reporting(tables, roms, &mut |_| {})
+}
+
+/// Whether the Rust extraction of `game` is still here (the games whose recipes aren't written yet, and those
+/// being compared with theirs).
+#[doc(hidden)]
+pub fn has_rust_extraction(game: Game) -> bool {
+    matches!(game, Game::Exe4 | Game::Exe5)
+}
+
+fn extract_in_rust_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
     let game = tables.game();
+    if !has_rust_extraction(game) {
+        return Err(Error(format!("{} is extracted by its recipe alone", game.id())));
+    }
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| extract_inner(tables, roms, progress))).map_err(|panic| {
         let detail = panic
             .downcast_ref::<String>()
@@ -320,7 +401,7 @@ const JAPANESE: &str = "ja";
 /// The share of an extraction's time its graphics take, the sound the rest ([`extract_reporting`]). (Not
 /// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
 /// pack's writing, with its encoding, nearly all of its time.)
-const GRAPHICS_SHARE: f32 = 0.6;
+pub(crate) const GRAPHICS_SHARE: f32 = 0.6;
 
 fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
     let game = tables.game();
@@ -336,10 +417,10 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
         .iter()
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
-    let mut graphics = match tables {
-        Tables::Exe4(c) => exe4::graphics::bundle(&rom::Roms(sources), &names, c),
-        Tables::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
-        Tables::Exe6(_) => exe6::graphics::bundle(&rom::Roms(sources), &names),
+    let mut graphics = match &tables.compat {
+        Compat::Exe4(c) => exe4::graphics::bundle(&rom::Roms(sources), &names, c),
+        Compat::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
+        Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (has_rust_extraction)"),
     };
     let panel_names = tables.panel_names();
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
@@ -364,7 +445,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
     warnings.extend(elements::split(&mut graphics.custom).into_iter().map(|p| format!("element icons: {p}")));
     // The frames as shapes, read once here for the enhanced graphics (and
     // the emotion window's frame apart from its faces).
-    warnings.extend(shapes::read(&mut graphics, game.id(), &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));
+    warnings.extend(shapes::read(&mut graphics, &tables.drawings, &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
     // bank where there is one: EXE5's hit, song 0x6D, is louder in the
     // Japanese ROMs, volume 127 for 112.)
@@ -404,7 +485,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
     sound.validate().map_err(|e| Error(e.to_string()))?;
     progress(1.0);
     Ok(Extraction {
-        game,
+        game: game.id().to_string(),
         graphics,
         sound,
         sound_versions,
@@ -447,8 +528,8 @@ impl Extraction {
     /// storage. This does not create directories or invoke the CLI.
     pub fn files(&self) -> Result<pack::Files, Error> {
         let mut files = vec![pack::manifest(
-            &format!("{} battle assets", self.game.id()),
-            self.game.id(),
+            &format!("{} battle assets", self.game),
+            &self.game,
             Some(&self.graphics),
             true,
         )];

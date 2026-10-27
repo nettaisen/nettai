@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 8 8">
-<!-- The Cross cursor's corner: a band three pixels thick turning down, its outer corner cut 45 degrees, a line a pixel wide along its middle and the band's inside cut parallel to it, so the band and the line keep their widths round the corner. -->
-<path d="M0 2.5 L2.5 0 L8 0 L8 3 L3.743 3 L3 3.743 L3 7 L0 7 Z" fill="#31ce00" data-color="12"/>
-<path d="M1 2.914 L2.914 1 L8 1 L8 2 L3.328 2 L2 3.328 L2 6 L1 6 Z" fill="#39ff00" data-color="13"/>
-</svg>

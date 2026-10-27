@@ -7,3 +7,4 @@
 *.swp
 # Generated editor declarations; rebuild with .zed/generate-luau-definitions.py.
 /.zed/luau-globals.d.luau
+/.zed/luau-extract.d.luau

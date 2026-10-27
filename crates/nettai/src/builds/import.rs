@@ -12,7 +12,7 @@
 //! ([`Imported`], [`Refused`]).
 
 use nettai_battle::content::Content;
-use nettai_extract::Tables;
+use nettai_extract::{Compat, Tables};
 use nettai_match::Side;
 use nettai_match::build::{Builds, Taken};
 
@@ -44,16 +44,16 @@ pub fn side_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &
     let mut side = Side::fresh(content, game).map_err(failed)?;
     // What the save holds: its version is the facts it gives (docs/design/versions.md §2.4: the souls or Crosses it
     // owns, EXE6's Cybeast, a Bass-Cross MegaMan card's variant), which its compat crate states.
-    let notes = match tables {
-        Tables::Exe6(compat) if game == exe6_compat::ROOT => {
+    let notes = match tables.compat() {
+        Compat::Exe6(compat) if game == exe6_compat::ROOT => {
             let save = read(game, file, exe6_compat::import::read)?;
             exe6_compat::import::import(compat, content, &mut side, &save).map_err(failed)?
         }
-        Tables::Exe5(compat) if game == exe5_compat::ROOT => {
+        Compat::Exe5(compat) if game == exe5_compat::ROOT => {
             let save = read(game, file, exe5_compat::import::read)?;
             exe5_compat::import::import(compat, content, game, &mut side, &save)
         }
-        Tables::Exe4(compat) if game == exe4_compat::ROOT => {
+        Compat::Exe4(compat) if game == exe4_compat::ROOT => {
             let save = read(game, file, exe4_compat::import::read)?;
             exe4_compat::import::import(compat, content, game, &mut side, &save)
         }
@@ -74,8 +74,8 @@ pub fn side_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &
 #[allow(dead_code)] // (The auto battle tab's, which isn't built yet.)
 pub fn auto_battle_of_save(tables: &Tables, content: &Content, builds: &Builds, file: &[u8], side: &mut Side) -> Result<(), Refused> {
     let game = builds.game();
-    let said = match tables {
-        Tables::Exe5(compat) if game == exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(compat, content, game, file, side),
+    let said = match tables.compat() {
+        Compat::Exe5(compat) if game == exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(compat, content, game, file, side),
         _ => Err(format!("{game}'s saves keep no auto battle data")),
     };
     match said {
@@ -97,10 +97,10 @@ pub fn auto_battle_of_save(tables: &Tables, content: &Content, builds: &Builds, 
 /// tables state it (`tables`, its content's patch-cards.toml): what a screen shows as the card's number. None: a
 /// game whose compat states no such card.
 pub fn card_number(tables: &Tables, id: &str) -> Option<u8> {
-    match tables {
-        Tables::Exe6(compat) => compat.patch_card_number(id),
-        Tables::Exe5(compat) => compat.patch_card_number(id),
-        Tables::Exe4(compat) => compat.patch_card_number(id),
+    match tables.compat() {
+        Compat::Exe6(compat) => compat.patch_card_number(id),
+        Compat::Exe5(compat) => compat.patch_card_number(id),
+        Compat::Exe4(compat) => compat.patch_card_number(id),
     }
 }
 

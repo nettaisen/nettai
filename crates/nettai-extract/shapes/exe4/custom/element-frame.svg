@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 16 16">
-<!-- An element icon's frame (16x16), its symbol drawn over it as its picture: a light ring a pixel wide with its corners rounded, its outer and inner edges round the same middle (the art steps the outer corner a pixel and shades the inner one half), and the dark ground inside it; nothing under it outside the ring (the user: "don't draw the square background under the element icon since it just looks awkward, only the icon frame should be filled in"). -->
-<!-- The ring -->
-<path d="M1 3.5 A2.5 2.5 0 0 1 3.5 1 L12.5 1 A2.5 2.5 0 0 1 15 3.5 L15 12.5 A2.5 2.5 0 0 1 12.5 15 L3.5 15 A2.5 2.5 0 0 1 1 12.5 Z" fill="#b5adad" data-color="2"/>
-<!-- The dark ground in it, where the symbol goes -->
-<path d="M2 3.5 A1.5 1.5 0 0 1 3.5 2 L12.5 2 A1.5 1.5 0 0 1 14 3.5 L14 12.5 A1.5 1.5 0 0 1 12.5 14 L3.5 14 A1.5 1.5 0 0 1 2 12.5 Z" fill="#292929" data-color="3"/>
-</svg>

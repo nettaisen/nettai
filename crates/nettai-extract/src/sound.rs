@@ -24,26 +24,41 @@ use std::collections::{BTreeMap, HashMap};
 /// ProtoMan's at the same number), brought into `bank` (Team ProtoMan's):
 /// what `bank` needs for them is added to it. None: no versions.
 pub fn colonel_songs(bank: &mut SoundBank, colonel: &SoundBank) -> SongVersions {
-    let differ: Vec<u16> = (0..bank.songs.len().max(colonel.songs.len()) as u16)
+    let own = own_songs(bank, colonel);
+    if own.is_empty() {
+        return SongVersions::default();
+    }
+    SongVersions {
+        base_version: "protoman".into(),
+        versions: vec![("colonel".into(), own)],
+    }
+}
+
+/// A version's own songs: those `other` (its bank) plays otherwise than
+/// `bank` (the base version's) at the same number, or has alone, brought
+/// into `bank`: what `bank` needs for them (voicegroups, samples, waves,
+/// key maps) is matched to its own or added to it.
+pub fn own_songs(bank: &mut SoundBank, other: &SoundBank) -> BTreeMap<u16, Song> {
+    let differ: Vec<u16> = (0..bank.songs.len().max(other.songs.len()) as u16)
         .filter(
-            |&id| match (bank.song(m4a::SongId(id)), colonel.song(m4a::SongId(id))) {
-                (Some(a), Some(b)) => !plays_alike(bank, a, colonel, b),
+            |&id| match (bank.song(m4a::SongId(id)), other.song(m4a::SongId(id))) {
+                (Some(a), Some(b)) => !plays_alike(bank, a, other, b),
                 (None, Some(_)) => true,
                 (_, None) => false,
             },
         )
         .collect();
+    let mut own = BTreeMap::new();
     if differ.is_empty() {
-        return SongVersions::default();
+        return own;
     }
     let mut merge = Merge {
         into: bank,
-        from: colonel,
+        from: other,
         groups: HashMap::new(),
     };
-    let mut own = BTreeMap::new();
     for id in differ {
-        let song = colonel.song(m4a::SongId(id)).expect("a song");
+        let song = other.song(m4a::SongId(id)).expect("a song");
         let voicegroup = merge.group(song.voicegroup);
         own.insert(
             id,
@@ -53,10 +68,7 @@ pub fn colonel_songs(bank: &mut SoundBank, colonel: &SoundBank) -> SongVersions 
             },
         );
     }
-    SongVersions {
-        base_version: "protoman".into(),
-        versions: vec![("colonel".into(), own)],
-    }
+    own
 }
 
 struct Merge<'a> {

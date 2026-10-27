@@ -1,8 +1,9 @@
 //! Shared ROM access and GBA compression. An empty image represents an absent source;
 //! callers must test `is_present` before reading it.
 
-use std::sync::Mutex;
+use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 /// One ROM image.
 #[derive(Default)]
@@ -16,6 +17,9 @@ pub(crate) struct Read {
     pub address: u32,
     pub len: u32,
     pub kind: ReadKind,
+    /// Where in a recipe the read was made (`exe6:extract/hud.luau:212`),
+    /// while one runs (`located`).
+    pub at: Option<Arc<str>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -137,24 +141,38 @@ impl<'a> Roms<'a> {
         if own.is_present() { own } else { self.any() }
     }
 
-    /// The US ROM of `version`: the version's own English words.
-    pub fn us_of(&self, version: impl Version) -> Source<'a> {
-        self.first(&[version.is_other() as usize])
-    }
-
-    /// The Japanese ROM of `version`.
-    pub fn jp_of(&self, version: impl Version) -> Source<'a> {
-        self.first(&[version.is_other() as usize + 2])
-    }
 }
 
 static RECORDING: AtomicBool = AtomicBool::new(false);
 static READS: Mutex<Vec<Read>> = Mutex::new(Vec::new());
 
+thread_local! {
+    /// Where the reads being made are made from (`located`).
+    static AT: RefCell<Option<Arc<str>>> = const { RefCell::new(None) };
+}
+
+/// Whether reads are being recorded (`record_reads`): a caller that would
+/// work out where a read is made from (a recipe's line) does so only then.
+pub(crate) fn recording() -> bool {
+    RECORDING.load(Ordering::Relaxed)
+}
+
+/// Run `f`, each read it makes recorded as made at `at` (a recipe's file
+/// and line).
+pub(crate) fn located<T>(at: Option<Arc<str>>, f: impl FnOnce() -> T) -> T {
+    let before = AT.with(|w| std::mem::replace(&mut *w.borrow_mut(), at));
+    let out = f();
+    AT.with(|w| *w.borrow_mut() = before);
+    out
+}
+
 /// Run `f` with every read of every ROM recorded, and give the reads with
 /// its result: what a cross-ROM comparison needs to look where the
 /// extraction looks. Reads of bytes that follow one another are one read.
 pub(crate) fn record_reads<T>(f: impl FnOnce() -> T) -> (T, Vec<Read>) {
+    // (One recording at a time: two at once would clear each other's.)
+    static ONE: Mutex<()> = Mutex::new(());
+    let _one = ONE.lock().unwrap_or_else(|e| e.into_inner());
     READS.lock().unwrap().clear();
     RECORDING.store(true, Ordering::Relaxed);
     let out = f();
@@ -182,7 +200,14 @@ impl Rom {
             last.len += len;
             return;
         }
-        reads.push(Read { rom, address, len, kind });
+        let at = AT.with(|w| w.borrow().clone());
+        reads.push(Read { rom, address, len, kind, at });
+    }
+
+    /// Whether the `n` bytes from ROM address `a` are in the image (read as
+    /// the other reads take an address: its low 25 bits).
+    pub fn has(&self, a: u32, n: usize) -> bool {
+        ((a & 0x01FF_FFFF) as usize).checked_add(n).is_some_and(|end| end <= self.0.len())
     }
 
     pub fn u8(&self, a: u32) -> u8 {

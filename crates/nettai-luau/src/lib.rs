@@ -32,7 +32,12 @@ mod bind;
 pub mod coverage;
 mod define;
 pub mod sandbox;
+pub mod tool;
 pub mod verify;
+
+/// The Luau binding, for a tool that installs libraries of its own
+/// ([`tool::open`]): the one copy of Luau in the build.
+pub use mlua;
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod wasm;

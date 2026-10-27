@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="128" viewBox="0 0 160 16">
-<!-- A banner's bar, its right end at column 136: its left end upright for three rows then slanting 45 degrees to the bottom left, its right end slanting 45 degrees then upright for its last rows; a light band a pixel wide along its top and down its left end, a dark one along its bottom and down its right end, each as wide along the slants, the body between. -->
-<!-- The light band, a pixel wide: along the top and down the left end (upright three rows, then slanting 45 degrees) -->
-<path d="M7 3 L136.5 3 L129 10.5 L129 13 L-0.5 13 L7 5.5 Z" fill="#7ba5f7" data-color="3"/>
-<!-- The dark band, a pixel wide: along the bottom and down the right end (slanting 45 degrees, then upright) -->
-<path d="M8 4 L135.5 4 L129 10.5 L129 13 L0.914 13 L8 5.914 Z" fill="#31397b" data-color="5"/>
-<!-- The body between, the bands' inner edges parallel to their outer ones -->
-<path d="M8 4 L134.086 4 L128 10.086 L128 12 L1.914 12 L8 5.914 Z" fill="#4a5aad" data-color="4"/>
-</svg>
