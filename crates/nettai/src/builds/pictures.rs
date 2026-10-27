@@ -1,4 +1,4 @@
-//! The pictures the builds' screens show of a game's definitions, from its pack as a frame draws them
+//! The pictures the builds' screens show of a game's definitions, from its graphics as a frame draws them
 //! (`nettai_render::pictures`): a chip's icon and its picture in the chip window, a chip family's element
 //! icon, a form's face (a Cross's, a soul's), a navi's, and the face a round starts a navi with. Each is made
 //! the first time it is asked for, and kept.
@@ -7,7 +7,7 @@ use crate::games::Ready;
 use nettai_battle::content::{ChipClass, ChipFamily};
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 use nettai_match::build::Face;
-use nettai_render::packs::PackGraphics;
+use nettai_render::graphics::GameGraphics;
 use nettai_render::pictures::{self, Image};
 use slint::{Rgba8Pixel, SharedPixelBuffer};
 use std::cell::RefCell;
@@ -17,7 +17,7 @@ use std::rc::Rc;
 /// A game's pictures, made as they are asked for.
 pub struct Pictures {
     ready: Rc<Ready>,
-    packs: PackGraphics,
+    graphics: GameGraphics,
     icons: RefCell<HashMap<ChipHandle, slint::Image>>,
     art: RefCell<HashMap<ChipHandle, slint::Image>>,
     elements: RefCell<HashMap<ChipFamily, slint::Image>>,
@@ -47,10 +47,10 @@ fn kept<K: std::hash::Hash + Eq>(map: &RefCell<HashMap<K, slint::Image>>, key: K
 #[allow(dead_code)]
 impl Pictures {
     pub fn new(ready: Rc<Ready>) -> Pictures {
-        let packs = ready.loaded.graphics.packs();
+        let graphics = ready.loaded.graphics.game_graphics();
         Pictures {
             ready,
-            packs,
+            graphics,
             icons: Default::default(),
             art: Default::default(),
             elements: Default::default(),
@@ -62,16 +62,16 @@ impl Pictures {
 
     /// A chip's 16x16 icon.
     pub fn icon(&self, chip: ChipHandle) -> slint::Image {
-        kept(&self.icons, chip, || pictures::chip_icon(&self.packs.packs(), self.ready.content(), chip))
+        kept(&self.icons, chip, || pictures::chip_icon(&self.graphics.view(), self.ready.content(), chip))
     }
 
-    /// A chip's 56x48 picture. A Program Advance has none (what its pack holds in the place of one is no picture
-    /// of it): an empty image.
+    /// A chip's 56x48 picture. A Program Advance has none (what its game's graphics hold in the place of one is no
+    /// picture of it): an empty image.
     pub fn art(&self, chip: ChipHandle) -> slint::Image {
         if self.ready.content().chip(chip).class == ChipClass::ProgramAdvance {
             return slint::Image::default();
         }
-        kept(&self.art, chip, || pictures::chip_art(&self.packs.packs(), self.ready.content(), chip))
+        kept(&self.art, chip, || pictures::chip_art(&self.graphics.view(), self.ready.content(), chip))
     }
 
     /// A chip's element icon: its family's, as the game's chip window shows it. A Program Advance has no element: an
@@ -85,34 +85,34 @@ impl Pictures {
     }
 
     /// A chip family's 16x16 element icon, as the game's chip window shows it: its frame smooth at any size, drawn
-    /// from the pack's drawing of it, with the symbol over it as its pixels (`pictures::element_icon_svg`; the user:
-    /// "you should draw the element icons in the ui with the smooth frame as well"); the picture where the pack
-    /// has no drawing of the frame.
+    /// from the game's drawing of it, with the symbol over it as its pixels (`pictures::element_icon_svg`; the user:
+    /// "you should draw the element icons in the ui with the smooth frame as well"); the picture where the game's
+    /// graphics have no drawing of the frame.
     pub fn element(&self, family: ChipFamily) -> slint::Image {
         if let Some(i) = self.elements.borrow().get(&family) {
             return i.clone();
         }
-        let (packs, content) = (self.packs.packs(), self.ready.content());
-        let svg = pictures::element_icon_svg(&packs, content, family).and_then(|s| slint::Image::load_from_svg_data(s.as_bytes()).ok());
-        let i = svg.unwrap_or_else(|| image(pictures::element_icon(&packs, content, family)));
+        let graphics = self.graphics.view();
+        let svg = pictures::element_icon_svg(&graphics, family).and_then(|s| slint::Image::load_from_svg_data(s.as_bytes()).ok());
+        let i = svg.unwrap_or_else(|| image(pictures::element_icon(&graphics, family)));
         self.elements.borrow_mut().insert(family, i.clone());
         i
     }
 
     /// A form's 32x16 face.
     pub fn face(&self, form: FormHandle) -> slint::Image {
-        kept(&self.faces, form, || pictures::form_face(&self.packs.packs(), self.ready.content(), form))
+        kept(&self.faces, form, || pictures::form_face(&self.graphics.view(), self.ready.content(), form))
     }
 
     /// A navi's 32x16 face: its own, else its starting form's.
     pub fn navi(&self, navi: NaviHandle) -> slint::Image {
         let content = self.ready.content();
         kept(&self.navis, navi, || {
-            let packs = self.packs.packs();
-            let own = nettai_render::lookups::navi_face(&packs, content, navi, &mut Default::default());
+            let graphics = self.graphics.view();
+            let own = nettai_render::lookups::navi_face(&graphics, content, navi, &mut Default::default());
             own.and_then(|(tiles, palettes, _)| pictures::image(tiles, 4, 2, palettes.first()?)).or_else(|| {
                 let form = nettai_match::Side::fresh_stats(content, navi).starting_form;
-                pictures::form_face(&packs, content, form)
+                pictures::form_face(&graphics, content, form)
             })
         })
     }
@@ -122,7 +122,7 @@ impl Pictures {
     pub fn shown(&self, face: &Face) -> slint::Image {
         match face {
             Face::Navi(n) => self.navi(*n),
-            Face::Form(form, emotion, variant) => kept(&self.shown, face.clone(), || pictures::face(&self.packs.packs(), self.ready.content(), *form, emotion, *variant)),
+            Face::Form(form, emotion, variant) => kept(&self.shown, face.clone(), || pictures::face(&self.graphics.view(), self.ready.content(), *form, emotion, *variant)),
         }
     }
 }

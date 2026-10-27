@@ -167,9 +167,9 @@ fn effects_play_over_the_music() {
 fn the_game_queue_holds_32_calls_a_frame() {
     let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     a.handle(&[SoundCue::Effect(SoundId(0x94)); 40]);
-    assert_eq!(a.packs[0].queue.len(), QUEUE_LIMIT);
+    assert_eq!(a.banks[0].queue.len(), QUEUE_LIMIT);
     a.tick(&mut Vec::new());
-    assert!(a.packs[0].queue.is_empty());
+    assert!(a.banks[0].queue.is_empty());
 }
 
 #[test]
@@ -206,16 +206,15 @@ fn wav_files_are_16_bit_stereo() {
     assert_eq!((s(0), s(1), s(2), s(3)), (16384, -16384, 32767, 0));
 }
 
-/// docs/design/rules-in-luau.md §7.4: each pack's songs play on its own
-/// driver, with its own instruments; music of another pack stops the
+/// docs/design/rules-in-luau.md §7.4: each bank's songs play on its own
+/// driver, with its own instruments; music of another bank stops the
 /// music that played, and the drivers' outputs are added.
 #[test]
-fn each_pack_plays_its_own_songs() {
-    use nettai_battle::content::{InPack, PackId};
-    let songs = Songs(vec![InPack { pack: PackId(0), id: VIRUS_BATTLE.0 }, InPack { pack: PackId(1), id: VIRUS_BATTLE.0 }]);
+fn each_bank_plays_its_own_songs() {
+    let songs = Songs(vec![BankSong { bank: BankId(0), song: VIRUS_BATTLE.0 }, BankSong { bank: BankId(1), song: VIRUS_BATTLE.0 }]);
     let mut a = BattleAudio::with_banks(vec![bank(), bank()], songs);
     let mut out = Vec::new();
-    let playing = |a: &BattleAudio, p: u8| a.driver_of(PackId(p)).unwrap().player(MUSIC_PLAYER).is_some_and(|m| m.is_playing());
+    let playing = |a: &BattleAudio, p: u8| a.driver_of(BankId(p)).unwrap().player(MUSIC_PLAYER).is_some_and(|m| m.is_playing());
     a.handle(&[SoundCue::Music(SoundId(0))]);
     a.tick(&mut out);
     a.tick(&mut out);
@@ -223,8 +222,8 @@ fn each_pack_plays_its_own_songs() {
     a.handle(&[SoundCue::Music(SoundId(1))]);
     a.tick(&mut out);
     a.tick(&mut out);
-    assert!(!playing(&a, 0) && playing(&a, 1), "the music moved to the other pack's player");
-    // One frame's samples, however many packs.
+    assert!(!playing(&a, 0) && playing(&a, 1), "the music moved to the other bank's player");
+    // One frame's samples, however many banks.
     out.clear();
     a.tick(&mut out);
     assert!((out.len() as i64 - 549).abs() <= 8, "{} samples for a frame", out.len());
@@ -239,20 +238,20 @@ fn other_bank() -> Arc<SoundBank> {
     Arc::new(b)
 }
 
-/// The music player of pack `p` and the song it plays, if it plays one.
+/// The music player of bank `p` and the song it plays, if it plays one.
 fn music_of(a: &BattleAudio, p: u8) -> Option<SongId> {
-    let player = a.driver_of(nettai_battle::content::PackId(p))?.player(MUSIC_PLAYER)?;
+    let player = a.driver_of(BankId(p))?.player(MUSIC_PLAYER)?;
     player.is_playing().then(|| player.song()).flatten()
 }
 
 /// A battle theme of another game's plays in place of the battle's music,
 /// on a driver of its own bank: the battle's effects and its result's music
-/// stay the battle's pack's, and the result's music stops the theme.
+/// stay the battle's bank's, and the result's music stops the theme.
 #[test]
 fn a_theme_plays_in_place_of_the_battles_music() {
     let theme = Theme { bank: other_bank(), song: 0x16 };
     let (banks, songs) = with_theme(vec![bank()], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
-    assert_eq!(banks.len(), 2, "the theme's bank is a pack more");
+    assert_eq!(banks.len(), 2, "the theme's bank is one more");
     let mut a = BattleAudio::with_banks(banks, songs);
     let mut out = Vec::new();
     a.handle(&[SoundCue::Music(VIRUS_BATTLE), SoundCue::Effect(SoundId(0x94))]);
@@ -263,7 +262,7 @@ fn a_theme_plays_in_place_of_the_battles_music() {
     // The low-HP music's pitch and tempo are the music's: the theme's.
     a.handle(&[SoundCue::Pinch(true)]);
     a.tick(&mut out);
-    assert_eq!(a.driver_of(nettai_battle::content::PackId(1)).unwrap().player(MUSIC_PLAYER).unwrap().tempo_step(), 150 * 0x11A / 0x100);
+    assert_eq!(a.driver_of(BankId(1)).unwrap().player(MUSIC_PLAYER).unwrap().tempo_step(), 150 * 0x11A / 0x100);
     a.handle(&[SoundCue::Pinch(false), SoundCue::Music(WINNER)]);
     a.tick(&mut out);
     a.tick(&mut out);
@@ -271,9 +270,9 @@ fn a_theme_plays_in_place_of_the_battles_music() {
 }
 
 /// A theme of the battle's own game plays on its game's driver, as the
-/// game's own music does: no pack more.
+/// game's own music does: no bank more.
 #[test]
-fn a_theme_of_the_games_own_is_no_pack_more() {
+fn a_theme_of_the_games_own_is_no_bank_more() {
     let own = bank();
     let mut b = (*own).clone();
     b.songs[0x16] = b.songs[0x15].clone();
@@ -309,7 +308,7 @@ fn a_canceled_change_moves_the_music_back_to_the_theme() {
     // And the theme is the music: playing it again changes nothing, and a
     // stop taken back starts it again.
     a.handle_actions([CueAction::Play(SoundCue::Music(VIRUS_BATTLE))]);
-    assert!(a.packs.iter().all(|p| p.queue.is_empty()));
+    assert!(a.banks.iter().all(|p| p.queue.is_empty()));
     a.handle_actions([CueAction::Play(SoundCue::StopMusic), CueAction::Cancel(SoundCue::StopMusic)]);
     a.tick(&mut out);
     a.tick(&mut out);
@@ -317,20 +316,20 @@ fn a_canceled_change_moves_the_music_back_to_the_theme() {
 }
 
 /// A player's volume (the custom screen's hover over a dark chip) is set in
-/// every pack's driver: the music's on the theme's, the screen's sound's on
+/// every bank's driver: the music's on the theme's, the screen's sound's on
 /// the battle's.
 #[test]
-fn a_volume_is_every_packs() {
+fn a_volume_is_every_banks() {
     let theme = Theme { bank: other_bank(), song: 0x16 };
     let (banks, songs) = with_theme(vec![bank()], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
     let mut a = BattleAudio::with_banks(banks, songs);
     a.handle(&[SoundCue::Music(VIRUS_BATTLE), SoundCue::Volume { player: 31, volume: 0x80 }, SoundCue::Volume { player: 22, volume: 0xA0 }]);
-    assert_eq!(a.packs[0].queue, a.packs[1].queue[1..], "the same volumes on both, after the theme's start");
-    assert_eq!(a.packs[0].queue.len(), 2);
+    assert_eq!(a.banks[0].queue, a.banks[1].queue[1..], "the same volumes on both, after the theme's start");
+    assert_eq!(a.banks[0].queue.len(), 2);
 }
 
 /// The battle's music changed while it plays (a theme picked in a practice
-/// battle's menu): the new song starts at once on its own pack's driver, from
+/// battle's menu): the new song starts at once on its own bank's driver, from
 /// its beginning, the low-HP switch kept on, and the battle's effects play
 /// on; the game's own again moves it back. A result's music playing stays,
 /// and the next round's start plays the new song.
@@ -350,11 +349,11 @@ fn a_change_of_songs_restarts_the_music() {
     a.tick(&mut out);
     a.tick(&mut out);
     assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the theme at once, on its own driver");
-    let theirs = a.driver_of(nettai_battle::content::PackId(1)).unwrap();
+    let theirs = a.driver_of(BankId(1)).unwrap();
     assert_eq!(theirs.player(MUSIC_PLAYER).unwrap().tempo_step(), 150 * 0x11A / 0x100, "the low-HP switch kept on");
     assert_eq!((theirs.level(MUSIC_PLAYER), theirs.level(PlayerId(16))), (128, 256), "at the host's levels");
     assert!(a.driver().player(PlayerId(16)).unwrap().is_playing(), "the battle's effect plays on");
-    // The game's own again: back on the battle's driver, the theme's pack silent.
+    // The game's own again: back on the battle's driver, the theme's bank silent.
     a.set_songs(own.0.clone(), own.1.clone());
     a.tick(&mut out);
     a.tick(&mut out);
@@ -371,5 +370,5 @@ fn a_change_of_songs_restarts_the_music() {
     a.tick(&mut out);
     a.tick(&mut out);
     assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the next round's start");
-    assert_eq!(a.packs.len(), 2, "a pack playing already is that pack");
+    assert_eq!(a.banks.len(), 2, "a bank playing already is that one");
 }

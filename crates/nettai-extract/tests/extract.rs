@@ -23,8 +23,7 @@ fn full_sets_pass_the_content_audit() {
             let strings = nettai_content::locale::load_for(&loaded.dir, std::slice::from_ref(&loaded.name), &lang).unwrap();
             languages.push((lang, strings.map(Arc::new)));
         }
-        let banks = [loaded.sound.clone()];
-        let found = nettai_tools::content_audit::audit(&loaded.content, vec![(*loaded.graphics).clone()], Default::default(), &loaded.numbers, Some(&banks), &languages);
+        let found = nettai_tools::content_audit::audit(&loaded.content, (*loaded.graphics).clone(), &loaded.numbers, Some(&loaded.sound), &languages);
         assert!(found.problems.is_empty(), "{game}: {:#?}", found.problems);
     }
 }

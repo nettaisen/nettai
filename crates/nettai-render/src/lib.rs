@@ -23,7 +23,7 @@ pub mod hud;
 pub mod lettering;
 pub mod lookups;
 pub mod objects;
-pub mod packs;
+pub mod graphics;
 pub mod pictures;
 pub mod pixeltext;
 pub mod rasters;

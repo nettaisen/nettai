@@ -64,4 +64,4 @@ pub use state::{
     Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_ARRAY, MAX_LIST, Place, ROLE_MARK, SMALL_BLOCK, Schema, SmallBlock, StateArena, StateId,
     StateMut, StateRef, Value, is_code, is_collection_name,
 };
-pub use types::{CANONICAL_SIDE, InPack, ObjectRef, PackId, PanelPos, Pool, SpriteId, SpriteNumber, Vec3, passed, passed_x, side_sign};
+pub use types::{CANONICAL_SIDE, ObjectRef, PanelPos, Pool, SpriteId, SpriteNumber, Vec3, passed, passed_x, side_sign};

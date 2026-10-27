@@ -453,7 +453,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 /// `Problems::marking`) is marked where it is drawn.
 pub fn queue_objects<'a>(
     b: &Battle,
-    packs: &crate::packs::Packs<'a>,
+    graphics: &crate::graphics::Graphics<'a>,
     view: &View,
     viewers: &[u8],
     list: &mut SpriteList<'a>,
@@ -479,11 +479,11 @@ pub fn queue_objects<'a>(
             let kind = || format!("of kind {:?}", b.content.defs.kind(o.kind).key);
             let (sheet, frames) = if nowhere {
                 // (Not drawn: what the pack lacks of it is no problem.)
-                let Some(sheet) = packs.sprite(&b.content, id) else { continue };
+                let Some(sheet) = graphics.sprite(id) else { continue };
                 let Some(frames) = sheet.animations.get(s.anim as usize) else { continue };
                 (sheet, &frames[..])
             } else {
-                let Some(sheet) = crate::lookups::sprite(packs, &b.content, id, &kind, problems) else { continue };
+                let Some(sheet) = crate::lookups::sprite(graphics, &b.content, id, &kind, problems) else { continue };
                 let Some(frames) = crate::lookups::animation(sheet, &b.content, id, s.anim, &kind, problems) else { continue };
                 (sheet, frames)
             };
@@ -606,7 +606,7 @@ pub fn queue_objects<'a>(
                 group.push((layer, bucket, sprite, fine));
             }
             if !problems.marking.is_empty()
-                && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0)
+                && let Some(name) = crate::graphics::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0)
             {
                 // (The sprite whatever it plays, or one animation of it:
                 // `sprite:NAME:ANIM`.)

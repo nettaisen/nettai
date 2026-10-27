@@ -399,7 +399,7 @@ impl AudioOut {
         AudioOut::with_banks(vec![bank], songs)
     }
 
-    /// The sound of several packs (`banks` by `PackId`) on the default
+    /// The sound of several banks (`banks` by `BankId`) on the default
     /// output device.
     pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: crate::Songs) -> Result<AudioOut, OutputError> {
         Ok(AudioOut { out: Output::open()?, audio: BattleAudio::with_banks(banks, songs), frame: Vec::new() })

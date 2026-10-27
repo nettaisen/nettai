@@ -18,14 +18,14 @@
 
 use nettai_assets::{Background, Bundle};
 use nettai_battle::Content;
-use nettai_battle::content::{AssetNumbers, PackId};
+use nettai_battle::content::AssetNumbers;
 use nettai_content::locale::{self, Strings};
 pub use nettai_content::report::Report;
 use nettai_content_api::AssetIndex;
 pub use nettai_extract::RomSource;
 use nettai_extract::{Extraction, Recipe};
 use nettai_render::Renderer;
-use nettai_render::packs::{OtherBackgrounds, PackGraphics};
+use nettai_render::graphics::{GameGraphics, OtherBackgrounds};
 pub use nettai_render::textlayer::GraphicsMode;
 pub use nettai_render::vfont::VectorFont;
 use std::collections::BTreeMap;
@@ -200,7 +200,7 @@ impl ContentLoaded {
         for ((game, _), assets) in jobs.iter().skip(1).zip(extracted) {
             match assets {
                 Ok(assets) => others.insert(game, pool_backgrounds(&content, game, &assets)),
-                // (A round on one of its backgrounds is drawn on its stage's own: `Packs::round_background`.)
+                // (A round on one of its backgrounds is drawn on its stage's own: `Graphics::round_background`.)
                 Err(e) => report.warn(format!("{game}'s ROMs"), format!("the background pool's {game} backgrounds aren't drawn: {e}")),
             }
         }
@@ -270,12 +270,12 @@ impl Game {
             };
         }
         let bundle = Arc::new((*self.graphics).clone().for_language(lang));
-        Ok(Graphics { bundles: vec![bundle], strings, own: PackId::default(), others: self.others.clone(), assets: self.numbers.clone(), report })
+        Ok(Graphics { bundle, strings, others: self.others.clone(), numbers: self.numbers.clone(), report })
     }
 
     /// The game's sound: its bank, and the content's songs.
     pub fn sound(&self) -> Result<Sound, LoadError> {
-        Ok(Sound { banks: vec![self.sound.clone()], songs: nettai_audio::Songs::of(&self.numbers), report: Report::default() })
+        Ok(Sound { bank: self.sound.clone(), songs: nettai_audio::Songs::of(&self.numbers), report: Report::default() })
     }
 }
 
@@ -283,38 +283,36 @@ impl Game {
 /// them draws from the same, and keeps them for as long as it lives.
 #[derive(Clone)]
 pub struct Graphics {
-    /// The game's, by `PackId` (one: the game's own).
-    pub bundles: Vec<Arc<Bundle>>,
+    /// The game's, in the language.
+    pub bundle: Arc<Bundle>,
     /// The background pool's backgrounds of other games, from their ROMs.
     pub others: Arc<OtherBackgrounds>,
     /// The content's strings in the language (none: the content's own).
     pub strings: Option<Arc<Strings>>,
-    /// The game's own graphics among `bundles`.
-    pub own: PackId,
     /// What the game's assets hold of the content's.
-    pub assets: Arc<AssetNumbers>,
+    pub numbers: Arc<AssetNumbers>,
     pub report: Report,
 }
 
 impl Graphics {
     /// The graphics, as a renderer holds them.
-    pub fn packs(&self) -> PackGraphics {
-        PackGraphics::new(self.bundles.clone(), self.own).with_others(self.others.clone()).with_assets(self.assets.clone())
+    pub fn game_graphics(&self) -> GameGraphics {
+        GameGraphics::new(self.bundle.clone()).with_others(self.others.clone()).with_numbers(self.numbers.clone())
     }
 
     /// A renderer of these graphics, its text drawn in `text` mode
     /// (`font`: the enhanced mode's, [`font`]).
     pub fn renderer(&self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) -> Renderer {
-        let mut renderer = Renderer::with_packs(self.packs());
+        let mut renderer = Renderer::with_graphics(self.game_graphics());
         renderer.set_strings(self.strings.clone());
         renderer.set_mode(mode, font);
         renderer
     }
 }
 
-/// A game's sound: its bank, by `PackId` (one: the game's own), and the content's songs.
+/// A game's sound: its bank, and the content's songs in it.
 pub struct Sound {
-    pub banks: Vec<Arc<m4a::SoundBank>>,
+    pub bank: Arc<m4a::SoundBank>,
     pub songs: nettai_audio::Songs,
     pub report: Report,
 }
@@ -328,8 +326,8 @@ impl Sound {
     /// whatever plays. Its rollback is the cues', as the game's own music's.
     pub fn parts(&self, content: &Content, theme: Option<&nettai_audio::Theme>) -> crate::preload::SoundParts {
         match theme {
-            Some(theme) => nettai_audio::with_theme(self.banks.clone(), &self.songs, &content.battle_music(), theme),
-            None => (self.banks.clone(), self.songs.clone()),
+            Some(theme) => nettai_audio::with_theme(vec![self.bank.clone()], &self.songs, &content.battle_music(), theme),
+            None => (vec![self.bank.clone()], self.songs.clone()),
         }
     }
 }
@@ -428,7 +426,7 @@ impl Loaded {
             return None;
         }
         let song = self.game.numbers.sound(handle)?;
-        let bank = self.sound.as_ref()?.banks.first()?.clone();
+        let bank = self.sound.as_ref()?.bank.clone();
         Some(nettai_audio::Theme { bank, song })
     }
 

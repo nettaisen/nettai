@@ -339,7 +339,7 @@ fn run() -> Result<String, String> {
     let snapshot = v.battle().save_state();
     let battle_bytes = held() - before;
     let sound_bytes = game.sound.as_ref().map_or(0, |s| {
-        let sound = nettai_audio::BattleAudio::with_banks(s.banks.clone(), s.songs.clone());
+        let sound = nettai_audio::BattleAudio::new(s.bank.clone(), s.songs.clone());
         let before = held();
         let copy = sound.clone();
         let bytes = held() - before;

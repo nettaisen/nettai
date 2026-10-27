@@ -6,7 +6,7 @@
 
 use crate::audit::Problems;
 use crate::compose::to_rgb;
-use crate::packs::Packs;
+use crate::graphics::Graphics;
 use nettai_assets::{Palette, Tiles};
 use nettai_battle::Content;
 use nettai_content_api::ChipHandle;
@@ -44,16 +44,16 @@ pub fn image(tiles: &Tiles, w: usize, h: usize, palette: &Palette) -> Option<Ima
 
 /// A chip's 16x16 icon, in its pack's HUD's icon palette (the slots'
 /// unpicked look).
-pub fn chip_icon(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
-    let (tiles, palette) = crate::lookups::chip_icon(packs, c, chip, &mut Problems::default())?;
+pub fn chip_icon(graphics: &Graphics, c: &Content, chip: ChipHandle) -> Option<Image> {
+    let (tiles, palette) = crate::lookups::chip_icon(graphics, c, chip, &mut Problems::default())?;
     image(tiles, 2, 2, palette)
 }
 
 /// A chip's 56x48 picture in the chip window, in its definition's
 /// `art_palette` where it has one (a chip whose palette no ROM holds), else
 /// its own.
-pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
-    let art = crate::lookups::chip_art(packs, c, chip, &mut Problems::default())?;
+pub fn chip_art(graphics: &Graphics, c: &Content, chip: ChipHandle) -> Option<Image> {
+    let art = crate::lookups::chip_art(graphics, c, chip, &mut Problems::default())?;
     image(&art.picture.tiles, 7, 6, &c.chip(chip).art_palette.unwrap_or(art.picture.palette))
 }
 
@@ -73,10 +73,10 @@ fn element_palette(a: &nettai_assets::CustomScreen, family: usize) -> Option<Pal
 
 /// A chip family's 16x16 element icon, as the game's pack's chip window
 /// shows it for a chip of the family: its frame with its symbol over it
-/// (`CustomScreen::element_icon`), in its palette. None: the pack has no
-/// icon for the family.
-pub fn element_icon(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<Image> {
-    let a = &packs.game(c).custom;
+/// (`CustomScreen::element_icon`), in its palette. None: the game's graphics
+/// have no icon for the family.
+pub fn element_icon(graphics: &Graphics, family: nettai_battle::content::ChipFamily) -> Option<Image> {
+    let a = &graphics.bundle().custom;
     let family = family.0 as usize;
     let palette = element_palette(a, family)?;
     image(&a.element_icon(family)?, 2, 2, &palette)
@@ -87,10 +87,10 @@ pub fn element_icon(packs: &Packs, c: &Content, family: nettai_battle::content::
 /// at any size, with the symbol over it as its pixels, square-edged (the
 /// icon's pixels inside the frame's ring: `CustomScreen::element_inside`).
 /// The user: "you should draw the element icons in the ui with the smooth
-/// frame as well". None: the pack has no drawing of the frame, or no icon
+/// frame as well". None: the graphics have no drawing of the frame, or no icon
 /// for the family ([`element_icon`] is the picture).
-pub fn element_icon_svg(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<String> {
-    let a = &packs.game(c).custom;
+pub fn element_icon_svg(graphics: &Graphics, family: nettai_battle::content::ChipFamily) -> Option<String> {
+    let a = &graphics.bundle().custom;
     let family = family.0 as usize;
     let d = a.shapes.element_frame.as_ref().filter(|d| d.size == [16, 16])?;
     let palette = element_palette(a, family)?;
@@ -123,9 +123,9 @@ pub fn element_icon_svg(packs: &Packs, c: &Content, family: nettai_battle::conte
 /// A form's face in the emotion window (its definition's mugshot, the
 /// plain emotion's), 32x16, in its first palette: a soul's or a Cross's
 /// picture for a tool.
-pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
+pub fn form_face(graphics: &Graphics, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
     // (The emotion when nothing else holds: the plain one.)
-    let (_, face) = crate::lookups::form_face(packs, c, form, nettai_battle::content::Emotion::default(), false, &mut Problems::default());
+    let (_, face) = crate::lookups::form_face(graphics, c, form, nettai_battle::content::Emotion::default(), false, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
 }
@@ -133,9 +133,9 @@ pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandl
 /// A form's face in the emotion window for `emotion` (by its name in the
 /// game's rules), of its second set with `variant`, 32x16, in its first
 /// palette: what a round shows of a navi, for a tool.
-pub fn face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle, emotion: &str, variant: bool) -> Option<Image> {
+pub fn face(graphics: &Graphics, c: &Content, form: nettai_content_api::FormHandle, emotion: &str, variant: bool) -> Option<Image> {
     let emotion = c.rules().emotion.by_name(emotion)?;
-    let (_, face) = crate::lookups::form_face(packs, c, form, emotion, variant, &mut Problems::default());
+    let (_, face) = crate::lookups::form_face(graphics, c, form, emotion, variant, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
 }

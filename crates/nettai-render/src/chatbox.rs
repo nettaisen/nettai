@@ -66,7 +66,7 @@ pub struct Shown<'a> {
 }
 
 /// Side `side`'s player's chatbox, if one is up, with its text composed.
-pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, packs: &crate::packs::Packs<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
+pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, graphics: &crate::graphics::Graphics<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
     let (_, screen) = crate::custom::screen_of(b, side)?;
     let navi = b.stats[side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
@@ -129,10 +129,10 @@ pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, packs: &crate::pack
     let portrait = match (portrait, chatbox.look().portrait) {
         (Some(id), Some(look)) => {
             let who = || "(a portrait)".to_string();
-            let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
+            let sheet = crate::lookups::sprite(graphics, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, crate::custom::console_version(b, packs, side), problems);
+                note_true_face(b, navi, crate::custom::console_version(b, graphics, side), problems);
             }
             // (Its animation timed as the content times its sprite.)
             let timing: Vec<(u8, u8)> =

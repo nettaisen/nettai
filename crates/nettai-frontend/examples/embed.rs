@@ -89,7 +89,7 @@ fn run() -> Result<String, String> {
 
     // A second rendition of the sound, from the battle's cues, to compare.
     let sound = game.sound.as_ref().ok_or("the game loaded without sound")?;
-    let mut reference = BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone());
+    let mut reference = BattleAudio::new(sound.bank.clone(), sound.songs.clone());
     let (mut samples, mut expected) = (Vec::new(), Vec::new());
     let (mut total, mut loudest) = (0usize, 0f32);
 

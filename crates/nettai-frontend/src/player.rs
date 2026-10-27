@@ -175,7 +175,7 @@ impl Player {
     /// A player of what `driver` plays, shown and heard from a loaded game
     /// (its sound, if it was loaded).
     pub fn new(game: &Loaded, driver: Box<dyn Driver>) -> Player {
-        let audio = game.sound.as_ref().map(|s| BattleAudio::with_banks(s.banks.clone(), s.songs.clone()));
+        let audio = game.sound.as_ref().map(|s| BattleAudio::new(s.bank.clone(), s.songs.clone()));
         Player::with(game.renderer(), game.font.clone().map(TextRenderer::new), audio, driver)
     }
 
@@ -568,7 +568,7 @@ impl Player {
     /// battle doesn't know its language, what the renderer follows over
     /// time (the HUD's rolling numbers, its timers) carries on.
     pub fn set_language(&mut self, graphics: &Graphics) {
-        self.renderer.set_graphics(graphics.packs());
+        self.renderer.set_graphics(graphics.game_graphics());
         self.renderer.set_strings(graphics.strings.clone());
     }
 
@@ -991,7 +991,7 @@ mod tests {
         let content = testing::content();
         let mut graphics = crate::testing::graphics(&content, 0x001F);
         // (A HUD with tiles: the HP box and the gauge drawn, its cells by eighths in their own colors.)
-        let mut bundle = (*graphics.bundles[0]).clone();
+        let mut bundle = (*graphics.bundle).clone();
         let hud = &mut bundle.hud;
         hud.tiles = nettai_assets::Tiles { pixels: vec![1; 0x40 * nettai_assets::Tiles::TILE] };
         hud.first_tile = 0x100;
@@ -1002,9 +1002,9 @@ mod tests {
         let entry = |tile| nettai_assets::MapEntry { tile, hflip: false, vflip: false, palette: 13 };
         hud.hp_box = vec![entry(0x120); 12];
         hud.gauge_frame = vec![entry(0x200); 36];
-        graphics.bundles[0] = Arc::new(bundle);
+        graphics.bundle = Arc::new(bundle);
         let renderer = |mode: GraphicsMode, reduce: bool| {
-            let mut renderer = Renderer::with_packs(graphics.packs());
+            let mut renderer = Renderer::with_graphics(graphics.game_graphics());
             renderer.set_mode(mode, None);
             renderer.reduce_motion = reduce;
             renderer
@@ -1078,7 +1078,7 @@ mod tests {
         let folder = folder_of(&content, &[("gundels3", 13)]);
         let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
-        let player = || Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        let player = || Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, set());
         let (mut never, mut held) = (player(), player());
         let both = |never: &mut Player, held: &mut Player, tick: u32| {
             let k = bot_buttons(never.battle(), 0, tick);
@@ -1167,9 +1167,9 @@ mod tests {
         let folder = folder_of(&content, &[("gundels3", 13)]);
         let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
-        let mut never = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        let mut never = Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, set());
         let stalling = Box::new(Stalling { inner: set(), frames: 0, from: 120, len: 60 });
-        let mut stalled = Player::with(Renderer::with_packs(graphics.packs()), None, None, stalling);
+        let mut stalled = Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, stalling);
         assert!(stalled.real_time());
         for tick in 0..120 {
             let k = bot_buttons(never.battle(), 0, tick);

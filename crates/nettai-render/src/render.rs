@@ -6,7 +6,7 @@ use crate::compose::{self, Fade, Fades, Layer, Palettes, SpritePart};
 use crate::smooth::{Lift, Nudge, Overlay, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
-use crate::packs::PackGraphics;
+use crate::graphics::GameGraphics;
 use crate::seat::{Consoles, Seat, Shows};
 use crate::stage::{Stage, StageClock};
 use crate::textlayer::{Plane, Rect, TextItem, TextSink};
@@ -94,12 +94,12 @@ impl Glide {
 }
 
 /// Picks battles; keeps its layer buffers between frames. It owns what it
-/// draws from (the packs' graphics are shared), so it borrows nothing.
+/// draws from (the game's graphics are shared), so it borrows nothing.
 pub struct Renderer {
-    /// Every loaded pack's graphics, for the assets of each
-    /// (docs/design/rules-in-luau.md §7.4), and the content's own pack's
-    /// (the HUD's and the custom screen's frames).
-    graphics: PackGraphics,
+    /// The game's graphics: its assets (docs/design/rules-in-luau.md §7.4),
+    /// the HUD's and the custom screen's frames, and the other games'
+    /// backgrounds.
+    graphics: GameGraphics,
     background: Layer,
     field: Layer,
     hud: Layer,
@@ -180,13 +180,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// A renderer of one pack's graphics, in the original mode.
+    /// A renderer of a game's graphics `assets` alone, in the original mode.
     pub fn new(assets: Arc<Bundle>) -> Renderer {
-        Renderer::with_packs(PackGraphics::one(assets))
+        Renderer::with_graphics(GameGraphics::new(assets))
     }
 
-    /// A renderer of several packs' graphics.
-    pub fn with_packs(graphics: PackGraphics) -> Renderer {
+    /// A renderer of a game's graphics, in the original mode.
+    pub fn with_graphics(graphics: GameGraphics) -> Renderer {
         let drawings = graphics.drawings();
         Renderer {
             drawings,
@@ -275,7 +275,7 @@ impl Renderer {
     }
 
     /// The graphics it draws from (another renderer of the same: a clone).
-    pub fn graphics(&self) -> &PackGraphics {
+    pub fn graphics(&self) -> &GameGraphics {
         &self.graphics
     }
 
@@ -285,7 +285,7 @@ impl Renderer {
     /// numbers and timers are the battle's, not the graphics'), so a swap
     /// mid-battle is no reset. The frame's lookups are checked again
     /// against what is drawn from now.
-    pub fn set_graphics(&mut self, graphics: PackGraphics) {
+    pub fn set_graphics(&mut self, graphics: GameGraphics) {
         self.drawings = graphics.drawings();
         self.graphics = graphics;
         self.problems.recheck();
@@ -387,20 +387,20 @@ impl Renderer {
     fn draw(&mut self, b: &Battle, smooth: Smooth) -> Frame {
         self.problems.known.clear();
         self.problems.marks.clear();
-        // (The packs for this frame: the layers and the problems are the
+        // (The graphics for this frame: the layers and the problems are the
         // renderer's own fields, written while these are read.)
-        let mut packs = self.graphics.packs();
-        packs.set_version(self.console_version);
+        let mut graphics = self.graphics.view();
+        graphics.set_version(self.console_version);
         let view = Self::view_for(b, self.consoles);
         // (The background is its own pack's, another game's too (the
         // background pool's), or where that pack isn't here, the stage's own;
         // the field, the game's pack's: `FieldArt`.)
-        let shown = packs.round_background(&b.content, &b.setup.settings);
-        let background = crate::lookups::background(&packs, &b.content, shown, &mut self.problems);
+        let shown = graphics.round_background(&b.content, &b.setup.settings);
+        let background = crate::lookups::background(&graphics, &b.content, shown, &mut self.problems);
         // (The background, behind everything, where the caller asks.)
         if background.is_some()
             && !self.problems.marking.is_empty()
-            && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Background, shown.0)
+            && let Some(name) = crate::graphics::name(&b.content, nettai_content_api::AssetKind::Background, shown.0)
         {
             let what = format!("background:{name}");
             if self.problems.wants(&what) {
@@ -420,7 +420,7 @@ impl Renderer {
         let flash_order = b.content.rules().effects.palette_flash_order;
         let flashed = flash.is_some() && flash_order == PaletteFlashOrder::BeforeFades;
         let clock = self.stage_clock(b);
-        let stage = draw.then(|| Stage::new(&packs, &b.content, background, clock, flashed));
+        let stage = draw.then(|| Stage::new(&graphics, &b.content, background, clock, flashed));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -433,7 +433,7 @@ impl Renderer {
                 };
                 stage.draw_field(b, &mut self.field, b.setup.local_side, &field_view, &mut self.problems);
             }
-            None => crate::stage::field_lookups(b, &packs, b.setup.local_side, &mut self.problems),
+            None => crate::stage::field_lookups(b, &graphics, b.setup.local_side, &mut self.problems),
         }
         let both = self.consoles == Consoles::Both;
         for layer in [&mut self.hud, &mut self.names, &mut self.dialogue, &mut self.scratch, &mut self.scratch_names, &mut self.hud_right, &mut self.names_right] {
@@ -448,7 +448,7 @@ impl Renderer {
         }
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
-        let own_game = packs.game(&b.content);
+        let own_game = graphics.bundle();
         // A pack with no lettering in the language shown (Chinese: every
         // pack has English's and Japanese's) is drawn in its own
         // (`Bundle::for_language`): its pictures with words are that
@@ -487,16 +487,16 @@ impl Renderer {
             .collect();
         // (A chatbox the custom screen runs: the left player's, else the
         // right's, as its console draws it: it spans the screen.)
-        let chatbox = seats.iter().filter(|s| s.shows != Shows::Nothing).find_map(|s| crate::chatbox::prepare(b, s.side, own_game, &packs, &text, &mut self.problems));
+        let chatbox = seats.iter().filter(|s| s.shows != Shows::Nothing).find_map(|s| crate::chatbox::prepare(b, s.side, own_game, &graphics, &text, &mut self.problems));
         let huds = (&self.hud_state, &self.other_hud);
         let hud_of = |seat: Seat| if seat.side == local as u8 { huds.0 } else { huds.1 };
         // (The glyphs the banners' and the telops' loads made of each
         // other's tiles, which the sprites below borrow; each console's.)
-        let shared: Vec<_> = seats.iter().map(|&seat| crate::hud::shared_glyphs(b, own_game, &packs, hud_of(seat), seat, &text, &mut self.problems)).collect();
+        let shared: Vec<_> = seats.iter().map(|&seat| crate::hud::shared_glyphs(b, own_game, &graphics, hud_of(seat), seat, &text, &mut self.problems)).collect();
         let mut list = SpriteList::default();
         // (On a screen of both, what either player sees.)
         let viewers: Vec<u8> = seats.iter().map(|s| s.side).collect();
-        self.sprite_drawn = objects::queue_objects(b, &packs, &view, &viewers, &mut list, &mut self.problems, !draw);
+        self.sprite_drawn = objects::queue_objects(b, &graphics, &view, &viewers, &mut list, &mut self.problems, !draw);
         for (k, &seat) in seats.iter().enumerate() {
             if seat.shows == Shows::Nothing {
                 continue;
@@ -512,8 +512,8 @@ impl Renderer {
             // `Seat::clip`.)
             let clip = seat.clip(b, &seats);
             list.clip = clip;
-            crate::custom::draw(b, own_game, &packs, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
-            crate::hud::draw(b, own_game, &packs, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
+            crate::custom::draw(b, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
+            crate::hud::draw(b, own_game, &graphics, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
             list.clip = None;
             if let Some([x0, x1]) = clip {
                 hud.keep_columns(x0 as i32..x1 as i32);

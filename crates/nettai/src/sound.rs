@@ -146,17 +146,17 @@ impl Sound {
         // (The title music is no sound of the content's: the game's song, one more sound past the content's.)
         let mut music = sound.songs.clone();
         let title = game.game.index.sounds.get(TITLE_MUSIC).map(|&id| {
-            music.0.push(nettai_battle::content::InPack { pack: Default::default(), id });
+            music.0.push(nettai_audio::BankSong { bank: Default::default(), song: id });
             SoundCue::Music(SoundId(music.0.len() as u16 - 1))
         });
         self.menu = Some(Menu {
-            effects: BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone()),
+            effects: BattleAudio::new(sound.bank.clone(), sound.songs.clone()),
             cursor: cue(SoundRole::CustomCursor),
             pick: cue(SoundRole::CustomPick),
             back: cue(SoundRole::CustomBack),
             refused: cue(SoundRole::Refused),
             jack_in: cue(SoundRole::Encounter),
-            music: BattleAudio::with_banks(sound.banks.clone(), music),
+            music: BattleAudio::new(sound.bank.clone(), music),
             title,
             playing: false,
         });

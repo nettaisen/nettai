@@ -158,7 +158,7 @@ impl Preload {
     /// peer's own) in a picture of `size` (the host's pixels: the text is
     /// drawn at that size).
     pub fn new(game: &Loaded, set: &Set, viewer: u8, size: (usize, usize)) -> Preload {
-        let sound = game.sound.as_ref().map(|s| (s.banks.clone(), s.songs.clone()));
+        let sound = game.sound.as_ref().map(|s| (vec![s.bank.clone()], s.songs.clone()));
         Preload::with(game.renderer(), game.font.clone().map(TextRenderer::new), sound, set, viewer, size)
     }
 
@@ -321,17 +321,17 @@ impl Preload {
         }
     }
 
-    /// A navi's own in the pack: its face (a navi that changes form shows
+    /// A navi's own in the game's graphics: its face (a navi that changes form shows
     /// its forms'), its emblem, its name and variant name.
     fn look_up_navi(&mut self, navi: NaviHandle) {
         let (c, graphics) = (&*self.content, self.renderer.graphics().clone());
-        let packs = graphics.packs();
+        let view = graphics.view();
         let strings = self.renderer.strings().cloned();
         let text = DisplayText::new(strings.as_deref());
         let p = &mut self.renderer.problems;
-        let (hud, a) = (&packs.game(c).hud, &packs.game(c).custom);
+        let (hud, a) = (&view.bundle().hud, &view.bundle().custom);
         if !c.navi(navi).changes_form() {
-            lookups::navi_face(&packs, c, navi, p);
+            lookups::navi_face(&view, c, navi, p);
         }
         if lookups::custom_graphics(a, p) {
             lookups::emblem(a, c, navi, p);
@@ -353,14 +353,14 @@ impl Preload {
     /// there and its description.
     fn look_up_form(&mut self, navi: NaviHandle, form: FormHandle) {
         let (c, graphics) = (&*self.content, self.renderer.graphics().clone());
-        let packs = graphics.packs();
+        let view = graphics.view();
         let strings = self.renderer.strings().cloned();
         let text = DisplayText::new(strings.as_deref());
         let p = &mut self.renderer.problems;
-        let (hud, a) = (&packs.game(c).hud, &packs.game(c).custom);
+        let (hud, a) = (&view.bundle().hud, &view.bundle().custom);
         for e in 0..c.rules().emotion.names.len() {
             for variant in [false, true] {
-                lookups::form_face(&packs, c, form, Emotion(e as u8), variant, p);
+                lookups::form_face(&view, c, form, Emotion(e as u8), variant, p);
             }
         }
         let windowed = c.defs.rules().is_some_and(|r| r.views.form_list.is_some());
@@ -377,14 +377,14 @@ impl Preload {
     /// its description.
     fn look_up_chip(&mut self, chip: ChipHandle, code: ChipCode) {
         let (c, graphics) = (&*self.content, self.renderer.graphics().clone());
-        let packs = graphics.packs();
+        let view = graphics.view();
         let strings = self.renderer.strings().cloned();
         let text = DisplayText::new(strings.as_deref());
         let p = &mut self.renderer.problems;
-        let (hud, a) = (&packs.game(c).hud, &packs.game(c).custom);
-        lookups::chip_icon(&packs, c, chip, p);
+        let (hud, a) = (&view.bundle().hud, &view.bundle().custom);
+        lookups::chip_icon(&view, c, chip, p);
         if c.defs.roles().try_chip(ChipRole::ButtonChip) != Some(chip) {
-            lookups::chip_art(&packs, c, chip, p);
+            lookups::chip_art(&view, c, chip, p);
         }
         lookups::chip_name(hud, c, chip, text.chip_name(c, chip), p);
         if lookups::custom_graphics(a, p) {

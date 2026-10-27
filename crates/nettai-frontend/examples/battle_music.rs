@@ -15,7 +15,7 @@
 
 use nettai_audio::m4a::SongId;
 use nettai_audio::{BattleAudio, MUSIC_PLAYER, Theme};
-use nettai_battle::content::PackId;
+use nettai_audio::BankId;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
 use nettai_frontend::game::{Loaded, Options, GraphicsMode};
@@ -47,7 +47,7 @@ fn play(game: &Loaded, parts: &[(u32, Option<&Theme>)]) -> Result<(Vec<Option<So
         }
     }
     let audio = player.audio().ok_or("no audio")?;
-    let playing = (0..).map_while(|p| audio.driver_of(PackId(p))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect();
+    let playing = (0..).map_while(|p| audio.driver_of(BankId(p))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect();
     // (The last two seconds: the music, past the round's opening.)
     let tail = &samples[samples.len().saturating_sub(2 * nettai_audio::SAMPLE_RATE as usize)..];
     let rms = (tail.iter().map(|[l, r]| l * l + r * r).sum::<f32>() / (2 * tail.len().max(1)) as f32).sqrt();

@@ -22,7 +22,7 @@
 //! everything they named, not that they look or sound like the original
 //! (the frame comparison outside this repository checks that).
 
-use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, SpriteId};
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use std::collections::{BTreeMap, HashSet};
 
@@ -37,15 +37,15 @@ pub enum Lookup {
     Animation(SpriteId, u8),
     /// A palette of a sprite's palette set: (set, index).
     Palette(SpriteId, u8, u8),
-    /// A background, in its pack.
+    /// A background, in its game's graphics.
     Background(BackgroundId),
-    /// A pack's field's panel block for a panel type (the engine's
+    /// The game's field's panel block for a panel type (the engine's
     /// number), owner (0 the viewer's) and row (1..=3).
-    Panel(PackId, u8, u8, u8),
+    Panel(u8, u8, u8),
     /// A panel type (the engine's number), or a highlight (16 + its number),
-    /// that no loaded pack's field draws in an arena of a pack's: a tinted
-    /// normal panel (`stage::FieldArt`).
-    PanelTint(PackId, u8),
+    /// that the game's field doesn't draw: a tinted normal panel
+    /// (`stage::FieldArt`).
+    PanelTint(u8),
     /// A chip's icon (over the navi, on the custom screen's slots).
     ChipIcon(ChipHandle),
     /// A chip's picture in the chip window.
@@ -92,13 +92,13 @@ pub enum Lookup {
     TextLine(u8),
     /// A sound's song, in its pack's sound.
     Sound(u16),
-    /// A part of the pack's graphics that is there or not as a whole.
-    Graphics(Graphics),
+    /// A part of the game's graphics that is there or not as a whole.
+    Graphics(GraphicsPart),
 }
 
-/// The parts of a pack's graphics a frame needs as a whole.
+/// The parts of a game's graphics a frame needs as a whole.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Graphics {
+pub enum GraphicsPart {
     /// The custom screen's (`graphics/custom`).
     CustomScreen,
     /// The chatbox's and the dialogue font.
@@ -111,19 +111,18 @@ impl Lookup {
     /// The lookup as a line of text, by the content's names (`--lookups`:
     /// stable from run to run, and between content of other packs).
     pub fn describe(&self, c: &Content) -> String {
-        let asset = |kind: AssetKind, h: u16| crate::packs::name(c, kind, h).map_or(format!("#{h}"), str::to_string);
+        let asset = |kind: AssetKind, h: u16| crate::graphics::name(c, kind, h).map_or(format!("#{h}"), str::to_string);
         let sprite = |id: SpriteId| asset(AssetKind::Sprite, id.0);
         let chip = |h: ChipHandle| &c.defs.chip(h).key;
         let navi = |h: NaviHandle| &c.defs.navi(h).key;
         let form = |h: FormHandle| &c.defs.form(h).key;
-        let pack_name = |p: PackId| if p == PackId::default() { c.game().to_string() } else { format!("pack {}", p.index()) };
         match *self {
             Lookup::Sprite(id) => format!("sprite {}", sprite(id)),
             Lookup::Animation(id, anim) => format!("sprite {} animation {anim}", sprite(id)),
             Lookup::Palette(id, set, index) => format!("sprite {} palette {set}/{index}", sprite(id)),
             Lookup::Background(id) => format!("background {}", asset(AssetKind::Background, id.0)),
-            Lookup::Panel(pack, kind, owner, row) => format!("panel {kind} owner {owner} row {row} in {}", pack_name(pack)),
-            Lookup::PanelTint(arena, kind) => format!("panel {kind} tinted in an arena of {}", pack_name(arena)),
+            Lookup::Panel(kind, owner, row) => format!("panel {kind} owner {owner} row {row} in {}", c.game()),
+            Lookup::PanelTint(kind) => format!("panel {kind} tinted in {}", c.game()),
             Lookup::ChipIcon(h) => format!("chip {} icon", chip(h)),
             Lookup::ChipArt(h) => format!("chip {} picture", chip(h)),
             Lookup::ChipName(h) => format!("chip {} name", chip(h)),

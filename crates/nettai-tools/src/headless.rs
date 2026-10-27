@@ -252,25 +252,25 @@ pub struct Audit {
     pub frames: u32,
     /// Sound cues played.
     pub cues: u32,
-    /// What the frames and the cues named that the pack doesn't have.
+    /// What the frames and the cues named that the game's assets don't have.
     pub problems: Problems,
     /// Sessions the engine stopped, or that left their trace.
     pub stopped: Vec<String>,
 }
 
 /// Run sessions to their end, making every frame's lookups and checking
-/// every tick's sound cues (with `sound`, the packs' banks by `PackId`):
-/// everything a battle shows and plays is asked of the packs, and what
-/// they lack is collected (see [`nettai_render::audit`]). With `draw` every frame
+/// every tick's sound cues (with `sound`, the game's bank): everything a
+/// battle shows and plays is asked of the game's assets, and what they
+/// lack is collected (see [`nettai_render::audit`]). With `draw` every frame
 /// is drawn and every cue played into nothing besides (the thorough audit,
 /// `--audit --draw`); else only the lookups are made, which is what the
 /// audit checks.
-pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>, draw: bool) -> Audit {
+pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std::sync::Arc<m4a::SoundBank>>, draw: bool) -> Audit {
     let mut out = Audit::default();
     renderer.problems.clear();
     renderer.set_lookups_only(!draw);
-    let songs = nettai_audio::Songs::of(renderer.graphics().assets());
-    let mut audio = sound.clone().filter(|_| draw).map(|banks| nettai_audio::BattleAudio::with_banks(banks, songs));
+    let songs = nettai_audio::Songs::of(renderer.graphics().numbers());
+    let mut audio = sound.clone().filter(|_| draw).map(|bank| nettai_audio::BattleAudio::new(bank, songs));
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();
@@ -282,10 +282,10 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
             out.frames += 1;
             let cues = s.battle.sound_cues();
             out.cues += cues.len() as u32;
-            if let Some(banks) = &sound {
+            if let Some(bank) = &sound {
                 for &cue in cues {
-                    let assets = renderer.graphics().assets().clone();
-                    crate::sound_lookups::check_cue(&s.battle, &assets, banks, cue, &mut renderer.problems);
+                    let numbers = renderer.graphics().numbers().clone();
+                    crate::sound_lookups::check_cue(&s.battle, &numbers, bank, cue, &mut renderer.problems);
                 }
             }
             if let Some(a) = &mut audio {
@@ -311,19 +311,19 @@ pub struct TraceAudit {
 
 /// What a renderer of [`audit_traces`] is made with.
 pub struct AuditSetup {
-    pub packs: nettai_render::packs::PackGraphics,
+    pub graphics: nettai_render::graphics::GameGraphics,
     pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
     pub mode: nettai_render::GraphicsMode,
     pub font: Option<std::sync::Arc<nettai_render::vfont::VectorFont>>,
-    /// The packs' sound, by `PackId` (none: cues aren't checked).
-    pub sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>,
+    /// The game's sound (none: cues aren't checked).
+    pub sound: Option<std::sync::Arc<m4a::SoundBank>>,
     /// Draw every frame and play every cue too (`--draw`).
     pub draw: bool,
 }
 
 /// Audit each of `traces` (its rounds one after another, as [`audit`]) on
 /// `jobs` threads, each trace with a renderer of its own over the shared
-/// packs; `done` hears of each as it ends. Returns them in `traces`' order.
+/// graphics; `done` hears of each as it ends. Returns them in `traces`' order.
 pub fn audit_traces(
     content: &std::sync::Arc<nettai_battle::Content>,
     setup: &AuditSetup,
@@ -338,7 +338,7 @@ pub fn audit_traces(
     let one = |path: &std::path::Path| -> Result<Audit, String> {
         let rounds = crate::trace::trace_rounds(path, content).map_err(|e| format!("can't play it: {e}"))?;
         let sessions: Vec<Session> = rounds.into_iter().map(|(_, r)| Session::new(r)).collect();
-        let mut renderer = Renderer::with_packs(setup.packs.clone());
+        let mut renderer = Renderer::with_graphics(setup.graphics.clone());
         renderer.set_strings(setup.strings.clone());
         renderer.set_mode(setup.mode, setup.font.clone());
         Ok(audit(&mut renderer, sessions, setup.sound.clone(), setup.draw))

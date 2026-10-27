@@ -2,11 +2,11 @@
 //! driver (the `m4a` crate) and sound data (an `m4a::SoundBank`, which
 //! nettai-extract extracts from the user's ROMs).
 //!
-//! - [`Songs`]: what each of the engine's sounds (a handle over the loaded
-//!   packs' sounds) is in its pack's song table; [`Songs::cue`] turns a
+//! - [`Songs`]: what each of the engine's sounds (a handle over the
+//!   content's sounds) is in a bank's song table; [`Songs::cue`] turns a
 //!   cue's sounds into songs.
 //! - [`Theme`] and [`with_theme`]: a battle's music in place of its game's
-//!   own, a song of any game's pack played with that pack's bank.
+//!   own, a song of any game's played with that game's bank.
 //! - [`SoundCalls`]: what the game's sound functions ask of the driver for
 //!   each cue in songs (EXE6's wrappers: `PlayMusic`'s current-music check,
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
@@ -40,33 +40,52 @@ pub use nettai_battle::sound::{SoundCue, SoundId};
 /// sound handle: a cue's sounds are songs once [`Songs::cue`] has them.
 pub const NO_MUSIC: SoundId = SoundId(0x63);
 
-/// What the engine's sounds are in their packs' song tables (docs/design/
-/// rules-in-luau.md §7.4: the engine knows a sound by its handle), by
-/// handle.
+/// A bank among a battle's (`BattleAudio::with_banks`), by its place: the
+/// game's own first, a battle theme's of another game after it ([`with_theme`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BankId(pub u8);
+
+impl BankId {
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// A song of one of a battle's banks: the bank, and the song's number in
+/// its song table.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BankSong {
+    pub bank: BankId,
+    pub song: u16,
+}
+
+/// What the engine's sounds are in the battle's banks' song tables
+/// (docs/design/rules-in-luau.md §7.4: the engine knows a sound by its
+/// handle), by handle.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Songs(pub Vec<nettai_battle::content::InPack<u16>>);
+pub struct Songs(pub Vec<BankSong>);
 
 impl Songs {
-    /// A content's sounds' songs in its game's pack (`assets`: what the
-    /// pack holds of the content's assets), the pack the first loaded.
+    /// A content's sounds' songs in its game's bank (`assets`: what the
+    /// game's assets hold of the content's), the bank the first.
     pub fn of(assets: &nettai_battle::content::AssetNumbers) -> Songs {
-        Songs(assets.sounds.iter().map(|&id| nettai_battle::content::InPack { pack: Default::default(), id }).collect())
+        Songs(assets.sounds.iter().map(|&song| BankSong { bank: BankId::default(), song }).collect())
     }
 
-    /// Songs by their own numbers (sound `n` is song `n` of the one pack):
+    /// Songs by their own numbers (sound `n` is song `n` of the one bank):
     /// for tools that play a bank's songs, not the engine's sounds.
     pub fn numbers(count: usize) -> Songs {
-        Songs((0..count).map(|n| nettai_battle::content::InPack { pack: Default::default(), id: n as u16 }).collect())
+        Songs((0..count).map(|n| BankSong { bank: BankId::default(), song: n as u16 }).collect())
     }
 
     /// Sound `id`'s song.
     pub fn song(&self, id: SoundId) -> SoundId {
-        SoundId(self.0.get(id.0 as usize).unwrap_or_else(|| panic!("no sound has handle {}", id.0)).id)
+        SoundId(self.0.get(id.0 as usize).unwrap_or_else(|| panic!("no sound has handle {}", id.0)).song)
     }
 
     /// These songs with the sounds `music` (a battle's own music: its
     /// content's `battle_music`) playing song `to` in their place.
-    pub fn with_music(&self, music: &[SoundId], to: nettai_battle::content::InPack<u16>) -> Songs {
+    pub fn with_music(&self, music: &[SoundId], to: BankSong) -> Songs {
         let mut songs = self.clone();
         for &m in music {
             if let Some(s) = songs.0.get_mut(m.0 as usize) {
@@ -87,11 +106,11 @@ impl Songs {
 }
 pub use m4a;
 
-/// A song of a pack's, with that pack's bank: a battle's music in place of
+/// A song of a game's, with that game's bank: a battle's music in place of
 /// its game's own (a battle theme a player picked, of the battle's game or
 /// another's). The song plays on a driver of its own bank, so with its own
-/// pack's voice groups and samples, and the battle stays its game's: its
-/// effects and its result's music are its game's pack's, as before.
+/// game's voice groups and samples, and the battle stays its game's: its
+/// effects and its result's music are its game's bank's, as before.
 #[derive(Clone)]
 pub struct Theme {
     pub bank: Arc<SoundBank>,
@@ -99,20 +118,20 @@ pub struct Theme {
     pub song: u16,
 }
 
-/// A battle's sound, its packs' `banks` (by `PackId`) and its `songs`, with
+/// A battle's sound, its `banks` (by [`BankId`]) and its `songs`, with
 /// `theme`'s song as its music in place of its own (`music`: the sounds
 /// that are its own music, `Content::battle_music`): the theme's bank one
-/// pack more, unless it is one of `banks` already (a theme of the battle's
+/// more, unless it is one of `banks` already (a theme of the battle's
 /// own game, which plays on its game's driver as the game's own music does).
 pub fn with_theme(mut banks: Vec<Arc<SoundBank>>, songs: &Songs, music: &[SoundId], theme: &Theme) -> (Vec<Arc<SoundBank>>, Songs) {
-    let pack = match banks.iter().position(|b| Arc::ptr_eq(b, &theme.bank)) {
+    let at = match banks.iter().position(|b| Arc::ptr_eq(b, &theme.bank)) {
         Some(p) => p,
         None => {
             banks.push(theme.bank.clone());
             banks.len() - 1
         }
     };
-    let to = nettai_battle::content::InPack { pack: nettai_battle::content::PackId(pack as u8), id: theme.song };
+    let to = BankSong { bank: BankId(at as u8), song: theme.song };
     (banks, songs.with_music(music, to))
 }
 
@@ -240,8 +259,8 @@ impl SoundCalls {
         }
     }
 
-    /// The music moved to another pack's player: this one's song stops
-    /// (that alone: m4aSongNumStop, the pack's effects playing on), and is
+    /// The music moved to another bank's player: this one's song stops
+    /// (that alone: m4aSongNumStop, the bank's effects playing on), and is
     /// what a taken-back move starts again (`cancel` of a `StopMusic`).
     fn stop_moved(&mut self, out: &mut Vec<Request>) {
         self.previous_music = std::mem::replace(&mut self.music, NO_INDICATOR);
@@ -250,7 +269,7 @@ impl SoundCalls {
         }
     }
 
-    /// Take back music `id`, which moved the music here from another pack's
+    /// Take back music `id`, which moved the music here from another bank's
     /// player (it goes back there): it stops, and the music before it here
     /// is this player's again, without starting.
     fn take_back_moved(&mut self, id: SoundId, out: &mut Vec<Request>) {
@@ -270,9 +289,9 @@ impl SoundCalls {
 }
 
 /// The game's sound, fed with cues and rendered a frame at a time: a
-/// driver for each loaded pack's sound (docs/design/rules-in-luau.md §7.4:
-/// a song plays with its own pack's instruments; two packs' banks never
-/// mix inside one player), their outputs added.
+/// driver for each of its banks (docs/design/rules-in-luau.md §7.4: a song
+/// plays with its own bank's instruments; two banks never mix inside one
+/// player), their outputs added.
 ///
 /// A copy of it is the sound as it stands, to come back to: fed the same
 /// cues from there, it gives the same samples (the banks are shared, the
@@ -281,13 +300,13 @@ impl SoundCalls {
 /// straight there makes.
 #[derive(Clone)]
 pub struct BattleAudio {
-    packs: Vec<PackSound>,
+    banks: Vec<BankSound>,
     songs: Songs,
-    /// The pack whose music player plays the battle's music, once some
+    /// The bank whose music player plays the battle's music, once some
     /// music has started.
     music: Option<usize>,
-    /// The pack the last music change moved the music from (it stopped
-    /// that pack's), to move it back there if the change is taken back.
+    /// The bank the last music change moved the music from (it stopped
+    /// that bank's), to move it back there if the change is taken back.
     moved_from: Option<usize>,
     /// The battle's music as its cues name it (a sound's handle; none:
     /// stopped), and what it was before the last change: what a change of
@@ -296,7 +315,7 @@ pub struct BattleAudio {
     heard_before: Option<SoundId>,
     /// The low-HP music's switch is on (`Pinch`).
     pinch: bool,
-    /// The host's levels ([`BattleAudio::set_levels`]), for a pack added
+    /// The host's levels ([`BattleAudio::set_levels`]), for a bank added
     /// later.
     levels: (f32, f32),
     mix: Vec<[f32; 2]>,
@@ -312,9 +331,9 @@ fn leveled(driver: &mut Driver, (music, effects): (f32, f32)) {
     }
 }
 
-/// One pack's driver and the calls queued for it.
+/// One bank's driver and the calls queued for it.
 #[derive(Clone)]
-struct PackSound {
+struct BankSound {
     driver: Driver,
     calls: SoundCalls,
     queue: Vec<Request>,
@@ -322,35 +341,35 @@ struct PackSound {
 
 impl BattleAudio {
     /// The sound of `bank`, playing the engine's sounds as `songs` says
-    /// (one pack's).
+    /// (one bank's).
     pub fn new(bank: Arc<SoundBank>, songs: Songs) -> BattleAudio {
         BattleAudio::with_banks(vec![bank], songs)
     }
 
-    /// The sound of several packs, `banks` by `PackId`.
+    /// The sound of several banks, `banks` by `BankId`.
     pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: Songs) -> BattleAudio {
-        assert!(!banks.is_empty(), "a pack's sound");
-        let packs = banks.into_iter().map(|b| PackSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
-        BattleAudio { packs, songs, music: None, moved_from: None, heard: None, heard_before: None, pinch: false, levels: (1.0, 1.0), mix: Vec::new() }
+        assert!(!banks.is_empty(), "a bank");
+        let banks = banks.into_iter().map(|b| BankSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
+        BattleAudio { banks, songs, music: None, moved_from: None, heard: None, heard_before: None, pinch: false, levels: (1.0, 1.0), mix: Vec::new() }
     }
 
-    /// The pack a cue plays on, and the cue in its songs: a sound's own
-    /// pack; what changes the music, the music's pack (the first's before
+    /// The bank a cue plays on, and the cue in its songs: a sound's own
+    /// bank; what changes the music, the music's bank (the first's before
     /// any).
     fn route(&self, cue: SoundCue) -> (usize, SoundCue) {
-        let pack_of = |id: SoundId| {
+        let bank_of = |id: SoundId| {
             let a = self.songs.0.get(id.0 as usize).unwrap_or_else(|| panic!("no sound has handle {}", id.0));
-            a.pack.index().min(self.packs.len() - 1)
+            a.bank.index().min(self.banks.len() - 1)
         };
         match cue {
-            SoundCue::Effect(id) | SoundCue::Music(id) => (pack_of(id), self.songs.cue(cue)),
+            SoundCue::Effect(id) | SoundCue::Music(id) => (bank_of(id), self.songs.cue(cue)),
             other => (self.music.unwrap_or(0), other),
         }
     }
 
-    /// Queue `requests` for pack `pack`'s driver.
-    fn queue(&mut self, pack: usize, requests: Vec<Request>) {
-        let q = &mut self.packs[pack].queue;
+    /// Queue `requests` for the driver of the bank at `at`.
+    fn queue(&mut self, at: usize, requests: Vec<Request>) {
+        let q = &mut self.banks[at].queue;
         for r in requests {
             if q.len() < QUEUE_LIMIT {
                 q.push(r);
@@ -358,10 +377,10 @@ impl BattleAudio {
         }
     }
 
-    /// Play `cue`: a music change on another pack's player than the music's
-    /// stops that one first; stopping the music stops every pack's; a
-    /// player's volume is set in every pack (as one driver's would be: the
-    /// music's pack has the music player's to set, the effects' the others').
+    /// Play `cue`: a music change on another bank's player than the music's
+    /// stops that one first; stopping the music stops every bank's; a
+    /// player's volume is set in every bank (as one driver's would be: the
+    /// music's bank has the music player's to set, the effects' the others').
     fn play(&mut self, cue: SoundCue) {
         match cue {
             SoundCue::StopMusic => self.heard_before = std::mem::take(&mut self.heard),
@@ -369,33 +388,33 @@ impl BattleAudio {
             _ => {}
         }
         if let SoundCue::StopMusic | SoundCue::Volume { .. } = cue {
-            for p in 0..self.packs.len() {
+            for p in 0..self.banks.len() {
                 let mut r = Vec::new();
-                self.packs[p].calls.requests(cue, &mut r);
+                self.banks[p].calls.requests(cue, &mut r);
                 self.queue(p, r);
             }
             return;
         }
         let handle = cue;
-        let (pack, cue) = self.route(cue);
+        let (at, cue) = self.route(cue);
         if let (SoundCue::Music(id), SoundCue::Music(handle)) = (cue, handle) {
             // (PlayMusic of the music already playing changes nothing.)
-            if id.0 != self.packs[pack].calls.music {
+            if id.0 != self.banks[at].calls.music {
                 self.heard_before = self.heard.replace(handle);
-                // Another pack's music player stops its song (that alone: the
-                // pack's effects play on).
-                self.moved_from = self.music.filter(|&m| m != pack);
+                // Another bank's music player stops its song (that alone: the
+                // bank's effects play on).
+                self.moved_from = self.music.filter(|&m| m != at);
                 if let Some(old) = self.moved_from {
                     let mut r = Vec::new();
-                    self.packs[old].calls.stop_moved(&mut r);
+                    self.banks[old].calls.stop_moved(&mut r);
                     self.queue(old, r);
                 }
             }
-            self.music = Some(pack);
+            self.music = Some(at);
         }
         let mut r = Vec::new();
-        self.packs[pack].calls.requests(cue, &mut r);
-        self.queue(pack, r);
+        self.banks[at].calls.requests(cue, &mut r);
+        self.queue(at, r);
     }
 
     /// Queue a tick's cues; they run at the start of the next frame, as
@@ -414,14 +433,14 @@ impl BattleAudio {
             match action {
                 CueAction::Play(cue) => self.play(cue),
                 CueAction::Cancel(cue) => {
-                    let (pack, cue) = self.route(cue);
+                    let (at, cue) = self.route(cue);
                     let mut r = Vec::new();
                     // (What the music was, as the cues name it, is again what it
                     // was where the change is taken back; the low-HP switch, the
                     // other way.)
                     let taken_back = match cue {
-                        SoundCue::Music(id) => self.packs[pack].calls.music == id.0,
-                        SoundCue::StopMusic => self.packs[pack].calls.music == NO_INDICATOR,
+                        SoundCue::Music(id) => self.banks[at].calls.music == id.0,
+                        SoundCue::StopMusic => self.banks[at].calls.music == NO_INDICATOR,
                         _ => false,
                     };
                     if taken_back {
@@ -431,23 +450,23 @@ impl BattleAudio {
                         self.pinch = !on;
                     }
                     // A music change that moved the music here from another
-                    // pack's player moves it back: this pack's song stops,
+                    // bank's player moves it back: this bank's song stops,
                     // and the other's starts again from its start (as a
                     // change taken back on one player does).
                     if let (SoundCue::Music(id), Some(from)) = (cue, self.moved_from)
-                        && self.music == Some(pack)
-                        && self.packs[pack].calls.music == id.0
+                        && self.music == Some(at)
+                        && self.banks[at].calls.music == id.0
                     {
-                        self.packs[pack].calls.take_back_moved(id, &mut r);
-                        self.queue(pack, r);
+                        self.banks[at].calls.take_back_moved(id, &mut r);
+                        self.queue(at, r);
                         let mut back = Vec::new();
-                        self.packs[from].calls.cancel(SoundCue::StopMusic, &mut back);
+                        self.banks[from].calls.cancel(SoundCue::StopMusic, &mut back);
                         self.queue(from, back);
                         self.music = Some(from);
                         self.moved_from = None;
                     } else {
-                        self.packs[pack].calls.cancel(cue, &mut r);
-                        self.queue(pack, r);
+                        self.banks[at].calls.cancel(cue, &mut r);
+                        self.queue(at, r);
                     }
                 }
             }
@@ -462,27 +481,24 @@ impl BattleAudio {
     /// has the levels it was kept with.
     pub fn set_levels(&mut self, music: f32, effects: f32) {
         self.levels = (music, effects);
-        for p in &mut self.packs {
+        for p in &mut self.banks {
             leveled(&mut p.driver, self.levels);
         }
     }
 
     /// Play the battle's sounds as `songs` says from now on, with `banks`
-    /// (by the `PackId`s `songs` names): a host's change of the battle's
+    /// (by the `BankId`s `songs` names): a host's change of the battle's
     /// music while it runs (a battle theme picked, or the game's own again:
     /// [`with_theme`]'s parts, or the game's own parts). A bank playing
-    /// already is that pack (found by its bank); another is one pack more, at
+    /// already is that one (found by its bank); another is one more, at
     /// the host's levels. Where the battle's music playing now is another
     /// song by them, that one starts in its place, from its beginning, on its
-    /// own pack's player (the song before stopped, and the low-HP switch kept
+    /// own bank's player (the song before stopped, and the low-HP switch kept
     /// on where it is); the result's music, or music stopped, stays as it is,
     /// and the next round's start plays the new song.
     pub fn set_songs(&mut self, banks: Vec<Arc<SoundBank>>, songs: Songs) {
-        let packs: Vec<usize> = banks.iter().map(|bank| self.pack_of(bank)).collect();
-        let place = |s: nettai_battle::content::InPack<u16>| nettai_battle::content::InPack {
-            pack: nettai_battle::content::PackId(packs.get(s.pack.index()).copied().unwrap_or(0) as u8),
-            id: s.id,
-        };
+        let places: Vec<usize> = banks.iter().map(|bank| self.place_of(bank)).collect();
+        let place = |s: BankSong| BankSong { bank: BankId(places.get(s.bank.index()).copied().unwrap_or(0) as u8), song: s.song };
         let songs = Songs(songs.0.into_iter().map(place).collect());
         let playing = self.heard.map(|h| (h, self.songs.0.get(h.0 as usize).copied()));
         self.songs = songs;
@@ -496,25 +512,25 @@ impl BattleAudio {
         }
     }
 
-    /// The pack whose bank is `bank`: one playing already, else one more,
-    /// at the host's levels.
-    fn pack_of(&mut self, bank: &Arc<SoundBank>) -> usize {
-        if let Some(p) = self.packs.iter().position(|p| Arc::ptr_eq(p.driver.bank(), bank)) {
+    /// The place of `bank` among the battle's: one playing already, else one
+    /// more, at the host's levels.
+    fn place_of(&mut self, bank: &Arc<SoundBank>) -> usize {
+        if let Some(p) = self.banks.iter().position(|p| Arc::ptr_eq(p.driver.bank(), bank)) {
             return p;
         }
         let mut driver = Driver::new(bank.clone());
         leveled(&mut driver, self.levels);
-        self.packs.push(PackSound { driver, calls: SoundCalls::new(), queue: Vec::new() });
-        self.packs.len() - 1
+        self.banks.push(BankSound { driver, calls: SoundCalls::new(), queue: Vec::new() });
+        self.banks.len() - 1
     }
 
     /// One frame: each driver's VBlank (sequencers and mix), then its
     /// queued calls (the game's main loop runs them next). Appends the
     /// frame's samples (about 549 at 32768 Hz, stereo, +-1.0; every
-    /// pack's added) to `out`.
+    /// bank's added) to `out`.
     pub fn tick(&mut self, out: &mut Vec<[f32; 2]>) {
         let start = out.len();
-        for (i, p) in self.packs.iter_mut().enumerate() {
+        for (i, p) in self.banks.iter_mut().enumerate() {
             p.driver.step_frame();
             for r in std::mem::take(&mut p.queue) {
                 r.apply(&mut p.driver);
@@ -532,18 +548,18 @@ impl BattleAudio {
         }
     }
 
-    /// The first pack's driver.
+    /// The first bank's driver.
     pub fn driver(&self) -> &Driver {
-        &self.packs[0].driver
+        &self.banks[0].driver
     }
 
     pub fn driver_mut(&mut self) -> &mut Driver {
-        &mut self.packs[0].driver
+        &mut self.banks[0].driver
     }
 
-    /// Pack `pack`'s driver.
-    pub fn driver_of(&self, pack: nettai_battle::content::PackId) -> Option<&Driver> {
-        self.packs.get(pack.index()).map(|p| &p.driver)
+    /// Bank `bank`'s driver.
+    pub fn driver_of(&self, bank: BankId) -> Option<&Driver> {
+        self.banks.get(bank.index()).map(|p| &p.driver)
     }
 }
 

@@ -82,11 +82,10 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
         ..Field::default()
     };
     Graphics {
-        bundles: vec![Arc::new(Bundle { field, ..Bundle::default() })],
+        bundle: Arc::new(Bundle { field, ..Bundle::default() }),
         others: Default::default(),
         strings: None,
-        own: nettai_battle::content::PackId(0),
-        assets: Arc::new(numbered_by_handle(content)),
+        numbers: Arc::new(numbered_by_handle(content)),
         report: Default::default(),
     }
 }
@@ -121,9 +120,9 @@ pub fn scrolling_background(graphics: &mut Graphics) {
         scroll: (-8, -4),
         ..Background::default()
     };
-    let mut bundle = (*graphics.bundles[0]).clone();
+    let mut bundle = (*graphics.bundle).clone();
     bundle.backgrounds = vec![Some(background); 256];
-    graphics.bundles[0] = Arc::new(bundle);
+    graphics.bundle = Arc::new(bundle);
 }
 
 /// A battle's sound that makes a sound of every cue: a bank with a song

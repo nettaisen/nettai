@@ -172,11 +172,11 @@ mod tests {
         let music: Vec<u16> = content.battle_music().into_iter().chain(content.battle_themes().iter().copied()).map(|m| m.0).collect();
         let assets = nettai_frontend::testing::numbered_by_handle(&content);
         let songs = nettai_audio::Songs::of(&assets);
-        let numbers = songs.0.iter().map(|s| s.id as usize + 1).max().unwrap_or(0);
+        let numbers = songs.0.iter().map(|s| s.song as usize + 1).max().unwrap_or(0);
         bank.songs = vec![short; numbers];
         for (handle, at) in songs.0.iter().enumerate() {
             if music.contains(&(handle as u16)) {
-                bank.songs[at.id as usize] = held.clone();
+                bank.songs[at.song as usize] = held.clone();
             }
         }
         let bank = Arc::new(bank);
@@ -197,7 +197,7 @@ mod tests {
             mode: GraphicsMode::Original,
             reduce_motion: false,
             font: None,
-            sound: Some(Sound { banks: vec![bank], songs, report: Default::default() }),
+            sound: Some(Sound { bank, songs, report: Default::default() }),
         }
     }
 
@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn a_battle_plays_the_picked_theme() {
         use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
-        use nettai_battle::content::PackId;
+        use nettai_audio::BankId;
         let all = games(&["exe4", "exe5", "exe6"]);
         let six = all.read("exe6").unwrap();
         let content = six.content().clone();
@@ -281,7 +281,7 @@ mod tests {
             }
             let audio = player.audio().unwrap();
             let playing: Vec<Option<SongId>> = (0..packs)
-                .map(|p| audio.driver_of(PackId(p as u8)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song()))
+                .map(|p| audio.driver_of(BankId(p as u8)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song()))
                 .collect();
             (playing, player.battle().digest())
         };
@@ -312,7 +312,7 @@ mod tests {
     #[test]
     fn a_battle_changes_its_music_as_it_runs() {
         use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
-        use nettai_battle::content::PackId;
+        use nettai_audio::BankId;
         let all = games(&["exe4", "exe5", "exe6"]);
         let six = all.read("exe6").unwrap();
         let content = six.content().clone();
@@ -327,7 +327,7 @@ mod tests {
         };
         let playing = |p: &nettai_frontend::Player| -> Vec<Option<SongId>> {
             let audio = p.audio().unwrap();
-            (0..3).map_while(|n| audio.driver_of(PackId(n))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect()
+            (0..3).map_while(|n| audio.driver_of(BankId(n))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect()
         };
         let number = |game: &str, song: &str| {
             let c = all.read(game).unwrap().content().clone();

@@ -2,7 +2,7 @@
 //! §15, "The places' pictures"): each arena a still of its field as its round's opening ends, each background a
 //! still of its first frame, both cropped to the field's band of the battle's picture ([`WIDTH`] by [`HEIGHT`]).
 //!
-//! They are the renderer's, from the packs, made as Practice needs them and kept for the session: nothing is
+//! They are the renderer's, from the games' graphics, made as Practice needs them and kept for the session: nothing is
 //! written anywhere. A game's are made on a thread of their own ([`Thumbs::want`]: an arena's round needs the
 //! content's runtime, which that thread loads for itself, about a second, so the window never waits), and handed
 //! to the window's thread as they come ([`Thumbs::poll`]), where an open grid shows each as it comes. The
@@ -182,10 +182,10 @@ fn background_key(content: &Content, game: &str, written: &str) -> BackgroundKey
 /// Make `game`'s pictures, sending each as it is made: the backgrounds `wanted` (by their places in its list:
 /// they need no runtime), then its arenas, each a round of its own.
 fn make(content: &Arc<Content>, graphics: &Graphics, game: &str, places: &Places, wanted: &[(usize, BackgroundKey)], send: &Sender<Made>) {
-    let packs = graphics.packs();
+    let held = graphics.game_graphics();
     for (at, key) in wanted {
         let id = nettai_match::ids::background(content, game, &places.backgrounds[*at]);
-        let Some(rgb) = id.and_then(|id| nettai_render::still::background(&packs, content, id, WIDTH, TOP + HEIGHT)) else { continue };
+        let Some(rgb) = id.and_then(|id| nettai_render::still::background(&held, content, id, WIDTH, TOP + HEIGHT)) else { continue };
         let argb: Vec<u32> = rgb.into_iter().map(|c| 0xFF00_0000 | c).collect();
         if send.send(Made::Background(key.clone(), crop(&argb, TOP))).is_err() {
             return;
@@ -202,7 +202,7 @@ fn make(content: &Arc<Content>, graphics: &Graphics, game: &str, places: &Places
         Err(why) => return crate::errors::log("drawing the arenas' pictures", &why),
     };
     for (at, records) in places.arenas.iter().enumerate() {
-        let Some(field) = arena(content, &packs, game, &megaman, records[0]) else { continue };
+        let Some(field) = arena(content, &held, game, &megaman, records[0]) else { continue };
         if send.send(Made::Arena(at, crop(&field, TOP))).is_err() {
             return;
         }
@@ -215,9 +215,9 @@ fn make(content: &Arc<Content>, graphics: &Graphics, game: &str, places: &Places
 /// be rendered on stage previews"): a round on `stage` between two of `megaman`, as its opening ends, its field's
 /// panels and what stands on them ([`drawn`]), each where the round puts it, and nothing else (no background, no
 /// HUD, no object anything else made), each pixel `0xAARRGGBB`, clear where nothing is.
-fn arena(content: &Arc<Content>, packs: &nettai_render::packs::PackGraphics, game: &str, megaman: &nettai_match::Side, stage: nettai_content_api::StageHandle) -> Option<Vec<u32>> {
+fn arena(content: &Arc<Content>, graphics: &nettai_render::graphics::GameGraphics, game: &str, megaman: &nettai_match::Side, stage: nettai_content_api::StageHandle) -> Option<Vec<u32>> {
     let session = opened(content, game, megaman, stage)?;
-    Some(nettai_render::still::field(packs, &session.battle, &drawn(&session.battle)))
+    Some(nettai_render::still::field(graphics, &session.battle, &drawn(&session.battle)))
 }
 
 /// A round on `stage` between two of `megaman`, played to its opening's end, as an arena's picture shows it.
@@ -302,7 +302,7 @@ mod tests {
                 assert_eq!(drawn.len(), 2 + entries.len(), "{key}: its navis and its objects, nothing else");
                 // (Drawn without a problem.)
                 let graphics = nettai_frontend::testing::graphics(&content, 0x7FFF);
-                let field = nettai_render::still::field(&graphics.packs(), b, &drawn);
+                let field = nettai_render::still::field(&graphics.game_graphics(), b, &drawn);
                 assert_eq!(field.len(), 240 * 160, "{key}");
             }
             assert!(with_objects > 0, "{game}: some arenas place objects");

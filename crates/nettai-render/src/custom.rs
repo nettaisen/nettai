@@ -328,7 +328,7 @@ struct View<'a> {
     emblem_palette: Palette,
     hud: &'a Hud,
     /// Every pack's graphics: a chip's icon and picture are its game's.
-    packs: crate::packs::Packs<'a>,
+    graphics: crate::graphics::Graphics<'a>,
 }
 
 /// A button of the rules as the frontend draws it (docs/design/rules-in-luau.md
@@ -486,7 +486,7 @@ fn icon_palette_row(b: &Battle, form: Option<FormHandle>, palettes: &[(String, [
 /// choice's steps and sprite, 0x080254D8). The chip is the one the flight's
 /// button shows: which of the screen's buttons that show a chip, in the
 /// slots' order.
-fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+fn capsule_flight<'a>(v: &View<'a>, graphics: &crate::graphics::Graphics<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     if window_view(v.b, v.screen) != Some(WindowView::ChipFlight) {
         return None;
     }
@@ -497,7 +497,7 @@ fn capsule_flight<'a>(v: &View<'a>, packs: &crate::packs::Packs<'a>, problems: &
         _ => None,
     });
     let chip = shown.nth((button as usize).checked_sub(1)?)?;
-    let (tiles, _) = crate::lookups::chip_icon(packs, &v.b.content, chip, problems)?;
+    let (tiles, _) = crate::lookups::chip_icon(graphics, &v.b.content, chip, problems)?;
     // (In the palette of the form the side is in: the capsules' soul's.)
     let form = Some(v.b.stats[v.side as usize & 1].form);
     flight(v, tiles, 0, at, form, problems)
@@ -523,7 +523,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
     let row = icon_palette_row(v.b, form, &b.icon_palettes);
     let colors = row.checked_sub(1).and_then(|i| b.icon_palettes.get(i)).map_or(b.icon_palette, |(_, p)| *p);
     // The row a console of the recording's version draws every icon in.
-    let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
+    let console = v.graphics.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
     let f = screen.look.fade;
     let palette = match f.mode {
         nettai_battle::battle::FadeMode::Flash | nettai_battle::battle::FadeMode::FlashBack => {
@@ -558,7 +558,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
 
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
-        crate::lookups::chip_icon(&self.packs, &self.b.content, c.id, problems).map(|(icon, _)| icon)
+        crate::lookups::chip_icon(&self.graphics, &self.b.content, c.id, problems).map(|(icon, _)| icon)
     }
 
     /// Sprite palette 11, as the second fade record leaves it.
@@ -641,10 +641,10 @@ pub fn version_name(b: &Battle, side: u8) -> Option<&str> {
 }
 
 /// The version a side's console is of, by that name: what the frontend
-/// says of the console (`Packs::version`: a recording's), else the side's
+/// says of the console (`Graphics::version`: a recording's), else the side's
 /// player's (`version_name`), else the base version of the game's pack.
-pub fn console_version<'x, 'a: 'x>(b: &'x Battle, packs: &crate::packs::Packs<'a>, side: u8) -> &'x str {
-    packs.version().or_else(|| version_name(b, side)).unwrap_or(&packs.game(&b.content).custom.versioned.base_version)
+pub fn console_version<'x, 'a: 'x>(b: &'x Battle, graphics: &crate::graphics::Graphics<'a>, side: u8) -> &'x str {
+    graphics.version().or_else(|| version_name(b, side)).unwrap_or(&graphics.bundle().custom.versioned.base_version)
 }
 
 /// The emblem's sprite (`sub_8029C08`): 4x4 tiles with a navi's emblem
@@ -663,9 +663,9 @@ pub fn emblem_sprite(emblem: Option<&nettai_assets::Emblem>) -> Tiles {
 /// console has no emblem for another version's link navi (a navi that says
 /// its `version`) and shows its own counterpart's picture in the navi's
 /// colors; the pack has every navi's own (deliberately: docs/frontend.md).
-fn known_emblem(b: &Battle, packs: &crate::packs::Packs, side: u8) -> Option<&'static str> {
+fn known_emblem(b: &Battle, graphics: &crate::graphics::Graphics, side: u8) -> Option<&'static str> {
     let navi = b.content.navi(b.stats[side as usize & 1].navi);
-    let console = console_version(b, packs, side);
+    let console = console_version(b, graphics, side);
     navi.version.as_deref().is_some_and(|v| v != console).then_some("another version's link navi's emblem (its own)")
 }
 
@@ -1558,12 +1558,12 @@ impl Window {
         let art = if beast_out {
             view_look(v, ButtonView::ChipPicture).map(|b| (&b.picture, None))
         } else {
-            crate::lookups::chip_art(&v.packs, &v.b.content, c, problems).map(|art| (&art.picture, Some(art)))
+            crate::lookups::chip_art(&v.graphics, &v.b.content, c, problems).map(|art| (&art.picture, Some(art)))
         };
         if let Some((p, art)) = art {
             self.tiles.put(self.layout.art, &p.tiles);
             self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
-            let console_version = console_version(v.b, &v.packs, v.side);
+            let console_version = console_version(v.b, &v.graphics, v.side);
             self.picture_known = match art {
                 Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(crate::lookups::OTHER_VERSIONS_ART),
                 _ => None,
@@ -1614,7 +1614,7 @@ impl Window {
                         if slot.state == SlotState::Selected {
                             self.tiles.put(at, &a.empty_icon);
                             self.empty_icon_at(s);
-                        } else if let Some((icon, _)) = crate::lookups::chip_icon(&v.packs, &v.b.content, chip, problems) {
+                        } else if let Some((icon, _)) = crate::lookups::chip_icon(&v.graphics, &v.b.content, chip, problems) {
                             self.tiles.put(at, icon);
                         }
                         self.tiles.fill(at + 4, 2, self.layout.slot_blank);
@@ -1878,7 +1878,7 @@ impl Window {
     /// in the slots and the picked chips' column, where they show, as known
     /// differences.
     fn known_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
-        let other = |c: FolderChip| crate::lookups::other_versions_icon(&v.packs, v.b, c.id);
+        let other = |c: FolderChip| crate::lookups::other_versions_icon(&v.graphics, v.b, c.id);
         for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
             let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) && !v.screen.look.slot_picked[s];
             if shown && v.screen.look.slot_chips[s].is_some_and(other) {
@@ -2553,12 +2553,12 @@ const ELEMENT_SHOWN_TO: u32 = 40;
 /// The chip a button holds, over the button (EXE5's Arm Change, 0x080254F4):
 /// its icon as a 16x16 sprite where the button's look says, in sprite
 /// palette 10 (the HUD's icons').
-fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let h = v.screen.hold?;
     let SlotKind::Button { button, .. } = v.screen.slots[h.button as usize].kind else { return None };
     let (x, y) = v.button_look(button)?.pack.held_at.map(|(x, y)| (x as i32, y as i32))?;
     let chip = v.screen.look.slot_chips[h.chip as usize]?;
-    let (tiles, palette) = crate::lookups::chip_icon(packs, &v.b.content, chip.id, problems)?;
+    let (tiles, palette) = crate::lookups::chip_icon(graphics, &v.b.content, chip.id, problems)?;
     Some(SpritePart {
         x: (x & 0x1FF) as u16,
         y: (y & 0xFF) as u8,
@@ -2616,7 +2616,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 pub fn draw<'a>(
     b: &'a Battle,
     assets: &'a Bundle,
-    packs: &crate::packs::Packs<'a>,
+    graphics: &crate::graphics::Graphics<'a>,
     emblem: &'a Tiles,
     emblem_palette: Palette,
     (seat, sprite_fade): (crate::seat::Seat, Fade),
@@ -2650,7 +2650,7 @@ pub fn draw<'a>(
         button_letters: button_letters(b, a, side),
         emblem_palette,
         hud: &assets.hud,
-        packs: packs.clone(),
+        graphics: graphics.clone(),
     };
     let place = placement(screen);
     // (Where it mirrors, a sliding window is drawn whole where it comes to
@@ -2781,7 +2781,7 @@ pub fn draw<'a>(
         sprite_ends(&queue);
     }
     // Its capsule's mix's (state 0x3C's).
-    queue.extend(capsule_flight(&v, packs, problems));
+    queue.extend(capsule_flight(&v, graphics, problems));
     sprite_ends(&queue);
     if let Some(frame) = drawn.cursor {
         let parts = drawn_parts(cursor_parts(&v, a, frame), &a.shapes.cursor, 1, text, &mut tags, queue.len());
@@ -2796,7 +2796,7 @@ pub fn draw<'a>(
     // (A screen with an emblem of its own draws it on the window's map.)
     if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
-        if let Some(why) = known_emblem(b, packs, side) {
+        if let Some(why) = known_emblem(b, graphics, side) {
             // (Where the sprite is, its coordinates wrapped as the
             // hardware's.)
             let (x, y) = (part.x as i32, part.y as i32);
@@ -2811,7 +2811,7 @@ pub fn draw<'a>(
         sprite_ends(&queue);
     }
     if drawn.held {
-        queue.extend(held_part(&v, packs, problems));
+        queue.extend(held_part(&v, graphics, problems));
         sprite_ends(&queue);
     }
     if let Some(frame) = drawn.form_list_cursor {

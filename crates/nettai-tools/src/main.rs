@@ -410,15 +410,14 @@ fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, path
 fn audit_content(args: &Args, game: &Game) -> ! {
     let t = Instant::now();
     let (content, dir, games) = (&*game.content, &*game.dir, std::slice::from_ref(&game.name));
-    let bundles = vec![(*game.graphics).clone()];
-    let banks: Option<Vec<Arc<m4a::SoundBank>>> = (!args.mute).then(|| sound_of(game).banks);
+    let bank: Option<Arc<m4a::SoundBank>> = (!args.mute).then(|| sound_of(game).bank);
     let own_lang = nettai_content::locale::OWN;
     let mut languages: Vec<nettai_tools::content_audit::Language> = vec![(own_lang.to_string(), None)];
     for lang in nettai_content::locale::languages(dir).into_iter().filter(|l| l != own_lang) {
         let strings = nettai_content::locale::load_for(dir, games, &lang).unwrap_or_else(|e| fail(e));
         languages.push((lang, strings.map(Arc::new)));
     }
-    let found = nettai_tools::content_audit::audit(content, bundles, Default::default(), &game.numbers, banks.as_deref(), &languages);
+    let found = nettai_tools::content_audit::audit(content, (*game.graphics).clone(), &game.numbers, bank.as_deref(), &languages);
     let problems = &found.problems;
     for p in problems {
         println!("{p}");
@@ -443,7 +442,7 @@ fn audit_content(args: &Args, game: &Game) -> ! {
         assets.join(", "),
         found.made.len(),
         found.languages.join(" and "),
-        if banks.is_none() { ", no sound (--mute)" } else { "" },
+        if bank.is_none() { ", no sound (--mute)" } else { "" },
         problems.len(),
         t.elapsed()
     );
@@ -687,11 +686,11 @@ fn main() {
     renderer.consoles = args.consoles;
     if args.audit {
         let setup = headless::AuditSetup {
-            packs: renderer.graphics().clone(),
+            graphics: renderer.graphics().clone(),
             strings: graphics.strings.clone(),
             mode: args.mode,
             font,
-            sound: (!args.mute).then(|| sound_of(&loaded).banks),
+            sound: (!args.mute).then(|| sound_of(&loaded).bank),
             draw: args.draw,
         };
         audit_traces(&args, &content, &setup);
@@ -701,7 +700,7 @@ fn main() {
         let (path, r) = args.replay.as_deref().zip(replay.as_ref()).expect("argument parsing requires a video's replay");
         let audio = (!args.mute).then(|| {
             let sound = sound_of(&loaded);
-            nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs)
+            nettai_audio::BattleAudio::new(sound.bank, sound.songs)
         });
         let viewer = nettai_frontend::viewer::Viewer::with(&content, r, args.side, renderer, text, audio).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
         write_video(&args, viewer);

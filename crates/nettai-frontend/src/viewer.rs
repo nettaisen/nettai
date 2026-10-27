@@ -920,7 +920,7 @@ impl Viewer {
     /// Show the battle in another language from the next frame, as
     /// [`crate::Player::set_language`].
     pub fn set_language(&mut self, graphics: &Graphics) {
-        self.renderer.set_graphics(graphics.packs());
+        self.renderer.set_graphics(graphics.game_graphics());
         self.renderer.set_strings(graphics.strings.clone());
     }
 
@@ -1077,7 +1077,7 @@ impl Viewer {
 /// A viewer's sound as it opens on `game` (none: the game's sound isn't
 /// loaded): one console's, copied for the other.
 fn sound_of(game: &Loaded) -> Option<BattleAudio> {
-    game.sound.as_ref().map(|s| BattleAudio::with_banks(s.banks.clone(), s.songs.clone()))
+    game.sound.as_ref().map(|s| BattleAudio::new(s.bank.clone(), s.songs.clone()))
 }
 
 /// The battle the last tick ran, whose sound cues are that tick's: a tick

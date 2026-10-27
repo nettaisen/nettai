@@ -179,27 +179,6 @@ impl<'de> serde::Deserialize<'de> for SpriteNumber {
     }
 }
 
-/// A loaded asset pack, by its place among those a host loads (the game's
-/// own first: a battle theme of another game's plays from that game's
-/// pack's bank).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PackId(pub u8);
-
-impl PackId {
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
-
-/// An asset as its pack holds it: the pack, and the pack's own number for
-/// it (a sprite's category and index, a sound's song-table entry, a
-/// banner's, a background's, a mugshot's number).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InPack<T> {
-    pub pack: PackId,
-    pub id: T,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

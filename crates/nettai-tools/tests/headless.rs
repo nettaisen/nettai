@@ -77,8 +77,8 @@ fn renders_a_live_battle_to_png() {
     // A live battle on the engine's hand-authored test content, drawn with
     // the test pack's numbers for its assets.
     let content = testing::content();
-    let packs = nettai_render::packs::PackGraphics::one(std::sync::Arc::new(assets())).with_assets(std::sync::Arc::new(testing::asset_numbers(&content)));
-    let mut renderer = Renderer::with_packs(packs);
+    let graphics = nettai_render::graphics::GameGraphics::new(std::sync::Arc::new(assets())).with_numbers(std::sync::Arc::new(testing::asset_numbers(&content)));
+    let mut renderer = Renderer::with_graphics(graphics);
     // (Where the navis' sprite is drawn, marked: `--mark`.)
     renderer.problems.marking = ["sprite:test-navi".to_string()].into_iter().collect();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));

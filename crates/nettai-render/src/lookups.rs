@@ -7,12 +7,12 @@
 //! key (a chip's icon by its qualified key, a banner by its handle) fails
 //! both the same way.
 
-use crate::audit::{Graphics, Lookup, Problems};
-use crate::packs::Packs;
+use crate::audit::{GraphicsPart, Lookup, Problems};
+use crate::graphics::Graphics;
 use nettai_assets::{
     BannerLayout, ButtonPictures, ChipArt, CustomScreen, DialogueFont, Emblem, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles, VersionPictures,
 };
-use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, SpriteId};
 use nettai_battle::field::PanelType;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
@@ -30,7 +30,7 @@ pub fn letters<'a, T>(found: Option<&'a T>, what: impl FnOnce() -> String, probl
 
 /// A sprite's name for a problem's text (`sprite "bomb"`).
 pub fn sprite_name(c: &Content, id: SpriteId) -> String {
-    match crate::packs::name(c, AssetKind::Sprite, id.0) {
+    match crate::graphics::name(c, AssetKind::Sprite, id.0) {
         Some(name) => format!("sprite {name:?}"),
         None => format!("sprite handle {}", id.0),
     }
@@ -38,8 +38,8 @@ pub fn sprite_name(c: &Content, id: SpriteId) -> String {
 
 /// Sprite `id`'s sheet, from its pack; `who` says who asks (`of kind
 /// "bomb"`, `(a portrait)`).
-pub fn sprite<'a>(packs: &Packs<'a>, c: &Content, id: SpriteId, who: &dyn Fn() -> String, problems: &mut Problems) -> Option<&'a SpriteSheet> {
-    let sheet = packs.sprite(c, id);
+pub fn sprite<'a>(graphics: &Graphics<'a>, c: &Content, id: SpriteId, who: &dyn Fn() -> String, problems: &mut Problems) -> Option<&'a SpriteSheet> {
+    let sheet = graphics.sprite(id);
     if problems.lookup(Lookup::Sprite(id)) && sheet.is_none() {
         problems.note(format!("{} {} is not in the pack's graphics", sprite_name(c, id), who()));
     }
@@ -112,29 +112,22 @@ pub fn palette(
     p
 }
 
-/// A background, from its pack.
-pub fn background<'a>(packs: &Packs<'a>, c: &Content, id: BackgroundId, problems: &mut Problems) -> Option<&'a nettai_assets::Background> {
-    let found = packs.background(c, id);
+/// A background, from its game's graphics.
+pub fn background<'a>(graphics: &Graphics<'a>, c: &Content, id: BackgroundId, problems: &mut Problems) -> Option<&'a nettai_assets::Background> {
+    let found = graphics.background(c, id);
     if problems.lookup(Lookup::Background(id)) && found.is_none() {
-        let name = crate::packs::name(c, AssetKind::Background, id.0).map_or(format!("handle {}", id.0), |n| format!("{n:?}"));
-        problems.note(format!("background {name} is not in the pack's graphics"));
+        let name = crate::graphics::name(c, AssetKind::Background, id.0).map_or(format!("handle {}", id.0), |n| format!("{n:?}"));
+        problems.note(format!("background {name} is not in the game's graphics"));
     }
     found
 }
 
-/// A pack's name for a problem's text (`exe6's pack`): the game's (a match
-/// plays one), another loaded pack by its place.
-pub fn pack_name(c: &Content, pack: PackId) -> String {
-    if pack == PackId::default() { format!("{}'s pack", c.game()) } else { format!("pack {}", pack.index()) }
-}
-
-/// Pack `pack`'s field's panel block for a panel type (`kind`, by its
-/// name), owner (0 the viewer's) and row (`y`, 1..=3): a field that draws
-/// the type (`stage::FieldArt`).
+/// The game's field's panel block for a panel type (`kind`, by its name),
+/// owner (0 the viewer's) and row (`y`, 1..=3): a field that draws the type
+/// (`stage::FieldArt`).
 pub fn panel_block<'a>(
     c: &Content,
     field: &'a nettai_assets::Field,
-    pack: PackId,
     kind: PanelType,
     owner: usize,
     y: u8,
@@ -142,8 +135,8 @@ pub fn panel_block<'a>(
 ) -> Option<&'a [nettai_assets::MapEntry]> {
     let name = c.rules().panels.name(kind);
     let block = field.panel(name, owner, y).map(|b| &b[..]);
-    if problems.lookup(Lookup::Panel(pack, kind.0, owner as u8, y)) && block.is_none() {
-        problems.note(format!("{}'s field has no block for panel type {name}, owner {owner}, row {y}", pack_name(c, pack)));
+    if problems.lookup(Lookup::Panel(kind.0, owner as u8, y)) && block.is_none() {
+        problems.note(format!("{}'s field has no block for panel type {name}, owner {owner}, row {y}", c.game()));
     }
     block
 }
@@ -153,16 +146,16 @@ pub fn panel_block<'a>(
 pub const HIGHLIGHT_TINT: u8 = 16;
 
 /// A panel type (`kind`, the game's number; a highlight,
-/// `HIGHLIGHT_TINT + h`) that no loaded pack's field draws, in an arena of
-/// pack `arena`'s: drawn as a tinted normal panel, by design
-/// (docs/design/rules-in-luau.md §7.4). Said, not counted.
-pub fn panel_tint(c: &Content, arena: PackId, kind: u8, problems: &mut Problems) {
-    if problems.lookup(Lookup::PanelTint(arena, kind)) {
+/// `HIGHLIGHT_TINT + h`) that the game's field doesn't draw: drawn as a
+/// tinted normal panel, by design (docs/design/rules-in-luau.md §7.4).
+/// Said, not counted.
+pub fn panel_tint(c: &Content, kind: u8, problems: &mut Problems) {
+    if problems.lookup(Lookup::PanelTint(kind)) {
         let what = match kind.checked_sub(HIGHLIGHT_TINT) {
             Some(h) => format!("highlight {h}"),
             None => format!("panel type {kind} ({})", c.rules().panels.name(PanelType(kind))),
         };
-        problems.say(format!("in an arena of {}, {what} is in no loaded pack's field: drawn as a tinted normal panel", pack_name(c, arena)));
+        problems.say(format!("{}'s field doesn't draw {what}: drawn as a tinted normal panel", c.game()));
     }
 }
 
@@ -173,13 +166,13 @@ fn key(c: &Content, chip: ChipHandle) -> &str {
 
 /// A chip's icon: its game's pack's, under its key there; with that HUD's
 /// icon palette.
-pub fn chip_icon<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a Palette)> {
+pub fn chip_icon<'a>(graphics: &Graphics<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a Palette)> {
     let key = key(c, chip);
-    let icon = packs.chip_icon(c, key);
+    let icon = graphics.chip_icon(key);
     if problems.lookup(Lookup::ChipIcon(chip)) && icon.is_none() {
         problems.note(format!("chip {key:?} has no icon in the pack"));
     }
-    Some((icon?, &packs.game(c).hud.icon_palette))
+    Some((icon?, &graphics.bundle().hud.icon_palette))
 }
 
 /// What the caller names to have a chip's icon marked wherever a frame
@@ -198,9 +191,9 @@ pub fn chip_description_mark(c: &Content, chip: ChipHandle) -> String {
 
 /// A chip's picture in the chip window: its game's pack's, under its key
 /// there.
-pub fn chip_art<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<&'a ChipArt> {
+pub fn chip_art<'a>(graphics: &Graphics<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<&'a ChipArt> {
     let key = key(c, chip);
-    let art = packs.chip_art(c, key);
+    let art = graphics.chip_art(key);
     if problems.lookup(Lookup::ChipArt(chip)) && art.is_none() {
         problems.note(format!("chip {key:?} has no picture in the pack"));
     }
@@ -216,9 +209,9 @@ pub const OTHER_VERSIONS_ART: &str = "another version's chip's art, its own ROM'
 /// draws as its counterpart. The frontend shows the chip's own on either
 /// console: its icon is a known difference where it shows, as its picture
 /// is.
-pub fn other_versions_icon(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
-    let console = crate::custom::console_version(b, packs, b.setup.local_side);
-    let art = packs.chip_art(&b.content, key(&b.content, chip));
+pub fn other_versions_icon(graphics: &Graphics, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
+    let console = crate::custom::console_version(b, graphics, b.setup.local_side);
+    let art = graphics.chip_art(key(&b.content, chip));
     art.and_then(|a| a.version.as_deref()).is_some_and(|v| v != console)
 }
 
@@ -282,52 +275,43 @@ pub fn advance_name(hud: &Hud, chip: ChipHandle, name: &str, problems: &mut Prob
     glyphs
 }
 
-/// A mugshot, from its pack's HUD: the picture and its palettes.
-pub fn mugshot<'a>(packs: &Packs<'a>, c: &Content, id: MugshotId, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette])> {
-    let face = packs.mugshot_of(id).and_then(|m| {
-        let (hud, n) = packs.mugshot(m);
-        hud.mugshot(n)
-    });
+/// A mugshot, from the game's HUD: the picture and its palettes.
+pub fn mugshot<'a>(graphics: &Graphics<'a>, c: &Content, id: MugshotId, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette])> {
+    let face = graphics.mugshot(id).and_then(|n| graphics.bundle().hud.mugshot(n));
     if problems.lookup(Lookup::Mugshot(id)) && face.is_none() {
-        let name = crate::packs::name(c, AssetKind::Mugshot, id.0).map_or(format!("handle {}", id.0), |n| format!("{n:?}"));
-        problems.note(format!("mugshot {name} is not in the pack's graphics"));
+        let name = crate::graphics::name(c, AssetKind::Mugshot, id.0).map_or(format!("handle {}", id.0), |n| format!("{n:?}"));
+        problems.note(format!("mugshot {name} is not in the game's graphics"));
     }
     face
 }
 
 /// A link navi's own face (its definition's mugshot): the picture and its
 /// palettes (the second Full Synchro's).
-pub fn navi_face<'a>(packs: &Packs<'a>, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette], u8)> {
-    let picture = c.navi(navi).mugshot.and_then(|m| packs.mugshot_of(m));
-    let face = picture.and_then(|m| {
-        let (hud, n) = packs.mugshot(m);
-        hud.mugshot(n).map(|(t, p)| (t, p, m.id))
-    });
+pub fn navi_face<'a>(graphics: &Graphics<'a>, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette], u8)> {
+    let picture = c.navi(navi).mugshot.and_then(|m| graphics.mugshot(m));
+    let face = picture.and_then(|n| graphics.bundle().hud.mugshot(n).map(|(t, p)| (t, p, n)));
     if problems.lookup(Lookup::NaviFace(navi)) && face.is_none() {
-        problems.note(format!("navi {:?} has no mugshot in the pack", c.defs.navi(navi).key));
+        problems.note(format!("navi {:?} has no mugshot in the game's graphics", c.defs.navi(navi).key));
     }
     face
 }
 
 /// The face a form shows for an emotion (its definition's mugshot for it, of
-/// its second set when `variant`): the mugshot's pack and number there,
+/// its second set when `variant`): the mugshot's number in the game's HUD,
 /// and the picture with its palettes.
 #[allow(clippy::type_complexity)]
 pub fn form_face<'a>(
-    packs: &Packs<'a>,
+    graphics: &Graphics<'a>,
     c: &Content,
     form: FormHandle,
     emotion: nettai_battle::content::Emotion,
     variant: bool,
     problems: &mut Problems,
-) -> (Option<nettai_battle::content::InPack<u8>>, Option<(&'a Tiles, &'a [Palette])>) {
-    let picture = c.form(form).mugshot.as_ref().and_then(|faces| packs.mugshot_of(faces.shown(&c.rules().emotion, emotion, variant)));
-    let face = picture.and_then(|m| {
-        let (hud, n) = packs.mugshot(m);
-        hud.mugshot(n)
-    });
+) -> (Option<u8>, Option<(&'a Tiles, &'a [Palette])>) {
+    let picture = c.form(form).mugshot.as_ref().and_then(|faces| graphics.mugshot(faces.shown(&c.rules().emotion, emotion, variant)));
+    let face = picture.and_then(|n| graphics.bundle().hud.mugshot(n));
     if problems.lookup(Lookup::FormFace(form, emotion, variant)) && face.is_none() {
-        problems.note(format!("form {:?} has no mugshot in the pack", c.defs.form(form).key));
+        problems.note(format!("form {:?} has no mugshot in the game's graphics", c.defs.form(form).key));
     }
     (picture, face)
 }
@@ -407,7 +391,7 @@ pub fn dialogue(font: &DialogueFont, lookup: Lookup, string: &str, problems: &mu
 /// (a pack always does).
 pub fn chatbox_graphics(hud: &Hud, problems: &mut Problems) -> bool {
     let there = !hud.chatbox.is_empty() && !hud.dialogue_font.is_empty();
-    if problems.lookup(Lookup::Graphics(Graphics::Chatbox)) && !there {
+    if problems.lookup(Lookup::Graphics(GraphicsPart::Chatbox)) && !there {
         problems.note("the bundle has no chatbox graphics or dialogue font".into());
     }
     there
@@ -416,7 +400,7 @@ pub fn chatbox_graphics(hud: &Hud, problems: &mut Problems) -> bool {
 /// The custom screen's graphics, if the bundle has them (a pack always
 /// does).
 pub fn custom_graphics(a: &CustomScreen, problems: &mut Problems) -> bool {
-    if problems.lookup(Lookup::Graphics(Graphics::CustomScreen)) && a.is_empty() {
+    if problems.lookup(Lookup::Graphics(GraphicsPart::CustomScreen)) && a.is_empty() {
         problems.note("the bundle has no custom screen graphics".into());
     }
     !a.is_empty()
@@ -424,7 +408,7 @@ pub fn custom_graphics(a: &CustomScreen, problems: &mut Problems) -> bool {
 
 /// The warning marker, if the bundle has it (a pack always does).
 pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
-    if problems.lookup(Lookup::Graphics(Graphics::Warning)) && hud.warning.is_empty() {
+    if problems.lookup(Lookup::Graphics(GraphicsPart::Warning)) && hud.warning.is_empty() {
         problems.note("the bundle has no warning marker".into());
     }
     !hud.warning.is_empty()
@@ -461,23 +445,23 @@ pub fn form_name<'a>(
 
 /// A banner's layout with glyphs: its pack's HUD, the layout and its
 /// number there.
-pub fn banner<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
-    let found = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n)));
+pub fn banner<'a>(graphics: &Graphics<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
+    let found = graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Banner(id)) && found.is_none() {
-        problems.note(format!("banner {} has no glyphs in the pack", banner_name(packs, c, id)));
+        problems.note(format!("banner {} has no glyphs in the pack", banner_name(graphics, c, id)));
     }
     found
 }
 
 /// A telop's banner's layout (a telop banner's: its glyphs are the chip's
 /// name), its pack's HUD and its number there.
-pub fn telop<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
-    let found = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).map(|l| (hud, l, n)));
+pub fn telop<'a>(graphics: &Graphics<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
+    let found = graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Telop(id)) {
         match found {
-            None => problems.note(format!("the telop's banner {} is not in the pack", banner_name(packs, c, id))),
+            None => problems.note(format!("the telop's banner {} is not in the pack", banner_name(graphics, c, id))),
             Some((_, l, _)) if l.kind != TELOP_KIND => {
-                problems.note(format!("the telop's banner {} is no telop's in the pack (kind {})", banner_name(packs, c, id), l.kind))
+                problems.note(format!("the telop's banner {} is no telop's in the pack (kind {})", banner_name(graphics, c, id), l.kind))
             }
             _ => {}
         }
@@ -490,14 +474,14 @@ pub fn telop<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Pr
 /// layout's kind, by its number there: EXE6's). The HUD draws the judge's
 /// numbers under it. (EXE4's judge banner is a holding banner of its
 /// table, 0x28, whose numbers its HUD task 9 draws: 0x080163C8.)
-pub fn is_judge(packs: &Packs, c: &Content, id: BannerId) -> bool {
+pub fn is_judge(graphics: &Graphics, c: &Content, id: BannerId) -> bool {
     c.defs.roles().banners.get(&nettai_battle::content::BannerRole::Judge) == Some(&id)
-        || packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == JUDGE_KIND)
+        || graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == JUDGE_KIND)
 }
 
-/// Whether banner `id` is laid out as a telop's in its pack (its kind).
-pub fn is_telop(packs: &Packs, c: &Content, id: BannerId) -> bool {
-    packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == TELOP_KIND)
+/// Whether banner `id` is laid out as a telop's in the game's HUD (its kind).
+pub fn is_telop(graphics: &Graphics, id: BannerId) -> bool {
+    graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4)).is_some_and(|l| l.kind == TELOP_KIND)
 }
 
 /// The kind of a telop's banner layout (`BannerLayout::kind`).
@@ -506,8 +490,8 @@ pub const TELOP_KIND: u8 = 3;
 pub const JUDGE_KIND: u8 = 4;
 
 /// A banner's name for a problem's text.
-fn banner_name(packs: &Packs, c: &Content, id: BannerId) -> String {
-    match (crate::packs::name(c, AssetKind::Banner, id.0), packs.banner(c, id).map(|(_, n)| n)) {
+fn banner_name(graphics: &Graphics, c: &Content, id: BannerId) -> String {
+    match (crate::graphics::name(c, AssetKind::Banner, id.0), graphics.banner(id).map(|(_, n)| n)) {
         (Some(name), Some(n)) => format!("{name:?} ({n:#04x})"),
         (Some(name), None) => format!("{name:?}"),
         _ => format!("handle {}", id.0),
@@ -766,10 +750,10 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
 
 /// The pack's letters of banner `id` (its words', its bar's, its number's
 /// places), where the content's strings have its words (`banner.NAME`).
-pub fn banner_letters(packs: &Packs, c: &Content, id: BannerId, text: &crate::strings::DisplayText, p: &mut Problems) {
-    let Some(name) = crate::packs::name(c, AssetKind::Banner, id.0) else { return };
+pub fn banner_letters(graphics: &Graphics, c: &Content, id: BannerId, text: &crate::strings::DisplayText, p: &mut Problems) {
+    let Some(name) = crate::graphics::name(c, AssetKind::Banner, id.0) else { return };
     let Some(words) = text.lettering(c, &format!("banner.{}", nettai_content_api::keys::local(name))) else { return };
-    let Some((hud, layout, n)) = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n))) else {
+    let Some((hud, layout, n)) = graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n))) else {
         return;
     };
     let found = hud.letters.words.banners.get(n as usize / 4).and_then(Option::as_ref);
