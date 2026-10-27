@@ -468,6 +468,43 @@ const EXE6: [(&str, &str); 14] = [
 ];
 
 impl Compat {
+    /// The original's number for `kind` asset `name` (assets.toml's: a
+    /// sprite's category and index as one, `0xCCII`): what the engine's
+    /// asset of that name is, by the content's name for it.
+    pub fn asset_number(&self, kind: nettai_content_api::AssetKind, name: &str) -> Option<u16> {
+        use nettai_content_api::AssetKind;
+        let a = &self.assets;
+        match kind {
+            AssetKind::Sprite => a.sprites.get(name).and_then(|s| s.parse::<nettai_content_api::PackSprite>().ok()).map(|s| u16::from_be_bytes([s.category, s.index])),
+            AssetKind::Sound => a.sounds.get(name).copied(),
+            AssetKind::Banner => a.banners.get(name).map(|&n| n as u16),
+            AssetKind::Background => a.backgrounds.get(name).map(|&n| n as u16),
+            AssetKind::Mugshot => a.mugshots.get(name).map(|&n| n as u16),
+        }
+    }
+
+    /// The name assets.toml gives `kind` asset number `n`.
+    pub fn asset_name(&self, kind: nettai_content_api::AssetKind, n: u16) -> Option<&str> {
+        use nettai_content_api::AssetKind;
+        let a = &self.assets;
+        fn find(m: &BTreeMap<String, u8>, n: u16) -> Option<&str> {
+            m.iter().find(|&(_, &v)| v as u16 == n).map(|(k, _)| k.as_str())
+        }
+        match kind {
+            AssetKind::Sprite => a
+                .sprites
+                .iter()
+                .find(|(_, v)| v.parse::<nettai_content_api::PackSprite>().is_ok_and(|s| u16::from_be_bytes([s.category, s.index]) == n))
+                .map(|(k, _)| k.as_str()),
+            AssetKind::Sound => a.sounds.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.as_str()),
+            AssetKind::Banner => find(&a.banners, n),
+            AssetKind::Background => find(&a.backgrounds, n),
+            AssetKind::Mugshot => find(&a.mugshots, n),
+        }
+    }
+}
+
+impl Compat {
     /// The number patch card `key` is printed with and a Japanese save holds (patch-cards.toml).
     pub fn patch_card_number(&self, key: &str) -> Option<u8> {
         self.patch_cards.get(key).copied()

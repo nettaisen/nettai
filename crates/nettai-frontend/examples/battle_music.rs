@@ -72,7 +72,7 @@ fn run() -> Result<bool, String> {
         let own_name = &game.game.name;
         let (own, own_rms, digest) = play(game, &[(TICKS, None)])?;
         // The song the round starts as the game's own, by its pack's number.
-        let own_song = content.battle_music().iter().filter_map(|h| content.assets.sound(h.0)).map(|s| SongId(s.id)).collect::<Vec<_>>();
+        let own_song = content.battle_music().iter().filter_map(|h| game.game.assets.sound(h.0)).map(SongId).collect::<Vec<_>>();
         let ok = own.len() == 1 && own[0].is_some_and(|s| own_song.contains(&s)) && own_rms > 0.001;
         say(ok, format!("{own_name} battle, its own music: {own:?} (rms {own_rms:.4})"));
         for of in &games {

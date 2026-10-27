@@ -3,9 +3,9 @@
 //! as in if they all came from the same pool of backgrounds?", then "sure do that".
 //!
 //! A round's background is a [`BackgroundId`], a handle over the round's backgrounds: the game's own first (its
-//! asset table's, `Content::assets`: what its definitions name, `asset.background("comp")`, at the handles they
-//! have always had), then the pool's others, each another game's (or one of the game's own that its asset table
-//! hasn't), in the pool's order. No tick reads a background (the renderer alone does), so the pool is
+//! asset table's, `Content::assets`: what its modules name, `asset.background("comp")`, at their asset handles),
+//! then the pool's others, each another game's (or one of the game's own that its modules don't name), in the
+//! pool's order. No tick reads a background (the renderer alone does), so the pool is
 //! presentation: it is left out of `Content::hash`, as the strings are, and a game's content is the same whatever
 //! other games stand beside it. Two peers compare their pools on their own ([`BackgroundPool::identity`]).
 
@@ -81,7 +81,7 @@ impl Content {
         let game = self.game();
         self.background_pool.keys().filter(move |k| {
             let (g, name) = split(k);
-            !(g == game && self.assets.backgrounds.contains_key(name))
+            !(g == game && self.assets.handle(AssetKind::Background, name).is_some())
         })
     }
 
@@ -97,8 +97,8 @@ impl Content {
         self.other_backgrounds().position(|k| split(k) == (game, name)).map(|k| BackgroundId((own + k) as u16))
     }
 
-    /// Whether `id` is one of the game's own backgrounds (its asset table's, drawn from its pack as the table
-    /// numbers it).
+    /// Whether `id` is one of the game's own backgrounds (its asset table's, drawn from its pack by its name
+    /// there).
     pub fn is_own_background(&self, id: BackgroundId) -> bool {
         (id.0 as usize) < self.own_backgrounds()
     }
@@ -114,9 +114,7 @@ impl Content {
     /// pack's game, the asset's name), or the pool's; none past them.
     pub fn background_of(&self, id: BackgroundId) -> Option<(&str, &str)> {
         if self.is_own_background(id) {
-            let name = self.assets.backgrounds.keys().nth(id.0 as usize)?;
-            let pack = self.assets.number(AssetKind::Background, id.0)?.pack;
-            return Some((self.assets.packs.get(pack.index())?.as_str(), name.as_str()));
+            return Some((self.game(), self.assets.name(AssetKind::Background, id.0)?));
         }
         self.other_background(id).map(split)
     }
@@ -157,7 +155,7 @@ mod tests {
     fn the_games_own_keep_their_handles() {
         let mut c = crate::content::testing::build();
         let game = c.game().to_string();
-        let own: Vec<String> = c.assets.backgrounds.keys().cloned().collect();
+        let own: Vec<String> = c.assets.backgrounds.clone();
         assert!(!own.is_empty());
         let hash = c.hash();
         let before: Vec<Option<BackgroundId>> = own.iter().map(|n| c.background_handle(&game, n)).collect();

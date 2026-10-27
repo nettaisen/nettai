@@ -5,9 +5,10 @@
 -- region.
 
 local ticker = require("./ticker")
+local sprites = require("../../sprites")
 
 local SHORT = ticker.variant { lifetime = 5 }
-local BURST = new.effect { sprite = asset.sprite("test-burst"), anim = 2 }
+local BURST = new.effect { sprite = sprites["test-burst"], anim = 2 }
 local WIDE = new.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
 local THROWN = new.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
 local HITS = new.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }

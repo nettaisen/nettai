@@ -5,12 +5,14 @@
 -- every spark), collision types by what they are, and a made-up asset for
 -- every sound, music and banner.
 
+local sprites = require("../sprites")
+
 local function effect(): Effect
-    return new.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }
+    return new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0 }
 end
 
 local function spark(): Spark
-    return new.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 }
+    return new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0 }
 end
 
 -- A collision type's flag words: an attack, an object and a body of each
@@ -132,16 +134,16 @@ return {
         loser = asset.sound("test-music-loser"),
     },
     sprites = {
-        charge_glow = asset.sprite("test-sprite-charge-glow"),
-        charge_glow_a = asset.sprite("test-sprite-charge-glow-a"),
-        full_synchro_aura = asset.sprite("test-sprite-full-synchro-aura"),
-        confusion = asset.sprite("test-sprite-confusion"),
-        blindness = asset.sprite("test-sprite-blindness"),
-        immobilized = asset.sprite("test-sprite-immobilized"),
-        ice = asset.sprite("test-sprite-ice"),
-        bubble = asset.sprite("test-sprite-bubble"),
-        hit_marker = asset.sprite("test-sprite-hit-marker"),
-        target_marker = asset.sprite("test-sprite-lockon-marker"),
+        charge_glow = sprites["test-sprite-charge-glow"],
+        charge_glow_a = sprites["test-sprite-charge-glow-a"],
+        full_synchro_aura = sprites["test-sprite-full-synchro-aura"],
+        confusion = sprites["test-sprite-confusion"],
+        blindness = sprites["test-sprite-blindness"],
+        immobilized = sprites["test-sprite-immobilized"],
+        ice = sprites["test-sprite-ice"],
+        bubble = sprites["test-sprite-bubble"],
+        hit_marker = sprites["test-sprite-hit-marker"],
+        target_marker = sprites["test-sprite-lockon-marker"],
     },
     banners = {
         round_start = asset.banner("test-banner-round-start"),

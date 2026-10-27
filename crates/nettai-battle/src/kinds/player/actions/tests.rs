@@ -2366,7 +2366,7 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
     let burst = b.objects.in_order().find(|&o| defs.engine_kind(b.objects.get(o).kind) == Some(crate::kinds::EngineKind::Effect));
     let burst = burst.expect("the burst");
     assert_eq!(b.objects.sprite(burst).id.map(|s| crate::content::testing::pack_sprite(&b.content, s)), Some(nettai_content_api::PackSprite { category: 0x14, index: 0 }));
-    assert!(b.sound_cues().iter().any(|c| matches!(c, crate::sound::SoundCue::Effect(s) if b.content.assets.sound(s.0).map(|a| a.id) == Some(0x1A6))));
+    assert!(b.sound_cues().iter().any(|c| matches!(c, crate::sound::SoundCue::Effect(s) if crate::content::testing::pack_assets(&b.content).sound(s.0) == Some(0x1A6))));
     // The collision types and region are the definitions'.
     let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
     assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);

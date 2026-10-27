@@ -4,7 +4,7 @@
 //! ```text
 //! content.toml           the manifest
 //! assets.toml            the asset index: every asset by name (crate::names)
-//! graphics/              sprites (with their animation timing), field, backgrounds, HUD
+//! graphics/              sprites (with the timing of their pictures), field, backgrounds, HUD
 //! sound/                 songs, instruments, samples (see crate::sound)
 //! ```
 //!
@@ -13,8 +13,10 @@
 //! its number, which the importers read.
 //!
 //! The battle content is not in a pack: it is the content directory's games
-//! (crate::index, content/ in this repository), whose definitions name the
-//! packs' assets. [`load_battle`] puts the two together.
+//! (crate::index, content/ in this repository), whose modules name the
+//! assets and define the sprites' timing. [`load_battle`] loads a game's
+//! content alone; [`pack_assets`] says what a pack holds of it, for the
+//! frontend that draws it and the audio that plays it.
 //!
 //! Everything loads straight from these files ([`load_battle`],
 //! [`import_graphics`], [`import_sound`]); there is no derived binary.
@@ -23,6 +25,7 @@ use crate::names::AssetNames;
 use crate::report::Report;
 use crate::{custom, hud, sound, sprite, stage};
 use nettai_assets::Bundle;
+use nettai_content_api::PackAssets;
 use m4a::SoundBank;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -277,14 +280,15 @@ pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundB
 
 // ---- Loading -------------------------------------------------------------------
 
-/// The battle content, for the engine (docs/design/content-model-v2.md
-/// §4.0: one game a match): the game whose assets the asset pack `assets`
-/// holds, of the content directory `content` (`crate::index::content()`:
-/// the game's top module and what it requires, with the support packs it
-/// depends on), with the asset pack's asset index (`Content::assets`)
-/// and its sprites' animation timing, defined (`Content::define`).
-pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
-    let (mut c, mut report) = battle_content(content, assets)?;
+/// The battle content of game `game` of the content directory `content`
+/// (`crate::index::content()`), for the engine (docs/design/
+/// content-model-v2.md §4.0: one game a match): the game's top module and
+/// what it requires, with the support packs it depends on, defined
+/// (`Content::define`). Everything a battle reads is the content's, the
+/// asset handles and the sprites' timing too: no asset pack is read
+/// ([`pack_assets`] says what a pack holds of it, for drawing and sound).
+pub fn load_battle(content: &Path, game: &str) -> Result<(nettai_battle::Content, Report), Report> {
+    let (mut c, mut report) = battle_content(content, game)?;
     // The define phase: what the modules define, the tables registration
     // by number reads, and the registries.
     if let Err(e) = c.define() {
@@ -295,37 +299,74 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
 }
 
 /// [`load_battle`]'s content before the define phase: the game's modules,
-/// the asset index and the sprite timing. The game is the asset pack's
-/// (its manifest's). Asset names are the pack's own (`bomb`).
-pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
+/// strings and background pool.
+pub fn battle_content(content: &Path, game: &str) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let Some(game) = read_manifest(assets, &mut report).map(|m| m.game) else { return Err(report) };
-    let Some(read) = crate::index::read(content, std::slice::from_ref(&game), &mut report) else { return Err(report) };
-    battle_content_of(read, &game, assets, report)
+    let Some(read) = crate::index::read(content, &[game.to_string()], &mut report) else { return Err(report) };
+    battle_content_of(read, report)
 }
 
-/// The battle content of what `read` read (one game), with game `game`'s
-/// asset pack `pack`, before the define phase.
-fn battle_content_of(
-    read: crate::index::Read,
-    game: &str,
-    pack: &Path,
-    mut report: Report,
-) -> Result<(nettai_battle::Content, Report), Report> {
+/// The battle content of what `read` read (one game), before the define
+/// phase.
+fn battle_content_of(read: crate::index::Read, report: Report) -> Result<(nettai_battle::Content, Report), Report> {
     read_a_part();
     if report.has_errors() {
         return Err(report);
     }
-    let Some(index) = crate::names::read_index(pack, &mut report) else { return Err(report) };
-    let Some(timing) = crate::timing::load(pack, &mut report) else { return Err(report) };
-    let assets = nettai_content_api::AssetNames::of_packs(vec![(game.to_string(), index)]);
-    let animations = animations(&assets, vec![(game.to_string(), timing)]);
     let scripts = read.scripts();
     // (Every game's backgrounds, from the content: the pool a round may be
     // drawn on, past the game's own.)
     let background_pool = crate::locale::background_pool(&read.dir);
-    let c = nettai_battle::Content { assets, animations, scripts, strings: read.strings, background_pool, ..Default::default() };
+    let c = nettai_battle::Content { scripts, strings: read.strings, background_pool, ..Default::default() };
     Ok((c, report))
+}
+
+/// What the asset pack at `pack` holds of `content`'s assets, for whoever
+/// draws and plays them (docs/frontend.md §1): each handle's number in the
+/// pack. Drawing looks a sprite's frame up by the simulation's animation
+/// and frame, so each sprite the content defines must be the pack's with as
+/// many animations, each of as many frames (their durations may differ:
+/// the content's time the battle, and a content can be changed as a mod
+/// is); and every other asset the content names must be the pack's. A pack
+/// that isn't so is an error naming each asset it lacks or has otherwise.
+pub fn pack_assets(content: &nettai_battle::Content, pack: &Path) -> Result<(PackAssets, Report), Report> {
+    let mut report = Report::default();
+    let Some(index) = crate::names::read_index(pack, &mut report) else { return Err(report) };
+    let Some(timing) = crate::timing::load(pack, &mut report) else { return Err(report) };
+    let at = pack.display().to_string();
+    let numbers = match PackAssets::new(&content.assets, &index) {
+        Ok(n) => n,
+        Err(missing) => {
+            for m in missing {
+                report.error(&at, format!("the pack has no {m}, which the content names"));
+            }
+            return Err(report);
+        }
+    };
+    for (h, name) in content.assets.sprites.iter().enumerate() {
+        let ours: Vec<usize> = content.animations.sprites.get(h).map_or(Vec::new(), |d| d.animations.iter().map(|a| a.frames.len()).collect());
+        let id = numbers.sprites[h];
+        let theirs: Vec<usize> = timing.sprites.get(&(id.category, id.index)).map_or(Vec::new(), |a| a.iter().map(Vec::len).collect());
+        if ours != theirs {
+            report.error(
+                &at,
+                format!(
+                    "sprite {name}: the content's animations have {} frames, and the pack's {} (drawing takes the pack's frame by the content's animation and frame)",
+                    frame_counts(&ours),
+                    frame_counts(&theirs)
+                ),
+            );
+        }
+    }
+    if report.has_errors() {
+        return Err(report);
+    }
+    Ok((numbers, report))
+}
+
+/// Animations' frame counts, for a message: `[3, 4]`.
+fn frame_counts(counts: &[usize]) -> String {
+    format!("{counts:?}")
 }
 
 // ---- Finding packs -------------------------------------------------------------
@@ -429,6 +470,12 @@ pub struct Loaded {
     pub game: String,
     /// Its asset pack's directory: the frontend's graphics and sound.
     pub pack: PathBuf,
+    /// What the pack holds of the content's assets ([`pack_assets`]).
+    pub assets: PackAssets,
+    /// The pack's own index: every asset it has, by its name there (what a
+    /// frontend plays of the pack that no content names: the app's title
+    /// music).
+    pub index: nettai_content_api::PackIndex,
     /// The content directory it came from (its game pack's strings tables
     /// are a frontend's other languages: `crate::locale::load_for`).
     pub dir: PathBuf,
@@ -449,9 +496,11 @@ fn no_pack(game: &str, found: &[Found]) -> String {
 /// Load game `game` of the content directory `content` (`--content`, else
 /// [`crate::index::content`]) for a frontend to play (docs/frontend.md
 /// §1; docs/design/content-model-v2.md §4.0: a match plays one game): its
-/// game pack, the support packs it depends on and its asset pack among `found`
-/// ([`find`]), defined. A game whose asset pack isn't found is an error
-/// with the command that writes it.
+/// game pack and the support packs it depends on, defined, and what its
+/// asset pack among `found` ([`find`]) holds of its assets
+/// ([`pack_assets`]). A game whose asset pack isn't found is an error with
+/// the command that writes it; one whose pack can't draw it, an error
+/// naming what the pack lacks.
 pub fn load_game(content: Option<&Path>, game: &str, found: &[Found]) -> Result<Loaded, Report> {
     let dir = content.map(Path::to_path_buf).unwrap_or_else(crate::index::content);
     let mut report = Report::default();
@@ -471,39 +520,23 @@ pub fn load_game(content: Option<&Path>, game: &str, found: &[Found]) -> Result<
         return Err(report);
     };
     let Some(read) = crate::index::read(&dir, &[game.to_string()], &mut report) else { return Err(report) };
-    let (mut content, mut report) = battle_content_of(read, game, &pack, report)?;
+    let (mut content, mut report) = battle_content_of(read, report)?;
     if let Err(e) = content.define() {
         report.error(dir.display().to_string(), e.message);
         return Err(report);
     }
-    Ok(Loaded { content, game: game.to_string(), pack, dir, report })
-}
-
-/// Every sprite's animation timing, from its pack's `animations.json`s, and
-/// its frames' part offsets, from its `sprite.json`s: by sprite handle (each
-/// name a pack gives a sprite is a handle of it).
-fn animations(assets: &nettai_content_api::AssetNames, timings: Vec<(String, crate::timing::Timing)>) -> nettai_battle::content::Animations {
-    use nettai_battle::content::{AnimFrame, PackSprite, SpriteParts};
-    let mut out = nettai_battle::content::Animations::default();
-    for (game, t) in timings {
-        let Some(pack) = assets.pack(&game) else { continue };
-        let mut sprites = std::collections::BTreeMap::new();
-        let mut parts = std::collections::BTreeMap::new();
-        for (&(category, index), anims) in &t.sprites {
-            let id = PackSprite { category, index };
-            // (A sprite without its `sprite.json` has no parts.)
-            if let Some(layouts) = t.layouts.get(&(category, index)) {
-                let layouts = layouts.iter().map(|l| l.iter().map(|p| (p[0], p[1])).collect()).collect();
-                let frame_layouts = anims.iter().map(|a| a.iter().map(|f| f.layout).collect()).collect();
-                parts.insert(id, SpriteParts { frame_layouts, layouts });
-            }
-            let anims: Vec<Vec<AnimFrame>> =
-                anims.iter().map(|a| a.iter().map(|f| AnimFrame { duration: f.ticks, flags: f.flags }).collect()).collect();
-            sprites.insert(id, anims);
+    let assets = match pack_assets(&content, &pack) {
+        Ok((assets, r)) => {
+            report.issues.extend(r.issues);
+            assets
         }
-        out.add_pack(assets, pack, &sprites, &parts);
-    }
-    out
+        Err(r) => {
+            report.issues.extend(r.issues);
+            return Err(report);
+        }
+    };
+    let Some(index) = crate::names::read_index(&pack, &mut report) else { return Err(report) };
+    Ok(Loaded { content, game: game.to_string(), pack, assets, index, dir, report })
 }
 
 /// A pack's graphics, for a frontend.
@@ -565,6 +598,62 @@ mod tests {
         // (A folder that is no pack is passed over.)
         nettai_platform::fs::create_dir_all(dir.join("notes")).unwrap();
         dir
+    }
+
+    /// A pack of the test content's assets, the made-up numbers of
+    /// `nettai_battle::content::testing::pack_index`, each sprite's
+    /// animations with `frames(name, animation)` frames (none: as the
+    /// content's), in a folder under the system's temporary one.
+    fn pack_of(test: &str, c: &nettai_battle::Content, frames: impl Fn(&str, usize) -> Option<usize>) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
+        let _ = nettai_platform::fs::remove_dir_all(&dir);
+        let index = nettai_battle::content::testing::pack_index();
+        let (name, text) = crate::names::index_file(&index);
+        write_file(&dir, &name, &text).unwrap();
+        for (h, name) in c.assets.sprites.iter().enumerate() {
+            let id = index.sprites[name];
+            let animations: Vec<Vec<serde_json::Value>> = c.animations.sprites[h]
+                .animations
+                .iter()
+                .enumerate()
+                .map(|(i, a)| {
+                    let n = frames(name, i).unwrap_or(a.frames.len());
+                    (0..n).map(|f| serde_json::json!({ "ticks": 9, "tileset": 0, "layout": 0, "flags": if f + 1 == n { vec!["last"] } else { vec![] } })).collect()
+                })
+                .collect();
+            let doc = serde_json::json!({ "format": sprite::ANIMATIONS_FORMAT, "version": sprite::VERSION, "sprite": [id.category, id.index], "animations": animations });
+            write_file(&dir, &format!("graphics/sprites/{name}/animations.json"), doc.to_string().as_bytes()).unwrap();
+        }
+        dir
+    }
+
+    /// docs/frontend.md §1: a pack draws a content when it has every asset
+    /// the content names, each sprite with the content's animations and as
+    /// many frames in each (their durations the content's own); its numbers
+    /// are the pack's. Else the error names what is wrong.
+    #[test]
+    fn a_pack_draws_the_content_it_has_the_assets_of() {
+        let c = nettai_battle::content::testing::content();
+        let navi = c.assets.handle(nettai_content_api::AssetKind::Sprite, "test-navi").unwrap();
+        let dir = pack_of("pack-assets", &c, |_, _| None);
+        let (assets, report) = pack_assets(&c, &dir).unwrap_or_else(|r| panic!("{r}"));
+        assert!(!report.has_errors(), "{report}");
+        assert_eq!(assets.sprite(navi), Some(nettai_battle::content::testing::NAVI_SPRITE));
+        assert_eq!(assets, nettai_battle::content::testing::pack_assets(&c));
+        // A sprite whose animation has another number of frames.
+        let other = pack_of("pack-frames", &c, |name, i| (name == "test-navi" && i == 3).then_some(5));
+        let r = pack_assets(&c, &other).unwrap_err();
+        assert!(r.to_string().contains("sprite test-navi: the content's animations have"), "{r}");
+        // An asset the pack hasn't.
+        let mut index = nettai_battle::content::testing::pack_index();
+        index.sounds.remove("test-stage-music");
+        let (name, text) = crate::names::index_file(&index);
+        write_file(&other, &name, &text).unwrap();
+        let r = pack_assets(&c, &other).unwrap_err();
+        assert!(r.to_string().contains("the pack has no sound test-stage-music, which the content names"), "{r}");
+        for d in [dir, other] {
+            let _ = nettai_platform::fs::remove_dir_all(d);
+        }
     }
 
     /// Every pack in the packs directory, by its game; a pack given by

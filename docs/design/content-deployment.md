@@ -49,11 +49,12 @@ A **bundle** is what a game plays: the game pack and the support packs it depend
 - **The bundle id** is the SHA-256 of the tar, in hex. It names the files: the store keeps a bundle by it, a site
   serves it under it, and a download is checked against it.
 - **The content hash** (`Content::hash`, what replays and the lobby already compare) says what a bundle plays. It is a
-  hash of the content as the engine defines it with the game's asset pack, so only the engine computes it, and two
-  bundles that differ only where play doesn't look (another language's text) share it.
+  hash of the content as the engine defines it, so only the engine computes it, and two bundles that differ only where
+  play doesn't look (another language's text) share it. It is the bundle's alone: the assets' handles and the
+  sprites' timing are content (content-model-v2.md §6.3), so no asset pack, nothing from a ROM, goes into it.
 
-Within a minor line every engine computes the same content hash for the same bundle and asset pack: anything netplay
-compares is a minor-version change (docs/design/rollback.md).
+Within a minor line every engine computes the same content hash for the same bundle: anything netplay compares is a
+minor-version change (docs/design/rollback.md).
 
 **Support packs.** A support pack isn't published on its own: a bundle holds it at the commit its game locks.
 
@@ -97,9 +98,10 @@ developer's disk.
   and deploys. A release's run is the workflow its tagged commit holds, so a release of a commit without
   `pages.yml` starts nothing; `gh workflow run pages.yml -R nettaisen/<game>` builds the site by hand.
 
-**Publishing runs locally**, not in CI: computing the content hash needs the game's asset pack, which comes from the
-ROMs, and no ROM goes to CI. `nettai-content publish <game> [--packs DIR] [--dry-run]`, run in the engine checkout
-of the line with `gh` signed in, does six things in order:
+**Publishing runs locally.** It once had to: the content hash needed the game's asset pack, which comes from the ROMs,
+and no ROM goes to CI. Since 2026-10-27 a bundle's hash needs nothing but the bundle (above), so publishing could move
+to CI; it hasn't yet. `nettai-content publish <game> [--dry-run]`, run in the engine checkout of the line with `gh`
+signed in, does six things in order:
 
 1. It refuses unless the game's and its support packs' submodules are clean (nothing untracked or ignored either: a
    bundle holds the folder), at the commits the engine's HEAD pins, and on their repos' main branches (fetched
@@ -109,8 +111,8 @@ of the line with `gh` signed in, does six things in order:
 3. It builds the bundle from the submodules, the support packs at the locked commits. The line is the engine's major
    and minor version (the workspace's; the program and the checkout must share it). The revision is one past the
    count of the line's releases, which must be r1 to rN.
-4. It computes the content hash: it unpacks the bundle as the app's store does and loads it with the game's asset
-   pack (`--packs DIR`; the checkout's `data/<game>` by default).
+4. It computes the content hash: it unpacks the bundle as the app's store does and loads its game (the content
+   alone).
 5. It refuses a bundle that is the line's newest again: the same id, or the same content hash from the same commits
    (the newest release's `bundle.json`). The same content from other commits is a new revision.
 6. It creates the release (`gh release create`), showing the command first. `--dry-run` does all but run it, and
@@ -148,8 +150,8 @@ the note says none is out yet ("There's no game content for this version of nett
 that is loaded when its newer content arrives plays it from the next time the main menu shows with nothing over
 it.
 
-**What a bundle plays.** The first time a game is loaded from a bundle, with its pack, the content hash computed is
-checked against the index's. A bundle that plays another is taken out of the store, the reason logged, and the game
+**What a bundle plays.** The first time a game is loaded from a bundle, the content hash computed is checked against
+the index's. A bundle that plays another is taken out of the store, the reason logged, and the game
 loads its next newest bundle (or, with none, can't be played, said as a load failure).
 
 **Replays.** A replay names its content hash, as before. The Replays screen plays one on the game's own content where

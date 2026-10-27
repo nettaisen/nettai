@@ -612,7 +612,6 @@ mod tests {
         let mut c = Content::default();
         c.scripts = read.scripts();
         c.strings = read.strings;
-        c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
         let ja = nettai_content::locale::load(&dir.join("exe6"), "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));

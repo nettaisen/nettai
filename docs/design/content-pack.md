@@ -4,13 +4,15 @@ A battle runs on **content**: chips, navis and their forms, weapons, stages, the
 actions, effects, sparks, regions, collision types, statuses, lock-on modes and identities, every sprite's
 animation timing, and the Luau code that runs them. The engine holds it as one typed value,
 `nettai_battle::Content`, and reads it from nowhere else: no ROM, no tables or scripts compiled into the engine. It
-comes from two places:
+comes from the first of two places, and is drawn and heard from the second:
 
-- the **content root**, a checkout's folder of Luau modules that *define* the content. EXE6's is content/exe6 in
-  this repository: people own it, and the verification workspace checks it against the ROM (§3);
+- the **content root**, a checkout's folder of Luau modules that *define* the content, the sprites' timing too
+  (since 2026-10-27, content-model-v2.md §6.3). EXE6's is content/exe6 in this repository: people own it, and the
+  verification workspace checks it against the ROM (§3);
 - a **content pack**, a folder of open-format assets that `nettai-extract content/exe6` writes from the user's ROM:
-  graphics (with the sprites' animation timing) and sound, each under its name, and the asset index that lists
-  them. The definitions name the pack's assets in full (`asset.sprite("exe6:bomb")`), never their numbers.
+  graphics (with the pictures' animation timing) and sound, each under its name, and the asset index that lists
+  them. The definitions name the pack's assets (`asset.sound("bomb-hit")`), never their numbers; a battle reads none
+  of it.
 
 This document describes the two and how they load, and the `Content` API the engine and other layers use. The
 pack's graphics and sound formats are in [asset-formats.md](asset-formats.md); what a definition is and how to
@@ -93,9 +95,11 @@ holds the game's own data: it is written outside version control (data/ is ignor
 
 ## 3. Loading
 
-`nettai_content::pack::load_battle(content, pack)` reads the content root and, from the pack, the asset index
-(`Content::assets`) and the sprites' timing (`Content::animations`), then runs the define phase
-(`Content::define`):
+`nettai_content::pack::load_battle(content, game)` reads the content root's game and runs the define phase
+(`Content::define`), which also makes the asset names (`Content::assets`) and the sprites' timing
+(`Content::animations`) from what the modules name and define (content-model-v2.md §6.3; until 2026-10-27 both came
+from the pack's asset index and `animations.json`). No pack is read: a frontend checks one against the content as it
+loads the game (`pack::pack_assets`).
 
 1. every module loads once, in a VM of its own, and what the modules define is read back as data: the
    canonical tree, definitions sorted by registry and key, with references between definitions by key and
@@ -130,7 +134,7 @@ rendering, `--mute`) skips the sound.
 through the battle, by handle:
 
 ```rust
-let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::root::content(), pack)?.0);
+let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::index::content(), "exe6")?.0);
 let setup = RoundSetup { content: content.hash(), settings, navi_stats, ... };
 let mut b = Battle::new(setup, content.clone());
 

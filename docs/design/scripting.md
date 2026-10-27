@@ -290,7 +290,7 @@ on first use, cached by content hash (`for_content` keeps one per thread). Every
 behaves identically, so VMs are a cache, not part of any battle: `Battle` holds no handle to one, and a content
 call uses the thread's runtime for the hash the round's setup carries (`behavior::with_runtime` picks another).
 
-`Content::hash` covers the typed data, the animation timing and the scripts (their paths and source). The
+`Content::hash` covers the typed data, the animation timing (the content's sprite definitions) and the scripts (their paths and source). The
 round's setup carries it (`RoundSetup::content`) and `Battle::new` checks it, so peers whose setups agree run
 the same data and code. Pixels, palettes and audio are presentation and are left out.
 

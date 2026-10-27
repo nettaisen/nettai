@@ -32,10 +32,10 @@ struct Args {
 }
 
 const USAGE: &str = "usage:
-  nettai-content check <pack> [--content DIR]         read every file and report what it finds, and
-                                                   define the content root's definitions with the
-                                                   pack's assets (default: $NETTAI_CONTENT, else a content/
-                                                   beside the program, else this repository's)
+  nettai-content check <pack> [--content DIR]         read every file and report what it finds, define
+                                                   the content of the pack's game (default: $NETTAI_CONTENT,
+                                                   else a content/ beside the program, else this
+                                                   repository's), and check the pack has what it names
   nettai-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
                                                    (graphics, sprite timing, sound as timelines and
@@ -94,12 +94,17 @@ fn main() {
         "check" => {
             let mut r = Report::default();
             let m = pack::read_manifest(&a.pack, &mut r).unwrap_or_else(|| fail(&r));
-            // The define phase: every module loads, and what the modules
-            // define fits together, with the pack's assets.
+            // The define phase: every module of the pack's game loads, and
+            // what the modules define fits together; and the pack has what
+            // the content names, its sprites as the content animates them.
             let t = std::time::Instant::now();
-            match pack::load_battle(&a.content, &a.pack) {
+            match pack::load_battle(&a.content, &m.game) {
                 Ok((c, loaded)) => {
                     r.issues.extend(loaded.issues);
+                    if let Err(failed) = pack::pack_assets(&c, &a.pack) {
+                        r.issues.extend(failed.issues);
+                    }
+                    let index = nettai_content::names::read_index(&a.pack, &mut r);
                     r.note(
                         a.content.display().to_string(),
                         format!(
@@ -111,7 +116,7 @@ fn main() {
                     );
                     nettai_content::lint::definitions(&c, &mut r);
                     // The strings tables, against the definitions.
-                    nettai_content::locale::check_games(&a.content, &c, &mut r);
+                    nettai_content::locale::check_games(&a.content, &c, index.as_ref(), &mut r);
                     // The library order, against the definitions.
                     nettai_content::library::check_games(&a.content, &c, &mut r);
                     // The look the app draws the game's menus in.

@@ -269,7 +269,7 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
     let mut out = Audit::default();
     renderer.problems.clear();
     renderer.set_lookups_only(!draw);
-    let songs = sessions.first().map(|s| nettai_audio::Songs::of(&s.battle.content.assets)).unwrap_or_default();
+    let songs = nettai_audio::Songs::of(renderer.graphics().assets());
     let mut audio = sound.clone().filter(|_| draw).map(|banks| nettai_audio::BattleAudio::with_banks(banks, songs));
     let mut samples = Vec::new();
     for mut s in sessions {
@@ -284,7 +284,8 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
             out.cues += cues.len() as u32;
             if let Some(banks) = &sound {
                 for &cue in cues {
-                    crate::sound_lookups::check_cue(&s.battle, banks, cue, &mut renderer.problems);
+                    let assets = renderer.graphics().assets().clone();
+                    crate::sound_lookups::check_cue(&s.battle, &assets, banks, cue, &mut renderer.problems);
                 }
             }
             if let Some(a) = &mut audio {

@@ -464,7 +464,7 @@ import nettai_gym
 pool = nettai_gym.Pool(
     games=["exe6", "exe5", "exe4"],  # each env draws one per round
     envs=256, threads=8, seed=1,
-    content=None, packs=None,        # default: the repo's content/, $NETTAI_PACKS or data/
+    content=None,                    # default: the repo's content/ (no pack: the battles are the content's)
     k=4,                             # ticks a fight decision is held
     delay=(6, 30),                   # reaction delay in ticks, drawn per round per seat
     max_fight_ticks=18000,
@@ -1104,11 +1104,11 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
     tiny. XLA handles a recurrent core with changing masks badly.
 - **Run size.** A full run is estimated at 2 to 5 billion decisions, about 5 to 15 hours on such a machine. Tuning
   will take several runs.
-- **What of the packs goes there: the timings only** (the user: "you don't need the images, just the timing data").
-  The battle's loader reads a pack's `content.toml`, `assets.toml`, and each sprite's `animations.json` and
-  `sprite.json`. These are the asset names, the animations' timings and the frames' part layouts: 1,648 files,
-  12 MB for the three games. No picture or sound is read or sent. `training/cloud/timings.sh` copies just those files out of `data/`. The
-  made-up test timings would train a network for a game that isn't quite the real one.
+- **No pack goes there** (since 2026-10-27; before, the timings only: the user, "you don't need the images, just the
+  timing data"). The sprites' timing is the content's (content-model-v2.md §6.3), committed with the rest of a game's
+  Luau, so the pool loads each game from the checkout's content alone (`pool::load_game`) and nothing from a ROM,
+  picture or sound leaves the machine it was extracted on. (`training/cloud/timings.sh`, which copied the packs'
+  timing files out of `data/`, went with it.)
 - **Running.** `training/cloud/setup.sh` installs Rust, uv and the bridge on a fresh Ubuntu machine and runs a
   smoke test. `run.sh` starts a run in tmux, with TensorBoard on the machine's localhost; `sync.sh` rsyncs
   checkpoints and logs back.
@@ -1182,7 +1182,7 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   steps an update learn less an update; on a CPU, where a step's cost grows with its size, that evens out at 2×
   the minibatch and is lost at 4×. 3 epochs stays. On a GPU a bigger minibatch costs little more than a small one,
   and the cloud's rollouts hold 16 times the toy's chunks, so 64 chunks still make 32 steps an epoch.
-- **To measure on the cloud machine**, in `training/`: `NETTAI_PACKS=$PWD/timings uv run --no-sync python -m
+- **To measure on the cloud machine**, in `training/`: `uv run --no-sync python -m
   nettai_ai.bench --device cuda --games exe6,exe5,exe4 --envs 1024 --threads 36 --torch-threads 3
   --update-threads 2 --variants base,mb128,mb256 --loop 20` (the update alone at 64, 128 and 256 chunks, then
   20 updates of the loop); `--envs 2048 --variants base --loop 12` beside it for the bigger batch.

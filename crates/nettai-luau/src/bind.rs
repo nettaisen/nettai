@@ -274,7 +274,7 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         Value::Object(o) => LuaValue::UserData(lua.create_userdata(Object(o))?),
         Value::Vec3(p) => LuaValue::UserData(lua.create_userdata(LVec3(p))?),
         Value::Def(r, h) => LuaValue::Table(bound(|b| b.def_value(r, h))?),
-        Value::Asset(k, h) => LuaValue::Table(bound(|b| b.asset_value(lua, k, h))?),
+        Value::Asset(k, h) => LuaValue::Table(bound(|b| b.asset_value(k, h))?),
         Value::Code(c) => LuaValue::String(lua.create_string([c])?),
     })
 }

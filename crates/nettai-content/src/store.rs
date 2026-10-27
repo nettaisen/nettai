@@ -194,12 +194,11 @@ pub fn manifest(dir: &Path) -> Result<Manifest, String> {
     toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The content hash of game `game` of content directory `content` (a bundle's folder), with its asset pack `pack`:
-/// the content loaded and defined as a frontend plays it (`crate::pack::load_game`), hashed (`Content::hash`).
-pub fn content_hash(content: &Path, game: &str, pack: &Path) -> Result<ContentHash, Report> {
-    let found = crate::pack::Found { game: game.to_string(), dir: pack.to_path_buf() };
-    let loaded = crate::pack::load_game(Some(content), game, std::slice::from_ref(&found))?;
-    Ok(loaded.content.hash())
+/// The content hash of game `game` of content directory `content` (a bundle's folder): the content loaded and defined
+/// as a battle plays it (`crate::pack::load_battle`: the content alone), hashed (`Content::hash`).
+pub fn content_hash(content: &Path, game: &str) -> Result<ContentHash, Report> {
+    let (content, _) = crate::pack::load_battle(content, game)?;
+    Ok(content.hash())
 }
 
 mod hash_hex {

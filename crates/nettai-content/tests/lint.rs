@@ -68,7 +68,7 @@ fn a_collision_type_defined_twice_is_an_error() {
 const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 
 /// content/'s games `games` (their packs: a load reads each module as it
-/// requires it) on made-up asset indices, with their strings: not defined.
+/// requires it), with their strings: not defined.
 fn read(games: &[&str]) -> nettai_battle::Content {
     let mut r = Report::default();
     let games: Vec<String> = games.iter().map(|g| g.to_string()).collect();
@@ -76,7 +76,6 @@ fn read(games: &[&str]) -> nettai_battle::Content {
     let mut c = nettai_battle::Content::default();
     c.scripts = read.scripts();
     c.strings = read.strings;
-    c.assets = testing::asset_names_for(&c.scripts);
     c
 }
 
@@ -111,23 +110,14 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
         c.define().unwrap_or_else(|e| panic!("content/: {e}"));
         c
     };
-    // (The made-up assets have the backgrounds the content names; the
-    // pack has the others the locales name too.)
-    let with_backgrounds = |mut c: nettai_battle::Content, game: &str| {
-        let own = nettai_content::locale::load(&dir.join(game), "en").unwrap().unwrap();
-        for name in own.backgrounds.keys() {
-            let at = nettai_content_api::InPack { pack: nettai_content_api::PackId(0), id: 0xFE };
-            c.assets.backgrounds.entry(name.clone()).or_insert(at);
-        }
-        c
-    };
+    // (No pack: the own language names every background the content
+    // names.)
     let c = define(base.strings.clone());
     let mut r = Report::default();
-    nettai_content::locale::check_games(dir, &with_backgrounds(c.clone(), "exe6"), &mut r);
+    nettai_content::locale::check_games(dir, &c, None, &mut r);
     let mut five = read(&["exe5"]);
     five.define().unwrap_or_else(|e| panic!("content/exe5: {e}"));
-    let five = with_backgrounds(five, "exe5");
-    nettai_content::locale::check_games(dir, &five, &mut r);
+    nettai_content::locale::check_games(dir, &five, None, &mut r);
     // The library orders (content/<game>/library.toml) name the games' own
     // definitions, each once, in sections their classes fit.
     nettai_content::library::check_games(dir, &c, &mut r);

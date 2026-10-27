@@ -1,11 +1,10 @@
-//! Animation timing for the simulation, loaded at run time from a pack's
-//! `graphics/sprites/*/animations.json` without reading any image.
-//!
-//! Effect lifetimes and attack timings end on these durations and flag
-//! bits, so this is simulation data: the engine's content loader reads it
-//! into a table keyed by (sprite, animation). So are the offsets of each
-//! frame's parts (from `sprite.json`'s layouts), where objects read a
-//! part's position as a point to attach to (`sub_80030BA`).
+//! A pack's sprites' animation timing, read from its
+//! `graphics/sprites/*/animations.json` (and its layouts' part offsets from
+//! `sprite.json`) without reading any image: what a frontend checks the
+//! content's sprites against (`crate::pack::pack_assets`: the same
+//! animations and frames, which it draws), and what `nettai-content verify`
+//! compares a pack's graphics with. The simulation reads none of it: a
+//! battle's timing is the content's (`asset.sprite(name, animations)`).
 
 use crate::report::Report;
 use crate::sprite::{self, AnimationsDoc};

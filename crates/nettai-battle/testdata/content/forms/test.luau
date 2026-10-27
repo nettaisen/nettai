@@ -4,11 +4,12 @@
 
 local buster = require("../navis/megaman/weapons/buster")
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
+local sprites = require("../sprites")
 
 local forms: { [string]: FormDef } = {
     base = {
         base = true,
-        sprite = asset.sprite("test-navi"),
+        sprite = sprites["test-navi"],
         element = "null",
         buster_bonus = 0,
         weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },

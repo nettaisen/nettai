@@ -11,7 +11,8 @@
 -- How content runs (content model v2, docs/design/content-model-v2.md).
 -- Every module of a pack loads once, and while it loads it makes
 -- definitions with `define.<registry>(spec)` (a chip, a kind, an action, an
--- effect...) and names assets with `asset.<kind>(name)`; a definition is its
+-- effect...) and names assets with `asset.<kind>(name)` (a sprite's module defines it:
+-- `asset.sprite(name, animations)`); a definition is its
 -- spec table, frozen, and scripts pass it where the API takes one
 -- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
 -- definitions and their types are at the end of this file.
@@ -1884,12 +1885,30 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named while content loads by the game's asset pack's names (`asset.sprite("bomb")`, a game's
--- compat/assets.toml's): one value per asset. Only a game's modules have `asset`; a support pack's take
--- theirs from their callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
+-- Assets, named while content loads (`asset.sound("throw")`) by the names the game's asset pack holds them
+-- under (a game's compat/assets.toml's): one value per asset. A sprite is defined, once, by a module of its own
+-- that returns it, with its animations as the battle times them, and whoever shows it requires that module:
+--
+--     -- chips/widewave/wide_wave_sprite.luau
+--     return asset.sprite("wide-wave", {
+--         { 3, 3, 3 },
+--         { 3, 3, 3, 3, loop = true },
+--     })
+--
+-- Each animation is its frames' durations in ticks (1 to 255), in order: its last frame ends it, and holds,
+-- or with `loop = true` the animation plays again from its first. A module that reads where one of the
+-- sprite's parts sits (`sprite:part_offset(n)`) has the sprite state that part's offsets (`parts`), and
+-- only that part's. The content alone says which assets a battle has: the asset pack is what a frontend
+-- draws and plays them with. Only a game's modules have `asset`; a support pack's take theirs from their
+-- callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
 declare extern type SpriteAsset with
     name: string
 end
+-- An animation of a sprite: its frames' durations in ticks, and `loop = true` where it loops.
+export type SpriteAnimation = { [number]: number, loop: boolean? }
+-- The parts of a sprite content reads, by part number (from 0, as `sprite:part_offset(n)` counts them): for
+-- each animation, each frame's `{ x, y }`, in pixels from the object, unflipped.
+export type SpriteParts = { [number]: { { { number } } } }
 declare extern type Sound with
     name: string
 end
@@ -1904,7 +1923,7 @@ declare extern type Mugshot with
 end
 
 declare asset: {
-    sprite: (name: string) -> SpriteAsset,
+    sprite: (name: string, animations: { SpriteAnimation }, extra: { parts: SpriteParts }?) -> SpriteAsset,
     sound: (name: string) -> Sound,
     banner: (name: string) -> Banner,
     background: (name: string) -> Background,

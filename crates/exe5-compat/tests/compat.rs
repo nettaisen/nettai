@@ -139,7 +139,7 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     // (Its navi's name, `megaman`, the test content has: a name is its
     // game's, and a round runs on its own game's content.)
     assert!(needs.iter().any(|n| n.starts_with("the stage")), "{needs:?}");
-    assert_eq!(needs.last().map(String::as_str), Some("EXE5's pack"));
+    assert_eq!(needs.last().map(String::as_str), Some("EXE5's content"));
     let replay = trace::run_round(&round, &content, Compat::exe5());
     assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip cannon")), "{:?}", replay.stopped);
 }

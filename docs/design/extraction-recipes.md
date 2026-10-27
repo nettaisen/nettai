@@ -74,10 +74,8 @@ Words:
   changes the formats (the stamp before re-extracted on every app version).
 - **Primitives change only with a line** (a minor version), as the simulation does, and a bundle is published for one
   line: there is no separate primitives version (§5.3).
-- **The content hash is untouched by the move.** It covers the pack's asset index and its sprites' timing and parts,
-  not the recipe (§5.5): a bundle with its recipe and a byte-identical pack has the content hash today's content has.
-  The primitives whose output reaches it (sprite sheets, the index) are simulation surface: they change only with a
-  line. Every pack comes from a full set, so every app with a bundle computes one hash for it.
+- **The content hash is untouched by the move.** It covers no recipe (§5.5), and since 2026-10-27 no pack either: the
+  asset names and the sprites' timing are the content's own, so a bundle's hash is the bundle's alone.
 - **Publishing extracts** the pack it hashes with, from the bundle's own recipe and the publisher's Legacy Collection
   (§5.7).
 - **Verification.** Both paths live in one build while a game moves: the old Rust recipe and the new Luau one extract
@@ -781,8 +779,8 @@ What a primitive does, and what the codec takes, is the line's: it changes only 
 simulation's changes too (§3.12). Bundles are already published for a line (content-deployment.md), and the app
 picks its line's newest bundle and finds a replay's content by its content hash within the line, as before: no
 index entry says more, and no app of a line meets a recipe its primitives can't run. What a primitive returns where
-the content hash looks (a sprite's frames and parts, the asset index) is simulation surface for the same reason
-(§5.5).
+the content hash looked (a sprite's frames and parts, the asset index) was simulation surface for the same reason,
+until the content took them over (§5.5).
 
 ### 5.4 When the app extracts again
 
@@ -798,7 +796,15 @@ The stamp (`stamp.toml` in the pack) becomes the fingerprint alone; the app vers
 
 ### 5.5 The content hash and the asset pack
 
-`Content::hash` covers the pack's asset index (`assets.toml`: names to numbers) and its sprites' animations (each
+As built 2026-10-27: `Content::hash` covers no pack. The asset handles are the names the content's modules give and
+each sprite's timing is its module's definition (content-model-v2.md §6.3), so the hash is the content's alone: a
+battle, the training pool and a bundle's publishing read no pack, and a pack is only what a frontend draws and plays
+with, checked against the content as a game loads (`nettai_content::pack::pack_assets`: every asset the content names,
+each sprite with the content's animations and frames). The pack's `animations.json` keeps its frames' durations for
+what only the frontend animates; bn6battle-verify's `tools/content/sprite_timing.py check` keeps the content's timing
+equal to the extracted packs', so a drift from the ROM is seen. What follows is how it was before.
+
+`Content::hash` covered the pack's asset index (`assets.toml`: names to numbers) and its sprites' animations (each
 frame's duration and flags, the parts' places and sizes: `timing::load` of `animations.json` and `sprite.json`), and
 through them what the define phase resolved. Not pixels, palettes, sound, icons, emblems, glyphs or `extraction.txt`;
 not compat (tools' data, never loaded as content); not `extract/` (outside the require walk).

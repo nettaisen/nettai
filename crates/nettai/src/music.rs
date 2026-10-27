@@ -162,15 +162,16 @@ mod tests {
     use nettai_frontend::game::{Found, Game, Loaded, Sound, GraphicsMode};
     use std::sync::Arc;
 
-    /// Game `content` as it is read (content/'s, its assets made up): its sound a bank with a song at each of
-    /// its sounds' numbers (the library's testing bank's songs), its battle's music and its themes held notes on
-    /// the music player, every other a short note on another.
+    /// Game `content` as it is read (content/'s, its pack made up: each asset numbered by its handle): its sound a
+    /// bank with a song at each of its sounds' numbers (the library's testing bank's songs), its battle's music and
+    /// its themes held notes on the music player, every other a short note on another.
     fn loaded(content: Arc<Content>) -> Loaded {
         let mut bank = (*nettai_frontend::testing::bank(&content)).clone();
         // (Sound 0's song is a held note on the music player, sound 1's a short one on player 1.)
         let (held, short) = (bank.songs[0].clone(), bank.songs[1].clone());
         let music: Vec<u16> = content.battle_music().into_iter().chain(content.battle_themes().iter().copied()).map(|m| m.0).collect();
-        let songs = nettai_audio::Songs::of(&content.assets);
+        let assets = nettai_frontend::testing::numbered_by_handle(&content);
+        let songs = nettai_audio::Songs::of(&assets);
         let numbers = songs.0.iter().map(|s| s.id as usize + 1).max().unwrap_or(0);
         bank.songs = vec![short; numbers];
         for (handle, at) in songs.0.iter().enumerate() {
@@ -186,6 +187,8 @@ mod tests {
                 dir: nettai_content::index::content(),
                 packs: Vec::new(),
                 own: Default::default(),
+                assets: Arc::new(assets),
+                index: Default::default(),
                 others: Vec::new(),
                 report: Default::default(),
             },
@@ -281,12 +284,12 @@ mod tests {
                 .collect();
             (playing, player.battle().digest())
         };
-        // (A song by its pack's number.)
+        // (A song by its pack's number: its handle, in the made-up pack.)
         let number = |game: &str, song: &str| {
             let c = all.read(game).unwrap().content().clone();
-            SongId(c.assets.sound(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap()).unwrap().id)
+            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
         };
-        let own = SongId(content.assets.sound(content.defs.roles().link_battle_music(true).0).unwrap().id);
+        let own = SongId(content.defs.roles().link_battle_music(true).0);
         let (playing, digest) = play(&Music::GameOwn);
         assert_eq!(playing, [Some(own)], "BN6's own");
         let theme = |game: &str, song: &str| Music::Theme { game: game.into(), song: song.into() };
@@ -327,7 +330,7 @@ mod tests {
         };
         let number = |game: &str, song: &str| {
             let c = all.read(game).unwrap().content().clone();
-            SongId(c.assets.sound(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap()).unwrap().id)
+            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
         };
         let own = number("exe6", "virus-battle");
         let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };

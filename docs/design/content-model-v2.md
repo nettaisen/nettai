@@ -29,7 +29,8 @@ original's numbers (§6). Routine names are the original's. "Dimming", "cut-in c
 - **The content pack is committed Luau, and it is the source of truth for all game data.** Chip records,
   navis, forms, weapons, stages and every rule table are definitions in content/exe6, next to the code that uses
   them: a chip's numbers in its module, a rule in the `rules/` module that holds it. From the ROM come only
-  assets, with the animation timing that belongs to the sprites.
+  assets. (As built 2026-10-27: the sprites' battle timing is content too, each sprite a module of its own, §6.3;
+  a battle needs no asset pack.)
 - **Extraction yields only assets**: sprites (with their animation timing), backgrounds, the field, the HUD's
   graphics and font, songs, sound effects, voicegroups and samples. `exe6-extract` loses its battle data. The
   committed Luau data is written once from the ROM by a generator that lives in the verification workspace and
@@ -112,7 +113,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | (lockon) | `new.record("lockon", ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
 | record | `new.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
 | entry | a collection of the game's own: the root's other keys (EXE6's `patch_cards`, `navicust_programs`; §3.11) | `<collection>/<id>`; a match names it by its id there | only its collection (Luau reads the fields) | EXE6's: the card's number in compat/patch-cards.toml, the program's in compat/navicust.toml |
-| sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
+| sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3): a sprite defined by its module (`asset.sprite(name, animations)`), the others named | the asset's name | names (handles: their places, §6.3); a sprite's animations' timing and the parts content reads | the ROM's numbers, in compat/assets.toml |
 
 A game's rules are one definition, the root's `rules` (rules/init.luau), which holds its rule sections (§3.8) and
 its roles (§7.4) as plain tables: neither is a definition of its own. **Identities** (the NameID records, §3.2) are
@@ -939,7 +940,7 @@ require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing
   side, run it, and the init is right for the tree.
 - **The order of the requires is the load order, and nothing more.** A named definition's key is its id; an
   anonymous one's counts the definitions its own module makes (§2.2), whenever the module loads; handles follow
-  the keys (§2.3); asset handles are the asset pack's. So turning the requires round defines the same definitions
+  the keys (§2.3); asset handles are the places of the names the content gives (§6.3). So turning the requires round defines the same definitions
   under the same keys with the same handles (nettai-content's test turns both games' inits round). The content
   hash covers the modules' text, an init.luau's too.
 - **One game a match** (P3). A content is one game pack and the support packs it depends on: `Content::define` refuses two
@@ -2281,9 +2282,46 @@ write ids and names without their game.) The resolved value is a handle into the
   checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
   `graphics/hud/chip-icons/<chip key>.png` and so on, and the asset root's name index, `assets.toml` (every name
-  the table gives, and the pack's other assets under their placeholders, each with the engine's identity for it),
-  from which the loader fills `Content::assets` (done with step 6's first part). An asset the table doesn't list (one a newer table left out)
-  is written under its placeholder, so nothing the ROM has is lost.
+  the table gives, and the pack's other assets under their placeholders, each with the pack's number for it). An
+  asset the table doesn't list (one a newer table left out) is written under its placeholder, so nothing the ROM
+  has is lost.
+- **The handles are the content's** (As built 2026-10-27). The define phase interns the names the game's modules
+  give, each kind's in byte order, a handle each (`Content::assets`); no asset pack is read, so the content alone
+  says which assets a battle has, and its hash depends on the content alone. What a pack numbers each asset is a
+  frontend's to find (`nettai_content::pack::pack_assets`, `nettai_content_api::PackAssets`), which it checks as it
+  loads a game: the pack has every asset the content names, and each sprite the content defines with as many
+  animations and frames in each (drawing takes the pack's frame by the simulation's animation and frame), or the
+  load fails naming what is wrong. Compat maps the content's names to the original's numbers on its own
+  (compat/assets.toml), with no pack either.
+- **A sprite is defined by content, with its timing** (As built 2026-10-27). A battle times its sprites' animations
+  (an effect lasts as long as its animation, an attack waits for its last frame), so the timing is game data:
+  a module that returns the sprite, its name (what the pack holds its pictures under) and its animations, each its
+  frames' durations in ticks, its last frame ending it, `loop = true` where it plays again. Whoever shows the
+  sprite requires the module:
+
+  ```luau
+  -- chips/widewave/wide_wave_sprite.luau
+  return asset.sprite("wide-wave", {
+      { 3, 3, 3 },
+      { 3, 3, 3, 3, loop = true },
+  })
+
+  -- chips/widewave/wave.luau
+  local SPRITE = require("./wide_wave_sprite")
+  ```
+
+  A sprite one owner uses (a chip's folder, a navi's, a form's, an object's, a library folder's, the rules')
+  lives in its folder as `<name>_sprite.luau`; one several use lives with its natural owner when it has one (a
+  navi's sprite its navi chip and soul borrow is the navi's, a chip's a program advance borrows the chip's), and a
+  really shared one in the game's `sprites/` folder as `<name>.luau`, as a sprite only modules directly in `lib/`
+  name is (`lib/effects.luau`'s effects many kinds show). A sprite is defined once: a second definition of a
+  name is a load error naming both modules. Where content reads a part's place (`sprite:part_offset(n)`), the
+  sprite states that part's offsets, and only that part's (`{ parts = { [1] = ... } }`: AirRaid's plane, whose
+  part 1 its propeller sits on). The timing was written once from the packs' `animations.json`
+  (bn6battle-verify's tools/content/sprite_timing.py, which places the modules by these rules and keeps its
+  judgment calls in a table), and its `check` keeps it equal to the extracted packs', so a drift from the ROM is
+  seen; content may still change it (a mod's timing is its own). A pack's `animations.json` keeps the pictures'
+  frames and their own durations, which the frontend reads for what only it animates.
 - **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the EXE6 content can
   use. A modded pack without compat lists its own assets' folders.
 - **Animation numbers stay numbers.** An animation is an index into its sprite's own list, observable in the traces
@@ -2342,7 +2380,8 @@ pub struct Content {
     pub program_advances: Vec<ProgramAdvance>, // in the order they are tried
     pub rules: Rules,                          // the rule sections
     pub roles: Roles,                          // §7.4
-    pub assets: AssetNames,                    // sprites (with animation timing), sounds, banners, backgrounds, mugshots
+    pub assets: AssetNames,                    // the names the content gives sprites, sounds, banners, backgrounds, mugshots
+    pub animations: Animations,                // each sprite's definition: its animations' timing, the parts content reads
     pub scripts: Scripts,                      // module sources
     pub definitions: DefinitionTree,           // the canonical tree the define phase produced (hashed)
 }
@@ -2410,7 +2449,8 @@ resolved against `Content::names`; netplay peers exchange handles once their con
 `nettai-battle`'s `content::define` turns the tree into typed `Content`: serde deserializes each registry's entries
 from the tree (the data types already derive `Deserialize`), with references resolved to typed handles and a
 reference to the wrong registry reported with both keys. The asset side (names, animation timing) comes from the
-pack's assets or, for tests, a synthetic index (§7.8).
+same define phase: the names the modules give and the sprites they define (§6.3; as built 2026-10-27, before which
+it came from the pack's assets or, for tests, a synthetic index).
 
 The runtime runs the same define phase on `content.scripts`, checks that it reads exactly the content's
 definitions (every VM made from the same content behaves the same, as scripting.md §3.1 already requires), and
@@ -2829,6 +2869,12 @@ type-checks against content/exe6's core.d.luau in nettai-content-check's tests.
 
 `content/testing.rs` (1,447 lines of made-up chips, kinds and tables) goes:
 
+(As built 2026-10-27: the engine's test content (`content::testing`) defines its own sprites in its modules,
+testdata/content/sprites.luau, and the EXE6 sprites its EXE6 modules require in place of EXE6's sprite modules,
+all with the made-up timing of testdata/content/sprite_timing.luau; its asset handles are its modules' names, and a
+made-up pack's numbers (`testing::pack_assets`) are what a frontend's test draws by. `nettai_match::testing`'s
+games keep every sprite timed as the test content's navi is.)
+
 - `content::testing::exe6()` loads content/exe6, the real EXE6 definitions, with a synthetic asset index: every asset
   name compat/assets.toml lists, and every sprite's animations as short fixed timings (four frames of two ticks,
   the last flagged). Nothing ROM-derived: timing is invented, names are the committed table. The engine's,
@@ -2850,7 +2896,7 @@ type-checks against content/exe6's core.d.luau in nettai-content-check's tests.
   are buttons, as today. Setups written by name resolve to the same handles on both peers.
 - **The content hash** covers the canonical definition tree (every definition, reference and function slot),
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
-  every sprite's animation timing). Compat is not in it: it changes no simulation. Nor is display text: no
+  every sprite's animation timing, the content's own: §6.3). Compat is not in it: it changes no simulation. Nor is display text: no
   definition holds any; the content root's `locales/<lang>.toml` do (text-rendering.md §10). The own language's
   (`en.toml`) shape what the battle reads (a description's lines, the no-running message's characters per line and
   which move the speaker's mouth), which the define phase counts into the records the hash covers; the strings
@@ -2889,6 +2935,11 @@ checkout's content/exe6 and `--assets` at its extracted assets, so a content cha
 A distributable pack can be both in one folder (the same path twice). The pack's TOML battle data, `registries/`,
 `rules/*.toml`, `chip.toml`, `object.toml`, `weapon.toml` and `nettai_content::battle` (1,609 lines of TOML IO)
 are deleted.
+
+As built 2026-10-27: a battle loads from the content alone (`nettai_content::pack::load_battle(content, game)`:
+the asset handles and the sprites' timing are the content's, §6.3); the asset pack is only what a frontend draws
+and plays with (`pack::load_game` checks it against the content and keeps its numbers, `pack::pack_assets`).
+Headless hosts (the tools' battles, the training pool, the content's bundles' hashes) read no pack.
 
 ### 9.3 The generator
 
@@ -3394,8 +3445,8 @@ Numbers that remain for other reasons, and are not names of content:
 - **The assets' own identities.** The pack identifies a sprite by its category and index and a sound by its
   song-table entry, as the extractor wrote them; content and the ruleset name assets by name or by role, and
   the pack's asset index (assets.toml) maps the names. Since rules-in-luau.md's R3a the engine knows an asset by
-  its handle over the loaded packs' names alone (`SpriteId`, `SoundId`, ... are handles); a pack's own numbers are
-  read at the edges (the frontend, the audio, compat).
+  its handle alone (`SpriteId`, `SoundId`, ... are handles), since 2026-10-27 over the names the content gives
+  (§6.3); a pack's own numbers are read at the edges (the frontend, the audio), compat's at its own.
 - **The game's values**: tick counts, damage, a flags word compared whole, a stage's battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
   no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
   framework's states), which the traces compare as the original numbers them.

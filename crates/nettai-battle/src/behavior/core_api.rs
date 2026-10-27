@@ -2840,7 +2840,7 @@ impl CoreApi for Battle {
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         let s = self.objects.sprite(o);
         s.id
-            .and_then(|id| self.content.animations.part_offset(id, s.anim, s.frame, n as usize))
+            .and_then(|id| self.content.animations.part_offset(id, s.anim, s.frame, n))
             .map_or((0, 0), |(x, y)| (x as i32, y as i32))
     }
 

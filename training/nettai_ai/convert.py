@@ -3,7 +3,7 @@ pool's observation spec now, for evaluation, export and `--init-from`. Its obser
 may differ is what warm_start knows (the screen's actions after the slots seven keys, as the first two cloud runs'
 were; a GRU that read no previous action). Not for `--resume`: the optimizer's state and the league are left out.
 
-    NETTAI_PACKS=<packs> uv run python -m nettai_ai.convert CHECKPOINT OUT
+    uv run python -m nettai_ai.convert CHECKPOINT OUT
 
 The recorded decisions export checks itself with (the checkpoint's fixture) come along: the slots' allowed
 actions as they were, no entry of the form list allowed, and a previous action the new layout lacks (a key) read

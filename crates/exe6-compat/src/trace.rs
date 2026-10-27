@@ -890,7 +890,7 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
     if let (Some(id), true) = (b.banner_for(r.local_side), task) {
         let ours = match b.telop_for(r.local_side) {
             Some(_) => Some(0),
-            None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
+            None => b.content.assets.name(nettai_content_api::AssetKind::Banner, id.0).and_then(|n| compat.asset_number(nettai_content_api::AssetKind::Banner, n)).map(|n| n as u8),
         };
         let theirs = unhex(&known.banner.banner).get(1).copied();
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));

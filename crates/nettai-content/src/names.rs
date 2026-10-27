@@ -7,11 +7,12 @@
 //! header...), which the importers read: a pack's names are free.
 //!
 //! The pack's asset index ([`INDEX`], `assets.toml` at its root) lists
-//! every asset content can name, by kind and name, with the engine's
-//! identity for it (a sprite's category and index, a sound's number, a
-//! banner's, background's or mugshot's id). The loader fills
-//! `Content::assets` from it, so `asset.sprite("bomb")` resolves on a real
-//! pack; placeholders are listed too (content may not use one, §6.3).
+//! every asset of the pack by kind and name, with the pack's number for it
+//! (a sprite's category and index, a sound's number, a banner's,
+//! background's or mugshot's id); placeholders are listed too (content may
+//! not use one, §6.3). A frontend finds the assets the content names in it
+//! (`crate::pack::pack_assets`: each content handle's number in the pack);
+//! the battle needs none of it.
 
 use crate::report::Report;
 use nettai_assets::Bundle;

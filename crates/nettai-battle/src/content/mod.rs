@@ -8,7 +8,7 @@
 //! shared between battles and their snapshots through an `Arc`:
 //!
 //! ```ignore
-//! let (content, _report) = nettai_content::pack::load_battle(pack)?;
+//! let (content, _report) = nettai_content::pack::load_battle(&content_dir, "exe6")?;
 //! let content = Arc::new(content);
 //! let setup = RoundSetup { content: content.hash(), ..setup };
 //! let battle = Battle::new(setup, content.clone());
@@ -18,9 +18,10 @@
 //! See docs/design/content-pack.md for the pack's files and this API.
 //!
 //! The engine does no file IO: a loader outside it (nettai-content) reads a
-//! content root (EXE6's is the committed content/exe6) and an asset root
-//! (extracted from the user's ROM by `nettai-extract content/exe6`) into this
-//! model, and tests build small content sets in code.
+//! content root (EXE6's is the committed content/exe6) into this model, and
+//! tests build small content sets in code. Everything a battle reads is the
+//! content's, the sprites' timing too: an asset pack (extracted from the
+//! user's ROM by `nettai-extract`) is only what a frontend draws and plays.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
 //! carries (`RoundSetup::content`) so that netplay peers can check they
@@ -184,11 +185,15 @@ pub struct Content {
     /// tables): the engine has no game's rules of its own to give them. A
     /// game pack that states none doesn't load. Read by [`Content::rules`].
     pub rules: Option<Rules>,
-    /// Every sprite's animation timing.
+    /// Every sprite's animation timing, as the content defines it
+    /// (`asset.sprite(name, animations)`), by handle: made by
+    /// [`Content::define`].
     pub animations: Animations,
-    /// The assets content can name (`asset.sprite("bomb")`): the loader
-    /// fills it from the pack's asset names (docs/design/
-    /// content-model-v2.md §6.3).
+    /// The assets the content names (`asset.sound("throw")`, a sprite where
+    /// its module defines it), whose places are their handles: made by
+    /// [`Content::define`] (docs/design/content-model-v2.md §6.3). No pack
+    /// is read: what a pack numbers each is a frontend's
+    /// (`nettai_content_api::PackAssets`).
     pub assets: nettai_content_api::AssetNames,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
@@ -286,7 +291,10 @@ impl Content {
                 self.scripts.games().join(" and ")
             )));
         }
-        let (definitions, compiled) = nettai_luau::define(&self.scripts.pack_to_define(), &self.assets, nettai_luau::Options::default())?;
+        let (definitions, compiled, assets) = nettai_luau::define(&self.scripts.pack_to_define(), nettai_luau::Options::default())?;
+        // The assets the modules name, and the sprites they define.
+        self.assets = assets.names;
+        self.animations = Animations { sprites: assets.sprites };
         // What the load read is the content's modules from here on (those
         // it read from the packs' folders with those held in memory).
         for (name, source) in compiled.sources() {
@@ -535,12 +543,6 @@ impl Content {
     /// The identity with this key (tools and tests).
     pub fn identity_by_key(&self, key: &str) -> nettai_content_api::IdentityHandle {
         self.defs.identity_by_key(key).unwrap_or_else(|| panic!("identity {key:?} is not in the content"))
-    }
-
-    /// An animation's frames (empty when the sprite has no animation
-    /// data: the sprite then behaves like a single held frame).
-    pub fn animation(&self, sprite: SpriteId, anim: u8) -> &[AnimFrame] {
-        self.animations.get(sprite, anim)
     }
 
     /// A one-shot effect's look.

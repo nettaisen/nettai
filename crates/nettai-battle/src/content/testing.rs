@@ -5,10 +5,17 @@
 //! and ten navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not EXE6's
-//! data, which comes only from a content pack extracted from the user's ROM
-//! (`nettai-extract content/exe6`), and its numbers are chosen for tests, not taken
+//! data (content/exe6's), and its numbers are chosen for tests, not taken
 //! from the game. It has just what battles of two such navis need:
 //! stepping, the chips below, custom screens, rocks and the round's flow.
+//!
+//! Its sprites are defined as any content's are, by modules
+//! (`asset.sprite(name, animations)`): its own (testdata/content/
+//! sprites.luau), and EXE6's that the EXE6 modules require, each defined in
+//! place of EXE6's module for it, all with the made-up timing of
+//! testdata/content/sprite_timing.luau. Its asset handles are the names its
+//! modules give; the numbers a frontend's test draws them by are a made-up
+//! pack's ([`pack_index`], [`pack_assets`]).
 //!
 //! Its scripts are this repository's EXE6 scripts (content/exe6, the source
 //! overlay), read from the repository, and its own modules
@@ -113,34 +120,23 @@ pub const STAGE_SONG: u16 = 0x16;
 /// The navi's sprite (base form), as the test pack holds it.
 pub const NAVI_SPRITE: PackSprite = PackSprite { category: 0, index: 0 };
 
-/// The test pack's sprite `id` as the test content names it (its handle).
-pub fn sprite(id: PackSprite) -> SpriteId {
-    let c = content();
-    let pack = c.assets.pack(ROOT).expect("the test pack");
-    SpriteId(c.assets.sprite_handle(pack, id).unwrap_or_else(|| panic!("the test pack has no sprite {id}")))
+/// The test content's assets as its made-up pack numbers them ([`pack_index`]: EXE6's numbers where tests look at
+/// them, made-up ones for the rest): what a frontend's test draws them by.
+pub fn pack_assets(c: &Content) -> PackAssets {
+    PackAssets::new(&c.assets, &pack_index_of(c)).unwrap_or_else(|missing| panic!("the test pack has no {}", missing.join(", ")))
 }
 
-/// Sprite `id` as its pack holds it (one sprite may have several names, so
-/// several handles: tests compare what the pack holds).
+/// Sprite `id` as the test pack holds it (several names may be one sprite of the pack: tests compare what the pack
+/// holds).
 pub fn pack_sprite(c: &Content, id: SpriteId) -> PackSprite {
-    c.assets.sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0)).id
-}
-
-/// Add pack `game`'s assets (`index`, its sprites' timing `sprites`) to the
-/// test content: its asset names over both packs, its animations (an
-/// undefined content: `Content::define` after).
-pub fn add_pack(c: &mut Content, game: &str, index: nettai_content_api::PackIndex, sprites: std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame>>>) {
-    c.assets = nettai_content_api::AssetNames::of_packs(vec![(ROOT.to_string(), pack_index()), (game.to_string(), index)]);
-    c.animations = animations(&c.assets);
-    let pack = c.assets.pack(game).expect("the pack just added");
-    c.animations.add_pack(&c.assets, pack, &sprites, &Default::default());
+    pack_assets(c).sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0))
 }
 
 /// The test pack's song `n` as the test content names it (its handle).
 pub fn sound(n: u16) -> crate::sound::SoundId {
     let c = content();
-    let pack = c.assets.pack(ROOT).expect("the test pack");
-    crate::sound::SoundId(c.assets.sound_handle(pack, n).unwrap_or_else(|| panic!("the test pack has no song {n:#x}")))
+    let numbers = pack_assets(&c);
+    crate::sound::SoundId(numbers.sounds.iter().position(|&s| s == n).unwrap_or_else(|| panic!("the test content names no song {n:#x}")) as u16)
 }
 
 /// The test content's asset `name` of `kind` (`test-navi`): its handle.
@@ -427,23 +423,12 @@ pub fn build() -> Content {
     (*content()).clone()
 }
 
-/// The content set, not yet defined.
+/// The content set, not yet defined. (The navis and the base form are
+/// definitions: testdata/content/navis/test.luau; its rules are its rules':
+/// testdata/content/rules; its sprites, and their made-up timing, its
+/// modules': testdata/content/sprites.luau and sprite_timing.luau.)
 fn make() -> Content {
-    let assets = assets();
-    Content {
-        // (The navis and the base form are definitions:
-        // testdata/content/navis/test.luau.)
-        // (Its rules are its rules': testdata/content/rules.)
-        base_rules: None,
-        rules: None,
-        animations: animations(&assets),
-        scripts: scripts(),
-        assets,
-        defs: Default::default(),
-        strings: strings(),
-        background_pool: Default::default(),
-        hash_cache: Default::default(),
-    }
+    Content { scripts: scripts(), strings: strings(), ..Default::default() }
 }
 
 /// The test content's strings (testdata/content/locales/en.toml): its
@@ -456,25 +441,9 @@ pub fn strings() -> crate::content::strings::Strings {
     s
 }
 
-/// A synthetic asset index for `modules`: every name of `game`'s pack they
-/// give an `asset.<kind>("...")` call, each a made-up asset of its own
-/// (nothing ROM-derived; for tests that load modules the test content
-/// doesn't list).
-pub fn asset_names_used(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetNames {
-    nettai_content_api::AssetNames::of_pack(game, pack_index_used(modules))
-}
-
-/// [`asset_names_used`] for the modules `scripts` could load (those in
-/// memory, and every file of its packs' folders: a load reads its modules
-/// as it requires them, so which it will read isn't known before): the
-/// game's pack's (a match plays one game; content without packs, a pack of
-/// no name).
-pub fn asset_names_for(scripts: &Scripts) -> nettai_content_api::AssetNames {
-    let game = scripts.games().first().cloned().unwrap_or_default();
-    asset_names_used(&game, &scripts.available())
-}
-
-/// [`asset_names_used`]'s pack index (its own, unqualified names).
+/// A made-up pack index for `modules`: every name they give an
+/// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
+/// ROM-derived).
 pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
     use nettai_content_api::AssetKind;
     let mut a = nettai_content_api::PackIndex::default();
@@ -492,7 +461,8 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
                         a.sprites.entry(name.into()).or_insert(PackSprite { category: 0x7F, index: id as u8 });
                     }
                     AssetKind::Sound => {
-                        a.sounds.entry(name.into()).or_insert(id);
+                        // (Past the song tables' numbers, which tests look sounds up by.)
+                        a.sounds.entry(name.into()).or_insert(0x400 + id);
                     }
                     AssetKind::Banner => {
                         a.banners.entry(name.into()).or_insert(id as u8);
@@ -510,17 +480,24 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
     a
 }
 
-/// The asset names the test content has: the EXE6 names its modules use
+/// The test content's made-up pack's index: the EXE6 names its modules use
 /// (with EXE6's numbers where its tests look at them, made-up assets for
-/// the rest), a few made-up ones for the test pack, and a placeholder.
-fn assets() -> nettai_content_api::AssetNames {
-    nettai_content_api::AssetNames::of_pack(ROOT, pack_index())
+/// the rest) and a few made-up ones for the test pack.
+pub fn pack_index() -> nettai_content_api::PackIndex {
+    pack_index_with(&scripts().available())
 }
 
-/// [`assets`]' pack index.
-fn pack_index() -> nettai_content_api::PackIndex {
+/// [`pack_index`] for content `c` (a test content with modules of its own).
+fn pack_index_of(c: &Content) -> nettai_content_api::PackIndex {
+    let mut modules = c.scripts.available();
+    modules.extend(c.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
+    pack_index_with(&modules)
+}
+
+/// The test pack's index, with names of `modules` too.
+fn pack_index_with(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
     let mut a = numbered_assets();
-    let used = pack_index_used(&scripts().available());
+    let used = pack_index_used(modules);
     for (name, id) in used.sprites {
         a.sprites.entry(name).or_insert(id);
     }
@@ -1457,9 +1434,30 @@ pub fn scripts() -> Scripts {
             add_shared(&mut scripts);
             scripts.add_game(ROOT, all);
             scripts.read_from(ROOT, OVERLAY);
+            // EXE6's sprites, which its modules require from their own
+            // modules: each defined in memory with the test content's
+            // made-up timing (testdata/content/sprite_timing.luau; one it
+            // hasn't times none, and holds a single frame), not EXE6's.
+            for (path, source) in modules_under(OVERLAY) {
+                let Some(name) = sprite_defined_in(&source) else { continue };
+                let up = match path.matches('/').count() {
+                    0 => "./".to_string(),
+                    n => "../".repeat(n),
+                };
+                let module = format!("return asset.sprite({name:?}, require(\"{up}sprite_timing\")[{name:?}] or {{}})\n");
+                scripts.modules.insert(Scripts::name(ROOT, &path), module);
+            }
             scripts
         })
         .clone()
+}
+
+/// The sprite a module defines (`asset.sprite("name", animations)`), if it
+/// defines one.
+fn sprite_defined_in(source: &str) -> Option<&str> {
+    let (_, rest) = source.split_once("asset.sprite(\"")?;
+    let (name, rest) = rest.split_once('"')?;
+    rest.trim_start().starts_with(',').then_some(name)
 }
 
 /// The test content's rules: what its rules state
@@ -1470,152 +1468,6 @@ pub fn scripts() -> Scripts {
 /// its own and gives it these as its Rust tables (`Content::base_rules`).
 pub fn rules() -> Rules {
     content().rules().clone()
-}
-
-/// Animation timing for the sprites the tests' battles show: the test
-/// pack's, keyed as `assets` names them.
-fn animations(assets: &nettai_content_api::AssetNames) -> Animations {
-    let mut out = Animations::default();
-    let pack = assets.pack(ROOT).expect("the test pack");
-    out.add_pack(assets, pack, &pack_animations(), &Default::default());
-    out
-}
-
-/// The test pack's sprites' timing, by the pack's own ids.
-fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame>>> {
-    const LAST: u8 = crate::object::sprite::FRAME_LAST;
-    const LOOP: u8 = crate::object::sprite::FRAME_LOOP;
-    let f = |duration, flags| AnimFrame { duration, flags };
-    let once = |ticks| vec![f(ticks, LAST)];
-    let mut navi = vec![once(4); 0x20];
-    navi[0] = vec![f(16, LAST | LOOP)];
-    navi[3] = vec![f(2, 0), f(3, LAST)];
-    navi[4] = vec![f(1, 0), f(2, LAST)];
-    navi[0x0A] = vec![f(6, 0), f(30, LAST | LOOP)];
-    let mut sprites = std::collections::BTreeMap::new();
-    sprites.insert(NAVI_SPRITE, navi);
-    // The gun: out, firing, away; the sun beams.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x3B }, vec![vec![f(3, 0), f(3, LAST)], vec![f(2, 0), f(2, LAST | LOOP)], once(4)]);
-    for index in [0x3C, 0x47] {
-        sprites.insert(PackSprite { category: 0x0C, index }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    }
-    // The first attachment rows' sprite (fillers).
-    sprites.insert(PackSprite { category: 0x0C, index: 0x01 }, vec![once(4)]);
-    // Rocks: rising, then standing.
-    sprites.insert(
-        PackSprite { category: 0x10, index: 0 },
-        vec![vec![f(3, 0), f(3, 0), f(3, LAST)], vec![f(30, LAST | LOOP)], vec![f(30, LAST | LOOP)]],
-    );
-    sprites.insert(PackSprite { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
-    // The stages' boulder.
-    sprites.insert(PackSprite { category: 0x10, index: 8 }, vec![vec![f(30, LAST | LOOP)]]);
-    // The eraser navi (standing, appearing, leaving, raising, slashing), its
-    // marks and its slash.
-    let mut eraser = vec![once(4); 0x13];
-    eraser[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    eraser[0x12] = vec![f(4, 0), f(40, LAST)];
-    sprites.insert(PackSprite { category: 8, index: 4 }, eraser);
-    sprites.insert(PackSprite { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
-    // The elements navi (appearing, leaving, winding up, attacking, a vine)
-    // and its overlay; its meteor, ice and bolt.
-    let mut elements = vec![once(4); 0x13];
-    elements[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    sprites.insert(PackSprite { category: 8, index: 0x10 }, elements);
-    sprites.insert(PackSprite { category: 8, index: 0x11 }, vec![once(4); 0x20]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    // The shooting navi (rising, raising his arm, shooting) and his cape
-    // (his animation + 0x14), his shots' bursts; the sun-and-moon navi
-    // and its moonlight.
-    let mut shooter = vec![once(4); 0x21];
-    shooter[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    shooter[0x0C] = vec![f(4, 0), f(4, LAST | LOOP)];
-    sprites.insert(PackSprite { category: 8, index: 0x13 }, shooter);
-    sprites.insert(PackSprite { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
-    // Count (appearing, standing, raising his arms, lowering them,
-    // leaving; his lance, animation 0xC) and the rain's motes; Django
-    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2; his gun 8
-    // and 9, CrosOver's).
-    let mut count = vec![once(4); 0x0D];
-    count[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    count[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
-    sprites.insert(PackSprite { category: 8, index: 0x16 }, count);
-    sprites.insert(PackSprite { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    let mut django = vec![once(4); 10];
-    django[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    django[6] = vec![f(4, 0), f(4, LAST | LOOP)];
-    django[7] = vec![f(4, 0), f(4, LAST | LOOP)];
-    sprites.insert(PackSprite { category: 0x0C, index: 0x0F }, django);
-    // Otenko's statue: the puff it appears in, then Otenko.
-    sprites.insert(
-        PackSprite { category: 0x0C, index: 0x49 },
-        vec![vec![f(2, 0), f(2, 0), f(2, LAST)], vec![f(8, 0), f(8, 0), f(8, 0), f(8, LAST | LOOP)]],
-    );
-    // The water navi, his ball, splash, pillar, geyser and marks, and his
-    // layer.
-    let mut spout = vec![once(4); 0x16];
-    spout[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    sprites.insert(PackSprite { category: 8, index: 6 }, spout);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x23 }, vec![once(4), vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x1A }, vec![vec![f(5, 0), f(5, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x1F }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 4]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x20 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x21 }, vec![vec![f(6, 0), f(6, LAST | LOOP)]]);
-    // The buster's muzzle flash, and its arm (by form).
-    sprites.insert(PackSprite { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
-    // The junk ball: rolling, bursting.
-    let mut junk = vec![once(4); 0x1B];
-    junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
-    junk[0x1A] = vec![f(10, 0), f(20, LAST)];
-    sprites.insert(PackSprite { category: 8, index: 0x0A }, junk);
-    // The Reflector's shield (up, fading, by look) and its wave.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
-    sprites.insert(PackSprite { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
-    // The swords' blade, swinging.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x08 }, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
-    // The arrow.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    // The grab shot: falling, landing.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
-    // GroundCross's falling rock (0) and its chunks (1).
-    sprites.insert(PackSprite { category: 0x10, index: 5 }, vec![vec![f(8, LAST | LOOP)], vec![f(4, LAST | LOOP)]]);
-    // The Beast charged chips' pillars (flames, lightning: rising, dying
-    // down), surge (rising, ebbing, falling) and whirlwind.
-    for index in [0x1C] {
-        sprites.insert(PackSprite { category: 0x0C, index }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
-    }
-    sprites.insert(PackSprite { category: 0x10, index: 0x32 }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x2E }, vec![vec![f(6, LAST | LOOP)]; 3]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x44 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    // The gust, the sword waves, EraseCross's beam (opening, beaming,
-    // closing) and the drill arm (attachment 0x20).
-    sprites.insert(PackSprite { category: 0x0C, index: 0x2E }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x4C }, vec![vec![f(3, 0), f(3, LAST)], vec![f(8, LAST | LOOP)], once(4)]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x20 }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
-    // The hive (closed, open), a bee, and a dragon's animations.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
-    sprites.insert(PackSprite { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
-    // The crack shot: flying.
-    sprites.insert(PackSprite { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    // Effects and sparks.
-    sprites.insert(PackSprite { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
-    sprites.insert(PackSprite { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
-    // The rising bubble.
-    sprites.insert(PackSprite { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
-    // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): the countdown
-    // bomb (rising, standing; twice), the mine, the guardian statue
-    // (standing, striking).
-    let rise_and_stand = vec![vec![f(3, 0), f(3, LAST)], vec![f(20, LAST | LOOP)]];
-    sprites.insert(PackSprite { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
-    sprites.insert(PackSprite { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(PackSprite { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
-    sprites
 }
 
 /// Side `side`'s bug frags in battle `b`: the rules' state (the test

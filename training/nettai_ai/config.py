@@ -62,7 +62,6 @@ class EnvConfig:
     threads: int = 0  # 0: every core the machine has
     seed: int = 1
     content: str | None = None
-    packs: str | None = None
     k: int = 4
     # Screen decisions before only OK is allowed: the env's own limit (24), which the bridge takes no argument
     # for; kept here so the weights record what the network was trained with.

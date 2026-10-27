@@ -205,7 +205,9 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 - `extra_palette_sets`: palette sets after the first, as BGR555 hex (none in
   EXE6).
 
-**`animations.json`**: the simulation's data:
+**`animations.json`**: the pictures' animations (the simulation's timing is
+the content's since 2026-10-27, content-model-v2.md §6.3; a frontend checks
+that each sprite the content defines has as many animations and frames here):
 
 ```json
 {
@@ -229,10 +231,11 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 - `tileset`, `layout`, `palettes`: which tile set, layout and palette set the
   frame draws; the simulation ignores them.
 
-Effect lifetimes and chip timings end on these durations and flags, so timing
-is kept apart from pixels: `nettai_content::timing::load` reads every
-`animations.json` without opening an image (298 files in 10-50 ms), and the
-battle data's loader puts it in the engine's `Content::animations`.
+Timing is kept apart from pixels: `nettai_content::timing::load` reads every
+`animations.json` without opening an image (298 files in 10-50 ms), for the
+frontend's check of the pack against the content and for `nettai-content
+verify`. (Until 2026-10-27 the battle data's loader put it in the engine's
+`Content::animations`; the content's sprite modules state it now.)
 
 ### 3.4 Editing
 
@@ -1075,10 +1078,10 @@ What breaks with an ordinary tool, and what the importer says:
 
 ## 9. Loading
 
-**Straight from the files.** `nettai_content::pack::load_battle(pack)`,
-`load_graphics(pack)` and `load_sound(pack)` read a pack's battle data,
-graphics and sound through the importers, each with a report of what it
-found. Nothing derived is stored: an edit shows up the next time the pack
+**Straight from the files.** `nettai_content::pack::load_battle(content, game)`
+reads a game's battle data from the content alone; `load_graphics(pack)` and
+`load_sound(pack)` read a pack's graphics and sound through the importers,
+each with a report of what it found. Nothing derived is stored: an edit shows up the next time the pack
 loads, and there is no cache to go stale.
 
 **What it costs.** EXE6's full pack loads in about 0.75 s in a release
@@ -1089,10 +1092,10 @@ against their sidecars, and its WAV samples read. The frontend loads the
 sound only when it plays it (not headless, not with `--mute`). Should the
 total ever pass about a second, the sound import is where to look first.
 
-**The engine.** The simulation reads its sprite timing from the pack's
-`animations.json` files, loaded with the rest of the battle data into
-`Content::animations` (see [content-pack.md](content-pack.md)); nothing is
-compiled into the engine.
+**The engine.** The simulation reads its sprite timing from the content's
+sprite modules (`asset.sprite(name, animations)`: content-model-v2.md §6.3),
+defined with the rest of the battle data into `Content::animations`; no pack
+is read for a battle, and nothing is compiled into the engine.
 
 **From the ROMs.** `nettai-extract content/exe6 <dir> ROM...` writes a pack in one step from the
 game's four ROMs, every one required, by the game's extraction recipe (the graphics

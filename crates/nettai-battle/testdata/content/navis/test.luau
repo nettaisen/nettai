@@ -6,6 +6,7 @@
 
 local buster = require("./megaman/weapons/buster")
 local charged_shot = require("./megaman/weapons/charged_shot")
+local sprites = require("../sprites")
 
 -- A sprite's attach points: the blade's point and the gun's (EXE6's gun
 -- sits at point 0x0D) ahead of the rest.
@@ -115,7 +116,7 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
         post_init = if hooks then hooks.post_init else nil,
         -- (The navi with hooks: its charge glow shows 16 pixels higher in its animation 9.)
         charge_glow_lift = if hooks then { anims = { 9 }, pixels = 16 } else nil,
-        sprite = asset.sprite(sprite),
+        sprite = sprites[sprite],
         element = "null",
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },

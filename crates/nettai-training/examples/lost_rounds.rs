@@ -38,7 +38,7 @@
 //! the most and 20 ticks before it; a frame is the picture after that many
 //! ticks), e.g. `nettai-tool --replay R --headless F --side both --png-scale 2`.
 //!
-//! `NETTAI_PACKS=<packs> cargo run --release -p nettai-training --features live --example lost_rounds -- <weights> <OUT> [--rounds N] [--seed S] [--render N] [--threads T] [--cache DIR]`
+//! `cargo run --release -p nettai-training --features live --example lost_rounds -- <weights> <OUT> [--rounds N] [--seed S] [--render N] [--threads T] [--cache DIR]`
 
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
@@ -1029,8 +1029,7 @@ fn main() {
     let a = args();
     std::fs::create_dir_all(&a.out).expect("the output folder");
     env::quiet_engine_panics();
-    let packs = nettai_content::pack::packs_dir();
-    let content = nettai_training::pool::load_game(None, &packs, "exe6").expect("EXE6's content");
+    let content = nettai_training::pool::load_game(None, "exe6").expect("EXE6's content");
     eprintln!("content {:016x}; fingerprints from {}", content.hash().0, a.cache.display());
     let fingerprints = Fingerprints::for_game(&content, a.threads, Some(a.cache.as_path())).expect("the fingerprints");
     let game = Game::with_fingerprints(content.clone(), fingerprints.clone()).expect("the game");

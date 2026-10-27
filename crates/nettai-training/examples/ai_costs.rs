@@ -1,5 +1,5 @@
 //! What the learned AI costs in live play (docs/design/training-ai.md §10),
-//! on the packs, for each game:
+//! on the content, for each game:
 //!
 //! - the chips' fingerprints: both folders' chips and their Program
 //!   Advances (what live play makes as a session starts, the first time) on
@@ -10,7 +10,7 @@
 //!   decisions of random play have (the median and the most tokens present)
 //!   and with every token present.
 //!
-//! `NETTAI_PACKS=<packs> cargo run --release -p nettai-training --example ai_costs -- <weights.safetensors> [threads...]`
+//! `cargo run --release -p nettai-training --example ai_costs -- <weights.safetensors> [threads...]`
 //!
 //! The weights only shape the pass (a network of the trainer's default
 //! widths: tests/fixtures/make_net_fixture.py --size default makes one).
@@ -62,10 +62,9 @@ fn main() {
     let threads: Vec<usize> = args.map(|a| a.parse().unwrap()).collect();
     let threads = if threads.is_empty() { vec![1, 4, std::thread::available_parallelism().map_or(4, |n| n.get())] } else { threads };
     let net = Net::from_safetensors(&weights).unwrap();
-    let packs = nettai_content::pack::packs_dir();
     nettai_training::env::quiet_engine_panics();
     for game in ["exe6", "exe5", "exe4"] {
-        let content = load_game(None, &packs, game).unwrap();
+        let content = load_game(None, game).unwrap();
         nettai_battle::behavior::Behaviors::for_content(&content).unwrap();
         let all = fingerprint::game_chips(&content);
         // The chips' fingerprints: both folders' chips (what live play makes

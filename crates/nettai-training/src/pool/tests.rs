@@ -7,7 +7,7 @@ fn pool(envs: usize, threads: usize, seed: u64, env: Config) -> Pool {
 }
 
 fn pool_with(envs: usize, threads: usize, builders: usize, seed: u64, env: Config) -> Pool {
-    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, packs: None, env, cache: None, builders };
+    let cfg = PoolConfig { games: GAMES.iter().map(|g| g.to_string()).collect(), envs, threads, seed, content: None, env, cache: None, builders };
     Pool::with_games(cfg, crate::testing::games(&GAMES)).unwrap_or_else(|e| panic!("{e}"))
 }
 

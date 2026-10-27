@@ -41,7 +41,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, Registry, keys, valid_key};
+use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys, valid_key};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// What a tag constructor says of a table: its type, and where it was
@@ -105,17 +105,25 @@ type Ptr = *const c_void;
 
 /// Asset values (docs/design/content-model-v2.md §6.3): one frozen table
 /// per asset, `{ name = "bomb" }` with its kind's metatable, made when
-/// content first names the asset. The binding finds an asset by its table's
-/// identity, as it finds a definition.
+/// content first names the asset (a sprite: where its module defines it).
+/// The binding finds an asset by its table's identity, as it finds a
+/// definition. The handles are made once loading is done ([`AssetTables::finish`]):
+/// each kind's names in byte order, whatever order the modules named them in.
 pub(crate) struct AssetTables {
-    pub names: AssetNames,
     metas: Vec<(AssetKind, Table)>,
+    /// Each asset content has named, by kind and name.
+    named: BTreeMap<(AssetKind, String), Table>,
+    /// The sprites content defines, by name: the module that defines each,
+    /// and its definition.
+    sprites: BTreeMap<String, (String, SpriteDef)>,
+    /// The names, once loading is done: their places are the handles.
+    pub names: AssetNames,
     pub by_ptr: HashMap<Ptr, (AssetKind, u16)>,
     by_handle: HashMap<(AssetKind, u16), Table>,
 }
 
 impl AssetTables {
-    pub fn new(lua: &Lua, names: AssetNames) -> mlua::Result<AssetTables> {
+    pub fn new(lua: &Lua) -> mlua::Result<AssetTables> {
         let mut metas = Vec::new();
         for kind in AssetKind::ALL {
             let meta = lua.create_table()?;
@@ -124,25 +132,66 @@ impl AssetTables {
             meta.set_readonly(true);
             metas.push((kind, meta));
         }
-        Ok(AssetTables { names, metas, by_ptr: HashMap::new(), by_handle: HashMap::new() })
+        Ok(AssetTables {
+            metas,
+            named: BTreeMap::new(),
+            sprites: BTreeMap::new(),
+            names: AssetNames::default(),
+            by_ptr: HashMap::new(),
+            by_handle: HashMap::new(),
+        })
     }
 
-    /// The value of asset `h` of `kind`.
-    pub fn value(&mut self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
-        if let Some(t) = self.by_handle.get(&(kind, h)) {
+    /// The value of `kind` asset `name`, made the first time content names it.
+    fn named(&mut self, lua: &Lua, kind: AssetKind, name: &str) -> mlua::Result<Table> {
+        if let Some(t) = self.named.get(&(kind, name.to_string())) {
             return Ok(t.clone());
         }
-        let name = self.names.names(kind).get(h as usize).map(|s| s.to_string()).ok_or_else(|| {
-            mlua::Error::runtime(format!("no {kind} has handle {h}"))
-        })?;
         let t = lua.create_table()?;
         t.raw_set("name", name)?;
         let meta = self.metas.iter().find(|(k, _)| *k == kind).map(|(_, m)| m.clone()).expect("every kind");
         t.set_metatable(Some(meta))?;
         t.set_readonly(true);
-        self.by_ptr.insert(t.to_pointer(), (kind, h));
-        self.by_handle.insert((kind, h), t.clone());
+        self.named.insert((kind, name.to_string()), t.clone());
         Ok(t)
+    }
+
+    /// Sprite `name` as module `module` defines it: its value. A sprite is
+    /// defined once.
+    fn define_sprite(&mut self, lua: &Lua, module: &str, name: &str, def: SpriteDef) -> mlua::Result<Table> {
+        if let Some((other, _)) = self.sprites.get(name) {
+            return Err(mlua::Error::runtime(format!(
+                "{module}: sprite {name:?} is defined twice: in {}.luau and in {}.luau (a sprite is defined once, by its module: require it)",
+                keys::module_path(other),
+                keys::module_path(module)
+            )));
+        }
+        self.sprites.insert(name.to_string(), (module.to_string(), def));
+        self.named(lua, AssetKind::Sprite, name)
+    }
+
+    /// Loading is done: every name content gave, each kind's in byte order,
+    /// are the handles.
+    pub fn finish(&mut self) {
+        self.names = AssetNames::of(self.named.keys().cloned());
+        for ((kind, name), t) in &self.named {
+            let h = self.names.handle(*kind, name).expect("a name just interned");
+            self.by_ptr.insert(t.to_pointer(), (*kind, h));
+            self.by_handle.insert((*kind, h), t.clone());
+        }
+    }
+
+    /// What the define phase made of the assets: their names and the
+    /// sprites' definitions, by handle. (Every sprite named is defined: a
+    /// sprite is named only by its definition.)
+    pub fn defined(&self) -> DefinedAssets {
+        let sprites = self.names.sprites.iter().map(|n| self.sprites[n].1.clone()).collect();
+        DefinedAssets { names: self.names.clone(), sprites }
+    }
+
+    /// The value of asset `h` of `kind`.
+    pub fn value(&self, kind: AssetKind, h: u16) -> mlua::Result<Table> {
+        self.by_handle.get(&(kind, h)).cloned().ok_or_else(|| mlua::Error::runtime(format!("no {kind} has handle {h}")))
     }
 
     /// The asset `v` is, if it is one.
@@ -154,9 +203,107 @@ impl AssetTables {
     }
 }
 
-/// Install `asset`: a resolver per asset kind (`asset.sprite("bomb")`),
-/// working while content loads. An unknown name is an error naming the
-/// module.
+/// A sprite's definition, as content writes it (`asset.sprite(name,
+/// animations, { parts = ... })`, core.d.luau's `SpriteAnimation` and
+/// `SpriteParts`): its animations, each its frames' durations in ticks (1
+/// to 255) with `loop = true` where it loops; and the parts content reads,
+/// by part number, each animation's frames' `{ x, y }`, as many as the
+/// animations' frames.
+fn sprite_def(at: &str, animations: &LuaValue, extra: &LuaValue) -> Result<SpriteDef, String> {
+    let int = |v: &LuaValue, what: &str, lo: i64, hi: i64| -> Result<i64, String> {
+        let n = match v {
+            LuaValue::Integer(i) => i64::from(*i),
+            LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 1e15 => *n as i64,
+            v => return Err(format!("{at}: {what} is a {}, not an integer", v.type_name())),
+        };
+        if !(lo..=hi).contains(&n) {
+            return Err(format!("{at}: {what} is {n}, not {lo} to {hi}"));
+        }
+        Ok(n)
+    };
+    let LuaValue::Table(list) = animations else {
+        return Err(format!(
+            "{at}: asset.sprite(name, animations) takes the sprite's animations (a list, each its frames' durations), not {} (a sprite is defined once, by its module: require it)",
+            animations.type_name()
+        ));
+    };
+    let mut def = SpriteDef::default();
+    for (k, v) in fields(list, at)? {
+        if k != DataKey::Int(def.animations.len() as i64 + 1) {
+            return Err(format!("{at}: the animations are a list (1, 2, ...), not keyed {k}"));
+        }
+        let what = format!("animation {}", def.animations.len());
+        let LuaValue::Table(anim) = v else { return Err(format!("{at}: {what} is a {}, not a table of durations", v.type_name())) };
+        let mut a = nettai_content_api::SpriteAnimation::default();
+        for (k, v) in fields(&anim, at)? {
+            match k {
+                DataKey::Int(i) if i == a.frames.len() as i64 + 1 => {
+                    a.frames.push(int(&v, &format!("{what}'s frame {}", a.frames.len()), 1, 255)? as u8)
+                }
+                DataKey::Str(s) if s == "loop" => match v {
+                    LuaValue::Boolean(b) => a.looping = b,
+                    v => return Err(format!("{at}: {what}'s `loop` is a {}, not a boolean", v.type_name())),
+                },
+                k => return Err(format!("{at}: {what} holds its frames' durations (1, 2, ...) and `loop`, not {k}")),
+            }
+        }
+        if a.frames.is_empty() {
+            return Err(format!("{at}: {what} has no frame"));
+        }
+        def.animations.push(a);
+    }
+    match extra {
+        LuaValue::Nil => {}
+        LuaValue::Table(t) => {
+            for (k, v) in fields(t, at)? {
+                if k != DataKey::Str("parts".into()) {
+                    return Err(format!("{at}: a sprite's third argument holds its `parts`, not {k}"));
+                }
+                let LuaValue::Table(parts) = v else { return Err(format!("{at}: `parts` is a {}, not a table", v.type_name())) };
+                for (k, v) in fields(&parts, at)? {
+                    let DataKey::Int(n) = k else { return Err(format!("{at}: `parts` is keyed by part number, not {k}")) };
+                    let n = int(&LuaValue::Integer(n as _), "a part's number", 0, 31)? as u8;
+                    let what = format!("part {n}");
+                    let LuaValue::Table(by_anim) = v else { return Err(format!("{at}: {what} is a {}, not a table", v.type_name())) };
+                    let mut offsets = Vec::new();
+                    for (i, (k, v)) in fields(&by_anim, at)?.into_iter().enumerate() {
+                        let frames = def.animations.get(i).map_or(0, |a| a.frames.len());
+                        let what = format!("{what}, animation {i}");
+                        let LuaValue::Table(by_frame) = v else { return Err(format!("{at}: {what} is a {}, not a table", v.type_name())) };
+                        if k != DataKey::Int(i as i64 + 1) {
+                            return Err(format!("{at}: {what}: a part's offsets are a list by animation"));
+                        }
+                        let mut anim = Vec::new();
+                        for (j, (k, v)) in fields(&by_frame, at)?.into_iter().enumerate() {
+                            let LuaValue::Table(xy) = v else { return Err(format!("{at}: {what}, frame {j} is a {}, not {{ x, y }}", v.type_name())) };
+                            let xy = fields(&xy, at)?;
+                            if k != DataKey::Int(j as i64 + 1) || xy.len() != 2 || xy[0].0 != DataKey::Int(1) || xy[1].0 != DataKey::Int(2) {
+                                return Err(format!("{at}: {what}, frame {j}: an offset is {{ x, y }}, in a list by frame"));
+                            }
+                            let c = |v: &LuaValue| int(v, &format!("{what}, frame {j}'s offset"), -128, 127).map(|n| n as i8);
+                            anim.push((c(&xy[0].1)?, c(&xy[1].1)?));
+                        }
+                        if anim.len() != frames {
+                            return Err(format!("{at}: {what} has {} offsets, and the animation {frames} frames", anim.len()));
+                        }
+                        offsets.push(anim);
+                    }
+                    if offsets.len() != def.animations.len() {
+                        return Err(format!("{at}: {what} has offsets for {} animations, and the sprite has {}", offsets.len(), def.animations.len()));
+                    }
+                    def.parts.insert(n, offsets);
+                }
+            }
+        }
+        v => return Err(format!("{at}: a sprite's third argument is a table (`{{ parts = ... }}`), not {}", v.type_name())),
+    }
+    Ok(def)
+}
+
+/// Install `asset`: a resolver per asset kind, working while content
+/// loads. A sprite is defined where its module makes it
+/// (`asset.sprite("bomb", animations)`); any other asset is named
+/// (`asset.sound("throw")`).
 pub(crate) fn install_assets(
     lua: &Lua,
     tables: &Rc<RefCell<AssetTables>>,
@@ -167,7 +314,7 @@ pub(crate) fn install_assets(
         let tables = Rc::downgrade(tables);
         let module = module.clone();
 
-        let f = lua.create_function(move |lua, name: LuaValue| {
+        let f = lua.create_function(move |lua, (name, animations, extra): (LuaValue, LuaValue, LuaValue)| {
             let what = format!("asset.{kind}");
             let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: assets are named while content loads")))?;
             let tables = tables.upgrade().ok_or_else(|| mlua::Error::runtime(format!("{what}: content has loaded")))?;
@@ -175,13 +322,14 @@ pub(crate) fn install_assets(
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
             };
             let name = name.to_str()?.to_string();
-            // (The game's asset pack's name: `bomb`.)
-            let h = tables
-                .borrow()
-                .names
-                .handle(kind, &name)
-                .ok_or_else(|| mlua::Error::runtime(format!("{at}: no {kind} is named {name:?} in the game's asset pack")))?;
-            tables.borrow_mut().value(lua, kind, h)
+            if kind == AssetKind::Sprite {
+                let def = sprite_def(&format!("{at}: sprite {name:?}"), &animations, &extra).map_err(mlua::Error::runtime)?;
+                return tables.borrow_mut().define_sprite(lua, &at, &name, def);
+            }
+            if !animations.is_nil() || !extra.is_nil() {
+                return Err(mlua::Error::runtime(format!("{at}: {what} takes a name alone")));
+            }
+            tables.borrow_mut().named(lua, kind, &name)
         })?;
         asset.raw_set(kind.name(), f)?;
     }
@@ -824,7 +972,7 @@ impl Refs<'_> {
             LuaValue::Table(t) => {
                 let p = t.to_pointer();
                 if let Some(&(kind, h)) = self.assets.by_ptr.get(&p) {
-                    let name = self.assets.names.names(kind)[h as usize].to_string();
+                    let name = self.assets.names.name(kind, h).expect("an interned asset").to_string();
                     return Ok(Data::Asset(kind, name));
                 }
                 if !top {
