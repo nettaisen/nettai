@@ -10,13 +10,13 @@ fusion-bold-pixel-font, release 2026.10.25, `fusion-bold-pixel-font-12px-monospa
 12-pixel grid (1200 units an em, 100 a pixel). Whole files, one per Chinese's forms of the hanzi (the release's
 Japanese cut isn't bundled: every pack spells English and Japanese in its own fonts):
 
-- `fusion-bold-pixel-12px-monospaced-zh_hans.otf`: Simplified Chinese (zh-Hans).
-- `fusion-bold-pixel-12px-monospaced-zh_tw.otf`: Traditional Chinese (zh-Hant, Taiwan's forms).
+- `fusion-bold-pixel-12px-monospaced-zh_hans.woff2`: Simplified Chinese (zh-Hans).
+- `fusion-bold-pixel-12px-monospaced-zh_tw.woff2`: Traditional Chinese (zh-Hant, Taiwan's forms).
 
-The program holds both builds' files packed, all four in one zstd frame, and unpacks them the first time the
-original mode draws Chinese (`bundled`, the crate's build.rs).
+Each is the release's .otf converted to WOFF2 as it is (`fonttools ttLib.woff2 compress`, which unpacks to the same
+tables and glyphs). The program unpacks one the first time the original mode draws Chinese in it (`bundled`).
 
-License: SIL Open Font License 1.1 (OFL.txt). The files are the release's, unchanged. Its author made Fusion
+License: SIL Open Font License 1.1 (OFL.txt). The fonts are the release's, unchanged. Its author made Fusion
 Pixel as the stand-in for Ark Pixel while Ark (hand-drawn) still lacks many characters: Ark Pixel's glyphs, the rest
 taken from two other open pixel fonts, Cubic 11 and Galmuri ("stitched", 缝合, in its name). Their authors'
 copyright notices come with it in its release (LICENSES), as the OFL asks; nothing else is bundled here.

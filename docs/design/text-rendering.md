@@ -2018,7 +2018,7 @@ The app's catalogs (crates/nettai-ui/lang/zh-Hans, zh-Hant) have every string, i
 Every language's dynamic text, in the battle and in the app's body, is Noto Sans CJK: Google Fonts' variable Noto
 Sans JP (English and Japanese), SC and TC, whole (crates/nettai-render/fonts/noto-sans-cjk). `vfont::Cut::of`
 gives a language's cut; the lettering (the banners' words, the labels) is the same cut, bold and narrowed, in
-place of M PLUS 1 Code, which has no Chinese; Murecho is gone. The program holds the files once, packed (§16):
+place of M PLUS 1 Code, which has no Chinese; Murecho is gone. The program holds the files once, as WOFF2 (§16):
 the renderer unpacks them and the app registers the same bytes with Slint's shared font collection
 (`lang::register_fonts`).
 The tests of the old font's metrics went with it.
@@ -2051,7 +2051,7 @@ takes and measures them with the pixel fonts) and draws them into the 240x160 fr
   2026.10.25, whole, in two cuts by `Cut::of` (zh_hans, zh_tw; the ja cut went on 2026-10-27, as every pack spells
   English and Japanese in its own fonts), under the OFL with the notices of the fonts they are stitched from
   (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen lists both). About 20 MB, which the program holds
-  packed in 1.8 MB (§16).
+  as WOFF2 in 2.8 MB (§16).
 - A glyph's outline lies on a grid of 100 units a pixel, so at 12 pixels an em each of its pixels is a frame's
   (swash rasterizes it; coverage of half or more is ink).
 - In the item's face color, with the 8x16 font's shadow (right, below and both) in its shadow color, faded as the
@@ -2091,42 +2091,50 @@ EXE6 in zh-Hans and zh-Hant: the custom screen with a chip's description, the ch
 other player's telop (Atk+10), DblBeast's telop, the enemy name on its bar, and chip names too long for the chip
 window. Packs with the language shown never reach it: the frame comparisons are unchanged.
 
-## 16. The bundled fonts packed (as built, 2026-10-27)
+## 16. The bundled fonts as WOFF2 (as built, 2026-10-27)
 
 The program built its fonts in as they are (`include_bytes!`): Noto Sans CJK's three cuts (39.3 MB), Fusion Pixel's
 six (29.8 MB), M PLUS 1 Code (3.9 MB) and Corporate Logo (2.8 MB), and Noto Sans CJK's twice, as `pub const` slices
 copied where they were used: 115 MB of the 188 MB program. Fusion Pixel's ja cuts went (§15.1), and the big files
-are packed:
+are WOFF2:
 
-- **Packed as the program is built** (nettai-render's build.rs): each group of files in one zstd frame, at level 19
-  with long-distance matching over the whole group. A group's files share most of their glyphs (the cuts' common
-  hanzi, the regular and bold builds' Latin), which a window over all of them finds:
+- **In the repository as WOFF2**, each font's own file converted as it is (`fonttools ttLib.woff2 compress`, its
+  default transforms: glyf and loca), in place of the .ttf or .otf. The fonts' READMEs say where each came from. No
+  build step: the program holds the files as they are.
 
-  | Group | Unpacked | Packed | Packed file by file |
+  | Font | .ttf or .otf | WOFF2 | unpacked in |
   |---|---|---|---|
-  | Noto Sans CJK (JP, SC, TC) | 39.30 MB | 14.26 MB | 19.69 MB |
-  | Fusion Pixel and its bold build (zh_hans, zh_tw) | 19.85 MB | 1.79 MB | 3.14 MB |
-  | M PLUS 1 Code | 3.93 MB | 1.84 MB | 1.84 MB |
-  | All | 63.08 MB | 17.89 MB | 24.67 MB |
+  | Noto Sans JP | 9.59 MB | 4.35 MB | 90 ms |
+  | Noto Sans SC | 17.77 MB | 7.78 MB | 165 ms |
+  | Noto Sans TC | 11.94 MB | 5.42 MB | 112 ms |
+  | Fusion Pixel and its bold build, zh_hans and zh_tw (4 files) | 19.85 MB | 2.79 MB | 10 ms each |
+  | M PLUS 1 Code | 3.93 MB | 1.67 MB | 32 ms |
+  | All | 63.08 MB | 22.02 MB | |
 
-- **Unpacked once** (`bundled`): the first time one of a group's files is wanted, the group is unpacked into memory
-  and kept for the program's life, and what draws with a file borrows its bytes from there (a `OnceLock`, filled
-  under a lock taken through `nettai_platform::thread::lock`, as the browser's page may take it). The files are the
-  fonts' own, byte for byte, so everything draws as before (`bundled`'s tests compare them with the folders').
-  ruzstd unpacks (zstd's decoder in Rust, which the browser's build runs too); zstd's own library packs, a build
-  dependency only, optimized in every profile (the workspace's Cargo.toml).
-- **At the app's start** it registers Noto Sans CJK, as before, and M PLUS 1 Code, no longer theme.slint's import
-  (`lang::register_fonts`): unpacking the two groups takes 172 ms on the development machine (an Apple Silicon Mac,
-  release build), Noto Sans CJK's 154 ms of it. The pixel fonts' group takes 22 ms more, the first time the original
-  mode draws Chinese. Unpacked, the fonts are memory the program holds, where before the system read in only the
-  pages of the program that were used.
-- **Left in theme.slint** (Slint builds an imported font in as it is): Corporate Logo (2.83 MB), whose CFF outlines
-  zstd packs only to 2.23 MB, too little for another 19 ms at every start; Chakra Petch (three files, 78 KB each).
+  (Unpacked by wuff, release build, on the development machine, an Apple Silicon Mac.)
+- **Unpacked once** (`bundled`): the first time a font is wanted, its file is unpacked into memory and kept for the
+  program's life, and what draws with the font borrows its bytes from there (a `OnceLock`, filled under a lock taken
+  through `nettai_platform::thread::lock`, as the browser's page may take it). wuff unpacks (a WOFF2 decoder in
+  Rust, brotli only, which the browser's build runs too).
+- **The same glyphs.** WOFF2's glyf transform rebuilds the glyf and loca tables, so the unpacked files are not the
+  originals byte for byte. When the files were converted, fontTools compared each unpacked by wuff with its original:
+  every other table byte for byte, head but its checksum and its "transformed" flag, every glyph's points, contours,
+  on-curve flags, instructions and bounds, and the metrics. All matched (17,936 to 37,308 glyphs a font). `bundled`'s
+  tests check each file unpacks to the font it is asked for by.
+- **At the app's start** it registers Noto Sans CJK's three cuts, as before, and M PLUS 1 Code, no longer
+  theme.slint's import (`lang::register_fonts`): unpacking them takes about 400 ms. Each Fusion Pixel file takes
+  about 10 ms more, the first time the original mode draws Chinese in it. Unpacked, the fonts are memory the
+  program holds, where before the system read in only the pages of the program that were used.
+- **Left in theme.slint** (Slint builds an imported font in as it is, and imports no WOFF2): Corporate Logo
+  (2.83 MB); Chakra Petch (three files, 78 KB each).
 
-The program went from 188.4 MB to 93.3 MB (macOS, `cargo build --release -p nettai`; 178.4 MB without the ja cuts
-alone), and deflated, as a zip of it is, from 84.7 MB to 43.6 MB.
+The program went from 188.4 MB to 93.3 MB with the groups packed as zstd (below); the WOFF2 files are 4.1 MB more.
 
-**Why zstd.** The decoders in Rust measured on these files (release build, each group unpacked whole):
+**Why WOFF2, not zstd.** Packed first as each group's files in one zstd frame (level 19, long-distance matching,
+by a build script), which finds the glyphs a group's files share: 17.89 MB in all (Noto Sans CJK 14.26 MB, Fusion
+Pixel 1.79 MB, M PLUS 1 Code 1.84 MB), Noto Sans CJK unpacked in 154 ms. WOFF2 is 4.1 MB more and unpacks Noto Sans
+CJK in about 370 ms, but needs no build step, and the files are a standard format the repository holds. The other
+decoders in Rust measured on the groups (release build, each group unpacked whole):
 
 | | Noto Sans CJK, packed | unpacked in | Fusion Pixel, packed | unpacked in |
 |---|---|---|---|---|
@@ -2135,5 +2143,4 @@ alone), and deflated, as a zip of it is, from 84.7 MB to 43.6 MB.
 | xz (lzma-rs), -9e | 13.15 MB | 1110 ms | 1.43 MB | 178 ms |
 
 and file by file, the nine with Corporate Logo: deflate (miniz_oxide) 33.7 MB in 183 ms, LZ4 (lz4_flex) 37.2 MB in 45
-ms, zstd 26.9 MB in 265 ms. Deflate's and LZ4's windows (32 KB, 64 KB) never reach the files' shared glyphs. Brotli
-packs as small but unpacks Noto Sans CJK a third slower, at every start; xz is 1.6 MB smaller and eight times slower.
+ms, zstd 26.9 MB in 265 ms. Deflate's and LZ4's windows (32 KB, 64 KB) never reach the files' shared glyphs.

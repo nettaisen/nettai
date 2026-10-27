@@ -1,74 +1,66 @@
-//! The bundled fonts' big files, which the program holds packed: Noto Sans CJK's cuts (`vfont`), Fusion Pixel's
-//! (`pixeltext`) and M PLUS 1 Code (the app's code face, which the app registers: this crate draws nothing with
-//! it). The build script (build.rs) packs each group of them into one zstd frame, about a third of their size;
-//! the first time one of a group's files is wanted the whole group is unpacked into memory, once, and kept for
-//! the program's life, and what draws with a file borrows its bytes from there. The files are the fonts' own,
-//! byte for byte (the tests compare them with the folder's).
+//! The bundled fonts' big files, which the repository holds as WOFF2: Noto Sans CJK's cuts (`vfont`), Fusion
+//! Pixel's (`pixeltext`) and M PLUS 1 Code (the app's code face, which the app registers: this crate draws nothing
+//! with it). The program holds the WOFF2 files as they are, about a third of the fonts' size; the first time a font
+//! is wanted its file is unpacked into memory, once, and kept for the program's life, and what draws with the font
+//! borrows its bytes from there.
 
 use crate::vfont::Cut;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
-include!(concat!(env!("OUT_DIR"), "/sizes.rs"));
-
-/// Noto Sans CJK's JP, SC and TC (fonts/noto-sans-cjk).
-static NOTO_SANS_CJK: Group = Group::new(include_bytes!(concat!(env!("OUT_DIR"), "/noto-sans-cjk.zst")), &NOTO_SANS_CJK_SIZES);
+/// Noto Sans CJK's JP, SC and TC, by `Cut`'s order (fonts/noto-sans-cjk).
+static NOTO_SANS_CJK: [Packed; 3] = [
+    Packed::new(include_bytes!("../fonts/noto-sans-cjk/NotoSansJP[wght].woff2")),
+    Packed::new(include_bytes!("../fonts/noto-sans-cjk/NotoSansSC[wght].woff2")),
+    Packed::new(include_bytes!("../fonts/noto-sans-cjk/NotoSansTC[wght].woff2")),
+];
 /// Fusion Pixel 12px's Simplified and Traditional cuts, then its bold build's (fonts/fusion-pixel,
 /// fonts/fusion-bold-pixel).
-static FUSION_PIXEL: Group = Group::new(include_bytes!(concat!(env!("OUT_DIR"), "/fusion-pixel.zst")), &FUSION_PIXEL_SIZES);
+static FUSION_PIXEL: [Packed; 4] = [
+    Packed::new(include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_hans.woff2")),
+    Packed::new(include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_tw.woff2")),
+    Packed::new(include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_hans.woff2")),
+    Packed::new(include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_tw.woff2")),
+];
 /// M PLUS 1 Code (fonts/mplus1code).
-static M_PLUS_1_CODE: Group = Group::new(include_bytes!(concat!(env!("OUT_DIR"), "/mplus1code.zst")), &M_PLUS_1_CODE_SIZES);
+static M_PLUS_1_CODE: Packed = Packed::new(include_bytes!("../fonts/mplus1code/MPLUS1Code-VariableFont_wght.woff2"));
 
-/// Noto Sans CJK's file of `cut` (Google Fonts' variable cut, weights 100 to 900).
+/// Noto Sans CJK's font of `cut` (Google Fonts' variable cut, weights 100 to 900).
 pub fn noto_sans_cjk(cut: Cut) -> &'static [u8] {
-    NOTO_SANS_CJK.file(cut as usize)
+    NOTO_SANS_CJK[cut as usize].font()
 }
 
-/// Fusion Pixel 12px's file, or its bold build's, in Simplified Chinese's forms or Traditional's.
+/// Fusion Pixel 12px's font, or its bold build's, in Simplified Chinese's forms or Traditional's.
 pub fn fusion_pixel(bold: bool, traditional: bool) -> &'static [u8] {
-    FUSION_PIXEL.file(2 * usize::from(bold) + usize::from(traditional))
+    FUSION_PIXEL[2 * usize::from(bold) + usize::from(traditional)].font()
 }
 
-/// M PLUS 1 Code's file (the variable font, weights 100 to 700).
+/// M PLUS 1 Code's font (the variable font, weights 100 to 700).
 pub fn m_plus_1_code() -> &'static [u8] {
-    M_PLUS_1_CODE.file(0)
+    M_PLUS_1_CODE.font()
 }
 
-/// Files packed into one frame, and where they are unpacked.
-struct Group {
-    packed: &'static [u8],
-    sizes: &'static [usize],
+/// A WOFF2 file, and the font it unpacks to.
+struct Packed {
+    woff2: &'static [u8],
     unpacked: OnceLock<Box<[u8]>>,
     /// Held while one thread unpacks, taken as the browser's page may take it (`nettai_platform::thread::lock`:
     /// its main thread may not wait).
     unpacking: Mutex<()>,
 }
 
-impl Group {
-    const fn new(packed: &'static [u8], sizes: &'static [usize]) -> Group {
-        Group { packed, sizes, unpacked: OnceLock::new(), unpacking: Mutex::new(()) }
+impl Packed {
+    const fn new(woff2: &'static [u8]) -> Packed {
+        Packed { woff2, unpacked: OnceLock::new(), unpacking: Mutex::new(()) }
     }
 
-    /// Its `k`th file.
-    fn file(&'static self, k: usize) -> &'static [u8] {
-        let all = self.all();
-        let start = self.sizes[..k].iter().sum::<usize>();
-        &all[start..start + self.sizes[k]]
-    }
-
-    /// Its files, one after another: unpacked the first time.
-    fn all(&'static self) -> &'static [u8] {
-        if let Some(all) = self.unpacked.get() {
-            return all;
+    /// The font: unpacked the first time.
+    fn font(&'static self) -> &'static [u8] {
+        if let Some(font) = self.unpacked.get() {
+            return font;
         }
         let _alone = nettai_platform::thread::lock(&self.unpacking).unwrap_or_else(PoisonError::into_inner);
         // (Another thread may have unpacked it while this one waited.)
-        self.unpacked.get_or_init(|| {
-            let size = self.sizes.iter().sum::<usize>();
-            let mut all = vec![0; size].into_boxed_slice();
-            let unpacked = ruzstd::decoding::FrameDecoder::new().decode_all(self.packed, &mut all).expect("the bundled fonts unpack");
-            assert_eq!(unpacked, size, "the bundled fonts unpack whole");
-            all
-        })
+        self.unpacked.get_or_init(|| wuff::decompress_woff2(self.woff2).expect("the bundled fonts unpack").into_boxed_slice())
     }
 }
 
@@ -76,29 +68,29 @@ impl Group {
 mod tests {
     use super::*;
 
-    fn file(path: &str) -> Vec<u8> {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fonts").join(path);
-        std::fs::read(&path).unwrap_or_else(|e| panic!("can't read {}: {e}", path.display()))
+    /// The family a font names itself by (its name table's family, English).
+    fn family(font: &[u8]) -> String {
+        let font = swash::FontRef::from_index(font, 0).expect("the font parses");
+        font.localized_strings().find_by_id(swash::StringId::Family, Some("en")).expect("the font names its family").chars().collect()
     }
 
-    /// Every file unpacks to the font's own, byte for byte, by the name it is asked for by: what draws with it
-    /// draws what it drew when the file itself was built into the program.
+    /// Every file unpacks to a font that parses, the one it is asked for by.
     #[test]
-    fn the_files_unpack_to_the_fonts_own() {
+    fn each_file_unpacks_to_its_font() {
         for (cut, name) in [(Cut::Japanese, "JP"), (Cut::Simplified, "SC"), (Cut::Traditional, "TC")] {
-            assert!(noto_sans_cjk(cut) == file(&format!("noto-sans-cjk/NotoSans{name}[wght].ttf")), "Noto Sans {name}");
+            assert!(family(noto_sans_cjk(cut)).starts_with(&format!("Noto Sans {name}")), "Noto Sans {name}");
         }
-        for (bold, build) in [(false, "fusion-pixel"), (true, "fusion-bold-pixel")] {
-            for (traditional, forms) in [(false, "zh_hans"), (true, "zh_tw")] {
-                assert!(fusion_pixel(bold, traditional) == file(&format!("{build}/{build}-12px-monospaced-{forms}.otf")), "{build} {forms}");
+        for (bold, build) in [(false, "Fusion Pixel"), (true, "Fusion Bold Pixel")] {
+            for (traditional, forms) in [(false, "zh-Hans"), (true, "zh-TW")] {
+                assert_eq!(family(fusion_pixel(bold, traditional)), format!("{build} 12px Mono {forms}"));
             }
         }
-        assert!(m_plus_1_code() == file("mplus1code/MPLUS1Code-VariableFont_wght.ttf"));
+        assert_eq!(family(m_plus_1_code()), "M PLUS 1 Code");
     }
 
-    /// A group is unpacked once: its files are the same memory each time they are asked for.
+    /// A font is unpacked once: its bytes are the same memory each time it is asked for.
     #[test]
-    fn a_group_unpacks_once() {
+    fn a_font_unpacks_once() {
         let first = m_plus_1_code().as_ptr();
         let threads: Vec<_> = (0..4).map(|_| std::thread::spawn(|| m_plus_1_code().as_ptr() as usize)).collect();
         for t in threads {

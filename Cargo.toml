@@ -36,14 +36,6 @@ debug = false
 [profile.release]
 debug = 1
 
-# nettai-render's build script packs the bundled fonts at zstd's strongest level: its library optimized, which
-# a build script's dependencies otherwise aren't.
-[profile.dev.package.zstd-sys]
-opt-level = 3
-
-[profile.release.package.zstd-sys]
-opt-level = 3
-
 [patch.crates-io]
 # Supply the file API stubs that stock mlua needs on bare Wasm.
 libc = { path = "crates/nettai-luau/wasm/libc" }

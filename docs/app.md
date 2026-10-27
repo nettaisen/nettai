@@ -677,10 +677,10 @@ Corporate Logo at 700 for Japanese (the user's choice: docs/design/app-ui.md §2
 like it is chosen ("app text for chinese can use a different font in a similar style"), with the labels' tracking
 nearly none, in every game. Body text is Noto Sans CJK, one design for every language (the user: "you should use one
 unified font for all languages"), in the language's cut (`Theme.body-face`: Noto Sans JP for English and Japanese,
-SC and TC for Chinese). The program holds its files once, packed (docs/design/text-rendering.md §16): nettai-render
+SC and TC for Chinese). The program holds its files once, as WOFF2 (docs/design/text-rendering.md §16): nettai-render
 unpacks them, and the app registers the same bytes with Slint's shared font collection at its start
 (`lang::register_fonts`, slint's `unstable-fontique-011`), also as every face's fallback for hanzi and kana, on the
-desktop and the web alike; M PLUS 1 Code, the theme's `mono`, is packed and registered the same way.
+desktop and the web alike; M PLUS 1 Code, the theme's `mono`, is held and registered the same way.
 
 ## 4. Netplay
 
@@ -2116,7 +2116,7 @@ docs/design/app-ui.md §4 is the look; this is where it lives.
 for Japanese display text, M PLUS 1 Code, and Noto Sans CJK, all under the SIL Open Font License, each with its
 license beside it in `fonts/`, M PLUS 1 Code's and Noto Sans CJK's in nettai-render's, which draws battles with them
 (and with Fusion Pixel and its bold build, the original mode's Chinese: text-rendering.md §15);
-Noto Sans CJK and M PLUS 1 Code registered by the app at its start from nettai-render's packed files, §3; the
+Noto Sans CJK and M PLUS 1 Code registered by the app at its start from nettai-render's WOFF2 files, §3; the
 others imported by theme.slint), the metrics, and the durations. A screen uses these and writes no color, size or duration
 of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
 Petch, 700 for both in Corporate Logo, which is bundled at that weight alone).

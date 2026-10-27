@@ -62,7 +62,7 @@ impl Cut {
     }
 
     /// The font file (Google Fonts' variable cut, weights 100 to 900: fonts/noto-sans-cjk), for a host that
-    /// draws with it otherwise too: the program holds it packed, and unpacks it the first time it is wanted
+    /// draws with it otherwise too: the program holds it as WOFF2, and unpacks it the first time it is wanted
     /// ([`crate::bundled`]).
     pub fn data(self) -> &'static [u8] {
         crate::bundled::noto_sans_cjk(self)

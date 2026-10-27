@@ -1252,8 +1252,8 @@ the HUD's labels, the chip window's help pictures) are drawn in the same
 font, bold and narrowed, every number, the custom window's labels and the
 chip codes in Bungee, bundled beside it, and EXE6's Cross names in the text
 font (text-rendering.md §12, §14). The program holds Noto Sans CJK's files
-and the pixel fonts packed, and unpacks each group once, the first time it
-is wanted (`bundled`, text-rendering.md §16).
+and the pixel fonts as WOFF2, and unpacks each once, the first time it is
+wanted (`bundled`, text-rendering.md §16).
 
 **Enhanced and original** (`GraphicsMode`, `Renderer::set_mode`). A
 renderer draws a battle in one of two modes. **Original** draws it exactly
