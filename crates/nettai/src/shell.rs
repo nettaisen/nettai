@@ -1247,6 +1247,12 @@ impl App {
             }
             return;
         }
+        // (The browser keeps copies of its ROMs, as its folder can't be read again without asking; the desktop keeps
+        // the folder.)
+        if cfg!(target_arch = "wasm32") {
+            self.shell.games.keep_copies(&folder);
+            return;
+        }
         self.shell.settings.legacy_collection = Some(folder);
         self.shell.save_settings();
     }

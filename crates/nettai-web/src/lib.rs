@@ -1,7 +1,9 @@
 //! The nettai app in a browser: what the page calls (web/index.html).
 //!
 //! The page, before the app starts: it puts the files it keeps (the data folder: the settings, the builds, the
-//! replays, the games' content as downloaded) in the app's files with [`preload`], then [`start`]s it,
+//! replays, the games' content as downloaded) in the app's files with [`preload`], but for the stowed ones (the
+//! Legacy Collection's ROMs as kept), which it lists ([`stowed`]) for the app to read when it wants them; then it
+//! [`start`]s the app,
 //! which downloads each game's content from the game's site as the desktop app does (nettai's `contents.rs`: the
 //! page ships none). After:
 //! it takes what changed in the data folder ([`changes`]) now and then, and writes it to its storage (the origin
@@ -19,6 +21,14 @@ mod page {
     #[wasm_bindgen]
     pub fn preload(path: &str, data: Vec<u8>) {
         nettai_platform::fs::preload(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')), data);
+    }
+
+    /// A file the page keeps and doesn't put in the app's files as it starts (`path` within the data folder, in its
+    /// stowed folder: `nettai_platform::fs::STOWED`): listed, to be read in when the app wants it
+    /// (`nettai_platform::fs::fetch`).
+    #[wasm_bindgen]
+    pub fn stowed(path: &str) {
+        nettai_platform::fs::listed(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')));
     }
 
     /// The app started. A panic is said on the console. It returns once the window's loop is running on the

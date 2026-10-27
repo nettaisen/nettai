@@ -21,7 +21,8 @@
 //! it with Proton in its own libraries, where it is found; Steam on macOS doesn't install it, and a Windows Steam
 //! in a compatibility layer (CrossOver, Whisky) keeps it in a folder the player chooses.
 //!
-//! The ROMs are read into memory and extracted there; none is written to disk. Which game a ROM is of is its
+//! The ROMs are read into memory and extracted there; none is written to disk, but for the copies a browser keeps of
+//! the collection chosen ([`RomSource::Copies`]: it can't read the player's folder again without asking). Which game a ROM is of is its
 //! content's to say: each game's recipe declares the game codes of its ROMs ([`crate::Recipe::roms`]), and a ROM is
 //! found by the code in its header ([`crate::header_code`]). Nothing here names a game.
 //!
@@ -78,6 +79,10 @@ pub enum RomSource {
     /// ROM files (a folder's, or each one named): each one's header says which ROM it is, and a file that is none
     /// asked for is passed over.
     Files(Vec<PathBuf>),
+    /// Copies of the collection's ROMs, as a browser keeps them (nettai's `games`): in the folder given, each its
+    /// archive entry as it was, compressed, in a zip of its own named by its game code (`BR6E.zip`: [`copy_of`]),
+    /// stowed (`nettai_platform::fs::stow`) and read into memory as a game wants them ([`Rom::read`]).
+    Copies(PathBuf),
 }
 
 /// A ROM of a [`RomSource`]: where it is, and the game code its header says.
@@ -113,6 +118,7 @@ impl fmt::Display for RomSource {
                 Some(dir) => write!(f, "the ROM files in {}", dir.display()),
                 None => write!(f, "the ROM files given"),
             },
+            RomSource::Copies(dir) => write!(f, "the Legacy Collection's ROMs kept in {}", dir.display()),
         }
     }
 }
@@ -188,10 +194,31 @@ impl RomSource {
                     }
                 }
             }
+            // (Each copy by its name: its game code, as its copy was made. None is read till a game wants it.)
+            RomSource::Copies(dir) => {
+                for copy in nettai_platform::fs::stowed(dir) {
+                    let code = copy.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                    if copy.extension().is_some_and(|e| e == "zip") && codes.contains(&code) {
+                        keep(Rom { at: RomAt::Entry { archive: copy, entry: 0, name: format!("{code}.srl") }, code });
+                    }
+                }
+            }
         }
         found.sort_by_key(|r| codes.iter().position(|c| *c == r.code));
         let missing: Vec<String> = codes.iter().filter(|c| !found.iter().any(|r| r.code == **c)).cloned().collect();
         if missing.is_empty() { Ok(found) } else { Err((missing, found)) }
+    }
+
+    /// Copies of the ROMs of the game codes `codes` this source has (those it hasn't are passed over), as
+    /// [`RomSource::Copies`] keeps them, stowed in folder `dir` (`nettai_platform::fs::stow`): what a browser keeps
+    /// of the collection chosen, so that the next start needs no folder chosen. How many there are.
+    pub fn keep_copies(&self, codes: &[String], dir: &Path) -> Result<usize, Error> {
+        let roms = self.find(codes).unwrap_or_else(|(_, found)| found);
+        for rom in &roms {
+            let copy = copy_of(rom)?;
+            nettai_platform::fs::stow(&dir.join(format!("{}.zip", rom.code)), copy).map_err(|e| Error(format!("keeping {}: {e}", rom.at)))?;
+        }
+        Ok(roms.len())
     }
 
     /// Every ROM `recipe` declares, read whole into a set for it ([`Recipe::extract`]). An error names the ROMs
@@ -214,11 +241,13 @@ impl RomSource {
 }
 
 impl Rom {
-    /// The ROM's bytes, read into memory (out of its archive, for one of the collection's).
+    /// The ROM's bytes, read into memory (out of its archive, for one of the collection's; a copy kept is read in
+    /// first: `nettai_platform::fs::fetch`, which waits, off a page's main thread).
     pub fn read(&self) -> Result<Vec<u8>, Error> {
         let said = |e: &dyn fmt::Display| Error(format!("{}: {e}", self.at));
         match &self.at {
             RomAt::Entry { archive, entry, .. } => {
+                nettai_platform::fs::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
                 let mut zip = open(archive).map_err(|e| said(&e))?;
                 let mut file = zip.by_index(*entry).map_err(|e| said(&e))?;
                 let mut bytes = Vec::with_capacity(file.size() as usize);
@@ -228,6 +257,29 @@ impl Rom {
             RomAt::File(path) => nettai_platform::fs::read(path).map_err(|e| said(&e)),
         }
     }
+}
+
+/// A copy of `rom` as [`RomSource::Copies`] keeps it: a zip of one entry, `<code>.srl`, the ROM's archive entry as
+/// it is there (its compressed bytes copied, not compressed again), or a ROM file's bytes stored.
+pub fn copy_of(rom: &Rom) -> Result<Vec<u8>, Error> {
+    let said = |e: &dyn fmt::Display| Error(format!("copying {}: {e}", rom.at));
+    let name = format!("{}.srl", rom.code);
+    let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    match &rom.at {
+        RomAt::Entry { archive, entry, .. } => {
+            nettai_platform::fs::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
+            let mut zip = open(archive).map_err(|e| said(&e))?;
+            let file = zip.by_index_raw(*entry).map_err(|e| said(&e))?;
+            out.raw_copy_file_rename(file, name).map_err(|e| said(&e))?;
+        }
+        RomAt::File(path) => {
+            use std::io::Write;
+            let bytes = nettai_platform::fs::read(path).map_err(|e| said(&e))?;
+            out.start_file(name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored)).map_err(|e| said(&e))?;
+            out.write_all(&bytes).map_err(|e| said(&e))?;
+        }
+    }
+    Ok(out.finish().map_err(|e| said(&e))?.into_inner())
 }
 
 /// The collection's folder as Steam has it installed, if it is: in the first Steam found that has it. (No Steam
@@ -376,6 +428,35 @@ mod tests {
         // An archive gone since: a failure to read, said in words for the log.
         nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
         assert!(roms[1].read().unwrap_err().to_string().contains("exe6_rom_e.srl"));
+    }
+
+    /// Copies kept of a collection's ROMs (a browser's): each a zip of its one entry, compressed as the archive
+    /// had it, named by its game code; found by their names and read back whole, the ROM's own bytes. A ROM file's
+    /// copy is stored. Codes the source hasn't are passed over.
+    #[test]
+    fn copies_of_the_roms_kept_read_back_whole() {
+        let dir = tempfile::tempdir().unwrap();
+        let data = dir.path().join("exe").join("data");
+        let (us, jp) = (fake_rom("BR6E", 0x4000), fake_rom("BR5J", 0x2000));
+        archive(&data.join("exe6.dat"), &[("exe6_rom_e.srl", &us), ("roms/exe6f_rom_f.srl", &jp)]);
+        let kept = dir.path().join("kept");
+        let source = RomSource::at(dir.path()).unwrap();
+        assert_eq!(source.keep_copies(&codes(&["BR6E", "BR5J", "BR6J"]), &kept).unwrap(), 2);
+        let copy = zip::ZipArchive::new(std::fs::File::open(kept.join("BR6E.zip")).unwrap()).unwrap();
+        assert_eq!((copy.len(), copy.name_for_index(0)), (1, Some("BR6E.srl")));
+        let copies = RomSource::Copies(kept.clone());
+        let roms = copies.find(&codes(&["BR6E", "BR5J"])).unwrap();
+        assert_eq!((roms[0].read().unwrap(), roms[1].read().unwrap()), (us.clone(), jp));
+        assert_eq!(copies.find(&codes(&["BR6E", "BR6J"])).unwrap_err().0, codes(&["BR6J"]));
+        // (Compressed as the archive had it: no bigger than the entry there.)
+        let size = |path: &Path, name: &str| zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap().by_name(name).unwrap().compressed_size();
+        assert_eq!(size(&kept.join("BR6E.zip"), "BR6E.srl"), size(&data.join("exe6.dat"), "exe6_rom_e.srl"));
+        // A ROM file's copy, stored.
+        let files = tempfile::tempdir().unwrap();
+        nettai_platform::fs::write(files.path().join("b.gba"), &us).unwrap();
+        let from_files = files.path().join("kept");
+        assert_eq!(RomSource::at(files.path()).unwrap().keep_copies(&codes(&["BR6E"]), &from_files).unwrap(), 1);
+        assert_eq!(RomSource::Copies(from_files).find(&codes(&["BR6E"])).unwrap()[0].read().unwrap(), us);
     }
 
     /// A folder of ROM files: each file whose header is of a code asked for, whatever its name; a file that is

@@ -6,6 +6,9 @@
 //! it before the app starts ([`preload`]), and takes what changed under the folder it keeps ([`watch`],
 //! [`changes`]) to write it to its own storage (crates/nettai-web: the origin private file system).
 //!
+//! Large files the page keeps but doesn't put in the app's files as it starts are stowed ([`stow`], [`stowed`]) and
+//! read in when wanted ([`fetch`]).
+//!
 //! `Path::exists`, `is_file` and `is_dir` ask the system's file system: [`exists`], [`is_file`] and [`is_dir`] are
 //! this crate's.
 
@@ -19,6 +22,11 @@ pub use std::fs::*;
 pub(crate) mod memory;
 #[cfg(target_arch = "wasm32")]
 pub use memory::*;
+
+mod stowed;
+pub use stowed::{STOWED, fetch, stow, stowed};
+#[cfg(target_arch = "wasm32")]
+pub use stowed::listed;
 
 /// Whether anything is at `path`.
 pub fn exists(path: impl AsRef<Path>) -> bool {

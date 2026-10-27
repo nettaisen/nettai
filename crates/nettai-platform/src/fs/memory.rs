@@ -143,6 +143,11 @@ pub fn watch(dir: impl AsRef<Path>) {
     tree().watched = Some(key(dir.as_ref()));
 }
 
+/// The folder whose changes are kept ([`watch`]), if one is.
+pub fn watched() -> Option<PathBuf> {
+    tree().watched.clone()
+}
+
 /// What changed under the folder kept since the last call, in order.
 pub fn changes() -> Vec<Change> {
     std::mem::take(&mut tree().changes)

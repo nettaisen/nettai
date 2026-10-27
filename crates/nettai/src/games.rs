@@ -157,6 +157,12 @@ pub struct Games {
     others: Vec<Entry>,
 }
 
+/// Where the browser keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]): stowed in the data
+/// folder, not read as the page starts.
+fn copies() -> PathBuf {
+    crate::paths::data().join(nettai_platform::fs::STOWED).join("roms")
+}
+
 /// How many other contents are kept loaded: a replay's and the next one's.
 const OTHERS: usize = 2;
 
@@ -198,15 +204,11 @@ impl Games {
             return;
         }
         if self.source.is_none() {
-            let found = match std::env::var_os(nettai_extract::source::ROMS) {
-                Some(_) => RomSource::from_env().map_err(|why| crate::errors::log("finding the ROMs", &why)).ok(),
-                None => Install::find(self.chosen.as_deref()).map(RomSource::Collection),
-            };
-            match found {
+            match self.look() {
                 Some(source) => {
                     self.found(source);
                 }
-                None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen"),
+                None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen, and no ROMs kept of one"),
                 None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
             }
         } else {
@@ -215,6 +217,40 @@ impl Games {
         // (A collection found that lacks a game's ROMs was said as it was found: `Games::found`.)
         if !self.wanted().is_empty() && self.source.is_none() && self.incomplete.is_empty() && !self.notices.contains(&Notice::NoSource) {
             self.notices.push(Notice::NoSource);
+        }
+    }
+
+    /// Where the ROMs are: `$NETTAI_ROMS`'s (development); in the browser, the copies kept of the collection chosen
+    /// before ([`Games::keep_copies`]); else the Legacy Collection in the folder chosen, else through Steam.
+    fn look(&self) -> Option<RomSource> {
+        if std::env::var_os(nettai_extract::source::ROMS).is_some() {
+            return RomSource::from_env().map_err(|why| crate::errors::log("finding the ROMs", &why)).ok();
+        }
+        if cfg!(target_arch = "wasm32") {
+            return (!nettai_platform::fs::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
+        }
+        Install::find(self.chosen.as_deref()).map(RomSource::Collection)
+    }
+
+    /// In the browser, the collection just found in `folder` (the player's, its archives read into the app's
+    /// files) kept as copies of its ROMs, every game's it has: the page can't read the player's folder again without
+    /// asking, so the games are read from the copies from now on and at each start ([`RomSource::Copies`]: each
+    /// ROM's archive entry as it was, about 51 MB for the twelve, read as a game wants it), and the archives are let
+    /// go.
+    pub fn keep_copies(&mut self, folder: &Path) {
+        let Some(source) = self.source.clone().filter(|s| matches!(s, RomSource::Collection(_))) else { return };
+        let mut codes: Vec<String> = self.list.iter().chain(&self.others).filter_map(|e| e.recipe.as_ref()).flat_map(|r| r.roms().iter().cloned()).collect();
+        codes.sort();
+        codes.dedup();
+        match source.keep_copies(&codes, &copies()) {
+            Ok(kept) => {
+                crate::errors::log("keeping the Legacy Collection's ROMs", &format_args!("{kept} kept"));
+                self.source = Some(RomSource::Copies(copies()));
+                if let Err(why) = nettai_platform::fs::remove_dir_all(folder) {
+                    crate::errors::log("letting the Legacy Collection's archives go", &why);
+                }
+            }
+            Err(why) => crate::errors::log("keeping the Legacy Collection's ROMs", &why),
         }
     }
 
@@ -395,11 +431,10 @@ impl Games {
         if !self.others.iter().any(|e| e.content == dir) {
             let recipe = self.recipe_of(id, dir);
             // (Its ROMs looked for if they weren't found.)
-            if self.source.is_none() {
-                let chosen = self.chosen.clone();
-                if let Some(install) = Install::find(chosen.as_deref()) {
-                    self.found(RomSource::Collection(install));
-                }
+            if self.source.is_none()
+                && let Some(source) = self.look()
+            {
+                self.found(source);
             }
             let there = recipe.as_ref().zip(self.source.as_ref()).is_some_and(|(r, source)| source.find(r.roms()).is_ok());
             let state = if there { State::NotLoaded } else { State::NoRoms };

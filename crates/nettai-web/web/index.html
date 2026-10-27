@@ -43,8 +43,9 @@
 <script type="module">
 // The nettai app in a browser (crates/nettai-web). Before it starts, under the preload screen: the module is
 // downloaded, and the files the page keeps (the app's data folder, in the origin private file system: the games'
-// content among them, which the app downloads from the games' sites) are put in the app's files. After: what changed
-// in the data folder is written back, in order, a few times a second.
+// content among them, which the app downloads from the games' sites) are put in the app's files, but for the stowed
+// ones (the Legacy Collection's ROMs as kept, large), which are listed for the app to read as it wants them. After:
+// what changed in the data folder is written back, in order, a few times a second.
 import init, * as nettai from "./nettai_web.js";
 
 // The canvas's size in device pixels, as winit reads it (`devicePixelContentBoxSize`), agrees with the pointer's
@@ -111,28 +112,41 @@ async function download(files, sizes, told) {
 // Where a file the app hands over as a download is made (a video, as it is encoded: nettai-platform's dialog.rs,
 // nettai_make_file): none of the kept files. Emptied as the page starts, nothing being made then.
 const MAKING = ".making";
+// The stowed files (nettai-platform's fs::STOWED): kept, listed and not read as the page starts. The app reads one
+// when it wants it (fs::fetch), and writes them itself (fs::stow).
+const STOWED = ".stowed";
 
 // The files kept: how many, to tell how far loading them is.
 async function count(dir, top) {
   let n = 0;
   for await (const [name, handle] of dir.entries()) {
-    if (top && name === MAKING) continue;
+    if (top && (name === MAKING || name === STOWED)) continue;
     n += handle.kind === "directory" ? await count(handle, false) : 1;
   }
   return n;
 }
 
-// The files kept, each put in the data folder at its path there (`loaded` told of each).
+// The files kept, each put in the data folder at its path there (`loaded` told of each); the stowed ones listed.
 async function load(dir, prefix, loaded) {
   for await (const [name, handle] of dir.entries()) {
     if (prefix === "" && name === MAKING) continue;
     const path = prefix + name;
-    if (handle.kind === "directory") {
+    if (prefix === "" && name === STOWED) {
+      await list(handle, path + "/");
+    } else if (handle.kind === "directory") {
       await load(handle, path + "/", loaded);
     } else {
       nettai.preload(path, new Uint8Array(await (await handle.getFile()).arrayBuffer()));
       loaded();
     }
+  }
+}
+
+// The stowed files under `dir`, each listed for the app by its path in the data folder, none read.
+async function list(dir, prefix) {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === "directory") await list(handle, prefix + name + "/");
+    else nettai.stowed(prefix + name);
   }
 }
 
@@ -171,10 +185,8 @@ async function remove(root, path) {
   }
 }
 
-// What changed, written to the kept files as the app made it: the writes side by side (a pack is thousands of
-// files), a removal or a second write of one file after what came before it, and a pack's stamp (which says the
-// pack is whole: the app extracts one again that has none) after everything else in the batch, so a page closed
-// partway leaves no pack that looks whole.
+// What changed, written to the kept files as the app made it: the writes side by side (a bundle of a game's content
+// is many files), and a removal or a second write of one file after what came before it.
 async function keep(root, changes) {
   let running = [];
   const paths = new Set();
@@ -183,11 +195,8 @@ async function keep(root, changes) {
     running = [];
     paths.clear();
   };
-  const stamps = [];
   for (const [kind, path, bytes] of changes) {
-    if (kind === "write" && path.endsWith("/stamp.toml")) {
-      stamps.push([path, bytes]);
-    } else if (kind === "write" && !paths.has(path)) {
+    if (kind === "write" && !paths.has(path)) {
       paths.add(path);
       running.push(write(root, path, bytes));
       if (running.length >= 32) await settle();
@@ -198,7 +207,6 @@ async function keep(root, changes) {
     }
   }
   await settle();
-  for (const [path, bytes] of stamps) await write(root, path, bytes);
 }
 
 async function main() {
@@ -216,7 +224,7 @@ async function main() {
   });
   show("Starting", 0.8);
   await init({ module_or_path: module });
-  // The files kept (the packs, the games' content, the builds, the replays, the settings): the rest of the bar.
+  // The files kept (the games' content, the builds, the replays, the settings): the rest of the bar.
   const root = await navigator.storage.getDirectory();
   // (Kept, not cleared when the browser is short of room, where it allows.)
   navigator.storage.persist?.();
