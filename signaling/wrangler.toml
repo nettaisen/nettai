@@ -13,13 +13,33 @@
 #      Create (or the API: POST /accounts/{account_id}/calls/turn_keys). It
 #      shows the key's ID (the "Turn Token ID") and its API token, once.
 #   2. Give them to the Worker as secrets (never in this file or the repo):
-#        npx wrangler secret put TURN_KEY_ID
-#        npx wrangler secret put TURN_KEY_API_TOKEN
-#      For `wrangler dev`, the same two lines in signaling/.dev.vars
-#      (TURN_KEY_ID=... and TURN_KEY_API_TOKEN=...), which git ignores.
+#        npx wrangler secret put CLOUDFLARE_TURN_KEY_ID
+#        npx wrangler secret put CLOUDFLARE_TURN_KEY_API_TOKEN
+#      For `wrangler dev`, the same names in signaling/.dev.vars
+#      (CLOUDFLARE_TURN_KEY_ID=... and CLOUDFLARE_TURN_KEY_API_TOKEN=...),
+#      which git ignores.
 #
 # Without them the Worker still runs: each welcome gives Cloudflare's public
 # STUN server alone, and two players whose networks need a relay can't meet.
+#
+# TURN in mainland China. A player Cloudflare places there (its lookup of
+# the IP address says CN; Hong Kong, Macau and Taiwan aren't CN) is given
+# only the owner's own coturn there instead. The Worker makes that coturn's
+# credentials itself, with the secret it shares with it (coturn's TURN REST
+# scheme): they last as long as Cloudflare's, and coturn refuses them after.
+#
+#   1. In the coturn's turnserver.conf: `use-auth-secret`,
+#      `static-auth-secret=SECRET` (a long random string, such as
+#      `openssl rand -hex 32` makes), a `realm=`, and UDP on its port (the
+#      desktop app relays over UDP only).
+#   2. Give the Worker its URLs and that secret, as secrets:
+#        npx wrangler secret put CHINA_TURN_URLS
+#          its STUN and TURN URLs, separated by spaces, such as
+#          stun:turn.example.cn:3478 turn:turn.example.cn:3478?transport=udp
+#          (with no stun: URL, those players have no STUN server)
+#        npx wrangler secret put CHINA_TURN_SECRET
+#
+# Without them, players in China are given Cloudflare's, as everyone else is.
 #
 # The app's default server is wss://matchmaking.nettai.n1gp.net
 # (crates/nettai/src/screens/play/session.rs, DEFAULT_SIGNAL). To serve it

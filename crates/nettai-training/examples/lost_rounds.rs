@@ -216,6 +216,8 @@ struct RoundOut {
     /// (the other navi losing HP within `stats::LANDS` ticks), by side.
     attack_chips: [u32; 2],
     landed: [u32; 2],
+    /// The AI's attack chips by name: used, and landed (as `landed`).
+    ai_chips: HashMap<String, (u32, u32)>,
 }
 
 /// An object followed from the tick it appeared.
@@ -447,6 +449,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         replay_ended: false,
         attack_chips: [0; 2],
         landed: [0; 2],
+        ai_chips: HashMap::new(),
     };
     let mut measure = nettai_training::stats::Measure::new(Default::default());
     let mut t: u32 = 0;
@@ -462,6 +465,11 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let mut panels: VecDeque<(Option<PanelPos>, Option<PanelPos>)> = VecDeque::new();
     let mut attacked: VecDeque<u64> = VecDeque::new();
     let mut masher_hand = 0u8;
+    // The AI's attack chips in flight: name, undimmed ticks since its use, the masher's HP then.
+    let mut ai_hand = 0u8;
+    let mut ai_flying: Vec<(String, u32, u16)> = Vec::new();
+    // (The window, LOST_LANDS undimmed ticks if set: stats' LANDS by default.)
+    let lands: u32 = std::env::var("LOST_LANDS").ok().and_then(|v| v.parse().ok()).unwrap_or(nettai_training::stats::LANDS);
     let mut masher_chip: Option<(String, u32)> = None;
 
     let result = loop {
@@ -561,6 +569,31 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
             masher_chip = Some((used.map_or("?".to_string(), |c| b.content.defs.chip(c).key.clone()), t));
         }
         masher_hand = hand;
+        // The AI's attack chips used, each landed or not (as stats' attacks_landed, by name).
+        let hand = b.hands[1].remaining();
+        if b.round.mode == mode::FIGHTING && hand < ai_hand {
+            if let Some(c) = b.hands[1].ids[b.hands[1].cursor.saturating_sub(1) as usize] {
+                let d = b.content.chip(c);
+                if d.damage > 0 || d.formula.is_some() {
+                    if let Some(other) = nettai_training::stats::navi_hp(&b, 0, Some(0)) {
+                        let key = b.content.defs.chip(c).key.clone();
+                        out.ai_chips.entry(key.clone()).or_default().0 += 1;
+                        ai_flying.push((key, 0, other));
+                    }
+                }
+            }
+        }
+        ai_hand = hand;
+        let masher_hp = nettai_training::stats::navi_hp(&b, 0, Some(0));
+        let undimmed = !b.is_dimmed();
+        ai_flying.retain_mut(|(key, ticks, other)| {
+            if masher_hp.is_some_and(|now| now < *other) {
+                out.ai_chips.entry(key.clone()).or_default().1 += 1;
+                return false;
+            }
+            *ticks += undimmed as u32;
+            *ticks < lands
+        });
 
         // The AI navi's HP, and a hit: read of the states before it.
         let now = navi_hp(&b, 1, hp[1]);
@@ -755,6 +788,17 @@ fn summary(s: &Shared, rounds: &[RoundOut], a: &Args, d: u32, k: u32) -> String 
 
     let (used, landed) = rounds.iter().fold(([0u32; 2], [0u32; 2]), |(u, l), r| ([u[0] + r.attack_chips[0], u[1] + r.attack_chips[1]], [l[0] + r.landed[0], l[1] + r.landed[1]]));
     let _ = writeln!(o, "attack chips used in the fight and landed (the other navi losing HP within {} ticks): side 0 (the scripted player) {} of {} ({}), side 1 (the AI) {} of {} ({})", nettai_training::stats::LANDS, landed[0], used[0], pct(landed[0] as usize, used[0] as usize), landed[1], used[1], pct(landed[1] as usize, used[1] as usize));
+    let mut by_chip: HashMap<&str, (u32, u32)> = HashMap::new();
+    for r in rounds {
+        for (k, (u, l)) in &r.ai_chips {
+            let e = by_chip.entry(k.as_str()).or_default();
+            e.0 += u;
+            e.1 += l;
+        }
+    }
+    let mut by_chip: Vec<_> = by_chip.into_iter().collect();
+    by_chip.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then(a.0.cmp(b.0)));
+    let _ = writeln!(o, "the AI's attack chips by name, used and landed: {}", by_chip.iter().map(|(k, (u, l))| format!("{k} {l}/{u}")).collect::<Vec<_>>().join(", "));
     let _ = writeln!(o);
     let groups: [Group; 3] = [("lost", |r| r.result < 0), ("won", |r| r.result > 0), ("neither", |r| r.result == 0)];
     let _ = writeln!(o, "{:<8} {:>6} {:>7} {:>8} {:>6} {:>9} {:>10} {:>9} {:>11}", "rounds", "count", "share", "fight-min", "hits", "hits/min", "dmg/min", "dmg/hit", "dealt/min");

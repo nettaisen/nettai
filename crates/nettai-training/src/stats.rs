@@ -10,8 +10,10 @@ use nettai_battle::battle::mode;
 use nettai_battle::custom::screen::Phase;
 use nettai_content_api::PanelPos;
 
-/// The ticks after an attack chip's use within which the other navi losing
-/// HP counts as it landing.
+/// The fight's undimmed ticks after an attack chip's use within which the
+/// other navi losing HP counts as it landing. Dimmed ticks don't count: a
+/// navi chip's whole sequence plays dimmed, often for longer than this, and
+/// lands in it.
 pub const LANDS: u32 = 120;
 /// The ticks within which a step back to the panel just left counts as
 /// pacing (a third of a second).
@@ -45,7 +47,7 @@ pub struct RoundStats {
     pub chips_used: [u32; 2],
     /// Chips used that attack (a damage, or a damage formula), and of
     /// those the ones after which the other navi lost HP within
-    /// [`LANDS`] ticks.
+    /// [`LANDS`] undimmed ticks.
     pub attack_chips: [u32; 2],
     pub attacks_landed: [u32; 2],
     pub screens: u32,
@@ -66,7 +68,7 @@ pub struct RoundStats {
     /// key, payoff's), whether both were picked, whether picked on one
     /// screen the setup first, whether used in that order within
     /// [`PAIR_USE`] ticks, and the most the payoff did (the other navi's HP
-    /// lost within [`LANDS`] ticks of its use) as a ratio to its plain
+    /// lost within [`LANDS`] undimmed ticks of its use) as a ratio to its plain
     /// fingerprint's best.
     pub pair: [Option<(String, String)>; 2],
     pub pair_picked: [bool; 2],
@@ -86,7 +88,8 @@ struct PairWatch {
     plain: u16,
     picked: [bool; 2],
     setup_used: Option<u32>,
-    /// The payoff's uses: the tick and the other navi's HP then.
+    /// The payoff's uses: the undimmed ticks since, and the other navi's HP
+    /// then.
     payoff_uses: Vec<(u32, u16)>,
 }
 
@@ -98,6 +101,8 @@ pub struct Measure {
     hand: [u8; 2],
     at: [Option<PanelPos>; 2],
     last_step: [Option<(PanelPos, PanelPos, u32)>; 2],
+    /// Attack chips in flight: the side, the undimmed ticks since its use,
+    /// and the other navi's HP then.
     flying: Vec<(u8, u32, u16)>,
     closing: [bool; 2],
     custom: bool,
@@ -174,7 +179,7 @@ impl Measure {
                 }) {
                     s.attack_chips[i] += 1;
                     if let Some(other) = navi_hp(b, side ^ 1, Some(0)) {
-                        self.flying.push((side, t, other));
+                        self.flying.push((side, 0, other));
                     }
                 }
             }
@@ -190,7 +195,7 @@ impl Measure {
                         s.pair_used[i] = true;
                     }
                     if let Some(other) = navi_hp(b, side ^ 1, Some(0)) {
-                        self.pairs[i].payoff_uses.push((t, other));
+                        self.pairs[i].payoff_uses.push((0, other));
                     }
                 }
             }
@@ -228,24 +233,27 @@ impl Measure {
             }
         }
         let hp = self.hp;
+        let undimmed = !b.is_dimmed();
         let stats = &mut self.stats;
         // A payoff's damage: the most the other navi lost within its window.
         for (i, w) in self.pairs.iter_mut().enumerate() {
             let Some(now) = hp[i ^ 1] else { continue };
             let plain = w.plain;
             let best = &mut stats.payoff_damage[i];
-            w.payoff_uses.retain(|&(when, before)| {
+            w.payoff_uses.retain_mut(|(ticks, before)| {
                 let r = crate::fingerprint::ratio(before.saturating_sub(now), plain);
                 *best = Some(best.unwrap_or(0.0).max(r));
-                t - when < LANDS
+                *ticks += undimmed as u32;
+                *ticks < LANDS
             });
         }
-        self.flying.retain(|&(side, when, other)| {
-            if hp[(side ^ 1) as usize].is_some_and(|now| now < other) {
-                stats.attacks_landed[side as usize] += 1;
+        self.flying.retain_mut(|(side, ticks, other)| {
+            if hp[(*side ^ 1) as usize].is_some_and(|now| now < *other) {
+                stats.attacks_landed[*side as usize] += 1;
                 return false;
             }
-            t - when < LANDS
+            *ticks += undimmed as u32;
+            *ticks < LANDS
         });
     }
 }
